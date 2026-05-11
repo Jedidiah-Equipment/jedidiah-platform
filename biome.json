@@ -8,7 +8,8 @@
       "!**/dist",
       "!**/dist-server",
       "!**/coverage",
-      "!pkg/db/migrations"
+      "!pkg/db/migrations",
+      "!pkg/web/src/app/route-tree.gen.ts"
     ]
   },
   "formatter": {

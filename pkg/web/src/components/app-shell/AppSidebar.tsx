@@ -2,9 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { WrenchIcon } from "lucide-react";
 import type React from "react";
 
-import { DashboardNavMain } from "@/components/app-shell/DashboardNavMain.js";
-import { DashboardNavSecondary } from "@/components/app-shell/DashboardNavSecondary.js";
-import { DashboardNavUser } from "@/components/app-shell/DashboardNavUser.js";
+import { AppNavMain } from "@/components/app-shell/AppNavMain.js";
+import { AppNavSecondary } from "@/components/app-shell/AppNavSecondary.js";
+import { AppNavUser } from "@/components/app-shell/AppNavUser.js";
 import {
   Sidebar,
   SidebarContent,
@@ -15,23 +15,13 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar.js";
+import { useAuth } from "@/hooks/use-auth.js";
 
-type DashboardSidebarProps = React.ComponentProps<typeof Sidebar> & {
-  activePath: "/dashboard" | "/products";
-  user: {
-    name: string;
-    email: string;
-    initials: string;
-  };
-  onSignOut: () => void | Promise<void>;
-};
+type AppSidebarProps = React.ComponentProps<typeof Sidebar>;
 
-export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
-  activePath,
-  user,
-  onSignOut,
-  ...props
-}) => {
+export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
+  const { onSignOut, user } = useAuth();
+
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>
       <SidebarHeader>
@@ -50,11 +40,11 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <DashboardNavMain activePath={activePath} />
-        <DashboardNavSecondary className="mt-auto" />
+        <AppNavMain />
+        <AppNavSecondary className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <DashboardNavUser onSignOut={onSignOut} user={user} />
+        <AppNavUser onSignOut={onSignOut} user={user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

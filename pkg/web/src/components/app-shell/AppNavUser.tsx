@@ -24,7 +24,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar.js";
 
-type DashboardNavUserProps = {
+type AppNavUserProps = {
   user: {
     name: string;
     email: string;
@@ -33,7 +33,7 @@ type DashboardNavUserProps = {
   onSignOut: () => void | Promise<void>;
 };
 
-export const DashboardNavUser: React.FC<DashboardNavUserProps> = ({ user, onSignOut }) => {
+export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
   const { isMobile } = useSidebar();
 
   return (

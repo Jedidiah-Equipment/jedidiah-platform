@@ -29,9 +29,9 @@ const secondaryNavItems: SecondaryNavItem[] = [
   },
 ];
 
-export const DashboardNavSecondary: React.FC<
-  React.ComponentPropsWithoutRef<typeof SidebarGroup>
-> = (props) => {
+export const AppNavSecondary: React.FC<React.ComponentPropsWithoutRef<typeof SidebarGroup>> = (
+  props,
+) => {
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>

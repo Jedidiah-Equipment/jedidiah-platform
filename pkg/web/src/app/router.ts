@@ -1,12 +1,6 @@
 import { createRouter } from "@tanstack/react-router";
 
-import { rootRoute } from "@/routes/__root.js";
-import { dashboardRoute } from "@/routes/dashboard.js";
-import { indexRoute } from "@/routes/index.js";
-import { loginRoute } from "@/routes/login.js";
-import { productsRoute } from "@/routes/products.js";
-
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, dashboardRoute, productsRoute]);
+import { routeTree } from "@/app/route-tree.gen.js";
 
 export const router = createRouter({
   routeTree,
@@ -16,5 +10,9 @@ export const router = createRouter({
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
+  }
+
+  interface StaticDataRouteOption {
+    pageLabel?: string;
   }
 }

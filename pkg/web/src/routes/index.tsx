@@ -1,11 +1,8 @@
-import { createRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { getCurrentSession } from "@/lib/auth-client.js";
-import { rootRoute } from "./__root.js";
 
-export const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/",
+export const Route = createFileRoute("/")({
   beforeLoad: async () => {
     const session = await getCurrentSession();
 

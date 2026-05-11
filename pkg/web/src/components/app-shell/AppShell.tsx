@@ -6,5 +6,5 @@ type AppShellProps = {
 };
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
-  return <main className="dark min-h-screen bg-background text-foreground">{children}</main>;
+  return <main className="min-h-screen bg-background text-foreground">{children}</main>;
 };

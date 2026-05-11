@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:ci": "vitest run",
-    "env:check": "tsx src/lib/env.ts"
+    "env:check": "tsx --import ../../scripts/load-dev-env.mjs src/server/env.ts"
   },
   "dependencies": {
     "@app/api": "workspace:*",

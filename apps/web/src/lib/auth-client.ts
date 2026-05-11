@@ -1,8 +1,8 @@
 import { createAuthClient } from "better-auth/react";
 
-import { getPublicAppConfig } from "./app-config.js";
+import { getClientConfig } from "./app-config.js";
 
-const config = getPublicAppConfig();
+const config = getClientConfig();
 
 export const authClient = createAuthClient({
   baseURL: config.authBaseUrl,

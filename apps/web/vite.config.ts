@@ -3,7 +3,15 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+import "../../scripts/load-dev-env.mjs";
+import { getInjectedClientConfig } from "./src/server/env.js";
+
+const clientConfig = getInjectedClientConfig();
+
 export default defineConfig({
+  define: {
+    __APP_CONFIG__: JSON.stringify(clientConfig),
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

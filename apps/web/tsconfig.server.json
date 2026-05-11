@@ -7,5 +7,5 @@
     "types": ["node"],
     "composite": false
   },
-  "include": ["src/server/**/*.ts", "src/lib/app-config.ts", "src/lib/env.ts"]
+  "include": ["src/server/**/*.ts"]
 }

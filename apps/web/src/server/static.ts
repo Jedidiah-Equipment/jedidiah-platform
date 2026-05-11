@@ -3,20 +3,20 @@ import { extname, join } from "node:path";
 import fastifyStatic from "@fastify/static";
 import type { FastifyReply } from "fastify";
 import Fastify from "fastify";
-import { getPublicEnvConfig } from "../lib/env.js";
+import { getServerConfig, type InjectedClientConfig } from "./env.js";
 
-const port = Number(process.env.PORT ?? 5173);
+const config = getServerConfig();
 const distDir = join(process.cwd(), "dist");
 
-function publicConfigScript(): string {
-  const serializedConfig = JSON.stringify(getPublicEnvConfig()).replace(/</g, "\\u003c");
+function publicConfigScript(clientConfig: InjectedClientConfig): string {
+  const serializedConfig = JSON.stringify(clientConfig).replace(/</g, "\\u003c");
 
   return `window.__APP_CONFIG__ = ${serializedConfig};`;
 }
 
 async function sendIndexHtml(reply: FastifyReply): Promise<void> {
   const index = await readFile(join(distDir, "index.html"), "utf8");
-  const configScript = `<script>${publicConfigScript()}</script>`;
+  const configScript = `<script>${publicConfigScript(config.clientConfig)}</script>`;
   const html = index.includes("</head>")
     ? index.replace("</head>", `    ${configScript}\n  </head>`)
     : `${configScript}\n${index}`;
@@ -50,8 +50,8 @@ app.get("/*", async (request, reply) => {
   return sendIndexHtml(reply);
 });
 
-await app.listen({ host: "0.0.0.0", port });
-console.info(`Web server listening on port ${port}`);
+await app.listen({ host: "0.0.0.0", port: config.port });
+console.info(`Web server listening on port ${config.port}`);
 
 process.on("SIGTERM", () => {
   app.close().catch((error: unknown) => {

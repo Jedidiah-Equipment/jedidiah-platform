@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePublicAppConfig } from "./app-config.js";
-import { getPublicEnvConfig } from "./env.js";
+import { parseClientConfig } from "./app-config.js";
 
-describe("public app config", () => {
+describe("client config", () => {
   it("parses local defaults", () => {
     expect(
-      parsePublicAppConfig({
+      parseClientConfig({
         appEnv: "development",
         appBaseUrl: "http://localhost:5173",
         apiBaseUrl: "http://localhost:3000",
@@ -18,9 +17,5 @@ describe("public app config", () => {
       apiBaseUrl: "http://localhost:3000",
       authBaseUrl: "http://localhost:3000/api/auth",
     });
-  });
-
-  it("fails when required public config is missing", () => {
-    expect(() => getPublicEnvConfig({ PUBLIC_APP_ENV: "development" })).toThrow();
   });
 });

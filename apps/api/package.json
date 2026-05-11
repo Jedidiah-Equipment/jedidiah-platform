@@ -10,13 +10,13 @@
     }
   },
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "tsx watch --import ../../scripts/load-dev-env.mjs src/main.ts",
     "build": "tsc -b",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:ci": "vitest run",
-    "env:check": "tsx src/env.ts"
+    "env:check": "tsx --import ../../scripts/load-dev-env.mjs src/env.ts"
   },
   "dependencies": {
     "@app/core": "workspace:*",

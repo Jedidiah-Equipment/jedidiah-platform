@@ -7,15 +7,15 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @app/api --filter @app/web dev",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "check": "biome check .",
-    "test": "pnpm -r test",
-    "test:ci": "pnpm -r test:ci",
-    "env:check": "pnpm -r env:check",
+    "test": "turbo run test",
+    "test:ci": "turbo run test:ci",
+    "env:check": "turbo run env:check",
     "db:generate": "pnpm --filter @app/db db:generate",
     "db:migrate": "pnpm --filter @app/db build && pnpm --filter @app/db db:migrate",
     "db:migrate:test": "pnpm --filter @app/db build && NODE_ENV=test pnpm --filter @app/db db:migrate",
@@ -25,6 +25,7 @@
     "@biomejs/biome": "^2.2.4",
     "@types/node": "^24.9.1",
     "tsx": "^4.20.6",
+    "turbo": "^2.9.12",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }

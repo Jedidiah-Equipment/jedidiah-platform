@@ -13,7 +13,7 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsc -b",
     "start": "node dist/main.js",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:ci": "vitest run",
     "env:check": "tsx src/env.ts"

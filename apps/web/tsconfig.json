@@ -12,11 +12,7 @@
     "declarationMap": false,
     "paths": {
       "@/*": ["src/*"],
-      "@app/api/router-type": ["../api/src/router-type.ts"],
-      "@app/core": ["../../packages/core/src/index.ts"],
-      "@app/db": ["../../packages/db/src/index.ts"],
-      "@app/db/schema": ["../../packages/db/src/schema/index.ts"],
-      "@app/db/test-utils": ["../../packages/db/src/test-utils.ts"]
+      "@app/api/router-type": ["../api/src/router-type.ts"]
     },
     "types": ["node", "vite/client", "vitest"]
   },

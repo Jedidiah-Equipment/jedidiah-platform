@@ -4,6 +4,7 @@
     "includes": [
       "**",
       "!**/node_modules",
+      "!**/.turbo",
       "!**/dist",
       "!**/dist-server",
       "!**/coverage",

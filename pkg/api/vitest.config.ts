@@ -7,8 +7,16 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@",
+        replacement: new URL("./src", import.meta.url).pathname,
+      },
+      {
         find: "@pkg/db/test-utils",
         replacement: new URL("../../pkg/db/src/test-utils.ts", import.meta.url).pathname,
+      },
+      {
+        find: "@pkg/core",
+        replacement: new URL("../../pkg/core/src/index.ts", import.meta.url).pathname,
       },
       {
         find: "@pkg/db/schema",

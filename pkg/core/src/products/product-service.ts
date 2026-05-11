@@ -1,4 +1,4 @@
-import type { db } from "@pkg/db";
+import type { Database } from "@pkg/db";
 import { products } from "@pkg/db/schema";
 import {
   type Product,
@@ -14,7 +14,7 @@ import { asc, count, desc, eq } from "drizzle-orm";
 
 import { DuplicateProductNameError, ProductNotFoundError } from "./product-errors.js";
 
-export type ProductDatabase = typeof db;
+export type ProductDatabase = Database;
 
 type ProductRow = typeof products.$inferSelect;
 

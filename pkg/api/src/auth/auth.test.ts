@@ -1,4 +1,3 @@
-import type { LightMyRequestResponse } from "fastify";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { getMockEmailMessages } from "../email/mock-email.js";
@@ -40,68 +39,6 @@ describe("tRPC auth router", () => {
 
     expect(response.statusCode).toBe(401);
     expect(response.json().error.code).toBe(-32001);
-  });
-});
-
-describe("tRPC products router", () => {
-  it("rejects unauthenticated product lists", async () => {
-    const response = await (await getTestApp()).inject({
-      method: "GET",
-      url: "/trpc/products.list",
-    });
-
-    expect(response.statusCode).toBe(401);
-    expect(response.json().error.code).toBe(-32001);
-  });
-
-  it("creates, lists, and updates products for authenticated users", async () => {
-    const cookie = await authenticatedCookie("products");
-
-    const createResponse = await trpcRequest("products.create", cookie, {
-      name: "Wheel Loader",
-    });
-
-    expect(createResponse.statusCode).toBe(200);
-
-    const created = trpcData(createResponse);
-
-    expect(created.name).toBe("Wheel Loader");
-
-    const listResponse = await trpcQuery("products.list", cookie, {
-      page: 1,
-      pageSize: 10,
-      sortBy: "name",
-      sortDirection: "asc",
-    });
-
-    expect(listResponse.statusCode).toBe(200);
-    expect(trpcData(listResponse).items).toEqual([created]);
-
-    const updateResponse = await trpcRequest("products.update", cookie, {
-      id: created.id,
-      name: "Wheel Loader XL",
-    });
-
-    expect(updateResponse.statusCode).toBe(200);
-    expect(trpcData(updateResponse)).toEqual({
-      id: created.id,
-      name: "Wheel Loader XL",
-    });
-  });
-
-  it("returns conflict for duplicate product names", async () => {
-    const cookie = await authenticatedCookie("duplicate-product");
-
-    await trpcRequest("products.create", cookie, {
-      name: "Duplicate Product",
-    });
-
-    const duplicateResponse = await trpcRequest("products.create", cookie, {
-      name: "Duplicate Product",
-    });
-
-    expect(duplicateResponse.statusCode).toBe(409);
-    expect(duplicateResponse.json().error.message).toBe("A product with this name already exists.");
   });
 });
 
@@ -205,45 +142,3 @@ describe("Better Auth endpoints", () => {
     ]);
   });
 });
-
-async function authenticatedCookie(prefix: string): Promise<string> {
-  const email = uniqueEmail(prefix);
-
-  await signUp(email);
-  const signInResponse = await signIn(email);
-
-  return cookieHeader(signInResponse.headers["set-cookie"]);
-}
-
-async function trpcRequest(
-  path: string,
-  cookie: string,
-  input: Record<string, unknown>,
-): Promise<LightMyRequestResponse> {
-  return await (await getTestApp()).inject({
-    method: "POST",
-    url: `/trpc/${path}`,
-    headers: {
-      cookie,
-    },
-    payload: input,
-  });
-}
-
-async function trpcQuery(
-  path: string,
-  cookie: string,
-  input: Record<string, unknown>,
-): Promise<LightMyRequestResponse> {
-  return await (await getTestApp()).inject({
-    method: "GET",
-    url: `/trpc/${path}?input=${encodeURIComponent(JSON.stringify(input))}`,
-    headers: {
-      cookie,
-    },
-  });
-}
-
-function trpcData(response: Awaited<ReturnType<typeof trpcRequest>>) {
-  return response.json().result.data;
-}

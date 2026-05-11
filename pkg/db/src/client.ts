@@ -1,15 +1,11 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-
+import { createDatabaseClient } from "./database-client.js";
 import { getDatabaseUrl } from "./env.js";
-import * as schema from "./schema/index.js";
 
-export const queryClient = postgres(getDatabaseUrl(), {
-  max: 10,
-});
+const defaultClient = createDatabaseClient(getDatabaseUrl());
 
-export const db = drizzle(queryClient, { schema });
+export const queryClient = defaultClient.queryClient;
+export const db = defaultClient.db;
 
 export async function closeDatabaseConnection(): Promise<void> {
-  await queryClient.end();
+  await defaultClient.close();
 }

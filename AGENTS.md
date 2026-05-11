@@ -19,6 +19,11 @@ Guidance for coding agents working in this repository.
 - Use Vitest for tests.
 - Keep root scripts scoped to packages that exist.
 
+## Code Style
+
+- Use dash-case for folder and non-component file names, such as `some-name.ts`.
+- React component files are the exception and should use PascalCase, such as `LoginPage.tsx`.
+
 ## Package Boundaries
 
 - `@app/core` is framework-independent shared code:

@@ -1,8 +1,8 @@
 import { createRouter } from "@tanstack/react-router";
-import { rootRoute } from "../routes/__root.js";
-import { dashboardRoute } from "../routes/dashboard.js";
-import { indexRoute } from "../routes/index.js";
-import { loginRoute } from "../routes/login.js";
+import { rootRoute } from "./routes/__root.js";
+import { dashboardRoute } from "./routes/dashboard.js";
+import { indexRoute } from "./routes/index.js";
+import { loginRoute } from "./routes/login.js";
 
 const routeTree = rootRoute.addChildren([indexRoute, loginRoute, dashboardRoute]);
 

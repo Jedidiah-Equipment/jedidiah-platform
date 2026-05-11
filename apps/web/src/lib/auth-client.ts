@@ -1,6 +1,6 @@
 import { createAuthClient } from "better-auth/react";
 
-import { getPublicAppConfig } from "../../lib/app-config.js";
+import { getPublicAppConfig } from "./app-config.js";
 
 const config = getPublicAppConfig();
 

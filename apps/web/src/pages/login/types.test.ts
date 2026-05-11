@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { LoginFormSchema } from "./login.schema.js";
+import { LoginFormSchema } from "./types.js";
 
 describe("LoginFormSchema", () => {
   it("accepts valid login values", () => {

@@ -2,8 +2,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { createQueryClient } from "../lib/query-client.js";
-import { createTrpcClient, trpc } from "../lib/trpc.js";
+import { createQueryClient } from "./lib/query-client.js";
+import { createTrpcClient, trpc } from "./lib/trpc.js";
 import { router } from "./router.js";
 
 export function Providers() {

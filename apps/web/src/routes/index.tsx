@@ -1,6 +1,6 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 
-import { getCurrentSession } from "../features/auth/auth-client.js";
+import { getCurrentSession } from "../lib/auth-client.js";
 import { rootRoute } from "./__root.js";
 
 export const indexRoute = createRoute({

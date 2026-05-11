@@ -13,7 +13,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/components/ui/sidebar.js";
 import { useAuth } from "@/hooks/use-auth.js";
 
@@ -46,7 +45,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
       <SidebarFooter>
         <AppNavUser onSignOut={onSignOut} user={user} />
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 };

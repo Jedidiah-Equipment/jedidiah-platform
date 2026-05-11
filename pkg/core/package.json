@@ -14,5 +14,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@pkg/db": "workspace:*",
+    "@pkg/schema": "workspace:*",
+    "drizzle-orm": "^0.44.7"
+  }
 }

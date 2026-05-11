@@ -54,14 +54,30 @@ importers:
       '@fastify/cors':
         specifier: ^11.2.0
         version: 11.2.0
+      '@pkg/core':
+        specifier: workspace:*
+        version: link:../core
       '@pkg/db':
         specifier: workspace:*
         version: link:../db
+      '@pkg/schema':
+        specifier: workspace:*
+        version: link:../schema
       '@trpc/server':
         specifier: ^11.7.2
         version: 11.17.0(typescript@5.9.3)
 
-  pkg/core: {}
+  pkg/core:
+    dependencies:
+      '@pkg/db':
+        specifier: workspace:*
+        version: link:../db
+      '@pkg/schema':
+        specifier: workspace:*
+        version: link:../schema
+      drizzle-orm:
+        specifier: ^0.44.7
+        version: 0.44.7(kysely@0.28.17)(postgres@3.4.9)
 
   pkg/db:
     dependencies:
@@ -92,6 +108,9 @@ importers:
       '@pkg/api':
         specifier: workspace:*
         version: link:../api
+      '@pkg/schema':
+        specifier: workspace:*
+        version: link:../schema
       '@tanstack/react-form':
         specifier: ^1.32.0
         version: 1.32.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

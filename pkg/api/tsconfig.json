@@ -7,5 +7,9 @@
     "types": ["node", "vitest"]
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../../pkg/schema" }, { "path": "../../pkg/db" }]
+  "references": [
+    { "path": "../../pkg/schema" },
+    { "path": "../../pkg/db" },
+    { "path": "../../pkg/core" }
+  ]
 }

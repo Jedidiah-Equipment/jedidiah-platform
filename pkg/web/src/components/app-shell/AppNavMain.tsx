@@ -18,7 +18,10 @@ const mainNavItems = [
   },
   {
     title: "Products",
-    link: linkOptions({ to: "/products" }),
+    link: linkOptions({
+      to: "/products",
+      search: { page: 1, pageSize: 10, sortBy: "name", sortDirection: "asc" },
+    }),
     icon: BoxesIcon,
   },
 ] as const;
@@ -27,7 +30,7 @@ export const AppNavMain: React.FC = () => {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
-      <SidebarMenu>
+      <SidebarMenu className="gap-1">
         {mainNavItems.map((item) => (
           <SidebarMenuItem key={item.title}>
             <Link {...item.link}>

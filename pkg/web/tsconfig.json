@@ -12,7 +12,8 @@
     "declarationMap": false,
     "paths": {
       "@/*": ["src/*"],
-      "@pkg/api/router-type": ["../api/src/router-type.ts"]
+      "@pkg/api/router-type": ["../api/src/router-type.ts"],
+      "@pkg/schema": ["../schema/src/index.ts"]
     },
     "types": ["node", "vite/client", "vitest"]
   },

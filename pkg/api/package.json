@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@pkg/db": "workspace:*",
+    "@pkg/core": "workspace:*",
+    "@pkg/schema": "workspace:*",
     "@better-auth/drizzle-adapter": "^1.4.7",
     "@fastify/cors": "^11.2.0",
     "@trpc/server": "^11.7.2"

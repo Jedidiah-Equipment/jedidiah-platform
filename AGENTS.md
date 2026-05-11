@@ -95,6 +95,7 @@ Guidance for coding agents working in this repository.
 - Do not add register, forgot password, password reset, or email verification UI until requested.
 - `/dashboard` is the authenticated app shell and should redirect unauthenticated users to `/login`.
 - Public browser config comes from `/env.js`; do not use `VITE_*` for deploy-time URLs.
+- Use TanStack Form with Zod for forms.
 - Keep styling lean with Tailwind. Do not add shadcn primitives until requested.
 
 ## Verification

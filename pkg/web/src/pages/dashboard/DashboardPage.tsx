@@ -1,7 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
+import { LogOutIcon } from "lucide-react";
 import type React from "react";
 
+import { Badge } from "@/components/ui/badge.js";
+import { Button } from "@/components/ui/button.js";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js";
+import { Separator } from "@/components/ui/separator.js";
+import { Skeleton } from "@/components/ui/skeleton.js";
 import { authClient } from "@/lib/auth-client.js";
 
 type DashboardPageProps = Record<string, never>;
@@ -18,29 +23,54 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
 
   return (
     <section className="min-h-screen">
-      <header className="border-b border-neutral-800 bg-neutral-950/95">
+      <header className="border-b bg-background/95">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-teal-300">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
               Jedidiah Equipment
             </p>
-            <h1 className="mt-1 text-xl font-semibold text-white">Dashboard</h1>
+            <h1 className="font-heading text-xl font-semibold">Dashboard</h1>
           </div>
 
-          <button
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-neutral-700 px-3 py-2 text-sm font-medium text-neutral-100 transition hover:border-teal-300 hover:text-teal-200"
-            onClick={handleSignOut}
-            type="button"
-          >
-            <LogOut aria-hidden="true" size={16} />
+          <Button onClick={handleSignOut} type="button" variant="outline">
+            <LogOutIcon data-icon="inline-start" />
             Sign out
-          </button>
+          </Button>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <p className="text-sm text-neutral-400">Signed in as</p>
-        <p className="mt-2 text-lg font-medium text-white">{isPending ? "Loading" : userLabel}</p>
+      <div className="mx-auto grid max-w-6xl gap-4 px-6 py-10 md:grid-cols-[1.1fr_0.9fr]">
+        <Card>
+          <CardHeader>
+            <CardDescription>Account</CardDescription>
+            <CardTitle>Signed in session</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Separator />
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-muted-foreground">Signed in as</span>
+              {isPending ? (
+                <Skeleton className="h-6 w-56" />
+              ) : (
+                <span className="text-lg font-medium">{userLabel}</span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardDescription>Status</CardDescription>
+            <CardTitle>Workspace access</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Separator />
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-muted-foreground">Authentication</span>
+              <Badge variant="secondary">{isPending ? "Checking" : "Active"}</Badge>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </section>
   );

@@ -8,6 +8,8 @@
 - `src/pages/{page-name}/{PageName}Page.tsx` contains page components.
 - `src/pages/{page-name}/components/*` contains components used only by that page.
 - `src/pages/{page-name}/types.ts` contains components related zod types.
+- `src/components/form/*` contains shared TanStack Form + shadcn field wrappers. Prefer these for
+  common controls before wiring `form.Field`, `Field`, `Input`, and `FieldError` directly in pages.
 - `src/components/{component-name}/{ComponentName}.tsx` contains React components shared by multiple
   pages.
 - `src/utils/{util-name}.ts` contains common non-TSX utilities.
@@ -50,3 +52,11 @@ functions after the internal components.
 - Hook files should contain only one hook, and the file name should match that hook name.
 - Hooks should live in a `hooks/` folder placed at the nearest shared level where every hook consumer
   is in that folder or below it.
+
+## Forms
+
+- Use TanStack Form for browser form state and validation.
+- Reuse shared form wrappers such as `TextField` and `PasswordField` from `src/components/form` for
+  standard shadcn field/input/error wiring.
+- Keep schema definitions near the page or feature that owns the form unless the schema is reused
+  across multiple features.

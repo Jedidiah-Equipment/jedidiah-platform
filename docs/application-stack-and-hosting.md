@@ -15,7 +15,7 @@ Frontend:        React + TypeScript + Vite
 Routing:         TanStack Router
 Server data:     TanStack Query
 UI:              shadcn/ui + Tailwind CSS
-Forms:           React Hook Form + Zod
+Forms:           TanStack Form + Zod
 Auth:            Better Auth
 Client state:    Zustand only when needed
 API:             tRPC
@@ -207,7 +207,7 @@ Frontend conventions:
 - Use TanStack Query for all server/cache state.
 - Use React local state for simple component state.
 - Use Zustand only for shared client-only UI state that does not belong in the URL or server cache.
-- Use React Hook Form + Zod for forms.
+- Use TanStack Form + Zod for forms.
 - Use Better Auth's React client for sign-in, sign-up, sign-out, and session hooks.
 - Use shadcn/ui components as local source code under `src/components/ui`.
 - Do not build a marketing landing page as the default first screen. Build the actual app shell.
@@ -222,7 +222,7 @@ State ownership:
 ```txt
 Server/cache state:         TanStack Query
 URL/shareable state:        TanStack Router search params
-Form state:                 React Hook Form
+Form state:                 TanStack Form
 Simple local UI state:      useState/useReducer
 Shared client-only state:   Zustand, only when needed
 Persistent preferences:     localStorage wrapper, only when needed
@@ -613,7 +613,7 @@ Form flow:
 
 ```txt
 Zod schema
-  -> React Hook Form resolver
+  -> TanStack Form validators
   -> tRPC input schema
   -> service receives validated input
 ```

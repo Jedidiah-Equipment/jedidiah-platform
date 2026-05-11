@@ -4,8 +4,9 @@ import { rootRoute } from "@/routes/__root.js";
 import { dashboardRoute } from "@/routes/dashboard.js";
 import { indexRoute } from "@/routes/index.js";
 import { loginRoute } from "@/routes/login.js";
+import { productsRoute } from "@/routes/products.js";
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, dashboardRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, dashboardRoute, productsRoute]);
 
 export const router = createRouter({
   routeTree,

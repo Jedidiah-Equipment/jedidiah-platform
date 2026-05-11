@@ -19,8 +19,8 @@
     "env:check": "tsx --import ../../scripts/load-dev-env.mjs src/env.ts"
   },
   "dependencies": {
-    "@app/core": "workspace:*",
     "@app/db": "workspace:*",
+    "@app/schema": "workspace:*",
     "@better-auth/drizzle-adapter": "^1.4.7",
     "@fastify/cors": "^11.2.0",
     "@trpc/server": "^11.7.2",

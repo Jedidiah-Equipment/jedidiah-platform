@@ -30,7 +30,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@app/core": "workspace:*",
+    "@app/schema": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "postgres": "^3.4.7",
     "zod": "^4.1.12"

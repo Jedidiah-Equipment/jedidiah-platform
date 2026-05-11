@@ -1,4 +1,4 @@
-import { NodeEnvSchema } from "@app/core";
+import { NodeEnvSchema } from "@app/schema";
 import { z } from "zod";
 
 const TrustedOriginsSchema = z

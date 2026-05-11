@@ -7,8 +7,8 @@ Guidance for coding agents working in this repository.
 - This is a pnpm workspace monorepo.
 - Follow [`docs/application-stack-and-hosting.md`](docs/application-stack-and-hosting.md) as the
   source of truth for stack and architecture decisions.
-- The current implementation slice includes root tooling, `apps/api`, `apps/web`, `packages/core`,
-  and `packages/db`.
+- The current implementation slice includes root tooling, `apps/api`, `apps/web`,
+  `packages/schema`, `packages/core`, and `packages/db`.
 - Do not add CI or deployment files unless the task explicitly asks for the next slice.
 
 ## Runtime And Tooling
@@ -26,8 +26,11 @@ Guidance for coding agents working in this repository.
 
 ## Package Boundaries
 
+- `@app/schema` is lightweight framework-independent shared schema/type code:
+  - global Zod schemas
+  - global types derived from Zod
+  - no React, Fastify, Drizzle, or direct `process.env` reads
 - `@app/core` is framework-independent shared code:
-  - Zod schemas
   - shared constants
   - pure utilities
   - no React, Fastify, Drizzle, or direct `process.env` reads

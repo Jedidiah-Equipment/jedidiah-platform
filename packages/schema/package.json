@@ -1,5 +1,5 @@
 {
-  "name": "@app/core",
+  "name": "@app/schema",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:ci": "vitest run",
-    "env:check": "echo \"@app/core has no runtime env\""
+    "env:check": "echo \"@app/schema has no runtime env\""
   },
-  "dependencies": {}
+  "dependencies": {
+    "zod": "^4.1.12"
+  }
 }

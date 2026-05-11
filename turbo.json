@@ -6,7 +6,7 @@
       "outputs": ["dist/**", "dist-server/**", "tsconfig.tsbuildinfo"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"],
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "test": {

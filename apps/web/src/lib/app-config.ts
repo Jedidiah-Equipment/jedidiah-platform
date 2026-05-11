@@ -1,27 +1,18 @@
-import { z } from "zod";
+import { ClientConfig, type ClientConfig as ClientConfigValue } from "@app/schema";
 
-export const ClientConfigSchema = z.object({
-  appEnv: z.enum(["development", "test", "staging", "production"]),
-  appBaseUrl: z.string().url(),
-  apiBaseUrl: z.string().url(),
-  authBaseUrl: z.string().url(),
-});
-
-export type ClientConfig = z.infer<typeof ClientConfigSchema>;
-
-declare const __APP_CONFIG__: ClientConfig | undefined;
+declare const __APP_CONFIG__: ClientConfigValue | undefined;
 
 declare global {
   interface Window {
-    __APP_CONFIG__?: ClientConfig;
+    __APP_CONFIG__?: ClientConfigValue;
   }
 }
 
-export function parseClientConfig(config: unknown): ClientConfig {
-  return ClientConfigSchema.parse(config);
+export function parseClientConfig(config: unknown): ClientConfigValue {
+  return ClientConfig.parse(config);
 }
 
-export function getClientConfig(): ClientConfig {
+export function getClientConfig(): ClientConfigValue {
   if (typeof window === "undefined") {
     throw new Error("Client config is only available in the browser");
   }

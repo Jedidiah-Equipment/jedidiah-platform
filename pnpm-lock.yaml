@@ -32,12 +32,12 @@ importers:
 
   apps/api:
     dependencies:
-      '@app/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@app/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@app/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
       '@better-auth/drizzle-adapter':
         specifier: ^1.4.7
         version: 1.6.10(@better-auth/core@1.6.10(@better-auth/utils@0.4.0)(@better-fetch/fetch@1.1.21)(better-call@1.3.5(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.3.0))(@better-auth/utils@0.4.0)
@@ -62,6 +62,9 @@ importers:
       '@app/api':
         specifier: workspace:*
         version: link:../api
+      '@app/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
       '@fastify/static':
         specifier: ^9.1.3
         version: 9.1.3
@@ -115,17 +118,13 @@ importers:
         specifier: ^7.3.0
         version: 7.3.3(@types/node@24.12.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)
 
-  packages/core:
-    dependencies:
-      zod:
-        specifier: ^4.1.12
-        version: 4.4.3
+  packages/core: {}
 
   packages/db:
     dependencies:
-      '@app/core':
+      '@app/schema':
         specifier: workspace:*
-        version: link:../core
+        version: link:../schema
       drizzle-orm:
         specifier: ^0.44.7
         version: 0.44.7(kysely@0.28.17)(postgres@3.4.9)
@@ -139,6 +138,12 @@ importers:
       drizzle-kit:
         specifier: ^0.31.5
         version: 0.31.10
+
+  packages/schema:
+    dependencies:
+      zod:
+        specifier: ^4.1.12
+        version: 4.4.3
 
 packages:
 

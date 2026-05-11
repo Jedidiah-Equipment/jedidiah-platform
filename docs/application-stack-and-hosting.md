@@ -45,8 +45,11 @@ Use Node.js 24 LTS in production. Bun is not part of the v1 production runtime. 
       Node/Fastify/tRPC backend
 
   packages/
+    schema/
+      global Zod schemas and types
+
     core/
-      shared domain logic, shared Zod schemas, constants, utilities
+      shared domain logic, constants, utilities
 
     db/
       Drizzle schema, migrations, database client, test database helpers
@@ -70,6 +73,7 @@ Package names:
 ```txt
 @app/web
 @app/api
+@app/schema
 @app/core
 @app/db
 ```
@@ -318,6 +322,46 @@ Backend conventions:
 - Database access belongs in repositories or focused query helpers.
 - tRPC inputs must use Zod schemas.
 
+## Shared Schema Package
+
+Path:
+
+```txt
+packages/schema
+```
+
+Responsibilities:
+
+- global Zod schemas
+- global types derived from Zod
+- no framework, database, or runtime env dependencies
+
+Structure:
+
+```txt
+packages/schema/
+  package.json
+  tsconfig.json
+  src/
+    index.ts
+    schemas/
+    domain/
+```
+
+Schema package scripts:
+
+```json
+{
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:ci": "vitest run",
+    "env:check": "echo \"@app/schema has no runtime env\""
+  }
+}
+```
+
 ## Shared Core Package
 
 Path:
@@ -328,8 +372,6 @@ packages/core
 
 Responsibilities:
 
-- shared Zod schemas
-- shared domain types derived from Zod
 - shared constants
 - pure business logic
 - framework-independent utilities
@@ -342,8 +384,6 @@ packages/core/
   tsconfig.json
   src/
     index.ts
-    schemas/
-    domain/
     utils/
 ```
 
@@ -594,7 +634,7 @@ Zod schema
   -> service receives validated input
 ```
 
-Shared schemas used by both frontend and backend live in `packages/core`.
+Global schemas and shared types used by multiple packages live in `packages/schema`.
 
 API-only schemas can live next to the relevant API module:
 
@@ -735,7 +775,7 @@ Web service:
 ```txt
 Root directory: repository root
 Builder:        Railway Railpack
-Build command:  pnpm --filter @app/core build && pnpm --filter @app/web build
+Build command:  pnpm --filter @app/schema build && pnpm --filter @app/core build && pnpm --filter @app/web build
 Start command:  pnpm --filter @app/web start
 Domain:         app.example.com
 ```
@@ -745,7 +785,7 @@ API service:
 ```txt
 Root directory: repository root
 Builder:            Railway Railpack
-Build command:      pnpm --filter @app/core build && pnpm --filter @app/db build && pnpm --filter @app/api build
+Build command:      pnpm --filter @app/schema build && pnpm --filter @app/core build && pnpm --filter @app/db build && pnpm --filter @app/api build
 Start command:      pnpm --filter @app/api start
 Pre-deploy command: pnpm --filter @app/db db:migrate
 Healthcheck:        /health
@@ -977,13 +1017,14 @@ Build in this order:
 ```txt
 1. Root pnpm workspace
 2. Shared TypeScript config
-3. packages/core
-4. packages/db with Drizzle config and initial schema
-5. apps/api with Fastify, tRPC, health routes, env parsing
-6. apps/web with Vite, TanStack Router, TanStack Query, tRPC client
-7. Tailwind CSS and shadcn/ui
-8. Docker Compose Postgres
-9. Vitest setup
+3. packages/schema
+4. packages/core
+5. packages/db with Drizzle config and initial schema
+6. apps/api with Fastify, tRPC, health routes, env parsing
+7. apps/web with Vite, TanStack Router, TanStack Query, tRPC client
+8. Tailwind CSS and shadcn/ui
+9. Docker Compose Postgres
+10. Vitest setup
 10. GitHub Actions CI
 11. Railway service configuration
 12. Railway domains

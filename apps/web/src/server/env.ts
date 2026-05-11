@@ -1,16 +1,10 @@
+import { type ClientConfig, NodeEnvSchema } from "@app/schema";
 import { z } from "zod";
-
-const InjectedClientConfigSchema = z.object({
-  appEnv: z.enum(["development", "test", "staging", "production"]),
-  appBaseUrl: z.string().url(),
-  apiBaseUrl: z.string().url(),
-  authBaseUrl: z.string().url(),
-});
 
 const ServerEnvSchema = z
   .object({
     PORT: z.coerce.number().int().positive().default(5173),
-    PUBLIC_APP_ENV: InjectedClientConfigSchema.shape.appEnv,
+    PUBLIC_APP_ENV: NodeEnvSchema,
     PUBLIC_APP_BASE_URL: z.string().url(),
     PUBLIC_API_BASE_URL: z.string().url(),
     PUBLIC_AUTH_BASE_URL: z.string().url(),
@@ -25,7 +19,7 @@ const ServerEnvSchema = z
     },
   }));
 
-export type InjectedClientConfig = z.infer<typeof InjectedClientConfigSchema>;
+export type InjectedClientConfig = z.infer<typeof ClientConfig>;
 export type ServerConfig = z.infer<typeof ServerEnvSchema>;
 
 export function getServerConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {

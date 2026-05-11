@@ -14,7 +14,8 @@ apps/
   web/    React, Vite, TanStack Router, Better Auth client
 
 packages/
-  core/   shared schemas, constants, and framework-independent utilities
+  schema/ global Zod schemas and types shared across packages
+  core/   shared constants and framework-independent utilities
   db/     Drizzle schema, migrations, database client, and test database helpers
 ```
 
@@ -22,6 +23,7 @@ Package names:
 
 - `@app/api`
 - `@app/web`
+- `@app/schema`
 - `@app/core`
 - `@app/db`
 

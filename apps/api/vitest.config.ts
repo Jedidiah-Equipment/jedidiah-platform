@@ -15,8 +15,8 @@ export default defineConfig({
         replacement: new URL("../../packages/db/src/schema/index.ts", import.meta.url).pathname,
       },
       {
-        find: "@app/core",
-        replacement: new URL("../../packages/core/src/index.ts", import.meta.url).pathname,
+        find: "@app/schema",
+        replacement: new URL("../../packages/schema/src/index.ts", import.meta.url).pathname,
       },
       {
         find: "@app/db",

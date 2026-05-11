@@ -7,9 +7,9 @@ Guidance for coding agents working in this repository.
 - This is a pnpm workspace monorepo.
 - Follow [`docs/application-stack-and-hosting.md`](docs/application-stack-and-hosting.md) as the
   source of truth for stack and architecture decisions.
-- The current implementation slice only includes root tooling, `packages/core`, and `packages/db`.
-  Do not add `apps/web`, `apps/api`, CI, or deployment files unless the task explicitly asks for the
-  next slice.
+- The current implementation slice includes root tooling, `apps/api`, `packages/core`, and
+  `packages/db`.
+- Do not add `apps/web`, CI, or deployment files unless the task explicitly asks for the next slice.
 
 ## Runtime And Tooling
 
@@ -32,6 +32,12 @@ Guidance for coding agents working in this repository.
   - Postgres client
   - migration runner
   - seed and test helpers
+- `@app/api` owns backend runtime concerns:
+  - Fastify server setup
+  - Better Auth HTTP handler
+  - tRPC router/context
+  - health/version routes
+  - API env parsing
 
 ## Database Conventions
 
@@ -48,10 +54,22 @@ Guidance for coding agents working in this repository.
 
 - Parse runtime env through package env modules.
 - Do not scatter direct `process.env` access through the codebase.
-- Current DB env variables:
+- Current DB/API env variables:
   - `NODE_ENV`
   - `DATABASE_URL`
   - `TEST_DATABASE_URL`
+  - `APP_BASE_URL`
+  - `API_BASE_URL`
+  - `AUTH_SECRET`
+  - `AUTH_TRUSTED_ORIGINS`
+  - `PORT`
+
+## API Conventions
+
+- Better Auth HTTP endpoints under `/api/auth/*` are the source of truth for auth mutations.
+- tRPC auth procedures should stay small and app-facing, such as session and current-user lookups.
+- Email sending is mocked for now. Do not add a real email provider until explicitly requested.
+- Keep email verification optional unless product requirements change.
 
 ## Verification
 

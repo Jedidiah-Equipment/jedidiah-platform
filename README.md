@@ -4,12 +4,15 @@ Monorepo for the Jedidiah Equipment platform.
 
 The repository is being built in slices from the stack plan in
 [`docs/application-stack-and-hosting.md`](docs/application-stack-and-hosting.md). The current slice
-contains only shared packages and root tooling. Application packages are intentionally not present
+contains the backend API, shared packages, and root tooling. The web app is intentionally not present
 yet.
 
 ## Current workspace
 
 ```txt
+apps/
+  api/    Fastify, Better Auth, tRPC, health/version routes
+
 packages/
   core/   shared schemas, constants, and framework-independent utilities
   db/     Drizzle schema, migrations, database client, and test database helpers
@@ -17,6 +20,7 @@ packages/
 
 Package names:
 
+- `@app/api`
 - `@app/core`
 - `@app/db`
 
@@ -43,6 +47,10 @@ Default local database URLs:
 ```txt
 DATABASE_URL=postgres://app:app@localhost:5432/app_dev
 TEST_DATABASE_URL=postgres://app:app@localhost:5432/app_test
+APP_BASE_URL=http://localhost:5173
+API_BASE_URL=http://localhost:3000
+AUTH_TRUSTED_ORIGINS=http://localhost:5173,http://localhost:3000
+PORT=3000
 ```
 
 ## Common commands
@@ -53,6 +61,12 @@ pnpm check
 pnpm test
 pnpm build
 pnpm env:check
+```
+
+Run the API locally:
+
+```sh
+pnpm dev
 ```
 
 Database commands:
@@ -78,3 +92,15 @@ primary keys with database defaults unless there is a specific reason not to.
 
 Generated Drizzle SQL migrations live in `packages/db/migrations` and should be committed with the
 schema changes that produced them.
+
+## API notes
+
+`apps/api` exposes:
+
+- `GET /health`
+- `GET /api/version`
+- `/api/auth/*` through Better Auth
+- `/trpc/*` through tRPC
+
+Email/password auth is enabled. Email verification and password reset emails are mocked locally by
+recording/logging the generated email payloads; no real email provider is configured yet.

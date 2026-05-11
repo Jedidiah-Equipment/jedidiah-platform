@@ -6,8 +6,9 @@
     "node": ">=24 <25"
   },
   "scripts": {
+    "dev": "pnpm --filter @app/api dev",
     "build": "pnpm -r build",
-    "typecheck": "tsc -b packages/core/tsconfig.json packages/db/tsconfig.json --noEmit",
+    "typecheck": "pnpm -r typecheck",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "format:check": "biome format .",

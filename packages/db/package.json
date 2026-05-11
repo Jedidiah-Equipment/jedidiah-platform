@@ -18,8 +18,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -b ../core/tsconfig.json tsconfig.json --noEmit",
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
     "test": "vitest run",
     "test:ci": "vitest run",
     "env:check": "tsx src/env.ts",

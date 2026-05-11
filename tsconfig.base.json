@@ -6,6 +6,7 @@
     "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "paths": {
+      "@app/api/router-type": ["apps/api/src/router-type.ts"],
       "@app/core": ["packages/core/src/index.ts"],
       "@app/db": ["packages/db/src/index.ts"],
       "@app/db/schema": ["packages/db/src/schema/index.ts"],

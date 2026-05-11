@@ -1,71 +1,68 @@
 import { readFile } from "node:fs/promises";
-import { createServer } from "node:http";
-import { extname, join, normalize } from "node:path";
+import { extname, join } from "node:path";
+import fastifyStatic from "@fastify/static";
+import type { FastifyReply } from "fastify";
+import Fastify from "fastify";
+import { getPublicEnvConfig } from "../lib/env.js";
 
 const port = Number(process.env.PORT ?? 5173);
 const distDir = join(process.cwd(), "dist");
 
-const contentTypes: Record<string, string> = {
-  ".css": "text/css; charset=utf-8",
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-};
-
 function publicConfigScript(): string {
-  return `window.__APP_CONFIG__ = ${JSON.stringify({
-    appEnv: process.env.PUBLIC_APP_ENV ?? "production",
-    appBaseUrl: process.env.PUBLIC_APP_BASE_URL,
-    apiBaseUrl: process.env.PUBLIC_API_BASE_URL,
-    authBaseUrl: process.env.PUBLIC_AUTH_BASE_URL,
-  })};`;
+  const serializedConfig = JSON.stringify(getPublicEnvConfig()).replace(/</g, "\\u003c");
+
+  return `window.__APP_CONFIG__ = ${serializedConfig};`;
 }
 
-function safeFilePath(urlPath: string): string {
-  const decodedPath = decodeURIComponent(urlPath.split("?")[0] ?? "/");
-  const normalizedPath = normalize(decodedPath).replace(/^(\.\.[/\\])+/, "");
+async function sendIndexHtml(reply: FastifyReply): Promise<void> {
+  const index = await readFile(join(distDir, "index.html"), "utf8");
+  const configScript = `<script>${publicConfigScript()}</script>`;
+  const html = index.includes("</head>")
+    ? index.replace("</head>", `    ${configScript}\n  </head>`)
+    : `${configScript}\n${index}`;
 
-  return join(distDir, normalizedPath === "/" ? "index.html" : normalizedPath);
+  reply.header("Cache-Control", "no-store");
+  reply.type("text/html; charset=utf-8");
+  reply.send(html);
 }
 
-const server = createServer(async (request, response) => {
-  try {
-    if (request.url?.startsWith("/env.js")) {
-      response.writeHead(200, {
-        "Cache-Control": "no-store",
-        "Content-Type": "text/javascript; charset=utf-8",
-      });
-      response.end(publicConfigScript());
-      return;
-    }
+const app = Fastify();
 
-    const filePath = safeFilePath(request.url ?? "/");
-    const extension = extname(filePath);
-
-    try {
-      const file = await readFile(filePath);
-      response.writeHead(200, {
-        "Cache-Control": extension === ".html" ? "no-store" : "public, max-age=31536000, immutable",
-        "Content-Type": contentTypes[extension] ?? "application/octet-stream",
-      });
-      response.end(file);
-    } catch {
-      const index = await readFile(join(distDir, "index.html"));
-      response.writeHead(200, {
-        "Cache-Control": "no-store",
-        "Content-Type": "text/html; charset=utf-8",
-      });
-      response.end(index);
-    }
-  } catch {
-    response.writeHead(500, {
-      "Content-Type": "text/plain; charset=utf-8",
-    });
-    response.end("Internal server error");
-  }
+await app.register(fastifyStatic, {
+  prefix: "/__static__/",
+  root: distDir,
+  wildcard: false,
 });
 
-server.listen(port, () => {
-  console.info(`Web server listening on port ${port}`);
+app.get("/assets/*", (request, reply) => {
+  const { "*": assetPath } = request.params as { "*": string };
+
+  return reply.sendFile(`assets/${assetPath}`, { immutable: true, maxAge: "1y" });
+});
+
+app.get("/*", async (request, reply) => {
+  const pathname = new URL(request.url, "http://localhost").pathname;
+
+  if (pathname !== "/" && extname(pathname) !== "") {
+    return reply.sendFile(pathname.slice(1));
+  }
+
+  return sendIndexHtml(reply);
+});
+
+await app.listen({ host: "0.0.0.0", port });
+console.info(`Web server listening on port ${port}`);
+
+process.on("SIGTERM", () => {
+  app.close().catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+});
+
+process.on("SIGINT", () => {
+  app.close().catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 });

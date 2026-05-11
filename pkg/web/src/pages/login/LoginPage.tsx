@@ -1,9 +1,8 @@
-import { useForm } from "@tanstack/react-form";
 import { useNavigate } from "@tanstack/react-router";
 import { AlertCircleIcon, Loader2Icon, LogInIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { PasswordField, TextField } from "@/components/form/index.js";
+import { useAppForm } from "@/components/form/index.js";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js";
@@ -17,7 +16,7 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
-  const form = useForm({
+  const form = useAppForm({
     defaultValues: {
       email: "",
       password: "",
@@ -66,15 +65,15 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
             }}
           >
             <FieldGroup>
-              <TextField
-                autoComplete="email"
-                form={form}
-                inputMode="email"
-                label="Email"
-                name="email"
-              />
+              <form.AppField name="email">
+                {(field) => (
+                  <field.TextField autoComplete="email" inputMode="email" label="Email" />
+                )}
+              </form.AppField>
 
-              <PasswordField form={form} label="Password" name="password" />
+              <form.AppField name="password">
+                {(field) => <field.PasswordField label="Password" />}
+              </form.AppField>
 
               {error ? (
                 <Alert variant="destructive">

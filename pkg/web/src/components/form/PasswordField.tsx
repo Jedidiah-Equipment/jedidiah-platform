@@ -1,15 +1,7 @@
-import type { DeepKeysOfType } from "@tanstack/react-form";
-
 import { TextField, type TextFieldProps } from "./TextField.js";
 
-export type PasswordFieldProps<TFormData, TName extends DeepKeysOfType<TFormData, string>> = Omit<
-  TextFieldProps<TFormData, TName>,
-  "type"
->;
+export type PasswordFieldProps = Omit<TextFieldProps, "type">;
 
-export function PasswordField<TFormData, TName extends DeepKeysOfType<TFormData, string>>({
-  autoComplete = "current-password",
-  ...props
-}: PasswordFieldProps<TFormData, TName>) {
+export function PasswordField({ autoComplete = "current-password", ...props }: PasswordFieldProps) {
   return <TextField autoComplete={autoComplete} type="password" {...props} />;
 }

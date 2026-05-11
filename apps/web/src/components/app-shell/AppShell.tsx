@@ -1,9 +1,10 @@
+import type React from "react";
 import type { ReactNode } from "react";
 
-interface AppShellProps {
+type AppShellProps = {
   children: ReactNode;
-}
+};
 
-export function AppShell({ children }: AppShellProps) {
+export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   return <main className="min-h-screen bg-neutral-950 text-neutral-50">{children}</main>;
-}
+};

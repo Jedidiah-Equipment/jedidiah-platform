@@ -1,12 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
 import { LogIn } from "lucide-react";
+import type React from "react";
 import { type FormEvent, useState } from "react";
 import { z } from "zod";
 
-import { authClient } from "../../lib/auth-client.js";
+import { authClient } from "@/lib/auth-client.js";
 import { LoginFormSchema } from "./types.js";
 
-export function LoginPage() {
+type LoginPageProps = Record<string, never>;
+
+export const LoginPage: React.FC<LoginPageProps> = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,8 +33,12 @@ export function LoginPage() {
       const result = await authClient.signIn.email(parsed.data);
 
       if (result.error) {
-        setError(result.error.message ?? "Unable to sign in.");
-        return;
+        const signUpResult = await signUpPrototypeUser(parsed.data);
+
+        if (signUpResult.error) {
+          setError(result.error.message ?? "Unable to sign in.");
+          return;
+        }
       }
 
       await navigate({ to: "/dashboard" });
@@ -107,4 +114,15 @@ export function LoginPage() {
       </div>
     </section>
   );
+};
+
+async function signUpPrototypeUser(values: { email: string; password: string }) {
+  // BIG WARNING: EARLY PROTOTYPE ONLY.
+  // This intentionally creates a user from the login form when sign-in fails.
+  // Remove this before real users, public environments, invitations, or access control exist.
+  return authClient.signUp.email({
+    email: values.email,
+    password: values.password,
+    name: values.email,
+  });
 }

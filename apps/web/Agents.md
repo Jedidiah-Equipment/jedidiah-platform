@@ -2,6 +2,7 @@
 
 ## Source Layout
 
+- `src/app` contains app bootstrap and composition code, such as providers and router creation.
 - `src/routes` contains thin TanStack route files. Keep route wiring, guards, loaders, and route-level
   redirects here, then reference page components for UI.
 - `src/pages/{page-name}/{PageName}Page.tsx` contains page components.

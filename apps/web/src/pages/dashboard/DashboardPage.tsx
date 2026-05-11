@@ -1,9 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
+import type React from "react";
 
-import { authClient } from "../../lib/auth-client.js";
+import { authClient } from "@/lib/auth-client.js";
 
-export function DashboardPage() {
+type DashboardPageProps = Record<string, never>;
+
+export const DashboardPage: React.FC<DashboardPageProps> = () => {
   const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
   const userLabel = session?.user.name || session?.user.email || "Signed in";
@@ -41,4 +44,4 @@ export function DashboardPage() {
       </div>
     </section>
   );
-}
+};

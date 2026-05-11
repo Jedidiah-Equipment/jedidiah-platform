@@ -1,1 +1,80 @@
 # jedidiah-platform
+
+Monorepo for the Jedidiah Equipment platform.
+
+The repository is being built in slices from the stack plan in
+[`docs/application-stack-and-hosting.md`](docs/application-stack-and-hosting.md). The current slice
+contains only shared packages and root tooling. Application packages are intentionally not present
+yet.
+
+## Current workspace
+
+```txt
+packages/
+  core/   shared schemas, constants, and framework-independent utilities
+  db/     Drizzle schema, migrations, database client, and test database helpers
+```
+
+Package names:
+
+- `@app/core`
+- `@app/db`
+
+## Requirements
+
+- Node.js `24.x`
+- pnpm `10.x`
+- Docker, for local Postgres
+
+The repo is strict about Node 24 through `.node-version` and `package.json` engines.
+
+## Setup
+
+```sh
+pnpm install
+cp .env.example .env.local
+docker compose up -d postgres
+pnpm db:migrate
+pnpm db:migrate:test
+```
+
+Default local database URLs:
+
+```txt
+DATABASE_URL=postgres://app:app@localhost:5432/app_dev
+TEST_DATABASE_URL=postgres://app:app@localhost:5432/app_test
+```
+
+## Common commands
+
+```sh
+pnpm typecheck
+pnpm check
+pnpm test
+pnpm build
+pnpm env:check
+```
+
+Database commands:
+
+```sh
+pnpm db:generate
+pnpm db:migrate
+pnpm db:migrate:test
+pnpm db:studio
+```
+
+## Database notes
+
+`packages/db` currently contains the Better Auth core tables:
+
+- `user`
+- `session`
+- `account`
+- `verification`
+
+Those auth table IDs are Better Auth-owned string IDs. For app-owned domain tables, prefer UUID
+primary keys with database defaults unless there is a specific reason not to.
+
+Generated Drizzle SQL migrations live in `packages/db/migrations` and should be committed with the
+schema changes that produced them.

@@ -1,0 +1,22 @@
+{
+  "name": "@app/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:ci": "vitest run",
+    "env:check": "echo \"@app/core has no runtime env\""
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  }
+}

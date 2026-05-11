@@ -1,0 +1,30 @@
+{
+  "name": "jedidiah-platform",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "tsc -b packages/core/tsconfig.json packages/db/tsconfig.json --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "biome check .",
+    "test": "pnpm -r test",
+    "test:ci": "pnpm -r test:ci",
+    "env:check": "pnpm -r env:check",
+    "db:generate": "pnpm --filter @app/db db:generate",
+    "db:migrate": "pnpm --filter @app/db build && pnpm --filter @app/db db:migrate",
+    "db:migrate:test": "pnpm --filter @app/db build && NODE_ENV=test pnpm --filter @app/db db:migrate",
+    "db:studio": "pnpm --filter @app/db db:studio"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
+    "@types/node": "^24.9.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

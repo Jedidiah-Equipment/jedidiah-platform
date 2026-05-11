@@ -1,17 +1,17 @@
-# jedidiah-platform
+# Jedidiah Platform
 
 Monorepo for the Jedidiah Equipment platform.
 
 The repository is being built in slices from the stack plan in
 [`docs/application-stack-and-hosting.md`](docs/application-stack-and-hosting.md). The current slice
-contains the backend API, shared packages, and root tooling. The web app is intentionally not present
-yet.
+contains the web app, backend API, shared packages, and root tooling.
 
 ## Current workspace
 
 ```txt
 apps/
   api/    Fastify, Better Auth, tRPC, health/version routes
+  web/    React, Vite, TanStack Router, Better Auth client
 
 packages/
   core/   shared schemas, constants, and framework-independent utilities
@@ -21,6 +21,7 @@ packages/
 Package names:
 
 - `@app/api`
+- `@app/web`
 - `@app/core`
 - `@app/db`
 
@@ -51,6 +52,10 @@ APP_BASE_URL=http://localhost:5173
 API_BASE_URL=http://localhost:3000
 AUTH_TRUSTED_ORIGINS=http://localhost:5173,http://localhost:3000
 PORT=3000
+PUBLIC_APP_ENV=development
+PUBLIC_APP_BASE_URL=http://localhost:5173
+PUBLIC_API_BASE_URL=http://localhost:3000
+PUBLIC_AUTH_BASE_URL=http://localhost:3000/api/auth
 ```
 
 ## Common commands
@@ -63,7 +68,7 @@ pnpm build
 pnpm env:check
 ```
 
-Run the API locally:
+Run the API and web app locally:
 
 ```sh
 pnpm dev
@@ -104,3 +109,14 @@ schema changes that produced them.
 
 Email/password auth is enabled. Email verification and password reset emails are mocked locally by
 recording/logging the generated email payloads; no real email provider is configured yet.
+
+## Web notes
+
+`apps/web` currently includes:
+
+- `/login` email/password sign-in only
+- `/dashboard` blank authenticated dashboard shell
+- `/` auth-based redirect to login or dashboard
+
+There is intentionally no register, forgot password, password reset, or email verification UI yet.
+Public browser config is served through `/env.js` and read from `window.__APP_CONFIG__`.

@@ -7,9 +7,9 @@ Guidance for coding agents working in this repository.
 - This is a pnpm workspace monorepo.
 - Follow [`docs/application-stack-and-hosting.md`](docs/application-stack-and-hosting.md) as the
   source of truth for stack and architecture decisions.
-- The current implementation slice includes root tooling, `apps/api`, `packages/core`, and
-  `packages/db`.
-- Do not add `apps/web`, CI, or deployment files unless the task explicitly asks for the next slice.
+- The current implementation slice includes root tooling, `apps/api`, `apps/web`, `packages/core`,
+  and `packages/db`.
+- Do not add CI or deployment files unless the task explicitly asks for the next slice.
 
 ## Runtime And Tooling
 
@@ -38,6 +38,12 @@ Guidance for coding agents working in this repository.
   - tRPC router/context
   - health/version routes
   - API env parsing
+- `@app/web` owns browser runtime concerns:
+  - React/Vite app setup
+  - TanStack Router routes
+  - Better Auth React client
+  - runtime public config from `/env.js`
+  - lean Tailwind styling
 
 ## Database Conventions
 
@@ -54,7 +60,7 @@ Guidance for coding agents working in this repository.
 
 - Parse runtime env through package env modules.
 - Do not scatter direct `process.env` access through the codebase.
-- Current DB/API env variables:
+- Current DB/API/web env variables:
   - `NODE_ENV`
   - `DATABASE_URL`
   - `TEST_DATABASE_URL`
@@ -63,6 +69,10 @@ Guidance for coding agents working in this repository.
   - `AUTH_SECRET`
   - `AUTH_TRUSTED_ORIGINS`
   - `PORT`
+  - `PUBLIC_APP_ENV`
+  - `PUBLIC_APP_BASE_URL`
+  - `PUBLIC_API_BASE_URL`
+  - `PUBLIC_AUTH_BASE_URL`
 
 ## API Conventions
 
@@ -70,6 +80,14 @@ Guidance for coding agents working in this repository.
 - tRPC auth procedures should stay small and app-facing, such as session and current-user lookups.
 - Email sending is mocked for now. Do not add a real email provider until explicitly requested.
 - Keep email verification optional unless product requirements change.
+
+## Web Conventions
+
+- Login is email/password only for now.
+- Do not add register, forgot password, password reset, or email verification UI until requested.
+- `/dashboard` is the authenticated app shell and should redirect unauthenticated users to `/login`.
+- Public browser config comes from `/env.js`; do not use `VITE_*` for deploy-time URLs.
+- Keep styling lean with Tailwind. Do not add shadcn primitives until requested.
 
 ## Verification
 

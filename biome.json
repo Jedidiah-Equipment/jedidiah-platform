@@ -8,7 +8,7 @@
       "!**/dist",
       "!**/dist-server",
       "!**/coverage",
-      "!packages/db/migrations"
+      "!pkg/db/migrations"
     ]
   },
   "formatter": {

@@ -37,14 +37,13 @@ Use Node.js 24 LTS in production. Bun is not part of the v1 production runtime. 
 
 ```txt
 .
-  apps/
+  pkg/
     web/
       React/Vite frontend
 
     api/
       Node/Fastify/tRPC backend
 
-  packages/
     schema/
       global Zod schemas and types
 
@@ -71,11 +70,11 @@ Use Node.js 24 LTS in production. Bun is not part of the v1 production runtime. 
 Package names:
 
 ```txt
-@app/web
-@app/api
-@app/schema
-@app/core
-@app/db
+@pkg/web
+@pkg/api
+@pkg/schema
+@pkg/core
+@pkg/db
 ```
 
 Do not add Turborepo or Nx initially. `pnpm` workspaces are enough for the first version. Add task caching later only if install/build/test time becomes painful.
@@ -92,7 +91,7 @@ Root `package.json` owns workspace-level scripts:
     "node": ">=24 <25"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @app/api --filter @app/web dev",
+    "dev": "pnpm --parallel --filter @pkg/api --filter @pkg/web dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "biome lint .",
@@ -102,10 +101,10 @@ Root `package.json` owns workspace-level scripts:
     "test": "pnpm -r test",
     "test:ci": "pnpm -r test:ci",
     "env:check": "pnpm -r env:check",
-    "db:generate": "pnpm --filter @app/db db:generate",
-    "db:migrate": "pnpm --filter @app/db build && pnpm --filter @app/db db:migrate",
-    "db:migrate:test": "pnpm --filter @app/db build && NODE_ENV=test pnpm --filter @app/db db:migrate",
-    "db:studio": "pnpm --filter @app/db db:studio"
+    "db:generate": "pnpm --filter @pkg/db db:generate",
+    "db:migrate": "pnpm --filter @pkg/db build && pnpm --filter @pkg/db db:migrate",
+    "db:migrate:test": "pnpm --filter @pkg/db build && NODE_ENV=test pnpm --filter @pkg/db db:migrate",
+    "db:studio": "pnpm --filter @pkg/db db:studio"
   }
 }
 ```
@@ -116,8 +115,7 @@ Root `pnpm-workspace.yaml`:
 
 ```yaml
 packages:
-  - "apps/*"
-  - "packages/*"
+  - "pkg/*"
 ```
 
 Root `tsconfig.base.json` is the shared TypeScript base. Each app/package extends it.
@@ -127,7 +125,7 @@ Root `tsconfig.base.json` is the shared TypeScript base. Each app/package extend
 Path:
 
 ```txt
-apps/web
+pkg/web
 ```
 
 Responsibilities:
@@ -144,7 +142,7 @@ Responsibilities:
 Frontend structure:
 
 ```txt
-apps/web/
+pkg/web/
   index.html
   package.json
   tsconfig.json
@@ -220,7 +218,7 @@ Frontend conventions:
 - Use shadcn/ui components as local source code under `src/components/ui`.
 - Do not build a marketing landing page as the default first screen. Build the actual app shell.
 - Production frontend assets are served by a small Node static server on Railway, not `vite preview`.
-- The static server serves `apps/web/dist` and falls back to `index.html` for client-side routes.
+- The static server serves `pkg/web/dist` and falls back to `index.html` for client-side routes.
 - The static server also serves `/env.js`, which exposes public runtime config from Railway environment variables.
 - Deployed frontend code reads public config from `window.__APP_CONFIG__`, not from `import.meta.env`.
 - `VITE_*` variables are allowed only for true build-time constants such as build version or commit SHA.
@@ -241,7 +239,7 @@ Persistent preferences:     localStorage wrapper, only when needed
 Path:
 
 ```txt
-apps/api
+pkg/api
 ```
 
 Responsibilities:
@@ -257,7 +255,7 @@ Responsibilities:
 Backend structure:
 
 ```txt
-apps/api/
+pkg/api/
   package.json
   tsconfig.json
   src/
@@ -327,7 +325,7 @@ Backend conventions:
 Path:
 
 ```txt
-packages/schema
+pkg/schema
 ```
 
 Responsibilities:
@@ -339,7 +337,7 @@ Responsibilities:
 Structure:
 
 ```txt
-packages/schema/
+pkg/schema/
   package.json
   tsconfig.json
   src/
@@ -357,7 +355,7 @@ Schema package scripts:
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:ci": "vitest run",
-    "env:check": "echo \"@app/schema has no runtime env\""
+    "env:check": "echo \"@pkg/schema has no runtime env\""
   }
 }
 ```
@@ -367,7 +365,7 @@ Schema package scripts:
 Path:
 
 ```txt
-packages/core
+pkg/core
 ```
 
 Responsibilities:
@@ -379,7 +377,7 @@ Responsibilities:
 Structure:
 
 ```txt
-packages/core/
+pkg/core/
   package.json
   tsconfig.json
   src/
@@ -396,7 +394,7 @@ Core package scripts:
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:ci": "vitest run",
-    "env:check": "echo \"@app/core has no runtime env\""
+    "env:check": "echo \"@pkg/core has no runtime env\""
   }
 }
 ```
@@ -414,7 +412,7 @@ Rules:
 Path:
 
 ```txt
-packages/db
+pkg/db
 ```
 
 Responsibilities:
@@ -428,7 +426,7 @@ Responsibilities:
 Structure:
 
 ```txt
-packages/db/
+pkg/db/
   package.json
   tsconfig.json
   drizzle.config.ts
@@ -467,8 +465,8 @@ Database package scripts:
 
 Drizzle conventions:
 
-- Schema lives in `packages/db/src/schema`.
-- Migrations live in `packages/db/migrations`.
+- Schema lives in `pkg/db/src/schema`.
+- Migrations live in `pkg/db/migrations`.
 - `src/migrate.ts` applies committed migrations with Drizzle's migrator.
 - Generated SQL migrations are committed.
 - `drizzle-kit generate` is run locally.
@@ -482,10 +480,10 @@ Environment variables are parsed through Zod-backed config modules. Do not read 
 Each runtime package owns its env module:
 
 ```txt
-apps/web/src/lib/env.ts
-apps/web/src/lib/app-config.ts
-apps/api/src/env.ts
-packages/db/src/env.ts
+pkg/web/src/lib/env.ts
+pkg/web/src/lib/app-config.ts
+pkg/api/src/env.ts
+pkg/db/src/env.ts
 ```
 
 Shared variables:
@@ -552,9 +550,9 @@ Local files:
 ```txt
 .env.example
 .env.local
-apps/web/.env.local
-apps/api/.env.local
-packages/db/.env.local
+pkg/web/.env.local
+pkg/api/.env.local
+pkg/db/.env.local
 ```
 
 Only `.env.example` is committed. Real secrets are never committed.
@@ -611,15 +609,15 @@ Use the official Fastify adapter from tRPC:
 @trpc/server/adapters/fastify
 ```
 
-The tRPC app router is exported from `apps/api/src/trpc/router.ts`.
+The tRPC app router is exported from `pkg/api/src/trpc/router.ts`.
 
 The frontend imports only the API router type, not backend runtime code:
 
 ```ts
-import type { AppRouter } from "@app/api/router-type";
+import type { AppRouter } from "@pkg/api/router-type";
 ```
 
-If exporting the router type directly from `@app/api` causes bundling problems, create a type-only export file in the API package and expose it through package `exports`.
+If exporting the router type directly from `@pkg/api` causes bundling problems, create a type-only export file in the API package and expose it through package `exports`.
 
 ## Forms And Validation
 
@@ -634,12 +632,12 @@ Zod schema
   -> service receives validated input
 ```
 
-Global schemas and shared types used by multiple packages live in `packages/schema`.
+Global schemas and shared types used by multiple packages live in `pkg/schema`.
 
 API-only schemas can live next to the relevant API module:
 
 ```txt
-apps/api/src/modules/example/example.schemas.ts
+pkg/api/src/modules/example/example.schemas.ts
 ```
 
 ## Testing Strategy
@@ -702,10 +700,10 @@ CI test flow:
 Migration development flow:
 
 ```txt
-1. Update Drizzle schema in packages/db/src/schema.
+1. Update Drizzle schema in pkg/db/src/schema.
 2. Run pnpm db:generate.
 3. Review generated SQL.
-4. Run pnpm --filter @app/db db:migrate:dev locally, or run pnpm db:migrate from the repository root.
+4. Run pnpm --filter @pkg/db db:migrate:dev locally, or run pnpm db:migrate from the repository root.
 5. Commit schema and migration files together.
 ```
 
@@ -723,7 +721,7 @@ Production deployment flow:
 Railway API pre-deploy command:
 
 ```sh
-pnpm --filter @app/db db:migrate
+pnpm --filter @pkg/db db:migrate
 ```
 
 Migration rules:
@@ -775,8 +773,8 @@ Web service:
 ```txt
 Root directory: repository root
 Builder:        Railway Railpack
-Build command:  pnpm --filter @app/schema build && pnpm --filter @app/core build && pnpm --filter @app/web build
-Start command:  pnpm --filter @app/web start
+Build command:  pnpm --filter @pkg/schema build && pnpm --filter @pkg/core build && pnpm --filter @pkg/web build
+Start command:  pnpm --filter @pkg/web start
 Domain:         app.example.com
 ```
 
@@ -785,9 +783,9 @@ API service:
 ```txt
 Root directory: repository root
 Builder:            Railway Railpack
-Build command:      pnpm --filter @app/schema build && pnpm --filter @app/core build && pnpm --filter @app/db build && pnpm --filter @app/api build
-Start command:      pnpm --filter @app/api start
-Pre-deploy command: pnpm --filter @app/db db:migrate
+Build command:      pnpm --filter @pkg/schema build && pnpm --filter @pkg/core build && pnpm --filter @pkg/db build && pnpm --filter @pkg/api build
+Start command:      pnpm --filter @pkg/api start
+Pre-deploy command: pnpm --filter @pkg/db db:migrate
 Healthcheck:        /health
 Domain:             api.example.com
 ```
@@ -799,7 +797,7 @@ The web service builds the Vite app and runs a small Node static server.
 Static server requirements:
 
 - Listen on `process.env.PORT`.
-- Serve files from `apps/web/dist`.
+- Serve files from `pkg/web/dist`.
 - Serve `/env.js` from runtime `PUBLIC_*` environment variables.
 - Return `index.html` for unknown non-file routes.
 - Set basic cache headers for static assets.
@@ -900,39 +898,39 @@ roles and permissions
 Backend auth files:
 
 ```txt
-apps/api/src/auth/auth.ts
+pkg/api/src/auth/auth.ts
   Better Auth configuration.
 
-apps/api/src/auth/handler.ts
+pkg/api/src/auth/handler.ts
   Fastify catch-all handler for /api/auth/*.
 
-apps/api/src/auth/session.ts
+pkg/api/src/auth/session.ts
   Session lookup helper used by tRPC context.
 
-apps/api/src/modules/auth/auth.router.ts
+pkg/api/src/modules/auth/auth.router.ts
   Optional app-specific auth/session procedures.
 ```
 
 Frontend auth files:
 
 ```txt
-apps/web/src/features/auth/auth-client.ts
+pkg/web/src/features/auth/auth-client.ts
   Better Auth React client.
 
-apps/web/src/features/auth/login.tsx
+pkg/web/src/features/auth/login.tsx
   Login route/component.
 
-apps/web/src/features/auth/signup.tsx
+pkg/web/src/features/auth/signup.tsx
   Signup route/component.
 
-apps/web/src/features/auth/account.tsx
+pkg/web/src/features/auth/account.tsx
   Account/session UI.
 ```
 
 Database auth files:
 
 ```txt
-packages/db/src/schema/auth.ts
+pkg/db/src/schema/auth.ts
   Better Auth Drizzle schema.
 ```
 
@@ -1017,11 +1015,11 @@ Build in this order:
 ```txt
 1. Root pnpm workspace
 2. Shared TypeScript config
-3. packages/schema
-4. packages/core
-5. packages/db with Drizzle config and initial schema
-6. apps/api with Fastify, tRPC, health routes, env parsing
-7. apps/web with Vite, TanStack Router, TanStack Query, tRPC client
+3. pkg/schema
+4. pkg/core
+5. pkg/db with Drizzle config and initial schema
+6. pkg/api with Fastify, tRPC, health routes, env parsing
+7. pkg/web with Vite, TanStack Router, TanStack Query, tRPC client
 8. Tailwind CSS and shadcn/ui
 9. Docker Compose Postgres
 10. Vitest setup

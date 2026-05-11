@@ -9,11 +9,9 @@ contains the web app, backend API, shared packages, and root tooling.
 ## Current workspace
 
 ```txt
-apps/
+pkg/
   api/    Fastify, Better Auth, tRPC, health/version routes
   web/    React, Vite, TanStack Router, Better Auth client
-
-packages/
   schema/ global Zod schemas and types shared across packages
   core/   shared constants and framework-independent utilities
   db/     Drizzle schema, migrations, database client, and test database helpers
@@ -21,11 +19,11 @@ packages/
 
 Package names:
 
-- `@app/api`
-- `@app/web`
-- `@app/schema`
-- `@app/core`
-- `@app/db`
+- `@pkg/api`
+- `@pkg/web`
+- `@pkg/schema`
+- `@pkg/core`
+- `@pkg/db`
 
 ## Requirements
 
@@ -87,7 +85,7 @@ pnpm db:studio
 
 ## Database notes
 
-`packages/db` currently contains the Better Auth core tables:
+`pkg/db` currently contains the Better Auth core tables:
 
 - `user`
 - `session`
@@ -97,12 +95,12 @@ pnpm db:studio
 Those auth table IDs are Better Auth-owned string IDs. For app-owned domain tables, prefer UUID
 primary keys with database defaults unless there is a specific reason not to.
 
-Generated Drizzle SQL migrations live in `packages/db/migrations` and should be committed with the
+Generated Drizzle SQL migrations live in `pkg/db/migrations` and should be committed with the
 schema changes that produced them.
 
 ## API notes
 
-`apps/api` exposes:
+`pkg/api` exposes:
 
 - `GET /health`
 - `GET /api/version`
@@ -114,7 +112,7 @@ recording/logging the generated email payloads; no real email provider is config
 
 ## Web notes
 
-`apps/web` currently includes:
+`pkg/web` currently includes:
 
 - `/login` email/password sign-in only
 - `/dashboard` blank authenticated dashboard shell

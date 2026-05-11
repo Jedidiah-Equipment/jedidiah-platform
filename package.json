@@ -6,7 +6,7 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @app/api --filter @app/web dev",
+    "dev": "pnpm --parallel --filter @pkg/api --filter @pkg/web dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "biome lint .",
@@ -16,10 +16,10 @@
     "test": "turbo run test",
     "test:ci": "turbo run test:ci",
     "env:check": "turbo run env:check",
-    "db:generate": "pnpm --filter @app/db db:generate",
-    "db:migrate": "pnpm --filter @app/db build && pnpm --filter @app/db db:migrate",
-    "db:migrate:test": "pnpm --filter @app/db build && NODE_ENV=test pnpm --filter @app/db db:migrate",
-    "db:studio": "pnpm --filter @app/db db:studio"
+    "db:generate": "pnpm --filter @pkg/db db:generate",
+    "db:migrate": "pnpm --filter @pkg/db build && pnpm --filter @pkg/db db:migrate",
+    "db:migrate:test": "pnpm --filter @pkg/db build && NODE_ENV=test pnpm --filter @pkg/db db:migrate",
+    "db:studio": "pnpm --filter @pkg/db db:studio"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",

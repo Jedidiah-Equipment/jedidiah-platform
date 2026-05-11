@@ -1,0 +1,41 @@
+{
+  "name": "@pkg/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "import": "./dist/schema/index.js"
+    },
+    "./test-utils": {
+      "types": "./dist/test-utils.d.ts",
+      "import": "./dist/test-utils.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:ci": "vitest run",
+    "env:check": "tsx --import ../../scripts/load-dev-env.mjs src/env.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --import ../../scripts/load-dev-env.mjs dist/migrate.js",
+    "db:migrate:dev": "tsx --import ../../scripts/load-dev-env.mjs src/migrate.ts",
+    "db:migrate:test": "pnpm build && NODE_ENV=test node --import ../../scripts/load-dev-env.mjs dist/migrate.js",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@pkg/schema": "workspace:*",
+    "drizzle-orm": "^0.44.7",
+    "postgres": "^3.4.7",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.5"
+  }
+}

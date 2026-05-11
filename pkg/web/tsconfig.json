@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "@/*": ["src/*"],
+      "@pkg/api/router-type": ["../api/src/router-type.ts"]
+    },
+    "types": ["node", "vite/client", "vitest"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["src/server/**"],
+  "references": [{ "path": "../api" }, { "path": "../../pkg/schema" }]
+}

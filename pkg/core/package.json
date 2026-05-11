@@ -12,9 +12,7 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:ci": "vitest run",
-    "env:check": "echo \"@pkg/core has no runtime env\""
+    "test": "vitest run"
   },
   "dependencies": {}
 }

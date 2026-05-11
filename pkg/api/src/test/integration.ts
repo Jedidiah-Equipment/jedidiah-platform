@@ -7,7 +7,7 @@ import { buildServer } from "../server.js";
 
 let app: FastifyInstance | undefined;
 
-export const testOrigin = "http://localhost:5173";
+export const testOrigin = "http://localhost:7001";
 export const testPassword = "password1234";
 
 export function uniqueEmail(prefix: string): string {

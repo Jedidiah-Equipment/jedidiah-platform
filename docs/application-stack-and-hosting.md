@@ -92,15 +92,11 @@ Root `package.json` owns workspace-level scripts:
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @pkg/api --filter @pkg/web dev",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "biome lint .",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
-    "check": "biome check .",
-    "test": "pnpm -r test",
-    "test:ci": "pnpm -r test:ci",
-    "env:check": "pnpm -r env:check",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "test": "turbo run test",
     "db:generate": "pnpm --filter @pkg/db db:generate",
     "db:migrate": "pnpm --filter @pkg/db build && pnpm --filter @pkg/db db:migrate",
     "db:migrate:test": "pnpm --filter @pkg/db build && NODE_ENV=test pnpm --filter @pkg/db db:migrate",
@@ -199,9 +195,7 @@ Frontend package scripts:
     "start": "node dist-server/static.js",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:ci": "vitest run",
-    "env:check": "tsx src/lib/env.ts"
+    "test": "vitest run"
   }
 }
 ```
@@ -297,9 +291,7 @@ Backend package scripts:
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:ci": "vitest run",
-    "env:check": "tsx src/env.ts"
+    "test": "vitest run"
   }
 }
 ```
@@ -353,9 +345,7 @@ Schema package scripts:
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:ci": "vitest run",
-    "env:check": "echo \"@pkg/schema has no runtime env\""
+    "test": "vitest run"
   }
 }
 ```
@@ -392,9 +382,7 @@ Core package scripts:
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:ci": "vitest run",
-    "env:check": "echo \"@pkg/core has no runtime env\""
+    "test": "vitest run"
   }
 }
 ```
@@ -452,8 +440,6 @@ Database package scripts:
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:ci": "vitest run",
-    "env:check": "tsx src/env.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node dist/migrate.js",
     "db:migrate:dev": "tsx src/migrate.ts",
@@ -587,8 +573,8 @@ pnpm dev
 Default local ports:
 
 ```txt
-web: http://localhost:5173
-api: http://localhost:3000
+web: http://localhost:7001
+api: http://localhost:7002
 ```
 
 ## API Shape
@@ -749,11 +735,10 @@ Required checks:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm env:check
 pnpm typecheck
-pnpm check
+pnpm lint
 pnpm db:migrate:test
-pnpm test:ci
+pnpm test
 pnpm build
 ```
 

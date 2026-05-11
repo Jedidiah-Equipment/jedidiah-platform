@@ -20,7 +20,7 @@ const ApiEnvSchema = z.object({
   API_BASE_URL: z.string().url(),
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
   AUTH_TRUSTED_ORIGINS: TrustedOriginsSchema,
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: z.coerce.number().int().positive().default(7002),
 });
 
 export type ApiConfig = z.infer<typeof ApiEnvSchema>;

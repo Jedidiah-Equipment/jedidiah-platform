@@ -9,9 +9,7 @@
     "start": "node dist-server/server/static.js",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:ci": "vitest run",
-    "env:check": "tsx --import ../../scripts/load-dev-env.mjs src/server/env.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "@pkg/api": "workspace:*",

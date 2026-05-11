@@ -2,7 +2,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { LogIn } from "lucide-react";
 import type React from "react";
 import { type FormEvent, useState } from "react";
-import { z } from "zod";
 
 import { authClient } from "@/lib/auth-client.js";
 import { LoginFormSchema } from "./types.js";
@@ -23,7 +22,7 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
     const parsed = LoginFormSchema.safeParse({ email, password });
 
     if (!parsed.success) {
-      setError(z.treeifyError(parsed.error).errors[0] ?? "Check your email and password.");
+      setError(parsed.error.issues[0]?.message ?? "Check your email and password.");
       return;
     }
 

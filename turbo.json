@@ -13,13 +13,6 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
-    "test:ci": {
-      "dependsOn": ["^build"],
-      "outputs": []
-    },
-    "env:check": {
-      "cache": false
-    },
     "dev": {
       "cache": false,
       "persistent": true

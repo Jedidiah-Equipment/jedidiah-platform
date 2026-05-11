@@ -48,24 +48,23 @@ Default local database URLs:
 ```txt
 DATABASE_URL=postgres://app:app@localhost:5432/app_dev
 TEST_DATABASE_URL=postgres://app:app@localhost:5432/app_test
-APP_BASE_URL=http://localhost:5173
-API_BASE_URL=http://localhost:3000
-AUTH_TRUSTED_ORIGINS=http://localhost:5173,http://localhost:3000
-PORT=3000
+APP_BASE_URL=http://localhost:7001
+API_BASE_URL=http://localhost:7002
+AUTH_TRUSTED_ORIGINS=http://localhost:7001,http://localhost:7002
+PORT=7002
 PUBLIC_APP_ENV=development
-PUBLIC_APP_BASE_URL=http://localhost:5173
-PUBLIC_API_BASE_URL=http://localhost:3000
-PUBLIC_AUTH_BASE_URL=http://localhost:3000/api/auth
+PUBLIC_APP_BASE_URL=http://localhost:7001
+PUBLIC_API_BASE_URL=http://localhost:7002
+PUBLIC_AUTH_BASE_URL=http://localhost:7002/api/auth
 ```
 
 ## Common commands
 
 ```sh
 pnpm typecheck
-pnpm check
+pnpm lint
 pnpm test
 pnpm build
-pnpm env:check
 ```
 
 Run the API and web app locally:

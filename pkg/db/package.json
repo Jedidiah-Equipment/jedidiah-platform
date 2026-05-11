@@ -21,8 +21,6 @@
     "build": "tsc -b",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:ci": "vitest run",
-    "env:check": "tsx --import ../../scripts/load-dev-env.mjs src/env.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --import ../../scripts/load-dev-env.mjs dist/migrate.js",
     "db:migrate:dev": "tsx --import ../../scripts/load-dev-env.mjs src/migrate.ts",

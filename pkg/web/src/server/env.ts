@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const ServerEnvSchema = z
   .object({
-    PORT: z.coerce.number().int().positive().default(5173),
+    PORT: z.coerce.number().int().positive().default(7001),
     PUBLIC_APP_ENV: NodeEnvSchema,
     PUBLIC_APP_BASE_URL: z.string().url(),
     PUBLIC_API_BASE_URL: z.string().url(),

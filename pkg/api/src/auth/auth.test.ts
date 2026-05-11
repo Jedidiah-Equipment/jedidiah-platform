@@ -104,7 +104,7 @@ describe("Better Auth endpoints", () => {
       },
       payload: {
         email,
-        redirectTo: "http://localhost:5173/reset-password",
+        redirectTo: "http://localhost:7001/reset-password",
       },
     });
 
@@ -129,7 +129,7 @@ describe("Better Auth endpoints", () => {
       },
       payload: {
         email,
-        callbackURL: "http://localhost:5173/verify-email",
+        callbackURL: "http://localhost:7001/verify-email",
       },
     });
 

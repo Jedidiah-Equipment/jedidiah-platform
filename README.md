@@ -31,7 +31,7 @@ Package names:
 - pnpm `10.x`
 - Docker, for local Postgres
 
-The repo is strict about Node 24 through `.node-version` and `package.json` engines.
+The repo is strict about Node 24 through `.node-version`, `.nvmrc`, and `package.json` engines.
 
 ## Setup
 

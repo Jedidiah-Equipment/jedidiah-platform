@@ -17,10 +17,17 @@
     "db:migrate:test": "pnpm --filter @pkg/db build && NODE_ENV=test pnpm --filter @pkg/db db:migrate",
     "db:studio": "pnpm --filter @pkg/db db:studio"
   },
+  "dependencies": {
+    "@pkg/schema": "workspace:*",
+    "better-auth": "^1.4.7",
+    "fastify": "^5.8.5",
+    "zod": "^4.1.12"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
     "@types/node": "^24.9.1",
     "dotenv": "^17.4.2",
+    "shadcn": "^4.7.0",
     "tsx": "^4.20.6",
     "turbo": "^2.9.12",
     "typescript": "^5.9.3",

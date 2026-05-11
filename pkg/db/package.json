@@ -28,10 +28,8 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@pkg/schema": "workspace:*",
     "drizzle-orm": "^0.44.7",
-    "postgres": "^3.4.7",
-    "zod": "^4.1.12"
+    "postgres": "^3.4.7"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.5"

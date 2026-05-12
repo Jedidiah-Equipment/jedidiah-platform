@@ -461,9 +461,11 @@ Drizzle conventions:
 
 ## Environment Variables
 
-Environment variables are parsed through Zod-backed config modules. Local commands set
-`APP_ENV=local`, and env modules load that package's `.env.dev` file in local mode. Do not read
-`process.env` throughout the codebase outside env modules and central test helpers.
+Environment variables are parsed through Zod-backed config modules. Each runtime package has a
+committed `.env` with safe vars like `APP_ENV=development`, and env modules load that package's
+ignored `.env.dev` file when `APP_ENV=development`. Staging and production set `APP_ENV` through
+system env, which takes precedence over `.env`. Do not read `process.env` throughout the codebase
+outside env modules and central test helpers.
 
 Each runtime package owns its env module:
 
@@ -478,6 +480,7 @@ Shared variables:
 
 ```txt
 NODE_ENV
+APP_ENV
 ```
 
 API variables:
@@ -494,7 +497,6 @@ PORT
 Web runtime variables:
 
 ```txt
-PUBLIC_APP_ENV
 PUBLIC_APP_BASE_URL
 PUBLIC_API_BASE_URL
 PUBLIC_AUTH_BASE_URL
@@ -537,14 +539,14 @@ Local files:
 
 ```txt
 .env.example
-pkg/api/.env.dev
-pkg/db/.env.dev
-pkg/web/.env.dev
-pkg/*/.env
+pkg/api/.env
+pkg/db/.env
+pkg/web/.env
+pkg/*/.env.dev
 ```
 
-Package `.env.dev` files and `.env.example` are committed. Package `.env` files are ignored and can
-override local defaults. Real secrets are never committed.
+Package `.env` files contain safe committed vars. Package `.env.dev` files and root `.env` files are
+ignored. Real secrets are never committed.
 
 ## Local Development
 
@@ -831,7 +833,7 @@ Preview environments can wait. For the first version, rely on CI integration tes
 Staging web runtime variables:
 
 ```txt
-PUBLIC_APP_ENV=staging
+APP_ENV=staging
 PUBLIC_APP_BASE_URL=https://staging-app.example.com
 PUBLIC_API_BASE_URL=https://staging-api.example.com
 PUBLIC_AUTH_BASE_URL=https://staging-api.example.com/api/auth
@@ -840,7 +842,7 @@ PUBLIC_AUTH_BASE_URL=https://staging-api.example.com/api/auth
 Production web runtime variables:
 
 ```txt
-PUBLIC_APP_ENV=production
+APP_ENV=production
 PUBLIC_APP_BASE_URL=https://app.example.com
 PUBLIC_API_BASE_URL=https://api.example.com
 PUBLIC_AUTH_BASE_URL=https://api.example.com/api/auth

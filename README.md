@@ -42,18 +42,18 @@ pnpm db:migrate
 pnpm db:migrate:test
 ```
 
-Committed local defaults live in each package's `.env.dev`. Use ignored `.env` files inside a
-package for machine-specific overrides.
+Each runtime package has a committed `.env` with safe vars like `APP_ENV=development`. That lets its
+env module load an ignored package `.env.dev` file during local development when needed.
 
 Default local database URLs:
 
 ```txt
 DATABASE_URL=postgres://app:app@localhost:5432/app_dev
 TEST_DATABASE_URL=postgres://app:app@localhost:5432/app_test
+APP_ENV=development
 APP_BASE_URL=http://localhost:7001
 API_BASE_URL=http://localhost:7002
 AUTH_TRUSTED_ORIGINS=http://localhost:7001,http://localhost:7002
-PUBLIC_APP_ENV=development
 PUBLIC_APP_BASE_URL=http://localhost:7001
 PUBLIC_API_BASE_URL=http://localhost:7002
 PUBLIC_AUTH_BASE_URL=http://localhost:7002/api/auth

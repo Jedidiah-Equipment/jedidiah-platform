@@ -4,6 +4,7 @@ import { getApiConfig } from "./env.js";
 
 const validEnv = {
   NODE_ENV: "development",
+  APP_ENV: "development",
   DATABASE_URL: "postgres://app:app@localhost:5432/app_dev",
   TEST_DATABASE_URL: "postgres://app:app@localhost:5432/app_test",
   APP_BASE_URL: "http://localhost:7001",

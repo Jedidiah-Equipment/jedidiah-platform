@@ -4,17 +4,18 @@ Monorepo for the Jedidiah Equipment platform.
 
 The repository is being built in slices from the stack plan in
 [`docs/application-stack-and-hosting.md`](docs/application-stack-and-hosting.md). The current slice
-contains the web app, backend API, shared packages, and root tooling.
+contains email/password auth, the authenticated app shell, product catalog CRUD, shared packages,
+Drizzle migrations, and root tooling.
 
 ## Current workspace
 
 ```txt
 pkg/
-  api/    Fastify, Better Auth, tRPC, health/version routes
-  web/    React, Vite, TanStack Router, Better Auth client
+  api/    Fastify, Better Auth, tRPC, health/version routes, product API
+  web/    React, Vite, TanStack Router, shadcn/ui, Better Auth client
   schema/ global Zod schemas and types shared across packages
-  core/   shared constants and framework-independent utilities
-  db/     Drizzle schema, migrations, database client, and test database helpers
+  core/   pure shared utilities and product business logic
+  db/     Drizzle schema, migrations, database client, seed/test helpers
 ```
 
 Package names:
@@ -37,12 +38,12 @@ The repo is strict about Node 24 through `.node-version`, `.nvmrc`, and `package
 
 ```sh
 pnpm install
-docker compose up -d postgres
+pnpm db:up
 pnpm db:migrate
 pnpm db:migrate:test
 ```
 
-Each runtime package has a committed `.env` containing safe vars. Package `.dev.env` files are not
+Each runtime package has a committed `.env` containing safe vars. Package `.env.dev` files are not
 committed; use them only for sensitive local values or developer-specific overrides. They may be
 empty when no sensitive values or overrides are needed.
 
@@ -55,6 +56,7 @@ APP_ENV=development
 APP_BASE_URL=http://localhost:7001
 API_BASE_URL=http://localhost:7002
 AUTH_TRUSTED_ORIGINS=http://localhost:7001,http://localhost:7002
+PORT=7002
 PUBLIC_APP_BASE_URL=http://localhost:7001
 PUBLIC_API_BASE_URL=http://localhost:7002
 PUBLIC_AUTH_BASE_URL=http://localhost:7002/api/auth
@@ -78,6 +80,7 @@ pnpm dev
 Database commands:
 
 ```sh
+pnpm db:up
 pnpm db:generate
 pnpm db:migrate
 pnpm db:migrate:test
@@ -86,12 +89,13 @@ pnpm db:studio
 
 ## Database notes
 
-`pkg/db` currently contains the Better Auth core tables:
+`pkg/db` currently contains Better Auth core tables and the first app-owned table:
 
 - `user`
 - `session`
 - `account`
 - `verification`
+- `products`
 
 Those auth table IDs are Better Auth-owned string IDs. For app-owned domain tables, prefer UUID
 primary keys with database defaults unless there is a specific reason not to.
@@ -107,6 +111,7 @@ schema changes that produced them.
 - `GET /api/version`
 - `/api/auth/*` through Better Auth
 - `/trpc/*` through tRPC
+- `products` tRPC procedures for authenticated list/create/update
 
 Email/password auth is enabled. Email verification and password reset emails are mocked locally by
 recording/logging the generated email payloads; no real email provider is configured yet.
@@ -116,7 +121,8 @@ recording/logging the generated email payloads; no real email provider is config
 `pkg/web` currently includes:
 
 - `/login` email/password sign-in only
-- `/dashboard` blank authenticated dashboard shell
+- `/dashboard` authenticated dashboard shell
+- `/products` authenticated product catalog
 - `/` auth-based redirect to login or dashboard
 
 There is intentionally no register, forgot password, password reset, or email verification UI yet.

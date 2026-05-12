@@ -1,10 +1,16 @@
 # Authorization Architecture
 
-Status: proposed
+Status: proposed, not yet implemented
 
-This document defines how the app should model roles, permissions, and authorization across the database, shared packages, API, and web app.
+This document defines how the app should model roles, permissions, and authorization across the
+database, shared packages, API, and web app when the authorization slice begins. The current app
+uses Better Auth sessions plus protected tRPC procedures, but it does not yet implement app roles,
+capability checks, or resource-level authorization.
 
-The short version: keep the old "roles linked to use cases" idea, but rename use cases to **capabilities** and make them a typed, reviewed policy surface. Better Auth remains the authentication and session authority. App authorization is enforced at the API/service layer and mirrored in the web app only for navigation and UX.
+The short version: keep the old "roles linked to use cases" idea, but rename use cases to
+**capabilities** and make them a typed, reviewed policy surface. Better Auth remains the
+authentication and session authority. App authorization is enforced at the API/service layer and
+mirrored in the web app only for navigation and UX.
 
 ## Research Notes
 

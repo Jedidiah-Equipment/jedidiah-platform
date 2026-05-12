@@ -1,10 +1,13 @@
 # Prototype Domain ERD
 
+Status: prototype target, not current database schema
+
 Source: May 2026 prototype screenshots for dashboard, sales/quotes, jobs, procurement, fabrication, paint, assembly, dispatch, customer success, products, and customers.
 
 Design notes:
 
 - App-owned domain tables use UUID primary keys.
+- The current implementation only includes the first minimal `products` table from this direction.
 - Better Auth-owned user IDs remain string IDs in the existing `user` table.
 - Quote and job line data intentionally stores commercial snapshots so old quotes/jobs do not change when the product catalog changes.
 - Stage-specific screens are driven from `job_stages` rows rather than separate procurement/fabrication/paint/assembly/dispatch job tables.

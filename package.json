@@ -15,8 +15,8 @@
     "kill:web-api": "sh scripts/kill-web-api.sh",
     "db:up": "docker compose up -d postgres",
     "db:generate": "pnpm --filter @pkg/db db:generate",
-    "db:migrate": "pnpm --filter @pkg/db build pnpm --filter @pkg/db db:migrate",
-    "db:migrate:test": "pnpm --filter @pkg/db build NODE_ENV=test pnpm --filter @pkg/db db:migrate",
+    "db:migrate": "pnpm --filter @pkg/db build && pnpm --filter @pkg/db db:migrate",
+    "db:migrate:test": "pnpm --filter @pkg/db build && NODE_ENV=test pnpm --filter @pkg/db db:migrate",
     "db:studio": "pnpm --filter @pkg/db db:studio"
   },
   "dependencies": {

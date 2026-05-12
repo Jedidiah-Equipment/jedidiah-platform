@@ -1,120 +1,137 @@
-# Full-Stack Application Build Template
+# Application Stack And Hosting
 
 ## Purpose
 
-This document is the build template for the application. It defines the stack, repository structure, package boundaries, deploy model, migration flow, testing strategy, and conventions we will use when scaffolding and building the app.
+This document is the source of truth for stack, package boundaries, runtime configuration, and
+hosting direction for the Jedidiah platform.
 
-The default posture is boring, typed, integrated, and easy to operate.
+The current implementation is an early full-stack slice: auth, product catalog CRUD, shared schema
+and core packages, Drizzle migrations, and local database tooling. CI and production deployment are
+still future slices and should not be added unless the task explicitly asks for them.
 
-## Stack
+## Current Stack
 
 ```txt
-Package manager: pnpm
-Monorepo:        pnpm workspaces
-Frontend:        React + TypeScript + Vite
+Package manager: pnpm 10
+Task runner:     Turborepo
+Runtime:         Node.js 24.x
+Language:        TypeScript
+Frontend:        React 19 + Vite
 Routing:         TanStack Router
-Server data:     TanStack Query
-UI:              shadcn/ui + Tailwind CSS
+Server data:     TanStack Query + tRPC React Query
+Tables:          TanStack Table
+UI:              shadcn/ui local components on Base UI + Tailwind CSS 4
 Forms:           TanStack Form + Zod
 Auth:            Better Auth
-Client state:    Zustand only when needed
-API:             tRPC
+Client state:    Zustand when shared client-only state is needed
+API:             Fastify + tRPC
 Validation:      Zod
-Backend:         Node.js 24 LTS + TypeScript
-HTTP server:     Fastify
 Database:        Postgres
 DB layer:        Drizzle
 Tests:           Vitest
 Lint/format:     Biome
-Hosting:         Railway
-Domains:         Railway for MVP
-CI/CD:           GitHub Actions + Railway autodeploys
+Hosting target:  Railway
 ```
 
-Use Node.js 24 LTS in production. Bun is not part of the v1 production runtime. It can be reconsidered later for scripts or local tooling if there is a clear benefit.
+Use Node.js 24.x everywhere. Bun is not part of the production runtime.
 
 ## Repository Layout
 
 ```txt
 .
   pkg/
-    web/
-      React/Vite frontend
+    api/      Fastify, Better Auth, tRPC, health/version routes, API env parsing
+    web/      React/Vite app, TanStack Router, shadcn/ui components, static server
+    schema/   shared Zod schemas and inferred types
+    core/     pure shared utilities and business logic
+    db/       Drizzle schema, migrations, database client, seed/test helpers
 
-    api/
-      Node/Fastify/tRPC backend
+  docs/       architecture notes and product/domain references
+  scripts/    local helper scripts
 
-    schema/
-      global Zod schemas and types
-
-    core/
-      shared domain logic, constants, utilities
-
-    db/
-      Drizzle schema, migrations, database client, test database helpers
-
-  docs/
-    architecture and decisions
-
-  .github/
-    workflows/
-      ci.yml
-
-  docker-compose.yml
+  AGENTS.md
   biome.json
+  docker-compose.yml
   package.json
   pnpm-workspace.yaml
   tsconfig.base.json
+  turbo.json
 ```
 
 Package names:
 
 ```txt
-@pkg/web
 @pkg/api
+@pkg/web
 @pkg/schema
 @pkg/core
 @pkg/db
 ```
 
-Do not add Turborepo or Nx initially. `pnpm` workspaces are enough for the first version. Add task caching later only if install/build/test time becomes painful.
+## Root Tooling
 
-## Root Files
+Root scripts are intentionally scoped to existing packages:
 
-Root `package.json` owns workspace-level scripts:
-
-```json
-{
-  "private": true,
-  "packageManager": "pnpm@10",
-  "engines": {
-    "node": ">=24 <25"
-  },
-  "scripts": {
-    "dev": "pnpm --parallel --filter @pkg/api --filter @pkg/web dev",
-    "build": "turbo run build",
-    "typecheck": "turbo run typecheck",
-    "lint": "biome check",
-    "lint:fix": "biome check --write",
-    "test": "turbo run test",
-    "db:generate": "pnpm --filter @pkg/db db:generate",
-    "db:migrate": "pnpm --filter @pkg/db build && pnpm --filter @pkg/db db:migrate",
-    "db:migrate:test": "pnpm --filter @pkg/db build && NODE_ENV=test pnpm --filter @pkg/db db:migrate",
-    "db:studio": "pnpm --filter @pkg/db db:studio"
-  }
-}
+```sh
+pnpm dev
+pnpm build
+pnpm typecheck
+pnpm lint
+pnpm lint:fix
+pnpm test
+pnpm db:up
+pnpm db:generate
+pnpm db:migrate
+pnpm db:migrate:test
+pnpm db:studio
 ```
 
-Root `biome.json` owns linting and formatting for the workspace. Do not add ESLint or Prettier by default.
+Biome owns linting and formatting. Do not add ESLint or Prettier by default.
 
-Root `pnpm-workspace.yaml`:
+Turborepo is used for workspace task orchestration. Do not add Nx.
 
-```yaml
-packages:
-  - "pkg/*"
-```
+## Package Boundaries
 
-Root `tsconfig.base.json` is the shared TypeScript base. Each app/package extends it.
+`@pkg/schema` is lightweight framework-independent shared schema/type code:
+
+- global Zod schemas
+- global types derived from Zod
+- no React, Fastify, Drizzle, or direct `process.env` reads
+- exported Zod values and inferred types use the same PascalCase name with no `Schema` suffix
+
+`@pkg/core` is framework-independent shared code:
+
+- pure utilities and business logic
+- shared constants
+- no React, Fastify, Drizzle, or direct `process.env` reads
+- database-dependent functions may accept explicit database interfaces, but should stay free of
+  runtime/server framework concerns
+
+`@pkg/db` owns database concerns:
+
+- Drizzle schema under `pkg/db/src/schema`
+- generated SQL migrations under `pkg/db/migrations`
+- Postgres client and database client types
+- migration runner, seed helper, and test helpers
+
+`@pkg/api` owns backend runtime concerns:
+
+- Fastify server setup
+- Better Auth configuration and HTTP handler under `/api/auth/*`
+- tRPC router/context/procedure setup
+- health/version routes
+- API env parsing
+- API test harnesses
+
+`@pkg/web` owns browser runtime concerns:
+
+- React/Vite app setup
+- TanStack Router routes
+- TanStack Query and tRPC client setup
+- Better Auth React client
+- runtime public config from `/env.js`
+- local shadcn/ui components under `src/components/ui`
+- lean Tailwind styling
 
 ## Frontend App
 
@@ -124,109 +141,61 @@ Path:
 pkg/web
 ```
 
-Responsibilities:
-
-- Browser app
-- Routes and layouts
-- TanStack Query setup
-- tRPC client setup
-- Better Auth React client setup
-- shadcn/ui components
-- forms and client-side validation
-- small client-only state where needed
-
-Frontend structure:
+Current source layout:
 
 ```txt
 pkg/web/
+  components.json
   index.html
   package.json
-  tsconfig.json
-  tsconfig.server.json
-  vite.config.ts
   src/
-    main.tsx
     app/
-      router.tsx
+      Providers.tsx
+      router.ts
       route-tree.gen.ts
-      providers.tsx
-    server/
-      static.ts
-    routes/
-      __root.tsx
-      index.tsx
     components/
+      app-shell/
+      data-table/
+      form/
       ui/
-        shadcn/ui generated components
-      layout/
-      shared/
-    features/
-      auth/
-        auth-client.ts
-        login.tsx
-        signup.tsx
-        account.tsx
-      example/
-        components/
-        hooks/
-        schemas.ts
-        utils.ts
+    hooks/
     lib/
-      app-config.ts
-      env.ts
-      query-client.ts
-      trpc.ts
-      utils.ts
-    stores/
-      README.md
+    pages/
+      dashboard/
+      login/
+      products/
+    providers/
+    routes/
+    server/
     styles/
-      globals.css
-    test/
-      setup.ts
 ```
 
-Frontend package scripts:
+Current routes:
 
-```json
-{
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build && tsc -p tsconfig.server.json",
-    "start": "node dist-server/static.js",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
-  }
-}
+```txt
+/           auth-based redirect
+/login      email/password sign-in
+/dashboard  authenticated app shell
+/products   authenticated product catalog
 ```
 
 Frontend conventions:
 
 - Use TanStack Router file-based routing.
-- Use route search params for shareable URL state such as filters, sorting, tabs, pagination, and selected views.
-- Use TanStack Query for all server/cache state.
-- Use React local state for simple component state.
-- Use Zustand only for shared client-only UI state that does not belong in the URL or server cache.
+- Put route wiring, guards, loaders, and redirects in `src/routes`.
+- Put page UI in `src/pages/{page-name}/{PageName}Page.tsx`.
+- Put page-only components in `src/pages/{page-name}/components`.
+- Use TanStack Query for server/cache state.
+- Use route search params for shareable URL state such as filters, sorting, tabs, pagination, and
+  selected views.
 - Use TanStack Form + Zod for forms.
-- Use Better Auth's React client for sign-in, sign-up, sign-out, and session hooks.
-- Use shadcn/ui components as local source code under `src/components/ui`.
-- Do not build a marketing landing page as the default first screen. Build the actual app shell.
-- Production frontend assets are served by a small Node static server on Railway, not `vite preview`.
-- The static server serves `pkg/web/dist` and falls back to `index.html` for client-side routes.
-- The static server also serves `/env.js`, which exposes public runtime config from Railway environment variables.
-- Deployed frontend code reads public config from `window.__APP_CONFIG__`, not from `import.meta.env`.
-- `VITE_*` variables are allowed only for true build-time constants such as build version or commit SHA.
-
-State ownership:
-
-```txt
-Server/cache state:         TanStack Query
-URL/shareable state:        TanStack Router search params
-Form state:                 TanStack Form
-Simple local UI state:      useState/useReducer
-Shared client-only state:   Zustand, only when needed
-Persistent preferences:     localStorage wrapper, only when needed
-```
+- Use Better Auth's React client for session and auth calls.
+- Use local shadcn/ui components before custom controls.
+- Use Zustand only for shared client-only UI state that does not belong in the URL or server cache.
+- For Zustand selectors that read multiple values/actions in a component or hook, use one selector
+  wrapped with `useShallow` from `zustand/react/shallow`.
+- Public runtime config comes from `window.__APP_CONFIG__`, populated by `/env.js`.
+- Do not use `VITE_*` variables for staging/production URLs.
 
 ## Backend App
 
@@ -236,64 +205,33 @@ Path:
 pkg/api
 ```
 
-Responsibilities:
-
-- Fastify HTTP server
-- tRPC API
-- Better Auth handler
-- request context with session/user
-- healthcheck endpoints
-- domain services
-- database-backed integration points
-
-Backend structure:
+Current source layout:
 
 ```txt
 pkg/api/
-  package.json
-  tsconfig.json
   src/
-    main.ts
-    server.ts
-    health.ts
-    env.ts
-    logger.ts
     auth/
-      auth.ts
-      handler.ts
-      session.ts
-    trpc/
-      context.ts
-      init.ts
-      router.ts
-      errors.ts
+    email/
     modules/
       auth/
-        auth.router.ts
-      example/
-        example.router.ts
-        example.service.ts
-        example.repository.ts
-        types.ts
-        example.test.ts
+      products/
     test/
-      context.ts
-      db.ts
-      setup.ts
+    trpc/
+    env.ts
+    health.ts
+    logger.ts
+    main.ts
+    router-type.ts
+    server.ts
 ```
 
-Backend package scripts:
+Current API surface:
 
-```json
-{
-  "scripts": {
-    "dev": "tsx watch src/main.ts",
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
-  }
-}
+```txt
+GET /health
+GET /api/version
+/api/auth/*
+/trpc/*
 ```
 
 Backend conventions:
@@ -307,112 +245,10 @@ Backend conventions:
 - `trpc/init.ts` creates the tRPC instance and base procedures.
 - `trpc/context.ts` builds request context.
 - `trpc/router.ts` composes module routers into the app router.
-- Domain modules own their own router, service, repository, and schemas.
-- Routers should be thin. Business logic belongs in services.
-- Database access belongs in repositories or focused query helpers.
 - tRPC inputs must use Zod schemas.
+- Routers should stay thin. Business logic belongs in `@pkg/core` or focused service modules.
 
-## Shared Schema Package
-
-Path:
-
-```txt
-pkg/schema
-```
-
-Responsibilities:
-
-- global Zod schemas
-- global types derived from Zod
-- no framework, database, or runtime env dependencies
-- exported Zod values and inferred types use the same PascalCase name, with no `Schema` suffix
-
-Structure:
-
-```txt
-pkg/schema/
-  package.json
-  tsconfig.json
-  src/
-    index.ts
-    {domain}/
-      {schema-group}.ts
-```
-
-Zod definition convention:
-
-```ts
-export type ApiConfig = z.infer<typeof ApiConfig>;
-export const ApiConfig = z.object({
-  DATABASE_URL: z.url(),
-});
-```
-
-- Always define both the inferred type and the Zod value.
-- Put the type definition before the Zod value.
-- Use the same PascalCase name for the type and value.
-- Do not use a `Schema` suffix.
-- Keep package-local schemas in the nearest `types.ts` file to their usage.
-- Keep global schemas shared across packages in `pkg/schema/src/{domain}/{schema-group}.ts`.
-
-Schema package scripts:
-
-```json
-{
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
-  }
-}
-```
-
-## Shared Core Package
-
-Path:
-
-```txt
-pkg/core
-```
-
-Responsibilities:
-
-- shared constants
-- pure business logic
-- framework-independent utilities
-
-Structure:
-
-```txt
-pkg/core/
-  package.json
-  tsconfig.json
-  src/
-    index.ts
-    utils/
-```
-
-Core package scripts:
-
-```json
-{
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
-  }
-}
-```
-
-Rules:
-
-- No React imports.
-- No Fastify imports.
-- No Drizzle imports.
-- No direct `process.env`.
-- Code in this package should be easy to unit test with plain Vitest.
-
-## Database Package
+## Database
 
 Path:
 
@@ -420,629 +256,133 @@ Path:
 pkg/db
 ```
 
-Responsibilities:
-
-- Drizzle schema
-- database client
-- migrations
-- seed helpers
-- test database helpers
-
-Structure:
+Current Drizzle schemas:
 
 ```txt
-pkg/db/
-  package.json
-  tsconfig.json
-  drizzle.config.ts
-  migrations/
-  src/
-    index.ts
-    client.ts
-    env.ts
-    schema/
-      index.ts
-      auth.ts
-      example.ts
-    migrate.ts
-    seed.ts
-    test-utils.ts
+pkg/db/src/schema/auth.ts
+pkg/db/src/schema/product.ts
 ```
 
-Database package scripts:
+Current migrations live in `pkg/db/migrations` and are committed.
 
-```json
-{
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "node dist/migrate.js",
-    "db:migrate:dev": "tsx src/migrate.ts",
-    "db:migrate:test": "pnpm build && NODE_ENV=test node dist/migrate.js",
-    "db:studio": "drizzle-kit studio"
-  }
-}
-```
+Database conventions:
 
-Drizzle conventions:
+- Do not use `drizzle-kit push` for production-style changes.
+- Use `pnpm db:generate` after schema edits, then review the generated SQL.
+- Run `pnpm db:migrate` and `pnpm db:migrate:test` against local Postgres when touching migrations.
+- Better Auth tables use Better Auth-owned string IDs.
+- Keep `AuthId` narrowly named for Better Auth-owned IDs.
+- App-owned domain tables should generally use UUID primary keys with database defaults.
 
-- Schema lives in `pkg/db/src/schema`.
-- Migrations live in `pkg/db/migrations`.
-- `src/migrate.ts` applies committed migrations with Drizzle's migrator.
-- Generated SQL migrations are committed.
-- `drizzle-kit generate` is run locally.
-- The compiled migrator is run in deploys with `node dist/migrate.js`.
-- `drizzle-kit push` is not used in production.
+## Environment
 
-## Environment Variables
-
-Environment variables are parsed through Zod-backed config modules. Each runtime package has a
-committed `.env` containing safe vars. Package `.dev.env` files are not committed; use them only for
-sensitive local values or developer-specific overrides. They may be empty when no sensitive values
-or overrides are needed. Staging and production set runtime values through system env, which takes
-precedence over `.env`. Do not read `process.env` throughout the codebase outside env modules and
-central test helpers.
-
-Each runtime package owns its env module:
+Runtime env is parsed through package env modules:
 
 ```txt
-pkg/web/src/server/env.ts
-pkg/web/src/lib/app-config.ts
 pkg/api/src/env.ts
 pkg/db/src/env.ts
+pkg/web/src/server/env.ts
+pkg/web/src/lib/app-config.ts
 ```
 
-Shared variables:
+Committed package `.env` files contain safe defaults. Package `.env.dev` files are ignored and may
+be used for sensitive local values or developer-specific overrides.
+
+Do not scatter direct `process.env` reads through the codebase outside env modules and central test
+helpers.
+
+Current env variables:
 
 ```txt
 NODE_ENV
 APP_ENV
-```
-
-API variables:
-
-```txt
 DATABASE_URL
+TEST_DATABASE_URL
 APP_BASE_URL
 API_BASE_URL
 AUTH_SECRET
 AUTH_TRUSTED_ORIGINS
 PORT
-```
-
-Web runtime variables:
-
-```txt
 PUBLIC_APP_BASE_URL
 PUBLIC_API_BASE_URL
 PUBLIC_AUTH_BASE_URL
-PORT
 ```
 
-Optional web build-time variables:
+Default local services:
 
 ```txt
-VITE_BUILD_VERSION
-VITE_COMMIT_SHA
+web: http://localhost:7001
+api: http://localhost:7002
+postgres: localhost:5432
 ```
 
-The web app is a Vite SPA, so variables accessed through `import.meta.env` are baked into the browser bundle at build time. Do not use `VITE_*` variables for staging/prod URLs.
-
-Use runtime public config instead:
-
-```txt
-Railway web service env vars
-  -> Node static server parses env through pkg/web/src/server/env.ts
-  -> GET /env.js returns window.__APP_CONFIG__
-  -> index.html loads /env.js before the app bundle
-  -> React reads window.__APP_CONFIG__
-```
-
-Example `/env.js` output:
-
-```js
-window.__APP_CONFIG__ = {
-  appEnv: "staging",
-  appBaseUrl: "https://staging-app.example.com",
-  apiBaseUrl: "https://staging-api.example.com",
-  authBaseUrl: "https://staging-api.example.com/api/auth"
-};
-```
-
-Anything exposed through `/env.js` is public. Never put secrets in `PUBLIC_*` variables.
-
-Local files:
-
-```txt
-.env.example
-pkg/api/.env
-pkg/db/.env
-pkg/web/.env
-pkg/*/.dev.env
-```
-
-Package `.env` files contain safe committed vars. Package `.dev.env` files and root `.env` files are
-ignored. Real secrets are never committed.
-
-## Local Development
-
-Use Docker Compose for local Postgres.
-
-```txt
-docker-compose.yml
-  postgres service
-  app_dev database
-  app_test database
-```
-
-Local database URLs:
+Default local database URLs:
 
 ```txt
 DATABASE_URL=postgres://app:app@localhost:5432/app_dev
 TEST_DATABASE_URL=postgres://app:app@localhost:5432/app_test
 ```
 
-Typical local flow:
+The web app is a Vite SPA. URLs and public runtime values are served at runtime:
+
+```txt
+Railway/system env
+  -> pkg/web static server parses env
+  -> GET /env.js returns window.__APP_CONFIG__
+  -> React reads window.__APP_CONFIG__
+```
+
+Anything exposed through `/env.js` is public. Never put secrets in `PUBLIC_*` values.
+
+## Authentication And Authorization
+
+Better Auth is the authentication and session source of truth.
+
+Current auth behavior:
+
+- email/password sign-in
+- Better Auth HTTP endpoints under `/api/auth/*`
+- tRPC session/current-user lookups
+- mocked email sending only
+- no register, forgot password, password reset, or email verification UI
+
+Authorization policy is not implemented yet. Follow
+[`docs/authorization-architecture.md`](authorization-architecture.md) when that slice begins.
+
+## Domain Direction
+
+The product catalog is the first app-owned domain slice. The larger prototype model for customers,
+quotes, jobs, procurement, production stages, service, files, and activity is captured in
+[`docs/prototype-domain-erd.md`](prototype-domain-erd.md).
+
+Treat that ERD as a target model, not as a claim about the current database.
+
+## Hosting Direction
+
+Railway remains the intended MVP hosting target:
+
+- one Postgres service
+- one API service running `@pkg/api`
+- one web service running the `@pkg/web` static server
+- Railway environment variables provide runtime config
+- Railway autodeploys can be added in a later slice
+
+Do not add CI, deployment workflows, or production infrastructure files until requested.
+
+## Verification
+
+For normal changes:
 
 ```sh
-docker compose up -d postgres
-pnpm install
-pnpm db:migrate
-pnpm dev
-```
-
-Default local ports:
-
-```txt
-web: http://localhost:7001
-api: http://localhost:7002
-```
-
-## API Shape
-
-The API is exposed through tRPC under the Fastify server.
-
-Required HTTP routes:
-
-```txt
-GET /health
-GET /api/version
-/trpc/*
-```
-
-Use the official Fastify adapter from tRPC:
-
-```txt
-@trpc/server/adapters/fastify
-```
-
-The tRPC app router is exported from `pkg/api/src/trpc/router.ts`.
-
-The frontend imports only the API router type, not backend runtime code:
-
-```ts
-import type { AppRouter } from "@pkg/api/router-type";
-```
-
-If exporting the router type directly from `@pkg/api` causes bundling problems, create a type-only export file in the API package and expose it through package `exports`.
-
-## Forms And Validation
-
-Use Zod as the validation source of truth.
-
-Form flow:
-
-```txt
-Zod schema
-  -> TanStack Form validators
-  -> tRPC input schema
-  -> service receives validated input
-```
-
-Global schemas and shared types used by multiple packages live in `pkg/schema`.
-
-API-only schemas can live next to the relevant API module:
-
-```txt
-pkg/api/src/modules/example/types.ts
-```
-
-Use the same Zod type/value convention everywhere:
-
-```ts
-export type CreateQuoteInput = z.infer<typeof CreateQuoteInput>;
-export const CreateQuoteInput = z.object({
-  name: z.string().min(1),
-});
-```
-
-## Testing Strategy
-
-Use Vitest for tests.
-
-Testing layers:
-
-```txt
-Unit tests
-  -> pure business logic, validation, helpers
-  -> no database
-
-Integration tests
-  -> tRPC routers, services, Drizzle queries
-  -> real Postgres test database
-
-Remote smoke tests
-  -> deployed API health and critical read-only checks
-  -> Railway environment
-```
-
-Frontend testing:
-
-- Logic-focused Vitest tests only.
-- Do not add React component render testing by default.
-- Test pure logic, utilities, schema validation, state helpers, and extracted hooks.
-- If a component contains meaningful business logic, extract that logic and test it directly.
-
-Backend and database testing:
-
-- Drizzle query tests use real Postgres.
-- tRPC router tests use a real database-backed test context.
-- Do not mock Drizzle by default.
-- Reset or truncate test tables before each integration test.
-- Insert known data, call the service/router/query, assert returned data and side effects.
-
-Local test flow:
-
-```sh
-docker compose up -d postgres
-pnpm db:migrate:test
-pnpm test
-```
-
-CI test flow:
-
-```txt
-1. Start a Postgres service container.
-2. Install dependencies.
-3. Apply Drizzle migrations against a clean test database.
-4. Run env checks.
-5. Run typecheck.
-6. Run Biome checks.
-7. Run unit and integration tests.
-```
-
-## Database Migrations
-
-Migration development flow:
-
-```txt
-1. Update Drizzle schema in pkg/db/src/schema.
-2. Run pnpm db:generate.
-3. Review generated SQL.
-4. Run pnpm --filter @pkg/db db:migrate:dev locally, or run pnpm db:migrate from the repository root.
-5. Commit schema and migration files together.
-```
-
-Production deployment flow:
-
-```txt
-1. Railway builds the API service.
-2. Railway runs the API service pre-deploy command.
-3. The pre-deploy command applies pending Drizzle migrations.
-4. If migrations succeed, Railway starts the new API deployment.
-5. Railway healthcheck confirms the API is ready.
-6. Traffic moves to the new deployment.
-```
-
-Railway API pre-deploy command:
-
-```sh
-pnpm --filter @pkg/db db:migrate
-```
-
-Migration rules:
-
-- Generate migrations locally.
-- Apply migrations during deploy.
-- Commit generated SQL migration files.
-- Do not use `drizzle-kit push` in production.
-- Destructive migrations require manual review.
-- Prefer backward-compatible migrations.
-
-Safe migration pattern:
-
-```txt
-Deploy 1: add nullable column, new table, or new index
-Deploy 2: update application code to use the new structure
-Deploy 3: backfill, enforce constraints, or remove old structure
-```
-
-## CI/CD
-
-GitHub Actions runs checks on pull requests and main.
-
-Required checks:
-
-```sh
-pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm lint
-pnpm db:migrate:test
 pnpm test
-pnpm build
 ```
 
-Railway handles production deploys from `main`.
+For DB schema or migration changes:
 
-Deploy services:
-
-```txt
-Railway project
-  web service
-  api service
-  postgres service
+```sh
+pnpm db:up
+pnpm db:migrate
+pnpm db:migrate:test
 ```
-
-Web service:
-
-```txt
-Root directory: repository root
-Builder:        Railway Railpack
-Build command:  pnpm --filter @pkg/schema build && pnpm --filter @pkg/core build && pnpm --filter @pkg/web build
-Start command:  pnpm --filter @pkg/web start
-Domain:         app.example.com
-```
-
-API service:
-
-```txt
-Root directory: repository root
-Builder:            Railway Railpack
-Build command:      pnpm --filter @pkg/schema build && pnpm --filter @pkg/core build && pnpm --filter @pkg/db build && pnpm --filter @pkg/api build
-Start command:      pnpm --filter @pkg/api start
-Pre-deploy command: pnpm --filter @pkg/db db:migrate
-Healthcheck:        /health
-Domain:             api.example.com
-```
-
-Use Railway Railpack as the default builder. Do not add Dockerfiles by default.
-
-The web service builds the Vite app and runs a small Node static server.
-
-Static server requirements:
-
-- Listen on the `PORT` value parsed by `pkg/web/src/server/env.ts`.
-- Serve files from `pkg/web/dist`.
-- Serve `/env.js` from runtime `PUBLIC_*` environment variables.
-- Return `index.html` for unknown non-file routes.
-- Set basic cache headers for static assets.
-- Set `Cache-Control: no-store` for `/env.js`.
-- Do not use `vite preview` in production.
-
-Docker and Caddy can be reconsidered later if we need more control over static serving, caching, or image reproducibility.
-
-## Domains
-
-Use Railway domains for the MVP.
-
-```txt
-app.example.com  -> web service
-api.example.com  -> api service
-```
-
-Postgres remains private/internal and does not receive a public domain.
-
-Railway-generated domains are fine for early development:
-
-```txt
-web-service.up.railway.app
-api-service.up.railway.app
-```
-
-Move DNS to Cloudflare later only if the app becomes business-critical or needs advanced DNS, WAF, redirect, caching, or edge controls.
-
-## Environments
-
-Start with:
-
-```txt
-development
-staging
-production
-```
-
-Use Railway environments for staging and production. Staging should be a persistent Railway environment with its own web service variables, API service variables, and Postgres database.
-
-Preview environments can wait. For the first version, rely on CI integration tests with real Postgres plus Railway production migrations and healthchecks.
-
-Staging web runtime variables:
-
-```txt
-APP_ENV=staging
-PUBLIC_APP_BASE_URL=https://staging-app.example.com
-PUBLIC_API_BASE_URL=https://staging-api.example.com
-PUBLIC_AUTH_BASE_URL=https://staging-api.example.com/api/auth
-```
-
-Production web runtime variables:
-
-```txt
-APP_ENV=production
-PUBLIC_APP_BASE_URL=https://app.example.com
-PUBLIC_API_BASE_URL=https://api.example.com
-PUBLIC_AUTH_BASE_URL=https://api.example.com/api/auth
-```
-
-Because frontend URLs are served through `/env.js`, changing staging or production public web config does not require a Vite rebuild. It does require the web service to run with the updated Railway variables.
-
-## Auth
-
-Use Better Auth for authentication.
-
-Auth stack:
-
-```txt
-Auth library:    Better Auth
-Storage:         Railway Postgres through Drizzle adapter
-Frontend:        better-auth/react client
-Backend route:   /api/auth/*
-tRPC boundary:   session loaded into context
-```
-
-Initial auth features:
-
-```txt
-email/password sign-up
-email/password sign-in
-session cookie auth
-sign-out
-current session/user lookup
-protected tRPC procedures
-```
-
-Later auth features can include:
-
-```txt
-Google/GitHub OAuth
-magic links
-2FA
-organizations/teams
-roles and permissions
-```
-
-Backend auth files:
-
-```txt
-pkg/api/src/auth/auth.ts
-  Better Auth configuration.
-
-pkg/api/src/auth/handler.ts
-  Fastify catch-all handler for /api/auth/*.
-
-pkg/api/src/auth/session.ts
-  Session lookup helper used by tRPC context.
-
-pkg/api/src/modules/auth/auth.router.ts
-  Optional app-specific auth/session procedures.
-```
-
-Frontend auth files:
-
-```txt
-pkg/web/src/features/auth/auth-client.ts
-  Better Auth React client.
-
-pkg/web/src/features/auth/login.tsx
-  Login route/component.
-
-pkg/web/src/features/auth/signup.tsx
-  Signup route/component.
-
-pkg/web/src/features/auth/account.tsx
-  Account/session UI.
-```
-
-Database auth files:
-
-```txt
-pkg/db/src/schema/auth.ts
-  Better Auth Drizzle schema.
-```
-
-Better Auth should be configured with the Drizzle adapter and `provider: "pg"`.
-
-Better Auth schema changes must flow through the normal Drizzle migration process:
-
-```txt
-1. Generate or update Better Auth Drizzle schema.
-2. Run pnpm db:generate.
-3. Review generated SQL.
-4. Run migration locally.
-5. Commit schema and migration files together.
-```
-
-Fastify should mount Better Auth at:
-
-```txt
-/api/auth/*
-```
-
-tRPC context should expose:
-
-```txt
-session
-user
-```
-
-tRPC should define:
-
-```txt
-publicProcedure
-protectedProcedure
-```
-
-Rules:
-
-- App modules should not call Better Auth directly by default.
-- Auth state enters application code through tRPC context.
-- Protected routes use `protectedProcedure`.
-- Auth checks should not be scattered through random modules.
-- CORS must allow credentials and restrict origins in production.
-- `AUTH_TRUSTED_ORIGINS` should include the deployed web origin and local dev web origin.
-- Session cookies should be secure in production.
-
-## Logging And Observability
-
-Use simple structured logging first.
-
-Backend:
-
-- Fastify logger enabled.
-- Request IDs included in logs.
-- Errors mapped through tRPC error handling.
-- `/health` returns basic service status.
-- `/api/version` returns app version/build metadata when available.
-
-Frontend:
-
-- Do not add a full observability vendor at scaffold time.
-- Add error reporting later when the app has real users.
-
-## What To Avoid Early
-
-Avoid these until there is a concrete need:
-
-- Kubernetes
-- Direct AWS/GCP/Azure infrastructure
-- Self-hosted Postgres
-- Microservices
-- Multiple cloud providers
-- Complex release trains
-- Overbuilt CI/CD
-- Redux
-- React component render test suites by default
-- Production `drizzle-kit push`
-
-## Scaffold Order
-
-Build in this order:
-
-```txt
-1. Root pnpm workspace
-2. Shared TypeScript config
-3. pkg/schema
-4. pkg/core
-5. pkg/db with Drizzle config and initial schema
-6. pkg/api with Fastify, tRPC, health routes, env parsing
-7. pkg/web with Vite, TanStack Router, TanStack Query, tRPC client
-8. Tailwind CSS and shadcn/ui
-9. Docker Compose Postgres
-10. Vitest setup
-10. GitHub Actions CI
-11. Railway service configuration
-12. Railway domains
-```
-
-This gives us a repeatable build path from empty repo to deployed full-stack application.

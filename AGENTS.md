@@ -8,7 +8,7 @@ Guidance for coding agents working in this repository.
 - Follow [`docs/application-stack-and-hosting.md`](docs/application-stack-and-hosting.md) as the
   source of truth for stack and architecture decisions.
 - The current implementation slice includes root tooling, `pkg/api`, `pkg/web`,
-  `pkg/schema`, `pkg/core`, and `pkg/db`.
+  `pkg/schema`, `pkg/core`, `pkg/db`, auth, and product catalog CRUD.
 - Do not add CI or deployment files unless the task explicitly asks for the next slice.
 
 ## Runtime And Tooling
@@ -17,6 +17,7 @@ Guidance for coding agents working in this repository.
 - Use pnpm for all package operations.
 - Use Biome for linting/formatting. Do not add ESLint or Prettier by default.
 - Use Vitest for tests.
+- Turborepo orchestrates workspace scripts.
 - Keep root scripts scoped to packages that exist.
 
 ## Code Style
@@ -32,7 +33,7 @@ Guidance for coding agents working in this repository.
   - no React, Fastify, Drizzle, or direct `process.env` reads
 - `@pkg/core` is framework-independent shared code:
   - shared constants
-  - pure utilities
+  - pure utilities and product business logic
   - no React, Fastify, Drizzle, or direct `process.env` reads
 - `@pkg/db` owns database concerns:
   - Drizzle schema
@@ -51,6 +52,7 @@ Guidance for coding agents working in this repository.
   - TanStack Router routes
   - Better Auth React client
   - runtime public config from `/env.js`
+  - local shadcn/ui components
   - lean Tailwind styling
 
 ## Database Conventions
@@ -69,7 +71,7 @@ Guidance for coding agents working in this repository.
 - Parse runtime env through package env modules.
 - Do not scatter direct `process.env` access through the codebase.
 - Package `.env` files are always committed and must contain only safe values.
-- Package `.dev.env` files are not committed; use them for sensitive local values or
+- Package `.env.dev` files are not committed; use them for sensitive local values or
   developer-specific overrides. They may be empty when no overrides are needed.
 - Current DB/API/web env variables:
   - `NODE_ENV`
@@ -97,12 +99,14 @@ Guidance for coding agents working in this repository.
 - Login is email/password only for now.
 - Do not add register, forgot password, password reset, or email verification UI until requested.
 - `/dashboard` is the authenticated app shell and should redirect unauthenticated users to `/login`.
+- `/products` is the current authenticated app-owned workflow.
 - Public browser config comes from `/env.js`; do not use `VITE_*` for deploy-time URLs.
 - Use TanStack Form with Zod for forms.
 - When reading multiple values or actions from a Zustand store in one component or hook, use one
   selector wrapped with `useShallow` from `zustand/react/shallow`; do not call the store hook
   repeatedly for individual fields.
-- Keep styling lean with Tailwind. Do not add shadcn primitives until requested.
+- Use existing local shadcn/ui components from `pkg/web/src/components/ui` before custom controls.
+- Keep styling lean with Tailwind and semantic theme tokens.
 
 ## Verification
 
@@ -110,14 +114,14 @@ For normal changes, run:
 
 ```sh
 pnpm typecheck
-pnpm check
+pnpm lint
 pnpm test
 ```
 
 For DB schema or migration changes, also run:
 
 ```sh
-docker compose up -d postgres
+pnpm db:up
 pnpm db:migrate
 pnpm db:migrate:test
 ```

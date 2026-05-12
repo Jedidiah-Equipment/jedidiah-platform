@@ -77,7 +77,7 @@ Guidance for coding agents working in this repository.
   - `AUTH_SECRET`
   - `AUTH_TRUSTED_ORIGINS`
   - `PORT`
-  - `PUBLIC_APP_ENV`
+  - `APP_ENV`
   - `PUBLIC_APP_BASE_URL`
   - `PUBLIC_API_BASE_URL`
   - `PUBLIC_AUTH_BASE_URL`

@@ -4,7 +4,6 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-import "../../scripts/load-dev-env.mjs";
 import { getInjectedClientConfig } from "./src/server/env.js";
 
 const clientConfig = getInjectedClientConfig();

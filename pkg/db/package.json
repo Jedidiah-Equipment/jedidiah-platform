@@ -22,13 +22,14 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node --import ../../scripts/load-dev-env.mjs dist/migrate.js",
-    "db:migrate:dev": "tsx --import ../../scripts/load-dev-env.mjs src/migrate.ts",
-    "db:migrate:test": "pnpm build && NODE_ENV=test node --import ../../scripts/load-dev-env.mjs dist/migrate.js",
+    "db:migrate": "node dist/migrate.js",
+    "db:migrate:dev": "tsx src/migrate.ts",
+    "db:migrate:test": "pnpm build && NODE_ENV=test node dist/migrate.js",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.7",
+    "dotenv": "^17.4.2",
     "postgres": "^3.4.7"
   },
   "devDependencies": {

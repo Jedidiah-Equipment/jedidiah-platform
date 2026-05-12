@@ -7,19 +7,15 @@ import {
   createMigratedTestDatabaseTemplate,
   createTestDatabaseName,
   dropTestDatabase,
+  getTestDatabaseUrl,
+  setDefaultDatabaseTestEnv,
 } from "./test-utils.js";
 
-process.env.NODE_ENV = "test";
-process.env.DATABASE_URL ??= "postgres://app:app@localhost:5432/app_dev";
-process.env.TEST_DATABASE_URL ??= "postgres://app:app@localhost:5432/app_test";
+setDefaultDatabaseTestEnv();
 
 describe("test database utilities", () => {
   it("clones migrated databases with isolated data", async () => {
-    const sourceDatabaseUrl = process.env.TEST_DATABASE_URL;
-
-    if (!sourceDatabaseUrl) {
-      throw new Error("TEST_DATABASE_URL is required");
-    }
+    const sourceDatabaseUrl = getTestDatabaseUrl();
 
     const templateName = await createMigratedTestDatabaseTemplate({
       databaseUrl: sourceDatabaseUrl,

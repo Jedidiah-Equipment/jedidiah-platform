@@ -1,5 +1,12 @@
 import { NodeEnvSchema } from "@pkg/schema";
+import dotenv from "dotenv";
 import { z } from "zod";
+
+dotenv.config({ quiet: true });
+
+if (process.env.APP_ENV === "development") {
+  dotenv.config({ path: ".env.dev", override: true, quiet: true });
+}
 
 const DatabaseEnvSchema = z
   .object({

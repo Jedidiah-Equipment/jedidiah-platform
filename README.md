@@ -37,11 +37,13 @@ The repo is strict about Node 24 through `.node-version`, `.nvmrc`, and `package
 
 ```sh
 pnpm install
-cp .env.example .env.local
 docker compose up -d postgres
 pnpm db:migrate
 pnpm db:migrate:test
 ```
+
+Committed local defaults live in each package's `.env.dev`. Use ignored `.env` files inside a
+package for machine-specific overrides.
 
 Default local database URLs:
 
@@ -51,7 +53,6 @@ TEST_DATABASE_URL=postgres://app:app@localhost:5432/app_test
 APP_BASE_URL=http://localhost:7001
 API_BASE_URL=http://localhost:7002
 AUTH_TRUSTED_ORIGINS=http://localhost:7001,http://localhost:7002
-PORT=7002
 PUBLIC_APP_ENV=development
 PUBLIC_APP_BASE_URL=http://localhost:7001
 PUBLIC_API_BASE_URL=http://localhost:7002

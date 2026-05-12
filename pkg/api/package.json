@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "dev": "tsx watch --import ../../scripts/load-dev-env.mjs src/main.ts",
+    "dev": "tsx watch src/main.ts",
     "build": "tsc -b",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -22,6 +22,7 @@
     "@pkg/schema": "workspace:*",
     "@better-auth/drizzle-adapter": "^1.4.7",
     "@fastify/cors": "^11.2.0",
-    "@trpc/server": "^11.7.2"
+    "@trpc/server": "^11.7.2",
+    "dotenv": "^17.4.2"
   }
 }

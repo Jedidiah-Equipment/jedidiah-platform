@@ -1,5 +1,6 @@
 import type { db as database } from "@pkg/db";
 import type { resetTestDatabase as resetDatabase } from "@pkg/db/test-utils";
+import { setDefaultDatabaseTestEnv } from "@pkg/db/test-utils";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { DuplicateProductNameError, ProductNotFoundError } from "./product-errors.js";
@@ -10,9 +11,7 @@ let resetTestDatabase: typeof resetDatabase;
 let closeDatabaseConnection: () => Promise<void>;
 
 beforeAll(async () => {
-  process.env.NODE_ENV = "test";
-  process.env.DATABASE_URL ??= "postgres://app:app@localhost:5432/app_dev";
-  process.env.TEST_DATABASE_URL ??= "postgres://app:app@localhost:5432/app_test";
+  setDefaultDatabaseTestEnv();
 
   const dbModule = await import("@pkg/db");
   const testUtilsModule = await import("@pkg/db/test-utils");

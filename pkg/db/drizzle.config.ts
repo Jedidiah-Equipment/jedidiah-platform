@@ -1,6 +1,5 @@
 import { defineConfig } from "drizzle-kit";
 
-import "../../scripts/load-dev-env.mjs";
 import { getDatabaseUrl } from "./src/env.js";
 
 export default defineConfig({

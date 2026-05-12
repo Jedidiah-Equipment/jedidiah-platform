@@ -1,18 +1,25 @@
-import { type ClientConfig, NodeEnvSchema } from "@pkg/schema";
+import { AppEnvSchema, type ClientConfig } from "@pkg/schema";
+import dotenv from "dotenv";
 import { z } from "zod";
+
+dotenv.config({ quiet: true });
+
+if (process.env.APP_ENV === "development") {
+  dotenv.config({ path: ".env.dev", override: true, quiet: true });
+}
 
 const ServerEnvSchema = z
   .object({
+    APP_ENV: AppEnvSchema,
     PORT: z.coerce.number().int().positive().default(7001),
-    PUBLIC_APP_ENV: NodeEnvSchema,
-    PUBLIC_APP_BASE_URL: z.string().url(),
-    PUBLIC_API_BASE_URL: z.string().url(),
-    PUBLIC_AUTH_BASE_URL: z.string().url(),
+    PUBLIC_APP_BASE_URL: z.url(),
+    PUBLIC_API_BASE_URL: z.url(),
+    PUBLIC_AUTH_BASE_URL: z.url(),
   })
   .transform((env) => ({
     port: env.PORT,
     clientConfig: {
-      appEnv: env.PUBLIC_APP_ENV,
+      appEnv: env.APP_ENV,
       appBaseUrl: env.PUBLIC_APP_BASE_URL,
       apiBaseUrl: env.PUBLIC_API_BASE_URL,
       authBaseUrl: env.PUBLIC_AUTH_BASE_URL,

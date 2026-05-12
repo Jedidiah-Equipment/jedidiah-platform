@@ -461,12 +461,14 @@ Drizzle conventions:
 
 ## Environment Variables
 
-Environment variables are parsed through Zod-backed config modules. Do not read `process.env` throughout the codebase.
+Environment variables are parsed through Zod-backed config modules. Local commands set
+`APP_ENV=local`, and env modules load that package's `.env.dev` file in local mode. Do not read
+`process.env` throughout the codebase outside env modules and central test helpers.
 
 Each runtime package owns its env module:
 
 ```txt
-pkg/web/src/lib/env.ts
+pkg/web/src/server/env.ts
 pkg/web/src/lib/app-config.ts
 pkg/api/src/env.ts
 pkg/db/src/env.ts
@@ -512,7 +514,7 @@ Use runtime public config instead:
 
 ```txt
 Railway web service env vars
-  -> Node static server reads process.env
+  -> Node static server parses env through pkg/web/src/server/env.ts
   -> GET /env.js returns window.__APP_CONFIG__
   -> index.html loads /env.js before the app bundle
   -> React reads window.__APP_CONFIG__
@@ -535,13 +537,14 @@ Local files:
 
 ```txt
 .env.example
-.env.local
-pkg/web/.env.local
-pkg/api/.env.local
-pkg/db/.env.local
+pkg/api/.env.dev
+pkg/db/.env.dev
+pkg/web/.env.dev
+pkg/*/.env
 ```
 
-Only `.env.example` is committed. Real secrets are never committed.
+Package `.env.dev` files and `.env.example` are committed. Package `.env` files are ignored and can
+override local defaults. Real secrets are never committed.
 
 ## Local Development
 
@@ -781,7 +784,7 @@ The web service builds the Vite app and runs a small Node static server.
 
 Static server requirements:
 
-- Listen on `process.env.PORT`.
+- Listen on the `PORT` value parsed by `pkg/web/src/server/env.ts`.
 - Serve files from `pkg/web/dist`.
 - Serve `/env.js` from runtime `PUBLIC_*` environment variables.
 - Return `index.html` for unknown non-file routes.

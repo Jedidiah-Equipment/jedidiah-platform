@@ -8,6 +8,36 @@ import { getDatabaseUrl } from "./env.js";
 import * as schema from "./schema/index.js";
 
 const migrationsFolder = new URL("../migrations", import.meta.url).pathname;
+const defaultTestDatabaseUrl = "postgres://app:app@localhost:5432/app_test";
+
+export function setDefaultDatabaseTestEnv(): void {
+  process.env.NODE_ENV = "test";
+  process.env.DATABASE_URL ??= "postgres://app:app@localhost:5432/app_dev";
+  process.env.TEST_DATABASE_URL ??= defaultTestDatabaseUrl;
+}
+
+export function getTestDatabaseUrl(): string {
+  return process.env.TEST_DATABASE_URL ?? defaultTestDatabaseUrl;
+}
+
+export async function withTestDatabaseUrl<T>(
+  databaseUrl: string,
+  callback: () => Promise<T>,
+): Promise<T> {
+  const previousTestDatabaseUrl = process.env.TEST_DATABASE_URL;
+
+  process.env.TEST_DATABASE_URL = databaseUrl;
+
+  try {
+    return await callback();
+  } finally {
+    if (previousTestDatabaseUrl) {
+      process.env.TEST_DATABASE_URL = previousTestDatabaseUrl;
+    } else {
+      delete process.env.TEST_DATABASE_URL;
+    }
+  }
+}
 
 export async function resetTestDatabase(): Promise<void> {
   const { db, close } = createDatabaseClient(getDatabaseUrl());

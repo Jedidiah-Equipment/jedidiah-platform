@@ -1,5 +1,12 @@
-import { NodeEnvSchema } from "@pkg/schema";
+import { AppEnvSchema, NodeEnvSchema } from "@pkg/schema";
+import dotenv from "dotenv";
 import { z } from "zod";
+
+dotenv.config({ quiet: true });
+
+if (process.env.APP_ENV === "development") {
+  dotenv.config({ path: ".env.dev", override: true, quiet: true });
+}
 
 const TrustedOriginsSchema = z
   .string()
@@ -14,10 +21,11 @@ const TrustedOriginsSchema = z
 
 const ApiEnvSchema = z.object({
   NODE_ENV: NodeEnvSchema.default("development"),
-  DATABASE_URL: z.string().url(),
-  TEST_DATABASE_URL: z.string().url().optional(),
-  APP_BASE_URL: z.string().url(),
-  API_BASE_URL: z.string().url(),
+  APP_ENV: AppEnvSchema,
+  DATABASE_URL: z.url(),
+  TEST_DATABASE_URL: z.url().optional(),
+  APP_BASE_URL: z.url(),
+  API_BASE_URL: z.url(),
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
   AUTH_TRUSTED_ORIGINS: TrustedOriginsSchema,
   PORT: z.coerce.number().int().positive().default(7002),

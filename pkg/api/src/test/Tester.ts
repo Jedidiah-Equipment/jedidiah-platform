@@ -4,6 +4,8 @@ import {
   createMigratedTestDatabaseTemplate,
   createTestDatabaseName,
   dropTestDatabase,
+  getTestDatabaseUrl,
+  withTestDatabaseUrl,
 } from "@pkg/db/test-utils";
 import { afterAll, type TestAPI, type TestContext, test as testBase, vi } from "vitest";
 
@@ -44,34 +46,30 @@ export class Tester<T> {
           templateName,
         });
 
-        const previousTestDatabaseUrl = process.env.TEST_DATABASE_URL;
         const databaseUrl = buildDatabaseUrl(databaseName, sourceDatabaseUrl);
         const cleanups: Cleanup[] = [];
 
-        process.env.TEST_DATABASE_URL = databaseUrl;
-        vi.resetModules();
-
         try {
-          const context = await createContext({
-            cleanup: (cleanup) => cleanups.push(cleanup),
-            databaseName,
-            databaseUrl,
+          await withTestDatabaseUrl(databaseUrl, async () => {
+            vi.resetModules();
+
+            try {
+              const context = await createContext({
+                cleanup: (cleanup) => cleanups.push(cleanup),
+                databaseName,
+                databaseUrl,
+              });
+
+              await use(context);
+            } finally {
+              for (const cleanup of cleanups.toReversed()) {
+                await cleanup();
+              }
+
+              vi.resetModules();
+            }
           });
-
-          await use(context);
         } finally {
-          for (const cleanup of cleanups.toReversed()) {
-            await cleanup();
-          }
-
-          vi.resetModules();
-
-          if (previousTestDatabaseUrl) {
-            process.env.TEST_DATABASE_URL = previousTestDatabaseUrl;
-          } else {
-            delete process.env.TEST_DATABASE_URL;
-          }
-
           await dropTestDatabase(databaseName, sourceDatabaseUrl);
         }
       },
@@ -111,5 +109,5 @@ export class Tester<T> {
 }
 
 function getSourceDatabaseUrl(): string {
-  return process.env.TEST_DATABASE_URL ?? "postgres://app:app@localhost:5432/app_test";
+  return getTestDatabaseUrl();
 }

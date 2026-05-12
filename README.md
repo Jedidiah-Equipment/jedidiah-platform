@@ -40,7 +40,7 @@ The repo is strict about Node 24 through `.node-version`, `.nvmrc`, and `package
 pnpm install
 pnpm db:up
 pnpm db:migrate
-pnpm db:migrate:test
+pnpm db:up:template
 ```
 
 Each runtime package has a committed `.env` containing safe vars. Package `.env.dev` files are not
@@ -50,8 +50,8 @@ empty when no sensitive values or overrides are needed.
 Default local database URLs:
 
 ```txt
-DATABASE_URL=postgres://app:app@localhost:5432/app_dev
-TEST_DATABASE_URL=postgres://app:app@localhost:5432/app_test
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/jedidiah
+TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/jedidiah_template
 APP_ENV=development
 APP_BASE_URL=http://localhost:7001
 API_BASE_URL=http://localhost:7002
@@ -81,13 +81,22 @@ Database commands:
 
 ```sh
 pnpm db:up
+pnpm db:reset
+pnpm db:up:template
 pnpm db:generate
 pnpm db:migrate
-pnpm db:migrate:test
 pnpm db:studio
 ```
 
 ## Database notes
+
+Local Postgres uses `postgres:postgres`. The app database is `jedidiah`; the stable test template
+database is `jedidiah_template`. Integration tests clone `jedidiah_template` into per-test
+ephemeral databases and keep those clone URLs in memory only. Recreate the template with
+`pnpm db:up:template`.
+
+Use `pnpm db:reset` to stop Docker Compose, delete the local Postgres volume, and start a fresh
+Postgres container. This wipes local database data.
 
 `pkg/db` currently contains Better Auth core tables and the first app-owned table:
 

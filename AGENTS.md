@@ -61,7 +61,10 @@ Guidance for coding agents working in this repository.
 - SQL migrations live under `pkg/db/migrations` and are committed.
 - Do not use `drizzle-kit push` for production-style changes.
 - Use `pnpm db:generate` after schema edits, then review generated SQL.
-- Run `pnpm db:migrate` and `pnpm db:migrate:test` against local Postgres when touching migrations.
+- Run `pnpm db:migrate` for the app DB and `pnpm db:up:template` to recreate the migrated test
+  template DB when touching migrations.
+- Local DB names are `jedidiah` for the app DB and `jedidiah_template` for the stable test template
+  DB. Tests clone `jedidiah_template` into per-test ephemeral DBs and keep clone URLs in memory.
 - Better Auth tables use Better Auth-owned string IDs. Keep `AuthId` narrowly named for that
   purpose.
 - App-owned domain tables should generally use UUID primary keys with database defaults.
@@ -123,7 +126,7 @@ For DB schema or migration changes, also run:
 ```sh
 pnpm db:up
 pnpm db:migrate
-pnpm db:migrate:test
+pnpm db:up:template
 ```
 
 If this shell is not on Node 24, mention the engine warning in the final response.

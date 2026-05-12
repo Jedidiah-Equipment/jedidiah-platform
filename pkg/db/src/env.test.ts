@@ -7,19 +7,19 @@ describe("database env", () => {
     expect(
       getDatabaseUrl({
         NODE_ENV: "development",
-        DATABASE_URL: "postgres://app:app@localhost:5432/app_dev",
-        TEST_DATABASE_URL: "postgres://app:app@localhost:5432/app_test",
+        DATABASE_URL: "postgres://postgres:postgres@localhost:5432/jedidiah",
+        TEST_DATABASE_URL: "postgres://postgres:postgres@localhost:5432/jedidiah_template",
       }),
-    ).toBe("postgres://app:app@localhost:5432/app_dev");
+    ).toBe("postgres://postgres:postgres@localhost:5432/jedidiah");
   });
 
   it("uses TEST_DATABASE_URL in tests", () => {
     expect(
       getDatabaseUrl({
         NODE_ENV: "test",
-        DATABASE_URL: "postgres://app:app@localhost:5432/app_dev",
-        TEST_DATABASE_URL: "postgres://app:app@localhost:5432/app_test",
+        DATABASE_URL: "postgres://postgres:postgres@localhost:5432/jedidiah",
+        TEST_DATABASE_URL: "postgres://postgres:postgres@localhost:5432/jedidiah_template",
       }),
-    ).toBe("postgres://app:app@localhost:5432/app_test");
+    ).toBe("postgres://postgres:postgres@localhost:5432/jedidiah_template");
   });
 });

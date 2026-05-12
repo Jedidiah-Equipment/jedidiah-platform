@@ -5,8 +5,8 @@ import { getApiConfig } from "./env.js";
 const validEnv = {
   NODE_ENV: "development",
   APP_ENV: "development",
-  DATABASE_URL: "postgres://app:app@localhost:5432/app_dev",
-  TEST_DATABASE_URL: "postgres://app:app@localhost:5432/app_test",
+  DATABASE_URL: "postgres://postgres:postgres@localhost:5432/jedidiah",
+  TEST_DATABASE_URL: "postgres://postgres:postgres@localhost:5432/jedidiah_template",
   APP_BASE_URL: "http://localhost:7001",
   API_BASE_URL: "http://localhost:7002",
   AUTH_SECRET: "local-auth-secret-must-be-at-least-thirty-two-chars",

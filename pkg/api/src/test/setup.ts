@@ -1,3 +1,1 @@
-import { setDefaultApiTestEnv } from "./env.js";
-
-setDefaultApiTestEnv();
+process.env.NODE_ENV = "test";

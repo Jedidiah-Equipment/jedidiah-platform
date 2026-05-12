@@ -1,42 +1,27 @@
 import { describe, expect, it } from "vitest";
+
 import { createDatabaseClient } from "./database-client.js";
 import { products } from "./schema/index.js";
 import {
-  buildDatabaseUrl,
-  createClonedTestDatabase,
-  createMigratedTestDatabaseTemplate,
+  createEphemeralTestDatabase,
   createTestDatabaseName,
   dropTestDatabase,
-  getTestDatabaseUrl,
-  setDefaultDatabaseTestEnv,
+  getTestTemplateDatabaseUrl,
 } from "./test-utils.js";
 
-setDefaultDatabaseTestEnv();
-
 describe("test database utilities", () => {
-  it("clones migrated databases with isolated data", async () => {
-    const sourceDatabaseUrl = getTestDatabaseUrl();
-
-    const templateName = await createMigratedTestDatabaseTemplate({
-      databaseUrl: sourceDatabaseUrl,
-      templateName: createTestDatabaseName("app_test_template_util"),
+  it("clones migrated template databases with isolated data", async () => {
+    const templateDatabaseUrl = getTestTemplateDatabaseUrl();
+    const firstDatabase = await createEphemeralTestDatabase({
+      databaseName: createTestDatabaseName("jedidiah_util_one"),
+      templateDatabaseUrl,
     });
-    const firstDatabaseName = await createClonedTestDatabase({
-      databaseUrl: sourceDatabaseUrl,
-      databaseName: createTestDatabaseName("app_test_util_one"),
-      templateName,
+    const secondDatabase = await createEphemeralTestDatabase({
+      databaseName: createTestDatabaseName("jedidiah_util_two"),
+      templateDatabaseUrl,
     });
-    const secondDatabaseName = await createClonedTestDatabase({
-      databaseUrl: sourceDatabaseUrl,
-      databaseName: createTestDatabaseName("app_test_util_two"),
-      templateName,
-    });
-    const firstClient = createDatabaseClient(
-      buildDatabaseUrl(firstDatabaseName, sourceDatabaseUrl),
-    );
-    const secondClient = createDatabaseClient(
-      buildDatabaseUrl(secondDatabaseName, sourceDatabaseUrl),
-    );
+    const firstClient = createDatabaseClient(firstDatabase.databaseUrl);
+    const secondClient = createDatabaseClient(secondDatabase.databaseUrl);
 
     try {
       await firstClient.db.insert(products).values({ name: "Only First Clone" });
@@ -49,9 +34,8 @@ describe("test database utilities", () => {
     } finally {
       await firstClient.close();
       await secondClient.close();
-      await dropTestDatabase(firstDatabaseName, sourceDatabaseUrl);
-      await dropTestDatabase(secondDatabaseName, sourceDatabaseUrl);
-      await dropTestDatabase(templateName, sourceDatabaseUrl);
+      await dropTestDatabase(firstDatabase.databaseName, templateDatabaseUrl);
+      await dropTestDatabase(secondDatabase.databaseName, templateDatabaseUrl);
     }
   });
 });

@@ -12,6 +12,10 @@
       "types": "./dist/schema/index.d.ts",
       "import": "./dist/schema/index.js"
     },
+    "./database-client": {
+      "types": "./dist/database-client.d.ts",
+      "import": "./dist/database-client.js"
+    },
     "./test-utils": {
       "types": "./dist/test-utils.d.ts",
       "import": "./dist/test-utils.js"
@@ -21,6 +25,7 @@
     "build": "tsc -b",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "db:up:template": "tsx src/create-test-template.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node dist/migrate.js",
     "db:migrate:dev": "tsx src/migrate.ts",

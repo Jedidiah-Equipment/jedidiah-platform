@@ -1,1 +1,1 @@
-CREATE DATABASE app_test;
+CREATE DATABASE jedidiah_template;

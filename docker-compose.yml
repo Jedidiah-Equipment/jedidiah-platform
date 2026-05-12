@@ -3,16 +3,16 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
-      POSTGRES_DB: app_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jedidiah
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./pkg/db/docker/init-test-db.sql:/docker-entrypoint-initdb.d/10-init-test-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d app_dev"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d jedidiah"]
       interval: 5s
       timeout: 5s
       retries: 10

@@ -1,70 +1,37 @@
-import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 
-import { createDatabaseClient } from "./database-client.js";
 import { getDatabaseUrl } from "./env.js";
 import * as schema from "./schema/index.js";
 
 const migrationsFolder = new URL("../migrations", import.meta.url).pathname;
-const defaultTestDatabaseUrl = "postgres://app:app@localhost:5432/app_test";
 
-export function setDefaultDatabaseTestEnv(): void {
-  process.env.NODE_ENV = "test";
-  process.env.DATABASE_URL ??= "postgres://app:app@localhost:5432/app_dev";
-  process.env.TEST_DATABASE_URL ??= defaultTestDatabaseUrl;
-}
-
-export function getTestDatabaseUrl(): string {
-  return process.env.TEST_DATABASE_URL ?? defaultTestDatabaseUrl;
-}
-
-export async function withTestDatabaseUrl<T>(
-  databaseUrl: string,
-  callback: () => Promise<T>,
-): Promise<T> {
-  const previousTestDatabaseUrl = process.env.TEST_DATABASE_URL;
-
-  process.env.TEST_DATABASE_URL = databaseUrl;
-
-  try {
-    return await callback();
-  } finally {
-    if (previousTestDatabaseUrl) {
-      process.env.TEST_DATABASE_URL = previousTestDatabaseUrl;
-    } else {
-      delete process.env.TEST_DATABASE_URL;
-    }
-  }
-}
-
-export async function resetTestDatabase(): Promise<void> {
-  const { db, close } = createDatabaseClient(getDatabaseUrl());
-
-  try {
-    await db.execute(
-      sql.raw(
-        'TRUNCATE TABLE "products", "account", "session", "verification", "user" RESTART IDENTITY',
-      ),
-    );
-  } finally {
-    await close();
-  }
-}
-
-export type TestDatabaseTemplateOptions = {
-  databaseUrl?: string;
-  templateName?: string;
+export type EphemeralTestDatabase = {
+  databaseName: string;
+  databaseUrl: string;
 };
 
-export type TestDatabaseCloneOptions = {
+export type RecreateTestTemplateDatabaseOptions = {
   databaseUrl?: string;
+};
+
+export type CreateEphemeralTestDatabaseOptions = {
   databaseName?: string;
-  templateName: string;
+  templateDatabaseUrl?: string;
 };
 
-export function createTestDatabaseName(prefix = "app_test"): string {
+export function getTestTemplateDatabaseUrl(): string {
+  const databaseUrl = process.env.TEST_DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error("TEST_DATABASE_URL is required for the test template database");
+  }
+
+  return databaseUrl;
+}
+
+export function createTestDatabaseName(prefix: string): string {
   const suffix = `${process.pid}_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
   const normalizedPrefix = prefix.replaceAll(/[^a-zA-Z0-9_]/g, "_");
   const prefixMaxLength = Math.max(1, 60 - suffix.length);
@@ -80,38 +47,44 @@ export function buildDatabaseUrl(databaseName: string, databaseUrl = getDatabase
   return url.toString();
 }
 
-export async function createMigratedTestDatabaseTemplate({
-  databaseUrl = getDatabaseUrl(),
-  templateName = createTestDatabaseName("app_test_template"),
-}: TestDatabaseTemplateOptions = {}): Promise<string> {
-  await recreateDatabase({ databaseName: templateName, databaseUrl });
-  await migrateDatabase(buildDatabaseUrl(templateName, databaseUrl));
+export async function recreateTestTemplateDatabase(): Promise<string> {
+  const databaseUrl = getTestTemplateDatabaseUrl();
+  const databaseName = getDatabaseName(databaseUrl);
 
-  return templateName;
+  await recreateDatabase({ databaseName, databaseUrl });
+  await migrateDatabase(databaseUrl);
+
+  return databaseName;
 }
 
-export async function createClonedTestDatabase({
-  databaseUrl = getDatabaseUrl(),
-  databaseName = createTestDatabaseName(),
-  templateName,
-}: TestDatabaseCloneOptions): Promise<string> {
-  const adminClient = createAdminClient(databaseUrl);
+export async function createEphemeralTestDatabase({
+  databaseName = createTestDatabaseName("jedidiah_ephemeral"),
+  templateDatabaseUrl = getTestTemplateDatabaseUrl(),
+}: CreateEphemeralTestDatabaseOptions = {}): Promise<EphemeralTestDatabase> {
+  const adminClient = createAdminClient(templateDatabaseUrl);
+  const templateDatabaseName = getDatabaseName(templateDatabaseUrl);
 
   try {
     const quotedDatabaseName = quoteIdentifier(databaseName);
-    const quotedTemplateName = quoteIdentifier(templateName);
+    const quotedTemplateDatabaseName = quoteIdentifier(templateDatabaseName);
 
     await adminClient.unsafe(
-      `CREATE DATABASE ${quotedDatabaseName} TEMPLATE ${quotedTemplateName}`,
+      `CREATE DATABASE ${quotedDatabaseName} TEMPLATE ${quotedTemplateDatabaseName}`,
     );
 
-    return databaseName;
+    return {
+      databaseName,
+      databaseUrl: buildDatabaseUrl(databaseName, templateDatabaseUrl),
+    };
   } finally {
     await adminClient.end();
   }
 }
 
-export async function dropTestDatabase(databaseName: string, databaseUrl = getDatabaseUrl()) {
+export async function dropTestDatabase(
+  databaseName: string,
+  databaseUrl = getTestTemplateDatabaseUrl(),
+) {
   const adminClient = createAdminClient(databaseUrl);
 
   try {
@@ -183,6 +156,16 @@ async function dropDatabaseIfExists(
 
   await terminateDatabaseConnections(adminClient, databaseName);
   await adminClient.unsafe(`DROP DATABASE ${quoteIdentifier(databaseName)}`);
+}
+
+function getDatabaseName(databaseUrl: string): string {
+  const databaseName = new URL(databaseUrl).pathname.slice(1);
+
+  if (!databaseName) {
+    throw new Error(`Database URL must include a database name: ${databaseUrl}`);
+  }
+
+  return databaseName;
 }
 
 function createAdminClient(databaseUrl: string): postgres.Sql {

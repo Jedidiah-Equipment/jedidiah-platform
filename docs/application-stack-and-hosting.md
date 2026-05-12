@@ -80,9 +80,10 @@ pnpm lint
 pnpm lint:fix
 pnpm test
 pnpm db:up
+pnpm db:reset
+pnpm db:up:template
 pnpm db:generate
 pnpm db:migrate
-pnpm db:migrate:test
 pnpm db:studio
 ```
 
@@ -269,7 +270,8 @@ Database conventions:
 
 - Do not use `drizzle-kit push` for production-style changes.
 - Use `pnpm db:generate` after schema edits, then review the generated SQL.
-- Run `pnpm db:migrate` and `pnpm db:migrate:test` against local Postgres when touching migrations.
+- Run `pnpm db:migrate` for the app DB and `pnpm db:up:template` to recreate the migrated test
+  template DB when touching migrations.
 - Better Auth tables use Better Auth-owned string IDs.
 - Keep `AuthId` narrowly named for Better Auth-owned IDs.
 - App-owned domain tables should generally use UUID primary keys with database defaults.
@@ -319,9 +321,17 @@ postgres: localhost:5432
 Default local database URLs:
 
 ```txt
-DATABASE_URL=postgres://app:app@localhost:5432/app_dev
-TEST_DATABASE_URL=postgres://app:app@localhost:5432/app_test
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/jedidiah
+TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/jedidiah_template
 ```
+
+Local Postgres uses `postgres:postgres`. `DATABASE_URL` is the `jedidiah` app database.
+`TEST_DATABASE_URL` is the stable migrated `jedidiah_template` test template database; integration
+tests clone it into per-test ephemeral databases and keep those clone URLs in memory only. Rebuild
+the template with `pnpm db:up:template`.
+
+Use `pnpm db:reset` to stop Docker Compose, delete the local Postgres volume, and start a fresh
+Postgres container. This wipes local database data.
 
 The web app is a Vite SPA. URLs and public runtime values are served at runtime:
 
@@ -384,5 +394,5 @@ For DB schema or migration changes:
 ```sh
 pnpm db:up
 pnpm db:migrate
-pnpm db:migrate:test
+pnpm db:up:template
 ```

@@ -23,6 +23,10 @@ export default defineConfig({
         replacement: new URL("../../pkg/db/src/schema/index.ts", import.meta.url).pathname,
       },
       {
+        find: "@pkg/db/database-client",
+        replacement: new URL("../../pkg/db/src/database-client.ts", import.meta.url).pathname,
+      },
+      {
         find: "@pkg/schema",
         replacement: new URL("../../pkg/schema/src/index.ts", import.meta.url).pathname,
       },

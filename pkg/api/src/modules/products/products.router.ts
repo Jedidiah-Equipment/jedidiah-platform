@@ -5,26 +5,22 @@ import {
   ProductNotFoundError,
   updateProduct,
 } from "@pkg/core";
-import {
-  ProductCreateInputSchema,
-  ProductListInputSchema,
-  ProductUpdateInputSchema,
-} from "@pkg/schema";
+import { ProductCreateInput, ProductListInput, ProductUpdateInput } from "@pkg/schema";
 import { TRPCError } from "@trpc/server";
 
 import { protectedProcedure, router } from "../../trpc/init.js";
 
 export const productsRouter = router({
   list: protectedProcedure
-    .input(ProductListInputSchema)
+    .input(ProductListInput)
     .query(({ ctx, input }) => listProducts(ctx.db, input)),
 
   create: protectedProcedure
-    .input(ProductCreateInputSchema)
+    .input(ProductCreateInput)
     .mutation(({ ctx, input }) => mapProductErrors(() => createProduct(ctx.db, input))),
 
   update: protectedProcedure
-    .input(ProductUpdateInputSchema)
+    .input(ProductUpdateInput)
     .mutation(({ ctx, input }) => mapProductErrors(() => updateProduct(ctx.db, input))),
 });
 

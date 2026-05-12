@@ -42,8 +42,9 @@ pnpm db:migrate
 pnpm db:migrate:test
 ```
 
-Each runtime package has a committed `.env` with safe vars like `APP_ENV=development`. That lets its
-env module load an ignored package `.env.dev` file during local development when needed.
+Each runtime package has a committed `.env` containing safe vars. Package `.dev.env` files are not
+committed; use them only for sensitive local values or developer-specific overrides. They may be
+empty when no sensitive values or overrides are needed.
 
 Default local database URLs:
 

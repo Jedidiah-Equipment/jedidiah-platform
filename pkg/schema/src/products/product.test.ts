@@ -1,27 +1,27 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ProductCreateInputSchema,
-  ProductListInputSchema,
-  ProductNameSchema,
-  ProductUpdateInputSchema,
+  ProductCreateInput,
+  ProductListInput,
+  ProductName,
+  ProductUpdateInput,
 } from "./product.js";
 
 describe("product schemas", () => {
   it("trims product names", () => {
-    expect(ProductNameSchema.parse("  Excavator  ")).toBe("Excavator");
+    expect(ProductName.parse("  Excavator  ")).toBe("Excavator");
   });
 
   it("rejects blank product names", () => {
-    expect(() => ProductCreateInputSchema.parse({ name: "   " })).toThrow();
+    expect(() => ProductCreateInput.parse({ name: "   " })).toThrow();
   });
 
   it("validates update IDs as UUIDs", () => {
-    expect(() => ProductUpdateInputSchema.parse({ id: "not-a-uuid", name: "Bucket" })).toThrow();
+    expect(() => ProductUpdateInput.parse({ id: "not-a-uuid", name: "Bucket" })).toThrow();
   });
 
   it("defaults list paging and sorting", () => {
-    expect(ProductListInputSchema.parse(undefined)).toEqual({
+    expect(ProductListInput.parse(undefined)).toEqual({
       page: 1,
       pageSize: 10,
       sortBy: "name",
@@ -31,7 +31,7 @@ describe("product schemas", () => {
 
   it("coerces list paging from URL-like values", () => {
     expect(
-      ProductListInputSchema.parse({
+      ProductListInput.parse({
         page: "2",
         pageSize: "25",
         sortBy: "id",

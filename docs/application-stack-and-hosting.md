@@ -274,7 +274,7 @@ pkg/api/
         example.router.ts
         example.service.ts
         example.repository.ts
-        example.schemas.ts
+        types.ts
         example.test.ts
     test/
       context.ts
@@ -325,6 +325,7 @@ Responsibilities:
 - global Zod schemas
 - global types derived from Zod
 - no framework, database, or runtime env dependencies
+- exported Zod values and inferred types use the same PascalCase name, with no `Schema` suffix
 
 Structure:
 
@@ -334,9 +335,25 @@ pkg/schema/
   tsconfig.json
   src/
     index.ts
-    schemas/
-    domain/
+    {domain}/
+      {schema-group}.ts
 ```
+
+Zod definition convention:
+
+```ts
+export type ApiConfig = z.infer<typeof ApiConfig>;
+export const ApiConfig = z.object({
+  DATABASE_URL: z.url(),
+});
+```
+
+- Always define both the inferred type and the Zod value.
+- Put the type definition before the Zod value.
+- Use the same PascalCase name for the type and value.
+- Do not use a `Schema` suffix.
+- Keep package-local schemas in the nearest `types.ts` file to their usage.
+- Keep global schemas shared across packages in `pkg/schema/src/{domain}/{schema-group}.ts`.
 
 Schema package scripts:
 
@@ -462,10 +479,11 @@ Drizzle conventions:
 ## Environment Variables
 
 Environment variables are parsed through Zod-backed config modules. Each runtime package has a
-committed `.env` with safe vars like `APP_ENV=development`, and env modules load that package's
-ignored `.env.dev` file when `APP_ENV=development`. Staging and production set `APP_ENV` through
-system env, which takes precedence over `.env`. Do not read `process.env` throughout the codebase
-outside env modules and central test helpers.
+committed `.env` containing safe vars. Package `.dev.env` files are not committed; use them only for
+sensitive local values or developer-specific overrides. They may be empty when no sensitive values
+or overrides are needed. Staging and production set runtime values through system env, which takes
+precedence over `.env`. Do not read `process.env` throughout the codebase outside env modules and
+central test helpers.
 
 Each runtime package owns its env module:
 
@@ -542,10 +560,10 @@ Local files:
 pkg/api/.env
 pkg/db/.env
 pkg/web/.env
-pkg/*/.env.dev
+pkg/*/.dev.env
 ```
 
-Package `.env` files contain safe committed vars. Package `.env.dev` files and root `.env` files are
+Package `.env` files contain safe committed vars. Package `.dev.env` files and root `.env` files are
 ignored. Real secrets are never committed.
 
 ## Local Development
@@ -628,7 +646,16 @@ Global schemas and shared types used by multiple packages live in `pkg/schema`.
 API-only schemas can live next to the relevant API module:
 
 ```txt
-pkg/api/src/modules/example/example.schemas.ts
+pkg/api/src/modules/example/types.ts
+```
+
+Use the same Zod type/value convention everywhere:
+
+```ts
+export type CreateQuoteInput = z.infer<typeof CreateQuoteInput>;
+export const CreateQuoteInput = z.object({
+  name: z.string().min(1),
+});
 ```
 
 ## Testing Strategy

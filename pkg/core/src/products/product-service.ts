@@ -2,13 +2,10 @@ import type { Database } from "@pkg/db";
 import { products } from "@pkg/db/schema";
 import {
   type Product,
-  type ProductCreateInput,
-  ProductCreateInputSchema,
-  type ProductListInput,
-  ProductListInputSchema,
+  ProductCreateInput,
+  ProductListInput,
   type ProductListResult,
-  type ProductUpdateInput,
-  ProductUpdateInputSchema,
+  ProductUpdateInput,
 } from "@pkg/schema";
 import { asc, count, desc, eq } from "drizzle-orm";
 
@@ -27,9 +24,9 @@ export function mapProduct(row: ProductRow): Product {
 
 export async function listProducts(
   database: ProductDatabase,
-  input: ProductListInput = ProductListInputSchema.parse(undefined),
+  input: ProductListInput = ProductListInput.parse(undefined),
 ): Promise<ProductListResult> {
-  const listInput = ProductListInputSchema.parse(input);
+  const listInput = ProductListInput.parse(input);
   const sortColumn = listInput.sortBy === "id" ? products.id : products.name;
   const orderBy = listInput.sortDirection === "desc" ? desc(sortColumn) : asc(sortColumn);
   const offset = (listInput.page - 1) * listInput.pageSize;
@@ -56,7 +53,7 @@ export async function createProduct(
   database: ProductDatabase,
   input: ProductCreateInput,
 ): Promise<Product> {
-  const createInput = ProductCreateInputSchema.parse(input);
+  const createInput = ProductCreateInput.parse(input);
 
   try {
     const [row] = await database.insert(products).values(createInput).returning();
@@ -79,7 +76,7 @@ export async function updateProduct(
   database: ProductDatabase,
   input: ProductUpdateInput,
 ): Promise<Product> {
-  const updateInput = ProductUpdateInputSchema.parse(input);
+  const updateInput = ProductUpdateInput.parse(input);
 
   try {
     const [row] = await database

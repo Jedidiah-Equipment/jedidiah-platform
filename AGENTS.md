@@ -60,7 +60,7 @@ Guidance for coding agents working in this repository.
 - Do not use `drizzle-kit push` for production-style changes.
 - Use `pnpm db:generate` after schema edits, then review generated SQL.
 - Run `pnpm db:migrate` and `pnpm db:migrate:test` against local Postgres when touching migrations.
-- Better Auth tables use Better Auth-owned string IDs. Keep `AuthIdSchema` narrowly named for that
+- Better Auth tables use Better Auth-owned string IDs. Keep `AuthId` narrowly named for that
   purpose.
 - App-owned domain tables should generally use UUID primary keys with database defaults.
 
@@ -68,6 +68,9 @@ Guidance for coding agents working in this repository.
 
 - Parse runtime env through package env modules.
 - Do not scatter direct `process.env` access through the codebase.
+- Package `.env` files are always committed and must contain only safe values.
+- Package `.dev.env` files are not committed; use them for sensitive local values or
+  developer-specific overrides. They may be empty when no overrides are needed.
 - Current DB/API/web env variables:
   - `NODE_ENV`
   - `DATABASE_URL`

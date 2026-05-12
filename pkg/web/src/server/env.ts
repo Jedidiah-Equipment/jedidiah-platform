@@ -1,4 +1,4 @@
-import { AppEnvSchema, type ClientConfig } from "@pkg/schema";
+import { AppEnv, type ClientConfig } from "@pkg/schema";
 import dotenv from "dotenv";
 import { z } from "zod";
 
@@ -8,9 +8,10 @@ if (process.env.APP_ENV === "development") {
   dotenv.config({ path: ".env.dev", override: true, quiet: true });
 }
 
-const ServerEnvSchema = z
+export type ServerConfig = z.infer<typeof ServerConfig>;
+export const ServerConfig = z
   .object({
-    APP_ENV: AppEnvSchema,
+    APP_ENV: AppEnv,
     PORT: z.coerce.number().int().positive().default(7001),
     PUBLIC_APP_BASE_URL: z.url(),
     PUBLIC_API_BASE_URL: z.url(),
@@ -27,10 +28,9 @@ const ServerEnvSchema = z
   }));
 
 export type InjectedClientConfig = z.infer<typeof ClientConfig>;
-export type ServerConfig = z.infer<typeof ServerEnvSchema>;
 
 export function getServerConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
-  return ServerEnvSchema.parse(env);
+  return ServerConfig.parse(env);
 }
 
 export function getInjectedClientConfig(

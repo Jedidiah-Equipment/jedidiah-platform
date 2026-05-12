@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { LoginFormSchema } from "./types.js";
+import { LoginForm } from "./types.js";
 
-describe("LoginFormSchema", () => {
+describe("LoginForm", () => {
   it("accepts valid login values", () => {
     expect(
-      LoginFormSchema.parse({
+      LoginForm.parse({
         email: "operator@example.com",
         password: "password123",
       }),
@@ -16,8 +16,8 @@ describe("LoginFormSchema", () => {
   });
 
   it("rejects empty or invalid values", () => {
-    expect(() => LoginFormSchema.parse({ email: "", password: "" })).toThrow();
-    expect(() => LoginFormSchema.parse({ email: "not-email", password: "password123" })).toThrow();
-    expect(() => LoginFormSchema.parse({ email: "a@example.com", password: "short" })).toThrow();
+    expect(() => LoginForm.parse({ email: "", password: "" })).toThrow();
+    expect(() => LoginForm.parse({ email: "not-email", password: "password123" })).toThrow();
+    expect(() => LoginForm.parse({ email: "a@example.com", password: "short" })).toThrow();
   });
 });

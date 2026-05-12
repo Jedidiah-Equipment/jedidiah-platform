@@ -1,12 +1,11 @@
 import { z } from "zod";
 
-import { NodeEnvSchema } from "../domain/environment.js";
+import { NodeEnv } from "../domain/environment.js";
 
+export type ClientConfig = z.infer<typeof ClientConfig>;
 export const ClientConfig = z.object({
-  appEnv: NodeEnvSchema,
+  appEnv: NodeEnv,
   appBaseUrl: z.string().url(),
   apiBaseUrl: z.string().url(),
   authBaseUrl: z.string().url(),
 });
-
-export type ClientConfig = z.infer<typeof ClientConfig>;

@@ -122,10 +122,10 @@ Schema responsibilities:
 Likely shapes:
 
 ```ts
-RoleSlugSchema
-CapabilityResourceSchema
-CapabilityActionSchema
-UserAccessSummarySchema
+RoleSlug
+CapabilityResource
+CapabilityAction
+UserAccessSummary
 ```
 
 The schema package should not own the policy matrix. It should validate data at boundaries.
@@ -168,7 +168,7 @@ Recommended procedure pattern:
 export const createQuote = authorizedProcedure({
   quote: ["create"],
 })
-  .input(CreateQuoteInputSchema)
+  .input(CreateQuoteInput)
   .mutation(({ ctx, input }) => quoteService.create(ctx.authz, input));
 ```
 

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js";
 import { FieldGroup } from "@/components/ui/field.js";
 import { authClient } from "@/lib/auth-client.js";
-import { LoginFormSchema, type LoginFormValues } from "./types.js";
+import { LoginForm } from "./types.js";
 
 type LoginPageProps = Record<string, never>;
 
@@ -20,9 +20,9 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
     defaultValues: {
       email: "",
       password: "",
-    } satisfies LoginFormValues,
+    } satisfies LoginForm,
     validators: {
-      onSubmit: LoginFormSchema,
+      onSubmit: LoginForm,
     },
     onSubmit: async ({ value }) => {
       setError(null);

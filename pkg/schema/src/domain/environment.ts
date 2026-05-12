@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export const nodeEnvValues = ["development", "test", "staging", "production"] as const;
-export const NodeEnvSchema = z.enum(nodeEnvValues);
-export type NodeEnv = z.infer<typeof NodeEnvSchema>;
+export type NodeEnv = z.infer<typeof NodeEnv>;
+export const NodeEnv = z.enum(nodeEnvValues);
 
 export const appEnvValues = ["development", "staging", "production"] as const;
-export const AppEnvSchema = z.enum(appEnvValues);
-export type AppEnv = z.infer<typeof AppEnvSchema>;
+export type AppEnv = z.infer<typeof AppEnv>;
+export const AppEnv = z.enum(appEnvValues);

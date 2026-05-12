@@ -1,4 +1,4 @@
-import { NodeEnvSchema } from "@pkg/schema";
+import { NodeEnv } from "@pkg/schema";
 import dotenv from "dotenv";
 import { z } from "zod";
 
@@ -8,9 +8,10 @@ if (process.env.APP_ENV === "development") {
   dotenv.config({ path: ".env.dev", override: true, quiet: true });
 }
 
-const DatabaseEnvSchema = z
+export type DatabaseConfig = z.infer<typeof DatabaseConfig>;
+export const DatabaseConfig = z
   .object({
-    NODE_ENV: NodeEnvSchema.default("development"),
+    NODE_ENV: NodeEnv.default("development"),
     DATABASE_URL: z.string().url(),
     TEST_DATABASE_URL: z.string().url().optional(),
   })
@@ -24,10 +25,8 @@ const DatabaseEnvSchema = z
     }
   });
 
-export type DatabaseConfig = z.infer<typeof DatabaseEnvSchema>;
-
 export function getDatabaseConfig(env: NodeJS.ProcessEnv = process.env): DatabaseConfig {
-  return DatabaseEnvSchema.parse(env);
+  return DatabaseConfig.parse(env);
 }
 
 export function getDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {

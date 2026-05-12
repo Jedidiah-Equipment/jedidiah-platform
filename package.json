@@ -9,9 +9,9 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "test": "turbo run test",
     "kill:web-api": "sh scripts/kill-web-api.sh",
     "db:up": "docker compose up -d --wait postgres",
     "db:reset": "docker compose down -v && pnpm db:up",
@@ -35,6 +35,7 @@
     "tsx": "^4.20.6",
     "turbo": "^2.9.12",
     "typescript": "^5.9.3",
+    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^3.2.4"
   }
 }

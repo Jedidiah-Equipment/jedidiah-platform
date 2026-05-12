@@ -13,8 +13,8 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { DataTable } from "@/components/data-table/DataTable.js";
-import { createPersistedDataTableStore } from "@/components/data-table/data-table-store.js";
 import { usePagedQueryResult } from "@/components/data-table/hooks/use-paged-query-result.js";
+import { createPersistedDataTableStore } from "@/components/data-table/store.js";
 import { Button } from "@/components/ui/button.js";
 import { useTRPC } from "@/lib/trpc.js";
 

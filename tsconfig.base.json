@@ -9,6 +9,7 @@
       "@pkg/api/router-type": ["pkg/api/src/router-type.ts"],
       "@pkg/core": ["pkg/core/src/index.ts"],
       "@pkg/db": ["pkg/db/src/index.ts"],
+      "@pkg/db/database-client": ["pkg/db/src/database-client.ts"],
       "@pkg/db/schema": ["pkg/db/src/schema/index.ts"],
       "@pkg/db/test-utils": ["pkg/db/src/test-utils.ts"],
       "@pkg/schema": ["pkg/schema/src/index.ts"]

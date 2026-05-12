@@ -12,7 +12,7 @@ import { DataTableHeader } from "./components/DataTableHeader.js";
 import { DataTablePagination } from "./components/DataTablePagination.js";
 import { DataTableSearch } from "./components/DataTableSearch.js";
 import { DataTableSkeletonRows } from "./components/DataTableSkeletonRows.js";
-import { getCellClassName } from "./components/data-table-utils.js";
+import { getCellClassName } from "./utils.js";
 
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {

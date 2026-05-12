@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { cn } from "@/lib/utils.js";
-import { getColumnLabel } from "./data-table-utils.js";
+import { getColumnLabel } from "../utils.js";
 
 type DataTableHeaderProps<TData> = {
   debounceMs: number;

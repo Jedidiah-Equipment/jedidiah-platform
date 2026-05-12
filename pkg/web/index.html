@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jedidiah Platform</title>
+    <script>
+      if (localStorage.getItem('debug-scan') === 'true') {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/react-scan/dist/auto.global.js" crossorigin="anonymous"><' + '/script>');
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

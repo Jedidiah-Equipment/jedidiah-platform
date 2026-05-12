@@ -14,6 +14,7 @@ import { useEffect, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { DataTable } from "@/components/data-table/DataTable.js";
 import { createPersistedDataTableStore } from "@/components/data-table/data-table-store.js";
+import { usePagedQueryResult } from "@/components/data-table/hooks/use-paged-query-result.js";
 import { Button } from "@/components/ui/button.js";
 import { trpc } from "@/lib/trpc.js";
 
@@ -63,13 +64,13 @@ export function useProductListInput(): ProductListInput {
 
 export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => {
   const productListInput = useProductListInput();
+
   const productsQuery = trpc.products.list.useQuery(productListInput, {
     placeholderData: keepPreviousData,
   });
-  const products = productsQuery.data?.items ?? [];
-  const total = productsQuery.data?.total ?? 0;
-  const pageCount = productsQuery.data?.pageCount ?? 1;
-  const isLoading = productsQuery.isLoading && productsQuery.data === undefined;
+
+  const { items: products, total, pageCount, isLoading } = usePagedQueryResult(productsQuery);
+
   const {
     columnFilters,
     globalFilter,
@@ -128,8 +129,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
               aria-label={`Edit ${row.original.name}`}
               onClick={() => onEditProduct(row.original)}
               size="icon-sm"
-              type="button"
-              variant="ghost"
+              variant="outline"
             >
               <PencilIcon />
             </Button>
@@ -146,6 +146,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     ],
     [onEditProduct],
   );
+
   useEffect(() => {
     const maxPageIndex = Math.max(pageCount - 1, 0);
 
@@ -162,19 +163,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
-    onColumnFiltersChange: (updater) => {
-      setColumnFilters(updater);
-      setPageIndex(0);
-    },
-    onGlobalFilterChange: (updater) => {
-      setGlobalFilter(updater);
-      setPageIndex(0);
-    },
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
-    onSortingChange: (updater) => {
-      setSorting(updater);
-      setPageIndex(0);
-    },
+    onSortingChange: setSorting,
     pageCount,
     rowCount: total,
     state: {
@@ -188,6 +180,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
   return (
     <DataTable
       emptyMessage="No products found."
+      errorMessage={productsQuery.error?.message}
       globalFilterPlaceholder="Search products..."
       isLoading={isLoading}
       table={table}

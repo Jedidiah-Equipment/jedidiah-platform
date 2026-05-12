@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { createPagedQueryResult, PagedQueryInput } from "../pagination/pagination.js";
+
 export type ProductId = z.infer<typeof ProductId>;
 export const ProductId = z.string().uuid();
 
@@ -40,9 +42,7 @@ export const ProductUpdateInput = z.object({
 export type ProductListInput = z.infer<typeof ProductListInput>;
 export const ProductListInput = z.preprocess(
   (value) => value ?? {},
-  z.object({
-    page: z.coerce.number().int().min(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(100).default(10),
+  PagedQueryInput.extend({
     search: z.string().trim().default(""),
     columnFilters: ProductColumnFilters,
     sortBy: ProductSortBy.default("name"),
@@ -51,12 +51,7 @@ export const ProductListInput = z.preprocess(
 );
 
 export type ProductListResult = z.infer<typeof ProductListResult>;
-export const ProductListResult = z.object({
-  items: z.array(Product),
-  total: z.number().int().nonnegative(),
-  page: z.number().int().min(1),
-  pageSize: z.number().int().min(1),
-  pageCount: z.number().int().min(1),
+export const ProductListResult = createPagedQueryResult(Product).extend({
   sortBy: ProductSortBy,
   sortDirection: SortDirection,
 });

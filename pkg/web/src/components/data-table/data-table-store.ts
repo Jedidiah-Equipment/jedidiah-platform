@@ -60,10 +60,12 @@ export function createPersistedDataTableStore({
         setColumnFilters: (updater) =>
           set((state) => ({
             columnFilters: functionalUpdate(updater, state.columnFilters),
+            pagination: resetPaginationPageIndex(state.pagination),
           })),
         setGlobalFilter: (updater) =>
           set((state) => ({
             globalFilter: String(functionalUpdate(updater, state.globalFilter)),
+            pagination: resetPaginationPageIndex(state.pagination),
           })),
         setPageIndex: (pageIndex) =>
           set((state) => ({
@@ -78,6 +80,7 @@ export function createPersistedDataTableStore({
           })),
         setSorting: (updater) =>
           set((state) => ({
+            pagination: resetPaginationPageIndex(state.pagination),
             sorting: functionalUpdate(updater, state.sorting),
           })),
       }),
@@ -94,4 +97,11 @@ export function createPersistedDataTableStore({
       },
     ),
   );
+}
+
+function resetPaginationPageIndex(pagination: PaginationState): PaginationState {
+  return {
+    ...pagination,
+    pageIndex: 0,
+  };
 }

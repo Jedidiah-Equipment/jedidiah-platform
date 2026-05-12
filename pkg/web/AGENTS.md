@@ -1,5 +1,10 @@
 # app (@pkg/web)
 
+## Shadcn
+
+- app uses shadcn, we have skill and mcp
+- always default to using shadcn components, last resort is custom component
+
 ## Source Layout
 
 - `src/app` contains app bootstrap and composition code, such as providers and router creation.
@@ -34,23 +39,23 @@ Prefer this TSX file order:
 
 type Props = {};
 
-export const PrimaryComponentName: React.FC<Props> = () => {
+export function PrimaryComponentName = (props: Props) => {
   return null;
 };
 
 type InternalComponentProps = {};
 
-const InternalComponent: React.FC<InternalComponentProps> = () => {
+function InternalComponent = (props: InternalComponentProps) => {
   return null;
 };
 
 type InternalComponent2Props = {};
 
-const InternalComponent2: React.FC<InternalComponent2Props> = () => {
+function InternalComponent2 = (props: InternalComponent2Props) => {
   return null;
 };
 
-const internalFunction = () => null;
+function internalFunction () {};
 ```
 
 Keep each internal component's props immediately above that component. Put non-component helper

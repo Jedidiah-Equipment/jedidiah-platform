@@ -24,6 +24,7 @@ describe("product schemas", () => {
     expect(ProductListInput.parse(undefined)).toEqual({
       page: 1,
       pageSize: 10,
+      search: "",
       sortBy: "name",
       sortDirection: "asc",
     });
@@ -34,12 +35,14 @@ describe("product schemas", () => {
       ProductListInput.parse({
         page: "2",
         pageSize: "25",
+        search: "  loader  ",
         sortBy: "id",
         sortDirection: "desc",
       }),
     ).toEqual({
       page: 2,
       pageSize: 25,
+      search: "loader",
       sortBy: "id",
       sortDirection: "desc",
     });

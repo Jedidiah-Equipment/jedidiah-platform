@@ -63,11 +63,49 @@ describe("product service", () => {
     const result = await listProducts(db, {
       page: 2,
       pageSize: 2,
+      search: "",
       sortBy: "name",
       sortDirection: "asc",
     });
 
     expect(result.items.map((product) => product.name)).toEqual(["Charlie"]);
+    expect(result.total).toBe(3);
+    expect(result.pageCount).toBe(2);
+  });
+
+  it("searches product names case-insensitively", async () => {
+    await createProduct(db, { name: "Compact Loader" });
+    await createProduct(db, { name: "Excavator Bucket" });
+    await createProduct(db, { name: "Wheel LOADER" });
+
+    const result = await listProducts(db, {
+      page: 1,
+      pageSize: 10,
+      search: "loader",
+      sortBy: "name",
+      sortDirection: "asc",
+    });
+
+    expect(result.items.map((product) => product.name)).toEqual(["Compact Loader", "Wheel LOADER"]);
+    expect(result.total).toBe(2);
+    expect(result.pageCount).toBe(1);
+  });
+
+  it("applies search before paging and counting", async () => {
+    await createProduct(db, { name: "Alpha Loader" });
+    await createProduct(db, { name: "Bravo Loader" });
+    await createProduct(db, { name: "Charlie Loader" });
+    await createProduct(db, { name: "Excavator" });
+
+    const result = await listProducts(db, {
+      page: 2,
+      pageSize: 2,
+      search: "loader",
+      sortBy: "name",
+      sortDirection: "asc",
+    });
+
+    expect(result.items.map((product) => product.name)).toEqual(["Charlie Loader"]);
     expect(result.total).toBe(3);
     expect(result.pageCount).toBe(2);
   });

@@ -7,7 +7,7 @@ import {
   type ProductListResult,
   ProductUpdateInput,
 } from "@pkg/schema";
-import { asc, count, desc, eq } from "drizzle-orm";
+import { asc, count, desc, eq, ilike } from "drizzle-orm";
 
 import { DuplicateProductNameError, ProductNotFoundError } from "./product-errors.js";
 
@@ -30,10 +30,17 @@ export async function listProducts(
   const sortColumn = listInput.sortBy === "id" ? products.id : products.name;
   const orderBy = listInput.sortDirection === "desc" ? desc(sortColumn) : asc(sortColumn);
   const offset = (listInput.page - 1) * listInput.pageSize;
+  const where = listInput.search ? ilike(products.name, `%${listInput.search}%`) : undefined;
 
   const [rows, totalRows] = await Promise.all([
-    database.select().from(products).orderBy(orderBy).limit(listInput.pageSize).offset(offset),
-    database.select({ total: count() }).from(products),
+    database
+      .select()
+      .from(products)
+      .where(where)
+      .orderBy(orderBy)
+      .limit(listInput.pageSize)
+      .offset(offset),
+    database.select({ total: count() }).from(products).where(where),
   ]);
 
   const total = totalRows[0]?.total ?? 0;

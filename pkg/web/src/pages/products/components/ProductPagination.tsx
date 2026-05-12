@@ -1,6 +1,13 @@
-import type { ProductListInput } from "@pkg/schema";
+import type { Product } from "@pkg/schema";
+import type { Table } from "@tanstack/react-table";
 import type React from "react";
-import { Button } from "@/components/ui/button.js";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination.js";
 import {
   Select,
   SelectContent,
@@ -11,18 +18,15 @@ import {
 } from "@/components/ui/select.js";
 
 type ProductPaginationProps = {
-  pageCount: number;
-  search: ProductListInput;
+  table: Table<Product>;
   total: number;
-  onChange: (updates: Partial<ProductListInput>) => void;
 };
 
-export const ProductPagination: React.FC<ProductPaginationProps> = ({
-  pageCount,
-  search,
-  total,
-  onChange,
-}) => {
+export const ProductPagination: React.FC<ProductPaginationProps> = ({ table, total }) => {
+  const pagination = table.getState().pagination;
+  const page = pagination.pageIndex + 1;
+  const pageCount = table.getPageCount();
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-sm text-muted-foreground">
@@ -32,10 +36,8 @@ export const ProductPagination: React.FC<ProductPaginationProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Rows</span>
           <Select
-            onValueChange={(value) =>
-              onChange({ page: 1, pageSize: Number.parseInt(String(value), 10) })
-            }
-            value={String(search.pageSize)}
+            onValueChange={(value) => table.setPageSize(Number.parseInt(String(value), 10))}
+            value={String(pagination.pageSize)}
           >
             <SelectTrigger size="sm">
               <SelectValue />
@@ -53,26 +55,24 @@ export const ProductPagination: React.FC<ProductPaginationProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
-            Page {search.page} of {pageCount}
+            Page {page} of {pageCount}
           </span>
-          <Button
-            disabled={search.page <= 1}
-            onClick={() => onChange({ page: search.page - 1 })}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Previous
-          </Button>
-          <Button
-            disabled={search.page >= pageCount}
-            onClick={() => onChange({ page: search.page + 1 })}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Next
-          </Button>
+          <Pagination className="w-auto">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  disabled={!table.getCanPreviousPage()}
+                  onClick={() => table.previousPage()}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  disabled={!table.getCanNextPage()}
+                  onClick={() => table.nextPage()}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       </div>
     </div>

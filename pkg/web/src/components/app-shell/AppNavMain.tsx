@@ -20,7 +20,7 @@ const mainNavItems = [
     title: "Products",
     link: linkOptions({
       to: "/products",
-      search: { page: 1, pageSize: 10, sortBy: "name", sortDirection: "asc" },
+      search: { page: 1, pageSize: 10, search: "", sortBy: "name", sortDirection: "asc" },
     }),
     icon: BoxesIcon,
   },

@@ -67,6 +67,7 @@ test("creates, lists, and updates products for authenticated users", async ({ co
   const listResult = await caller.products.list({
     page: 1,
     pageSize: 10,
+    search: "",
     sortBy: "name",
     sortDirection: "asc",
   });
@@ -82,6 +83,27 @@ test("creates, lists, and updates products for authenticated users", async ({ co
     id: created.id,
     name: "Wheel Loader XL",
   });
+});
+
+test("filters product lists by name search for authenticated users", async ({ context }) => {
+  const caller = context.createCaller();
+  const loader = await caller.products.create({
+    name: "Compact Loader",
+  });
+  await caller.products.create({
+    name: "Excavator Bucket",
+  });
+
+  const listResult = await caller.products.list({
+    page: 1,
+    pageSize: 10,
+    search: "loader",
+    sortBy: "name",
+    sortDirection: "asc",
+  });
+
+  expect(listResult.items).toEqual([loader]);
+  expect(listResult.total).toBe(1);
 });
 
 test("returns conflict for duplicate product names", async ({ context }) => {

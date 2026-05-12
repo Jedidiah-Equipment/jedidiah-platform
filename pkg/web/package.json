@@ -19,7 +19,7 @@
     "@pkg/api": "workspace:*",
     "@pkg/schema": "workspace:*",
     "@tanstack/react-form": "^1.32.0",
-    "@tanstack/react-query": "^5.90.12",
+    "@tanstack/react-query": "^5.100.10",
     "@tanstack/react-router": "^1.139.12",
     "@tanstack/react-table": "^8.21.3",
     "@trpc/client": "^11.7.2",

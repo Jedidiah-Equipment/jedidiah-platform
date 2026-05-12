@@ -12,8 +12,8 @@ export type DatabaseConfig = z.infer<typeof DatabaseConfig>;
 export const DatabaseConfig = z
   .object({
     NODE_ENV: NodeEnv.default("development"),
-    DATABASE_URL: z.string().url(),
-    TEST_DATABASE_URL: z.string().url().optional(),
+    DATABASE_URL: z.url(),
+    TEST_DATABASE_URL: z.url().optional(),
   })
   .superRefine((env, context) => {
     if (env.NODE_ENV === "test" && !env.TEST_DATABASE_URL) {
@@ -37,8 +37,4 @@ export function getDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
   }
 
   return config.DATABASE_URL;
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  getDatabaseConfig();
 }

@@ -5,7 +5,7 @@
       "label": "Build All",
       "type": "shell",
       "command": "pnpm",
-      "args": ["build"],
+      "args": ["turbo", "run", "build"],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -20,7 +20,7 @@
       "label": "Build Api",
       "type": "shell",
       "command": "pnpm",
-      "args": ["--filter", "@pkg/api", "build"],
+      "args": ["turbo", "run", "build", "--filter=@pkg/api"],
       "group": "build",
       "icon": {
         "id": "tools",
@@ -32,7 +32,7 @@
       "label": "Build App",
       "type": "shell",
       "command": "pnpm",
-      "args": ["--filter", "@pkg/web", "build"],
+      "args": ["turbo", "run", "build", "--filter=@pkg/web"],
       "group": "build",
       "icon": {
         "id": "tools",
@@ -44,7 +44,7 @@
       "label": "Build Schema",
       "type": "shell",
       "command": "pnpm",
-      "args": ["--filter", "@pkg/schema", "build"],
+      "args": ["turbo", "run", "build", "--filter=@pkg/schema"],
       "group": "build",
       "icon": {
         "id": "tools",
@@ -56,7 +56,7 @@
       "label": "Build Core",
       "type": "shell",
       "command": "pnpm",
-      "args": ["--filter", "@pkg/core", "build"],
+      "args": ["turbo", "run", "build", "--filter=@pkg/core"],
       "group": "build",
       "icon": {
         "id": "tools",
@@ -68,7 +68,7 @@
       "label": "Build Db",
       "type": "shell",
       "command": "pnpm",
-      "args": ["--filter", "@pkg/db", "build"],
+      "args": ["turbo", "run", "build", "--filter=@pkg/db"],
       "group": "build",
       "icon": {
         "id": "tools",

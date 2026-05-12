@@ -1,5 +1,5 @@
-import { authRouter } from "../modules/auth/auth.router.js";
-import { productsRouter } from "../modules/products/products.router.js";
+import { authRouter } from "../routes/auth/auth.router.js";
+import { productsRouter } from "../routes/products/products.router.js";
 import { createCallerFactory, router } from "./init.js";
 
 export const appRouter = router({

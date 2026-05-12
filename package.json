@@ -19,7 +19,8 @@
     "db:generate": "pnpm --filter @pkg/db db:generate",
     "db:migrate": "pnpm --filter @pkg/db build && pnpm --filter @pkg/db db:migrate",
     "db:migrate:test": "pnpm --filter @pkg/db build && NODE_ENV=test pnpm --filter @pkg/db db:migrate",
-    "db:studio": "pnpm --filter @pkg/db db:studio"
+    "db:studio": "pnpm --filter @pkg/db db:studio",
+    "update-package-versions": "pnpm up --recursive --interactive"
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",
@@ -29,7 +30,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
-    "@types/node": "^24.9.1",
+    "@types/node": "^24.12.4",
     "dotenv": "^17.4.2",
     "shadcn": "^4.7.0",
     "tsx": "^4.20.6",
@@ -37,5 +38,8 @@
     "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^3.2.4"
-  }
+  },
+  "pnpm": {
+  "ignoredBuiltDependencies": ["msw"]
+}
 }

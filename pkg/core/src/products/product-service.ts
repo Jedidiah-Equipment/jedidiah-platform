@@ -26,11 +26,10 @@ export async function listProducts(
   database: ProductDatabase,
   input: ProductListInput = ProductListInput.parse(undefined),
 ): Promise<ProductListResult> {
-  const listInput = ProductListInput.parse(input);
-  const sortColumn = listInput.sortBy === "id" ? products.id : products.name;
-  const orderBy = listInput.sortDirection === "desc" ? desc(sortColumn) : asc(sortColumn);
-  const offset = (listInput.page - 1) * listInput.pageSize;
-  const where = buildProductListWhere(listInput);
+  const sortColumn = input.sortBy === "id" ? products.id : products.name;
+  const orderBy = input.sortDirection === "desc" ? desc(sortColumn) : asc(sortColumn);
+  const offset = (input.page - 1) * input.pageSize;
+  const where = buildProductListWhere(input);
 
   const [rows, totalRows] = await Promise.all([
     database
@@ -38,7 +37,7 @@ export async function listProducts(
       .from(products)
       .where(where)
       .orderBy(orderBy)
-      .limit(listInput.pageSize)
+      .limit(input.pageSize)
       .offset(offset),
     database.select({ total: count() }).from(products).where(where),
   ]);
@@ -48,11 +47,11 @@ export async function listProducts(
   return {
     items: rows.map(mapProduct),
     total,
-    page: listInput.page,
-    pageSize: listInput.pageSize,
-    pageCount: Math.max(1, Math.ceil(total / listInput.pageSize)),
-    sortBy: listInput.sortBy,
-    sortDirection: listInput.sortDirection,
+    page: input.page,
+    pageSize: input.pageSize,
+    pageCount: Math.max(1, Math.ceil(total / input.pageSize)),
+    sortBy: input.sortBy,
+    sortDirection: input.sortDirection,
   };
 }
 

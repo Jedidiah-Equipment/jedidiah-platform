@@ -38,7 +38,3 @@ export function getInjectedClientConfig(
 ): InjectedClientConfig {
   return getServerConfig(env).clientConfig;
 }
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  getServerConfig();
-}

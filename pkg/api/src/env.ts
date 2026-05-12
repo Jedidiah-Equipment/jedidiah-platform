@@ -36,7 +36,3 @@ export const ApiConfig = z.object({
 export function getApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   return ApiConfig.parse(env);
 }
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  getApiConfig();
-}

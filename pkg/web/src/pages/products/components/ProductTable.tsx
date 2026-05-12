@@ -44,7 +44,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     }),
   );
 
-  const { items: products, total, pageCount, isLoading } = usePagedQueryResult(productsQuery);
+  const { items: products, total, isLoading } = usePagedQueryResult(productsQuery);
 
   const {
     columnFilters,
@@ -69,6 +69,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
       sorting: state.sorting,
     })),
   );
+  const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize));
 
   const columns = useMemo<ColumnDef<Product>[]>(
     () => [

@@ -40,6 +40,8 @@
     "vitest": "^3.2.4"
   },
   "pnpm": {
-  "ignoredBuiltDependencies": ["msw"]
-}
+    "ignoredBuiltDependencies": [
+      "msw"
+    ]
+  }
 }

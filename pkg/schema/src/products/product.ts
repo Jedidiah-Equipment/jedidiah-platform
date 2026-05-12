@@ -1,5 +1,5 @@
 import { z } from "zod";
-
+import { SortDirection } from "../common/sort.js";
 import { createPagedQueryResult, PagedQueryInput } from "../pagination/pagination.js";
 
 export type ProductId = z.infer<typeof ProductId>;
@@ -16,9 +16,6 @@ export const Product = z.object({
 
 export type ProductSortBy = z.infer<typeof ProductSortBy>;
 export const ProductSortBy = z.enum(["id", "name"]);
-
-export type SortDirection = z.infer<typeof SortDirection>;
-export const SortDirection = z.enum(["asc", "desc"]);
 
 export type ProductColumnFilters = z.infer<typeof ProductColumnFilters>;
 export const ProductColumnFilters = z
@@ -40,15 +37,12 @@ export const ProductUpdateInput = z.object({
 });
 
 export type ProductListInput = z.infer<typeof ProductListInput>;
-export const ProductListInput = z.preprocess(
-  (value) => value ?? {},
-  PagedQueryInput.extend({
-    search: z.string().trim().default(""),
-    columnFilters: ProductColumnFilters,
-    sortBy: ProductSortBy.default("name"),
-    sortDirection: SortDirection.default("asc"),
-  }),
-);
+export const ProductListInput = PagedQueryInput.extend({
+  search: z.string().trim().default(""),
+  columnFilters: ProductColumnFilters,
+  sortBy: ProductSortBy.default("name"),
+  sortDirection: SortDirection.default("asc"),
+});
 
 export type ProductListResult = z.infer<typeof ProductListResult>;
 export const ProductListResult = createPagedQueryResult(Product).extend({

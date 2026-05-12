@@ -16,6 +16,10 @@
       "types": "./dist/database-client.d.ts",
       "import": "./dist/database-client.js"
     },
+    "./query-utils": {
+      "types": "./dist/query-utils.d.ts",
+      "import": "./dist/query-utils.js"
+    },
     "./test-utils": {
       "types": "./dist/test-utils.d.ts",
       "import": "./dist/test-utils.js"

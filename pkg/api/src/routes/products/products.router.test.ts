@@ -85,9 +85,6 @@ describe("products.list", () => {
 
     expect(productNames(result.items)).toEqual(["A Bucket", "Z Loader"]);
     expect(result.total).toBe(2);
-    expect(result.page).toBe(1);
-    expect(result.pageSize).toBe(10);
-    expect(result.pageCount).toBe(1);
     expect(result.sortBy).toBe("name");
     expect(result.sortDirection).toBe("asc");
   });
@@ -107,9 +104,6 @@ describe("products.list", () => {
 
     expect(productNames(result.items)).toEqual(["Charlie"]);
     expect(result.total).toBe(3);
-    expect(result.page).toBe(2);
-    expect(result.pageSize).toBe(2);
-    expect(result.pageCount).toBe(2);
     expect(result.sortBy).toBe("name");
     expect(result.sortDirection).toBe("asc");
   });
@@ -129,7 +123,6 @@ describe("products.list", () => {
 
     expect(productNames(result.items)).toEqual(["Compact Loader", "Wheel LOADER"]);
     expect(result.total).toBe(2);
-    expect(result.pageCount).toBe(1);
   });
 
   test("applies search before paging and counting", async ({ context }) => {
@@ -147,7 +140,6 @@ describe("products.list", () => {
 
     expect(productNames(result.items)).toEqual(["Charlie Loader"]);
     expect(result.total).toBe(3);
-    expect(result.pageCount).toBe(2);
   });
 
   test("searches product names and IDs globally", async ({ context }) => {
@@ -239,7 +231,6 @@ describe("products.list", () => {
 
     expect(productNames(result.items)).toEqual(["Bravo Loader"]);
     expect(result.total).toBe(1);
-    expect(result.pageCount).toBe(1);
   });
 });
 

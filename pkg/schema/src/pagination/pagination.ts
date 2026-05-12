@@ -9,17 +9,11 @@ export const PagedQueryInput = z.object({
 export type PagedQueryResult<TItem> = {
   items: TItem[];
   total: number;
-  page: number;
-  pageSize: number;
-  pageCount: number;
 };
 
 export function createPagedQueryResult<ItemSchema extends z.ZodType>(itemSchema: ItemSchema) {
   return z.object({
     items: z.array(itemSchema),
     total: z.number().int().nonnegative(),
-    page: z.number().int().min(1),
-    pageSize: z.number().int().min(1),
-    pageCount: z.number().int().min(1),
   });
 }

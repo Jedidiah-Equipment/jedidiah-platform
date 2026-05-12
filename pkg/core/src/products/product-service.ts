@@ -1,17 +1,16 @@
 import type { Database } from "@pkg/db";
+import { isUniqueViolation, withPagination } from "@pkg/db/query-utils";
 import { products } from "@pkg/db/schema";
-import {
-  type Product,
+import type {
+  Product,
   ProductCreateInput,
   ProductListInput,
-  type ProductListResult,
+  ProductListResult,
   ProductUpdateInput,
 } from "@pkg/schema";
-import { and, asc, count, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
 
 import { DuplicateProductNameError, ProductNotFoundError } from "./product-errors.js";
-
-export type ProductDatabase = Database;
 
 type ProductRow = typeof products.$inferSelect;
 
@@ -23,33 +22,30 @@ export function mapProduct(row: ProductRow): Product {
 }
 
 export async function listProducts(
-  database: ProductDatabase,
-  input: ProductListInput = ProductListInput.parse(undefined),
+  database: Database,
+  input: ProductListInput,
 ): Promise<ProductListResult> {
   const sortColumn = input.sortBy === "id" ? products.id : products.name;
   const orderBy = input.sortDirection === "desc" ? desc(sortColumn) : asc(sortColumn);
-  const offset = (input.page - 1) * input.pageSize;
   const where = buildProductListWhere(input);
-
-  const [rows, totalRows] = await Promise.all([
+  const rowsQuery = withPagination(
     database
-      .select()
+      .select({
+        id: products.id,
+        name: products.name,
+      })
       .from(products)
       .where(where)
       .orderBy(orderBy)
-      .limit(input.pageSize)
-      .offset(offset),
-    database.select({ total: count() }).from(products).where(where),
-  ]);
+      .$dynamic(),
+    input,
+  );
 
-  const total = totalRows[0]?.total ?? 0;
+  const [rows, total] = await Promise.all([rowsQuery, database.$count(products, where)]);
 
   return {
     items: rows.map(mapProduct),
     total,
-    page: input.page,
-    pageSize: input.pageSize,
-    pageCount: Math.max(1, Math.ceil(total / input.pageSize)),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
   };
@@ -82,13 +78,11 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
 }
 
 export async function createProduct(
-  database: ProductDatabase,
+  database: Database,
   input: ProductCreateInput,
 ): Promise<Product> {
-  const createInput = ProductCreateInput.parse(input);
-
   try {
-    const [row] = await database.insert(products).values(createInput).returning();
+    const [row] = await database.insert(products).values(input).returning();
 
     if (!row) {
       throw new Error("Product insert did not return a row");
@@ -97,7 +91,7 @@ export async function createProduct(
     return mapProduct(row);
   } catch (error) {
     if (isUniqueViolation(error)) {
-      throw new DuplicateProductNameError(createInput.name);
+      throw new DuplicateProductNameError(input.name);
     }
 
     throw error;
@@ -105,40 +99,26 @@ export async function createProduct(
 }
 
 export async function updateProduct(
-  database: ProductDatabase,
+  database: Database,
   input: ProductUpdateInput,
 ): Promise<Product> {
-  const updateInput = ProductUpdateInput.parse(input);
-
   try {
     const [row] = await database
       .update(products)
-      .set({ name: updateInput.name })
-      .where(eq(products.id, updateInput.id))
+      .set({ name: input.name })
+      .where(eq(products.id, input.id))
       .returning();
 
     if (!row) {
-      throw new ProductNotFoundError(updateInput.id);
+      throw new ProductNotFoundError(input.id);
     }
 
     return mapProduct(row);
   } catch (error) {
     if (isUniqueViolation(error)) {
-      throw new DuplicateProductNameError(updateInput.name);
+      throw new DuplicateProductNameError(input.name);
     }
 
     throw error;
   }
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) {
-    return false;
-  }
-
-  if ("code" in error && error.code === "23505") {
-    return true;
-  }
-
-  return "cause" in error && isUniqueViolation(error.cause);
 }

@@ -1,4 +1,5 @@
 export * from "./auth/auth-id.js";
+export * from "./auth/authorization.js";
 export * from "./common/sort.js";
 export * from "./config/client-config.js";
 export * from "./domain/environment.js";

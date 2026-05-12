@@ -1,239 +1,133 @@
 # Authorization Architecture
 
-Status: proposed, not yet implemented
+Status: v1 product/user authorization slice implemented
 
-This document defines how the app should model roles, permissions, and authorization across the
-database, shared packages, API, and web app when the authorization slice begins. The current app
-uses Better Auth sessions plus protected tRPC procedures, but it does not yet implement app roles,
-capability checks, or resource-level authorization.
+This document defines how the app models roles, permissions, and authorization across the database,
+shared packages, API, and web app.
 
-The short version: keep the old "roles linked to use cases" idea, but rename use cases to
-**capabilities** and make them a typed, reviewed policy surface. Better Auth remains the
-authentication and session authority. App authorization is enforced at the API/service layer and
-mirrored in the web app only for navigation and UX.
+The current authorization slice is intentionally narrow: products and user role management. The app
+uses Better Auth for identity, session cookies, and global role storage. Application permissions are
+defined as typed capabilities and enforced in tRPC/API procedures. The dashboard is the authenticated
+landing page and is intentionally not permissioned. The web app mirrors feature checks only for
+navigation and user experience.
 
 ## Research Notes
 
-- Better Auth has a first-class Admin plugin for app-level user administration, role assignment, banning, impersonation, and role permission checks. It adds a `role` field to `user` and supports checking permissions from the server or client. See [Better Auth Admin plugin](https://better-auth.com/docs/plugins/admin).
-- Better Auth also has an Organization plugin for membership-scoped roles, organization permissions, invitations, teams, and optional dynamic role definitions stored in an `organizationRole` table. See [Better Auth Organization plugin](https://better-auth.com/docs/plugins/organization).
-- OWASP's authorization guidance is still the right baseline: least privilege, deny by default, validate permissions on every request, enforce server-side, and test authorization rules. See [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html).
-- The RBAC idea is not dated. NIST's model still maps cleanly to users, roles, and permissions. What is dated is using roles as the only question. Modern apps should combine role permissions with resource attributes such as ownership, assignment, status, stage, or organization. See [NIST RBAC](https://csrc.nist.gov/Projects/role-based-access-control/faqs).
+- Better Auth Admin plugin supports app-level user administration, global role assignment, banning,
+  impersonation, custom access-control roles, and server/client permission checks. See
+  [Better Auth Admin plugin](https://better-auth.com/docs/plugins/admin).
+- Better Auth Organization plugin supports membership-scoped roles, organizations, teams,
+  invitations, and dynamic organization roles. It remains deferred until the product needs tenant or
+  customer-account scoped access. See
+  [Better Auth Organization plugin](https://better-auth.com/docs/plugins/organization).
+- OWASP authorization guidance remains the baseline: least privilege, deny by default, validate
+  permissions on every request, enforce server-side, and test authorization rules. See
+  [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html).
+- RBAC is still a good fit for this slice. The NIST model maps cleanly to users, roles, and
+  permissions; future object-level rules can layer resource attributes on top. See
+  [NIST RBAC](https://csrc.nist.gov/Projects/role-based-access-control/faqs).
 
-## Recommendation
+## V1 Role Model
 
-Use **static app roles plus typed capabilities** for the first production slice.
+Use static global roles plus typed capabilities. Do not add custom app-owned `roles`,
+`permissions`, or role-permission join tables for this slice.
 
-Do not build bespoke `roles`, `usecases`, and join tables yet. The policy matrix should live in versioned code first, because these permissions are product behavior, need code review, and should be tested with the procedures they protect.
-
-Use Better Auth's Admin plugin for app-level role assignment and user administration when we implement this. Configure it with custom access control roles generated from our shared capability statement.
-
-Delay Better Auth's Organization plugin unless the product needs customer tenants, separate companies, branch-level membership, or runtime role customization. If those needs appear, prefer the Organization plugin and its dynamic access control over a custom role/usecase schema.
-
-## Terms
+Permissions:
 
 ```txt
-User
-  Authenticated Better Auth user.
-
-Role
-  Named job/access bundle assigned to a user, such as admin, sales, production, procurement, or viewer.
-
-Capability
-  A typed permission statement describing what the app allows, such as quote:create or job-stage:update.
-
-Policy
-  The role-to-capability matrix plus resource-level rules.
-
-Resource rule
-  A contextual check using object data, such as assigned_to_user_id, status, customer_id, or production_stage_id.
+product:read
+product:create
+product:update
+user:list
+user:edit
 ```
 
-Use "capability" in app code and docs. It is more precise than "usecase" and maps directly to Better Auth's resource/action access-control shape.
-
-## Policy Shape
-
-Capabilities should be resource/action pairs:
-
-```ts
-const authorizationStatement = {
-  dashboard: ["read"],
-  customer: ["read", "create", "update", "archive"],
-  quote: ["read", "create", "update", "approve", "convert"],
-  job: ["read", "create", "update", "cancel"],
-  jobStage: ["read", "assign", "updateStatus"],
-  procurement: ["read", "create", "update", "approve"],
-  product: ["read", "create", "update", "archive"],
-  user: ["read", "create", "updateRole", "ban"],
-} as const;
-```
-
-Roles grant capabilities:
+Roles:
 
 ```txt
 admin
-  Everything, including user administration.
+  product:read
+  product:create
+  product:update
+  user:list
+  user:edit
 
-manager
-  Broad read/write across commercial and operations workflows, limited user administration.
+product-editor
+  product:read
+  product:create
+  product:update
 
-sales
-  Customers, quotes, and quote-to-job conversion.
-
-production
-  Jobs and production stages.
-
-procurement
-  Procurement workflows and job read access.
-
-viewer
-  Read-only dashboard and assigned operational views.
+product-viewer
+  product:read
 ```
 
-These names are placeholders. Before implementation, define the first real role matrix from the screens and workflows in `docs/prototype-domain-erd.md`.
+New users default to `product-viewer`. The first `admin` is assigned manually or through seed data;
+the app does not promote the first signed-up user automatically.
 
 ## Layer Responsibilities
 
-### Database Layer
+### Database
 
-Database responsibilities:
-
-- Persist Better Auth users, sessions, accounts, verification rows, and plugin-owned role fields.
-- Persist app-owned domain records with user references such as `created_by_user_id`, `assigned_to_user_id`, and `changed_by_user_id`.
-- Persist audit events for role changes and sensitive authorization-relevant mutations once those workflows exist.
-- Enforce referential integrity where domain tables reference Better Auth users.
-
-Recommended first implementation:
-
-- Add Better Auth Admin plugin fields to `pkg/db/src/schema/auth.ts`: `role`, `banned`, `banReason`, `banExpires`, and `session.impersonatedBy`, following Better Auth's Drizzle schema expectations.
-- Keep role assignment on the Better Auth-owned `user` table for now.
-- Do not add app-owned `roles`, `permissions`, or `role_permissions` tables until there is a real runtime-editable role requirement.
-
-Important database boundaries:
-
+- Better Auth owns users, sessions, accounts, verification rows, and Admin plugin fields.
+- The `user` table stores the global role in `role`, defaulting to `product-viewer`.
+- Admin plugin fields live on Better Auth tables: `user.banned`, `user.ban_reason`,
+  `user.ban_expires`, and `session.impersonated_by`.
 - The database stores assignments and facts; code owns the default policy matrix.
-- Domain tables should not store duplicated authorization decisions such as `can_edit`.
-- Object-level facts should be queryable: creator, assignee, customer, stage, status, archived state, and ownership boundaries.
-- SQL migrations must be generated through `pnpm db:generate`, reviewed, and committed with schema changes.
+- Migrations are generated with `pnpm db:generate`, reviewed, and committed with schema changes.
 
-### Schema Layer
+### Schema
 
-`@pkg/schema` should stay lightweight and framework-independent.
+`@pkg/schema` defines the cross-package authorization contract:
 
-Schema responsibilities:
+- `AppRole`, `APP_ROLES`, and `DEFAULT_APP_ROLE`
+- `AppPermission` and `APP_PERMISSIONS`
+- `UserAccessSummary`, with one public `role` plus derived permissions
+- `UserSummary`, `UserListResult`, and `UserSetRoleInput`
 
-- Define Zod schemas for role slugs and capability query inputs/outputs that cross package boundaries.
-- Define serialized user-access summaries returned by app APIs.
-- Avoid importing Better Auth, Drizzle, Fastify, React, or direct `process.env`.
+The schema package validates boundary data. It does not own the role-to-permission matrix.
 
-Likely shapes:
+### Core
 
-```ts
-RoleSlug
-CapabilityResource
-CapabilityAction
-UserAccessSummary
-```
+`@pkg/core` owns pure authorization policy:
 
-The schema package should not own the policy matrix. It should validate data at boundaries.
+- `authorizationStatement`
+- `appRoleAccess`
+- `normalizeAppRoles`
+- `getRolePermissions`
+- `createUserAccessSummary`
+- `hasPermission`
 
-### Core Layer
+Unknown or missing roles normalize to no access. This keeps authorization deny-by-default even if a
+stored role is invalid. Better Auth can store multiple roles, so policy helpers still tolerate that
+shape internally, but the app exposes a single `role` in `UserAccessSummary` for the v1 user model.
 
-`@pkg/core` should own pure authorization policy and checks.
-
-Core responsibilities:
-
-- Define the canonical authorization statement.
-- Define app role slugs.
-- Define the role-to-capability matrix.
-- Provide pure helpers such as `roleHasCapability`, `rolesHaveCapability`, `normalizeRoles`, and `canAccessNavigationItem`.
-- Provide pure resource-rule helpers where the rule can be expressed without database or framework imports.
-
-Keep the Better Auth adapter thin:
-
-- Option A: build Better Auth `ac` and role objects directly in `@pkg/core` using `better-auth/plugins/access`.
-- Option B: export plain statement/matrix objects from `@pkg/core`, then build Better Auth `ac` objects in `pkg/api` and `pkg/web`.
-
-Prefer Option B if we want `@pkg/core` to remain completely vendor-neutral. Prefer Option A if Better Auth's access-control types are valuable enough to share directly. Either path is acceptable, but do not duplicate the policy matrix in both API and web.
-
-### API Layer
+### API
 
 The API is the enforcement authority.
 
-API responsibilities:
+- tRPC context loads the Better Auth session and derives `ctx.access`.
+- `protectedProcedure` requires a signed-in session.
+- `authorizedProcedure(permission)` requires both a session and the named app permission.
+- Dashboard access is covered by authentication only, not by `authorizedProcedure`.
+- Product procedures are gated by `product:read`, `product:create`, and `product:update`.
+- User procedures are gated by `user:list` and `user:edit`.
+- `users.setRole` accepts only v1 roles and rejects changing the current user's own role.
+- Anonymous requests return `UNAUTHORIZED`; signed-in users without permission return `FORBIDDEN`.
 
-- Load the Better Auth session in tRPC context.
-- Attach a normalized access summary to context: user ID, roles, and a capability checker.
-- Provide authorization middleware next to `protectedProcedure`, such as `authorizedProcedure({ quote: ["create"] })`.
-- Enforce resource-level rules in services after loading the target row.
-- Return `UNAUTHORIZED` when there is no session and `FORBIDDEN` when the user is signed in but lacks access.
-- Log denied access for sensitive workflows without leaking private record details to the client.
+App feature routers should not call Better Auth directly by default. Auth state enters app code
+through tRPC context and focused authorization helpers.
 
-Recommended procedure pattern:
+### Web
 
-```ts
-export const createQuote = authorizedProcedure({
-  quote: ["create"],
-})
-  .input(CreateQuoteInput)
-  .mutation(({ ctx, input }) => quoteService.create(ctx.authz, input));
-```
+The web app uses permissions for UX only.
 
-Recommended service pattern:
-
-```ts
-const quote = await quoteRepository.findById(input.quoteId);
-
-assertCan(ctx.authz, { quote: ["update"] });
-assertCanUpdateQuoteResource(ctx.authz, quote);
-```
-
-The first check answers "does this role have the capability?" The second answers "does this user have access to this object in this state?"
-
-App modules should not call Better Auth directly by default. Better Auth remains behind `auth/`, tRPC context, and focused authorization helpers.
-
-### Web Layer
-
-The web app may hide, disable, or redirect for UX, but it is not the security boundary.
-
-Web responsibilities:
-
-- Use session/access summary data from Better Auth and app tRPC queries.
-- Filter sidebar items, route links, buttons, and dashboard cards based on capabilities.
-- Use route `beforeLoad` checks for coarse redirects such as unauthenticated users or users with no dashboard access.
-- Render "not allowed" states when server responses return `FORBIDDEN`.
-- Avoid embedding privileged assumptions into client-only logic.
-
-Recommended web pattern:
-
-```ts
-const canCreateQuote = useCan({ quote: ["create"] });
-```
-
-Use this for presentation only. The API must repeat the check.
-
-## Better Auth Plugin Decision
-
-### Use Admin Plugin First
-
-Use Better Auth Admin plugin when we implement app roles because:
-
-- This app currently looks like a single-company operational platform.
-- Roles are global job/access bundles, not yet scoped to customer tenants or separate organizations.
-- The plugin already supports role assignment and permission checks.
-- It fits the current Better Auth-owned user table.
-
-Configure custom access control rather than relying only on built-in `admin` and `user` roles.
-
-### Add Organization Plugin Later If Needed
-
-Add Better Auth Organization plugin if the product needs:
-
-- Multiple companies or branches in one deployment.
-- Customer portal users who belong to customer accounts.
-- Membership-scoped roles, invitations, or teams.
-- Runtime-editable roles per organization.
-
-If this happens, role assignment moves from global `user.role` toward organization membership roles. Global app roles may still exist for platform staff, but tenant access should be membership-scoped.
+- `auth.access` returns the current `UserAccessSummary`.
+- Sidebar items and product controls are hidden when the user lacks the matching permission.
+- Products are visible to all v1 roles because all v1 roles include `product:read`.
+- Product creation is visible only with `product:create`.
+- Product editing is visible only with `product:update`.
+- The Users page and Users nav item are visible only with `user:list`.
+- Server-side API checks remain the security boundary.
 
 ## Deny-By-Default Rules
 
@@ -244,63 +138,19 @@ If this happens, role assignment moves from global `user.role` toward organizati
 - New roles grant no access until capabilities are explicitly assigned.
 - Client checks never replace API checks.
 
-## Object-Level Rules
+## Future Expansion
 
-Role capabilities are necessary but not always sufficient.
+Use Better Auth Organization plugin later if the product needs:
 
-Examples:
+- multiple companies, branches, or customer accounts in one deployment
+- customer portal users
+- membership-scoped roles
+- invitations or teams
+- runtime-editable roles per organization
 
-```txt
-jobStage:updateStatus
-  Allowed for production roles, but service rules may require the user to be assigned to the stage or have manager override.
+When that happens, tenant access should move toward organization membership roles. Global app roles
+can still exist for platform staff.
 
-quote:update
-  Allowed for sales roles, but service rules may block updates after approval unless the user has quote:approve or manager override.
-
-customer:read
-  Allowed broadly for internal staff now, but a future customer portal would require customer membership or relationship checks.
-```
-
-Do not create roles like `sales_can_edit_draft_quotes_but_not_approved_quotes`. Keep the role capability simple and put status/ownership checks in resource rules.
-
-## Testing Strategy
-
-Core tests:
-
-- Every role has exactly the expected capabilities.
-- Unknown roles normalize to no access.
-- New capability additions require explicit role matrix decisions.
-
-API tests:
-
-- Unauthenticated requests return `UNAUTHORIZED`.
-- Authenticated users without capability return `FORBIDDEN`.
-- Users with capability pass the procedure-level check.
-- Resource-level denials are covered for ownership, assignment, archived state, and status transitions.
-
-Web tests:
-
-- Navigation hides inaccessible entries.
-- Forbidden server responses render useful blocked states.
-- Route guards redirect unauthenticated users without treating client checks as final authority.
-
-## Migration Path
-
-1. Define the first capability statement and role matrix in an architecture PR.
-2. Add Better Auth Admin plugin fields to the Drizzle schema.
-3. Generate and review SQL migrations.
-4. Add shared authorization helpers.
-5. Add `authorizedProcedure` and API tests.
-6. Update `auth.me` or a new `auth.access` query to return a user access summary.
-7. Gate sidebar and first workflows in the web app.
-8. Add audit logging around role changes and sensitive denied attempts.
-
-## Open Questions
-
-- Are all users internal Jedidiah staff in the first release, or will customers log into the same app?
-- Are roles assigned globally, or does access vary by branch, department, customer account, or team?
-- Should managers have override capabilities, or should override be a separate role/capability?
-- Which workflows are read-only for shop-floor users versus editable?
-- Should role changes require audit notes or approval?
-
-Until those answers change the shape, the tightest pattern is static typed app capabilities, Better Auth Admin role assignment, API-centered enforcement, and resource rules for contextual decisions.
+Future workflow permissions should keep the same capability pattern, such as `quote:create` or
+`job-stage:update-status`. Contextual rules like assignment, status, or customer ownership should
+live in API/service resource checks rather than exploding role names.

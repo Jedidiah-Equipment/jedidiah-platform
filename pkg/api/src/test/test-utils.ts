@@ -1,6 +1,8 @@
+import type { AppRole } from "@pkg/schema";
+
 import type { Context } from "@/trpc/context.js";
 
-export function mockSession(): NonNullable<Context["session"]> {
+export function mockSession(role: AppRole = "admin"): NonNullable<Context["session"]> {
   return {
     session: {
       id: "test-session-id",
@@ -18,6 +20,7 @@ export function mockSession(): NonNullable<Context["session"]> {
       email: "test@example.com",
       emailVerified: true,
       image: null,
+      role,
       createdAt: new Date(),
       updatedAt: new Date(),
     },

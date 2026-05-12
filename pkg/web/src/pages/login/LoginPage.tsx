@@ -31,12 +31,8 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
         const result = await authClient.signIn.email(value);
 
         if (result.error) {
-          const signUpResult = await signUpPrototypeUser(value);
-
-          if (signUpResult.error) {
-            setError(result.error.message ?? "Unable to sign in.");
-            return;
-          }
+          setError(result.error.message ?? "Unable to sign in.");
+          return;
         }
 
         await navigate({ to: "/dashboard" });
@@ -102,14 +98,3 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
     </section>
   );
 };
-
-async function signUpPrototypeUser(values: { email: string; password: string }) {
-  // BIG WARNING: EARLY PROTOTYPE ONLY.
-  // This intentionally creates a user from the login form when sign-in fails.
-  // Remove this before real users, public environments, invitations, or access control exist.
-  return authClient.signUp.email({
-    email: values.email,
-    password: values.password,
-    name: values.email,
-  });
-}

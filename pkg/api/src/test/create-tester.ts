@@ -1,3 +1,4 @@
+import { createUserAccessSummary } from "@pkg/core";
 import { createDatabaseClient, type Database, type DatabaseClient } from "@pkg/db/database-client";
 import {
   createEphemeralTestDatabase,
@@ -24,7 +25,7 @@ export type TesterScope = {
 
 export type TesterContext = {
   createAnonCaller: () => AppRouterCaller;
-  createCaller: (session?: Context["session"]) => AppRouterCaller;
+  createCaller: (session?: NonNullable<Context["session"]>) => AppRouterCaller;
 };
 
 type CreateTesterContext<T extends object> = (scope: TesterScope & TesterContext) => Promise<T> | T;
@@ -49,16 +50,24 @@ export function createTester<T extends object = Record<string, never>>(
           const callerContext: TesterContext = {
             createAnonCaller: () =>
               createAppRouterCaller({
+                access: null,
                 db: databaseClient.db,
                 req: {} as Context["req"],
                 session: null,
               }),
-            createCaller: (session = mockSession()) =>
-              createAppRouterCaller({
+            createCaller: (session = mockSession()) => {
+              const role = (session.user as { role?: unknown }).role;
+
+              return createAppRouterCaller({
+                access: createUserAccessSummary({
+                  role,
+                  userId: session.user.id,
+                }),
                 db: databaseClient.db,
                 req: {} as Context["req"],
                 session,
-              }),
+              });
+            },
           };
           const context = await createContext({
             ...callerContext,

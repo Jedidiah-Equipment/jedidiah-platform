@@ -1,3 +1,5 @@
+import { hasPermission } from "@pkg/core";
+import type { AppPermission } from "@pkg/schema";
 import { initTRPC, TRPCError } from "@trpc/server";
 
 import type { Context } from "./context.js";
@@ -23,3 +25,21 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
     },
   });
 });
+
+export function authorizedProcedure(permission: AppPermission) {
+  return protectedProcedure.use(({ ctx, next }) => {
+    if (!ctx.access || !hasPermission(ctx.access, permission)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You do not have permission to perform this action.",
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        access: ctx.access,
+      },
+    });
+  });
+}

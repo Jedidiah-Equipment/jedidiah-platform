@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { Separator } from "@/components/ui/separator.js";
+import { useCan } from "@/hooks/use-access.js";
 import { useTRPC } from "@/lib/trpc.js";
 import { ProductForm } from "./components/ProductForm.js";
 import { ProductTable } from "./components/ProductTable.js";
@@ -21,6 +22,8 @@ import { ProductTable } from "./components/ProductTable.js";
 export const ProductsPage: React.FC = () => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const canCreateProduct = useCan("product:create").can;
+  const canUpdateProduct = useCan("product:update").can;
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -60,15 +63,20 @@ export const ProductsPage: React.FC = () => {
               <CardDescription>Catalog</CardDescription>
               <CardTitle>Products</CardTitle>
             </div>
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <PlusIcon data-icon="inline-start" />
-              New product
-            </Button>
+            {canCreateProduct ? (
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <PlusIcon data-icon="inline-start" />
+                New product
+              </Button>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Separator />
-          <ProductTable onEditProduct={setEditingProduct} />
+          <ProductTable
+            onEditProduct={canUpdateProduct ? setEditingProduct : undefined}
+            showEditActions={canUpdateProduct}
+          />
         </CardContent>
       </Card>
 

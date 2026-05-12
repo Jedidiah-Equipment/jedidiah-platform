@@ -8,18 +8,18 @@ import {
 import { ProductCreateInput, ProductListInput, ProductUpdateInput } from "@pkg/schema";
 import { TRPCError } from "@trpc/server";
 
-import { protectedProcedure, router } from "../../trpc/init.js";
+import { authorizedProcedure, router } from "../../trpc/init.js";
 
 export const productsRouter = router({
-  list: protectedProcedure
+  list: authorizedProcedure("product:read")
     .input(ProductListInput)
     .query(({ ctx, input }) => listProducts(ctx.db, input)),
 
-  create: protectedProcedure
+  create: authorizedProcedure("product:create")
     .input(ProductCreateInput)
     .mutation(({ ctx, input }) => mapProductErrors(() => createProduct(ctx.db, input))),
 
-  update: protectedProcedure
+  update: authorizedProcedure("product:update")
     .input(ProductUpdateInput)
     .mutation(({ ctx, input }) => mapProductErrors(() => updateProduct(ctx.db, input))),
 });

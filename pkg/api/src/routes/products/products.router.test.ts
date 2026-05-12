@@ -2,6 +2,7 @@ import type { Product } from "@pkg/schema";
 import { describe, expect } from "vitest";
 
 import { type AppRouterCaller, createTester } from "@/test/create-tester.js";
+import { mockSession } from "@/test/test-utils.js";
 
 const test = createTester();
 
@@ -66,6 +67,21 @@ describe("products.create", () => {
 
     expect(createResult.name).toBe("Reusable Isolated Name");
   });
+
+  test("allows product editors to create products", async ({ context }) => {
+    const caller = context.createCaller(mockSession("product-editor"));
+    const created = await createProduct(caller, "Editor Created Product");
+
+    expect(created.name).toBe("Editor Created Product");
+  });
+
+  test("rejects product viewers", async ({ context }) => {
+    const caller = context.createCaller(mockSession("product-viewer"));
+
+    await expect(caller.products.create({ name: "Read Only Product" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
 });
 
 describe("products.list", () => {
@@ -75,6 +91,17 @@ describe("products.list", () => {
     await expect(caller.products.list({})).rejects.toMatchObject({
       code: "UNAUTHORIZED",
     });
+  });
+
+  test("allows product viewers to list products", async ({ context }) => {
+    const adminCaller = context.createCaller();
+    const viewerCaller = context.createCaller(mockSession("product-viewer"));
+
+    await createProduct(adminCaller, "Viewer Product");
+
+    const result = await viewerCaller.products.list({});
+
+    expect(productNames(result.items)).toEqual(["Viewer Product"]);
   });
 
   test("lists products with default name sorting", async ({ context }) => {
@@ -273,6 +300,34 @@ describe("products.update", () => {
     ).rejects.toMatchObject({
       code: "NOT_FOUND",
       message: "Product not found.",
+    });
+  });
+
+  test("allows product editors to update products", async ({ context }) => {
+    const adminCaller = context.createCaller();
+    const editorCaller = context.createCaller(mockSession("product-editor"));
+    const created = await createProduct(adminCaller, "Editor Product");
+
+    const updated = await editorCaller.products.update({
+      id: created.id,
+      name: "Editor Product Plus",
+    });
+
+    expect(updated.name).toBe("Editor Product Plus");
+  });
+
+  test("rejects product viewers", async ({ context }) => {
+    const adminCaller = context.createCaller();
+    const viewerCaller = context.createCaller(mockSession("product-viewer"));
+    const created = await createProduct(adminCaller, "Viewer Update Product");
+
+    await expect(
+      viewerCaller.products.update({
+        id: created.id,
+        name: "Viewer Update Product Plus",
+      }),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
     });
   });
 });

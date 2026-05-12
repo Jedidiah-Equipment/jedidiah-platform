@@ -2,8 +2,10 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { db } from "@pkg/db";
 import * as schema from "@pkg/db/schema";
 import { betterAuth } from "better-auth";
+import { admin as adminPlugin } from "better-auth/plugins";
 import { recordMockEmail } from "../email/mock-email.js";
 import { getApiConfig } from "../env.js";
+import { ac, authRoles, defaultAuthRole } from "./access-control.js";
 
 const config = getApiConfig();
 
@@ -16,6 +18,14 @@ export const auth = betterAuth({
     provider: "pg",
     schema,
   }),
+  plugins: [
+    adminPlugin({
+      ac,
+      adminRoles: ["admin"],
+      defaultRole: defaultAuthRole,
+      roles: authRoles,
+    }),
+  ],
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,

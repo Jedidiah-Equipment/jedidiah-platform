@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button.js";
 import { useTRPC } from "@/lib/trpc.js";
 
 type ProductTableProps = {
-  onEditProduct: (product: Product) => void;
+  onEditProduct: ((product: Product) => void) | undefined;
+  showEditActions: boolean;
 };
 
 export const useProductTableStore = createPersistedDataTableStore({
@@ -34,7 +35,7 @@ export const useProductTableStore = createPersistedDataTableStore({
   persistName: "products-table",
 });
 
-export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => {
+export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showEditActions }) => {
   const trpc = useTRPC();
   const productListInput = useProductListInput();
 
@@ -71,8 +72,8 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
   );
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize));
 
-  const columns = useMemo<ColumnDef<Product>[]>(
-    () => [
+  const columns = useMemo<ColumnDef<Product>[]>(() => {
+    const tableColumns: ColumnDef<Product>[] = [
       {
         accessorKey: "name",
         cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
@@ -97,7 +98,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
           <div className="text-right">
             <Button
               aria-label={`Edit ${row.original.name}`}
-              onClick={() => onEditProduct(row.original)}
+              onClick={() => onEditProduct?.(row.original)}
               size="icon-sm"
               variant="outline"
             >
@@ -113,9 +114,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
           headerClassName: "w-20 text-right",
         },
       },
-    ],
-    [onEditProduct],
-  );
+    ];
+
+    return showEditActions && onEditProduct ? tableColumns : tableColumns.slice(0, -1);
+  }, [onEditProduct, showEditActions]);
 
   useEffect(() => {
     const maxPageIndex = Math.max(pageCount - 1, 0);

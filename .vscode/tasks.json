@@ -75,6 +75,17 @@
         "color": "terminal.ansiCyan"
       },
       "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Kill Web And Api",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["kill:web-api"],
+      "icon": {
+        "id": "debug-stop",
+        "color": "terminal.ansiRed"
+      },
+      "problemMatcher": []
     }
   ]
 }

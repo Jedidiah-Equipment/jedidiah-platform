@@ -6,12 +6,13 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @pkg/api --filter @pkg/web dev",
+    "dev": "turbo run dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "test": "turbo run test",
+    "kill:web-api": "sh scripts/kill-web-api.sh",
     "db:up": "docker compose up -d postgres",
     "db:generate": "pnpm --filter @pkg/db db:generate",
     "db:migrate": "pnpm --filter @pkg/db build pnpm --filter @pkg/db db:migrate",

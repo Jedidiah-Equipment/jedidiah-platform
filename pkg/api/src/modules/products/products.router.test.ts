@@ -67,6 +67,7 @@ test("creates, lists, and updates products for authenticated users", async ({ co
   const listResult = await caller.products.list({
     page: 1,
     pageSize: 10,
+    columnFilters: {},
     search: "",
     sortBy: "name",
     sortDirection: "asc",
@@ -97,6 +98,7 @@ test("filters product lists by name search for authenticated users", async ({ co
   const listResult = await caller.products.list({
     page: 1,
     pageSize: 10,
+    columnFilters: {},
     search: "loader",
     sortBy: "name",
     sortDirection: "asc",

@@ -1,8 +1,7 @@
-import { type Product, ProductListInput } from "@pkg/schema";
-import { useNavigate } from "@tanstack/react-router";
+import type { Product } from "@pkg/schema";
 import { PlusIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js";
@@ -18,17 +17,10 @@ import { trpc } from "@/lib/trpc.js";
 import { ProductForm } from "./components/ProductForm.js";
 import { ProductTable } from "./components/ProductTable.js";
 
-type ProductsPageProps = {
-  search: ProductListInput;
-};
-
-export const ProductsPage: React.FC<ProductsPageProps> = ({ search }) => {
-  const navigate = useNavigate();
+export const ProductsPage: React.FC = () => {
   const trpcUtils = trpc.useUtils();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [searchText, setSearchText] = useState(search.search);
-  const productsQuery = trpc.products.list.useQuery(search);
   const createProductMutation = trpc.products.create.useMutation({
     onSuccess: async () => {
       await trpcUtils.products.list.invalidate();
@@ -49,58 +41,6 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ search }) => {
       toast.error(error.message);
     },
   });
-  const products = productsQuery.data?.items ?? [];
-  const total = productsQuery.data?.total ?? 0;
-  const pageCount = productsQuery.data?.pageCount ?? 1;
-
-  const updateSearch = useCallback(
-    (updates: Partial<ProductListInput>) => {
-      const nextSearch = ProductListInput.parse({
-        ...search,
-        ...updates,
-      });
-
-      if (JSON.stringify(nextSearch) === JSON.stringify(search)) {
-        return;
-      }
-
-      void navigate({
-        to: "/products",
-        search: nextSearch,
-      });
-    },
-    [navigate, search],
-  );
-
-  useEffect(() => {
-    setSearchText(search.search);
-  }, [search.search]);
-
-  useEffect(() => {
-    if (searchText === search.search) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      updateSearch({
-        page: 1,
-        search: searchText,
-      });
-    }, 250);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [search.search, searchText, updateSearch]);
-
-  const updateTableSearch = (updates: Partial<ProductListInput>) => {
-    void navigate({
-      to: "/products",
-      search: ProductListInput.parse({
-        ...search,
-        ...updates,
-      }),
-    });
-  };
-
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <Card>
@@ -118,17 +58,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ search }) => {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Separator />
-          <ProductTable
-            isLoading={productsQuery.isLoading}
-            pageCount={pageCount}
-            products={products}
-            search={search}
-            searchText={searchText}
-            total={total}
-            onEditProduct={setEditingProduct}
-            onSearchTextChange={setSearchText}
-            onTableChange={updateTableSearch}
-          />
+          <ProductTable onEditProduct={setEditingProduct} />
         </CardContent>
       </Card>
 

@@ -7,7 +7,7 @@ import {
   type ProductListResult,
   ProductUpdateInput,
 } from "@pkg/schema";
-import { asc, count, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
 
 import { DuplicateProductNameError, ProductNotFoundError } from "./product-errors.js";
 
@@ -30,7 +30,7 @@ export async function listProducts(
   const sortColumn = listInput.sortBy === "id" ? products.id : products.name;
   const orderBy = listInput.sortDirection === "desc" ? desc(sortColumn) : asc(sortColumn);
   const offset = (listInput.page - 1) * listInput.pageSize;
-  const where = listInput.search ? ilike(products.name, `%${listInput.search}%`) : undefined;
+  const where = buildProductListWhere(listInput);
 
   const [rows, totalRows] = await Promise.all([
     database
@@ -54,6 +54,32 @@ export async function listProducts(
     sortBy: listInput.sortBy,
     sortDirection: listInput.sortDirection,
   };
+}
+
+function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
+  const conditions: SQL[] = [];
+
+  if (listInput.search) {
+    const searchPattern = `%${listInput.search}%`;
+    const globalSearchWhere = or(
+      ilike(products.name, searchPattern),
+      sql`${products.id}::text ilike ${searchPattern}`,
+    );
+
+    if (globalSearchWhere) {
+      conditions.push(globalSearchWhere);
+    }
+  }
+
+  if (listInput.columnFilters.name) {
+    conditions.push(ilike(products.name, `%${listInput.columnFilters.name}%`));
+  }
+
+  if (listInput.columnFilters.id) {
+    conditions.push(sql`${products.id}::text ilike ${`%${listInput.columnFilters.id}%`}`);
+  }
+
+  return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
 export async function createProduct(

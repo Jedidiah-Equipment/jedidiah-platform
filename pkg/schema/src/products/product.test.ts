@@ -22,6 +22,7 @@ describe("product schemas", () => {
 
   it("defaults list paging and sorting", () => {
     expect(ProductListInput.parse(undefined)).toEqual({
+      columnFilters: {},
       page: 1,
       pageSize: 10,
       search: "",
@@ -36,10 +37,18 @@ describe("product schemas", () => {
         page: "2",
         pageSize: "25",
         search: "  loader  ",
+        columnFilters: {
+          id: "  abc  ",
+          name: "  compact  ",
+        },
         sortBy: "id",
         sortDirection: "desc",
       }),
     ).toEqual({
+      columnFilters: {
+        id: "abc",
+        name: "compact",
+      },
       page: 2,
       pageSize: 25,
       search: "loader",

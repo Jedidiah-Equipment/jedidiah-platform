@@ -18,6 +18,14 @@ export const ProductSortBy = z.enum(["id", "name"]);
 export type SortDirection = z.infer<typeof SortDirection>;
 export const SortDirection = z.enum(["asc", "desc"]);
 
+export type ProductColumnFilters = z.infer<typeof ProductColumnFilters>;
+export const ProductColumnFilters = z
+  .object({
+    id: z.string().trim().optional(),
+    name: z.string().trim().optional(),
+  })
+  .default({});
+
 export type ProductCreateInput = z.infer<typeof ProductCreateInput>;
 export const ProductCreateInput = z.object({
   name: ProductName,
@@ -36,6 +44,7 @@ export const ProductListInput = z.preprocess(
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(10),
     search: z.string().trim().default(""),
+    columnFilters: ProductColumnFilters,
     sortBy: ProductSortBy.default("name"),
     sortDirection: SortDirection.default("asc"),
   }),

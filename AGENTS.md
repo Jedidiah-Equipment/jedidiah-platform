@@ -99,6 +99,9 @@ Guidance for coding agents working in this repository.
 - `/dashboard` is the authenticated app shell and should redirect unauthenticated users to `/login`.
 - Public browser config comes from `/env.js`; do not use `VITE_*` for deploy-time URLs.
 - Use TanStack Form with Zod for forms.
+- When reading multiple values or actions from a Zustand store in one component or hook, use one
+  selector wrapped with `useShallow` from `zustand/react/shallow`; do not call the store hook
+  repeatedly for individual fields.
 - Keep styling lean with Tailwind. Do not add shadcn primitives until requested.
 
 ## Verification

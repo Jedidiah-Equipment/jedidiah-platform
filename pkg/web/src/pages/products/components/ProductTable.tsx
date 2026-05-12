@@ -1,89 +1,127 @@
 import type { Product, ProductListInput } from "@pkg/schema";
+import { keepPreviousData } from "@tanstack/react-query";
 import {
-  type Column,
   type ColumnDef,
-  flexRender,
-  functionalUpdate,
+  type ColumnFiltersState,
   getCoreRowModel,
   type PaginationState,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, PencilIcon } from "lucide-react";
+import { PencilIcon } from "lucide-react";
 import type React from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { DataTable } from "@/components/data-table/DataTable.js";
+import { createPersistedDataTableStore } from "@/components/data-table/data-table-store.js";
 import { Button } from "@/components/ui/button.js";
-import { Input } from "@/components/ui/input.js";
-import { Skeleton } from "@/components/ui/skeleton.js";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table.js";
-import { ProductPagination } from "./ProductPagination.js";
+import { trpc } from "@/lib/trpc.js";
 
 type ProductTableProps = {
-  isLoading: boolean;
-  pageCount: number;
-  products: Product[];
-  search: ProductListInput;
-  searchText: string;
-  total: number;
   onEditProduct: (product: Product) => void;
-  onSearchTextChange: (value: string) => void;
-  onTableChange: (updates: Partial<ProductListInput>) => void;
 };
 
-export const ProductTable: React.FC<ProductTableProps> = ({
-  isLoading,
-  pageCount,
-  products,
-  search,
-  searchText,
-  total,
-  onEditProduct,
-  onSearchTextChange,
-  onTableChange,
-}) => {
-  const pagination = useMemo<PaginationState>(
-    () => ({
-      pageIndex: search.page - 1,
-      pageSize: search.pageSize,
-    }),
-    [search.page, search.pageSize],
-  );
-  const sorting = useMemo<SortingState>(
-    () => [
+export const useProductTableStore = createPersistedDataTableStore({
+  initialState: {
+    sorting: [
       {
-        id: search.sortBy,
-        desc: search.sortDirection === "desc",
+        id: "name",
+        desc: false,
       },
     ],
-    [search.sortBy, search.sortDirection],
+  },
+  persistName: "products-table",
+});
+
+export function useProductListInput(): ProductListInput {
+  const { columnFilters, globalFilter, pagination, sorting } = useProductTableStore(
+    useShallow((state) => ({
+      columnFilters: state.columnFilters,
+      globalFilter: state.globalFilter,
+      pagination: state.pagination,
+      sorting: state.sorting,
+    })),
   );
+  const sort = sorting[0];
+
+  return useMemo(
+    () =>
+      ({
+        columnFilters: {
+          id: getColumnFilterValue(columnFilters, "id"),
+          name: getColumnFilterValue(columnFilters, "name"),
+        },
+        page: pagination.pageIndex + 1,
+        pageSize: pagination.pageSize,
+        search: globalFilter,
+        sortBy: sort?.id === "id" ? "id" : "name",
+        sortDirection: sort?.desc ? "desc" : "asc",
+      }) satisfies ProductListInput,
+    [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort?.desc, sort?.id],
+  );
+}
+
+export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => {
+  const productListInput = useProductListInput();
+  const productsQuery = trpc.products.list.useQuery(productListInput, {
+    placeholderData: keepPreviousData,
+  });
+  const products = productsQuery.data?.items ?? [];
+  const total = productsQuery.data?.total ?? 0;
+  const pageCount = productsQuery.data?.pageCount ?? 1;
+  const isLoading = productsQuery.isLoading && productsQuery.data === undefined;
+  const {
+    columnFilters,
+    globalFilter,
+    pagination,
+    setColumnFilters,
+    setGlobalFilter,
+    setPageIndex,
+    setPagination,
+    setSorting,
+    sorting,
+  } = useProductTableStore(
+    useShallow((state) => ({
+      columnFilters: state.columnFilters,
+      globalFilter: state.globalFilter,
+      pagination: state.pagination,
+      setColumnFilters: state.setColumnFilters,
+      setGlobalFilter: state.setGlobalFilter,
+      setPageIndex: state.setPageIndex,
+      setPagination: state.setPagination,
+      setSorting: state.setSorting,
+      sorting: state.sorting,
+    })),
+  );
+
+  console.log({
+    length: products.length,
+    isLoading: productsQuery.isLoading,
+    isFetching: productsQuery.isFetching,
+  });
+
   const columns = useMemo<ColumnDef<Product>[]>(
     () => [
       {
         accessorKey: "name",
-        header: ({ column }) => <SortButton column={column} label="Name" />,
         cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: "Name",
       },
       {
         accessorKey: "id",
-        header: ({ column }) => <SortButton column={column} label="ID" />,
         cell: ({ row }) => (
           <span className="block max-w-[240px] truncate font-mono text-xs text-muted-foreground">
             {row.original.id}
           </span>
         ),
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: "ID",
       },
       {
         id: "actions",
-        enableSorting: false,
-        header: () => <span className="sr-only">Actions</span>,
         cell: ({ row }) => (
           <div className="text-right">
             <Button
@@ -97,10 +135,25 @@ export const ProductTable: React.FC<ProductTableProps> = ({
             </Button>
           </div>
         ),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: () => <span className="sr-only">Actions</span>,
+        meta: {
+          cellClassName: "text-right",
+          headerClassName: "w-20 text-right",
+        },
       },
     ],
     [onEditProduct],
   );
+  useEffect(() => {
+    const maxPageIndex = Math.max(pageCount - 1, 0);
+
+    if (pagination.pageIndex > maxPageIndex) {
+      setPageIndex(maxPageIndex);
+    }
+  }, [pageCount, pagination.pageIndex, setPageIndex]);
+
   const table = useReactTable({
     columns,
     data: products,
@@ -109,149 +162,64 @@ export const ProductTable: React.FC<ProductTableProps> = ({
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
+    onColumnFiltersChange: (updater) => {
+      setColumnFilters(updater);
+      setPageIndex(0);
+    },
     onGlobalFilterChange: (updater) => {
-      const nextSearch = functionalUpdate(updater, search.search);
-
-      onTableChange({
-        page: 1,
-        search: String(nextSearch),
-      });
+      setGlobalFilter(updater);
+      setPageIndex(0);
     },
-    onPaginationChange: (updater) => {
-      const nextPagination = functionalUpdate(updater, pagination);
-
-      onTableChange({
-        page: nextPagination.pageIndex + 1,
-        pageSize: nextPagination.pageSize,
-      });
-    },
+    onPaginationChange: setPagination,
     onSortingChange: (updater) => {
-      const nextSorting = functionalUpdate(updater, sorting);
-      const sort = nextSorting[0];
-      const sortBy = sort?.id === "id" ? "id" : "name";
-
-      onTableChange({
-        page: 1,
-        sortBy,
-        sortDirection: sort?.desc ? "desc" : "asc",
-      });
+      setSorting(updater);
+      setPageIndex(0);
     },
     pageCount,
     rowCount: total,
     state: {
-      globalFilter: search.search,
-      pagination,
-      sorting,
+      columnFilters,
+      globalFilter,
+      pagination: constrainPagination(pagination, pageCount),
+      sorting: constrainSorting(sorting),
     },
   });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Input
-          className="sm:max-w-xs"
-          onChange={(event) => onSearchTextChange(event.target.value)}
-          placeholder="Search products..."
-          value={searchText}
-        />
-      </div>
-
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    className={header.column.id === "actions" ? "w-20 text-right" : undefined}
-                    key={header.id}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {isLoading ? <ProductTableSkeleton /> : null}
-
-            {!isLoading && table.getRowModel().rows.length === 0 ? (
-              <TableRow>
-                <TableCell className="h-24 text-center text-muted-foreground" colSpan={3}>
-                  No products found.
-                </TableCell>
-              </TableRow>
-            ) : null}
-
-            {!isLoading
-              ? table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        className={cell.column.id === "actions" ? "text-right" : undefined}
-                        key={cell.id}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              : null}
-          </TableBody>
-        </Table>
-      </div>
-
-      <ProductPagination table={table} total={total} />
-    </div>
+    <DataTable
+      emptyMessage="No products found."
+      globalFilterPlaceholder="Search products..."
+      isLoading={isLoading}
+      table={table}
+      total={total}
+      totalLabel={(value) => `${value} ${value === 1 ? "product" : "products"}`}
+    />
   );
 };
 
-type SortButtonProps = {
-  column: Column<Product>;
-  label: string;
-};
+function getColumnFilterValue(
+  columnFilters: ColumnFiltersState,
+  id: "id" | "name",
+): string | undefined {
+  const value = columnFilters.find((filter) => filter.id === id)?.value;
 
-const SortButton: React.FC<SortButtonProps> = ({ column, label }) => {
-  const sorted = column.getIsSorted();
-  const Icon = sorted === false ? ArrowUpDownIcon : sorted === "asc" ? ArrowUpIcon : ArrowDownIcon;
+  return typeof value === "string" && value ? value : undefined;
+}
 
-  return (
-    <Button
-      className="-ml-2"
-      onClick={() => column.toggleSorting(sorted === "asc")}
-      size="sm"
-      type="button"
-      variant="ghost"
-    >
-      {label}
-      <Icon data-icon="inline-end" />
-    </Button>
-  );
-};
+function constrainPagination(pagination: PaginationState, pageCount: number): PaginationState {
+  return {
+    ...pagination,
+    pageIndex: Math.min(pagination.pageIndex, Math.max(pageCount - 1, 0)),
+  };
+}
 
-const skeletonRows = [
-  "product-skeleton-1",
-  "product-skeleton-2",
-  "product-skeleton-3",
-  "product-skeleton-4",
-];
+function constrainSorting(sorting: SortingState): SortingState {
+  const sort = sorting[0];
 
-const ProductTableSkeleton: React.FC = () => {
-  return skeletonRows.map((rowKey) => (
-    <TableRow key={rowKey}>
-      <TableCell>
-        <Skeleton className="h-4 w-40" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-64" />
-      </TableCell>
-      <TableCell>
-        <div className="flex justify-end">
-          <Skeleton className="size-7" />
-        </div>
-      </TableCell>
-    </TableRow>
-  ));
-};
+  return [
+    {
+      id: sort?.id === "id" ? "id" : "name",
+      desc: sort?.desc ?? false,
+    },
+  ];
+}

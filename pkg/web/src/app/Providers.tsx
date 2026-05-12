@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { createQueryClient } from "@/lib/query-client.js";
-import { createTrpcClient, trpc } from "@/lib/trpc.js";
+import { createTrpcClient, TRPCProvider } from "@/lib/trpc.js";
 import { ThemeProvider } from "@/providers/ThemeProvider.js";
 import { router } from "./router.js";
 
@@ -17,15 +17,15 @@ export const Providers: React.FC<ProvidersProps> = () => {
   const [trpcClient] = useState(() => createTrpcClient());
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <TRPCProvider queryClient={queryClient} trpcClient={trpcClient}>
         <ThemeProvider defaultTheme="dark" storageKey="jedidiah-theme">
           <TooltipProvider>
             <RouterProvider router={router} />
             <Toaster />
           </TooltipProvider>
         </ThemeProvider>
-      </QueryClientProvider>
-    </trpc.Provider>
+      </TRPCProvider>
+    </QueryClientProvider>
   );
 };

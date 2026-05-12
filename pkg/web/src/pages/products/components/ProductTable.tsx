@@ -1,5 +1,5 @@
 import type { Product, ProductListInput } from "@pkg/schema";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -16,7 +16,7 @@ import { DataTable } from "@/components/data-table/DataTable.js";
 import { createPersistedDataTableStore } from "@/components/data-table/data-table-store.js";
 import { usePagedQueryResult } from "@/components/data-table/hooks/use-paged-query-result.js";
 import { Button } from "@/components/ui/button.js";
-import { trpc } from "@/lib/trpc.js";
+import { useTRPC } from "@/lib/trpc.js";
 
 type ProductTableProps = {
   onEditProduct: (product: Product) => void;
@@ -34,40 +34,15 @@ export const useProductTableStore = createPersistedDataTableStore({
   persistName: "products-table",
 });
 
-export function useProductListInput(): ProductListInput {
-  const { columnFilters, globalFilter, pagination, sorting } = useProductTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      sorting: state.sorting,
-    })),
-  );
-  const sort = sorting[0];
-
-  return useMemo(
-    () =>
-      ({
-        columnFilters: {
-          id: getColumnFilterValue(columnFilters, "id"),
-          name: getColumnFilterValue(columnFilters, "name"),
-        },
-        page: pagination.pageIndex + 1,
-        pageSize: pagination.pageSize,
-        search: globalFilter,
-        sortBy: sort?.id === "id" ? "id" : "name",
-        sortDirection: sort?.desc ? "desc" : "asc",
-      }) satisfies ProductListInput,
-    [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort?.desc, sort?.id],
-  );
-}
-
 export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => {
+  const trpc = useTRPC();
   const productListInput = useProductListInput();
 
-  const productsQuery = trpc.products.list.useQuery(productListInput, {
-    placeholderData: keepPreviousData,
-  });
+  const productsQuery = useQuery(
+    trpc.products.list.queryOptions(productListInput, {
+      placeholderData: keepPreviousData,
+    }),
+  );
 
   const { items: products, total, pageCount, isLoading } = usePagedQueryResult(productsQuery);
 
@@ -94,12 +69,6 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
       sorting: state.sorting,
     })),
   );
-
-  console.log({
-    length: products.length,
-    isLoading: productsQuery.isLoading,
-    isFetching: productsQuery.isFetching,
-  });
 
   const columns = useMemo<ColumnDef<Product>[]>(
     () => [
@@ -189,6 +158,34 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
     />
   );
 };
+
+export function useProductListInput(): ProductListInput {
+  const { columnFilters, globalFilter, pagination, sorting } = useProductTableStore(
+    useShallow((state) => ({
+      columnFilters: state.columnFilters,
+      globalFilter: state.globalFilter,
+      pagination: state.pagination,
+      sorting: state.sorting,
+    })),
+  );
+  const sort = sorting[0];
+
+  return useMemo(
+    () =>
+      ({
+        columnFilters: {
+          id: getColumnFilterValue(columnFilters, "id"),
+          name: getColumnFilterValue(columnFilters, "name"),
+        },
+        page: pagination.pageIndex + 1,
+        pageSize: pagination.pageSize,
+        search: globalFilter,
+        sortBy: sort?.id === "id" ? "id" : "name",
+        sortDirection: sort?.desc ? "desc" : "asc",
+      }) satisfies ProductListInput,
+    [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort?.desc, sort?.id],
+  );
+}
 
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,

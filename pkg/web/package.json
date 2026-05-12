@@ -23,7 +23,7 @@
     "@tanstack/react-router": "^1.139.12",
     "@tanstack/react-table": "^8.21.3",
     "@trpc/client": "^11.7.2",
-    "@trpc/react-query": "^11.7.2",
+    "@trpc/tanstack-react-query": "^11.17.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",

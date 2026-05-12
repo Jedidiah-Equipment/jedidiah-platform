@@ -87,6 +87,10 @@ functions after internal components.
 ## Data And Routing
 
 - Use TanStack Query for all server/cache state.
+- For tRPC calls, use the TanStack-native `@trpc/tanstack-react-query` pattern:
+  `useQuery(trpc.someProcedure.queryOptions(input))`,
+  `useMutation(trpc.someProcedure.mutationOptions(options))`, and typed query filters/keys with
+  `useQueryClient()` for cache operations. Do not add new `@trpc/react-query` classic hook usage.
 - Use TanStack Router search params for shareable URL state such as table filters, sorting,
   pagination, selected tabs, and selected views.
 - Keep route files thin; page components own presentation and feature composition.

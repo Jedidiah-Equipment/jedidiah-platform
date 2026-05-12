@@ -1,4 +1,5 @@
 import type { Product } from "@pkg/schema";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
@@ -13,34 +14,43 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { Separator } from "@/components/ui/separator.js";
-import { trpc } from "@/lib/trpc.js";
+import { useTRPC } from "@/lib/trpc.js";
 import { ProductForm } from "./components/ProductForm.js";
 import { ProductTable } from "./components/ProductTable.js";
 
 export const ProductsPage: React.FC = () => {
-  const trpcUtils = trpc.useUtils();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const createProductMutation = trpc.products.create.useMutation({
-    onSuccess: async () => {
-      await trpcUtils.products.list.invalidate();
-      setIsCreateOpen(false);
-      toast.success("Product created");
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-  const updateProductMutation = trpc.products.update.useMutation({
-    onSuccess: async () => {
-      await trpcUtils.products.list.invalidate();
-      setEditingProduct(null);
-      toast.success("Product updated");
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+
+  const createProductMutation = useMutation(
+    trpc.products.create.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries(trpc.products.list.queryFilter());
+        setIsCreateOpen(false);
+        toast.success("Product created");
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    }),
+  );
+
+  const updateProductMutation = useMutation(
+    trpc.products.update.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries(trpc.products.list.queryFilter());
+        setEditingProduct(null);
+        toast.success("Product updated");
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    }),
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <Card>

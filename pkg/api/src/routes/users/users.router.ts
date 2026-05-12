@@ -1,4 +1,4 @@
-import { listUsers, setUserRole, UserNotFoundError } from "@pkg/core";
+import { CannotRemoveLastAdminError, listUsers, setUserRole, UserNotFoundError } from "@pkg/core";
 import { UserSetRoleInput } from "@pkg/schema";
 import { TRPCError } from "@trpc/server";
 
@@ -29,6 +29,13 @@ async function mapUserErrors<T>(action: () => Promise<T>): Promise<T> {
       throw new TRPCError({
         code: "NOT_FOUND",
         message: "User not found.",
+      });
+    }
+
+    if (error instanceof CannotRemoveLastAdminError) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You cannot remove the last admin.",
       });
     }
 

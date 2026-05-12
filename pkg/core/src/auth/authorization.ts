@@ -26,6 +26,12 @@ export const appRoleAccess = {
   },
 } as const satisfies Record<AppRole, RoleAccess>;
 
+const publicRolePriority = [
+  "admin",
+  "product-editor",
+  "product-viewer",
+] as const satisfies AppRole[];
+
 export function normalizeAppRoles(role: unknown): AppRole[] {
   if (Array.isArray(role)) {
     return uniqueRoles(role.flatMap((value) => normalizeAppRoles(value)));
@@ -60,7 +66,7 @@ export function createUserAccessSummary(input: {
   userId: string;
 }): UserAccessSummary {
   const roles = normalizeAppRoles(input.role);
-  const role = roles[0] ?? null;
+  const role = getPublicRole(roles);
 
   return {
     permissions: getRolePermissions(roles),
@@ -94,4 +100,14 @@ function flattenRolePermissions(role: AppRole): AppPermission[] {
 
 function uniqueRoles(roles: readonly AppRole[]): AppRole[] {
   return [...new Set(roles)];
+}
+
+function getPublicRole(roles: readonly AppRole[]): AppRole | null {
+  for (const role of publicRolePriority) {
+    if (roles.includes(role)) {
+      return role;
+    }
+  }
+
+  return null;
 }

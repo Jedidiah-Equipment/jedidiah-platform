@@ -1,3 +1,4 @@
+import { DEFAULT_APP_ROLE } from "@pkg/schema";
 import { relations } from "drizzle-orm";
 import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
@@ -9,7 +10,7 @@ export const user = pgTable(
     email: text("email").notNull().unique(),
     emailVerified: boolean("email_verified").notNull(),
     image: text("image"),
-    role: text("role").notNull().default("product-viewer"),
+    role: text("role").notNull().default(DEFAULT_APP_ROLE),
     banned: boolean("banned").default(false),
     banReason: text("ban_reason"),
     banExpires: timestamp("ban_expires", { mode: "date" }),

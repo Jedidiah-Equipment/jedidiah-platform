@@ -8,7 +8,7 @@ export async function createContext({ req }: CreateFastifyContextOptions) {
   const session = await getSessionFromHeaders(req.headers);
   const access = session
     ? createUserAccessSummary({
-        role: getSessionUserRole(session.user),
+        role: (session.user as { role?: unknown }).role,
         userId: session.user.id,
       })
     : null;
@@ -22,7 +22,3 @@ export async function createContext({ req }: CreateFastifyContextOptions) {
 }
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
-
-function getSessionUserRole(user: { role?: unknown }): unknown {
-  return user.role;
-}

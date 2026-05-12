@@ -92,7 +92,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
         enableSorting: true,
         header: "ID",
       },
-      {
+    ];
+
+    if (showEditActions && onEditProduct) {
+      tableColumns.push({
         id: "actions",
         cell: ({ row }) => (
           <div className="text-right">
@@ -113,10 +116,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
           cellClassName: "text-right",
           headerClassName: "w-20 text-right",
         },
-      },
-    ];
+      });
+    }
 
-    return showEditActions && onEditProduct ? tableColumns : tableColumns.slice(0, -1);
+    return tableColumns;
   }, [onEditProduct, showEditActions]);
 
   useEffect(() => {

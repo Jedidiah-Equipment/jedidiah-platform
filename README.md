@@ -124,6 +124,7 @@ schema changes that produced them.
 
 Email/password auth is enabled. Email verification and password reset emails are mocked locally by
 recording/logging the generated email payloads; no real email provider is configured yet.
+Seed users use `password123` for local sign-in.
 
 ## Web notes
 

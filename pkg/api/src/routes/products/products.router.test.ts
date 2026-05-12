@@ -25,6 +25,14 @@ function productNames(products: Product[]): string[] {
 }
 
 describe("products.create", () => {
+  test("rejects unauthenticated product creates", async ({ context }) => {
+    await expect(
+      context.createAnonCaller().products.create({ name: "Anonymous Product" }),
+    ).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
   test("creates products", async ({ context }) => {
     const caller = context.createCaller();
     const created = await createProduct(caller, "Wheel Loader");
@@ -262,6 +270,17 @@ describe("products.list", () => {
 });
 
 describe("products.update", () => {
+  test("rejects unauthenticated product updates", async ({ context }) => {
+    await expect(
+      context.createAnonCaller().products.update({
+        id: "00000000-0000-4000-8000-000000000001",
+        name: "Anonymous Update",
+      }),
+    ).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
   test("updates products", async ({ context }) => {
     const caller = context.createCaller();
     const created = await createProduct(caller, "Wheel Loader");

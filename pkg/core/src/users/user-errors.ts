@@ -4,3 +4,10 @@ export class UserNotFoundError extends Error {
     this.name = "UserNotFoundError";
   }
 }
+
+export class CannotRemoveLastAdminError extends Error {
+  constructor() {
+    super("Cannot remove the last admin");
+    this.name = "CannotRemoveLastAdminError";
+  }
+}

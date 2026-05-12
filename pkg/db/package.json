@@ -37,6 +37,8 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@pkg/schema": "workspace:*",
+    "better-auth": "^1.4.7",
     "drizzle-orm": "^0.44.7",
     "dotenv": "^17.4.2",
     "postgres": "^3.4.7"

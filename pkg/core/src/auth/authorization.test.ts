@@ -63,7 +63,7 @@ describe("createUserAccessSummary", () => {
       }),
     ).toEqual({
       permissions: ["product:create", "product:read", "product:update", "user:edit", "user:list"],
-      role: "product-viewer",
+      role: "admin",
       userId: "user_123",
     });
   });

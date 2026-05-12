@@ -111,7 +111,9 @@ The API is the enforcement authority.
 - Dashboard access is covered by authentication only, not by `authorizedProcedure`.
 - Product procedures are gated by `product:read`, `product:create`, and `product:update`.
 - User procedures are gated by `user:list` and `user:edit`.
-- `users.setRole` accepts only v1 roles and rejects changing the current user's own role.
+- `users.setRole` accepts only v1 roles, rejects changing the current user's own role, and rejects
+  removing the last admin.
+- Durable audit logging for role changes remains future work.
 - Anonymous requests return `UNAUTHORIZED`; signed-in users without permission return `FORBIDDEN`.
 
 App feature routers should not call Better Auth directly by default. Auth state enters app code

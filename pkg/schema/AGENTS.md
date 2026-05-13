@@ -20,7 +20,7 @@ Guidance for shared schemas and types. Good references are `src/products/product
   `z.coerce` where incoming data is stringly typed.
 - Keep reusable primitives in focused folders like `common`, `pagination`, `auth`, `config`, and
   `domain`.
-- Use the shared `common/uuid.ts` `Uuid` primitive for app-owned UUID schema fields instead of
+- Use the shared `common/uuid.ts` `UUID` primitive for app-owned UUID schema fields instead of
   calling `z.uuid()` inline. Keep Better Auth-owned ids on `AuthId`.
 - Export public schemas and types from `src/index.ts`.
 

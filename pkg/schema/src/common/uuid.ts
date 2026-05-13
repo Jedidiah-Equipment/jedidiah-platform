@@ -1,4 +1,4 @@
 import { z } from "zod";
 
-export type Uuid = z.infer<typeof Uuid>;
-export const Uuid = z.uuid();
+export type UUID = z.infer<typeof UUID>;
+export const UUID = z.uuid();

@@ -1,10 +1,7 @@
 import { z } from "zod";
 import { SortDirection } from "../common/sort.js";
-import { Uuid } from "../common/uuid.js";
+import { UUID } from "../common/uuid.js";
 import { createPagedQueryResult, PagedQueryInput } from "../pagination/pagination.js";
-
-export type ProductId = z.infer<typeof ProductId>;
-export const ProductId = Uuid;
 
 export type ProductName = z.infer<typeof ProductName>;
 export const ProductName = z.string().trim().min(1, "Product name is required");
@@ -27,7 +24,6 @@ export const ProductBasePrice = z.preprocess(
     .number({
       error: "Base price is required",
     })
-    .finite("Base price must be a valid amount")
     .min(0, "Base price must be zero or greater"),
 );
 
@@ -36,13 +32,13 @@ export const ProductCurrencyCode = z.literal("ZAR").default("ZAR");
 
 export type Product = z.infer<typeof Product>;
 export const Product = z.object({
-  basePrice: ProductBasePrice,
-  createdAt: z.coerce.date(),
-  currencyCode: ProductCurrencyCode,
-  description: ProductDescription,
-  id: ProductId,
-  modelCode: ProductModelCode,
+  id: UUID,
   name: ProductName,
+  description: ProductDescription,
+  modelCode: ProductModelCode,
+  basePrice: ProductBasePrice,
+  currencyCode: ProductCurrencyCode,
+  createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });
 
@@ -60,19 +56,19 @@ export const ProductColumnFilters = z
 
 export type ProductCreateInput = z.infer<typeof ProductCreateInput>;
 export const ProductCreateInput = z.object({
-  basePrice: ProductBasePrice,
-  currencyCode: ProductCurrencyCode,
+  name: ProductName,
   description: ProductDescription,
   modelCode: ProductModelCode,
-  name: ProductName,
+  basePrice: ProductBasePrice,
+  currencyCode: ProductCurrencyCode,
 });
 
 export type ProductUpdateInput = z.infer<typeof ProductUpdateInput>;
 export const ProductUpdateInput = z.object({
+  id: UUID,
   basePrice: ProductBasePrice,
   currencyCode: ProductCurrencyCode,
   description: ProductDescription,
-  id: ProductId,
   modelCode: ProductModelCode,
   name: ProductName,
 });

@@ -1,4 +1,4 @@
-import { hasPermission } from "@pkg/schema";
+import { hasPermission } from "@pkg/domain";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
 import type React from "react";

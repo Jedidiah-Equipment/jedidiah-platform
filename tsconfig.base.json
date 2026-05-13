@@ -13,6 +13,7 @@
       "@pkg/db/query-utils": ["pkg/db/src/query-utils.ts"],
       "@pkg/db/schema": ["pkg/db/src/schema/index.ts"],
       "@pkg/db/test-utils": ["pkg/db/src/test-utils.ts"],
+      "@pkg/domain": ["pkg/domain/src/index.ts"],
       "@pkg/schema": ["pkg/schema/src/index.ts"]
     },
     "strict": true,

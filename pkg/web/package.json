@@ -17,6 +17,7 @@
     "@fontsource-variable/geist": "^5.2.8",
     "@mantine/hooks": "^9.2.0",
     "@pkg/api": "workspace:*",
+    "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
     "@tanstack/react-form": "^1.32.0",
     "@tanstack/react-query": "^5.100.10",

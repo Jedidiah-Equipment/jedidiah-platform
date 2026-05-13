@@ -66,6 +66,9 @@ importers:
       '@pkg/db':
         specifier: workspace:*
         version: link:../db
+      '@pkg/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@pkg/schema':
         specifier: workspace:*
         version: link:../schema
@@ -90,6 +93,9 @@ importers:
       '@pkg/db':
         specifier: workspace:*
         version: link:../db
+      '@pkg/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@pkg/schema':
         specifier: workspace:*
         version: link:../schema
@@ -99,6 +105,9 @@ importers:
 
   pkg/db:
     dependencies:
+      '@pkg/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@pkg/schema':
         specifier: workspace:*
         version: link:../schema
@@ -119,6 +128,12 @@ importers:
         specifier: ^0.31.5
         version: 0.31.10
 
+  pkg/domain:
+    dependencies:
+      '@pkg/schema':
+        specifier: workspace:*
+        version: link:../schema
+
   pkg/schema: {}
 
   pkg/web:
@@ -138,6 +153,9 @@ importers:
       '@pkg/api':
         specifier: workspace:*
         version: link:../api
+      '@pkg/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@pkg/schema':
         specifier: workspace:*
         version: link:../schema

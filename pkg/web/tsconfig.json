@@ -13,11 +13,12 @@
     "paths": {
       "@/*": ["src/*"],
       "@pkg/api/router-type": ["../api/src/router-type.ts"],
+      "@pkg/domain": ["../domain/src/index.ts"],
       "@pkg/schema": ["../schema/src/index.ts"]
     },
     "types": ["node", "vite/client", "vitest"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["src/server/**"],
-  "references": [{ "path": "../api" }, { "path": "../../pkg/schema" }]
+  "references": [{ "path": "../api" }, { "path": "../domain" }, { "path": "../../pkg/schema" }]
 }

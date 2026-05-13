@@ -38,6 +38,7 @@
     "db:seed": "tsx src/seed.ts"
   },
   "dependencies": {
+    "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
     "better-auth": "^1.4.7",
     "drizzle-orm": "^0.44.7",

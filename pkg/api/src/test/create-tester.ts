@@ -1,10 +1,10 @@
-import { createUserAccessSummary } from "@pkg/core";
 import { createDatabaseClient, type Database, type DatabaseClient } from "@pkg/db/database-client";
 import {
   createEphemeralTestDatabase,
   dropTestDatabase,
   getTestTemplateDatabaseUrl,
 } from "@pkg/db/test-utils";
+import { createUserAccessSummary } from "@pkg/domain";
 import { type TestAPI, type TestContext, test as testBase } from "vitest";
 
 import { type Auth, createAuth } from "@/auth/auth.js";

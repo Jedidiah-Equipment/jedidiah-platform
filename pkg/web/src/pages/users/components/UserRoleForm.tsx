@@ -1,6 +1,6 @@
 import { UserSummary, type UserSummary as UserSummaryType } from "@pkg/schema";
 import type React from "react";
-import { z } from "zod";
+import type { z } from "zod";
 
 import { useAppForm } from "@/components/form/index.js";
 import { FieldGroup } from "@/components/ui/field.js";

@@ -7,8 +7,6 @@ export const APP_ROLES = ["admin", "product-editor", "product-viewer"] as const;
 export type AppRole = z.infer<typeof AppRole>;
 export const AppRole = z.enum(APP_ROLES);
 
-export const DEFAULT_APP_ROLE = "product-viewer" satisfies AppRole;
-
 export const APP_PERMISSIONS = [
   "audit:read",
   "product:read",
@@ -31,13 +29,6 @@ export const UserAccessSummary = z.object({
   userId: AuthId,
 });
 
-export function hasPermission(
-  access: Pick<UserAccessSummary, "permissions"> | null | undefined,
-  permission: AppPermission,
-): boolean {
-  return access?.permissions.includes(permission) ?? false;
-}
-
 export type UserSummary = z.infer<typeof UserSummary>;
 export const UserSummary = z.object({
   emailVerified: z.boolean(),
@@ -54,26 +45,3 @@ export type UserListResult = z.infer<typeof UserListResult>;
 export const UserListResult = z.object({
   users: z.array(UserSummary),
 });
-
-export const authorizationStatement = {
-  audit: ["read"],
-  product: ["read", "create", "update"],
-  user: ["list", "create", "update", "set-role", "set-password"],
-} as const;
-
-type AuthorizationResource = keyof typeof authorizationStatement;
-type RoleAccess = Partial<Record<AuthorizationResource, readonly string[]>>;
-
-export const appRoleAccess = {
-  admin: {
-    audit: ["read"],
-    product: ["read", "create", "update"],
-    user: ["list", "create", "update", "set-role", "set-password"],
-  },
-  "product-editor": {
-    product: ["read", "create", "update"],
-  },
-  "product-viewer": {
-    product: ["read"],
-  },
-} as const satisfies Record<AppRole, RoleAccess>;

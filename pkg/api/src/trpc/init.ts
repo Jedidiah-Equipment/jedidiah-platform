@@ -1,4 +1,5 @@
-import { type AppPermission, hasPermission } from "@pkg/schema";
+import { hasPermission } from "@pkg/domain";
+import type { AppPermission } from "@pkg/schema";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 

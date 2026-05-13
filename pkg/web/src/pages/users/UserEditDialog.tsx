@@ -1,4 +1,5 @@
-import { hasPermission, type UserSummary } from "@pkg/schema";
+import { hasPermission } from "@pkg/domain";
+import type { UserSummary } from "@pkg/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { toast } from "sonner";

@@ -1,4 +1,4 @@
-import { DEFAULT_APP_ROLE, appRoleAccess, authorizationStatement } from "@pkg/schema";
+import { appRoleAccess, authorizationStatement, DEFAULT_APP_ROLE } from "@pkg/domain";
 import { createAccessControl } from "better-auth/plugins/access";
 
 export const ac = createAccessControl(authorizationStatement);

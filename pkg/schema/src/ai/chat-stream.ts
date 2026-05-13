@@ -5,7 +5,7 @@ const CHAT_STREAM_MAX_MESSAGE_CHARS = 4_000;
 const CHAT_STREAM_MAX_PAYLOAD_BYTES = 64 * 1024;
 
 export type AssistantEvent =
-  | { type: "token"; token: string }
+  | { type: "token"; delta: string }
   | { type: "tool_call"; name: string; args: unknown }
   | {
       type: "tool_result";

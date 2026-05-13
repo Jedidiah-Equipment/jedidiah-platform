@@ -39,7 +39,10 @@ product:read
 product:create
 product:update
 user:list
-user:edit
+user:create
+user:update
+user:set-role
+user:set-password
 ```
 
 Roles:
@@ -50,7 +53,10 @@ admin
   product:create
   product:update
   user:list
-  user:edit
+  user:create
+  user:update
+  user:set-role
+  user:set-password
 
 product-editor
   product:read
@@ -83,7 +89,7 @@ the app does not promote the first signed-up user automatically.
 - `AppPermission` and `APP_PERMISSIONS`
 - `UserAccessSummary`, with one public `role` plus derived permissions
 - `hasPermission`, the shared helper for checking a permission in an access summary
-- `UserSummary`, `UserListResult`, `UserCreateInput`, and `UserUpdateInput`
+- `UserSummary` and `UserListResult`
 
 The schema package validates boundary data. It does not own the role-to-permission matrix.
 
@@ -110,9 +116,12 @@ The API is the enforcement authority.
 - `authorizedProcedure(permission)` requires both a session and the named app permission.
 - Dashboard access is covered by authentication only, not by `authorizedProcedure`.
 - Product procedures are gated by `product:read`, `product:create`, and `product:update`.
-- User procedures are gated by `user:list` and `user:edit`.
-- `users.create` and `users.update` accept only v1 roles. Updating rejects changing the current
-  user's own role and rejects removing the last admin.
+- The tRPC `users` router owns only `users.list`, gated by `user:list`, and returns the safe app
+  summary used by the web table.
+- Better Auth Admin endpoints own user mutations. The app grants admins explicit Better Auth user
+  actions: `user:create`, `user:update`, `user:set-role`, and `user:set-password`.
+- A Better Auth hook preserves app-specific role safeguards for Admin role changes: users cannot
+  change their own role, and the last admin cannot be demoted.
 - Durable audit logging for role changes remains future work.
 - Anonymous requests return `UNAUTHORIZED`; signed-in users without permission return `FORBIDDEN`.
 
@@ -128,8 +137,11 @@ The web app uses permissions for UX only.
 - Products are visible to all v1 roles because all v1 roles include `product:read`.
 - Product creation is visible only with `product:create`.
 - Product editing is visible only with `product:update`.
-- The Users nav item is visible only with `user:list`; directly visiting the Users page relies on
-  the API returning `FORBIDDEN` for unauthorized data access.
+- The Users nav item is visible only with `user:list`; direct visits rely on the `users.list`
+  query guard returning `FORBIDDEN` rather than duplicating authorization in the route.
+- User admin controls are gated separately: creation with `user:create`, profile edits with
+  `user:update`, role assignment with `user:set-role`, and password resets with
+  `user:set-password`.
 - Server-side API checks remain the security boundary.
 - Admin plugin fields for bans and impersonation are schema plumbing only until app policy and UI
   explicitly use them.

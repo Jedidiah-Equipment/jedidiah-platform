@@ -6,6 +6,7 @@ import { admin as adminPlugin } from "better-auth/plugins";
 import { recordMockEmail } from "../email/mock-email.js";
 import { getApiConfig } from "../env.js";
 import { ac, authRoles, defaultAuthRole } from "./access-control.js";
+import { adminUserSafetyPlugin } from "./admin-user-safety.js";
 
 const config = getApiConfig();
 
@@ -26,6 +27,7 @@ export function createAuth(database: Database) {
         defaultRole: defaultAuthRole,
         roles: authRoles,
       }),
+      adminUserSafetyPlugin(database),
     ],
     emailAndPassword: {
       enabled: true,

@@ -27,10 +27,7 @@ export type TesterScope = {
 
 export type TesterContext = {
   createAnonCaller: () => AppRouterCaller;
-  createCaller: (
-    session?: NonNullable<Context["session"]>,
-    requestHeaders?: Headers,
-  ) => AppRouterCaller;
+  createCaller: (session?: NonNullable<Context["session"]>) => AppRouterCaller;
 };
 
 type CreateTesterContext<T extends object> = (scope: TesterScope & TesterContext) => Promise<T> | T;
@@ -57,22 +54,16 @@ export function createTester<T extends object = Record<string, never>>(
             createAnonCaller: () =>
               createAppRouterCaller({
                 access: null,
-                auth,
                 db: databaseClient.db,
-                req: {} as Context["req"],
-                requestHeaders: new Headers(),
                 session: null,
               }),
-            createCaller: (session = mockSession(), requestHeaders = new Headers()) => {
+            createCaller: (session = mockSession()) => {
               return createAppRouterCaller({
                 access: createUserAccessSummary({
                   role: session.user.role,
                   userId: session.user.id,
                 }),
-                auth,
                 db: databaseClient.db,
-                req: {} as Context["req"],
-                requestHeaders,
                 session,
               });
             },

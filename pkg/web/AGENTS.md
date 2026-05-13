@@ -89,9 +89,9 @@ Guidance for the React/Vite app. The best references are `src/pages/products/Pro
 - Use `useAccess()` to load the current `UserAccessSummary` and `canAccess(access, permission)`
   from `@/lib/access` to gate UI elements. Invalidate `trpc.auth.access.queryFilter()` after any
   mutation that can change the current user's permissions.
-- Prefer permission-based gating (`product:read`, `user:list`, `user:edit`) over hardcoded role
-  checks. Route-level guards in `src/routes/_authed.*` can fall back to role inspection on
-  `context.session.user` when access has not been loaded yet.
+- Prefer permission-based gating (`product:read`, `user:list`, `user:create`, `user:update`,
+  `user:set-role`, `user:set-password`) over hardcoded role checks. User admin mutations should use
+  `authClient.admin.*`; keep tRPC user access to the safe `users.list` query.
 
 ## Verification
 

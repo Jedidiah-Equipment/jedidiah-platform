@@ -8,7 +8,7 @@ import {
 export const authorizationStatement = {
   audit: ["read"],
   product: ["read", "create", "update"],
-  user: ["list", "edit"],
+  user: ["list", "create", "update", "set-role", "set-password"],
 } as const;
 
 type AuthorizationResource = keyof typeof authorizationStatement;
@@ -18,7 +18,7 @@ export const appRoleAccess = {
   admin: {
     audit: ["read"],
     product: ["read", "create", "update"],
-    user: ["list", "edit"],
+    user: ["list", "create", "update", "set-role", "set-password"],
   },
   "product-editor": {
     product: ["read", "create", "update"],

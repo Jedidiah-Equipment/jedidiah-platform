@@ -2,14 +2,14 @@
 
 Guidance for shared domain and business logic. Good references are
 `src/products/product-service.ts`, `src/products/product-errors.ts`,
-`src/products/product-service.test.ts`, `src/users/user-service.ts`,
-`src/users/user-errors.ts`, and `src/auth/authorization.ts`.
+`src/products/product-service.test.ts`, `src/users/user-service.ts`, and
+`src/auth/authorization.ts`.
 
 ## Ownership
 
 - Owns app-owned domain behavior that should not live in Fastify, tRPC, or React code:
   - `products/` — product service, mapping, and domain errors.
-  - `users/` — user listing and role assignment, including last-admin protection.
+  - `users/` — safe user listing plus role-assignment guard helpers used by Better Auth policy.
   - `auth/` — the role/permission matrix, `createUserAccessSummary`, `hasPermission`, and
     `normalizeAppRoles`. These are consumed by the API tRPC layer and the Better Auth admin plugin.
 - May depend on `@pkg/schema` for DTO/input types and `@pkg/db` for explicit database interfaces,
@@ -24,8 +24,9 @@ Guidance for shared domain and business logic. Good references are
 - Keep exported service functions small and intention-revealing: validate at the boundary, query or
   mutate, map rows to DTOs, and throw domain errors for expected business failures.
 - Keep row-to-DTO mapping in named helpers such as `mapProduct` and `mapUser`.
-- Prefer typed domain errors (`ProductNotFoundError`, `UserNotFoundError`,
-  `CannotRemoveLastAdminError`) over transport errors. API code maps these to tRPC/HTTP responses.
+- Prefer typed domain errors such as `ProductNotFoundError` for owned domain mutations. User admin
+  mutations are owned by Better Auth Admin endpoints; keep app-specific user role invariants as
+  focused guard helpers.
 - Use Drizzle query helpers from `@pkg/db` when they capture a reusable database pattern; reach for
   transaction-scoped `SELECT ... FOR UPDATE` when invariants like "at least one admin" must hold
   across reads and writes.

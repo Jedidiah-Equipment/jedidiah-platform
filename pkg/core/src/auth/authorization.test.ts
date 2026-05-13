@@ -25,8 +25,11 @@ describe("getRolePermissions", () => {
       "product:create",
       "product:read",
       "product:update",
-      "user:edit",
+      "user:create",
       "user:list",
+      "user:set-password",
+      "user:set-role",
+      "user:update",
     ]);
   });
 
@@ -64,8 +67,11 @@ describe("createUserAccessSummary", () => {
         "product:create",
         "product:read",
         "product:update",
-        "user:edit",
+        "user:create",
         "user:list",
+        "user:set-password",
+        "user:set-role",
+        "user:update",
       ],
       role: "admin",
       userId: "user_123",

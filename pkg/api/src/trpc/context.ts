@@ -1,24 +1,16 @@
-import { db } from "@pkg/db";
-import { createUserAccessSummary } from "@pkg/domain";
-import type { UserAccessSummary } from "@pkg/schema";
+import { type Database, db } from "@pkg/db";
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 
-import { getSessionFromHeaders } from "../auth/session.js";
+import { createRequestContext } from "../auth/request-context.js";
 
-export async function createContext({ req }: CreateFastifyContextOptions) {
-  const session = await getSessionFromHeaders(req.headers);
-  const access: UserAccessSummary | null = session
-    ? createUserAccessSummary({
-        role: session.user.role,
-        userId: session.user.id,
-      })
-    : null;
-
-  return {
-    access,
-    db,
-    session,
-  };
+export async function createContext({
+  db: requestDb = db,
+  req,
+}: CreateFastifyContextOptions & { db?: Database }) {
+  return createRequestContext({
+    db: requestDb,
+    headers: req.headers,
+  });
 }
 
 export type Context = Awaited<ReturnType<typeof createContext>>;

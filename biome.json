@@ -8,6 +8,7 @@
       "!**/dist",
       "!**/dist-server",
       "!**/coverage",
+      "!**/.sandcastle/worktrees",
       "!pkg/db/migrations",
       "!pkg/web/src/app/route-tree.gen.ts"
     ]

@@ -150,3 +150,11 @@ Navigation entries and route guards are driven by the same permission set the AP
 
 There is intentionally no register, forgot password, password reset, or email verification UI yet.
 Public browser config is served through `/env.js` and read from `window.__APP_CONFIG__`.
+
+
+## Skills
+
+https://github.com/vercel-labs/skills
+
+`npx skills add abc -g -y`
+`npx skills list -g`

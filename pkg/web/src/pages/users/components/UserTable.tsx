@@ -1,4 +1,4 @@
-import type { AppRole, AuthId, UserSummary } from "@pkg/schema";
+import type { AuthId, UserSummary } from "@pkg/schema";
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -7,6 +7,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { PencilIcon } from "lucide-react";
 import type React from "react";
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -19,19 +20,19 @@ import {
 import { createPersistedDataTableStore } from "@/components/data-table/store.js";
 import { getPageCount, type SortOptions } from "@/components/data-table/table-state.js";
 import { Badge } from "@/components/ui/badge.js";
+import { Button } from "@/components/ui/button.js";
 import { roleLabels } from "./role-labels.js";
-import { UserRoleSelect } from "./UserRoleSelect.js";
 
 type UserTableProps = {
   currentUserId: AuthId | undefined;
   errorMessage: string | undefined;
   isLoading: boolean;
-  isRoleUpdatePending: boolean;
+  showEditActions: boolean;
   users: UserSummary[];
-  onRoleChange: (userId: AuthId, role: AppRole) => void;
+  onEditUser: ((user: UserSummary) => void) | undefined;
 };
 
-type UserTableSortBy = keyof Pick<UserSummary, "email" | "name" | "role">;
+type UserTableSortBy = keyof Pick<UserSummary, "email" | "emailVerified" | "name" | "role">;
 
 type UserTableSortInput = {
   sortBy: UserTableSortBy;
@@ -50,7 +51,7 @@ export const useUserTableStore = createPersistedDataTableStore({
 });
 
 const userSortOptions: SortOptions<UserTableSortInput> = {
-  allowedSortIds: ["name", "email", "role"],
+  allowedSortIds: ["name", "email", "role", "emailVerified"],
   defaultSort: {
     id: "email",
   },
@@ -60,8 +61,8 @@ export const UserTable: React.FC<UserTableProps> = ({
   currentUserId,
   errorMessage,
   isLoading,
-  isRoleUpdatePending,
-  onRoleChange,
+  onEditUser,
+  showEditActions,
   users,
 }) => {
   const {
@@ -88,8 +89,8 @@ export const UserTable: React.FC<UserTableProps> = ({
     })),
   );
 
-  const columns = useMemo<ColumnDef<UserSummary>[]>(
-    () => [
+  const columns = useMemo<ColumnDef<UserSummary>[]>(() => {
+    const tableColumns: ColumnDef<UserSummary>[] = [
       {
         accessorKey: "name",
         cell: ({ row }) => (
@@ -100,7 +101,7 @@ export const UserTable: React.FC<UserTableProps> = ({
         ),
         enableColumnFilter: true,
         enableSorting: true,
-        header: "Name",
+        header: "Full Name",
       },
       {
         accessorKey: "email",
@@ -111,28 +112,53 @@ export const UserTable: React.FC<UserTableProps> = ({
       },
       {
         accessorKey: "role",
-        cell: ({ row }) => {
-          const isCurrentUser = currentUserId === row.original.id;
-
-          return (
-            <UserRoleSelect
-              disabled={isRoleUpdatePending || isCurrentUser}
-              onRoleChange={(role) => onRoleChange(row.original.id, role)}
-              value={row.original.role}
-            />
-          );
-        },
+        cell: ({ row }) => <Badge variant="outline">{roleLabels[row.original.role]}</Badge>,
         enableColumnFilter: true,
         enableSorting: true,
         filterFn: userRoleFilter,
         header: "Role",
-        meta: {
-          headerClassName: "w-56",
-        },
       },
-    ],
-    [currentUserId, isRoleUpdatePending, onRoleChange],
-  );
+      {
+        accessorKey: "emailVerified",
+        cell: ({ row }) => (
+          <Badge variant={row.original.emailVerified ? "secondary" : "outline"}>
+            {row.original.emailVerified ? "Verified" : "Unverified"}
+          </Badge>
+        ),
+        enableColumnFilter: true,
+        enableSorting: true,
+        filterFn: userEmailVerifiedFilter,
+        header: "Email status",
+      },
+    ];
+
+    if (showEditActions && onEditUser) {
+      tableColumns.push({
+        id: "actions",
+        cell: ({ row }) => (
+          <div className="text-right">
+            <Button
+              aria-label={`Edit ${row.original.name}`}
+              onClick={() => onEditUser(row.original)}
+              size="icon-sm"
+              variant="outline"
+            >
+              <PencilIcon />
+            </Button>
+          </div>
+        ),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: () => <span className="sr-only">Actions</span>,
+        meta: {
+          cellClassName: "text-right",
+          headerClassName: "w-20 text-right",
+        },
+      });
+    }
+
+    return tableColumns;
+  }, [currentUserId, onEditUser, showEditActions]);
 
   const tableState = useConstrainedTableState({
     pagination,
@@ -205,6 +231,7 @@ function userGlobalFilter(row: { original: UserSummary }, _columnId: string, fil
     row.original.email,
     row.original.role,
     roleLabels[row.original.role],
+    row.original.emailVerified ? "verified" : "unverified",
   ].some((value) => value.toLowerCase().includes(search));
 }
 
@@ -218,6 +245,20 @@ function userRoleFilter(row: { original: UserSummary }, _columnId: string, filte
   return [row.original.role, roleLabels[row.original.role]].some((value) =>
     value.toLowerCase().includes(search),
   );
+}
+
+function userEmailVerifiedFilter(
+  row: { original: UserSummary },
+  _columnId: string,
+  filterValue: unknown,
+) {
+  const search = normalizeFilterValue(filterValue);
+
+  if (!search) {
+    return true;
+  }
+
+  return (row.original.emailVerified ? "verified" : "unverified").includes(search);
 }
 
 function normalizeFilterValue(value: unknown): string {

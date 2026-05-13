@@ -122,7 +122,7 @@ schema changes that produced them.
 - `/trpc/*` through tRPC
 - `auth.session`, `auth.me`, and `auth.access` tRPC procedures for the current user and permissions
 - `products` tRPC procedures for authenticated list/create/update
-- `users` tRPC procedures (list and setRole) gated by `user:list` / `user:edit` permissions
+- `users` tRPC procedures (list, create, and update) gated by `user:list` / `user:edit` permissions
 
 App roles are `admin`, `product-editor`, and `product-viewer`. Role-to-permission mapping lives in
 `@pkg/core/auth/authorization` and is shared between the Better Auth admin plugin, server

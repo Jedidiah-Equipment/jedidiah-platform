@@ -11,3 +11,10 @@ export class CannotRemoveLastAdminError extends Error {
     this.name = "CannotRemoveLastAdminError";
   }
 }
+
+export class EmailAlreadyInUseError extends Error {
+  constructor(email: string) {
+    super(`Email already in use: ${email}`);
+    this.name = "EmailAlreadyInUseError";
+  }
+}

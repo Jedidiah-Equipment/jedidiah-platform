@@ -37,6 +37,7 @@ export function hasPermission(
 
 export type UserSummary = z.infer<typeof UserSummary>;
 export const UserSummary = z.object({
+  emailVerified: z.boolean(),
   id: AuthId,
   name: z.string().trim().min(1),
   email: z.email(),
@@ -48,8 +49,21 @@ export const UserListResult = z.object({
   users: z.array(UserSummary),
 });
 
-export type UserSetRoleInput = z.infer<typeof UserSetRoleInput>;
-export const UserSetRoleInput = z.object({
+export type UserCreateInput = z.infer<typeof UserCreateInput>;
+export const UserCreateInput = z.object({
+  emailVerified: z.boolean(),
+  name: z.string().trim().min(1),
+  email: z.email(),
+  password: z.string().min(8),
+  role: AppRole,
+});
+
+export type UserUpdateInput = z.infer<typeof UserUpdateInput>;
+export const UserUpdateInput = z.object({
+  emailVerified: z.boolean(),
+  name: z.string().trim().min(1),
+  email: z.email(),
+  password: z.string().min(8).optional(),
   role: AppRole,
   userId: AuthId,
 });

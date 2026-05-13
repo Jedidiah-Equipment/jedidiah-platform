@@ -33,6 +33,17 @@ Guidance for the backend runtime package. Good references are `src/server.ts`,
 - Parse env through `src/env.ts`; avoid direct `process.env` reads in feature code.
 - Keep Fastify wiring in `src/server.ts` and startup in `src/main.ts`.
 
+## List Procedure Patterns
+
+- Client-side table/list pattern: follow `src/routes/users/users.router.ts` when the API should
+  authorize and return a safe full list while the web table owns filter, sort, and pagination.
+  Keep the procedure inputless unless the backend truly needs parameters, and keep ordering simple
+  and deterministic in `@pkg/core`.
+- Server-side table/list pattern: follow `src/routes/products/products.router.ts` when filter,
+  sort, search, and pagination are part of the API contract. Validate a shared list input from
+  `@pkg/schema`, pass it to `@pkg/core`, and cover defaults, filtering, sorting, pagination, and
+  authorization in direct caller tests.
+
 ## Tests
 
 - For tRPC router/procedure behavior, use the direct caller harness from `src/test/create-tester.ts`.

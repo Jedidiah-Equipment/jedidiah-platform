@@ -69,6 +69,18 @@ Guidance for the React/Vite app. The best references are `src/pages/products/Pro
 - Do not introduce new classic `@trpc/react-query` hook usage.
 - Keep table state patterns aligned with `src/pages/products/components/ProductTable.tsx`,
   `src/pages/users/components/UserTable.tsx`, and `src/components/data-table/store.ts`.
+- Treat `UserTable` as the client-side table example and `ProductTable` as the server-side table
+  example. Reuse `src/components/data-table/table-state.ts` for shared pagination and sort-state
+  normalization instead of duplicating local helpers.
+- Client-side table/list pattern: follow `src/pages/users/components/UserTable.tsx` when the API
+  returns the full list and the browser owns filtering, sorting, and pagination. Keep TanStack row
+  models (`getFilteredRowModel`, `getSortedRowModel`, `getPaginationRowModel`) in the page-local
+  table component, type sort options from the row shape, and pass the preconfigured table to
+  `DataTable`.
+- Server-side table/list pattern: follow `src/pages/products/components/ProductTable.tsx` when
+  filtering, sorting, and pagination belong in the query/API. The page-local table maps persisted
+  table state into the real list input type, uses manual TanStack sorting/filtering/pagination,
+  keeps previous query data during fetches, and still passes the preconfigured table to `DataTable`.
 
 ## Authorization
 

@@ -98,18 +98,6 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
     conditions.push(ilike(products.modelCode, `%${listInput.columnFilters.modelCode}%`));
   }
 
-  if (listInput.columnFilters.basePrice) {
-    conditions.push(
-      sql`${products.basePrice}::text ilike ${`%${listInput.columnFilters.basePrice}%`}`,
-    );
-  }
-
-  if (listInput.columnFilters.createdAt) {
-    conditions.push(
-      sql`${products.createdAt}::text ilike ${`%${listInput.columnFilters.createdAt}%`}`,
-    );
-  }
-
   if (listInput.columnFilters.id) {
     conditions.push(sql`${products.id}::text ilike ${`%${listInput.columnFilters.id}%`}`);
   }

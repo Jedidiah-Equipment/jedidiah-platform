@@ -4,17 +4,17 @@ import {
   type ColumnDef,
   type ColumnFiltersState,
   getCoreRowModel,
-  type PaginationState,
-  type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 import { PencilIcon } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { DataTable } from "@/components/data-table/DataTable.js";
+import { useConstrainedTableState } from "@/components/data-table/hooks/use-constrained-table-state.js";
 import { usePagedQueryResult } from "@/components/data-table/hooks/use-paged-query-result.js";
 import { createPersistedDataTableStore } from "@/components/data-table/store.js";
+import { getPrimarySort, type SortOptions } from "@/components/data-table/table-state.js";
 import { Button } from "@/components/ui/button.js";
 import { useTRPC } from "@/lib/trpc.js";
 
@@ -34,6 +34,13 @@ export const useProductTableStore = createPersistedDataTableStore({
   },
   persistName: "products-table",
 });
+
+const productSortOptions: SortOptions<ProductListInput> = {
+  allowedSortIds: ["basePrice", "createdAt", "id", "modelCode", "name"],
+  defaultSort: {
+    id: "name",
+  },
+};
 
 export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showEditActions }) => {
   const trpc = useTRPC();
@@ -70,7 +77,13 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
       sorting: state.sorting,
     })),
   );
-  const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize));
+  const tableState = useConstrainedTableState({
+    pagination,
+    setPageIndex,
+    sorting,
+    sortOptions: productSortOptions,
+    total,
+  });
 
   const columns = useMemo<ColumnDef<Product>[]>(() => {
     const tableColumns: ColumnDef<Product>[] = [
@@ -91,14 +104,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
       {
         accessorKey: "basePrice",
         cell: ({ row }) => formatProductPrice(row.original),
-        enableColumnFilter: true,
+        enableColumnFilter: false,
         enableSorting: true,
         header: "Base price",
       },
       {
         accessorKey: "createdAt",
         cell: ({ row }) => formatProductDate(row.original.createdAt),
-        enableColumnFilter: true,
+        enableColumnFilter: false,
         enableSorting: true,
         header: "Created",
       },
@@ -150,14 +163,6 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
     return tableColumns;
   }, [onEditProduct, showEditActions]);
 
-  useEffect(() => {
-    const maxPageIndex = Math.max(pageCount - 1, 0);
-
-    if (pagination.pageIndex > maxPageIndex) {
-      setPageIndex(maxPageIndex);
-    }
-  }, [pageCount, pagination.pageIndex, setPageIndex]);
-
   const table = useReactTable({
     columns,
     data: products,
@@ -170,13 +175,13 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
-    pageCount,
+    pageCount: tableState.pageCount,
     rowCount: total,
     state: {
       columnFilters,
       globalFilter,
-      pagination: constrainPagination(pagination, pageCount),
-      sorting: constrainSorting(sorting),
+      pagination: tableState.pagination,
+      sorting: tableState.sorting,
     },
   });
 
@@ -202,14 +207,12 @@ export function useProductListInput(): ProductListInput {
       sorting: state.sorting,
     })),
   );
-  const sort = sorting[0];
+  const sort = getPrimarySort(sorting, productSortOptions);
 
   return useMemo(
     () =>
       ({
         columnFilters: {
-          basePrice: getColumnFilterValue(columnFilters, "basePrice"),
-          createdAt: getColumnFilterValue(columnFilters, "createdAt"),
           id: getColumnFilterValue(columnFilters, "id"),
           modelCode: getColumnFilterValue(columnFilters, "modelCode"),
           name: getColumnFilterValue(columnFilters, "name"),
@@ -217,51 +220,20 @@ export function useProductListInput(): ProductListInput {
         page: pagination.pageIndex + 1,
         pageSize: pagination.pageSize,
         search: globalFilter,
-        sortBy: getProductSortBy(sort?.id),
-        sortDirection: sort?.desc ? "desc" : "asc",
+        sortBy: sort.id,
+        sortDirection: sort.desc ? "desc" : "asc",
       }) satisfies ProductListInput,
-    [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort?.desc, sort?.id],
+    [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id],
   );
 }
 
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,
-  id: "basePrice" | "createdAt" | "id" | "modelCode" | "name",
+  id: "id" | "modelCode" | "name",
 ): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === "string" && value ? value : undefined;
-}
-
-function constrainPagination(pagination: PaginationState, pageCount: number): PaginationState {
-  return {
-    ...pagination,
-    pageIndex: Math.min(pagination.pageIndex, Math.max(pageCount - 1, 0)),
-  };
-}
-
-function constrainSorting(sorting: SortingState): SortingState {
-  const sort = sorting[0];
-
-  return [
-    {
-      id: getProductSortBy(sort?.id),
-      desc: sort?.desc ?? false,
-    },
-  ];
-}
-
-function getProductSortBy(sortId: string | undefined): ProductListInput["sortBy"] {
-  if (
-    sortId === "basePrice" ||
-    sortId === "createdAt" ||
-    sortId === "id" ||
-    sortId === "modelCode"
-  ) {
-    return sortId;
-  }
-
-  return "name";
 }
 
 function formatProductPrice(product: Product): string {

@@ -1,4 +1,4 @@
-import type { AppRole } from "@pkg/schema";
+import type { AppRole, AuthId, UserSummary } from "@pkg/schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldIcon } from "lucide-react";
 import type React from "react";
@@ -11,6 +11,8 @@ import { Separator } from "@/components/ui/separator.js";
 import { useAccess } from "@/hooks/use-access.js";
 import { useTRPC } from "@/lib/trpc.js";
 import { UserTable } from "./components/UserTable.js";
+
+const emptyUsers: UserSummary[] = [];
 
 export const UsersPage: React.FC = () => {
   const trpc = useTRPC();
@@ -33,7 +35,7 @@ export const UsersPage: React.FC = () => {
   );
   const { isPending: isRoleUpdatePending, mutate: setRole } = setRoleMutation;
   const handleRoleChange = useCallback(
-    (userId: string, role: AppRole) =>
+    (userId: AuthId, role: AppRole) =>
       setRole({
         role,
         userId,
@@ -64,7 +66,7 @@ export const UsersPage: React.FC = () => {
             isLoading={usersQuery.isPending}
             isRoleUpdatePending={isRoleUpdatePending}
             onRoleChange={handleRoleChange}
-            users={usersQuery.data?.users ?? []}
+            users={usersQuery.data?.users ?? emptyUsers}
           />
         </CardContent>
       </Card>

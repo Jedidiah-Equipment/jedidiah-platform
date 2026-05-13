@@ -1,7 +1,6 @@
-import type { AppPermission } from "@pkg/schema";
+import { type AppPermission, hasPermission } from "@pkg/schema";
 import { useQuery } from "@tanstack/react-query";
 
-import { canAccess } from "@/lib/access.js";
 import { useTRPC } from "@/lib/trpc.js";
 
 export function useAccess() {
@@ -19,6 +18,6 @@ export function useCan(permission: AppPermission) {
 
   return {
     ...accessQuery,
-    can: canAccess(accessQuery.data, permission),
+    can: hasPermission(accessQuery.data, permission),
   };
 }

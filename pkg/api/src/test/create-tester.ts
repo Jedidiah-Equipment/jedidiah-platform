@@ -56,11 +56,9 @@ export function createTester<T extends object = Record<string, never>>(
                 session: null,
               }),
             createCaller: (session = mockSession()) => {
-              const role = (session.user as { role?: unknown }).role;
-
               return createAppRouterCaller({
                 access: createUserAccessSummary({
-                  role,
+                  role: session.user.role,
                   userId: session.user.id,
                 }),
                 db: databaseClient.db,

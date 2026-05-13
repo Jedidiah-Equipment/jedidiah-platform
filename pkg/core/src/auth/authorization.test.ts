@@ -1,11 +1,7 @@
+import { hasPermission } from "@pkg/schema";
 import { describe, expect, it } from "vitest";
 
-import {
-  createUserAccessSummary,
-  getRolePermissions,
-  hasPermission,
-  normalizeAppRoles,
-} from "./authorization.js";
+import { createUserAccessSummary, getRolePermissions, normalizeAppRoles } from "./authorization.js";
 
 describe("normalizeAppRoles", () => {
   it("keeps supported roles", () => {

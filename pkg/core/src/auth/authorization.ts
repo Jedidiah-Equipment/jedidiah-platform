@@ -75,13 +75,6 @@ export function createUserAccessSummary(input: {
   };
 }
 
-export function hasPermission(
-  access: Pick<UserAccessSummary, "permissions"> | null | undefined,
-  permission: AppPermission,
-): boolean {
-  return access?.permissions.includes(permission) ?? false;
-}
-
 function flattenRolePermissions(role: AppRole): AppPermission[] {
   const roleAccess = appRoleAccess[role];
   const permissions: AppPermission[] = [];

@@ -1,6 +1,8 @@
+import type { AppRole } from "@pkg/schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldIcon } from "lucide-react";
 import type React from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge.js";
@@ -29,6 +31,15 @@ export const UsersPage: React.FC = () => {
       },
     }),
   );
+  const { isPending: isRoleUpdatePending, mutate: setRole } = setRoleMutation;
+  const handleRoleChange = useCallback(
+    (userId: string, role: AppRole) =>
+      setRole({
+        role,
+        userId,
+      }),
+    [setRole],
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -41,7 +52,7 @@ export const UsersPage: React.FC = () => {
             </div>
             <Badge variant="secondary">
               <ShieldIcon data-icon="inline-start" />
-              Admin only
+              User access
             </Badge>
           </div>
         </CardHeader>
@@ -51,13 +62,8 @@ export const UsersPage: React.FC = () => {
             currentUserId={accessQuery.data?.userId}
             errorMessage={usersQuery.error?.message}
             isLoading={usersQuery.isPending}
-            isRoleUpdatePending={setRoleMutation.isPending}
-            onRoleChange={(userId, role) =>
-              setRoleMutation.mutate({
-                role,
-                userId,
-              })
-            }
+            isRoleUpdatePending={isRoleUpdatePending}
+            onRoleChange={handleRoleChange}
             users={usersQuery.data?.users ?? []}
           />
         </CardContent>

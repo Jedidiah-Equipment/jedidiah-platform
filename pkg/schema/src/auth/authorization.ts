@@ -27,6 +27,13 @@ export const UserAccessSummary = z.object({
   userId: AuthId,
 });
 
+export function hasPermission(
+  access: Pick<UserAccessSummary, "permissions"> | null | undefined,
+  permission: AppPermission,
+): boolean {
+  return access?.permissions.includes(permission) ?? false;
+}
+
 export type UserSummary = z.infer<typeof UserSummary>;
 export const UserSummary = z.object({
   id: AuthId,

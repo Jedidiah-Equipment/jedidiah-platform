@@ -1,10 +1,14 @@
 import type { AppRouter } from "@pkg/api/router-type";
+import type { QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink, loggerLink, type TRPCLink } from "@trpc/client";
-import { createTRPCContext } from "@trpc/tanstack-react-query";
+import { createTRPCContext, createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 
 import { getClientConfig } from "./app-config.js";
 
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
+
+export type TrpcClient = ReturnType<typeof createTrpcClient>;
+export type TrpcOptions = ReturnType<typeof createTrpcOptions>;
 
 export function createTrpcClient() {
   const config = getClientConfig();
@@ -31,5 +35,13 @@ export function createTrpcClient() {
 
   return createTRPCClient<AppRouter>({
     links,
+  });
+}
+
+export function createTrpcOptions(queryClient: QueryClient, trpcClient: TrpcClient) {
+  // Non-hook tRPC query helpers for router loaders/guards, where useTRPC() cannot run.
+  return createTRPCOptionsProxy<AppRouter>({
+    client: trpcClient,
+    queryClient,
   });
 }

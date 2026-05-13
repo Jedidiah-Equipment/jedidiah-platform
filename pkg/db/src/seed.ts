@@ -1,29 +1,30 @@
+import { pathToFileURL } from "node:url";
 import { hashPassword } from "better-auth/crypto";
 import { sql } from "drizzle-orm";
 
-import { db } from "./client.js";
+import { closeDatabaseConnection, db } from "./client.js";
 import { account, user } from "./schema/auth.js";
 
 const seedUsers = [
   {
     id: "seed-admin-user",
     name: "Seed Admin",
-    email: "admin@example.com",
-    password: "password123",
+    email: "admin@seed.com",
+    password: "12345678",
     role: "admin",
   },
   {
     id: "seed-product-editor-user",
     name: "Seed Product Editor",
-    email: "product-editor@example.com",
-    password: "password123",
+    email: "pe@seed.com",
+    password: "12345678",
     role: "product-editor",
   },
   {
     id: "seed-product-viewer-user",
     name: "Seed Product Viewer",
-    email: "product-viewer@example.com",
-    password: "password123",
+    email: "pv@seed.com",
+    password: "12345678",
     role: "product-viewer",
   },
 ] as const;
@@ -42,8 +43,9 @@ export async function seedDatabase(): Promise<void> {
       })),
     )
     .onConflictDoUpdate({
-      target: user.email,
+      target: user.id,
       set: {
+        email: sql`excluded.email`,
         emailVerified: true,
         name: sql`excluded.name`,
         role: sql`excluded.role`,
@@ -73,4 +75,12 @@ export async function seedDatabase(): Promise<void> {
         updatedAt: now,
       },
     });
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  try {
+    await seedDatabase();
+  } finally {
+    await closeDatabaseConnection();
+  }
 }

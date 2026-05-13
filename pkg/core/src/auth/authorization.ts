@@ -3,36 +3,11 @@ import {
   type AppRole,
   AppRole as AppRoleSchema,
   type UserAccessSummary,
+  appRoleAccess,
+  authorizationStatement,
 } from "@pkg/schema";
 
-export const authorizationStatement = {
-  audit: ["read"],
-  product: ["read", "create", "update"],
-  user: ["list", "create", "update", "set-role", "set-password"],
-} as const;
-
-type AuthorizationResource = keyof typeof authorizationStatement;
-type RoleAccess = Partial<Record<AuthorizationResource, readonly string[]>>;
-
-export const appRoleAccess = {
-  admin: {
-    audit: ["read"],
-    product: ["read", "create", "update"],
-    user: ["list", "create", "update", "set-role", "set-password"],
-  },
-  "product-editor": {
-    product: ["read", "create", "update"],
-  },
-  "product-viewer": {
-    product: ["read"],
-  },
-} as const satisfies Record<AppRole, RoleAccess>;
-
-const publicRolePriority = [
-  "admin",
-  "product-editor",
-  "product-viewer",
-] as const satisfies AppRole[];
+export { appRoleAccess, authorizationStatement };
 
 export function normalizeAppRoles(role: unknown): AppRole[] {
   if (Array.isArray(role)) {
@@ -82,7 +57,7 @@ function flattenRolePermissions(role: AppRole): AppPermission[] {
   const permissions: AppPermission[] = [];
 
   for (const [resource, actions] of Object.entries(roleAccess) as [
-    AuthorizationResource,
+    keyof typeof authorizationStatement,
     readonly string[],
   ][]) {
     for (const action of actions) {
@@ -96,6 +71,12 @@ function flattenRolePermissions(role: AppRole): AppPermission[] {
 function uniqueRoles(roles: readonly AppRole[]): AppRole[] {
   return [...new Set(roles)];
 }
+
+const publicRolePriority = [
+  "admin",
+  "product-editor",
+  "product-viewer",
+] as const satisfies AppRole[];
 
 function getPublicRole(roles: readonly AppRole[]): AppRole | null {
   for (const role of publicRolePriority) {

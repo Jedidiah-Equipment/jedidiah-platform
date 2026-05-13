@@ -24,6 +24,8 @@
     "@pkg/schema": "workspace:*",
     "@trpc/server": "^11.7.2",
     "dotenv": "^17.4.2",
-    "superjson": "^2.2.6"
+    "openai": "^6.37.0",
+    "superjson": "^2.2.6",
+    "zod-to-json-schema": "^3.25.2"
   }
 }

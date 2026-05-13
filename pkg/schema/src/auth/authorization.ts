@@ -47,7 +47,33 @@ export const UserSummary = z.object({
   role: AppRole,
 });
 
+export type UserPassword = z.infer<typeof UserPassword>;
+export const UserPassword = z.string().min(8, "Password must be at least 8 characters");
+
 export type UserListResult = z.infer<typeof UserListResult>;
 export const UserListResult = z.object({
   users: z.array(UserSummary),
 });
+
+export const authorizationStatement = {
+  audit: ["read"],
+  product: ["read", "create", "update"],
+  user: ["list", "create", "update", "set-role", "set-password"],
+} as const;
+
+type AuthorizationResource = keyof typeof authorizationStatement;
+type RoleAccess = Partial<Record<AuthorizationResource, readonly string[]>>;
+
+export const appRoleAccess = {
+  admin: {
+    audit: ["read"],
+    product: ["read", "create", "update"],
+    user: ["list", "create", "update", "set-role", "set-password"],
+  },
+  "product-editor": {
+    product: ["read", "create", "update"],
+  },
+  "product-viewer": {
+    product: ["read"],
+  },
+} as const satisfies Record<AppRole, RoleAccess>;

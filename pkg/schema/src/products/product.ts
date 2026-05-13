@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { SortDirection } from "../common/sort.js";
+import { Uuid } from "../common/uuid.js";
 import { createPagedQueryResult, PagedQueryInput } from "../pagination/pagination.js";
 
 export type ProductId = z.infer<typeof ProductId>;
-export const ProductId = z.uuid();
+export const ProductId = Uuid;
 
 export type ProductName = z.infer<typeof ProductName>;
 export const ProductName = z.string().trim().min(1, "Product name is required");
@@ -51,8 +52,6 @@ export const ProductSortBy = z.enum(["basePrice", "createdAt", "id", "modelCode"
 export type ProductColumnFilters = z.infer<typeof ProductColumnFilters>;
 export const ProductColumnFilters = z
   .object({
-    basePrice: z.string().trim().optional(),
-    createdAt: z.string().trim().optional(),
     id: z.string().trim().optional(),
     modelCode: z.string().trim().optional(),
     name: z.string().trim().optional(),

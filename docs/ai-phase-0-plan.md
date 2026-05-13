@@ -11,8 +11,9 @@ Prove the smallest end-to-end slice of an in-app assistant:
 
 1. An authenticated React surface where a logged-in user can send a message and watch the
    assistant stream a response.
-2. The assistant can call one read-only tool — `findProduct` — that runs inside the existing
-   authenticated API context against Postgres via `@pkg/core`.
+2. The assistant can call one read-only tool — `listProducts` — that mirrors the existing
+   `products.list` tRPC procedure exactly: same `ProductListInput` schema, same `@pkg/core`
+   call, same `ProductListResult` shape.
 3. Streaming works over the existing Fastify + Railway-style runtime, including abort.
 
 Nothing else. No persistence, no approvals, no schedules, no MCP, no provider abstraction.
@@ -24,7 +25,7 @@ Nothing else. No persistence, no approvals, no schedules, no MCP, no provider ab
 | Provider | OpenAI only. |
 | SDK | Official `openai` Node SDK using the **Responses API** with streaming. |
 | Model | `gpt-5.5` for chat. Pin in env, not in source. Single model for the spike. |
-| Tool surface | One tool: `findProduct`. Read-only. Wraps `listProducts` from `@pkg/core`. |
+| Tool surface | One tool: `listProducts`. Read-only. Mirrors the `products.list` tRPC procedure 1:1 — same `ProductListInput` schema from `@pkg/schema`, same `listProducts` call into `@pkg/core`, same `ProductListResult` shape. |
 | Chat persistence | **Ephemeral.** Full message history lives in React state only. The server is stateless across requests — the client sends the full transcript on every turn. |
 | Transport | Dedicated Fastify route `POST /ai/chat-stream`. **Not** tRPC. |
 | Stream protocol | Server-Sent Events (SSE), one event type, newline-framed JSON payloads. |
@@ -46,8 +47,8 @@ The spike is "done" when **all** of these are demonstrable on a dev machine:
 
 1. A logged-in user opens `/_authed/assistant`, types "find product abc", and sees a streamed
    answer that references a real product row.
-2. The assistant correctly invokes `findProduct` (visible in API logs) and uses the result in
-   its reply.
+2. The assistant correctly invokes `listProducts` (visible in API logs) and uses the result
+   in its reply. The arguments it picks are valid `ProductListInput` values.
 3. Hitting "Stop" in the UI aborts the upstream OpenAI request within ~1s; the API logs the
    cancel.
 4. An unauthenticated request to `/ai/chat-stream` returns 401 without contacting OpenAI.
@@ -75,13 +76,16 @@ Fastify route  POST /ai/chat-stream
   ├─ forward provider events as SSE `data: {...}\n\n`
   └─ on abort → upstream.controller.abort(); log; end stream
        │
-       └─ tools.findProduct(args, ctx)
-            └─ listProducts(ctx.db, { search, limit }) from @pkg/core
+       └─ tools.listProducts(args, ctx)
+            ├─ ProductListInput.parse(args)               // same schema as tRPC
+            ├─ ctx.access.can('product:read')             // same gate as authorizedProcedure
+            └─ listProducts(ctx.db, input) from @pkg/core // same call as products.list
 ```
 
 No new packages beyond `openai` in `@pkg/api`. No changes to `@pkg/core`, `@pkg/db`, or
-`@pkg/schema` schemas — `findProduct`'s input/output schema lives next to the tool for now and
-gets promoted to `@pkg/schema` in Phase 1 when it's worth sharing.
+`@pkg/schema` — the tool reuses `ProductListInput` and `ProductListResult` directly. By
+mirroring the tRPC procedure, anything the model can ask the assistant to do is exactly what
+the existing UI can already do via `products.list`; there is no new authorization surface.
 
 ## File Plan
 
@@ -92,14 +96,14 @@ pkg/api/src/routes/ai/
   ai-stream.route.ts        Fastify SSE route, OpenAI streaming, tool dispatch
   ai-context.ts             builds { session, access, db } for tool handlers
   ai-tools.ts               tool registry: name → { schema, description, handler }
-  tools/find-product.ts     findProduct tool implementation
+  tools/list-products.ts    listProducts tool — mirrors products.list tRPC procedure
   ai-openai.ts              thin wrapper: new OpenAI(), model id, default options
   ai-sse.ts                 SSE helpers: writeEvent, writeError, closeStream
   README.md                 short pointer back to this doc
 
 pkg/api/src/routes/ai/__tests__/
-  find-product.tool.test.ts unit test against test db
-  ai-stream.route.test.ts   integration test: 401, happy path with a stubbed OpenAI client
+  list-products.tool.test.ts unit test against test db
+  ai-stream.route.test.ts    integration test: 401, happy path with a stubbed OpenAI client
 
 pkg/web/src/routes/
   _authed.assistant.tsx     gated by VITE_ENABLE_ASSISTANT, renders <AssistantPanel/>
@@ -117,6 +121,40 @@ Files modified:
   `AI_ENABLED` (default `false`).
 - `pkg/api/package.json` — add `openai` dependency.
 - `pkg/web/src/server/env.ts` — add `VITE_ENABLE_ASSISTANT` (default `false`).
+
+## Why Not tRPC Subscriptions
+
+tRPC 11 supports SSE-backed subscriptions (`httpSubscriptionLink`, async iterables) and would
+in principle give us typed end-to-end events for free. We are **not** using them for chat in
+Phase 0. The reasons, in order of weight:
+
+1. **Subscriptions are GET-with-input.** They are not designed to carry a multi-KB transcript
+   as the request body. To use one for chat we'd either jam the full message history into a
+   query string (URL-length cliff, awkward) or split the turn into a `chat.send` mutation
+   that stashes state server-side plus a `chat.stream` subscription that reads it back. That
+   contradicts Phase 0's locked decision that the server is stateless and the transcript
+   lives only in React.
+2. **Two layers of streaming abstraction.** A subscription wraps an async iterator that wraps
+   the OpenAI SDK's event stream. Abort semantics have to traverse all of them. A plain
+   `POST` + SSE route is one layer and trivially `curl`-able for debugging.
+3. **Ecosystem alignment.** Chat UI libraries (Vercel AI SDK's `useChat`, custom UI message
+   protocols, hypothetical future MCP adapters) all speak fetch/SSE. A tRPC subscription is
+   a bespoke protocol from any of their perspectives. Keeping the chat route on plain SSE
+   leaves that door open.
+4. **The typed-events upside is mostly free anyway.** We export the `AssistantEvent`
+   discriminated union from `@pkg/api` and import it in `@pkg/web`. The wire is untyped JSON
+   but both ends agree on the type at compile time. That's 90% of the benefit subscriptions
+   would give us, without the coupling.
+
+Where tRPC subscriptions **are** the right tool, and we'll reach for them in Phase 2+:
+
+- `ai.approvals.onPending` — push when the assistant proposes an action that needs review.
+- `ai.schedules.onRunUpdate` — schedule run started / finished / failed.
+- `ai.conversations.onUpdate` — once conversations persist, sync state across tabs/devices.
+
+These are short, typed, low-frequency control-plane events that map perfectly to
+subscriptions and don't interleave with a token stream. The chat token stream stays on the
+dedicated SSE route.
 
 ## Streaming Contract
 
@@ -147,7 +185,17 @@ Events (single `data:` line, JSON payload):
 type AssistantEvent =
   | { type: 'token'; delta: string }
   | { type: 'tool_call'; name: string; args: unknown }
-  | { type: 'tool_result'; name: string; ok: boolean; summary: string }
+  | {
+      type: 'tool_result';
+      name: string;
+      ok: boolean;
+      // For ok=true: a short summary string for UI display ("12 products, page 1 of 3").
+      // The full ProductListResult is fed back to the model, not emitted to the client
+      // verbatim in Phase 0.
+      summary: string;
+      // For ok=false: a stable reason code so the UI can render it consistently.
+      reason?: 'unauthorized' | 'invalid_input' | 'internal_error';
+    }
   | { type: 'done' }
   | { type: 'error'; message: string };
 ```
@@ -162,31 +210,63 @@ Rules:
 
 ## Tool Contract
 
-`findProduct` is the only tool. Definition lives in `tools/find-product.ts`:
+`listProducts` is the only tool. It is a **thin mirror of the `products.list` tRPC procedure**:
+same input schema, same core call, same result shape. The reason is to keep Phase 0 honest —
+the assistant cannot read anything the existing UI cannot already read for the same user.
+
+Definition lives in `tools/list-products.ts`:
 
 ```ts
-const FindProductInput = z.object({
-  query: z.string().min(1).max(200),
-  limit: z.number().int().min(1).max(10).default(5),
-});
+import { ProductListInput, ProductListResult } from '@pkg/schema';
+import { listProducts } from '@pkg/core';
 
-type FindProductResult =
-  | { ok: true; products: Array<{ id: string; name: string; sku: string | null }> }
-  | { ok: false; reason: 'unauthorized' | 'not_found' };
+// Input  → ProductListInput   (search, columnFilters, sortBy, sortDirection, page, pageSize)
+// Output → ProductListResult  (rows of full Product + sortBy + sortDirection + paging)
+
+export const listProductsTool = {
+  name: 'listProducts',
+  description:
+    'List products with the same filters, sort, and paging available in the products page. ' +
+    'Use `search` for fuzzy name/model lookups. Returns a page of products with full fields.',
+  input: ProductListInput,
+  output: ProductListResult,
+  async handler(args: unknown, ctx: AiContext): Promise<ProductListResult> {
+    const input = ProductListInput.parse(args);
+    if (!ctx.access?.can('product:read')) {
+      throw new ToolAuthorizationError('product:read');
+    }
+    return listProducts(ctx.db, input);
+  },
+};
 ```
 
-Handler responsibilities:
+Mirroring rules (do not deviate in Phase 0):
 
-1. Validate input with Zod.
-2. Check `ctx.access?.can('product:read')`. Return `{ ok: false, reason: 'unauthorized' }` if
-   not — do **not** throw. The model needs to relay this to the user.
-3. Call `listProducts(ctx.db, { search: query, limit })`.
-4. Return at most `limit` rows with only the three fields above. No prices, no audit fields,
-   no full row dump.
+- **Input schema is `ProductListInput` verbatim.** No renaming, no extra constraints, no
+  Phase-0-only wrapper. If the schema is too permissive for the model, that is a Phase 1
+  problem, not a Phase 0 fork.
+- **Authorization is the same gate as `authorizedProcedure('product:read')`.** Implemented as
+  a single check at the top of the handler. On failure throw `ToolAuthorizationError`; the
+  route catches it and emits a `tool_result` event with `ok: false` so the model can relay it.
+- **Output is `ProductListResult` verbatim** — full `Product` rows including `basePrice`,
+  `currencyCode`, `description`, `modelCode`, `createdAt`, `updatedAt`. Pagination respects
+  whatever the model passed. No server-side trimming of fields or rows beyond what the schema
+  already enforces.
+- **No bespoke types** like `FindProductResult` or `{ ok, reason }` envelopes — the tool
+  speaks the same language as the tRPC procedure. The route layer translates thrown
+  authorization errors into a tool-result envelope for the model; the handler itself returns
+  the raw `ProductListResult`.
 
-Zod → OpenAI tool schema conversion: use `zodToJsonSchema` (already a transitive dep via
-better-auth; if not, add `zod-to-json-schema`). Validate the converted schema once at module
-load.
+Zod → OpenAI tool schema conversion: use `zod-to-json-schema`. `ProductListInput` extends
+`PagedQueryInput` and uses `.default(...)` heavily — verify the generated JSON Schema is
+accepted by the Responses API at module load, and fail fast on startup if not. If a specific
+construct doesn't round-trip cleanly (e.g. `z.preprocess`, transforms), document it here and
+hand-author a JSON Schema for that one field rather than diverging the Zod schema.
+
+Tool prompting note: because `ProductListInput` carries product-page semantics (column
+filters, sort columns), the system prompt should briefly tell the model what `search`,
+`columnFilters`, `sortBy`, and `sortDirection` mean so it picks sensible arguments. Keep this
+to a short paragraph; do not duplicate the schema.
 
 ## Web Surface
 
@@ -208,9 +288,8 @@ function stop() { abortRef.current?.abort(); }
 - Message list (user right, assistant left, monospace for tool events).
 - Single textarea + Send button.
 - Stop button visible while `status === 'streaming'`.
-- Tool calls render as a subtle inline pill: `🔧 findProduct(query: "abc")` →
-  `→ 2 results`. (Use the words, not the emoji, unless the user opts in to emoji.) For Phase 0,
-  plain text is fine: `[tool] findProduct → 2 results`.
+- Tool calls render as a plain inline line: `[tool] listProducts(search: "abc", sortBy: "name")
+  → 12 products, page 1 of 3`. No styling beyond a muted color.
 
 No conversation list, no save, no rename. Refreshing the page wipes state — that is the
 intended ephemeral behavior.
@@ -222,8 +301,9 @@ intended ephemeral behavior.
 - `AI_ENABLED=false` short-circuits the route with 404 in non-dev environments by default.
 - Hard cap: `messages.length <= 40`, each `content.length <= 4_000`, total payload < 64 KB.
   Reject with 413 above these.
-- Tool result payloads capped at 10 rows, three fields each (enforced server-side, not via
-  prompt).
+- Tool result payloads are bounded by `ProductListInput.pageSize` (whatever cap
+  `PagedQueryInput` already enforces). Phase 0 does **not** add a second cap on top — the
+  tool's surface area is identical to the tRPC procedure by design.
 - No system prompt injection from user content — system prompt is a constant in source.
 - Per-request timeout: 60s total wall clock. Abort and emit `error` event on overflow.
 
@@ -253,12 +333,16 @@ a known gap — Phase 1 will design redaction.)
 
 Two files, both small.
 
-`find-product.tool.test.ts`:
+`list-products.tool.test.ts`:
 
-- Authorized user with `product:read` → returns matching products, capped at `limit`.
-- User without `product:read` → returns `{ ok: false, reason: 'unauthorized' }` and **does
-  not** call `listProducts`.
-- Empty query → Zod rejects.
+- Authorized user with `product:read` and a valid `ProductListInput` → returns the same
+  `ProductListResult` shape as `products.list` does for the same input (snapshot or deep-equal
+  against a direct `listProducts` call).
+- User without `product:read` → handler throws `ToolAuthorizationError` and **does not** call
+  `listProducts`.
+- Invalid args (e.g. unknown `sortBy`) → Zod parse rejects with `invalid_input`.
+- Generated JSON Schema from `ProductListInput` is accepted by `zod-to-json-schema` and matches
+  a snapshot (regression guard if the schema changes).
 
 `ai-stream.route.test.ts`:
 
@@ -299,7 +383,9 @@ Smoke check before declaring done:
 | --- | --- |
 | Fastify response buffering breaks SSE locally or on Railway | Set `X-Accel-Buffering: no`, disable compression on this route, write a heartbeat comment line every 15s. |
 | OpenAI SDK abort semantics drift across versions | Pin the SDK version, cover with the abort test. |
-| `zodToJsonSchema` produces an OpenAI-incompatible schema | Validate once at module load; fall back to a hand-written JSON Schema for `findProduct` if needed. |
+| `zod-to-json-schema` produces an OpenAI-incompatible schema for `ProductListInput` (defaults, transforms, nested `PagedQueryInput`) | Validate once at module load; if a specific field doesn't round-trip, hand-author the JSON Schema for that field only — do not fork `ProductListInput`. |
+| Model picks weird `columnFilters` or `sortBy` values | System prompt explains the four input dimensions briefly; Zod parse rejects invalid args and the route returns a `tool_result` with `reason: 'invalid_input'` so the model can retry. |
+| Returning full `Product` rows leaks fields we'd rather not show (e.g. `basePrice`) | Accepted for Phase 0 — the assistant has the same read surface as the tRPC procedure, no more. Re-evaluate in Phase 1 if we want a separate "assistant projection". |
 | Ephemeral state surprises a user who refreshes | Document in the UI: "This conversation is not saved." |
 | Model id `gpt-5.5` changes name or pricing | Env-configurable; doc says pin and review quarterly. |
 
@@ -313,8 +399,10 @@ Open questions to resolve **before** Phase 1, not during Phase 0:
 
 ## Implementation Order (Suggested)
 
-1. Add env vars and `openai` dep. Confirm `pnpm install` and typecheck still pass.
-2. Build `find-product.ts` + unit test. No streaming yet.
+1. Add env vars and `openai` (and `zod-to-json-schema` if not already present) deps. Confirm
+   `pnpm install` and typecheck still pass.
+2. Build `tools/list-products.ts` + unit test, mirroring the `products.list` tRPC procedure.
+   No streaming yet.
 3. Build `ai-stream.route.ts` against a stubbed client + integration test.
 4. Wire the route into `server.ts` behind `AI_ENABLED`.
 5. Build `sse-client.ts` + `useAssistantChat` + `AssistantPanel`.

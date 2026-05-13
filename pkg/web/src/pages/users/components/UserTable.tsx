@@ -1,31 +1,40 @@
-import type { AppRole, UserSummary } from "@pkg/schema";
+import type { AppRole, AuthId, UserSummary } from "@pkg/schema";
 import {
   type ColumnDef,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  type PaginationState,
-  type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 import type React from "react";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { DataTable } from "@/components/data-table/DataTable.js";
+import {
+  useConstrainedPageIndex,
+  useConstrainedTableState,
+} from "@/components/data-table/hooks/use-constrained-table-state.js";
 import { createPersistedDataTableStore } from "@/components/data-table/store.js";
+import { getPageCount, type SortOptions } from "@/components/data-table/table-state.js";
 import { Badge } from "@/components/ui/badge.js";
 import { roleLabels } from "./role-labels.js";
 import { UserRoleSelect } from "./UserRoleSelect.js";
 
 type UserTableProps = {
-  currentUserId: string | undefined;
+  currentUserId: AuthId | undefined;
   errorMessage: string | undefined;
   isLoading: boolean;
   isRoleUpdatePending: boolean;
   users: UserSummary[];
-  onRoleChange: (userId: string, role: AppRole) => void;
+  onRoleChange: (userId: AuthId, role: AppRole) => void;
+};
+
+type UserTableSortBy = keyof Pick<UserSummary, "email" | "name" | "role">;
+
+type UserTableSortInput = {
+  sortBy: UserTableSortBy;
 };
 
 export const useUserTableStore = createPersistedDataTableStore({
@@ -39,6 +48,13 @@ export const useUserTableStore = createPersistedDataTableStore({
   },
   persistName: "users-table",
 });
+
+const userSortOptions: SortOptions<UserTableSortInput> = {
+  allowedSortIds: ["name", "email", "role"],
+  defaultSort: {
+    id: "email",
+  },
+};
 
 export const UserTable: React.FC<UserTableProps> = ({
   currentUserId,
@@ -118,7 +134,15 @@ export const UserTable: React.FC<UserTableProps> = ({
     [currentUserId, isRoleUpdatePending, onRoleChange],
   );
 
+  const tableState = useConstrainedTableState({
+    pagination,
+    sorting,
+    sortOptions: userSortOptions,
+    total: users.length,
+  });
+
   const table = useReactTable({
+    autoResetPageIndex: false,
     columns,
     data: users,
     enableSortingRemoval: false,
@@ -134,21 +158,15 @@ export const UserTable: React.FC<UserTableProps> = ({
     state: {
       columnFilters,
       globalFilter,
-      pagination: constrainPagination(pagination, getPageCount(users.length, pagination.pageSize)),
-      sorting: constrainSorting(sorting),
+      pagination: tableState.pagination,
+      sorting: tableState.sorting,
     },
   });
 
   const total = table.getFilteredRowModel().rows.length;
   const pageCount = getPageCount(total, pagination.pageSize);
 
-  useEffect(() => {
-    const maxPageIndex = Math.max(pageCount - 1, 0);
-
-    if (pagination.pageIndex > maxPageIndex) {
-      setPageIndex(maxPageIndex);
-    }
-  }, [pageCount, pagination.pageIndex, setPageIndex]);
+  useConstrainedPageIndex({ pageCount, pagination, setPageIndex });
 
   return (
     <DataTable
@@ -206,27 +224,4 @@ function normalizeFilterValue(value: unknown): string {
   return String(value ?? "")
     .trim()
     .toLowerCase();
-}
-
-function getPageCount(total: number, pageSize: number): number {
-  return Math.max(1, Math.ceil(total / pageSize));
-}
-
-function constrainPagination(pagination: PaginationState, pageCount: number): PaginationState {
-  return {
-    ...pagination,
-    pageIndex: Math.min(pagination.pageIndex, Math.max(pageCount - 1, 0)),
-  };
-}
-
-function constrainSorting(sorting: SortingState): SortingState {
-  const sort = sorting[0];
-  const sortId = sort?.id === "name" || sort?.id === "role" ? sort.id : "email";
-
-  return [
-    {
-      id: sortId,
-      desc: sort?.desc ?? false,
-    },
-  ];
 }

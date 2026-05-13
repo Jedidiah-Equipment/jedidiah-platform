@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AuthId } from "../auth/auth-id.js";
 import { SortDirection } from "../common/sort.js";
+import { Uuid } from "../common/uuid.js";
 import { createPagedQueryResult, PagedQueryInput } from "../pagination/pagination.js";
 
 export type AuditAction = z.infer<typeof AuditAction>;
@@ -21,13 +22,13 @@ export const AuditChanges = z.record(z.string(), AuditFieldChange);
 
 export type AuditEvent = z.infer<typeof AuditEvent>;
 export const AuditEvent = z.object({
-  id: z.uuid(),
+  id: Uuid,
   occurredAt: z.coerce.date(),
   actorUserId: AuthId.nullable(),
   actorName: z.string().nullable(),
   actorEmail: z.email().nullable(),
   entityType: AuditEntityType,
-  entityId: z.uuid(),
+  entityId: Uuid,
   action: AuditAction,
   summary: z.string().min(1),
   changes: AuditChanges.nullable(),

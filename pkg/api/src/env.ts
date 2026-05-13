@@ -30,6 +30,8 @@ export const ApiConfig = z.object({
   API_BASE_URL: z.url(),
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
   AUTH_TRUSTED_ORIGINS: TrustedOrigins,
+  OPENAI_API_KEY: z.string().min(1),
+  OPENAI_MODEL: z.string().min(1).default("gpt-5.5"),
   PORT: z.coerce.number().int().positive().default(7002),
 });
 

@@ -6,6 +6,7 @@ import { registerAuthHandler } from "./auth/handler.js";
 import { type ApiConfig, getApiConfig } from "./env.js";
 import { registerHealthRoutes } from "./health.js";
 import { getLoggerOptions } from "./logger.js";
+import { registerAiStreamRoute } from "./routes/ai/ai-stream.route.js";
 import { createContext } from "./trpc/context.js";
 import { appRouter } from "./trpc/router.js";
 
@@ -23,6 +24,7 @@ export async function buildServer(config: ApiConfig = getApiConfig()) {
   });
 
   await registerAuthHandler(app);
+  await registerAiStreamRoute(app);
   await registerHealthRoutes(app);
 
   await app.register(fastifyTRPCPlugin, {

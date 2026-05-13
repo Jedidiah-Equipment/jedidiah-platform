@@ -11,10 +11,10 @@ Drizzle migrations, and root tooling.
 
 ```txt
 pkg/
-  api/    Fastify, Better Auth, tRPC, health/version routes, product API
+  api/    Fastify, Better Auth, tRPC, health/version routes, products and users API
   web/    React, Vite, TanStack Router, shadcn/ui, Better Auth client
   schema/ global Zod schemas and types shared across packages
-  core/   pure shared utilities and product business logic
+  core/   shared product/user domain logic and authorization rules
   db/     Drizzle schema, migrations, database client, seed/test helpers
 ```
 
@@ -100,7 +100,7 @@ Postgres container. This wipes local database data.
 
 `pkg/db` currently contains Better Auth core tables and the first app-owned table:
 
-- `user`
+- `user` (with a `role` column driving app authorization)
 - `session`
 - `account`
 - `verification`
@@ -118,13 +118,21 @@ schema changes that produced them.
 
 - `GET /health`
 - `GET /api/version`
-- `/api/auth/*` through Better Auth
+- `/api/auth/*` through Better Auth (with the admin plugin enabled)
 - `/trpc/*` through tRPC
+- `auth.session`, `auth.me`, and `auth.access` tRPC procedures for the current user and permissions
 - `products` tRPC procedures for authenticated list/create/update
+- `users` tRPC procedures (list and setRole) gated by `user:list` / `user:edit` permissions
+
+App roles are `admin`, `product-editor`, and `product-viewer`. Role-to-permission mapping lives in
+`@pkg/core/auth/authorization` and is shared between the Better Auth admin plugin, server
+procedures, and the web access hooks. Server-side procedures use `authorizedProcedure(permission)`
+in `pkg/api/src/trpc/init.ts`; clients use `useAccess` / `canAccess` in `pkg/web`.
 
 Email/password auth is enabled. Email verification and password reset emails are mocked locally by
 recording/logging the generated email payloads; no real email provider is configured yet.
-Seed users use `password123` for local sign-in.
+Seed users use `password123` for local sign-in. The seeder creates one user per role
+(`admin@example.com`, `product-editor@example.com`, `product-viewer@example.com`).
 
 ## Web notes
 
@@ -132,8 +140,12 @@ Seed users use `password123` for local sign-in.
 
 - `/login` email/password sign-in only
 - `/dashboard` authenticated dashboard shell
-- `/products` authenticated product catalog
+- `/products` authenticated product catalog (visible with `product:read`)
+- `/users` admin-only user management with role assignment
 - `/` auth-based redirect to login or dashboard
+
+Navigation entries and route guards are driven by the same permission set the API enforces; see
+`pkg/web/src/hooks/use-access.ts` and `pkg/web/src/lib/access.ts`.
 
 There is intentionally no register, forgot password, password reset, or email verification UI yet.
 Public browser config is served through `/env.js` and read from `window.__APP_CONFIG__`.

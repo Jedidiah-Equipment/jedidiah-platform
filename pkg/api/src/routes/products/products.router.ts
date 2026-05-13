@@ -17,11 +17,15 @@ export const productsRouter = router({
 
   create: authorizedProcedure("product:create")
     .input(ProductCreateInput)
-    .mutation(({ ctx, input }) => mapProductErrors(() => createProduct(ctx.db, input))),
+    .mutation(({ ctx, input }) =>
+      mapProductErrors(() => createProduct(ctx.db, input, ctx.session.user.id)),
+    ),
 
   update: authorizedProcedure("product:update")
     .input(ProductUpdateInput)
-    .mutation(({ ctx, input }) => mapProductErrors(() => updateProduct(ctx.db, input))),
+    .mutation(({ ctx, input }) =>
+      mapProductErrors(() => updateProduct(ctx.db, input, ctx.session.user.id)),
+    ),
 });
 
 async function mapProductErrors<T>(action: () => Promise<T>): Promise<T> {

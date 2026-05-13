@@ -3,7 +3,7 @@ import { SortDirection } from "../common/sort.js";
 import { createPagedQueryResult, PagedQueryInput } from "../pagination/pagination.js";
 
 export type ProductId = z.infer<typeof ProductId>;
-export const ProductId = z.string().uuid();
+export const ProductId = z.uuid();
 
 export type ProductName = z.infer<typeof ProductName>;
 export const ProductName = z.string().trim().min(1, "Product name is required");

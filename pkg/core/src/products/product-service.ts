@@ -10,6 +10,11 @@ import type {
 } from "@pkg/schema";
 import { and, asc, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
 
+import {
+  createAuditChanges,
+  insertAuditEvent,
+  productAuditDescriptor,
+} from "../audit/audit-service.js";
 import { DuplicateProductNameError, ProductNotFoundError } from "./product-errors.js";
 
 type ProductRow = typeof products.$inferSelect;
@@ -80,15 +85,28 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
 export async function createProduct(
   database: Database,
   input: ProductCreateInput,
+  actorUserId: string | null,
 ): Promise<Product> {
   try {
-    const [row] = await database.insert(products).values(input).returning();
+    return await database.transaction(async (tx) => {
+      const [row] = await tx.insert(products).values(input).returning();
 
-    if (!row) {
-      throw new Error("Product insert did not return a row");
-    }
+      if (!row) {
+        throw new Error("Product insert did not return a row");
+      }
 
-    return mapProduct(row);
+      await insertAuditEvent(tx, {
+        action: "created",
+        actorUserId,
+        after: row,
+        before: null,
+        changes: null,
+        entityId: row.id,
+        entityType: productAuditDescriptor.entityType,
+      });
+
+      return mapProduct(row);
+    });
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw new DuplicateProductNameError(input.name);
@@ -101,19 +119,52 @@ export async function createProduct(
 export async function updateProduct(
   database: Database,
   input: ProductUpdateInput,
+  actorUserId: string | null,
 ): Promise<Product> {
   try {
-    const [row] = await database
-      .update(products)
-      .set({ name: input.name })
-      .where(eq(products.id, input.id))
-      .returning();
+    return await database.transaction(async (tx) => {
+      const [before] = await tx
+        .select()
+        .from(products)
+        .where(eq(products.id, input.id))
+        .for("update");
 
-    if (!row) {
-      throw new ProductNotFoundError(input.id);
-    }
+      if (!before) {
+        throw new ProductNotFoundError(input.id);
+      }
 
-    return mapProduct(row);
+      const after = {
+        ...before,
+        name: input.name,
+      };
+      const changes = createAuditChanges(before, after, productAuditDescriptor.fields);
+
+      if (!changes) {
+        return mapProduct(before);
+      }
+
+      const [row] = await tx
+        .update(products)
+        .set({ name: input.name })
+        .where(eq(products.id, input.id))
+        .returning();
+
+      if (!row) {
+        throw new ProductNotFoundError(input.id);
+      }
+
+      await insertAuditEvent(tx, {
+        action: "updated",
+        actorUserId,
+        after: row,
+        before,
+        changes,
+        entityId: row.id,
+        entityType: productAuditDescriptor.entityType,
+      });
+
+      return mapProduct(row);
+    });
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw new DuplicateProductNameError(input.name);

@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './../routes/index'
 import { Route as AuthedUsersRouteImport } from './../routes/_authed.users'
 import { Route as AuthedProductsRouteImport } from './../routes/_authed.products'
 import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboard'
+import { Route as AuthedAssistantRouteImport } from './../routes/_authed.assistant'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -45,10 +46,16 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedAssistantRoute = AuthedAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
+  getParentRoute: () => AuthedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/assistant': typeof AuthedAssistantRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/products': typeof AuthedProductsRoute
   '/users': typeof AuthedUsersRoute
@@ -56,6 +63,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/assistant': typeof AuthedAssistantRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/products': typeof AuthedProductsRoute
   '/users': typeof AuthedUsersRoute
@@ -65,20 +73,28 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/login': typeof LoginRoute
+  '/_authed/assistant': typeof AuthedAssistantRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/products': typeof AuthedProductsRoute
   '/_authed/users': typeof AuthedUsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard' | '/products' | '/users'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/assistant'
+    | '/dashboard'
+    | '/products'
+    | '/users'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard' | '/products' | '/users'
+  to: '/' | '/login' | '/assistant' | '/dashboard' | '/products' | '/users'
   id:
     | '__root__'
     | '/'
     | '/_authed'
     | '/login'
+    | '/_authed/assistant'
     | '/_authed/dashboard'
     | '/_authed/products'
     | '/_authed/users'
@@ -134,16 +150,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedDashboardRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/assistant': {
+      id: '/_authed/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AuthedAssistantRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
 interface AuthedRouteChildren {
+  AuthedAssistantRoute: typeof AuthedAssistantRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedProductsRoute: typeof AuthedProductsRoute
   AuthedUsersRoute: typeof AuthedUsersRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedAssistantRoute: AuthedAssistantRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedProductsRoute: AuthedProductsRoute,
   AuthedUsersRoute: AuthedUsersRoute,

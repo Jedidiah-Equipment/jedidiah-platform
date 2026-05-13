@@ -1,9 +1,8 @@
+import type { OutgoingHttpHeaders } from "node:http";
+
 import { ChatStreamInput, type ChatStreamMessage } from "@pkg/schema";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import type {
-  ChatCompletionStream,
-  FunctionToolCallArgumentsDoneEvent,
-} from "openai/lib/ChatCompletionStream";
+import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { z } from "zod";
 
@@ -11,7 +10,7 @@ import { type AiContext, buildAiContext } from "./ai-context.js";
 import { type AiOpenAIClient, createOpenAIClient, getOpenAIModel } from "./ai-openai.js";
 import { SYSTEM_PROMPT } from "./ai-prompts.js";
 import { closeStream, SSE_HEADERS, writeError, writeEvent } from "./ai-sse.js";
-import { dispatchToolCall, openAiTools } from "./ai-tools.js";
+import { createRunnableTools } from "./ai-tools.js";
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const STREAM_TIMEOUT_MS = 60_000;
@@ -77,12 +76,11 @@ async function streamChatCompletion({
   request: FastifyRequest;
 }): Promise<void> {
   reply.hijack();
-  reply.raw.writeHead(200, SSE_HEADERS);
+  reply.raw.writeHead(200, getStreamHeaders(reply));
 
   let isWritable = true;
   let terminalEventSent = false;
   let stream: ChatCompletionStream | null = null;
-  const toolCalls: Promise<void>[] = [];
 
   const stopWriting = () => {
     isWritable = false;
@@ -139,16 +137,24 @@ async function streamChatCompletion({
 
   try {
     const client = createClient();
-    stream = client.chat.completions.stream({
+
+    // runTools handles the full agentic loop: executes tool calls, feeds results back
+    // to the model, and continues streaming until the model stops requesting tools.
+    stream = client.chat.completions.runTools({
       model,
       messages: createMessages(input.messages),
       stream: true,
-      tools: openAiTools,
-      tool_choice: "auto",
-    });
+      tools: createRunnableTools(ctx, (result) => {
+        console.log("[ai] tool result:", result.name, result.ok, result.summary);
+        if (isWritable) {
+          writeEvent(reply, result);
+        }
+      }),
+    }) as unknown as ChatCompletionStream;
 
     stream.on("content.delta", (event) => {
-      const { delta } = event;
+      const { delta } = event as { delta: string };
+      console.log("[ai] content.delta:", JSON.stringify(delta));
 
       if (isWritable && delta) {
         writeEvent(reply, {
@@ -158,31 +164,22 @@ async function streamChatCompletion({
       }
     });
 
-    stream.on("tool_calls.function.arguments.done", (event) => {
-      const toolCall = event;
-      const toolCallResult = Promise.resolve()
-        .then(() => dispatchToolCall(toolCall.name, parseToolArguments(toolCall), ctx))
-        .catch((error) => ({
-          type: "tool_result" as const,
-          name: toolCall.name,
-          ok: false,
-          summary: getErrorMessage(error),
-        }))
-        .then((result) => {
-          if (isWritable) {
-            writeEvent(reply, result);
-          }
-        });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (stream as any).on("chunk", (chunk: unknown) => {
+      console.log("[ai] chunk:", JSON.stringify(chunk));
+    });
 
-      toolCalls.push(toolCallResult);
+    stream.on("message", (message) => {
+      console.log("[ai] message:", JSON.stringify(message));
     });
 
     stream.on("error", (event) => {
+      console.log("[ai] error:", getErrorMessage(event));
       sendTerminalError(getErrorMessage(event));
     });
 
     await stream.done();
-    await Promise.all(toolCalls);
+    console.log("[ai] stream done");
 
     if (isWritable && !terminalEventSent) {
       terminalEventSent = true;
@@ -198,6 +195,21 @@ async function streamChatCompletion({
   }
 }
 
+function getStreamHeaders(reply: FastifyReply): OutgoingHttpHeaders {
+  const headers: OutgoingHttpHeaders = {};
+
+  for (const [name, value] of Object.entries(reply.getHeaders())) {
+    if (value !== undefined) {
+      headers[name] = value;
+    }
+  }
+
+  return {
+    ...headers,
+    ...SSE_HEADERS,
+  };
+}
+
 function createMessages(messages: ChatStreamMessage[]): ChatCompletionMessageParam[] {
   return [
     {
@@ -209,18 +221,6 @@ function createMessages(messages: ChatStreamMessage[]): ChatCompletionMessagePar
       content: message.content,
     })),
   ];
-}
-
-function parseToolArguments(toolCall: FunctionToolCallArgumentsDoneEvent): unknown {
-  if (toolCall.parsed_arguments !== undefined) {
-    return toolCall.parsed_arguments;
-  }
-
-  if (!toolCall.arguments) {
-    return {};
-  }
-
-  return JSON.parse(toolCall.arguments);
 }
 
 function getErrorMessage(error: unknown): string {

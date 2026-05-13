@@ -117,6 +117,36 @@ describe("listProductsTool", () => {
     }
   });
 
+  test("treats null tool args as the default product list input", async ({ context }) => {
+    const access = createUserAccessSummary({
+      role: "product-viewer",
+      userId: "test-user-id",
+    });
+    const listProductsSpy = vi.spyOn(productsCore, "listProducts").mockResolvedValue({
+      items: [],
+      sortBy: "name",
+      sortDirection: "asc",
+      total: 0,
+    });
+
+    try {
+      await listProductsTool.handler(null, createAiContext(context.db, access));
+
+      expect(listProductsSpy).toHaveBeenCalledWith(
+        context.db,
+        expect.objectContaining({
+          page: 1,
+          pageSize: 10,
+          search: "",
+          sortBy: "name",
+          sortDirection: "asc",
+        }),
+      );
+    } finally {
+      listProductsSpy.mockRestore();
+    }
+  });
+
   test("rejects invalid product list args", async ({ context }) => {
     const access = createUserAccessSummary({
       role: "product-viewer",

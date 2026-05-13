@@ -8,13 +8,17 @@ type AiTool = {
   description: string;
   handler: (args: unknown, ctx: AiContext) => Promise<unknown>;
   jsonSchema: Record<string, unknown>;
+  summarizeResult?: (result: unknown) => string;
 };
+
+type ToolResult = Extract<AssistantEvent, { type: "tool_result" }>;
 
 export const aiTools = {
   [listProductsTool.name]: {
     description: listProductsTool.description,
     handler: listProductsTool.handler,
     jsonSchema: z.toJSONSchema(ProductListInput) as Record<string, unknown>,
+    summarizeResult: listProductsTool.summarizeResult,
   },
 } satisfies Record<string, AiTool>;
 
@@ -46,7 +50,7 @@ export async function dispatchToolCall(
       name,
       ok: true,
       result,
-      summary: `${name} completed successfully`,
+      summary: aiTools[name].summarizeResult?.(result) ?? `${name} completed successfully`,
     };
   } catch (error) {
     return {
@@ -66,3 +70,21 @@ export const openAiTools = Object.entries(aiTools).map(([name, tool]) => ({
     parameters: tool.jsonSchema,
   },
 }));
+
+export function createRunnableTools(ctx: AiContext, onToolResult: (result: ToolResult) => void) {
+  return Object.entries(aiTools).map(([name, tool]) => ({
+    type: "function" as const,
+    function: {
+      name,
+      description: tool.description,
+      parameters: tool.jsonSchema,
+      parse: JSON.parse,
+      function: async (args: unknown) => {
+        console.log("[ai] tool call:", name, args);
+        const result = await dispatchToolCall(name, args, ctx);
+        onToolResult(result);
+        return result.ok ? result.result : { error: result.summary };
+      },
+    },
+  }));
+}

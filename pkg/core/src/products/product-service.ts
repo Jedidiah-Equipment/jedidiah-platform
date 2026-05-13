@@ -1,5 +1,5 @@
 import type { Database } from "@pkg/db";
-import { isUniqueViolation, withPagination } from "@pkg/db/query-utils";
+import { getUniqueViolationConstraint, withPagination } from "@pkg/db/query-utils";
 import { products } from "@pkg/db/schema";
 import type {
   Product,
@@ -8,6 +8,7 @@ import type {
   ProductListResult,
   ProductUpdateInput,
 } from "@pkg/schema";
+import { ProductCurrencyCode } from "@pkg/schema";
 import { and, asc, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
 
 import {
@@ -15,14 +16,24 @@ import {
   insertAuditEvent,
   productAuditDescriptor,
 } from "../audit/audit-service.js";
-import { DuplicateProductNameError, ProductNotFoundError } from "./product-errors.js";
+import {
+  DuplicateProductModelCodeError,
+  DuplicateProductNameError,
+  ProductNotFoundError,
+} from "./product-errors.js";
 
 type ProductRow = typeof products.$inferSelect;
 
 export function mapProduct(row: ProductRow): Product {
   return {
+    basePrice: row.basePrice,
+    createdAt: row.createdAt,
+    currencyCode: ProductCurrencyCode.parse(row.currencyCode),
+    description: row.description,
     id: row.id,
+    modelCode: row.modelCode,
     name: row.name,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -30,14 +41,20 @@ export async function listProducts(
   database: Database,
   input: ProductListInput,
 ): Promise<ProductListResult> {
-  const sortColumn = input.sortBy === "id" ? products.id : products.name;
+  const sortColumn = getProductSortColumn(input.sortBy);
   const orderBy = input.sortDirection === "desc" ? desc(sortColumn) : asc(sortColumn);
   const where = buildProductListWhere(input);
   const rowsQuery = withPagination(
     database
       .select({
+        basePrice: products.basePrice,
+        createdAt: products.createdAt,
+        currencyCode: products.currencyCode,
+        description: products.description,
         id: products.id,
+        modelCode: products.modelCode,
         name: products.name,
+        updatedAt: products.updatedAt,
       })
       .from(products)
       .where(where)
@@ -62,6 +79,8 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
   if (listInput.search) {
     const searchPattern = `%${listInput.search}%`;
     const globalSearchWhere = or(
+      ilike(products.description, searchPattern),
+      ilike(products.modelCode, searchPattern),
       ilike(products.name, searchPattern),
       sql`${products.id}::text ilike ${searchPattern}`,
     );
@@ -73,6 +92,22 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
 
   if (listInput.columnFilters.name) {
     conditions.push(ilike(products.name, `%${listInput.columnFilters.name}%`));
+  }
+
+  if (listInput.columnFilters.modelCode) {
+    conditions.push(ilike(products.modelCode, `%${listInput.columnFilters.modelCode}%`));
+  }
+
+  if (listInput.columnFilters.basePrice) {
+    conditions.push(
+      sql`${products.basePrice}::text ilike ${`%${listInput.columnFilters.basePrice}%`}`,
+    );
+  }
+
+  if (listInput.columnFilters.createdAt) {
+    conditions.push(
+      sql`${products.createdAt}::text ilike ${`%${listInput.columnFilters.createdAt}%`}`,
+    );
   }
 
   if (listInput.columnFilters.id) {
@@ -108,11 +143,7 @@ export async function createProduct(
       return mapProduct(row);
     });
   } catch (error) {
-    if (isUniqueViolation(error)) {
-      throw new DuplicateProductNameError(input.name);
-    }
-
-    throw error;
+    throw mapProductUniqueViolation(error, input);
   }
 }
 
@@ -135,6 +166,10 @@ export async function updateProduct(
 
       const after = {
         ...before,
+        basePrice: input.basePrice,
+        currencyCode: input.currencyCode,
+        description: input.description,
+        modelCode: input.modelCode,
         name: input.name,
       };
       const changes = createAuditChanges(before, after, productAuditDescriptor.fields);
@@ -145,7 +180,14 @@ export async function updateProduct(
 
       const [row] = await tx
         .update(products)
-        .set({ name: input.name })
+        .set({
+          basePrice: input.basePrice,
+          currencyCode: input.currencyCode,
+          description: input.description,
+          modelCode: input.modelCode,
+          name: input.name,
+          updatedAt: new Date(),
+        })
         .where(eq(products.id, input.id))
         .returning();
 
@@ -166,10 +208,43 @@ export async function updateProduct(
       return mapProduct(row);
     });
   } catch (error) {
-    if (isUniqueViolation(error)) {
-      throw new DuplicateProductNameError(input.name);
-    }
-
-    throw error;
+    throw mapProductUniqueViolation(error, input);
   }
+}
+
+function getProductSortColumn(sortBy: ProductListInput["sortBy"]) {
+  if (sortBy === "basePrice") {
+    return products.basePrice;
+  }
+
+  if (sortBy === "createdAt") {
+    return products.createdAt;
+  }
+
+  if (sortBy === "id") {
+    return products.id;
+  }
+
+  if (sortBy === "modelCode") {
+    return products.modelCode;
+  }
+
+  return products.name;
+}
+
+function mapProductUniqueViolation(
+  error: unknown,
+  input: Pick<ProductCreateInput, "modelCode" | "name">,
+): Error {
+  const constraint = getUniqueViolationConstraint(error);
+
+  if (constraint?.includes("products_model_code_unique") || constraint?.includes("model_code")) {
+    return new DuplicateProductModelCodeError(input.modelCode);
+  }
+
+  if (constraint !== null) {
+    return new DuplicateProductNameError(input.name);
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
 }

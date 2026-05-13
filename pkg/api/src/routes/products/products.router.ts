@@ -1,5 +1,6 @@
 import {
   createProduct,
+  DuplicateProductModelCodeError,
   DuplicateProductNameError,
   listProducts,
   ProductNotFoundError,
@@ -36,6 +37,13 @@ async function mapProductErrors<T>(action: () => Promise<T>): Promise<T> {
       throw new TRPCError({
         code: "CONFLICT",
         message: "A product with this name already exists.",
+      });
+    }
+
+    if (error instanceof DuplicateProductModelCodeError) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "A product with this model code already exists.",
       });
     }
 

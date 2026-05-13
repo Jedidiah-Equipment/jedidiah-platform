@@ -36,6 +36,13 @@
       "when": 1778654853406,
       "tag": "0004_sturdy_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778656457598,
+      "tag": "0005_curvy_pretty_boy",
+      "breakpoints": true
     }
   ]
 }

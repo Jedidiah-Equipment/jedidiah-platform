@@ -77,6 +77,17 @@
       "problemMatcher": "$tsc"
     },
     {
+      "label": "Start Studio",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["db:studio"],
+      "icon": {
+        "id": "database",
+        "color": "terminal.ansiGreen"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Kill Web And Api",
       "type": "shell",
       "command": "pnpm",

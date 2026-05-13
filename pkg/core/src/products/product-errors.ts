@@ -5,6 +5,13 @@ export class DuplicateProductNameError extends Error {
   }
 }
 
+export class DuplicateProductModelCodeError extends Error {
+  constructor(modelCode: string) {
+    super(`Product model code already exists: ${modelCode}`);
+    this.name = "DuplicateProductModelCodeError";
+  }
+}
+
 export class ProductNotFoundError extends Error {
   constructor(id: string) {
     super(`Product not found: ${id}`);

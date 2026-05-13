@@ -1,7 +1,8 @@
 # schema (@pkg/schema)
 
 Guidance for shared schemas and types. Good references are `src/products/product.ts`,
-`src/pagination/pagination.ts`, `src/auth/auth-id.ts`, and `src/index.ts`.
+`src/pagination/pagination.ts`, `src/auth/auth-id.ts`, `src/auth/authorization.ts`, and
+`src/index.ts`.
 
 ## Ownership
 

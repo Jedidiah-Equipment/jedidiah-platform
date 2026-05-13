@@ -8,6 +8,8 @@ High-level guidance for coding agents in this repo. Package-specific rules live 
 - This is a pnpm workspace monorepo on Node.js 24.x.
 - `docs/application-stack-and-hosting.md` is the architecture map for stack, package boundaries,
   runtime config, and hosting direction.
+- `docs/authorization-architecture.md` is the authoritative description of the role/permission
+  model that spans `@pkg/schema`, `@pkg/core`, the Better Auth admin plugin, and the web app.
 - Current packages are `@pkg/api`, `@pkg/web`, `@pkg/schema`, `@pkg/core`, and `@pkg/db`.
 - Do not add CI, deployment, or production infrastructure files unless the task explicitly asks for
   that slice.

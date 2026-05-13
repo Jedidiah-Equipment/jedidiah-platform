@@ -78,6 +78,7 @@ export async function seedDatabase(database?: Database): Promise<void> {
   const activeDb = database ?? (await import("./client.js")).db;
   const now = new Date();
   const seedProducts = createSeedProducts();
+  const seedUserEmails = seedUsers.map((seedUser) => seedUser.email).join(", ");
   const productEditorUserIds = seedUsers
     .filter((seedUser) => seedUser.role === "product-editor")
     .map((seedUser) => seedUser.id);
@@ -85,6 +86,9 @@ export async function seedDatabase(database?: Database): Promise<void> {
   if (productEditorUserIds.length === 0) {
     throw new Error("At least one product-editor seed user is required to seed product audits");
   }
+
+  console.info(`[db:seed] Starting seed at ${now.toISOString()}`);
+  console.info(`[db:seed] Upserting ${seedUsers.length} seed user(s): ${seedUserEmails}`);
 
   await activeDb
     .insert(user)
@@ -106,6 +110,9 @@ export async function seedDatabase(database?: Database): Promise<void> {
         updatedAt: now,
       },
     });
+
+  console.info(`[db:seed] Upserted ${seedUsers.length} seed user(s)`);
+  console.info(`[db:seed] Upserting ${seedUsers.length} credential account(s)`);
 
   await activeDb
     .insert(account)
@@ -129,6 +136,11 @@ export async function seedDatabase(database?: Database): Promise<void> {
         updatedAt: now,
       },
     });
+
+  console.info(`[db:seed] Upserted ${seedUsers.length} credential account(s)`);
+  console.info(
+    `[db:seed] Upserting ${seedProducts.length} product(s) and ${seedProducts.length} audit event(s)`,
+  );
 
   await activeDb.transaction(async (tx) => {
     await tx
@@ -179,6 +191,10 @@ export async function seedDatabase(database?: Database): Promise<void> {
         },
       });
   });
+
+  console.info(
+    `[db:seed] Seed complete: ${seedUsers.length} user(s), ${seedProducts.length} product(s)`,
+  );
 }
 
 function createSeedUuid(group: string, sequence: number): string {

@@ -9,6 +9,7 @@ import { DialogFooter } from "@/components/ui/dialog.js";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field.js";
 import { UserRoleSelect } from "./UserRoleSelect.js";
 
+export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
 export const UserCreateFormValues = z.object({
   email: z.email(),
   emailVerified: z.boolean(),
@@ -17,24 +18,22 @@ export const UserCreateFormValues = z.object({
   role: AppRole,
 });
 
+export type UserProfileFormValues = z.infer<typeof UserProfileFormValues>;
 export const UserProfileFormValues = z.object({
   email: z.email(),
   emailVerified: z.boolean(),
   name: z.string().trim().min(1),
 });
 
+export type UserRoleFormValues = z.infer<typeof UserRoleFormValues>;
 export const UserRoleFormValues = z.object({
   role: AppRole,
 });
 
+export type UserPasswordFormValues = z.infer<typeof UserPasswordFormValues>;
 export const UserPasswordFormValues = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });
-
-export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
-export type UserProfileFormValues = z.infer<typeof UserProfileFormValues>;
-export type UserRoleFormValues = z.infer<typeof UserRoleFormValues>;
-export type UserPasswordFormValues = z.infer<typeof UserPasswordFormValues>;
 
 type UserCreateFormProps = {
   isPending: boolean;

@@ -1,4 +1,4 @@
-import type * as React from "react";
+import * as React from "react";
 
 import { Field, FieldError, FieldLabel } from "@/components/ui/field.js";
 import {
@@ -12,7 +12,7 @@ import { useFieldContext } from "./form-context.js";
 
 type CurrencyFieldInputProps = Omit<
   React.ComponentProps<typeof InputGroupInput>,
-  "aria-invalid" | "id" | "name" | "onBlur" | "onChange" | "type" | "value"
+  "aria-invalid" | "id" | "inputMode" | "name" | "onBlur" | "onChange" | "type" | "value"
 >;
 
 export type CurrencyFieldProps = {
@@ -25,13 +25,22 @@ export function CurrencyField({
   currencyCode = "ZAR",
   label,
   locale = "en-ZA",
-  min = "0",
-  step = "0.01",
   ...inputProps
 }: CurrencyFieldProps) {
-  const field = useFieldContext<string>();
+  const field = useFieldContext<number>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
+
+  const [displayValue, setDisplayValue] = React.useState(() =>
+    formatCurrencyValue(field.state.value, locale),
+  );
+
+  // Sync display when the field value changes externally (e.g. form reset)
+  const [prevFieldValue, setPrevFieldValue] = React.useState(field.state.value);
+  if (prevFieldValue !== field.state.value) {
+    setPrevFieldValue(field.state.value);
+    setDisplayValue(formatCurrencyValue(field.state.value, locale));
+  }
 
   return (
     <Field data-disabled={inputProps.disabled} data-invalid={isInvalid}>
@@ -41,16 +50,18 @@ export function CurrencyField({
           aria-invalid={isInvalid}
           id={field.name}
           inputMode="decimal"
-          min={min}
           name={field.name}
           onBlur={() => {
             field.handleBlur();
-            field.handleChange(formatCurrencyInputValue(field.state.value, locale));
+            setDisplayValue(formatCurrencyValue(field.state.value, locale));
           }}
-          onChange={(event) => field.handleChange(event.target.value)}
-          step={step}
-          type="number"
-          value={field.state.value}
+          onChange={(event) => {
+            const text = event.target.value;
+            setDisplayValue(text);
+            field.handleChange(text.trim() === "" ? NaN : parseFloat(text));
+          }}
+          type="text"
+          value={displayValue}
           {...inputProps}
         />
         <InputGroupAddon align="inline-end">
@@ -62,22 +73,11 @@ export function CurrencyField({
   );
 }
 
-function formatCurrencyInputValue(value: string, locale: string): string {
-  const trimmedValue = value.trim();
-
-  if (!trimmedValue) {
-    return "";
-  }
-
-  const amount = Number(trimmedValue);
-
-  if (!Number.isFinite(amount)) {
-    return value;
-  }
-
+function formatCurrencyValue(value: number, locale: string): string {
+  if (!Number.isFinite(value)) return "";
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
     useGrouping: false,
-  }).format(amount);
+  }).format(value);
 }

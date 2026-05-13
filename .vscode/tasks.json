@@ -88,6 +88,17 @@
       "problemMatcher": []
     },
     {
+      "label": "Seed Database",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["db:seed"],
+      "icon": {
+        "id": "database",
+        "color": "terminal.ansiYellow"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Kill Web And Api",
       "type": "shell",
       "command": "pnpm",

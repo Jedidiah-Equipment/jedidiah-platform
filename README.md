@@ -131,8 +131,9 @@ in `pkg/api/src/trpc/init.ts`; clients use `useAccess` / `canAccess` in `pkg/web
 
 Email/password auth is enabled. Email verification and password reset emails are mocked locally by
 recording/logging the generated email payloads; no real email provider is configured yet.
-Seed users use `password123` for local sign-in. The seeder creates one user per role
-(`admin@example.com`, `product-editor@example.com`, `product-viewer@example.com`).
+Seed users use `12345678` for local sign-in. The seeder creates one user per role
+(`admin@seed.com`, `pe@seed.com`, `pv@seed.com`) plus deterministic demo products with audit
+history.
 
 ## Web notes
 

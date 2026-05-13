@@ -12,6 +12,8 @@ Guidance for the backend runtime package. Good references are `src/server.ts`,
 - Owns the Better Auth admin-plugin wiring in `src/auth/access-control.ts`, including the role and
   access-control list used by both Better Auth and the tRPC layer.
 - Better Auth HTTP endpoints under `/api/auth/*` are the source of truth for auth mutations.
+- User create/update/role/password mutations should go through Better Auth Admin APIs, not custom
+  tRPC procedures. Keep app-specific Better Auth admin safeguards in focused auth policy hooks.
 - tRPC auth procedures should stay app-facing and small, such as session, current-user, and access
   lookups (`auth.session`, `auth.me`, `auth.access`).
 - Email sending is mocked for now. Do not add a real provider unless requested.
@@ -39,6 +41,8 @@ Guidance for the backend runtime package. Good references are `src/server.ts`,
   authorize and return a safe full list while the web table owns filter, sort, and pagination.
   Keep the procedure inputless unless the backend truly needs parameters, and keep ordering simple
   and deterministic in `@pkg/core`.
+  Do not add user mutation procedures here; call Better Auth Admin from the client/server code that
+  owns the mutation workflow.
 - Server-side table/list pattern: follow `src/routes/products/products.router.ts` when filter,
   sort, search, and pagination are part of the API contract. Validate a shared list input from
   `@pkg/schema`, pass it to `@pkg/core`, and cover defaults, filtering, sorting, pagination, and

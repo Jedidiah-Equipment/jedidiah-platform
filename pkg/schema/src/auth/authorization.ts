@@ -15,7 +15,10 @@ export const APP_PERMISSIONS = [
   "product:create",
   "product:update",
   "user:list",
-  "user:edit",
+  "user:create",
+  "user:update",
+  "user:set-role",
+  "user:set-password",
 ] as const;
 
 export type AppPermission = z.infer<typeof AppPermission>;
@@ -47,23 +50,4 @@ export const UserSummary = z.object({
 export type UserListResult = z.infer<typeof UserListResult>;
 export const UserListResult = z.object({
   users: z.array(UserSummary),
-});
-
-export type UserCreateInput = z.infer<typeof UserCreateInput>;
-export const UserCreateInput = z.object({
-  emailVerified: z.boolean(),
-  name: z.string().trim().min(1),
-  email: z.email(),
-  password: z.string().min(8),
-  role: AppRole,
-});
-
-export type UserUpdateInput = z.infer<typeof UserUpdateInput>;
-export const UserUpdateInput = z.object({
-  emailVerified: z.boolean(),
-  name: z.string().trim().min(1),
-  email: z.email(),
-  password: z.string().min(8).optional(),
-  role: AppRole,
-  userId: AuthId,
 });

@@ -1,20 +1,7 @@
 import type { Database } from "@pkg/db";
-import { isUniqueViolation } from "@pkg/db/query-utils";
 import { user } from "@pkg/db/schema";
-import {
-  AppRole,
-  DEFAULT_APP_ROLE,
-  type UserListResult,
-  type UserSummary,
-  type UserUpdateInput,
-} from "@pkg/schema";
+import { AppRole, DEFAULT_APP_ROLE, type UserListResult, type UserSummary } from "@pkg/schema";
 import { asc, eq } from "drizzle-orm";
-
-import {
-  CannotRemoveLastAdminError,
-  EmailAlreadyInUseError,
-  UserNotFoundError,
-} from "./user-errors.js";
 
 type UserRow = Pick<typeof user.$inferSelect, "email" | "emailVerified" | "id" | "name"> & {
   role?: unknown;
@@ -47,57 +34,44 @@ export async function listUsers(database: Database): Promise<UserListResult> {
   };
 }
 
-export async function updateUser(database: Database, input: UserUpdateInput): Promise<UserSummary> {
-  try {
-    return await database.transaction(async (tx) => {
-      const [existingUser] = await tx
-        .select({
-          id: user.id,
-          role: user.role,
-        })
-        .from(user)
-        .where(eq(user.id, input.userId))
-        .for("update");
+export async function canAssignUserRole(
+  database: Database,
+  input: {
+    role: AppRole | readonly AppRole[];
+    userId: string;
+  },
+): Promise<boolean> {
+  const nextRoles = Array.isArray(input.role) ? input.role : [input.role];
 
-      if (!existingUser) {
-        throw new UserNotFoundError(input.userId);
-      }
+  if (nextRoles.includes("admin")) {
+    return true;
+  }
 
-      if (parseStoredAppRole(existingUser.role) !== input.role) {
-        await assertCanAssignRole(tx, input);
-      }
+  return database.transaction(async (tx) => {
+    const [targetUser] = await tx
+      .select({
+        id: user.id,
+        role: user.role,
+      })
+      .from(user)
+      .where(eq(user.id, input.userId))
+      .for("update");
 
-      const [row] = await tx
-        .update(user)
-        .set({
-          email: input.email,
-          emailVerified: input.emailVerified,
-          name: input.name,
-          role: input.role,
-          updatedAt: new Date(),
-        })
-        .where(eq(user.id, input.userId))
-        .returning({
-          email: user.email,
-          emailVerified: user.emailVerified,
-          id: user.id,
-          name: user.name,
-          role: user.role,
-        });
-
-      if (!row) {
-        throw new UserNotFoundError(input.userId);
-      }
-
-      return mapUser(row);
-    });
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      throw new EmailAlreadyInUseError(input.email);
+    if (!targetUser || !normalizeStoredAppRoles(targetUser.role).includes("admin")) {
+      return true;
     }
 
-    throw error;
-  }
+    const adminRows = await tx
+      .select({
+        id: user.id,
+      })
+      .from(user)
+      .where(eq(user.role, "admin"))
+      .orderBy(asc(user.id))
+      .for("update");
+
+    return !(adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === input.userId));
+  });
 }
 
 function parseStoredAppRole(role: unknown): AppRole {
@@ -106,24 +80,10 @@ function parseStoredAppRole(role: unknown): AppRole {
   return parsedRole.success ? parsedRole.data : DEFAULT_APP_ROLE;
 }
 
-async function assertCanAssignRole(
-  database: Parameters<Parameters<Database["transaction"]>[0]>[0],
-  input: Pick<UserUpdateInput, "role" | "userId">,
-): Promise<void> {
-  if (input.role === "admin") {
-    return;
-  }
+function normalizeStoredAppRoles(role: unknown): AppRole[] {
+  const rawRoles = Array.isArray(role) ? role : typeof role === "string" ? role.split(",") : [];
 
-  const adminRows = await database
-    .select({
-      id: user.id,
-    })
-    .from(user)
-    .where(eq(user.role, "admin"))
-    .orderBy(asc(user.id))
-    .for("update");
-
-  if (adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === input.userId)) {
-    throw new CannotRemoveLastAdminError();
-  }
+  return rawRoles
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter((value): value is AppRole => AppRole.safeParse(value).success);
 }

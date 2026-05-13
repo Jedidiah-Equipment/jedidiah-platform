@@ -24,6 +24,7 @@ export const UserRoleSelect: React.FC<UserRoleSelectProps> = ({
 }) => (
   <Select
     disabled={disabled}
+    items={roleLabels}
     onValueChange={(nextValue) => onRoleChange(AppRole.parse(nextValue))}
     value={value}
   >

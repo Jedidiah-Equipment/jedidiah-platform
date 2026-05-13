@@ -31,9 +31,19 @@ import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 const MAX_ITERATIONS = 10;
 
 // Hooks run inside the sandbox before the agent starts each iteration.
+// Codex needs an explicit login inside the container; the API key env var
+// alone is not used by `codex exec`.
 // npm install ensures the sandbox always has fresh dependencies.
 const hooks = {
-  sandbox: { onSandboxReady: [{ command: "npm install" }] },
+  sandbox: {
+    onSandboxReady: [
+      {
+        command:
+          'if printenv OPENAI_KEY >/dev/null; then printenv OPENAI_KEY | codex login --with-api-key; elif printenv OPENAI_API_KEY >/dev/null; then printenv OPENAI_API_KEY | codex login --with-api-key; else echo "Missing OPENAI_KEY or OPENAI_API_KEY for Codex"; exit 1; fi',
+      },
+      { command: "npm install" },
+    ],
+  },
 };
 
 // Copy node_modules from the host into the worktree before each sandbox
@@ -55,7 +65,21 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // This gives both agents a real, named branch that persists across phases.
   const sandbox = await sandcastle.createSandbox({
     branch,
-    sandbox: docker(),
+    sandbox: docker({
+      containerGid: 0,
+      env: {
+        COMPOSE_PROJECT_NAME: "jedidiah-platform",
+        DATABASE_URL: "postgres://postgres:postgres@host.docker.internal:5432/jedidiah",
+        TEST_DATABASE_URL:
+          "postgres://postgres:postgres@host.docker.internal:5432/jedidiah_template",
+      },
+      mounts: [
+        {
+          hostPath: "/var/run/docker.sock",
+          sandboxPath: "/var/run/docker.sock",
+        },
+      ],
+    }),
     hooks,
     copyToWorktree,
   });

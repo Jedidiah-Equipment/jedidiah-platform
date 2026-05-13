@@ -89,7 +89,15 @@ export const ProductsPage: React.FC = () => {
           {isCreateOpen ? (
             <ProductForm
               isPending={createProductMutation.isPending}
-              onSubmit={(value) => createProductMutation.mutateAsync(value)}
+              onSubmit={(value) =>
+                createProductMutation.mutateAsync({
+                  name: value.name,
+                  modelCode: value.modelCode,
+                  description: value.description,
+                  basePrice: value.basePrice,
+                  currencyCode: "ZAR",
+                })
+              }
               submitLabel="Create product"
             />
           ) : null}
@@ -109,12 +117,12 @@ export const ProductsPage: React.FC = () => {
               key={editingProduct.id}
               onSubmit={(value) =>
                 updateProductMutation.mutateAsync({
-                  basePrice: value.basePrice,
-                  currencyCode: value.currencyCode,
-                  description: value.description,
                   id: editingProduct.id,
-                  modelCode: value.modelCode,
                   name: value.name,
+                  modelCode: value.modelCode,
+                  description: value.description,
+                  basePrice: value.basePrice,
+                  currencyCode: "ZAR",
                 })
               }
               submitLabel="Save product"

@@ -41,10 +41,10 @@ describe("ProductCreateInput", () => {
     ).toThrow();
   });
 
-  it("rejects an empty base price", () => {
+  it("rejects a missing base price", () => {
     expect(() =>
       ProductCreateInput.parse({
-        basePrice: "",
+        basePrice: NaN,
         modelCode: "WL-100",
         name: "Wheel Loader",
       }),

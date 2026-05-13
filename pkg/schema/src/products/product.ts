@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Price } from "../common/price.js";
 import { SortDirection } from "../common/sort.js";
 import { UUID } from "../common/uuid.js";
 import { createPagedQueryResult, PagedQueryInput } from "../pagination/pagination.js";
@@ -18,14 +19,7 @@ export const ProductDescription = z
   .default(null);
 
 export type ProductBasePrice = z.infer<typeof ProductBasePrice>;
-export const ProductBasePrice = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
-  z.coerce
-    .number({
-      error: "Base price is required",
-    })
-    .min(0, "Base price must be zero or greater"),
-);
+export const ProductBasePrice = z.coerce.number().pipe(Price);
 
 export type ProductCurrencyCode = z.infer<typeof ProductCurrencyCode>;
 export const ProductCurrencyCode = z.literal("ZAR").default("ZAR");

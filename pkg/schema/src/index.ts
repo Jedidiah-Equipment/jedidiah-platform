@@ -1,6 +1,7 @@
 export * from "./audit/audit.js";
 export * from "./auth/auth-id.js";
 export * from "./auth/authorization.js";
+export * from "./common/price.js";
 export * from "./common/sort.js";
 export * from "./common/uuid.js";
 export * from "./config/client-config.js";

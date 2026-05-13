@@ -56,6 +56,9 @@ Guidance for the React/Vite app. The best references are `src/pages/products/Pro
   over paired width/height, and `cn()` for conditional classes.
 - Use lucide icons in icon-capable buttons. Inside buttons, mark icons with `data-icon` and let the
   button styles size them.
+- In dialog/modal footers, keep secondary close/cancel actions to the left of the primary submit
+  action on desktop. Prefer `DialogFooter showCloseButton` for standard close buttons so the order
+  stays consistent across modals.
 - Use TanStack Form with Zod. Reuse `src/components/form` wrappers for normal field wiring.
 - Standard forms should use `FieldGroup`, `Field`, and the existing field components instead of raw
   div stacks.

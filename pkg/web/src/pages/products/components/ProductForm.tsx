@@ -1,4 +1,4 @@
-import { type Product, ProductCreateInput } from "@pkg/schema";
+import { Price, type Product, ProductModelCode, ProductName } from "@pkg/schema";
 import { Loader2Icon } from "lucide-react";
 import type React from "react";
 import { z } from "zod";
@@ -7,25 +7,19 @@ import { Button } from "@/components/ui/button.js";
 import { DialogFooter } from "@/components/ui/dialog.js";
 import { FieldGroup } from "@/components/ui/field.js";
 
-const ProductFormValues = z.object({
-  basePrice: z
-    .string()
-    .trim()
-    .refine((value) => ProductCreateInput.shape.basePrice.safeParse(value).success, {
-      message: "Base price must be a valid Rand amount",
-    }),
-  description: z.string(),
-  modelCode: z.string().trim().min(1, "Model code is required"),
-  name: z.string().trim().min(1, "Product name is required"),
-});
-
 type ProductFormValues = z.infer<typeof ProductFormValues>;
+const ProductFormValues = z.object({
+  basePrice: Price,
+  description: z.string(),
+  modelCode: ProductModelCode,
+  name: ProductName,
+});
 
 type ProductFormProps = {
   initialProduct?: Product;
   isPending: boolean;
   submitLabel: string;
-  onSubmit: (value: ProductCreateInput) => Promise<unknown>;
+  onSubmit: (value: ProductFormValues) => Promise<unknown>;
 };
 
 export const ProductForm: React.FC<ProductFormProps> = ({
@@ -36,7 +30,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 }) => {
   const form = useAppForm({
     defaultValues: {
-      basePrice: initialProduct ? String(initialProduct.basePrice) : "",
+      basePrice: initialProduct?.basePrice ?? NaN,
       description: initialProduct?.description ?? "",
       modelCode: initialProduct?.modelCode ?? "",
       name: initialProduct?.name ?? "",
@@ -45,14 +39,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       onSubmit: ProductFormValues,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit(
-        ProductCreateInput.parse({
-          basePrice: value.basePrice,
-          description: value.description,
-          modelCode: value.modelCode,
-          name: value.name,
-        }),
-      );
+      await onSubmit(value);
     },
   });
 

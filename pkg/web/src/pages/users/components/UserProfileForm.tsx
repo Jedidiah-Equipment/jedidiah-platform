@@ -1,13 +1,17 @@
 import { UserSummary, type UserSummary as UserSummaryType } from "@pkg/schema";
 import type React from "react";
-import { z } from "zod";
+import type { z } from "zod";
 
 import { useAppForm } from "@/components/form/index.js";
 import { FieldGroup } from "@/components/ui/field.js";
 import { SubmitFooter } from "./UserFormFooter.js";
 
 export type UserProfileFormValues = z.infer<typeof UserProfileFormValues>;
-export const UserProfileFormValues = UserSummary.pick({ email: true, emailVerified: true, name: true });
+export const UserProfileFormValues = UserSummary.pick({
+  email: true,
+  emailVerified: true,
+  name: true,
+});
 
 type UserProfileFormProps = {
   initialUser: UserSummaryType;
@@ -15,7 +19,11 @@ type UserProfileFormProps = {
   onSubmit: (value: UserProfileFormValues) => Promise<unknown>;
 };
 
-export const UserProfileForm: React.FC<UserProfileFormProps> = ({ initialUser, isPending, onSubmit }) => {
+export const UserProfileForm: React.FC<UserProfileFormProps> = ({
+  initialUser,
+  isPending,
+  onSubmit,
+}) => {
   const form = useAppForm({
     defaultValues: {
       email: initialUser.email,

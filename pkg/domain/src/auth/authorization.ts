@@ -3,11 +3,39 @@ import {
   type AppRole,
   AppRole as AppRoleSchema,
   type UserAccessSummary,
-  appRoleAccess,
-  authorizationStatement,
 } from "@pkg/schema";
 
-export { appRoleAccess, authorizationStatement };
+export const DEFAULT_APP_ROLE = "product-viewer" satisfies AppRole;
+
+export const authorizationStatement = {
+  audit: ["read"],
+  product: ["read", "create", "update"],
+  user: ["list", "create", "update", "set-role", "set-password"],
+} as const;
+
+type AuthorizationResource = keyof typeof authorizationStatement;
+type RoleAccess = Partial<Record<AuthorizationResource, readonly string[]>>;
+
+export const appRoleAccess = {
+  admin: {
+    audit: ["read"],
+    product: ["read", "create", "update"],
+    user: ["list", "create", "update", "set-role", "set-password"],
+  },
+  "product-editor": {
+    product: ["read", "create", "update"],
+  },
+  "product-viewer": {
+    product: ["read"],
+  },
+} as const satisfies Record<AppRole, RoleAccess>;
+
+export function hasPermission(
+  access: Pick<UserAccessSummary, "permissions"> | null | undefined,
+  permission: AppPermission,
+): boolean {
+  return access?.permissions.includes(permission) ?? false;
+}
 
 export function normalizeAppRoles(role: unknown): AppRole[] {
   if (Array.isArray(role)) {

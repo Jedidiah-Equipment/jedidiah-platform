@@ -12,7 +12,13 @@ type RoleFieldProps = {
   onRoleChange: (role: AppRole) => void;
 };
 
-export const RoleField: React.FC<RoleFieldProps> = ({ disabled, errors, name, onRoleChange, value }) => (
+export const RoleField: React.FC<RoleFieldProps> = ({
+  disabled,
+  errors,
+  name,
+  onRoleChange,
+  value,
+}) => (
   <Field data-invalid={errors.length > 0}>
     <FieldLabel htmlFor={name}>Role</FieldLabel>
     <UserRoleSelect disabled={disabled} onRoleChange={onRoleChange} value={value} />

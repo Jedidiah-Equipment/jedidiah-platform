@@ -1,5 +1,5 @@
 {
-  "name": "@pkg/core",
+  "name": "@pkg/domain",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,9 +15,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pkg/db": "workspace:*",
-    "@pkg/domain": "workspace:*",
-    "@pkg/schema": "workspace:*",
-    "drizzle-orm": "^0.44.7"
+    "@pkg/schema": "workspace:*"
   }
 }

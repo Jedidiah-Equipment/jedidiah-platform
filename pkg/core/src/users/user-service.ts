@@ -1,6 +1,7 @@
 import type { Database } from "@pkg/db";
 import { user } from "@pkg/db/schema";
-import { AppRole, DEFAULT_APP_ROLE, type UserListResult, type UserSummary } from "@pkg/schema";
+import { DEFAULT_APP_ROLE } from "@pkg/domain";
+import { AppRole, type UserListResult, type UserSummary } from "@pkg/schema";
 import { asc, eq } from "drizzle-orm";
 
 type UserRow = Pick<typeof user.$inferSelect, "email" | "emailVerified" | "id" | "name"> & {

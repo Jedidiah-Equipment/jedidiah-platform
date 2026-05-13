@@ -1,4 +1,4 @@
-import { DEFAULT_APP_ROLE } from "@pkg/schema";
+import { DEFAULT_APP_ROLE } from "@pkg/domain";
 import { relations } from "drizzle-orm";
 import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 

@@ -1,7 +1,11 @@
-import { hasPermission } from "@pkg/schema";
 import { describe, expect, it } from "vitest";
 
-import { createUserAccessSummary, getRolePermissions, normalizeAppRoles } from "./authorization.js";
+import {
+  createUserAccessSummary,
+  getRolePermissions,
+  hasPermission,
+  normalizeAppRoles,
+} from "./authorization.js";
 
 describe("normalizeAppRoles", () => {
   it("keeps supported roles", () => {
@@ -93,5 +97,10 @@ describe("hasPermission", () => {
 
     expect(hasPermission(access, "product:update")).toBe(true);
     expect(hasPermission(access, "user:list")).toBe(false);
+  });
+
+  it("treats missing access as denied", () => {
+    expect(hasPermission(null, "product:read")).toBe(false);
+    expect(hasPermission(undefined, "product:read")).toBe(false);
   });
 });

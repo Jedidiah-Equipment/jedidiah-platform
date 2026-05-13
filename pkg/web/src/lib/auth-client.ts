@@ -1,4 +1,4 @@
-import { appRoleAccess, authorizationStatement } from "@pkg/schema";
+import { appRoleAccess, authorizationStatement } from "@pkg/domain";
 import { adminClient } from "better-auth/client/plugins";
 import { createAccessControl } from "better-auth/plugins/access";
 import { createAuthClient } from "better-auth/react";

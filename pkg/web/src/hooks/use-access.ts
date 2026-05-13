@@ -1,4 +1,5 @@
-import { type AppPermission, hasPermission } from "@pkg/schema";
+import { hasPermission } from "@pkg/domain";
+import type { AppPermission } from "@pkg/schema";
 import { useQuery } from "@tanstack/react-query";
 
 import { useTRPC } from "@/lib/trpc.js";

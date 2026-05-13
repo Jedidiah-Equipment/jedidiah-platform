@@ -21,6 +21,7 @@
     "@fastify/cors": "^11.2.0",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
+    "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
     "@trpc/server": "^11.7.2",
     "dotenv": "^17.4.2",

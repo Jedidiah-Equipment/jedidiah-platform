@@ -34,7 +34,8 @@
     "db:migrate": "node dist/migrate.js",
     "db:migrate:dev": "tsx src/migrate.ts",
     "db:migrate:test": "pnpm build && NODE_ENV=test node dist/migrate.js",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AppRole, UserSetRoleInput } from "./authorization.js";
+import { AppRole, hasPermission, UserSetRoleInput } from "./authorization.js";
 
 describe("AppRole", () => {
   it("accepts supported app roles", () => {
@@ -25,5 +25,30 @@ describe("UserSetRoleInput", () => {
       role: "product-editor",
       userId: "user_123",
     });
+  });
+});
+
+describe("hasPermission", () => {
+  it("checks access summaries", () => {
+    expect(
+      hasPermission(
+        {
+          permissions: ["product:read"],
+        },
+        "product:read",
+      ),
+    ).toBe(true);
+    expect(
+      hasPermission(
+        {
+          permissions: ["product:read"],
+        },
+        "product:update",
+      ),
+    ).toBe(false);
+  });
+
+  it("treats missing access as denied", () => {
+    expect(hasPermission(null, "product:read")).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
+import { type AppPermission, hasPermission } from "@pkg/schema";
 import { Link, linkOptions } from "@tanstack/react-router";
-import { BoxesIcon, GaugeIcon, UsersIcon } from "lucide-react";
+import { BoxesIcon, GaugeIcon, type LucideIcon, UsersIcon } from "lucide-react";
 import type React from "react";
 
 import {
@@ -10,7 +11,13 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar.js";
 import { useAccess } from "@/hooks/use-access.js";
-import { canAccess } from "@/lib/access.js";
+
+type MainNavItem = {
+  title: string;
+  permission?: AppPermission;
+  link: ReturnType<typeof linkOptions>;
+  icon: LucideIcon;
+};
 
 const mainNavItems = [
   {
@@ -33,12 +40,12 @@ const mainNavItems = [
     link: linkOptions({ to: "/users" }),
     icon: UsersIcon,
   },
-] as const;
+] as const satisfies readonly MainNavItem[];
 
 export const AppNavMain: React.FC = () => {
   const accessQuery = useAccess();
   const visibleNavItems = mainNavItems.filter(
-    (item) => !("permission" in item) || canAccess(accessQuery.data, item.permission),
+    (item) => !("permission" in item) || hasPermission(accessQuery.data, item.permission),
   );
 
   return (

@@ -8,7 +8,7 @@ export async function createContext({ req }: CreateFastifyContextOptions) {
   const session = await getSessionFromHeaders(req.headers);
   const access = session
     ? createUserAccessSummary({
-        role: (session.user as { role?: unknown }).role,
+        role: session.user.role,
         userId: session.user.id,
       })
     : null;

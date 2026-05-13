@@ -1,5 +1,4 @@
-import { hasPermission } from "@pkg/core";
-import type { AppPermission } from "@pkg/schema";
+import { type AppPermission, hasPermission } from "@pkg/schema";
 import { initTRPC, TRPCError } from "@trpc/server";
 
 import type { Context } from "./context.js";

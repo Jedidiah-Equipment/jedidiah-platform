@@ -82,6 +82,7 @@ the app does not promote the first signed-up user automatically.
 - `AppRole`, `APP_ROLES`, and `DEFAULT_APP_ROLE`
 - `AppPermission` and `APP_PERMISSIONS`
 - `UserAccessSummary`, with one public `role` plus derived permissions
+- `hasPermission`, the shared helper for checking a permission in an access summary
 - `UserSummary`, `UserListResult`, and `UserSetRoleInput`
 
 The schema package validates boundary data. It does not own the role-to-permission matrix.
@@ -95,7 +96,6 @@ The schema package validates boundary data. It does not own the role-to-permissi
 - `normalizeAppRoles`
 - `getRolePermissions`
 - `createUserAccessSummary`
-- `hasPermission`
 
 Unknown or missing roles normalize to no access. This keeps authorization deny-by-default even if a
 stored role is invalid. Better Auth can store multiple roles, so policy helpers still tolerate that
@@ -128,8 +128,11 @@ The web app uses permissions for UX only.
 - Products are visible to all v1 roles because all v1 roles include `product:read`.
 - Product creation is visible only with `product:create`.
 - Product editing is visible only with `product:update`.
-- The Users page and Users nav item are visible only with `user:list`.
+- The Users nav item is visible only with `user:list`; directly visiting the Users page relies on
+  the API returning `FORBIDDEN` for unauthorized data access.
 - Server-side API checks remain the security boundary.
+- Admin plugin fields for bans and impersonation are schema plumbing only until app policy and UI
+  explicitly use them.
 
 ## Deny-By-Default Rules
 

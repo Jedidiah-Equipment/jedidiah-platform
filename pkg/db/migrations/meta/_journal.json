@@ -22,6 +22,20 @@
       "when": 1778603233470,
       "tag": "0002_same_jigsaw",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778651172163,
+      "tag": "0003_lean_invisible_woman",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778654853406,
+      "tag": "0004_sturdy_stellaris",
+      "breakpoints": true
     }
   ]
 }

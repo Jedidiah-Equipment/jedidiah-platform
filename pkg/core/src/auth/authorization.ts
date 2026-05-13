@@ -6,6 +6,7 @@ import {
 } from "@pkg/schema";
 
 export const authorizationStatement = {
+  audit: ["read"],
   product: ["read", "create", "update"],
   user: ["list", "edit"],
 } as const;
@@ -15,6 +16,7 @@ type RoleAccess = Partial<Record<AuthorizationResource, readonly string[]>>;
 
 export const appRoleAccess = {
   admin: {
+    audit: ["read"],
     product: ["read", "create", "update"],
     user: ["list", "edit"],
   },

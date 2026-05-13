@@ -86,3 +86,4 @@ Guidance for the React/Vite app. The best references are `src/pages/products/Pro
 - Run `pnpm --filter @pkg/web typecheck` for web type changes.
 - Run `pnpm --filter @pkg/web test` for web tests.
 - Run root `pnpm lint` for Biome formatting and linting.
+- Dont test via the browser unless asked to do so

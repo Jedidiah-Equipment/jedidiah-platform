@@ -10,6 +10,7 @@ export const AppRole = z.enum(APP_ROLES);
 export const DEFAULT_APP_ROLE = "product-viewer" satisfies AppRole;
 
 export const APP_PERMISSIONS = [
+  "audit:read",
   "product:read",
   "product:create",
   "product:update",

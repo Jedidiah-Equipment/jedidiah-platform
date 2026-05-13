@@ -1,10 +1,16 @@
+import type { Database } from "@pkg/db";
+import { auditEvents, user } from "@pkg/db/schema";
 import type { Product } from "@pkg/schema";
 import { describe, expect } from "vitest";
 
 import { type AppRouterCaller, createTester } from "@/test/create-tester.js";
 import { mockSession } from "@/test/test-utils.js";
 
-const test = createTester();
+const test = createTester(async ({ db }) => {
+  await createActorUser(db);
+
+  return { db };
+});
 
 async function createProduct(caller: AppRouterCaller, name: string): Promise<Product> {
   return caller.products.create({ name });
@@ -38,6 +44,25 @@ describe("products.create", () => {
     const created = await createProduct(caller, "Wheel Loader");
 
     expect(created.name).toBe("Wheel Loader");
+  });
+
+  test("records an audit event for product creates", async ({ context }) => {
+    const session = mockSession("admin");
+    const caller = context.createCaller(session);
+    const created = await createProduct(caller, "Wheel Loader");
+
+    const events = await listAuditEvents(context.db);
+
+    expect(events).toMatchObject([
+      {
+        action: "created",
+        actorUserId: session.user.id,
+        changes: null,
+        entityId: created.id,
+        entityType: "product",
+        summary: 'Created product "Wheel Loader"',
+      },
+    ]);
   });
 
   test("trims product names", async ({ context }) => {
@@ -296,6 +321,39 @@ describe("products.update", () => {
     });
   });
 
+  test("records changed fields in audit events for product updates", async ({ context }) => {
+    const session = mockSession("admin");
+    const caller = context.createCaller(session);
+    const created = await createProduct(caller, "Wheel Loader");
+
+    await caller.products.update({
+      id: created.id,
+      name: "Wheel Loader XL",
+    });
+
+    const events = await listAuditEvents(context.db);
+
+    expect(events).toMatchObject([
+      {
+        action: "created",
+        changes: null,
+      },
+      {
+        action: "updated",
+        actorUserId: session.user.id,
+        changes: {
+          name: {
+            from: "Wheel Loader",
+            to: "Wheel Loader XL",
+          },
+        },
+        entityId: created.id,
+        entityType: "product",
+        summary: 'Renamed product "Wheel Loader" to "Wheel Loader XL"',
+      },
+    ]);
+  });
+
   test("trims product names", async ({ context }) => {
     const caller = context.createCaller();
     const created = await createProduct(caller, "Compact Loader");
@@ -350,3 +408,21 @@ describe("products.update", () => {
     });
   });
 });
+
+async function listAuditEvents(db: Database) {
+  return db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+}
+
+async function createActorUser(db: Database) {
+  const now = new Date();
+
+  await db.insert(user).values({
+    createdAt: now,
+    email: "test@example.com",
+    emailVerified: true,
+    id: "test-user-id",
+    name: "Test User",
+    role: "admin",
+    updatedAt: now,
+  });
+}

@@ -21,6 +21,7 @@ describe("normalizeAppRoles", () => {
 describe("getRolePermissions", () => {
   it("grants all v1 permissions to admins", () => {
     expect(getRolePermissions(["admin"])).toEqual([
+      "audit:read",
       "product:create",
       "product:read",
       "product:update",
@@ -58,7 +59,14 @@ describe("createUserAccessSummary", () => {
         userId: "user_123",
       }),
     ).toEqual({
-      permissions: ["product:create", "product:read", "product:update", "user:edit", "user:list"],
+      permissions: [
+        "audit:read",
+        "product:create",
+        "product:read",
+        "product:update",
+        "user:edit",
+        "user:list",
+      ],
       role: "admin",
       userId: "user_123",
     });

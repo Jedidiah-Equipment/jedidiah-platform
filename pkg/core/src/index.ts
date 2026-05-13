@@ -1,3 +1,4 @@
+export * from "./audit/audit-service.js";
 export * from "./auth/authorization.js";
 export * from "./products/product-errors.js";
 export * from "./products/product-service.js";

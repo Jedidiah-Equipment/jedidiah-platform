@@ -1,13 +1,18 @@
 # app (@pkg/web)
 
 Guidance for the React/Vite app. The best references are `src/pages/products/ProductsPage.tsx`,
-`src/pages/products/components/ProductTable.tsx`, `src/components/data-table/DataTable.tsx`, and
-`src/components/form/use-app-form.ts`.
+`src/pages/products/components/ProductTable.tsx`, `src/pages/users/UsersPage.tsx`,
+`src/pages/users/components/UserTable.tsx`, `src/components/data-table/DataTable.tsx`,
+`src/components/form/use-app-form.ts`, `src/hooks/use-access.ts`, `src/lib/access.ts`, and
+`src/routes/_authed.users.tsx`.
 
 ## Ownership
 
 - Owns React/Vite app setup, TanStack Router routes, TanStack Query, tRPC client wiring, Better Auth
   React client usage, `/env.js` runtime config, local shadcn/ui components, and the static server.
+- Owns the browser-side access helpers (`src/hooks/use-access.ts` and `src/lib/access.ts`) that
+  wrap the `auth.access` tRPC query and drive nav visibility and route guards. These are UX
+  helpers only; the server is the real authorization boundary.
 - Public browser config comes from `window.__APP_CONFIG__` via `/env.js`; do not use `VITE_*` for
   deploy-time URLs.
 - Login is email/password only for now. Do not add register, forgot password, password reset, or
@@ -62,8 +67,19 @@ Guidance for the React/Vite app. The best references are `src/pages/products/Pro
 - Use `useTRPC()` with `@trpc/tanstack-react-query`: `queryOptions`, `mutationOptions`,
   `queryFilter`, and typed query keys/filters.
 - Do not introduce new classic `@trpc/react-query` hook usage.
-- Keep table state patterns aligned with `src/pages/products/components/ProductTable.tsx` and
-  `src/components/data-table/store.ts`.
+- Keep table state patterns aligned with `src/pages/products/components/ProductTable.tsx`,
+  `src/pages/users/components/UserTable.tsx`, and `src/components/data-table/store.ts`.
+
+## Authorization
+
+- The server enforces authorization via `authorizedProcedure(permission)`. Treat browser checks as
+  UX only.
+- Use `useAccess()` to load the current `UserAccessSummary` and `canAccess(access, permission)`
+  from `@/lib/access` to gate UI elements. Invalidate `trpc.auth.access.queryFilter()` after any
+  mutation that can change the current user's permissions.
+- Prefer permission-based gating (`product:read`, `user:list`, `user:edit`) over hardcoded role
+  checks. Route-level guards in `src/routes/_authed.*` can fall back to role inspection on
+  `context.session.user` when access has not been loaded yet.
 
 ## Verification
 

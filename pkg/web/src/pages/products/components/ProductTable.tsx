@@ -82,6 +82,34 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
         header: "Name",
       },
       {
+        accessorKey: "modelCode",
+        cell: ({ row }) => <span className="font-mono text-sm">{row.original.modelCode}</span>,
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: "Model code",
+      },
+      {
+        accessorKey: "basePrice",
+        cell: ({ row }) => formatProductPrice(row.original),
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: "Base price",
+      },
+      {
+        accessorKey: "createdAt",
+        cell: ({ row }) => formatProductDate(row.original.createdAt),
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: "Created",
+      },
+      {
+        accessorKey: "updatedAt",
+        cell: ({ row }) => formatProductDate(row.original.updatedAt),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: "Updated",
+      },
+      {
         accessorKey: "id",
         cell: ({ row }) => (
           <span className="block max-w-[240px] truncate font-mono text-xs text-muted-foreground">
@@ -180,13 +208,16 @@ export function useProductListInput(): ProductListInput {
     () =>
       ({
         columnFilters: {
+          basePrice: getColumnFilterValue(columnFilters, "basePrice"),
+          createdAt: getColumnFilterValue(columnFilters, "createdAt"),
           id: getColumnFilterValue(columnFilters, "id"),
+          modelCode: getColumnFilterValue(columnFilters, "modelCode"),
           name: getColumnFilterValue(columnFilters, "name"),
         },
         page: pagination.pageIndex + 1,
         pageSize: pagination.pageSize,
         search: globalFilter,
-        sortBy: sort?.id === "id" ? "id" : "name",
+        sortBy: getProductSortBy(sort?.id),
         sortDirection: sort?.desc ? "desc" : "asc",
       }) satisfies ProductListInput,
     [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort?.desc, sort?.id],
@@ -195,7 +226,7 @@ export function useProductListInput(): ProductListInput {
 
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,
-  id: "id" | "name",
+  id: "basePrice" | "createdAt" | "id" | "modelCode" | "name",
 ): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
@@ -214,8 +245,34 @@ function constrainSorting(sorting: SortingState): SortingState {
 
   return [
     {
-      id: sort?.id === "id" ? "id" : "name",
+      id: getProductSortBy(sort?.id),
       desc: sort?.desc ?? false,
     },
   ];
+}
+
+function getProductSortBy(sortId: string | undefined): ProductListInput["sortBy"] {
+  if (
+    sortId === "basePrice" ||
+    sortId === "createdAt" ||
+    sortId === "id" ||
+    sortId === "modelCode"
+  ) {
+    return sortId;
+  }
+
+  return "name";
+}
+
+function formatProductPrice(product: Product): string {
+  return new Intl.NumberFormat("en-ZA", {
+    currency: product.currencyCode,
+    style: "currency",
+  }).format(product.basePrice);
+}
+
+function formatProductDate(value: Date): string {
+  return new Intl.DateTimeFormat("en-ZA", {
+    dateStyle: "medium",
+  }).format(value);
 }

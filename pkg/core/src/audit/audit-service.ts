@@ -41,6 +41,10 @@ export const productAuditDescriptor = {
   noun: "product",
   primaryLabelField: "name",
   fields: {
+    basePrice: "base price",
+    currencyCode: "currency",
+    description: "description",
+    modelCode: "model code",
     name: "name",
   },
 } as const satisfies AuditEntityDescriptor;

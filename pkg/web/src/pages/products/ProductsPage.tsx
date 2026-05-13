@@ -100,16 +100,20 @@ export const ProductsPage: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit product</DialogTitle>
-            <DialogDescription>Update the product name.</DialogDescription>
+            <DialogDescription>Update the product catalog details.</DialogDescription>
           </DialogHeader>
           {editingProduct ? (
             <ProductForm
-              initialName={editingProduct.name}
+              initialProduct={editingProduct}
               isPending={updateProductMutation.isPending}
               key={editingProduct.id}
               onSubmit={(value) =>
                 updateProductMutation.mutateAsync({
+                  basePrice: value.basePrice,
+                  currencyCode: value.currencyCode,
+                  description: value.description,
                   id: editingProduct.id,
+                  modelCode: value.modelCode,
                   name: value.name,
                 })
               }

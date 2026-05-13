@@ -12,8 +12,18 @@ const test = createTester(async ({ db }) => {
   return { db };
 });
 
-async function createProduct(caller: AppRouterCaller, name: string): Promise<Product> {
-  return caller.products.create({ name });
+async function createProduct(
+  caller: AppRouterCaller,
+  name: string,
+  overrides: Partial<Parameters<AppRouterCaller["products"]["create"]>[0]> = {},
+): Promise<Product> {
+  return caller.products.create({
+    basePrice: 1_000,
+    description: null,
+    modelCode: createModelCode(name),
+    name,
+    ...overrides,
+  });
 }
 
 async function createProducts(caller: AppRouterCaller, names: string[]): Promise<Product[]> {
@@ -30,10 +40,22 @@ function productNames(products: Product[]): string[] {
   return products.map((product) => product.name);
 }
 
+function createModelCode(name: string): string {
+  return name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 describe("products.create", () => {
   test("rejects unauthenticated product creates", async ({ context }) => {
     await expect(
-      context.createAnonCaller().products.create({ name: "Anonymous Product" }),
+      context.createAnonCaller().products.create({
+        basePrice: 1_000,
+        modelCode: "ANON-100",
+        name: "Anonymous Product",
+      }),
     ).rejects.toMatchObject({
       code: "UNAUTHORIZED",
     });
@@ -44,6 +66,15 @@ describe("products.create", () => {
     const created = await createProduct(caller, "Wheel Loader");
 
     expect(created.name).toBe("Wheel Loader");
+    expect(created).toMatchObject({
+      basePrice: 1_000,
+      currencyCode: "ZAR",
+      description: null,
+      modelCode: "WHEEL-LOADER",
+      name: "Wheel Loader",
+    });
+    expect(created.createdAt).toBeInstanceOf(Date);
+    expect(created.updatedAt).toBeInstanceOf(Date);
   });
 
   test("records an audit event for product creates", async ({ context }) => {
@@ -79,11 +110,30 @@ describe("products.create", () => {
 
     await expect(
       caller.products.create({
+        basePrice: 2_000,
+        modelCode: "DUPLICATE-PRODUCT-2",
         name: "Duplicate Product",
       }),
     ).rejects.toMatchObject({
       code: "CONFLICT",
       message: "A product with this name already exists.",
+    });
+  });
+
+  test("returns conflict for duplicate product model codes", async ({ context }) => {
+    const caller = context.createCaller();
+
+    await createProduct(caller, "Duplicate Product");
+
+    await expect(
+      caller.products.create({
+        basePrice: 2_000,
+        modelCode: "DUPLICATE-PRODUCT",
+        name: "Duplicate Product Plus",
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "A product with this model code already exists.",
     });
   });
 
@@ -111,7 +161,13 @@ describe("products.create", () => {
   test("rejects product viewers", async ({ context }) => {
     const caller = context.createCaller(mockSession("product-viewer"));
 
-    await expect(caller.products.create({ name: "Read Only Product" })).rejects.toMatchObject({
+    await expect(
+      caller.products.create({
+        basePrice: 1_000,
+        modelCode: "READ-ONLY-PRODUCT",
+        name: "Read Only Product",
+      }),
+    ).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
   });
@@ -168,50 +224,36 @@ describe("products.list", () => {
     expect(result.sortDirection).toBe("asc");
   });
 
-  test("searches product names case-insensitively", async ({ context }) => {
+  test("searches product names, model codes, descriptions, and IDs globally", async ({
+    context,
+  }) => {
     const caller = context.createCaller();
-    await createProducts(caller, ["Compact Loader", "Excavator Bucket", "Wheel LOADER"]);
-
-    const result = await caller.products.list({
-      page: 1,
-      pageSize: 10,
-      columnFilters: {},
-      search: "loader",
-      sortBy: "name",
-      sortDirection: "asc",
+    const loader = await createProduct(caller, "Compact Loader", {
+      description: "Underground equipment loader",
+      modelCode: "CL-100",
     });
-
-    expect(productNames(result.items)).toEqual(["Compact Loader", "Wheel LOADER"]);
-    expect(result.total).toBe(2);
-  });
-
-  test("applies search before paging and counting", async ({ context }) => {
-    const caller = context.createCaller();
-    await createProducts(caller, ["Alpha Loader", "Bravo Loader", "Charlie Loader", "Excavator"]);
-
-    const result = await caller.products.list({
-      page: 2,
-      pageSize: 2,
-      columnFilters: {},
-      search: "loader",
-      sortBy: "name",
-      sortDirection: "asc",
+    const bucket = await createProduct(caller, "Excavator Bucket", {
+      description: "Digging attachment",
+      modelCode: "EX-200",
     });
-
-    expect(productNames(result.items)).toEqual(["Charlie Loader"]);
-    expect(result.total).toBe(3);
-  });
-
-  test("searches product names and IDs globally", async ({ context }) => {
-    const caller = context.createCaller();
-    const loader = await createProduct(caller, "Compact Loader");
-    await createProduct(caller, "Excavator Bucket");
+    await createProduct(caller, "Wheel Truck", {
+      description: "Hauling equipment",
+      modelCode: "WL-300",
+    });
 
     const nameResult = await caller.products.list({
       page: 1,
       pageSize: 10,
       columnFilters: {},
       search: "loader",
+      sortBy: "name",
+      sortDirection: "asc",
+    });
+    const modelResult = await caller.products.list({
+      page: 1,
+      pageSize: 10,
+      columnFilters: {},
+      search: "ex-200",
       sortBy: "name",
       sortDirection: "asc",
     });
@@ -223,9 +265,20 @@ describe("products.list", () => {
       sortBy: "name",
       sortDirection: "asc",
     });
+    const descriptionResult = await caller.products.list({
+      page: 2,
+      pageSize: 1,
+      columnFilters: {},
+      search: "equipment",
+      sortBy: "name",
+      sortDirection: "asc",
+    });
 
     expect(nameResult.items.map((product) => product.id)).toEqual([loader.id]);
+    expect(modelResult.items.map((product) => product.id)).toEqual([bucket.id]);
     expect(idResult.items.map((product) => product.id)).toEqual([loader.id]);
+    expect(productNames(descriptionResult.items)).toEqual(["Wheel Truck"]);
+    expect(descriptionResult.total).toBe(2);
   });
 
   test("filters product lists by name column filter", async ({ context }) => {
@@ -267,6 +320,37 @@ describe("products.list", () => {
     expect(result.total).toBe(1);
   });
 
+  test("filters and sorts product lists by catalog fields", async ({ context }) => {
+    const caller = context.createCaller();
+    await createProduct(caller, "Compact Loader", {
+      basePrice: 250_000,
+      modelCode: "CL-100",
+    });
+    await createProduct(caller, "Wheel Loader", {
+      basePrice: 150_000,
+      modelCode: "WL-200",
+    });
+    await createProduct(caller, "Excavator Bucket", {
+      basePrice: 50_000,
+      modelCode: "EX-300",
+    });
+
+    const modelResult = await caller.products.list({
+      page: 1,
+      pageSize: 10,
+      columnFilters: {
+        modelCode: "L-",
+      },
+      search: "",
+      sortBy: "basePrice",
+      sortDirection: "asc",
+    });
+
+    expect(productNames(modelResult.items)).toEqual(["Wheel Loader", "Compact Loader"]);
+    expect(modelResult.total).toBe(2);
+    expect(modelResult.sortBy).toBe("basePrice");
+  });
+
   test("combines global search and column filters before paging and counting", async ({
     context,
   }) => {
@@ -298,7 +382,9 @@ describe("products.update", () => {
   test("rejects unauthenticated product updates", async ({ context }) => {
     await expect(
       context.createAnonCaller().products.update({
+        basePrice: 1_000,
         id: "00000000-0000-4000-8000-000000000001",
+        modelCode: "ANON-UPDATE",
         name: "Anonymous Update",
       }),
     ).rejects.toMatchObject({
@@ -311,14 +397,22 @@ describe("products.update", () => {
     const created = await createProduct(caller, "Wheel Loader");
 
     const updated = await caller.products.update({
+      basePrice: 2_000,
+      description: "Larger loader",
       id: created.id,
+      modelCode: "WL-XL",
       name: "Wheel Loader XL",
     });
 
-    expect(updated).toEqual({
+    expect(updated).toMatchObject({
+      basePrice: 2_000,
+      currencyCode: "ZAR",
+      description: "Larger loader",
       id: created.id,
+      modelCode: "WL-XL",
       name: "Wheel Loader XL",
     });
+    expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(created.updatedAt.getTime());
   });
 
   test("records changed fields in audit events for product updates", async ({ context }) => {
@@ -327,7 +421,10 @@ describe("products.update", () => {
     const created = await createProduct(caller, "Wheel Loader");
 
     await caller.products.update({
+      basePrice: 2_000,
+      description: "Larger loader",
       id: created.id,
+      modelCode: "WL-XL",
       name: "Wheel Loader XL",
     });
 
@@ -342,6 +439,18 @@ describe("products.update", () => {
         action: "updated",
         actorUserId: session.user.id,
         changes: {
+          basePrice: {
+            from: 1000,
+            to: 2000,
+          },
+          description: {
+            from: null,
+            to: "Larger loader",
+          },
+          modelCode: {
+            from: "WHEEL-LOADER",
+            to: "WL-XL",
+          },
           name: {
             from: "Wheel Loader",
             to: "Wheel Loader XL",
@@ -359,7 +468,10 @@ describe("products.update", () => {
     const created = await createProduct(caller, "Compact Loader");
 
     const updated = await caller.products.update({
+      basePrice: created.basePrice,
+      description: created.description,
       id: created.id,
+      modelCode: created.modelCode,
       name: "  Compact Loader Plus  ",
     });
 
@@ -371,7 +483,9 @@ describe("products.update", () => {
 
     await expect(
       caller.products.update({
+        basePrice: 1_000,
         id: "00000000-0000-4000-8000-000000000001",
+        modelCode: "MISSING",
         name: "Missing",
       }),
     ).rejects.toMatchObject({
@@ -386,7 +500,10 @@ describe("products.update", () => {
     const created = await createProduct(adminCaller, "Editor Product");
 
     const updated = await editorCaller.products.update({
+      basePrice: created.basePrice,
+      description: created.description,
       id: created.id,
+      modelCode: created.modelCode,
       name: "Editor Product Plus",
     });
 
@@ -400,7 +517,10 @@ describe("products.update", () => {
 
     await expect(
       viewerCaller.products.update({
+        basePrice: created.basePrice,
+        description: created.description,
         id: created.id,
+        modelCode: created.modelCode,
         name: "Viewer Update Product Plus",
       }),
     ).rejects.toMatchObject({

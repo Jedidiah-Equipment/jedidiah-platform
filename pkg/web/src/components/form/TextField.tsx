@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-import { Field, FieldError, FieldLabel } from "@/components/ui/field.js";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field.js";
 import { Input } from "@/components/ui/input.js";
 import { getFieldErrors } from "./field-errors.js";
 import { useFieldContext } from "./form-context.js";
@@ -11,11 +11,12 @@ type TextFieldInputProps = Omit<
 >;
 
 export type TextFieldProps = {
+  description?: React.ReactNode;
   label: React.ReactNode;
   type?: React.HTMLInputTypeAttribute;
 } & TextFieldInputProps;
 
-export function TextField({ label, type = "text", ...inputProps }: TextFieldProps) {
+export function TextField({ description, label, type = "text", ...inputProps }: TextFieldProps) {
   const field = useFieldContext<string>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
@@ -33,6 +34,7 @@ export function TextField({ label, type = "text", ...inputProps }: TextFieldProp
         value={field.state.value}
         {...inputProps}
       />
+      {description ? <FieldDescription>{description}</FieldDescription> : null}
       <FieldError errors={fieldErrors} />
     </Field>
   );

@@ -83,7 +83,7 @@ the app does not promote the first signed-up user automatically.
 - `AppPermission` and `APP_PERMISSIONS`
 - `UserAccessSummary`, with one public `role` plus derived permissions
 - `hasPermission`, the shared helper for checking a permission in an access summary
-- `UserSummary`, `UserListResult`, and `UserSetRoleInput`
+- `UserSummary`, `UserListResult`, `UserCreateInput`, and `UserUpdateInput`
 
 The schema package validates boundary data. It does not own the role-to-permission matrix.
 
@@ -111,8 +111,8 @@ The API is the enforcement authority.
 - Dashboard access is covered by authentication only, not by `authorizedProcedure`.
 - Product procedures are gated by `product:read`, `product:create`, and `product:update`.
 - User procedures are gated by `user:list` and `user:edit`.
-- `users.setRole` accepts only v1 roles, rejects changing the current user's own role, and rejects
-  removing the last admin.
+- `users.create` and `users.update` accept only v1 roles. Updating rejects changing the current
+  user's own role and rejects removing the last admin.
 - Durable audit logging for role changes remains future work.
 - Anonymous requests return `UNAUTHORIZED`; signed-in users without permission return `FORBIDDEN`.
 

@@ -7,6 +7,7 @@ import {
 } from "@pkg/db/test-utils";
 import { type TestAPI, type TestContext, test as testBase } from "vitest";
 
+import { type Auth, createAuth } from "@/auth/auth.js";
 import type { Context } from "@/trpc/context.js";
 import { type AppRouter, createAppRouterCaller } from "@/trpc/router.js";
 
@@ -16,6 +17,7 @@ type Cleanup = () => Promise<void> | void;
 export type AppRouterCaller = ReturnType<AppRouter["createCaller"]>;
 
 export type TesterScope = {
+  auth: Auth;
   cleanup: (cleanup: Cleanup) => void;
   databaseClient: DatabaseClient;
   databaseName: string;
@@ -25,7 +27,10 @@ export type TesterScope = {
 
 export type TesterContext = {
   createAnonCaller: () => AppRouterCaller;
-  createCaller: (session?: NonNullable<Context["session"]>) => AppRouterCaller;
+  createCaller: (
+    session?: NonNullable<Context["session"]>,
+    requestHeaders?: Headers,
+  ) => AppRouterCaller;
 };
 
 type CreateTesterContext<T extends object> = (scope: TesterScope & TesterContext) => Promise<T> | T;
@@ -43,6 +48,7 @@ export function createTester<T extends object = Record<string, never>>(
         templateDatabaseUrl,
       });
       const databaseClient = createDatabaseClient(databaseUrl);
+      const auth = createAuth(databaseClient.db);
       const cleanups: Cleanup[] = [];
 
       try {
@@ -51,18 +57,22 @@ export function createTester<T extends object = Record<string, never>>(
             createAnonCaller: () =>
               createAppRouterCaller({
                 access: null,
+                auth,
                 db: databaseClient.db,
                 req: {} as Context["req"],
+                requestHeaders: new Headers(),
                 session: null,
               }),
-            createCaller: (session = mockSession()) => {
+            createCaller: (session = mockSession(), requestHeaders = new Headers()) => {
               return createAppRouterCaller({
                 access: createUserAccessSummary({
                   role: session.user.role,
                   userId: session.user.id,
                 }),
+                auth,
                 db: databaseClient.db,
                 req: {} as Context["req"],
+                requestHeaders,
                 session,
               });
             },
@@ -74,6 +84,7 @@ export function createTester<T extends object = Record<string, never>>(
             databaseName,
             databaseUrl,
             db: databaseClient.db,
+            auth,
           });
 
           await use({

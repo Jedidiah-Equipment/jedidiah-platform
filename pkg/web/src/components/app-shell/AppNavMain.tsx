@@ -1,7 +1,7 @@
 import { hasPermission } from "@pkg/domain";
 import type { AppPermission } from "@pkg/schema";
 import { Link, linkOptions } from "@tanstack/react-router";
-import { BoxesIcon, GaugeIcon, type LucideIcon, UsersIcon } from "lucide-react";
+import { BotIcon, BoxesIcon, GaugeIcon, type LucideIcon, UsersIcon } from "lucide-react";
 import type React from "react";
 
 import {
@@ -34,6 +34,11 @@ const mainNavItems = [
       search: { page: 1, pageSize: 10, search: "", sortBy: "name", sortDirection: "asc" },
     }),
     icon: BoxesIcon,
+  },
+  {
+    title: "Assistant",
+    link: linkOptions({ to: "/assistant" }),
+    icon: BotIcon,
   },
   {
     title: "Users",

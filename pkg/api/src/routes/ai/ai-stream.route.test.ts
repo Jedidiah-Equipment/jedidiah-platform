@@ -1,6 +1,9 @@
 import type { Server } from "node:http";
 import http from "node:http";
 
+import fastifyCors from "@fastify/cors";
+import * as productsCore from "@pkg/core";
+import { createUserAccessSummary } from "@pkg/domain";
 import Fastify from "fastify";
 import { describe, expect, test, vi } from "vitest";
 
@@ -8,19 +11,38 @@ import type { AiContext } from "@/routes/ai/ai-context.js";
 import { type CreateOpenAIClient, registerAiStreamRoute } from "@/routes/ai/ai-stream.route.js";
 import { mockSession } from "@/test/test-utils.js";
 
-function createAiContext(session: AiContext["session"] = mockSession()): AiContext {
+function createAiContext({
+  access = null,
+  db = {} as AiContext["db"],
+  session = mockSession(),
+}: {
+  access?: AiContext["access"];
+  db?: AiContext["db"];
+  session?: AiContext["session"];
+} = {}): AiContext {
   return {
-    access: null,
-    db: {} as AiContext["db"],
+    access,
+    db,
     session,
   };
 }
 
-function createClient(stream: StubCompletionStream): ReturnType<CreateOpenAIClient> {
+function createClient(...streams: StubCompletionStream[]): ReturnType<CreateOpenAIClient> {
+  const runToolsMock = vi.fn((params: unknown) => {
+    const nextStream = streams.shift();
+
+    if (!nextStream) {
+      throw new Error("No stub completion stream was queued");
+    }
+
+    nextStream.setParams(params);
+    return nextStream;
+  });
+
   return {
     chat: {
       completions: {
-        stream: vi.fn(() => stream),
+        runTools: runToolsMock,
       },
     },
   } as unknown as ReturnType<CreateOpenAIClient>;
@@ -41,8 +63,15 @@ class StubCompletionStream {
   readonly listeners = new Map<string, Array<(payload: unknown) => void>>();
 
   private resolveDone: () => void = () => undefined;
+  private params: unknown = null;
 
-  constructor(private readonly run: (stream: StubCompletionStream) => Promise<void> | void) {}
+  constructor(
+    private readonly run: (stream: StubCompletionStream, params: unknown) => Promise<void> | void,
+  ) {}
+
+  setParams(params: unknown): void {
+    this.params = params;
+  }
 
   on(event: string, listener: (payload: unknown) => void): StubCompletionStream {
     const listeners = this.listeners.get(event) ?? [];
@@ -55,7 +84,7 @@ class StubCompletionStream {
     await new Promise<void>((resolve) => {
       this.resolveDone = resolve;
       queueMicrotask(async () => {
-        await this.run(this);
+        await this.run(this, this.params);
         resolve();
       });
     });
@@ -75,7 +104,7 @@ describe("POST /ai/chat-stream", () => {
       createClient(new StubCompletionStream(() => undefined)),
     ) as CreateOpenAIClient;
     await registerAiStreamRoute(app, {
-      buildContext: async () => createAiContext(null),
+      buildContext: async () => createAiContext({ session: null }),
       createOpenAIClient,
       model: "test-model",
     });
@@ -122,6 +151,111 @@ describe("POST /ai/chat-stream", () => {
       JSON.stringify({ type: "token", delta: "pact" }),
       JSON.stringify({ type: "done" }),
     ]);
+  });
+
+  test("preserves CORS headers on streamed responses", async () => {
+    const app = Fastify();
+    const stream = new StubCompletionStream((stub) => {
+      stub.emit("content.delta", { delta: "Compact" });
+    });
+
+    await app.register(fastifyCors, {
+      credentials: true,
+      origin: ["http://localhost:7001"],
+    });
+    await registerAiStreamRoute(app, {
+      buildContext: async () => createAiContext(),
+      createOpenAIClient: () => createClient(stream),
+      model: "test-model",
+    });
+
+    const response = await app.inject({
+      headers: {
+        origin: "http://localhost:7001",
+      },
+      method: "POST",
+      payload: {
+        messages: [{ role: "user", content: "Show me loaders" }],
+      },
+      url: "/ai/chat-stream",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:7001");
+    expect(response.headers["access-control-allow-credentials"]).toBe("true");
+  });
+
+  test("streams a final assistant answer after a tool call", async () => {
+    const app = Fastify();
+    const product = {
+      basePrice: 332_500,
+      createdAt: new Date("2026-05-13T10:13:20.631Z"),
+      currencyCode: "ZAR" as const,
+      description: "Apex forklift",
+      id: "00000000-0000-4000-8000-000000000001",
+      modelCode: "AF-25",
+      name: "Apex Forklift",
+      updatedAt: new Date("2026-05-13T10:13:20.631Z"),
+    };
+    const listProductsSpy = vi.spyOn(productsCore, "listProducts").mockResolvedValue({
+      items: [product],
+      sortBy: "name",
+      sortDirection: "asc",
+      total: 1,
+    });
+
+    // runTools handles the full loop in a single runner — simulate it calling the tool
+    // then streaming the follow-up response in one pass.
+    const stream = new StubCompletionStream(async (stub, params) => {
+      const { tools } = params as { tools: Array<{ function: { name: string; function: (args: unknown) => Promise<unknown> } }> };
+      const listProductsTool = tools.find((t) => t.function.name === "listProducts");
+      await listProductsTool?.function.function(null);
+      stub.emit("content.delta", {
+        delta: "You have Apex Forklift (AF-25) at ZAR 332,500.00.",
+      });
+    });
+
+    try {
+      await registerAiStreamRoute(app, {
+        buildContext: async () =>
+          createAiContext({
+            access: createUserAccessSummary({
+              role: "product-viewer",
+              userId: "test-user-id",
+            }),
+          }),
+        createOpenAIClient: () => createClient(stream),
+        model: "test-model",
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        payload: {
+          messages: [{ role: "user", content: "What products do we have?" }],
+        },
+        url: "/ai/chat-stream",
+      });
+      const events = readSseDataLines(response.body).map((line) => JSON.parse(line) as unknown);
+
+      expect(response.statusCode).toBe(200);
+      expect(events).toEqual([
+        expect.objectContaining({
+          name: "listProducts",
+          ok: true,
+          summary: expect.stringContaining("Apex Forklift"),
+          type: "tool_result",
+        }),
+        {
+          delta: "You have Apex Forklift (AF-25) at ZAR 332,500.00.",
+          type: "token",
+        },
+        {
+          type: "done",
+        },
+      ]);
+    } finally {
+      listProductsSpy.mockRestore();
+    }
   });
 
   test("returns 400 for oversized authenticated payloads", async () => {

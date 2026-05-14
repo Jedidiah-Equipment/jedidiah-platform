@@ -6,7 +6,8 @@ const CHAT_STREAM_MAX_PAYLOAD_BYTES = 64 * 1024;
 
 export type ChatEvent =
   | { type: 'token'; delta: string }
-  | { type: 'tool_call'; name: string; args: unknown }
+  | { type: 'tool_call'; id: string; name: string; args: unknown }
+  | { type: 'tool_result'; id: string; result: unknown }
   | { type: 'done' }
   | { type: 'error'; message: string };
 

@@ -145,7 +145,11 @@ async function streamChatCompletion({
     const tools = createRunnableTools(
       authorizedTools,
       ctx,
-      // On tool call event, write the event to the stream if it is writable
+      (event) => {
+        if (isWritable) {
+          writeEvent(reply, event);
+        }
+      },
       (event) => {
         if (isWritable) {
           writeEvent(reply, event);

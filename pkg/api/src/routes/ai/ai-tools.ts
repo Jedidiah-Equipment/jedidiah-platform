@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { hasPermission } from '@pkg/domain';
 import type { ChatEvent, UserAccessSummary } from '@pkg/schema';
 import type { RunnableTools } from 'openai/lib/RunnableFunction';
@@ -89,6 +91,7 @@ export function createRunnableTools(
   tools: AuthorizedAiTools,
   ctx: AiContext,
   onToolCall: (event: Extract<ChatEvent, { type: 'tool_call' }>) => void,
+  onToolResult: (event: Extract<ChatEvent, { type: 'tool_result' }>) => void,
 ): RunnableTool[] {
   return getToolEntries(tools).map(([name, tool]) => ({
     type: 'function' as const,
@@ -98,15 +101,23 @@ export function createRunnableTools(
       parameters: tool.jsonSchema,
       parse: JSON.parse,
       function: async (args: unknown) => {
+        const id = randomUUID();
         log.ai.debug({ name, args }, 'tool call');
         onToolCall({
-          type: 'tool_call',
+          id,
           name,
           args,
+          type: 'tool_call',
         });
         const result = await dispatchToolCall(tools, name, args, ctx);
+        const payload = result.ok ? result.result : { error: result.error };
         log.ai.debug({ name: result.name, ok: result.ok }, 'tool result');
-        return result.ok ? result.result : { error: result.error };
+        onToolResult({
+          id,
+          result: payload,
+          type: 'tool_result',
+        });
+        return payload;
       },
     },
   }));

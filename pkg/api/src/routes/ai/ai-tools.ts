@@ -1,11 +1,8 @@
 import { type ChatEvent, ProductListInput } from "@pkg/schema";
 import { z } from "zod";
 
-import { createLogger } from "@/logger.js";
+import { log } from "@/logger.js";
 import type { AiContext } from "./ai-context.js";
-
-const log = createLogger("ai");
-
 import { listProductsTool } from "./tools/list-products.js";
 
 type AiTool = {
@@ -82,14 +79,14 @@ export function createRunnableTools(
       parameters: tool.jsonSchema,
       parse: JSON.parse,
       function: async (args: unknown) => {
-        log.debug({ name, args }, "tool call");
+        log.ai.debug({ name, args }, "tool call");
         onToolCall({
           args,
           name,
           type: "tool_call",
         });
         const result = await dispatchToolCall(name, args, ctx);
-        log.debug({ name: result.name, ok: result.ok }, "tool result");
+        log.ai.debug({ name: result.name, ok: result.ok }, "tool result");
         return result.ok ? result.result : { error: result.error };
       },
     },

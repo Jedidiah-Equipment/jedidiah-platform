@@ -1,20 +1,18 @@
 import pino from "pino";
+import { getApiConfig } from "./env.js";
 
-import type { ApiConfig } from "./env.js";
+const config = getApiConfig();
 
-const allowedDomains = process.env.LOG_DOMAINS
-  ? new Set(process.env.LOG_DOMAINS.split(",").map((d) => d.trim()))
-  : null;
+const disabledDomains = parseDomains(config.LOG_DOMAINS_DISABLED);
+const silentLogger = pino({ level: "silent" });
 
-let _rootLogger: pino.Logger | null = null;
-
-export function initLogger(config: ApiConfig): void {
+function initLogger() {
   const base: pino.LoggerOptions = {
     level: config.LOG_LEVEL,
     redact: ["req.headers.authorization", "req.headers.cookie"],
   };
 
-  _rootLogger =
+  const root =
     config.APP_ENV === "development"
       ? pino({
           ...base,
@@ -24,23 +22,30 @@ export function initLogger(config: ApiConfig): void {
           },
         })
       : pino(base);
+
+  return {
+    root,
+    ai: getDomainLogger(root, "ai"),
+    http: getDomainLogger(root, "http"),
+  };
 }
 
-function getRootLogger(): pino.Logger {
-  if (!_rootLogger) {
-    _rootLogger = pino({ level: process.env.LOG_LEVEL ?? "info" });
+function getDomainLogger(root: pino.Logger, domain: string): pino.Logger {
+  if (disabledDomains.has(domain)) {
+    return silentLogger;
   }
-  return _rootLogger;
+
+  const logger = root.child({ domain });
+  return logger;
 }
 
-export function createLogger(domain: string): pino.Logger {
-  if (allowedDomains && !allowedDomains.has(domain)) {
-    return pino({ level: "silent" });
-  }
-  return getRootLogger().child({ domain });
+function parseDomains(value: string | undefined): Set<string> {
+  return new Set(
+    (value ?? "")
+      .split(",")
+      .map((domain) => domain.trim())
+      .filter(Boolean),
+  );
 }
 
-export function getLoggerOptions(config: ApiConfig): pino.Logger {
-  initLogger(config);
-  return getRootLogger();
-}
+export const log = initLogger();

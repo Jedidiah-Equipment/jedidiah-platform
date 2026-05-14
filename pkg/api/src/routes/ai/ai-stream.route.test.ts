@@ -238,12 +238,24 @@ describe('POST /ai/chat-stream', () => {
       const events = readSseDataLines(response.body).map((line) => JSON.parse(line) as unknown);
 
       expect(response.statusCode).toBe(200);
-      expect(events).toEqual([
-        {
-          args: null,
-          name: 'listProducts',
-          type: 'tool_call',
+      expect(events).toHaveLength(4);
+      expect(events[0]).toMatchObject({
+        args: null,
+        name: 'listProducts',
+        type: 'tool_call',
+      });
+      expect(events[0]).toHaveProperty('id', expect.any(String));
+      expect(events[1]).toEqual({
+        id: (events[0] as { id: string }).id,
+        result: {
+          items: [product],
+          sortBy: 'name',
+          sortDirection: 'asc',
+          total: 1,
         },
+        type: 'tool_result',
+      });
+      expect(events.slice(2)).toEqual([
         {
           delta: 'You have Apex Forklift (AF-25) at ZAR 332,500.00.',
           type: 'token',

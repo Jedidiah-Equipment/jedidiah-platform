@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@assistant-ui/react-markdown/styles/dot.css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 

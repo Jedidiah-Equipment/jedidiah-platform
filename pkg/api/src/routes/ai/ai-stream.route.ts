@@ -6,14 +6,12 @@ import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { z } from "zod";
 
-import { createLogger } from "@/logger.js";
+import { log } from "@/logger.js";
 import { type AiContext, buildAiContext } from "./ai-context.js";
 import { type AiOpenAIClient, createOpenAIClient, getOpenAIModel } from "./ai-openai.js";
 import { SYSTEM_PROMPT } from "./ai-prompts.js";
 import { closeStream, SSE_HEADERS, writeError, writeEvent } from "./ai-sse.js";
 import { createRunnableTools } from "./ai-tools.js";
-
-const log = createLogger("ai");
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const STREAM_TIMEOUT_MS = 60_000;
@@ -141,22 +139,28 @@ async function streamChatCompletion({
   try {
     const client = createClient();
 
+    log.ai.info({ messages: createMessages(input.messages) }, "creating messages");
+
+    const tools = createRunnableTools(ctx, (event) => {
+      if (isWritable) {
+        writeEvent(reply, event);
+      }
+    });
+
+    log.ai.info({ tools: tools.map((tool) => tool.function.name) }, "creating tools");
+
     // runTools handles the full agentic loop: executes tool calls, feeds results back
     // to the model, and continues streaming until the model stops requesting tools.
     stream = client.chat.completions.runTools({
       model,
       messages: createMessages(input.messages),
       stream: true,
-      tools: createRunnableTools(ctx, (event) => {
-        if (isWritable) {
-          writeEvent(reply, event);
-        }
-      }),
+      tools,
     }) as unknown as ChatCompletionStream;
 
     stream.on("content.delta", (event) => {
       const { delta } = event as { delta: string };
-      log.trace({ delta }, "content delta");
+      log.ai.trace({ delta }, "content delta");
 
       if (isWritable && delta) {
         writeEvent(reply, {
@@ -171,20 +175,20 @@ async function streamChatCompletion({
     };
 
     streamWithChunkEvents.on("chunk", (chunk) => {
-      log.trace({ chunk }, "chunk");
+      log.ai.trace({ chunk }, "chunk");
     });
 
     stream.on("message", (message) => {
-      log.debug({ message }, "message");
+      log.ai.debug({ message }, "message");
     });
 
     stream.on("error", (event) => {
-      log.error({ err: event }, "stream error");
+      log.ai.error({ err: event }, "stream error");
       sendTerminalError(getErrorMessage(event));
     });
 
     await stream.done();
-    log.info("stream done");
+    log.ai.info("stream done");
 
     if (isWritable && !terminalEventSent) {
       terminalEventSent = true;

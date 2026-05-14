@@ -34,7 +34,7 @@ export const ApiConfig = z.object({
   OPENAI_MODEL: z.string().min(1).default("gpt-5.5"),
   PORT: z.coerce.number().int().positive().default(7002),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"]).default("info"),
-  LOG_DOMAINS: z.string().optional(),
+  LOG_DOMAINS_DISABLED: z.string().optional(),
 });
 
 export function getApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {

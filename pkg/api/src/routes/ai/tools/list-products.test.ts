@@ -7,7 +7,6 @@ import { describe, expect, vi } from "vitest";
 import { z } from "zod";
 
 import type { AiContext } from "@/routes/ai/ai-context.js";
-import { ToolAuthorizationError } from "@/routes/ai/ai-errors.js";
 import { listProductsTool } from "@/routes/ai/tools/list-products.js";
 import { type AppRouterCaller, createTester } from "@/test/create-tester.js";
 import { mockSession } from "@/test/test-utils.js";
@@ -45,14 +44,6 @@ function createAiContext(db: Database, access: UserAccessSummary): AiContext {
     access,
     db,
     session: mockSession(access.role ?? "product-viewer"),
-  };
-}
-
-function createAccessWithNoProductRead(): UserAccessSummary {
-  return {
-    permissions: [],
-    role: null,
-    userId: "test-user-id",
   };
 }
 
@@ -102,19 +93,6 @@ describe("listProductsTool", () => {
     ]);
 
     expect(toolResult).toEqual(trpcResult);
-  });
-
-  test("throws ToolAuthorizationError without product read permission", async ({ context }) => {
-    const listProductsSpy = vi.spyOn(productsCore, "listProducts");
-
-    try {
-      await expect(
-        listProductsTool.handler({}, createAiContext(context.db, createAccessWithNoProductRead())),
-      ).rejects.toBeInstanceOf(ToolAuthorizationError);
-      expect(listProductsSpy).not.toHaveBeenCalled();
-    } finally {
-      listProductsSpy.mockRestore();
-    }
   });
 
   test("treats null tool args as the default product list input", async ({ context }) => {

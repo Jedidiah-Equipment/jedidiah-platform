@@ -1,48 +1,62 @@
-import { type ChatEvent, ProductListInput } from "@pkg/schema";
-import { z } from "zod";
+import { hasPermission } from "@pkg/domain";
+import type { ChatEvent, UserAccessSummary } from "@pkg/schema";
+import type { RunnableTools } from "openai/lib/RunnableFunction";
 
 import { log } from "@/logger.js";
 import type { AiContext } from "./ai-context.js";
 import { listProductsTool } from "./tools/list-products.js";
+import type { AiTool } from "./tools/type.js";
 
-type AiTool = {
-  description: string;
-  handler: (args: unknown, ctx: AiContext) => Promise<unknown>;
-  jsonSchema: Record<string, unknown>;
-};
+export const AI_TOOL_NAMES = [listProductsTool.name] as const;
+export type AiToolName = (typeof AI_TOOL_NAMES)[number];
+
+type AiToolMap = Record<AiToolName, AiTool>;
+export type AuthorizedAiTools = Partial<AiToolMap>;
 
 type InternalToolResult =
   | {
-      name: string;
+      name: AiToolName;
       ok: true;
       result: unknown;
     }
   | {
-      error: string;
-      name: string;
+      name: AiToolName;
       ok: false;
+      error: string;
     };
 
-export const aiTools = {
-  [listProductsTool.name]: {
-    description: listProductsTool.description,
-    handler: listProductsTool.handler,
-    jsonSchema: z.toJSONSchema(ProductListInput) as Record<string, unknown>,
-  },
-} satisfies Record<string, AiTool>;
+type RunnableTool = RunnableTools<readonly object[]>[number];
 
-export type AiToolName = keyof typeof aiTools;
+export const aiTools: AiToolMap = {
+  [listProductsTool.name]: listProductsTool,
+};
 
-export function isAiToolName(name: string): name is AiToolName {
-  return name in aiTools;
+export function getAuthorizedTools(access: UserAccessSummary | null): AuthorizedAiTools {
+  const authorizedTools: AuthorizedAiTools = {};
+
+  for (const name of AI_TOOL_NAMES) {
+    const tool = aiTools[name];
+    if (hasPermission(access, tool.requiredPermission)) {
+      authorizedTools[name] = tool;
+    }
+  }
+
+  return authorizedTools;
+}
+
+export function getAuthorizedToolNames(tools: AuthorizedAiTools): AiToolName[] {
+  return getToolEntries(tools).map(([name]) => name);
 }
 
 export async function dispatchToolCall(
-  name: string,
+  tools: AuthorizedAiTools,
+  name: AiToolName,
   args: unknown,
   ctx: AiContext,
 ): Promise<InternalToolResult> {
-  if (!isAiToolName(name)) {
+  const tool = tools[name];
+
+  if (!tool) {
     return {
       error: `Unknown tool: ${name}`,
       name,
@@ -51,7 +65,7 @@ export async function dispatchToolCall(
   }
 
   try {
-    const result = await aiTools[name].handler(args, ctx);
+    const result = await tool.handler(args, ctx);
 
     return {
       name,
@@ -68,10 +82,11 @@ export async function dispatchToolCall(
 }
 
 export function createRunnableTools(
+  tools: AuthorizedAiTools,
   ctx: AiContext,
   onToolCall: (event: Extract<ChatEvent, { type: "tool_call" }>) => void,
-) {
-  return Object.entries(aiTools).map(([name, tool]) => ({
+): RunnableTool[] {
+  return getToolEntries(tools).map(([name, tool]) => ({
     type: "function" as const,
     function: {
       name,
@@ -81,14 +96,28 @@ export function createRunnableTools(
       function: async (args: unknown) => {
         log.ai.debug({ name, args }, "tool call");
         onToolCall({
-          args,
-          name,
           type: "tool_call",
+          name,
+          args,
         });
-        const result = await dispatchToolCall(name, args, ctx);
+        const result = await dispatchToolCall(tools, name, args, ctx);
         log.ai.debug({ name: result.name, ok: result.ok }, "tool result");
         return result.ok ? result.result : { error: result.error };
       },
     },
   }));
+}
+
+function getToolEntries(tools: AuthorizedAiTools): Array<[AiToolName, AiTool]> {
+  const entries: Array<[AiToolName, AiTool]> = [];
+
+  for (const name of AI_TOOL_NAMES) {
+    const tool = tools[name];
+
+    if (tool) {
+      entries.push([name, tool]);
+    }
+  }
+
+  return entries;
 }

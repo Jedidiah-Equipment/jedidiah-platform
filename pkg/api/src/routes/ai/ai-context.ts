@@ -1,15 +1,11 @@
 import { db } from "@pkg/db";
 import { createUserAccessSummary } from "@pkg/domain";
-import type { UserAccessSummary } from "@pkg/schema";
+import type { AiContext as AiContextSchema, UserAccessSummary } from "@pkg/schema";
 import type { FastifyRequest } from "fastify";
 
 import { type AppSession, getSessionFromHeaders } from "@/auth/session.js";
 
-export type AiContext = {
-  access: UserAccessSummary | null;
-  db: typeof db;
-  session: AppSession | null;
-};
+export type AiContext = AiContextSchema<typeof db, AppSession>;
 
 export async function buildAiContext(req: FastifyRequest): Promise<AiContext> {
   const session = await getSessionFromHeaders(req.headers);

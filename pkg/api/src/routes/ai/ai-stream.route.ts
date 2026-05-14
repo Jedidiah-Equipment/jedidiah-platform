@@ -9,9 +9,14 @@ import { z } from "zod";
 import { log } from "@/logger.js";
 import { type AiContext, buildAiContext } from "./ai-context.js";
 import { type AiOpenAIClient, createOpenAIClient, getOpenAIModel } from "./ai-openai.js";
-import { SYSTEM_PROMPT } from "./ai-prompts.js";
+import { createSystemPrompt } from "./ai-prompts.js";
 import { closeStream, SSE_HEADERS, writeError, writeEvent } from "./ai-sse.js";
-import { createRunnableTools } from "./ai-tools.js";
+import {
+  type AiToolName,
+  createRunnableTools,
+  getAuthorizedToolNames,
+  getAuthorizedTools,
+} from "./ai-tools.js";
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const STREAM_TIMEOUT_MS = 60_000;
@@ -138,14 +143,22 @@ async function streamChatCompletion({
 
   try {
     const client = createClient();
+    const authorizedTools = getAuthorizedTools(ctx.access);
+    const authorizedToolNames = getAuthorizedToolNames(authorizedTools);
+    const messages = createMessages(input.messages, authorizedToolNames);
 
-    log.ai.info({ messages: createMessages(input.messages) }, "creating messages");
+    log.ai.info({ messages }, "creating messages");
 
-    const tools = createRunnableTools(ctx, (event) => {
-      if (isWritable) {
-        writeEvent(reply, event);
-      }
-    });
+    const tools = createRunnableTools(
+      authorizedTools,
+      ctx,
+      // On tool call event, write the event to the stream if it is writable
+      (event) => {
+        if (isWritable) {
+          writeEvent(reply, event);
+        }
+      },
+    );
 
     log.ai.info({ tools: tools.map((tool) => tool.function.name) }, "creating tools");
 
@@ -153,7 +166,7 @@ async function streamChatCompletion({
     // to the model, and continues streaming until the model stops requesting tools.
     stream = client.chat.completions.runTools({
       model,
-      messages: createMessages(input.messages),
+      messages,
       stream: true,
       tools,
     }) as unknown as ChatCompletionStream;
@@ -162,6 +175,7 @@ async function streamChatCompletion({
       const { delta } = event as { delta: string };
       log.ai.trace({ delta }, "content delta");
 
+      // If the stream is writable and there is a delta, write the event to the stream
       if (isWritable && delta) {
         writeEvent(reply, {
           type: "token",
@@ -170,16 +184,13 @@ async function streamChatCompletion({
       }
     });
 
-    const streamWithChunkEvents = stream as ChatCompletionStream & {
-      on(event: "chunk", listener: (chunk: unknown) => void): ChatCompletionStream;
-    };
-
-    streamWithChunkEvents.on("chunk", (chunk) => {
-      log.ai.trace({ chunk }, "chunk");
-    });
-
+    // final message post delta stream
     stream.on("message", (message) => {
       log.ai.debug({ message }, "message");
+    });
+
+    stream.on("chunk", (chunk) => {
+      log.ai.trace({ chunk }, "chunk");
     });
 
     stream.on("error", (event) => {
@@ -190,6 +201,7 @@ async function streamChatCompletion({
     await stream.done();
     log.ai.info("stream done");
 
+    // write the done event to the stream if it is writable and the terminal event has not been sent
     if (isWritable && !terminalEventSent) {
       terminalEventSent = true;
       writeEvent(reply, {
@@ -219,10 +231,13 @@ function getStreamHeaders(reply: FastifyReply): OutgoingHttpHeaders {
   };
 }
 
-function createMessages(messages: ChatStreamMessage[]): ChatCompletionMessageParam[] {
-  const systemMessages: ChatCompletionMessageParam[] = SYSTEM_PROMPT
-    ? [{ role: "system", content: SYSTEM_PROMPT }]
-    : [];
+function createMessages(
+  messages: ChatStreamMessage[],
+  toolNames: readonly AiToolName[],
+): ChatCompletionMessageParam[] {
+  const systemMessages: ChatCompletionMessageParam[] = [
+    { role: "system", content: createSystemPrompt(toolNames) },
+  ];
 
   return [
     ...systemMessages,

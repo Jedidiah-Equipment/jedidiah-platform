@@ -259,6 +259,45 @@ describe("POST /ai/chat-stream", () => {
     }
   });
 
+  test("does not expose tools without the required permission", async () => {
+    const app = Fastify();
+    let exposedToolNames: string[] | null = null;
+    let systemPrompt: string | null = null;
+    const stream = new StubCompletionStream((_stub, params) => {
+      const { messages, tools } = params as {
+        messages: Array<{ content: string; role: string }>;
+        tools: Array<{ function: { name: string } }>;
+      };
+      exposedToolNames = tools.map((tool) => tool.function.name);
+      systemPrompt = messages.find((message) => message.role === "system")?.content ?? null;
+    });
+
+    await registerAiStreamRoute(app, {
+      buildContext: async () =>
+        createAiContext({
+          access: {
+            permissions: [],
+            role: null,
+            userId: "test-user-id",
+          },
+        }),
+      createOpenAIClient: () => createClient(stream),
+      model: "test-model",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      payload: {
+        messages: [{ role: "user", content: "What products do we have?" }],
+      },
+      url: "/ai/chat-stream",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(exposedToolNames).toEqual([]);
+    expect(systemPrompt).not.toContain("listProducts");
+  });
+
   test("returns 400 for oversized authenticated payloads", async () => {
     const app = Fastify();
     const createOpenAIClient = vi.fn(() =>

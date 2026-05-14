@@ -12,6 +12,7 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
 import { Button } from '@/components/ui/button.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { formatDate } from '@/utils/date.js';
 
 type ProductTableProps = {
   onEditProduct: ((product: Product) => void) | undefined;
@@ -105,14 +106,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
       },
       {
         accessorKey: 'createdAt',
-        cell: ({ row }) => formatProductDate(row.original.createdAt),
+        cell: ({ row }) => formatDate(row.original.createdAt),
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Created',
       },
       {
         accessorKey: 'updatedAt',
-        cell: ({ row }) => formatProductDate(row.original.updatedAt),
+        cell: ({ row }) => formatDate(row.original.updatedAt),
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Updated',
@@ -233,10 +234,4 @@ function formatProductPrice(product: Product): string {
     currency: product.currencyCode,
     style: 'currency',
   }).format(product.basePrice);
-}
-
-function formatProductDate(value: string): string {
-  return new Intl.DateTimeFormat('en-ZA', {
-    dateStyle: 'medium',
-  }).format(new Date(value));
 }

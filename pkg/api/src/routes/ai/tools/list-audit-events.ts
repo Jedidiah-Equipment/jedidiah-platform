@@ -8,7 +8,8 @@ export type ListAuditEventsTool = AiToolBase<'listAuditEvents', AuditListResult,
 
 export const listAuditEventsTool: ListAuditEventsTool = {
   name: 'listAuditEvents',
-  description: 'List audit events with the same filters, sort, and paging available in the audit page.',
+  description:
+    'List targeted audit events. Prefer specific queries over broad history scans: pass filters.entityIds when the related entity id is known, such as a product id for product audit history; combine it with filters.entityTypes, actorUserIds, and occurredAtStart/occurredAtEnd to narrow the result window. Use sortDirection, page, and pageSize to return the right slice in newest-first or oldest-first order.',
   inputSchema: AuditListInput,
   jsonSchema: z.toJSONSchema(AuditListInput) as Record<string, unknown>,
   requiredPermission: 'audit:read',

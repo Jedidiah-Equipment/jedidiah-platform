@@ -43,6 +43,7 @@ describe('listAuditEventsTool', () => {
     const input: AuditListInput = {
       filters: {
         actorUserIds: ['test-user-id'],
+        entityIds: [secondProductId],
         entityTypes: ['product'],
       },
       page: 1,

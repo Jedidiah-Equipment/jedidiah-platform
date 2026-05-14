@@ -122,6 +122,12 @@ describe('audit.list', () => {
     await createAuditEvent(context.db, {
       actorUserId: 'matching-actor-id',
       entityId: secondProductId,
+      occurredAt: new Date('2026-05-02T10:00:00.000Z'),
+      summary: 'Wrong entity',
+    });
+    await createAuditEvent(context.db, {
+      actorUserId: 'matching-actor-id',
+      entityId: firstProductId,
       occurredAt: new Date('2026-04-30T10:00:00.000Z'),
       summary: 'Outside date range',
     });
@@ -129,6 +135,7 @@ describe('audit.list', () => {
     const result = await context.createCaller().audit.list({
       filters: {
         actorUserIds: ['matching-actor-id'],
+        entityIds: [firstProductId],
         entityTypes: ['product'],
         occurredAtStart: '2026-05-01T00:00:00.000Z',
         occurredAtEnd: '2026-05-03T00:00:00.000Z',

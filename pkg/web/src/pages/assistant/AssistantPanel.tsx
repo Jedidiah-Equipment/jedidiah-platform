@@ -2,6 +2,7 @@ import { SendIcon, SquareIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
@@ -146,9 +147,38 @@ const AssistantMessage: React.FC<{ isStreaming: boolean; message: AssistantChatE
               : "prose prose-sm max-w-none border border-border bg-background dark:prose-invert",
           )}
         >
-          {isUser ? message.content : <ReactMarkdown>{message.content}</ReactMarkdown>}
+          {isUser ? (
+            message.content
+          ) : (
+            <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
+              {message.content}
+            </ReactMarkdown>
+          )}
         </div>
       </div>
     </div>
   );
 };
+
+const markdownComponents = {
+  table({ children }: React.ComponentPropsWithoutRef<"table">) {
+    return (
+      <div className="my-3 overflow-x-auto rounded-md border border-border">
+        <table className="m-0 w-full min-w-max border-collapse text-sm">{children}</table>
+      </div>
+    );
+  },
+  thead({ children }: React.ComponentPropsWithoutRef<"thead">) {
+    return <thead className="bg-muted/70">{children}</thead>;
+  },
+  th({ children }: React.ComponentPropsWithoutRef<"th">) {
+    return (
+      <th className="border-b border-border px-3 py-2 text-left font-medium text-foreground">
+        {children}
+      </th>
+    );
+  },
+  td({ children }: React.ComponentPropsWithoutRef<"td">) {
+    return <td className="border-t border-border px-3 py-2 align-top">{children}</td>;
+  },
+} satisfies React.ComponentProps<typeof ReactMarkdown>["components"];

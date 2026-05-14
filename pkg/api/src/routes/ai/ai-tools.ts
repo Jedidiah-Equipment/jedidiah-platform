@@ -1,4 +1,4 @@
-import { type AssistantEvent, ProductListInput } from "@pkg/schema";
+import { type ChatEvent, ProductListInput } from "@pkg/schema";
 import { z } from "zod";
 
 import type { AiContext } from "./ai-context.js";
@@ -11,7 +11,7 @@ type AiTool = {
   summarizeResult?: (result: unknown) => string;
 };
 
-type ToolResult = Extract<AssistantEvent, { type: "tool_result" }>;
+type ToolResult = Extract<ChatEvent, { type: "tool_result" }>;
 
 export const aiTools = {
   [listProductsTool.name]: {
@@ -32,7 +32,7 @@ export async function dispatchToolCall(
   name: string,
   args: unknown,
   ctx: AiContext,
-): Promise<Extract<AssistantEvent, { type: "tool_result" }>> {
+): Promise<Extract<ChatEvent, { type: "tool_result" }>> {
   if (!isAiToolName(name)) {
     return {
       type: "tool_result",
@@ -71,7 +71,11 @@ export const openAiTools = Object.entries(aiTools).map(([name, tool]) => ({
   },
 }));
 
-export function createRunnableTools(ctx: AiContext, onToolResult: (result: ToolResult) => void) {
+export function createRunnableTools(
+  ctx: AiContext,
+  onToolCall: (event: Extract<ChatEvent, { type: "tool_call" }>) => void,
+  onToolResult: (result: ToolResult) => void,
+) {
   return Object.entries(aiTools).map(([name, tool]) => ({
     type: "function" as const,
     function: {
@@ -81,6 +85,11 @@ export function createRunnableTools(ctx: AiContext, onToolResult: (result: ToolR
       parse: JSON.parse,
       function: async (args: unknown) => {
         console.log("[ai] tool call:", name, args);
+        onToolCall({
+          args,
+          name,
+          type: "tool_call",
+        });
         const result = await dispatchToolCall(name, args, ctx);
         onToolResult(result);
         return result.ok ? result.result : { error: result.summary };

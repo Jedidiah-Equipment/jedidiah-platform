@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { readAssistantEventStream } from "./sse-client.js";
+import { readChatEventStream } from "./sse-client.js";
 
-describe("readAssistantEventStream", () => {
-  test("reads assistant events across response chunks", async () => {
+describe("readChatEventStream", () => {
+  test("reads chat events across response chunks", async () => {
     const events = await collectEvents([
       'data: {"type":"token","delta":"Hel',
       'lo"}\n\n:data-only-heartbeat\n\n',
@@ -52,7 +52,7 @@ describe("readAssistantEventStream", () => {
 async function collectEvents(chunks: string[], signal?: AbortSignal) {
   const events = [];
 
-  for await (const event of readAssistantEventStream(createStream(chunks), signal)) {
+  for await (const event of readChatEventStream(createStream(chunks), signal)) {
     events.push(event);
   }
 

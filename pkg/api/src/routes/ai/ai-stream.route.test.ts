@@ -207,7 +207,9 @@ describe("POST /ai/chat-stream", () => {
     // runTools handles the full loop in a single runner — simulate it calling the tool
     // then streaming the follow-up response in one pass.
     const stream = new StubCompletionStream(async (stub, params) => {
-      const { tools } = params as { tools: Array<{ function: { name: string; function: (args: unknown) => Promise<unknown> } }> };
+      const { tools } = params as {
+        tools: Array<{ function: { name: string; function: (args: unknown) => Promise<unknown> } }>;
+      };
       const listProductsTool = tools.find((t) => t.function.name === "listProducts");
       await listProductsTool?.function.function(null);
       stub.emit("content.delta", {
@@ -239,6 +241,11 @@ describe("POST /ai/chat-stream", () => {
 
       expect(response.statusCode).toBe(200);
       expect(events).toEqual([
+        {
+          args: null,
+          name: "listProducts",
+          type: "tool_call",
+        },
         expect.objectContaining({
           name: "listProducts",
           ok: true,

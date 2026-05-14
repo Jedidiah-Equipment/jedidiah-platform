@@ -1,4 +1,4 @@
-import type { AssistantEvent } from "@pkg/schema";
+import type { ChatEvent } from "@pkg/schema";
 import type { FastifyReply } from "fastify";
 
 export const SSE_HEADERS = {
@@ -8,7 +8,7 @@ export const SSE_HEADERS = {
   "X-Accel-Buffering": "no",
 } as const;
 
-export function writeEvent(reply: FastifyReply, event: AssistantEvent): void {
+export function writeEvent(reply: FastifyReply, event: ChatEvent): void {
   reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
 }
 

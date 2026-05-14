@@ -144,12 +144,20 @@ async function streamChatCompletion({
       model,
       messages: createMessages(input.messages),
       stream: true,
-      tools: createRunnableTools(ctx, (result) => {
-        console.log("[ai] tool result:", result.name, result.ok, result.summary);
-        if (isWritable) {
-          writeEvent(reply, result);
-        }
-      }),
+      tools: createRunnableTools(
+        ctx,
+        (event) => {
+          if (isWritable) {
+            writeEvent(reply, event);
+          }
+        },
+        (result) => {
+          console.log("[ai] tool result:", result.name, result.ok, result.summary);
+          if (isWritable) {
+            writeEvent(reply, result);
+          }
+        },
+      ),
     }) as unknown as ChatCompletionStream;
 
     stream.on("content.delta", (event) => {
@@ -164,8 +172,11 @@ async function streamChatCompletion({
       }
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (stream as any).on("chunk", (chunk: unknown) => {
+    const streamWithChunkEvents = stream as ChatCompletionStream & {
+      on(event: "chunk", listener: (chunk: unknown) => void): ChatCompletionStream;
+    };
+
+    streamWithChunkEvents.on("chunk", (chunk) => {
       console.log("[ai] chunk:", JSON.stringify(chunk));
     });
 

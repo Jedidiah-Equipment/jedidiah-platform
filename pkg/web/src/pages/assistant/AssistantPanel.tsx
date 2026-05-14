@@ -1,6 +1,7 @@
 import { SendIcon, SquareIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
@@ -106,14 +107,6 @@ export const AssistantPanel: React.FC = () => {
 };
 
 const AssistantMessage: React.FC<{ message: AssistantChatEntry }> = ({ message }) => {
-  if (message.role === "tool") {
-    return (
-      <div className={cn("text-xs text-muted-foreground", !message.ok && "text-destructive")}>
-        {message.content}
-      </div>
-    );
-  }
-
   const isUser = message.role === "user";
 
   if (!isUser && !message.content) {
@@ -122,13 +115,20 @@ const AssistantMessage: React.FC<{ message: AssistantChatEntry }> = ({ message }
 
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
-      <div
-        className={cn(
-          "max-w-[min(42rem,85%)] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-6",
-          isUser ? "bg-primary text-primary-foreground" : "border border-border bg-background",
-        )}
-      >
-        {message.content}
+      <div className="max-w-[min(42rem,85%)]">
+        {!isUser && message.toolCallCount ? (
+          <p className="mb-1 text-xs text-muted-foreground">Tool calls: {message.toolCallCount}</p>
+        ) : null}
+        <div
+          className={cn(
+            "rounded-lg px-3 py-2 text-sm leading-6",
+            isUser
+              ? "whitespace-pre-wrap bg-primary text-primary-foreground"
+              : "prose prose-sm max-w-none border border-border bg-background dark:prose-invert",
+          )}
+        >
+          {isUser ? message.content : <ReactMarkdown>{message.content}</ReactMarkdown>}
+        </div>
       </div>
     </div>
   );

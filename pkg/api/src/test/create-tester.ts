@@ -5,6 +5,7 @@ import {
   getTestTemplateDatabaseUrl,
 } from "@pkg/db/test-utils";
 import { createUserAccessSummary } from "@pkg/domain";
+import pino from "pino";
 import { type TestAPI, type TestContext, test as testBase } from "vitest";
 
 import { type Auth, createAuth } from "@/auth/auth.js";
@@ -50,11 +51,13 @@ export function createTester<T extends object = Record<string, never>>(
 
       try {
         try {
+          const testLog = pino({ level: "silent" });
           const callerContext: TesterContext = {
             createAnonCaller: () =>
               createAppRouterCaller({
                 access: null,
                 db: databaseClient.db,
+                log: testLog,
                 session: null,
               }),
             createCaller: (session = mockSession()) => {
@@ -64,6 +67,7 @@ export function createTester<T extends object = Record<string, never>>(
                   userId: session.user.id,
                 }),
                 db: databaseClient.db,
+                log: testLog,
                 session,
               });
             },

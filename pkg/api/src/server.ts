@@ -5,14 +5,14 @@ import Fastify from "fastify";
 import { registerAuthHandler } from "./auth/handler.js";
 import { type ApiConfig, getApiConfig } from "./env.js";
 import { registerHealthRoutes } from "./health.js";
-// import { getLoggerOptions } from "./logger.js";
+import { getLoggerOptions } from "./logger.js";
 import { registerAiStreamRoute } from "./routes/ai/ai-stream.route.js";
 import { createContext } from "./trpc/context.js";
 import { appRouter } from "./trpc/router.js";
 
 export async function buildServer(config: ApiConfig = getApiConfig()) {
   const app = Fastify({
-    // logger: getLoggerOptions(config),
+    logger: getLoggerOptions(config),
   });
 
   await app.register(fastifyCors, {

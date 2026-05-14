@@ -6,11 +6,14 @@ import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { z } from "zod";
 
+import { createLogger } from "@/logger.js";
 import { type AiContext, buildAiContext } from "./ai-context.js";
 import { type AiOpenAIClient, createOpenAIClient, getOpenAIModel } from "./ai-openai.js";
 import { SYSTEM_PROMPT } from "./ai-prompts.js";
 import { closeStream, SSE_HEADERS, writeError, writeEvent } from "./ai-sse.js";
 import { createRunnableTools } from "./ai-tools.js";
+
+const log = createLogger("ai");
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const STREAM_TIMEOUT_MS = 60_000;
@@ -152,7 +155,7 @@ async function streamChatCompletion({
           }
         },
         (result) => {
-          console.log("[ai] tool result:", result.name, result.ok, result.summary);
+          log.debug({ name: result.name, ok: result.ok, summary: result.summary }, "tool result");
           if (isWritable) {
             writeEvent(reply, result);
           }
@@ -162,7 +165,7 @@ async function streamChatCompletion({
 
     stream.on("content.delta", (event) => {
       const { delta } = event as { delta: string };
-      console.log("[ai] content.delta:", JSON.stringify(delta));
+      log.trace({ delta }, "content delta");
 
       if (isWritable && delta) {
         writeEvent(reply, {
@@ -177,20 +180,20 @@ async function streamChatCompletion({
     };
 
     streamWithChunkEvents.on("chunk", (chunk) => {
-      console.log("[ai] chunk:", JSON.stringify(chunk));
+      log.trace({ chunk }, "chunk");
     });
 
     stream.on("message", (message) => {
-      console.log("[ai] message:", JSON.stringify(message));
+      log.debug({ message }, "message");
     });
 
     stream.on("error", (event) => {
-      console.log("[ai] error:", getErrorMessage(event));
+      log.error({ err: event }, "stream error");
       sendTerminalError(getErrorMessage(event));
     });
 
     await stream.done();
-    console.log("[ai] stream done");
+    log.info("stream done");
 
     if (isWritable && !terminalEventSent) {
       terminalEventSent = true;

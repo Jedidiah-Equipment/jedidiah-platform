@@ -17,6 +17,7 @@ export async function createContext({ req }: CreateFastifyContextOptions) {
   return {
     access,
     db,
+    log: req.log,
     session,
   };
 }

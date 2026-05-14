@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { hashPassword } from "better-auth/crypto";
-import { sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import type { Database } from "./database-client.js";
 import { auditEvents } from "./schema/audit.js";
@@ -8,6 +8,9 @@ import { account, user } from "./schema/auth.js";
 import { products } from "./schema/product.js";
 
 const seedProductCount = 10;
+const millisecondsPerDay = 24 * 60 * 60 * 1000;
+const seedProductMinAgeDays = 7;
+const seedProductAgeDayRange = 22;
 
 const equipmentFamilies = [
   "Wheel Loader",
@@ -52,6 +55,45 @@ type SeedProduct = typeof products.$inferInsert & {
   id: string;
   name: string;
   modelCode: string;
+  basePrice: number;
+  currencyCode: string;
+  description: string;
+};
+
+type SeedProductAuditChange = {
+  from: unknown;
+  to: unknown;
+};
+
+type SeedProductAuditChanges = Record<string, SeedProductAuditChange>;
+
+type SeedTimelineProduct = SeedProduct & {
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type SeedAuditEvent = Omit<
+  typeof auditEvents.$inferInsert,
+  "action" | "changes" | "entityId" | "entityType" | "id" | "occurredAt" | "summary"
+> & {
+  id: string;
+  action: "created" | "updated";
+  changes: SeedProductAuditChanges | null;
+  entityId: string;
+  entityType: "product";
+  occurredAt: Date;
+  summary: string;
+};
+
+type SeedProductAuditTimeline = {
+  products: SeedTimelineProduct[];
+  auditEvents: SeedAuditEvent[];
+};
+
+type CreateSeedProductAuditTimelineInput = {
+  actorUserIds: readonly string[];
+  now: Date;
+  products: readonly SeedProduct[];
 };
 
 export function createSeedProducts(count = seedProductCount): SeedProduct[] {
@@ -74,6 +116,106 @@ export function createSeedProducts(count = seedProductCount): SeedProduct[] {
   });
 }
 
+export function createSeedProductAuditTimeline({
+  actorUserIds,
+  now,
+  products: seedProducts,
+}: CreateSeedProductAuditTimelineInput): SeedProductAuditTimeline {
+  if (actorUserIds.length === 0) {
+    throw new Error("At least one actor user is required to seed product audits");
+  }
+
+  const productsWithTimeline: SeedTimelineProduct[] = [];
+  const auditEventsWithoutIds: Omit<SeedAuditEvent, "id">[] = [];
+
+  seedProducts.forEach((seedProduct, productIndex) => {
+    const createdAt = createProductCreatedAt(now, productIndex);
+    const actorUserId = actorUserIds[productIndex % actorUserIds.length] ?? actorUserIds[0];
+    let currentProduct: SeedTimelineProduct = {
+      ...seedProduct,
+      createdAt,
+      updatedAt: createdAt,
+    };
+    let updateOrdinal = 0;
+
+    auditEventsWithoutIds.push({
+      action: "created",
+      actorUserId,
+      changes: null,
+      entityId: seedProduct.id,
+      entityType: "product",
+      occurredAt: createdAt,
+      summary: `Created product "${seedProduct.name}"`,
+    });
+
+    const ageDays = getSeedProductAgeDays(productIndex);
+
+    for (let dayIndex = 1; dayIndex <= ageDays; dayIndex += 1) {
+      const updatesForDay = getSeedProductUpdateCount(productIndex, dayIndex);
+      const updateDate = addUtcDays(createdAt, dayIndex);
+
+      for (let updateIndex = 0; updateIndex < updatesForDay; updateIndex += 1) {
+        updateOrdinal += 1;
+
+        const occurredAt = createProductUpdateOccurredAt({
+          dayIndex,
+          now,
+          productIndex,
+          updateDate,
+          updateIndex,
+          updatesForDay,
+        });
+        const { changes, product } = applySeedProductUpdate({
+          dayIndex,
+          product: currentProduct,
+          productIndex,
+          updateIndex,
+          updateOrdinal,
+        });
+
+        currentProduct = {
+          ...product,
+          updatedAt: occurredAt,
+        };
+
+        auditEventsWithoutIds.push({
+          action: "updated",
+          actorUserId,
+          changes,
+          entityId: seedProduct.id,
+          entityType: "product",
+          occurredAt,
+          summary: `Updated product "${seedProduct.name}"`,
+        });
+      }
+    }
+
+    productsWithTimeline.push(currentProduct);
+  });
+
+  const auditEvents = auditEventsWithoutIds
+    .sort((left, right) => {
+      const occurredAtComparison = left.occurredAt.getTime() - right.occurredAt.getTime();
+
+      if (occurredAtComparison !== 0) {
+        return occurredAtComparison;
+      }
+
+      return `${left.entityId}:${left.action}:${left.summary}`.localeCompare(
+        `${right.entityId}:${right.action}:${right.summary}`,
+      );
+    })
+    .map((event, index) => ({
+      ...event,
+      id: createSeedUuid("8001", index + 1),
+    }));
+
+  return {
+    auditEvents,
+    products: productsWithTimeline,
+  };
+}
+
 export async function seedDatabase(database?: Database): Promise<void> {
   const activeDb = database ?? (await import("./client.js")).db;
   const now = new Date();
@@ -86,6 +228,12 @@ export async function seedDatabase(database?: Database): Promise<void> {
   if (productEditorUserIds.length === 0) {
     throw new Error("At least one product-editor seed user is required to seed product audits");
   }
+
+  const seedProductTimeline = createSeedProductAuditTimeline({
+    actorUserIds: productEditorUserIds,
+    now,
+    products: seedProducts,
+  });
 
   console.info(`[db:seed] Starting seed at ${now.toISOString()}`);
   console.info(`[db:seed] Upserting ${seedUsers.length} seed user(s): ${seedUserEmails}`);
@@ -139,61 +287,170 @@ export async function seedDatabase(database?: Database): Promise<void> {
 
   console.info(`[db:seed] Upserted ${seedUsers.length} credential account(s)`);
   console.info(
-    `[db:seed] Upserting ${seedProducts.length} product(s) and ${seedProducts.length} audit event(s)`,
+    `[db:seed] Upserting ${seedProductTimeline.products.length} product(s) and ${seedProductTimeline.auditEvents.length} audit event(s)`,
   );
 
   await activeDb.transaction(async (tx) => {
     await tx
       .insert(products)
-      .values(
-        seedProducts.map((product) => ({
-          ...product,
-          createdAt: now,
-          updatedAt: now,
-        })),
-      )
+      .values(seedProductTimeline.products)
       .onConflictDoUpdate({
         target: products.id,
         set: {
           basePrice: sql`excluded.base_price`,
+          createdAt: sql`excluded.created_at`,
           currencyCode: sql`excluded.currency_code`,
           description: sql`excluded.description`,
           modelCode: sql`excluded.model_code`,
           name: sql`excluded.name`,
-          updatedAt: now,
+          updatedAt: sql`excluded.updated_at`,
         },
       });
 
-    await tx
-      .insert(auditEvents)
-      .values(
-        seedProducts.map((product, index) => ({
-          id: createSeedUuid("8001", index + 1),
-          action: "created",
-          actorUserId: productEditorUserIds[index % productEditorUserIds.length],
-          changes: null,
-          entityId: product.id,
-          entityType: "product",
-          occurredAt: now,
-          summary: `Created product "${product.name}"`,
-        })),
-      )
-      .onConflictDoUpdate({
-        target: auditEvents.id,
-        set: {
-          action: sql`excluded.action`,
-          actorUserId: sql`excluded.actor_user_id`,
-          changes: sql`excluded.changes`,
-          entityId: sql`excluded.entity_id`,
-          entityType: sql`excluded.entity_type`,
-          occurredAt: sql`excluded.occurred_at`,
-          summary: sql`excluded.summary`,
-        },
-      });
+    const seedProductIds = seedProductTimeline.products.map((product) => product.id);
+
+    if (seedProductIds.length > 0) {
+      await tx
+        .delete(auditEvents)
+        .where(
+          and(eq(auditEvents.entityType, "product"), inArray(auditEvents.entityId, seedProductIds)),
+        );
+    }
+
+    if (seedProductTimeline.auditEvents.length > 0) {
+      await tx.insert(auditEvents).values(seedProductTimeline.auditEvents);
+    }
   });
 
   console.info(
-    `[db:seed] Seed complete: ${seedUsers.length} user(s), ${seedProducts.length} product(s)`,
+    `[db:seed] Seed complete: ${seedUsers.length} user(s), ${seedProductTimeline.products.length} product(s), ${seedProductTimeline.auditEvents.length} audit event(s)`,
+  );
+}
+
+function createProductCreatedAt(now: Date, productIndex: number): Date {
+  const ageDays = getSeedProductAgeDays(productIndex);
+  const createdAt = new Date(now.getTime() - ageDays * millisecondsPerDay);
+
+  createdAt.setUTCSeconds(0, 0);
+
+  return createdAt;
+}
+
+function getSeedProductAgeDays(productIndex: number): number {
+  return seedProductMinAgeDays + ((productIndex * 5) % seedProductAgeDayRange);
+}
+
+function getSeedProductUpdateCount(productIndex: number, dayIndex: number): number {
+  return ((productIndex + dayIndex) % 3) + 1;
+}
+
+function createProductUpdateOccurredAt({
+  dayIndex,
+  now,
+  productIndex,
+  updateDate,
+  updateIndex,
+  updatesForDay,
+}: {
+  dayIndex: number;
+  now: Date;
+  productIndex: number;
+  updateDate: Date;
+  updateIndex: number;
+  updatesForDay: number;
+}): Date {
+  if (isSameUtcDate(updateDate, now)) {
+    const startOfToday = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    );
+    const availableMilliseconds = Math.max(updatesForDay + 1, now.getTime() - startOfToday);
+    const offsetMilliseconds = Math.floor(
+      (availableMilliseconds * (updateIndex + 1)) / (updatesForDay + 1),
+    );
+
+    return new Date(startOfToday + offsetMilliseconds);
+  }
+
+  const occurredAt = new Date(updateDate.getTime());
+  const updateHours = [9, 13, 16] as const;
+
+  occurredAt.setUTCHours(
+    updateHours[updateIndex] ?? 16,
+    (productIndex * 11 + dayIndex * 3 + updateIndex * 13) % 60,
+    0,
+    0,
+  );
+
+  return occurredAt;
+}
+
+function applySeedProductUpdate({
+  dayIndex,
+  product,
+  productIndex,
+  updateIndex,
+  updateOrdinal,
+}: {
+  dayIndex: number;
+  product: SeedTimelineProduct;
+  productIndex: number;
+  updateIndex: number;
+  updateOrdinal: number;
+}): {
+  changes: SeedProductAuditChanges;
+  product: SeedTimelineProduct;
+} {
+  const nextBasePrice =
+    product.basePrice + 175 + productIndex * 45 + dayIndex * 12 + updateIndex * 25;
+  const nextProduct: SeedTimelineProduct = {
+    ...product,
+    basePrice: nextBasePrice,
+  };
+  const changes: SeedProductAuditChanges = {
+    basePrice: {
+      from: product.basePrice,
+      to: nextBasePrice,
+    },
+  };
+
+  if ((productIndex + updateOrdinal) % 2 === 0) {
+    const nextDescription = `${getBaseSeedDescription(product)} Price review ${updateOrdinal} captured for demo audit history.`;
+
+    nextProduct.description = nextDescription;
+    changes.description = {
+      from: product.description,
+      to: nextDescription,
+    };
+  }
+
+  return {
+    changes,
+    product: nextProduct,
+  };
+}
+
+function getBaseSeedDescription(product: SeedProduct): string {
+  return product.description.split(" Price review ")[0] ?? product.description;
+}
+
+function addUtcDays(date: Date, days: number): Date {
+  const next = new Date(date.getTime());
+  next.setUTCDate(next.getUTCDate() + days);
+
+  return next;
+}
+
+function isSameUtcDate(left: Date, right: Date): boolean {
+  return (
+    left.getUTCFullYear() === right.getUTCFullYear() &&
+    left.getUTCMonth() === right.getUTCMonth() &&
+    left.getUTCDate() === right.getUTCDate()
   );
 }
 

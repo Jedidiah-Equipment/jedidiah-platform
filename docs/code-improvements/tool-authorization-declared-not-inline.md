@@ -24,7 +24,19 @@ The core insight: **filter the tool list before it reaches the model**. If the m
 - **Filter at list-construction time, not dispatch time** — `getAuthorizedTools` is a separate step from `createRunnableTools`, so each concern is independently testable.
 - **`dispatchToolCall` loses its auth concern** — pure lookup and call; the higher-level filter makes it redundant.
 
-### Interface
+### Current signatures (to change)
+
+```ts
+// createRunnableTools takes ctx directly and maps all aiTools unconditionally
+createRunnableTools(ctx: AiContext, onToolCall: ...)
+
+// dispatchToolCall looks up from the static aiTools record via isAiToolName guard
+dispatchToolCall(name: string, args: unknown, ctx: AiContext)
+```
+
+`AiToolName` and `isAiToolName` are tied to the static `aiTools` object and go away once tools are dynamic.
+
+### Proposed interface
 
 ```ts
 type AiTool = {
@@ -43,7 +55,7 @@ function createRunnableTools(
   onToolCall: (event: ChatEvent) => void,
 ): RunnableTool[]
 
-// 3. Dispatch — no auth concern, pure lookup + call
+// 3. Dispatch — no auth concern, pure lookup + call (name in tools replaces isAiToolName)
 async function dispatchToolCall(
   tools: Record<string, AiTool>,
   name: string,

@@ -118,6 +118,11 @@ describe('listProductsTool', () => {
           sortBy: 'name',
           sortDirection: 'asc',
         }),
+        log: expect.objectContaining({
+          service: expect.objectContaining({
+            debug: expect.any(Function),
+          }),
+        }),
       });
     } finally {
       listProductsSpy.mockRestore();

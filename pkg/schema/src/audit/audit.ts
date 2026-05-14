@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
+import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
-import { createPagedQueryResult, PagedQueryInput } from '../pagination/pagination.js';
 
 export type AuditAction = z.infer<typeof AuditAction>;
 export const AuditAction = z.enum(['created', 'updated', 'deleted']);

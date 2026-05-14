@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { check, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { products } from './product.js';
@@ -24,3 +24,14 @@ export const productOptions = pgTable(
       .where(sql`${table.deletedAt} IS NULL`),
   ],
 );
+
+export const productsRelations = relations(products, ({ many }) => ({
+  options: many(productOptions),
+}));
+
+export const productOptionsRelations = relations(productOptions, ({ one }) => ({
+  product: one(products, {
+    fields: [productOptions.productId],
+    references: [products.id],
+  }),
+}));

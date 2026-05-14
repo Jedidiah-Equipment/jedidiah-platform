@@ -2,6 +2,8 @@ import * as productsCore from '@pkg/core';
 import { type AiToolBase, ProductListInput, type ProductListResult } from '@pkg/schema';
 import { z } from 'zod';
 
+import { log } from '@/logger.js';
+
 import type { AiContext } from '../ai-context.js';
 
 export type ListProductsTool = AiToolBase<'listProducts', ProductListResult, ProductListInput, AiContext>;
@@ -15,6 +17,6 @@ export const listProductsTool: ListProductsTool = {
   requiredPermission: 'product:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = ProductListInput.parse(args ?? {});
-    return productsCore.listProducts({ db: ctx.db, input });
+    return productsCore.listProducts({ db: ctx.db, input, log });
   },
 };

@@ -1,6 +1,7 @@
-import { type Db, getUniqueViolationConstraint, productOptions, products, withPagination } from '@pkg/db';
+import { type Db, getPaginationOffset, getUniqueViolationConstraint, productOptions, products } from '@pkg/db';
 import type {
   AuthId,
+  Logger,
   Product,
   ProductCreateInput,
   ProductListInput,
@@ -10,6 +11,7 @@ import type {
 } from '@pkg/schema';
 import { ProductCurrencyCode } from '@pkg/schema';
 import { and, asc, desc, eq, ilike, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { format } from 'sql-formatter';
 
 import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
@@ -32,33 +34,55 @@ export function mapProduct(row: ProductRow, options: ProductOptionRow[] = []): P
   };
 }
 
-export async function listProducts({ db, input }: { db: Db; input: ProductListInput }): Promise<ProductListResult> {
+export async function listProducts({
+  db,
+  input,
+  log,
+}: {
+  db: Db;
+  input: ProductListInput;
+  log: Logger;
+}): Promise<ProductListResult> {
   const sortColumn = getProductSortColumn(input.sortBy);
   const orderBy = input.sortDirection === 'desc' ? desc(sortColumn) : asc(sortColumn);
   const where = buildProductListWhere(input);
-  const rowsQuery = withPagination(
-    db
-      .select({
-        basePrice: products.basePrice,
-        createdAt: products.createdAt,
-        currencyCode: products.currencyCode,
-        description: products.description,
-        id: products.id,
-        modelCode: products.modelCode,
-        name: products.name,
-        updatedAt: products.updatedAt,
-      })
-      .from(products)
-      .where(where)
-      .orderBy(orderBy)
-      .$dynamic(),
-    input,
+  const productsQuery = db.query.products.findMany({
+    columns: {
+      basePrice: true,
+      createdAt: true,
+      currencyCode: true,
+      description: true,
+      id: true,
+      modelCode: true,
+      name: true,
+      updatedAt: true,
+    },
+    where,
+    orderBy: [orderBy],
+    limit: input.pageSize,
+    offset: getPaginationOffset(input),
+    with: {
+      options: {
+        where: isNull(productOptions.deletedAt),
+        orderBy: [asc(productOptions.code)],
+      },
+    },
+  });
+  const productsSql = productsQuery.toSQL();
+
+  log.service.debug(
+    {
+      params: productsSql.params,
+    },
+    `list products sql\n${format(productsSql.sql, {
+      language: 'postgresql',
+    })}`,
   );
 
-  const [rows, total] = await Promise.all([rowsQuery, db.$count(products, where)]);
+  const [rows, total] = await Promise.all([productsQuery, db.$count(products, where)]);
 
   return {
-    items: rows.map((row) => mapProduct(row)),
+    items: rows.map((row) => mapProduct(row, row.options)),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,

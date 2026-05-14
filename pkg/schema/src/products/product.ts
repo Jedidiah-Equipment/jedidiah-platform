@@ -1,8 +1,8 @@
 import { z } from 'zod';
+import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
-import { createPagedQueryResult, PagedQueryInput } from '../pagination/pagination.js';
 import { ProductOption, ProductOptionCreateInput, ProductOptionUpsertInput } from './product-option.js';
 
 export type ProductName = z.infer<typeof ProductName>;

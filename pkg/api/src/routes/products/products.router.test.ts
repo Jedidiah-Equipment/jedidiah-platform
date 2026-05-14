@@ -323,16 +323,18 @@ describe('products.list', () => {
     expect(descriptionResult.total).toBe(2);
   });
 
-  test('keeps list products lean by omitting persisted options', async ({ context }) => {
+  test('lists products with persisted options', async ({ context }) => {
     const caller = context.createCaller();
 
-    await createProduct(caller, 'Optioned List Product', {
+    const created = await createProduct(caller, 'Optioned List Product', {
       options: [{ code: 'CAB', name: 'Enclosed Cab', price: 12_500 }],
     });
 
+    const fetched = await caller.products.get({ id: created.id });
     const result = await caller.products.list({});
 
-    expect(result.items[0]?.options).toEqual([]);
+    expect(fetched.options.map((option) => option.code)).toEqual(['CAB']);
+    expect(result.items[0]?.options).toEqual(fetched.options);
   });
 
   test('filters product lists by name column filter', async ({ context }) => {

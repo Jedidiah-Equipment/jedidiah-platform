@@ -113,7 +113,7 @@ async function streamChatCompletion({
 
   const timeout = setTimeout(() => {
     sendTerminalError("AI stream timed out");
-    stream?.abort();
+    abortUpstream();
     closeStream(reply);
   }, STREAM_TIMEOUT_MS);
 
@@ -124,7 +124,7 @@ async function streamChatCompletion({
   };
 
   const handleRequestClose = () => {
-    if (request.raw.aborted) {
+    if (request.raw.destroyed) {
       abortUpstream();
     }
   };
@@ -147,20 +147,11 @@ async function streamChatCompletion({
       model,
       messages: createMessages(input.messages),
       stream: true,
-      tools: createRunnableTools(
-        ctx,
-        (event) => {
-          if (isWritable) {
-            writeEvent(reply, event);
-          }
-        },
-        (result) => {
-          log.debug({ name: result.name, ok: result.ok, summary: result.summary }, "tool result");
-          if (isWritable) {
-            writeEvent(reply, result);
-          }
-        },
-      ),
+      tools: createRunnableTools(ctx, (event) => {
+        if (isWritable) {
+          writeEvent(reply, event);
+        }
+      }),
     }) as unknown as ChatCompletionStream;
 
     stream.on("content.delta", (event) => {
@@ -225,11 +216,12 @@ function getStreamHeaders(reply: FastifyReply): OutgoingHttpHeaders {
 }
 
 function createMessages(messages: ChatStreamMessage[]): ChatCompletionMessageParam[] {
+  const systemMessages: ChatCompletionMessageParam[] = SYSTEM_PROMPT
+    ? [{ role: "system", content: SYSTEM_PROMPT }]
+    : [];
+
   return [
-    {
-      role: "system",
-      content: SYSTEM_PROMPT,
-    },
+    ...systemMessages,
     ...messages.map((message) => ({
       role: message.role,
       content: message.content,

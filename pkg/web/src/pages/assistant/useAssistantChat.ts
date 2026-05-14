@@ -144,8 +144,6 @@ function handleChatEvent({
         ),
       );
       return;
-    case "tool_result":
-      return;
     case "error":
       throw new Error(event.message);
     case "done":

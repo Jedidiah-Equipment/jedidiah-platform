@@ -246,12 +246,6 @@ describe("POST /ai/chat-stream", () => {
           name: "listProducts",
           type: "tool_call",
         },
-        expect.objectContaining({
-          name: "listProducts",
-          ok: true,
-          summary: expect.stringContaining("Apex Forklift"),
-          type: "tool_result",
-        }),
         {
           delta: "You have Apex Forklift (AF-25) at ZAR 332,500.00.",
           type: "token",

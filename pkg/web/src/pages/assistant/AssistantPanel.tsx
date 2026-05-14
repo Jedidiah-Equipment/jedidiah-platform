@@ -69,7 +69,13 @@ export const AssistantPanel: React.FC = () => {
               Start a conversation.
             </div>
           ) : (
-            messages.map((message) => <AssistantMessage key={message.id} message={message} />)
+            messages.map((message, index) => (
+              <AssistantMessage
+                isStreaming={status === "streaming" && index === messages.length - 1}
+                key={message.id}
+                message={message}
+              />
+            ))
           )}
         </div>
 
@@ -106,11 +112,24 @@ export const AssistantPanel: React.FC = () => {
   );
 };
 
-const AssistantMessage: React.FC<{ message: AssistantChatEntry }> = ({ message }) => {
+const AssistantMessage: React.FC<{ isStreaming: boolean; message: AssistantChatEntry }> = ({
+  isStreaming,
+  message,
+}) => {
   const isUser = message.role === "user";
 
   if (!isUser && !message.content) {
-    return null;
+    if (!isStreaming) {
+      return null;
+    }
+
+    return (
+      <div className="flex justify-start">
+        <div className="animate-pulse rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+          Thinking...
+        </div>
+      </div>
+    );
   }
 
   return (

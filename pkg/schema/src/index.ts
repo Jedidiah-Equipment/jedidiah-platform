@@ -9,3 +9,4 @@ export * from './config/client-config.js';
 export * from './domain/environment.js';
 export * from './pagination/pagination.js';
 export * from './products/product.js';
+export * from './products/product-option.js';

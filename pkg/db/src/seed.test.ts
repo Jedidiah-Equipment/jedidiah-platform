@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createSeedProductAuditTimeline, createSeedProducts } from './seed.js';
+import { createSeedProductAuditTimeline, createSeedProductOptions, createSeedProducts } from './seed.js';
 
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
@@ -40,6 +40,80 @@ describe('createSeedProducts', () => {
     expect(new Set(seedProducts.map((product) => product.id)).size).toBe(seedProducts.length);
     expect(new Set(seedProducts.map((product) => product.modelCode)).size).toBe(seedProducts.length);
     expect(new Set(seedProducts.map((product) => product.name)).size).toBe(seedProducts.length);
+  });
+});
+
+describe('createSeedProductOptions', () => {
+  it('creates deterministic active options for each seeded product', () => {
+    const now = new Date('2026-05-14T12:00:00.000Z');
+    const timeline = createSeedProductAuditTimeline({
+      actorUserIds: ['seed-product-editor-user'],
+      now,
+      products: createSeedProducts(2),
+    });
+
+    expect(createSeedProductOptions(timeline.products)).toEqual([
+      {
+        id: '00000000-0000-4000-8002-000000000001',
+        code: 'CAB',
+        createdAt: timeline.products[0]?.createdAt,
+        deletedAt: null,
+        name: 'Enclosed Cab',
+        price: 11_750,
+        productId: '00000000-0000-4000-8000-000000000001',
+        updatedAt: timeline.products[0]?.updatedAt,
+      },
+      {
+        id: '00000000-0000-4000-8002-000000000002',
+        code: 'HYD',
+        createdAt: timeline.products[0]?.createdAt,
+        deletedAt: null,
+        name: 'Auxiliary Hydraulics',
+        price: 18_400,
+        productId: '00000000-0000-4000-8000-000000000001',
+        updatedAt: timeline.products[0]?.updatedAt,
+      },
+      {
+        id: '00000000-0000-4000-8002-000000000003',
+        code: 'GPS',
+        createdAt: timeline.products[0]?.createdAt,
+        deletedAt: null,
+        name: 'Fleet GPS Kit',
+        price: 7_675,
+        productId: '00000000-0000-4000-8000-000000000001',
+        updatedAt: timeline.products[0]?.updatedAt,
+      },
+      {
+        id: '00000000-0000-4000-8002-000000000004',
+        code: 'CAB',
+        createdAt: timeline.products[1]?.createdAt,
+        deletedAt: null,
+        name: 'Enclosed Cab',
+        price: 12_000,
+        productId: '00000000-0000-4000-8000-000000000002',
+        updatedAt: timeline.products[1]?.updatedAt,
+      },
+      {
+        id: '00000000-0000-4000-8002-000000000005',
+        code: 'HYD',
+        createdAt: timeline.products[1]?.createdAt,
+        deletedAt: null,
+        name: 'Auxiliary Hydraulics',
+        price: 18_800,
+        productId: '00000000-0000-4000-8000-000000000002',
+        updatedAt: timeline.products[1]?.updatedAt,
+      },
+      {
+        id: '00000000-0000-4000-8002-000000000006',
+        code: 'GPS',
+        createdAt: timeline.products[1]?.createdAt,
+        deletedAt: null,
+        name: 'Fleet GPS Kit',
+        price: 7_850,
+        productId: '00000000-0000-4000-8000-000000000002',
+        updatedAt: timeline.products[1]?.updatedAt,
+      },
+    ]);
   });
 });
 

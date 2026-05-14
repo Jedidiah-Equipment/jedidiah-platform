@@ -4,3 +4,4 @@ export { getDatabaseConfig, getDatabaseUrl } from './env.js';
 export { getPaginationOffset, type PaginationInput, withPagination } from './query-utils.js';
 export * as schema from './schema/index.js';
 export * from './schema/index.js';
+export type { DatabaseTransaction } from './types.js';

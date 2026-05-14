@@ -18,3 +18,17 @@ export class ProductNotFoundError extends Error {
     this.name = 'ProductNotFoundError';
   }
 }
+
+export class DuplicateProductOptionCodeError extends Error {
+  constructor(code: string) {
+    super(`Product option code already exists: ${code}`);
+    this.name = 'DuplicateProductOptionCodeError';
+  }
+}
+
+export class ProductOptionNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Product option not found: ${id}`);
+    this.name = 'ProductOptionNotFoundError';
+  }
+}

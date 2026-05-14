@@ -1,6 +1,7 @@
 import type { Database } from '@pkg/db';
 import { withPagination } from '@pkg/db/query-utils';
 import { auditEvents, user } from '@pkg/db/schema';
+import type { DatabaseTransaction } from '@pkg/db/types';
 import type {
   AuditAction,
   AuditChanges,
@@ -11,7 +12,6 @@ import type {
 } from '@pkg/schema';
 import { and, asc, desc, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
-type DatabaseTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type AuditWriteDatabase = Pick<Database | DatabaseTransaction, 'insert'>;
 
 type AuditRecord = Record<string, unknown>;
@@ -49,8 +49,20 @@ export const productAuditDescriptor = {
   },
 } as const satisfies AuditEntityDescriptor;
 
+export const productOptionAuditDescriptor = {
+  entityType: 'product_option',
+  noun: 'product option',
+  primaryLabelField: 'name',
+  fields: {
+    code: 'code',
+    name: 'name',
+    price: 'price',
+  },
+} as const satisfies AuditEntityDescriptor;
+
 const auditEntityDescriptors = {
   product: productAuditDescriptor,
+  product_option: productOptionAuditDescriptor,
 } as const satisfies Record<AuditEntityType, AuditEntityDescriptor>;
 
 type AuditEventRow = typeof auditEvents.$inferSelect & {

@@ -1,5 +1,11 @@
 import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
-import { createUserAccessSummary, DEFAULT_APP_ROLE, sortDepartments } from '@pkg/domain';
+import {
+  createUserAccessSummary,
+  DEFAULT_APP_ROLE,
+  DEPARTMENT_AWARE_ROLES,
+  normalizeAppRoles,
+  sortDepartments,
+} from '@pkg/domain';
 import {
   AppRole,
   type AuditChanges,
@@ -64,7 +70,10 @@ export async function getUserAccessSummary({
   role: unknown;
   userId: AuthId;
 }): Promise<UserAccessSummary> {
-  const departments = await listUserDepartments({ db, userId });
+  const roles = normalizeAppRoles(role);
+  const departments = roles.some((value) => DEPARTMENT_AWARE_ROLES.has(value))
+    ? await listUserDepartments({ db, userId })
+    : [];
 
   return createUserAccessSummary({
     departments,

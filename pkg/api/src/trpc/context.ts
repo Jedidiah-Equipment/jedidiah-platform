@@ -8,10 +8,7 @@ import { getSessionFromHeaders } from '../auth/session.js';
 export async function createContext({ req }: CreateFastifyContextOptions) {
   const session = await getSessionFromHeaders(req.headers);
   const access: UserAccessSummary | null = session
-    ? // This currently loads department memberships from the database for every authenticated
-      // tRPC request. See docs/code-improvements/lazy-department-access.md before widening
-      // department-aware authorization further.
-      await getUserAccessSummary({
+    ? await getUserAccessSummary({
         db,
         role: session.user.role,
         userId: session.user.id,

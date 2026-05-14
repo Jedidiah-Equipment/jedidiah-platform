@@ -5,6 +5,9 @@ export const ac = createAccessControl(authorizationStatement);
 
 export const authRoles = {
   admin: ac.newRole(appRoleAccess.admin),
+  'job-stage-editor': ac.newRole(appRoleAccess['job-stage-editor']),
+  'job-supervisor': ac.newRole(appRoleAccess['job-supervisor']),
+  'job-viewer': ac.newRole(appRoleAccess['job-viewer']),
   'product-editor': ac.newRole(appRoleAccess['product-editor']),
   'product-viewer': ac.newRole(appRoleAccess['product-viewer']),
 };

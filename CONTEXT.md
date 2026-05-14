@@ -1,106 +1,111 @@
-# Domain Glossary
+# Jedidiah Platform
 
-Canonical terms used across the platform. Keep this aligned with code and conversation.
+Domain language for the Jedidiah production-floor platform. The core unit being tracked is a **Job** — one physical product instance moving through a fixed five-stage pipeline.
 
-## Workflow
+## Language
 
-### Job
-A single physical product instance being built and shipped through the shop floor. One Job represents one unit. A customer order for 10 units produces 10 Jobs.
+### Job & pipeline
 
-A Job moves through a fixed sequence of department-owned stages:
-**Procurement → Fabrication → Paint → Assembly → Dispatch**
+**Job**:
+The platform's unit of production-floor tracking — one physical product instance being built end-to-end.
+_Avoid_: Order, Work Order, Build, Ticket.
 
-### Stage
-A department-owned phase of a Job's lifecycle. Each stage owns its own dataset and status set on the Job. Stages run generally sequentially (the next stage cannot start until the previous is complete) but a completed stage remains editable by its owning department.
+**Pipeline**:
+The fixed, sequential sequence of five stages every Job moves through: Procurement → Fabrication → Paint → Assembly → Dispatch.
+_Avoid_: Workflow, Process.
 
-Stages are modelled as first-class rows (one row per stage per Job), not as fields on the Job. Stage-specific payload tables FK to the stage row, not to the Job directly. This makes role-based data separation enforceable at the data boundary and keeps each stage's status set independent.
+**Stage**:
+One of the five fixed steps in the Pipeline, owned by a single Department. Represented by a `job_stage` row; all five rows are materialised at Job creation.
+_Avoid_: Step, Phase, Task.
 
-### Stage Completion
-A stage is "complete" when its `completed_at` timestamp is set. Completion is **orthogonal to status**: status reflects current activity, completion is a one-way handoff latch.
+**Sequence Number**:
+The 1..5 position of a Stage in the Pipeline. `(job_id, sequence)` is unique; sequence is how *order* is enforced, not the stage name.
 
-Rules:
-- Setting `completed_at` is **gated** — the stage must currently be in an allowed pre-completion status (defined per stage).
-- Once `completed_at` is set, status may freely change again (e.g. Procurement re-opens to order extra parts), but `completed_at` is **not cleared**.
-- A completed stage stays editable by its owning department.
-- Downstream stage gating and the "hidden from view" rule both key off `completed_at`, not status.
-- `completed_at` is a one-way latch — never cleared by normal workflow. Reversal is an admin concern, not a workflow transition.
+### Status & lifecycle
 
-### Pipeline
-The five stages are a **fixed, non-configurable sequence**: Procurement → Fabrication → Paint → Assembly → Dispatch. Every Job has the same pipeline; no stage is skipped.
+**Stage Status**:
+A Stage's per-department workflow position (e.g. "awaiting-supplier", "in-press"). Stored as `text` on `job_stage`; validated app-side via a Zod discriminated union keyed on `stage`. The per-stage status enums are deferred to each department's implementing slice.
 
-When a Job is created, all five `job_stage` rows are inserted in the same transaction with a `sequence` column (1–5). A stage's state is captured by two timestamps:
+**Stage Completion**:
+A one-way latch on a Stage: `completed_at` may be set once and is not unset by normal workflow. Setting `completed_at` does **not** change `status` — status may continue to move freely after completion (e.g. for late edits). Distinct from Stage Status — completion is orthogonal.
+_Avoid_: "Closed stage", "finished stage" (overloaded).
 
-- `started_at = null, completed_at = null` — not yet active (waiting on previous stage's `completed_at`)
-- `started_at = set, completed_at = null` — active
-- `started_at = set, completed_at = set` — complete (still editable by owner; hidden from default views)
+**Job Lifecycle Status**:
+A Job-level state (`active | paused | complete | cancelled`) governing whether *any* Stage on the Job is open to mutation. Independent of Stage progress.
+_Avoid_: Job Status, Job State (collides with Stage Status).
 
-"Next stage available" is derived: the lowest-sequence stage whose previous stage has `completed_at` set.
+**Job-Level Lifecycle Does Not Cascade**:
+Pausing or cancelling a Job does **not** mutate Stage rows. Stage rows preserve their honest history; lifecycle gating is enforced at the API/UI layers, not by rewriting Stage data.
 
-### Department
-An organisational unit that owns one stage of the pipeline: Procurement, Fabrication, Paint, Assembly, Dispatch. Departments are a **separate authorization axis** from `AppRole`.
+**Auto-Complete-Job Transition**:
+The single Stage→Job write: completing the Dispatch Stage atomically sets `job.lifecycle_status = 'complete'` in the same transaction.
 
-A user has:
-- An `AppRole` (existing: admin / feature roles like product-editor) — governs feature access (product management, user management, etc.).
-- Zero or more **Department memberships** — governs which stage of which Jobs they can see and edit. Multi-department membership is allowed (supervisors, cross-trained staff).
+### People & access
 
-Job-stage visibility/editability is gated by department membership: a `job_stage` row is accessible to a user iff they are a member of that stage's owning department, OR they hold a cross-cutting Job permission (see below), OR they are admin.
+**Department**:
+One of the five fixed teams that own a Stage: Procurement, Fabrication, Paint, Assembly, Dispatch. Modelled as a Zod enum. A User may belong to zero or more Departments via the `user_department` junction table.
+_Avoid_: Team, Group.
 
-Cross-cutting Job permissions (not tied to a department):
-- **job-viewer** — read-only visibility across all stages of all Jobs. For salespeople, customer-service, anyone tracking progress.
-- **job-supervisor** — read + limited write across all stages. For planners and managers who orchestrate across departments.
+**App Role**:
+A flat role assigned to a User that grants verb capabilities on resources. Roles say "what verbs you can call"; they do not by themselves say "on which rows". See **Scope**.
 
-### Job Lifecycle Status
-The Job row carries a coarse lifecycle status independent of any individual stage's state:
+**Scope**:
+The rule that determines *which rows* a Role's verbs apply to. A Role is either **department-scoped** (its verbs only apply to rows owned by Departments the User belongs to) or **cross-cutting** (its verbs apply to all rows of the resource). Scope is a property of the Role enforced by the **Job Authorization Policy** module — it is not encoded in the permission strings.
 
-- **active** — normal operation; stage transitions and edits proceed per stage rules.
-- **paused** — workflow halted; stages do not advance and no edits are permitted (admin override only). Reversible to `active`.
-- **complete** — terminal happy-path state. Entered automatically when Dispatch reaches its final status (Delivered) and its `completed_at` is set. Job is read-only.
-- **cancelled** — terminal unhappy-path state. Set explicitly. Job is read-only.
+**Department-Scoped Role**:
+A Role whose effective access is intersected with the User's Department memberships. Currently: `job-stage-editor`.
 
-Stage-level progress (which stage is active, which are complete) is **derived from stage rows** — the Job does not store a `current_stage` pointer. The only stage-to-job write is the automatic `active → complete` transition when Dispatch completes.
+**Cross-Cutting Role**:
+A Role whose access is not narrowed by Department membership. Currently: `job-viewer`, `job-supervisor`, `admin`.
 
-### Stage Payload
-Each stage's work-content (purchase orders, cut lists, paint batches, assembly checklists, dispatch shipments, etc.) lives in **bespoke per-stage tables**, each FK'd to the relevant `job_stage` row. No JSONB blobs; no generic payload table. This is consistent with the existing repo style (`product`, `product_option` etc.) and makes each stage's data properly typed, queryable, and auditable.
+**`job-stage-editor`**:
+Department-scoped Role. Can read and write Stages owned by the User's Departments.
 
-The initial skeleton (Job + five `job_stage` rows + workflow gating + permissions + lifecycle) ships without any stage-payload tables. Each department's payload tables land when that department's feature is built out.
+**`job-viewer`**:
+Cross-cutting read-only Role for people who need full pipeline visibility without editing (e.g. sales).
 
-### Completed-Stage Visibility
-"Hidden once complete" is a **UI/query-default convention only** — no flag is stored in the database. The stage row's lifecycle is captured entirely by `started_at` and `completed_at`.
+**`job-supervisor`**:
+Cross-cutting read+write Role for planners/supervisors. Includes Job lifecycle transitions (pause/resume/cancel).
 
-Rules:
-- Default list/dashboard views filter on `completed_at IS NULL`.
-- A "show completed" toggle / `includeCompleted` query parameter reveals them.
-- Who can see a completed stage does **not change** post-completion — anyone who had access while it was active retains access after.
-- Detail views (clicking through to a specific Job) always show the full pipeline regardless of completion.
+### Logs
 
-### Stage Status Typing
-All five stage rows share a single `job_stage` table. The `status` column is `text` in the database; the value space depends on the row's `stage` discriminator.
+**Audit Event**:
+Existing field-level forensic log. Records *what field changed from what to what, by whom, when*. Extended with `job` and `job_stage` entity types.
 
-- Validation is **app-layer**, via a Zod discriminated union on `stage` — each stage variant declares its own `status` enum.
-- The database is *not* the type-safety boundary for status. Bespoke per-stage payload tables (which FK to `job_stage`) are.
-- Status enums are expected to evolve; keeping them in app code avoids a migration per business-rule change.
+**Job Event**:
+New typed workflow-transition log (`job_event` table). Records *which business transition occurred*: `stage.started`, `stage.status_changed`, `stage.completed`, `job.paused`, `job.resumed`, `job.cancelled`, `job.completed`. Payload is a Zod-validated discriminated union on `event_type`.
 
-This keeps shared workflow concerns (sequencing, gating, completion latch, lifecycle) in one table while letting status semantics vary per stage.
+**Dual Logging**:
+Every state-changing endpoint writes both an Audit Event and a Job Event in the same transaction. The workflow-history UI queries Job Event; the forensic-audit UI queries Audit Event. Neither replaces the other.
 
-### Scope (Current)
-This feature builds the production-floor lifecycle of a Job — Job + five stage rows + workflow + permissions + lifecycle status. **Customers and Quotes are not in scope** and will be built later; no placeholder columns are added in advance. When those features arrive, migrations introduce the FKs at that time.
+**Workflow History**:
+The user-facing chronological view of a Job's Job Events. Distinct from the forensic Audit log.
 
-A Job carries a required FK to `product` (a Job is a Product instance). It does not currently reference a customer or order.
+### UI conventions
 
-### Job-Level Lifecycle Does Not Cascade to Stages
-`job.lifecycle_status` is the **single source of truth** for Job-level state. Stage rows do not gain `paused_at` / `cancelled_at` columns and do not mirror Job lifecycle.
+**Completed-Stage Visibility**:
+A UI/query-default convention — list views hide Stages whose `completed_at` is set; an `includeCompleted` toggle reveals them. **No persisted flag**; not an authorization concept. Detail views always show the full Pipeline.
 
-When a Job is `paused` or `cancelled`, stage rows are **untouched**:
-- An in-flight stage retains its `started_at` and its current status — preserving an honest historical record.
-- A completed stage stays completed.
-- Stages that hadn't started stay un-started.
+## Relationships
 
-Enforcement that no work happens while a Job is non-`active` lives at the **UI and API guard layers**, not in stage data. Mutation endpoints check `job.lifecycle_status === 'active'` before permitting any stage write; the UI disables controls accordingly. This keeps stage rows clean and avoids un-cascading on resume from pause.
+- A **Job** has exactly five **Stages**, materialised at creation, one per **Department** in fixed Pipeline order.
+- A **Stage** is owned by exactly one **Department**.
+- A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
+- A **Stage** mutation requires: (verb permission from the User's Role) AND (the Job's Lifecycle Status is `active`) AND (the Stage's Sequence is reachable per the Stage Transition Policy) AND (Scope rule — for department-scoped Roles, the Stage's Department is in the User's Departments).
+- Every Stage state change writes one **Audit Event** + one **Job Event** in the same transaction.
 
-### Workflow Events
-Two separate logs capture history; they answer different questions.
+## Example dialogue
 
-- **`AuditEvent`** (existing, generic) — forensic field-level log: who changed which field, from what to what, when. Extended with new entity types: `job`, `job_stage`, and later per-stage payload entities. Same shape as today's `product` auditing.
-- **`job_event`** (new, workflow-meaningful) — typed domain events: `stage.started`, `stage.status_changed`, `stage.completed`, `job.paused`, `job.resumed`, `job.cancelled`, `job.completed`. Payload is JSONB (validated by Zod per event type); columns are `id, job_id, stage_id?, event_type, payload, actor_user_id, occurred_at`.
+> **Dev:** "If I pause a **Job** mid-Fabrication, what happens to the Fabrication **Stage**?"
+> **Domain expert:** "Nothing. **Job-Level Lifecycle Does Not Cascade**. The Stage keeps its `status` and `started_at`; we just refuse writes to it until the Job is active again."
 
-Both writes happen in the same transaction as the state change. The workflow-history UI reads from `job_event`; the forensic-audit UI reads from `AuditEvent`.
+> **Dev:** "A salesperson needs to see every Job's progress but can't edit anything. **Department** member of all five?"
+> **Domain expert:** "No — that would be a hack. They get the **`job-viewer`** Role. It's **Cross-Cutting** — no Department membership needed, no editing."
+
+> **Dev:** "Procurement marked their **Stage** complete but now they need to add a late PO. Allowed?"
+> **Domain expert:** "Yes. **Stage Completion** is a one-way latch on `completed_at`, but **Stage Status** keeps moving after. They can still update."
+
+## Flagged ambiguities
+
+- "Status" was used ambiguously between **Stage Status** (per-Stage workflow position) and **Job Lifecycle Status** (Job-level mutability gate). Resolved: distinct concepts on different rows.
+- "Job-viewer / job-supervisor" felt like a "split brain" alongside the Role enum — the discomfort came from missing the **Scope** concept. They are not hacks; they are the **Cross-Cutting** counterparts to the **Department-Scoped** `job-stage-editor`.

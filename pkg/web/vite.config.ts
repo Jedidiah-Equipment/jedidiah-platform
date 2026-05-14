@@ -4,13 +4,13 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-import { getInjectedClientConfig } from './src/server/env.js';
+import { getServerConfig } from './src/server/env.js';
 
-const clientConfig = getInjectedClientConfig();
+const serverConfig = getServerConfig();
 
 export default defineConfig({
   define: {
-    __APP_CONFIG__: JSON.stringify(clientConfig),
+    __APP_CONFIG__: JSON.stringify(serverConfig.clientConfig),
   },
   plugins: [
     tanstackRouter({
@@ -24,7 +24,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    port: 7001,
+    port: serverConfig.port,
   },
   preview: {
     port: 4173,

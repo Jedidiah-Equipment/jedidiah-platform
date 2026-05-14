@@ -21,6 +21,7 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import { getPageCount, type SortOptions } from '@/components/data-table/table-state.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { departmentLabels } from './department-labels.js';
 import { roleLabels } from './role-labels.js';
 
 type UserTableProps = {
@@ -112,6 +113,14 @@ export const UserTable: React.FC<UserTableProps> = ({
         enableSorting: true,
         filterFn: userRoleFilter,
         header: 'Role',
+      },
+      {
+        accessorKey: 'departments',
+        cell: ({ row }) => <DepartmentBadges departments={row.original.departments} />,
+        enableColumnFilter: true,
+        enableSorting: false,
+        filterFn: userDepartmentsFilter,
+        header: 'Departments',
       },
       {
         accessorKey: 'emailVerified',
@@ -226,6 +235,7 @@ function userGlobalFilter(row: { original: UserSummary }, _columnId: string, fil
     row.original.email,
     row.original.role,
     roleLabels[row.original.role],
+    ...row.original.departments.map((department) => departmentLabels[department]),
     row.original.emailVerified ? 'verified' : 'unverified',
   ].some((value) => value.toLowerCase().includes(search));
 }
@@ -249,6 +259,34 @@ function userEmailVerifiedFilter(row: { original: UserSummary }, _columnId: stri
 
   return (row.original.emailVerified ? 'verified' : 'unverified').includes(search);
 }
+
+function userDepartmentsFilter(row: { original: UserSummary }, _columnId: string, filterValue: unknown) {
+  const search = normalizeFilterValue(filterValue);
+
+  if (!search) {
+    return true;
+  }
+
+  return row.original.departments.some((department) =>
+    [department, departmentLabels[department]].some((value) => value.toLowerCase().includes(search)),
+  );
+}
+
+const DepartmentBadges: React.FC<{ departments: UserSummary['departments'] }> = ({ departments }) => {
+  if (departments.length === 0) {
+    return <span className="text-muted-foreground">None</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {departments.map((department) => (
+        <Badge key={department} variant="secondary">
+          {departmentLabels[department]}
+        </Badge>
+      ))}
+    </div>
+  );
+};
 
 function normalizeFilterValue(value: unknown): string {
   return String(value ?? '')

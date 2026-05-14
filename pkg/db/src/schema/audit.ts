@@ -9,7 +9,7 @@ export const auditEvents = pgTable(
     occurredAt: timestamp('occurred_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     actorUserId: text('actor_user_id').references(() => user.id, { onDelete: 'set null' }),
     entityType: text('entity_type').notNull(),
-    entityId: uuid('entity_id').notNull(),
+    entityId: text('entity_id').notNull(),
     action: text('action').notNull(),
     summary: text('summary').notNull(),
     changes: jsonb('changes'),

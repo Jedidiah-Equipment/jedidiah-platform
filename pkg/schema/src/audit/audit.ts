@@ -9,7 +9,7 @@ export type AuditAction = z.infer<typeof AuditAction>;
 export const AuditAction = z.enum(['created', 'updated', 'deleted']);
 
 export type AuditEntityType = z.infer<typeof AuditEntityType>;
-export const AuditEntityType = z.enum(['product', 'product_option']);
+export const AuditEntityType = z.enum(['product', 'product_option', 'user']);
 
 export type AuditFieldChange = z.infer<typeof AuditFieldChange>;
 export const AuditFieldChange = z.object({
@@ -28,7 +28,7 @@ export const AuditEvent = z.object({
   actorName: z.string().nullable(),
   actorEmail: z.email().nullable(),
   entityType: AuditEntityType,
-  entityId: UUID,
+  entityId: z.string().trim().min(1),
   action: AuditAction,
   summary: z.string().min(1),
   changes: AuditChanges.nullable(),
@@ -41,7 +41,7 @@ export type AuditFilters = z.infer<typeof AuditFilters>;
 export const AuditFilters = z
   .object({
     actorUserIds: z.array(AuthId).default([]),
-    entityIds: z.array(UUID).default([]),
+    entityIds: z.array(z.string().trim().min(1)).default([]),
     entityTypes: z.array(AuditEntityType).default([]),
     occurredAtStart: z.iso.datetime().optional(),
     occurredAtEnd: z.iso.datetime().optional(),

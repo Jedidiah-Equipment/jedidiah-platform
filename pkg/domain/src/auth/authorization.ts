@@ -1,27 +1,58 @@
-import { type AppPermission, type AppRole, AppRole as AppRoleSchema, type UserAccessSummary } from '@pkg/schema';
+import {
+  APP_ROLES,
+  type AppPermission,
+  type AppRole,
+  AppRole as AppRoleSchema,
+  DEPARTMENTS,
+  type Department,
+  Department as DepartmentSchema,
+  type UserAccessSummary,
+} from '@pkg/schema';
 
 export const DEFAULT_APP_ROLE = 'product-viewer' satisfies AppRole;
 
+// Only Job access can depend on department memberships, so request access summaries use this set
+// to avoid reading user_department for roles whose authorization cannot be department-scoped.
+export const DEPARTMENT_AWARE_ROLES = new Set<AppRole>(['job-stage-editor', 'job-supervisor', 'job-viewer']);
+
 export const authorizationStatement = {
   audit: ['read'],
+  job: ['read', 'create', 'update'],
+  'job-stage': ['read', 'update'],
   product: ['read', 'create', 'update'],
-  user: ['list', 'create', 'update', 'set-role', 'set-password'],
+  user: ['list', 'create', 'update', 'set-role', 'set-password', 'assign-departments'],
 } as const;
 
 type AuthorizationResource = keyof typeof authorizationStatement;
-type RoleAccess = Partial<Record<AuthorizationResource, readonly string[]>>;
+type RoleAccess = Partial<{
+  [Resource in AuthorizationResource]: readonly (typeof authorizationStatement)[Resource][number][];
+}>;
 
 export const appRoleAccess = {
   admin: {
     audit: ['read'],
+    job: ['read', 'create', 'update'],
+    'job-stage': ['read', 'update'],
     product: ['read', 'create', 'update'],
-    user: ['list', 'create', 'update', 'set-role', 'set-password'],
+    user: ['list', 'create', 'update', 'set-role', 'set-password', 'assign-departments'],
   },
   'product-editor': {
     product: ['read', 'create', 'update'],
   },
   'product-viewer': {
     product: ['read'],
+  },
+  'job-supervisor': {
+    job: ['read', 'create', 'update'],
+    'job-stage': ['read', 'update'],
+  },
+  'job-stage-editor': {
+    job: ['read'],
+    'job-stage': ['read', 'update'],
+  },
+  'job-viewer': {
+    job: ['read'],
+    'job-stage': ['read'],
   },
 } as const satisfies Record<AppRole, RoleAccess>;
 
@@ -61,11 +92,16 @@ export function getRolePermissions(roles: readonly AppRole[]): AppPermission[] {
   return [...permissions].sort();
 }
 
-export function createUserAccessSummary(input: { role: unknown; userId: string }): UserAccessSummary {
+export function createUserAccessSummary(input: {
+  departments?: readonly unknown[];
+  role: unknown;
+  userId: string;
+}): UserAccessSummary {
   const roles = normalizeAppRoles(input.role);
   const role = getPublicRole(roles);
 
   return {
+    departments: sortDepartments(input.departments ?? []),
     permissions: getRolePermissions(roles),
     role,
     userId: input.userId,
@@ -92,7 +128,16 @@ function uniqueRoles(roles: readonly AppRole[]): AppRole[] {
   return [...new Set(roles)];
 }
 
-const publicRolePriority = ['admin', 'product-editor', 'product-viewer'] as const satisfies AppRole[];
+export function sortDepartments(departments: readonly unknown[]): Department[] {
+  // Ignore unknown stored values so stale DB text does not break access-summary reads.
+  const selectedDepartments = new Set(
+    departments.filter((value): value is Department => DepartmentSchema.safeParse(value).success),
+  );
+
+  return DEPARTMENTS.filter((department) => selectedDepartments.has(department));
+}
+
+const publicRolePriority = APP_ROLES;
 
 function getPublicRole(roles: readonly AppRole[]): AppRole | null {
   for (const role of publicRolePriority) {

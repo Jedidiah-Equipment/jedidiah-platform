@@ -193,6 +193,7 @@ describe('POST /ai/chat-stream', () => {
       id: '00000000-0000-4000-8000-000000000001',
       modelCode: 'AF-25',
       name: 'Apex Forklift',
+      options: [],
       updatedAt: '2026-05-13T10:13:20.631Z',
     };
     const listProductsSpy = vi.spyOn(productsCore, 'listProducts').mockResolvedValue({

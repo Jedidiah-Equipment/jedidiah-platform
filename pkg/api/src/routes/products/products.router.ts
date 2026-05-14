@@ -2,12 +2,16 @@ import {
   createProduct,
   DuplicateProductModelCodeError,
   DuplicateProductNameError,
+  DuplicateProductOptionCodeError,
+  getProduct,
   listProducts,
   ProductNotFoundError,
+  ProductOptionNotFoundError,
   updateProduct,
 } from '@pkg/core';
-import { ProductCreateInput, ProductListInput, ProductUpdateInput } from '@pkg/schema';
+import { ProductCreateInput, ProductListInput, ProductUpdateInput, UUID } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
 
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
@@ -15,6 +19,10 @@ export const productsRouter = router({
   list: authorizedProcedure('product:read')
     .input(ProductListInput)
     .query(({ ctx, input }) => listProducts(ctx.db, input)),
+
+  get: authorizedProcedure('product:read')
+    .input(z.object({ id: UUID }))
+    .query(({ ctx, input }) => mapProductErrors(() => getProduct(ctx.db, input.id))),
 
   create: authorizedProcedure('product:create')
     .input(ProductCreateInput)
@@ -40,6 +48,20 @@ async function mapProductErrors<T>(action: () => Promise<T>): Promise<T> {
       throw new TRPCError({
         code: 'CONFLICT',
         message: 'A product with this model code already exists.',
+      });
+    }
+
+    if (error instanceof DuplicateProductOptionCodeError) {
+      throw new TRPCError({
+        code: 'CONFLICT',
+        message: 'A product option with this code already exists for this product.',
+      });
+    }
+
+    if (error instanceof ProductOptionNotFoundError) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Product option not found.',
       });
     }
 

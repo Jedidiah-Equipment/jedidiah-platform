@@ -16,6 +16,8 @@ import { Route as AuthedUsersRouteImport } from './../routes/_authed.users'
 import { Route as AuthedProductsRouteImport } from './../routes/_authed.products'
 import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboard'
 import { Route as AuthedAssistantRouteImport } from './../routes/_authed.assistant'
+import { Route as AuthedProductsNewRouteImport } from './../routes/_authed.products.new'
+import { Route as AuthedProductsIdEditRouteImport } from './../routes/_authed.products.$id.edit'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -51,22 +53,36 @@ const AuthedAssistantRoute = AuthedAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedProductsNewRoute = AuthedProductsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthedProductsRoute,
+} as any)
+const AuthedProductsIdEditRoute = AuthedProductsIdEditRouteImport.update({
+  id: '/$id/edit',
+  path: '/$id/edit',
+  getParentRoute: () => AuthedProductsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/assistant': typeof AuthedAssistantRoute
   '/dashboard': typeof AuthedDashboardRoute
-  '/products': typeof AuthedProductsRoute
+  '/products': typeof AuthedProductsRouteWithChildren
   '/users': typeof AuthedUsersRoute
+  '/products/new': typeof AuthedProductsNewRoute
+  '/products/$id/edit': typeof AuthedProductsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/assistant': typeof AuthedAssistantRoute
   '/dashboard': typeof AuthedDashboardRoute
-  '/products': typeof AuthedProductsRoute
+  '/products': typeof AuthedProductsRouteWithChildren
   '/users': typeof AuthedUsersRoute
+  '/products/new': typeof AuthedProductsNewRoute
+  '/products/$id/edit': typeof AuthedProductsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -75,8 +91,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authed/assistant': typeof AuthedAssistantRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
-  '/_authed/products': typeof AuthedProductsRoute
+  '/_authed/products': typeof AuthedProductsRouteWithChildren
   '/_authed/users': typeof AuthedUsersRoute
+  '/_authed/products/new': typeof AuthedProductsNewRoute
+  '/_authed/products/$id/edit': typeof AuthedProductsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,8 +105,18 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/products'
     | '/users'
+    | '/products/new'
+    | '/products/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/assistant' | '/dashboard' | '/products' | '/users'
+  to:
+    | '/'
+    | '/login'
+    | '/assistant'
+    | '/dashboard'
+    | '/products'
+    | '/users'
+    | '/products/new'
+    | '/products/$id/edit'
   id:
     | '__root__'
     | '/'
@@ -98,6 +126,8 @@ export interface FileRouteTypes {
     | '/_authed/dashboard'
     | '/_authed/products'
     | '/_authed/users'
+    | '/_authed/products/new'
+    | '/_authed/products/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -157,20 +187,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAssistantRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/products/new': {
+      id: '/_authed/products/new'
+      path: '/new'
+      fullPath: '/products/new'
+      preLoaderRoute: typeof AuthedProductsNewRouteImport
+      parentRoute: typeof AuthedProductsRoute
+    }
+    '/_authed/products/$id/edit': {
+      id: '/_authed/products/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/products/$id/edit'
+      preLoaderRoute: typeof AuthedProductsIdEditRouteImport
+      parentRoute: typeof AuthedProductsRoute
+    }
   }
 }
+
+interface AuthedProductsRouteChildren {
+  AuthedProductsNewRoute: typeof AuthedProductsNewRoute
+  AuthedProductsIdEditRoute: typeof AuthedProductsIdEditRoute
+}
+
+const AuthedProductsRouteChildren: AuthedProductsRouteChildren = {
+  AuthedProductsNewRoute: AuthedProductsNewRoute,
+  AuthedProductsIdEditRoute: AuthedProductsIdEditRoute,
+}
+
+const AuthedProductsRouteWithChildren = AuthedProductsRoute._addFileChildren(
+  AuthedProductsRouteChildren,
+)
 
 interface AuthedRouteChildren {
   AuthedAssistantRoute: typeof AuthedAssistantRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
-  AuthedProductsRoute: typeof AuthedProductsRoute
+  AuthedProductsRoute: typeof AuthedProductsRouteWithChildren
   AuthedUsersRoute: typeof AuthedUsersRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAssistantRoute: AuthedAssistantRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
-  AuthedProductsRoute: AuthedProductsRoute,
+  AuthedProductsRoute: AuthedProductsRouteWithChildren,
   AuthedUsersRoute: AuthedUsersRoute,
 }
 

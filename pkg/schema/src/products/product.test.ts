@@ -18,6 +18,7 @@ describe('ProductCreateInput', () => {
       description: 'Earthmoving equipment',
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      options: [],
     });
   });
 

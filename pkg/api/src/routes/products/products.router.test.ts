@@ -1,5 +1,5 @@
 import type { Database } from '@pkg/db';
-import { auditEvents, user } from '@pkg/db/schema';
+import { auditEvents, productOptions, user } from '@pkg/db/schema';
 import type { Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -75,6 +75,51 @@ describe('products.create', () => {
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
+  });
+
+  test('creates products with options and returns stable option ids from get', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Wheel Loader', {
+      options: [
+        { code: 'CAB', name: 'Enclosed Cab', price: 12_500 },
+        { code: 'FORKS', name: 'Fork Attachment', price: 8_000 },
+      ],
+    });
+
+    expect(created.options).toMatchObject([
+      {
+        code: 'CAB',
+        name: 'Enclosed Cab',
+        price: 12_500,
+        productId: created.id,
+      },
+      {
+        code: 'FORKS',
+        name: 'Fork Attachment',
+        price: 8_000,
+        productId: created.id,
+      },
+    ]);
+    expect(created.options.map((option) => option.id)).toHaveLength(2);
+
+    const fetched = await caller.products.get({ id: created.id });
+
+    expect(fetched.options.map((option) => option.id)).toEqual(created.options.map((option) => option.id));
+  });
+
+  test('rejects duplicate option codes during validation', async ({ context }) => {
+    const caller = context.createCaller();
+
+    await expect(
+      createProduct(caller, 'Duplicate Option Product', {
+        options: [
+          { code: 'CAB', name: 'Enclosed Cab', price: 12_500 },
+          { code: 'CAB', name: 'Second Cab', price: 13_000 },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
   });
 
   test('records an audit event for product creates', async ({ context }) => {
@@ -279,6 +324,18 @@ describe('products.list', () => {
     expect(descriptionResult.total).toBe(2);
   });
 
+  test('keeps list products lean by omitting persisted options', async ({ context }) => {
+    const caller = context.createCaller();
+
+    await createProduct(caller, 'Optioned List Product', {
+      options: [{ code: 'CAB', name: 'Enclosed Cab', price: 12_500 }],
+    });
+
+    const result = await caller.products.list({});
+
+    expect(result.items[0]?.options).toEqual([]);
+  });
+
   test('filters product lists by name column filter', async ({ context }) => {
     const caller = context.createCaller();
     await createProducts(caller, ['Compact Loader', 'Wheel Loader', 'Excavator Bucket']);
@@ -404,6 +461,62 @@ describe('products.update', () => {
       name: 'Wheel Loader XL',
     });
     expect(new Date(updated.updatedAt).getTime()).toBeGreaterThanOrEqual(new Date(created.updatedAt).getTime());
+  });
+
+  test('diffs product options without replacing unchanged option ids', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Wheel Loader', {
+      options: [
+        { code: 'CAB', name: 'Enclosed Cab', price: 12_500 },
+        { code: 'FORKS', name: 'Fork Attachment', price: 8_000 },
+      ],
+    });
+    const keptOption = created.options[1];
+    const removedOption = created.options[0];
+
+    if (!keptOption || !removedOption) {
+      throw new Error('Expected two options');
+    }
+
+    const updated = await caller.products.update({
+      basePrice: created.basePrice,
+      currencyCode: created.currencyCode,
+      description: created.description,
+      id: created.id,
+      modelCode: created.modelCode,
+      name: created.name,
+      options: [
+        { ...keptOption, name: 'Fork Attachment Plus', price: 9_000 },
+        { code: 'BUCKET', name: 'General Purpose Bucket', price: 7_500 },
+      ],
+    });
+
+    expect(updated.options).toMatchObject([
+      {
+        code: 'BUCKET',
+        name: 'General Purpose Bucket',
+        price: 7_500,
+      },
+      {
+        code: 'FORKS',
+        id: keptOption.id,
+        name: 'Fork Attachment Plus',
+        price: 9_000,
+      },
+    ]);
+
+    const fetched = await caller.products.get({ id: created.id });
+    const rows = (await context.db.select().from(productOptions)).filter((option) => option.productId === created.id);
+    const activeRows = rows.filter((option) => !option.deletedAt);
+    const deletedRow = rows.find((option) => option.id === removedOption.id);
+
+    expect(activeRows.map((option) => option.id).sort()).toEqual(updated.options.map((option) => option.id).sort());
+    expect(deletedRow?.deletedAt).toBeInstanceOf(Date);
+    expect(fetched.options.map((option) => option.id).sort()).toEqual(
+      updated.options.map((option) => option.id).sort(),
+    );
+    expect(fetched.options.some((option) => option.id === removedOption.id)).toBe(false);
+    expect(updated.options.find((option) => option.code === 'FORKS')?.id).toBe(keptOption.id);
   });
 
   test('records changed fields in audit events for product updates', async ({ context }) => {

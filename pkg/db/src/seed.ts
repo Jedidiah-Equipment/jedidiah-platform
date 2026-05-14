@@ -6,6 +6,7 @@ import type { Database } from './database-client.js';
 import { auditEvents } from './schema/audit.js';
 import { account, user } from './schema/auth.js';
 import { products } from './schema/product.js';
+import { productOptions } from './schema/product-option.js';
 
 const seedProductCount = 10;
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
@@ -58,6 +59,14 @@ type SeedProduct = typeof products.$inferInsert & {
   basePrice: number;
   currencyCode: string;
   description: string;
+};
+
+type SeedProductOption = typeof productOptions.$inferInsert & {
+  id: string;
+  productId: string;
+  name: string;
+  code: string;
+  price: number;
 };
 
 type SeedProductAuditChange = {
@@ -113,6 +122,38 @@ export function createSeedProducts(count = seedProductCount): SeedProduct[] {
         .join('')}-${String(sequence).padStart(3, '0')}`,
       name: `${series} ${family} ${String(sequence).padStart(3, '0')}`,
     };
+  });
+}
+
+export function createSeedProductOptions(productsToSeed: readonly SeedTimelineProduct[]): SeedProductOption[] {
+  return productsToSeed.flatMap((product, productIndex) => {
+    const sequence = productIndex + 1;
+    const options = [
+      {
+        code: 'CAB',
+        name: 'Enclosed Cab',
+        price: 11_500 + sequence * 250,
+      },
+      {
+        code: 'HYD',
+        name: 'Auxiliary Hydraulics',
+        price: 18_000 + sequence * 400,
+      },
+      {
+        code: 'GPS',
+        name: 'Fleet GPS Kit',
+        price: 7_500 + sequence * 175,
+      },
+    ] as const;
+
+    return options.map((option, optionIndex) => ({
+      ...option,
+      createdAt: product.createdAt,
+      deletedAt: null,
+      id: createSeedUuid('8002', productIndex * options.length + optionIndex + 1),
+      productId: product.id,
+      updatedAt: product.updatedAt,
+    }));
   });
 }
 
@@ -234,6 +275,7 @@ export async function seedDatabase(database?: Database): Promise<void> {
     now,
     products: seedProducts,
   });
+  const seedProductOptions = createSeedProductOptions(seedProductTimeline.products);
 
   console.info(`[db:seed] Starting seed at ${now.toISOString()}`);
   console.info(`[db:seed] Upserting ${seedUsers.length} seed user(s): ${seedUserEmails}`);
@@ -287,7 +329,7 @@ export async function seedDatabase(database?: Database): Promise<void> {
 
   console.info(`[db:seed] Upserted ${seedUsers.length} credential account(s)`);
   console.info(
-    `[db:seed] Upserting ${seedProductTimeline.products.length} product(s) and ${seedProductTimeline.auditEvents.length} audit event(s)`,
+    `[db:seed] Upserting ${seedProductTimeline.products.length} product(s), ${seedProductOptions.length} product option(s), and ${seedProductTimeline.auditEvents.length} audit event(s)`,
   );
 
   await activeDb.transaction(async (tx) => {
@@ -307,6 +349,24 @@ export async function seedDatabase(database?: Database): Promise<void> {
         },
       });
 
+    if (seedProductOptions.length > 0) {
+      await tx
+        .insert(productOptions)
+        .values(seedProductOptions)
+        .onConflictDoUpdate({
+          target: productOptions.id,
+          set: {
+            code: sql`excluded.code`,
+            createdAt: sql`excluded.created_at`,
+            deletedAt: null,
+            name: sql`excluded.name`,
+            price: sql`excluded.price`,
+            productId: sql`excluded.product_id`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        });
+    }
+
     const seedProductIds = seedProductTimeline.products.map((product) => product.id);
 
     if (seedProductIds.length > 0) {
@@ -321,7 +381,7 @@ export async function seedDatabase(database?: Database): Promise<void> {
   });
 
   console.info(
-    `[db:seed] Seed complete: ${seedUsers.length} user(s), ${seedProductTimeline.products.length} product(s), ${seedProductTimeline.auditEvents.length} audit event(s)`,
+    `[db:seed] Seed complete: ${seedUsers.length} user(s), ${seedProductTimeline.products.length} product(s), ${seedProductOptions.length} product option(s), ${seedProductTimeline.auditEvents.length} audit event(s)`,
   );
 }
 

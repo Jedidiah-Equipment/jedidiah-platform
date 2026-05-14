@@ -1,52 +1,17 @@
-import type { Product } from '@pkg/schema';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { PlusIcon } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
-import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { Separator } from '@/components/ui/separator.js';
 import { useCan } from '@/hooks/use-access.js';
-import { useTRPC } from '@/lib/trpc.js';
-import { ProductForm } from './components/ProductForm.js';
 import { ProductTable } from './components/ProductTable.js';
 
 export const ProductsPage: React.FC = () => {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const canCreateProduct = useCan('product:create').can;
   const canUpdateProduct = useCan('product:update').can;
-
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-
-  const createProductMutation = useMutation(
-    trpc.products.create.mutationOptions({
-      onSuccess: async () => {
-        await queryClient.invalidateQueries(trpc.products.list.queryFilter());
-        setIsCreateOpen(false);
-        toast.success('Product created');
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
-
-  const updateProductMutation = useMutation(
-    trpc.products.update.mutationOptions({
-      onSuccess: async () => {
-        await queryClient.invalidateQueries(trpc.products.list.queryFilter());
-        setEditingProduct(null);
-        toast.success('Product updated');
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -58,7 +23,7 @@ export const ProductsPage: React.FC = () => {
               <CardTitle>Products</CardTitle>
             </div>
             {canCreateProduct ? (
-              <Button onClick={() => setIsCreateOpen(true)}>
+              <Button onClick={() => navigate({ to: '/products/new' })}>
                 <PlusIcon data-icon="inline-start" />
                 New product
               </Button>
@@ -68,62 +33,15 @@ export const ProductsPage: React.FC = () => {
         <CardContent className="flex flex-col gap-4">
           <Separator />
           <ProductTable
-            onEditProduct={canUpdateProduct ? setEditingProduct : undefined}
+            onEditProduct={
+              canUpdateProduct
+                ? (product) => navigate({ to: '/products/$id/edit', params: { id: product.id } })
+                : undefined
+            }
             showEditActions={canUpdateProduct}
           />
         </CardContent>
       </Card>
-
-      <Dialog onOpenChange={setIsCreateOpen} open={isCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New product</DialogTitle>
-            <DialogDescription>Add a product to the catalog.</DialogDescription>
-          </DialogHeader>
-          {isCreateOpen ? (
-            <ProductForm
-              isPending={createProductMutation.isPending}
-              onSubmit={(value) =>
-                createProductMutation.mutateAsync({
-                  name: value.name,
-                  modelCode: value.modelCode,
-                  description: value.description,
-                  basePrice: value.basePrice,
-                  currencyCode: 'ZAR',
-                })
-              }
-              submitLabel="Create product"
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog onOpenChange={(isOpen) => !isOpen && setEditingProduct(null)} open={!!editingProduct}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit product</DialogTitle>
-            <DialogDescription>Update the product catalog details.</DialogDescription>
-          </DialogHeader>
-          {editingProduct ? (
-            <ProductForm
-              initialProduct={editingProduct}
-              isPending={updateProductMutation.isPending}
-              key={editingProduct.id}
-              onSubmit={(value) =>
-                updateProductMutation.mutateAsync({
-                  id: editingProduct.id,
-                  name: value.name,
-                  modelCode: value.modelCode,
-                  description: value.description,
-                  basePrice: value.basePrice,
-                  currencyCode: 'ZAR',
-                })
-              }
-              submitLabel="Save product"
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

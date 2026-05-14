@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
+import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Separator } from '@/components/ui/separator.js';
 import { Textarea } from '@/components/ui/textarea.js';
 import { cn } from '@/lib/utils.js';
@@ -18,7 +19,7 @@ import { type AssistantChatEntry, useAssistantChat } from './useAssistantChat.js
 export const AssistantPanel: React.FC = () => {
   const { error, messages, send, status, stop } = useAssistantChat();
   const [draft, setDraft] = useState('');
-  const messageListRef = useRef<HTMLDivElement | null>(null);
+  const messageEndRef = useRef<HTMLDivElement | null>(null);
   const canSend = draft.trim().length > 0 && status !== 'streaming';
 
   useEffect(() => {
@@ -26,9 +27,8 @@ export const AssistantPanel: React.FC = () => {
       return;
     }
 
-    messageListRef.current?.scrollTo({
+    messageEndRef.current?.scrollIntoView({
       behavior: 'smooth',
-      top: messageListRef.current.scrollHeight,
     });
   }, [messages]);
 
@@ -45,44 +45,44 @@ export const AssistantPanel: React.FC = () => {
   };
 
   return (
-    <Card className="min-h-[calc(100vh-6rem)]">
-      <CardHeader>
+    <Card className="h-full min-h-0 min-w-0">
+      <CardHeader className="shrink-0">
         <div className="flex flex-col gap-1">
           <CardDescription>AI assistant</CardDescription>
           <CardTitle>Assistant</CardTitle>
           <p className="text-sm text-muted-foreground">This conversation is not saved.</p>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-4">
-        <Separator />
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
+        <Separator className="shrink-0" />
 
         {error ? (
-          <Alert variant="destructive">
+          <Alert className="shrink-0" variant="destructive">
             <AlertTitle>Assistant error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
 
-        <div
-          className="flex min-h-96 flex-1 flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-muted/30 p-3"
-          ref={messageListRef}
-        >
-          {messages.length === 0 ? (
-            <div className="flex h-full min-h-72 items-center justify-center text-sm text-muted-foreground">
-              Start a conversation.
-            </div>
-          ) : (
-            messages.map((message, index) => (
-              <AssistantMessage
-                isStreaming={status === 'streaming' && index === messages.length - 1}
-                key={message.id}
-                message={message}
-              />
-            ))
-          )}
-        </div>
+        <ScrollArea className="min-h-0 min-w-0 flex-1 rounded-lg border border-border bg-muted/30">
+          <div className="flex min-h-full min-w-0 flex-col gap-3 p-3">
+            {messages.length === 0 ? (
+              <div className="flex min-h-72 flex-1 items-center justify-center text-sm text-muted-foreground">
+                Start a conversation.
+              </div>
+            ) : (
+              messages.map((message, index) => (
+                <AssistantMessage
+                  isStreaming={status === 'streaming' && index === messages.length - 1}
+                  key={message.id}
+                  message={message}
+                />
+              ))
+            )}
+            <div ref={messageEndRef} />
+          </div>
+        </ScrollArea>
 
-        <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
+        <form className="flex shrink-0 flex-col gap-2" onSubmit={handleSubmit}>
           <Textarea
             aria-label="Message"
             className="max-h-44 min-h-24 resize-none"
@@ -128,7 +128,7 @@ const AssistantMessage: React.FC<{ isStreaming: boolean; message: AssistantChatE
     }
 
     return (
-      <div className="flex justify-start">
+      <div className="flex min-w-0 justify-start">
         <div className="animate-pulse rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           Thinking...
         </div>
@@ -137,15 +137,15 @@ const AssistantMessage: React.FC<{ isStreaming: boolean; message: AssistantChatE
   }
 
   return (
-    <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
-      <div className="max-w-[min(42rem,85%)]">
+    <div className={cn('flex min-w-0', isUser ? 'justify-end' : 'justify-start')}>
+      <div className={cn('min-w-0', isUser ? 'max-w-[min(42rem,85%)]' : 'w-full max-w-full')}>
         {toolCalls.length > 0 ? <ToolCallBadge toolCalls={toolCalls} /> : null}
         <div
           className={cn(
-            'rounded-lg px-3 py-2 text-sm leading-6',
+            'min-w-0 rounded-lg px-3 py-2 text-sm leading-6',
             isUser
-              ? 'whitespace-pre-wrap bg-primary text-primary-foreground'
-              : 'prose prose-sm max-w-none border border-border bg-background dark:prose-invert',
+              ? 'whitespace-pre-wrap break-words bg-primary text-primary-foreground'
+              : 'prose prose-sm w-full max-w-none overflow-hidden border border-border bg-background break-words dark:prose-invert',
           )}
         >
           {isUser ? (

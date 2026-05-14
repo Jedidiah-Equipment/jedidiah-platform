@@ -1,15 +1,16 @@
-# Department Membership as a Separate Authorization Axis from AppRole
+# Job authorization: roles grant verbs, departments scope rows
 
-Stage-level access on Jobs (Procurement, Fabrication, Paint, Assembly, Dispatch) is governed by Department membership — a second, orthogonal authorization axis alongside the existing `AppRole` system. `AppRole` continues to govern feature access (product management, user management, audit); Department membership governs which stage of which Jobs a user can see and edit. Cross-cutting Job permissions (`job-viewer`, `job-supervisor`) cover non-departmental roles like sales and planners.
+Job access is governed by **two axes**: the existing flat `AppRole` enum grants verb capabilities (`job:read`, `job-stage:update`, …), and `user_department` membership scopes *which rows* a department-scoped role's verbs apply to. Three Job-related roles cover the personas: `job-stage-editor` (department-scoped — read/write Stages of the User's Departments), `job-viewer` (cross-cutting read-only), `job-supervisor` (cross-cutting read+write + Job lifecycle). The scope rule itself is not encoded in permission strings — it lives in the **Job Authorization Policy** module in `@pkg/domain`, which combines the coarse `hasPermission` gate with the row-level Department check.
 
 ## Considered Options
 
-- **New flat roles per department + per-stage permission strings** (e.g. `procurement` role with `job-stage.procurement:*` permissions). Rejected: would have multiplied the flat permission space by stage count and conflated feature access with org-structure facts.
-- **A two-dimensional permission shape** (`{ resource, action, stage }`). Rejected: would have introduced a second permission shape into a codebase that uses flat strings consistently elsewhere.
+- **Single axis — encode departments as roles.** Rejected: would explode the role enum combinatorially as Departments grow and conflate two unrelated concerns (capability vs. scope).
+- **Single axis — flat `job-editor`/`job-viewer` with no Department membership at all.** Rejected: cannot express "Paint sees only Paint Stages" (PRD US #6, #8), which is a hard requirement.
+- **Two axes, but cross-cutting access via "empty department set = unscoped".** Rejected: fewer assignments granting *more* access is a footgun.
+- **Two axes, scope encoded as a `scope:` marker on each role.** Rejected: premature abstraction — there is currently exactly one department-scoped role; the policy module can name it directly. Revisit if a second scoped role appears.
 
 ## Consequences
 
-- Authorization checks for stage access consult a different code path than `hasPermission()`. The check is roughly: *"user is a member of the stage's owning department OR holds a cross-cutting Job permission OR is admin"*.
-- Users gain a `department_memberships` collection (junction table or JSON column) independent of their `AppRole`.
-- Multi-department membership is supported natively (supervisors, cross-trained staff).
-- The decision intentionally keeps the existing flat-permission system untouched — it is the right shape for feature access; it is not the right shape for org-membership facts.
+- `appRoleAccess` entries for cross-cutting and scoped roles look *identical* in permission strings — the distinction is invisible at the role-table level. A reader has to know to look at the Job Authorization Policy for the scope rule.
+- Adding a new department-scoped role in the future is a two-line change: add the role enum value + add it to the policy module's "scoped" set. Adding a new scoped *resource* (beyond `job-stage`) is a larger change.
+- The `job-viewer` and `job-supervisor` roles, previously felt-as-hacks, are now first-class Cross-Cutting roles — a deliberate counterpart to the Department-Scoped `job-stage-editor`, not a workaround.

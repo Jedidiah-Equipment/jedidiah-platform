@@ -16,6 +16,7 @@ function createAiContext(access: UserAccessSummary | null = null): AiContext {
 
 function createAccessWithNoProductRead(): UserAccessSummary {
   return {
+    departments: [],
     permissions: [],
     role: null,
     userId: 'test-user-id',

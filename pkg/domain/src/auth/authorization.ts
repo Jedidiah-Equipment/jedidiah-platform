@@ -11,6 +11,10 @@ import {
 
 export const DEFAULT_APP_ROLE = 'product-viewer' satisfies AppRole;
 
+// Only Job access can depend on department memberships, so request access summaries use this set
+// to avoid reading user_department for roles whose authorization cannot be department-scoped.
+export const DEPARTMENT_AWARE_ROLES = new Set<AppRole>(['job-stage-editor', 'job-supervisor', 'job-viewer']);
+
 export const authorizationStatement = {
   audit: ['read'],
   job: ['read', 'create', 'update'],

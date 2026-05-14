@@ -287,6 +287,7 @@ describe('POST /ai/chat-stream', () => {
       buildContext: async () =>
         createAiContext({
           access: {
+            departments: [],
             permissions: [],
             role: null,
             userId: 'test-user-id',

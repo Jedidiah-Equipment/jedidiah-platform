@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import type { UserSummary } from '@pkg/schema';
+import type { Department, UserSummary } from '@pkg/schema';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.j
 import { useAccess } from '@/hooks/use-access.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { UserDepartmentsForm } from './components/UserDepartmentsForm.js';
 import { UserPasswordForm, type UserPasswordFormValues } from './components/UserPasswordForm.js';
 import { UserProfileForm, type UserProfileFormValues } from './components/UserProfileForm.js';
 import { UserRoleForm, type UserRoleFormValues } from './components/UserRoleForm.js';
@@ -26,6 +27,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const access = accessQuery.data;
 
   const canUpdateProfile = hasPermission(access, 'user:update');
+  const canAssignDepartments = hasPermission(access, 'user:assign-departments');
   const canSetRole = hasPermission(access, 'user:set-role');
   const canSetPassword = hasPermission(access, 'user:set-password');
 
@@ -73,7 +75,26 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
     },
   });
 
-  const defaultTab = canUpdateProfile ? 'profile' : canSetRole ? 'role' : 'password';
+  const setDepartmentsMutation = useMutation(
+    trpc.users.setDepartments.mutationOptions({
+      onSuccess: async () => {
+        await refreshUser();
+        toast.success('User departments updated');
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    }),
+  );
+
+  const setDepartments = (departments: readonly Department[]) => {
+    return setDepartmentsMutation.mutateAsync({
+      departments: [...departments],
+      userId: user.id,
+    });
+  };
+
+  const defaultTab = canUpdateProfile ? 'profile' : canSetRole ? 'role' : canSetPassword ? 'password' : 'departments';
 
   return (
     <Dialog onOpenChange={(isOpen) => !isOpen && onClose()} open={!!user}>
@@ -87,6 +108,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             {canUpdateProfile ? <TabsTrigger value="profile">Profile</TabsTrigger> : null}
             {canSetRole ? <TabsTrigger value="role">Role</TabsTrigger> : null}
             {canSetPassword ? <TabsTrigger value="password">Password</TabsTrigger> : null}
+            {canAssignDepartments ? <TabsTrigger value="departments">Departments</TabsTrigger> : null}
           </TabsList>
           {canUpdateProfile ? (
             <TabsContent value="profile">
@@ -111,6 +133,15 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
               <UserPasswordForm
                 isPending={setPasswordMutation.isPending}
                 onSubmit={(value) => setPasswordMutation.mutateAsync(value)}
+              />
+            </TabsContent>
+          ) : null}
+          {canAssignDepartments ? (
+            <TabsContent value="departments">
+              <UserDepartmentsForm
+                initialDepartments={user.departments}
+                isPending={setDepartmentsMutation.isPending}
+                onDepartmentsChange={setDepartments}
               />
             </TabsContent>
           ) : null}

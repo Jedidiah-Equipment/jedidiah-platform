@@ -55,9 +55,20 @@ export const productOptionAuditDescriptor: AuditEntityDescriptor = {
   },
 };
 
+export const userAuditDescriptor: AuditEntityDescriptor = {
+  entityType: 'user',
+  noun: 'user',
+  primaryLabelField: 'id',
+  fields: {
+    department: 'department',
+    member: 'department membership',
+  },
+};
+
 const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
+  user: userAuditDescriptor,
 };
 
 type AuditEventRow = typeof auditEvents.$inferSelect & {

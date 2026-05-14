@@ -41,12 +41,14 @@ export type AuditFilters = z.infer<typeof AuditFilters>;
 export const AuditFilters = z
   .object({
     actorUserIds: z.array(AuthId).default([]),
+    entityIds: z.array(UUID).default([]),
     entityTypes: z.array(AuditEntityType).default([]),
     occurredAtStart: z.iso.datetime().optional(),
     occurredAtEnd: z.iso.datetime().optional(),
   })
   .default({
     actorUserIds: [],
+    entityIds: [],
     entityTypes: [],
   });
 

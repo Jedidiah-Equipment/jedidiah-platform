@@ -8,22 +8,26 @@ const BASE_SYSTEM_PROMPT_LINES = [
   'When you use a table, include a header row and separator row, keep cell text concise, and preserve line breaks.',
 ];
 
-const TOOL_PROMPT_LINES: Record<AiToolName, string> = {
-  listAuditEvents: 'You can review audit history using the listAuditEvents tool.',
-  listProducts: 'You can search and list products using the listProducts tool.',
-  listUsers: 'You can list safe user summaries using the listUsers tool.',
-};
+// Commented out for now because we already privide the tools with descriptions, and we don't want to duplicate them here.
+// Might be useful to add back in the future if we want to add more tool-specific instructions.
 
-export function createSystemPrompt(toolNames: readonly AiToolName[]): string {
+// const TOOL_PROMPT_LINES: Record<AiToolName, string> = {
+//   listAuditEvents: 'You can review audit history using the listAuditEvents tool.',
+//   listProducts: 'You can search and list products using the listProducts tool.',
+//   listUsers: 'You can list users using the listUsers tool.',
+// };
+
+export function createSystemPrompt(_toolNames: readonly AiToolName[]): string {
   const toolPromptLines: string[] = [];
 
-  for (const toolName of toolNames) {
-    const line = TOOL_PROMPT_LINES[toolName];
+  //for (const toolName of toolNames) {
+  //toolPromptLines.push(`You can use the ${toolName} tool to ${toolName}.`);
+  // const line = TOOL_PROMPT_LINES[toolName];
 
-    if (line) {
-      toolPromptLines.push(line);
-    }
-  }
+  // if (line) {
+  //   toolPromptLines.push(line);
+  // }
+  //}
 
   return [SYSTEM_PROMPT_INTRO, ...toolPromptLines, ...BASE_SYSTEM_PROMPT_LINES].join('\n');
 }

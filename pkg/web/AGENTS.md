@@ -17,4 +17,6 @@ Follow `../../.sandcastle/CODING_STANDARDS.md`.
 
 - Browser access checks are UX only; the server is the authorization boundary.
 - Login is email/password only unless asked otherwise.
+- Displayed dates must use `src/utils/date.ts` `formatDate`; do not add one-off
+  `Intl.DateTimeFormat`, `toLocaleDateString`, or `toLocaleString` formatting in components.
 - Do not test via the browser unless asked.

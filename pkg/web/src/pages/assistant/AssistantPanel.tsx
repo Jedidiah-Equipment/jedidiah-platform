@@ -169,17 +169,17 @@ const ToolCallBadge: React.FC<{
       <HoverCardTrigger
         closeDelay={100}
         delay={100}
-        render={<Badge className="mb-1 cursor-default rounded-4xl px-2.5" variant="outline" />}
+        render={<Badge className="mb-1 cursor-default" variant="outline" />}
       >
         <WrenchIcon data-icon="inline-start" />
-        Tools called
+        {toolCalls.length} tool{toolCalls.length === 1 ? '' : 's'} called
       </HoverCardTrigger>
-      <HoverCardContent align="start" className="w-72">
+      <HoverCardContent align="start">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-1.5">
             {toolCalls.map((toolCall) => (
               <Badge
-                className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
+                className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
                 key={toolCall.id}
                 variant="secondary"
               >

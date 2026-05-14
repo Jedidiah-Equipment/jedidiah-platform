@@ -8,7 +8,8 @@ export type ListProductsTool = AiToolBase<'listProducts', ProductListResult, Pro
 
 export const listProductsTool: ListProductsTool = {
   name: 'listProducts',
-  description: 'List products with the same filters, sort, and paging available in the products page.',
+  description:
+    'List products. Prefer specific queries over broad catalog scans: use columnFilters.id when a product id is known, columnFilters.modelCode for a model code, and columnFilters.name for a product name. Use search for exploratory text matches across product id, name, model code, and description. Use sortBy, sortDirection, page, and pageSize to return the right product slice.',
   inputSchema: ProductListInput,
   jsonSchema: z.toJSONSchema(ProductListInput) as Record<string, unknown>,
   requiredPermission: 'product:read',

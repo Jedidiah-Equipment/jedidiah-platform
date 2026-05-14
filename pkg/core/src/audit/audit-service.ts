@@ -150,6 +150,10 @@ function buildAuditListWhere(input: AuditListInput): SQL | undefined {
     conditions.push(inArray(auditEvents.actorUserId, input.filters.actorUserIds));
   }
 
+  if (input.filters.entityIds.length > 0) {
+    conditions.push(inArray(auditEvents.entityId, input.filters.entityIds));
+  }
+
   if (input.filters.entityTypes.length > 0) {
     conditions.push(inArray(auditEvents.entityType, input.filters.entityTypes));
   }

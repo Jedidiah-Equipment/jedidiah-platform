@@ -1,6 +1,5 @@
 import * as core from '@pkg/core';
-import type { Database } from '@pkg/db';
-import { user } from '@pkg/db/schema';
+import { type Db, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { AppRole, UserAccessSummary } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
@@ -13,7 +12,7 @@ import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(({ db }) => ({ db }));
 
-function createAiContext(db: Database, access: UserAccessSummary): AiContext {
+function createAiContext(db: Db, access: UserAccessSummary): AiContext {
   return {
     access,
     db,
@@ -54,7 +53,7 @@ describe('listUsersTool', () => {
     try {
       await listUsersTool.handler(null, createAiContext(context.db, access));
 
-      expect(listUsersSpy).toHaveBeenCalledWith({ database: context.db });
+      expect(listUsersSpy).toHaveBeenCalledWith({ db: context.db });
     } finally {
       listUsersSpy.mockRestore();
     }
@@ -73,7 +72,7 @@ describe('listUsersTool', () => {
 });
 
 async function createUser(
-  db: Database,
+  db: Db,
   input: {
     email: string;
     emailVerified?: boolean;

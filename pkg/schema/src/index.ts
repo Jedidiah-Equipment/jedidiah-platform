@@ -1,4 +1,6 @@
-export * from './ai/index.js';
+export * from './ai/chat-stream.js';
+export * from './ai/context.js';
+export * from './ai/tool.js';
 export * from './audit/audit.js';
 export * from './auth/auth-id.js';
 export * from './auth/authorization.js';

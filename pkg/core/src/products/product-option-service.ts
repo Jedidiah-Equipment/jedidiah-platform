@@ -1,6 +1,4 @@
-import { getUniqueViolationConstraint } from '@pkg/db/query-utils';
-import { productOptions } from '@pkg/db/schema';
-import type { DatabaseTransaction } from '@pkg/db/types';
+import { type DatabaseTransaction, getUniqueViolationConstraint, productOptions } from '@pkg/db';
 import type { AuthId, ProductOption, ProductOptionCreateInput, ProductOptionUpsertInput, UUID } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 

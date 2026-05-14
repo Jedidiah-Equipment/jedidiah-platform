@@ -1,6 +1,5 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
-import { type Database, db } from '@pkg/db';
-import * as schema from '@pkg/db/schema';
+import { type Db, db, schema } from '@pkg/db';
 import { betterAuth } from 'better-auth';
 import { admin as adminPlugin } from 'better-auth/plugins';
 import { recordMockEmail } from '../email/mock-email.js';
@@ -10,7 +9,7 @@ import { adminUserSafetyPlugin } from './admin-user-safety.js';
 
 const config = getApiConfig();
 
-export function createAuth(database: Database) {
+export function createAuth(database: Db) {
   return betterAuth({
     appName: 'Jedidiah Platform',
     baseURL: config.API_BASE_URL,

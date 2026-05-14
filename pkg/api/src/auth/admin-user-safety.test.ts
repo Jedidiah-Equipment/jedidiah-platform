@@ -1,6 +1,4 @@
-import type { Database } from '@pkg/db';
-import type { DatabaseClient } from '@pkg/db/database-client';
-import { account, user } from '@pkg/db/schema';
+import { account, type DatabaseClient, type Db, user } from '@pkg/db';
 import type { AppRole } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { describe, expect } from 'vitest';
@@ -12,7 +10,7 @@ const test = createTester(({ auth, databaseClient, db }) => ({ auth, databaseCli
 
 type AuthPolicyContext = {
   auth: TesterScope['auth'];
-  db: Database;
+  db: Db;
   databaseClient: DatabaseClient;
 };
 
@@ -144,7 +142,7 @@ async function setStoredRole(databaseClient: DatabaseClient, userId: string, rol
 }
 
 async function createUser(
-  db: Database,
+  db: Db,
   input: {
     email: string;
     emailVerified?: boolean;

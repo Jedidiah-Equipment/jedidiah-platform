@@ -1,5 +1,4 @@
-import type { Database } from '@pkg/db';
-import { auditEvents, user } from '@pkg/db/schema';
+import { auditEvents, type Db, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -148,7 +147,7 @@ describe('audit.list', () => {
 });
 
 async function createActorUser(
-  db: Database,
+  db: Db,
   input: {
     email: string;
     id: string;
@@ -170,7 +169,7 @@ async function createActorUser(
 }
 
 async function createAuditEvent(
-  db: Database,
+  db: Db,
   input: {
     action?: 'created' | 'updated';
     actorUserId?: string | null;

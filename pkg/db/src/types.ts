@@ -1,3 +1,3 @@
-import type { Database } from './database-client.js';
+import type { Db } from './database-client.js';
 
-export type DatabaseTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+export type DatabaseTransaction = Parameters<Parameters<Db['transaction']>[0]>[0];

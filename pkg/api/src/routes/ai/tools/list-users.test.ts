@@ -54,7 +54,7 @@ describe('listUsersTool', () => {
     try {
       await listUsersTool.handler(null, createAiContext(context.db, access));
 
-      expect(listUsersSpy).toHaveBeenCalledWith(context.db);
+      expect(listUsersSpy).toHaveBeenCalledWith({ database: context.db });
     } finally {
       listUsersSpy.mockRestore();
     }

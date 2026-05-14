@@ -15,6 +15,6 @@ export const listProductsTool: ListProductsTool = {
   requiredPermission: 'product:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = ProductListInput.parse(args ?? {});
-    return productsCore.listProducts(ctx.db, input);
+    return productsCore.listProducts({ database: ctx.db, input });
   },
 };

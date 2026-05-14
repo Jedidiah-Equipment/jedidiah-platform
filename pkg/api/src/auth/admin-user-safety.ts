@@ -41,7 +41,8 @@ export function adminUserSafetyPlugin(database: Database): BetterAuthPlugin {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
-            const canAssignRole = await canAssignUserRole(database, {
+            const canAssignRole = await canAssignUserRole({
+              database,
               role: nextRoles,
               userId: roleChange.userId,
             });

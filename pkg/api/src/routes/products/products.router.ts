@@ -18,19 +18,23 @@ import { authorizedProcedure, router } from '../../trpc/init.js';
 export const productsRouter = router({
   list: authorizedProcedure('product:read')
     .input(ProductListInput)
-    .query(({ ctx, input }) => listProducts(ctx.db, input)),
+    .query(({ ctx, input }) => listProducts({ db: ctx.db, input })),
 
   get: authorizedProcedure('product:read')
     .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapProductErrors(() => getProduct(ctx.db, input.id))),
+    .query(({ ctx, input }) => mapProductErrors(() => getProduct({ db: ctx.db, id: input.id }))),
 
   create: authorizedProcedure('product:create')
     .input(ProductCreateInput)
-    .mutation(({ ctx, input }) => mapProductErrors(() => createProduct(ctx.db, input, ctx.session.user.id))),
+    .mutation(({ ctx, input }) =>
+      mapProductErrors(() => createProduct({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+    ),
 
   update: authorizedProcedure('product:update')
     .input(ProductUpdateInput)
-    .mutation(({ ctx, input }) => mapProductErrors(() => updateProduct(ctx.db, input, ctx.session.user.id))),
+    .mutation(({ ctx, input }) =>
+      mapProductErrors(() => updateProduct({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+    ),
 });
 
 async function mapProductErrors<T>(action: () => Promise<T>): Promise<T> {

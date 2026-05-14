@@ -1,7 +1,7 @@
-import type { Database } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { user } from '@pkg/db/schema';
 import { DEFAULT_APP_ROLE } from '@pkg/domain';
-import { AppRole, type UserListResult, type UserSummary } from '@pkg/schema';
+import { AppRole, type AuthId, type UserListResult, type UserSummary } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 
 type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'name'> & {
@@ -18,8 +18,8 @@ export function mapUser(row: UserRow): UserSummary {
   };
 }
 
-export async function listUsers(database: Database): Promise<UserListResult> {
-  const rows = await database
+export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
+  const rows = await db
     .select({
       email: user.email,
       emailVerified: user.emailVerified,
@@ -35,27 +35,29 @@ export async function listUsers(database: Database): Promise<UserListResult> {
   };
 }
 
-export async function canAssignUserRole(
-  database: Database,
-  input: {
-    role: AppRole | readonly AppRole[];
-    userId: string;
-  },
-): Promise<boolean> {
-  const nextRoles = Array.isArray(input.role) ? input.role : [input.role];
+export async function canAssignUserRole({
+  db,
+  role,
+  userId,
+}: {
+  db: Db;
+  role: AppRole | readonly AppRole[];
+  userId: AuthId;
+}): Promise<boolean> {
+  const nextRoles = Array.isArray(role) ? role : [role];
 
   if (nextRoles.includes('admin')) {
     return true;
   }
 
-  return database.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const [targetUser] = await tx
       .select({
         id: user.id,
         role: user.role,
       })
       .from(user)
-      .where(eq(user.id, input.userId))
+      .where(eq(user.id, userId))
       .for('update');
 
     if (!targetUser || !normalizeStoredAppRoles(targetUser.role).includes('admin')) {
@@ -71,7 +73,7 @@ export async function canAssignUserRole(
       .orderBy(asc(user.id))
       .for('update');
 
-    return !(adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === input.userId));
+    return !(adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === userId));
   });
 }
 

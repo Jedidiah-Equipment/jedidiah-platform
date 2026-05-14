@@ -2,7 +2,7 @@ import { pathToFileURL } from 'node:url';
 import { hashPassword } from 'better-auth/crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
-import type { Database } from './database-client.js';
+import type { Db } from './database-client.js';
 import { auditEvents } from './schema/audit.js';
 import { account, user } from './schema/auth.js';
 import { products } from './schema/product.js';
@@ -257,7 +257,7 @@ export function createSeedProductAuditTimeline({
   };
 }
 
-export async function seedDatabase(database?: Database): Promise<void> {
+export async function seedDatabase(database?: Db): Promise<void> {
   const activeDb = database ?? (await import('./client.js')).db;
   const now = new Date();
   const seedProducts = createSeedProducts();

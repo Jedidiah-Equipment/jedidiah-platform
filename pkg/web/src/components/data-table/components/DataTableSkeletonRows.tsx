@@ -1,5 +1,5 @@
-import { Skeleton } from "@/components/ui/skeleton.js";
-import { TableCell, TableRow } from "@/components/ui/table.js";
+import { Skeleton } from '@/components/ui/skeleton.js';
+import { TableCell, TableRow } from '@/components/ui/table.js';
 
 type DataTableSkeletonRowsProps = {
   columns: number;
@@ -7,14 +7,14 @@ type DataTableSkeletonRowsProps = {
 };
 
 export function DataTableSkeletonRows({ columns, rows }: DataTableSkeletonRowsProps) {
-  const rowKeys = createSkeletonKeys("row", rows);
-  const columnKeys = createSkeletonKeys("cell", Math.max(columns, 1));
+  const rowKeys = createSkeletonKeys('row', rows);
+  const columnKeys = createSkeletonKeys('cell', Math.max(columns, 1));
 
   return rowKeys.map((rowKey) => (
     <TableRow key={rowKey}>
       {columnKeys.map((columnKey) => (
         <TableCell key={`${rowKey}-${columnKey}`}>
-          <Skeleton className={columnKey === columnKeys.at(-1) ? "h-4 w-20" : "h-4 w-full"} />
+          <Skeleton className={columnKey === columnKeys.at(-1) ? 'h-4 w-20' : 'h-4 w-full'} />
         </TableCell>
       ))}
     </TableRow>

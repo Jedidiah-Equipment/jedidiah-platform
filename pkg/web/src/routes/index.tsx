@@ -1,13 +1,13 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
-import { getCurrentSession } from "@/lib/auth-client.js";
+import { getCurrentSession } from '@/lib/auth-client.js';
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute('/')({
   beforeLoad: async () => {
     const session = await getCurrentSession();
 
     throw redirect({
-      to: session ? "/dashboard" : "/login",
+      to: session ? '/dashboard' : '/login',
     });
   },
 });

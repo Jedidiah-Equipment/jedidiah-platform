@@ -1,19 +1,13 @@
-import type * as React from "react";
+import type * as React from 'react';
 
-import { Checkbox } from "@/components/ui/checkbox.js";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field.js";
-import { getFieldErrors } from "./field-errors.js";
-import { useFieldContext } from "./form-context.js";
+import { Checkbox } from '@/components/ui/checkbox.js';
+import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { getFieldErrors } from './field-errors.js';
+import { useFieldContext } from './form-context.js';
 
 type CheckboxFieldInputProps = Omit<
   React.ComponentProps<typeof Checkbox>,
-  "aria-invalid" | "checked" | "id" | "name" | "onBlur" | "onCheckedChange"
+  'aria-invalid' | 'checked' | 'id' | 'name' | 'onBlur' | 'onCheckedChange'
 >;
 
 export type CheckboxFieldProps = {

@@ -1,21 +1,14 @@
-import type { Product } from "@pkg/schema";
-import type { Table } from "@tanstack/react-table";
-import type React from "react";
+import type { Product } from '@pkg/schema';
+import type { Table } from '@tanstack/react-table';
+import type React from 'react';
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination.js";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.js";
+} from '@/components/ui/pagination.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 
 type ProductPaginationProps = {
   table: Table<Product>;
@@ -30,7 +23,7 @@ export const ProductPagination: React.FC<ProductPaginationProps> = ({ table, tot
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-sm text-muted-foreground">
-        {total} {total === 1 ? "product" : "products"}
+        {total} {total === 1 ? 'product' : 'products'}
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex items-center gap-2">
@@ -60,16 +53,10 @@ export const ProductPagination: React.FC<ProductPaginationProps> = ({ table, tot
           <Pagination className="w-auto">
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious
-                  disabled={!table.getCanPreviousPage()}
-                  onClick={() => table.previousPage()}
-                />
+                <PaginationPrevious disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()} />
               </PaginationItem>
               <PaginationItem>
-                <PaginationNext
-                  disabled={!table.getCanNextPage()}
-                  onClick={() => table.nextPage()}
-                />
+                <PaginationNext disabled={!table.getCanNextPage()} onClick={() => table.nextPage()} />
               </PaginationItem>
             </PaginationContent>
           </Pagination>

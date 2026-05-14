@@ -1,9 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from 'vitest';
 
-import { readChatEventStream } from "./sse-client.js";
+import { readChatEventStream } from './sse-client.js';
 
-describe("readChatEventStream", () => {
-  test("reads chat events across response chunks", async () => {
+describe('readChatEventStream', () => {
+  test('reads chat events across response chunks', async () => {
     const events = await collectEvents([
       'data: {"type":"token","delta":"Hel',
       'lo"}\n\n:data-only-heartbeat\n\n',
@@ -13,40 +13,40 @@ describe("readChatEventStream", () => {
 
     expect(events).toEqual([
       {
-        delta: "Hello",
-        type: "token",
+        delta: 'Hello',
+        type: 'token',
       },
       {
         args: {
           page: 1,
         },
-        name: "listProducts",
-        type: "tool_call",
+        name: 'listProducts',
+        type: 'tool_call',
       },
       {
-        type: "done",
+        type: 'done',
       },
     ]);
   });
 
-  test("handles CRLF-delimited frames", async () => {
+  test('handles CRLF-delimited frames', async () => {
     const events = await collectEvents(['data: {"type":"token","delta":"A"}\r\n\r\n']);
 
     expect(events).toEqual([
       {
-        delta: "A",
-        type: "token",
+        delta: 'A',
+        type: 'token',
       },
     ]);
   });
 
-  test("rejects when aborted before reading", async () => {
+  test('rejects when aborted before reading', async () => {
     const abortController = new AbortController();
     abortController.abort();
 
-    await expect(
-      collectEvents(['data: {"type":"done"}\n\n'], abortController.signal),
-    ).rejects.toThrow("Assistant stream aborted");
+    await expect(collectEvents(['data: {"type":"done"}\n\n'], abortController.signal)).rejects.toThrow(
+      'Assistant stream aborted',
+    );
   });
 });
 

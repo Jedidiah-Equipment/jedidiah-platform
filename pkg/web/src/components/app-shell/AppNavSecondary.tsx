@@ -1,14 +1,14 @@
-import { LifeBuoyIcon, type LucideIcon, SendIcon } from "lucide-react";
-import type React from "react";
+import { LifeBuoyIcon, type LucideIcon, SendIcon } from 'lucide-react';
+import type React from 'react';
 
-import { SidebarLink } from "@/components/app-shell/SidebarLink.js";
+import { SidebarLink } from '@/components/app-shell/SidebarLink.js';
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar.js";
+} from '@/components/ui/sidebar.js';
 
 type SecondaryNavItem = {
   title: string;
@@ -18,20 +18,18 @@ type SecondaryNavItem = {
 
 const secondaryNavItems: SecondaryNavItem[] = [
   {
-    title: "Support",
-    url: "#",
+    title: 'Support',
+    url: '#',
     icon: LifeBuoyIcon,
   },
   {
-    title: "Feedback",
-    url: "#",
+    title: 'Feedback',
+    url: '#',
     icon: SendIcon,
   },
 ];
 
-export const AppNavSecondary: React.FC<React.ComponentPropsWithoutRef<typeof SidebarGroup>> = (
-  props,
-) => {
+export const AppNavSecondary: React.FC<React.ComponentPropsWithoutRef<typeof SidebarGroup>> = (props) => {
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>

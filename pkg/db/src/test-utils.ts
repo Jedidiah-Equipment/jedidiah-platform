@@ -1,11 +1,11 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import postgres from "postgres";
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import postgres from 'postgres';
 
-import { getDatabaseUrl } from "./env.js";
-import * as schema from "./schema/index.js";
+import { getDatabaseUrl } from './env.js';
+import * as schema from './schema/index.js';
 
-const migrationsFolder = new URL("../migrations", import.meta.url).pathname;
+const migrationsFolder = new URL('../migrations', import.meta.url).pathname;
 
 export type EphemeralTestDatabase = {
   databaseName: string;
@@ -25,15 +25,15 @@ export function getTestTemplateDatabaseUrl(): string {
   const databaseUrl = process.env.TEST_DATABASE_URL;
 
   if (!databaseUrl) {
-    throw new Error("TEST_DATABASE_URL is required for the test template database");
+    throw new Error('TEST_DATABASE_URL is required for the test template database');
   }
 
   return databaseUrl;
 }
 
 export function createTestDatabaseName(prefix: string): string {
-  const suffix = `${process.pid}_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
-  const normalizedPrefix = prefix.replaceAll(/[^a-zA-Z0-9_]/g, "_");
+  const suffix = `${process.pid}_${crypto.randomUUID().replaceAll('-', '').slice(0, 12)}`;
+  const normalizedPrefix = prefix.replaceAll(/[^a-zA-Z0-9_]/g, '_');
   const prefixMaxLength = Math.max(1, 60 - suffix.length);
   const trimmedPrefix = normalizedPrefix.slice(0, prefixMaxLength);
 
@@ -58,7 +58,7 @@ export async function recreateTestTemplateDatabase(): Promise<string> {
 }
 
 export async function createEphemeralTestDatabase({
-  databaseName = createTestDatabaseName("jedidiah_ephemeral"),
+  databaseName = createTestDatabaseName('jedidiah_ephemeral'),
   templateDatabaseUrl = getTestTemplateDatabaseUrl(),
 }: CreateEphemeralTestDatabaseOptions = {}): Promise<EphemeralTestDatabase> {
   const adminClient = createAdminClient(templateDatabaseUrl);
@@ -68,9 +68,7 @@ export async function createEphemeralTestDatabase({
     const quotedDatabaseName = quoteIdentifier(databaseName);
     const quotedTemplateDatabaseName = quoteIdentifier(templateDatabaseName);
 
-    await adminClient.unsafe(
-      `CREATE DATABASE ${quotedDatabaseName} TEMPLATE ${quotedTemplateDatabaseName}`,
-    );
+    await adminClient.unsafe(`CREATE DATABASE ${quotedDatabaseName} TEMPLATE ${quotedTemplateDatabaseName}`);
 
     return {
       databaseName,
@@ -81,10 +79,7 @@ export async function createEphemeralTestDatabase({
   }
 }
 
-export async function dropTestDatabase(
-  databaseName: string,
-  databaseUrl = getTestTemplateDatabaseUrl(),
-) {
+export async function dropTestDatabase(databaseName: string, databaseUrl = getTestTemplateDatabaseUrl()) {
   const adminClient = createAdminClient(databaseUrl);
 
   try {
@@ -94,13 +89,7 @@ export async function dropTestDatabase(
   }
 }
 
-async function recreateDatabase({
-  databaseName,
-  databaseUrl,
-}: {
-  databaseName: string;
-  databaseUrl: string;
-}) {
+async function recreateDatabase({ databaseName, databaseUrl }: { databaseName: string; databaseUrl: string }) {
   const adminClient = createAdminClient(databaseUrl);
 
   try {
@@ -126,10 +115,7 @@ async function migrateDatabase(databaseUrl: string): Promise<void> {
   }
 }
 
-async function terminateDatabaseConnections(
-  adminClient: postgres.Sql,
-  databaseName: string,
-): Promise<void> {
+async function terminateDatabaseConnections(adminClient: postgres.Sql, databaseName: string): Promise<void> {
   await adminClient`
     SELECT pg_terminate_backend(pid)
     FROM pg_stat_activity
@@ -138,10 +124,7 @@ async function terminateDatabaseConnections(
   `;
 }
 
-async function dropDatabaseIfExists(
-  adminClient: postgres.Sql,
-  databaseName: string,
-): Promise<void> {
+async function dropDatabaseIfExists(adminClient: postgres.Sql, databaseName: string): Promise<void> {
   const existingDatabases = await adminClient<{ exists: boolean }[]>`
     SELECT EXISTS(
       SELECT 1
@@ -169,7 +152,7 @@ function getDatabaseName(databaseUrl: string): string {
 }
 
 function createAdminClient(databaseUrl: string): postgres.Sql {
-  return postgres(buildDatabaseUrl("postgres", databaseUrl), {
+  return postgres(buildDatabaseUrl('postgres', databaseUrl), {
     max: 1,
   });
 }

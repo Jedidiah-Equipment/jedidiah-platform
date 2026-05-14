@@ -1,9 +1,9 @@
-import { db } from "@pkg/db";
-import { createUserAccessSummary } from "@pkg/domain";
-import type { AiContext as AiContextSchema, UserAccessSummary } from "@pkg/schema";
-import type { FastifyRequest } from "fastify";
+import { db } from '@pkg/db';
+import { createUserAccessSummary } from '@pkg/domain';
+import type { AiContext as AiContextSchema, UserAccessSummary } from '@pkg/schema';
+import type { FastifyRequest } from 'fastify';
 
-import { type AppSession, getSessionFromHeaders } from "@/auth/session.js";
+import { type AppSession, getSessionFromHeaders } from '@/auth/session.js';
 
 export type AiContext = AiContextSchema<typeof db, AppSession>;
 

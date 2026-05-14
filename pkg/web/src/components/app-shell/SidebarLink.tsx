@@ -1,6 +1,6 @@
-import type React from "react";
+import type React from 'react';
 
-type SidebarLinkProps = React.ComponentProps<"a"> & {
+type SidebarLinkProps = React.ComponentProps<'a'> & {
   label: string;
 };
 

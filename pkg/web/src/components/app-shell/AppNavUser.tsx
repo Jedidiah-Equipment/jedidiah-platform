@@ -1,13 +1,7 @@
-import {
-  BadgeCheckIcon,
-  BellIcon,
-  ChevronsUpDownIcon,
-  CreditCardIcon,
-  LogOutIcon,
-} from "lucide-react";
-import type React from "react";
+import { BadgeCheckIcon, BellIcon, ChevronsUpDownIcon, CreditCardIcon, LogOutIcon } from 'lucide-react';
+import type React from 'react';
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar.js";
+import { Avatar, AvatarFallback } from '@/components/ui/avatar.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,13 +10,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu.js";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar.js";
+} from '@/components/ui/dropdown-menu.js';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar.js';
 
 type AppNavUserProps = {
   user: {
@@ -40,9 +29,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<SidebarMenuButton className="aria-expanded:bg-muted" size="lg" />}
-          >
+          <DropdownMenuTrigger render={<SidebarMenuButton className="aria-expanded:bg-muted" size="lg" />}>
             <Avatar>
               <AvatarFallback>{user.initials}</AvatarFallback>
             </Avatar>
@@ -55,7 +42,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
           <DropdownMenuContent
             align="end"
             className="min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             sideOffset={4}
           >
             <DropdownMenuGroup>

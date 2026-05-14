@@ -1,22 +1,22 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-import { AuthId } from "./auth-id.js";
+import { AuthId } from './auth-id.js';
 
-export const APP_ROLES = ["admin", "product-editor", "product-viewer"] as const;
+export const APP_ROLES = ['admin', 'product-editor', 'product-viewer'] as const;
 
 export type AppRole = z.infer<typeof AppRole>;
 export const AppRole = z.enum(APP_ROLES);
 
 export const APP_PERMISSIONS = [
-  "audit:read",
-  "product:read",
-  "product:create",
-  "product:update",
-  "user:list",
-  "user:create",
-  "user:update",
-  "user:set-role",
-  "user:set-password",
+  'audit:read',
+  'product:read',
+  'product:create',
+  'product:update',
+  'user:list',
+  'user:create',
+  'user:update',
+  'user:set-role',
+  'user:set-password',
 ] as const;
 
 export type AppPermission = z.infer<typeof AppPermission>;
@@ -38,8 +38,11 @@ export const UserSummary = z.object({
   role: AppRole,
 });
 
+export type UserListInput = z.infer<typeof UserListInput>;
+export const UserListInput = z.object({});
+
 export type UserPassword = z.infer<typeof UserPassword>;
-export const UserPassword = z.string().min(8, "Password must be at least 8 characters");
+export const UserPassword = z.string().min(8, 'Password must be at least 8 characters');
 
 export type UserListResult = z.infer<typeof UserListResult>;
 export const UserListResult = z.object({

@@ -1,7 +1,7 @@
-import { TextField, type TextFieldProps } from "./TextField.js";
+import { TextField, type TextFieldProps } from './TextField.js';
 
-export type PasswordFieldProps = Omit<TextFieldProps, "type">;
+export type PasswordFieldProps = Omit<TextFieldProps, 'type'>;
 
-export function PasswordField({ autoComplete = "current-password", ...props }: PasswordFieldProps) {
+export function PasswordField({ autoComplete = 'current-password', ...props }: PasswordFieldProps) {
   return <TextField autoComplete={autoComplete} type="password" {...props} />;
 }

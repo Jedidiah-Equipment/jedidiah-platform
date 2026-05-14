@@ -1,15 +1,15 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-import { AuthId } from "../auth/auth-id.js";
-import { SortDirection } from "../common/sort.js";
-import { UUID } from "../common/uuid.js";
-import { createPagedQueryResult, PagedQueryInput } from "../pagination/pagination.js";
+import { AuthId } from '../auth/auth-id.js';
+import { SortDirection } from '../common/sort.js';
+import { UUID } from '../common/uuid.js';
+import { createPagedQueryResult, PagedQueryInput } from '../pagination/pagination.js';
 
 export type AuditAction = z.infer<typeof AuditAction>;
-export const AuditAction = z.enum(["created", "updated", "deleted"]);
+export const AuditAction = z.enum(['created', 'updated', 'deleted']);
 
 export type AuditEntityType = z.infer<typeof AuditEntityType>;
-export const AuditEntityType = z.enum(["product"]);
+export const AuditEntityType = z.enum(['product']);
 
 export type AuditFieldChange = z.infer<typeof AuditFieldChange>;
 export const AuditFieldChange = z.object({
@@ -23,7 +23,7 @@ export const AuditChanges = z.record(z.string(), AuditFieldChange);
 export type AuditEvent = z.infer<typeof AuditEvent>;
 export const AuditEvent = z.object({
   id: UUID,
-  occurredAt: z.coerce.date(),
+  occurredAt: z.iso.datetime(),
   actorUserId: AuthId.nullable(),
   actorName: z.string().nullable(),
   actorEmail: z.email().nullable(),
@@ -35,15 +35,15 @@ export const AuditEvent = z.object({
 });
 
 export type AuditSortBy = z.infer<typeof AuditSortBy>;
-export const AuditSortBy = z.enum(["occurredAt"]);
+export const AuditSortBy = z.enum(['occurredAt']);
 
 export type AuditFilters = z.infer<typeof AuditFilters>;
 export const AuditFilters = z
   .object({
     actorUserIds: z.array(AuthId).default([]),
     entityTypes: z.array(AuditEntityType).default([]),
-    occurredAtStart: z.coerce.date().optional(),
-    occurredAtEnd: z.coerce.date().optional(),
+    occurredAtStart: z.iso.datetime().optional(),
+    occurredAtEnd: z.iso.datetime().optional(),
   })
   .default({
     actorUserIds: [],
@@ -53,8 +53,8 @@ export const AuditFilters = z
 export type AuditListInput = z.infer<typeof AuditListInput>;
 export const AuditListInput = PagedQueryInput.extend({
   filters: AuditFilters,
-  sortBy: AuditSortBy.default("occurredAt"),
-  sortDirection: SortDirection.default("desc"),
+  sortBy: AuditSortBy.default('occurredAt'),
+  sortDirection: SortDirection.default('desc'),
 });
 
 export type AuditListResult = z.infer<typeof AuditListResult>;

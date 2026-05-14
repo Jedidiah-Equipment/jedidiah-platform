@@ -1,11 +1,11 @@
-import { UserPassword, UserSummary } from "@pkg/schema";
-import type React from "react";
-import type { z } from "zod";
+import { UserPassword, UserSummary } from '@pkg/schema';
+import type React from 'react';
+import type { z } from 'zod';
 
-import { useAppForm } from "@/components/form/index.js";
-import { FieldGroup } from "@/components/ui/field.js";
-import { SubmitFooter } from "./UserFormFooter.js";
-import { RoleField } from "./UserRoleField.js";
+import { useAppForm } from '@/components/form/index.js';
+import { FieldGroup } from '@/components/ui/field.js';
+import { SubmitFooter } from './UserFormFooter.js';
+import { RoleField } from './UserRoleField.js';
 
 export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
 export const UserCreateFormValues = UserSummary.omit({ id: true }).extend({
@@ -19,11 +19,11 @@ type UserCreateFormProps = {
 
 export const UserCreateForm: React.FC<UserCreateFormProps> = ({ isPending, onSubmit }) => {
   const defaultValues: UserCreateFormValues = {
-    email: "",
+    email: '',
     emailVerified: false,
-    name: "",
-    password: "",
-    role: "product-viewer",
+    name: '',
+    password: '',
+    role: 'product-viewer',
   };
   const form = useAppForm({
     defaultValues,
@@ -61,9 +61,7 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({ isPending, onSub
             />
           )}
         </form.AppField>
-        <form.AppField name="emailVerified">
-          {(field) => <field.CheckboxField label="Email verified" />}
-        </form.AppField>
+        <form.AppField name="emailVerified">{(field) => <field.CheckboxField label="Email verified" />}</form.AppField>
         <form.AppField name="password">
           {(field) => <field.PasswordField autoComplete="new-password" label="Password" />}
         </form.AppField>

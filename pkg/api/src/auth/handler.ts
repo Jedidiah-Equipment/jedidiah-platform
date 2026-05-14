@@ -1,6 +1,6 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
-import { auth } from "./auth.js";
+import { auth } from './auth.js';
 
 function createHeaders(request: FastifyRequest): Headers {
   const headers = new Headers();
@@ -19,11 +19,11 @@ function createHeaders(request: FastifyRequest): Headers {
 }
 
 function createBody(request: FastifyRequest): string | undefined {
-  if (request.method === "GET" || request.method === "HEAD" || request.body === undefined) {
+  if (request.method === 'GET' || request.method === 'HEAD' || request.body === undefined) {
     return undefined;
   }
 
-  if (typeof request.body === "string") {
+  if (typeof request.body === 'string') {
     return request.body;
   }
 
@@ -32,7 +32,7 @@ function createBody(request: FastifyRequest): string | undefined {
 
 async function handleAuthRequest(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   try {
-    const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+    const url = new URL(request.url, `http://${request.headers.host ?? 'localhost'}`);
     const body = createBody(request);
     const response = await auth.handler(
       new Request(url.toString(), {
@@ -48,18 +48,18 @@ async function handleAuthRequest(request: FastifyRequest, reply: FastifyReply): 
     });
     reply.send(response.body ? await response.text() : null);
   } catch (error) {
-    request.log.error({ error }, "Authentication request failed");
+    request.log.error({ error }, 'Authentication request failed');
     reply.status(500).send({
-      error: "Internal authentication error",
-      code: "AUTH_FAILURE",
+      error: 'Internal authentication error',
+      code: 'AUTH_FAILURE',
     });
   }
 }
 
 export async function registerAuthHandler(app: FastifyInstance): Promise<void> {
   app.route({
-    method: ["GET", "POST"],
-    url: "/api/auth/*",
+    method: ['GET', 'POST'],
+    url: '/api/auth/*',
     handler: handleAuthRequest,
   });
 }

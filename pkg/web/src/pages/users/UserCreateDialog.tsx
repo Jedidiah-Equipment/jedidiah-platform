@@ -1,23 +1,17 @@
-import { hasPermission } from "@pkg/domain";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
-import type React from "react";
-import { useState } from "react";
-import { toast } from "sonner";
+import { hasPermission } from '@pkg/domain';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { PlusIcon } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
-import { Button } from "@/components/ui/button.js";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog.js";
-import { useAccess } from "@/hooks/use-access.js";
-import { authClient } from "@/lib/auth-client.js";
-import { useTRPC } from "@/lib/trpc.js";
-import { UserCreateForm, type UserCreateFormValues } from "./components/UserCreateForm.js";
-import { unwrapAuthResult } from "./user-admin-client.js";
+import { Button } from '@/components/ui/button.js';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import { useAccess } from '@/hooks/use-access.js';
+import { authClient } from '@/lib/auth-client.js';
+import { useTRPC } from '@/lib/trpc.js';
+import { UserCreateForm, type UserCreateFormValues } from './components/UserCreateForm.js';
+import { unwrapAuthResult } from './user-admin-client.js';
 
 export const UserCreateDialog: React.FC = () => {
   const trpc = useTRPC();
@@ -42,14 +36,14 @@ export const UserCreateDialog: React.FC = () => {
         queryClient.invalidateQueries(trpc.auth.access.queryFilter()),
       ]);
       setIsOpen(false);
-      toast.success("User created");
+      toast.success('User created');
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
 
-  if (!hasPermission(accessQuery.data, "user:create")) {
+  if (!hasPermission(accessQuery.data, 'user:create')) {
     return null;
   }
 

@@ -1,22 +1,17 @@
-import type { Product, ProductListInput } from "@pkg/schema";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import {
-  type ColumnDef,
-  type ColumnFiltersState,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import { PencilIcon } from "lucide-react";
-import type React from "react";
-import { useMemo } from "react";
-import { useShallow } from "zustand/react/shallow";
-import { DataTable } from "@/components/data-table/DataTable.js";
-import { useConstrainedTableState } from "@/components/data-table/hooks/use-constrained-table-state.js";
-import { usePagedQueryResult } from "@/components/data-table/hooks/use-paged-query-result.js";
-import { createPersistedDataTableStore } from "@/components/data-table/store.js";
-import { getPrimarySort, type SortOptions } from "@/components/data-table/table-state.js";
-import { Button } from "@/components/ui/button.js";
-import { useTRPC } from "@/lib/trpc.js";
+import type { Product, ProductListInput } from '@pkg/schema';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { PencilIcon } from 'lucide-react';
+import type React from 'react';
+import { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { DataTable } from '@/components/data-table/DataTable.js';
+import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
+import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
+import { createPersistedDataTableStore } from '@/components/data-table/store.js';
+import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
+import { Button } from '@/components/ui/button.js';
+import { useTRPC } from '@/lib/trpc.js';
 
 type ProductTableProps = {
   onEditProduct: ((product: Product) => void) | undefined;
@@ -27,18 +22,18 @@ export const useProductTableStore = createPersistedDataTableStore({
   initialState: {
     sorting: [
       {
-        id: "name",
+        id: 'name',
         desc: false,
       },
     ],
   },
-  persistName: "products-table",
+  persistName: 'products-table',
 });
 
 const productSortOptions: SortOptions<ProductListInput> = {
-  allowedSortIds: ["basePrice", "createdAt", "id", "modelCode", "name"],
+  allowedSortIds: ['basePrice', 'createdAt', 'id', 'modelCode', 'name'],
   defaultSort: {
-    id: "name",
+    id: 'name',
   },
 };
 
@@ -88,42 +83,42 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
   const columns = useMemo<ColumnDef<Product>[]>(() => {
     const tableColumns: ColumnDef<Product>[] = [
       {
-        accessorKey: "name",
+        accessorKey: 'name',
         cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
         enableColumnFilter: true,
         enableSorting: true,
-        header: "Name",
+        header: 'Name',
       },
       {
-        accessorKey: "modelCode",
+        accessorKey: 'modelCode',
         cell: ({ row }) => <span className="font-mono text-sm">{row.original.modelCode}</span>,
         enableColumnFilter: true,
         enableSorting: true,
-        header: "Model code",
+        header: 'Model code',
       },
       {
-        accessorKey: "basePrice",
+        accessorKey: 'basePrice',
         cell: ({ row }) => formatProductPrice(row.original),
         enableColumnFilter: false,
         enableSorting: true,
-        header: "Base price",
+        header: 'Base price',
       },
       {
-        accessorKey: "createdAt",
+        accessorKey: 'createdAt',
         cell: ({ row }) => formatProductDate(row.original.createdAt),
         enableColumnFilter: false,
         enableSorting: true,
-        header: "Created",
+        header: 'Created',
       },
       {
-        accessorKey: "updatedAt",
+        accessorKey: 'updatedAt',
         cell: ({ row }) => formatProductDate(row.original.updatedAt),
         enableColumnFilter: false,
         enableSorting: false,
-        header: "Updated",
+        header: 'Updated',
       },
       {
-        accessorKey: "id",
+        accessorKey: 'id',
         cell: ({ row }) => (
           <span className="block max-w-[240px] truncate font-mono text-xs text-muted-foreground">
             {row.original.id}
@@ -131,13 +126,13 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
         ),
         enableColumnFilter: true,
         enableSorting: true,
-        header: "ID",
+        header: 'ID',
       },
     ];
 
     if (showEditActions && onEditProduct) {
       tableColumns.push({
-        id: "actions",
+        id: 'actions',
         cell: ({ row }) => (
           <div className="text-right">
             <Button
@@ -154,8 +149,8 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
         enableSorting: false,
         header: () => <span className="sr-only">Actions</span>,
         meta: {
-          cellClassName: "text-right",
-          headerClassName: "w-20 text-right",
+          cellClassName: 'text-right',
+          headerClassName: 'w-20 text-right',
         },
       });
     }
@@ -193,7 +188,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
       isLoading={isLoading}
       table={table}
       total={total}
-      totalLabel={(value) => `${value} ${value === 1 ? "product" : "products"}`}
+      totalLabel={(value) => `${value} ${value === 1 ? 'product' : 'products'}`}
     />
   );
 };
@@ -213,38 +208,35 @@ export function useProductListInput(): ProductListInput {
     () =>
       ({
         columnFilters: {
-          id: getColumnFilterValue(columnFilters, "id"),
-          modelCode: getColumnFilterValue(columnFilters, "modelCode"),
-          name: getColumnFilterValue(columnFilters, "name"),
+          id: getColumnFilterValue(columnFilters, 'id'),
+          modelCode: getColumnFilterValue(columnFilters, 'modelCode'),
+          name: getColumnFilterValue(columnFilters, 'name'),
         },
         page: pagination.pageIndex + 1,
         pageSize: pagination.pageSize,
         search: globalFilter,
         sortBy: sort.id,
-        sortDirection: sort.desc ? "desc" : "asc",
+        sortDirection: sort.desc ? 'desc' : 'asc',
       }) satisfies ProductListInput,
     [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id],
   );
 }
 
-function getColumnFilterValue(
-  columnFilters: ColumnFiltersState,
-  id: "id" | "modelCode" | "name",
-): string | undefined {
+function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'id' | 'modelCode' | 'name'): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
-  return typeof value === "string" && value ? value : undefined;
+  return typeof value === 'string' && value ? value : undefined;
 }
 
 function formatProductPrice(product: Product): string {
-  return new Intl.NumberFormat("en-ZA", {
+  return new Intl.NumberFormat('en-ZA', {
     currency: product.currencyCode,
-    style: "currency",
+    style: 'currency',
   }).format(product.basePrice);
 }
 
-function formatProductDate(value: Date): string {
-  return new Intl.DateTimeFormat("en-ZA", {
-    dateStyle: "medium",
-  }).format(value);
+function formatProductDate(value: string): string {
+  return new Intl.DateTimeFormat('en-ZA', {
+    dateStyle: 'medium',
+  }).format(new Date(value));
 }

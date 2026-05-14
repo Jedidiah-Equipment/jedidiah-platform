@@ -1,4 +1,4 @@
-import type { UserAccessSummary } from "../auth/authorization.js";
+import type { UserAccessSummary } from '../auth/authorization.js';
 
 export type AiContext<TDb = unknown, TSession = unknown> = {
   access: UserAccessSummary | null;

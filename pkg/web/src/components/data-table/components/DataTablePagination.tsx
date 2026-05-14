@@ -1,20 +1,13 @@
-import type { Table } from "@tanstack/react-table";
-import type React from "react";
+import type { Table } from '@tanstack/react-table';
+import type React from 'react';
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination.js";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.js";
+} from '@/components/ui/pagination.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 
 type DataTablePaginationProps<TData> = {
   pageSizeOptions: number[];
@@ -64,16 +57,10 @@ export function DataTablePagination<TData>({
           <Pagination className="w-auto">
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious
-                  disabled={!table.getCanPreviousPage()}
-                  onClick={() => table.previousPage()}
-                />
+                <PaginationPrevious disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()} />
               </PaginationItem>
               <PaginationItem>
-                <PaginationNext
-                  disabled={!table.getCanNextPage()}
-                  onClick={() => table.nextPage()}
-                />
+                <PaginationNext disabled={!table.getCanNextPage()} onClick={() => table.nextPage()} />
               </PaginationItem>
             </PaginationContent>
           </Pagination>

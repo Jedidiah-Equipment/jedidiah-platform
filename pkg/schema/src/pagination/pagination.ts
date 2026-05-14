@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export type PagedQueryInput = z.infer<typeof PagedQueryInput>;
 export const PagedQueryInput = z.object({

@@ -1,18 +1,13 @@
-import * as React from "react";
+import * as React from 'react';
 
-import { Field, FieldError, FieldLabel } from "@/components/ui/field.js";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group.js";
-import { getFieldErrors } from "./field-errors.js";
-import { useFieldContext } from "./form-context.js";
+import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
+import { getFieldErrors } from './field-errors.js';
+import { useFieldContext } from './form-context.js';
 
 type CurrencyFieldInputProps = Omit<
   React.ComponentProps<typeof InputGroupInput>,
-  "aria-invalid" | "id" | "inputMode" | "name" | "onBlur" | "onChange" | "type" | "value"
+  'aria-invalid' | 'id' | 'inputMode' | 'name' | 'onBlur' | 'onChange' | 'type' | 'value'
 >;
 
 export type CurrencyFieldProps = {
@@ -21,19 +16,12 @@ export type CurrencyFieldProps = {
   locale?: string;
 } & CurrencyFieldInputProps;
 
-export function CurrencyField({
-  currencyCode = "ZAR",
-  label,
-  locale = "en-ZA",
-  ...inputProps
-}: CurrencyFieldProps) {
+export function CurrencyField({ currencyCode = 'ZAR', label, locale = 'en-ZA', ...inputProps }: CurrencyFieldProps) {
   const field = useFieldContext<number>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
 
-  const [displayValue, setDisplayValue] = React.useState(() =>
-    formatCurrencyValue(field.state.value, locale),
-  );
+  const [displayValue, setDisplayValue] = React.useState(() => formatCurrencyValue(field.state.value, locale));
 
   // Sync display when the field value changes externally (e.g. form reset)
   const [prevFieldValue, setPrevFieldValue] = React.useState(field.state.value);
@@ -58,7 +46,7 @@ export function CurrencyField({
           onChange={(event) => {
             const text = event.target.value;
             setDisplayValue(text);
-            field.handleChange(text.trim() === "" ? NaN : parseFloat(text));
+            field.handleChange(text.trim() === '' ? NaN : parseFloat(text));
           }}
           type="text"
           value={displayValue}
@@ -74,7 +62,7 @@ export function CurrencyField({
 }
 
 function formatCurrencyValue(value: number, locale: string): string {
-  if (!Number.isFinite(value)) return "";
+  if (!Number.isFinite(value)) return '';
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,

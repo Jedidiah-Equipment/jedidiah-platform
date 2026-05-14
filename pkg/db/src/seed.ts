@@ -1,11 +1,11 @@
-import { pathToFileURL } from "node:url";
-import { hashPassword } from "better-auth/crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { pathToFileURL } from 'node:url';
+import { hashPassword } from 'better-auth/crypto';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
-import type { Database } from "./database-client.js";
-import { auditEvents } from "./schema/audit.js";
-import { account, user } from "./schema/auth.js";
-import { products } from "./schema/product.js";
+import type { Database } from './database-client.js';
+import { auditEvents } from './schema/audit.js';
+import { account, user } from './schema/auth.js';
+import { products } from './schema/product.js';
 
 const seedProductCount = 10;
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
@@ -13,41 +13,41 @@ const seedProductMinAgeDays = 7;
 const seedProductAgeDayRange = 22;
 
 const equipmentFamilies = [
-  "Wheel Loader",
-  "Excavator",
-  "Skid Steer",
-  "Backhoe Loader",
-  "Telehandler",
-  "Motor Grader",
-  "Dozer",
-  "Dump Truck",
-  "Compactor",
-  "Forklift",
+  'Wheel Loader',
+  'Excavator',
+  'Skid Steer',
+  'Backhoe Loader',
+  'Telehandler',
+  'Motor Grader',
+  'Dozer',
+  'Dump Truck',
+  'Compactor',
+  'Forklift',
 ] as const;
 
-const equipmentSeries = ["Atlas", "Summit", "Vertex", "Forge", "Apex"] as const;
+const equipmentSeries = ['Atlas', 'Summit', 'Vertex', 'Forge', 'Apex'] as const;
 
 const seedUsers = [
   {
-    id: "seed-admin-user",
-    name: "Seed Admin",
-    email: "admin@seed.com",
-    password: "12345678",
-    role: "admin",
+    id: 'seed-admin-user',
+    name: 'Seed Admin',
+    email: 'admin@seed.com',
+    password: '12345678',
+    role: 'admin',
   },
   {
-    id: "seed-product-editor-user",
-    name: "Seed Product Editor",
-    email: "pe@seed.com",
-    password: "12345678",
-    role: "product-editor",
+    id: 'seed-product-editor-user',
+    name: 'Seed Product Editor',
+    email: 'pe@seed.com',
+    password: '12345678',
+    role: 'product-editor',
   },
   {
-    id: "seed-product-viewer-user",
-    name: "Seed Product Viewer",
-    email: "pv@seed.com",
-    password: "12345678",
-    role: "product-viewer",
+    id: 'seed-product-viewer-user',
+    name: 'Seed Product Viewer',
+    email: 'pv@seed.com',
+    password: '12345678',
+    role: 'product-viewer',
   },
 ] as const;
 
@@ -74,13 +74,13 @@ type SeedTimelineProduct = SeedProduct & {
 
 type SeedAuditEvent = Omit<
   typeof auditEvents.$inferInsert,
-  "action" | "changes" | "entityId" | "entityType" | "id" | "occurredAt" | "summary"
+  'action' | 'changes' | 'entityId' | 'entityType' | 'id' | 'occurredAt' | 'summary'
 > & {
   id: string;
-  action: "created" | "updated";
+  action: 'created' | 'updated';
   changes: SeedProductAuditChanges | null;
   entityId: string;
-  entityType: "product";
+  entityType: 'product';
   occurredAt: Date;
   summary: string;
 };
@@ -103,15 +103,15 @@ export function createSeedProducts(count = seedProductCount): SeedProduct[] {
     const sequence = index + 1;
 
     return {
-      id: createSeedUuid("8000", sequence),
+      id: createSeedUuid('8000', sequence),
       basePrice: 125_000 + sequence * 18_750,
-      currencyCode: "ZAR",
+      currencyCode: 'ZAR',
       description: `${series} ${family.toLowerCase()} configured for local demo inventory.`,
       modelCode: `JED-${family
-        .split(" ")
+        .split(' ')
         .map((part) => part[0])
-        .join("")}-${String(sequence).padStart(3, "0")}`,
-      name: `${series} ${family} ${String(sequence).padStart(3, "0")}`,
+        .join('')}-${String(sequence).padStart(3, '0')}`,
+      name: `${series} ${family} ${String(sequence).padStart(3, '0')}`,
     };
   });
 }
@@ -122,11 +122,11 @@ export function createSeedProductAuditTimeline({
   products: seedProducts,
 }: CreateSeedProductAuditTimelineInput): SeedProductAuditTimeline {
   if (actorUserIds.length === 0) {
-    throw new Error("At least one actor user is required to seed product audits");
+    throw new Error('At least one actor user is required to seed product audits');
   }
 
   const productsWithTimeline: SeedTimelineProduct[] = [];
-  const auditEventsWithoutIds: Omit<SeedAuditEvent, "id">[] = [];
+  const auditEventsWithoutIds: Omit<SeedAuditEvent, 'id'>[] = [];
 
   seedProducts.forEach((seedProduct, productIndex) => {
     const createdAt = createProductCreatedAt(now, productIndex);
@@ -139,11 +139,11 @@ export function createSeedProductAuditTimeline({
     let updateOrdinal = 0;
 
     auditEventsWithoutIds.push({
-      action: "created",
+      action: 'created',
       actorUserId,
       changes: null,
       entityId: seedProduct.id,
-      entityType: "product",
+      entityType: 'product',
       occurredAt: createdAt,
       summary: `Created product "${seedProduct.name}"`,
     });
@@ -179,11 +179,11 @@ export function createSeedProductAuditTimeline({
         };
 
         auditEventsWithoutIds.push({
-          action: "updated",
+          action: 'updated',
           actorUserId,
           changes,
           entityId: seedProduct.id,
-          entityType: "product",
+          entityType: 'product',
           occurredAt,
           summary: `Updated product "${seedProduct.name}"`,
         });
@@ -207,7 +207,7 @@ export function createSeedProductAuditTimeline({
     })
     .map((event, index) => ({
       ...event,
-      id: createSeedUuid("8001", index + 1),
+      id: createSeedUuid('8001', index + 1),
     }));
 
   return {
@@ -217,16 +217,16 @@ export function createSeedProductAuditTimeline({
 }
 
 export async function seedDatabase(database?: Database): Promise<void> {
-  const activeDb = database ?? (await import("./client.js")).db;
+  const activeDb = database ?? (await import('./client.js')).db;
   const now = new Date();
   const seedProducts = createSeedProducts();
-  const seedUserEmails = seedUsers.map((seedUser) => seedUser.email).join(", ");
+  const seedUserEmails = seedUsers.map((seedUser) => seedUser.email).join(', ');
   const productEditorUserIds = seedUsers
-    .filter((seedUser) => seedUser.role === "product-editor")
+    .filter((seedUser) => seedUser.role === 'product-editor')
     .map((seedUser) => seedUser.id);
 
   if (productEditorUserIds.length === 0) {
-    throw new Error("At least one product-editor seed user is required to seed product audits");
+    throw new Error('At least one product-editor seed user is required to seed product audits');
   }
 
   const seedProductTimeline = createSeedProductAuditTimeline({
@@ -270,7 +270,7 @@ export async function seedDatabase(database?: Database): Promise<void> {
           id: `${seedUser.id}-credential-account`,
           userId: seedUser.id,
           accountId: seedUser.id,
-          providerId: "credential",
+          providerId: 'credential',
           password: await hashPassword(seedUser.password),
           createdAt: now,
           updatedAt: now,
@@ -312,9 +312,7 @@ export async function seedDatabase(database?: Database): Promise<void> {
     if (seedProductIds.length > 0) {
       await tx
         .delete(auditEvents)
-        .where(
-          and(eq(auditEvents.entityType, "product"), inArray(auditEvents.entityId, seedProductIds)),
-        );
+        .where(and(eq(auditEvents.entityType, 'product'), inArray(auditEvents.entityId, seedProductIds)));
     }
 
     if (seedProductTimeline.auditEvents.length > 0) {
@@ -360,19 +358,9 @@ function createProductUpdateOccurredAt({
   updatesForDay: number;
 }): Date {
   if (isSameUtcDate(updateDate, now)) {
-    const startOfToday = Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0,
-      0,
-      0,
-      0,
-    );
+    const startOfToday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0);
     const availableMilliseconds = Math.max(updatesForDay + 1, now.getTime() - startOfToday);
-    const offsetMilliseconds = Math.floor(
-      (availableMilliseconds * (updateIndex + 1)) / (updatesForDay + 1),
-    );
+    const offsetMilliseconds = Math.floor((availableMilliseconds * (updateIndex + 1)) / (updatesForDay + 1));
 
     return new Date(startOfToday + offsetMilliseconds);
   }
@@ -406,8 +394,7 @@ function applySeedProductUpdate({
   changes: SeedProductAuditChanges;
   product: SeedTimelineProduct;
 } {
-  const nextBasePrice =
-    product.basePrice + 175 + productIndex * 45 + dayIndex * 12 + updateIndex * 25;
+  const nextBasePrice = product.basePrice + 175 + productIndex * 45 + dayIndex * 12 + updateIndex * 25;
   const nextProduct: SeedTimelineProduct = {
     ...product,
     basePrice: nextBasePrice,
@@ -436,7 +423,7 @@ function applySeedProductUpdate({
 }
 
 function getBaseSeedDescription(product: SeedProduct): string {
-  return product.description.split(" Price review ")[0] ?? product.description;
+  return product.description.split(' Price review ')[0] ?? product.description;
 }
 
 function addUtcDays(date: Date, days: number): Date {
@@ -455,11 +442,11 @@ function isSameUtcDate(left: Date, right: Date): boolean {
 }
 
 function createSeedUuid(group: string, sequence: number): string {
-  return `00000000-0000-4000-${group}-${sequence.toString(16).padStart(12, "0")}`;
+  return `00000000-0000-4000-${group}-${sequence.toString(16).padStart(12, '0')}`;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  const { closeDatabaseConnection } = await import("./client.js");
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  const { closeDatabaseConnection } = await import('./client.js');
 
   try {
     await seedDatabase();

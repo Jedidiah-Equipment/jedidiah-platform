@@ -1,12 +1,7 @@
-import type { PaginationState, SortingState } from "@tanstack/react-table";
-import { useEffect, useMemo } from "react";
+import type { PaginationState, SortingState } from '@tanstack/react-table';
+import { useEffect, useMemo } from 'react';
 
-import {
-  constrainPagination,
-  constrainSorting,
-  getPageCount,
-  type SortOptions,
-} from "../table-state.js";
+import { constrainPagination, constrainSorting, getPageCount, type SortOptions } from '../table-state.js';
 
 type UseConstrainedTableStateOptions<TSortSource extends string | { sortBy: string }> = {
   pagination: PaginationState;
@@ -30,14 +25,8 @@ export function useConstrainedTableState<TSortSource extends string | { sortBy: 
   total,
 }: UseConstrainedTableStateOptions<TSortSource>) {
   const pageCount = getPageCount(total, pagination.pageSize);
-  const constrainedPagination = useMemo(
-    () => constrainPagination(pagination, pageCount),
-    [pageCount, pagination],
-  );
-  const constrainedSorting = useMemo(
-    () => constrainSorting(sorting, sortOptions),
-    [sorting, sortOptions],
-  );
+  const constrainedPagination = useMemo(() => constrainPagination(pagination, pageCount), [pageCount, pagination]);
+  const constrainedSorting = useMemo(() => constrainSorting(sorting, sortOptions), [sorting, sortOptions]);
 
   useConstrainedPageIndex({
     pageCount,
@@ -52,11 +41,7 @@ export function useConstrainedTableState<TSortSource extends string | { sortBy: 
   };
 }
 
-export function useConstrainedPageIndex({
-  pageCount,
-  pagination,
-  setPageIndex,
-}: UseConstrainedPageIndexOptions) {
+export function useConstrainedPageIndex({ pageCount, pagination, setPageIndex }: UseConstrainedPageIndexOptions) {
   useEffect(() => {
     if (!setPageIndex) {
       return;

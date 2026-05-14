@@ -1,77 +1,77 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-import { createAuditChanges, createAuditSummary, productAuditDescriptor } from "./audit-service.js";
+import { createAuditChanges, createAuditSummary, productAuditDescriptor } from './audit-service.js';
 
-describe("createAuditChanges", () => {
-  it("returns changed audited fields only", () => {
+describe('createAuditChanges', () => {
+  it('returns changed audited fields only', () => {
     expect(
       createAuditChanges(
-        { id: "product-id", name: "Wheel Loader", ignored: "old" },
-        { id: "product-id", name: "Wheel Loader XL", ignored: "new" },
+        { id: 'product-id', name: 'Wheel Loader', ignored: 'old' },
+        { id: 'product-id', name: 'Wheel Loader XL', ignored: 'new' },
         productAuditDescriptor.fields,
       ),
     ).toEqual({
       name: {
-        from: "Wheel Loader",
-        to: "Wheel Loader XL",
+        from: 'Wheel Loader',
+        to: 'Wheel Loader XL',
       },
     });
   });
 
-  it("returns null when audited values are unchanged", () => {
+  it('returns null when audited values are unchanged', () => {
     expect(
       createAuditChanges(
-        { id: "product-id", name: "Wheel Loader" },
-        { id: "product-id", name: "Wheel Loader" },
+        { id: 'product-id', name: 'Wheel Loader' },
+        { id: 'product-id', name: 'Wheel Loader' },
         productAuditDescriptor.fields,
       ),
     ).toBeNull();
   });
 });
 
-describe("createAuditSummary", () => {
-  it("summarizes created entities", () => {
+describe('createAuditSummary', () => {
+  it('summarizes created entities', () => {
     expect(
       createAuditSummary({
-        action: "created",
-        after: { name: "Wheel Loader" },
+        action: 'created',
+        after: { name: 'Wheel Loader' },
         before: null,
         changes: null,
-        entityType: "product",
+        entityType: 'product',
       }),
     ).toBe('Created product "Wheel Loader"');
   });
 
-  it("summarizes primary label updates as renames", () => {
+  it('summarizes primary label updates as renames', () => {
     expect(
       createAuditSummary({
-        action: "updated",
-        after: { name: "Wheel Loader XL" },
-        before: { name: "Wheel Loader" },
+        action: 'updated',
+        after: { name: 'Wheel Loader XL' },
+        before: { name: 'Wheel Loader' },
         changes: {
           name: {
-            from: "Wheel Loader",
-            to: "Wheel Loader XL",
+            from: 'Wheel Loader',
+            to: 'Wheel Loader XL',
           },
         },
-        entityType: "product",
+        entityType: 'product',
       }),
     ).toBe('Renamed product "Wheel Loader" to "Wheel Loader XL"');
   });
 
-  it("summarizes non-primary updates generically", () => {
+  it('summarizes non-primary updates generically', () => {
     expect(
       createAuditSummary({
-        action: "updated",
-        after: { name: "Wheel Loader", status: "active" },
-        before: { name: "Wheel Loader", status: "draft" },
+        action: 'updated',
+        after: { name: 'Wheel Loader', status: 'active' },
+        before: { name: 'Wheel Loader', status: 'draft' },
         changes: {
           status: {
-            from: "draft",
-            to: "active",
+            from: 'draft',
+            to: 'active',
           },
         },
-        entityType: "product",
+        entityType: 'product',
       }),
     ).toBe('Updated product "Wheel Loader"');
   });

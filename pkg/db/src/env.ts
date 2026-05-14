@@ -1,26 +1,26 @@
-import { NodeEnv } from "@pkg/schema";
-import dotenv from "dotenv";
-import { z } from "zod";
+import { NodeEnv } from '@pkg/schema';
+import dotenv from 'dotenv';
+import { z } from 'zod';
 
 dotenv.config({ quiet: true });
 
-if (process.env.APP_ENV === "development") {
-  dotenv.config({ path: ".env.dev", override: true, quiet: true });
+if (process.env.APP_ENV === 'development') {
+  dotenv.config({ path: '.env.dev', override: true, quiet: true });
 }
 
 export type DatabaseConfig = z.infer<typeof DatabaseConfig>;
 export const DatabaseConfig = z
   .object({
-    NODE_ENV: NodeEnv.default("development"),
+    NODE_ENV: NodeEnv.default('development'),
     DATABASE_URL: z.url(),
     TEST_DATABASE_URL: z.url().optional(),
   })
   .superRefine((env, context) => {
-    if (env.NODE_ENV === "test" && !env.TEST_DATABASE_URL) {
+    if (env.NODE_ENV === 'test' && !env.TEST_DATABASE_URL) {
       context.addIssue({
-        code: "custom",
-        path: ["TEST_DATABASE_URL"],
-        message: "TEST_DATABASE_URL is required when NODE_ENV=test",
+        code: 'custom',
+        path: ['TEST_DATABASE_URL'],
+        message: 'TEST_DATABASE_URL is required when NODE_ENV=test',
       });
     }
   });
@@ -32,7 +32,7 @@ export function getDatabaseConfig(env: NodeJS.ProcessEnv = process.env): Databas
 export function getDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
   const config = getDatabaseConfig(env);
 
-  if (config.NODE_ENV === "test") {
+  if (config.NODE_ENV === 'test') {
     return config.TEST_DATABASE_URL ?? config.DATABASE_URL;
   }
 

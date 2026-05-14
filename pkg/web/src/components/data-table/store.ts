@@ -4,9 +4,9 @@ import {
   type PaginationState,
   type SortingState,
   type Updater,
-} from "@tanstack/react-table";
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+} from '@tanstack/react-table';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type DataTableState = {
   columnFilters: ColumnFiltersState;
@@ -31,7 +31,7 @@ type CreatePersistedDataTableStoreOptions = {
 
 const defaultState: DataTableState = {
   columnFilters: [],
-  globalFilter: "",
+  globalFilter: '',
   pagination: {
     pageIndex: 0,
     pageSize: 10,
@@ -39,10 +39,7 @@ const defaultState: DataTableState = {
   sorting: [],
 };
 
-export function createPersistedDataTableStore({
-  initialState,
-  persistName,
-}: CreatePersistedDataTableStoreOptions) {
+export function createPersistedDataTableStore({ initialState, persistName }: CreatePersistedDataTableStoreOptions) {
   const resolvedInitialState: DataTableState = {
     ...defaultState,
     ...initialState,

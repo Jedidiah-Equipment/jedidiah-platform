@@ -1,15 +1,21 @@
-import type { ChatEvent, ChatStreamMessage } from "@pkg/schema";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { ChatEvent, ChatStreamMessage } from '@pkg/schema';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { streamChatEvents } from "./sse-client.js";
+import { streamChatEvents } from './sse-client.js';
 
-export type AssistantChatStatus = "idle" | "streaming" | "error";
+export type AssistantChatStatus = 'idle' | 'streaming' | 'error';
+
+export type AssistantToolCall = {
+  id: string;
+  name: string;
+  args: unknown;
+};
 
 export type AssistantChatEntry = {
   id: string;
-  role: "assistant" | "user";
+  role: 'assistant' | 'user';
   content: string;
-  toolCallCount?: number;
+  toolCalls?: AssistantToolCall[];
 };
 
 export type AssistantChatState = {
@@ -22,7 +28,7 @@ export type AssistantChatState = {
 
 export function useAssistantChat(): AssistantChatState {
   const [messages, setMessages] = useState<AssistantChatEntry[]>([]);
-  const [status, setStatus] = useState<AssistantChatStatus>("idle");
+  const [status, setStatus] = useState<AssistantChatStatus>('idle');
   const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -34,40 +40,37 @@ export function useAssistantChat(): AssistantChatState {
     setStatus(nextStatus);
   }, []);
 
-  const updateMessages = useCallback(
-    (updater: (current: AssistantChatEntry[]) => AssistantChatEntry[]) => {
-      setMessages((current) => {
-        const nextMessages = updater(current);
-        messagesRef.current = nextMessages;
+  const updateMessages = useCallback((updater: (current: AssistantChatEntry[]) => AssistantChatEntry[]) => {
+    setMessages((current) => {
+      const nextMessages = updater(current);
+      messagesRef.current = nextMessages;
 
-        return nextMessages;
-      });
-    },
-    [],
-  );
+      return nextMessages;
+    });
+  }, []);
 
   const stop = useCallback(() => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
-    setChatStatus("idle");
+    setChatStatus('idle');
   }, [setChatStatus]);
 
   const send = useCallback(
     async (content: string) => {
       const trimmedContent = content.trim();
 
-      if (!trimmedContent || statusRef.current === "streaming") {
+      if (!trimmedContent || statusRef.current === 'streaming') {
         return;
       }
 
-      const userMessage = createChatMessage("user", trimmedContent);
-      const assistantMessage = createChatMessage("assistant", "");
+      const userMessage = createChatMessage('user', trimmedContent);
+      const assistantMessage = createChatMessage('assistant', '');
       const streamMessages = getStreamMessages([...messagesRef.current, userMessage]);
       const abortController = new AbortController();
 
       abortControllerRef.current = abortController;
       setError(null);
-      setChatStatus("streaming");
+      setChatStatus('streaming');
       updateMessages((current) => [...current, userMessage, assistantMessage]);
 
       try {
@@ -82,16 +85,16 @@ export function useAssistantChat(): AssistantChatState {
           });
         }
 
-        setChatStatus("idle");
+        setChatStatus('idle');
       } catch (caughtError) {
         if (isAbortError(caughtError)) {
-          setChatStatus("idle");
+          setChatStatus('idle');
           return;
         }
 
         const message = getErrorMessage(caughtError);
         setError(message);
-        setChatStatus("error");
+        setChatStatus('error');
       } finally {
         if (abortControllerRef.current === abortController) {
           abortControllerRef.current = null;
@@ -126,32 +129,38 @@ function handleChatEvent({
   updateMessages: (updater: (current: AssistantChatEntry[]) => AssistantChatEntry[]) => void;
 }): void {
   switch (event.type) {
-    case "token":
+    case 'token':
       updateMessages((current) =>
         current.map((message) =>
-          message.id === assistantMessageId && message.role === "assistant"
+          message.id === assistantMessageId && message.role === 'assistant'
             ? { ...message, content: message.content + event.delta }
             : message,
         ),
       );
       return;
-    case "tool_call":
+    case 'tool_call':
       updateMessages((current) =>
         current.map((message) =>
-          message.id === assistantMessageId && message.role === "assistant"
-            ? { ...message, toolCallCount: (message.toolCallCount ?? 0) + 1 }
+          message.id === assistantMessageId && message.role === 'assistant'
+            ? {
+                ...message,
+                toolCalls: [
+                  ...(message.toolCalls ?? []),
+                  { args: event.args, id: crypto.randomUUID(), name: event.name },
+                ],
+              }
             : message,
         ),
       );
       return;
-    case "error":
+    case 'error':
       throw new Error(event.message);
-    case "done":
+    case 'done':
       return;
   }
 }
 
-function createChatMessage(role: "assistant" | "user", content: string): AssistantChatEntry {
+function createChatMessage(role: 'assistant' | 'user', content: string): AssistantChatEntry {
   return {
     content,
     id: crypto.randomUUID(),
@@ -175,9 +184,9 @@ function getStreamMessages(messages: AssistantChatEntry[]): ChatStreamMessage[] 
 }
 
 function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
+  return error instanceof DOMException && error.name === 'AbortError';
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Assistant stream failed";
+  return error instanceof Error ? error.message : 'Assistant stream failed';
 }

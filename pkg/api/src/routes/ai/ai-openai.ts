@@ -1,6 +1,6 @@
-import OpenAI from "openai";
+import OpenAI from 'openai';
 
-import { getApiConfig } from "@/env.js";
+import { getApiConfig } from '@/env.js';
 
 export type AiOpenAIClient = OpenAI;
 

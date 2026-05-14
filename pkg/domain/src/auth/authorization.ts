@@ -1,16 +1,11 @@
-import {
-  type AppPermission,
-  type AppRole,
-  AppRole as AppRoleSchema,
-  type UserAccessSummary,
-} from "@pkg/schema";
+import { type AppPermission, type AppRole, AppRole as AppRoleSchema, type UserAccessSummary } from '@pkg/schema';
 
-export const DEFAULT_APP_ROLE = "product-viewer" satisfies AppRole;
+export const DEFAULT_APP_ROLE = 'product-viewer' satisfies AppRole;
 
 export const authorizationStatement = {
-  audit: ["read"],
-  product: ["read", "create", "update"],
-  user: ["list", "create", "update", "set-role", "set-password"],
+  audit: ['read'],
+  product: ['read', 'create', 'update'],
+  user: ['list', 'create', 'update', 'set-role', 'set-password'],
 } as const;
 
 type AuthorizationResource = keyof typeof authorizationStatement;
@@ -18,20 +13,20 @@ type RoleAccess = Partial<Record<AuthorizationResource, readonly string[]>>;
 
 export const appRoleAccess = {
   admin: {
-    audit: ["read"],
-    product: ["read", "create", "update"],
-    user: ["list", "create", "update", "set-role", "set-password"],
+    audit: ['read'],
+    product: ['read', 'create', 'update'],
+    user: ['list', 'create', 'update', 'set-role', 'set-password'],
   },
-  "product-editor": {
-    product: ["read", "create", "update"],
+  'product-editor': {
+    product: ['read', 'create', 'update'],
   },
-  "product-viewer": {
-    product: ["read"],
+  'product-viewer': {
+    product: ['read'],
   },
 } as const satisfies Record<AppRole, RoleAccess>;
 
 export function hasPermission(
-  access: Pick<UserAccessSummary, "permissions"> | null | undefined,
+  access: Pick<UserAccessSummary, 'permissions'> | null | undefined,
   permission: AppPermission,
 ): boolean {
   return access?.permissions.includes(permission) ?? false;
@@ -42,13 +37,13 @@ export function normalizeAppRoles(role: unknown): AppRole[] {
     return uniqueRoles(role.flatMap((value) => normalizeAppRoles(value)));
   }
 
-  if (typeof role !== "string") {
+  if (typeof role !== 'string') {
     return [];
   }
 
   return uniqueRoles(
     role
-      .split(",")
+      .split(',')
       .map((value) => value.trim())
       .filter((value): value is AppRole => AppRoleSchema.safeParse(value).success),
   );
@@ -66,10 +61,7 @@ export function getRolePermissions(roles: readonly AppRole[]): AppPermission[] {
   return [...permissions].sort();
 }
 
-export function createUserAccessSummary(input: {
-  role: unknown;
-  userId: string;
-}): UserAccessSummary {
+export function createUserAccessSummary(input: { role: unknown; userId: string }): UserAccessSummary {
   const roles = normalizeAppRoles(input.role);
   const role = getPublicRole(roles);
 
@@ -100,11 +92,7 @@ function uniqueRoles(roles: readonly AppRole[]): AppRole[] {
   return [...new Set(roles)];
 }
 
-const publicRolePriority = [
-  "admin",
-  "product-editor",
-  "product-viewer",
-] as const satisfies AppRole[];
+const publicRolePriority = ['admin', 'product-editor', 'product-viewer'] as const satisfies AppRole[];
 
 function getPublicRole(roles: readonly AppRole[]): AppRole | null {
   for (const role of publicRolePriority) {

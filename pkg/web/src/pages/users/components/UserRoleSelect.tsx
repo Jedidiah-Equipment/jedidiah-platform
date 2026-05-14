@@ -1,15 +1,8 @@
-import { APP_ROLES, AppRole } from "@pkg/schema";
-import type React from "react";
+import { APP_ROLES, AppRole } from '@pkg/schema';
+import type React from 'react';
 
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.js";
-import { roleLabels } from "./role-labels.js";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+import { roleLabels } from './role-labels.js';
 
 type UserRoleSelectProps = {
   disabled: boolean;
@@ -17,11 +10,7 @@ type UserRoleSelectProps = {
   value: AppRole;
 };
 
-export const UserRoleSelect: React.FC<UserRoleSelectProps> = ({
-  disabled,
-  onRoleChange,
-  value,
-}) => (
+export const UserRoleSelect: React.FC<UserRoleSelectProps> = ({ disabled, onRoleChange, value }) => (
   <Select
     disabled={disabled}
     items={roleLabels}

@@ -7,13 +7,6 @@ const CHAT_STREAM_MAX_PAYLOAD_BYTES = 64 * 1024;
 export type ChatEvent =
   | { type: "token"; delta: string }
   | { type: "tool_call"; name: string; args: unknown }
-  | {
-      type: "tool_result";
-      name: string;
-      ok: boolean;
-      result?: unknown;
-      summary: string;
-    }
   | { type: "done" }
   | { type: "error"; message: string };
 
@@ -41,22 +34,5 @@ export const ChatStreamInput = z
   });
 
 function getUtf8ByteLength(value: string): number {
-  let length = 0;
-
-  for (let index = 0; index < value.length; index += 1) {
-    const charCode = value.charCodeAt(index);
-
-    if (charCode < 0x80) {
-      length += 1;
-    } else if (charCode < 0x800) {
-      length += 2;
-    } else if (charCode >= 0xd800 && charCode <= 0xdbff) {
-      length += 4;
-      index += 1;
-    } else {
-      length += 3;
-    }
-  }
-
-  return length;
+  return new TextEncoder().encode(value).length;
 }

@@ -1,6 +1,6 @@
 import fastifyCors from "@fastify/cors";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
-import Fastify from "fastify";
+import Fastify, { type FastifyBaseLogger } from "fastify";
 
 import { registerAuthHandler } from "./auth/handler.js";
 import { type ApiConfig, getApiConfig } from "./env.js";
@@ -11,8 +11,9 @@ import { createContext } from "./trpc/context.js";
 import { appRouter } from "./trpc/router.js";
 
 export async function buildServer(config: ApiConfig = getApiConfig()) {
+  const logger: FastifyBaseLogger = getLoggerOptions(config);
   const app = Fastify({
-    logger: getLoggerOptions(config),
+    loggerInstance: logger,
   });
 
   await app.register(fastifyCors, {

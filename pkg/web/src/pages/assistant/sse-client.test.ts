@@ -7,7 +7,7 @@ describe("readChatEventStream", () => {
     const events = await collectEvents([
       'data: {"type":"token","delta":"Hel',
       'lo"}\n\n:data-only-heartbeat\n\n',
-      'data: {"type":"tool_result","name":"listProducts","ok":true,"summary":"12 products, page 1 of 3"}\n\n',
+      'data: {"type":"tool_call","name":"listProducts","args":{"page":1}}\n\n',
       'data: {"type":"done"}\n\n',
     ]);
 
@@ -17,10 +17,11 @@ describe("readChatEventStream", () => {
         type: "token",
       },
       {
+        args: {
+          page: 1,
+        },
         name: "listProducts",
-        ok: true,
-        summary: "12 products, page 1 of 3",
-        type: "tool_result",
+        type: "tool_call",
       },
       {
         type: "done",

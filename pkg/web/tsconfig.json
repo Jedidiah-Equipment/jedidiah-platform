@@ -12,7 +12,7 @@
     "declarationMap": false,
     "paths": {
       "@/*": ["src/*"],
-      "@pkg/api/router-type": ["../api/src/router-type.ts"],
+      "@pkg/api": ["../api/src/index.ts"],
       "@pkg/domain": ["../domain/src/index.ts"],
       "@pkg/schema": ["../schema/src/index.ts"]
     },

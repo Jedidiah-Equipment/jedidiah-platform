@@ -1,5 +1,4 @@
-import type { Database } from '@pkg/db';
-import { user } from '@pkg/db/schema';
+import { type Db, user } from '@pkg/db';
 import type { AppRole } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -69,7 +68,7 @@ describe('users.list', () => {
 });
 
 async function createUser(
-  db: Database,
+  db: Db,
   input: {
     email: string;
     emailVerified?: boolean;

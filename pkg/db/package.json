@@ -7,26 +7,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./schema": {
-      "types": "./dist/schema/index.d.ts",
-      "import": "./dist/schema/index.js"
-    },
-    "./database-client": {
-      "types": "./dist/database-client.d.ts",
-      "import": "./dist/database-client.js"
-    },
-    "./query-utils": {
-      "types": "./dist/query-utils.d.ts",
-      "import": "./dist/query-utils.js"
-    },
-    "./test-utils": {
-      "types": "./dist/test-utils.d.ts",
-      "import": "./dist/test-utils.js"
-    },
-    "./types": {
-      "types": "./dist/types.d.ts",
-      "import": "./dist/types.js"
     }
   },
   "scripts": {

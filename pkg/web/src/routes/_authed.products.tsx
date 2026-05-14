@@ -1,6 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
-
-import { ProductsPage } from '@/pages/products/ProductsPage.js';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_authed/products')({
   staticData: {
@@ -10,5 +8,5 @@ export const Route = createFileRoute('/_authed/products')({
 });
 
 function ProductsRoute() {
-  return <ProductsPage />;
+  return <Outlet />;
 }

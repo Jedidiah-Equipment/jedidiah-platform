@@ -15,6 +15,6 @@ export const listUsersTool: ListUsersTool = {
   requiredPermission: 'user:list',
   async handler(args: unknown, ctx: AiContext) {
     UserListInput.parse(args ?? {});
-    return core.listUsers({ database: ctx.db });
+    return core.listUsers({ db: ctx.db });
   },
 };

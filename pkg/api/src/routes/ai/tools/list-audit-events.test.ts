@@ -1,6 +1,5 @@
 import * as core from '@pkg/core';
-import type { Database } from '@pkg/db';
-import { auditEvents, user } from '@pkg/db/schema';
+import { auditEvents, type Db, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { AuditListInput, UserAccessSummary } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
@@ -16,7 +15,7 @@ const test = createTester(({ db }) => ({ db }));
 const firstProductId = '00000000-0000-4000-8000-000000000001';
 const secondProductId = '00000000-0000-4000-8000-000000000002';
 
-function createAiContext(db: Database, access: UserAccessSummary): AiContext {
+function createAiContext(db: Db, access: UserAccessSummary): AiContext {
   return {
     access,
     db,
@@ -79,15 +78,15 @@ describe('listAuditEventsTool', () => {
     try {
       await listAuditEventsTool.handler(null, createAiContext(context.db, access));
 
-      expect(listAuditEventsSpy).toHaveBeenCalledWith(
-        context.db,
-        expect.objectContaining({
+      expect(listAuditEventsSpy).toHaveBeenCalledWith({
+        db: context.db,
+        input: expect.objectContaining({
           page: 1,
           pageSize: 10,
           sortBy: 'occurredAt',
           sortDirection: 'desc',
         }),
-      );
+      });
     } finally {
       listAuditEventsSpy.mockRestore();
     }
@@ -110,7 +109,7 @@ describe('listAuditEventsTool', () => {
   });
 });
 
-async function createActorUser(db: Database) {
+async function createActorUser(db: Db) {
   const now = new Date();
 
   await db.insert(user).values({
@@ -125,7 +124,7 @@ async function createActorUser(db: Database) {
 }
 
 async function createAuditEvent(
-  db: Database,
+  db: Db,
   input: {
     actorUserId: string | null;
     entityId: string;

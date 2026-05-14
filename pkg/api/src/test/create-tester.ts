@@ -1,5 +1,11 @@
-import { createDatabaseClient, type DatabaseClient, type Db } from '@pkg/db/database-client';
-import { createEphemeralTestDatabase, dropTestDatabase, getTestTemplateDatabaseUrl } from '@pkg/db/test-utils';
+import {
+  createDatabaseClient,
+  createEphemeralTestDatabase,
+  type DatabaseClient,
+  type Db,
+  dropTestDatabase,
+  getTestTemplateDatabaseUrl,
+} from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import pino from 'pino';
 import { type TestAPI, type TestContext, test as testBase } from 'vitest';

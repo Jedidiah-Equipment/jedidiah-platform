@@ -1,6 +1,5 @@
 import * as productsCore from '@pkg/core';
-import type { Database } from '@pkg/db';
-import { user } from '@pkg/db/schema';
+import { type Db, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { Product, ProductListInput, UserAccessSummary } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
@@ -39,7 +38,7 @@ function createModelCode(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
-function createAiContext(db: Database, access: UserAccessSummary): AiContext {
+function createAiContext(db: Db, access: UserAccessSummary): AiContext {
   return {
     access,
     db,
@@ -47,7 +46,7 @@ function createAiContext(db: Database, access: UserAccessSummary): AiContext {
   };
 }
 
-async function createActorUser(db: Database) {
+async function createActorUser(db: Db) {
   const now = new Date();
 
   await db.insert(user).values({
@@ -111,7 +110,7 @@ describe('listProductsTool', () => {
       await listProductsTool.handler(null, createAiContext(context.db, access));
 
       expect(listProductsSpy).toHaveBeenCalledWith({
-        database: context.db,
+        db: context.db,
         input: expect.objectContaining({
           page: 1,
           pageSize: 10,

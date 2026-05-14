@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./router-type": {
-      "types": "./dist/router-type.d.ts",
-      "default": "./dist/router-type.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "scripts": {

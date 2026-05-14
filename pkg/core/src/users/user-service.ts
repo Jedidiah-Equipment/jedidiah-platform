@@ -1,5 +1,4 @@
-import type { Db } from '@pkg/db';
-import { user } from '@pkg/db/schema';
+import { type Db, user } from '@pkg/db';
 import { DEFAULT_APP_ROLE } from '@pkg/domain';
 import { AppRole, type AuthId, type UserListResult, type UserSummary } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';

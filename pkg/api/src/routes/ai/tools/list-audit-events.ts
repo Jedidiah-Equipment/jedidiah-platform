@@ -15,6 +15,6 @@ export const listAuditEventsTool: ListAuditEventsTool = {
   requiredPermission: 'audit:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = AuditListInput.parse(args ?? {});
-    return core.listAuditEvents(ctx.db, input);
+    return core.listAuditEvents({ db: ctx.db, input });
   },
 };

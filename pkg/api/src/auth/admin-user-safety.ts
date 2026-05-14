@@ -1,5 +1,5 @@
 import { canAssignUserRole } from '@pkg/core';
-import type { Database } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { AppRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
@@ -14,7 +14,7 @@ const LAST_ADMIN_ERROR = {
   message: 'You cannot remove the last admin.',
 } as const;
 
-export function adminUserSafetyPlugin(database: Database): BetterAuthPlugin {
+export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
   return {
     id: 'admin-user-safety',
     hooks: {
@@ -42,7 +42,7 @@ export function adminUserSafetyPlugin(database: Database): BetterAuthPlugin {
             }
 
             const canAssignRole = await canAssignUserRole({
-              database,
+              db: database,
               role: nextRoles,
               userId: roleChange.userId,
             });

@@ -1,6 +1,4 @@
-import type { Db } from '@pkg/db';
-import { getUniqueViolationConstraint, withPagination } from '@pkg/db/query-utils';
-import { productOptions, products } from '@pkg/db/schema';
+import { type Db, getUniqueViolationConstraint, productOptions, products, withPagination } from '@pkg/db';
 import type {
   AuthId,
   Product,

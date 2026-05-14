@@ -10,7 +10,11 @@
       "!**/coverage",
       "!**/.sandcastle/worktrees",
       "!pkg/db/migrations",
-      "!pkg/web/src/app/route-tree.gen.ts"
+      "!pkg/web/src/app/route-tree.gen.ts",
+      "!docs",
+      "!scripts",
+      "!.claude",
+      "!.vscode"
     ]
   },
   "formatter": {

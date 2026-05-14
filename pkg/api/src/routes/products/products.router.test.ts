@@ -1,5 +1,4 @@
-import type { Database } from '@pkg/db';
-import { auditEvents, productOptions, user } from '@pkg/db/schema';
+import { auditEvents, type Db, productOptions, user } from '@pkg/db';
 import type { Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -633,11 +632,11 @@ describe('products.update', () => {
   });
 });
 
-async function listAuditEvents(db: Database) {
+async function listAuditEvents(db: Db) {
   return db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
 }
 
-async function createActorUser(db: Database) {
+async function createActorUser(db: Db) {
   const now = new Date();
 
   await db.insert(user).values({

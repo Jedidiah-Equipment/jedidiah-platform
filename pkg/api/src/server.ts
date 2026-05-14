@@ -1,17 +1,17 @@
-import fastifyCors from "@fastify/cors";
-import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
-import Fastify, { type FastifyBaseLogger } from "fastify";
+import fastifyCors from '@fastify/cors';
+import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
+import Fastify, { type FastifyBaseLogger } from 'fastify';
 
-import { registerAuthHandler } from "./auth/handler.js";
-import { type ApiConfig, getApiConfig } from "./env.js";
-import { registerHealthRoutes } from "./health.js";
-import { log } from "./logger.js";
-import { registerAiStreamRoute } from "./routes/ai/ai-stream.route.js";
-import { createContext } from "./trpc/context.js";
-import { appRouter } from "./trpc/router.js";
+import { registerAuthHandler } from './auth/handler.js';
+import { type ApiConfig, getApiConfig } from './env.js';
+import { registerHealthRoutes } from './health.js';
+import { log } from './logger.js';
+import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
+import { createContext } from './trpc/context.js';
+import { appRouter } from './trpc/router.js';
 
 export async function buildServer(config: ApiConfig = getApiConfig()) {
-  log.root.info({ config }, "Building server");
+  log.root.info({ config }, 'Building server');
 
   const app = Fastify({
     loggerInstance: log.http as FastifyBaseLogger,
@@ -20,8 +20,8 @@ export async function buildServer(config: ApiConfig = getApiConfig()) {
   await app.register(fastifyCors, {
     origin: config.AUTH_TRUSTED_ORIGINS,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     maxAge: 86400,
   });
 
@@ -30,7 +30,7 @@ export async function buildServer(config: ApiConfig = getApiConfig()) {
   await registerHealthRoutes(app);
 
   await app.register(fastifyTRPCPlugin, {
-    prefix: "/trpc",
+    prefix: '/trpc',
     trpcOptions: {
       router: appRouter,
       createContext,

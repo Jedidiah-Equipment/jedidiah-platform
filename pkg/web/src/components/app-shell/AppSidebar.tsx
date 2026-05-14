@@ -1,10 +1,10 @@
-import { Link } from "@tanstack/react-router";
-import { WrenchIcon } from "lucide-react";
-import type React from "react";
+import { Link } from '@tanstack/react-router';
+import { WrenchIcon } from 'lucide-react';
+import type React from 'react';
 
-import { AppNavMain } from "@/components/app-shell/AppNavMain.js";
-import { AppNavSecondary } from "@/components/app-shell/AppNavSecondary.js";
-import { AppNavUser } from "@/components/app-shell/AppNavUser.js";
+import { AppNavMain } from '@/components/app-shell/AppNavMain.js';
+import { AppNavSecondary } from '@/components/app-shell/AppNavSecondary.js';
+import { AppNavUser } from '@/components/app-shell/AppNavUser.js';
 import {
   Sidebar,
   SidebarContent,
@@ -13,8 +13,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar.js";
-import { useAuth } from "@/hooks/use-auth.js";
+} from '@/components/ui/sidebar.js';
+import { useAuth } from '@/hooks/use-auth.js';
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar>;
 

@@ -1,14 +1,14 @@
-import { useNavigate } from "@tanstack/react-router";
-import { AlertCircleIcon, Loader2Icon, LogInIcon } from "lucide-react";
-import type React from "react";
-import { useState } from "react";
-import { useAppForm } from "@/components/form/index.js";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.js";
-import { Button } from "@/components/ui/button.js";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js";
-import { FieldGroup } from "@/components/ui/field.js";
-import { authClient } from "@/lib/auth-client.js";
-import { LoginForm } from "./types.js";
+import { useNavigate } from '@tanstack/react-router';
+import { AlertCircleIcon, Loader2Icon, LogInIcon } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
+import { useAppForm } from '@/components/form/index.js';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
+import { Button } from '@/components/ui/button.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { FieldGroup } from '@/components/ui/field.js';
+import { authClient } from '@/lib/auth-client.js';
+import { LoginForm } from './types.js';
 
 type LoginPageProps = Record<string, never>;
 
@@ -18,8 +18,8 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
 
   const form = useAppForm({
     defaultValues: {
-      email: "",
-      password: "",
+      email: '',
+      password: '',
     } satisfies LoginForm,
     validators: {
       onSubmit: LoginForm,
@@ -31,13 +31,13 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
         const result = await authClient.signIn.email(value);
 
         if (result.error) {
-          setError(result.error.message ?? "Unable to sign in.");
+          setError(result.error.message ?? 'Unable to sign in.');
           return;
         }
 
-        await navigate({ to: "/dashboard" });
+        await navigate({ to: '/dashboard' });
       } catch {
-        setError("Unable to sign in.");
+        setError('Unable to sign in.');
       }
     },
   });
@@ -62,14 +62,10 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
           >
             <FieldGroup>
               <form.AppField name="email">
-                {(field) => (
-                  <field.TextField autoComplete="email" inputMode="email" label="Email" />
-                )}
+                {(field) => <field.TextField autoComplete="email" inputMode="email" label="Email" />}
               </form.AppField>
 
-              <form.AppField name="password">
-                {(field) => <field.PasswordField label="Password" />}
-              </form.AppField>
+              <form.AppField name="password">{(field) => <field.PasswordField label="Password" />}</form.AppField>
 
               {error ? (
                 <Alert variant="destructive">
@@ -87,7 +83,7 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
                     ) : (
                       <LogInIcon data-icon="inline-start" />
                     )}
-                    {isSubmitting ? "Signing in" : "Sign in"}
+                    {isSubmitting ? 'Signing in' : 'Sign in'}
                   </Button>
                 )}
               </form.Subscribe>

@@ -1,6 +1,6 @@
-import type { ChatEvent, ChatStreamMessage } from "@pkg/schema";
+import type { ChatEvent, ChatStreamMessage } from '@pkg/schema';
 
-import { getClientConfig } from "@/lib/app-config.js";
+import { getClientConfig } from '@/lib/app-config.js';
 
 export type StreamChatEventsOptions = {
   messages: ChatStreamMessage[];
@@ -16,11 +16,11 @@ export async function* streamChatEvents({
   const config = getClientConfig();
   const response = await fetchImpl(`${config.apiBaseUrl}/ai/chat-stream`, {
     body: JSON.stringify({ messages }),
-    credentials: "include",
+    credentials: 'include',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
-    method: "POST",
+    method: 'POST',
     signal,
   });
 
@@ -29,7 +29,7 @@ export async function* streamChatEvents({
   }
 
   if (!response.body) {
-    throw new Error("Assistant stream response did not include a body");
+    throw new Error('Assistant stream response did not include a body');
   }
 
   yield* readChatEventStream(response.body, signal);
@@ -41,7 +41,7 @@ export async function* readChatEventStream(
 ): AsyncGenerator<ChatEvent> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
-  let buffer = "";
+  let buffer = '';
 
   const cancelReader = () => {
     void reader.cancel().catch(() => undefined);
@@ -52,7 +52,7 @@ export async function* readChatEventStream(
     throw createAbortError();
   }
 
-  signal?.addEventListener("abort", cancelReader, { once: true });
+  signal?.addEventListener('abort', cancelReader, { once: true });
 
   try {
     while (true) {
@@ -77,57 +77,57 @@ export async function* readChatEventStream(
       yield parseEventFrame(buffer);
     }
   } finally {
-    signal?.removeEventListener("abort", cancelReader);
+    signal?.removeEventListener('abort', cancelReader);
     reader.releaseLock();
   }
 }
 
 function* readBufferedEvents(buffer: string): Generator<ChatEvent> {
-  let frameEndIndex = buffer.indexOf("\n\n");
+  let frameEndIndex = buffer.indexOf('\n\n');
 
   while (frameEndIndex !== -1) {
     const frame = buffer.slice(0, frameEndIndex);
 
-    if (frame.trim().length > 0 && !frame.startsWith(":")) {
+    if (frame.trim().length > 0 && !frame.startsWith(':')) {
       yield parseEventFrame(frame);
     }
 
     buffer = buffer.slice(frameEndIndex + 2);
-    frameEndIndex = buffer.indexOf("\n\n");
+    frameEndIndex = buffer.indexOf('\n\n');
   }
 }
 
 function getRemainder(buffer: string): string {
-  const frameEndIndex = buffer.lastIndexOf("\n\n");
+  const frameEndIndex = buffer.lastIndexOf('\n\n');
 
   return frameEndIndex === -1 ? buffer : buffer.slice(frameEndIndex + 2);
 }
 
 function parseEventFrame(frame: string): ChatEvent {
   const data = frame
-    .split("\n")
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.slice("data:".length).trimStart())
-    .join("\n");
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice('data:'.length).trimStart())
+    .join('\n');
 
   if (!data) {
-    throw new Error("Assistant stream frame did not include data");
+    throw new Error('Assistant stream frame did not include data');
   }
 
   return JSON.parse(data) as ChatEvent;
 }
 
 function normalizeLineEndings(value: string): string {
-  return value.replaceAll("\r\n", "\n");
+  return value.replaceAll('\r\n', '\n');
 }
 
 async function getResponseErrorMessage(response: Response): Promise<string> {
-  const body = await response.text().catch(() => "");
-  const suffix = body.trim().length > 0 ? `: ${body}` : "";
+  const body = await response.text().catch(() => '');
+  const suffix = body.trim().length > 0 ? `: ${body}` : '';
 
   return `Assistant stream failed with HTTP ${response.status}${suffix}`;
 }
 
 function createAbortError(): DOMException {
-  return new DOMException("Assistant stream aborted", "AbortError");
+  return new DOMException('Assistant stream aborted', 'AbortError');
 }

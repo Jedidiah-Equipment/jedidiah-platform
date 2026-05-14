@@ -1,18 +1,18 @@
-import { hasPermission } from "@pkg/domain";
-import type { UserSummary } from "@pkg/schema";
-import { useQuery } from "@tanstack/react-query";
-import { ShieldIcon } from "lucide-react";
-import type React from "react";
-import { useState } from "react";
+import { hasPermission } from '@pkg/domain';
+import type { UserSummary } from '@pkg/schema';
+import { useQuery } from '@tanstack/react-query';
+import { ShieldIcon } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 
-import { Badge } from "@/components/ui/badge.js";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js";
-import { Separator } from "@/components/ui/separator.js";
-import { useAccess } from "@/hooks/use-access.js";
-import { useTRPC } from "@/lib/trpc.js";
-import { UserTable } from "./components/UserTable.js";
-import { UserCreateDialog } from "./UserCreateDialog.js";
-import { UserEditDialog } from "./UserEditDialog.js";
+import { Badge } from '@/components/ui/badge.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Separator } from '@/components/ui/separator.js';
+import { useAccess } from '@/hooks/use-access.js';
+import { useTRPC } from '@/lib/trpc.js';
+import { UserTable } from './components/UserTable.js';
+import { UserCreateDialog } from './UserCreateDialog.js';
+import { UserEditDialog } from './UserEditDialog.js';
 
 const emptyUsers: UserSummary[] = [];
 
@@ -21,9 +21,9 @@ export const UsersPage: React.FC = () => {
   const accessQuery = useAccess();
   const access = accessQuery.data;
   const canManageUsers =
-    hasPermission(access, "user:update") ||
-    hasPermission(access, "user:set-role") ||
-    hasPermission(access, "user:set-password");
+    hasPermission(access, 'user:update') ||
+    hasPermission(access, 'user:set-role') ||
+    hasPermission(access, 'user:set-password');
 
   const usersQuery = useQuery(trpc.users.list.queryOptions());
   const [editingUser, setEditingUser] = useState<UserSummary | null>(null);
@@ -59,9 +59,7 @@ export const UsersPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {editingUser ? (
-        <UserEditDialog user={editingUser} onClose={() => setEditingUser(null)} />
-      ) : null}
+      {editingUser ? <UserEditDialog user={editingUser} onClose={() => setEditingUser(null)} /> : null}
     </div>
   );
 };

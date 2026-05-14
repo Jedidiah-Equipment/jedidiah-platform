@@ -1,5 +1,5 @@
-import type { PagedQueryResult } from "@pkg/schema";
-import { useMemo } from "react";
+import type { PagedQueryResult } from '@pkg/schema';
+import { useMemo } from 'react';
 
 type PagedQueryLike<TItem> = {
   data: PagedQueryResult<TItem> | undefined;

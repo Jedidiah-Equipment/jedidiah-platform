@@ -1,11 +1,11 @@
-import { Price, type Product, ProductModelCode, ProductName } from "@pkg/schema";
-import { Loader2Icon } from "lucide-react";
-import type React from "react";
-import { z } from "zod";
-import { useAppForm } from "@/components/form/index.js";
-import { Button } from "@/components/ui/button.js";
-import { DialogFooter } from "@/components/ui/dialog.js";
-import { FieldGroup } from "@/components/ui/field.js";
+import { Price, type Product, ProductModelCode, ProductName } from '@pkg/schema';
+import { Loader2Icon } from 'lucide-react';
+import type React from 'react';
+import { z } from 'zod';
+import { useAppForm } from '@/components/form/index.js';
+import { Button } from '@/components/ui/button.js';
+import { DialogFooter } from '@/components/ui/dialog.js';
+import { FieldGroup } from '@/components/ui/field.js';
 
 type ProductFormValues = z.infer<typeof ProductFormValues>;
 const ProductFormValues = z.object({
@@ -22,18 +22,13 @@ type ProductFormProps = {
   onSubmit: (value: ProductFormValues) => Promise<unknown>;
 };
 
-export const ProductForm: React.FC<ProductFormProps> = ({
-  initialProduct,
-  isPending,
-  submitLabel,
-  onSubmit,
-}) => {
+export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPending, submitLabel, onSubmit }) => {
   const form = useAppForm({
     defaultValues: {
       basePrice: initialProduct?.basePrice ?? NaN,
-      description: initialProduct?.description ?? "",
-      modelCode: initialProduct?.modelCode ?? "",
-      name: initialProduct?.name ?? "",
+      description: initialProduct?.description ?? '',
+      modelCode: initialProduct?.modelCode ?? '',
+      name: initialProduct?.name ?? '',
     } satisfies ProductFormValues,
     validators: {
       onSubmit: ProductFormValues,
@@ -52,20 +47,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       }}
     >
       <FieldGroup>
-        <form.AppField name="name">
-          {(field) => <field.TextField autoComplete="off" label="Name" />}
-        </form.AppField>
+        <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
         <form.AppField name="modelCode">
           {(field) => <field.TextField autoComplete="off" label="Model code" />}
         </form.AppField>
         <form.AppField name="basePrice">
           {(field) => (
-            <field.CurrencyField
-              autoComplete="off"
-              currencyCode="ZAR"
-              label="Base price"
-              placeholder="1234.56"
-            />
+            <field.CurrencyField autoComplete="off" currencyCode="ZAR" label="Base price" placeholder="1234.56" />
           )}
         </form.AppField>
         <form.AppField name="description">
@@ -76,9 +64,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button disabled={isSubmitting || isPending} type="submit">
-              {isSubmitting || isPending ? (
-                <Loader2Icon data-icon="inline-start" className="animate-spin" />
-              ) : null}
+              {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
               {submitLabel}
             </Button>
           )}

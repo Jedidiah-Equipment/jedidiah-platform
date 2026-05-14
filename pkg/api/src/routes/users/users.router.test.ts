@@ -1,69 +1,69 @@
-import type { Database } from "@pkg/db";
-import { user } from "@pkg/db/schema";
-import type { AppRole } from "@pkg/schema";
-import { describe, expect } from "vitest";
+import type { Database } from '@pkg/db';
+import { user } from '@pkg/db/schema';
+import type { AppRole } from '@pkg/schema';
+import { describe, expect } from 'vitest';
 
-import { createTester } from "@/test/create-tester.js";
-import { mockSession } from "@/test/test-utils.js";
+import { createTester } from '@/test/create-tester.js';
+import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(({ db }) => ({ db }));
 
-describe("users.list", () => {
-  test("rejects unauthenticated user lists", async ({ context }) => {
+describe('users.list', () => {
+  test('rejects unauthenticated user lists', async ({ context }) => {
     await expect(context.createAnonCaller().users.list()).rejects.toMatchObject({
-      code: "UNAUTHORIZED",
+      code: 'UNAUTHORIZED',
     });
   });
 
-  test("allows admins to list safe user summaries", async ({ context }) => {
+  test('allows admins to list safe user summaries', async ({ context }) => {
     await createUser(context.db, {
-      email: "viewer@example.com",
+      email: 'viewer@example.com',
       emailVerified: true,
-      id: "viewer-user-id",
-      name: "Viewer User",
-      role: "product-viewer",
+      id: 'viewer-user-id',
+      name: 'Viewer User',
+      role: 'product-viewer',
     });
 
     const result = await context.createCaller().users.list();
 
     expect(result.users).toEqual([
       {
-        email: "viewer@example.com",
+        email: 'viewer@example.com',
         emailVerified: true,
-        id: "viewer-user-id",
-        name: "Viewer User",
-        role: "product-viewer",
+        id: 'viewer-user-id',
+        name: 'Viewer User',
+        role: 'product-viewer',
       },
     ]);
   });
 
-  test("defaults unknown stored roles in list responses", async ({ context }) => {
+  test('defaults unknown stored roles in list responses', async ({ context }) => {
     await createUser(context.db, {
-      email: "legacy@example.com",
+      email: 'legacy@example.com',
       emailVerified: false,
-      id: "legacy-user-id",
-      name: "Legacy User",
-      role: "user",
+      id: 'legacy-user-id',
+      name: 'Legacy User',
+      role: 'user',
     });
 
     const result = await context.createCaller().users.list();
 
     expect(result.users).toEqual([
       {
-        email: "legacy@example.com",
+        email: 'legacy@example.com',
         emailVerified: false,
-        id: "legacy-user-id",
-        name: "Legacy User",
-        role: "product-viewer",
+        id: 'legacy-user-id',
+        name: 'Legacy User',
+        role: 'product-viewer',
       },
     ]);
   });
 
-  test("rejects product editors", async ({ context }) => {
-    const caller = context.createCaller(mockSession("product-editor"));
+  test('rejects product editors', async ({ context }) => {
+    const caller = context.createCaller(mockSession('product-editor'));
 
     await expect(caller.users.list()).rejects.toMatchObject({
-      code: "FORBIDDEN",
+      code: 'FORBIDDEN',
     });
   });
 });

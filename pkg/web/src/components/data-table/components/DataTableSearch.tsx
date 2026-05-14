@@ -1,8 +1,8 @@
-import { useDebouncedValue } from "@mantine/hooks";
-import type { Table } from "@tanstack/react-table";
-import { SearchIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Input } from "@/components/ui/input.js";
+import { useDebouncedValue } from '@mantine/hooks';
+import type { Table } from '@tanstack/react-table';
+import { SearchIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Input } from '@/components/ui/input.js';
 
 type DataTableSearchProps<TData> = {
   debounceMs: number;
@@ -10,12 +10,8 @@ type DataTableSearchProps<TData> = {
   table: Table<TData>;
 };
 
-export function DataTableSearch<TData>({
-  debounceMs,
-  placeholder,
-  table,
-}: DataTableSearchProps<TData>) {
-  const globalFilter = String(table.getState().globalFilter ?? "");
+export function DataTableSearch<TData>({ debounceMs, placeholder, table }: DataTableSearchProps<TData>) {
+  const globalFilter = String(table.getState().globalFilter ?? '');
   const [globalFilterDraft, setGlobalFilterDraft] = useState(globalFilter);
   const [debouncedGlobalFilter] = useDebouncedValue(globalFilterDraft, debounceMs);
 

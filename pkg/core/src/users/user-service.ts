@@ -1,10 +1,10 @@
-import type { Database } from "@pkg/db";
-import { user } from "@pkg/db/schema";
-import { DEFAULT_APP_ROLE } from "@pkg/domain";
-import { AppRole, type UserListResult, type UserSummary } from "@pkg/schema";
-import { asc, eq } from "drizzle-orm";
+import type { Database } from '@pkg/db';
+import { user } from '@pkg/db/schema';
+import { DEFAULT_APP_ROLE } from '@pkg/domain';
+import { AppRole, type UserListResult, type UserSummary } from '@pkg/schema';
+import { asc, eq } from 'drizzle-orm';
 
-type UserRow = Pick<typeof user.$inferSelect, "email" | "emailVerified" | "id" | "name"> & {
+type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'name'> & {
   role?: unknown;
 };
 
@@ -44,7 +44,7 @@ export async function canAssignUserRole(
 ): Promise<boolean> {
   const nextRoles = Array.isArray(input.role) ? input.role : [input.role];
 
-  if (nextRoles.includes("admin")) {
+  if (nextRoles.includes('admin')) {
     return true;
   }
 
@@ -56,9 +56,9 @@ export async function canAssignUserRole(
       })
       .from(user)
       .where(eq(user.id, input.userId))
-      .for("update");
+      .for('update');
 
-    if (!targetUser || !normalizeStoredAppRoles(targetUser.role).includes("admin")) {
+    if (!targetUser || !normalizeStoredAppRoles(targetUser.role).includes('admin')) {
       return true;
     }
 
@@ -67,9 +67,9 @@ export async function canAssignUserRole(
         id: user.id,
       })
       .from(user)
-      .where(eq(user.role, "admin"))
+      .where(eq(user.role, 'admin'))
       .orderBy(asc(user.id))
-      .for("update");
+      .for('update');
 
     return !(adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === input.userId));
   });
@@ -82,9 +82,9 @@ function parseStoredAppRole(role: unknown): AppRole {
 }
 
 function normalizeStoredAppRoles(role: unknown): AppRole[] {
-  const rawRoles = Array.isArray(role) ? role : typeof role === "string" ? role.split(",") : [];
+  const rawRoles = Array.isArray(role) ? role : typeof role === 'string' ? role.split(',') : [];
 
   return rawRoles
-    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
     .filter((value): value is AppRole => AppRole.safeParse(value).success);
 }

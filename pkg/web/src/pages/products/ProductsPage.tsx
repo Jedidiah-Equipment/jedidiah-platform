@@ -1,29 +1,23 @@
-import type { Product } from "@pkg/schema";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
-import type React from "react";
-import { useState } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button.js";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog.js";
-import { Separator } from "@/components/ui/separator.js";
-import { useCan } from "@/hooks/use-access.js";
-import { useTRPC } from "@/lib/trpc.js";
-import { ProductForm } from "./components/ProductForm.js";
-import { ProductTable } from "./components/ProductTable.js";
+import type { Product } from '@pkg/schema';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { PlusIcon } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import { Separator } from '@/components/ui/separator.js';
+import { useCan } from '@/hooks/use-access.js';
+import { useTRPC } from '@/lib/trpc.js';
+import { ProductForm } from './components/ProductForm.js';
+import { ProductTable } from './components/ProductTable.js';
 
 export const ProductsPage: React.FC = () => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const canCreateProduct = useCan("product:create").can;
-  const canUpdateProduct = useCan("product:update").can;
+  const canCreateProduct = useCan('product:create').can;
+  const canUpdateProduct = useCan('product:update').can;
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -33,7 +27,7 @@ export const ProductsPage: React.FC = () => {
       onSuccess: async () => {
         await queryClient.invalidateQueries(trpc.products.list.queryFilter());
         setIsCreateOpen(false);
-        toast.success("Product created");
+        toast.success('Product created');
       },
       onError: (error) => {
         toast.error(error.message);
@@ -46,7 +40,7 @@ export const ProductsPage: React.FC = () => {
       onSuccess: async () => {
         await queryClient.invalidateQueries(trpc.products.list.queryFilter());
         setEditingProduct(null);
-        toast.success("Product updated");
+        toast.success('Product updated');
       },
       onError: (error) => {
         toast.error(error.message);
@@ -95,7 +89,7 @@ export const ProductsPage: React.FC = () => {
                   modelCode: value.modelCode,
                   description: value.description,
                   basePrice: value.basePrice,
-                  currencyCode: "ZAR",
+                  currencyCode: 'ZAR',
                 })
               }
               submitLabel="Create product"
@@ -122,7 +116,7 @@ export const ProductsPage: React.FC = () => {
                   modelCode: value.modelCode,
                   description: value.description,
                   basePrice: value.basePrice,
-                  currencyCode: "ZAR",
+                  currencyCode: 'ZAR',
                 })
               }
               submitLabel="Save product"

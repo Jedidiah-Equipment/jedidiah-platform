@@ -1,8 +1,8 @@
-import { auditRouter } from "../routes/audit/audit.router.js";
-import { authRouter } from "../routes/auth/auth.router.js";
-import { productsRouter } from "../routes/products/products.router.js";
-import { usersRouter } from "../routes/users/users.router.js";
-import { createCallerFactory, router } from "./init.js";
+import { auditRouter } from '../routes/audit/audit.router.js';
+import { authRouter } from '../routes/auth/auth.router.js';
+import { productsRouter } from '../routes/products/products.router.js';
+import { usersRouter } from '../routes/users/users.router.js';
+import { createCallerFactory, router } from './init.js';
 
 export const appRouter = router({
   audit: auditRouter,

@@ -1,20 +1,13 @@
-import { flexRender, type RowData, type Table as TanStackTable } from "@tanstack/react-table";
-import type React from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table.js";
-import { DataTableHeader } from "./components/DataTableHeader.js";
-import { DataTablePagination } from "./components/DataTablePagination.js";
-import { DataTableSearch } from "./components/DataTableSearch.js";
-import { DataTableSkeletonRows } from "./components/DataTableSkeletonRows.js";
-import { getCellClassName } from "./utils.js";
+import { flexRender, type RowData, type Table as TanStackTable } from '@tanstack/react-table';
+import type React from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
+import { DataTableHeader } from './components/DataTableHeader.js';
+import { DataTablePagination } from './components/DataTablePagination.js';
+import { DataTableSearch } from './components/DataTableSearch.js';
+import { DataTableSkeletonRows } from './components/DataTableSkeletonRows.js';
+import { getCellClassName } from './utils.js';
 
-declare module "@tanstack/react-table" {
+declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     cellClassName?: string;
     headerClassName?: string;
@@ -38,23 +31,19 @@ export function DataTable<TData>({
   emptyMessage,
   errorMessage,
   filterDebounceMs = 250,
-  globalFilterPlaceholder = "Search...",
+  globalFilterPlaceholder = 'Search...',
   isLoading = false,
   loadingRowCount = 4,
   pageSizeOptions = [10, 25, 50],
   table,
   total,
-  totalLabel = (value) => `${value} ${value === 1 ? "row" : "rows"}`,
+  totalLabel = (value) => `${value} ${value === 1 ? 'row' : 'rows'}`,
 }: DataTableProps<TData>) {
   const visibleColumns = table.getVisibleLeafColumns();
 
   return (
     <div className="flex flex-col gap-4">
-      <DataTableSearch
-        debounceMs={filterDebounceMs}
-        placeholder={globalFilterPlaceholder}
-        table={table}
-      />
+      <DataTableSearch debounceMs={filterDebounceMs} placeholder={globalFilterPlaceholder} table={table} />
 
       {errorMessage ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -68,22 +57,15 @@ export function DataTable<TData>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead
-                    className={header.column.columnDef.meta?.headerClassName}
-                    key={header.id}
-                  >
-                    {header.isPlaceholder ? null : (
-                      <DataTableHeader debounceMs={filterDebounceMs} header={header} />
-                    )}
+                  <TableHead className={header.column.columnDef.meta?.headerClassName} key={header.id}>
+                    {header.isPlaceholder ? null : <DataTableHeader debounceMs={filterDebounceMs} header={header} />}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <DataTableSkeletonRows columns={visibleColumns.length} rows={loadingRowCount} />
-            ) : null}
+            {isLoading ? <DataTableSkeletonRows columns={visibleColumns.length} rows={loadingRowCount} /> : null}
 
             {!isLoading && table.getRowModel().rows.length === 0 ? (
               <TableRow>
@@ -111,12 +93,7 @@ export function DataTable<TData>({
         </Table>
       </div>
 
-      <DataTablePagination
-        pageSizeOptions={pageSizeOptions}
-        table={table}
-        total={total}
-        totalLabel={totalLabel}
-      />
+      <DataTablePagination pageSizeOptions={pageSizeOptions} table={table} total={total} totalLabel={totalLabel} />
     </div>
   );
 }

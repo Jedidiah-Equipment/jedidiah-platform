@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router';
 
-import { AssistantPage } from "@/pages/assistant/AssistantPage.js";
+import { AssistantPage } from '@/pages/assistant/AssistantPage.js';
 
-export const Route = createFileRoute("/_authed/assistant")({
+export const Route = createFileRoute('/_authed/assistant')({
   staticData: {
-    pageLabel: "Assistant",
+    pageLabel: 'Assistant',
   },
   component: AssistantPage,
 });

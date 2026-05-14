@@ -1,6 +1,6 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-import { NodeEnv } from "../domain/environment.js";
+import { NodeEnv } from '../domain/environment.js';
 
 export type ClientConfig = z.infer<typeof ClientConfig>;
 export const ClientConfig = z.object({

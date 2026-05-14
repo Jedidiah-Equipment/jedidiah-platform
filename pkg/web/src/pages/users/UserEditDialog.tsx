@@ -1,24 +1,18 @@
-import { hasPermission } from "@pkg/domain";
-import type { UserSummary } from "@pkg/schema";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type React from "react";
-import { toast } from "sonner";
+import { hasPermission } from '@pkg/domain';
+import type { UserSummary } from '@pkg/schema';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type React from 'react';
+import { toast } from 'sonner';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog.js";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
-import { useAccess } from "@/hooks/use-access.js";
-import { authClient } from "@/lib/auth-client.js";
-import { useTRPC } from "@/lib/trpc.js";
-import { UserPasswordForm, type UserPasswordFormValues } from "./components/UserPasswordForm.js";
-import { UserProfileForm, type UserProfileFormValues } from "./components/UserProfileForm.js";
-import { UserRoleForm, type UserRoleFormValues } from "./components/UserRoleForm.js";
-import { unwrapAuthResult } from "./user-admin-client.js";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { useAccess } from '@/hooks/use-access.js';
+import { authClient } from '@/lib/auth-client.js';
+import { useTRPC } from '@/lib/trpc.js';
+import { UserPasswordForm, type UserPasswordFormValues } from './components/UserPasswordForm.js';
+import { UserProfileForm, type UserProfileFormValues } from './components/UserProfileForm.js';
+import { UserRoleForm, type UserRoleFormValues } from './components/UserRoleForm.js';
+import { unwrapAuthResult } from './user-admin-client.js';
 
 type UserEditDialogProps = {
   user: UserSummary;
@@ -31,9 +25,9 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const accessQuery = useAccess();
   const access = accessQuery.data;
 
-  const canUpdateProfile = hasPermission(access, "user:update");
-  const canSetRole = hasPermission(access, "user:set-role");
-  const canSetPassword = hasPermission(access, "user:set-password");
+  const canUpdateProfile = hasPermission(access, 'user:update');
+  const canSetRole = hasPermission(access, 'user:set-role');
+  const canSetPassword = hasPermission(access, 'user:set-password');
 
   const refreshUser = async () => {
     await Promise.all([
@@ -48,7 +42,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       unwrapAuthResult(await authClient.admin.updateUser({ data: value, userId: user.id })),
     onSuccess: async () => {
       await refreshUser();
-      toast.success("User profile updated");
+      toast.success('User profile updated');
     },
     onError: (error) => {
       toast.error(error.message);
@@ -60,7 +54,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       unwrapAuthResult(await authClient.admin.setRole({ role: value.role, userId: user.id })),
     onSuccess: async () => {
       await refreshUser();
-      toast.success("User role updated");
+      toast.success('User role updated');
     },
     onError: (error) => {
       toast.error(error.message);
@@ -69,19 +63,17 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
 
   const setPasswordMutation = useMutation({
     mutationFn: async (value: UserPasswordFormValues) =>
-      unwrapAuthResult(
-        await authClient.admin.setUserPassword({ newPassword: value.newPassword, userId: user.id }),
-      ),
+      unwrapAuthResult(await authClient.admin.setUserPassword({ newPassword: value.newPassword, userId: user.id })),
     onSuccess: async () => {
       await refreshUser();
-      toast.success("User password updated");
+      toast.success('User password updated');
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
 
-  const defaultTab = canUpdateProfile ? "profile" : canSetRole ? "role" : "password";
+  const defaultTab = canUpdateProfile ? 'profile' : canSetRole ? 'role' : 'password';
 
   return (
     <Dialog onOpenChange={(isOpen) => !isOpen && onClose()} open={!!user}>

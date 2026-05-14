@@ -1,8 +1,8 @@
-import { hasPermission } from "@pkg/domain";
-import type { AppPermission } from "@pkg/schema";
-import { Link, linkOptions } from "@tanstack/react-router";
-import { BotIcon, BoxesIcon, GaugeIcon, type LucideIcon, UsersIcon } from "lucide-react";
-import type React from "react";
+import { hasPermission } from '@pkg/domain';
+import type { AppPermission } from '@pkg/schema';
+import { Link, linkOptions } from '@tanstack/react-router';
+import { BotIcon, BoxesIcon, GaugeIcon, type LucideIcon, UsersIcon } from 'lucide-react';
+import type React from 'react';
 
 import {
   SidebarGroup,
@@ -10,8 +10,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar.js";
-import { useAccess } from "@/hooks/use-access.js";
+} from '@/components/ui/sidebar.js';
+import { useAccess } from '@/hooks/use-access.js';
 
 type MainNavItem = {
   title: string;
@@ -22,28 +22,28 @@ type MainNavItem = {
 
 const mainNavItems = [
   {
-    title: "Dashboard",
-    link: linkOptions({ to: "/dashboard" }),
+    title: 'Dashboard',
+    link: linkOptions({ to: '/dashboard' }),
     icon: GaugeIcon,
   },
   {
-    title: "Products",
-    permission: "product:read",
+    title: 'Products',
+    permission: 'product:read',
     link: linkOptions({
-      to: "/products",
-      search: { page: 1, pageSize: 10, search: "", sortBy: "name", sortDirection: "asc" },
+      to: '/products',
+      search: { page: 1, pageSize: 10, search: '', sortBy: 'name', sortDirection: 'asc' },
     }),
     icon: BoxesIcon,
   },
   {
-    title: "Assistant",
-    link: linkOptions({ to: "/assistant" }),
+    title: 'Assistant',
+    link: linkOptions({ to: '/assistant' }),
     icon: BotIcon,
   },
   {
-    title: "Users",
-    permission: "user:list",
-    link: linkOptions({ to: "/users" }),
+    title: 'Users',
+    permission: 'user:list',
+    link: linkOptions({ to: '/users' }),
     icon: UsersIcon,
   },
 ] as const satisfies readonly MainNavItem[];
@@ -51,7 +51,7 @@ const mainNavItems = [
 export const AppNavMain: React.FC = () => {
   const accessQuery = useAccess();
   const visibleNavItems = mainNavItems.filter(
-    (item) => !("permission" in item) || hasPermission(accessQuery.data, item.permission),
+    (item) => !('permission' in item) || hasPermission(accessQuery.data, item.permission),
   );
 
   return (

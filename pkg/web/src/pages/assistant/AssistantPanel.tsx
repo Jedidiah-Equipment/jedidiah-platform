@@ -1,23 +1,25 @@
-import { SendIcon, SquareIcon } from "lucide-react";
-import type React from "react";
-import { useEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { SendIcon, SquareIcon, WrenchIcon } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.js";
-import { Button } from "@/components/ui/button.js";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js";
-import { Separator } from "@/components/ui/separator.js";
-import { Textarea } from "@/components/ui/textarea.js";
-import { cn } from "@/lib/utils.js";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
+import { Badge } from '@/components/ui/badge.js';
+import { Button } from '@/components/ui/button.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
+import { Separator } from '@/components/ui/separator.js';
+import { Textarea } from '@/components/ui/textarea.js';
+import { cn } from '@/lib/utils.js';
 
-import { type AssistantChatEntry, useAssistantChat } from "./useAssistantChat.js";
+import { type AssistantChatEntry, useAssistantChat } from './useAssistantChat.js';
 
 export const AssistantPanel: React.FC = () => {
   const { error, messages, send, status, stop } = useAssistantChat();
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState('');
   const messageListRef = useRef<HTMLDivElement | null>(null);
-  const canSend = draft.trim().length > 0 && status !== "streaming";
+  const canSend = draft.trim().length > 0 && status !== 'streaming';
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -25,7 +27,7 @@ export const AssistantPanel: React.FC = () => {
     }
 
     messageListRef.current?.scrollTo({
-      behavior: "smooth",
+      behavior: 'smooth',
       top: messageListRef.current.scrollHeight,
     });
   }, [messages]);
@@ -38,7 +40,7 @@ export const AssistantPanel: React.FC = () => {
     }
 
     const content = draft;
-    setDraft("");
+    setDraft('');
     void send(content);
   };
 
@@ -72,7 +74,7 @@ export const AssistantPanel: React.FC = () => {
           ) : (
             messages.map((message, index) => (
               <AssistantMessage
-                isStreaming={status === "streaming" && index === messages.length - 1}
+                isStreaming={status === 'streaming' && index === messages.length - 1}
                 key={message.id}
                 message={message}
               />
@@ -84,10 +86,10 @@ export const AssistantPanel: React.FC = () => {
           <Textarea
             aria-label="Message"
             className="max-h-44 min-h-24 resize-none"
-            disabled={status === "streaming"}
+            disabled={status === 'streaming'}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
+              if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 event.currentTarget.form?.requestSubmit();
               }
@@ -96,7 +98,7 @@ export const AssistantPanel: React.FC = () => {
             value={draft}
           />
           <div className="flex items-center justify-end gap-2">
-            {status === "streaming" ? (
+            {status === 'streaming' ? (
               <Button onClick={stop} type="button" variant="outline">
                 <SquareIcon data-icon="inline-start" />
                 Stop
@@ -117,7 +119,8 @@ const AssistantMessage: React.FC<{ isStreaming: boolean; message: AssistantChatE
   isStreaming,
   message,
 }) => {
-  const isUser = message.role === "user";
+  const isUser = message.role === 'user';
+  const toolCalls = isUser ? [] : (message.toolCalls ?? []);
 
   if (!isUser && !message.content) {
     if (!isStreaming) {
@@ -134,17 +137,15 @@ const AssistantMessage: React.FC<{ isStreaming: boolean; message: AssistantChatE
   }
 
   return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
       <div className="max-w-[min(42rem,85%)]">
-        {!isUser && message.toolCallCount ? (
-          <p className="mb-1 text-xs text-muted-foreground">Tool calls: {message.toolCallCount}</p>
-        ) : null}
+        {toolCalls.length > 0 ? <ToolCallBadge toolCalls={toolCalls} /> : null}
         <div
           className={cn(
-            "rounded-lg px-3 py-2 text-sm leading-6",
+            'rounded-lg px-3 py-2 text-sm leading-6',
             isUser
-              ? "whitespace-pre-wrap bg-primary text-primary-foreground"
-              : "prose prose-sm max-w-none border border-border bg-background dark:prose-invert",
+              ? 'whitespace-pre-wrap bg-primary text-primary-foreground'
+              : 'prose prose-sm max-w-none border border-border bg-background dark:prose-invert',
           )}
         >
           {isUser ? (
@@ -160,25 +161,53 @@ const AssistantMessage: React.FC<{ isStreaming: boolean; message: AssistantChatE
   );
 };
 
+const ToolCallBadge: React.FC<{
+  toolCalls: NonNullable<AssistantChatEntry['toolCalls']>;
+}> = ({ toolCalls }) => {
+  return (
+    <HoverCard>
+      <HoverCardTrigger
+        closeDelay={100}
+        delay={100}
+        render={<Badge className="mb-1 cursor-default rounded-4xl px-2.5" variant="outline" />}
+      >
+        <WrenchIcon data-icon="inline-start" />
+        Tools called
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="w-72">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {toolCalls.map((toolCall) => (
+              <Badge
+                className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
+                key={toolCall.id}
+                variant="secondary"
+              >
+                {toolCall.name}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
+
 const markdownComponents = {
-  table({ children }: React.ComponentPropsWithoutRef<"table">) {
+  table({ children }: React.ComponentPropsWithoutRef<'table'>) {
     return (
       <div className="my-3 overflow-x-auto rounded-md border border-border">
         <table className="m-0 w-full min-w-max border-collapse text-sm">{children}</table>
       </div>
     );
   },
-  thead({ children }: React.ComponentPropsWithoutRef<"thead">) {
+  thead({ children }: React.ComponentPropsWithoutRef<'thead'>) {
     return <thead className="bg-muted/70">{children}</thead>;
   },
-  th({ children }: React.ComponentPropsWithoutRef<"th">) {
-    return (
-      <th className="border-b border-border px-3 py-2 text-left font-medium text-foreground">
-        {children}
-      </th>
-    );
+  th({ children }: React.ComponentPropsWithoutRef<'th'>) {
+    return <th className="border-b border-border px-3 py-2 text-left font-medium text-foreground">{children}</th>;
   },
-  td({ children }: React.ComponentPropsWithoutRef<"td">) {
+  td({ children }: React.ComponentPropsWithoutRef<'td'>) {
     return <td className="border-t border-border px-3 py-2 align-top">{children}</td>;
   },
-} satisfies React.ComponentProps<typeof ReactMarkdown>["components"];
+} satisfies React.ComponentProps<typeof ReactMarkdown>['components'];

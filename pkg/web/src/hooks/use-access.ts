@@ -1,8 +1,8 @@
-import { hasPermission } from "@pkg/domain";
-import type { AppPermission } from "@pkg/schema";
-import { useQuery } from "@tanstack/react-query";
+import { hasPermission } from '@pkg/domain';
+import type { AppPermission } from '@pkg/schema';
+import { useQuery } from '@tanstack/react-query';
 
-import { useTRPC } from "@/lib/trpc.js";
+import { useTRPC } from '@/lib/trpc.js';
 
 export function useAccess() {
   const trpc = useTRPC();

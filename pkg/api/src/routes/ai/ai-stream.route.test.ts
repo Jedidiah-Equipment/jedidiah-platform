@@ -1,24 +1,24 @@
-import type { Server } from "node:http";
-import http from "node:http";
+import type { Server } from 'node:http';
+import http from 'node:http';
 
-import fastifyCors from "@fastify/cors";
-import * as productsCore from "@pkg/core";
-import { createUserAccessSummary } from "@pkg/domain";
-import Fastify from "fastify";
-import { describe, expect, test, vi } from "vitest";
+import fastifyCors from '@fastify/cors';
+import * as productsCore from '@pkg/core';
+import { createUserAccessSummary } from '@pkg/domain';
+import Fastify from 'fastify';
+import { describe, expect, test, vi } from 'vitest';
 
-import type { AiContext } from "@/routes/ai/ai-context.js";
-import { type CreateOpenAIClient, registerAiStreamRoute } from "@/routes/ai/ai-stream.route.js";
-import { mockSession } from "@/test/test-utils.js";
+import type { AiContext } from '@/routes/ai/ai-context.js';
+import { type CreateOpenAIClient, registerAiStreamRoute } from '@/routes/ai/ai-stream.route.js';
+import { mockSession } from '@/test/test-utils.js';
 
 function createAiContext({
   access = null,
-  db = {} as AiContext["db"],
+  db = {} as AiContext['db'],
   session = mockSession(),
 }: {
-  access?: AiContext["access"];
-  db?: AiContext["db"];
-  session?: AiContext["session"];
+  access?: AiContext['access'];
+  db?: AiContext['db'];
+  session?: AiContext['session'];
 } = {}): AiContext {
   return {
     access,
@@ -32,7 +32,7 @@ function createClient(...streams: StubCompletionStream[]): ReturnType<CreateOpen
     const nextStream = streams.shift();
 
     if (!nextStream) {
-      throw new Error("No stub completion stream was queued");
+      throw new Error('No stub completion stream was queued');
     }
 
     nextStream.setParams(params);
@@ -50,9 +50,9 @@ function createClient(...streams: StubCompletionStream[]): ReturnType<CreateOpen
 
 function readSseDataLines(body: string): string[] {
   return body
-    .split("\n")
-    .filter((line) => line.startsWith("data: "))
-    .map((line) => line.slice("data: ".length));
+    .split('\n')
+    .filter((line) => line.startsWith('data: '))
+    .map((line) => line.slice('data: '.length));
 }
 
 class StubCompletionStream {
@@ -65,9 +65,7 @@ class StubCompletionStream {
   private resolveDone: () => void = () => undefined;
   private params: unknown = null;
 
-  constructor(
-    private readonly run: (stream: StubCompletionStream, params: unknown) => Promise<void> | void,
-  ) {}
+  constructor(private readonly run: (stream: StubCompletionStream, params: unknown) => Promise<void> | void) {}
 
   setParams(params: unknown): void {
     this.params = params;
@@ -97,8 +95,8 @@ class StubCompletionStream {
   }
 }
 
-describe("POST /ai/chat-stream", () => {
-  test("returns 401 without constructing the OpenAI client when there is no session", async () => {
+describe('POST /ai/chat-stream', () => {
+  test('returns 401 without constructing the OpenAI client when there is no session', async () => {
     const app = Fastify();
     const createOpenAIClient = vi.fn(() =>
       createClient(new StubCompletionStream(() => undefined)),
@@ -106,14 +104,14 @@ describe("POST /ai/chat-stream", () => {
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext({ session: null }),
       createOpenAIClient,
-      model: "test-model",
+      model: 'test-model',
     });
 
     const response = await app.inject({
-      method: "POST",
-      url: "/ai/chat-stream",
+      method: 'POST',
+      url: '/ai/chat-stream',
       payload: {
-        messages: [{ role: "user", content: "Show me loaders" }],
+        messages: [{ role: 'user', content: 'Show me loaders' }],
       },
     });
 
@@ -121,86 +119,86 @@ describe("POST /ai/chat-stream", () => {
     expect(createOpenAIClient).not.toHaveBeenCalled();
   });
 
-  test("streams token and done SSE frames in order for an authenticated request", async () => {
+  test('streams token and done SSE frames in order for an authenticated request', async () => {
     const app = Fastify();
     const stream = new StubCompletionStream((stub) => {
-      stub.emit("content.delta", { delta: "Com" });
-      stub.emit("content.delta", { delta: "pact" });
+      stub.emit('content.delta', { delta: 'Com' });
+      stub.emit('content.delta', { delta: 'pact' });
     });
 
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext(),
       createOpenAIClient: () => createClient(stream),
-      model: "test-model",
+      model: 'test-model',
     });
 
     const response = await app.inject({
-      method: "POST",
-      url: "/ai/chat-stream",
+      method: 'POST',
+      url: '/ai/chat-stream',
       payload: {
-        messages: [{ role: "user", content: "Show me loaders" }],
+        messages: [{ role: 'user', content: 'Show me loaders' }],
       },
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.headers["content-type"]).toContain("text/event-stream");
-    expect(response.headers["cache-control"]).toBe("no-cache, no-transform");
-    expect(response.headers["x-accel-buffering"]).toBe("no");
+    expect(response.headers['content-type']).toContain('text/event-stream');
+    expect(response.headers['cache-control']).toBe('no-cache, no-transform');
+    expect(response.headers['x-accel-buffering']).toBe('no');
     expect(readSseDataLines(response.body)).toEqual([
-      JSON.stringify({ type: "token", delta: "Com" }),
-      JSON.stringify({ type: "token", delta: "pact" }),
-      JSON.stringify({ type: "done" }),
+      JSON.stringify({ type: 'token', delta: 'Com' }),
+      JSON.stringify({ type: 'token', delta: 'pact' }),
+      JSON.stringify({ type: 'done' }),
     ]);
   });
 
-  test("preserves CORS headers on streamed responses", async () => {
+  test('preserves CORS headers on streamed responses', async () => {
     const app = Fastify();
     const stream = new StubCompletionStream((stub) => {
-      stub.emit("content.delta", { delta: "Compact" });
+      stub.emit('content.delta', { delta: 'Compact' });
     });
 
     await app.register(fastifyCors, {
       credentials: true,
-      origin: ["http://localhost:7001"],
+      origin: ['http://localhost:7001'],
     });
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext(),
       createOpenAIClient: () => createClient(stream),
-      model: "test-model",
+      model: 'test-model',
     });
 
     const response = await app.inject({
       headers: {
-        origin: "http://localhost:7001",
+        origin: 'http://localhost:7001',
       },
-      method: "POST",
+      method: 'POST',
       payload: {
-        messages: [{ role: "user", content: "Show me loaders" }],
+        messages: [{ role: 'user', content: 'Show me loaders' }],
       },
-      url: "/ai/chat-stream",
+      url: '/ai/chat-stream',
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:7001");
-    expect(response.headers["access-control-allow-credentials"]).toBe("true");
+    expect(response.headers['access-control-allow-origin']).toBe('http://localhost:7001');
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
   });
 
-  test("streams a final assistant answer after a tool call", async () => {
+  test('streams a final assistant answer after a tool call', async () => {
     const app = Fastify();
     const product = {
       basePrice: 332_500,
-      createdAt: new Date("2026-05-13T10:13:20.631Z"),
-      currencyCode: "ZAR" as const,
-      description: "Apex forklift",
-      id: "00000000-0000-4000-8000-000000000001",
-      modelCode: "AF-25",
-      name: "Apex Forklift",
-      updatedAt: new Date("2026-05-13T10:13:20.631Z"),
+      createdAt: '2026-05-13T10:13:20.631Z',
+      currencyCode: 'ZAR' as const,
+      description: 'Apex forklift',
+      id: '00000000-0000-4000-8000-000000000001',
+      modelCode: 'AF-25',
+      name: 'Apex Forklift',
+      updatedAt: '2026-05-13T10:13:20.631Z',
     };
-    const listProductsSpy = vi.spyOn(productsCore, "listProducts").mockResolvedValue({
+    const listProductsSpy = vi.spyOn(productsCore, 'listProducts').mockResolvedValue({
       items: [product],
-      sortBy: "name",
-      sortDirection: "asc",
+      sortBy: 'name',
+      sortDirection: 'asc',
       total: 1,
     });
 
@@ -210,10 +208,10 @@ describe("POST /ai/chat-stream", () => {
       const { tools } = params as {
         tools: Array<{ function: { name: string; function: (args: unknown) => Promise<unknown> } }>;
       };
-      const listProductsTool = tools.find((t) => t.function.name === "listProducts");
+      const listProductsTool = tools.find((t) => t.function.name === 'listProducts');
       await listProductsTool?.function.function(null);
-      stub.emit("content.delta", {
-        delta: "You have Apex Forklift (AF-25) at ZAR 332,500.00.",
+      stub.emit('content.delta', {
+        delta: 'You have Apex Forklift (AF-25) at ZAR 332,500.00.',
       });
     });
 
@@ -222,20 +220,20 @@ describe("POST /ai/chat-stream", () => {
         buildContext: async () =>
           createAiContext({
             access: createUserAccessSummary({
-              role: "product-viewer",
-              userId: "test-user-id",
+              role: 'product-viewer',
+              userId: 'test-user-id',
             }),
           }),
         createOpenAIClient: () => createClient(stream),
-        model: "test-model",
+        model: 'test-model',
       });
 
       const response = await app.inject({
-        method: "POST",
+        method: 'POST',
         payload: {
-          messages: [{ role: "user", content: "What products do we have?" }],
+          messages: [{ role: 'user', content: 'What products do we have?' }],
         },
-        url: "/ai/chat-stream",
+        url: '/ai/chat-stream',
       });
       const events = readSseDataLines(response.body).map((line) => JSON.parse(line) as unknown);
 
@@ -243,15 +241,15 @@ describe("POST /ai/chat-stream", () => {
       expect(events).toEqual([
         {
           args: null,
-          name: "listProducts",
-          type: "tool_call",
+          name: 'listProducts',
+          type: 'tool_call',
         },
         {
-          delta: "You have Apex Forklift (AF-25) at ZAR 332,500.00.",
-          type: "token",
+          delta: 'You have Apex Forklift (AF-25) at ZAR 332,500.00.',
+          type: 'token',
         },
         {
-          type: "done",
+          type: 'done',
         },
       ]);
     } finally {
@@ -259,7 +257,7 @@ describe("POST /ai/chat-stream", () => {
     }
   });
 
-  test("does not expose tools without the required permission", async () => {
+  test('does not expose tools without the required permission', async () => {
     const app = Fastify();
     let exposedToolNames: string[] | null = null;
     let systemPrompt: string | null = null;
@@ -269,7 +267,7 @@ describe("POST /ai/chat-stream", () => {
         tools: Array<{ function: { name: string } }>;
       };
       exposedToolNames = tools.map((tool) => tool.function.name);
-      systemPrompt = messages.find((message) => message.role === "system")?.content ?? null;
+      systemPrompt = messages.find((message) => message.role === 'system')?.content ?? null;
     });
 
     await registerAiStreamRoute(app, {
@@ -278,27 +276,27 @@ describe("POST /ai/chat-stream", () => {
           access: {
             permissions: [],
             role: null,
-            userId: "test-user-id",
+            userId: 'test-user-id',
           },
         }),
       createOpenAIClient: () => createClient(stream),
-      model: "test-model",
+      model: 'test-model',
     });
 
     const response = await app.inject({
-      method: "POST",
+      method: 'POST',
       payload: {
-        messages: [{ role: "user", content: "What products do we have?" }],
+        messages: [{ role: 'user', content: 'What products do we have?' }],
       },
-      url: "/ai/chat-stream",
+      url: '/ai/chat-stream',
     });
 
     expect(response.statusCode).toBe(200);
     expect(exposedToolNames).toEqual([]);
-    expect(systemPrompt).not.toContain("listProducts");
+    expect(systemPrompt).not.toContain('listProducts');
   });
 
-  test("returns 400 for oversized authenticated payloads", async () => {
+  test('returns 400 for oversized authenticated payloads', async () => {
     const app = Fastify();
     const createOpenAIClient = vi.fn(() =>
       createClient(new StubCompletionStream(() => undefined)),
@@ -306,16 +304,16 @@ describe("POST /ai/chat-stream", () => {
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext(),
       createOpenAIClient,
-      model: "test-model",
+      model: 'test-model',
     });
 
     const response = await app.inject({
-      method: "POST",
-      url: "/ai/chat-stream",
+      method: 'POST',
+      url: '/ai/chat-stream',
       payload: {
         messages: Array.from({ length: 40 }, () => ({
-          role: "user",
-          content: "a".repeat(2_000),
+          role: 'user',
+          content: 'a'.repeat(2_000),
         })),
       },
     });
@@ -324,17 +322,17 @@ describe("POST /ai/chat-stream", () => {
     expect(createOpenAIClient).not.toHaveBeenCalled();
   });
 
-  test("aborts the upstream stream when the client disconnects mid-stream", async () => {
+  test('aborts the upstream stream when the client disconnects mid-stream', async () => {
     const app = Fastify();
     const stream = new StubCompletionStream((stub) => {
-      stub.emit("content.delta", { delta: "Com" });
+      stub.emit('content.delta', { delta: 'Com' });
       return new Promise(() => undefined);
     });
 
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext(),
       createOpenAIClient: () => createClient(stream),
-      model: "test-model",
+      model: 'test-model',
     });
 
     await app.listen({ port: 0 });
@@ -342,28 +340,28 @@ describe("POST /ai/chat-stream", () => {
     try {
       const server = app.server as Server;
       const address = server.address();
-      const port = typeof address === "object" && address ? address.port : 0;
+      const port = typeof address === 'object' && address ? address.port : 0;
 
       await new Promise<void>((resolve, reject) => {
         const request = http.request(
           {
-            hostname: "127.0.0.1",
-            method: "POST",
-            path: "/ai/chat-stream",
+            hostname: '127.0.0.1',
+            method: 'POST',
+            path: '/ai/chat-stream',
             port,
             headers: {
-              "content-type": "application/json",
+              'content-type': 'application/json',
             },
           },
           (response) => {
-            response.once("data", () => {
+            response.once('data', () => {
               response.destroy();
             });
           },
         );
 
-        request.on("error", reject);
-        request.end(JSON.stringify({ messages: [{ role: "user", content: "Show me loaders" }] }));
+        request.on('error', reject);
+        request.end(JSON.stringify({ messages: [{ role: 'user', content: 'Show me loaders' }] }));
 
         vi.waitFor(() => expect(stream.abort).toHaveBeenCalled()).then(resolve, reject);
       });

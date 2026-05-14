@@ -19,8 +19,8 @@
 // Or add to package.json:
 //   "scripts": { "sandcastle": "npx tsx .sandcastle/main.mts" }
 
-import * as sandcastle from "@ai-hero/sandcastle";
-import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
+import * as sandcastle from '@ai-hero/sandcastle';
+import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -41,7 +41,7 @@ const hooks = {
         command:
           'if printenv OPENAI_KEY >/dev/null; then printenv OPENAI_KEY | codex login --with-api-key; elif printenv OPENAI_API_KEY >/dev/null; then printenv OPENAI_API_KEY | codex login --with-api-key; else echo "Missing OPENAI_KEY or OPENAI_API_KEY for Codex"; exit 1; fi',
       },
-      { command: "npm install" },
+      { command: 'npm install' },
     ],
   },
 };
@@ -49,7 +49,7 @@ const hooks = {
 // Copy node_modules from the host into the worktree before each sandbox
 // starts. Avoids a full npm install from scratch; the hook above handles
 // platform-specific binaries and any packages added since the last copy.
-const copyToWorktree = ["node_modules"];
+const copyToWorktree = ['node_modules'];
 
 // ---------------------------------------------------------------------------
 // Main loop
@@ -68,15 +68,14 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     sandbox: docker({
       containerGid: 0,
       env: {
-        COMPOSE_PROJECT_NAME: "jedidiah-platform",
-        DATABASE_URL: "postgres://postgres:postgres@host.docker.internal:5432/jedidiah",
-        TEST_DATABASE_URL:
-          "postgres://postgres:postgres@host.docker.internal:5432/jedidiah_template",
+        COMPOSE_PROJECT_NAME: 'jedidiah-platform',
+        DATABASE_URL: 'postgres://postgres:postgres@host.docker.internal:5432/jedidiah',
+        TEST_DATABASE_URL: 'postgres://postgres:postgres@host.docker.internal:5432/jedidiah_template',
       },
       mounts: [
         {
-          hostPath: "/var/run/docker.sock",
-          sandboxPath: "/var/run/docker.sock",
+          hostPath: '/var/run/docker.sock',
+          sandboxPath: '/var/run/docker.sock',
         },
       ],
     }),
@@ -95,14 +94,14 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     // The agent signals completion via <promise>COMPLETE</promise> when done.
     // -----------------------------------------------------------------------
     const implement = await sandbox.run({
-      name: "implementer",
+      name: 'implementer',
       maxIterations: 100,
-      agent: sandcastle.codex("gpt-5.4-mini"),
-      promptFile: "./.sandcastle/implement-prompt.md",
+      agent: sandcastle.codex('gpt-5.4-mini'),
+      promptFile: './.sandcastle/implement-prompt.md',
     });
 
     if (!implement.commits.length) {
-      console.log("Implementation agent made no commits. Skipping review.");
+      console.log('Implementation agent made no commits. Skipping review.');
       continue;
     }
 
@@ -117,19 +116,19 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     // branch, and either approves or makes corrections directly on the branch.
     // -----------------------------------------------------------------------
     await sandbox.run({
-      name: "reviewer",
+      name: 'reviewer',
       maxIterations: 1,
-      agent: sandcastle.codex("gpt-5.4-mini"),
-      promptFile: "./.sandcastle/review-prompt.md",
+      agent: sandcastle.codex('gpt-5.4-mini'),
+      promptFile: './.sandcastle/review-prompt.md',
       promptArgs: {
         BRANCH: branch,
       },
     });
 
-    console.log("\nReview complete.");
+    console.log('\nReview complete.');
   } finally {
     await sandbox.close();
   }
 }
 
-console.log("\nAll done.");
+console.log('\nAll done.');

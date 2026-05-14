@@ -1,8 +1,8 @@
-import { Loader2Icon } from "lucide-react";
-import type React from "react";
+import { Loader2Icon } from 'lucide-react';
+import type React from 'react';
 
-import { Button } from "@/components/ui/button.js";
-import { DialogFooter } from "@/components/ui/dialog.js";
+import { Button } from '@/components/ui/button.js';
+import { DialogFooter } from '@/components/ui/dialog.js';
 
 type SubmitFooterProps = {
   isPending: boolean;

@@ -1,11 +1,11 @@
-import { AppEnv, type ClientConfig } from "@pkg/schema";
-import dotenv from "dotenv";
-import { z } from "zod";
+import { AppEnv, type ClientConfig } from '@pkg/schema';
+import dotenv from 'dotenv';
+import { z } from 'zod';
 
 dotenv.config({ quiet: true });
 
-if (process.env.APP_ENV === "development") {
-  dotenv.config({ path: ".env.dev", override: true, quiet: true });
+if (process.env.APP_ENV === 'development') {
+  dotenv.config({ path: '.env.dev', override: true, quiet: true });
 }
 
 export type ServerConfig = z.infer<typeof ServerConfig>;
@@ -33,8 +33,6 @@ export function getServerConfig(env: NodeJS.ProcessEnv = process.env): ServerCon
   return ServerConfig.parse(env);
 }
 
-export function getInjectedClientConfig(
-  env: NodeJS.ProcessEnv = process.env,
-): InjectedClientConfig {
+export function getInjectedClientConfig(env: NodeJS.ProcessEnv = process.env): InjectedClientConfig {
   return getServerConfig(env).clientConfig;
 }

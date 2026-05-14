@@ -1,12 +1,12 @@
-import { useDebouncedValue } from "@mantine/hooks";
-import { type Column, flexRender, type Header } from "@tanstack/react-table";
-import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, FunnelIcon, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button.js";
-import { Input } from "@/components/ui/input.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
-import { cn } from "@/lib/utils.js";
-import { getColumnLabel } from "../utils.js";
+import { useDebouncedValue } from '@mantine/hooks';
+import { type Column, flexRender, type Header } from '@tanstack/react-table';
+import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, FunnelIcon, XIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
+import { cn } from '@/lib/utils.js';
+import { getColumnLabel } from '../utils.js';
 
 type DataTableHeaderProps<TData> = {
   debounceMs: number;
@@ -17,12 +17,10 @@ export function DataTableHeader<TData>({ debounceMs, header }: DataTableHeaderPr
   const content = flexRender(header.column.columnDef.header, header.getContext());
 
   return (
-    <div className={cn("flex items-center gap-0", isRightAligned(header) && "justify-end")}>
+    <div className={cn('flex items-center gap-0', isRightAligned(header) && 'justify-end')}>
       <div className="min-w-0 truncate pr-2">{content}</div>
       {header.column.getCanSort() ? <DataTableSortButton column={header.column} /> : null}
-      {header.column.getCanFilter() ? (
-        <DataTableFilterButton column={header.column} debounceMs={debounceMs} />
-      ) : null}
+      {header.column.getCanFilter() ? <DataTableFilterButton column={header.column} debounceMs={debounceMs} /> : null}
     </div>
   );
 }
@@ -33,14 +31,14 @@ type DataTableSortButtonProps<TData> = {
 
 function DataTableSortButton<TData>({ column }: DataTableSortButtonProps<TData>) {
   const sorted = column.getIsSorted();
-  const Icon = sorted === false ? ArrowUpDownIcon : sorted === "asc" ? ArrowUpIcon : ArrowDownIcon;
+  const Icon = sorted === false ? ArrowUpDownIcon : sorted === 'asc' ? ArrowUpIcon : ArrowDownIcon;
   const label = getColumnLabel(column);
 
   return (
     <Button
       aria-label={`Sort ${label}`}
-      className={cn("w-5", sorted !== false && "text-primary hover:text-primary")}
-      onClick={() => column.toggleSorting(sorted === "asc")}
+      className={cn('w-5', sorted !== false && 'text-primary hover:text-primary')}
+      onClick={() => column.toggleSorting(sorted === 'asc')}
       size="icon-xs"
       type="button"
       variant="ghost"
@@ -57,7 +55,7 @@ type DataTableFilterButtonProps<TData> = {
 
 function DataTableFilterButton<TData>({ column, debounceMs }: DataTableFilterButtonProps<TData>) {
   const label = getColumnLabel(column);
-  const filterValue = String(column.getFilterValue() ?? "");
+  const filterValue = String(column.getFilterValue() ?? '');
   const [filterDraft, setFilterDraft] = useState(filterValue);
   const [debouncedFilter] = useDebouncedValue(filterDraft, debounceMs);
 
@@ -77,7 +75,7 @@ function DataTableFilterButton<TData>({ column, debounceMs }: DataTableFilterBut
         render={
           <Button
             aria-label={`Filter ${label}`}
-            className={cn("w-5", filterValue && "text-primary hover:text-primary")}
+            className={cn('w-5', filterValue && 'text-primary hover:text-primary')}
             size="icon-xs"
             type="button"
             variant="ghost"
@@ -101,7 +99,7 @@ function DataTableFilterButton<TData>({ column, debounceMs }: DataTableFilterBut
               aria-label={`Clear ${label} filter`}
               disabled={!filterDraft}
               onClick={() => {
-                setFilterDraft("");
+                setFilterDraft('');
                 column.setFilterValue(undefined);
               }}
               size="icon-sm"
@@ -118,5 +116,5 @@ function DataTableFilterButton<TData>({ column, debounceMs }: DataTableFilterBut
 }
 
 function isRightAligned<TData>(header: Header<TData, unknown>): boolean {
-  return header.column.columnDef.meta?.headerClassName?.includes("text-right") ?? false;
+  return header.column.columnDef.meta?.headerClassName?.includes('text-right') ?? false;
 }

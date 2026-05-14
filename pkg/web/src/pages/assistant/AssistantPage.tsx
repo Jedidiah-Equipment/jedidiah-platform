@@ -1,6 +1,6 @@
-import type React from "react";
+import type React from 'react';
 
-import { AssistantPanel } from "./AssistantPanel.js";
+import { AssistantPanel } from './AssistantPanel.js';
 
 export const AssistantPage: React.FC = () => {
   return (

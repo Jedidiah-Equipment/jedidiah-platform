@@ -1,7 +1,7 @@
-import { listUsers } from "@pkg/core";
+import { listUsers } from '@pkg/core';
 
-import { authorizedProcedure, router } from "../../trpc/init.js";
+import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const usersRouter = router({
-  list: authorizedProcedure("user:list").query(({ ctx }) => listUsers(ctx.db)),
+  list: authorizedProcedure('user:list').query(({ ctx }) => listUsers(ctx.db)),
 });

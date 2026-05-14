@@ -1,48 +1,31 @@
-import type { Database } from "@pkg/db";
-import { getUniqueViolationConstraint, withPagination } from "@pkg/db/query-utils";
-import { products } from "@pkg/db/schema";
-import type {
-  Product,
-  ProductCreateInput,
-  ProductListInput,
-  ProductListResult,
-  ProductUpdateInput,
-} from "@pkg/schema";
-import { ProductCurrencyCode } from "@pkg/schema";
-import { and, asc, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
+import type { Database } from '@pkg/db';
+import { getUniqueViolationConstraint, withPagination } from '@pkg/db/query-utils';
+import { products } from '@pkg/db/schema';
+import type { Product, ProductCreateInput, ProductListInput, ProductListResult, ProductUpdateInput } from '@pkg/schema';
+import { ProductCurrencyCode } from '@pkg/schema';
+import { and, asc, desc, eq, ilike, or, type SQL, sql } from 'drizzle-orm';
 
-import {
-  createAuditChanges,
-  insertAuditEvent,
-  productAuditDescriptor,
-} from "../audit/audit-service.js";
-import {
-  DuplicateProductModelCodeError,
-  DuplicateProductNameError,
-  ProductNotFoundError,
-} from "./product-errors.js";
+import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
+import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
 
 type ProductRow = typeof products.$inferSelect;
 
 export function mapProduct(row: ProductRow): Product {
   return {
     basePrice: row.basePrice,
-    createdAt: row.createdAt,
+    createdAt: row.createdAt.toISOString(),
     currencyCode: ProductCurrencyCode.parse(row.currencyCode),
     description: row.description,
     id: row.id,
     modelCode: row.modelCode,
     name: row.name,
-    updatedAt: row.updatedAt,
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
-export async function listProducts(
-  database: Database,
-  input: ProductListInput,
-): Promise<ProductListResult> {
+export async function listProducts(database: Database, input: ProductListInput): Promise<ProductListResult> {
   const sortColumn = getProductSortColumn(input.sortBy);
-  const orderBy = input.sortDirection === "desc" ? desc(sortColumn) : asc(sortColumn);
+  const orderBy = input.sortDirection === 'desc' ? desc(sortColumn) : asc(sortColumn);
   const where = buildProductListWhere(input);
   const rowsQuery = withPagination(
     database
@@ -115,11 +98,11 @@ export async function createProduct(
       const [row] = await tx.insert(products).values(input).returning();
 
       if (!row) {
-        throw new Error("Product insert did not return a row");
+        throw new Error('Product insert did not return a row');
       }
 
       await insertAuditEvent(tx, {
-        action: "created",
+        action: 'created',
         actorUserId,
         after: row,
         before: null,
@@ -142,11 +125,7 @@ export async function updateProduct(
 ): Promise<Product> {
   try {
     return await database.transaction(async (tx) => {
-      const [before] = await tx
-        .select()
-        .from(products)
-        .where(eq(products.id, input.id))
-        .for("update");
+      const [before] = await tx.select().from(products).where(eq(products.id, input.id)).for('update');
 
       if (!before) {
         throw new ProductNotFoundError(input.id);
@@ -184,7 +163,7 @@ export async function updateProduct(
       }
 
       await insertAuditEvent(tx, {
-        action: "updated",
+        action: 'updated',
         actorUserId,
         after: row,
         before,
@@ -200,33 +179,30 @@ export async function updateProduct(
   }
 }
 
-function getProductSortColumn(sortBy: ProductListInput["sortBy"]) {
-  if (sortBy === "basePrice") {
+function getProductSortColumn(sortBy: ProductListInput['sortBy']) {
+  if (sortBy === 'basePrice') {
     return products.basePrice;
   }
 
-  if (sortBy === "createdAt") {
+  if (sortBy === 'createdAt') {
     return products.createdAt;
   }
 
-  if (sortBy === "id") {
+  if (sortBy === 'id') {
     return products.id;
   }
 
-  if (sortBy === "modelCode") {
+  if (sortBy === 'modelCode') {
     return products.modelCode;
   }
 
   return products.name;
 }
 
-function mapProductUniqueViolation(
-  error: unknown,
-  input: Pick<ProductCreateInput, "modelCode" | "name">,
-): Error {
+function mapProductUniqueViolation(error: unknown, input: Pick<ProductCreateInput, 'modelCode' | 'name'>): Error {
   const constraint = getUniqueViolationConstraint(error);
 
-  if (constraint?.includes("products_model_code_unique") || constraint?.includes("model_code")) {
+  if (constraint?.includes('products_model_code_unique') || constraint?.includes('model_code')) {
     return new DuplicateProductModelCodeError(input.modelCode);
   }
 

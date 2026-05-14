@@ -1,13 +1,13 @@
-import type * as React from "react";
+import type * as React from 'react';
 
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field.js";
-import { Input } from "@/components/ui/input.js";
-import { getFieldErrors } from "./field-errors.js";
-import { useFieldContext } from "./form-context.js";
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { Input } from '@/components/ui/input.js';
+import { getFieldErrors } from './field-errors.js';
+import { useFieldContext } from './form-context.js';
 
 type TextFieldInputProps = Omit<
   React.ComponentProps<typeof Input>,
-  "aria-invalid" | "id" | "name" | "onBlur" | "onChange" | "type" | "value"
+  'aria-invalid' | 'id' | 'name' | 'onBlur' | 'onChange' | 'type' | 'value'
 >;
 
 export type TextFieldProps = {
@@ -16,7 +16,7 @@ export type TextFieldProps = {
   type?: React.HTMLInputTypeAttribute;
 } & TextFieldInputProps;
 
-export function TextField({ description, label, type = "text", ...inputProps }: TextFieldProps) {
+export function TextField({ description, label, type = 'text', ...inputProps }: TextFieldProps) {
   const field = useFieldContext<string>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;

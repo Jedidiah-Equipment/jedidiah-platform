@@ -1,5 +1,5 @@
-import { createDatabaseClient } from "./database-client.js";
-import { getDatabaseUrl } from "./env.js";
+import { createDatabaseClient } from './database-client.js';
+import { getDatabaseUrl } from './env.js';
 
 const defaultClient = createDatabaseClient(getDatabaseUrl());
 

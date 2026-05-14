@@ -1,16 +1,16 @@
-import type React from "react";
+import type React from 'react';
 
-import { Badge } from "@/components/ui/badge.js";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.js";
-import { Separator } from "@/components/ui/separator.js";
-import { Skeleton } from "@/components/ui/skeleton.js";
-import { authClient } from "@/lib/auth-client.js";
+import { Badge } from '@/components/ui/badge.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Separator } from '@/components/ui/separator.js';
+import { Skeleton } from '@/components/ui/skeleton.js';
+import { authClient } from '@/lib/auth-client.js';
 
 type DashboardPageProps = Record<string, never>;
 
 export const DashboardPage: React.FC<DashboardPageProps> = () => {
   const { data: session, isPending } = authClient.useSession();
-  const userLabel = session?.user.name || session?.user.email || "Signed in";
+  const userLabel = session?.user.name || session?.user.email || 'Signed in';
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -24,11 +24,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
             <Separator />
             <div className="flex flex-col gap-2">
               <span className="text-sm text-muted-foreground">Signed in as</span>
-              {isPending ? (
-                <Skeleton className="h-6 w-56" />
-              ) : (
-                <span className="text-lg font-medium">{userLabel}</span>
-              )}
+              {isPending ? <Skeleton className="h-6 w-56" /> : <span className="text-lg font-medium">{userLabel}</span>}
             </div>
           </CardContent>
         </Card>
@@ -42,7 +38,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
             <Separator />
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm text-muted-foreground">Authentication</span>
-              <Badge variant="secondary">{isPending ? "Checking" : "Active"}</Badge>
+              <Badge variant="secondary">{isPending ? 'Checking' : 'Active'}</Badge>
             </div>
           </CardContent>
         </Card>

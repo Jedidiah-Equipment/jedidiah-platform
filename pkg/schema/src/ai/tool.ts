@@ -1,7 +1,7 @@
-import type { z } from "zod";
+import type { z } from 'zod';
 
-import type { AppPermission } from "../auth/authorization.js";
-import type { AiContext } from "./context.js";
+import type { AppPermission } from '../auth/authorization.js';
+import type { AiContext } from './context.js';
 
 export type AiToolBase<TName extends string, TResult, TInput, TContext extends AiContext> = {
   name: TName;

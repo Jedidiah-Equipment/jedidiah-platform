@@ -1,11 +1,11 @@
-import type { ChatEvent } from "@pkg/schema";
-import type { FastifyReply } from "fastify";
+import type { ChatEvent } from '@pkg/schema';
+import type { FastifyReply } from 'fastify';
 
 export const SSE_HEADERS = {
-  "Content-Type": "text/event-stream",
-  "Cache-Control": "no-cache, no-transform",
-  Connection: "keep-alive",
-  "X-Accel-Buffering": "no",
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache, no-transform',
+  Connection: 'keep-alive',
+  'X-Accel-Buffering': 'no',
 } as const;
 
 export function writeEvent(reply: FastifyReply, event: ChatEvent): void {
@@ -14,7 +14,7 @@ export function writeEvent(reply: FastifyReply, event: ChatEvent): void {
 
 export function writeError(reply: FastifyReply, message: string): void {
   writeEvent(reply, {
-    type: "error",
+    type: 'error',
     message,
   });
 }

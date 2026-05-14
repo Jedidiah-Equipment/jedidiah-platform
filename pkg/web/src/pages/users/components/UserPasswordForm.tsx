@@ -1,10 +1,10 @@
-import { UserPassword } from "@pkg/schema";
-import type React from "react";
-import { z } from "zod";
+import { UserPassword } from '@pkg/schema';
+import type React from 'react';
+import { z } from 'zod';
 
-import { useAppForm } from "@/components/form/index.js";
-import { FieldGroup } from "@/components/ui/field.js";
-import { SubmitFooter } from "./UserFormFooter.js";
+import { useAppForm } from '@/components/form/index.js';
+import { FieldGroup } from '@/components/ui/field.js';
+import { SubmitFooter } from './UserFormFooter.js';
 
 export type UserPasswordFormValues = z.infer<typeof UserPasswordFormValues>;
 export const UserPasswordFormValues = z.object({
@@ -19,7 +19,7 @@ type UserPasswordFormProps = {
 export const UserPasswordForm: React.FC<UserPasswordFormProps> = ({ isPending, onSubmit }) => {
   const form = useAppForm({
     defaultValues: {
-      newPassword: "",
+      newPassword: '',
     } satisfies UserPasswordFormValues,
     validators: {
       onSubmit: UserPasswordFormValues,

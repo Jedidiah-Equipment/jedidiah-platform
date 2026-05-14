@@ -1,27 +1,22 @@
-import type { OutgoingHttpHeaders } from "node:http";
+import type { OutgoingHttpHeaders } from 'node:http';
 
-import { ChatStreamInput, type ChatStreamMessage } from "@pkg/schema";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import type { ChatCompletionStream } from "openai/lib/ChatCompletionStream";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { z } from "zod";
+import { ChatStreamInput, type ChatStreamMessage } from '@pkg/schema';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { ChatCompletionStream } from 'openai/lib/ChatCompletionStream';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { z } from 'zod';
 
-import { log } from "@/logger.js";
-import { type AiContext, buildAiContext } from "./ai-context.js";
-import { type AiOpenAIClient, createOpenAIClient, getOpenAIModel } from "./ai-openai.js";
-import { createSystemPrompt } from "./ai-prompts.js";
-import { closeStream, SSE_HEADERS, writeError, writeEvent } from "./ai-sse.js";
-import {
-  type AiToolName,
-  createRunnableTools,
-  getAuthorizedToolNames,
-  getAuthorizedTools,
-} from "./ai-tools.js";
+import { log } from '@/logger.js';
+import { type AiContext, buildAiContext } from './ai-context.js';
+import { type AiOpenAIClient, createOpenAIClient, getOpenAIModel } from './ai-openai.js';
+import { createSystemPrompt } from './ai-prompts.js';
+import { closeStream, SSE_HEADERS, writeError, writeEvent } from './ai-sse.js';
+import { type AiToolName, createRunnableTools, getAuthorizedToolNames, getAuthorizedTools } from './ai-tools.js';
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const STREAM_TIMEOUT_MS = 60_000;
 
-export type CreateOpenAIClient = () => Pick<AiOpenAIClient, "chat">;
+export type CreateOpenAIClient = () => Pick<AiOpenAIClient, 'chat'>;
 
 export type RegisterAiStreamRouteOptions = {
   buildContext?: (req: FastifyRequest) => Promise<AiContext>;
@@ -37,12 +32,12 @@ export async function registerAiStreamRoute(
   const model = options.model ?? getOpenAIModel();
   const createContext = options.buildContext ?? buildAiContext;
 
-  app.post("/ai/chat-stream", async (request, reply) => {
+  app.post('/ai/chat-stream', async (request, reply) => {
     const ctx = await createContext(request);
 
     if (!ctx.session) {
       return reply.code(401).send({
-        error: "Unauthorized",
+        error: 'Unauthorized',
       });
     }
 
@@ -50,7 +45,7 @@ export async function registerAiStreamRoute(
 
     if (!parsedInput.success) {
       return reply.code(400).send({
-        error: "Invalid chat stream payload",
+        error: 'Invalid chat stream payload',
         issues: z.treeifyError(parsedInput.error),
       });
     }
@@ -95,8 +90,8 @@ async function streamChatCompletion({
   const cleanup = () => {
     clearInterval(heartbeat);
     clearTimeout(timeout);
-    request.raw.off("close", handleRequestClose);
-    reply.raw.off("close", handleReplyClose);
+    request.raw.off('close', handleRequestClose);
+    reply.raw.off('close', handleReplyClose);
   };
 
   const sendTerminalError = (message: string) => {
@@ -110,12 +105,12 @@ async function streamChatCompletion({
 
   const heartbeat = setInterval(() => {
     if (isWritable) {
-      reply.raw.write(": heartbeat\n\n");
+      reply.raw.write(': heartbeat\n\n');
     }
   }, HEARTBEAT_INTERVAL_MS);
 
   const timeout = setTimeout(() => {
-    sendTerminalError("AI stream timed out");
+    sendTerminalError('AI stream timed out');
     abortUpstream();
     closeStream(reply);
   }, STREAM_TIMEOUT_MS);
@@ -138,8 +133,8 @@ async function streamChatCompletion({
     }
   };
 
-  request.raw.on("close", handleRequestClose);
-  reply.raw.on("close", handleReplyClose);
+  request.raw.on('close', handleRequestClose);
+  reply.raw.on('close', handleReplyClose);
 
   try {
     const client = createClient();
@@ -147,7 +142,7 @@ async function streamChatCompletion({
     const authorizedToolNames = getAuthorizedToolNames(authorizedTools);
     const messages = createMessages(input.messages, authorizedToolNames);
 
-    log.ai.info({ messages }, "creating messages");
+    log.ai.info({ messages }, 'creating messages');
 
     const tools = createRunnableTools(
       authorizedTools,
@@ -160,7 +155,7 @@ async function streamChatCompletion({
       },
     );
 
-    log.ai.info({ tools: tools.map((tool) => tool.function.name) }, "creating tools");
+    log.ai.info({ tools: tools.map((tool) => tool.function.name) }, 'creating tools');
 
     // runTools handles the full agentic loop: executes tool calls, feeds results back
     // to the model, and continues streaming until the model stops requesting tools.
@@ -171,41 +166,41 @@ async function streamChatCompletion({
       tools,
     }) as unknown as ChatCompletionStream;
 
-    stream.on("content.delta", (event) => {
+    stream.on('content.delta', (event) => {
       const { delta } = event as { delta: string };
-      log.ai.trace({ delta }, "content delta");
+      log.ai.trace({ delta }, 'content delta');
 
       // If the stream is writable and there is a delta, write the event to the stream
       if (isWritable && delta) {
         writeEvent(reply, {
-          type: "token",
+          type: 'token',
           delta,
         });
       }
     });
 
     // final message post delta stream
-    stream.on("message", (message) => {
-      log.ai.debug({ message }, "message");
+    stream.on('message', (message) => {
+      log.ai.debug({ message }, 'message');
     });
 
-    stream.on("chunk", (chunk) => {
-      log.ai.trace({ chunk }, "chunk");
+    stream.on('chunk', (chunk) => {
+      log.ai.trace({ chunk }, 'chunk');
     });
 
-    stream.on("error", (event) => {
-      log.ai.error({ err: event }, "stream error");
+    stream.on('error', (event) => {
+      log.ai.error({ err: event }, 'stream error');
       sendTerminalError(getErrorMessage(event));
     });
 
     await stream.done();
-    log.ai.info("stream done");
+    log.ai.info('stream done');
 
     // write the done event to the stream if it is writable and the terminal event has not been sent
     if (isWritable && !terminalEventSent) {
       terminalEventSent = true;
       writeEvent(reply, {
-        type: "done",
+        type: 'done',
       });
     }
   } catch (error) {
@@ -231,13 +226,8 @@ function getStreamHeaders(reply: FastifyReply): OutgoingHttpHeaders {
   };
 }
 
-function createMessages(
-  messages: ChatStreamMessage[],
-  toolNames: readonly AiToolName[],
-): ChatCompletionMessageParam[] {
-  const systemMessages: ChatCompletionMessageParam[] = [
-    { role: "system", content: createSystemPrompt(toolNames) },
-  ];
+function createMessages(messages: ChatStreamMessage[], toolNames: readonly AiToolName[]): ChatCompletionMessageParam[] {
+  const systemMessages: ChatCompletionMessageParam[] = [{ role: 'system', content: createSystemPrompt(toolNames) }];
 
   return [
     ...systemMessages,
@@ -249,5 +239,5 @@ function createMessages(
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "AI stream failed";
+  return error instanceof Error ? error.message : 'AI stream failed';
 }

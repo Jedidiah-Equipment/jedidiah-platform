@@ -1,13 +1,13 @@
-import type * as React from "react";
+import type * as React from 'react';
 
-import { Field, FieldError, FieldLabel } from "@/components/ui/field.js";
-import { Textarea } from "@/components/ui/textarea.js";
-import { getFieldErrors } from "./field-errors.js";
-import { useFieldContext } from "./form-context.js";
+import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { Textarea } from '@/components/ui/textarea.js';
+import { getFieldErrors } from './field-errors.js';
+import { useFieldContext } from './form-context.js';
 
 type TextareaFieldInputProps = Omit<
   React.ComponentProps<typeof Textarea>,
-  "aria-invalid" | "id" | "name" | "onBlur" | "onChange" | "value"
+  'aria-invalid' | 'id' | 'name' | 'onBlur' | 'onChange' | 'value'
 >;
 
 export type TextareaFieldProps = {

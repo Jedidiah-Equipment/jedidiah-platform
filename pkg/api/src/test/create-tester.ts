@@ -1,4 +1,4 @@
-import { createDatabaseClient, type Database, type DatabaseClient } from '@pkg/db/database-client';
+import { createDatabaseClient, type DatabaseClient, type Db } from '@pkg/db/database-client';
 import { createEphemeralTestDatabase, dropTestDatabase, getTestTemplateDatabaseUrl } from '@pkg/db/test-utils';
 import { createUserAccessSummary } from '@pkg/domain';
 import pino from 'pino';
@@ -19,7 +19,7 @@ export type TesterScope = {
   databaseClient: DatabaseClient;
   databaseName: string;
   databaseUrl: string;
-  db: Database;
+  db: Db;
 };
 
 export type TesterContext = {

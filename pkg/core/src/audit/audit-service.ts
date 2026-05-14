@@ -1,4 +1,4 @@
-import type { Database } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { withPagination } from '@pkg/db/query-utils';
 import { auditEvents, user } from '@pkg/db/schema';
 import type { DatabaseTransaction } from '@pkg/db/types';
@@ -11,8 +11,6 @@ import type {
   AuditListResult,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
-
-type AuditWriteDatabase = Pick<Database | DatabaseTransaction, 'insert'>;
 
 type AuditRecord = Record<string, unknown>;
 
@@ -36,7 +34,7 @@ type InsertAuditEventInput = CreateAuditSummaryInput & {
   entityId: string;
 };
 
-export const productAuditDescriptor = {
+export const productAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'product',
   noun: 'product',
   primaryLabelField: 'name',
@@ -47,9 +45,9 @@ export const productAuditDescriptor = {
     modelCode: 'model code',
     name: 'name',
   },
-} as const satisfies AuditEntityDescriptor;
+};
 
-export const productOptionAuditDescriptor = {
+export const productOptionAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'product_option',
   noun: 'product option',
   primaryLabelField: 'name',
@@ -58,12 +56,12 @@ export const productOptionAuditDescriptor = {
     name: 'name',
     price: 'price',
   },
-} as const satisfies AuditEntityDescriptor;
+};
 
-const auditEntityDescriptors = {
+const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
-} as const satisfies Record<AuditEntityType, AuditEntityDescriptor>;
+};
 
 type AuditEventRow = typeof auditEvents.$inferSelect & {
   actorName: string | null;
@@ -108,8 +106,14 @@ export function createAuditSummary(input: CreateAuditSummaryInput): string {
   return `Updated ${descriptor.noun} ${quoteLabel(getEntityLabel(descriptor, input.after ?? input.before))}`;
 }
 
-export async function insertAuditEvent(database: AuditWriteDatabase, input: InsertAuditEventInput): Promise<void> {
-  await database.insert(auditEvents).values({
+export async function insertAuditEvent({
+  db,
+  input,
+}: {
+  db: DatabaseTransaction;
+  input: InsertAuditEventInput;
+}): Promise<void> {
+  await db.insert(auditEvents).values({
     action: input.action,
     actorUserId: input.actorUserId,
     changes: input.changes,
@@ -119,12 +123,12 @@ export async function insertAuditEvent(database: AuditWriteDatabase, input: Inse
   });
 }
 
-export async function listAuditEvents(database: Database, input: AuditListInput): Promise<AuditListResult> {
+export async function listAuditEvents({ db, input }: { db: Db; input: AuditListInput }): Promise<AuditListResult> {
   const where = buildAuditListWhere(input);
   const sortColumn = auditEvents.occurredAt;
   const orderBy = input.sortDirection === 'asc' ? asc(sortColumn) : desc(sortColumn);
   const rowsQuery = withPagination(
-    database
+    db
       .select({
         action: auditEvents.action,
         actorEmail: user.email,
@@ -145,7 +149,7 @@ export async function listAuditEvents(database: Database, input: AuditListInput)
     input,
   );
 
-  const [rows, total] = await Promise.all([rowsQuery, database.$count(auditEvents, where)]);
+  const [rows, total] = await Promise.all([rowsQuery, db.$count(auditEvents, where)]);
 
   return {
     items: rows.map(mapAuditEvent),

@@ -110,16 +110,16 @@ describe('listProductsTool', () => {
     try {
       await listProductsTool.handler(null, createAiContext(context.db, access));
 
-      expect(listProductsSpy).toHaveBeenCalledWith(
-        context.db,
-        expect.objectContaining({
+      expect(listProductsSpy).toHaveBeenCalledWith({
+        database: context.db,
+        input: expect.objectContaining({
           page: 1,
           pageSize: 10,
           search: '',
           sortBy: 'name',
           sortDirection: 'asc',
         }),
-      );
+      });
     } finally {
       listProductsSpy.mockRestore();
     }

@@ -1,7 +1,15 @@
-import type { Database } from '@pkg/db';
+import type { Db } from '@pkg/db';
 import { getUniqueViolationConstraint, withPagination } from '@pkg/db/query-utils';
 import { productOptions, products } from '@pkg/db/schema';
-import type { Product, ProductCreateInput, ProductListInput, ProductListResult, ProductUpdateInput } from '@pkg/schema';
+import type {
+  AuthId,
+  Product,
+  ProductCreateInput,
+  ProductListInput,
+  ProductListResult,
+  ProductUpdateInput,
+  UUID,
+} from '@pkg/schema';
 import { ProductCurrencyCode } from '@pkg/schema';
 import { and, asc, desc, eq, ilike, isNull, or, type SQL, sql } from 'drizzle-orm';
 
@@ -26,12 +34,12 @@ export function mapProduct(row: ProductRow, options: ProductOptionRow[] = []): P
   };
 }
 
-export async function listProducts(database: Database, input: ProductListInput): Promise<ProductListResult> {
+export async function listProducts({ db, input }: { db: Db; input: ProductListInput }): Promise<ProductListResult> {
   const sortColumn = getProductSortColumn(input.sortBy);
   const orderBy = input.sortDirection === 'desc' ? desc(sortColumn) : asc(sortColumn);
   const where = buildProductListWhere(input);
   const rowsQuery = withPagination(
-    database
+    db
       .select({
         basePrice: products.basePrice,
         createdAt: products.createdAt,
@@ -49,7 +57,7 @@ export async function listProducts(database: Database, input: ProductListInput):
     input,
   );
 
-  const [rows, total] = await Promise.all([rowsQuery, database.$count(products, where)]);
+  const [rows, total] = await Promise.all([rowsQuery, db.$count(products, where)]);
 
   return {
     items: rows.map((row) => mapProduct(row)),
@@ -91,8 +99,8 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-export async function getProduct(database: Database, id: string): Promise<Product> {
-  const rows = await database
+export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
+  const rows = await db
     .select({
       option: productOptions,
       product: products,
@@ -113,13 +121,17 @@ export async function getProduct(database: Database, id: string): Promise<Produc
   );
 }
 
-export async function createProduct(
-  database: Database,
-  input: ProductCreateInput,
-  actorUserId: string | null,
-): Promise<Product> {
+export async function createProduct({
+  db,
+  input,
+  actorUserId,
+}: {
+  db: Db;
+  input: ProductCreateInput;
+  actorUserId: AuthId;
+}): Promise<Product> {
   try {
-    return await database.transaction(async (tx) => {
+    return await db.transaction(async (tx) => {
       const { options, ...productInput } = input;
       const [row] = await tx.insert(products).values(productInput).returning();
 
@@ -127,16 +139,24 @@ export async function createProduct(
         throw new Error('Product insert did not return a row');
       }
 
-      const optionRows = await insertProductOptions(tx, row.id, options, actorUserId);
-
-      await insertAuditEvent(tx, {
-        action: 'created',
+      const optionRows = await insertProductOptions({
+        tx,
+        productId: row.id,
+        incomingOptions: options,
         actorUserId,
-        after: row,
-        before: null,
-        changes: null,
-        entityId: row.id,
-        entityType: productAuditDescriptor.entityType,
+      });
+
+      await insertAuditEvent({
+        db: tx,
+        input: {
+          action: 'created',
+          actorUserId,
+          after: row,
+          before: null,
+          changes: null,
+          entityId: row.id,
+          entityType: productAuditDescriptor.entityType,
+        },
       });
 
       return mapProduct(row, optionRows);
@@ -146,13 +166,17 @@ export async function createProduct(
   }
 }
 
-export async function updateProduct(
-  database: Database,
-  input: ProductUpdateInput,
-  actorUserId: string | null,
-): Promise<Product> {
+export async function updateProduct({
+  db,
+  input,
+  actorUserId,
+}: {
+  db: Db;
+  input: ProductUpdateInput;
+  actorUserId: AuthId;
+}): Promise<Product> {
   try {
-    return await database.transaction(async (tx) => {
+    return await db.transaction(async (tx) => {
       const [before] = await tx.select().from(products).where(eq(products.id, input.id)).for('update');
 
       if (!before) {
@@ -169,7 +193,12 @@ export async function updateProduct(
         name: productInput.name,
       };
       const changes = createAuditChanges(before, after, productAuditDescriptor.fields);
-      const optionRows = await syncProductOptions(tx, input.id, options, actorUserId);
+      const optionRows = await syncProductOptions({
+        tx,
+        productId: input.id,
+        incomingOptions: options,
+        actorUserId,
+      });
 
       if (!changes) {
         return mapProduct(before, optionRows);
@@ -192,14 +221,17 @@ export async function updateProduct(
         throw new ProductNotFoundError(input.id);
       }
 
-      await insertAuditEvent(tx, {
-        action: 'updated',
-        actorUserId,
-        after: row,
-        before,
-        changes,
-        entityId: row.id,
-        entityType: productAuditDescriptor.entityType,
+      await insertAuditEvent({
+        db: tx,
+        input: {
+          action: 'updated',
+          actorUserId,
+          after: row,
+          before,
+          changes,
+          entityId: row.id,
+          entityType: productAuditDescriptor.entityType,
+        },
       });
 
       return mapProduct(row, optionRows);

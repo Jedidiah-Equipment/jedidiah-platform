@@ -1,7 +1,7 @@
 import { getUniqueViolationConstraint } from '@pkg/db/query-utils';
 import { productOptions } from '@pkg/db/schema';
 import type { DatabaseTransaction } from '@pkg/db/types';
-import type { ProductOption, ProductOptionCreateInput, ProductOptionUpsertInput } from '@pkg/schema';
+import type { AuthId, ProductOption, ProductOptionCreateInput, ProductOptionUpsertInput, UUID } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
 import { createAuditChanges, insertAuditEvent, productOptionAuditDescriptor } from '../audit/audit-service.js';
@@ -21,12 +21,17 @@ export function mapProductOption(row: ProductOptionRow): ProductOption {
   };
 }
 
-export async function insertProductOptions(
-  tx: DatabaseTransaction,
-  productId: string,
-  incomingOptions: ProductOptionCreateInput[],
-  actorUserId: string | null,
-): Promise<ProductOptionRow[]> {
+export async function insertProductOptions({
+  tx,
+  productId,
+  incomingOptions,
+  actorUserId,
+}: {
+  tx: DatabaseTransaction;
+  productId: UUID;
+  incomingOptions: ProductOptionCreateInput[];
+  actorUserId: AuthId;
+}): Promise<ProductOptionRow[]> {
   if (incomingOptions.length === 0) {
     return [];
   }
@@ -39,14 +44,17 @@ export async function insertProductOptions(
 
     await Promise.all(
       rows.map((row) =>
-        insertAuditEvent(tx, {
-          action: 'created',
-          actorUserId,
-          after: row,
-          before: null,
-          changes: null,
-          entityId: row.id,
-          entityType: productOptionAuditDescriptor.entityType,
+        insertAuditEvent({
+          db: tx,
+          input: {
+            action: 'created',
+            actorUserId,
+            after: row,
+            before: null,
+            changes: null,
+            entityId: row.id,
+            entityType: productOptionAuditDescriptor.entityType,
+          },
         }),
       ),
     );
@@ -57,12 +65,17 @@ export async function insertProductOptions(
   }
 }
 
-export async function syncProductOptions(
-  tx: DatabaseTransaction,
-  productId: string,
-  incomingOptions: ProductOptionUpsertInput[],
-  actorUserId: string | null,
-): Promise<ProductOptionRow[]> {
+export async function syncProductOptions({
+  tx,
+  productId,
+  incomingOptions,
+  actorUserId,
+}: {
+  tx: DatabaseTransaction;
+  productId: UUID;
+  incomingOptions: ProductOptionUpsertInput[];
+  actorUserId: AuthId;
+}): Promise<ProductOptionRow[]> {
   try {
     const existingOptions = await tx
       .select()
@@ -99,14 +112,17 @@ export async function syncProductOptions(
 
       await Promise.all(
         optionsToDelete.map((option) =>
-          insertAuditEvent(tx, {
-            action: 'deleted',
-            actorUserId,
-            after: null,
-            before: option,
-            changes: null,
-            entityId: option.id,
-            entityType: productOptionAuditDescriptor.entityType,
+          insertAuditEvent({
+            db: tx,
+            input: {
+              action: 'deleted',
+              actorUserId,
+              after: null,
+              before: option,
+              changes: null,
+              entityId: option.id,
+              entityType: productOptionAuditDescriptor.entityType,
+            },
           }),
         ),
       );
@@ -149,23 +165,26 @@ export async function syncProductOptions(
         throw new ProductOptionNotFoundError(incomingOption.id);
       }
 
-      await insertAuditEvent(tx, {
-        action: 'updated',
-        actorUserId,
-        after: row,
-        before,
-        changes,
-        entityId: row.id,
-        entityType: productOptionAuditDescriptor.entityType,
+      await insertAuditEvent({
+        db: tx,
+        input: {
+          action: 'updated',
+          actorUserId,
+          after: row,
+          before,
+          changes,
+          entityId: row.id,
+          entityType: productOptionAuditDescriptor.entityType,
+        },
       });
     }
 
-    await insertProductOptions(
+    await insertProductOptions({
       tx,
       productId,
-      incomingOptions.filter((option) => !option.id),
+      incomingOptions: incomingOptions.filter((option) => !option.id),
       actorUserId,
-    );
+    });
 
     return await tx
       .select()

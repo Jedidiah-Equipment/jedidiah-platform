@@ -1,18 +1,18 @@
-import type { AssistantEvent, ChatStreamMessage } from "@pkg/schema";
+import type { ChatEvent, ChatStreamMessage } from "@pkg/schema";
 
 import { getClientConfig } from "@/lib/app-config.js";
 
-export type StreamAssistantEventsOptions = {
+export type StreamChatEventsOptions = {
   messages: ChatStreamMessage[];
   signal: AbortSignal;
   fetchImpl?: typeof fetch;
 };
 
-export async function* streamAssistantEvents({
+export async function* streamChatEvents({
   fetchImpl = fetch,
   messages,
   signal,
-}: StreamAssistantEventsOptions): AsyncGenerator<AssistantEvent> {
+}: StreamChatEventsOptions): AsyncGenerator<ChatEvent> {
   const config = getClientConfig();
   const response = await fetchImpl(`${config.apiBaseUrl}/ai/chat-stream`, {
     body: JSON.stringify({ messages }),
@@ -32,13 +32,13 @@ export async function* streamAssistantEvents({
     throw new Error("Assistant stream response did not include a body");
   }
 
-  yield* readAssistantEventStream(response.body, signal);
+  yield* readChatEventStream(response.body, signal);
 }
 
-export async function* readAssistantEventStream(
+export async function* readChatEventStream(
   stream: ReadableStream<Uint8Array>,
   signal?: AbortSignal,
-): AsyncGenerator<AssistantEvent> {
+): AsyncGenerator<ChatEvent> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -82,7 +82,7 @@ export async function* readAssistantEventStream(
   }
 }
 
-function* readBufferedEvents(buffer: string): Generator<AssistantEvent> {
+function* readBufferedEvents(buffer: string): Generator<ChatEvent> {
   let frameEndIndex = buffer.indexOf("\n\n");
 
   while (frameEndIndex !== -1) {
@@ -103,7 +103,7 @@ function getRemainder(buffer: string): string {
   return frameEndIndex === -1 ? buffer : buffer.slice(frameEndIndex + 2);
 }
 
-function parseEventFrame(frame: string): AssistantEvent {
+function parseEventFrame(frame: string): ChatEvent {
   const data = frame
     .split("\n")
     .filter((line) => line.startsWith("data:"))
@@ -114,7 +114,7 @@ function parseEventFrame(frame: string): AssistantEvent {
     throw new Error("Assistant stream frame did not include data");
   }
 
-  return JSON.parse(data) as AssistantEvent;
+  return JSON.parse(data) as ChatEvent;
 }
 
 function normalizeLineEndings(value: string): string {

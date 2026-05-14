@@ -27,6 +27,7 @@ function initLogger() {
     root,
     ai: getDomainLogger(root, 'ai'),
     http: getDomainLogger(root, 'http'),
+    service: getDomainLogger(root, 'service'),
   };
 }
 

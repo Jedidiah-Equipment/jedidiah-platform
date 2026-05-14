@@ -13,12 +13,14 @@ import { ProductCreateInput, ProductListInput, ProductUpdateInput, UUID } from '
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
+import { log } from '@/logger.js';
+
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const productsRouter = router({
   list: authorizedProcedure('product:read')
     .input(ProductListInput)
-    .query(({ ctx, input }) => listProducts({ db: ctx.db, input })),
+    .query(({ ctx, input }) => listProducts({ db: ctx.db, input, log })),
 
   get: authorizedProcedure('product:read')
     .input(z.object({ id: UUID }))

@@ -1,10 +1,11 @@
 import { UserPassword } from '@pkg/schema';
+import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { z } from 'zod';
 
 import { useAppForm } from '@/components/form/index.js';
-import { FieldGroup } from '@/components/ui/field.js';
-import { SubmitFooter } from './UserFormFooter.js';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group.js';
 
 export type UserPasswordFormValues = z.infer<typeof UserPasswordFormValues>;
 export const UserPasswordFormValues = z.object({
@@ -38,12 +39,37 @@ export const UserPasswordForm: React.FC<UserPasswordFormProps> = ({ isPending, o
         void form.handleSubmit();
       }}
     >
-      <FieldGroup>
-        <form.AppField name="newPassword">
-          {(field) => <field.PasswordField autoComplete="new-password" label="New password" />}
-        </form.AppField>
-      </FieldGroup>
-      <SubmitFooter isPending={isPending} label="Set password" />
+      <form.AppField name="newPassword">
+        {(field) => {
+          const isInvalid = field.state.meta.errors.length > 0;
+
+          return (
+            <Field data-invalid={isInvalid}>
+              <FieldLabel htmlFor={field.name}>Set New password</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  aria-invalid={isInvalid}
+                  autoComplete="new-password"
+                  disabled={isPending}
+                  id={field.name}
+                  name={field.name}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  type="password"
+                  value={field.state.value}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton disabled={isPending} type="submit" variant="outline">
+                    {isPending ? <Loader2Icon className="animate-spin" data-icon="inline-start" /> : null}
+                    Set password
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+              <FieldError errors={field.state.meta.errors} />
+            </Field>
+          );
+        }}
+      </form.AppField>
     </form>
   );
 };

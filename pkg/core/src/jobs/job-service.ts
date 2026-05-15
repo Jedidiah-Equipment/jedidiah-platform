@@ -185,9 +185,6 @@ export async function listJobs({
     },
     orderBy: [asc(jobs.createdAt), asc(jobs.id)],
     with: {
-      events: {
-        orderBy: [asc(jobEvents.occurredAt), asc(jobEvents.id)],
-      },
       product: {
         columns: {
           modelCode: true,
@@ -198,7 +195,7 @@ export async function listJobs({
   });
 
   return {
-    jobs: rows.map(mapJobWithProduct),
+    jobs: rows.map(mapJobSummary),
   };
 }
 
@@ -241,7 +238,7 @@ export async function getJob({
   }
 
   return {
-    ...mapJobWithProduct(row),
+    ...mapJobSummary(row),
     stages: mapJobDetailStages({ access, job: row, stageRows: row.stages }),
     workflowEvents: mapJobWorkflowEvents({ access, eventRows: row.events, stageRows: row.stages }),
   };
@@ -435,7 +432,7 @@ async function completeJobStageFromStatus({
   });
 }
 
-function mapJobWithProduct(row: JobWithProductRow): JobSummary {
+function mapJobSummary(row: JobWithProductRow): JobSummary {
   return {
     ...mapJob(row),
     productModelCode: row.product.modelCode,
@@ -672,10 +669,6 @@ async function completeJobLifecycle({
   id: UUID;
   tx: DatabaseTransaction;
 }): Promise<void> {
-  if (before.lifecycleStatus === 'complete') {
-    return;
-  }
-
   await applyJobLifecycleStatusChange({
     actorUserId,
     before,

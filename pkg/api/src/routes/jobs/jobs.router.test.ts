@@ -163,12 +163,14 @@ describe('jobs.list', () => {
     );
   });
 
-  test('sorts list results by job fields', async ({ context }) => {
+  test('sorts list results by job fields with id as a stable tiebreaker', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
 
-    const active = await caller.jobs.create({ productId: context.product.id });
+    const activeA = await caller.jobs.create({ productId: context.product.id });
+    const activeB = await caller.jobs.create({ productId: context.product.id });
     const paused = await caller.jobs.create({ productId: context.product.id });
     await caller.jobs.pause({ id: paused.id });
+    const activeIds = [activeA.id, activeB.id].sort();
 
     const ascending = await caller.jobs.list({
       filters: {
@@ -185,8 +187,8 @@ describe('jobs.list', () => {
       sortDirection: 'desc',
     });
 
-    expect(ascending.items.map((job) => job.id)).toEqual([active.id, paused.id]);
-    expect(descending.items.map((job) => job.id)).toEqual([paused.id, active.id]);
+    expect(ascending.items.map((job) => job.id)).toEqual([...activeIds, paused.id]);
+    expect(descending.items.map((job) => job.id)).toEqual([paused.id, ...activeIds]);
   });
 
   test('searches by job id', async ({ context }) => {
@@ -195,6 +197,14 @@ describe('jobs.list', () => {
 
     await expectJobListIds(caller, { search: created.id.slice(0, 8) }, [created.id]);
     await expectJobListIds(caller, { search: 'missing-search-term' }, []);
+  });
+
+  test('escapes job id search wildcards', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    await caller.jobs.create({ productId: context.product.id });
+
+    await expectJobListIds(caller, { search: '_' }, []);
+    await expectJobListIds(caller, { search: '%' }, []);
   });
 
   test('keeps department authorization independent from lifecycle status filtering', async ({ context }) => {
@@ -803,7 +813,13 @@ async function expectJobListIds(caller: TestCaller, input: JobListTestInput, exp
   expect(result.total).toBe(expectedIds.length);
 }
 
-async function createProduct(db: Db, input: { modelCode: string; name: string } = createProductInput()) {
+async function createProduct(
+  db: Db,
+  input: { modelCode: string; name: string } = {
+    modelCode: 'JOB-TEST-PRODUCT',
+    name: 'Job Test Product',
+  },
+) {
   const [product] = await db
     .insert(products)
     .values({
@@ -818,13 +834,6 @@ async function createProduct(db: Db, input: { modelCode: string; name: string } 
   }
 
   return product;
-}
-
-function createProductInput() {
-  return {
-    modelCode: 'JOB-TEST-PRODUCT',
-    name: 'Job Test Product',
-  };
 }
 
 async function createActorUser(db: Db) {

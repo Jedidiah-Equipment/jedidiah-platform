@@ -14,7 +14,7 @@ export const JobStageName = z.enum(JOB_STAGES);
 export type JobLifecycleStatus = z.infer<typeof JobLifecycleStatus>;
 export const JobLifecycleStatus = z.enum(['active', 'paused', 'complete', 'cancelled']);
 
-export const JOB_LIST_STATUS_FILTERS = ['all', 'active', 'paused', 'complete', 'cancelled'] as const;
+export const JOB_LIST_STATUS_FILTERS = ['all', ...JobLifecycleStatus.options] as const;
 
 export type JobListStatusFilter = z.infer<typeof JobListStatusFilter>;
 export const JobListStatusFilter = z.union([JobLifecycleStatus, z.literal('all')]);
@@ -235,7 +235,7 @@ export const JobSortBy = z.enum(['createdAt', 'id', 'lifecycleStatus']);
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
-    lifecycleStatuses: z.array(JobLifecycleStatus).default(['active']),
+    lifecycleStatuses: z.array(JobLifecycleStatus),
   })
   .default({
     lifecycleStatuses: ['active'],

@@ -425,6 +425,24 @@ describe('products.list', () => {
     expect(productNames(result.items)).toEqual(['Bravo Loader']);
     expect(result.total).toBe(1);
   });
+
+  test('escapes product list search wildcards', async ({ context }) => {
+    const caller = context.createCaller();
+    await createProduct(caller, 'Literal Product', {
+      description: 'Plain description',
+      modelCode: 'LITERAL-100',
+    });
+
+    const globalWildcardResult = await caller.products.list({ search: '_' });
+    const nameWildcardResult = await caller.products.list({ columnFilters: { name: '%' } });
+    const modelCodeWildcardResult = await caller.products.list({ columnFilters: { modelCode: '_' } });
+    const idWildcardResult = await caller.products.list({ columnFilters: { id: '%' } });
+
+    expect(globalWildcardResult.items).toHaveLength(0);
+    expect(nameWildcardResult.items).toHaveLength(0);
+    expect(modelCodeWildcardResult.items).toHaveLength(0);
+    expect(idWildcardResult.items).toHaveLength(0);
+  });
 });
 
 describe('products.update', () => {

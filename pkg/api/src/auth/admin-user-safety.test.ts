@@ -1,4 +1,5 @@
 import { account, type DatabaseClient, type Db, user } from '@pkg/db';
+import { DEFAULT_DEMO_USER_PASSWORD } from '@pkg/domain';
 import type { AppRole } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { describe, expect } from 'vitest';
@@ -126,14 +127,14 @@ async function createSignedInAdmin(context: AuthPolicyContext, session = mockSes
     email: session.user.email,
     id: session.user.id,
     name: session.user.name,
-    password: '12345678',
+    password: DEFAULT_DEMO_USER_PASSWORD,
     role: 'admin',
   });
 
   const { headers } = await context.auth.api.signInEmail({
     body: {
       email: session.user.email,
-      password: '12345678',
+      password: DEFAULT_DEMO_USER_PASSWORD,
     },
     returnHeaders: true,
   });

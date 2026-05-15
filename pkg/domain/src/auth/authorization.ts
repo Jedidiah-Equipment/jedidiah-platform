@@ -6,6 +6,33 @@ export const DEFAULT_APP_ROLE = 'product-viewer' satisfies AppRole;
 // to avoid reading user_department for roles whose authorization cannot be department-scoped.
 export const DEPARTMENT_AWARE_ROLES = new Set<AppRole>(['job-stage-editor', 'job-supervisor', 'job-viewer']);
 
+export const roleLabels = {
+  admin: 'Administrator',
+  'job-stage-editor': 'Job Department Manager',
+  'job-supervisor': 'Job supervisor',
+  'job-viewer': 'Job viewer',
+  'product-editor': 'Product manager',
+  'product-viewer': 'Product viewer',
+} as const satisfies Record<AppRole, string>;
+
+export const permissionLabels = {
+  'audit:read': 'View audit history',
+  'job-stage:read': 'View job stages',
+  'job-stage:update': 'Update job stages',
+  'job:create': 'Create jobs',
+  'job:read': 'View jobs',
+  'job:update': 'Update jobs',
+  'product:create': 'Create products',
+  'product:read': 'View products',
+  'product:update': 'Update products',
+  'user:assign-departments': 'Assign departments',
+  'user:create': 'Add users',
+  'user:list': 'View users',
+  'user:set-password': 'Reset user passwords',
+  'user:set-role': 'Change user roles',
+  'user:update': 'Update user details',
+} as const satisfies Record<AppPermission, string>;
+
 export const authorizationStatement = {
   audit: ['read'],
   job: ['read', 'create', 'update'],

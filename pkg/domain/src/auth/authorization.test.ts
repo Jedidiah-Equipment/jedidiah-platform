@@ -1,5 +1,5 @@
+import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
-
 import {
   canEditStage,
   canViewJob,
@@ -7,6 +7,8 @@ import {
   createUserAccessSummary,
   getRolePermissions,
   hasPermission,
+  permissionLabels,
+  roleLabels,
 } from './authorization.js';
 
 describe('getRolePermissions', () => {
@@ -54,6 +56,18 @@ describe('getRolePermissions', () => {
 
   it('grants read-only job permissions to job viewers', () => {
     expect(getRolePermissions('job-viewer')).toEqual(['job-stage:read', 'job:read']);
+  });
+});
+
+describe('roleLabels', () => {
+  it('labels every app role', () => {
+    expect(Object.keys(roleLabels).sort()).toEqual([...APP_ROLES].sort());
+  });
+});
+
+describe('permissionLabels', () => {
+  it('labels every app permission', () => {
+    expect(Object.keys(permissionLabels).sort()).toEqual([...APP_PERMISSIONS].sort());
   });
 });
 

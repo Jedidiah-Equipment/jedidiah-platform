@@ -14,7 +14,7 @@
     "lint:fix": "biome check --write",
     "kill:web-api": "sh scripts/kill-web-api.sh",
     "db:up": "sh -c 'if [ -f .env.dev ]; then docker compose --env-file .env.dev up -d --wait; else docker compose up -d --wait; fi'",
-    "db:reset": "docker compose down -v && pnpm db:up",
+    "db:reset": "docker compose down -v && pnpm db:up && pnpm db:migrate && pnpm db:seed",
     "db:up:template": "pnpm db:up && pnpm --filter @pkg/db db:up:template",
     "db:generate": "pnpm --filter @pkg/db db:generate",
     "db:migrate": "pnpm --filter @pkg/db build && pnpm --filter @pkg/db db:migrate",

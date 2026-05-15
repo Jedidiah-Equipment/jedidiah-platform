@@ -88,10 +88,21 @@
       "problemMatcher": []
     },
     {
-      "label": "Seed Database",
+      "label": "Database Seed",
       "type": "shell",
       "command": "pnpm",
       "args": ["db:seed"],
+      "icon": {
+        "id": "database",
+        "color": "terminal.ansiYellow"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Database Reset",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["db:reset"],
       "icon": {
         "id": "database",
         "color": "terminal.ansiYellow"

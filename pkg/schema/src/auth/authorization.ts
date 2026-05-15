@@ -62,7 +62,7 @@ export type UserListInput = z.infer<typeof UserListInput>;
 export const UserListInput = z.object({});
 
 export type UserPassword = z.infer<typeof UserPassword>;
-export const UserPassword = z.string().min(8, 'Password must be at least 8 characters');
+export const UserPassword = z.string().min(1, 'Enter your password');
 
 export type UserListResult = z.infer<typeof UserListResult>;
 export const UserListResult = z.object({

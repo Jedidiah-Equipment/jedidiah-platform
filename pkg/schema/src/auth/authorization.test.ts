@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AppPermission, AppRole, Department, UserAccessSummary, UserSummary } from './authorization.js';
+import { AppPermission, AppRole, Department, UserAccessSummary, UserPassword, UserSummary } from './authorization.js';
 
 describe('Department', () => {
   it('accepts supported job departments', () => {
@@ -78,5 +78,15 @@ describe('UserSummary', () => {
         role: 'product-viewer',
       }).departments,
     ).toEqual(['dispatch']);
+  });
+});
+
+describe('UserPassword', () => {
+  it('accepts non-empty passwords', () => {
+    expect(UserPassword.parse('123')).toBe('123');
+  });
+
+  it('rejects empty passwords', () => {
+    expect(() => UserPassword.parse('')).toThrow();
   });
 });

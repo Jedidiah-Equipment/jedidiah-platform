@@ -1,4 +1,4 @@
-import type { AppPermission, AppRole, Department, UserAccessSummary } from '@pkg/schema';
+import type { AppPermission, AppRole, Department, JobStageName, UserAccessSummary } from '@pkg/schema';
 
 export const DEFAULT_APP_ROLE = 'product-viewer' satisfies AppRole;
 
@@ -92,4 +92,33 @@ function flattenRolePermissions(role: AppRole): AppPermission[] {
   }
 
   return permissions;
+}
+
+export type JobStageResource = {
+  stage: JobStageName;
+};
+
+export type JobResource = {
+  stages: readonly JobStageResource[];
+};
+
+export function canViewJob(access: UserAccessSummary | null | undefined): boolean {
+  return hasPermission(access, 'job:read');
+}
+
+export function canViewStage(access: UserAccessSummary | null | undefined, stage: JobStageResource): boolean {
+  return hasPermission(access, 'job-stage:read') && canAccessStageDepartment(access, stage);
+}
+
+export function canEditStage(access: UserAccessSummary | null | undefined, stage: JobStageResource): boolean {
+  return hasPermission(access, 'job-stage:update') && canAccessStageDepartment(access, stage);
+}
+
+function canAccessStageDepartment(access: UserAccessSummary | null | undefined, stage: JobStageResource): boolean {
+  if (!access) return false;
+
+  // If the user has no departments, they have cross-cutting access to all stages
+  if (access.departments.length === 0) return true;
+
+  return access.departments.includes(stage.stage);
 }

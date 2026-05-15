@@ -11,5 +11,6 @@ export * from './common/uuid.js';
 export * from './domain/client-config.js';
 export * from './domain/environment.js';
 export * from './domain/logger.js';
+export * from './jobs/job.js';
 export * from './products/product.js';
 export * from './products/product-option.js';

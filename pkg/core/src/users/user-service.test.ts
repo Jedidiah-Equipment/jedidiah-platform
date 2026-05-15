@@ -22,7 +22,7 @@ describe('getUserAccessSummary', () => {
     expect(select).not.toHaveBeenCalled();
   });
 
-  it.each(['job-stage-editor', 'job-supervisor', 'job-viewer'])('loads departments for %s', async (role) => {
+  it.each(['job-stage-editor', 'job-supervisor', 'job-viewer'] as const)('loads departments for %s', async (role) => {
     const { db, select } = createDepartmentDb([{ department: 'paint' }, { department: 'dispatch' }]);
 
     await expect(
@@ -34,23 +34,6 @@ describe('getUserAccessSummary', () => {
     ).resolves.toMatchObject({
       departments: ['paint', 'dispatch'],
       role,
-      userId: 'user_123',
-    });
-    expect(select).toHaveBeenCalledTimes(1);
-  });
-
-  it('loads departments when any normalized role is a job role', async () => {
-    const { db, select } = createDepartmentDb([{ department: 'assembly' }]);
-
-    await expect(
-      getUserAccessSummary({
-        db,
-        role: 'product-editor, job-viewer',
-        userId: 'user_123',
-      }),
-    ).resolves.toMatchObject({
-      departments: ['assembly'],
-      role: 'product-editor',
       userId: 'user_123',
     });
     expect(select).toHaveBeenCalledTimes(1);

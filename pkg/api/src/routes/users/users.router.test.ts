@@ -5,6 +5,7 @@ import type { AppRole } from '@pkg/schema';
 import pino from 'pino';
 import { describe, expect } from 'vitest';
 
+import { parseBetterAuthRole } from '@/auth/session.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
@@ -41,7 +42,7 @@ describe('users.list', () => {
     ]);
   });
 
-  test('defaults unknown stored roles in list responses', async ({ context }) => {
+  test('rejects unknown stored roles in list responses', async ({ context }) => {
     await createUser(context.db, {
       email: 'legacy@example.com',
       emailVerified: false,
@@ -50,18 +51,7 @@ describe('users.list', () => {
       role: 'user',
     });
 
-    const result = await context.createCaller().users.list();
-
-    expect(result.users).toEqual([
-      {
-        departments: [],
-        email: 'legacy@example.com',
-        emailVerified: false,
-        id: 'legacy-user-id',
-        name: 'Legacy User',
-        role: 'product-viewer',
-      },
-    ]);
+    await expect(context.createCaller().users.list()).rejects.toThrow();
   });
 
   test('rejects product editors', async ({ context }) => {
@@ -92,6 +82,8 @@ describe('users.list', () => {
   });
 
   test('replaces department memberships and writes audit events per change', async ({ context }) => {
+    const multiDepartmentUserId = '00000000-0000-4000-8000-000000000001';
+
     await createUser(context.db, {
       email: 'admin@example.com',
       id: 'test-user-id',
@@ -100,33 +92,33 @@ describe('users.list', () => {
     });
     await createUser(context.db, {
       email: 'multi-department@example.com',
-      id: 'multi-department-user-id',
+      id: multiDepartmentUserId,
       name: 'Multi Department User',
       role: 'product-viewer',
     });
 
     await context.createCaller().users.setDepartments({
       departments: ['paint', 'fabrication'],
-      userId: 'multi-department-user-id',
+      userId: multiDepartmentUserId,
     });
 
     const assignedUsers = await context.createCaller().users.list();
 
-    expect(assignedUsers.users.find((userSummary) => userSummary.id === 'multi-department-user-id')).toMatchObject({
+    expect(assignedUsers.users.find((userSummary) => userSummary.id === multiDepartmentUserId)).toMatchObject({
       departments: ['fabrication', 'paint'],
-      id: 'multi-department-user-id',
+      id: multiDepartmentUserId,
     });
 
     await context.createCaller().users.setDepartments({
       departments: ['fabrication'],
-      userId: 'multi-department-user-id',
+      userId: multiDepartmentUserId,
     });
 
     const replacedUsers = await context.createCaller().users.list();
 
-    expect(replacedUsers.users.find((userSummary) => userSummary.id === 'multi-department-user-id')).toMatchObject({
+    expect(replacedUsers.users.find((userSummary) => userSummary.id === multiDepartmentUserId)).toMatchObject({
       departments: ['fabrication'],
-      id: 'multi-department-user-id',
+      id: multiDepartmentUserId,
     });
 
     const membershipAuditEvents = await context.db.select().from(auditEvents);
@@ -142,7 +134,7 @@ describe('users.list', () => {
               to: true,
             },
           }),
-          entityId: 'multi-department-user-id',
+          entityId: multiDepartmentUserId,
           entityType: 'user',
         }),
         expect.objectContaining({
@@ -153,7 +145,7 @@ describe('users.list', () => {
               to: false,
             },
           }),
-          entityId: 'multi-department-user-id',
+          entityId: multiDepartmentUserId,
           entityType: 'user',
         }),
       ]),
@@ -161,6 +153,8 @@ describe('users.list', () => {
   });
 
   test('reads assigned departments in the current user access summary', async ({ context }) => {
+    const currentDepartmentUserId = '00000000-0000-4000-8000-000000000002';
+
     await createUser(context.db, {
       email: 'admin@example.com',
       id: 'test-user-id',
@@ -169,25 +163,25 @@ describe('users.list', () => {
     });
     await createUser(context.db, {
       email: 'current-department@example.com',
-      id: 'current-department-user-id',
+      id: currentDepartmentUserId,
       name: 'Current Department User',
       role: 'job-stage-editor',
     });
 
     const session = mockSession('job-stage-editor');
-    session.user.id = 'current-department-user-id';
+    session.user.id = currentDepartmentUserId;
 
     await context.createCaller().users.setDepartments({
       departments: ['dispatch'],
-      userId: 'current-department-user-id',
+      userId: currentDepartmentUserId,
     });
 
     const access = createUserAccessSummary({
       departments: await listUserDepartments({
         db: context.db,
-        userId: 'current-department-user-id',
+        userId: currentDepartmentUserId,
       }),
-      role: session.user.role,
+      role: parseBetterAuthRole(session.user.role),
       userId: session.user.id,
     });
     const caller = createAppRouterCaller({
@@ -201,18 +195,18 @@ describe('users.list', () => {
       departments: ['dispatch'],
       permissions: ['job-stage:read', 'job-stage:update', 'job:read'],
       role: 'job-stage-editor',
-      userId: 'current-department-user-id',
+      userId: currentDepartmentUserId,
     });
 
     await context.createCaller().users.setDepartments({
       departments: [],
-      userId: 'current-department-user-id',
+      userId: currentDepartmentUserId,
     });
 
     await expect(
       listUserDepartments({
         db: context.db,
-        userId: 'current-department-user-id',
+        userId: currentDepartmentUserId,
       }),
     ).resolves.toEqual([]);
   });

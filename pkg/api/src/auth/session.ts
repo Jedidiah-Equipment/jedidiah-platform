@@ -1,5 +1,6 @@
 import type { IncomingHttpHeaders } from 'node:http';
 
+import { AppRole, type AppRole as AppRoleType } from '@pkg/schema';
 import { fromNodeHeaders } from 'better-auth/node';
 
 import { auth } from './auth.js';
@@ -11,6 +12,10 @@ export type AppSession = BetterAuthSession & {
     role?: string | string[] | null;
   };
 };
+
+export function parseBetterAuthRole(role: unknown): AppRoleType {
+  return AppRole.parse(Array.isArray(role) ? role[0] : role);
+}
 
 export async function getSessionFromHeaders(headers: IncomingHttpHeaders): Promise<AppSession | null> {
   return auth.api.getSession({

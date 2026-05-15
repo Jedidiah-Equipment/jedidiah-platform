@@ -1,13 +1,4 @@
-import {
-  APP_ROLES,
-  type AppPermission,
-  type AppRole,
-  AppRole as AppRoleSchema,
-  DEPARTMENTS,
-  type Department,
-  Department as DepartmentSchema,
-  type UserAccessSummary,
-} from '@pkg/schema';
+import type { AppPermission, AppRole, Department, UserAccessSummary } from '@pkg/schema';
 
 export const DEFAULT_APP_ROLE = 'product-viewer' satisfies AppRole;
 
@@ -24,6 +15,7 @@ export const authorizationStatement = {
 } as const;
 
 type AuthorizationResource = keyof typeof authorizationStatement;
+
 type RoleAccess = Partial<{
   [Resource in AuthorizationResource]: readonly (typeof authorizationStatement)[Resource][number][];
 }>;
@@ -63,47 +55,25 @@ export function hasPermission(
   return access?.permissions.includes(permission) ?? false;
 }
 
-export function normalizeAppRoles(role: unknown): AppRole[] {
-  if (Array.isArray(role)) {
-    return uniqueRoles(role.flatMap((value) => normalizeAppRoles(value)));
-  }
-
-  if (typeof role !== 'string') {
-    return [];
-  }
-
-  return uniqueRoles(
-    role
-      .split(',')
-      .map((value) => value.trim())
-      .filter((value): value is AppRole => AppRoleSchema.safeParse(value).success),
-  );
-}
-
-export function getRolePermissions(roles: readonly AppRole[]): AppPermission[] {
+export function getRolePermissions(role: AppRole): AppPermission[] {
   const permissions = new Set<AppPermission>();
 
-  for (const role of roles) {
-    for (const permission of flattenRolePermissions(role)) {
-      permissions.add(permission);
-    }
+  for (const permission of flattenRolePermissions(role)) {
+    permissions.add(permission);
   }
 
   return [...permissions].sort();
 }
 
 export function createUserAccessSummary(input: {
-  departments?: readonly unknown[];
-  role: unknown;
+  departments?: readonly Department[];
+  role: AppRole;
   userId: string;
 }): UserAccessSummary {
-  const roles = normalizeAppRoles(input.role);
-  const role = getPublicRole(roles);
-
   return {
-    departments: sortDepartments(input.departments ?? []),
-    permissions: getRolePermissions(roles),
-    role,
+    departments: [...(input.departments ?? [])],
+    permissions: getRolePermissions(input.role),
+    role: input.role,
     userId: input.userId,
   };
 }
@@ -122,29 +92,4 @@ function flattenRolePermissions(role: AppRole): AppPermission[] {
   }
 
   return permissions;
-}
-
-function uniqueRoles(roles: readonly AppRole[]): AppRole[] {
-  return [...new Set(roles)];
-}
-
-export function sortDepartments(departments: readonly unknown[]): Department[] {
-  // Ignore unknown stored values so stale DB text does not break access-summary reads.
-  const selectedDepartments = new Set(
-    departments.filter((value): value is Department => DepartmentSchema.safeParse(value).success),
-  );
-
-  return DEPARTMENTS.filter((department) => selectedDepartments.has(department));
-}
-
-const publicRolePriority = APP_ROLES;
-
-function getPublicRole(roles: readonly AppRole[]): AppRole | null {
-  for (const role of publicRolePriority) {
-    if (roles.includes(role)) {
-      return role;
-    }
-  }
-
-  return null;
 }

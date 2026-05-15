@@ -15,7 +15,8 @@ pkg/
   web/    React, Vite, TanStack Router, shadcn/ui, Better Auth client
   schema/ global Zod schemas and types shared across packages
   core/   shared product/user domain logic and authorization rules
-  db/     Drizzle schema, migrations, database client, seed/test helpers
+  db/     Drizzle schema, migrations, database client, test helpers
+  seed/   deterministic local/demo seed orchestration
 ```
 
 Package names:
@@ -25,6 +26,7 @@ Package names:
 - `@pkg/schema`
 - `@pkg/core`
 - `@pkg/db`
+- `@pkg/seed`
 
 ## Requirements
 

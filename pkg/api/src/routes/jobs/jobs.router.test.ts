@@ -1,4 +1,4 @@
-import { auditEvents, type Db, jobStages, jobs, products, user } from '@pkg/db';
+import { auditEvents, type Db, jobEvents, jobStages, jobs, products, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { AppRole, Department, UserAccessSummary } from '@pkg/schema';
 import pino from 'pino';
@@ -150,7 +150,7 @@ describe('jobs.get', () => {
 });
 
 describe('job stage transitions', () => {
-  test('starts, updates status, and completes a stage with audit events', async ({ context }) => {
+  test('starts, updates status, and completes a stage with audit and workflow events', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const created = await caller.jobs.create({ productId: context.product.id });
 
@@ -209,6 +209,62 @@ describe('job stage transitions', () => {
     });
     expect(auditRows[3]?.changes).toHaveProperty('completedAt');
     expect(auditRows[3]?.changes).toHaveProperty('status');
+
+    const jobEventRows = await context.db.select().from(jobEvents).orderBy(jobEvents.occurredAt);
+    expect(jobEventRows).toHaveLength(3);
+    expect(jobEventRows).toMatchObject([
+      {
+        actorUserId: 'test-user-id',
+        eventType: 'stage.started',
+        jobId: created.id,
+        stageId: procurementAfterStart.id,
+      },
+      {
+        actorUserId: 'test-user-id',
+        eventType: 'stage.status_changed',
+        jobId: created.id,
+        stageId: procurementAfterStart.id,
+      },
+      {
+        actorUserId: 'test-user-id',
+        eventType: 'stage.completed',
+        jobId: created.id,
+        stageId: procurementAfterStart.id,
+      },
+    ]);
+    expect(jobEventRows[0]?.payload).toMatchObject({
+      stage: 'procurement',
+      status: 'pending',
+    });
+    expect(jobEventRows[1]?.payload).toEqual({
+      fromStatus: 'pending',
+      stage: 'procurement',
+      toStatus: 'ordering',
+    });
+    expect(jobEventRows[2]?.payload).toMatchObject({
+      stage: 'procurement',
+      status: 'complete',
+    });
+
+    const detail = await caller.jobs.get({ id: created.id });
+    expect(detail.workflowEvents.map((event) => event.eventType)).toEqual([
+      'stage.started',
+      'stage.status_changed',
+      'stage.completed',
+    ]);
+  });
+
+  test('hides workflow events outside the viewer stage scope', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const procurementCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', ['procurement']);
+    const paintCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', ['paint']);
+    const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+
+    await supervisorCaller.jobs.startStage({ id: created.id, stage: 'procurement' });
+    await supervisorCaller.jobs.setStageStatus({ id: created.id, stage: 'procurement', status: 'ordering' });
+
+    expect((await procurementCaller.jobs.get({ id: created.id })).workflowEvents).toHaveLength(2);
+    expect((await paintCaller.jobs.get({ id: created.id })).workflowEvents).toHaveLength(0);
   });
 
   test('allows a stage editor to update their own stage once the pipeline reaches it', async ({ context }) => {
@@ -265,6 +321,9 @@ describe('job stage transitions', () => {
       code: 'FORBIDDEN',
       message: 'Previous stage is not complete.',
     });
+
+    expect(await context.db.select().from(auditEvents)).toHaveLength(1);
+    expect(await context.db.select().from(jobEvents)).toHaveLength(0);
   });
 
   test('rejects starting a stage twice', async ({ context }) => {

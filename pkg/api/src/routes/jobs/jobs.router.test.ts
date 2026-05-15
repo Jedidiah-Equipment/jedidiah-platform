@@ -45,8 +45,8 @@ describe('jobs.create', () => {
     expect(stageRows.map((stage) => [stage.sequence, stage.stage, stage.status])).toEqual([
       [1, 'procurement', 'pending'],
       [2, 'fabrication', 'pending'],
-      [3, 'paint', 'pending'],
-      [4, 'assembly', 'pending'],
+      [3, 'assembly', 'pending'],
+      [4, 'paint', 'pending'],
       [5, 'dispatch', 'pending'],
     ]);
     expect(created.stages).toHaveLength(5);
@@ -114,8 +114,8 @@ describe('jobs.get', () => {
     expect(detail.stages).toMatchObject([
       { access: 'locked', sequence: 1, stage: 'procurement' },
       { access: 'locked', sequence: 2, stage: 'fabrication' },
-      { access: 'visible', sequence: 3, stage: 'paint', status: 'pending' },
-      { access: 'locked', sequence: 4, stage: 'assembly' },
+      { access: 'locked', sequence: 3, stage: 'assembly' },
+      { access: 'visible', sequence: 4, stage: 'paint', status: 'pending' },
       { access: 'locked', sequence: 5, stage: 'dispatch' },
     ]);
     expect(detail.stages[0]).not.toHaveProperty('id');
@@ -131,10 +131,151 @@ describe('jobs.get', () => {
     expect(detail.stages).toMatchObject([
       { access: 'visible', sequence: 1, stage: 'procurement' },
       { access: 'visible', sequence: 2, stage: 'fabrication' },
-      { access: 'visible', sequence: 3, stage: 'paint' },
-      { access: 'visible', sequence: 4, stage: 'assembly' },
+      { access: 'visible', sequence: 3, stage: 'assembly' },
+      { access: 'visible', sequence: 4, stage: 'paint' },
       { access: 'visible', sequence: 5, stage: 'dispatch' },
     ]);
+  });
+});
+
+describe('job stage transitions', () => {
+  test('starts, updates status, and completes a stage with audit events', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    const started = await caller.jobs.startStage({ id: created.id, stage: 'procurement' });
+    const procurementAfterStart = getVisibleStage(started, 'procurement');
+    expect(procurementAfterStart.startedAt).toEqual(expect.any(String));
+    expect(procurementAfterStart.completedAt).toBeNull();
+
+    const statusUpdated = await caller.jobs.setStageStatus({
+      id: created.id,
+      stage: 'procurement',
+      status: 'ordering',
+    });
+    expect(getVisibleStage(statusUpdated, 'procurement').status).toBe('ordering');
+
+    const completed = await caller.jobs.completeStage({ id: created.id, stage: 'procurement' });
+    const procurementAfterComplete = getVisibleStage(completed, 'procurement');
+    expect(procurementAfterComplete.completedAt).toEqual(expect.any(String));
+    expect(procurementAfterComplete.status).toBe('ordering');
+    expect(getVisibleStage(completed, 'fabrication').transitionAvailability?.start).toEqual({
+      allowed: true,
+      reason: null,
+    });
+
+    const auditRows = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+    expect(auditRows).toHaveLength(4);
+    expect(auditRows.slice(1)).toMatchObject([
+      {
+        action: 'updated',
+        actorUserId: 'test-user-id',
+        entityId: procurementAfterStart.id,
+        entityType: 'job_stage',
+        summary: 'Updated job stage "procurement"',
+      },
+      {
+        action: 'updated',
+        actorUserId: 'test-user-id',
+        entityId: procurementAfterStart.id,
+        entityType: 'job_stage',
+        summary: 'Updated job stage "procurement"',
+      },
+      {
+        action: 'updated',
+        actorUserId: 'test-user-id',
+        entityId: procurementAfterStart.id,
+        entityType: 'job_stage',
+        summary: 'Updated job stage "procurement"',
+      },
+    ]);
+    expect(auditRows[1]?.changes).toHaveProperty('startedAt');
+    expect(auditRows[2]?.changes).toEqual({
+      status: {
+        from: 'pending',
+        to: 'ordering',
+      },
+    });
+    expect(auditRows[3]?.changes).toHaveProperty('completedAt');
+  });
+
+  test('rejects starting a stage before the previous stage completes', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await expect(caller.jobs.startStage({ id: created.id, stage: 'fabrication' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Previous stage is not complete.',
+    });
+  });
+
+  test('rejects completing a stage twice', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await caller.jobs.startStage({ id: created.id, stage: 'procurement' });
+    await caller.jobs.completeStage({ id: created.id, stage: 'procurement' });
+
+    await expect(caller.jobs.completeStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Stage is already complete.',
+    });
+  });
+
+  test('allows status updates after completion', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await caller.jobs.startStage({ id: created.id, stage: 'procurement' });
+    await caller.jobs.completeStage({ id: created.id, stage: 'procurement' });
+    const updated = await caller.jobs.setStageStatus({
+      id: created.id,
+      stage: 'procurement',
+      status: 'partial',
+    });
+
+    expect(getVisibleStage(updated, 'procurement').status).toBe('partial');
+  });
+
+  test('rejects writers outside the owning department', async ({ context }) => {
+    const paintCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', ['paint']);
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+
+    await expect(paintCaller.jobs.startStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'You do not have access to update this stage.',
+    });
+  });
+
+  test('rejects empty status updates at the input boundary', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await expect(
+      caller.jobs.setStageStatus({
+        id: created.id,
+        stage: 'procurement',
+        status: '',
+      } as unknown as Parameters<typeof caller.jobs.setStageStatus>[0]),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+  });
+
+  test('rejects statuses from another stage at the input boundary', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await expect(
+      caller.jobs.setStageStatus({
+        id: created.id,
+        stage: 'procurement',
+        status: 'welding',
+      } as unknown as Parameters<typeof caller.jobs.setStageStatus>[0]),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
   });
 });
 
@@ -181,4 +322,14 @@ function createJobCaller(
       userId: 'test-user-id',
     }),
   );
+}
+
+function getVisibleStage(job: Awaited<ReturnType<TestCaller['jobs']['get']>>, stage: Department) {
+  const jobStage = job.stages.find((item) => item.stage === stage);
+
+  if (!jobStage || jobStage.access !== 'visible') {
+    throw new Error(`Expected visible ${stage} stage`);
+  }
+
+  return jobStage;
 }

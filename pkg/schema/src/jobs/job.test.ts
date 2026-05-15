@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { JobDetail } from './job.js';
+import { JobDetail, JobStageStatusInput } from './job.js';
 
 describe('JobDetail', () => {
   it('validates visible and locked stage rollups', () => {
@@ -28,11 +28,35 @@ describe('JobDetail', () => {
             status: 'pending',
           },
           { access: 'locked', department: 'fabrication', sequence: 2, stage: 'fabrication' },
-          { access: 'locked', department: 'paint', sequence: 3, stage: 'paint' },
-          { access: 'locked', department: 'assembly', sequence: 4, stage: 'assembly' },
+          { access: 'locked', department: 'assembly', sequence: 3, stage: 'assembly' },
+          { access: 'locked', department: 'paint', sequence: 4, stage: 'paint' },
           { access: 'locked', department: 'dispatch', sequence: 5, stage: 'dispatch' },
         ],
       }),
     ).not.toThrow();
+  });
+});
+
+describe('JobStageStatusInput', () => {
+  const jobId = '00000000-0000-4000-8000-000000000001';
+
+  it('validates statuses against the owning stage', () => {
+    expect(() =>
+      JobStageStatusInput.parse({
+        id: jobId,
+        stage: 'fabrication',
+        status: 'welding',
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects statuses from another stage', () => {
+    expect(() =>
+      JobStageStatusInput.parse({
+        id: jobId,
+        stage: 'fabrication',
+        status: 'ordering',
+      }),
+    ).toThrow();
   });
 });

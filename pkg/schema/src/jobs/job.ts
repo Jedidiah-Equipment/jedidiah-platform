@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { Department } from '../auth/authorization.js';
 import { UUID } from '../common/uuid.js';
 
-export const JOB_STAGES = ['procurement', 'fabrication', 'paint', 'assembly', 'dispatch'] as const;
+// Unordered list of job stages. Use JOB_STAGE_PIPELINE for ordered list.
+export const JOB_STAGES = ['procurement', 'fabrication', 'assembly', 'paint', 'dispatch'] as const;
 
 export type JobStageName = z.infer<typeof JobStageName>;
 export const JobStageName = z.enum(JOB_STAGES);
@@ -11,8 +12,41 @@ export const JobStageName = z.enum(JOB_STAGES);
 export type JobLifecycleStatus = z.infer<typeof JobLifecycleStatus>;
 export const JobLifecycleStatus = z.enum(['active', 'paused', 'complete', 'cancelled']);
 
+export const JOB_STAGE_STATUSES = {
+  assembly: ['pending', 'in-progress', 'qc', 'complete'],
+  dispatch: ['pending', 'ready', 'dispatched', 'complete'],
+  fabrication: ['pending', 'cutting', 'welding', 'qc', 'complete'],
+  paint: ['pending', 'prep', 'painting', 'curing', 'complete'],
+  procurement: ['pending', 'ordering', 'partial', 'complete'],
+} as const satisfies Record<JobStageName, readonly [string, ...string[]]>;
+
 export type JobStageStatus = z.infer<typeof JobStageStatus>;
-export const JobStageStatus = z.literal('pending');
+export const JobStageStatus = z.enum([
+  ...JOB_STAGE_STATUSES.procurement,
+  ...JOB_STAGE_STATUSES.fabrication,
+  ...JOB_STAGE_STATUSES.assembly,
+  ...JOB_STAGE_STATUSES.paint,
+  ...JOB_STAGE_STATUSES.dispatch,
+]);
+
+export type StageTransitionPolicyResult = z.infer<typeof StageTransitionPolicyResult>;
+export const StageTransitionPolicyResult = z.discriminatedUnion('allowed', [
+  z.object({
+    allowed: z.literal(true),
+    reason: z.null(),
+  }),
+  z.object({
+    allowed: z.literal(false),
+    reason: z.string().trim().min(1),
+  }),
+]);
+
+export type StageTransitionAvailability = z.infer<typeof StageTransitionAvailability>;
+export const StageTransitionAvailability = z.object({
+  complete: StageTransitionPolicyResult,
+  'set-status': StageTransitionPolicyResult,
+  start: StageTransitionPolicyResult,
+});
 
 const JobStageBase = z.object({
   id: UUID,
@@ -23,11 +57,26 @@ const JobStageBase = z.object({
   completedAt: z.iso.datetime().nullable(),
 });
 
-const ProcurementJobStage = JobStageBase.extend({ stage: z.literal('procurement') });
-const FabricationJobStage = JobStageBase.extend({ stage: z.literal('fabrication') });
-const PaintJobStage = JobStageBase.extend({ stage: z.literal('paint') });
-const AssemblyJobStage = JobStageBase.extend({ stage: z.literal('assembly') });
-const DispatchJobStage = JobStageBase.extend({ stage: z.literal('dispatch') });
+const ProcurementJobStage = JobStageBase.extend({
+  stage: z.literal('procurement'),
+  status: z.enum(JOB_STAGE_STATUSES.procurement).default('pending'),
+});
+const FabricationJobStage = JobStageBase.extend({
+  stage: z.literal('fabrication'),
+  status: z.enum(JOB_STAGE_STATUSES.fabrication).default('pending'),
+});
+const PaintJobStage = JobStageBase.extend({
+  stage: z.literal('paint'),
+  status: z.enum(JOB_STAGE_STATUSES.paint).default('pending'),
+});
+const AssemblyJobStage = JobStageBase.extend({
+  stage: z.literal('assembly'),
+  status: z.enum(JOB_STAGE_STATUSES.assembly).default('pending'),
+});
+const DispatchJobStage = JobStageBase.extend({
+  stage: z.literal('dispatch'),
+  status: z.enum(JOB_STAGE_STATUSES.dispatch).default('pending'),
+});
 
 export type JobStage = z.infer<typeof JobStage>;
 export const JobStage = z.discriminatedUnion('stage', [
@@ -51,6 +100,7 @@ export const VisibleJobStage = JobStageBase.extend({
   access: z.literal('visible'),
   department: Department,
   stage: JobStageName,
+  transitionAvailability: StageTransitionAvailability.optional(),
 });
 
 export type JobStageRollup = z.infer<typeof JobStageRollup>;
@@ -88,3 +138,33 @@ export type JobListResult = z.infer<typeof JobListResult>;
 export const JobListResult = z.object({
   jobs: z.array(JobSummary),
 });
+
+export type JobStageTransitionInput = z.infer<typeof JobStageTransitionInput>;
+export const JobStageTransitionInput = z.object({
+  id: UUID,
+  stage: JobStageName,
+});
+
+export type JobStageStatusInput = z.infer<typeof JobStageStatusInput>;
+export const JobStageStatusInput = z.discriminatedUnion('stage', [
+  JobStageTransitionInput.extend({
+    stage: z.literal('procurement'),
+    status: z.enum(JOB_STAGE_STATUSES.procurement),
+  }),
+  JobStageTransitionInput.extend({
+    stage: z.literal('fabrication'),
+    status: z.enum(JOB_STAGE_STATUSES.fabrication),
+  }),
+  JobStageTransitionInput.extend({
+    stage: z.literal('paint'),
+    status: z.enum(JOB_STAGE_STATUSES.paint),
+  }),
+  JobStageTransitionInput.extend({
+    stage: z.literal('assembly'),
+    status: z.enum(JOB_STAGE_STATUSES.assembly),
+  }),
+  JobStageTransitionInput.extend({
+    stage: z.literal('dispatch'),
+    status: z.enum(JOB_STAGE_STATUSES.dispatch),
+  }),
+]);

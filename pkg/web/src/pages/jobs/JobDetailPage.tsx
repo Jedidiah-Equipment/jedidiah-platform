@@ -1,6 +1,7 @@
 import { jobStageStatusLabels } from '@pkg/domain';
 import {
   JOB_STAGE_STATUSES,
+  type JobEvent,
   type JobStageName,
   type JobStageRollup,
   type JobStageStatus,
@@ -9,7 +10,7 @@ import {
 } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeftIcon, CheckCircleIcon, CircleIcon, LockIcon, PlayIcon } from 'lucide-react';
+import { ArrowLeftIcon, CheckCircleIcon, CircleIcon, HistoryIcon, LockIcon, PlayIcon } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 
@@ -123,6 +124,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
                   />
                 ))}
               </div>
+              <WorkflowHistory events={job.workflowEvents} />
             </>
           ) : null}
           {jobQuery.isLoading ? <Skeleton className="h-48" /> : null}
@@ -265,6 +267,62 @@ const StagePanel: React.FC<StagePanelProps> = ({ isPending, jobId, onComplete, o
 
 const StageControlReason: React.FC<{ reason: string | null | undefined }> = ({ reason }) =>
   reason ? <div className="text-xs text-muted-foreground">{reason}</div> : null;
+
+const WorkflowHistory: React.FC<{ events: JobEvent[] }> = ({ events }) => (
+  <section className="flex flex-col gap-3">
+    <div className="flex items-center gap-2">
+      <HistoryIcon className="size-4 text-muted-foreground" />
+      <h2 className="font-medium">Workflow history</h2>
+    </div>
+    {events.length > 0 ? (
+      <ol className="relative flex flex-col gap-3 border-l pl-4">
+        {events.map((event) => (
+          <WorkflowHistoryItem event={event} key={event.id} />
+        ))}
+      </ol>
+    ) : (
+      <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">No workflow events yet.</div>
+    )}
+  </section>
+);
+
+const WorkflowHistoryItem: React.FC<{ event: JobEvent }> = ({ event }) => (
+  <li className="relative flex flex-col gap-1 rounded-md border bg-background p-3 text-sm">
+    <span className="left-[-1.35rem] absolute top-4 size-2 rounded-full bg-primary" />
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-1">
+        <div className="font-medium">{getWorkflowEventLabel(event)}</div>
+        <div className="text-muted-foreground">{getWorkflowEventMetadata(event)}</div>
+      </div>
+      <Badge variant="outline">{formatDate(event.occurredAt, 'medium')}</Badge>
+    </div>
+    <div className="text-xs text-muted-foreground">Actor: {event.actorUserId ?? 'Unknown'}</div>
+  </li>
+);
+
+function getWorkflowEventLabel(event: JobEvent): string {
+  if (event.eventType === 'stage.started') {
+    return `${stageLabels[event.payload.stage]} started`;
+  }
+
+  if (event.eventType === 'stage.completed') {
+    return `${stageLabels[event.payload.stage]} completed`;
+  }
+
+  return `${stageLabels[event.payload.stage]} status changed`;
+}
+
+function getWorkflowEventMetadata(event: JobEvent): string {
+  if (event.eventType === 'stage.started') {
+    return `Started at ${formatDate(event.payload.startedAt, 'medium')}`;
+  }
+
+  if (event.eventType === 'stage.completed') {
+    return `Completed at ${formatDate(event.payload.completedAt, 'medium')}`;
+  }
+
+  return `${jobStageStatusLabels[event.payload.fromStatus]} to ${jobStageStatusLabels[event.payload.toStatus]}`;
+}
 
 const JobStageStatusSelectValue: React.FC<{ stage: JobStageName; status: JobStageStatus }> = ({ stage, status }) => (
   <span className="flex min-w-0 flex-1 items-center gap-2 text-left" data-slot="select-value">

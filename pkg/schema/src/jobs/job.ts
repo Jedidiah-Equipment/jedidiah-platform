@@ -87,6 +87,78 @@ export const JobStage = z.discriminatedUnion('stage', [
   DispatchJobStage,
 ]);
 
+export type JobEventDerivationStage = z.infer<typeof JobEventDerivationStage>;
+export const JobEventDerivationStage = z.object({
+  completedAt: z.iso.datetime().nullable(),
+  stage: JobStageName,
+  startedAt: z.iso.datetime().nullable(),
+  status: JobStageStatus,
+});
+
+const JobEventBase = z.object({
+  id: UUID,
+  jobId: UUID,
+  stageId: UUID.nullable(),
+  actorUserId: z.string().trim().min(1).nullable(),
+  occurredAt: z.iso.datetime(),
+});
+
+const StageStartedJobEventPayload = z.object({
+  stage: JobStageName,
+  status: JobStageStatus,
+  startedAt: z.iso.datetime(),
+});
+
+const StageStatusChangedJobEventPayload = z.object({
+  stage: JobStageName,
+  fromStatus: JobStageStatus,
+  toStatus: JobStageStatus,
+});
+
+const StageCompletedJobEventPayload = z.object({
+  stage: JobStageName,
+  status: JobStageStatus,
+  completedAt: z.iso.datetime(),
+});
+
+const StageStartedJobEvent = JobEventBase.extend({
+  eventType: z.literal('stage.started'),
+  payload: StageStartedJobEventPayload,
+});
+
+const StageStatusChangedJobEvent = JobEventBase.extend({
+  eventType: z.literal('stage.status_changed'),
+  payload: StageStatusChangedJobEventPayload,
+});
+
+const StageCompletedJobEvent = JobEventBase.extend({
+  eventType: z.literal('stage.completed'),
+  payload: StageCompletedJobEventPayload,
+});
+
+export type JobEvent = z.infer<typeof JobEvent>;
+export const JobEvent = z.discriminatedUnion('eventType', [
+  StageStartedJobEvent,
+  StageStatusChangedJobEvent,
+  StageCompletedJobEvent,
+]);
+
+export type DerivedStageJobEvent = z.infer<typeof DerivedStageJobEvent>;
+export const DerivedStageJobEvent = z.discriminatedUnion('eventType', [
+  z.object({
+    eventType: z.literal('stage.started'),
+    payload: StageStartedJobEventPayload,
+  }),
+  z.object({
+    eventType: z.literal('stage.status_changed'),
+    payload: StageStatusChangedJobEventPayload,
+  }),
+  z.object({
+    eventType: z.literal('stage.completed'),
+    payload: StageCompletedJobEventPayload,
+  }),
+]);
+
 export type LockedJobStage = z.infer<typeof LockedJobStage>;
 export const LockedJobStage = z.object({
   access: z.literal('locked'),
@@ -124,6 +196,7 @@ export const JobSummary = Job.extend({
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
   stages: z.array(JobStageRollup).length(5),
+  workflowEvents: z.array(JobEvent),
 });
 
 export type JobCreateInput = z.infer<typeof JobCreateInput>;

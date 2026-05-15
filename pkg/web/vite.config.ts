@@ -3,7 +3,6 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
-
 import { getServerConfig } from './src/server/env.js';
 
 const serverConfig = getServerConfig();

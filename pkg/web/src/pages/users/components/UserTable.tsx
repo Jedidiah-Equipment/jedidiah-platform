@@ -1,3 +1,4 @@
+import { roleLabels } from '@pkg/domain';
 import type { AuthId, UserSummary } from '@pkg/schema';
 import {
   type ColumnDef,
@@ -23,7 +24,6 @@ import { DepartmentIcon } from '@/components/departments/index.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { departmentLabels } from './department-labels.js';
-import { roleLabels } from './role-labels.js';
 
 type UserTableProps = {
   currentUserId: AuthId | undefined;

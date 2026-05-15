@@ -1,10 +1,11 @@
 import { pathToFileURL } from 'node:url';
+import { demoUsers } from '@pkg/domain';
 import { hashPassword } from 'better-auth/crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import type { Db } from './database-client.js';
 import { auditEvents } from './schema/audit.js';
-import { account, user } from './schema/auth.js';
+import { account, user, userDepartment } from './schema/auth.js';
 import { products } from './schema/product.js';
 import { productOptions } from './schema/product-option.js';
 
@@ -27,30 +28,6 @@ const equipmentFamilies = [
 ] as const;
 
 const equipmentSeries = ['Atlas', 'Summit', 'Vertex', 'Forge', 'Apex'] as const;
-
-const seedUsers = [
-  {
-    id: 'seed-admin-user',
-    name: 'Seed Admin',
-    email: 'admin@seed.com',
-    password: '12345678',
-    role: 'admin',
-  },
-  {
-    id: 'seed-product-editor-user',
-    name: 'Seed Product Editor',
-    email: 'pe@seed.com',
-    password: '12345678',
-    role: 'product-editor',
-  },
-  {
-    id: 'seed-product-viewer-user',
-    name: 'Seed Product Viewer',
-    email: 'pv@seed.com',
-    password: '12345678',
-    role: 'product-viewer',
-  },
-] as const;
 
 type SeedProduct = typeof products.$inferInsert & {
   id: string;
@@ -261,8 +238,15 @@ export async function seedDatabase(database?: Db): Promise<void> {
   const activeDb = database ?? (await import('./client.js')).db;
   const now = new Date();
   const seedProducts = createSeedProducts();
-  const seedUserEmails = seedUsers.map((seedUser) => seedUser.email).join(', ');
-  const productEditorUserIds = seedUsers
+  const seedUserEmails = demoUsers.map((seedUser) => seedUser.email).join(', ');
+  const seedUserIds = demoUsers.map((seedUser) => seedUser.id);
+  const seedUserDepartments = demoUsers.flatMap((seedUser) =>
+    seedUser.departments.map((department) => ({
+      department,
+      userId: seedUser.id,
+    })),
+  );
+  const productEditorUserIds = demoUsers
     .filter((seedUser) => seedUser.role === 'product-editor')
     .map((seedUser) => seedUser.id);
 
@@ -278,12 +262,12 @@ export async function seedDatabase(database?: Db): Promise<void> {
   const seedProductOptions = createSeedProductOptions(seedProductTimeline.products);
 
   console.info(`[db:seed] Starting seed at ${now.toISOString()}`);
-  console.info(`[db:seed] Upserting ${seedUsers.length} seed user(s): ${seedUserEmails}`);
+  console.info(`[db:seed] Upserting ${demoUsers.length} seed user(s): ${seedUserEmails}`);
 
   await activeDb
     .insert(user)
     .values(
-      seedUsers.map(({ password: _password, ...seedUser }) => ({
+      demoUsers.map(({ departments: _departments, password: _password, ...seedUser }) => ({
         ...seedUser,
         emailVerified: true,
         createdAt: now,
@@ -301,14 +285,25 @@ export async function seedDatabase(database?: Db): Promise<void> {
       },
     });
 
-  console.info(`[db:seed] Upserted ${seedUsers.length} seed user(s)`);
-  console.info(`[db:seed] Upserting ${seedUsers.length} credential account(s)`);
+  console.info(`[db:seed] Upserted ${demoUsers.length} seed user(s)`);
+  console.info(`[db:seed] Replacing ${seedUserDepartments.length} seed user department membership(s)`);
+
+  await activeDb.transaction(async (tx) => {
+    await tx.delete(userDepartment).where(inArray(userDepartment.userId, seedUserIds));
+
+    if (seedUserDepartments.length > 0) {
+      await tx.insert(userDepartment).values(seedUserDepartments);
+    }
+  });
+
+  console.info(`[db:seed] Replaced ${seedUserDepartments.length} seed user department membership(s)`);
+  console.info(`[db:seed] Upserting ${demoUsers.length} credential account(s)`);
 
   await activeDb
     .insert(account)
     .values(
       await Promise.all(
-        seedUsers.map(async (seedUser) => ({
+        demoUsers.map(async (seedUser) => ({
           id: `${seedUser.id}-credential-account`,
           userId: seedUser.id,
           accountId: seedUser.id,
@@ -327,7 +322,7 @@ export async function seedDatabase(database?: Db): Promise<void> {
       },
     });
 
-  console.info(`[db:seed] Upserted ${seedUsers.length} credential account(s)`);
+  console.info(`[db:seed] Upserted ${demoUsers.length} credential account(s)`);
   console.info(
     `[db:seed] Upserting ${seedProductTimeline.products.length} product(s), ${seedProductOptions.length} product option(s), and ${seedProductTimeline.auditEvents.length} audit event(s)`,
   );
@@ -381,7 +376,7 @@ export async function seedDatabase(database?: Db): Promise<void> {
   });
 
   console.info(
-    `[db:seed] Seed complete: ${seedUsers.length} user(s), ${seedProductTimeline.products.length} product(s), ${seedProductOptions.length} product option(s), ${seedProductTimeline.auditEvents.length} audit event(s)`,
+    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seedProductTimeline.products.length} product(s), ${seedProductOptions.length} product option(s), ${seedProductTimeline.auditEvents.length} audit event(s)`,
   );
 }
 

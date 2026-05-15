@@ -1,9 +1,8 @@
 import { Link } from '@tanstack/react-router';
-import { WrenchIcon } from 'lucide-react';
 import type React from 'react';
 
+import logoSmallUrl from '@/assets/logo_small.png';
 import { AppNavMain } from '@/components/app-shell/AppNavMain.js';
-import { AppNavSecondary } from '@/components/app-shell/AppNavSecondary.js';
 import { AppNavUser } from '@/components/app-shell/AppNavUser.js';
 import {
   Sidebar,
@@ -26,13 +25,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton render={<Link to="/dashboard">Jedidiah Equipment</Link>} size="lg">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <WrenchIcon />
+            <SidebarMenuButton render={<Link to="/dashboard" />} size="lg">
+              <div className="flex aspect-square size-6 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary">
+                <img alt="" className="size-full object-cover" src={logoSmallUrl} />
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">Jedidiah Equipment</span>
-                <span className="truncate text-xs">Operations</span>
+              <div className="min-w-0 flex-1 gap-0 truncate whitespace-nowrap text-left text-lg font-medium leading-none">
+                <span>Jedidiah</span>
+                <span className="text-primary">Ops</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -40,7 +39,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
       </SidebarHeader>
       <SidebarContent>
         <AppNavMain />
-        <AppNavSecondary className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <AppNavUser onSignOut={onSignOut} user={user} />

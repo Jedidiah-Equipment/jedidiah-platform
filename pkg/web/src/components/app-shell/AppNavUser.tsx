@@ -1,6 +1,8 @@
-import { BadgeCheckIcon, BellIcon, ChevronsUpDownIcon, CreditCardIcon, LogOutIcon } from 'lucide-react';
+import { roleLabels } from '@pkg/domain';
+import { Building2Icon, ChevronsUpDownIcon, LogOutIcon, ShieldIcon } from 'lucide-react';
 import type React from 'react';
 
+import { DepartmentIcon } from '@/components/departments/index.js';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar.js';
 import {
   DropdownMenu,
@@ -12,6 +14,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar.js';
+import { useAccess } from '@/hooks/use-access.js';
+import { departmentLabels } from '@/pages/users/components/department-labels.js';
 
 type AppNavUserProps = {
   user: {
@@ -24,6 +28,12 @@ type AppNavUserProps = {
 
 export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
   const { isMobile } = useSidebar();
+  const accessQuery = useAccess();
+  const access = accessQuery.data;
+  const primaryDepartment = access?.departments[0];
+  const departmentLabel = access?.departments.length
+    ? access.departments.map((department) => departmentLabels[department]).join(', ')
+    : 'None';
 
   return (
     <SidebarMenu>
@@ -61,16 +71,20 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <BadgeCheckIcon />
-                Account
+                <ShieldIcon />
+                <span className="flex min-w-0 flex-col">
+                  <span>Role</span>
+                  <span className="truncate text-muted-foreground text-xs">
+                    {access ? roleLabels[access.role] : 'Loading'}
+                  </span>
+                </span>
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <CreditCardIcon />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon />
-                Notifications
+                {primaryDepartment ? <DepartmentIcon department={primaryDepartment} /> : <Building2Icon />}
+                <span className="flex min-w-0 flex-col">
+                  <span>Department</span>
+                  <span className="truncate text-muted-foreground text-xs">{departmentLabel}</span>
+                </span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

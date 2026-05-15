@@ -44,7 +44,7 @@ export type UserAccessSummary = z.infer<typeof UserAccessSummary>;
 export const UserAccessSummary = z.object({
   departments: z.array(Department),
   permissions: z.array(AppPermission),
-  role: AppRole.nullable(),
+  role: AppRole,
   userId: AuthId,
 });
 

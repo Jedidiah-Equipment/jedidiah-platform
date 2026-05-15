@@ -18,7 +18,7 @@ function createAccessWithNoProductRead(): UserAccessSummary {
   return {
     departments: [],
     permissions: [],
-    role: null,
+    role: 'product-viewer',
     userId: 'test-user-id',
   };
 }

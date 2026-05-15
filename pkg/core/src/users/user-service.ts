@@ -1,16 +1,10 @@
 import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
-import {
-  createUserAccessSummary,
-  DEFAULT_APP_ROLE,
-  DEPARTMENT_AWARE_ROLES,
-  normalizeAppRoles,
-  sortDepartments,
-} from '@pkg/domain';
+import { createUserAccessSummary, DEPARTMENT_AWARE_ROLES } from '@pkg/domain';
 import {
   AppRole,
   type AuditChanges,
-  type AuthId,
-  type Department,
+  AuthId,
+  Department,
   type UserAccessSummary,
   type UserListResult,
   type UserSummary,
@@ -26,12 +20,12 @@ type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' |
 
 export function mapUser(row: UserRow): UserSummary {
   return {
-    departments: sortDepartments(row.departments),
+    departments: row.departments.map((department) => Department.parse(department)),
     email: row.email,
     emailVerified: row.emailVerified,
-    id: row.id,
+    id: AuthId.parse(row.id),
     name: row.name,
-    role: parseStoredAppRole(row.role),
+    role: AppRole.parse(row.role),
   };
 }
 
@@ -67,13 +61,10 @@ export async function getUserAccessSummary({
   userId,
 }: {
   db: Db;
-  role: unknown;
+  role: AppRole;
   userId: AuthId;
 }): Promise<UserAccessSummary> {
-  const roles = normalizeAppRoles(role);
-  const departments = roles.some((value) => DEPARTMENT_AWARE_ROLES.has(value))
-    ? await listUserDepartments({ db, userId })
-    : [];
+  const departments = DEPARTMENT_AWARE_ROLES.has(role) ? await listUserDepartments({ db, userId }) : [];
 
   return createUserAccessSummary({
     departments,
@@ -90,7 +81,7 @@ export async function setUserDepartments({
 }: {
   db: Db;
   actorUserId: AuthId;
-  departments: readonly Department[];
+  departments: Department[];
   userId: AuthId;
 }): Promise<Department[]> {
   return db.transaction(async (tx) => {
@@ -156,7 +147,7 @@ export async function listUserDepartments({
     .where(eq(userDepartment.userId, userId))
     .orderBy(asc(userDepartment.department));
 
-  return sortDepartments(rows.map((row) => row.department));
+  return rows.map((row) => row.department);
 }
 
 export async function canAssignUserRole({
@@ -165,12 +156,10 @@ export async function canAssignUserRole({
   userId,
 }: {
   db: Db;
-  role: AppRole | readonly AppRole[];
+  role: AppRole;
   userId: AuthId;
 }): Promise<boolean> {
-  const nextRoles = Array.isArray(role) ? role : [role];
-
-  if (nextRoles.includes('admin')) {
+  if (role === 'admin') {
     return true;
   }
 
@@ -184,7 +173,7 @@ export async function canAssignUserRole({
       .where(eq(user.id, userId))
       .for('update');
 
-    if (!targetUser || !normalizeStoredAppRoles(targetUser.role).includes('admin')) {
+    if (!targetUser || AppRole.parse(targetUser.role) !== 'admin') {
       return true;
     }
 
@@ -199,20 +188,6 @@ export async function canAssignUserRole({
 
     return !(adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === userId));
   });
-}
-
-function parseStoredAppRole(role: unknown): AppRole {
-  const parsedRole = AppRole.safeParse(role);
-
-  return parsedRole.success ? parsedRole.data : DEFAULT_APP_ROLE;
-}
-
-function normalizeStoredAppRoles(role: unknown): AppRole[] {
-  const rawRoles = Array.isArray(role) ? role : typeof role === 'string' ? role.split(',') : [];
-
-  return rawRoles
-    .map((value) => (typeof value === 'string' ? value.trim() : ''))
-    .filter((value): value is AppRole => AppRole.safeParse(value).success);
 }
 
 async function listDepartmentsByUserIds({ db, userIds }: { db: Db; userIds: readonly AuthId[] }) {
@@ -249,27 +224,25 @@ async function setUserDepartmentsInTransaction({
   departments: readonly Department[];
   userId: AuthId;
 }): Promise<Department[]> {
-  const normalizedDepartments = sortDepartments(departments);
-
   await db.delete(userDepartment).where(eq(userDepartment.userId, userId));
 
-  if (normalizedDepartments.length > 0) {
+  if (departments.length > 0) {
     await db.insert(userDepartment).values(
-      normalizedDepartments.map((department) => ({
+      departments.map((department) => ({
         department,
         userId,
       })),
     );
   }
 
-  return normalizedDepartments;
+  return [...departments];
 }
 
 function getChangedDepartments(before: readonly Department[], after: readonly Department[]): Department[] {
   const beforeSet = new Set(before);
   const afterSet = new Set(after);
 
-  return sortDepartments([...before, ...after]).filter(
+  return [...new Set([...before, ...after])].filter(
     (department) => beforeSet.has(department) !== afterSet.has(department),
   );
 }

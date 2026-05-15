@@ -289,7 +289,7 @@ describe('POST /ai/chat-stream', () => {
           access: {
             departments: [],
             permissions: [],
-            role: null,
+            role: 'product-viewer',
             userId: 'test-user-id',
           },
         }),

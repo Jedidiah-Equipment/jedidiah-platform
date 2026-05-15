@@ -10,6 +10,7 @@ const UserDepartmentInput = z.object({
 });
 
 export const usersRouter = router({
+  list: authorizedProcedure('user:list').query(({ ctx }) => listUsers({ db: ctx.db })),
   setDepartments: authorizedProcedure('user:assign-departments')
     .input(UserDepartmentInput)
     .mutation(async ({ ctx, input }) => {
@@ -20,5 +21,4 @@ export const usersRouter = router({
         userId: input.userId,
       });
     }),
-  list: authorizedProcedure('user:list').query(({ ctx }) => listUsers({ db: ctx.db })),
 });

@@ -4,6 +4,8 @@ import { AppRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 
+import { parseBetterAuthRole } from './session.js';
+
 const SELF_ROLE_CHANGE_ERROR = {
   code: 'YOU_CANNOT_CHANGE_YOUR_OWN_ROLE',
   message: 'You cannot change your own role.',
@@ -34,16 +36,16 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               return;
             }
 
-            const currentRoles = normalizeRoleList(session.user.role);
-            const nextRoles = normalizeRoleList(roleChange.role);
+            const currentRole = parseBetterAuthRole(session.user.role);
+            const nextRole = AppRole.parse(roleChange.role);
 
-            if (session.user.id === roleChange.userId && !sameRoleSet(currentRoles, nextRoles)) {
+            if (session.user.id === roleChange.userId && currentRole !== nextRole) {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
             const canAssignRole = await canAssignUserRole({
               db: database,
-              role: nextRoles,
+              role: nextRole,
               userId: roleChange.userId,
             });
 
@@ -58,7 +60,7 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
 }
 
 type RoleChangeInput = {
-  role: string | string[];
+  role: string;
   userId: string;
 };
 
@@ -67,7 +69,7 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
     return null;
   }
 
-  if (path === '/admin/set-role' && isRoleValue(body.role) && typeof body.userId === 'string') {
+  if (path === '/admin/set-role' && typeof body.role === 'string' && typeof body.userId === 'string') {
     return {
       role: body.role,
       userId: body.userId,
@@ -78,7 +80,7 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
     path === '/admin/update-user' &&
     typeof body.userId === 'string' &&
     isRecord(body.data) &&
-    isRoleValue(body.data.role)
+    typeof body.data.role === 'string'
   ) {
     return {
       role: body.data.role,
@@ -87,29 +89,6 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
   }
 
   return null;
-}
-
-function normalizeRoleList(role: unknown): AppRole[] {
-  const rawRoles = Array.isArray(role) ? role : typeof role === 'string' ? role.split(',') : [];
-
-  return rawRoles
-    .map((value) => (typeof value === 'string' ? value.trim() : ''))
-    .filter((value): value is AppRole => AppRole.safeParse(value).success);
-}
-
-function sameRoleSet(left: readonly string[], right: readonly string[]): boolean {
-  const leftSet = new Set(left);
-  const rightSet = new Set(right);
-
-  return leftSet.size === rightSet.size && [...leftSet].every((role) => rightSet.has(role));
-}
-
-function isRoleValue(value: unknown): value is string | string[] {
-  return typeof value === 'string' || (Array.isArray(value) && value.every(isString));
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === 'string';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

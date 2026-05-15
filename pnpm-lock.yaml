@@ -143,6 +143,30 @@ importers:
 
   pkg/schema: {}
 
+  pkg/seed:
+    dependencies:
+      '@pkg/core':
+        specifier: workspace:*
+        version: link:../core
+      '@pkg/db':
+        specifier: workspace:*
+        version: link:../db
+      '@pkg/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@pkg/schema':
+        specifier: workspace:*
+        version: link:../schema
+      better-auth:
+        specifier: ^1.4.7
+        version: 1.6.10(drizzle-kit@0.31.10)(drizzle-orm@0.44.7(kysely@0.28.17)(postgres@3.4.9))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@24.12.4)(typescript@5.9.3))(tsx@4.21.0)(yaml@2.9.0))
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
+      drizzle-orm:
+        specifier: ^0.44.7
+        version: 0.44.7(kysely@0.28.17)(postgres@3.4.9)
+
   pkg/web:
     dependencies:
       '@assistant-ui/react':

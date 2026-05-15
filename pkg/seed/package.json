@@ -1,0 +1,26 @@
+{
+  "name": "@pkg/seed",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:seed": "tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@pkg/core": "workspace:*",
+    "@pkg/db": "workspace:*",
+    "@pkg/domain": "workspace:*",
+    "@pkg/schema": "workspace:*",
+    "better-auth": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.44.7"
+  }
+}

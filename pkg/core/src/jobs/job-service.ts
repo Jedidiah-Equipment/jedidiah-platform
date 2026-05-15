@@ -1,6 +1,7 @@
-import { type DatabaseTransaction, type Db, jobStages, jobs, products } from '@pkg/db';
+import { type DatabaseTransaction, type Db, jobEvents, jobStages, jobs, products } from '@pkg/db';
 import {
   canViewStage,
+  deriveStageJobEvent,
   evaluateStageTransition,
   getStageTransitionAvailability,
   JOB_STAGE_PIPELINE,
@@ -11,6 +12,10 @@ import {
   type Job,
   type JobCreateInput,
   type JobDetail,
+  type JobEvent,
+  JobEvent as JobEventContract,
+  type JobEventDerivationStage,
+  JobEventDerivationStage as JobEventDerivationStageContract,
   type JobListInput,
   type JobListResult,
   type JobStage,
@@ -33,11 +38,19 @@ import {
 import { JobNotFoundError, JobStageTransitionDeniedError } from './job-errors.js';
 
 type JobRow = typeof jobs.$inferSelect;
+type JobEventRow = typeof jobEvents.$inferSelect;
 type JobStageRow = typeof jobStages.$inferSelect;
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
 type JobWithProductRow = JobRow & {
   productModelCode: ProductRow['modelCode'];
   productName: ProductRow['name'];
+};
+type JobDetailRow = {
+  event: JobEventRow | null;
+  job: JobRow;
+  productModelCode: ProductRow['modelCode'];
+  productName: ProductRow['name'];
+  stage: JobStageRow;
 };
 
 export function mapJob(row: JobRow): Job {
@@ -56,6 +69,27 @@ export function mapJobStage(row: JobStageRow): JobStage {
     id: row.id,
     jobId: row.jobId,
     sequence: row.sequence,
+    stage: row.stage,
+    startedAt: row.startedAt?.toISOString() ?? null,
+    status: row.status,
+  });
+}
+
+export function mapJobEvent(row: JobEventRow): JobEvent {
+  return JobEventContract.parse({
+    actorUserId: row.actorUserId,
+    eventType: row.eventType,
+    id: row.id,
+    jobId: row.jobId,
+    occurredAt: row.occurredAt.toISOString(),
+    payload: row.payload,
+    stageId: row.stageId,
+  });
+}
+
+function mapJobEventDerivationStage(row: JobStageRow): JobEventDerivationStage {
+  return JobEventDerivationStageContract.parse({
+    completedAt: row.completedAt?.toISOString() ?? null,
     stage: row.stage,
     startedAt: row.startedAt?.toISOString() ?? null,
     status: row.status,
@@ -107,7 +141,7 @@ export async function createJob({
       },
     });
 
-    return readJobDetail({ access, db: tx, id: job.id });
+    return getJob({ access, db: tx, id: job.id });
   });
 }
 
@@ -147,8 +181,46 @@ export async function listJobs({
   };
 }
 
-export async function getJob({ db, access, id }: { db: Db; access: UserAccessSummary; id: UUID }): Promise<JobDetail> {
-  return readJobDetail({ access, db, id });
+export async function getJob({
+  db,
+  id,
+  access,
+}: {
+  db: Db | DatabaseTransaction;
+  id: UUID;
+  access: UserAccessSummary;
+}): Promise<JobDetail> {
+  const rows = await db
+    .select({
+      job: jobs,
+      productModelCode: products.modelCode,
+      productName: products.name,
+      stage: jobStages,
+      event: jobEvents,
+    })
+    .from(jobs)
+    .innerJoin(products, eq(products.id, jobs.productId))
+    .innerJoin(jobStages, eq(jobStages.jobId, jobs.id))
+    .leftJoin(jobEvents, eq(jobEvents.stageId, jobStages.id))
+    .where(eq(jobs.id, id))
+    .orderBy(asc(jobStages.sequence), asc(jobEvents.occurredAt), asc(jobEvents.id));
+
+  const firstRow = rows[0];
+  const jobRow = firstRow?.job;
+
+  if (!jobRow) {
+    throw new JobNotFoundError(id);
+  }
+
+  return {
+    ...mapJobSummary({
+      ...jobRow,
+      productModelCode: firstRow.productModelCode,
+      productName: firstRow.productName,
+    }),
+    stages: mapJobDetailStages({ access, job: jobRow, rows }),
+    workflowEvents: mapJobDetailWorkflowEvents({ access, rows }),
+  };
 }
 
 export async function startJobStage({
@@ -278,7 +350,7 @@ async function completeJobStageFromStatus({
         });
       }
 
-      return readJobDetail({ access, db: tx, id });
+      return getJob({ access, db: tx, id });
     }
 
     return applyJobStageTransition({
@@ -295,52 +367,6 @@ async function completeJobStageFromStatus({
       },
     });
   });
-}
-
-async function readJobDetail({
-  db,
-  id,
-  access,
-}: {
-  db: Db | DatabaseTransaction;
-  id: UUID;
-  access: UserAccessSummary;
-}): Promise<JobDetail> {
-  const rows = await db
-    .select({
-      job: jobs,
-      productModelCode: products.modelCode,
-      productName: products.name,
-      stage: jobStages,
-    })
-    .from(jobs)
-    .innerJoin(products, eq(products.id, jobs.productId))
-    .innerJoin(jobStages, eq(jobStages.jobId, jobs.id))
-    .where(eq(jobs.id, id))
-    .orderBy(asc(jobStages.sequence));
-
-  const firstRow = rows[0];
-  const jobRow = firstRow?.job;
-
-  if (!jobRow) {
-    throw new JobNotFoundError(id);
-  }
-
-  return {
-    ...mapJobSummary({
-      ...jobRow,
-      productModelCode: firstRow.productModelCode,
-      productName: firstRow.productName,
-    }),
-    stages: rows.map((row, index) =>
-      mapStageAccess({
-        access,
-        job: row.job,
-        previousStage: index === 0 ? null : (rows[index - 1]?.stage ?? null),
-        stage: row.stage,
-      }),
-    ),
-  };
 }
 
 function mapJobSummary(row: JobWithProductRow): JobSummary {
@@ -382,6 +408,51 @@ function mapStageAccess({
     sequence: stage.sequence,
     stage: stage.stage,
   };
+}
+
+function mapJobDetailStages({
+  access,
+  job,
+  rows,
+}: {
+  access: UserAccessSummary;
+  job: JobRow;
+  rows: JobDetailRow[];
+}): JobStageRollup[] {
+  const stageRows = getUniqueStageRows(rows);
+
+  return stageRows.map((stageRow, index) =>
+    mapStageAccess({
+      access,
+      job,
+      previousStage: index === 0 ? null : (stageRows[index - 1] ?? null),
+      stage: stageRow,
+    }),
+  );
+}
+
+function mapJobDetailWorkflowEvents({ access, rows }: { access: UserAccessSummary; rows: JobDetailRow[] }): JobEvent[] {
+  const eventRowsById = new Map<UUID, JobEventRow>();
+
+  for (const row of rows) {
+    if (row.event && canViewStage(access, row.stage)) {
+      eventRowsById.set(row.event.id, row.event);
+    }
+  }
+
+  return [...eventRowsById.values()]
+    .sort((left, right) => left.occurredAt.getTime() - right.occurredAt.getTime() || left.id.localeCompare(right.id))
+    .map(mapJobEvent);
+}
+
+function getUniqueStageRows(rows: JobDetailRow[]): JobStageRow[] {
+  const stageRowsById = new Map<UUID, JobStageRow>();
+
+  for (const row of rows) {
+    stageRowsById.set(row.stage.id, row.stage);
+  }
+
+  return [...stageRowsById.values()];
 }
 
 async function transitionJobStage({
@@ -465,7 +536,21 @@ async function applyJobStageTransition({
     },
   });
 
-  return readJobDetail({ access, db: tx, id });
+  const jobEvent = deriveStageJobEvent({
+    after: mapJobEventDerivationStage(updatedStage),
+    before: mapJobEventDerivationStage(transitionTarget.stage),
+    transition,
+  });
+
+  await tx.insert(jobEvents).values({
+    actorUserId,
+    eventType: jobEvent.eventType,
+    jobId: id,
+    payload: jobEvent.payload,
+    stageId: updatedStage.id,
+  });
+
+  return getJob({ access, db: tx, id });
 }
 
 type StageTransitionTarget = {

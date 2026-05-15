@@ -103,7 +103,7 @@ describe('hasPermission', () => {
 });
 
 describe('job authorization policy', () => {
-  const stages = ['procurement', 'fabrication', 'paint', 'assembly', 'dispatch'] as const;
+  const stages = ['procurement', 'fabrication', 'assembly', 'paint', 'dispatch'] as const;
   type Stage = (typeof stages)[number];
 
   it('covers the viewer profile by stage matrix', () => {

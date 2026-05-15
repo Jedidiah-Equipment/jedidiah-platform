@@ -1,11 +1,13 @@
 import { pathToFileURL } from 'node:url';
-import { demoUsers } from '@pkg/domain';
+import { demoUsers, JOB_STAGE_PIPELINE } from '@pkg/domain';
+import type { JobLifecycleStatus, JobStageName, JobStageStatus } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import type { Db } from './database-client.js';
 import { auditEvents } from './schema/audit.js';
 import { account, user, userDepartment } from './schema/auth.js';
+import { jobStages, jobs } from './schema/job.js';
 import { products } from './schema/product.js';
 import { productOptions } from './schema/product-option.js';
 
@@ -29,6 +31,65 @@ const equipmentFamilies = [
 
 const equipmentSeries = ['Atlas', 'Summit', 'Vertex', 'Forge', 'Apex'] as const;
 
+const seedJobScenarios = [
+  {
+    lifecycleStatus: 'active',
+    stageProgress: null,
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'procurement', status: 'ordering' },
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'procurement', status: 'partial' },
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'fabrication', status: 'cutting' },
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'fabrication', status: 'welding' },
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'assembly', status: 'in-progress' },
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'assembly', status: 'qc' },
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'paint', status: 'prep' },
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'paint', status: 'painting' },
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'paint', status: 'curing' },
+  },
+  {
+    lifecycleStatus: 'active',
+    stageProgress: { stage: 'dispatch', status: 'ready' },
+  },
+  {
+    lifecycleStatus: 'complete',
+    stageProgress: 'complete',
+  },
+  {
+    lifecycleStatus: 'paused',
+    stageProgress: { stage: 'assembly', status: 'in-progress' },
+  },
+  {
+    lifecycleStatus: 'cancelled',
+    stageProgress: { stage: 'fabrication', status: 'qc' },
+  },
+] as const satisfies readonly SeedJobScenario[];
+
 type SeedProduct = typeof products.$inferInsert & {
   id: string;
   name: string;
@@ -44,6 +105,34 @@ type SeedProductOption = typeof productOptions.$inferInsert & {
   name: string;
   code: string;
   price: number;
+};
+
+type SeedJob = typeof jobs.$inferInsert & {
+  id: string;
+  productId: string;
+  lifecycleStatus: JobLifecycleStatus;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type SeedJobStage = typeof jobStages.$inferInsert & {
+  id: string;
+  jobId: string;
+  sequence: number;
+  stage: JobStageName;
+  status: JobStageStatus;
+  startedAt: Date | null;
+  completedAt: Date | null;
+};
+
+type SeedJobs = {
+  jobs: SeedJob[];
+  stages: SeedJobStage[];
+};
+
+type SeedJobScenario = {
+  lifecycleStatus: JobLifecycleStatus;
+  stageProgress: { stage: JobStageName; status: JobStageStatus } | 'complete' | null;
 };
 
 type SeedProductAuditChange = {
@@ -132,6 +221,67 @@ export function createSeedProductOptions(productsToSeed: readonly SeedTimelinePr
       updatedAt: product.updatedAt,
     }));
   });
+}
+
+export function createSeedJobs({
+  now,
+  products: productsToSeed,
+}: {
+  now: Date;
+  products: readonly SeedTimelineProduct[];
+}): SeedJobs {
+  if (productsToSeed.length === 0) {
+    return {
+      jobs: [],
+      stages: [],
+    };
+  }
+
+  const jobsToSeed = seedJobScenarios.map((scenario, jobIndex) => {
+    const product = productsToSeed[jobIndex % productsToSeed.length];
+
+    if (!product) {
+      throw new Error('Seed job product lookup failed');
+    }
+
+    const createdAt = createJobCreatedAt(now, jobIndex);
+    const stages = createSeedJobStages({
+      createdAt,
+      jobId: createSeedUuid('8003', jobIndex + 1),
+      jobIndex,
+      scenario,
+    });
+    const updatedAt =
+      stages.reduce<Date | null>((latest, stage) => {
+        const stageUpdatedAt = stage.completedAt ?? stage.startedAt;
+
+        if (!stageUpdatedAt) {
+          return latest;
+        }
+
+        if (!latest || stageUpdatedAt.getTime() > latest.getTime()) {
+          return stageUpdatedAt;
+        }
+
+        return latest;
+      }, null) ?? createdAt;
+
+    return {
+      job: {
+        id: createSeedUuid('8003', jobIndex + 1),
+        createdAt,
+        lifecycleStatus: scenario.lifecycleStatus,
+        productId: product.id,
+        updatedAt,
+      },
+      stages,
+    };
+  });
+
+  return {
+    jobs: jobsToSeed.map(({ job }) => job),
+    stages: jobsToSeed.flatMap(({ stages }) => stages),
+  };
 }
 
 export function createSeedProductAuditTimeline({
@@ -260,6 +410,10 @@ export async function seedDatabase(database?: Db): Promise<void> {
     products: seedProducts,
   });
   const seedProductOptions = createSeedProductOptions(seedProductTimeline.products);
+  const seedJobs = createSeedJobs({
+    now,
+    products: seedProductTimeline.products,
+  });
 
   console.info(`[db:seed] Starting seed at ${now.toISOString()}`);
   console.info(`[db:seed] Upserting ${demoUsers.length} seed user(s): ${seedUserEmails}`);
@@ -324,7 +478,7 @@ export async function seedDatabase(database?: Db): Promise<void> {
 
   console.info(`[db:seed] Upserted ${demoUsers.length} credential account(s)`);
   console.info(
-    `[db:seed] Upserting ${seedProductTimeline.products.length} product(s), ${seedProductOptions.length} product option(s), and ${seedProductTimeline.auditEvents.length} audit event(s)`,
+    `[db:seed] Upserting ${seedProductTimeline.products.length} product(s), ${seedProductOptions.length} product option(s), ${seedJobs.jobs.length} job(s), ${seedJobs.stages.length} job stage(s), and ${seedProductTimeline.auditEvents.length} audit event(s)`,
   );
 
   await activeDb.transaction(async (tx) => {
@@ -362,6 +516,38 @@ export async function seedDatabase(database?: Db): Promise<void> {
         });
     }
 
+    if (seedJobs.jobs.length > 0) {
+      await tx
+        .insert(jobs)
+        .values(seedJobs.jobs)
+        .onConflictDoUpdate({
+          target: jobs.id,
+          set: {
+            createdAt: sql`excluded.created_at`,
+            lifecycleStatus: sql`excluded.lifecycle_status`,
+            productId: sql`excluded.product_id`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        });
+    }
+
+    if (seedJobs.stages.length > 0) {
+      await tx
+        .insert(jobStages)
+        .values(seedJobs.stages)
+        .onConflictDoUpdate({
+          target: jobStages.id,
+          set: {
+            completedAt: sql`excluded.completed_at`,
+            jobId: sql`excluded.job_id`,
+            sequence: sql`excluded.sequence`,
+            stage: sql`excluded.stage`,
+            startedAt: sql`excluded.started_at`,
+            status: sql`excluded.status`,
+          },
+        });
+    }
+
     const seedProductIds = seedProductTimeline.products.map((product) => product.id);
 
     if (seedProductIds.length > 0) {
@@ -376,7 +562,7 @@ export async function seedDatabase(database?: Db): Promise<void> {
   });
 
   console.info(
-    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seedProductTimeline.products.length} product(s), ${seedProductOptions.length} product option(s), ${seedProductTimeline.auditEvents.length} audit event(s)`,
+    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seedProductTimeline.products.length} product(s), ${seedProductOptions.length} product option(s), ${seedJobs.jobs.length} job(s), ${seedJobs.stages.length} job stage(s), ${seedProductTimeline.auditEvents.length} audit event(s)`,
   );
 }
 
@@ -387,6 +573,60 @@ function createProductCreatedAt(now: Date, productIndex: number): Date {
   createdAt.setUTCSeconds(0, 0);
 
   return createdAt;
+}
+
+function createJobCreatedAt(now: Date, jobIndex: number): Date {
+  const ageDays = seedJobScenarios.length - jobIndex + JOB_STAGE_PIPELINE.length;
+  const createdAt = new Date(now.getTime() - ageDays * millisecondsPerDay);
+
+  createdAt.setUTCHours(6, (jobIndex * 9) % 60, 0, 0);
+
+  return createdAt;
+}
+
+function createSeedJobStages({
+  createdAt,
+  jobId,
+  jobIndex,
+  scenario,
+}: {
+  createdAt: Date;
+  jobId: string;
+  jobIndex: number;
+  scenario: SeedJobScenario;
+}): SeedJobStage[] {
+  const activeStageProgress =
+    scenario.stageProgress && scenario.stageProgress !== 'complete' ? scenario.stageProgress : null;
+  const currentStageIndex = activeStageProgress
+    ? JOB_STAGE_PIPELINE.findIndex(({ stage }) => stage === activeStageProgress.stage)
+    : -1;
+
+  return JOB_STAGE_PIPELINE.map(({ sequence, stage }, stageIndex) => {
+    const stageProgress = scenario.stageProgress;
+    const isCompleted = stageProgress === 'complete' || (currentStageIndex >= 0 && stageIndex < currentStageIndex);
+    const isActive = stageProgress !== null && stageProgress !== 'complete' && stageProgress.stage === stage;
+    const startedAt = isCompleted || isActive ? createJobStageTimestamp(createdAt, sequence, 8, jobIndex) : null;
+    const completedAt = isCompleted ? createJobStageTimestamp(createdAt, sequence, 15, jobIndex) : null;
+    const status = isCompleted ? 'complete' : isActive ? stageProgress.status : 'pending';
+
+    return {
+      id: createSeedUuid('8004', jobIndex * JOB_STAGE_PIPELINE.length + sequence),
+      completedAt,
+      jobId,
+      sequence,
+      stage,
+      startedAt,
+      status,
+    };
+  });
+}
+
+function createJobStageTimestamp(createdAt: Date, sequence: number, hour: number, jobIndex: number): Date {
+  const timestamp = addUtcDays(createdAt, sequence - 1);
+
+  timestamp.setUTCHours(hour, (jobIndex * 7 + sequence * 5) % 60, 0, 0);
+
+  return timestamp;
 }
 
 function getSeedProductAgeDays(productIndex: number): number {

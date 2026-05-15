@@ -1,4 +1,5 @@
 import { demoUsers, roleLabels } from '@pkg/domain';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { AlertCircleIcon, Loader2Icon, LogInIcon } from 'lucide-react';
 import type React from 'react';
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { FieldGroup } from '@/components/ui/field.js';
 import { authClient } from '@/lib/auth-client.js';
+import { clearReactQueryCache } from '@/lib/trpc-cache.js';
 import { departmentLabels } from '@/pages/users/components/department-labels.js';
 import { LoginForm } from './types.js';
 
@@ -17,6 +19,7 @@ type LoginPageProps = Record<string, never>;
 
 export const LoginPage: React.FC<LoginPageProps> = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
   const form = useAppForm({
@@ -38,6 +41,7 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
           return;
         }
 
+        clearReactQueryCache(queryClient);
         await navigate({ to: '/dashboard' });
       } catch {
         setError('Unable to sign in.');

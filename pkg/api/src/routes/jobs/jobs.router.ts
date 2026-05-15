@@ -1,5 +1,14 @@
-import { createJob, getJob, JobNotFoundError, listJobs } from '@pkg/core';
-import { JobCreateInput, JobListInput, UUID } from '@pkg/schema';
+import {
+  completeJobStage,
+  createJob,
+  getJob,
+  JobNotFoundError,
+  JobStageTransitionDeniedError,
+  listJobs,
+  setJobStageStatus,
+  startJobStage,
+} from '@pkg/core';
+import { JobCreateInput, JobListInput, JobStageStatusInput, JobStageTransitionInput, UUID } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
@@ -17,7 +26,48 @@ export const jobsRouter = router({
   create: authorizedProcedure('job:create')
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => createJob({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+      mapJobErrors(() => createJob({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id })),
+    ),
+
+  startStage: authorizedProcedure('job-stage:update')
+    .input(JobStageTransitionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        startJobStage({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          id: input.id,
+          stage: input.stage,
+        }),
+      ),
+    ),
+
+  setStageStatus: authorizedProcedure('job-stage:update')
+    .input(JobStageStatusInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        setJobStageStatus({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          input,
+        }),
+      ),
+    ),
+
+  completeStage: authorizedProcedure('job-stage:update')
+    .input(JobStageTransitionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        completeJobStage({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          id: input.id,
+          stage: input.stage,
+        }),
+      ),
     ),
 });
 
@@ -29,6 +79,13 @@ async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
       throw new TRPCError({
         code: 'NOT_FOUND',
         message: 'Job not found.',
+      });
+    }
+
+    if (error instanceof JobStageTransitionDeniedError) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: error.message,
       });
     }
 

@@ -4,21 +4,24 @@ import type { z } from 'zod';
 
 import { useAppForm } from '@/components/form/index.js';
 import { FieldGroup } from '@/components/ui/field.js';
+import { UserDepartmentsForm } from './UserDepartmentsForm.js';
 import { SubmitFooter } from './UserFormFooter.js';
 import { RoleField } from './UserRoleField.js';
 
 export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
-export const UserCreateFormValues = UserSummary.omit({ departments: true, id: true }).extend({
+export const UserCreateFormValues = UserSummary.omit({ id: true }).extend({
   password: UserPassword,
 });
 
 type UserCreateFormProps = {
+  canAssignDepartments: boolean;
   isPending: boolean;
   onSubmit: (value: UserCreateFormValues) => Promise<unknown>;
 };
 
-export const UserCreateForm: React.FC<UserCreateFormProps> = ({ isPending, onSubmit }) => {
+export const UserCreateForm: React.FC<UserCreateFormProps> = ({ canAssignDepartments, isPending, onSubmit }) => {
   const defaultValues: UserCreateFormValues = {
+    departments: [],
     email: '',
     emailVerified: false,
     name: '',
@@ -61,6 +64,17 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({ isPending, onSub
             />
           )}
         </form.AppField>
+        {canAssignDepartments ? (
+          <form.AppField name="departments">
+            {(field) => (
+              <UserDepartmentsForm
+                initialDepartments={field.state.value}
+                isPending={isPending}
+                onDepartmentsChange={(departments) => field.handleChange([...departments])}
+              />
+            )}
+          </form.AppField>
+        ) : null}
         <form.AppField name="emailVerified">{(field) => <field.CheckboxField label="Email verified" />}</form.AppField>
         <form.AppField name="password">
           {(field) => <field.PasswordField autoComplete="new-password" label="Password" />}

@@ -19,6 +19,7 @@ import {
 } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPageCount, type SortOptions } from '@/components/data-table/table-state.js';
+import { DepartmentIcon } from '@/components/departments/index.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { departmentLabels } from './department-labels.js';
@@ -281,6 +282,7 @@ const DepartmentBadges: React.FC<{ departments: UserSummary['departments'] }> = 
     <div className="flex flex-wrap gap-1">
       {departments.map((department) => (
         <Badge key={department} variant="secondary">
+          <DepartmentIcon department={department} />
           {departmentLabels[department]}
         </Badge>
       ))}

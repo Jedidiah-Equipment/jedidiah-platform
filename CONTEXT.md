@@ -50,22 +50,24 @@ _Avoid_: Team, Group.
 A flat role assigned to a User that grants verb capabilities on resources. Roles say "what verbs you can call"; they do not by themselves say "on which rows". See **Scope**.
 
 **Scope**:
-The rule that determines *which rows* a Role's verbs apply to. A Role is either **department-scoped** (its verbs only apply to rows owned by Departments the User belongs to) or **cross-cutting** (its verbs apply to all rows of the resource). Scope is a property of the Role enforced by the **Job Authorization Policy** module — it is not encoded in the permission strings.
+The rule that determines *which rows* a User's Job/Job-Stage verbs apply to. Scope is a property of the **User's Department-membership set**, not of their Role: a User with one or more Department memberships is **scoped** — verbs apply only to Stages owned by those Departments; a User with an empty membership set is **unscoped** — verbs apply to every Stage the Role permits. Empty membership means "all Departments", not "no access". Scope is enforced by the **Job Authorization Policy** (the `can*Stage` functions in `pkg/domain/src/auth/authorization.ts`) — it is not encoded in the permission strings.
 
-**Department-Scoped Role**:
-A Role whose effective access is intersected with the User's Department memberships. Currently: `job-stage-editor`.
+**Department-Aware Role**:
+A Role for which Department membership is consulted, so a User holding it can be either scoped or unscoped depending on their memberships. Currently: `job-stage-editor`, `job-supervisor`, `job-viewer` — the members of `DEPARTMENT_AWARE_ROLES`. For these roles `user_department` is read when the access summary is built.
+_Avoid_: "Department-Scoped Role" (scope is a property of the User, not the Role).
 
-**Cross-Cutting Role**:
-A Role whose access is not narrowed by Department membership. Currently: `job-viewer`, `job-supervisor`, `admin`.
+**Department-Blind Role**:
+A Role for which Department membership is never consulted; its verbs always apply cross-cutting. Currently: `admin` (and the `product-*` roles, which have no Job access at all). `user_department` is never read for these roles, so such a User is always unscoped.
+_Avoid_: "Cross-Cutting Role" applied to `job-supervisor`/`job-viewer` — those are Department-Aware and cross-cutting only when the User has no Departments.
 
 **`job-stage-editor`**:
-Department-scoped Role. Can read and write Stages owned by the User's Departments.
+Department-Aware Role. Reads and writes Stages owned by the User's Departments; with no Departments selected, reads and writes all Stages.
 
 **`job-viewer`**:
-Cross-cutting read-only Role for people who need full pipeline visibility without editing (e.g. sales).
+Department-Aware, read-only Role for people who need pipeline visibility without editing (e.g. sales). Cross-cutting when the User has no Departments; scoped to the User's Departments when any are assigned.
 
 **`job-supervisor`**:
-Cross-cutting read+write Role for planners/supervisors. Includes Job lifecycle transitions (pause/resume/cancel).
+Department-Aware, read+write Role for planners/supervisors. Includes Job lifecycle transitions (pause/resume/cancel). Cross-cutting when the User has no Departments; scoped to the User's Departments when any are assigned.
 
 ### Logs
 
@@ -91,7 +93,7 @@ A UI/query-default convention — list views hide Stages whose `completed_at` is
 - A **Job** has exactly five **Stages**, materialised at creation, one per **Department** in fixed Pipeline order.
 - A **Stage** is owned by exactly one **Department**.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
-- A **Stage** mutation requires: (verb permission from the User's Role) AND (the Job's Lifecycle Status is `active`) AND (the Stage's Sequence is reachable per the Stage Transition Policy) AND (Scope rule — for department-scoped Roles, the Stage's Department is in the User's Departments).
+- A **Stage** mutation requires: (verb permission from the User's Role) AND (the Job's Lifecycle Status is `active`) AND (the Stage's Sequence is reachable per the Stage Transition Policy) AND (Scope rule — if the User has Department memberships, the Stage's Department is among them; a User with no memberships is unscoped).
 - Every Stage state change writes one **Audit Event** + one **Job Event** in the same transaction.
 
 ## Example dialogue
@@ -100,7 +102,7 @@ A UI/query-default convention — list views hide Stages whose `completed_at` is
 > **Domain expert:** "Nothing. **Job-Level Lifecycle Does Not Cascade**. The Stage keeps its `status` and `started_at`; we just refuse writes to it until the Job is active again."
 
 > **Dev:** "A salesperson needs to see every Job's progress but can't edit anything. **Department** member of all five?"
-> **Domain expert:** "No — that would be a hack. They get the **`job-viewer`** Role. It's **Cross-Cutting** — no Department membership needed, no editing."
+> **Domain expert:** "No — that would be a hack. They get the **`job-viewer`** Role with *no* Department memberships. An **unscoped** User sees the whole Pipeline; assigning Departments would narrow them. The Role gives read-only verbs either way."
 
 > **Dev:** "Procurement marked their **Stage** complete but now they need to add a late PO. Allowed?"
 > **Domain expert:** "Yes. **Stage Completion** is a one-way latch on `completed_at`, but **Stage Status** keeps moving after. They can still update."
@@ -108,4 +110,4 @@ A UI/query-default convention — list views hide Stages whose `completed_at` is
 ## Flagged ambiguities
 
 - "Status" was used ambiguously between **Stage Status** (per-Stage workflow position) and **Job Lifecycle Status** (Job-level mutability gate). Resolved: distinct concepts on different rows.
-- "Job-viewer / job-supervisor" felt like a "split brain" alongside the Role enum — the discomfort came from missing the **Scope** concept. They are not hacks; they are the **Cross-Cutting** counterparts to the **Department-Scoped** `job-stage-editor`.
+- "Job-viewer / job-supervisor" felt like a "split brain" alongside the Role enum — the discomfort came from missing the **Scope** concept. They are not hacks: all three of `job-stage-editor`, `job-supervisor`, `job-viewer` are **Department-Aware**. Whether a User is scoped depends on their Department memberships, not on which of the three Roles they hold.

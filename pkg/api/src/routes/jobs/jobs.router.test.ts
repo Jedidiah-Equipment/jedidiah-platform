@@ -307,10 +307,29 @@ describe('job stage transitions', () => {
       }
     }
 
+    expect(detail.lifecycleStatus).toBe('complete');
+    expect(detail.workflowEvents.map((event) => event.eventType)).toContain('job.completed');
     expect(detail.stages).toHaveLength(5);
     expect(
       detail.stages.every((stage) => stage.access === 'visible' && stage.status === 'complete' && stage.completedAt),
     ).toBe(true);
+
+    const jobRows = await context.db.select().from(jobs);
+    const jobRow = jobRows.find((job) => job.id === created.id);
+    expect(jobRow?.lifecycleStatus).toBe('complete');
+
+    const jobEventRows = await context.db.select().from(jobEvents).orderBy(jobEvents.occurredAt);
+    const completedEvent = jobEventRows.find((event) => event.eventType === 'job.completed');
+    expect(completedEvent).toMatchObject({
+      actorUserId: 'test-user-id',
+      eventType: 'job.completed',
+      jobId: created.id,
+      payload: {
+        fromLifecycleStatus: 'active',
+        toLifecycleStatus: 'complete',
+      },
+      stageId: null,
+    });
   });
 
   test('rejects starting a stage before the previous stage completes', async ({ context }) => {
@@ -547,6 +566,109 @@ describe('job stage transitions', () => {
       } as unknown as Parameters<typeof caller.jobs.setStageStatus>[0]),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
+    });
+  });
+});
+
+describe('job lifecycle transitions', () => {
+  test('pauses and resumes without mutating stage rows', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await caller.jobs.startStage({ id: created.id, stage: 'procurement' });
+    await caller.jobs.setStageStatus({ id: created.id, stage: 'procurement', status: 'ordering' });
+    const stageRowsBeforePause = await context.db.select().from(jobStages).orderBy(jobStages.sequence);
+
+    const paused = await caller.jobs.pause({ id: created.id });
+    expect(paused.lifecycleStatus).toBe('paused');
+    expect(getVisibleStage(paused, 'procurement').transitionAvailability?.['set-status']).toEqual({
+      allowed: false,
+      reason: 'Job is not active.',
+    });
+
+    await expect(
+      caller.jobs.setStageStatus({ id: created.id, stage: 'procurement', status: 'partial' }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Job is not active.',
+    });
+
+    expect(await context.db.select().from(jobStages).orderBy(jobStages.sequence)).toEqual(stageRowsBeforePause);
+
+    const resumed = await caller.jobs.resume({ id: created.id });
+    expect(resumed.lifecycleStatus).toBe('active');
+
+    const updated = await caller.jobs.setStageStatus({ id: created.id, stage: 'procurement', status: 'partial' });
+    expect(getVisibleStage(updated, 'procurement').status).toBe('partial');
+    expect(getVisibleStage(updated, 'procurement').startedAt).toBe(getVisibleStage(paused, 'procurement').startedAt);
+
+    const jobEventRows = await context.db.select().from(jobEvents).orderBy(jobEvents.occurredAt);
+    expect(jobEventRows.map((event) => event.eventType)).toEqual(
+      expect.arrayContaining(['stage.started', 'stage.status_changed', 'job.paused', 'job.resumed']),
+    );
+    expect(jobEventRows.find((event) => event.eventType === 'job.paused')).toMatchObject({
+      eventType: 'job.paused',
+      payload: { fromLifecycleStatus: 'active', toLifecycleStatus: 'paused' },
+      stageId: null,
+    });
+    expect(jobEventRows.find((event) => event.eventType === 'job.resumed')).toMatchObject({
+      eventType: 'job.resumed',
+      payload: { fromLifecycleStatus: 'paused', toLifecycleStatus: 'active' },
+      stageId: null,
+    });
+  });
+
+  test('cancels from active or paused and leaves stage rows unchanged', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const activeJob = await caller.jobs.create({ productId: context.product.id });
+    const pausedJob = await caller.jobs.create({ productId: context.product.id });
+
+    await caller.jobs.startStage({ id: pausedJob.id, stage: 'procurement' });
+    await caller.jobs.pause({ id: pausedJob.id });
+    const pausedStageRowsBeforeCancel = (await context.db.select().from(jobStages).orderBy(jobStages.sequence)).filter(
+      (stage) => stage.jobId === pausedJob.id,
+    );
+
+    expect((await caller.jobs.cancel({ id: activeJob.id })).lifecycleStatus).toBe('cancelled');
+    expect((await caller.jobs.cancel({ id: pausedJob.id })).lifecycleStatus).toBe('cancelled');
+    expect(
+      (await context.db.select().from(jobStages).orderBy(jobStages.sequence)).filter(
+        (stage) => stage.jobId === pausedJob.id,
+      ),
+    ).toEqual(pausedStageRowsBeforeCancel);
+
+    await expect(caller.jobs.startStage({ id: pausedJob.id, stage: 'procurement' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Job is not active.',
+    });
+  });
+
+  test('rejects invalid lifecycle transitions and unauthorized callers', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const stageEditorCaller = context.createCaller(mockSession('job-stage-editor'));
+    const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+
+    await expect(supervisorCaller.jobs.resume({ id: created.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Only paused jobs can be resumed.',
+    });
+
+    await expect(stageEditorCaller.jobs.pause({ id: created.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+
+    await supervisorCaller.jobs.pause({ id: created.id });
+
+    await expect(supervisorCaller.jobs.pause({ id: created.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Only active jobs can be paused.',
+    });
+
+    await supervisorCaller.jobs.cancel({ id: created.id });
+
+    await expect(supervisorCaller.jobs.resume({ id: created.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Terminal jobs cannot change lifecycle status.',
     });
   });
 });

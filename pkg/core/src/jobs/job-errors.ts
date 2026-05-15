@@ -11,3 +11,10 @@ export class JobStageTransitionDeniedError extends Error {
     this.name = 'JobStageTransitionDeniedError';
   }
 }
+
+export class JobLifecycleTransitionDeniedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'JobLifecycleTransitionDeniedError';
+  }
+}

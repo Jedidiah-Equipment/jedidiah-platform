@@ -80,6 +80,30 @@ describe('JobEvent', () => {
       }),
     ).toThrow();
   });
+
+  it('validates job lifecycle workflow events', () => {
+    expect(
+      JobEvent.parse({
+        actorUserId: 'test-user-id',
+        eventType: 'job.paused',
+        id: '00000000-0000-4000-8000-000000000001',
+        jobId: '00000000-0000-4000-8000-000000000002',
+        occurredAt: '2026-05-15T08:00:00.000Z',
+        payload: {
+          fromLifecycleStatus: 'active',
+          toLifecycleStatus: 'paused',
+        },
+        stageId: null,
+      }),
+    ).toMatchObject({
+      eventType: 'job.paused',
+      payload: {
+        fromLifecycleStatus: 'active',
+        toLifecycleStatus: 'paused',
+      },
+      stageId: null,
+    });
+  });
 });
 
 describe('JobEventDerivationStage', () => {

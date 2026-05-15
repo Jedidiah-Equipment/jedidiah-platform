@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import { Department } from '../auth/authorization.js';
+import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
+import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
 
 // Unordered list of job stages. Use JOB_STAGE_PIPELINE for ordered list.
@@ -11,6 +13,11 @@ export const JobStageName = z.enum(JOB_STAGES);
 
 export type JobLifecycleStatus = z.infer<typeof JobLifecycleStatus>;
 export const JobLifecycleStatus = z.enum(['active', 'paused', 'complete', 'cancelled']);
+
+export const JOB_LIST_STATUS_FILTERS = ['all', ...JobLifecycleStatus.options] as const;
+
+export type JobListStatusFilter = z.infer<typeof JobListStatusFilter>;
+export const JobListStatusFilter = z.union([JobLifecycleStatus, z.literal('all')]);
 
 export const JOB_STAGE_STATUSES = {
   assembly: ['pending', 'in-progress', 'qc', 'complete'],
@@ -222,6 +229,18 @@ export const JobSummary = Job.extend({
   productName: z.string().trim().min(1),
 });
 
+export type JobSortBy = z.infer<typeof JobSortBy>;
+export const JobSortBy = z.enum(['createdAt', 'id', 'lifecycleStatus']);
+
+export type JobListFilters = z.infer<typeof JobListFilters>;
+export const JobListFilters = z
+  .object({
+    lifecycleStatuses: z.array(JobLifecycleStatus),
+  })
+  .default({
+    lifecycleStatuses: ['active'],
+  });
+
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
   stages: z.array(JobStageRollup).length(5),
@@ -234,11 +253,17 @@ export const JobCreateInput = z.object({
 });
 
 export type JobListInput = z.infer<typeof JobListInput>;
-export const JobListInput = z.object({});
+export const JobListInput = PagedQueryInput.extend({
+  filters: JobListFilters,
+  search: z.string().trim().default(''),
+  sortBy: JobSortBy.default('createdAt'),
+  sortDirection: SortDirection.default('asc'),
+});
 
 export type JobListResult = z.infer<typeof JobListResult>;
-export const JobListResult = z.object({
-  jobs: z.array(JobSummary),
+export const JobListResult = createPagedQueryResult(JobSummary).extend({
+  sortBy: JobSortBy,
+  sortDirection: SortDirection,
 });
 
 export type JobStageTransitionInput = z.infer<typeof JobStageTransitionInput>;

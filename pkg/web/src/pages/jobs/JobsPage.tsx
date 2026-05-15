@@ -1,22 +1,57 @@
-import type { JobSummary } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
+import { jobLifecycleStatusLabels } from '@pkg/domain';
+import {
+  JOB_LIST_STATUS_FILTERS,
+  type JobLifecycleStatus,
+  type JobListInput,
+  type JobListStatusFilter,
+  type JobSummary,
+} from '@pkg/schema';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowRightIcon, BriefcaseBusinessIcon } from 'lucide-react';
+import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { ArrowRightIcon, BriefcaseBusinessIcon, CircleIcon } from 'lucide-react';
 import type React from 'react';
+import { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
-import { Badge } from '@/components/ui/badge.js';
+import { DataTable } from '@/components/data-table/DataTable.js';
+import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
+import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
+import { createPersistedDataTableStore } from '@/components/data-table/store.js';
+import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { Separator } from '@/components/ui/separator.js';
-import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
+import { getJobLifecycleStatusColorClassNames, JobLifecycleStatusBadge } from './components/JobLifecycleStatusBadge.js';
 
-export const JobsPage: React.FC = () => {
-  const trpc = useTRPC();
+type JobsPageProps = {
+  status: JobListStatusFilter;
+};
+
+export const useJobTableStore = createPersistedDataTableStore({
+  initialState: {
+    sorting: [
+      {
+        desc: false,
+        id: 'createdAt',
+      },
+    ],
+  },
+  persistName: 'jobs-table',
+});
+
+const jobSortOptions: SortOptions<JobListInput> = {
+  allowedSortIds: ['createdAt', 'id', 'lifecycleStatus'],
+  defaultSort: {
+    id: 'createdAt',
+  },
+};
+
+export const JobsPage: React.FC<JobsPageProps> = ({ status }) => {
   const navigate = useNavigate();
-  const jobsQuery = useQuery(trpc.jobs.list.queryOptions({}));
-  const jobs = jobsQuery.data?.jobs ?? [];
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -29,65 +64,241 @@ export const JobsPage: React.FC = () => {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Separator />
-          {jobsQuery.isLoading ? <JobListSkeleton /> : null}
-          {jobsQuery.error ? <p className="text-sm text-destructive">{jobsQuery.error.message}</p> : null}
-          {!jobsQuery.isLoading && jobs.length === 0 ? (
-            <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-              No jobs found.
-            </div>
-          ) : null}
-          {jobs.length > 0 ? (
-            <div className="overflow-hidden rounded-md border">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b bg-muted/40 px-4 py-2 text-sm font-medium">
-                <span>Job</span>
-                <span className="hidden sm:block">Created</span>
-              </div>
-              <div className="divide-y">
-                {jobs.map((job) => (
-                  <JobListRow
-                    job={job}
-                    key={job.id}
-                    onOpen={() => navigate({ to: '/jobs/$id', params: { id: job.id } })}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
+          <JobStatusFilter
+            onStatusChange={(nextStatus) => {
+              void navigate({
+                search: {
+                  status: nextStatus,
+                },
+                to: '/jobs',
+              });
+            }}
+            status={status}
+          />
+          <JobTable status={status} />
         </CardContent>
       </Card>
     </div>
   );
 };
 
-const JobListRow: React.FC<{ job: JobSummary; onOpen: () => void }> = ({ job, onOpen }) => (
-  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
-    <div className="flex min-w-0 items-center gap-3">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background">
-        <BriefcaseBusinessIcon className="size-4 text-muted-foreground" />
-      </div>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="truncate font-medium">{job.productName}</span>
-          <Badge variant="outline">{job.lifecycleStatus}</Badge>
-        </div>
-        <p className="truncate text-sm text-muted-foreground">
-          {job.productModelCode} · {job.id}
-        </p>
-      </div>
-    </div>
-    <div className="flex items-center gap-2">
-      <span className="hidden text-sm text-muted-foreground sm:block">{formatDate(job.createdAt)}</span>
-      <Button aria-label={`Open job ${job.id}`} onClick={onOpen} size="icon-sm" variant="outline">
-        <ArrowRightIcon />
-      </Button>
-    </div>
+const JobStatusFilter: React.FC<{
+  onStatusChange: (status: JobListStatusFilter) => void;
+  status: JobListStatusFilter;
+}> = ({ onStatusChange, status }) => (
+  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="text-sm font-medium">Lifecycle status</div>
+    <Select
+      onValueChange={(value) => {
+        if (!value || value === status) return;
+
+        onStatusChange(value as JobListStatusFilter);
+      }}
+      value={status}
+    >
+      <SelectTrigger aria-label="Lifecycle status" className="w-full sm:w-48">
+        <JobListStatusFilterSelectValue status={status} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {JOB_LIST_STATUS_FILTERS.map((option) => (
+            <SelectItem key={option} leading={<JobListStatusFilterIcon status={option} />} value={option}>
+              {getJobListStatusFilterLabel(option)}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   </div>
 );
 
-const JobListSkeleton: React.FC = () => (
-  <div className="flex flex-col gap-2">
-    <Skeleton className="h-14" />
-    <Skeleton className="h-14" />
-    <Skeleton className="h-14" />
-  </div>
+const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
+  const trpc = useTRPC();
+  const navigate = useNavigate();
+  const jobListInput = useJobListInput(status);
+
+  const jobsQuery = useQuery(
+    trpc.jobs.list.queryOptions(jobListInput, {
+      placeholderData: keepPreviousData,
+    }),
+  );
+  const { items: jobs, total, isLoading } = usePagedQueryResult(jobsQuery);
+
+  const {
+    columnFilters,
+    globalFilter,
+    pagination,
+    setColumnFilters,
+    setGlobalFilter,
+    setPageIndex,
+    setPagination,
+    setSorting,
+    sorting,
+  } = useJobTableStore(
+    useShallow((state) => ({
+      columnFilters: state.columnFilters,
+      globalFilter: state.globalFilter,
+      pagination: state.pagination,
+      setColumnFilters: state.setColumnFilters,
+      setGlobalFilter: state.setGlobalFilter,
+      setPageIndex: state.setPageIndex,
+      setPagination: state.setPagination,
+      setSorting: state.setSorting,
+      sorting: state.sorting,
+    })),
+  );
+  const tableState = useConstrainedTableState({
+    pagination,
+    setPageIndex,
+    sorting,
+    sortOptions: jobSortOptions,
+    total,
+  });
+
+  const columns = useMemo<ColumnDef<JobSummary>[]>(
+    () => [
+      {
+        accessorKey: 'productName',
+        cell: ({ row }) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background">
+              <BriefcaseBusinessIcon className="size-4 text-muted-foreground" />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate font-medium">{row.original.productName}</div>
+              <p className="truncate text-sm text-muted-foreground">
+                {row.original.productModelCode} · {row.original.id}
+              </p>
+            </div>
+          </div>
+        ),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Job',
+      },
+      {
+        accessorKey: 'lifecycleStatus',
+        cell: ({ row }) => <JobLifecycleStatusBadge status={row.original.lifecycleStatus} />,
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Status',
+      },
+      {
+        accessorKey: 'createdAt',
+        cell: ({ row }) => formatDate(row.original.createdAt),
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Created',
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <div className="text-right">
+            <Button
+              aria-label={`Open job ${row.original.id}`}
+              onClick={() => navigate({ params: { id: row.original.id }, to: '/jobs/$id' })}
+              size="icon-sm"
+              variant="outline"
+            >
+              <ArrowRightIcon />
+            </Button>
+          </div>
+        ),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: () => <span className="sr-only">Actions</span>,
+        meta: {
+          cellClassName: 'text-right',
+          headerClassName: 'w-20 text-right',
+        },
+      },
+    ],
+    [navigate],
+  );
+
+  const table = useReactTable({
+    columns,
+    data: jobs,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    manualFiltering: true,
+    manualPagination: true,
+    manualSorting: true,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    pageCount: tableState.pageCount,
+    rowCount: total,
+    state: {
+      columnFilters,
+      globalFilter,
+      pagination: tableState.pagination,
+      sorting: tableState.sorting,
+    },
+  });
+
+  return (
+    <DataTable
+      emptyMessage="No jobs found."
+      errorMessage={jobsQuery.error?.message}
+      globalFilterPlaceholder="Search jobs..."
+      isLoading={isLoading}
+      table={table}
+      total={total}
+      totalLabel={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`}
+    />
+  );
+};
+
+function useJobListInput(status: JobListStatusFilter): JobListInput {
+  const { globalFilter, pagination, sorting } = useJobTableStore(
+    useShallow((state) => ({
+      globalFilter: state.globalFilter,
+      pagination: state.pagination,
+      sorting: state.sorting,
+    })),
+  );
+  const sort = getPrimarySort(sorting, jobSortOptions);
+
+  return useMemo(
+    () =>
+      ({
+        filters: {
+          lifecycleStatuses: status === 'all' ? [] : [status],
+        },
+        page: pagination.pageIndex + 1,
+        pageSize: pagination.pageSize,
+        search: globalFilter,
+        sortBy: sort.id,
+        sortDirection: sort.desc ? 'desc' : 'asc',
+      }) satisfies JobListInput,
+    [globalFilter, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id, status],
+  );
+}
+
+function getJobListStatusFilterLabel(status: JobListStatusFilter): string {
+  if (status === 'all') return 'All';
+
+  return jobLifecycleStatusLabels[status];
+}
+
+const JobListStatusFilterSelectValue: React.FC<{ status: JobListStatusFilter }> = ({ status }) => (
+  <span className="flex min-w-0 flex-1 items-center gap-2 text-left" data-slot="select-value">
+    <JobListStatusFilterIcon status={status} />
+    <span className="truncate">{getJobListStatusFilterLabel(status)}</span>
+  </span>
 );
+
+const JobListStatusFilterIcon: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
+  const iconClassName =
+    status === 'all'
+      ? 'fill-gray-400 text-gray-400'
+      : getJobLifecycleStatusColorClassNames(status satisfies JobLifecycleStatus).icon;
+
+  return (
+    <span className="inline-flex size-3 shrink-0 items-center justify-center">
+      <CircleIcon aria-hidden="true" className={iconClassName} strokeWidth={0} />
+    </span>
+  );
+};

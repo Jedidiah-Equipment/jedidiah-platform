@@ -1,4 +1,12 @@
-import { type DatabaseTransaction, type Db, jobEvents, jobStages, jobs, type products } from '@pkg/db';
+import {
+  type DatabaseTransaction,
+  type Db,
+  getPaginationOffset,
+  jobEvents,
+  jobStages,
+  jobs,
+  type products,
+} from '@pkg/db';
 import {
   canViewStage,
   deriveStageJobEvent,
@@ -19,6 +27,7 @@ import {
   type JobLifecycleStatus,
   type JobListInput,
   type JobListResult,
+  type JobSortBy,
   type JobStage,
   JobStage as JobStageContract,
   type JobStageName,
@@ -28,7 +37,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
 import {
   createAuditChanges,
@@ -168,13 +177,16 @@ export async function createJob({
 
 export async function listJobs({
   db,
-  access: _access,
-  input: _input,
+  input,
 }: {
   db: Db;
   access: UserAccessSummary;
   input: JobListInput;
 }): Promise<JobListResult> {
+  const where = buildJobListWhere(input);
+  const sortColumn = getJobSortColumn(input.sortBy);
+  const orderBy = input.sortDirection === 'desc' ? desc(sortColumn) : asc(sortColumn);
+
   const rows = await db.query.jobs.findMany({
     columns: {
       createdAt: true,
@@ -183,7 +195,10 @@ export async function listJobs({
       productId: true,
       updatedAt: true,
     },
-    orderBy: [asc(jobs.createdAt), asc(jobs.id)],
+    where,
+    orderBy: [orderBy],
+    limit: input.pageSize,
+    offset: getPaginationOffset(input),
     with: {
       product: {
         columns: {
@@ -194,9 +209,29 @@ export async function listJobs({
     },
   });
 
+  const total = await db.$count(jobs, where);
+
   return {
-    jobs: rows.map(mapJobSummary),
+    items: rows.map(mapJobSummary),
+    sortBy: input.sortBy,
+    sortDirection: input.sortDirection,
+    total,
   };
+}
+
+function buildJobListWhere(input: JobListInput): SQL | undefined {
+  const conditions: SQL[] = [];
+
+  if (input.filters.lifecycleStatuses.length > 0) {
+    conditions.push(inArray(jobs.lifecycleStatus, input.filters.lifecycleStatuses));
+  }
+
+  if (input.search) {
+    const searchPattern = `%${input.search}%`;
+    conditions.push(sql`${jobs.id}::text ilike ${searchPattern}`);
+  }
+
+  return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
 export async function getJob({
@@ -438,6 +473,16 @@ function mapJobSummary(row: JobWithProductRow): JobSummary {
     productModelCode: row.product.modelCode,
     productName: row.product.name,
   };
+}
+
+function getJobSortColumn(sortBy: JobSortBy): SQL {
+  const columns = {
+    createdAt: sql`${jobs.createdAt}`,
+    id: sql`${jobs.id}`,
+    lifecycleStatus: sql`${jobs.lifecycleStatus}`,
+  } as const satisfies Record<JobSortBy, SQL>;
+
+  return columns[sortBy];
 }
 
 function mapStageAccess({

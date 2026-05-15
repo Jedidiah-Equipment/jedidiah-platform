@@ -65,7 +65,30 @@ export const userAuditDescriptor: AuditEntityDescriptor = {
   },
 };
 
+export const jobAuditDescriptor: AuditEntityDescriptor = {
+  entityType: 'job',
+  noun: 'job',
+  primaryLabelField: 'id',
+  fields: {
+    lifecycleStatus: 'lifecycle status',
+    productId: 'product',
+  },
+};
+
+export const jobStageAuditDescriptor: AuditEntityDescriptor = {
+  entityType: 'job_stage',
+  noun: 'job stage',
+  primaryLabelField: 'stage',
+  fields: {
+    completedAt: 'completed at',
+    startedAt: 'started at',
+    status: 'status',
+  },
+};
+
 const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
+  job: jobAuditDescriptor,
+  job_stage: jobStageAuditDescriptor,
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
   user: userAuditDescriptor,

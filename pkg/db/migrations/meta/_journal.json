@@ -71,6 +71,13 @@
       "when": 1778780517842,
       "tag": "0009_charming_aqueduct",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778823729867,
+      "tag": "0010_daily_dakota_north",
+      "breakpoints": true
     }
   ]
 }

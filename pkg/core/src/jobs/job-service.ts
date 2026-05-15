@@ -76,6 +76,7 @@ export function mapJobStage(row: JobStageRow): JobStage {
 }
 
 export function mapJobEvent(row: JobEventRow): JobEvent {
+  // DB currently stores event_type as text; this parse intentionally fails fast until the column is constrained.
   return JobEventContract.parse({
     actorUserId: row.actorUserId,
     eventType: row.eventType,
@@ -201,6 +202,7 @@ export async function getJob({
     .from(jobs)
     .innerJoin(products, eq(products.id, jobs.productId))
     .innerJoin(jobStages, eq(jobStages.jobId, jobs.id))
+    // Workflow events are stage-scoped today; job-level events with stage_id = null need an explicit join path.
     .leftJoin(jobEvents, eq(jobEvents.stageId, jobStages.id))
     .where(eq(jobs.id, id))
     .orderBy(asc(jobStages.sequence), asc(jobEvents.occurredAt), asc(jobEvents.id));

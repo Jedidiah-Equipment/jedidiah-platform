@@ -193,6 +193,7 @@ function createSeedProductPlans(productsToSeed: readonly SeedProduct[]): SeedPro
 }
 
 export async function seedDatabase(database?: Db): Promise<void> {
+  // This seeder is intentionally not idempotent; use pnpm db:reset before running it.
   const activeDb = database ?? db;
   const now = new Date();
   const seedProductPlans = createSeedProductPlans(createSeedProducts());

@@ -14,7 +14,7 @@ export const APP_ROLES = [
 export type AppRole = z.infer<typeof AppRole>;
 export const AppRole = z.enum(APP_ROLES);
 
-export const DEPARTMENTS = ['procurement', 'fabrication', 'paint', 'assembly', 'dispatch'] as const;
+export const DEPARTMENTS = ['procurement', 'fabrication', 'assembly', 'paint', 'dispatch'] as const;
 
 export type Department = z.infer<typeof Department>;
 export const Department = z.enum(DEPARTMENTS);

@@ -1,4 +1,5 @@
 import { hasPermission } from '@pkg/domain';
+import { AuthId } from '@pkg/schema';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import type React from 'react';
@@ -17,11 +18,13 @@ export const UserCreateDialog: React.FC = () => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const accessQuery = useAccess();
+  const canAssignDepartments = hasPermission(accessQuery.data, 'user:assign-departments');
   const [isOpen, setIsOpen] = useState(false);
+  const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
 
   const createUserMutation = useMutation({
-    mutationFn: async (value: UserCreateFormValues) =>
-      unwrapAuthResult(
+    mutationFn: async (value: UserCreateFormValues) => {
+      const result = unwrapAuthResult<{ user: { id: string } }>(
         await authClient.admin.createUser({
           data: { emailVerified: value.emailVerified },
           email: value.email,
@@ -29,7 +32,17 @@ export const UserCreateDialog: React.FC = () => {
           password: value.password,
           role: value.role,
         }),
-      ),
+      );
+
+      if (canAssignDepartments) {
+        await setDepartmentsMutation.mutateAsync({
+          departments: value.departments,
+          userId: AuthId.parse(result.user.id),
+        });
+      }
+
+      return result;
+    },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries(trpc.users.list.queryFilter()),
@@ -61,6 +74,7 @@ export const UserCreateDialog: React.FC = () => {
           </DialogHeader>
           {isOpen ? (
             <UserCreateForm
+              canAssignDepartments={canAssignDepartments}
               isPending={createUserMutation.isPending}
               onSubmit={(value) => createUserMutation.mutateAsync(value)}
             />

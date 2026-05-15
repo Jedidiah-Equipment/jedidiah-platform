@@ -2,17 +2,15 @@ import { hasPermission } from '@pkg/domain';
 import type { Department, UserSummary } from '@pkg/schema';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { UserDepartmentsForm } from './components/UserDepartmentsForm.js';
-import { UserPasswordForm, type UserPasswordFormValues } from './components/UserPasswordForm.js';
-import { UserProfileForm, type UserProfileFormValues } from './components/UserProfileForm.js';
-import { UserRoleForm, type UserRoleFormValues } from './components/UserRoleForm.js';
+import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
+import type { UserPasswordFormValues } from './components/UserPasswordForm.js';
 import { unwrapAuthResult } from './user-admin-client.js';
 
 type UserEditDialogProps = {
@@ -25,11 +23,17 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const queryClient = useQueryClient();
   const accessQuery = useAccess();
   const access = accessQuery.data;
+  const [baselineUser, setBaselineUser] = useState(user);
 
   const canUpdateProfile = hasPermission(access, 'user:update');
   const canAssignDepartments = hasPermission(access, 'user:assign-departments');
   const canSetRole = hasPermission(access, 'user:set-role');
   const canSetPassword = hasPermission(access, 'user:set-password');
+  const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
+
+  useEffect(() => {
+    setBaselineUser(user);
+  }, [user]);
 
   const refreshUser = async () => {
     await Promise.all([
@@ -39,24 +43,55 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
     ]);
   };
 
-  const updateProfileMutation = useMutation({
-    mutationFn: async (value: UserProfileFormValues) =>
-      unwrapAuthResult(await authClient.admin.updateUser({ data: value, userId: user.id })),
-    onSuccess: async () => {
-      await refreshUser();
-      toast.success('User profile updated');
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  const saveUserMutation = useMutation({
+    mutationFn: async (value: UserEditFormValues) => {
+      let didUpdate = false;
+      const profileChanged =
+        value.email !== baselineUser.email ||
+        value.emailVerified !== baselineUser.emailVerified ||
+        value.name !== baselineUser.name;
 
-  const setRoleMutation = useMutation({
-    mutationFn: async (value: UserRoleFormValues) =>
-      unwrapAuthResult(await authClient.admin.setRole({ role: value.role, userId: user.id })),
-    onSuccess: async () => {
+      if (canUpdateProfile && profileChanged) {
+        await unwrapAuthResult(
+          await authClient.admin.updateUser({
+            data: {
+              email: value.email,
+              emailVerified: value.emailVerified,
+              name: value.name,
+            },
+            userId: baselineUser.id,
+          }),
+        );
+        didUpdate = true;
+      }
+
+      if (canSetRole && value.role !== baselineUser.role) {
+        await unwrapAuthResult(await authClient.admin.setRole({ role: value.role, userId: baselineUser.id }));
+        didUpdate = true;
+      }
+
+      if (canAssignDepartments && haveDepartmentsChanged(value.departments, baselineUser.departments)) {
+        await setDepartmentsMutation.mutateAsync({
+          departments: value.departments,
+          userId: baselineUser.id,
+        });
+        didUpdate = true;
+      }
+
+      return { didUpdate, value };
+    },
+    onSuccess: async ({ didUpdate, value }) => {
+      if (!didUpdate) {
+        toast.info('No user changes to save');
+        return;
+      }
+
+      setBaselineUser((currentUser) => ({
+        ...currentUser,
+        ...value,
+      }));
       await refreshUser();
-      toast.success('User role updated');
+      toast.success('User updated');
     },
     onError: (error) => {
       toast.error(error.message);
@@ -75,27 +110,6 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
     },
   });
 
-  const setDepartmentsMutation = useMutation(
-    trpc.users.setDepartments.mutationOptions({
-      onSuccess: async () => {
-        await refreshUser();
-        toast.success('User departments updated');
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
-
-  const setDepartments = (departments: readonly Department[]) => {
-    return setDepartmentsMutation.mutateAsync({
-      departments: [...departments],
-      userId: user.id,
-    });
-  };
-
-  const defaultTab = canUpdateProfile ? 'profile' : canSetRole ? 'role' : canSetPassword ? 'password' : 'departments';
-
   return (
     <Dialog onOpenChange={(isOpen) => !isOpen && onClose()} open={!!user}>
       <DialogContent className="sm:max-w-[560px]">
@@ -103,50 +117,27 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
           <DialogTitle>Edit user</DialogTitle>
           <DialogDescription>{user.email}</DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue={defaultTab}>
-          <TabsList className="w-full">
-            {canUpdateProfile ? <TabsTrigger value="profile">Profile</TabsTrigger> : null}
-            {canSetRole ? <TabsTrigger value="role">Role</TabsTrigger> : null}
-            {canSetPassword ? <TabsTrigger value="password">Password</TabsTrigger> : null}
-            {canAssignDepartments ? <TabsTrigger value="departments">Departments</TabsTrigger> : null}
-          </TabsList>
-          {canUpdateProfile ? (
-            <TabsContent value="profile">
-              <UserProfileForm
-                initialUser={user}
-                isPending={updateProfileMutation.isPending}
-                onSubmit={(value) => updateProfileMutation.mutateAsync(value)}
-              />
-            </TabsContent>
-          ) : null}
-          {canSetRole ? (
-            <TabsContent value="role">
-              <UserRoleForm
-                initialUser={user}
-                isPending={setRoleMutation.isPending}
-                onSubmit={(value) => setRoleMutation.mutateAsync(value)}
-              />
-            </TabsContent>
-          ) : null}
-          {canSetPassword ? (
-            <TabsContent value="password">
-              <UserPasswordForm
-                isPending={setPasswordMutation.isPending}
-                onSubmit={(value) => setPasswordMutation.mutateAsync(value)}
-              />
-            </TabsContent>
-          ) : null}
-          {canAssignDepartments ? (
-            <TabsContent value="departments">
-              <UserDepartmentsForm
-                initialDepartments={user.departments}
-                isPending={setDepartmentsMutation.isPending}
-                onDepartmentsChange={setDepartments}
-              />
-            </TabsContent>
-          ) : null}
-        </Tabs>
+        <UserEditForm
+          canAssignDepartments={canAssignDepartments}
+          canSetPassword={canSetPassword}
+          canSetRole={canSetRole}
+          canUpdateProfile={canUpdateProfile}
+          initialUser={baselineUser}
+          isPasswordPending={setPasswordMutation.isPending}
+          isPending={saveUserMutation.isPending}
+          onPasswordSubmit={(value) => setPasswordMutation.mutateAsync(value)}
+          onSubmit={(value) => saveUserMutation.mutateAsync(value)}
+        />
       </DialogContent>
     </Dialog>
   );
 };
+
+function haveDepartmentsChanged(left: readonly Department[], right: readonly Department[]) {
+  if (left.length !== right.length) {
+    return true;
+  }
+
+  const rightDepartments = new Set(right);
+  return left.some((department) => !rightDepartments.has(department));
+}

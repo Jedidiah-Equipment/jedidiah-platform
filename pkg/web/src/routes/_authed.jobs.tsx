@@ -1,10 +1,12 @@
-import { createFileRoute } from '@tanstack/react-router';
-
-import { JobsPage } from '@/pages/jobs/JobsPage.js';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_authed/jobs')({
   staticData: {
     pageLabel: 'Jobs',
   },
-  component: JobsPage,
+  component: JobsRoute,
 });
+
+function JobsRoute() {
+  return <Outlet />;
+}

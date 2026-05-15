@@ -47,13 +47,11 @@ export const LockedJobStage = z.object({
 });
 
 export type VisibleJobStage = z.infer<typeof VisibleJobStage>;
-export const VisibleJobStage = z.discriminatedUnion('stage', [
-  ProcurementJobStage.extend({ access: z.literal('visible'), department: Department }),
-  FabricationJobStage.extend({ access: z.literal('visible'), department: Department }),
-  PaintJobStage.extend({ access: z.literal('visible'), department: Department }),
-  AssemblyJobStage.extend({ access: z.literal('visible'), department: Department }),
-  DispatchJobStage.extend({ access: z.literal('visible'), department: Department }),
-]);
+export const VisibleJobStage = JobStageBase.extend({
+  access: z.literal('visible'),
+  department: Department,
+  stage: JobStageName,
+});
 
 export type JobStageRollup = z.infer<typeof JobStageRollup>;
 export const JobStageRollup = z.discriminatedUnion('access', [VisibleJobStage, LockedJobStage]);

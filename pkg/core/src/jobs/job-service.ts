@@ -1,10 +1,12 @@
 import {
+  createLikeSearchPattern,
   type DatabaseTransaction,
   type Db,
   getPaginationOffset,
   jobEvents,
   jobStages,
   jobs,
+  LIKE_SEARCH_ESCAPE,
   type products,
 } from '@pkg/db';
 import {
@@ -196,7 +198,7 @@ export async function listJobs({
       updatedAt: true,
     },
     where,
-    orderBy: [orderBy],
+    orderBy: [orderBy, asc(jobs.id)],
     limit: input.pageSize,
     offset: getPaginationOffset(input),
     with: {
@@ -227,8 +229,8 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   if (input.search) {
-    const searchPattern = `%${input.search}%`;
-    conditions.push(sql`${jobs.id}::text ilike ${searchPattern}`);
+    const searchPattern = createLikeSearchPattern(input.search);
+    conditions.push(sql`${jobs.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

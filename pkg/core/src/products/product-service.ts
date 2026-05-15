@@ -1,4 +1,12 @@
-import { type Db, getPaginationOffset, getUniqueViolationConstraint, productOptions, products } from '@pkg/db';
+import {
+  createLikeSearchPattern,
+  type Db,
+  getPaginationOffset,
+  getUniqueViolationConstraint,
+  LIKE_SEARCH_ESCAPE,
+  productOptions,
+  products,
+} from '@pkg/db';
 import type {
   AuthId,
   Logger,
@@ -10,7 +18,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { ProductCurrencyCode } from '@pkg/schema';
-import { and, asc, desc, eq, ilike, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, or, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
@@ -93,12 +101,12 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
   if (listInput.search) {
-    const searchPattern = `%${listInput.search}%`;
+    const searchPattern = createLikeSearchPattern(listInput.search);
     const globalSearchWhere = or(
-      ilike(products.description, searchPattern),
-      ilike(products.modelCode, searchPattern),
-      ilike(products.name, searchPattern),
-      sql`${products.id}::text ilike ${searchPattern}`,
+      sql`${products.description} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
+      sql`${products.modelCode} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
+      sql`${products.name} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
+      sql`${products.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
     );
 
     if (globalSearchWhere) {
@@ -107,15 +115,18 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
   }
 
   if (listInput.columnFilters.name) {
-    conditions.push(ilike(products.name, `%${listInput.columnFilters.name}%`));
+    const searchPattern = createLikeSearchPattern(listInput.columnFilters.name);
+    conditions.push(sql`${products.name} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
   }
 
   if (listInput.columnFilters.modelCode) {
-    conditions.push(ilike(products.modelCode, `%${listInput.columnFilters.modelCode}%`));
+    const searchPattern = createLikeSearchPattern(listInput.columnFilters.modelCode);
+    conditions.push(sql`${products.modelCode} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
   }
 
   if (listInput.columnFilters.id) {
-    conditions.push(sql`${products.id}::text ilike ${`%${listInput.columnFilters.id}%`}`);
+    const searchPattern = createLikeSearchPattern(listInput.columnFilters.id);
+    conditions.push(sql`${products.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

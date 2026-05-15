@@ -1,6 +1,12 @@
+import { JOB_STAGE_PIPELINE } from '@pkg/domain';
 import { describe, expect, it } from 'vitest';
 
-import { createSeedProductAuditTimeline, createSeedProductOptions, createSeedProducts } from './seed.js';
+import {
+  createSeedJobs,
+  createSeedProductAuditTimeline,
+  createSeedProductOptions,
+  createSeedProducts,
+} from './seed.js';
 
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
@@ -114,6 +120,113 @@ describe('createSeedProductOptions', () => {
         updatedAt: timeline.products[1]?.updatedAt,
       },
     ]);
+  });
+});
+
+describe('createSeedJobs', () => {
+  it('creates deterministic jobs across lifecycle and stage states', () => {
+    const now = new Date('2026-05-14T12:00:00.000Z');
+    const timeline = createSeedProductAuditTimeline({
+      actorUserIds: ['seed-product-editor-user'],
+      now,
+      products: createSeedProducts(10),
+    });
+    const seedJobs = createSeedJobs({
+      now,
+      products: timeline.products,
+    });
+
+    expect(seedJobs.jobs).toHaveLength(14);
+    expect(seedJobs.stages).toHaveLength(seedJobs.jobs.length * JOB_STAGE_PIPELINE.length);
+    expect(new Set(seedJobs.jobs.map((job) => job.id)).size).toBe(seedJobs.jobs.length);
+    expect(new Set(seedJobs.stages.map((stage) => stage.id)).size).toBe(seedJobs.stages.length);
+    expect(seedJobs.jobs.map((job) => job.productId)).toEqual([
+      ...timeline.products.map((product) => product.id),
+      ...timeline.products.slice(0, 4).map((product) => product.id),
+    ]);
+    expect(new Set(seedJobs.jobs.map((job) => job.lifecycleStatus))).toEqual(
+      new Set(['active', 'complete', 'paused', 'cancelled']),
+    );
+
+    for (const job of seedJobs.jobs) {
+      const stagesForJob = seedJobs.stages.filter((stage) => stage.jobId === job.id);
+      expect(stagesForJob.map(({ sequence, stage }) => ({ sequence, stage }))).toEqual(JOB_STAGE_PIPELINE);
+      expect(job.updatedAt.getTime()).toBeGreaterThanOrEqual(job.createdAt.getTime());
+      expect(job.updatedAt.getTime()).toBeLessThanOrEqual(now.getTime());
+    }
+
+    expect(seedJobs.jobs[0]).toMatchObject({
+      id: '00000000-0000-4000-8003-000000000001',
+      lifecycleStatus: 'active',
+      productId: '00000000-0000-4000-8000-000000000001',
+    });
+    expect(seedJobs.stages.slice(0, 5).map((stage) => stage.status)).toEqual([
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+    expect(seedJobs.stages.slice(10, 15).map((stage) => stage.status)).toEqual([
+      'partial',
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+    expect(seedJobs.stages.slice(15, 20).map((stage) => stage.status)).toEqual([
+      'complete',
+      'cutting',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+    expect(seedJobs.stages.slice(25, 30).map((stage) => stage.status)).toEqual([
+      'complete',
+      'complete',
+      'in-progress',
+      'pending',
+      'pending',
+    ]);
+    expect(seedJobs.stages.slice(35, 40).map((stage) => stage.status)).toEqual([
+      'complete',
+      'complete',
+      'complete',
+      'prep',
+      'pending',
+    ]);
+    expect(seedJobs.stages.slice(40, 45).map((stage) => stage.status)).toEqual([
+      'complete',
+      'complete',
+      'complete',
+      'painting',
+      'pending',
+    ]);
+    expect(seedJobs.stages.slice(50, 55).map((stage) => stage.status)).toEqual([
+      'complete',
+      'complete',
+      'complete',
+      'complete',
+      'ready',
+    ]);
+    expect(seedJobs.stages.slice(55, 60).map((stage) => stage.status)).toEqual([
+      'complete',
+      'complete',
+      'complete',
+      'complete',
+      'complete',
+    ]);
+  });
+
+  it('does not create jobs without available products', () => {
+    const now = new Date('2026-05-14T12:00:00.000Z');
+    const seedJobs = createSeedJobs({
+      now,
+      products: [],
+    });
+
+    expect(seedJobs.jobs).toHaveLength(0);
+    expect(seedJobs.stages).toHaveLength(0);
   });
 });
 

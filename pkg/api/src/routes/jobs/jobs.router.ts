@@ -16,7 +16,9 @@ export const jobsRouter = router({
 
   create: authorizedProcedure('job:create')
     .input(JobCreateInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => createJob({ db: ctx.db, input }))),
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => createJob({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+    ),
 });
 
 async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {

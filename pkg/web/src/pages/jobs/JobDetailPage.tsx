@@ -1,4 +1,4 @@
-import type { JobStageRollup, UUID } from '@pkg/schema';
+import type { JobStageName, JobStageRollup, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeftIcon, LockIcon } from 'lucide-react';
@@ -15,6 +15,14 @@ import { formatDate } from '@/utils/date.js';
 type JobDetailPageProps = {
   jobId: UUID;
 };
+
+const stageLabels = {
+  procurement: 'Procurement',
+  fabrication: 'Fabrication',
+  paint: 'Paint',
+  assembly: 'Assembly',
+  dispatch: 'Dispatch',
+} as const satisfies Record<JobStageName, string>;
 
 export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const trpc = useTRPC();
@@ -82,7 +90,7 @@ const StagePanel: React.FC<{ stage: JobStageRollup }> = ({ stage }) => (
     <div className="flex items-start justify-between gap-2">
       <div>
         <div className="text-xs font-medium uppercase text-muted-foreground">Stage {stage.sequence}</div>
-        <div className="font-medium capitalize">{stage.stage.replace('-', ' ')}</div>
+        <div className="font-medium">{stageLabels[stage.stage]}</div>
       </div>
       {stage.access === 'locked' ? (
         <Badge variant="outline">

@@ -1,4 +1,3 @@
-import { sortDepartments } from '@pkg/domain';
 import { DEPARTMENTS, type Department } from '@pkg/schema';
 import type React from 'react';
 import { useEffect, useState } from 'react';
@@ -18,10 +17,10 @@ export const UserDepartmentsForm: React.FC<UserDepartmentsFormProps> = ({
   isPending,
   onDepartmentsChange,
 }) => {
-  const [departments, setDepartments] = useState<Department[]>(() => sortDepartments(initialDepartments));
+  const [departments, setDepartments] = useState<Department[]>(() => [...initialDepartments]);
 
   useEffect(() => {
-    setDepartments(sortDepartments(initialDepartments));
+    setDepartments([...initialDepartments]);
   }, [initialDepartments]);
 
   const selectedDepartments = new Set(departments);
@@ -29,7 +28,9 @@ export const UserDepartmentsForm: React.FC<UserDepartmentsFormProps> = ({
   const toggleDepartment = async (department: Department, assign: boolean) => {
     const previousDepartments = departments;
     const nextDepartments = assign
-      ? sortDepartments([...departments, department])
+      ? departments.includes(department)
+        ? departments
+        : [...departments, department]
       : departments.filter((value) => value !== department);
 
     setDepartments(nextDepartments);

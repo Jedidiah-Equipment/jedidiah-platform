@@ -30,6 +30,28 @@ describe('admin user safety policy', () => {
     ).rejects.toThrow('You cannot change your own role.');
   });
 
+  test('rejects unsupported role values through setRole', async ({ context }) => {
+    const admin = mockSession('admin');
+    const headers = await createSignedInAdmin(context, admin);
+
+    await createUser(context.db, {
+      email: 'target-user@example.com',
+      id: 'target-user-id',
+      name: 'Target User',
+      role: 'product-viewer',
+    });
+
+    await expect(
+      context.auth.api.setRole({
+        body: {
+          role: 'manager' as never,
+          userId: 'target-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toThrow();
+  });
+
   test('rejects demoting the last admin through setRole', async ({ context }) => {
     const admin = mockSession('admin');
     const headers = await createSignedInAdmin(context, admin);

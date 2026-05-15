@@ -11,6 +11,7 @@ import pino from 'pino';
 import { type TestAPI, type TestContext, test as testBase } from 'vitest';
 
 import { type Auth, createAuth } from '@/auth/auth.js';
+import { parseBetterAuthRole } from '@/auth/session.js';
 import type { Context } from '@/trpc/context.js';
 import { type AppRouter, createAppRouterCaller } from '@/trpc/router.js';
 
@@ -62,7 +63,7 @@ export function createTester<T extends object = Record<string, never>>(
             createCaller: (session = mockSession()) => {
               return createAppRouterCaller({
                 access: createUserAccessSummary({
-                  role: session.user.role,
+                  role: parseBetterAuthRole(session.user.role),
                   userId: session.user.id,
                 }),
                 db: databaseClient.db,

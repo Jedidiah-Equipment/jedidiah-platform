@@ -1,4 +1,4 @@
-import { type DatabaseTransaction, type Db, jobEvents, jobStages, jobs, products } from '@pkg/db';
+import { type DatabaseTransaction, type Db, jobEvents, jobStages, jobs, type products } from '@pkg/db';
 import {
   canViewStage,
   deriveStageJobEvent,
@@ -16,6 +16,7 @@ import {
   JobEvent as JobEventContract,
   type JobEventDerivationStage,
   JobEventDerivationStage as JobEventDerivationStageContract,
+  type JobLifecycleStatus,
   type JobListInput,
   type JobListResult,
   type JobStage,
@@ -27,7 +28,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 import {
   createAuditChanges,
@@ -35,23 +36,42 @@ import {
   jobAuditDescriptor,
   jobStageAuditDescriptor,
 } from '../audit/audit-service.js';
-import { JobNotFoundError, JobStageTransitionDeniedError } from './job-errors.js';
+import { JobLifecycleTransitionDeniedError, JobNotFoundError, JobStageTransitionDeniedError } from './job-errors.js';
 
 type JobRow = typeof jobs.$inferSelect;
 type JobEventRow = typeof jobEvents.$inferSelect;
 type JobStageRow = typeof jobStages.$inferSelect;
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
 type JobWithProductRow = JobRow & {
-  productModelCode: ProductRow['modelCode'];
-  productName: ProductRow['name'];
+  product: ProductRow;
 };
-type JobDetailRow = {
-  event: JobEventRow | null;
-  job: JobRow;
-  productModelCode: ProductRow['modelCode'];
-  productName: ProductRow['name'];
-  stage: JobStageRow;
-};
+
+type JobLifecycleTransition = 'pause' | 'resume' | 'cancel';
+
+const jobLifecycleTransitionConfig = {
+  cancel: {
+    allowedFrom: ['active', 'paused'],
+    eventType: 'job.cancelled',
+    nextStatus: 'cancelled',
+  },
+  pause: {
+    allowedFrom: ['active'],
+    eventType: 'job.paused',
+    nextStatus: 'paused',
+  },
+  resume: {
+    allowedFrom: ['paused'],
+    eventType: 'job.resumed',
+    nextStatus: 'active',
+  },
+} as const satisfies Record<
+  JobLifecycleTransition,
+  {
+    allowedFrom: readonly JobLifecycleStatus[];
+    eventType: Extract<JobEvent['eventType'], `job.${string}`>;
+    nextStatus: JobLifecycleStatus;
+  }
+>;
 
 export function mapJob(row: JobRow): Job {
   return {
@@ -148,34 +168,31 @@ export async function createJob({
 
 export async function listJobs({
   db,
-  access,
+  access: _access,
   input: _input,
 }: {
   db: Db;
   access: UserAccessSummary;
   input: JobListInput;
 }): Promise<JobListResult> {
-  const visibleStages = getVisibleStages(access);
-
-  if (visibleStages?.length === 0) {
-    return { jobs: [] };
-  }
-
-  const rows = await db
-    .selectDistinct({
-      createdAt: jobs.createdAt,
-      id: jobs.id,
-      lifecycleStatus: jobs.lifecycleStatus,
-      productId: jobs.productId,
-      productModelCode: products.modelCode,
-      productName: products.name,
-      updatedAt: jobs.updatedAt,
-    })
-    .from(jobs)
-    .innerJoin(products, eq(products.id, jobs.productId))
-    .leftJoin(jobStages, eq(jobStages.jobId, jobs.id))
-    .where(visibleStages ? inArray(jobStages.stage, visibleStages) : undefined)
-    .orderBy(asc(jobs.createdAt), asc(jobs.id));
+  const rows = await db.query.jobs.findMany({
+    columns: {
+      createdAt: true,
+      id: true,
+      lifecycleStatus: true,
+      productId: true,
+      updatedAt: true,
+    },
+    orderBy: [asc(jobs.createdAt), asc(jobs.id)],
+    with: {
+      product: {
+        columns: {
+          modelCode: true,
+          name: true,
+        },
+      },
+    },
+  });
 
   return {
     jobs: rows.map(mapJobSummary),
@@ -191,38 +208,82 @@ export async function getJob({
   id: UUID;
   access: UserAccessSummary;
 }): Promise<JobDetail> {
-  const rows = await db
-    .select({
-      job: jobs,
-      productModelCode: products.modelCode,
-      productName: products.name,
-      stage: jobStages,
-      event: jobEvents,
-    })
-    .from(jobs)
-    .innerJoin(products, eq(products.id, jobs.productId))
-    .innerJoin(jobStages, eq(jobStages.jobId, jobs.id))
-    // Workflow events are stage-scoped today; job-level events with stage_id = null need an explicit join path.
-    .leftJoin(jobEvents, eq(jobEvents.stageId, jobStages.id))
-    .where(eq(jobs.id, id))
-    .orderBy(asc(jobStages.sequence), asc(jobEvents.occurredAt), asc(jobEvents.id));
+  const row = await db.query.jobs.findFirst({
+    columns: {
+      createdAt: true,
+      id: true,
+      lifecycleStatus: true,
+      productId: true,
+      updatedAt: true,
+    },
+    where: eq(jobs.id, id),
+    with: {
+      events: {
+        orderBy: [asc(jobEvents.occurredAt), asc(jobEvents.id)],
+      },
+      product: {
+        columns: {
+          modelCode: true,
+          name: true,
+        },
+      },
+      stages: {
+        orderBy: [asc(jobStages.sequence)],
+      },
+    },
+  });
 
-  const firstRow = rows[0];
-  const jobRow = firstRow?.job;
-
-  if (!jobRow) {
+  if (!row) {
     throw new JobNotFoundError(id);
   }
 
   return {
-    ...mapJobSummary({
-      ...jobRow,
-      productModelCode: firstRow.productModelCode,
-      productName: firstRow.productName,
-    }),
-    stages: mapJobDetailStages({ access, job: jobRow, rows }),
-    workflowEvents: mapJobDetailWorkflowEvents({ access, rows }),
+    ...mapJobSummary(row),
+    stages: mapJobDetailStages({ access, job: row, stageRows: row.stages }),
+    workflowEvents: mapJobWorkflowEvents({ access, eventRows: row.events, stageRows: row.stages }),
   };
+}
+
+export async function pauseJob({
+  db,
+  access,
+  actorUserId,
+  id,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  id: UUID;
+}): Promise<JobDetail> {
+  return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'pause' });
+}
+
+export async function resumeJob({
+  db,
+  access,
+  actorUserId,
+  id,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  id: UUID;
+}): Promise<JobDetail> {
+  return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'resume' });
+}
+
+export async function cancelJob({
+  db,
+  access,
+  actorUserId,
+  id,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  id: UUID;
+}): Promise<JobDetail> {
+  return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'cancel' });
 }
 
 export async function startJobStage({
@@ -374,8 +435,8 @@ async function completeJobStageFromStatus({
 function mapJobSummary(row: JobWithProductRow): JobSummary {
   return {
     ...mapJob(row),
-    productModelCode: row.productModelCode,
-    productName: row.productName,
+    productModelCode: row.product.modelCode,
+    productName: row.product.name,
   };
 }
 
@@ -415,14 +476,12 @@ function mapStageAccess({
 function mapJobDetailStages({
   access,
   job,
-  rows,
+  stageRows,
 }: {
   access: UserAccessSummary;
   job: JobRow;
-  rows: JobDetailRow[];
+  stageRows: JobStageRow[];
 }): JobStageRollup[] {
-  const stageRows = getUniqueStageRows(rows);
-
   return stageRows.map((stageRow, index) =>
     mapStageAccess({
       access,
@@ -433,28 +492,25 @@ function mapJobDetailStages({
   );
 }
 
-function mapJobDetailWorkflowEvents({ access, rows }: { access: UserAccessSummary; rows: JobDetailRow[] }): JobEvent[] {
-  const eventRowsById = new Map<UUID, JobEventRow>();
+function mapJobWorkflowEvents({
+  access,
+  eventRows,
+  stageRows,
+}: {
+  access: UserAccessSummary;
+  eventRows: JobEventRow[];
+  stageRows: JobStageRow[];
+}): JobEvent[] {
+  const stageRowsById = new Map(stageRows.map((stage) => [stage.id, stage]));
 
-  for (const row of rows) {
-    if (row.event && canViewStage(access, row.stage)) {
-      eventRowsById.set(row.event.id, row.event);
-    }
-  }
+  return eventRows
+    .filter((event) => {
+      if (!event.stageId) return true;
 
-  return [...eventRowsById.values()]
-    .sort((left, right) => left.occurredAt.getTime() - right.occurredAt.getTime() || left.id.localeCompare(right.id))
+      const stage = stageRowsById.get(event.stageId);
+      return stage ? canViewStage(access, stage) : false;
+    })
     .map(mapJobEvent);
-}
-
-function getUniqueStageRows(rows: JobDetailRow[]): JobStageRow[] {
-  const stageRowsById = new Map<UUID, JobStageRow>();
-
-  for (const row of rows) {
-    stageRowsById.set(row.stage.id, row.stage);
-  }
-
-  return [...stageRowsById.values()];
 }
 
 async function transitionJobStage({
@@ -552,7 +608,149 @@ async function applyJobStageTransition({
     stageId: updatedStage.id,
   });
 
+  if (transition === 'complete' && updatedStage.stage === 'dispatch') {
+    await completeJobLifecycle({
+      actorUserId,
+      before: transitionTarget.job,
+      id,
+      tx,
+    });
+  }
+
   return getJob({ access, db: tx, id });
+}
+
+async function transitionJobLifecycle({
+  db,
+  access,
+  actorUserId,
+  id,
+  transition,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  id: UUID;
+  transition: JobLifecycleTransition;
+}): Promise<JobDetail> {
+  return db.transaction(async (tx) => {
+    const [job] = await tx.select().from(jobs).where(eq(jobs.id, id)).for('update');
+
+    if (!job) {
+      throw new JobNotFoundError(id);
+    }
+
+    const config = jobLifecycleTransitionConfig[transition];
+    if (!(config.allowedFrom as readonly JobLifecycleStatus[]).includes(job.lifecycleStatus)) {
+      throw new JobLifecycleTransitionDeniedError(getLifecycleTransitionDeniedReason(transition, job.lifecycleStatus));
+    }
+
+    await applyJobLifecycleStatusChange({
+      actorUserId,
+      before: job,
+      eventType: config.eventType,
+      id,
+      nextStatus: config.nextStatus,
+      tx,
+    });
+
+    return getJob({ access, db: tx, id });
+  });
+}
+
+async function completeJobLifecycle({
+  actorUserId,
+  before,
+  id,
+  tx,
+}: {
+  actorUserId: AuthId;
+  before: Pick<JobRow, 'lifecycleStatus'>;
+  id: UUID;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  await applyJobLifecycleStatusChange({
+    actorUserId,
+    before,
+    eventType: 'job.completed',
+    id,
+    nextStatus: 'complete',
+    tx,
+  });
+}
+
+async function applyJobLifecycleStatusChange({
+  actorUserId,
+  before,
+  eventType,
+  id,
+  nextStatus,
+  tx,
+}: {
+  actorUserId: AuthId;
+  before: Pick<JobRow, 'lifecycleStatus'>;
+  eventType: Extract<JobEvent['eventType'], `job.${string}`>;
+  id: UUID;
+  nextStatus: JobLifecycleStatus;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  const [updatedJob] = await tx
+    .update(jobs)
+    .set({
+      lifecycleStatus: nextStatus,
+      updatedAt: new Date(),
+    })
+    .where(eq(jobs.id, id))
+    .returning();
+
+  if (!updatedJob) {
+    throw new JobNotFoundError(id);
+  }
+
+  await insertAuditEvent({
+    db: tx,
+    input: {
+      action: 'updated',
+      actorUserId,
+      after: mapJob(updatedJob),
+      before,
+      changes: createAuditChanges(before, updatedJob, {
+        lifecycleStatus: jobAuditDescriptor.fields.lifecycleStatus ?? 'lifecycle status',
+      }),
+      entityId: updatedJob.id,
+      entityType: jobAuditDescriptor.entityType,
+    },
+  });
+
+  await tx.insert(jobEvents).values({
+    actorUserId,
+    eventType,
+    jobId: id,
+    payload: {
+      fromLifecycleStatus: before.lifecycleStatus,
+      toLifecycleStatus: nextStatus,
+    },
+    stageId: null,
+  });
+}
+
+function getLifecycleTransitionDeniedReason(
+  transition: JobLifecycleTransition,
+  lifecycleStatus: JobLifecycleStatus,
+): string {
+  if (lifecycleStatus === 'complete' || lifecycleStatus === 'cancelled') {
+    return 'Terminal jobs cannot change lifecycle status.';
+  }
+
+  if (transition === 'pause') {
+    return 'Only active jobs can be paused.';
+  }
+
+  if (transition === 'resume') {
+    return 'Only paused jobs can be resumed.';
+  }
+
+  return 'Only active or paused jobs can be cancelled.';
 }
 
 type StageTransitionTarget = {
@@ -594,16 +792,4 @@ async function readStageTransitionTarget({
     previousStage: currentStageIndex > 0 ? (rows[currentStageIndex - 1]?.stage ?? null) : null,
     stage: currentStage,
   };
-}
-
-function getVisibleStages(access: UserAccessSummary): JobStageName[] | null {
-  const visibleStages = JOB_STAGE_PIPELINE.filter(({ stage }) => canViewStage(access, { stage })).map(
-    ({ stage }) => stage,
-  );
-
-  if (visibleStages.length === JOB_STAGE_PIPELINE.length) {
-    return null;
-  }
-
-  return visibleStages;
 }

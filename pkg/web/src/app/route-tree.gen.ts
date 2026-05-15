@@ -14,10 +14,12 @@ import { Route as AuthedRouteImport } from './../routes/_authed'
 import { Route as IndexRouteImport } from './../routes/index'
 import { Route as AuthedUsersRouteImport } from './../routes/_authed.users'
 import { Route as AuthedProductsRouteImport } from './../routes/_authed.products'
+import { Route as AuthedJobsRouteImport } from './../routes/_authed.jobs'
 import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboard'
 import { Route as AuthedAssistantRouteImport } from './../routes/_authed.assistant'
 import { Route as AuthedProductsIndexRouteImport } from './../routes/_authed.products.index'
 import { Route as AuthedProductsNewRouteImport } from './../routes/_authed.products.new'
+import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
 import { Route as AuthedProductsIdEditRouteImport } from './../routes/_authed.products.$id.edit'
 
 const LoginRoute = LoginRouteImport.update({
@@ -44,6 +46,11 @@ const AuthedProductsRoute = AuthedProductsRouteImport.update({
   path: '/products',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedJobsRoute = AuthedJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -64,6 +71,11 @@ const AuthedProductsNewRoute = AuthedProductsNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AuthedProductsRoute,
 } as any)
+const AuthedJobsIdRoute = AuthedJobsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthedJobsRoute,
+} as any)
 const AuthedProductsIdEditRoute = AuthedProductsIdEditRouteImport.update({
   id: '/$id/edit',
   path: '/$id/edit',
@@ -75,8 +87,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/assistant': typeof AuthedAssistantRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/jobs': typeof AuthedJobsRouteWithChildren
   '/products': typeof AuthedProductsRouteWithChildren
   '/users': typeof AuthedUsersRoute
+  '/jobs/$id': typeof AuthedJobsIdRoute
   '/products/new': typeof AuthedProductsNewRoute
   '/products/': typeof AuthedProductsIndexRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
@@ -86,7 +100,9 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/assistant': typeof AuthedAssistantRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/jobs': typeof AuthedJobsRoute
   '/users': typeof AuthedUsersRoute
+  '/jobs/$id': typeof AuthedJobsIdRoute
   '/products/new': typeof AuthedProductsNewRoute
   '/products': typeof AuthedProductsIndexRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
@@ -98,8 +114,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authed/assistant': typeof AuthedAssistantRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/jobs': typeof AuthedJobsRouteWithChildren
   '/_authed/products': typeof AuthedProductsRouteWithChildren
   '/_authed/users': typeof AuthedUsersRoute
+  '/_authed/jobs/$id': typeof AuthedJobsIdRoute
   '/_authed/products/new': typeof AuthedProductsNewRoute
   '/_authed/products/': typeof AuthedProductsIndexRoute
   '/_authed/products/$id/edit': typeof AuthedProductsIdEditRoute
@@ -111,8 +129,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/assistant'
     | '/dashboard'
+    | '/jobs'
     | '/products'
     | '/users'
+    | '/jobs/$id'
     | '/products/new'
     | '/products/'
     | '/products/$id/edit'
@@ -122,7 +142,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/assistant'
     | '/dashboard'
+    | '/jobs'
     | '/users'
+    | '/jobs/$id'
     | '/products/new'
     | '/products'
     | '/products/$id/edit'
@@ -133,8 +155,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authed/assistant'
     | '/_authed/dashboard'
+    | '/_authed/jobs'
     | '/_authed/products'
     | '/_authed/users'
+    | '/_authed/jobs/$id'
     | '/_authed/products/new'
     | '/_authed/products/'
     | '/_authed/products/$id/edit'
@@ -183,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProductsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/jobs': {
+      id: '/_authed/jobs'
+      path: '/jobs'
+      fullPath: '/jobs'
+      preLoaderRoute: typeof AuthedJobsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/dashboard': {
       id: '/_authed/dashboard'
       path: '/dashboard'
@@ -211,6 +242,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProductsNewRouteImport
       parentRoute: typeof AuthedProductsRoute
     }
+    '/_authed/jobs/$id': {
+      id: '/_authed/jobs/$id'
+      path: '/$id'
+      fullPath: '/jobs/$id'
+      preLoaderRoute: typeof AuthedJobsIdRouteImport
+      parentRoute: typeof AuthedJobsRoute
+    }
     '/_authed/products/$id/edit': {
       id: '/_authed/products/$id/edit'
       path: '/$id/edit'
@@ -237,9 +275,22 @@ const AuthedProductsRouteWithChildren = AuthedProductsRoute._addFileChildren(
   AuthedProductsRouteChildren,
 )
 
+interface AuthedJobsRouteChildren {
+  AuthedJobsIdRoute: typeof AuthedJobsIdRoute
+}
+
+const AuthedJobsRouteChildren: AuthedJobsRouteChildren = {
+  AuthedJobsIdRoute: AuthedJobsIdRoute,
+}
+
+const AuthedJobsRouteWithChildren = AuthedJobsRoute._addFileChildren(
+  AuthedJobsRouteChildren,
+)
+
 interface AuthedRouteChildren {
   AuthedAssistantRoute: typeof AuthedAssistantRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedJobsRoute: typeof AuthedJobsRouteWithChildren
   AuthedProductsRoute: typeof AuthedProductsRouteWithChildren
   AuthedUsersRoute: typeof AuthedUsersRoute
 }
@@ -247,6 +298,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAssistantRoute: AuthedAssistantRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedJobsRoute: AuthedJobsRouteWithChildren,
   AuthedProductsRoute: AuthedProductsRouteWithChildren,
   AuthedUsersRoute: AuthedUsersRoute,
 }

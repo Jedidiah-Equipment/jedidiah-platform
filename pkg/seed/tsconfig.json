@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "composite": true,
-    "types": ["node", "vitest"]
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "references": [{ "path": "../core" }, { "path": "../db" }, { "path": "../domain" }, { "path": "../schema" }]

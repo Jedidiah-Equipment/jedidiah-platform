@@ -73,14 +73,20 @@ describe('jobs.create', () => {
 });
 
 describe('jobs.list', () => {
-  test('returns all jobs for cross-cutting job viewers', async ({ context }) => {
+  test('returns active jobs by default for cross-cutting job viewers', async ({ context }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const viewerCaller = context.createCaller(mockSession('job-viewer'));
 
     const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+    const paused = await supervisorCaller.jobs.create({ productId: context.product.id });
+    await supervisorCaller.jobs.pause({ id: paused.id });
+
     const result = await viewerCaller.jobs.list({});
 
-    expect(result.jobs.map((job) => job.id)).toEqual([created.id]);
+    expect(result.items.map((job) => job.id)).toEqual([created.id]);
+    expect(result.total).toBe(1);
+    expect(result.sortBy).toBe('createdAt');
+    expect(result.sortDirection).toBe('asc');
   });
 
   test('returns department-scoped jobs for matching stage editors', async ({ context }) => {
@@ -90,7 +96,121 @@ describe('jobs.list', () => {
     const created = await supervisorCaller.jobs.create({ productId: context.product.id });
     const result = await paintCaller.jobs.list({});
 
-    expect(result.jobs.map((job) => job.id)).toEqual([created.id]);
+    expect(result.items.map((job) => job.id)).toEqual([created.id]);
+    expect(result.total).toBe(1);
+  });
+
+  test('filters jobs by lifecycle status', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const active = await caller.jobs.create({ productId: context.product.id });
+    const paused = await caller.jobs.create({ productId: context.product.id });
+    const cancelled = await caller.jobs.create({ productId: context.product.id });
+    const complete = await caller.jobs.create({ productId: context.product.id });
+
+    await caller.jobs.pause({ id: paused.id });
+    await caller.jobs.cancel({ id: cancelled.id });
+    await completeStages(caller, complete.id, pipelineStages);
+
+    await expectJobListIds(caller, { filters: { lifecycleStatuses: ['active'] } }, [active.id]);
+    await expectJobListIds(caller, { filters: { lifecycleStatuses: ['paused'] } }, [paused.id]);
+    await expectJobListIds(caller, { filters: { lifecycleStatuses: ['cancelled'] } }, [cancelled.id]);
+    await expectJobListIds(caller, { filters: { lifecycleStatuses: ['complete'] } }, [complete.id]);
+    await expectJobListIds(caller, { filters: { lifecycleStatuses: ['active', 'paused'] } }, [active.id, paused.id]);
+  });
+
+  test('treats an empty lifecycle status filter as all statuses', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const active = await caller.jobs.create({ productId: context.product.id });
+    const paused = await caller.jobs.create({ productId: context.product.id });
+
+    await caller.jobs.pause({ id: paused.id });
+
+    const result = await caller.jobs.list({
+      filters: {
+        lifecycleStatuses: [],
+      },
+    });
+
+    expect(result.items.map((job) => job.id)).toEqual(expect.arrayContaining([active.id, paused.id]));
+    expect(result.total).toBe(2);
+  });
+
+  test('pages list results and reports the filtered total', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const jobs = [
+      await caller.jobs.create({ productId: context.product.id }),
+      await caller.jobs.create({ productId: context.product.id }),
+      await caller.jobs.create({ productId: context.product.id }),
+    ];
+
+    const firstPage = await caller.jobs.list({
+      page: 1,
+      pageSize: 2,
+      sortBy: 'id',
+    });
+    const secondPage = await caller.jobs.list({
+      page: 2,
+      pageSize: 2,
+      sortBy: 'id',
+    });
+
+    expect(firstPage.items).toHaveLength(2);
+    expect(firstPage.total).toBe(3);
+    expect(secondPage.items).toHaveLength(1);
+    expect(secondPage.total).toBe(3);
+    expect([...firstPage.items, ...secondPage.items].map((job) => job.id).sort()).toEqual(
+      jobs.map((job) => job.id).sort(),
+    );
+  });
+
+  test('sorts list results by job fields', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+
+    const active = await caller.jobs.create({ productId: context.product.id });
+    const paused = await caller.jobs.create({ productId: context.product.id });
+    await caller.jobs.pause({ id: paused.id });
+
+    const ascending = await caller.jobs.list({
+      filters: {
+        lifecycleStatuses: [],
+      },
+      sortBy: 'lifecycleStatus',
+      sortDirection: 'asc',
+    });
+    const descending = await caller.jobs.list({
+      filters: {
+        lifecycleStatuses: [],
+      },
+      sortBy: 'lifecycleStatus',
+      sortDirection: 'desc',
+    });
+
+    expect(ascending.items.map((job) => job.id)).toEqual([active.id, paused.id]);
+    expect(descending.items.map((job) => job.id)).toEqual([paused.id, active.id]);
+  });
+
+  test('searches by job id', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await expectJobListIds(caller, { search: created.id.slice(0, 8) }, [created.id]);
+    await expectJobListIds(caller, { search: 'missing-search-term' }, []);
+  });
+
+  test('keeps department authorization independent from lifecycle status filtering', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const paintCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', ['paint']);
+    const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+
+    await completeStages(supervisorCaller, created.id, pipelineStages);
+    const result = await paintCaller.jobs.list({
+      filters: {
+        lifecycleStatuses: ['complete'],
+      },
+    });
+
+    expect(result.items.map((job) => job.id)).toEqual([created.id]);
+    expect(result.total).toBe(1);
   });
 
   test('rejects users without job read permission', async ({ context }) => {
@@ -673,13 +793,23 @@ describe('job lifecycle transitions', () => {
   });
 });
 
-async function createProduct(db: Db) {
+type JobListTestInput = Parameters<TestCaller['jobs']['list']>[0];
+
+async function expectJobListIds(caller: TestCaller, input: JobListTestInput, expectedIds: string[]) {
+  const result = await caller.jobs.list(input);
+
+  expect(result.items.map((job) => job.id)).toEqual(expect.arrayContaining(expectedIds));
+  expect(result.items).toHaveLength(expectedIds.length);
+  expect(result.total).toBe(expectedIds.length);
+}
+
+async function createProduct(db: Db, input: { modelCode: string; name: string } = createProductInput()) {
   const [product] = await db
     .insert(products)
     .values({
       basePrice: 1_000,
-      modelCode: 'JOB-TEST-PRODUCT',
-      name: 'Job Test Product',
+      modelCode: input.modelCode,
+      name: input.name,
     })
     .returning();
 
@@ -688,6 +818,13 @@ async function createProduct(db: Db) {
   }
 
   return product;
+}
+
+function createProductInput() {
+  return {
+    modelCode: 'JOB-TEST-PRODUCT',
+    name: 'Job Test Product',
+  };
 }
 
 async function createActorUser(db: Db) {

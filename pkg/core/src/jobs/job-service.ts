@@ -188,6 +188,10 @@ export async function setJobStageStatus({
   actorUserId: AuthId;
   input: JobStageStatusInput;
 }): Promise<JobDetail> {
+  if (input.status === 'complete') {
+    return completeJobStageFromStatus({ access, actorUserId, db, id: input.id, stage: input.stage });
+  }
+
   return transitionJobStage({
     access,
     actorUserId,
@@ -223,7 +227,73 @@ export async function completeJobStage({
     transition: 'complete',
     values: {
       completedAt: new Date(),
+      status: 'complete',
     },
+  });
+}
+
+async function completeJobStageFromStatus({
+  db,
+  access,
+  actorUserId,
+  id,
+  stage,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  id: UUID;
+  stage: JobStageName;
+}): Promise<JobDetail> {
+  return db.transaction(async (tx) => {
+    const transitionTarget = await readStageTransitionTarget({ db: tx, id, stage });
+    const result = evaluateStageTransition({
+      access,
+      job: transitionTarget.job,
+      previousStage: transitionTarget.previousStage,
+      stage: {
+        ...transitionTarget.stage,
+        completedAt: null,
+      },
+      transition: 'complete',
+    });
+
+    if (!result.allowed) {
+      throw new JobStageTransitionDeniedError(result.reason);
+    }
+
+    if (transitionTarget.stage.completedAt) {
+      if (transitionTarget.stage.status !== 'complete') {
+        return applyJobStageTransition({
+          access,
+          actorUserId,
+          id,
+          stage,
+          transition: 'set-status',
+          transitionTarget,
+          tx,
+          values: {
+            status: 'complete',
+          },
+        });
+      }
+
+      return readJobDetail({ access, db: tx, id });
+    }
+
+    return applyJobStageTransition({
+      access,
+      actorUserId,
+      id,
+      stage,
+      transition: 'complete',
+      transitionTarget,
+      tx,
+      values: {
+        completedAt: new Date(),
+        status: 'complete',
+      },
+    });
   });
 }
 
@@ -333,48 +403,76 @@ async function transitionJobStage({
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const transitionTarget = await readStageTransitionTarget({ db: tx, id, stage });
-    const result = evaluateStageTransition({
-      access,
-      job: transitionTarget.job,
-      previousStage: transitionTarget.previousStage,
-      stage: transitionTarget.stage,
-      transition,
-    });
-
-    if (!result.allowed) {
-      throw new JobStageTransitionDeniedError(result.reason);
-    }
-
-    const [updatedStage] = await tx
-      .update(jobStages)
-      .set(values)
-      .where(and(eq(jobStages.jobId, id), eq(jobStages.stage, stage)))
-      .returning();
-
-    if (!updatedStage) {
-      throw new JobNotFoundError(id);
-    }
-
-    await insertAuditEvent({
-      db: tx,
-      input: {
-        action: 'updated',
-        actorUserId,
-        after: mapJobStage(updatedStage),
-        before: mapJobStage(transitionTarget.stage),
-        changes: createAuditChanges(mapJobStage(transitionTarget.stage), mapJobStage(updatedStage), {
-          completedAt: 'completed at',
-          startedAt: 'started at',
-          status: 'status',
-        }),
-        entityId: updatedStage.id,
-        entityType: jobStageAuditDescriptor.entityType,
-      },
-    });
-
-    return readJobDetail({ access, db: tx, id });
+    return applyJobStageTransition({ access, actorUserId, id, stage, transition, transitionTarget, tx, values });
   });
 }
+
+async function applyJobStageTransition({
+  access,
+  actorUserId,
+  id,
+  stage,
+  transition,
+  transitionTarget,
+  tx,
+  values,
+}: {
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  id: UUID;
+  stage: JobStageName;
+  transition: StageTransition;
+  transitionTarget: StageTransitionTarget;
+  tx: DatabaseTransaction;
+  values: Partial<Pick<JobStageRow, 'completedAt' | 'startedAt' | 'status'>>;
+}): Promise<JobDetail> {
+  const result = evaluateStageTransition({
+    access,
+    job: transitionTarget.job,
+    previousStage: transitionTarget.previousStage,
+    stage: transitionTarget.stage,
+    transition,
+  });
+
+  if (!result.allowed) {
+    throw new JobStageTransitionDeniedError(result.reason);
+  }
+
+  const [updatedStage] = await tx
+    .update(jobStages)
+    .set(values)
+    .where(and(eq(jobStages.jobId, id), eq(jobStages.stage, stage)))
+    .returning();
+
+  if (!updatedStage) {
+    throw new JobNotFoundError(id);
+  }
+
+  await insertAuditEvent({
+    db: tx,
+    input: {
+      action: 'updated',
+      actorUserId,
+      after: mapJobStage(updatedStage),
+      before: mapJobStage(transitionTarget.stage),
+      changes: createAuditChanges(mapJobStage(transitionTarget.stage), mapJobStage(updatedStage), {
+        completedAt: 'completed at',
+        startedAt: 'started at',
+        status: 'status',
+      }),
+      entityId: updatedStage.id,
+      entityType: jobStageAuditDescriptor.entityType,
+    },
+  });
+
+  return readJobDetail({ access, db: tx, id });
+}
+
+type StageTransitionTarget = {
+  job: Pick<JobRow, 'lifecycleStatus'>;
+  previousStage: JobStageRow | null;
+  stage: JobStageRow;
+};
 
 async function readStageTransitionTarget({
   db,
@@ -384,11 +482,7 @@ async function readStageTransitionTarget({
   db: DatabaseTransaction;
   id: UUID;
   stage: JobStageName;
-}): Promise<{
-  job: Pick<JobRow, 'lifecycleStatus'>;
-  previousStage: JobStageRow | null;
-  stage: JobStageRow;
-}> {
+}): Promise<StageTransitionTarget> {
   const rows = await db
     .select({
       job: jobs,

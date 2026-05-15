@@ -11,7 +11,7 @@ The platform's unit of production-floor tracking — one physical product instan
 _Avoid_: Order, Work Order, Build, Ticket.
 
 **Pipeline**:
-The fixed, sequential sequence of five stages every Job moves through: Procurement → Fabrication → Paint → Assembly → Dispatch.
+The fixed, sequential sequence of five stages every Job moves through: Procurement → Fabrication → Assembly → Paint → Dispatch.
 _Avoid_: Workflow, Process.
 
 **Stage**:
@@ -27,7 +27,7 @@ The 1..5 position of a Stage in the Pipeline. `(job_id, sequence)` is unique; se
 A Stage's per-department workflow position (e.g. "awaiting-supplier", "in-press"). Stored as `text` on `job_stage`; validated app-side via a Zod discriminated union keyed on `stage`. The per-stage status enums are deferred to each department's implementing slice.
 
 **Stage Completion**:
-A one-way latch on a Stage: `completed_at` may be set once and is not unset by normal workflow. Setting `completed_at` does **not** change `status` — status may continue to move freely after completion (e.g. for late edits). Distinct from Stage Status — completion is orthogonal.
+A one-way latch on a Stage: `completed_at` may be set once and is not unset by normal workflow. Completing a Stage sets both `completed_at` and `status = 'complete'`; selecting the `complete` Stage Status uses the same completion semantics. Selecting `complete` after `completed_at` is set never rewrites `completed_at`: it only moves `status` back to `complete` when needed, and is a true no-op if the status is already `complete`. Later status edits may move away from `complete`, but they never clear `completed_at`.
 _Avoid_: "Closed stage", "finished stage" (overloaded).
 
 **Job Lifecycle Status**:
@@ -94,6 +94,7 @@ A UI/query-default convention — list views hide Stages whose `completed_at` is
 - A **Stage** is owned by exactly one **Department**.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
 - A **Stage** mutation requires: (verb permission from the User's Role) AND (the Job's Lifecycle Status is `active`) AND (the Stage's Sequence is reachable per the Stage Transition Policy) AND (Scope rule — if the User has Department memberships, the Stage's Department is among them; a User with no memberships is unscoped).
+- Pipeline reachability is governed by `completed_at`, not by the Stage Status label. `status = 'complete'` is synchronized with completion when first selected, but status edits after completion do not reopen or re-block the Pipeline.
 - Every Stage state change writes one **Audit Event** + one **Job Event** in the same transaction.
 
 ## Example dialogue
@@ -105,7 +106,7 @@ A UI/query-default convention — list views hide Stages whose `completed_at` is
 > **Domain expert:** "No — that would be a hack. They get the **`job-viewer`** Role with *no* Department memberships. An **unscoped** User sees the whole Pipeline; assigning Departments would narrow them. The Role gives read-only verbs either way."
 
 > **Dev:** "Procurement marked their **Stage** complete but now they need to add a late PO. Allowed?"
-> **Domain expert:** "Yes. **Stage Completion** is a one-way latch on `completed_at`, but **Stage Status** keeps moving after. They can still update."
+> **Domain expert:** "Yes. **Stage Completion** is a one-way latch on `completed_at`, but **Stage Status** keeps moving after. They can still update status, but we never clear `completed_at`."
 
 ## Flagged ambiguities
 

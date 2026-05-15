@@ -27,6 +27,8 @@ const test = createTester(async ({ db }) => {
 
 type TestCaller = AppRouterCaller;
 
+const pipelineStages = ['procurement', 'fabrication', 'assembly', 'paint', 'dispatch'] as const satisfies Department[];
+
 describe('jobs.create', () => {
   test('creates a job and all five stage rows in one transaction', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
@@ -167,7 +169,7 @@ describe('job stage transitions', () => {
     const completed = await caller.jobs.completeStage({ id: created.id, stage: 'procurement' });
     const procurementAfterComplete = getVisibleStage(completed, 'procurement');
     expect(procurementAfterComplete.completedAt).toEqual(expect.any(String));
-    expect(procurementAfterComplete.status).toBe('ordering');
+    expect(procurementAfterComplete.status).toBe('complete');
     expect(getVisibleStage(completed, 'fabrication').transitionAvailability?.start).toEqual({
       allowed: true,
       reason: null,
@@ -206,6 +208,7 @@ describe('job stage transitions', () => {
       },
     });
     expect(auditRows[3]?.changes).toHaveProperty('completedAt');
+    expect(auditRows[3]?.changes).toHaveProperty('status');
   });
 
   test('allows a stage editor to update their own stage once the pipeline reaches it', async ({ context }) => {
@@ -223,6 +226,35 @@ describe('job stage transitions', () => {
 
     expect(getVisibleStage(started, 'paint').startedAt).toEqual(expect.any(String));
     expect(getVisibleStage(updated, 'paint').status).toBe('painting');
+  });
+
+  test('advances through the whole pipeline in sequence', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+    let detail = created;
+
+    for (const [index, stage] of pipelineStages.entries()) {
+      detail = await caller.jobs.startStage({ id: created.id, stage });
+      expect(getVisibleStage(detail, stage).startedAt).toEqual(expect.any(String));
+
+      detail = await caller.jobs.completeStage({ id: created.id, stage });
+      const completedStage = getVisibleStage(detail, stage);
+      expect(completedStage.completedAt).toEqual(expect.any(String));
+      expect(completedStage.status).toBe('complete');
+
+      const nextStage = pipelineStages[index + 1];
+      if (nextStage) {
+        expect(getVisibleStage(detail, nextStage).transitionAvailability?.start).toEqual({
+          allowed: true,
+          reason: null,
+        });
+      }
+    }
+
+    expect(detail.stages).toHaveLength(5);
+    expect(
+      detail.stages.every((stage) => stage.access === 'visible' && stage.status === 'complete' && stage.completedAt),
+    ).toBe(true);
   });
 
   test('rejects starting a stage before the previous stage completes', async ({ context }) => {
@@ -286,19 +318,113 @@ describe('job stage transitions', () => {
     });
   });
 
+  test('rejects complete status updates before a stage starts', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await expect(
+      caller.jobs.setStageStatus({
+        id: created.id,
+        stage: 'procurement',
+        status: 'complete',
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Stage has not started.',
+    });
+  });
+
   test('allows status updates after completion', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const created = await caller.jobs.create({ productId: context.product.id });
 
     await caller.jobs.startStage({ id: created.id, stage: 'procurement' });
-    await caller.jobs.completeStage({ id: created.id, stage: 'procurement' });
+    const completed = await caller.jobs.completeStage({ id: created.id, stage: 'procurement' });
+    const completedAt = getVisibleStage(completed, 'procurement').completedAt;
     const updated = await caller.jobs.setStageStatus({
       id: created.id,
       stage: 'procurement',
       status: 'partial',
     });
 
-    expect(getVisibleStage(updated, 'procurement').status).toBe('partial');
+    const procurement = getVisibleStage(updated, 'procurement');
+    expect(procurement.status).toBe('partial');
+    expect(procurement.completedAt).toBe(completedAt);
+
+    const auditRows = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+    expect(auditRows.at(-1)?.changes).toEqual({
+      status: {
+        from: 'complete',
+        to: 'partial',
+      },
+    });
+  });
+
+  test('complete status updates complete the stage and preserve completion history afterward', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await caller.jobs.startStage({ id: created.id, stage: 'procurement' });
+
+    const completed = await caller.jobs.setStageStatus({
+      id: created.id,
+      stage: 'procurement',
+      status: 'complete',
+    });
+    const procurementAfterComplete = getVisibleStage(completed, 'procurement');
+    expect(procurementAfterComplete.status).toBe('complete');
+    expect(procurementAfterComplete.completedAt).toEqual(expect.any(String));
+
+    const auditRowsAfterComplete = await context.db.select().from(auditEvents);
+    const editedAfterCompletion = await caller.jobs.setStageStatus({
+      id: created.id,
+      stage: 'procurement',
+      status: 'partial',
+    });
+    const procurementAfterEdit = getVisibleStage(editedAfterCompletion, 'procurement');
+    expect(procurementAfterEdit.status).toBe('partial');
+    expect(procurementAfterEdit.completedAt).toBe(procurementAfterComplete.completedAt);
+
+    const completedAgain = await caller.jobs.setStageStatus({
+      id: created.id,
+      stage: 'procurement',
+      status: 'complete',
+    });
+    const procurementAfterStatusComplete = getVisibleStage(completedAgain, 'procurement');
+    expect(procurementAfterStatusComplete.status).toBe('complete');
+    expect(procurementAfterStatusComplete.completedAt).toBe(procurementAfterComplete.completedAt);
+
+    const auditRowsAfterStatusComplete = await context.db.select().from(auditEvents);
+    const noop = await caller.jobs.setStageStatus({
+      id: created.id,
+      stage: 'procurement',
+      status: 'complete',
+    });
+    const auditRowsAfterNoop = await context.db.select().from(auditEvents);
+
+    expect(getVisibleStage(noop, 'procurement').completedAt).toBe(procurementAfterComplete.completedAt);
+    expect(auditRowsAfterStatusComplete).toHaveLength(auditRowsAfterComplete.length + 2);
+    expect(auditRowsAfterNoop).toHaveLength(auditRowsAfterStatusComplete.length);
+  });
+
+  test('complete status no-ops still require access to the completed stage', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const paintCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', ['paint']);
+    const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+
+    await supervisorCaller.jobs.startStage({ id: created.id, stage: 'procurement' });
+    await supervisorCaller.jobs.completeStage({ id: created.id, stage: 'procurement' });
+
+    await expect(
+      paintCaller.jobs.setStageStatus({
+        id: created.id,
+        stage: 'procurement',
+        status: 'complete',
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'You do not have access to update this stage.',
+    });
   });
 
   test('rejects stage writes while the job lifecycle is not active', async ({ context }) => {

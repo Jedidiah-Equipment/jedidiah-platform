@@ -1,7 +1,8 @@
-import { jobStageStatusLabels } from '@pkg/domain';
+import { hasPermission, jobStageStatusLabels } from '@pkg/domain';
 import {
   JOB_STAGE_STATUSES,
   type JobEvent,
+  type JobLifecycleStatus,
   type JobStageName,
   type JobStageRollup,
   type JobStageStatus,
@@ -10,7 +11,17 @@ import {
 } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeftIcon, CheckCircleIcon, CircleIcon, HistoryIcon, LockIcon, PlayIcon } from 'lucide-react';
+import {
+  ArrowLeftIcon,
+  CheckCircleIcon,
+  CircleIcon,
+  HistoryIcon,
+  LockIcon,
+  PauseIcon,
+  PlayIcon,
+  RotateCcwIcon,
+  XCircleIcon,
+} from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 
@@ -20,6 +31,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { formatDate } from '@/utils/date.js';
@@ -41,6 +53,7 @@ const stageLabels = {
 export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const accessQuery = useAccess();
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const job = jobQuery.data;
   const refreshJob = async () => {
@@ -73,8 +86,41 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       onError: (error) => toast.error(error.message),
     }),
   );
+  const pauseJobMutation = useMutation(
+    trpc.jobs.pause.mutationOptions({
+      onSuccess: async () => {
+        await refreshJob();
+        toast.success('Job paused');
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+  const resumeJobMutation = useMutation(
+    trpc.jobs.resume.mutationOptions({
+      onSuccess: async () => {
+        await refreshJob();
+        toast.success('Job resumed');
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+  const cancelJobMutation = useMutation(
+    trpc.jobs.cancel.mutationOptions({
+      onSuccess: async () => {
+        await refreshJob();
+        toast.success('Job cancelled');
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
   const isTransitionPending =
-    startStageMutation.isPending || setStageStatusMutation.isPending || completeStageMutation.isPending;
+    startStageMutation.isPending ||
+    setStageStatusMutation.isPending ||
+    completeStageMutation.isPending ||
+    pauseJobMutation.isPending ||
+    resumeJobMutation.isPending ||
+    cancelJobMutation.isPending;
+  const canUpdateJob = hasPermission(accessQuery.data, 'job:update');
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -111,6 +157,20 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
                 <JobFact label="Created" value={formatDate(job.createdAt)} />
                 <JobFact label="Updated" value={formatDate(job.updatedAt)} />
               </div>
+              {canUpdateJob ? (
+                <LifecycleControls
+                  isPending={isTransitionPending}
+                  lifecycleStatus={job.lifecycleStatus}
+                  onCancel={() => cancelJobMutation.mutate({ id: job.id })}
+                  onPause={() => pauseJobMutation.mutate({ id: job.id })}
+                  onResume={() => resumeJobMutation.mutate({ id: job.id })}
+                />
+              ) : null}
+              {job.lifecycleStatus !== 'active' ? (
+                <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
+                  Stage controls are disabled while this job is {job.lifecycleStatus}.
+                </div>
+              ) : null}
               <div className="grid gap-3 lg:grid-cols-5">
                 {job.stages.map((stage) => (
                   <StagePanel
@@ -140,6 +200,61 @@ const JobFact: React.FC<{ label: string; value: string }> = ({ label, value }) =
     <div className="truncate font-mono text-sm">{value}</div>
   </div>
 );
+
+type LifecycleControlsProps = {
+  isPending: boolean;
+  lifecycleStatus: JobLifecycleStatus;
+  onCancel: () => void;
+  onPause: () => void;
+  onResume: () => void;
+};
+
+const LifecycleControls: React.FC<LifecycleControlsProps> = ({
+  isPending,
+  lifecycleStatus,
+  onCancel,
+  onPause,
+  onResume,
+}) => {
+  const isTerminal = lifecycleStatus === 'complete' || lifecycleStatus === 'cancelled';
+
+  return (
+    <section className="rounded-md border bg-muted/20 p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <div className="text-sm font-medium">Lifecycle controls</div>
+          <div className="text-sm text-muted-foreground">Current status: {lifecycleStatus}</div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={isPending || lifecycleStatus !== 'active'}
+            onClick={onPause}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <PauseIcon data-icon="inline-start" />
+            Pause
+          </Button>
+          <Button
+            disabled={isPending || lifecycleStatus !== 'paused'}
+            onClick={onResume}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <RotateCcwIcon data-icon="inline-start" />
+            Resume
+          </Button>
+          <Button disabled={isPending || isTerminal} onClick={onCancel} size="sm" type="button" variant="destructive">
+            <XCircleIcon data-icon="inline-start" />
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 type StagePanelProps = {
   isPending: boolean;
@@ -309,6 +424,22 @@ function getWorkflowEventLabel(event: JobEvent): string {
     return `${stageLabels[event.payload.stage]} completed`;
   }
 
+  if (event.eventType === 'job.paused') {
+    return 'Job paused';
+  }
+
+  if (event.eventType === 'job.resumed') {
+    return 'Job resumed';
+  }
+
+  if (event.eventType === 'job.cancelled') {
+    return 'Job cancelled';
+  }
+
+  if (event.eventType === 'job.completed') {
+    return 'Job completed';
+  }
+
   return `${stageLabels[event.payload.stage]} status changed`;
 }
 
@@ -319,6 +450,15 @@ function getWorkflowEventMetadata(event: JobEvent): string {
 
   if (event.eventType === 'stage.completed') {
     return `Completed at ${formatDate(event.payload.completedAt, 'medium')}`;
+  }
+
+  if (
+    event.eventType === 'job.paused' ||
+    event.eventType === 'job.resumed' ||
+    event.eventType === 'job.cancelled' ||
+    event.eventType === 'job.completed'
+  ) {
+    return `${event.payload.fromLifecycleStatus} to ${event.payload.toLifecycleStatus}`;
   }
 
   return `${jobStageStatusLabels[event.payload.fromStatus]} to ${jobStageStatusLabels[event.payload.toStatus]}`;

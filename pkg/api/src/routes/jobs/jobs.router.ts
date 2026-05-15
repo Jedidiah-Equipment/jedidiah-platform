@@ -1,14 +1,25 @@
 import {
+  cancelJob,
   completeJobStage,
   createJob,
   getJob,
+  JobLifecycleTransitionDeniedError,
   JobNotFoundError,
   JobStageTransitionDeniedError,
   listJobs,
+  pauseJob,
+  resumeJob,
   setJobStageStatus,
   startJobStage,
 } from '@pkg/core';
-import { JobCreateInput, JobListInput, JobStageStatusInput, JobStageTransitionInput, UUID } from '@pkg/schema';
+import {
+  JobCreateInput,
+  JobLifecycleTransitionInput,
+  JobListInput,
+  JobStageStatusInput,
+  JobStageTransitionInput,
+  UUID,
+} from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
@@ -27,6 +38,45 @@ export const jobsRouter = router({
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => createJob({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id })),
+    ),
+
+  pause: authorizedProcedure('job:update')
+    .input(JobLifecycleTransitionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        pauseJob({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          id: input.id,
+        }),
+      ),
+    ),
+
+  resume: authorizedProcedure('job:update')
+    .input(JobLifecycleTransitionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        resumeJob({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          id: input.id,
+        }),
+      ),
+    ),
+
+  cancel: authorizedProcedure('job:update')
+    .input(JobLifecycleTransitionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        cancelJob({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          id: input.id,
+        }),
+      ),
     ),
 
   startStage: authorizedProcedure('job-stage:update')
@@ -83,6 +133,13 @@ async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
     }
 
     if (error instanceof JobStageTransitionDeniedError) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: error.message,
+      });
+    }
+
+    if (error instanceof JobLifecycleTransitionDeniedError) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: error.message,

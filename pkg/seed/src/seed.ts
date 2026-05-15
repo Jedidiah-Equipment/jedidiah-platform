@@ -1,6 +1,16 @@
 import { pathToFileURL } from 'node:url';
 import './load-db-env.js';
-import { completeJobStage, createJob, createProduct, setJobStageStatus, startJobStage, updateProduct } from '@pkg/core';
+import {
+  cancelJob,
+  completeJobStage,
+  createJob,
+  createProduct,
+  pauseJob,
+  resumeJob,
+  setJobStageStatus,
+  startJobStage,
+  updateProduct,
+} from '@pkg/core';
 import { account, closeDatabaseConnection, type Db, db, user, userDepartment } from '@pkg/db';
 import { createUserAccessSummary, demoUsers, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import {
@@ -64,6 +74,7 @@ const seedJobScenarios = [
   },
   {
     stageProgress: { stage: 'paint', status: 'curing' },
+    lifecycleTransitions: ['cancel'],
   },
   {
     stageProgress: { stage: 'dispatch', status: 'ready' },
@@ -73,9 +84,11 @@ const seedJobScenarios = [
   },
   {
     stageProgress: { stage: 'assembly', status: 'in-progress' },
+    lifecycleTransitions: ['pause'],
   },
   {
     stageProgress: { stage: 'fabrication', status: 'qc' },
+    lifecycleTransitions: ['pause', 'resume'],
   },
 ] as const satisfies readonly SeedJobScenario[];
 
@@ -102,8 +115,11 @@ type SeedProductOption = ProductCreateInput['options'][number] & {
 };
 
 type SeedJobScenario = {
+  lifecycleTransitions?: readonly SeedJobLifecycleTransition[];
   stageProgress: { stage: JobStageName; status: JobStageStatus } | 'complete' | null;
 };
+
+type SeedJobLifecycleTransition = 'pause' | 'resume' | 'cancel';
 
 type SeedProductPlan = {
   initial: SeedProduct;
@@ -422,6 +438,42 @@ async function applySeedJobScenario({
       stage: activeStageProgress.stage,
       targetStatus: activeStageProgress.status,
     });
+  }
+
+  await applySeedJobLifecycleTransitions({
+    access,
+    actorUserId,
+    db,
+    id,
+    transitions: scenario.lifecycleTransitions ?? [],
+  });
+}
+
+async function applySeedJobLifecycleTransitions({
+  access,
+  actorUserId,
+  db,
+  id,
+  transitions,
+}: {
+  access: ReturnType<typeof createUserAccessSummary>;
+  actorUserId: string;
+  db: Db;
+  id: UUID;
+  transitions: readonly SeedJobLifecycleTransition[];
+}): Promise<void> {
+  for (const transition of transitions) {
+    if (transition === 'pause') {
+      await pauseJob({ access, actorUserId, db, id });
+      continue;
+    }
+
+    if (transition === 'resume') {
+      await resumeJob({ access, actorUserId, db, id });
+      continue;
+    }
+
+    await cancelJob({ access, actorUserId, db, id });
   }
 }
 

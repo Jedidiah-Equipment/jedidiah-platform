@@ -121,6 +121,11 @@ const StageCompletedJobEventPayload = z.object({
   completedAt: z.iso.datetime(),
 });
 
+const JobLifecycleChangedEventPayload = z.object({
+  fromLifecycleStatus: JobLifecycleStatus,
+  toLifecycleStatus: JobLifecycleStatus,
+});
+
 const StageStartedJobEvent = JobEventBase.extend({
   eventType: z.literal('stage.started'),
   payload: StageStartedJobEventPayload,
@@ -136,11 +141,35 @@ const StageCompletedJobEvent = JobEventBase.extend({
   payload: StageCompletedJobEventPayload,
 });
 
+const JobPausedEvent = JobEventBase.extend({
+  eventType: z.literal('job.paused'),
+  payload: JobLifecycleChangedEventPayload,
+});
+
+const JobResumedEvent = JobEventBase.extend({
+  eventType: z.literal('job.resumed'),
+  payload: JobLifecycleChangedEventPayload,
+});
+
+const JobCancelledEvent = JobEventBase.extend({
+  eventType: z.literal('job.cancelled'),
+  payload: JobLifecycleChangedEventPayload,
+});
+
+const JobCompletedEvent = JobEventBase.extend({
+  eventType: z.literal('job.completed'),
+  payload: JobLifecycleChangedEventPayload,
+});
+
 export type JobEvent = z.infer<typeof JobEvent>;
 export const JobEvent = z.discriminatedUnion('eventType', [
   StageStartedJobEvent,
   StageStatusChangedJobEvent,
   StageCompletedJobEvent,
+  JobPausedEvent,
+  JobResumedEvent,
+  JobCancelledEvent,
+  JobCompletedEvent,
 ]);
 
 export type DerivedStageJobEvent = z.infer<typeof DerivedStageJobEvent>;
@@ -216,6 +245,11 @@ export type JobStageTransitionInput = z.infer<typeof JobStageTransitionInput>;
 export const JobStageTransitionInput = z.object({
   id: UUID,
   stage: JobStageName,
+});
+
+export type JobLifecycleTransitionInput = z.infer<typeof JobLifecycleTransitionInput>;
+export const JobLifecycleTransitionInput = z.object({
+  id: UUID,
 });
 
 export type JobStageStatusInput = z.infer<typeof JobStageStatusInput>;

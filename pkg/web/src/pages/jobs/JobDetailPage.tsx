@@ -1,4 +1,4 @@
-import { hasPermission, jobStageStatusLabels } from '@pkg/domain';
+import { hasPermission, jobLifecycleStatusLabels, jobStageStatusLabels } from '@pkg/domain';
 import {
   JOB_STAGE_STATUSES,
   type JobEvent,
@@ -35,6 +35,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { formatDate } from '@/utils/date.js';
+import { JobLifecycleStatusBadge } from './components/JobLifecycleStatusBadge.js';
 import { JobStageStatusBadge } from './components/JobStageStatusBadge.js';
 import { getJobStageStatusColorClassNames } from './components/job-stage-status-color.js';
 
@@ -138,7 +139,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
                 <CardDescription>{job.productModelCode}</CardDescription>
                 <CardTitle>{job.productName}</CardTitle>
               </div>
-              <Badge variant="outline">{job.lifecycleStatus}</Badge>
+              <JobLifecycleStatusBadge status={job.lifecycleStatus} />
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -168,7 +169,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
               ) : null}
               {job.lifecycleStatus !== 'active' ? (
                 <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
-                  Stage controls are disabled while this job is {job.lifecycleStatus}.
+                  Stage controls are disabled while this job is {jobLifecycleStatusLabels[job.lifecycleStatus]}.
                 </div>
               ) : null}
               <div className="grid gap-3 lg:grid-cols-5">
@@ -223,7 +224,10 @@ const LifecycleControls: React.FC<LifecycleControlsProps> = ({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <div className="text-sm font-medium">Lifecycle controls</div>
-          <div className="text-sm text-muted-foreground">Current status: {lifecycleStatus}</div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            Current status:
+            <JobLifecycleStatusBadge status={lifecycleStatus} />
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -458,7 +462,9 @@ function getWorkflowEventMetadata(event: JobEvent): string {
     event.eventType === 'job.cancelled' ||
     event.eventType === 'job.completed'
   ) {
-    return `${event.payload.fromLifecycleStatus} to ${event.payload.toLifecycleStatus}`;
+    return `${jobLifecycleStatusLabels[event.payload.fromLifecycleStatus]} to ${
+      jobLifecycleStatusLabels[event.payload.toLifecycleStatus]
+    }`;
   }
 
   return `${jobStageStatusLabels[event.payload.fromStatus]} to ${jobStageStatusLabels[event.payload.toStatus]}`;

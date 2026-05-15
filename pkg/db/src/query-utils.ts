@@ -5,6 +5,12 @@ export type PaginationInput = {
   pageSize: number;
 };
 
+export const LIKE_SEARCH_ESCAPE = '!';
+
+export function createLikeSearchPattern(search: string): string {
+  return `%${search.replace(/[!%_]/g, '!$&')}%`;
+}
+
 export function getPaginationOffset({ page, pageSize }: PaginationInput): number {
   return (page - 1) * pageSize;
 }

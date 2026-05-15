@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { getPaginationOffset, isUniqueViolation } from './query-utils.js';
+import { createLikeSearchPattern, getPaginationOffset, isUniqueViolation, LIKE_SEARCH_ESCAPE } from './query-utils.js';
+
+describe('createLikeSearchPattern', () => {
+  it('wraps search terms for contains matching', () => {
+    expect(createLikeSearchPattern('loader')).toBe('%loader%');
+  });
+
+  it('escapes LIKE wildcards and the shared escape character', () => {
+    expect(createLikeSearchPattern('50%_!')).toBe('%50!%!_!!%');
+    expect(LIKE_SEARCH_ESCAPE).toBe('!');
+  });
+});
 
 describe('getPaginationOffset', () => {
   it('calculates a zero-based offset from one-based pagination input', () => {

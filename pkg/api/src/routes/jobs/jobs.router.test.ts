@@ -1,4 +1,4 @@
-import { type Db, jobStages, jobs, products } from '@pkg/db';
+import { auditEvents, type Db, jobStages, jobs, products, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { AppRole, Department, UserAccessSummary } from '@pkg/schema';
 import pino from 'pino';
@@ -9,6 +9,7 @@ import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
 const test = createTester(async ({ db }) => {
+  await createActorUser(db);
   const product = await createProduct(db);
 
   return {
@@ -35,6 +36,7 @@ describe('jobs.create', () => {
 
     const jobRows = await context.db.select().from(jobs);
     const stageRows = await context.db.select().from(jobStages).orderBy(jobStages.sequence);
+    const auditRows = await context.db.select().from(auditEvents);
 
     expect(jobRows).toHaveLength(1);
     expect(jobRows[0]?.id).toBe(created.id);
@@ -48,6 +50,15 @@ describe('jobs.create', () => {
       [5, 'dispatch', 'pending'],
     ]);
     expect(created.stages).toHaveLength(5);
+    expect(auditRows).toMatchObject([
+      {
+        action: 'created',
+        actorUserId: 'test-user-id',
+        entityId: created.id,
+        entityType: 'job',
+        summary: `Created job "${created.id}"`,
+      },
+    ]);
   });
 
   test('rejects users without job create permission', async ({ context }) => {
@@ -142,6 +153,20 @@ async function createProduct(db: Db) {
   }
 
   return product;
+}
+
+async function createActorUser(db: Db) {
+  const now = new Date();
+
+  await db.insert(user).values({
+    createdAt: now,
+    email: 'test@example.com',
+    emailVerified: true,
+    id: 'test-user-id',
+    name: 'Test User',
+    role: 'admin',
+    updatedAt: now,
+  });
 }
 
 function createJobCaller(

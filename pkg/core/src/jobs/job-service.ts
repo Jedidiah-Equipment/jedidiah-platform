@@ -1,6 +1,7 @@
 import { type DatabaseTransaction, type Db, jobStages, jobs, products } from '@pkg/db';
 import { canViewStage } from '@pkg/domain';
 import {
+  type AuthId,
   JOB_STAGES,
   type Job,
   type JobCreateInput,
@@ -16,6 +17,7 @@ import {
 } from '@pkg/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 
+import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { JobNotFoundError } from './job-errors.js';
 
 const PIPELINE = JOB_STAGES.map((stage, index) => ({
@@ -53,7 +55,15 @@ export function mapJobStage(row: JobStageRow): JobStage {
   };
 }
 
-export async function createJob({ db, input }: { db: Db; input: JobCreateInput }): Promise<JobDetail> {
+export async function createJob({
+  db,
+  input,
+  actorUserId,
+}: {
+  db: Db;
+  input: JobCreateInput;
+  actorUserId: AuthId;
+}): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const [job] = await tx
       .insert(jobs)
@@ -75,7 +85,20 @@ export async function createJob({ db, input }: { db: Db; input: JobCreateInput }
       })),
     );
 
-    return getJobInTransaction({ db: tx, id: job.id });
+    await insertAuditEvent({
+      db: tx,
+      input: {
+        action: 'created',
+        actorUserId,
+        after: job,
+        before: null,
+        changes: null,
+        entityId: job.id,
+        entityType: jobAuditDescriptor.entityType,
+      },
+    });
+
+    return readJobDetail({ db: tx, id: job.id });
   });
 }
 
@@ -85,13 +108,9 @@ export async function listJobs({
   input: _input,
 }: {
   db: Db;
-  access: UserAccessSummary | null | undefined;
+  access: UserAccessSummary;
   input: JobListInput;
 }): Promise<JobListResult> {
-  if (!access) {
-    return { jobs: [] };
-  }
-
   const visibleStages = getVisibleStages(access);
 
   if (visibleStages?.length === 0) {
@@ -120,7 +139,7 @@ export async function listJobs({
 }
 
 export async function getJob({ db, access, id }: { db: Db; access: UserAccessSummary; id: UUID }): Promise<JobDetail> {
-  const detail = await getJobInTransaction({ db, id });
+  const detail = await readJobDetail({ db, id });
 
   return {
     ...detail,
@@ -128,7 +147,7 @@ export async function getJob({ db, access, id }: { db: Db; access: UserAccessSum
   };
 }
 
-async function getJobInTransaction({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<JobDetail> {
+async function readJobDetail({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<JobDetail> {
   const rows = await db
     .select({
       job: jobs,

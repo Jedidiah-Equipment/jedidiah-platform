@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 
 import { authClient } from '@/lib/auth-client.js';
-import { clearTrpcCache } from '@/lib/trpc-cache.js';
+import { clearReactQueryCache } from '@/lib/trpc-cache.js';
 
 export function useAuth() {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ export function useAuth() {
 
   async function onSignOut() {
     await authClient.signOut();
-    clearTrpcCache(queryClient);
+    clearReactQueryCache(queryClient);
     await navigate({ to: '/login' });
   }
 

@@ -136,6 +136,15 @@ describe('jobs.get', () => {
       { access: 'visible', sequence: 5, stage: 'dispatch' },
     ]);
   });
+
+  test('returns not found for a missing job', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+
+    await expect(caller.jobs.get({ id: '00000000-0000-4000-8000-000000000000' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Job not found.',
+    });
+  });
 });
 
 describe('job stage transitions', () => {
@@ -199,6 +208,23 @@ describe('job stage transitions', () => {
     expect(auditRows[3]?.changes).toHaveProperty('completedAt');
   });
 
+  test('allows a stage editor to update their own stage once the pipeline reaches it', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const paintCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', ['paint']);
+    const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+
+    await completeStages(supervisorCaller, created.id, ['procurement', 'fabrication', 'assembly']);
+    const started = await paintCaller.jobs.startStage({ id: created.id, stage: 'paint' });
+    const updated = await paintCaller.jobs.setStageStatus({
+      id: created.id,
+      stage: 'paint',
+      status: 'painting',
+    });
+
+    expect(getVisibleStage(started, 'paint').startedAt).toEqual(expect.any(String));
+    expect(getVisibleStage(updated, 'paint').status).toBe('painting');
+  });
+
   test('rejects starting a stage before the previous stage completes', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const created = await caller.jobs.create({ productId: context.product.id });
@@ -206,6 +232,28 @@ describe('job stage transitions', () => {
     await expect(caller.jobs.startStage({ id: created.id, stage: 'fabrication' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
       message: 'Previous stage is not complete.',
+    });
+  });
+
+  test('rejects starting a stage twice', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await caller.jobs.startStage({ id: created.id, stage: 'procurement' });
+
+    await expect(caller.jobs.startStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Stage has already started.',
+    });
+  });
+
+  test('rejects completing a stage before it starts', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await expect(caller.jobs.completeStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Stage has not started.',
     });
   });
 
@@ -219,6 +267,22 @@ describe('job stage transitions', () => {
     await expect(caller.jobs.completeStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
       message: 'Stage is already complete.',
+    });
+  });
+
+  test('rejects status updates before a stage starts', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await expect(
+      caller.jobs.setStageStatus({
+        id: created.id,
+        stage: 'procurement',
+        status: 'ordering',
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Stage has not started.',
     });
   });
 
@@ -237,6 +301,18 @@ describe('job stage transitions', () => {
     expect(getVisibleStage(updated, 'procurement').status).toBe('partial');
   });
 
+  test('rejects stage writes while the job lifecycle is not active', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const created = await caller.jobs.create({ productId: context.product.id });
+
+    await context.db.update(jobs).set({ lifecycleStatus: 'paused' });
+
+    await expect(caller.jobs.startStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Job is not active.',
+    });
+  });
+
   test('rejects writers outside the owning department', async ({ context }) => {
     const paintCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', ['paint']);
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
@@ -245,6 +321,17 @@ describe('job stage transitions', () => {
     await expect(paintCaller.jobs.startStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
       message: 'You do not have access to update this stage.',
+    });
+  });
+
+  test('returns not found for transitions on a missing job', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+
+    await expect(
+      caller.jobs.startStage({ id: '00000000-0000-4000-8000-000000000000', stage: 'procurement' }),
+    ).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Job not found.',
     });
   });
 
@@ -332,4 +419,11 @@ function getVisibleStage(job: Awaited<ReturnType<TestCaller['jobs']['get']>>, st
   }
 
   return jobStage;
+}
+
+async function completeStages(caller: TestCaller, id: string, stages: Department[]) {
+  for (const stage of stages) {
+    await caller.jobs.startStage({ id, stage });
+    await caller.jobs.completeStage({ id, stage });
+  }
 }

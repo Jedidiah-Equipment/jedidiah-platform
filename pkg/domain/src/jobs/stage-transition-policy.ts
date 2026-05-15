@@ -54,6 +54,10 @@ export function evaluateStageTransition(input: StageTransitionPolicyInput): Stag
     return evaluateCompleteTransition(input);
   }
 
+  if (!input.stage.startedAt) {
+    return deny('Stage has not started.');
+  }
+
   return allow();
 }
 

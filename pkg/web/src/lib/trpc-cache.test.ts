@@ -1,9 +1,9 @@
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 
-import { clearTrpcCache } from './trpc-cache.js';
+import { clearReactQueryCache } from './trpc-cache.js';
 
-describe('clearTrpcCache', () => {
+describe('clearReactQueryCache', () => {
   it('removes cached query data on auth changes', () => {
     const queryClient = new QueryClient();
     const accessQueryKey = [['auth', 'access'], { type: 'query' }];
@@ -13,7 +13,7 @@ describe('clearTrpcCache', () => {
       userId: 'previous-user-id',
     });
 
-    clearTrpcCache(queryClient);
+    clearReactQueryCache(queryClient);
 
     expect(queryClient.getQueryData(accessQueryKey)).toBeUndefined();
   });

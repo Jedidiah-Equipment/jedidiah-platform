@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { FieldGroup } from '@/components/ui/field.js';
 import { authClient } from '@/lib/auth-client.js';
-import { clearTrpcCache } from '@/lib/trpc-cache.js';
+import { clearReactQueryCache } from '@/lib/trpc-cache.js';
 import { departmentLabels } from '@/pages/users/components/department-labels.js';
 import { LoginForm } from './types.js';
 
@@ -41,7 +41,7 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
           return;
         }
 
-        clearTrpcCache(queryClient);
+        clearReactQueryCache(queryClient);
         await navigate({ to: '/dashboard' });
       } catch {
         setError('Unable to sign in.');

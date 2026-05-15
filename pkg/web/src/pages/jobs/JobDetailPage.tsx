@@ -153,9 +153,10 @@ const StagePanel: React.FC<StagePanelProps> = ({ isPending, jobId, onComplete, o
   const startAvailability = stage.access === 'visible' ? stage.transitionAvailability?.start : undefined;
   const statusAvailability = stage.access === 'visible' ? stage.transitionAvailability?.['set-status'] : undefined;
   const completeAvailability = stage.access === 'visible' ? stage.transitionAvailability?.complete : undefined;
-  const isActiveStage = stage.access === 'visible' && Boolean(stage.startedAt) && !stage.completedAt;
+  const hasStageStarted = stage.access === 'visible' && Boolean(stage.startedAt);
+  const isActiveStage = hasStageStarted && !stage.completedAt;
   const isStartDisabled = isPending || !startAvailability?.allowed;
-  const isStatusDisabled = isPending || !statusAvailability?.allowed;
+  const isStatusDisabled = isPending || !hasStageStarted || !statusAvailability?.allowed;
   const isCompleteDisabled = isPending || !completeAvailability?.allowed;
 
   React.useEffect(() => {

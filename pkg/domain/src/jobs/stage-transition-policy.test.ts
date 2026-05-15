@@ -51,7 +51,7 @@ const stageStates = [
     name: 'not started',
     stage: createStage({ completedAt: null, sequence: 4, stage: 'paint', startedAt: null }),
     startAllowedWhenPreviousComplete: true,
-    statusAllowed: true,
+    statusAllowed: false,
   },
   {
     completeAllowed: true,

@@ -397,17 +397,19 @@ async function readStageTransitionTarget({
     .from(jobs)
     .innerJoin(jobStages, eq(jobStages.jobId, jobs.id))
     .where(eq(jobs.id, id))
-    .orderBy(asc(jobStages.sequence));
+    .orderBy(asc(jobStages.sequence))
+    .for('update');
 
   const currentStageIndex = rows.findIndex((row) => row.stage.stage === stage);
-  const currentStage = rows[currentStageIndex]?.stage;
+  const currentRow = rows[currentStageIndex];
+  const currentStage = currentRow?.stage;
 
   if (!currentStage) {
     throw new JobNotFoundError(id);
   }
 
   return {
-    job: rows[currentStageIndex]?.job ?? rows[0]?.job ?? { lifecycleStatus: 'active' },
+    job: currentRow.job,
     previousStage: currentStageIndex > 0 ? (rows[currentStageIndex - 1]?.stage ?? null) : null,
     stage: currentStage,
   };

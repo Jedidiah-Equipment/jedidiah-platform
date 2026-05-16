@@ -20,12 +20,6 @@ type DateRangeFilterValue = {
   start?: string;
 };
 
-type AuditListQueryInput = Omit<AuditListInput, 'filters'> & {
-  filters: Omit<AuditListInput['filters'], 'entityIds'> & {
-    entityIds?: AuditListInput['filters']['entityIds'];
-  };
-};
-
 type AuditTableEvent = Omit<AuditEvent, 'changes'> & {
   changes: Record<string, { from?: unknown; to?: unknown }> | null;
 };
@@ -218,7 +212,7 @@ export const AuditTable: React.FC = () => {
   );
 };
 
-function useAuditListInput(): AuditListQueryInput {
+function useAuditListInput() {
   const { columnFilters, pagination, sorting } = useAuditTableStore(
     useShallow((state) => ({
       columnFilters: state.columnFilters,
@@ -232,7 +226,7 @@ function useAuditListInput(): AuditListQueryInput {
     const occurredAtRange = getDateRangeFilterValue(columnFilters, 'occurredAt');
     const occurredAtStart = occurredAtRange.start ? toLocalDayStartIso(occurredAtRange.start) : undefined;
     const occurredAtEnd = occurredAtRange.end ? toLocalDayEndIso(occurredAtRange.end) : undefined;
-    const sortDirection = sort.desc ? 'desc' : 'asc';
+    const sortDirection = sort.desc ? ('desc' as const) : ('asc' as const);
 
     return {
       filters: {

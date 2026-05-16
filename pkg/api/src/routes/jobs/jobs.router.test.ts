@@ -42,6 +42,8 @@ describe('jobs.create', () => {
 
     expect(jobRows).toHaveLength(1);
     expect(jobRows[0]?.id).toBe(created.id);
+    expect(jobRows[0]?.code).toBe(created.code);
+    expect(created.code).toMatch(/^JOB-[0-9A-F]{8}$/);
     expect(stageRows).toHaveLength(5);
     expect(stageRows.every((stage) => stage.jobId === created.id)).toBe(true);
     expect(stageRows.map((stage) => [stage.sequence, stage.stage, stage.status])).toEqual([
@@ -58,7 +60,7 @@ describe('jobs.create', () => {
         actorUserId: 'test-user-id',
         entityId: created.id,
         entityType: 'job',
-        summary: `Created job "${created.id}"`,
+        summary: `Created job "${created.code}"`,
       },
     ]);
   });
@@ -189,17 +191,26 @@ describe('jobs.list', () => {
 
     expect(ascending.items.map((job) => job.id)).toEqual([...activeIds, paused.id]);
     expect(descending.items.map((job) => job.id)).toEqual([paused.id, ...activeIds]);
+
+    const byCode = await caller.jobs.list({
+      filters: {
+        lifecycleStatuses: [],
+      },
+      sortBy: 'code',
+    });
+    expect(byCode.items.map((job) => job.code)).toEqual([...byCode.items.map((job) => job.code)].sort());
   });
 
-  test('searches by job id', async ({ context }) => {
+  test('searches by job code and id', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const created = await caller.jobs.create({ productId: context.product.id });
 
+    await expectJobListIds(caller, { search: created.code }, [created.id]);
     await expectJobListIds(caller, { search: created.id.slice(0, 8) }, [created.id]);
     await expectJobListIds(caller, { search: 'missing-search-term' }, []);
   });
 
-  test('escapes job id search wildcards', async ({ context }) => {
+  test('escapes job search wildcards', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     await caller.jobs.create({ productId: context.product.id });
 
@@ -746,6 +757,13 @@ describe('job lifecycle transitions', () => {
       payload: { fromLifecycleStatus: 'paused', toLifecycleStatus: 'active' },
       stageId: null,
     });
+
+    const auditRows = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+    expect(auditRows.filter((event) => event.entityType === 'job').map((event) => event.summary)).toEqual([
+      `Created job "${created.code}"`,
+      `Updated job "${created.code}"`,
+      `Updated job "${created.code}"`,
+    ]);
   });
 
   test('cancels from active or paused and leaves stage rows unchanged', async ({ context }) => {

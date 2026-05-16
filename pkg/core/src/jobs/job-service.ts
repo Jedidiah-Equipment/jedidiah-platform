@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   createLikeSearchPattern,
   type DatabaseTransaction,
@@ -37,7 +39,7 @@ import {
   type JobStageStatusInput,
   type JobSummary,
   type UserAccessSummary,
-  type UUID,
+  UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
@@ -56,6 +58,7 @@ type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
 type JobWithProductRow = JobRow & {
   product: ProductRow;
 };
+type JobAuditRecord = Pick<JobRow, 'code' | 'lifecycleStatus' | 'productId'>;
 
 type JobLifecycleTransition = 'pause' | 'resume' | 'cancel';
 
@@ -87,6 +90,7 @@ const jobLifecycleTransitionConfig = {
 export function mapJob(row: JobRow): Job {
   return {
     createdAt: row.createdAt.toISOString(),
+    code: row.code,
     id: row.id,
     lifecycleStatus: row.lifecycleStatus,
     productId: row.productId,
@@ -140,9 +144,12 @@ export async function createJob({
   actorUserId: AuthId;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
+    const id = UUID.parse(randomUUID());
     const [job] = await tx
       .insert(jobs)
       .values({
+        code: createJobCode(id),
+        id,
         productId: input.productId,
       })
       .returning();
@@ -165,7 +172,7 @@ export async function createJob({
       input: {
         action: 'created',
         actorUserId,
-        after: job,
+        after: mapJobAuditRecord(job),
         before: null,
         changes: null,
         entityId: job.id,
@@ -193,6 +200,7 @@ export async function listJobs({
     columns: {
       createdAt: true,
       id: true,
+      code: true,
       lifecycleStatus: true,
       productId: true,
       updatedAt: true,
@@ -230,7 +238,9 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
 
   if (input.search) {
     const searchPattern = createLikeSearchPattern(input.search);
-    conditions.push(sql`${jobs.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
+    conditions.push(
+      sql`(${jobs.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE} or ${jobs.code} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE})`,
+    );
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;
@@ -248,6 +258,7 @@ export async function getJob({
   const row = await db.query.jobs.findFirst({
     columns: {
       createdAt: true,
+      code: true,
       id: true,
       lifecycleStatus: true,
       productId: true,
@@ -479,6 +490,7 @@ function mapJobSummary(row: JobWithProductRow): JobSummary {
 
 function getJobSortColumn(sortBy: JobSortBy): SQL {
   const columns = {
+    code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
     lifecycleStatus: sql`${jobs.lifecycleStatus}`,
@@ -681,20 +693,28 @@ async function transitionJobLifecycle({
   transition: JobLifecycleTransition;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
-    const [job] = await tx.select().from(jobs).where(eq(jobs.id, id)).for('update');
+    const [row] = await tx
+      .select({
+        job: jobs,
+      })
+      .from(jobs)
+      .where(eq(jobs.id, id))
+      .for('update');
 
-    if (!job) {
+    if (!row) {
       throw new JobNotFoundError(id);
     }
 
     const config = jobLifecycleTransitionConfig[transition];
-    if (!(config.allowedFrom as readonly JobLifecycleStatus[]).includes(job.lifecycleStatus)) {
-      throw new JobLifecycleTransitionDeniedError(getLifecycleTransitionDeniedReason(transition, job.lifecycleStatus));
+    if (!(config.allowedFrom as readonly JobLifecycleStatus[]).includes(row.job.lifecycleStatus)) {
+      throw new JobLifecycleTransitionDeniedError(
+        getLifecycleTransitionDeniedReason(transition, row.job.lifecycleStatus),
+      );
     }
 
     await applyJobLifecycleStatusChange({
       actorUserId,
-      before: job,
+      before: mapJobAuditRecord(row.job),
       eventType: config.eventType,
       id,
       nextStatus: config.nextStatus,
@@ -705,6 +725,18 @@ async function transitionJobLifecycle({
   });
 }
 
+function createJobCode(id: UUID): string {
+  return `JOB-${id.slice(0, 8).toUpperCase()}`;
+}
+
+function mapJobAuditRecord(job: Pick<JobRow, 'code' | 'lifecycleStatus' | 'productId'>): JobAuditRecord {
+  return {
+    code: job.code,
+    lifecycleStatus: job.lifecycleStatus,
+    productId: job.productId,
+  };
+}
+
 async function completeJobLifecycle({
   actorUserId,
   before,
@@ -712,7 +744,7 @@ async function completeJobLifecycle({
   tx,
 }: {
   actorUserId: AuthId;
-  before: Pick<JobRow, 'lifecycleStatus'>;
+  before: JobAuditRecord;
   id: UUID;
   tx: DatabaseTransaction;
 }): Promise<void> {
@@ -735,7 +767,7 @@ async function applyJobLifecycleStatusChange({
   tx,
 }: {
   actorUserId: AuthId;
-  before: Pick<JobRow, 'lifecycleStatus'>;
+  before: JobAuditRecord;
   eventType: Extract<JobEvent['eventType'], `job.${string}`>;
   id: UUID;
   nextStatus: JobLifecycleStatus;
@@ -754,14 +786,15 @@ async function applyJobLifecycleStatusChange({
     throw new JobNotFoundError(id);
   }
 
+  const after = mapJobAuditRecord(updatedJob);
   await insertAuditEvent({
     db: tx,
     input: {
       action: 'updated',
       actorUserId,
-      after: mapJob(updatedJob),
+      after,
       before,
-      changes: createAuditChanges(before, updatedJob, {
+      changes: createAuditChanges(before, after, {
         lifecycleStatus: jobAuditDescriptor.fields.lifecycleStatus ?? 'lifecycle status',
       }),
       entityId: updatedJob.id,
@@ -801,7 +834,7 @@ function getLifecycleTransitionDeniedReason(
 }
 
 type StageTransitionTarget = {
-  job: Pick<JobRow, 'lifecycleStatus'>;
+  job: JobAuditRecord;
   previousStage: JobStageRow | null;
   stage: JobStageRow;
 };
@@ -835,7 +868,7 @@ async function readStageTransitionTarget({
   }
 
   return {
-    job: currentRow.job,
+    job: mapJobAuditRecord(currentRow.job),
     previousStage: currentStageIndex > 0 ? (rows[currentStageIndex - 1]?.stage ?? null) : null,
     stage: currentStage,
   };

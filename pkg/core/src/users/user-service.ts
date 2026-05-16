@@ -85,6 +85,7 @@ export async function setUserDepartments({
   userId: AuthId;
 }): Promise<Department[]> {
   return db.transaction(async (tx) => {
+    const targetUser = await getAuditTargetUser({ db: tx, userId });
     const before = await listUserDepartments({ db: tx, userId });
     const after = await setUserDepartmentsInTransaction({
       db: tx,
@@ -113,11 +114,13 @@ export async function setUserDepartments({
           actorUserId,
           after: {
             department,
+            email: targetUser.email,
             id: userId,
             member: isMember,
           },
           before: {
             department,
+            email: targetUser.email,
             id: userId,
             member: wasMember,
           },
@@ -130,6 +133,27 @@ export async function setUserDepartments({
 
     return after;
   });
+}
+
+async function getAuditTargetUser({
+  db,
+  userId,
+}: {
+  db: DatabaseTransaction;
+  userId: AuthId;
+}): Promise<Pick<typeof user.$inferSelect, 'email'>> {
+  const [targetUser] = await db
+    .select({
+      email: user.email,
+    })
+    .from(user)
+    .where(eq(user.id, userId));
+
+  if (!targetUser) {
+    throw new Error('Audit target user was not found');
+  }
+
+  return targetUser;
 }
 
 export async function listUserDepartments({

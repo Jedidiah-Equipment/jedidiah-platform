@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createAuditChanges, createAuditSummary, productAuditDescriptor } from './audit-service.js';
+import { createAuditChanges, createAuditSummary, jobAuditDescriptor, productAuditDescriptor } from './audit-service.js';
 
 describe('createAuditChanges', () => {
   it('returns changed audited fields only', () => {
@@ -74,5 +74,22 @@ describe('createAuditSummary', () => {
         entityType: 'product',
       }),
     ).toBe('Updated product "Wheel Loader"');
+  });
+
+  it('uses the job code for job summaries', () => {
+    expect(
+      createAuditSummary({
+        action: 'updated',
+        after: { code: 'JOB-ABC12345', lifecycleStatus: 'paused' },
+        before: { code: 'JOB-ABC12345', lifecycleStatus: 'active' },
+        changes: {
+          lifecycleStatus: {
+            from: 'active',
+            to: 'paused',
+          },
+        },
+        entityType: jobAuditDescriptor.entityType,
+      }),
+    ).toBe('Updated job "JOB-ABC12345"');
   });
 });

@@ -58,7 +58,7 @@ export const productOptionAuditDescriptor: AuditEntityDescriptor = {
 export const userAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'user',
   noun: 'user',
-  primaryLabelField: 'id',
+  primaryLabelField: 'email',
   fields: {
     department: 'department',
     member: 'department membership',
@@ -68,7 +68,7 @@ export const userAuditDescriptor: AuditEntityDescriptor = {
 export const jobAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'job',
   noun: 'job',
-  primaryLabelField: 'id',
+  primaryLabelField: 'code',
   fields: {
     lifecycleStatus: 'lifecycle status',
     productId: 'product',

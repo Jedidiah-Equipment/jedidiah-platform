@@ -1,7 +1,15 @@
 import { hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { Link, linkOptions } from '@tanstack/react-router';
-import { BotIcon, BoxesIcon, BriefcaseBusinessIcon, GaugeIcon, type LucideIcon, UsersIcon } from 'lucide-react';
+import {
+  BotIcon,
+  BoxesIcon,
+  BriefcaseBusinessIcon,
+  ClipboardListIcon,
+  GaugeIcon,
+  type LucideIcon,
+  UsersIcon,
+} from 'lucide-react';
 import type React from 'react';
 
 import {
@@ -51,6 +59,12 @@ const mainNavItems = [
     permission: 'user:list',
     link: linkOptions({ to: '/users' }),
     icon: UsersIcon,
+  },
+  {
+    title: 'Audit',
+    permission: 'audit:read',
+    link: linkOptions({ to: '/audit' }),
+    icon: ClipboardListIcon,
   },
 ] as const satisfies readonly MainNavItem[];
 

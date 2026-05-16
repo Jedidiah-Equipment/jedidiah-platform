@@ -217,6 +217,7 @@ export const JobStageRollup = z.discriminatedUnion('access', [VisibleJobStage, L
 export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
+  code: z.string().trim().min(1),
   productId: UUID,
   lifecycleStatus: JobLifecycleStatus.default('active'),
   createdAt: z.iso.datetime(),
@@ -230,7 +231,7 @@ export const JobSummary = Job.extend({
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
-export const JobSortBy = z.enum(['createdAt', 'id', 'lifecycleStatus']);
+export const JobSortBy = z.enum(['code', 'createdAt', 'id', 'lifecycleStatus']);
 
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z

@@ -5,15 +5,20 @@ import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } fr
 import { user } from './auth.js';
 import { products } from './product.js';
 
-export const jobs = pgTable('job', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'restrict' }),
-  lifecycleStatus: text('lifecycle_status').notNull().default('active').$type<JobLifecycleStatus>(),
-  createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
-});
+export const jobs = pgTable(
+  'job',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    code: text('code').notNull(),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'restrict' }),
+    lifecycleStatus: text('lifecycle_status').notNull().default('active').$type<JobLifecycleStatus>(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('job_code_unique').on(table.code)],
+);
 
 export const jobStages = pgTable(
   'job_stage',

@@ -136,6 +136,7 @@ describe('users.list', () => {
           }),
           entityId: multiDepartmentUserId,
           entityType: 'user',
+          summary: 'Updated user "multi-department@example.com"',
         }),
         expect.objectContaining({
           actorUserId: 'test-user-id',
@@ -147,6 +148,7 @@ describe('users.list', () => {
           }),
           entityId: multiDepartmentUserId,
           entityType: 'user',
+          summary: 'Updated user "multi-department@example.com"',
         }),
       ]),
     );

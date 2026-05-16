@@ -8,6 +8,7 @@ describe('JobDetail', () => {
 
     expect(() =>
       JobDetail.parse({
+        code: 'JOB-00000000',
         createdAt: '2026-05-15T08:00:00.000Z',
         id: jobId,
         lifecycleStatus: 'active',

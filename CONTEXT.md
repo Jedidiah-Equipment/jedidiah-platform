@@ -88,6 +88,12 @@ The user-facing chronological view of a Job's Job Events. Distinct from the fore
 **Completed-Stage Visibility**:
 A UI/query-default convention — list views hide Stages whose `completed_at` is set; an `includeCompleted` toggle reveals them. **No persisted flag**; not an authorization concept. Detail views always show the full Pipeline.
 
+### Customers
+
+**Customer**:
+A business or organization the company builds equipment for. A standalone directory record — Company Name and Email are required; Address (free-text), Contact Person, Phone, and Notes are optional.
+_Avoid_: Client, Account, Buyer. "Contact" is a field on a Customer (`contactPerson`), not a synonym for Customer.
+
 ## Relationships
 
 - A **Job** has exactly five **Stages**, materialised at creation, one per **Department** in fixed Pipeline order.
@@ -96,6 +102,7 @@ A UI/query-default convention — list views hide Stages whose `completed_at` is
 - A **Stage** mutation requires: (verb permission from the User's Role) AND (the Job's Lifecycle Status is `active`) AND (the Stage's Sequence is reachable per the Stage Transition Policy) AND (Scope rule — if the User has Department memberships, the Stage's Department is among them; a User with no memberships is unscoped).
 - Pipeline reachability is governed by `completed_at`, not by the Stage Status label. `status = 'complete'` is synchronized with completion when first selected, but status edits after completion do not reopen or re-block the Pipeline.
 - Every Stage state change writes one **Audit Event** + one **Job Event** in the same transaction.
+- A **Customer** is standalone — it has no relationship to any **Job**, **Stage**, or **Product**. The eventual **Job → Quote → Customer** chain is deferred until a **Quote** concept exists; the Customer↔Quote link will live on Quote, so no Customer change is anticipated for it.
 
 ## Example dialogue
 

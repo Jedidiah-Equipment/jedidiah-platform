@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import {
   createLikeSearchPattern,
   type DatabaseTransaction,
@@ -39,7 +37,7 @@ import {
   type JobStageStatusInput,
   type JobSummary,
   type UserAccessSummary,
-  UUID,
+  type UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
@@ -144,12 +142,9 @@ export async function createJob({
   actorUserId: AuthId;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
-    const id = UUID.parse(randomUUID());
     const [job] = await tx
       .insert(jobs)
       .values({
-        code: createJobCode(id),
-        id,
         productId: input.productId,
       })
       .returning();
@@ -238,8 +233,9 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
 
   if (input.search) {
     const searchPattern = createLikeSearchPattern(input.search);
+    const codeSearch = parseJobCodeSearch(input.search);
     conditions.push(
-      sql`(${jobs.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE} or ${jobs.code} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE})`,
+      sql`(${jobs.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE} or ${jobs.code}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}${codeSearch === undefined ? sql`` : sql` or ${jobs.code} = ${codeSearch}`})`,
     );
   }
 
@@ -725,16 +721,24 @@ async function transitionJobLifecycle({
   });
 }
 
-function createJobCode(id: UUID): string {
-  return `JOB-${id.slice(0, 8).toUpperCase()}`;
-}
-
 function mapJobAuditRecord(job: Pick<JobRow, 'code' | 'lifecycleStatus' | 'productId'>): JobAuditRecord {
   return {
     code: job.code,
     lifecycleStatus: job.lifecycleStatus,
     productId: job.productId,
   };
+}
+
+function parseJobCodeSearch(search: string): number | undefined {
+  const normalized = search.trim().replace(/^JOB-/i, '');
+
+  if (!/^\d+$/.test(normalized)) {
+    return undefined;
+  }
+
+  const code = Number.parseInt(normalized, 10);
+
+  return Number.isSafeInteger(code) && code > 0 ? code : undefined;
 }
 
 async function completeJobLifecycle({

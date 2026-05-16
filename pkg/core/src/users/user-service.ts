@@ -12,6 +12,7 @@ import {
 import { asc, eq, inArray } from 'drizzle-orm';
 
 import { insertAuditEvent } from '../audit/audit-service.js';
+import { UserNotFoundError } from './user-errors.js';
 
 type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'name'> & {
   departments: readonly Department[];
@@ -150,7 +151,7 @@ async function getAuditTargetUser({
     .where(eq(user.id, userId));
 
   if (!targetUser) {
-    throw new Error('Audit target user was not found');
+    throw new UserNotFoundError(userId);
   }
 
   return targetUser;

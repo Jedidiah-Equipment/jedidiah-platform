@@ -217,7 +217,7 @@ export const JobStageRollup = z.discriminatedUnion('access', [VisibleJobStage, L
 export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
-  code: z.string().trim().min(1),
+  code: z.int().positive(),
   productId: UUID,
   lifecycleStatus: JobLifecycleStatus.default('active'),
   createdAt: z.iso.datetime(),

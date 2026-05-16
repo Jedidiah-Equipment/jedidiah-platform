@@ -1,4 +1,4 @@
-import { jobLifecycleStatusLabels } from '@pkg/domain';
+import { formatJobCode, jobLifecycleStatusLabels } from '@pkg/domain';
 import {
   JOB_LIST_STATUS_FILTERS,
   type JobLifecycleStatus,
@@ -167,7 +167,7 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
             <div className="min-w-0">
               <div className="truncate font-medium">{row.original.productName}</div>
               <p className="truncate text-sm text-muted-foreground">
-                {row.original.productModelCode} · {row.original.id}
+                {row.original.productModelCode} · {formatJobCode(row.original.code)}
               </p>
             </div>
           </div>
@@ -195,7 +195,7 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
         cell: ({ row }) => (
           <div className="text-right">
             <Button
-              aria-label={`Open job ${row.original.id}`}
+              aria-label={`Open job ${formatJobCode(row.original.code)}`}
               onClick={() => navigate({ params: { id: row.original.id }, to: '/jobs/$id' })}
               size="icon-sm"
               variant="outline"

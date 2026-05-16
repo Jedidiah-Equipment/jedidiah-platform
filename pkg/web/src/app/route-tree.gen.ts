@@ -16,6 +16,7 @@ import { Route as AuthedUsersRouteImport } from './../routes/_authed.users'
 import { Route as AuthedProductsRouteImport } from './../routes/_authed.products'
 import { Route as AuthedJobsRouteImport } from './../routes/_authed.jobs'
 import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboard'
+import { Route as AuthedAuditRouteImport } from './../routes/_authed.audit'
 import { Route as AuthedAssistantRouteImport } from './../routes/_authed.assistant'
 import { Route as AuthedProductsIndexRouteImport } from './../routes/_authed.products.index'
 import { Route as AuthedJobsIndexRouteImport } from './../routes/_authed.jobs.index'
@@ -57,6 +58,11 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedAuditRoute = AuthedAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedAssistantRoute = AuthedAssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/assistant': typeof AuthedAssistantRoute
+  '/audit': typeof AuthedAuditRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/jobs': typeof AuthedJobsRouteWithChildren
   '/products': typeof AuthedProductsRouteWithChildren
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/assistant': typeof AuthedAssistantRoute
+  '/audit': typeof AuthedAuditRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/_authed': typeof AuthedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authed/assistant': typeof AuthedAssistantRoute
+  '/_authed/audit': typeof AuthedAuditRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/jobs': typeof AuthedJobsRouteWithChildren
   '/_authed/products': typeof AuthedProductsRouteWithChildren
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/assistant'
+    | '/audit'
     | '/dashboard'
     | '/jobs'
     | '/products'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/assistant'
+    | '/audit'
     | '/dashboard'
     | '/users'
     | '/jobs/$id'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/_authed'
     | '/login'
     | '/_authed/assistant'
+    | '/_authed/audit'
     | '/_authed/dashboard'
     | '/_authed/jobs'
     | '/_authed/products'
@@ -229,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthedDashboardRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/audit': {
+      id: '/_authed/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuthedAuditRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/assistant': {
@@ -308,6 +327,7 @@ const AuthedProductsRouteWithChildren = AuthedProductsRoute._addFileChildren(
 
 interface AuthedRouteChildren {
   AuthedAssistantRoute: typeof AuthedAssistantRoute
+  AuthedAuditRoute: typeof AuthedAuditRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedJobsRoute: typeof AuthedJobsRouteWithChildren
   AuthedProductsRoute: typeof AuthedProductsRouteWithChildren
@@ -316,6 +336,7 @@ interface AuthedRouteChildren {
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAssistantRoute: AuthedAssistantRoute,
+  AuthedAuditRoute: AuthedAuditRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedJobsRoute: AuthedJobsRouteWithChildren,
   AuthedProductsRoute: AuthedProductsRouteWithChildren,

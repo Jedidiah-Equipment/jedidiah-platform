@@ -1,4 +1,5 @@
 import { auditEvents, type DatabaseTransaction, type Db, user, withPagination } from '@pkg/db';
+import { formatJobCode } from '@pkg/domain';
 import type {
   AuditAction,
   AuditChanges,
@@ -15,6 +16,7 @@ type AuditEntityDescriptor = {
   entityType: AuditEntityType;
   noun: string;
   primaryLabelField: string;
+  primaryLabelFormatter?: (value: unknown) => string;
   fields: Record<string, string>;
 };
 
@@ -58,7 +60,7 @@ export const productOptionAuditDescriptor: AuditEntityDescriptor = {
 export const userAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'user',
   noun: 'user',
-  primaryLabelField: 'id',
+  primaryLabelField: 'email',
   fields: {
     department: 'department',
     member: 'department membership',
@@ -68,7 +70,8 @@ export const userAuditDescriptor: AuditEntityDescriptor = {
 export const jobAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'job',
   noun: 'job',
-  primaryLabelField: 'id',
+  primaryLabelField: 'code',
+  primaryLabelFormatter: (value) => (typeof value === 'number' ? formatJobCode(value) : String(value)),
   fields: {
     lifecycleStatus: 'lifecycle status',
     productId: 'product',
@@ -131,7 +134,7 @@ export function createAuditSummary(input: CreateAuditSummaryInput): string {
 
   const primaryFieldChange = input.changes?.[descriptor.primaryLabelField];
   if (primaryFieldChange) {
-    return `Renamed ${descriptor.noun} ${quoteLabel(primaryFieldChange.from)} to ${quoteLabel(primaryFieldChange.to)}`;
+    return `Renamed ${descriptor.noun} ${quoteLabel(formatEntityLabel(descriptor, primaryFieldChange.from))} to ${quoteLabel(formatEntityLabel(descriptor, primaryFieldChange.to))}`;
   }
 
   return `Updated ${descriptor.noun} ${quoteLabel(getEntityLabel(descriptor, input.after ?? input.before))}`;
@@ -235,12 +238,16 @@ function getAuditEntityDescriptor(entityType: AuditEntityType): AuditEntityDescr
   return auditEntityDescriptors[entityType];
 }
 
-function getEntityLabel(descriptor: AuditEntityDescriptor, record: AuditRecord | null | undefined): unknown {
-  return record?.[descriptor.primaryLabelField] ?? 'Unknown';
+function getEntityLabel(descriptor: AuditEntityDescriptor, record: AuditRecord | null | undefined): string {
+  return formatEntityLabel(descriptor, record?.[descriptor.primaryLabelField] ?? 'Unknown');
 }
 
-function quoteLabel(value: unknown): string {
-  return `"${String(value)}"`;
+function formatEntityLabel(descriptor: AuditEntityDescriptor, value: unknown): string {
+  return descriptor.primaryLabelFormatter?.(value) ?? String(value);
+}
+
+function quoteLabel(value: string): string {
+  return `"${value}"`;
 }
 
 function toAuditValue(value: unknown): unknown | null {

@@ -10,6 +10,8 @@ import { getCellClassName } from './utils.js';
 declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     cellClassName?: string;
+    filterOptions?: { label: string; value: string }[];
+    filterVariant?: 'date-range' | 'multi-select' | 'select' | 'text';
     headerClassName?: string;
   }
 }
@@ -19,9 +21,11 @@ type DataTableProps<TData> = {
   errorMessage?: string | undefined;
   filterDebounceMs?: number;
   globalFilterPlaceholder?: string;
+  hideGlobalFilter?: boolean;
   isLoading?: boolean;
   loadingRowCount?: number;
   pageSizeOptions?: number[];
+  tableClassName?: string;
   table: TanStackTable<TData>;
   total: number;
   totalLabel?: (total: number) => React.ReactNode;
@@ -32,10 +36,12 @@ export function DataTable<TData>({
   errorMessage,
   filterDebounceMs = 250,
   globalFilterPlaceholder = 'Search...',
+  hideGlobalFilter = false,
   isLoading = false,
   loadingRowCount = 4,
   pageSizeOptions = [10, 25, 50],
   table,
+  tableClassName,
   total,
   totalLabel = (value) => `${value} ${value === 1 ? 'row' : 'rows'}`,
 }: DataTableProps<TData>) {
@@ -43,7 +49,9 @@ export function DataTable<TData>({
 
   return (
     <div className="flex flex-col gap-4">
-      <DataTableSearch debounceMs={filterDebounceMs} placeholder={globalFilterPlaceholder} table={table} />
+      {hideGlobalFilter ? null : (
+        <DataTableSearch debounceMs={filterDebounceMs} placeholder={globalFilterPlaceholder} table={table} />
+      )}
 
       {errorMessage ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -52,7 +60,7 @@ export function DataTable<TData>({
       ) : null}
 
       <div className="rounded-lg border">
-        <Table>
+        <Table className={tableClassName}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

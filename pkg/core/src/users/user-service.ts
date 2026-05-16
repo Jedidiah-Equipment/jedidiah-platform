@@ -12,6 +12,7 @@ import {
 import { asc, eq, inArray } from 'drizzle-orm';
 
 import { insertAuditEvent } from '../audit/audit-service.js';
+import { UserNotFoundError } from './user-errors.js';
 
 type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'name'> & {
   departments: readonly Department[];
@@ -85,6 +86,7 @@ export async function setUserDepartments({
   userId: AuthId;
 }): Promise<Department[]> {
   return db.transaction(async (tx) => {
+    const targetUser = await getAuditTargetUser({ db: tx, userId });
     const before = await listUserDepartments({ db: tx, userId });
     const after = await setUserDepartmentsInTransaction({
       db: tx,
@@ -113,11 +115,13 @@ export async function setUserDepartments({
           actorUserId,
           after: {
             department,
+            email: targetUser.email,
             id: userId,
             member: isMember,
           },
           before: {
             department,
+            email: targetUser.email,
             id: userId,
             member: wasMember,
           },
@@ -130,6 +134,27 @@ export async function setUserDepartments({
 
     return after;
   });
+}
+
+async function getAuditTargetUser({
+  db,
+  userId,
+}: {
+  db: DatabaseTransaction;
+  userId: AuthId;
+}): Promise<Pick<typeof user.$inferSelect, 'email'>> {
+  const [targetUser] = await db
+    .select({
+      email: user.email,
+    })
+    .from(user)
+    .where(eq(user.id, userId));
+
+  if (!targetUser) {
+    throw new UserNotFoundError(userId);
+  }
+
+  return targetUser;
 }
 
 export async function listUserDepartments({

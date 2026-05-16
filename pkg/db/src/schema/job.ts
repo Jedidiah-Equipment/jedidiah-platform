@@ -1,19 +1,26 @@
 import type { JobLifecycleStatus, JobStageName, JobStageStatus } from '@pkg/schema';
-import { relations } from 'drizzle-orm';
-import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import { index, integer, jsonb, pgSequence, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { products } from './product.js';
 
-export const jobs = pgTable('job', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'restrict' }),
-  lifecycleStatus: text('lifecycle_status').notNull().default('active').$type<JobLifecycleStatus>(),
-  createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
-});
+export const jobCodeSequence = pgSequence('job_code_seq');
+
+export const jobs = pgTable(
+  'job',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    code: integer('code').notNull().default(sql`nextval('job_code_seq'::regclass)`),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'restrict' }),
+    lifecycleStatus: text('lifecycle_status').notNull().default('active').$type<JobLifecycleStatus>(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('job_code_unique').on(table.code)],
+);
 
 export const jobStages = pgTable(
   'job_stage',

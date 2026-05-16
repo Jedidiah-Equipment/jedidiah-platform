@@ -20,6 +20,12 @@ type DateRangeFilterValue = {
   start?: string;
 };
 
+type AuditListQueryInput = Omit<AuditListInput, 'filters'> & {
+  filters: Omit<AuditListInput['filters'], 'entityIds'> & {
+    entityIds?: AuditListInput['filters']['entityIds'];
+  };
+};
+
 type AuditTableEvent = Omit<AuditEvent, 'changes'> & {
   changes: Record<string, { from?: unknown; to?: unknown }> | null;
 };
@@ -89,29 +95,18 @@ export const AuditTable: React.FC = () => {
   );
   const { items: auditEvents, total, isLoading } = usePagedQueryResult<AuditTableEvent>(auditQuery);
 
-  const {
-    columnFilters,
-    globalFilter,
-    pagination,
-    setColumnFilters,
-    setGlobalFilter,
-    setPageIndex,
-    setPagination,
-    setSorting,
-    sorting,
-  } = useAuditTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      setColumnFilters: state.setColumnFilters,
-      setGlobalFilter: state.setGlobalFilter,
-      setPageIndex: state.setPageIndex,
-      setPagination: state.setPagination,
-      setSorting: state.setSorting,
-      sorting: state.sorting,
-    })),
-  );
+  const { columnFilters, pagination, setColumnFilters, setPageIndex, setPagination, setSorting, sorting } =
+    useAuditTableStore(
+      useShallow((state) => ({
+        columnFilters: state.columnFilters,
+        pagination: state.pagination,
+        setColumnFilters: state.setColumnFilters,
+        setPageIndex: state.setPageIndex,
+        setPagination: state.setPagination,
+        setSorting: state.setSorting,
+        sorting: state.sorting,
+      })),
+    );
   const tableState = useConstrainedTableState({
     pagination,
     setPageIndex,
@@ -198,14 +193,12 @@ export const AuditTable: React.FC = () => {
     manualPagination: true,
     manualSorting: true,
     onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
     pageCount: tableState.pageCount,
     rowCount: total,
     state: {
       columnFilters,
-      globalFilter,
       pagination: tableState.pagination,
       sorting: tableState.sorting,
     },
@@ -225,7 +218,7 @@ export const AuditTable: React.FC = () => {
   );
 };
 
-function useAuditListInput(): AuditListInput {
+function useAuditListInput(): AuditListQueryInput {
   const { columnFilters, pagination, sorting } = useAuditTableStore(
     useShallow((state) => ({
       columnFilters: state.columnFilters,
@@ -239,11 +232,11 @@ function useAuditListInput(): AuditListInput {
     const occurredAtRange = getDateRangeFilterValue(columnFilters, 'occurredAt');
     const occurredAtStart = occurredAtRange.start ? toLocalDayStartIso(occurredAtRange.start) : undefined;
     const occurredAtEnd = occurredAtRange.end ? toLocalDayEndIso(occurredAtRange.end) : undefined;
+    const sortDirection = sort.desc ? 'desc' : 'asc';
 
     return {
       filters: {
         actorUserIds: getMultiSelectFilterValue(columnFilters, 'actorUserId'),
-        entityIds: [],
         entityTypes: getEntityTypeFilterValue(columnFilters),
         ...(occurredAtStart ? { occurredAtStart } : {}),
         ...(occurredAtEnd ? { occurredAtEnd } : {}),
@@ -251,8 +244,8 @@ function useAuditListInput(): AuditListInput {
       page: pagination.pageIndex + 1,
       pageSize: pagination.pageSize,
       sortBy: sort.id,
-      sortDirection: sort.desc ? 'desc' : 'asc',
-    } satisfies AuditListInput;
+      sortDirection,
+    };
   }, [columnFilters, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id]);
 }
 

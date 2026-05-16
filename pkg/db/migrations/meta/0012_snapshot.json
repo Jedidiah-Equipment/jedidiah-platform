@@ -855,9 +855,10 @@
         },
         "code": {
           "name": "code",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "nextval('job_code_seq'::regclass)"
         },
         "product_id": {
           "name": "product_id",
@@ -1135,7 +1136,18 @@
   },
   "enums": {},
   "schemas": {},
-  "sequences": {},
+  "sequences": {
+    "public.job_code_seq": {
+      "name": "job_code_seq",
+      "schema": "public",
+      "increment": "1",
+      "minValue": "1",
+      "maxValue": "9223372036854775807",
+      "startWith": "1",
+      "cache": "1",
+      "cycle": false
+    }
+  },
   "roles": {},
   "policies": {},
   "views": {},

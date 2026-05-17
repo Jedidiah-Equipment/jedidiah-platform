@@ -16,6 +16,7 @@ const authRoles = {
   'job-viewer': ac.newRole(appRoleAccess['job-viewer']),
   'product-editor': ac.newRole(appRoleAccess['product-editor']),
   'product-viewer': ac.newRole(appRoleAccess['product-viewer']),
+  sales: ac.newRole(appRoleAccess.sales),
 };
 
 export const authClient = createAuthClient({

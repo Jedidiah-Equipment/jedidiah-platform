@@ -38,6 +38,14 @@ export const demoUsers = [
   },
   {
     departments: [],
+    id: 'seed-sales-user',
+    name: 'Sue',
+    email: createDemoUserEmail('Sue'),
+    password: DEFAULT_DEMO_USER_PASSWORD,
+    role: 'sales',
+  },
+  {
+    departments: [],
     id: 'seed-product-viewer-user',
     name: 'Leo',
     email: createDemoUserEmail('Leo'),

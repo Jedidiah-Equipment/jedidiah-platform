@@ -9,6 +9,7 @@ export const APP_ROLES = [
   'job-supervisor',
   'job-stage-editor',
   'job-viewer',
+  'sales',
 ] as const;
 
 export type AppRole = z.infer<typeof AppRole>;
@@ -32,6 +33,9 @@ export const APP_PERMISSIONS = [
   'product:read',
   'product:create',
   'product:update',
+  'quote:read',
+  'quote:create',
+  'quote:update',
   'user:list',
   'user:create',
   'user:update',

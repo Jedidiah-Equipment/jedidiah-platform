@@ -234,6 +234,8 @@ export const Job = z.object({
   id: UUID,
   code: JobCode,
   productId: UUID,
+  quoteId: UUID.nullable(),
+  dueDate: z.iso.date().nullable(),
   lifecycleStatus: JobLifecycleStatus.default('active'),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -266,6 +268,13 @@ export const JobDetail = JobSummary.extend({
 export type JobCreateInput = z.infer<typeof JobCreateInput>;
 export const JobCreateInput = z.object({
   productId: UUID,
+  dueDate: z.iso.date().nullable().optional(),
+});
+
+export type JobCreateFromQuoteInput = z.infer<typeof JobCreateFromQuoteInput>;
+export const JobCreateFromQuoteInput = z.object({
+  quoteId: UUID,
+  dueDate: z.iso.date().nullable().optional(),
 });
 
 export type JobListInput = z.infer<typeof JobListInput>;

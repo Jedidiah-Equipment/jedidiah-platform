@@ -1,12 +1,17 @@
 import { pathToFileURL } from 'node:url';
 import './load-db-env.js';
 import {
+  acceptQuote,
   cancelJob,
   completeJobStage,
   createJob,
+  createJobFromQuote,
   createProduct,
+  createQuote,
   pauseJob,
+  rejectQuote,
   resumeJob,
+  sendQuote,
   setJobStageStatus,
   startJobStage,
   updateProduct,
@@ -20,6 +25,7 @@ import {
   type Product,
   type ProductCreateInput,
   type ProductOptionUpsertInput,
+  type QuoteStatus,
   type UUID,
 } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
@@ -100,6 +106,44 @@ const seedStageStatusProgression = {
   procurement: ['ordering', 'partial'],
 } as const satisfies Record<JobStageName, readonly JobStageStatus[]>;
 
+const seedQuoteScenarios = [
+  {
+    companyName: 'Apex Quarry Services',
+    discount: 7_500,
+    notes: 'Initial budgetary quote for the north pit loader replacement.',
+    status: 'draft',
+    validUntil: '2026-06-15',
+  },
+  {
+    companyName: 'Blue Ridge Plant Hire',
+    discount: 12_000,
+    notes: 'Sent after procurement confirmed availability.',
+    status: 'sent',
+    validUntil: '2026-06-22',
+  },
+  {
+    companyName: 'Copperline Civils',
+    discount: 0,
+    notes: 'Accepted by operations lead; waiting for production scheduling.',
+    status: 'accepted',
+    validUntil: '2026-07-01',
+  },
+  {
+    companyName: 'Delta Aggregate Works',
+    discount: 18_500,
+    notes: 'Accepted and converted to a production job.',
+    status: 'accepted-converted',
+    validUntil: '2026-07-08',
+  },
+  {
+    companyName: 'Eagle Bulk Earthworks',
+    discount: 10_000,
+    notes: 'Rejected after customer chose a rental option.',
+    status: 'rejected',
+    validUntil: '2026-06-28',
+  },
+] as const satisfies readonly SeedQuoteScenario[];
+
 type SeedProduct = ProductCreateInput & {
   name: string;
   modelCode: string;
@@ -129,6 +173,14 @@ type SeedProductPlan = {
 type SeedProductUpdate = Pick<SeedProduct, 'basePrice' | 'description'>;
 
 type SeededProduct = Pick<Product, 'id' | 'options'>;
+
+type SeedQuoteScenario = {
+  companyName: string;
+  discount: number;
+  notes: string;
+  status: QuoteStatus | 'accepted-converted';
+  validUntil: string;
+};
 
 export function createSeedProducts(count = seedProductCount): SeedProduct[] {
   return Array.from({ length: count }, (_, index) => {
@@ -304,8 +356,13 @@ export async function seedDatabase(database?: Db): Promise<void> {
     products: seededProducts,
   });
 
+  await seedQuotesWithCore({
+    db: activeDb,
+    products: seededProducts,
+  });
+
   console.info(
-    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededProducts.length} product scenario(s), and ${seedJobScenarios.length} job scenario(s)`,
+    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededProducts.length} product scenario(s), ${seedJobScenarios.length} job scenario(s), and ${seedQuoteScenarios.length} quote scenario(s)`,
   );
 }
 
@@ -398,6 +455,72 @@ async function seedJobsWithCore({ db, products }: { db: Db; products: readonly P
       id: created.id,
       scenario,
     });
+  }
+}
+
+async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly Product[] }): Promise<void> {
+  if (products.length === 0) {
+    return;
+  }
+
+  const actorUserId = 'seed-sales-user';
+  const supervisorUserId = 'seed-job-supervisor-user';
+  const supervisorAccess = createUserAccessSummary({
+    role: 'job-supervisor',
+    userId: supervisorUserId,
+  });
+
+  for (const [scenarioIndex, scenario] of seedQuoteScenarios.entries()) {
+    const product = products[(scenarioIndex + 2) % products.length];
+
+    if (!product) {
+      throw new Error('Seed quote product lookup failed');
+    }
+
+    const quote = await createQuote({
+      actorUserId,
+      db,
+      input: {
+        customer: {
+          type: 'inline',
+          companyName: scenario.companyName,
+        },
+        discount: scenario.discount,
+        notes: scenario.notes,
+        productId: product.id,
+        salesPersonId: actorUserId,
+        validUntil: scenario.validUntil,
+      },
+    });
+
+    if (scenario.status === 'draft') {
+      continue;
+    }
+
+    const sent = await sendQuote({ actorUserId, db, input: { id: quote.id } });
+
+    if (scenario.status === 'sent') {
+      continue;
+    }
+
+    if (scenario.status === 'rejected') {
+      await rejectQuote({ actorUserId, db, input: { id: sent.id } });
+      continue;
+    }
+
+    const accepted = await acceptQuote({ actorUserId, db, input: { id: sent.id } });
+
+    if (scenario.status === 'accepted-converted') {
+      await createJobFromQuote({
+        access: supervisorAccess,
+        actorUserId: supervisorUserId,
+        db,
+        input: {
+          dueDate: '2026-08-15',
+          quoteId: accepted.id,
+        },
+      });
+    }
   }
 }
 

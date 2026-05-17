@@ -19,7 +19,7 @@ import {
 } from '@pkg/domain';
 import {
   type AuthId,
-  type Job,
+  Job,
   type JobCreateInput,
   type JobDetail,
   type JobEvent,
@@ -86,14 +86,14 @@ const jobLifecycleTransitionConfig = {
 >;
 
 export function mapJob(row: JobRow): Job {
-  return {
+  return Job.parse({
     createdAt: row.createdAt.toISOString(),
     code: row.code,
     id: row.id,
     lifecycleStatus: row.lifecycleStatus,
     productId: row.productId,
     updatedAt: row.updatedAt.toISOString(),
-  };
+  });
 }
 
 export function mapJobStage(row: JobStageRow): JobStage {

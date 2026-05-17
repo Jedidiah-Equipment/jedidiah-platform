@@ -1,6 +1,37 @@
 import { describe, expect, it } from 'vitest';
 
-import { DerivedStageJobEvent, JobDetail, JobEvent, JobEventDerivationStage, JobStageStatusInput } from './job.js';
+import {
+  DerivedStageJobEvent,
+  JobCode,
+  JobDetail,
+  JobEvent,
+  JobEventDerivationStage,
+  JobStageStatusInput,
+} from './job.js';
+
+describe('JobCode', () => {
+  it('formats DB integers as branded job codes', () => {
+    expect(JobCode.parse(1)).toBe('JOB-00001');
+    expect(JobCode.parse(100_000)).toBe('JOB-100000');
+  });
+
+  it('accepts canonical public job codes', () => {
+    expect(JobCode.parse('JOB-00001')).toBe('JOB-00001');
+    expect(JobCode.parse('JOB-100000')).toBe('JOB-100000');
+  });
+
+  it('rejects malformed public job codes', () => {
+    for (const code of ['00001', 'JOB-1', 'job-00001']) {
+      expect(() => JobCode.parse(code)).toThrow();
+    }
+  });
+
+  it('rejects invalid DB integers', () => {
+    for (const code of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => JobCode.parse(code)).toThrow();
+    }
+  });
+});
 
 describe('JobDetail', () => {
   it('validates visible and locked stage rollups', () => {
@@ -8,7 +39,7 @@ describe('JobDetail', () => {
 
     expect(() =>
       JobDetail.parse({
-        code: 1,
+        code: 'JOB-00001',
         createdAt: '2026-05-15T08:00:00.000Z',
         id: jobId,
         lifecycleStatus: 'active',

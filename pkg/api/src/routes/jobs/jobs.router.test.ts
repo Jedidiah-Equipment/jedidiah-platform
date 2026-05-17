@@ -1,5 +1,5 @@
 import { auditEvents, type Db, jobEvents, jobStages, jobs, products, user } from '@pkg/db';
-import { createUserAccessSummary, formatJobCode } from '@pkg/domain';
+import { createUserAccessSummary } from '@pkg/domain';
 import type { AppRole, Department, UserAccessSummary } from '@pkg/schema';
 import pino from 'pino';
 import { describe, expect } from 'vitest';
@@ -42,8 +42,8 @@ describe('jobs.create', () => {
 
     expect(jobRows).toHaveLength(1);
     expect(jobRows[0]?.id).toBe(created.id);
-    expect(jobRows[0]?.code).toBe(created.code);
-    expect(created.code).toBe(1);
+    expect(jobRows[0]?.code).toBe(1);
+    expect(created.code).toBe('JOB-00001');
     expect(stageRows).toHaveLength(5);
     expect(stageRows.every((stage) => stage.jobId === created.id)).toBe(true);
     expect(stageRows.map((stage) => [stage.sequence, stage.stage, stage.status])).toEqual([
@@ -60,7 +60,7 @@ describe('jobs.create', () => {
         actorUserId: 'test-user-id',
         entityId: created.id,
         entityType: 'job',
-        summary: `Created job "${formatJobCode(created.code)}"`,
+        summary: `Created job "${created.code}"`,
       },
     ]);
   });
@@ -198,14 +198,16 @@ describe('jobs.list', () => {
       },
       sortBy: 'code',
     });
-    expect(byCode.items.map((job) => job.code)).toEqual([...byCode.items.map((job) => job.code)].sort((a, b) => a - b));
+    expect(byCode.items.map((job) => job.code)).toEqual(['JOB-00001', 'JOB-00002', 'JOB-00003']);
   });
 
   test('searches by job code and id', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const created = await caller.jobs.create({ productId: context.product.id });
 
-    await expectJobListIds(caller, { search: formatJobCode(created.code) }, [created.id]);
+    await expectJobListIds(caller, { search: created.code }, [created.id]);
+    await expectJobListIds(caller, { search: '00001' }, [created.id]);
+    await expectJobListIds(caller, { search: '1' }, [created.id]);
     await expectJobListIds(caller, { search: created.id.slice(0, 8) }, [created.id]);
     await expectJobListIds(caller, { search: 'missing-search-term' }, []);
   });
@@ -760,9 +762,9 @@ describe('job lifecycle transitions', () => {
 
     const auditRows = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
     expect(auditRows.filter((event) => event.entityType === 'job').map((event) => event.summary)).toEqual([
-      `Created job "${formatJobCode(created.code)}"`,
-      `Updated job "${formatJobCode(created.code)}"`,
-      `Updated job "${formatJobCode(created.code)}"`,
+      `Created job "${created.code}"`,
+      `Updated job "${created.code}"`,
+      `Updated job "${created.code}"`,
     ]);
   });
 

@@ -19,6 +19,21 @@ export const JOB_LIST_STATUS_FILTERS = ['all', ...JobLifecycleStatus.options] as
 export type JobListStatusFilter = z.infer<typeof JobListStatusFilter>;
 export const JobListStatusFilter = z.union([JobLifecycleStatus, z.literal('all')]);
 
+export function formatJobCode(code: number): string {
+  return `JOB-${code.toString().padStart(5, '0')}`;
+}
+
+const JobCodeString = z
+  .string()
+  .regex(/^JOB-\d{5,}$/)
+  .brand<'JobCode'>();
+
+export type JobCode = z.infer<typeof JobCode>;
+export const JobCode = z
+  .union([z.int().positive().refine(Number.isSafeInteger), JobCodeString])
+  .transform((code) => (typeof code === 'number' ? formatJobCode(code) : code))
+  .pipe(JobCodeString);
+
 export const JOB_STAGE_STATUSES = {
   assembly: ['pending', 'in-progress', 'qc', 'complete'],
   dispatch: ['pending', 'ready', 'dispatched', 'complete'],
@@ -217,7 +232,7 @@ export const JobStageRollup = z.discriminatedUnion('access', [VisibleJobStage, L
 export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
-  code: z.int().positive(),
+  code: JobCode,
   productId: UUID,
   lifecycleStatus: JobLifecycleStatus.default('active'),
   createdAt: z.iso.datetime(),

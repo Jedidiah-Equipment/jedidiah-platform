@@ -80,8 +80,8 @@ describe('createAuditSummary', () => {
     expect(
       createAuditSummary({
         action: 'updated',
-        after: { code: '0001', lifecycleStatus: 'paused' },
-        before: { code: '0001', lifecycleStatus: 'active' },
+        after: { code: 'JOB-00001', lifecycleStatus: 'paused' },
+        before: { code: 'JOB-00001', lifecycleStatus: 'active' },
         changes: {
           lifecycleStatus: {
             from: 'active',
@@ -90,7 +90,7 @@ describe('createAuditSummary', () => {
         },
         entityType: jobAuditDescriptor.entityType,
       }),
-    ).toBe('Updated job "0001"');
+    ).toBe('Updated job "JOB-00001"');
   });
 
   it('formats job codes in summaries without requiring padded audit records', () => {
@@ -107,6 +107,6 @@ describe('createAuditSummary', () => {
         },
         entityType: jobAuditDescriptor.entityType,
       }),
-    ).toBe('Updated job "0001"');
+    ).toBe('Updated job "JOB-00001"');
   });
 });

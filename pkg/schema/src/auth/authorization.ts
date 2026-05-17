@@ -21,6 +21,9 @@ export const Department = z.enum(DEPARTMENTS);
 
 export const APP_PERMISSIONS = [
   'audit:read',
+  'customer:read',
+  'customer:create',
+  'customer:update',
   'job:read',
   'job:create',
   'job:update',

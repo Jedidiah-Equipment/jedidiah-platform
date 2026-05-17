@@ -17,6 +17,9 @@ export const roleLabels = {
 
 export const permissionLabels = {
   'audit:read': 'View audit history',
+  'customer:create': 'Create customers',
+  'customer:read': 'View customers',
+  'customer:update': 'Update customers',
   'job-stage:read': 'View job stages',
   'job-stage:update': 'Update job stages',
   'job:create': 'Create jobs',
@@ -35,6 +38,7 @@ export const permissionLabels = {
 
 export const authorizationStatement = {
   audit: ['read'],
+  customer: ['read', 'create', 'update'],
   job: ['read', 'create', 'update'],
   'job-stage': ['read', 'update'],
   product: ['read', 'create', 'update'],
@@ -50,6 +54,7 @@ type RoleAccess = Partial<{
 export const appRoleAccess = {
   admin: {
     audit: ['read'],
+    customer: ['read', 'create', 'update'],
     job: ['read', 'create', 'update'],
     'job-stage': ['read', 'update'],
     product: ['read', 'create', 'update'],

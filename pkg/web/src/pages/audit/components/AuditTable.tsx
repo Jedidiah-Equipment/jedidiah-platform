@@ -25,6 +25,7 @@ type AuditTableEvent = Omit<AuditEvent, 'changes'> & {
 };
 
 const auditEntityTypeLabels = {
+  customer: 'Customer',
   job: 'Job',
   job_stage: 'Job stage',
   product: 'Product',

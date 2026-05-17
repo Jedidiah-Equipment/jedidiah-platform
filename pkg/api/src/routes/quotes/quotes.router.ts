@@ -8,6 +8,7 @@ import {
   listQuotes,
   QuoteDiscountInvalidError,
   QuoteFrozenError,
+  QuoteInvalidReferenceError,
   QuoteNotFoundError,
   QuoteTransitionDeniedError,
   rejectQuote,
@@ -100,6 +101,13 @@ async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
     }
 
     if (error instanceof QuoteDiscountInvalidError) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: error.message,
+      });
+    }
+
+    if (error instanceof QuoteInvalidReferenceError) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: error.message,

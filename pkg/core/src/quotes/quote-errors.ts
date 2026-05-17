@@ -25,3 +25,10 @@ export class QuoteDiscountInvalidError extends Error {
     this.name = 'QuoteDiscountInvalidError';
   }
 }
+
+export class QuoteInvalidReferenceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteInvalidReferenceError';
+  }
+}

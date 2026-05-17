@@ -80,6 +80,12 @@ export const QuoteCustomerInput = z.discriminatedUnion('type', [
   }),
 ]);
 
+export type QuoteExistingCustomerInput = z.infer<typeof QuoteExistingCustomerInput>;
+export const QuoteExistingCustomerInput = z.object({
+  type: z.literal('existing'),
+  customerId: UUID,
+});
+
 export type QuoteCreateInput = z.infer<typeof QuoteCreateInput>;
 export const QuoteCreateInput = z.object({
   customer: QuoteCustomerInput,
@@ -92,6 +98,7 @@ export const QuoteCreateInput = z.object({
 
 export type QuoteUpdateInput = z.infer<typeof QuoteUpdateInput>;
 export const QuoteUpdateInput = QuoteCreateInput.extend({
+  customer: QuoteExistingCustomerInput,
   id: UUID,
 });
 

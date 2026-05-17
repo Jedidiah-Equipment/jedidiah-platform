@@ -39,6 +39,7 @@ import {
 import {
   QuoteDiscountInvalidError,
   QuoteFrozenError,
+  QuoteInvalidReferenceError,
   QuoteNotFoundError,
   QuoteTransitionDeniedError,
 } from './quote-errors.js';
@@ -101,6 +102,7 @@ export async function createQuote({
   return db.transaction(async (tx) => {
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
     const product = await readProductForQuote({ productId: input.productId, tx });
+    await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
     assertValidDiscount({ basePrice: product.basePrice, discount: input.discount });
 
     const [row] = await tx
@@ -247,6 +249,7 @@ export async function updateQuote({
 
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
     const product = await readProductForQuote({ productId: input.productId, tx });
+    await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
     assertValidDiscount({ basePrice: product.basePrice, discount: input.discount });
 
     const after = {
@@ -450,6 +453,7 @@ async function resolveQuoteCustomer({
   tx: DatabaseTransaction;
 }): Promise<UUID> {
   if (input.customer.type === 'existing') {
+    await assertQuoteCustomer({ customerId: input.customer.customerId, tx });
     return input.customer.customerId;
   }
 
@@ -479,6 +483,38 @@ async function resolveQuoteCustomer({
   });
 
   return customer.id;
+}
+
+async function assertQuoteCustomer({ customerId, tx }: { customerId: UUID; tx: DatabaseTransaction }): Promise<void> {
+  const [customer] = await tx
+    .select({
+      id: customers.id,
+    })
+    .from(customers)
+    .where(eq(customers.id, customerId));
+
+  if (!customer) {
+    throw new QuoteInvalidReferenceError('Quote customer was not found.');
+  }
+}
+
+async function assertQuoteSalesPerson({
+  salesPersonId,
+  tx,
+}: {
+  salesPersonId: AuthId;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  const [salesPerson] = await tx
+    .select({
+      id: user.id,
+    })
+    .from(user)
+    .where(and(eq(user.id, salesPersonId), inArray(user.role, ['admin', 'sales'])));
+
+  if (!salesPerson) {
+    throw new QuoteInvalidReferenceError('Quote salesperson must be a sales or admin user.');
+  }
 }
 
 async function readProductForQuote({

@@ -62,6 +62,20 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
   const [validUntil, setValidUntil] = useState('');
   const [notes, setNotes] = useState('');
   const selectedProduct = productsQuery.data?.items.find((product) => product.id === productId);
+  const customerOptions = useMemo(() => {
+    const customers = customersQuery.data?.items ?? [];
+    if (!quote || customers.some((customer) => customer.id === quote.customerId)) {
+      return customers;
+    }
+
+    return [
+      ...customers,
+      {
+        companyName: quote.customerCompanyName,
+        id: quote.customerId,
+      },
+    ];
+  }, [customersQuery.data?.items, quote]);
   const discountNumber = Number(discount || 0);
   const total = selectedProduct ? selectedProduct.basePrice - discountNumber : null;
   const isFrozen = quote?.status !== undefined && quote.status !== 'draft';
@@ -127,7 +141,14 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
     event.preventDefault();
 
     if (isEditing && quoteId) {
-      updateMutation.mutate({ ...input, id: quoteId });
+      updateMutation.mutate({
+        ...input,
+        customer: {
+          type: 'existing',
+          customerId,
+        },
+        id: quoteId,
+      });
       return;
     }
 
@@ -166,7 +187,11 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
             <div className="grid gap-3 md:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="customer-mode">Customer</Label>
-                <Select onValueChange={(value) => setCustomerMode(value as CustomerMode)} value={customerMode}>
+                <Select
+                  disabled={isEditing || isFrozen}
+                  onValueChange={(value) => setCustomerMode(value as CustomerMode)}
+                  value={customerMode}
+                >
                   <SelectTrigger id="customer-mode" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -187,7 +212,7 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {(customersQuery.data?.items ?? []).map((customer) => (
+                        {customerOptions.map((customer) => (
                           <SelectItem key={customer.id} value={customer.id}>
                             {customer.companyName}
                           </SelectItem>

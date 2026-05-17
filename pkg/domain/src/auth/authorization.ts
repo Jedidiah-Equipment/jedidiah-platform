@@ -75,6 +75,7 @@ export const appRoleAccess = {
   'job-supervisor': {
     job: ['read', 'create', 'update'],
     'job-stage': ['read', 'update'],
+    quote: ['read'],
   },
   'job-stage-editor': {
     job: ['read'],

@@ -43,6 +43,72 @@ describe('quotes.create', () => {
     expect(quoteRows).toHaveLength(1);
     expect(events.map((event) => event.entityType)).toEqual(['customer', 'quote']);
   });
+
+  test('rejects an unknown salesperson id as bad input', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await expect(
+      caller.quotes.create({
+        customer: {
+          type: 'inline',
+          companyName: 'Acme Mining',
+        },
+        discount: 100,
+        notes: 'Demo quote',
+        productId: context.product.id,
+        salesPersonId: 'missing-user-id',
+        validUntil: '2026-06-30',
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Quote salesperson must be a sales or admin user.',
+    });
+  });
+});
+
+describe('quotes.update', () => {
+  test('updates a draft quote with an existing customer', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const created = await createReadyQuote(caller, context.product.id);
+
+    const updated = await caller.quotes.update({
+      ...toUpdateInput(created),
+      discount: 125,
+      notes: 'Updated draft terms',
+      validUntil: '2026-07-31',
+    });
+
+    expect(updated).toMatchObject({
+      discount: 125,
+      notes: 'Updated draft terms',
+      status: 'draft',
+      total: context.product.basePrice - 125,
+      validUntil: '2026-07-31',
+    });
+  });
+});
+
+describe('quotes.list', () => {
+  test('floors stale draft totals when current product price drops below discount', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const created = await createReadyQuote(caller, context.product.id);
+
+    await context.db.update(products).set({ basePrice: 100 });
+
+    const result = await caller.quotes.list({
+      filters: {
+        statuses: ['draft'],
+      },
+      page: 1,
+      pageSize: 10,
+      search: created.code,
+      sortBy: 'total',
+      sortDirection: 'asc',
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.total).toBe(0);
+  });
 });
 
 describe('quotes.send', () => {
@@ -72,6 +138,21 @@ describe('quotes.send', () => {
   });
 });
 
+describe('quotes.reject', () => {
+  test('rejects a sent quote', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const created = await createReadyQuote(caller, context.product.id);
+    const sent = await caller.quotes.send({ id: created.id });
+
+    const rejected = await caller.quotes.reject({ id: sent.id });
+
+    expect(rejected.status).toBe('rejected');
+    await expect(caller.quotes.accept({ id: rejected.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
+
 describe('jobs.createFromQuote', () => {
   test('converts an accepted quote into one job with stages', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
@@ -79,6 +160,11 @@ describe('jobs.createFromQuote', () => {
     const created = await createReadyQuote(salesCaller, context.product.id);
     const sent = await salesCaller.quotes.send({ id: created.id });
     const accepted = await salesCaller.quotes.accept({ id: sent.id });
+
+    await expect(supervisorCaller.quotes.get({ id: accepted.id })).resolves.toMatchObject({
+      id: accepted.id,
+      status: 'accepted',
+    });
 
     const job = await supervisorCaller.jobs.createFromQuote({
       dueDate: '2026-08-15',

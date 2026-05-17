@@ -27,7 +27,7 @@ export function computeQuoteTotal({
   discount: number;
   quotedBasePrice: number;
 }): number {
-  return quotedBasePrice - discount;
+  return Math.max(0, quotedBasePrice - discount);
 }
 
 function deny(reason: string): QuotePricingResult {

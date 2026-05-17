@@ -15,6 +15,9 @@ describe('getRolePermissions', () => {
   it('grants all v1 permissions to admins', () => {
     expect(getRolePermissions('admin')).toEqual([
       'audit:read',
+      'customer:create',
+      'customer:read',
+      'customer:update',
       'job-stage:read',
       'job-stage:update',
       'job:create',

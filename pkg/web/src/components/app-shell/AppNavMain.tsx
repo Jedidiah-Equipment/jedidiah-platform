@@ -5,6 +5,7 @@ import {
   BotIcon,
   BoxesIcon,
   BriefcaseBusinessIcon,
+  Building2Icon,
   ClipboardListIcon,
   GaugeIcon,
   type LucideIcon,
@@ -48,6 +49,12 @@ const mainNavItems = [
     permission: 'job:read',
     link: linkOptions({ to: '/jobs' }),
     icon: BriefcaseBusinessIcon,
+  },
+  {
+    title: 'Customers',
+    permission: 'customer:read',
+    link: linkOptions({ to: '/customers' }),
+    icon: Building2Icon,
   },
   {
     title: 'Assistant',

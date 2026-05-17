@@ -3,11 +3,13 @@ import {
   type DatabaseTransaction,
   type Db,
   getPaginationOffset,
+  getUniqueViolationConstraint,
   jobEvents,
   jobStages,
   jobs,
   LIKE_SEARCH_ESCAPE,
   type products,
+  quotes,
 } from '@pkg/db';
 import {
   canViewStage,
@@ -20,6 +22,7 @@ import {
 import {
   type AuthId,
   Job,
+  type JobCreateFromQuoteInput,
   type JobCreateInput,
   type JobDetail,
   type JobEvent,
@@ -47,7 +50,12 @@ import {
   jobAuditDescriptor,
   jobStageAuditDescriptor,
 } from '../audit/audit-service.js';
-import { JobLifecycleTransitionDeniedError, JobNotFoundError, JobStageTransitionDeniedError } from './job-errors.js';
+import {
+  JobLifecycleTransitionDeniedError,
+  JobNotFoundError,
+  JobQuoteConversionDeniedError,
+  JobStageTransitionDeniedError,
+} from './job-errors.js';
 
 type JobRow = typeof jobs.$inferSelect;
 type JobEventRow = typeof jobEvents.$inferSelect;
@@ -56,7 +64,7 @@ type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
 type JobWithProductRow = JobRow & {
   product: ProductRow;
 };
-type JobAuditRecord = Pick<JobRow, 'code' | 'lifecycleStatus' | 'productId'>;
+type JobAuditRecord = Pick<JobRow, 'code' | 'dueDate' | 'lifecycleStatus' | 'productId' | 'quoteId'>;
 
 type JobLifecycleTransition = 'pause' | 'resume' | 'cancel';
 
@@ -89,9 +97,11 @@ export function mapJob(row: JobRow): Job {
   return Job.parse({
     createdAt: row.createdAt.toISOString(),
     code: row.code,
+    dueDate: row.dueDate,
     id: row.id,
     lifecycleStatus: row.lifecycleStatus,
     productId: row.productId,
+    quoteId: row.quoteId,
     updatedAt: row.updatedAt.toISOString(),
   });
 }
@@ -145,6 +155,7 @@ export async function createJob({
     const [job] = await tx
       .insert(jobs)
       .values({
+        dueDate: input.dueDate ?? null,
         productId: input.productId,
       })
       .returning();
@@ -179,6 +190,86 @@ export async function createJob({
   });
 }
 
+export async function createJobFromQuote({
+  db,
+  access,
+  input,
+  actorUserId,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  input: JobCreateFromQuoteInput;
+  actorUserId: AuthId;
+}): Promise<JobDetail> {
+  try {
+    return await db.transaction(async (tx) => {
+      const [quote] = await tx.select().from(quotes).where(eq(quotes.id, input.quoteId)).for('update');
+
+      if (!quote) {
+        throw new JobQuoteConversionDeniedError('Quote not found.');
+      }
+
+      if (quote.status !== 'accepted') {
+        throw new JobQuoteConversionDeniedError('Only accepted quotes can be converted into jobs.');
+      }
+
+      const existingJob = await tx.query.jobs.findFirst({
+        columns: {
+          id: true,
+        },
+        where: eq(jobs.quoteId, input.quoteId),
+      });
+
+      if (existingJob) {
+        throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
+      }
+
+      const [job] = await tx
+        .insert(jobs)
+        .values({
+          dueDate: input.dueDate ?? null,
+          productId: quote.productId,
+          quoteId: quote.id,
+        })
+        .returning();
+
+      if (!job) {
+        throw new Error('Job insert did not return a row');
+      }
+
+      await tx.insert(jobStages).values(
+        JOB_STAGE_PIPELINE.map(({ sequence, stage }) => ({
+          jobId: job.id,
+          sequence,
+          stage,
+          status: 'pending' as const,
+        })),
+      );
+
+      await insertAuditEvent({
+        db: tx,
+        input: {
+          action: 'created',
+          actorUserId,
+          after: mapJobAuditRecord(job),
+          before: null,
+          changes: null,
+          entityId: job.id,
+          entityType: jobAuditDescriptor.entityType,
+        },
+      });
+
+      return getJob({ access, db: tx, id: job.id });
+    });
+  } catch (error) {
+    if (getUniqueViolationConstraint(error) === 'job_quote_id_unique') {
+      throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
+    }
+
+    throw error;
+  }
+}
+
 export async function listJobs({
   db,
   input,
@@ -196,8 +287,10 @@ export async function listJobs({
       createdAt: true,
       id: true,
       code: true,
+      dueDate: true,
       lifecycleStatus: true,
       productId: true,
+      quoteId: true,
       updatedAt: true,
     },
     where,
@@ -255,9 +348,11 @@ export async function getJob({
     columns: {
       createdAt: true,
       code: true,
+      dueDate: true,
       id: true,
       lifecycleStatus: true,
       productId: true,
+      quoteId: true,
       updatedAt: true,
     },
     where: eq(jobs.id, id),
@@ -721,11 +816,15 @@ async function transitionJobLifecycle({
   });
 }
 
-function mapJobAuditRecord(job: Pick<JobRow, 'code' | 'lifecycleStatus' | 'productId'>): JobAuditRecord {
+function mapJobAuditRecord(
+  job: Pick<JobRow, 'code' | 'dueDate' | 'lifecycleStatus' | 'productId' | 'quoteId'>,
+): JobAuditRecord {
   return {
     code: job.code,
+    dueDate: job.dueDate,
     lifecycleStatus: job.lifecycleStatus,
     productId: job.productId,
+    quoteId: job.quoteId,
   };
 }
 

@@ -191,6 +191,13 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
         header: 'Created',
       },
       {
+        accessorKey: 'dueDate',
+        cell: ({ row }) => formatDate(row.original.dueDate, 'short', 'No date'),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Due',
+      },
+      {
         id: 'actions',
         cell: ({ row }) => (
           <div className="text-right">

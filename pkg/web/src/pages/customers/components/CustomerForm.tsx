@@ -12,15 +12,22 @@ const CustomerFormValues = z.object({
   address: z.string(),
   companyName: CustomerCompanyName,
   contactPerson: z.string(),
-  email: CustomerEmail,
+  email: z
+    .string()
+    .trim()
+    .refine((value) => value === '' || CustomerEmail.safeParse(value).success, 'Enter a valid email address'),
   notes: z.string(),
   phone: z.string(),
 });
 
+type CustomerFormSubmitValues = Omit<CustomerFormValues, 'email'> & {
+  email: string | null;
+};
+
 type CustomerFormProps = {
   initialCustomer?: Customer;
   isPending: boolean;
-  onSubmit: (value: CustomerFormValues) => Promise<unknown>;
+  onSubmit: (value: CustomerFormSubmitValues) => Promise<unknown>;
   submitLabel: string;
 };
 
@@ -39,7 +46,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialCustomer, isP
       onSubmit: CustomerFormValues,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit(value);
+      await onSubmit({
+        ...value,
+        email: value.email.trim() === '' ? null : value.email.trim().toLowerCase(),
+      });
     },
   });
 

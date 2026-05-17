@@ -41,11 +41,13 @@ describe('JobDetail', () => {
       JobDetail.parse({
         code: 'JOB-00001',
         createdAt: '2026-05-15T08:00:00.000Z',
+        dueDate: null,
         id: jobId,
         lifecycleStatus: 'active',
         productId: '00000000-0000-4000-8000-000000000002',
         productModelCode: 'WL-100',
         productName: 'Wheel Loader',
+        quoteId: null,
         stages: [
           {
             access: 'visible',

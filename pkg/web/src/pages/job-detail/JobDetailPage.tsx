@@ -183,7 +183,9 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
               <div className="grid gap-3 text-sm sm:grid-cols-3">
                 <JobFact label="Job ID" value={job.id} />
                 <JobFact label="Created" value={formatDate(job.createdAt)} />
+                <JobFact label="Due date" value={formatDate(job.dueDate, 'short', 'No date')} />
                 <JobFact label="Updated" value={formatDate(job.updatedAt)} />
+                <JobFact label="Quote" value={job.quoteId ?? 'Direct job'} />
               </div>
               {canUpdateJob ? (
                 <LifecycleControls

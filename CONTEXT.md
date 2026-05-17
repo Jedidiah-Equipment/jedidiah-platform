@@ -10,6 +10,10 @@ Domain language for the Jedidiah production-floor platform. The core unit being 
 The platform's unit of production-floor tracking — one physical product instance being built end-to-end.
 _Avoid_: Order, Work Order, Build, Ticket.
 
+**Customer**:
+A standalone business/organization record with contact details. Customers are not linked to Jobs directly; the future Job → Quote → Customer chain is deferred until Quote exists.
+_Avoid_: Job customer, Product customer (implies relationships that do not exist yet).
+
 **Pipeline**:
 The fixed, sequential sequence of five stages every Job moves through: Procurement → Fabrication → Assembly → Paint → Dispatch.
 _Avoid_: Workflow, Process.

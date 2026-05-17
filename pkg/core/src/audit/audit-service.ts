@@ -1,5 +1,4 @@
 import { auditEvents, type DatabaseTransaction, type Db, user, withPagination } from '@pkg/db';
-import { formatJobCode } from '@pkg/domain';
 import type {
   AuditAction,
   AuditChanges,
@@ -8,6 +7,7 @@ import type {
   AuditListInput,
   AuditListResult,
 } from '@pkg/schema';
+import { formatJobCode, JobCode } from '@pkg/schema';
 import { and, asc, desc, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
 type AuditRecord = Record<string, unknown>;
@@ -71,12 +71,22 @@ export const jobAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'job',
   noun: 'job',
   primaryLabelField: 'code',
-  primaryLabelFormatter: (value) => (typeof value === 'number' ? formatJobCode(value) : String(value)),
+  primaryLabelFormatter: formatJobAuditLabel,
   fields: {
     lifecycleStatus: 'lifecycle status',
     productId: 'product',
   },
 };
+
+function formatJobAuditLabel(value: unknown): string {
+  if (typeof value === 'number') {
+    return formatJobCode(value);
+  }
+
+  const result = JobCode.safeParse(value);
+
+  return result.success ? result.data : String(value);
+}
 
 export const jobStageAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'job_stage',

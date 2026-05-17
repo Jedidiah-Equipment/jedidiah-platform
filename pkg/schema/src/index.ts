@@ -8,6 +8,7 @@ export * from './common/pagination.js';
 export * from './common/price.js';
 export * from './common/sort.js';
 export * from './common/uuid.js';
+export * from './customers/customer.js';
 export * from './domain/client-config.js';
 export * from './domain/environment.js';
 export * from './domain/logger.js';

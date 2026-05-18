@@ -3,7 +3,14 @@ import type { UserAccessSummary } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
 import type { AiContext } from '@/routes/ai/ai-context.js';
-import { aiTools, dispatchToolCall, getAuthorizedToolNames, getAuthorizedTools } from '@/routes/ai/ai-tools.js';
+import { aiToolDescriptors, createToolDescription } from '@/routes/ai/ai-tool-descriptors.js';
+import {
+  AI_TOOL_NAMES,
+  aiTools,
+  dispatchToolCall,
+  getAuthorizedToolNames,
+  getAuthorizedTools,
+} from '@/routes/ai/ai-tools.js';
 import { mockSession } from '@/test/test-utils.js';
 
 function createAiContext(access: UserAccessSummary | null = null): AiContext {
@@ -24,6 +31,14 @@ function createAccessWithNoProductRead(): UserAccessSummary {
 }
 
 describe('aiTools', () => {
+  test('generates registered tool descriptions from structured descriptors', () => {
+    for (const name of AI_TOOL_NAMES) {
+      expect(aiTools[name].description).toBe(createToolDescription(aiToolDescriptors[name]));
+      expect(aiTools[name].description).toContain(aiToolDescriptors[name].purpose);
+      expect(aiTools[name].jsonSchema).toEqual(expect.objectContaining({ type: 'object' }));
+    }
+  });
+
   test('declares a required permission for each tool', () => {
     expect(aiTools.getCustomer.requiredPermission).toBe('customer:read');
     expect(aiTools.getJob.requiredPermission).toBe('job:read');

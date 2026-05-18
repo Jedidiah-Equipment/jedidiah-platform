@@ -1,12 +1,12 @@
 import type { QuoteCreateInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { ArrowLeftIcon } from 'lucide-react';
 import type React from 'react';
 import { toast } from 'sonner';
 
+import { ButtonLink } from '@/components/ButtonLink.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
-import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
@@ -72,15 +72,15 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <div>
         {quoteId ? (
-          <Button render={<Link params={{ id: quoteId }} to="/quotes/$id" />} variant="ghost">
+          <ButtonLink params={{ id: quoteId }} to="/quotes/$id" variant="ghost">
             <ArrowLeftIcon data-icon="inline-start" />
             Quote
-          </Button>
+          </ButtonLink>
         ) : (
-          <Button render={<Link to="/quotes" />} variant="ghost">
+          <ButtonLink to="/quotes" variant="ghost">
             <ArrowLeftIcon data-icon="inline-start" />
             Quotes
-          </Button>
+          </ButtonLink>
         )}
       </div>
       <Card>

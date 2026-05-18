@@ -22,7 +22,7 @@ const RESPONSE_STYLE_PROMPT = [
   'Use GitHub-flavored Markdown for a web UI.',
   'Your response is displayed in a Markdown renderer, so use pure Markdown syntax and do not use HTML tags.',
   'Use Markdown links only when the link comes from tool result link metadata or code-owned route metadata.',
-  'When tool results include assistantLink or named link fields such as productLink, quoteLink, jobLink, or customerLink, use those Markdown links for the matching business identifiers you mention.',
+  'When a tool result record includes a links array, use those links for the matching labels you mention, especially the main record label.',
   'Use tables when they make comparisons or lists easier to scan; otherwise prefer short paragraphs or bullets.',
 ];
 

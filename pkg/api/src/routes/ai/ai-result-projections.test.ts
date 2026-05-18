@@ -16,26 +16,26 @@ describe('AI result projections', () => {
 
     expect(projected).toEqual({
       ...job,
-      assistantLink: {
-        entity: 'Job',
-        href: '/jobs/00000000-0000-4000-8000-000000000001',
-        label: 'JOB-00001',
-      },
-      quoteLink: {
-        entity: 'Quote',
-        href: '/quotes/00000000-0000-4000-8000-000000000002',
-        label: 'QUO-00002',
-      },
+      links: [
+        {
+          entity: 'Job',
+          href: '/jobs/00000000-0000-4000-8000-000000000001',
+          label: 'JOB-00001',
+        },
+        {
+          entity: 'Quote',
+          href: '/quotes/00000000-0000-4000-8000-000000000002',
+          label: 'QUO-00002',
+        },
+      ],
     });
-    expect(job).not.toHaveProperty('assistantLink');
+    expect(job).not.toHaveProperty('links');
   });
 
   test('uses the shared route metadata for projected links', () => {
     expect(aiLinkMetadata.Job.href).toBe('/jobs/{id}');
     expect(projectAiToolResult('getJob', { code: 'JOB-00001', id: 'job-id' })).toMatchObject({
-      assistantLink: {
-        href: '/jobs/job-id',
-      },
+      links: [{ href: '/jobs/job-id' }],
     });
   });
 
@@ -62,26 +62,28 @@ describe('AI result projections', () => {
       items: [
         {
           ...result.items[0],
-          assistantLink: {
-            entity: 'Quote',
-            href: '/quotes/00000000-0000-4000-8000-000000000003',
-            label: 'QUO-00003',
-          },
-          customerLink: {
-            entity: 'Customer',
-            href: '/customers/00000000-0000-4000-8000-000000000005/edit',
-            label: 'Apex Quarry Services',
-          },
-          jobLink: {
-            entity: 'Job',
-            href: '/jobs/00000000-0000-4000-8000-000000000004',
-            label: 'JOB-00004',
-          },
-          productLink: {
-            entity: 'Product',
-            href: '/products/00000000-0000-4000-8000-000000000006/edit',
-            label: 'Vertex Skid Steer 003',
-          },
+          links: [
+            {
+              entity: 'Quote',
+              href: '/quotes/00000000-0000-4000-8000-000000000003',
+              label: 'QUO-00003',
+            },
+            {
+              entity: 'Customer',
+              href: '/customers/00000000-0000-4000-8000-000000000005/edit',
+              label: 'Apex Quarry Services',
+            },
+            {
+              entity: 'Product',
+              href: '/products/00000000-0000-4000-8000-000000000006/edit',
+              label: 'Vertex Skid Steer 003',
+            },
+            {
+              entity: 'Job',
+              href: '/jobs/00000000-0000-4000-8000-000000000004',
+              label: 'JOB-00004',
+            },
+          ],
         },
       ],
     });
@@ -94,11 +96,13 @@ describe('AI result projections', () => {
         id: '00000000-0000-4000-8000-000000000005',
       }),
     ).toMatchObject({
-      assistantLink: {
-        entity: 'Customer',
-        href: '/customers/00000000-0000-4000-8000-000000000005/edit',
-        label: 'Acme Mining',
-      },
+      links: [
+        {
+          entity: 'Customer',
+          href: '/customers/00000000-0000-4000-8000-000000000005/edit',
+          label: 'Acme Mining',
+        },
+      ],
     });
 
     expect(
@@ -107,11 +111,13 @@ describe('AI result projections', () => {
         name: 'Compact Loader',
       }),
     ).toMatchObject({
-      assistantLink: {
-        entity: 'Product',
-        href: '/products/00000000-0000-4000-8000-000000000006/edit',
-        label: 'Compact Loader',
-      },
+      links: [
+        {
+          entity: 'Product',
+          href: '/products/00000000-0000-4000-8000-000000000006/edit',
+          label: 'Compact Loader',
+        },
+      ],
     });
   });
 });

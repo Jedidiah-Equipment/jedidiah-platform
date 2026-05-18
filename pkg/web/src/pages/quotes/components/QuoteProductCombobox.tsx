@@ -7,15 +7,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTRPC } from '@/lib/trpc.js';
 import { EntityCombobox, mergeSelectedOption } from './EntityCombobox.js';
 
-export type QuoteProductOption = Pick<Product, 'basePrice' | 'id' | 'modelCode' | 'name'>;
+export type QuoteProductOption = Pick<Product, 'basePrice' | 'currencyCode' | 'id' | 'modelCode' | 'name'>;
 
 type QuoteProductComboboxProps = {
   disabled: boolean;
+  onResolvedSelected?: (product: QuoteProductOption | null) => void;
   onSelected: (product: QuoteProductOption | null) => void;
   value: UUID | '';
 };
 
-export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({ disabled, onSelected, value }) => {
+export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
+  disabled,
+  onResolvedSelected,
+  onSelected,
+  value,
+}) => {
   const trpc = useTRPC();
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 250);
@@ -54,8 +60,8 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({ disa
       return;
     }
 
-    onSelected(valueProduct);
-  }, [onSelected, value, valueProduct]);
+    onResolvedSelected?.(valueProduct);
+  }, [onResolvedSelected, value, valueProduct]);
 
   return (
     <EntityCombobox

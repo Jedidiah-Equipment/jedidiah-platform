@@ -57,6 +57,7 @@ export const Quote = z.object({
 export type QuoteSummary = z.infer<typeof QuoteSummary>;
 export const QuoteSummary = Quote.extend({
   customerCompanyName: z.string().trim().min(1),
+  productCurrencyCode: ProductCurrencyCode,
   productModelCode: z.string().trim().min(1),
   productName: z.string().trim().min(1),
   salesPersonEmail: z.email().nullable(),

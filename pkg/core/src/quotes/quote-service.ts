@@ -13,6 +13,7 @@ import {
 import { computeQuoteTotal, evaluateQuoteTransition, validateDiscount } from '@pkg/domain';
 import {
   type AuthId,
+  ProductCurrencyCode,
   Quote,
   type QuoteCreateInput,
   type QuoteDecisionInput,
@@ -64,6 +65,7 @@ type QuoteListRow = {
   quote: QuoteRow;
   customerCompanyName: string;
   productBasePrice: number;
+  productCurrencyCode: string;
   productModelCode: string;
   productName: string;
   salesPersonEmail: string | null;
@@ -148,6 +150,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
       quote: quotes,
       customerCompanyName: customers.companyName,
       productBasePrice: products.basePrice,
+      productCurrencyCode: products.currencyCode,
       productModelCode: products.modelCode,
       productName: products.name,
       salesPersonEmail: user.email,
@@ -187,6 +190,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       quote: quotes,
       customerCompanyName: customers.companyName,
       productBasePrice: products.basePrice,
+      productCurrencyCode: products.currencyCode,
       productModelCode: products.modelCode,
       productName: products.name,
       salesPersonEmail: user.email,
@@ -367,6 +371,7 @@ function mapQuoteSummary(row: QuoteListRow): QuoteSummary {
     ...mapQuote(row.quote),
     customerCompanyName: row.customerCompanyName,
     jobId: row.jobId,
+    productCurrencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
     productModelCode: row.productModelCode,
     productName: row.productName,
     salesPersonEmail: row.salesPersonEmail,

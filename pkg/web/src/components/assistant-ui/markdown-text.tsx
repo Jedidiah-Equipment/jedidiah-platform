@@ -10,6 +10,7 @@ import remarkGfm from 'remark-gfm';
 
 import { cn } from '@/lib/utils.js';
 
+import { AssistantMarkdownLink } from './assistant-markdown-link.js';
 import { TooltipIconButton } from './tooltip-icon-button.js';
 
 const MarkdownTextImpl = () => {
@@ -56,9 +57,7 @@ function useCopyToClipboard({ copiedDuration = 3_000 }: { copiedDuration?: numbe
 }
 
 const defaultComponents = memoizeMarkdownComponents({
-  a: ({ className, ...props }) => (
-    <a className={cn('text-primary underline underline-offset-2 hover:text-primary/80', className)} {...props} />
-  ),
+  a: AssistantMarkdownLink,
   blockquote: ({ className, ...props }) => (
     <blockquote
       className={cn('my-2.5 border-muted-foreground/30 border-s-2 ps-3 text-muted-foreground italic', className)}

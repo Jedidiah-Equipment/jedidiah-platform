@@ -58,6 +58,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
       onError: (error) => toast.error(error.message),
     }),
   );
+  const currencyCode = quote?.quotedCurrencyCode ?? quote?.productCurrencyCode;
 
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
@@ -136,12 +137,14 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                 <QuoteFact label="Salesperson" value={quote.salesPersonName ?? 'Unassigned'} />
                 <QuoteFact label="Valid until" value={formatDate(quote.validUntil, 'short', 'Not set')} />
                 <QuoteFact label="Sent" value={formatDate(quote.sentAt, 'medium', 'Not sent')} />
-                <QuoteFact label="Total" value={`R ${formatCurrency(quote.total)}`} />
-                <QuoteFact label="Discount" value={`R ${formatCurrency(quote.discount)}`} />
+                <QuoteFact label="Total" value={formatCurrency(quote.total, currencyCode)} />
+                <QuoteFact label="Discount" value={formatCurrency(quote.discount, currencyCode)} />
                 <QuoteFact
                   label="Quoted base price"
                   value={
-                    quote.quotedBasePrice === null ? 'Not snapshotted' : `R ${formatCurrency(quote.quotedBasePrice)}`
+                    quote.quotedBasePrice === null
+                      ? 'Not snapshotted'
+                      : formatCurrency(quote.quotedBasePrice, currencyCode)
                   }
                 />
                 <QuoteFact label="Converted job" value={quote.jobId ? 'Created' : 'None'} />

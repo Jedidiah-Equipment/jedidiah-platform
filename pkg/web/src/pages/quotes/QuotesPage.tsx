@@ -203,7 +203,7 @@ const QuoteTable: React.FC<{
               {quote.productName}
               <span className="ml-2 text-muted-foreground">{quote.productModelCode}</span>
             </TableCell>
-            <TableCell>R {formatCurrency(quote.total)}</TableCell>
+            <TableCell>{formatCurrency(quote.total, quote.quotedCurrencyCode ?? quote.productCurrencyCode)}</TableCell>
             <TableCell>{formatDate(quote.validUntil, 'short', 'Not set')}</TableCell>
             <TableCell className="text-right">
               <Button

@@ -40,15 +40,31 @@ export function EntityCombobox<TOption extends { id: string }>({
   searchPlaceholder,
   value,
 }: EntityComboboxProps<TOption>) {
+  const selectedLabel = value ? itemToLabel(value) : '';
+  const displayInputValue = inputValue || selectedLabel;
+
   return (
     <Combobox
       disabled={disabled}
       filter={null}
-      inputValue={inputValue}
+      inputValue={displayInputValue}
       itemToStringLabel={itemToLabel}
+      itemToStringValue={(option) => option.id}
       items={options}
-      onInputValueChange={onInputValueChange}
-      onValueChange={onSelected}
+      onInputValueChange={(nextInputValue) => {
+        if (nextInputValue === displayInputValue) {
+          return;
+        }
+
+        onInputValueChange(nextInputValue);
+      }}
+      onValueChange={(nextOption) => {
+        if ((nextOption?.id ?? null) === (value?.id ?? null)) {
+          return;
+        }
+
+        onSelected(nextOption);
+      }}
       value={value}
     >
       <ComboboxInput

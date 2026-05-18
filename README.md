@@ -160,3 +160,4 @@ https://github.com/vercel-labs/skills
 
 `npx skills add abc -g -y`
 `npx skills list -g`
+`npx skills update`

@@ -2,8 +2,11 @@ import { z } from 'zod';
 
 import { Department } from '../auth/authorization.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
+import { JobCode, QuoteCode } from '../common/public-code.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
+
+export { formatJobCode, JobCode } from '../common/public-code.js';
 
 // Unordered list of job stages. Use JOB_STAGE_PIPELINE for ordered list.
 export const JOB_STAGES = ['procurement', 'fabrication', 'assembly', 'paint', 'dispatch'] as const;
@@ -18,21 +21,6 @@ export const JOB_LIST_STATUS_FILTERS = ['all', ...JobLifecycleStatus.options] as
 
 export type JobListStatusFilter = z.infer<typeof JobListStatusFilter>;
 export const JobListStatusFilter = z.union([JobLifecycleStatus, z.literal('all')]);
-
-export function formatJobCode(code: number): string {
-  return `JOB-${code.toString().padStart(5, '0')}`;
-}
-
-const JobCodeString = z
-  .string()
-  .regex(/^JOB-\d{5,}$/)
-  .brand<'JobCode'>();
-
-export type JobCode = z.infer<typeof JobCode>;
-export const JobCode = z
-  .union([z.int().positive().refine(Number.isSafeInteger), JobCodeString])
-  .transform((code) => (typeof code === 'number' ? formatJobCode(code) : code))
-  .pipe(JobCodeString);
 
 export const JOB_STAGE_STATUSES = {
   assembly: ['pending', 'in-progress', 'qc', 'complete'],
@@ -234,6 +222,8 @@ export const Job = z.object({
   id: UUID,
   code: JobCode,
   productId: UUID,
+  quoteId: UUID.nullable(),
+  dueDate: z.iso.date().nullable(),
   lifecycleStatus: JobLifecycleStatus.default('active'),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -243,6 +233,7 @@ export type JobSummary = z.infer<typeof JobSummary>;
 export const JobSummary = Job.extend({
   productModelCode: z.string().trim().min(1),
   productName: z.string().trim().min(1),
+  quoteCode: QuoteCode.nullable(),
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
@@ -266,6 +257,13 @@ export const JobDetail = JobSummary.extend({
 export type JobCreateInput = z.infer<typeof JobCreateInput>;
 export const JobCreateInput = z.object({
   productId: UUID,
+  dueDate: z.iso.date().nullable().optional(),
+});
+
+export type JobCreateFromQuoteInput = z.infer<typeof JobCreateFromQuoteInput>;
+export const JobCreateFromQuoteInput = z.object({
+  quoteId: UUID,
+  dueDate: z.iso.date().nullable().optional(),
 });
 
 export type JobListInput = z.infer<typeof JobListInput>;

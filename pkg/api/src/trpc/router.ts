@@ -3,6 +3,7 @@ import { authRouter } from '../routes/auth/auth.router.js';
 import { customersRouter } from '../routes/customers/customers.router.js';
 import { jobsRouter } from '../routes/jobs/jobs.router.js';
 import { productsRouter } from '../routes/products/products.router.js';
+import { quotesRouter } from '../routes/quotes/quotes.router.js';
 import { usersRouter } from '../routes/users/users.router.js';
 import { createCallerFactory, router } from './init.js';
 
@@ -12,6 +13,7 @@ export const appRouter = router({
   customers: customersRouter,
   jobs: jobsRouter,
   products: productsRouter,
+  quotes: quotesRouter,
   users: usersRouter,
 });
 

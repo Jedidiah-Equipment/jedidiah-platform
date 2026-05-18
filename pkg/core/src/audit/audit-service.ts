@@ -7,7 +7,7 @@ import type {
   AuditListInput,
   AuditListResult,
 } from '@pkg/schema';
-import { formatJobCode, JobCode } from '@pkg/schema';
+import { formatJobCode, formatQuoteCode, JobCode, QuoteCode } from '@pkg/schema';
 import { and, asc, desc, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
 type AuditRecord = Record<string, unknown>;
@@ -87,8 +87,10 @@ export const jobAuditDescriptor: AuditEntityDescriptor = {
   primaryLabelField: 'code',
   primaryLabelFormatter: formatJobAuditLabel,
   fields: {
+    dueDate: 'due date',
     lifecycleStatus: 'lifecycle status',
     productId: 'product',
+    quoteId: 'quote',
   },
 };
 
@@ -113,12 +115,42 @@ export const jobStageAuditDescriptor: AuditEntityDescriptor = {
   },
 };
 
+export const quoteAuditDescriptor: AuditEntityDescriptor = {
+  entityType: 'quote',
+  noun: 'quote',
+  primaryLabelField: 'code',
+  primaryLabelFormatter: formatQuoteAuditLabel,
+  fields: {
+    customerId: 'customer',
+    discount: 'discount',
+    notes: 'notes',
+    productId: 'product',
+    quotedBasePrice: 'quoted base price',
+    quotedCurrencyCode: 'quoted currency',
+    salesPersonId: 'salesperson',
+    sentAt: 'sent at',
+    status: 'status',
+    validUntil: 'valid until',
+  },
+};
+
+function formatQuoteAuditLabel(value: unknown): string {
+  if (typeof value === 'number') {
+    return formatQuoteCode(value);
+  }
+
+  const result = QuoteCode.safeParse(value);
+
+  return result.success ? result.data : String(value);
+}
+
 const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   customer: customerAuditDescriptor,
   job: jobAuditDescriptor,
   job_stage: jobStageAuditDescriptor,
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
+  quote: quoteAuditDescriptor,
   user: userAuditDescriptor,
 };
 

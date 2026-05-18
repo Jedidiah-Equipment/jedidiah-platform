@@ -26,6 +26,9 @@ describe('getRolePermissions', () => {
       'product:create',
       'product:read',
       'product:update',
+      'quote:create',
+      'quote:read',
+      'quote:update',
       'user:assign-departments',
       'user:create',
       'user:list',
@@ -50,6 +53,7 @@ describe('getRolePermissions', () => {
       'job:create',
       'job:read',
       'job:update',
+      'quote:read',
     ]);
   });
 
@@ -59,6 +63,10 @@ describe('getRolePermissions', () => {
 
   it('grants read-only job permissions to job viewers', () => {
     expect(getRolePermissions('job-viewer')).toEqual(['job-stage:read', 'job:read']);
+  });
+
+  it('grants quote-only permissions to sales', () => {
+    expect(getRolePermissions('sales')).toEqual(['quote:create', 'quote:read', 'quote:update']);
   });
 });
 

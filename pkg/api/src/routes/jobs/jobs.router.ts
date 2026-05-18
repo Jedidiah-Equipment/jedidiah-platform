@@ -2,9 +2,11 @@ import {
   cancelJob,
   completeJobStage,
   createJob,
+  createJobFromQuote,
   getJob,
   JobLifecycleTransitionDeniedError,
   JobNotFoundError,
+  JobQuoteConversionDeniedError,
   JobStageTransitionDeniedError,
   listJobs,
   pauseJob,
@@ -13,6 +15,7 @@ import {
   startJobStage,
 } from '@pkg/core';
 import {
+  JobCreateFromQuoteInput,
   JobCreateInput,
   JobLifecycleTransitionInput,
   JobListInput,
@@ -38,6 +41,14 @@ export const jobsRouter = router({
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => createJob({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id })),
+    ),
+
+  createFromQuote: authorizedProcedure('job:create')
+    .input(JobCreateFromQuoteInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        createJobFromQuote({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id }),
+      ),
     ),
 
   pause: authorizedProcedure('job:update')
@@ -140,6 +151,13 @@ async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
     }
 
     if (error instanceof JobLifecycleTransitionDeniedError) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: error.message,
+      });
+    }
+
+    if (error instanceof JobQuoteConversionDeniedError) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: error.message,

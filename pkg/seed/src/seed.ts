@@ -34,6 +34,7 @@ import { inArray, sql } from 'drizzle-orm';
 const seedProductCount = 10;
 const seedProductMinAgeDays = 7;
 const seedProductAgeDayRange = 22;
+const seedStandaloneJobCount = 2;
 
 const equipmentFamilies = [
   'Wheel Loader',
@@ -362,7 +363,7 @@ export async function seedDatabase(database?: Db): Promise<void> {
   });
 
   console.info(
-    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededProducts.length} product scenario(s), ${seedJobScenarios.length} job scenario(s), and ${seedQuoteScenarios.length} quote scenario(s)`,
+    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededProducts.length} product scenario(s), ${seedJobScenarios.length} job scenario(s) (${seedJobScenarios.length - seedStandaloneJobCount} quote-backed), and ${seedQuoteScenarios.length} standalone quote scenario(s)`,
   );
 }
 
@@ -427,6 +428,7 @@ async function seedJobsWithCore({ db, products }: { db: Db; products: readonly P
   }
 
   const actorUserId = 'seed-job-supervisor-user';
+  const salesUserId = 'seed-sales-user';
   const access = createUserAccessSummary({
     role: 'job-supervisor',
     userId: actorUserId,
@@ -439,14 +441,24 @@ async function seedJobsWithCore({ db, products }: { db: Db; products: readonly P
       throw new Error('Seed job product lookup failed');
     }
 
-    const created = await createJob({
-      access,
-      actorUserId,
-      db,
-      input: {
-        productId: product.id,
-      },
-    });
+    const created =
+      scenarioIndex < seedStandaloneJobCount
+        ? await createJob({
+            access,
+            actorUserId,
+            db,
+            input: {
+              productId: product.id,
+            },
+          })
+        : await createQuoteBackedSeedJob({
+            access,
+            actorUserId,
+            db,
+            product,
+            salesUserId,
+            scenarioIndex,
+          });
 
     await applySeedJobScenario({
       access,
@@ -456,6 +468,50 @@ async function seedJobsWithCore({ db, products }: { db: Db; products: readonly P
       scenario,
     });
   }
+}
+
+async function createQuoteBackedSeedJob({
+  access,
+  actorUserId,
+  db,
+  product,
+  salesUserId,
+  scenarioIndex,
+}: {
+  access: ReturnType<typeof createUserAccessSummary>;
+  actorUserId: string;
+  db: Db;
+  product: Product;
+  salesUserId: string;
+  scenarioIndex: number;
+}) {
+  const quote = await createQuote({
+    actorUserId: salesUserId,
+    db,
+    input: {
+      customer: {
+        type: 'inline',
+        companyName: `Seed Production Customer ${String(scenarioIndex + 1).padStart(2, '0')}`,
+      },
+      discount: getSeedJobQuoteDiscount(scenarioIndex),
+      notes: 'Accepted seed quote converted into a production job.',
+      productId: product.id,
+      salesPersonId: salesUserId,
+      validUntil: getSeedJobQuoteValidUntil(scenarioIndex),
+    },
+  });
+  const sent = await sendQuote({ actorUserId: salesUserId, db, input: { id: quote.id } });
+  const accepted = await acceptQuote({ actorUserId: salesUserId, db, input: { id: sent.id } });
+
+  return createJobFromQuote({
+    access,
+    actorUserId,
+    db,
+    input: {
+      dueDate: getSeedJobDueDate(scenarioIndex),
+      quoteId: accepted.id,
+    },
+  });
 }
 
 async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly Product[] }): Promise<void> {
@@ -639,6 +695,32 @@ async function advanceStageStatuses({
 
 function getSeedProductAgeDays(productIndex: number): number {
   return seedProductMinAgeDays + ((productIndex * 5) % seedProductAgeDayRange);
+}
+
+function getSeedJobDueDate(scenarioIndex: number): string {
+  return getSeedIsoDate({
+    dayOffset: 42 + scenarioIndex * 4,
+    month: 6,
+    year: 2026,
+  });
+}
+
+function getSeedJobQuoteValidUntil(scenarioIndex: number): string {
+  return getSeedIsoDate({
+    dayOffset: 14 + scenarioIndex * 2,
+    month: 5,
+    year: 2026,
+  });
+}
+
+function getSeedJobQuoteDiscount(scenarioIndex: number): number {
+  return scenarioIndex % 3 === 0 ? 8_500 : 3_000 + scenarioIndex * 750;
+}
+
+function getSeedIsoDate({ dayOffset, month, year }: { dayOffset: number; month: number; year: number }): string {
+  const date = new Date(Date.UTC(year, month, dayOffset));
+
+  return date.toISOString().slice(0, 10);
 }
 
 function getSeedProductUpdateCount(productIndex: number, dayIndex: number): number {

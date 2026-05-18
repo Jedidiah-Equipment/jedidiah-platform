@@ -9,7 +9,7 @@ import {
 import { CustomerCreateInput, CustomerListInput, CustomerUpdateInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
+import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const customersRouter = router({
@@ -39,14 +39,15 @@ async function mapCustomerErrors<T>(action: () => Promise<T>): Promise<T> {
 }
 
 function mapCustomerCoreError(error: CustomerCoreError): CoreErrorMapping<CustomerCoreError['code']> {
-  switch (error.code) {
-    case 'customer.not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Customer not found.',
-      };
-  }
-
-  return assertNever(error as never);
+  return customerErrorMappings[error.code];
 }
+
+const customerErrorMappings = {
+  'customer.not_found': {
+    appCode: 'customer.not_found',
+    code: 'NOT_FOUND',
+    message: 'Customer not found.',
+  },
+} satisfies {
+  [TCode in CustomerCoreError['code']]: CoreErrorMapping<TCode>;
+};

@@ -24,17 +24,12 @@ export type CoreErrorMapping<TAppCode extends AppCode = AppCode> = {
 
 export function createPublicTRPCError(options: PublicTRPCErrorOptions): TRPCError {
   const error = new TRPCError({
+    cause: options.cause,
     code: options.code,
     message: options.message,
   }) as AppCodedTRPCError;
 
   error.appCode = options.appCode;
-  if (options.cause !== undefined) {
-    Object.defineProperty(error, 'cause', {
-      configurable: true,
-      value: options.cause,
-    });
-  }
 
   return error;
 }

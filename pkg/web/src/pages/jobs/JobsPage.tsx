@@ -1,4 +1,4 @@
-import { jobLifecycleStatusLabels } from '@pkg/domain';
+import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
 import {
   JOB_LIST_STATUS_FILTERS,
   type JobLifecycleStatus,
@@ -9,20 +9,21 @@ import {
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { ArrowRightIcon, BriefcaseBusinessIcon, CircleIcon } from 'lucide-react';
+import { ArrowRightIcon, CircleIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
+import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { Separator } from '@/components/ui/separator.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import { getJobLifecycleStatusColorClassNames, JobLifecycleStatusBadge } from './components/JobLifecycleStatusBadge.js';
@@ -115,7 +116,10 @@ const JobStatusFilter: React.FC<{
 const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const accessQuery = useAccess();
   const jobListInput = useJobListInput(status);
+  const canOpenQuotes =
+    hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
 
   const jobsQuery = useQuery(
     trpc.jobs.list.queryOptions(jobListInput, {
@@ -155,34 +159,8 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
     total,
   });
 
-  const columns = useMemo<ColumnDef<JobSummary>[]>(
-    () => [
-      {
-        accessorKey: 'productName',
-        cell: ({ row }) => (
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background">
-              <BriefcaseBusinessIcon className="size-4 text-muted-foreground" />
-            </div>
-            <div className="min-w-0">
-              <div className="truncate font-medium">{row.original.productName}</div>
-              <p className="truncate text-sm text-muted-foreground">
-                {row.original.productModelCode} · {row.original.code}
-              </p>
-            </div>
-          </div>
-        ),
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: 'Job',
-      },
-      {
-        accessorKey: 'lifecycleStatus',
-        cell: ({ row }) => <JobLifecycleStatusBadge status={row.original.lifecycleStatus} />,
-        enableColumnFilter: false,
-        enableSorting: true,
-        header: 'Status',
-      },
+  const columns = useMemo<ColumnDef<JobSummary>[]>(() => {
+    const baseColumns: ColumnDef<JobSummary>[] = [
       {
         accessorKey: 'createdAt',
         cell: ({ row }) => formatDate(row.original.createdAt),
@@ -191,11 +169,50 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
         header: 'Created',
       },
       {
+        accessorKey: 'code',
+        cell: ({ row }) => <span className="font-medium">{row.original.code}</span>,
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Job code',
+      },
+      {
+        accessorKey: 'productName',
+        cell: ({ row }) => (
+          <>
+            {row.original.productName}
+            <span className="ml-2 text-muted-foreground">{row.original.productModelCode}</span>
+          </>
+        ),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Product',
+      },
+    ];
+
+    if (canOpenQuotes) {
+      baseColumns.push({
+        accessorKey: 'quoteCode',
+        cell: ({ row }) => <JobQuoteCode quoteCode={row.original.quoteCode} quoteId={row.original.quoteId} />,
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Quote',
+      });
+    }
+
+    baseColumns.push(
+      {
         accessorKey: 'dueDate',
         cell: ({ row }) => formatDate(row.original.dueDate, 'short', 'No date'),
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Due',
+      },
+      {
+        accessorKey: 'lifecycleStatus',
+        cell: ({ row }) => <JobLifecycleStatusBadge status={row.original.lifecycleStatus} />,
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Status',
       },
       {
         id: 'actions',
@@ -219,9 +236,10 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
           headerClassName: 'w-20 text-right',
         },
       },
-    ],
-    [navigate],
-  );
+    );
+
+    return baseColumns;
+  }, [canOpenQuotes, navigate]);
 
   const table = useReactTable({
     columns,
@@ -256,6 +274,25 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
       totalLabel={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`}
     />
   );
+};
+
+const JobQuoteCode: React.FC<{
+  quoteCode: JobSummary['quoteCode'];
+  quoteId: JobSummary['quoteId'];
+}> = ({ quoteCode, quoteId }) => {
+  if (!quoteCode) {
+    return <span className="text-muted-foreground">Direct job</span>;
+  }
+
+  if (quoteId) {
+    return (
+      <PrimaryLink params={{ id: quoteId }} to="/quotes/$id">
+        {quoteCode}
+      </PrimaryLink>
+    );
+  }
+
+  return <span className="font-medium">{quoteCode}</span>;
 };
 
 function useJobListInput(status: JobListStatusFilter): JobListInput {

@@ -1,63 +1,53 @@
-import { type QuoteListInput, type QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
+import { hasPermission } from '@pkg/domain';
+import { type QuoteListInput, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowRightIcon, FileTextIcon, PlusIcon } from 'lucide-react';
+import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { ArrowRightIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
-import { useMemo, useState } from 'react';
-
+import { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { DataTable } from '@/components/data-table/DataTable.js';
+import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
+import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
+import { createPersistedDataTableStore } from '@/components/data-table/store.js';
+import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
+import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Input } from '@/components/ui/input.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Separator } from '@/components/ui/separator.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 
-type QuoteStatusFilter = QuoteStatus | 'all';
+export const useQuoteTableStore = createPersistedDataTableStore({
+  initialState: {
+    sorting: [
+      {
+        desc: true,
+        id: 'createdAt',
+      },
+    ],
+  },
+  persistName: 'quotes-table',
+});
 
-const statusFilters = ['all', ...QuoteStatus.options] as const satisfies readonly QuoteStatusFilter[];
-const sortOptions = [
-  'createdAt',
-  'code',
-  'customerCompanyName',
-  'productName',
-  'status',
-  'total',
-] as const satisfies readonly QuoteSortBy[];
+const quoteSortOptions: SortOptions<QuoteListInput> = {
+  allowedSortIds: ['code', 'createdAt', 'customerCompanyName', 'jobCode', 'productName', 'status', 'total'],
+  defaultSort: {
+    desc: true,
+    id: 'createdAt',
+  },
+};
+
+const quoteStatusFilterOptions = QuoteStatus.options.map((status) => ({
+  label: quoteStatusLabels[status],
+  value: status,
+}));
 
 export const QuotesPage: React.FC = () => {
-  const trpc = useTRPC();
-  const navigate = useNavigate();
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<QuoteStatusFilter>('all');
-  const [sortBy, setSortBy] = useState<QuoteSortBy>('createdAt');
-  const [page, setPage] = useState(1);
-  const input = useMemo(
-    () =>
-      ({
-        filters: {
-          statuses: status === 'all' ? [] : [status],
-        },
-        page,
-        pageSize: 10,
-        search,
-        sortBy,
-        sortDirection: sortBy === 'createdAt' ? 'desc' : 'asc',
-      }) satisfies QuoteListInput,
-    [page, search, sortBy, status],
-  );
-  const quotesQuery = useQuery(
-    trpc.quotes.list.queryOptions(input, {
-      placeholderData: keepPreviousData,
-    }),
-  );
-  const quotes = quotesQuery.data?.items ?? [];
-  const total = quotesQuery.data?.total ?? 0;
-  const maxPage = Math.max(1, Math.ceil(total / input.pageSize));
-
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <Card>
@@ -75,162 +65,240 @@ export const QuotesPage: React.FC = () => {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Separator />
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_12rem]">
-            <Input
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Search quotes..."
-              value={search}
-            />
-            <Select
-              onValueChange={(value) => {
-                setStatus(value as QuoteStatusFilter);
-                setPage(1);
-              }}
-              value={status}
-            >
-              <SelectTrigger aria-label="Quote status" className="w-full">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {statusFilters.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option === 'all' ? 'All statuses' : quoteStatusLabels[option]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <Select onValueChange={(value) => setSortBy(value as QuoteSortBy)} value={sortBy}>
-              <SelectTrigger aria-label="Sort quotes" className="w-full">
-                <SelectValue placeholder="Sort" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {sortOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {getSortLabel(option)}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          {quotesQuery.error ? <p className="text-sm text-destructive">{quotesQuery.error.message}</p> : null}
-          <QuoteTable
-            isLoading={quotesQuery.isLoading}
-            onOpen={(quote) => navigate({ params: { id: quote.id }, to: '/quotes/$id' })}
-            quotes={quotes}
-          />
-          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>
-              {total} {total === 1 ? 'quote' : 'quotes'}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                disabled={page <= 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                variant="outline"
-              >
-                Previous
-              </Button>
-              <span>
-                Page {page} of {maxPage}
-              </span>
-              <Button
-                disabled={page >= maxPage}
-                onClick={() => setPage((current) => Math.min(maxPage, current + 1))}
-                variant="outline"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          <QuoteTable />
         </CardContent>
       </Card>
     </div>
   );
 };
 
-const QuoteTable: React.FC<{
-  isLoading: boolean;
-  onOpen: (quote: QuoteSummary) => void;
-  quotes: QuoteSummary[];
-}> = ({ isLoading, onOpen, quotes }) => {
-  if (isLoading) {
-    return <div className="rounded-md border p-6 text-sm text-muted-foreground">Loading quotes...</div>;
-  }
+const QuoteTable: React.FC = () => {
+  const trpc = useTRPC();
+  const navigate = useNavigate();
+  const accessQuery = useAccess();
+  const quoteListInput = useQuoteListInput();
+  const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
 
-  if (quotes.length === 0) {
-    return <div className="rounded-md border p-6 text-sm text-muted-foreground">No quotes found.</div>;
-  }
+  const quotesQuery = useQuery(
+    trpc.quotes.list.queryOptions(quoteListInput, {
+      placeholderData: keepPreviousData,
+    }),
+  );
+  const { items: quotes, total, isLoading } = usePagedQueryResult(quotesQuery);
+
+  const {
+    columnFilters,
+    globalFilter,
+    pagination,
+    setColumnFilters,
+    setGlobalFilter,
+    setPageIndex,
+    setPagination,
+    setSorting,
+    sorting,
+  } = useQuoteTableStore(
+    useShallow((state) => ({
+      columnFilters: state.columnFilters,
+      globalFilter: state.globalFilter,
+      pagination: state.pagination,
+      setColumnFilters: state.setColumnFilters,
+      setGlobalFilter: state.setGlobalFilter,
+      setPageIndex: state.setPageIndex,
+      setPagination: state.setPagination,
+      setSorting: state.setSorting,
+      sorting: state.sorting,
+    })),
+  );
+  const tableState = useConstrainedTableState({
+    pagination,
+    setPageIndex,
+    sorting,
+    sortOptions: quoteSortOptions,
+    total,
+  });
+
+  const columns = useMemo<ColumnDef<QuoteSummary>[]>(
+    () => [
+      {
+        accessorKey: 'createdAt',
+        cell: ({ row }) => formatDate(row.original.createdAt),
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Created',
+      },
+      {
+        accessorKey: 'code',
+        cell: ({ row }) => <span className="font-medium">{row.original.code}</span>,
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Quote',
+      },
+      {
+        accessorKey: 'customerCompanyName',
+        cell: ({ row }) => row.original.customerCompanyName,
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Customer',
+      },
+      {
+        accessorKey: 'productName',
+        cell: ({ row }) => (
+          <>
+            {row.original.productName}
+            <span className="ml-2 text-muted-foreground">{row.original.productModelCode}</span>
+          </>
+        ),
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Product',
+      },
+      {
+        accessorKey: 'total',
+        cell: ({ row }) =>
+          formatCurrency(row.original.total, row.original.quotedCurrencyCode ?? row.original.productCurrencyCode),
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Total',
+      },
+      {
+        accessorKey: 'validUntil',
+        cell: ({ row }) => formatDate(row.original.validUntil, 'short', 'Not set'),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Valid until',
+      },
+      {
+        accessorKey: 'status',
+        cell: ({ row }) => <QuoteStatusBadge status={row.original.status} />,
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Status',
+        meta: {
+          filterOptions: quoteStatusFilterOptions,
+          filterVariant: 'multi-select',
+        },
+      },
+      {
+        accessorKey: 'jobCode',
+        cell: ({ row }) => (
+          <QuoteJobCode canOpenJob={canOpenJobs} jobCode={row.original.jobCode} jobId={row.original.jobId} />
+        ),
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Job',
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <div className="text-right">
+            <Button
+              aria-label={`Open quote ${row.original.code}`}
+              onClick={() => navigate({ params: { id: row.original.id }, to: '/quotes/$id' })}
+              size="icon-sm"
+              variant="outline"
+            >
+              <ArrowRightIcon />
+            </Button>
+          </div>
+        ),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: () => <span className="sr-only">Actions</span>,
+        meta: {
+          cellClassName: 'text-right',
+          headerClassName: 'w-20 text-right',
+        },
+      },
+    ],
+    [canOpenJobs, navigate],
+  );
+
+  const table = useReactTable({
+    columns,
+    data: quotes,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    manualFiltering: true,
+    manualPagination: true,
+    manualSorting: true,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    pageCount: tableState.pageCount,
+    rowCount: total,
+    state: {
+      columnFilters,
+      globalFilter,
+      pagination: tableState.pagination,
+      sorting: tableState.sorting,
+    },
+  });
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Quote</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Customer</TableHead>
-          <TableHead>Product</TableHead>
-          <TableHead>Total</TableHead>
-          <TableHead>Valid until</TableHead>
-          <TableHead className="w-16 text-right">Open</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {quotes.map((quote) => (
-          <TableRow key={quote.id}>
-            <TableCell>
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background">
-                  <FileTextIcon className="size-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0">
-                  <div className="font-medium">{quote.code}</div>
-                  <p className="text-sm text-muted-foreground">{formatDate(quote.createdAt)}</p>
-                </div>
-              </div>
-            </TableCell>
-            <TableCell>
-              <QuoteStatusBadge status={quote.status} />
-            </TableCell>
-            <TableCell>{quote.customerCompanyName}</TableCell>
-            <TableCell>
-              {quote.productName}
-              <span className="ml-2 text-muted-foreground">{quote.productModelCode}</span>
-            </TableCell>
-            <TableCell>{formatCurrency(quote.total, quote.quotedCurrencyCode ?? quote.productCurrencyCode)}</TableCell>
-            <TableCell>{formatDate(quote.validUntil, 'short', 'Not set')}</TableCell>
-            <TableCell className="text-right">
-              <Button
-                aria-label={`Open quote ${quote.code}`}
-                onClick={() => onOpen(quote)}
-                size="icon-sm"
-                variant="outline"
-              >
-                <ArrowRightIcon />
-              </Button>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <DataTable
+      emptyMessage="No quotes found."
+      errorMessage={quotesQuery.error?.message}
+      globalFilterPlaceholder="Search quotes..."
+      isLoading={isLoading}
+      table={table}
+      total={total}
+      totalLabel={(value) => `${value} ${value === 1 ? 'quote' : 'quotes'}`}
+    />
   );
 };
 
-function getSortLabel(sortBy: QuoteSortBy): string {
-  const labels: Record<QuoteSortBy, string> = {
-    code: 'Code',
-    createdAt: 'Created',
-    customerCompanyName: 'Customer',
-    productName: 'Product',
-    status: 'Status',
-    total: 'Total',
-  };
+const QuoteJobCode: React.FC<{
+  canOpenJob: boolean;
+  jobCode: QuoteSummary['jobCode'];
+  jobId: QuoteSummary['jobId'];
+}> = ({ canOpenJob, jobCode, jobId }) => {
+  if (!jobCode) {
+    return <span className="text-muted-foreground">None</span>;
+  }
 
-  return labels[sortBy];
+  if (canOpenJob && jobId) {
+    return (
+      <PrimaryLink params={{ id: jobId }} to="/jobs/$id">
+        {jobCode}
+      </PrimaryLink>
+    );
+  }
+
+  return <span className="font-medium">{jobCode}</span>;
+};
+
+function useQuoteListInput(): QuoteListInput {
+  const { columnFilters, globalFilter, pagination, sorting } = useQuoteTableStore(
+    useShallow((state) => ({
+      columnFilters: state.columnFilters,
+      globalFilter: state.globalFilter,
+      pagination: state.pagination,
+      sorting: state.sorting,
+    })),
+  );
+  const sort = getPrimarySort(sorting, quoteSortOptions);
+
+  return useMemo(
+    () =>
+      ({
+        filters: {
+          statuses: getStatusFilterValues(columnFilters),
+        },
+        page: pagination.pageIndex + 1,
+        pageSize: pagination.pageSize,
+        search: globalFilter,
+        sortBy: sort.id,
+        sortDirection: sort.desc ? 'desc' : 'asc',
+      }) satisfies QuoteListInput,
+    [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id],
+  );
+}
+
+function getStatusFilterValues(columnFilters: ColumnFiltersState) {
+  const value = columnFilters.find((filter) => filter.id === 'status')?.value;
+
+  return Array.isArray(value)
+    ? value.filter((item): item is QuoteSummary['status'] => QuoteStatus.safeParse(item).success)
+    : [];
 }

@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteForm } from './components/QuoteForm.js';
+import { QuoteStatusBadge } from './components/QuoteStatusBadge.js';
 
 type QuoteFormPageProps = {
   quoteId?: UUID;
@@ -82,7 +83,10 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
       <Card>
         <CardHeader>
           <CardDescription>Sales</CardDescription>
-          <CardTitle>{isEditing ? 'Edit quote' : 'New quote'}</CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle>{isEditing ? 'Edit quote' : 'New quote'}</CardTitle>
+            {quote ? <QuoteStatusBadge status={quote.status} /> : null}
+          </div>
         </CardHeader>
         <CardContent>
           <Separator className="mb-4" />

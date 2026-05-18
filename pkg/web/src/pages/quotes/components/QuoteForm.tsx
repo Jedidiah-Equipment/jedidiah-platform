@@ -9,7 +9,6 @@ import { getFieldErrors } from '@/components/form/field-errors.js';
 import { useAppForm } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatCurrency, formatPercent } from '@/utils/number.js';
 import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
@@ -87,6 +86,11 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
         : null,
     [initialQuote],
   );
+  const salespersonOptions =
+    salespeopleQuery.data?.users.map((person) => ({
+      label: `${person.name} · ${person.email}`,
+      value: person.id,
+    })) ?? [];
   const defaultValues: QuoteFormValues = {
     customerId: initialQuote?.customerId ?? '',
     customerMode: 'existing',
@@ -177,34 +181,18 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
           </form.Field>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
-            <form.Field name="customerMode">
-              {(field) => {
-                const fieldErrors = getFieldErrors(field.state.meta.errors);
-                const isInvalid = fieldErrors.length > 0;
-
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
-                    <Select
-                      disabled={isFrozen}
-                      onValueChange={(value) => field.handleChange(CustomerMode.parse(value))}
-                      value={field.state.value}
-                    >
-                      <SelectTrigger id={field.name} className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectItem value="existing">Existing customer</SelectItem>
-                          <SelectItem value="inline">New company name</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    <FieldError errors={fieldErrors} />
-                  </Field>
-                );
-              }}
-            </form.Field>
+            <form.AppField name="customerMode">
+              {(field) => (
+                <field.SelectField
+                  disabled={isFrozen}
+                  label="Customer"
+                  options={[
+                    { label: 'Existing customer', value: 'existing' },
+                    { label: 'New company name', value: 'inline' },
+                  ]}
+                />
+              )}
+            </form.AppField>
             <form.Subscribe selector={(state) => state.values.customerMode}>
               {(customerMode) =>
                 customerMode === 'existing' ? (
@@ -247,9 +235,13 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                   <FieldLabel htmlFor={field.name}>Product</FieldLabel>
                   <QuoteProductCombobox
                     disabled={isFrozen}
-                    onResolvedSelected={onProductSelected}
                     onSelected={(product) => {
-                      field.handleChange(product?.id ?? '');
+                      const productId = product?.id ?? '';
+
+                      if (field.state.value !== productId) {
+                        field.handleChange(productId);
+                      }
+
                       onProductSelected(product);
                     }}
                     value={field.state.value}
@@ -259,42 +251,16 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               );
             }}
           </form.Field>
-          <form.Field name="salesPersonId">
-            {(field) => {
-              const fieldErrors = getFieldErrors(field.state.meta.errors);
-              const isInvalid = fieldErrors.length > 0;
-              const selectedSalesperson = salespeopleQuery.data?.users.find(
-                (person) => person.id === field.state.value,
-              );
-
-              return (
-                <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>Salesperson</FieldLabel>
-                  <Select
-                    disabled={isFrozen}
-                    onValueChange={(value) => field.handleChange(value ?? '')}
-                    value={field.state.value}
-                  >
-                    <SelectTrigger id={field.name} className="w-full">
-                      <SelectValue placeholder="Select salesperson">
-                        {selectedSalesperson ? `${selectedSalesperson.name} · ${selectedSalesperson.email}` : null}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {(salespeopleQuery.data?.users ?? []).map((person) => (
-                          <SelectItem key={person.id} value={person.id}>
-                            {person.name} · {person.email}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <FieldError errors={fieldErrors} />
-                </Field>
-              );
-            }}
-          </form.Field>
+          <form.AppField name="salesPersonId">
+            {(field) => (
+              <field.SelectField
+                disabled={isFrozen}
+                label="Salesperson"
+                options={salespersonOptions}
+                placeholder="Select salesperson"
+              />
+            )}
+          </form.AppField>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <form.AppField name="discount">

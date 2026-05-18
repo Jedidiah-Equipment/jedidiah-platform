@@ -1,11 +1,12 @@
 import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
-import type { JobStageStatusInput, UUID } from '@pkg/schema';
+import type { JobDetail, JobStageStatusInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeftIcon } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 
+import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
@@ -98,6 +99,8 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     resumeJobMutation.isPending ||
     cancelJobMutation.isPending;
   const canUpdateJob = hasPermission(accessQuery.data, 'job:update');
+  const canOpenQuotes =
+    hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
   const confirmPauseJob = (id: UUID) => {
     setConfirmation({
       body: [
@@ -185,7 +188,10 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
                 <JobFact label="Created" value={formatDate(job.createdAt)} />
                 <JobFact label="Due date" value={formatDate(job.dueDate, 'short', 'No date')} />
                 <JobFact label="Updated" value={formatDate(job.updatedAt)} />
-                <JobFact label="Quote" value={job.quoteId ?? 'Direct job'} />
+                <JobFact
+                  label="Quote"
+                  value={<JobQuoteLink canOpenQuote={canOpenQuotes} quoteCode={job.quoteCode} quoteId={job.quoteId} />}
+                />
               </div>
               {canUpdateJob ? (
                 <LifecycleControls
@@ -228,4 +234,24 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       />
     </div>
   );
+};
+
+const JobQuoteLink: React.FC<{
+  canOpenQuote: boolean;
+  quoteCode: JobDetail['quoteCode'];
+  quoteId: JobDetail['quoteId'];
+}> = ({ canOpenQuote, quoteCode, quoteId }) => {
+  if (!quoteCode) {
+    return <span>Direct job</span>;
+  }
+
+  if (canOpenQuote && quoteId) {
+    return (
+      <PrimaryLink params={{ id: quoteId }} to="/quotes/$id">
+        {quoteCode}
+      </PrimaryLink>
+    );
+  }
+
+  return <span>{quoteCode}</span>;
 };

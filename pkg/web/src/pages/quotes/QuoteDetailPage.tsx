@@ -1,24 +1,26 @@
 import { hasPermission } from '@pkg/domain';
-import type { UUID } from '@pkg/schema';
+import type { QuoteDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeftIcon, BriefcaseBusinessIcon, EditIcon, Loader2Icon } from 'lucide-react';
+import { ArrowLeftIcon, BriefcaseBusinessIcon, CalendarIcon, EditIcon, Loader2Icon, XIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
+import { Calendar } from '@/components/ui/calendar.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
-import { Input } from '@/components/ui/input.js';
-import { Label } from '@/components/ui/label.js';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
 import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -32,11 +34,20 @@ type QuoteDetailPageProps = {
   quoteId: UUID;
 };
 
+type QuoteTransitionConfirmation = {
+  body: string[];
+  confirmLabel: string;
+  confirmVariant: React.ComponentProps<typeof Button>['variant'];
+  onConfirm: () => void;
+  title: string;
+};
+
 export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const accessQuery = useAccess();
+  const [confirmation, setConfirmation] = useState<QuoteTransitionConfirmation | null>(null);
 
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
   const quote = quoteQuery.data;
@@ -62,7 +73,44 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
 
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
   const isStatePending = sendMutation.isPending || acceptMutation.isPending || rejectMutation.isPending;
+  const confirmSendQuote = (id: UUID) => {
+    setConfirmation({
+      body: [
+        'This will send the Quote and freeze it at the current product price and currency.',
+        'After sending, the Quote cannot be edited. It can only be accepted or rejected.',
+      ],
+      confirmLabel: 'Send quote',
+      confirmVariant: 'default',
+      onConfirm: () => sendMutation.mutate({ id }),
+      title: 'Send quote?',
+    });
+  };
+  const confirmAcceptQuote = (id: UUID) => {
+    setConfirmation({
+      body: [
+        'This will mark the Quote as accepted.',
+        'After acceptance, the Quote cannot be rejected or edited. A Job can be created from it by someone with Job creation access.',
+      ],
+      confirmLabel: 'Accept quote',
+      confirmVariant: 'default',
+      onConfirm: () => acceptMutation.mutate({ id }),
+      title: 'Accept quote?',
+    });
+  };
+  const confirmRejectQuote = (id: UUID) => {
+    setConfirmation({
+      body: [
+        'This will mark the Quote as rejected.',
+        'After rejection, the Quote cannot be accepted, edited, or converted into a Job. It will stay visible for history.',
+      ],
+      confirmLabel: 'Reject quote',
+      confirmVariant: 'destructive',
+      onConfirm: () => rejectMutation.mutate({ id }),
+      title: 'Reject quote?',
+    });
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -102,24 +150,20 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                   </Button>
                 ) : null}
                 {canUpdateQuote && quote.status === 'draft' ? (
-                  <Button disabled={isStatePending} onClick={() => sendMutation.mutate({ id: quote.id })}>
+                  <Button disabled={isStatePending} onClick={() => confirmSendQuote(quote.id)}>
                     {sendMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
                     Send
                   </Button>
                 ) : null}
                 {canUpdateQuote && quote.status === 'sent' ? (
                   <>
-                    <Button disabled={isStatePending} onClick={() => acceptMutation.mutate({ id: quote.id })}>
+                    <Button disabled={isStatePending} onClick={() => confirmAcceptQuote(quote.id)}>
                       {acceptMutation.isPending ? (
                         <Loader2Icon data-icon="inline-start" className="animate-spin" />
                       ) : null}
                       Accept
                     </Button>
-                    <Button
-                      disabled={isStatePending}
-                      onClick={() => rejectMutation.mutate({ id: quote.id })}
-                      variant="outline"
-                    >
+                    <Button disabled={isStatePending} onClick={() => confirmRejectQuote(quote.id)} variant="outline">
                       Reject
                     </Button>
                   </>
@@ -147,7 +191,10 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                       : formatCurrency(quote.quotedBasePrice, currencyCode)
                   }
                 />
-                <QuoteFact label="Converted job" value={quote.jobId ? 'Created' : 'None'} />
+                <QuoteFact
+                  label="Job"
+                  value={<QuoteJobLink canOpenJob={canOpenJobs} jobCode={quote.jobCode} jobId={quote.jobId} />}
+                />
               </div>
               {quote.notes ? (
                 <div className="rounded-md border p-3 text-sm">
@@ -160,15 +207,80 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
           {quoteQuery.isLoading ? <Skeleton className="h-40" /> : null}
         </CardContent>
       </Card>
+      <QuoteTransitionConfirmationDialog
+        confirmation={confirmation}
+        isPending={isStatePending}
+        onClose={() => setConfirmation(null)}
+      />
     </div>
   );
 };
 
-const QuoteFact: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const QuoteFact: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="rounded-md border p-3">
     <div className="text-xs font-medium text-muted-foreground">{label}</div>
     <div className="mt-1 wrap-break-word">{value}</div>
   </div>
+);
+
+const QuoteJobLink: React.FC<{
+  canOpenJob: boolean;
+  jobCode: QuoteDetail['jobCode'];
+  jobId: QuoteDetail['jobId'];
+}> = ({ canOpenJob, jobCode, jobId }) => {
+  if (!jobCode) {
+    return <span className="text-muted-foreground">None</span>;
+  }
+
+  if (canOpenJob && jobId) {
+    return (
+      <PrimaryLink params={{ id: jobId }} to="/jobs/$id">
+        {jobCode}
+      </PrimaryLink>
+    );
+  }
+
+  return <span className="font-medium">{jobCode}</span>;
+};
+
+const QuoteTransitionConfirmationDialog: React.FC<{
+  confirmation: QuoteTransitionConfirmation | null;
+  isPending: boolean;
+  onClose: () => void;
+}> = ({ confirmation, isPending, onClose }) => (
+  <Dialog onOpenChange={(isOpen) => !isOpen && onClose()} open={Boolean(confirmation)}>
+    <DialogContent className="sm:max-w-lg">
+      {confirmation ? (
+        <>
+          <DialogHeader>
+            <DialogTitle>{confirmation.title}</DialogTitle>
+            <DialogDescription className="flex flex-col gap-2">
+              {confirmation.body.map((paragraph) => (
+                <span key={paragraph}>{paragraph}</span>
+              ))}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
+              Keep quote
+            </Button>
+            <Button
+              disabled={isPending}
+              onClick={() => {
+                const action = confirmation.onConfirm;
+                onClose();
+                action();
+              }}
+              type="button"
+              variant={confirmation.confirmVariant}
+            >
+              {confirmation.confirmLabel}
+            </Button>
+          </DialogFooter>
+        </>
+      ) : null}
+    </DialogContent>
+  </Dialog>
 );
 
 const CreateJobFromQuoteDialog: React.FC<{
@@ -176,6 +288,7 @@ const CreateJobFromQuoteDialog: React.FC<{
   onCreate: (dueDate: string | null) => void;
 }> = ({ isPending, onCreate }) => {
   const [dueDate, setDueDate] = useState('');
+  const selectedDueDate = parseDateInputValue(dueDate);
 
   return (
     <Dialog>
@@ -183,13 +296,50 @@ const CreateJobFromQuoteDialog: React.FC<{
         <BriefcaseBusinessIcon data-icon="inline-start" />
         Create job
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create job from quote</DialogTitle>
+          <DialogDescription className="flex flex-col gap-2">
+            <span>This will create a Job from the accepted Quote with the standard production stages.</span>
+            <span>The Quote will stay accepted and visible for history, and the new Job will link back to it.</span>
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
-          <Label htmlFor="job-due-date">Due date</Label>
-          <Input id="job-due-date" onChange={(event) => setDueDate(event.target.value)} type="date" value={dueDate} />
+          <div className="text-sm font-medium">Due date</div>
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <Button
+                    className="min-w-0 flex-1 justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
+                    data-empty={!selectedDueDate}
+                    type="button"
+                    variant="outline"
+                  />
+                }
+              >
+                <CalendarIcon data-icon="inline-start" />
+                <span className="min-w-0 truncate">{formatDate(dueDate || null, 'short', 'No due date')}</span>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  onSelect={(date) => setDueDate(date ? getDateInputValue(date) : '')}
+                  selected={selectedDueDate}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button
+              aria-label="Clear due date"
+              disabled={!dueDate}
+              onClick={() => setDueDate('')}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <XIcon />
+            </Button>
+          </div>
         </div>
         <DialogFooter>
           <Button disabled={isPending} onClick={() => onCreate(dueDate || null)}>
@@ -201,3 +351,27 @@ const CreateJobFromQuoteDialog: React.FC<{
     </Dialog>
   );
 };
+
+function parseDateInputValue(value: string): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+
+  if (year === undefined || month === undefined || day === undefined) {
+    return undefined;
+  }
+
+  const date = new Date(year, month - 1, day);
+
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function getDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}

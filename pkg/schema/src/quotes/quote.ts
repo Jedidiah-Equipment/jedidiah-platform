@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { Price } from '../common/price.js';
+import { JobCode, QuoteCode } from '../common/public-code.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
 import { ProductCurrencyCode } from '../products/product.js';
@@ -10,20 +11,7 @@ import { ProductCurrencyCode } from '../products/product.js';
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected']);
 
-export function formatQuoteCode(code: number): string {
-  return `QUO-${code.toString().padStart(5, '0')}`;
-}
-
-const QuoteCodeString = z
-  .string()
-  .regex(/^QUO-\d{5,}$/)
-  .brand<'QuoteCode'>();
-
-export type QuoteCode = z.infer<typeof QuoteCode>;
-export const QuoteCode = z
-  .union([z.int().positive().refine(Number.isSafeInteger), QuoteCodeString])
-  .transform((code) => (typeof code === 'number' ? formatQuoteCode(code) : code))
-  .pipe(QuoteCodeString);
+export { formatQuoteCode, QuoteCode } from '../common/public-code.js';
 
 export type QuoteNotes = z.infer<typeof QuoteNotes>;
 export const QuoteNotes = z.string().trim().min(1).nullable();
@@ -63,6 +51,7 @@ export const QuoteSummary = Quote.extend({
   salesPersonEmail: z.email().nullable(),
   salesPersonName: z.string().trim().min(1).nullable(),
   total: Price,
+  jobCode: JobCode.nullable(),
   jobId: UUID.nullable(),
 });
 
@@ -114,7 +103,15 @@ export const QuoteDecisionInput = z.object({
 });
 
 export type QuoteSortBy = z.infer<typeof QuoteSortBy>;
-export const QuoteSortBy = z.enum(['code', 'createdAt', 'customerCompanyName', 'productName', 'status', 'total']);
+export const QuoteSortBy = z.enum([
+  'code',
+  'createdAt',
+  'customerCompanyName',
+  'jobCode',
+  'productName',
+  'status',
+  'total',
+]);
 
 export type QuoteListFilters = z.infer<typeof QuoteListFilters>;
 export const QuoteListFilters = z

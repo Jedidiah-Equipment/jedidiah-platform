@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeftIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button.js';
@@ -15,6 +15,8 @@ import { Separator } from '@/components/ui/separator.js';
 import { Textarea } from '@/components/ui/textarea.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatCurrency } from '@/utils/number.js';
+import { QuoteCustomerCombobox } from './components/QuoteCustomerCombobox.js';
+import { QuoteProductCombobox, type QuoteProductOption } from './components/QuoteProductCombobox.js';
 
 type QuoteFormPageProps = {
   quoteId?: UUID;
@@ -31,27 +33,6 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
     ...trpc.quotes.get.queryOptions({ id: quoteId ?? '' }),
     enabled: Boolean(quoteId),
   });
-  const customersQuery = useQuery(
-    trpc.quotes.customers.queryOptions({
-      columnFilters: {},
-      page: 1,
-      pageSize: 100,
-      search: '',
-      sortBy: 'companyName',
-      sortDirection: 'asc',
-    }),
-  );
-  const productsQuery = useQuery(
-    trpc.quotes.products.queryOptions({
-      columnFilters: {},
-      page: 1,
-      pageSize: 100,
-      search: '',
-      sortBy: 'name',
-      sortDirection: 'asc',
-    }),
-  );
-  const salespeopleQuery = useQuery(trpc.quotes.salespeople.queryOptions());
   const quote = quoteQuery.data;
   const [customerMode, setCustomerMode] = useState<CustomerMode>('existing');
   const [customerId, setCustomerId] = useState('');
@@ -61,23 +42,17 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
   const [discount, setDiscount] = useState('0');
   const [validUntil, setValidUntil] = useState('');
   const [notes, setNotes] = useState('');
-  const selectedProduct = productsQuery.data?.items.find((product) => product.id === productId);
-  const customerOptions = useMemo(() => {
-    const customers = customersQuery.data?.items ?? [];
-    if (!quote || customers.some((customer) => customer.id === quote.customerId)) {
-      return customers;
-    }
-
-    return [
-      ...customers,
-      {
+  const [selectedProduct, setSelectedProduct] = useState<QuoteProductOption | null>(null);
+  const salespeopleQuery = useQuery(trpc.quotes.salespeople.queryOptions());
+  const fallbackCustomer = quote
+    ? {
         companyName: quote.customerCompanyName,
+        email: null,
         id: quote.customerId,
-      },
-    ];
-  }, [customersQuery.data?.items, quote]);
+      }
+    : null;
   const discountNumber = Number(discount || 0);
-  const total = selectedProduct ? selectedProduct.basePrice - discountNumber : null;
+  const total = selectedProduct ? Math.max(0, selectedProduct.basePrice - discountNumber) : null;
   const isFrozen = quote?.status !== undefined && quote.status !== 'draft';
 
   useEffect(() => {
@@ -136,6 +111,13 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
     }),
     [customerId, customerMode, discountNumber, inlineCompanyName, notes, productId, salesPersonId, validUntil],
   );
+  const onCustomerSelected = useCallback((customer: { id: string } | null) => {
+    setCustomerId(customer?.id ?? '');
+  }, []);
+  const onProductSelected = useCallback((product: QuoteProductOption | null) => {
+    setProductId(product?.id ?? '');
+    setSelectedProduct(product);
+  }, []);
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -206,20 +188,12 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
               {customerMode === 'existing' ? (
                 <div className="grid gap-2">
                   <Label htmlFor="customer-id">Existing customer</Label>
-                  <Select disabled={isFrozen} onValueChange={(value) => setCustomerId(value ?? '')} value={customerId}>
-                    <SelectTrigger id="customer-id" className="w-full">
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {customerOptions.map((customer) => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            {customer.companyName}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  <QuoteCustomerCombobox
+                    disabled={isFrozen}
+                    fallbackCustomer={fallbackCustomer}
+                    onSelected={onCustomerSelected}
+                    value={customerId}
+                  />
                 </div>
               ) : (
                 <div className="grid gap-2">
@@ -236,20 +210,7 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
             <div className="grid gap-3 md:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="product-id">Product</Label>
-                <Select disabled={isFrozen} onValueChange={(value) => setProductId(value ?? '')} value={productId}>
-                  <SelectTrigger id="product-id" className="w-full">
-                    <SelectValue placeholder="Select product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {(productsQuery.data?.items ?? []).map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name} · {product.modelCode}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                <QuoteProductCombobox disabled={isFrozen} onSelected={onProductSelected} value={productId} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="salesperson-id">Salesperson</Label>

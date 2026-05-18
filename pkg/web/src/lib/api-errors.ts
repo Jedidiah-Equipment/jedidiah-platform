@@ -1,4 +1,4 @@
-import type { ApiErrorShape } from '@pkg/schema';
+import type { ApiErrorShape, AppCode } from '@pkg/schema';
 
 export const UNEXPECTED_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 
@@ -20,10 +20,10 @@ export function getApiQueryErrorMessage(error: unknown, fallbackMessage: string)
   return getApiErrorMessage(error, fallbackMessage);
 }
 
-export function getApiErrorAppCode(error: unknown): string | undefined {
+export function getApiErrorAppCode(error: unknown): AppCode | undefined {
   if (!isApiErrorShape(error)) return undefined;
 
-  return typeof error.data?.appCode === 'string' ? error.data.appCode : undefined;
+  return typeof error.data?.appCode === 'string' ? (error.data.appCode as AppCode) : undefined;
 }
 
 function isApiErrorShape(error: unknown): error is ApiErrorShape {

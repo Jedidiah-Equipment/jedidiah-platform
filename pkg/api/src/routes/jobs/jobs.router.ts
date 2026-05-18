@@ -146,19 +146,19 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
       return {
         appCode: error.code,
         code: 'FORBIDDEN',
-        message: 'Job stage cannot move to that state.',
+        message: error.message,
       };
     case 'job.lifecycle_transition_denied':
       return {
         appCode: error.code,
         code: 'FORBIDDEN',
-        message: 'Job cannot move to that lifecycle state.',
+        message: error.message,
       };
     case 'job.quote_conversion_denied':
       return {
         appCode: error.code,
         code: 'FORBIDDEN',
-        message: 'Quote cannot be converted into a job.',
+        message: error.message,
       };
     default:
       return assertNever(error);

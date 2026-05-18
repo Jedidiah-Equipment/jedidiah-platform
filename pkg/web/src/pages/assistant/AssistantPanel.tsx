@@ -51,15 +51,16 @@ function AssistantRuntimeSession({ activeChatId }: { activeChatId: string }) {
 }
 
 function AssistantChatFrame() {
-  const { activeChatId, chats, newChat, selectChat } = useAssistantChatStore(
+  const { activeChatId, chatRecords, newChat, selectChat } = useAssistantChatStore(
     useShallow((state) => ({
       activeChatId: state.activeChatId,
-      chats: getSortedAssistantChats(state.chats),
+      chatRecords: state.chats,
       newChat: state.newChat,
       selectChat: state.selectChat,
     })),
   );
   const isRunning = useAuiState((state) => state.thread.isRunning);
+  const chats = useMemo(() => getSortedAssistantChats(chatRecords), [chatRecords]);
 
   return (
     <div className="grid h-full min-h-0 min-w-0 grid-cols-1 gap-3 md:grid-cols-[14rem_minmax(0,1fr)]">

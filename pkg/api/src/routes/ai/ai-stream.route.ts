@@ -166,7 +166,6 @@ async function streamChatCompletion({
     stream = client.chat.completions.runTools({
       model,
       messages,
-      reasoning_effort: 'minimal', // TODO: make this configurable
       stream: true,
       tools,
     }) as unknown as ChatCompletionStream;

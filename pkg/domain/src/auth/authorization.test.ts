@@ -7,6 +7,7 @@ import {
   createUserAccessSummary,
   getRolePermissions,
   hasPermission,
+  permissionDescriptions,
   permissionLabels,
   roleLabels,
 } from './authorization.js';
@@ -79,6 +80,12 @@ describe('roleLabels', () => {
 describe('permissionLabels', () => {
   it('labels every app permission', () => {
     expect(Object.keys(permissionLabels).sort()).toEqual([...APP_PERMISSIONS].sort());
+  });
+});
+
+describe('permissionDescriptions', () => {
+  it('describes every app permission', () => {
+    expect(Object.keys(permissionDescriptions).sort()).toEqual([...APP_PERMISSIONS].sort());
   });
 });
 

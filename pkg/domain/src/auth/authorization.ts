@@ -40,6 +40,30 @@ export const permissionLabels = {
   'user:update': 'Update user details',
 } as const satisfies Record<AppPermission, string>;
 
+export const permissionDescriptions = {
+  'audit:read': 'View audit events across workspace records.',
+  'customer:create': 'Add new customer directory records.',
+  'customer:read': 'View customer directory records.',
+  'customer:update': 'Edit existing customer directory records.',
+  'job-stage:read': 'View job stage status and details.',
+  'job-stage:update': 'Update job stage status and progress.',
+  'job:create': 'Create new production jobs.',
+  'job:read': 'View production jobs.',
+  'job:update': 'Update production job details.',
+  'product:create': 'Add new product catalog records.',
+  'product:read': 'View product catalog records.',
+  'product:update': 'Edit existing product catalog records.',
+  'quote:create': 'Create new sales quotes.',
+  'quote:read': 'View sales quotes.',
+  'quote:update': 'Update sales quote details and decisions.',
+  'user:assign-departments': "Manage a user's department access.",
+  'user:create': 'Add new application users.',
+  'user:list': 'View application users.',
+  'user:set-password': 'Reset passwords for application users.',
+  'user:set-role': 'Change application user roles.',
+  'user:update': 'Update application user details.',
+} as const satisfies Record<AppPermission, string>;
+
 export const authorizationStatement = {
   audit: ['read'],
   customer: ['read', 'create', 'update'],

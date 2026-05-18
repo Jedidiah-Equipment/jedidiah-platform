@@ -7,3 +7,11 @@ export const departmentLabels: Record<Department, string> = {
   paint: 'Paint',
   procurement: 'Procurement',
 };
+
+export const departmentShortLabels: Record<Department, string> = {
+  assembly: 'Asm',
+  dispatch: 'Dispatch',
+  fabrication: 'Fab',
+  paint: 'Paint',
+  procurement: 'Proc',
+};

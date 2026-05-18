@@ -26,19 +26,17 @@ import {
   type JobCreateFromQuoteInput,
   type JobCreateInput,
   type JobDetail,
-  type JobEvent,
-  JobEvent as JobEventContract,
-  type JobEventDerivationStage,
-  JobEventDerivationStage as JobEventDerivationStageContract,
+  JobEvent,
+  JobEventDerivationStage,
   type JobLifecycleStatus,
   type JobListInput,
   type JobListResult,
   type JobSortBy,
-  type JobStage,
-  JobStage as JobStageContract,
+  JobStage,
   type JobStageName,
   type JobStageRollup,
   type JobStageStatusInput,
+  JobStageSummary,
   type JobSummary,
   QuoteCode,
   type UserAccessSummary,
@@ -67,6 +65,7 @@ type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'>;
 type JobWithProductRow = JobRow & {
   product: ProductRow;
   quote: QuoteRow | null;
+  stages: JobStageRow[];
 };
 type JobAuditRecord = Pick<JobRow, 'code' | 'dueDate' | 'lifecycleStatus' | 'productId' | 'quoteId'>;
 
@@ -111,7 +110,7 @@ export function mapJob(row: JobRow): Job {
 }
 
 export function mapJobStage(row: JobStageRow): JobStage {
-  return JobStageContract.parse({
+  return JobStage.parse({
     completedAt: row.completedAt?.toISOString() ?? null,
     id: row.id,
     jobId: row.jobId,
@@ -124,7 +123,7 @@ export function mapJobStage(row: JobStageRow): JobStage {
 
 export function mapJobEvent(row: JobEventRow): JobEvent {
   // DB currently stores event_type as text; this parse intentionally fails fast until the column is constrained.
-  return JobEventContract.parse({
+  return JobEvent.parse({
     actorUserId: row.actorUserId,
     eventType: row.eventType,
     id: row.id,
@@ -136,7 +135,7 @@ export function mapJobEvent(row: JobEventRow): JobEvent {
 }
 
 function mapJobEventDerivationStage(row: JobStageRow): JobEventDerivationStage {
-  return JobEventDerivationStageContract.parse({
+  return JobEventDerivationStage.parse({
     completedAt: row.completedAt?.toISOString() ?? null,
     stage: row.stage,
     startedAt: row.startedAt?.toISOString() ?? null,
@@ -312,6 +311,18 @@ export async function listJobs({
         columns: {
           code: true,
         },
+      },
+      stages: {
+        columns: {
+          completedAt: true,
+          id: true,
+          jobId: true,
+          sequence: true,
+          stage: true,
+          startedAt: true,
+          status: true,
+        },
+        orderBy: [asc(jobStages.sequence)],
       },
     },
   });
@@ -591,7 +602,15 @@ function mapJobSummary(row: JobWithProductRow): JobSummary {
     productModelCode: row.product.modelCode,
     productName: row.product.name,
     quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,
+    stages: row.stages.map(mapJobStageSummary),
   };
+}
+
+function mapJobStageSummary(row: JobStageRow): JobStageSummary {
+  return JobStageSummary.parse({
+    ...mapJobStage(row),
+    department: row.stage,
+  });
 }
 
 function getJobSortColumn(sortBy: JobSortBy): SQL {
@@ -618,9 +637,8 @@ function mapStageAccess({
 }): JobStageRollup {
   if (canViewStage(access, stage)) {
     return {
-      ...mapJobStage(stage),
+      ...mapJobStageSummary(stage),
       access: 'visible',
-      department: stage.stage,
       transitionAvailability: getStageTransitionAvailability({
         access,
         job,
@@ -631,10 +649,8 @@ function mapStageAccess({
   }
 
   return {
-    access: 'locked',
-    department: stage.stage,
-    sequence: stage.sequence,
-    stage: stage.stage,
+    ...mapJobStageSummary(stage),
+    access: 'summary',
   };
 }
 

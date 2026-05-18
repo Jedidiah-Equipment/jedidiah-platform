@@ -6,6 +6,8 @@ import type { RunnableTools } from 'openai/lib/RunnableFunction';
 
 import { log } from '@/logger.js';
 import type { AiContext } from './ai-context.js';
+import { projectAiToolResult } from './ai-result-projections.js';
+import { aiToolDescriptors, createToolDescription } from './ai-tool-descriptors.js';
 import { getCustomerTool } from './tools/get-customer.js';
 import { getJobTool } from './tools/get-job.js';
 import { getProductTool } from './tools/get-product.js';
@@ -56,19 +58,19 @@ type InternalToolResult =
 type RunnableTool = RunnableTools<readonly object[]>[number];
 
 export const aiTools: AiToolMap = {
-  [getCustomerTool.name]: getCustomerTool,
-  [getJobTool.name]: getJobTool,
-  [getProductTool.name]: getProductTool,
-  [getQuoteTool.name]: getQuoteTool,
-  [listAuditEventsTool.name]: listAuditEventsTool,
-  [listCustomersTool.name]: listCustomersTool,
-  [listJobsTool.name]: listJobsTool,
-  [listProductsTool.name]: listProductsTool,
-  [listQuoteCustomersTool.name]: listQuoteCustomersTool,
-  [listQuoteProductsTool.name]: listQuoteProductsTool,
-  [listQuoteSalespeopleTool.name]: listQuoteSalespeopleTool,
-  [listQuotesTool.name]: listQuotesTool,
-  [listUsersTool.name]: listUsersTool,
+  [getCustomerTool.name]: withGeneratedDescription(getCustomerTool),
+  [getJobTool.name]: withGeneratedDescription(getJobTool),
+  [getProductTool.name]: withGeneratedDescription(getProductTool),
+  [getQuoteTool.name]: withGeneratedDescription(getQuoteTool),
+  [listAuditEventsTool.name]: withGeneratedDescription(listAuditEventsTool),
+  [listCustomersTool.name]: withGeneratedDescription(listCustomersTool),
+  [listJobsTool.name]: withGeneratedDescription(listJobsTool),
+  [listProductsTool.name]: withGeneratedDescription(listProductsTool),
+  [listQuoteCustomersTool.name]: withGeneratedDescription(listQuoteCustomersTool),
+  [listQuoteProductsTool.name]: withGeneratedDescription(listQuoteProductsTool),
+  [listQuoteSalespeopleTool.name]: withGeneratedDescription(listQuoteSalespeopleTool),
+  [listQuotesTool.name]: withGeneratedDescription(listQuotesTool),
+  [listUsersTool.name]: withGeneratedDescription(listUsersTool),
 };
 
 export function getAuthorizedTools(access: UserAccessSummary | null): AuthorizedAiTools {
@@ -110,7 +112,7 @@ export async function dispatchToolCall(
     return {
       name,
       ok: true,
-      result,
+      result: projectAiToolResult(name, result),
     };
   } catch (error) {
     return {
@@ -169,4 +171,11 @@ function getToolEntries(tools: AuthorizedAiTools): Array<[AiToolName, AiTool]> {
   }
 
   return entries;
+}
+
+function withGeneratedDescription<TTool extends AiTool>(tool: TTool): TTool {
+  return {
+    ...tool,
+    description: createToolDescription(aiToolDescriptors[tool.name]),
+  };
 }

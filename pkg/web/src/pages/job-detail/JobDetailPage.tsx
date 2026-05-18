@@ -40,31 +40,32 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const refreshJob = async () => {
     await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: jobId }));
   };
+  const getDepartmentLabel = (input: JobStageTransitionInput | JobStageStatusInput) => stageLabels[input.stage];
   const startStageMutation = useMutation(
     trpc.jobs.startStage.mutationOptions({
-      onSuccess: async () => {
+      onSuccess: async (_stage, input) => {
         await refreshJob();
-        toast.success('Stage started');
+        toast.success(`${getDepartmentLabel(input)} started`);
       },
-      onError: (error) => showMutationError(error, 'Unable to start job stage.'),
+      onError: (error) => showMutationError(error, 'Unable to start department work.'),
     }),
   );
   const setStageStatusMutation = useMutation(
     trpc.jobs.setStageStatus.mutationOptions({
-      onSuccess: async () => {
+      onSuccess: async (_stage, input) => {
         await refreshJob();
-        toast.success('Stage status updated');
+        toast.success(`${getDepartmentLabel(input)} status updated`);
       },
-      onError: (error) => showMutationError(error, 'Unable to update job stage.'),
+      onError: (error) => showMutationError(error, 'Unable to update department status.'),
     }),
   );
   const completeStageMutation = useMutation(
     trpc.jobs.completeStage.mutationOptions({
-      onSuccess: async () => {
+      onSuccess: async (_stage, input) => {
         await refreshJob();
-        toast.success('Stage completed');
+        toast.success(`${getDepartmentLabel(input)} completed`);
       },
-      onError: (error) => showMutationError(error, 'Unable to complete job stage.'),
+      onError: (error) => showMutationError(error, 'Unable to complete department work.'),
     }),
   );
   const pauseJobMutation = useMutation(
@@ -207,7 +208,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
               ) : null}
               {job.lifecycleStatus !== 'active' ? (
                 <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
-                  Stage controls are disabled while this job is {jobLifecycleStatusLabels[job.lifecycleStatus]}.
+                  Department controls are disabled while this job is {jobLifecycleStatusLabels[job.lifecycleStatus]}.
                 </div>
               ) : null}
               <div className="grid gap-3 lg:grid-cols-5">

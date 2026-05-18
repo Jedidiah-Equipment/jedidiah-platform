@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit AI Prompts"
+  short_description: "Check Jedidiah AI prompt alignment"
+  default_prompt: "Use $audit-ai-prompts to review the Jedidiah AI prompt and tool guidance for schema/domain/core alignment."

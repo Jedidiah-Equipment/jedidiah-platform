@@ -1,0 +1,92 @@
+import { describe, expect, test } from 'vitest';
+
+import { projectAiToolResult } from './ai-result-projections.js';
+
+describe('AI result projections', () => {
+  test('adds Job and linked Quote metadata without mutating the base result', () => {
+    const job = {
+      id: '00000000-0000-4000-8000-000000000001',
+      code: 'JOB-00001',
+      quoteCode: 'QUO-00002',
+      quoteId: '00000000-0000-4000-8000-000000000002',
+    };
+
+    const projected = projectAiToolResult('getJob', job);
+
+    expect(projected).toEqual({
+      ...job,
+      assistantLink: {
+        entity: 'Job',
+        href: '/jobs/00000000-0000-4000-8000-000000000001',
+        label: 'JOB-00001',
+      },
+      quoteLink: {
+        entity: 'Quote',
+        href: '/quotes/00000000-0000-4000-8000-000000000002',
+        label: 'QUO-00002',
+      },
+    });
+    expect(job).not.toHaveProperty('assistantLink');
+  });
+
+  test('adds Quote and linked Job metadata to list items', () => {
+    const result = {
+      items: [
+        {
+          id: '00000000-0000-4000-8000-000000000003',
+          code: 'QUO-00003',
+          jobCode: 'JOB-00004',
+          jobId: '00000000-0000-4000-8000-000000000004',
+        },
+      ],
+      total: 1,
+    };
+
+    expect(projectAiToolResult('listQuotes', result)).toEqual({
+      ...result,
+      items: [
+        {
+          ...result.items[0],
+          assistantLink: {
+            entity: 'Quote',
+            href: '/quotes/00000000-0000-4000-8000-000000000003',
+            label: 'QUO-00003',
+          },
+          jobLink: {
+            entity: 'Job',
+            href: '/jobs/00000000-0000-4000-8000-000000000004',
+            label: 'JOB-00004',
+          },
+        },
+      ],
+    });
+  });
+
+  test('adds Customer and Product metadata using public labels', () => {
+    expect(
+      projectAiToolResult('getCustomer', {
+        companyName: 'Acme Mining',
+        id: '00000000-0000-4000-8000-000000000005',
+      }),
+    ).toMatchObject({
+      assistantLink: {
+        entity: 'Customer',
+        href: '/customers/00000000-0000-4000-8000-000000000005/edit',
+        label: 'Acme Mining',
+      },
+    });
+
+    expect(
+      projectAiToolResult('getProduct', {
+        id: '00000000-0000-4000-8000-000000000006',
+        name: 'Compact Loader',
+      }),
+    ).toMatchObject({
+      assistantLink: {
+        entity: 'Product',
+        href: '/products/00000000-0000-4000-8000-000000000006/edit',
+        label: 'Compact Loader',
+      },
+    });
+  });
+});

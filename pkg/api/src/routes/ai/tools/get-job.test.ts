@@ -1,18 +1,18 @@
-import { type Db, products, user } from '@pkg/db';
+import { type Db, products } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import { Product, type UserAccessSummary } from '@pkg/schema';
 import pino from 'pino';
 import { describe, expect } from 'vitest';
 import { z } from 'zod';
 
-import type { AiContext } from '@/routes/ai/ai-context.js';
 import { getJobTool } from '@/routes/ai/tools/get-job.js';
+import { createActorUser, createAiContext } from '@/test/ai-tools.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
 const test = createTester(async ({ db }) => {
-  await createActorUser(db);
+  await createActorUser(db, 'job-supervisor');
   const product = await createProduct(db);
 
   return { db, product };
@@ -48,6 +48,22 @@ describe('getJobTool', () => {
     });
   });
 
+  test('surfaces the core not-found message for missing jobs', async ({ context }) => {
+    const access = createUserAccessSummary({
+      role: 'job-viewer',
+      userId: 'test-user-id',
+    });
+
+    await expect(
+      getJobTool.handler(
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+        },
+        createAiContext(context.db, access),
+      ),
+    ).rejects.toThrow('Job not found: 00000000-0000-4000-8000-000000000001');
+  });
+
   test('rejects invalid job get args', async ({ context }) => {
     const access = createUserAccessSummary({
       role: 'job-viewer',
@@ -60,34 +76,12 @@ describe('getJobTool', () => {
   });
 });
 
-function createAiContext(db: Db, access: UserAccessSummary): AiContext {
-  return {
-    access,
-    db,
-    session: mockSession(access.role ?? 'job-viewer'),
-  };
-}
-
 function createCaller(db: Db, access: UserAccessSummary) {
   return createAppRouterCaller({
     access,
     db,
     log: pino({ level: 'silent' }),
     session: mockSession(access.role),
-  });
-}
-
-async function createActorUser(db: Db) {
-  const now = new Date();
-
-  await db.insert(user).values({
-    createdAt: now,
-    email: 'test@example.com',
-    emailVerified: true,
-    id: 'test-user-id',
-    name: 'Test User',
-    role: 'job-supervisor',
-    updatedAt: now,
   });
 }
 

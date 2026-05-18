@@ -21,6 +21,7 @@ export const getJobTool: GetJobTool = {
   requiredPermission: 'job:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = GetJobInput.parse(args);
+    // Job detail shaping depends on the typed access summary, so fail fast if a caller bypasses registry gating.
     if (!ctx.access) {
       throw new Error('Tool requires authenticated access.');
     }

@@ -6,7 +6,10 @@ import {
   JobDetail,
   JobEvent,
   JobEventDerivationStage,
+  JobStageRollup,
   JobStageStatusInput,
+  JobStageSummary,
+  JobSummary,
 } from './job.js';
 
 describe('JobCode', () => {
@@ -34,7 +37,7 @@ describe('JobCode', () => {
 });
 
 describe('JobDetail', () => {
-  it('validates visible and locked stage rollups', () => {
+  it('validates visible and summary stage rollups', () => {
     const jobId = '00000000-0000-4000-8000-000000000001';
 
     expect(() =>
@@ -61,15 +64,140 @@ describe('JobDetail', () => {
             startedAt: null,
             status: 'pending',
           },
-          { access: 'locked', department: 'fabrication', sequence: 2, stage: 'fabrication' },
-          { access: 'locked', department: 'assembly', sequence: 3, stage: 'assembly' },
-          { access: 'locked', department: 'paint', sequence: 4, stage: 'paint' },
-          { access: 'locked', department: 'dispatch', sequence: 5, stage: 'dispatch' },
+          {
+            access: 'summary',
+            completedAt: null,
+            department: 'fabrication',
+            id: '00000000-0000-4000-8000-000000000012',
+            jobId,
+            sequence: 2,
+            stage: 'fabrication',
+            startedAt: null,
+            status: 'pending',
+          },
+          {
+            access: 'summary',
+            completedAt: null,
+            department: 'assembly',
+            id: '00000000-0000-4000-8000-000000000013',
+            jobId,
+            sequence: 3,
+            stage: 'assembly',
+            startedAt: null,
+            status: 'pending',
+          },
+          {
+            access: 'summary',
+            completedAt: null,
+            department: 'paint',
+            id: '00000000-0000-4000-8000-000000000014',
+            jobId,
+            sequence: 4,
+            stage: 'paint',
+            startedAt: null,
+            status: 'pending',
+          },
+          {
+            access: 'summary',
+            completedAt: null,
+            department: 'dispatch',
+            id: '00000000-0000-4000-8000-000000000015',
+            jobId,
+            sequence: 5,
+            stage: 'dispatch',
+            startedAt: null,
+            status: 'pending',
+          },
         ],
         updatedAt: '2026-05-15T08:00:00.000Z',
         workflowEvents: [],
       }),
     ).not.toThrow();
+  });
+});
+
+describe('JobStageRollup', () => {
+  it('parses visible and summary rollups', () => {
+    const baseStage = {
+      completedAt: null,
+      department: 'fabrication',
+      id: '00000000-0000-4000-8000-000000000011',
+      jobId: '00000000-0000-4000-8000-000000000001',
+      sequence: 2,
+      stage: 'fabrication',
+      startedAt: '2026-05-15T08:00:00.000Z',
+      status: 'welding',
+    } as const;
+
+    expect(JobStageRollup.parse({ ...baseStage, access: 'visible' })).toMatchObject({
+      access: 'visible',
+      status: 'welding',
+    });
+    expect(JobStageRollup.parse({ ...baseStage, access: 'summary' })).toMatchObject({
+      access: 'summary',
+      startedAt: '2026-05-15T08:00:00.000Z',
+    });
+  });
+
+  it('rejects the removed locked rollup', () => {
+    expect(() =>
+      JobStageRollup.parse({
+        access: 'locked',
+        department: 'fabrication',
+        sequence: 2,
+        stage: 'fabrication',
+      }),
+    ).toThrow();
+  });
+});
+
+describe('JobStageSummary', () => {
+  it('rejects statuses that do not belong to the stage', () => {
+    expect(() =>
+      JobStageSummary.parse({
+        completedAt: null,
+        department: 'procurement',
+        id: '00000000-0000-4000-8000-000000000011',
+        jobId: '00000000-0000-4000-8000-000000000001',
+        sequence: 1,
+        stage: 'procurement',
+        startedAt: null,
+        status: 'welding',
+      }),
+    ).toThrow();
+  });
+});
+
+describe('JobSummary', () => {
+  const jobId = '00000000-0000-4000-8000-000000000001';
+
+  it('requires exactly five stage summaries', () => {
+    const summary = {
+      code: 'JOB-00001',
+      createdAt: '2026-05-15T08:00:00.000Z',
+      dueDate: null,
+      id: jobId,
+      lifecycleStatus: 'active',
+      productId: '00000000-0000-4000-8000-000000000002',
+      productModelCode: 'WL-100',
+      productName: 'Wheel Loader',
+      quoteCode: null,
+      quoteId: null,
+      stages: ['procurement', 'fabrication', 'assembly', 'paint', 'dispatch'].map((stage, index) => ({
+        completedAt: null,
+        department: stage,
+        id: `00000000-0000-4000-8000-00000000001${index}`,
+        jobId,
+        sequence: index + 1,
+        stage,
+        startedAt: null,
+        status: 'pending',
+      })),
+      updatedAt: '2026-05-15T08:00:00.000Z',
+    };
+
+    expect(JobSummary.parse(summary).stages).toHaveLength(5);
+    expect(() => JobSummary.parse({ ...summary, stages: summary.stages.slice(0, 4) })).toThrow();
   });
 });
 

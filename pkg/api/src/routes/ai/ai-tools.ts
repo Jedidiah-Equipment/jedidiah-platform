@@ -6,12 +6,36 @@ import type { RunnableTools } from 'openai/lib/RunnableFunction';
 
 import { log } from '@/logger.js';
 import type { AiContext } from './ai-context.js';
+import { getCustomerTool } from './tools/get-customer.js';
+import { getJobTool } from './tools/get-job.js';
+import { getProductTool } from './tools/get-product.js';
+import { getQuoteTool } from './tools/get-quote.js';
 import { listAuditEventsTool } from './tools/list-audit-events.js';
+import { listCustomersTool } from './tools/list-customers.js';
+import { listJobsTool } from './tools/list-jobs.js';
 import { listProductsTool } from './tools/list-products.js';
+import { listQuoteCustomersTool } from './tools/list-quote-customers.js';
+import { listQuoteProductsTool } from './tools/list-quote-products.js';
+import { listQuoteSalespeopleTool } from './tools/list-quote-salespeople.js';
+import { listQuotesTool } from './tools/list-quotes.js';
 import { listUsersTool } from './tools/list-users.js';
 import type { AiTool } from './tools/type.js';
 
-export const AI_TOOL_NAMES = [listProductsTool.name, listAuditEventsTool.name, listUsersTool.name] as const;
+export const AI_TOOL_NAMES = [
+  listProductsTool.name,
+  getProductTool.name,
+  listCustomersTool.name,
+  getCustomerTool.name,
+  listJobsTool.name,
+  getJobTool.name,
+  listQuotesTool.name,
+  getQuoteTool.name,
+  listQuoteCustomersTool.name,
+  listQuoteProductsTool.name,
+  listQuoteSalespeopleTool.name,
+  listAuditEventsTool.name,
+  listUsersTool.name,
+] as const;
 export type AiToolName = (typeof AI_TOOL_NAMES)[number];
 
 type AiToolMap = Record<AiToolName, AiTool>;
@@ -32,8 +56,18 @@ type InternalToolResult =
 type RunnableTool = RunnableTools<readonly object[]>[number];
 
 export const aiTools: AiToolMap = {
+  [getCustomerTool.name]: getCustomerTool,
+  [getJobTool.name]: getJobTool,
+  [getProductTool.name]: getProductTool,
+  [getQuoteTool.name]: getQuoteTool,
   [listAuditEventsTool.name]: listAuditEventsTool,
+  [listCustomersTool.name]: listCustomersTool,
+  [listJobsTool.name]: listJobsTool,
   [listProductsTool.name]: listProductsTool,
+  [listQuoteCustomersTool.name]: listQuoteCustomersTool,
+  [listQuoteProductsTool.name]: listQuoteProductsTool,
+  [listQuoteSalespeopleTool.name]: listQuoteSalespeopleTool,
+  [listQuotesTool.name]: listQuotesTool,
   [listUsersTool.name]: listUsersTool,
 };
 

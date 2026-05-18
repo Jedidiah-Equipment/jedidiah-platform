@@ -8,7 +8,7 @@ describe('demoUsers', () => {
     expect(new Set(demoUsers.map((user) => user.email)).size).toBe(demoUsers.length);
 
     for (const user of demoUsers) {
-      expect(user.email).toBe(`${user.name.split(' ')[0]?.toLowerCase()}@j.test`);
+      expect(user.email).toBe(`${user.name.split(' ')[0]?.toLowerCase()}@j.com`);
       expect(user.password).toBe(DEFAULT_DEMO_USER_PASSWORD);
     }
   });

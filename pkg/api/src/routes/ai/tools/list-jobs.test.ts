@@ -1,0 +1,144 @@
+import * as core from '@pkg/core';
+import { type Db, products, user } from '@pkg/db';
+import { createUserAccessSummary } from '@pkg/domain';
+import { type JobListInput, Product, type UserAccessSummary } from '@pkg/schema';
+import pino from 'pino';
+import { describe, expect, vi } from 'vitest';
+import { z } from 'zod';
+
+import type { AiContext } from '@/routes/ai/ai-context.js';
+import { listJobsTool } from '@/routes/ai/tools/list-jobs.js';
+import { createTester } from '@/test/create-tester.js';
+import { mockSession } from '@/test/test-utils.js';
+import { createAppRouterCaller } from '@/trpc/router.js';
+
+const test = createTester(async ({ db }) => {
+  await createActorUser(db);
+  const product = await createProduct(db);
+
+  return { db, product };
+});
+
+describe('listJobsTool', () => {
+  test('returns the same job list result shape as jobs.list', async ({ context }) => {
+    const supervisorAccess = createUserAccessSummary({
+      role: 'job-supervisor',
+      userId: 'test-user-id',
+    });
+    const supervisorCaller = createCaller(context.db, supervisorAccess);
+    const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+    const input: JobListInput = {
+      filters: {
+        lifecycleStatuses: ['active'],
+      },
+      page: 1,
+      pageSize: 10,
+      search: created.code,
+      sortBy: 'code',
+      sortDirection: 'asc',
+    };
+
+    const [toolResult, trpcResult] = await Promise.all([
+      listJobsTool.handler(input, createAiContext(context.db, supervisorAccess)),
+      supervisorCaller.jobs.list(input),
+    ]);
+
+    expect(toolResult).toEqual(trpcResult);
+  });
+
+  test('treats null tool args as the default job list input', async ({ context }) => {
+    const access = createUserAccessSummary({
+      role: 'job-viewer',
+      userId: 'test-user-id',
+    });
+    const listJobsSpy = vi.spyOn(core, 'listJobs').mockResolvedValue({
+      items: [],
+      sortBy: 'createdAt',
+      sortDirection: 'asc',
+      total: 0,
+    });
+
+    try {
+      await listJobsTool.handler(null, createAiContext(context.db, access));
+
+      expect(listJobsSpy).toHaveBeenCalledWith({
+        access,
+        db: context.db,
+        input: expect.objectContaining({
+          page: 1,
+          pageSize: 10,
+          search: '',
+          sortBy: 'createdAt',
+          sortDirection: 'asc',
+        }),
+      });
+    } finally {
+      listJobsSpy.mockRestore();
+    }
+  });
+
+  test('rejects invalid job list args', async ({ context }) => {
+    const access = createUserAccessSummary({
+      role: 'job-viewer',
+      userId: 'test-user-id',
+    });
+
+    await expect(
+      listJobsTool.handler({ sortBy: 'bad-sort' }, createAiContext(context.db, access)),
+    ).rejects.toBeInstanceOf(z.ZodError);
+  });
+});
+
+function createAiContext(db: Db, access: UserAccessSummary): AiContext {
+  return {
+    access,
+    db,
+    session: mockSession(access.role ?? 'job-viewer'),
+  };
+}
+
+function createCaller(db: Db, access: UserAccessSummary) {
+  return createAppRouterCaller({
+    access,
+    db,
+    log: pino({ level: 'silent' }),
+    session: mockSession(access.role),
+  });
+}
+
+async function createActorUser(db: Db) {
+  const now = new Date();
+
+  await db.insert(user).values({
+    createdAt: now,
+    email: 'test@example.com',
+    emailVerified: true,
+    id: 'test-user-id',
+    name: 'Test User',
+    role: 'job-supervisor',
+    updatedAt: now,
+  });
+}
+
+async function createProduct(db: Db): Promise<Product> {
+  const [product] = await db
+    .insert(products)
+    .values({
+      basePrice: 1_000,
+      currencyCode: 'ZAR',
+      modelCode: 'JOB-TOOL-001',
+      name: 'Job Tool Product',
+    })
+    .returning();
+
+  if (!product) {
+    throw new Error('Product insert did not return a row');
+  }
+
+  return Product.parse({
+    ...product,
+    createdAt: product.createdAt.toISOString(),
+    options: [],
+    updatedAt: product.updatedAt.toISOString(),
+  });
+}

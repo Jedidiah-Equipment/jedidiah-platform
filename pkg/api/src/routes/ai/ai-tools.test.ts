@@ -25,12 +25,22 @@ function createAccessWithNoProductRead(): UserAccessSummary {
 
 describe('aiTools', () => {
   test('declares a required permission for each tool', () => {
+    expect(aiTools.getCustomer.requiredPermission).toBe('customer:read');
+    expect(aiTools.getJob.requiredPermission).toBe('job:read');
+    expect(aiTools.getProduct.requiredPermission).toBe('product:read');
+    expect(aiTools.getQuote.requiredPermission).toBe('quote:read');
     expect(aiTools.listAuditEvents.requiredPermission).toBe('audit:read');
+    expect(aiTools.listCustomers.requiredPermission).toBe('customer:read');
+    expect(aiTools.listJobs.requiredPermission).toBe('job:read');
     expect(aiTools.listProducts.requiredPermission).toBe('product:read');
+    expect(aiTools.listQuoteCustomers.requiredPermission).toBe('quote:read');
+    expect(aiTools.listQuoteProducts.requiredPermission).toBe('quote:read');
+    expect(aiTools.listQuoteSalespeople.requiredPermission).toBe('quote:read');
+    expect(aiTools.listQuotes.requiredPermission).toBe('quote:read');
     expect(aiTools.listUsers.requiredPermission).toBe('user:list');
   });
 
-  test("returns tools permitted by the user's access summary", () => {
+  test('returns product tools for product readers', () => {
     const tools = getAuthorizedTools(
       createUserAccessSummary({
         role: 'product-viewer',
@@ -38,7 +48,57 @@ describe('aiTools', () => {
       }),
     );
 
-    expect(getAuthorizedToolNames(tools)).toEqual(['listProducts']);
+    expect(getAuthorizedToolNames(tools)).toEqual(['listProducts', 'getProduct']);
+  });
+
+  test('returns quote tools for sales users', () => {
+    const tools = getAuthorizedTools(
+      createUserAccessSummary({
+        role: 'sales',
+        userId: 'test-user-id',
+      }),
+    );
+
+    expect(getAuthorizedToolNames(tools)).toEqual([
+      'listQuotes',
+      'getQuote',
+      'listQuoteCustomers',
+      'listQuoteProducts',
+      'listQuoteSalespeople',
+    ]);
+  });
+
+  test('returns job tools for job readers', () => {
+    const tools = getAuthorizedTools(
+      createUserAccessSummary({
+        role: 'job-viewer',
+        userId: 'test-user-id',
+      }),
+    );
+
+    expect(getAuthorizedToolNames(tools)).toEqual(['listJobs', 'getJob']);
+  });
+
+  test('returns customer tools for customer readers', () => {
+    const tools = getAuthorizedTools({
+      departments: [],
+      permissions: ['customer:read'],
+      role: 'product-viewer',
+      userId: 'test-user-id',
+    });
+
+    expect(getAuthorizedToolNames(tools)).toEqual(['listCustomers', 'getCustomer']);
+  });
+
+  test('returns audit and user tools for their permissions', () => {
+    const tools = getAuthorizedTools({
+      departments: [],
+      permissions: ['audit:read', 'user:list'],
+      role: 'product-viewer',
+      userId: 'test-user-id',
+    });
+
+    expect(getAuthorizedToolNames(tools)).toEqual(['listAuditEvents', 'listUsers']);
   });
 
   test('returns all tools for admins', () => {
@@ -49,7 +109,21 @@ describe('aiTools', () => {
       }),
     );
 
-    expect(getAuthorizedToolNames(tools)).toEqual(['listProducts', 'listAuditEvents', 'listUsers']);
+    expect(getAuthorizedToolNames(tools)).toEqual([
+      'listProducts',
+      'getProduct',
+      'listCustomers',
+      'getCustomer',
+      'listJobs',
+      'getJob',
+      'listQuotes',
+      'getQuote',
+      'listQuoteCustomers',
+      'listQuoteProducts',
+      'listQuoteSalespeople',
+      'listAuditEvents',
+      'listUsers',
+    ]);
   });
 
   test('hides tools when the user lacks the required permission', () => {

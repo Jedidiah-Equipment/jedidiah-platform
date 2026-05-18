@@ -1,16 +1,15 @@
-import { type Db, products, user } from '@pkg/db';
+import { type Db, products } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { UserAccessSummary } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 import { z } from 'zod';
 
-import type { AiContext } from '@/routes/ai/ai-context.js';
 import { getQuoteTool } from '@/routes/ai/tools/get-quote.js';
+import { createActorUser, createAiContext } from '@/test/ai-tools.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
-  await createActorUser(db);
+  await createActorUser(db, 'sales');
   const product = await createProduct(db);
 
   return { db, product };
@@ -31,6 +30,22 @@ describe('getQuoteTool', () => {
     ]);
 
     expect(toolResult).toEqual(trpcResult);
+  });
+
+  test('surfaces the core not-found message for missing quotes', async ({ context }) => {
+    const access = createUserAccessSummary({
+      role: 'sales',
+      userId: 'test-user-id',
+    });
+
+    await expect(
+      getQuoteTool.handler(
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+        },
+        createAiContext(context.db, access),
+      ),
+    ).rejects.toThrow('Quote not found: 00000000-0000-4000-8000-000000000001');
   });
 
   test('rejects invalid quote get args', async ({ context }) => {
@@ -56,28 +71,6 @@ async function createQuote(caller: AppRouterCaller, productId: string) {
     productId,
     salesPersonId: 'test-user-id',
     validUntil: '2026-06-30',
-  });
-}
-
-function createAiContext(db: Db, access: UserAccessSummary): AiContext {
-  return {
-    access,
-    db,
-    session: mockSession(access.role ?? 'sales'),
-  };
-}
-
-async function createActorUser(db: Db) {
-  const now = new Date();
-
-  await db.insert(user).values({
-    createdAt: now,
-    email: 'test@example.com',
-    emailVerified: true,
-    id: 'test-user-id',
-    name: 'Test User',
-    role: 'sales',
-    updatedAt: now,
   });
 }
 

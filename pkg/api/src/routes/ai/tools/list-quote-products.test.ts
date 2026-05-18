@@ -1,17 +1,16 @@
 import * as core from '@pkg/core';
-import { type Db, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { Product, ProductListInput, UserAccessSummary } from '@pkg/schema';
+import type { Product, ProductListInput } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
 
-import type { AiContext } from '@/routes/ai/ai-context.js';
 import { listQuoteProductsTool } from '@/routes/ai/tools/list-quote-products.js';
+import { createActorUser, createAiContext, createModelCode } from '@/test/ai-tools.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
-  await createActorUser(db);
+  await createActorUser(db, 'sales');
 
   return { db };
 });
@@ -101,34 +100,8 @@ async function createProduct(
   return caller.products.create({
     basePrice: 1_000,
     description: null,
-    modelCode: name
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, '-')
-      .replace(/^-|-$/g, ''),
+    modelCode: createModelCode(name),
     name,
     ...overrides,
-  });
-}
-
-function createAiContext(db: Db, access: UserAccessSummary): AiContext {
-  return {
-    access,
-    db,
-    session: mockSession(access.role ?? 'sales'),
-  };
-}
-
-async function createActorUser(db: Db) {
-  const now = new Date();
-
-  await db.insert(user).values({
-    createdAt: now,
-    email: 'test@example.com',
-    emailVerified: true,
-    id: 'test-user-id',
-    name: 'Test User',
-    role: 'sales',
-    updatedAt: now,
   });
 }

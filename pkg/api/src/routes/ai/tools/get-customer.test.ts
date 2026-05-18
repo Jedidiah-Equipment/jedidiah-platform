@@ -1,13 +1,11 @@
-import { type Db, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { Customer, UserAccessSummary } from '@pkg/schema';
+import type { Customer } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 import { z } from 'zod';
 
-import type { AiContext } from '@/routes/ai/ai-context.js';
 import { getCustomerTool } from '@/routes/ai/tools/get-customer.js';
+import { createActorUser, createAiContext, createEmail } from '@/test/ai-tools.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
-import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
@@ -32,6 +30,22 @@ describe('getCustomerTool', () => {
     expect(toolResult).toEqual(trpcResult);
   });
 
+  test('surfaces the core not-found message for missing customers', async ({ context }) => {
+    const access = createUserAccessSummary({
+      role: 'admin',
+      userId: 'test-user-id',
+    });
+
+    await expect(
+      getCustomerTool.handler(
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+        },
+        createAiContext(context.db, access),
+      ),
+    ).rejects.toThrow('Customer not found: 00000000-0000-4000-8000-000000000001');
+  });
+
   test('rejects invalid customer get args', async ({ context }) => {
     const access = createUserAccessSummary({
       role: 'admin',
@@ -47,28 +61,6 @@ describe('getCustomerTool', () => {
 async function createCustomer(caller: AppRouterCaller, companyName: string): Promise<Customer> {
   return caller.customers.create({
     companyName,
-    email: `${companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}@example.com`,
-  });
-}
-
-function createAiContext(db: Db, access: UserAccessSummary): AiContext {
-  return {
-    access,
-    db,
-    session: mockSession(access.role ?? 'admin'),
-  };
-}
-
-async function createActorUser(db: Db) {
-  const now = new Date();
-
-  await db.insert(user).values({
-    createdAt: now,
-    email: 'test@example.com',
-    emailVerified: true,
-    id: 'test-user-id',
-    name: 'Test User',
-    role: 'admin',
-    updatedAt: now,
+    email: createEmail(companyName),
   });
 }

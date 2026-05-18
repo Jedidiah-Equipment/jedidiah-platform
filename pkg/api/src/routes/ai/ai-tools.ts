@@ -40,7 +40,11 @@ export const AI_TOOL_NAMES = [
 ] as const;
 export type AiToolName = (typeof AI_TOOL_NAMES)[number];
 
-type AiToolMap = Record<AiToolName, AiTool>;
+type RegisteredAiTool = AiTool & {
+  description: string;
+};
+
+type AiToolMap = Record<AiToolName, RegisteredAiTool>;
 export type AuthorizedAiTools = Partial<AiToolMap>;
 
 type InternalToolResult =
@@ -159,8 +163,8 @@ export function createRunnableTools(
   }));
 }
 
-function getToolEntries(tools: AuthorizedAiTools): Array<[AiToolName, AiTool]> {
-  const entries: Array<[AiToolName, AiTool]> = [];
+function getToolEntries(tools: AuthorizedAiTools): Array<[AiToolName, RegisteredAiTool]> {
+  const entries: Array<[AiToolName, RegisteredAiTool]> = [];
 
   for (const name of AI_TOOL_NAMES) {
     const tool = tools[name];
@@ -173,7 +177,7 @@ function getToolEntries(tools: AuthorizedAiTools): Array<[AiToolName, AiTool]> {
   return entries;
 }
 
-function withGeneratedDescription<TTool extends AiTool>(tool: TTool): TTool {
+function withGeneratedDescription<TTool extends AiTool>(tool: TTool): TTool & { description: string } {
   return {
     ...tool,
     description: createToolDescription(aiToolDescriptors[tool.name]),

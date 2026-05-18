@@ -46,6 +46,7 @@ Then derive current AI truth from source files, not from this skill:
    - Every registered tool should have a structured descriptor if descriptors are the current pattern.
    - Every registered tool with linkable business results should be considered by result projection logic.
    - Every playbook should reference registered tool names only.
+   - If descriptors generate tool descriptions, tool files should not also declare dead description text.
    - Tool descriptions must describe only supported input fields, filters, sorting, search behavior, permissions, and result identifiers.
 
 3. Check domain alignment.
@@ -62,7 +63,8 @@ Then derive current AI truth from source files, not from this skill:
 5. Check link and identifier safety.
    - Prose should prefer public labels: Job Code, Quote Code, Customer company name, Product name, or User name/email.
    - UUIDs may appear in hrefs, tool inputs, or debug/prototype logs, but prompt guidance should not encourage showing UUIDs in normal assistant prose.
-   - Markdown links should come from tool result link metadata or code-owned route metadata, not arbitrary text rewriting.
+   - Markdown links should come from shared tool result link metadata or code-owned route metadata, not arbitrary text rewriting.
+   - Entity href and label patterns should have one source consumed by descriptors, playbooks, and projections.
 
 6. Maintain this skill.
    - If new AI files, new prompt ownership, or new tool registration patterns appear, update this skill's discovery commands and workflow.

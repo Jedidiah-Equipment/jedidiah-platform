@@ -1,3 +1,4 @@
+import { type AiLinkMetadata, aiLinkMetadata } from './ai-link-metadata.js';
 import type { AiToolName } from './ai-tools.js';
 
 export type AiToolDescriptor = {
@@ -7,11 +8,7 @@ export type AiToolDescriptor = {
   doNotUseWhen: readonly string[];
   searchableIdentifiers: readonly string[];
   resultIdentifiers: readonly string[];
-  linkTarget?: {
-    entity: string;
-    label: string;
-    href: string;
-  };
+  linkTarget?: AiLinkMetadata;
 };
 
 export const aiToolDescriptors = {
@@ -22,11 +19,7 @@ export const aiToolDescriptors = {
     doNotUseWhen: ['Searching by company name, email, or partial id; use listCustomers or listQuoteCustomers first.'],
     searchableIdentifiers: ['Customer UUID'],
     resultIdentifiers: ['Customer company name', 'Customer UUID'],
-    linkTarget: {
-      entity: 'Customer',
-      href: '/customers/{id}/edit',
-      label: 'companyName',
-    },
+    linkTarget: aiLinkMetadata.Customer,
   },
   getJob: {
     name: 'getJob',
@@ -35,11 +28,7 @@ export const aiToolDescriptors = {
     doNotUseWhen: ['Searching by Job Code, numeric code, or partial id; use listJobs first.'],
     searchableIdentifiers: ['Job UUID'],
     resultIdentifiers: ['Job Code', 'Job Lifecycle Status', 'Due Date', 'Stage summaries', 'Workflow events'],
-    linkTarget: {
-      entity: 'Job',
-      href: '/jobs/{id}',
-      label: 'code',
-    },
+    linkTarget: aiLinkMetadata.Job,
   },
   getProduct: {
     name: 'getProduct',
@@ -50,11 +39,7 @@ export const aiToolDescriptors = {
     ],
     searchableIdentifiers: ['Product UUID'],
     resultIdentifiers: ['Product name', 'Product model code'],
-    linkTarget: {
-      entity: 'Product',
-      href: '/products/{id}/edit',
-      label: 'name',
-    },
+    linkTarget: aiLinkMetadata.Product,
   },
   getQuote: {
     name: 'getQuote',
@@ -63,11 +48,7 @@ export const aiToolDescriptors = {
     doNotUseWhen: ['Searching by Quote Code, Customer, Product, linked Job Code, or partial id; use listQuotes first.'],
     searchableIdentifiers: ['Quote UUID'],
     resultIdentifiers: ['Quote Code', 'Quote Status', 'Customer company name', 'linked Job Code'],
-    linkTarget: {
-      entity: 'Quote',
-      href: '/quotes/{id}',
-      label: 'code',
-    },
+    linkTarget: aiLinkMetadata.Quote,
   },
   listAuditEvents: {
     name: 'listAuditEvents',
@@ -87,11 +68,7 @@ export const aiToolDescriptors = {
     doNotUseWhen: ['The caller only has quote access; use listQuoteCustomers for quote-reader Customer lookup.'],
     searchableIdentifiers: ['Customer UUID', 'company name', 'email'],
     resultIdentifiers: ['Customer company name', 'Customer UUID'],
-    linkTarget: {
-      entity: 'Customer',
-      href: '/customers/{id}/edit',
-      label: 'companyName',
-    },
+    linkTarget: aiLinkMetadata.Customer,
   },
   listJobs: {
     name: 'listJobs',
@@ -102,11 +79,7 @@ export const aiToolDescriptors = {
     ],
     searchableIdentifiers: ['Job UUID', 'Job Code such as JOB-00001', 'numeric Job Code', 'Job Lifecycle Status'],
     resultIdentifiers: ['Job Code', 'Job Lifecycle Status', 'Due Date', 'Stage summaries', 'Quote Code'],
-    linkTarget: {
-      entity: 'Job',
-      href: '/jobs/{id}',
-      label: 'code',
-    },
+    linkTarget: aiLinkMetadata.Job,
   },
   listProducts: {
     name: 'listProducts',
@@ -115,11 +88,7 @@ export const aiToolDescriptors = {
     doNotUseWhen: ['The caller only has quote access; use listQuoteProducts for quote-reader Product lookup.'],
     searchableIdentifiers: ['Product UUID', 'Product name', 'model code', 'description'],
     resultIdentifiers: ['Product name', 'Product model code'],
-    linkTarget: {
-      entity: 'Product',
-      href: '/products/{id}/edit',
-      label: 'name',
-    },
+    linkTarget: aiLinkMetadata.Product,
   },
   listQuoteCustomers: {
     name: 'listQuoteCustomers',
@@ -128,11 +97,7 @@ export const aiToolDescriptors = {
     doNotUseWhen: ['The user needs Customer-only permissions or non-Quote Customer workflows.'],
     searchableIdentifiers: ['Customer UUID', 'company name', 'email'],
     resultIdentifiers: ['Customer company name', 'Customer UUID'],
-    linkTarget: {
-      entity: 'Customer',
-      href: '/customers/{id}/edit',
-      label: 'companyName',
-    },
+    linkTarget: aiLinkMetadata.Customer,
   },
   listQuoteProducts: {
     name: 'listQuoteProducts',
@@ -141,11 +106,7 @@ export const aiToolDescriptors = {
     doNotUseWhen: ['The user needs Product-only catalog workflows outside quoting.'],
     searchableIdentifiers: ['Product UUID', 'Product name', 'model code', 'description'],
     resultIdentifiers: ['Product name', 'Product model code'],
-    linkTarget: {
-      entity: 'Product',
-      href: '/products/{id}/edit',
-      label: 'name',
-    },
+    linkTarget: aiLinkMetadata.Product,
   },
   listQuoteSalespeople: {
     name: 'listQuoteSalespeople',
@@ -172,11 +133,7 @@ export const aiToolDescriptors = {
       'Quote Status',
     ],
     resultIdentifiers: ['Quote Code', 'Quote Status', 'Customer company name', 'linked Job Code', 'linked Job UUID'],
-    linkTarget: {
-      entity: 'Quote',
-      href: '/quotes/{id}',
-      label: 'code',
-    },
+    linkTarget: aiLinkMetadata.Quote,
   },
   listUsers: {
     name: 'listUsers',

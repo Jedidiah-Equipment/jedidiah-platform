@@ -1,3 +1,4 @@
+import { type AiLinkMetadata, aiLinkMetadata } from './ai-link-metadata.js';
 import { AI_TOOL_NAMES, type AiToolName } from './ai-tools.js';
 
 type AiDomainRelationship = {
@@ -7,6 +8,7 @@ type AiDomainRelationship = {
 };
 
 type AiRetrievalStep = {
+  alternatives?: readonly AiToolName[];
   tool: AiToolName;
   instruction: string;
 };
@@ -16,11 +18,7 @@ type AiRetrievalPlaybook = {
   appliesWhen: string;
   steps: readonly AiRetrievalStep[];
   disambiguation: readonly string[];
-  linkTargets: readonly {
-    entity: string;
-    label: string;
-    href: string;
-  }[];
+  linkTargets: readonly AiLinkMetadata[];
 };
 
 export const AI_DOMAIN_RELATIONSHIPS = [
@@ -49,6 +47,7 @@ export const AI_RETRIEVAL_PLAYBOOKS = [
     steps: [
       {
         tool: 'listQuoteCustomers',
+        alternatives: ['listCustomers'],
         instruction:
           'Find matching Customers by company name. If customer:read is available instead, listCustomers is also valid.',
       },
@@ -69,23 +68,7 @@ export const AI_RETRIEVAL_PLAYBOOKS = [
       'If the Customer has Quotes but no linked Jobs, explain that no Job has been created from those Quotes yet.',
       'Do not summarize multiple Jobs as "the job" unless the user asks for a Customer overview.',
     ],
-    linkTargets: [
-      {
-        entity: 'Job',
-        href: '/jobs/{id}',
-        label: 'code',
-      },
-      {
-        entity: 'Quote',
-        href: '/quotes/{id}',
-        label: 'code',
-      },
-      {
-        entity: 'Customer',
-        href: '/customers/{id}/edit',
-        label: 'companyName',
-      },
-    ],
+    linkTargets: [aiLinkMetadata.Job, aiLinkMetadata.Quote, aiLinkMetadata.Customer],
   },
 ] satisfies readonly AiRetrievalPlaybook[];
 
@@ -94,8 +77,10 @@ const REGISTERED_TOOL_NAMES = new Set<AiToolName>(AI_TOOL_NAMES);
 export function assertPlaybooksReferenceRegisteredTools(): void {
   for (const playbook of AI_RETRIEVAL_PLAYBOOKS) {
     for (const step of playbook.steps) {
-      if (!REGISTERED_TOOL_NAMES.has(step.tool)) {
-        throw new Error(`AI retrieval playbook ${playbook.intent} references unknown tool ${step.tool}`);
+      for (const toolName of [step.tool, ...(step.alternatives ?? [])]) {
+        if (!REGISTERED_TOOL_NAMES.has(toolName)) {
+          throw new Error(`AI retrieval playbook ${playbook.intent} references unknown tool ${toolName}`);
+        }
       }
     }
   }
@@ -104,7 +89,7 @@ export function assertPlaybooksReferenceRegisteredTools(): void {
 export function createDomainGuidancePrompt(toolNames: readonly AiToolName[]): string {
   const availableTools = new Set(toolNames);
   const playablePlaybooks = AI_RETRIEVAL_PLAYBOOKS.filter((playbook) =>
-    playbook.steps.every((step) => availableTools.has(step.tool)),
+    playbook.steps.every((step) => getAvailableStepTool(step, availableTools)),
   );
   const lines = [
     '## Domain Context',
@@ -125,7 +110,11 @@ export function createDomainGuidancePrompt(toolNames: readonly AiToolName[]): st
 
     for (const playbook of playablePlaybooks) {
       lines.push(`- Intent ${playbook.intent}: ${playbook.appliesWhen}`);
-      lines.push(`  Steps: ${playbook.steps.map((step) => `${step.tool}: ${step.instruction}`).join(' ')}`);
+      lines.push(
+        `  Steps: ${playbook.steps
+          .map((step) => `${getAvailableStepTool(step, availableTools) ?? step.tool}: ${step.instruction}`)
+          .join(' ')}`,
+      );
       lines.push(`  Disambiguation: ${playbook.disambiguation.join(' ')}`);
       lines.push(
         `  Link targets: ${playbook.linkTargets
@@ -136,4 +125,12 @@ export function createDomainGuidancePrompt(toolNames: readonly AiToolName[]): st
   }
 
   return lines.join('\n');
+}
+
+function getAvailableStepTool(step: AiRetrievalStep, availableTools: ReadonlySet<AiToolName>): AiToolName | null {
+  if (availableTools.has(step.tool)) {
+    return step.tool;
+  }
+
+  return step.alternatives?.find((toolName) => availableTools.has(toolName)) ?? null;
 }

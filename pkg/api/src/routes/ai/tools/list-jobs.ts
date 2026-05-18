@@ -8,8 +8,6 @@ export type ListJobsTool = AiToolBase<'listJobs', JobListResult, JobListInput, A
 
 export const listJobsTool: ListJobsTool = {
   name: 'listJobs',
-  description:
-    'List jobs. Use filters.lifecycleStatuses to choose active, paused, complete, cancelled, or an empty array for all statuses. Use search for job UUIDs, partial UUIDs, numeric job codes, or public job codes such as JOB-00001. Use sortBy, sortDirection, page, and pageSize to return the right job slice.',
   inputSchema: JobListInput,
   jsonSchema: z.toJSONSchema(JobListInput) as Record<string, unknown>,
   requiredPermission: 'job:read',

@@ -14,8 +14,6 @@ export type GetProductTool = AiToolBase<'getProduct', Product, GetProductInput, 
 
 export const getProductTool: GetProductTool = {
   name: 'getProduct',
-  description:
-    'Get one product by its UUID. Use this only after a product id is known; use listProducts first when searching by product name, model code, description, or partial id.',
   inputSchema: GetProductInput,
   jsonSchema: z.toJSONSchema(GetProductInput) as Record<string, unknown>,
   requiredPermission: 'product:read',

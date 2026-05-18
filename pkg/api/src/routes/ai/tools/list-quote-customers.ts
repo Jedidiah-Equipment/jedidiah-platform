@@ -8,8 +8,6 @@ export type ListQuoteCustomersTool = AiToolBase<'listQuoteCustomers', CustomerLi
 
 export const listQuoteCustomersTool: ListQuoteCustomersTool = {
   name: 'listQuoteCustomers',
-  description:
-    'List customers available to quote readers. Prefer specific queries over broad directory scans: use columnFilters.id when a customer id is known, columnFilters.companyName for a company name, and columnFilters.email for an email address. Use search for exploratory text matches across customer id, company name, and email. Use sortBy, sortDirection, page, and pageSize to return the right customer slice.',
   inputSchema: CustomerListInput,
   jsonSchema: z.toJSONSchema(CustomerListInput) as Record<string, unknown>,
   requiredPermission: 'quote:read',

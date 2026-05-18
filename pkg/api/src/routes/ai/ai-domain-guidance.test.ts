@@ -28,6 +28,14 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('Do not show UUIDs in prose');
   });
 
+  test('renders Customer to Quote to Job guidance when an alternative customer lookup is available', () => {
+    const prompt = createDomainGuidancePrompt(['listCustomers', 'listQuotes', 'getJob']);
+
+    expect(prompt).toContain('Intent customer_job_progress');
+    expect(prompt).toContain('listCustomers: Find matching Customers by company name');
+    expect(prompt).not.toContain('listQuoteCustomers: Find matching Customers by company name');
+  });
+
   test('does not render an unusable playbook when required tools are unavailable', () => {
     const prompt = createDomainGuidancePrompt(['listQuotes'] satisfies AiToolName[]);
 
@@ -39,5 +47,6 @@ describe('AI domain guidance', () => {
     const playbook = AI_RETRIEVAL_PLAYBOOKS.find((item) => item.intent === 'customer_job_progress');
 
     expect(playbook?.steps.map((step) => step.tool)).toEqual(['listQuoteCustomers', 'listQuotes', 'getJob']);
+    expect(playbook?.steps[0]?.alternatives).toEqual(['listCustomers']);
   });
 });

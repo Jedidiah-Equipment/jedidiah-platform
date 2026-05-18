@@ -1,18 +1,11 @@
+import { type AiLink, createAiLink } from './ai-link-metadata.js';
 import type { AiToolName } from './ai-tools.js';
 
-type AssistantLink = {
-  entity: 'Customer' | 'Job' | 'Product' | 'Quote';
-  href: string;
-  label: string;
-};
-
 type LinkableRecord = Record<string, unknown> & {
-  id?: unknown;
+  id: string;
 };
 
-export type AiProjectedResult = unknown;
-
-export function projectAiToolResult(name: AiToolName, result: unknown): AiProjectedResult {
+export function projectAiToolResult(name: AiToolName, result: unknown): unknown {
   switch (name) {
     case 'getCustomer':
       return projectCustomer(result);
@@ -57,7 +50,7 @@ function projectCustomer(value: unknown): unknown {
   }
 
   const label = typeof value.companyName === 'string' ? value.companyName : null;
-  return addAssistantLink(value, label ? createLink('Customer', label, `/customers/${value.id}/edit`) : null);
+  return addAssistantLink(value, label ? createAiLink('Customer', label, value.id) : null);
 }
 
 function projectJob(value: unknown): unknown {
@@ -66,12 +59,12 @@ function projectJob(value: unknown): unknown {
   }
 
   const label = typeof value.code === 'string' ? value.code : null;
-  const projected = addAssistantLink(value, label ? createLink('Job', label, `/jobs/${value.id}`) : null);
+  const projected = addAssistantLink(value, label ? createAiLink('Job', label, value.id) : null);
 
   if (typeof value.quoteCode === 'string' && typeof value.quoteId === 'string') {
     return {
       ...projected,
-      quoteLink: createLink('Quote', value.quoteCode, `/quotes/${value.quoteId}`),
+      quoteLink: createAiLink('Quote', value.quoteCode, value.quoteId),
     };
   }
 
@@ -84,7 +77,7 @@ function projectProduct(value: unknown): unknown {
   }
 
   const label = typeof value.name === 'string' ? value.name : null;
-  return addAssistantLink(value, label ? createLink('Product', label, `/products/${value.id}/edit`) : null);
+  return addAssistantLink(value, label ? createAiLink('Product', label, value.id) : null);
 }
 
 function projectQuote(value: unknown): unknown {
@@ -93,22 +86,19 @@ function projectQuote(value: unknown): unknown {
   }
 
   const label = typeof value.code === 'string' ? value.code : null;
-  const projected = addAssistantLink(value, label ? createLink('Quote', label, `/quotes/${value.id}`) : null);
+  const projected = addAssistantLink(value, label ? createAiLink('Quote', label, value.id) : null);
 
   if (typeof value.jobCode === 'string' && typeof value.jobId === 'string') {
     return {
       ...projected,
-      jobLink: createLink('Job', value.jobCode, `/jobs/${value.jobId}`),
+      jobLink: createAiLink('Job', value.jobCode, value.jobId),
     };
   }
 
   return projected;
 }
 
-function addAssistantLink<T extends LinkableRecord>(
-  value: T,
-  link: AssistantLink | null,
-): T & { assistantLink?: AssistantLink } {
+function addAssistantLink<T extends LinkableRecord>(value: T, link: AiLink | null): T & { assistantLink?: AiLink } {
   if (!link) {
     return value;
   }
@@ -116,14 +106,6 @@ function addAssistantLink<T extends LinkableRecord>(
   return {
     ...value,
     assistantLink: link,
-  };
-}
-
-function createLink(entity: AssistantLink['entity'], label: string, href: string): AssistantLink {
-  return {
-    entity,
-    href,
-    label,
   };
 }
 

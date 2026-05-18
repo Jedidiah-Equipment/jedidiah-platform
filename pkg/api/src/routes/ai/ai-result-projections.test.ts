@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
+import { aiLinkMetadata } from './ai-link-metadata.js';
 import { projectAiToolResult } from './ai-result-projections.js';
 
 describe('AI result projections', () => {
@@ -27,6 +28,15 @@ describe('AI result projections', () => {
       },
     });
     expect(job).not.toHaveProperty('assistantLink');
+  });
+
+  test('uses the shared route metadata for projected links', () => {
+    expect(aiLinkMetadata.Job.href).toBe('/jobs/{id}');
+    expect(projectAiToolResult('getJob', { code: 'JOB-00001', id: 'job-id' })).toMatchObject({
+      assistantLink: {
+        href: '/jobs/job-id',
+      },
+    });
   });
 
   test('adds Quote and linked Job metadata to list items', () => {

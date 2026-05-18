@@ -26,7 +26,6 @@ const RESPONSE_STYLE_PROMPT = [
 ];
 
 const PROMPT_SECTIONS = [
-  ['Role', ASSISTANT_ROLE_PROMPT],
   ['Tool Use', TOOL_USE_PROMPT],
   ['Response Style', RESPONSE_STYLE_PROMPT],
 ] as const;
@@ -35,7 +34,7 @@ export function createSystemPrompt(toolNames: readonly AiToolName[]): string {
   return [
     renderSection('Role', ASSISTANT_ROLE_PROMPT),
     createDomainGuidancePrompt(toolNames),
-    ...PROMPT_SECTIONS.slice(1).map(([title, lines]) => renderSection(title, lines)),
+    ...PROMPT_SECTIONS.map(([title, lines]) => renderSection(title, lines)),
   ].join('\n\n');
 }
 

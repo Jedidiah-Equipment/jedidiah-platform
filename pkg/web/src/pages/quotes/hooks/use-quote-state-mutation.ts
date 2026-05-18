@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type QuoteStateAction = 'accept' | 'reject' | 'send';
@@ -13,14 +14,15 @@ type UseQuoteStateMutationInput = {
 export function useQuoteStateMutation({ action, successMessage }: UseQuoteStateMutationInput) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const showMutationError = useApiMutationErrorToast();
 
   const callbacks = {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() });
       toast.success(successMessage);
     },
-    onError: (error: { message: string }) => {
-      toast.error(error.message);
+    onError: (error: unknown) => {
+      showMutationError(error, 'Unable to update quote status.');
     },
   };
 

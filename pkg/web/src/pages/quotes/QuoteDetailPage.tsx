@@ -7,6 +7,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
 import { Calendar } from '@/components/ui/calendar.js';
@@ -24,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import { formatCurrency } from '@/utils/number.js';
@@ -47,6 +49,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const accessQuery = useAccess();
+  const showMutationError = useApiMutationErrorToast();
   const [confirmation, setConfirmation] = useState<QuoteTransitionConfirmation | null>(null);
 
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
@@ -66,7 +69,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
         toast.success('Job created');
         await navigate({ params: { id: job.id }, to: '/jobs/$id' });
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => showMutationError(error, 'Unable to create job from quote.'),
     }),
   );
   const currencyCode = quote?.quotedCurrencyCode ?? quote?.productCurrencyCode;
@@ -139,7 +142,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Separator />
-          {quoteQuery.error ? <p className="text-sm text-destructive">{quoteQuery.error.message}</p> : null}
+          <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
           {quote ? (
             <>
               <div className="flex flex-wrap gap-2">

@@ -1,4 +1,4 @@
-import { roleLabels } from '@pkg/domain';
+import { departmentLabels, roleLabels } from '@pkg/domain';
 import { Building2Icon, ChevronsUpDownIcon, LogOutIcon, ShieldIcon } from 'lucide-react';
 import type React from 'react';
 
@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dropdown-menu.js';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar.js';
 import { useAccess } from '@/hooks/use-access.js';
-import { departmentLabels } from '@/pages/users/components/department-labels.js';
 
 type AppNavUserProps = {
   user: {

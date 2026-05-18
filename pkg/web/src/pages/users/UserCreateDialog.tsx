@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { UserCreateForm, type UserCreateFormValues } from './components/UserCreateForm.js';
@@ -18,6 +19,7 @@ export const UserCreateDialog: React.FC = () => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const accessQuery = useAccess();
+  const showMutationError = useApiMutationErrorToast();
   const canAssignDepartments = hasPermission(accessQuery.data, 'user:assign-departments');
   const [isOpen, setIsOpen] = useState(false);
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
@@ -52,7 +54,7 @@ export const UserCreateDialog: React.FC = () => {
       toast.success('User created');
     },
     onError: (error) => {
-      toast.error(error.message);
+      showMutationError(error, 'Unable to create user.');
     },
   });
 

@@ -11,8 +11,10 @@ import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-que
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
 import { Button } from '@/components/ui/button.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
+import { formatCurrency } from '@/utils/number.js';
 
 type ProductTableProps = {
   onEditProduct: ((product: Product) => void) | undefined;
@@ -184,7 +186,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
   return (
     <DataTable
       emptyMessage="No products found."
-      errorMessage={productsQuery.error?.message}
+      errorMessage={getApiQueryErrorMessage(productsQuery.error, 'Unable to load products.')}
       globalFilterPlaceholder="Search products..."
       isLoading={isLoading}
       table={table}
@@ -230,8 +232,5 @@ function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'id' | 'mod
 }
 
 function formatProductPrice(product: Product): string {
-  return new Intl.NumberFormat('en-ZA', {
-    currency: product.currencyCode,
-    style: 'currency',
-  }).format(product.basePrice);
+  return formatCurrency(product.basePrice, product.currencyCode);
 }

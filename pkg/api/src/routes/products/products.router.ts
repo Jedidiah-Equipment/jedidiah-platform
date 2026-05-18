@@ -1,20 +1,17 @@
 import {
   createProduct,
-  DuplicateProductModelCodeError,
-  DuplicateProductNameError,
-  DuplicateProductOptionCodeError,
   getProduct,
+  isProductCoreError,
   listProducts,
-  ProductNotFoundError,
-  ProductOptionNotFoundError,
+  type ProductCoreError,
   updateProduct,
 } from '@pkg/core';
 import { ProductCreateInput, ProductListInput, ProductUpdateInput, UUID } from '@pkg/schema';
-import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { log } from '@/logger.js';
 
+import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const productsRouter = router({
@@ -40,44 +37,42 @@ export const productsRouter = router({
 });
 
 async function mapProductErrors<T>(action: () => Promise<T>): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (error instanceof DuplicateProductNameError) {
-      throw new TRPCError({
+  return mapKnownCoreError(action, isProductCoreError, mapProductCoreError);
+}
+
+function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductCoreError['code']> {
+  switch (error.code) {
+    case 'product.duplicate_name':
+      return {
+        appCode: error.code,
         code: 'CONFLICT',
         message: 'A product with this name already exists.',
-      });
-    }
-
-    if (error instanceof DuplicateProductModelCodeError) {
-      throw new TRPCError({
+      };
+    case 'product.duplicate_model_code':
+      return {
+        appCode: error.code,
         code: 'CONFLICT',
         message: 'A product with this model code already exists.',
-      });
-    }
-
-    if (error instanceof DuplicateProductOptionCodeError) {
-      throw new TRPCError({
+      };
+    case 'product.option_duplicate_code':
+      return {
+        appCode: error.code,
         code: 'CONFLICT',
         message: 'A product option with this code already exists for this product.',
-      });
-    }
-
-    if (error instanceof ProductOptionNotFoundError) {
-      throw new TRPCError({
+      };
+    case 'product.option_not_found':
+      return {
+        appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Product option not found.',
-      });
-    }
-
-    if (error instanceof ProductNotFoundError) {
-      throw new TRPCError({
+      };
+    case 'product.not_found':
+      return {
+        appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Product not found.',
-      });
-    }
-
-    throw error;
+      };
+    default:
+      return assertNever(error);
   }
 }

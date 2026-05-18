@@ -4,10 +4,8 @@ import {
   createJob,
   createJobFromQuote,
   getJob,
-  JobLifecycleTransitionDeniedError,
-  JobNotFoundError,
-  JobQuoteConversionDeniedError,
-  JobStageTransitionDeniedError,
+  isJobCoreError,
+  type JobCoreError,
   listJobs,
   pauseJob,
   resumeJob,
@@ -23,9 +21,9 @@ import {
   JobStageTransitionInput,
   UUID,
 } from '@pkg/schema';
-import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
+import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const jobsRouter = router({
@@ -133,37 +131,36 @@ export const jobsRouter = router({
 });
 
 async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (error instanceof JobNotFoundError) {
-      throw new TRPCError({
+  return mapKnownCoreError(action, isJobCoreError, mapJobCoreError);
+}
+
+function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['code']> {
+  switch (error.code) {
+    case 'job.not_found':
+      return {
+        appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Job not found.',
-      });
-    }
-
-    if (error instanceof JobStageTransitionDeniedError) {
-      throw new TRPCError({
+      };
+    case 'job.stage_transition_denied':
+      return {
+        appCode: error.code,
         code: 'FORBIDDEN',
-        message: error.message,
-      });
-    }
-
-    if (error instanceof JobLifecycleTransitionDeniedError) {
-      throw new TRPCError({
+        message: 'Job stage cannot move to that state.',
+      };
+    case 'job.lifecycle_transition_denied':
+      return {
+        appCode: error.code,
         code: 'FORBIDDEN',
-        message: error.message,
-      });
-    }
-
-    if (error instanceof JobQuoteConversionDeniedError) {
-      throw new TRPCError({
+        message: 'Job cannot move to that lifecycle state.',
+      };
+    case 'job.quote_conversion_denied':
+      return {
+        appCode: error.code,
         code: 'FORBIDDEN',
-        message: error.message,
-      });
-    }
-
-    throw error;
+        message: 'Quote cannot be converted into a job.',
+      };
+    default:
+      return assertNever(error);
   }
 }

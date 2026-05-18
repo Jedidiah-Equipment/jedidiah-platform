@@ -518,7 +518,7 @@ describe('job stage transitions', () => {
 
     await expect(caller.jobs.startStage({ id: created.id, stage: 'fabrication' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Previous stage is not complete.',
+      message: 'Job stage cannot move to that state.',
     });
 
     expect(await context.db.select().from(auditEvents)).toHaveLength(1);
@@ -533,7 +533,7 @@ describe('job stage transitions', () => {
 
     await expect(caller.jobs.startStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Stage has already started.',
+      message: 'Job stage cannot move to that state.',
     });
   });
 
@@ -543,7 +543,7 @@ describe('job stage transitions', () => {
 
     await expect(caller.jobs.completeStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Stage has not started.',
+      message: 'Job stage cannot move to that state.',
     });
   });
 
@@ -556,7 +556,7 @@ describe('job stage transitions', () => {
 
     await expect(caller.jobs.completeStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Stage is already complete.',
+      message: 'Job stage cannot move to that state.',
     });
   });
 
@@ -572,7 +572,7 @@ describe('job stage transitions', () => {
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Stage has not started.',
+      message: 'Job stage cannot move to that state.',
     });
   });
 
@@ -588,7 +588,7 @@ describe('job stage transitions', () => {
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Stage has not started.',
+      message: 'Job stage cannot move to that state.',
     });
   });
 
@@ -681,7 +681,7 @@ describe('job stage transitions', () => {
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'You do not have access to update this stage.',
+      message: 'Job stage cannot move to that state.',
     });
   });
 
@@ -693,7 +693,7 @@ describe('job stage transitions', () => {
 
     await expect(caller.jobs.startStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Job is not active.',
+      message: 'Job stage cannot move to that state.',
     });
   });
 
@@ -704,7 +704,7 @@ describe('job stage transitions', () => {
 
     await expect(paintCaller.jobs.startStage({ id: created.id, stage: 'procurement' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'You do not have access to update this stage.',
+      message: 'Job stage cannot move to that state.',
     });
   });
 
@@ -770,7 +770,7 @@ describe('job lifecycle transitions', () => {
       caller.jobs.setStageStatus({ id: created.id, stage: 'procurement', status: 'partial' }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Job is not active.',
+      message: 'Job stage cannot move to that state.',
     });
 
     expect(await context.db.select().from(jobStages).orderBy(jobStages.sequence)).toEqual(stageRowsBeforePause);
@@ -826,7 +826,7 @@ describe('job lifecycle transitions', () => {
 
     await expect(caller.jobs.startStage({ id: pausedJob.id, stage: 'procurement' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Job is not active.',
+      message: 'Job stage cannot move to that state.',
     });
   });
 
@@ -837,7 +837,7 @@ describe('job lifecycle transitions', () => {
 
     await expect(supervisorCaller.jobs.resume({ id: created.id })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Only paused jobs can be resumed.',
+      message: 'Job cannot move to that lifecycle state.',
     });
 
     await expect(stageEditorCaller.jobs.pause({ id: created.id })).rejects.toMatchObject({
@@ -848,14 +848,14 @@ describe('job lifecycle transitions', () => {
 
     await expect(supervisorCaller.jobs.pause({ id: created.id })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Only active jobs can be paused.',
+      message: 'Job cannot move to that lifecycle state.',
     });
 
     await supervisorCaller.jobs.cancel({ id: created.id });
 
     await expect(supervisorCaller.jobs.resume({ id: created.id })).rejects.toMatchObject({
       code: 'FORBIDDEN',
-      message: 'Terminal jobs cannot change lifecycle status.',
+      message: 'Job cannot move to that lifecycle state.',
     });
   });
 });

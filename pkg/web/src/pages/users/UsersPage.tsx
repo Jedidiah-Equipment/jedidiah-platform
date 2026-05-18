@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { UserTable } from './components/UserTable.js';
 import { UserCreateDialog } from './UserCreateDialog.js';
@@ -51,7 +52,7 @@ export const UsersPage: React.FC = () => {
           <Separator />
           <UserTable
             currentUserId={access?.userId}
-            errorMessage={usersQuery.error?.message}
+            errorMessage={getApiQueryErrorMessage(usersQuery.error, 'Unable to load users.')}
             isLoading={usersQuery.isPending}
             onEditUser={canManageUsers ? setEditingUser : undefined}
             showEditActions={canManageUsers}

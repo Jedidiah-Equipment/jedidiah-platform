@@ -1,3 +1,4 @@
+import { departmentLabels } from '@pkg/domain';
 import { DEPARTMENTS, type Department } from '@pkg/schema';
 import type React from 'react';
 import { useId } from 'react';
@@ -5,7 +6,6 @@ import { useId } from 'react';
 import { DepartmentIcon } from '@/components/departments/index.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldContent, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field.js';
-import { departmentLabels } from './department-labels.js';
 
 type UserDepartmentsFormProps = {
   initialDepartments: readonly Department[];

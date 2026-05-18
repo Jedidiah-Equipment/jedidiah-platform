@@ -26,6 +26,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
+import { useQuoteStateMutation } from './hooks/use-quote-state-mutation.js';
 
 type QuoteDetailPageProps = {
   quoteId: UUID;
@@ -33,21 +34,23 @@ type QuoteDetailPageProps = {
 
 export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const accessQuery = useAccess();
+
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
   const quote = quoteQuery.data;
-  const sendMutation = useQuoteStateMutation('Quote sent', trpc.quotes.send.mutationOptions);
-  const acceptMutation = useQuoteStateMutation('Quote accepted', trpc.quotes.accept.mutationOptions);
-  const rejectMutation = useQuoteStateMutation('Quote rejected', trpc.quotes.reject.mutationOptions);
+
+  const sendMutation = useQuoteStateMutation({ action: 'send', successMessage: 'Quote sent' });
+  const acceptMutation = useQuoteStateMutation({ action: 'accept', successMessage: 'Quote accepted' });
+  const rejectMutation = useQuoteStateMutation({ action: 'reject', successMessage: 'Quote rejected' });
+
   const createJobMutation = useMutation(
     trpc.jobs.createFromQuote.mutationOptions({
       onSuccess: async (job) => {
         await Promise.all([
-          queryClient.invalidateQueries(trpc.quotes.get.queryFilter({ id: quoteId })),
-          queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id })),
-          queryClient.invalidateQueries(trpc.jobs.list.queryFilter()),
+          queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() }),
+          queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() }),
         ]);
         toast.success('Job created');
         await navigate({ params: { id: job.id }, to: '/jobs/$id' });
@@ -55,28 +58,10 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
       onError: (error) => toast.error(error.message),
     }),
   );
+
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
   const isStatePending = sendMutation.isPending || acceptMutation.isPending || rejectMutation.isPending;
-
-  const refreshQuote = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries(trpc.quotes.get.queryFilter({ id: quoteId })),
-      queryClient.invalidateQueries(trpc.quotes.list.queryFilter()),
-    ]);
-  };
-
-  function useQuoteStateMutation(successMessage: string, optionsFactory: typeof trpc.quotes.send.mutationOptions) {
-    return useMutation(
-      optionsFactory({
-        onSuccess: async () => {
-          await refreshQuote();
-          toast.success(successMessage);
-        },
-        onError: (error) => toast.error(error.message),
-      }),
-    );
-  }
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -179,7 +164,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
 const QuoteFact: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="rounded-md border p-3">
     <div className="text-xs font-medium text-muted-foreground">{label}</div>
-    <div className="mt-1 break-words">{value}</div>
+    <div className="mt-1 wrap-break-word">{value}</div>
   </div>
 );
 

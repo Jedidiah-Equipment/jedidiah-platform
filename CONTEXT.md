@@ -33,6 +33,13 @@ An optional target completion date on a Job. Set at creation — via the create-
 **Stage Status**:
 A Stage's per-department workflow position (e.g. "awaiting-supplier", "in-press"). Stored as `text` on `job_stage`; validated app-side via a Zod discriminated union keyed on `stage`. The per-stage status enums are deferred to each department's implementing slice.
 
+**Stage Summary**:
+The "where is this Stage at" snapshot of a Stage — its **Stage Status**, `started_at`, and `completed_at`. Considered part of the **Job** aggregate: any User with `job:read` sees the Stage Summary of **all five** Stages, unscoped, regardless of Department membership. Carries no edit affordances. This is what powers the per-Department chips on the jobs table and the readonly Stage panels on the job detail page.
+_Avoid_: "Locked stage" / "hidden stage" — there is no longer any Stage a Job-reader cannot see at summary level.
+
+**Stage Detail**:
+The in-scope view of a Stage: the **Stage Summary** plus its edit affordances (transition availability) and any future per-Stage captured data. Gated by `job-stage:read` / `job-stage:update` **and** Department **Scope** — a User sees Stage Detail only for Stages owned by their Departments (or all Stages, if unscoped). Today the only "detail" beyond the Summary is the transition controls; richer per-Stage data capture is deferred.
+
 **Stage Completion**:
 A one-way latch on a Stage: `completed_at` may be set once and is not unset by normal workflow. Completing a Stage sets both `completed_at` and `status = 'complete'`; selecting the `complete` Stage Status uses the same completion semantics. Selecting `complete` after `completed_at` is set never rewrites `completed_at`: it only moves `status` back to `complete` when needed, and is a true no-op if the status is already `complete`. Later status edits may move away from `complete`, but they never clear `completed_at`.
 _Avoid_: "Closed stage", "finished stage" (overloaded).
@@ -57,7 +64,7 @@ _Avoid_: Team, Group.
 A flat role assigned to a User that grants verb capabilities on resources. Roles say "what verbs you can call"; they do not by themselves say "on which rows". See **Scope**.
 
 **Scope**:
-The rule that determines *which rows* a User's Job/Job-Stage verbs apply to. Scope is a property of the **User's Department-membership set**, not of their Role: a User with one or more Department memberships is **scoped** — verbs apply only to Stages owned by those Departments; a User with an empty membership set is **unscoped** — verbs apply to every Stage the Role permits. Empty membership means "all Departments", not "no access". Scope is enforced by the **Job Authorization Policy** (the `can*Stage` functions in `pkg/domain/src/auth/authorization.ts`) — it is not encoded in the permission strings.
+The rule that determines *which rows* a User's Job/Job-Stage verbs apply to. Scope is a property of the **User's Department-membership set**, not of their Role: a User with one or more Department memberships is **scoped** — verbs apply only to Stages owned by those Departments; a User with an empty membership set is **unscoped** — verbs apply to every Stage the Role permits. Empty membership means "all Departments", not "no access". Scope is enforced by the **Job Authorization Policy** (the `can*Stage` functions in `pkg/domain/src/auth/authorization.ts`) — it is not encoded in the permission strings. Scope governs **Stage Detail** read and Stage writes only; **Stage Summary** is part of the Job and is never scoped.
 
 **Department-Aware Role**:
 A Role for which Department membership is consulted, so a User holding it can be either scoped or unscoped depending on their memberships. Currently: `job-stage-editor`, `job-supervisor`, `job-viewer` — the members of `DEPARTMENT_AWARE_ROLES`. For these roles `user_department` is read when the access summary is built.

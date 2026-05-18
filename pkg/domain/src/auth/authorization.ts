@@ -13,6 +13,7 @@ export const roleLabels = {
   'job-viewer': 'Job viewer',
   'product-editor': 'Product manager',
   'product-viewer': 'Product viewer',
+  sales: 'Sales',
 } as const satisfies Record<AppRole, string>;
 
 export const permissionLabels = {
@@ -28,6 +29,9 @@ export const permissionLabels = {
   'product:create': 'Create products',
   'product:read': 'View products',
   'product:update': 'Update products',
+  'quote:create': 'Create quotes',
+  'quote:read': 'View quotes',
+  'quote:update': 'Update quotes',
   'user:assign-departments': 'Assign departments',
   'user:create': 'Add users',
   'user:list': 'View users',
@@ -42,6 +46,7 @@ export const authorizationStatement = {
   job: ['read', 'create', 'update'],
   'job-stage': ['read', 'update'],
   product: ['read', 'create', 'update'],
+  quote: ['read', 'create', 'update'],
   user: ['list', 'create', 'update', 'set-role', 'set-password', 'assign-departments'],
 } as const;
 
@@ -58,6 +63,7 @@ export const appRoleAccess = {
     job: ['read', 'create', 'update'],
     'job-stage': ['read', 'update'],
     product: ['read', 'create', 'update'],
+    quote: ['read', 'create', 'update'],
     user: ['list', 'create', 'update', 'set-role', 'set-password', 'assign-departments'],
   },
   'product-editor': {
@@ -69,6 +75,7 @@ export const appRoleAccess = {
   'job-supervisor': {
     job: ['read', 'create', 'update'],
     'job-stage': ['read', 'update'],
+    quote: ['read'],
   },
   'job-stage-editor': {
     job: ['read'],
@@ -77,6 +84,9 @@ export const appRoleAccess = {
   'job-viewer': {
     job: ['read'],
     'job-stage': ['read'],
+  },
+  sales: {
+    quote: ['read', 'create', 'update'],
   },
 } as const satisfies Record<AppRole, RoleAccess>;
 
@@ -144,6 +154,18 @@ export function canViewStage(access: UserAccessSummary | null | undefined, stage
 
 export function canEditStage(access: UserAccessSummary | null | undefined, stage: JobStageResource): boolean {
   return hasPermission(access, 'job-stage:update') && canAccessStageDepartment(access, stage);
+}
+
+export function canViewQuote(access: UserAccessSummary | null | undefined): boolean {
+  return hasPermission(access, 'quote:read');
+}
+
+export function canCreateQuote(access: UserAccessSummary | null | undefined): boolean {
+  return hasPermission(access, 'quote:create');
+}
+
+export function canEditQuote(access: UserAccessSummary | null | undefined): boolean {
+  return hasPermission(access, 'quote:update');
 }
 
 function canAccessStageDepartment(access: UserAccessSummary | null | undefined, stage: JobStageResource): boolean {

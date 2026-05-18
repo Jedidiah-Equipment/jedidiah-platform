@@ -18,3 +18,10 @@ export class JobLifecycleTransitionDeniedError extends Error {
     this.name = 'JobLifecycleTransitionDeniedError';
   }
 }
+
+export class JobQuoteConversionDeniedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'JobQuoteConversionDeniedError';
+  }
+}

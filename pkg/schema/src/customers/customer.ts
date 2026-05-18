@@ -10,6 +10,16 @@ export const CustomerCompanyName = z.string().trim().min(1, 'Company name is req
 export type CustomerEmail = z.infer<typeof CustomerEmail>;
 export const CustomerEmail = z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address'));
 
+export type CustomerEmailInput = z.infer<typeof CustomerEmailInput>;
+export const CustomerEmailInput = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((value) => (value === '' ? null : value))
+  .nullable()
+  .default(null)
+  .pipe(CustomerEmail.nullable());
+
 export type CustomerOptionalText = z.infer<typeof CustomerOptionalText>;
 export const CustomerOptionalText = z.string().trim().min(1).nullable();
 
@@ -25,7 +35,7 @@ export type Customer = z.infer<typeof Customer>;
 export const Customer = z.object({
   id: UUID,
   companyName: CustomerCompanyName,
-  email: CustomerEmail,
+  email: CustomerEmail.nullable(),
   address: CustomerOptionalText,
   contactPerson: CustomerOptionalText,
   phone: CustomerOptionalText,
@@ -49,7 +59,7 @@ export const CustomerColumnFilters = z
 export type CustomerCreateInput = z.infer<typeof CustomerCreateInput>;
 export const CustomerCreateInput = z.object({
   companyName: CustomerCompanyName,
-  email: CustomerEmail,
+  email: CustomerEmailInput,
   address: CustomerOptionalTextInput,
   contactPerson: CustomerOptionalTextInput,
   phone: CustomerOptionalTextInput,

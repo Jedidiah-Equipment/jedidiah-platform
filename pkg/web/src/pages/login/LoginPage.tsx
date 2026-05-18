@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { FieldGroup } from '@/components/ui/field.js';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { authClient } from '@/lib/auth-client.js';
 import { clearReactQueryCache } from '@/lib/trpc-cache.js';
 import { LoginForm } from './types.js';
@@ -105,37 +106,50 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
             <CardTitle>Seed users</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="divide-y rounded-md border">
-              {demoUsers.map((demoUser) => (
-                <div
-                  className="grid gap-3 p-3 lg:grid-cols-[1fr_auto_minmax(10rem,0.8fr)_minmax(18rem,1.4fr)]"
-                  key={demoUser.id}
-                >
-                  <div className="min-w-0">
-                    <div className="font-medium">{demoUser.name}</div>
-                    <div className="truncate text-muted-foreground text-sm">{demoUser.email}</div>
-                  </div>
-                  <div className="flex items-start">
-                    <Badge variant="outline">{roleLabels[demoUser.role]}</Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {demoUser.departments.length === 0 ? (
-                      <span className="text-muted-foreground text-sm">No department</span>
-                    ) : (
-                      demoUser.departments.map((department) => (
-                        <Badge key={department} variant="secondary">
-                          {departmentLabels[department]}
-                        </Badge>
-                      ))
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {getRolePermissions(demoUser.role).map((permission) => (
-                      <PermissionBadge key={permission} permission={permission} />
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Permissions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {demoUsers.map((demoUser) => (
+                    <TableRow key={demoUser.id}>
+                      <TableCell className="min-w-52">
+                        <div className="font-medium">{demoUser.name}</div>
+                        <div className="text-muted-foreground text-sm">{demoUser.email}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{roleLabels[demoUser.role]}</Badge>
+                      </TableCell>
+                      <TableCell className="min-w-44">
+                        <div className="flex flex-wrap gap-1">
+                          {demoUser.departments.length === 0 ? (
+                            <span className="text-muted-foreground text-sm">No department</span>
+                          ) : (
+                            demoUser.departments.map((department) => (
+                              <Badge key={department} variant="secondary">
+                                {departmentLabels[department]}
+                              </Badge>
+                            ))
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="min-w-[26rem] whitespace-normal">
+                        <div className="flex flex-wrap gap-1">
+                          {getRolePermissions(demoUser.role).map((permission) => (
+                            <PermissionBadge key={permission} permission={permission} />
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>

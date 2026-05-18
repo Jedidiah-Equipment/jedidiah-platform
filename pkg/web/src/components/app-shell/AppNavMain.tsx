@@ -37,13 +37,10 @@ const mainNavItems = [
     icon: GaugeIcon,
   },
   {
-    title: 'Products',
-    permission: 'product:read',
-    link: linkOptions({
-      to: '/products',
-      search: { page: 1, pageSize: 10, search: '', sortBy: 'name', sortDirection: 'asc' },
-    }),
-    icon: BoxesIcon,
+    title: 'Quotes',
+    permission: 'quote:read',
+    link: linkOptions({ to: '/quotes' }),
+    icon: FileTextIcon,
   },
   {
     title: 'Jobs',
@@ -52,10 +49,13 @@ const mainNavItems = [
     icon: BriefcaseBusinessIcon,
   },
   {
-    title: 'Quotes',
-    permission: 'quote:read',
-    link: linkOptions({ to: '/quotes' }),
-    icon: FileTextIcon,
+    title: 'Products',
+    permission: 'product:read',
+    link: linkOptions({
+      to: '/products',
+      search: { page: 1, pageSize: 10, search: '', sortBy: 'name', sortDirection: 'asc' },
+    }),
+    icon: BoxesIcon,
   },
   {
     title: 'Customers',

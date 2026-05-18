@@ -1,4 +1,4 @@
-import { getRolePermissions, permissionLabels, roleLabels } from '@pkg/domain';
+import { getRolePermissions, roleLabels } from '@pkg/domain';
 import { APP_ROLES, AppRole } from '@pkg/schema';
 import { ChevronDownIcon } from 'lucide-react';
 import type React from 'react';
@@ -38,7 +38,7 @@ export const UserRoleMenu: React.FC<UserRoleMenuProps> = ({ disabled, id, onRole
                 <span className="font-medium">{roleLabels[role]}</span>
                 <span className="flex flex-wrap gap-1">
                   {getRolePermissions(role).map((permission) => (
-                    <PermissionBadge key={permission}>{permissionLabels[permission]}</PermissionBadge>
+                    <PermissionBadge key={permission} permission={permission} />
                   ))}
                 </span>
               </span>

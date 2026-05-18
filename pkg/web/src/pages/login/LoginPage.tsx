@@ -1,10 +1,11 @@
-import { demoUsers, departmentLabels, roleLabels } from '@pkg/domain';
+import { demoUsers, departmentLabels, getRolePermissions, roleLabels } from '@pkg/domain';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { AlertCircleIcon, Loader2Icon, LogInIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { useAppForm } from '@/components/form/index.js';
+import { PermissionBadge } from '@/components/PermissionBadge.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -50,7 +51,7 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
 
   return (
     <section className="flex min-h-screen items-center justify-center px-6 py-12">
-      <div className="flex w-full max-w-[760px] flex-col items-center gap-4">
+      <div className="flex w-full max-w-5xl flex-col items-center gap-4">
         <Card className="w-full max-w-[420px]">
           <CardHeader>
             <CardDescription className="font-medium uppercase tracking-[0.18em] text-primary">
@@ -106,7 +107,10 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
           <CardContent>
             <div className="divide-y rounded-md border">
               {demoUsers.map((demoUser) => (
-                <div className="grid gap-2 p-3 sm:grid-cols-[1fr_1fr_1fr]" key={demoUser.id}>
+                <div
+                  className="grid gap-3 p-3 lg:grid-cols-[1fr_auto_minmax(10rem,0.8fr)_minmax(18rem,1.4fr)]"
+                  key={demoUser.id}
+                >
                   <div className="min-w-0">
                     <div className="font-medium">{demoUser.name}</div>
                     <div className="truncate text-muted-foreground text-sm">{demoUser.email}</div>
@@ -124,6 +128,11 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
                         </Badge>
                       ))
                     )}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {getRolePermissions(demoUser.role).map((permission) => (
+                      <PermissionBadge key={permission} permission={permission} />
+                    ))}
                   </div>
                 </div>
               ))}

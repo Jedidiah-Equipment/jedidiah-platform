@@ -1,16 +1,20 @@
 import type React from 'react';
 
+import { PermissionBadge } from '@/components/PermissionBadge.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { authClient } from '@/lib/auth-client.js';
 
 type DashboardPageProps = Record<string, never>;
 
 export const DashboardPage: React.FC<DashboardPageProps> = () => {
   const { data: session, isPending } = authClient.useSession();
+  const accessQuery = useAccess();
   const userLabel = session?.user.name || session?.user.email || 'Signed in';
+  const permissions = accessQuery.data?.permissions ?? [];
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -39,6 +43,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm text-muted-foreground">Authentication</span>
               <Badge variant="secondary">{isPending ? 'Checking' : 'Active'}</Badge>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-muted-foreground">Permissions</span>
+              {accessQuery.isPending ? (
+                <div className="flex flex-wrap gap-1">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              ) : permissions.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {permissions.map((permission) => (
+                    <PermissionBadge key={permission} permission={permission} />
+                  ))}
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">No permissions assigned</span>
+              )}
             </div>
           </CardContent>
         </Card>

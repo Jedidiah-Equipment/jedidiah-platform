@@ -1,4 +1,4 @@
-import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
+import { APP_PERMISSIONS, APP_ROLES, type UserAccessSummary } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import {
   canEditStage,
@@ -209,6 +209,25 @@ describe('job authorization policy', () => {
     expect(canEditStage(access, { stage: 'paint' })).toBe(true);
     expect(canViewStage(access, { stage: 'assembly' })).toBe(false);
     expect(canEditStage(access, { stage: 'assembly' })).toBe(false);
+  });
+
+  it('keeps stage detail read gated by job-stage read plus department scope', () => {
+    const paintScopedAccess = createUserAccessSummary({
+      departments: ['paint'],
+      role: 'job-stage-editor',
+      userId: 'user_123',
+    });
+    const jobOnlyAccess = {
+      departments: [],
+      permissions: ['job:read'],
+      role: 'job-viewer',
+      userId: 'user_456',
+    } satisfies UserAccessSummary;
+
+    expect(canViewJob(paintScopedAccess)).toBe(true);
+    expect(canViewStage(paintScopedAccess, { stage: 'fabrication' })).toBe(false);
+    expect(canViewJob(jobOnlyAccess)).toBe(true);
+    expect(canViewStage(jobOnlyAccess, { stage: 'fabrication' })).toBe(false);
   });
 
   it('scopes multi-department job stage editors to any of their departments', () => {

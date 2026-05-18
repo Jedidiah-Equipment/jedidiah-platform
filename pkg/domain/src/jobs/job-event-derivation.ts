@@ -1,8 +1,4 @@
-import {
-  type DerivedStageJobEvent,
-  DerivedStageJobEvent as DerivedStageJobEventContract,
-  type JobEventDerivationStage,
-} from '@pkg/schema';
+import { DerivedStageJobEvent, type JobEventDerivationStage } from '@pkg/schema';
 
 import type { StageTransition } from './stage-transition-policy.js';
 
@@ -20,7 +16,7 @@ export function deriveStageJobEvent({
       throw new Error('stage.started requires a startedAt value.');
     }
 
-    return DerivedStageJobEventContract.parse({
+    return DerivedStageJobEvent.parse({
       eventType: 'stage.started',
       payload: {
         stage: after.stage,
@@ -35,7 +31,7 @@ export function deriveStageJobEvent({
       throw new Error('stage.completed requires a completedAt value.');
     }
 
-    return DerivedStageJobEventContract.parse({
+    return DerivedStageJobEvent.parse({
       eventType: 'stage.completed',
       payload: {
         completedAt: after.completedAt,
@@ -45,7 +41,7 @@ export function deriveStageJobEvent({
     });
   }
 
-  return DerivedStageJobEventContract.parse({
+  return DerivedStageJobEvent.parse({
     eventType: 'stage.status_changed',
     payload: {
       fromStatus: before.status,

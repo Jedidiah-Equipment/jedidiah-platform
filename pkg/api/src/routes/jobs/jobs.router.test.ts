@@ -102,6 +102,34 @@ describe('jobs.list', () => {
     expect(result.total).toBe(1);
   });
 
+  test('returns five unscoped stage summaries in pipeline order', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const paintCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', ['paint']);
+    const noDepartmentCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', []);
+
+    const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+    await supervisorCaller.jobs.startStage({ id: created.id, stage: 'procurement' });
+    await supervisorCaller.jobs.setStageStatus({ id: created.id, stage: 'procurement', status: 'ordering' });
+
+    const scopedResult = await paintCaller.jobs.list({});
+    const unscopedResult = await noDepartmentCaller.jobs.list({});
+    const scopedStages = scopedResult.items.find((job) => job.id === created.id)?.stages;
+    const unscopedStages = unscopedResult.items.find((job) => job.id === created.id)?.stages;
+
+    expect(scopedStages?.map((stage) => stage.stage)).toEqual(pipelineStages);
+    expect(scopedStages).toHaveLength(5);
+    expect(scopedStages).toEqual(unscopedStages);
+    expect(scopedStages?.[0]).toMatchObject({
+      completedAt: null,
+      department: 'procurement',
+      sequence: 1,
+      stage: 'procurement',
+      startedAt: expect.any(String),
+      status: 'ordering',
+    });
+    expect(scopedStages?.[0]).not.toHaveProperty('access');
+  });
+
   test('filters jobs by lifecycle status', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const active = await caller.jobs.create({ productId: context.product.id });
@@ -249,21 +277,30 @@ describe('jobs.list', () => {
 });
 
 describe('jobs.get', () => {
-  test('locks stage detail outside a stage editor department', async ({ context }) => {
+  test('returns stage summaries outside a stage editor department', async ({ context }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const paintCaller = createJobCaller(context.createCallerWithAccess, 'job-stage-editor', ['paint']);
 
     const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+    await supervisorCaller.jobs.startStage({ id: created.id, stage: 'procurement' });
+    await supervisorCaller.jobs.setStageStatus({ id: created.id, stage: 'procurement', status: 'ordering' });
     const detail = await paintCaller.jobs.get({ id: created.id });
 
     expect(detail.stages).toMatchObject([
-      { access: 'locked', sequence: 1, stage: 'procurement' },
-      { access: 'locked', sequence: 2, stage: 'fabrication' },
-      { access: 'locked', sequence: 3, stage: 'assembly' },
+      {
+        access: 'summary',
+        sequence: 1,
+        stage: 'procurement',
+        startedAt: expect.any(String),
+        status: 'ordering',
+      },
+      { access: 'summary', sequence: 2, stage: 'fabrication', status: 'pending' },
+      { access: 'summary', sequence: 3, stage: 'assembly', status: 'pending' },
       { access: 'visible', sequence: 4, stage: 'paint', status: 'pending' },
-      { access: 'locked', sequence: 5, stage: 'dispatch' },
+      { access: 'summary', sequence: 5, stage: 'dispatch', status: 'pending' },
     ]);
-    expect(detail.stages[0]).not.toHaveProperty('id');
+    expect(detail.stages[0]).toHaveProperty('id');
+    expect(detail.stages[0]).not.toHaveProperty('transitionAvailability');
   });
 
   test('shows all stages to stage editors with no selected departments', async ({ context }) => {

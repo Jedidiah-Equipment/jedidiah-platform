@@ -27,6 +27,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import { getJobLifecycleStatusColorClassNames, JobLifecycleStatusBadge } from './components/JobLifecycleStatusBadge.js';
+import { JobStageChips } from './components/JobStageChips.js';
 
 type JobsPageProps = {
   status: JobListStatusFilter;
@@ -212,7 +213,14 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
         cell: ({ row }) => <JobLifecycleStatusBadge status={row.original.lifecycleStatus} />,
         enableColumnFilter: false,
         enableSorting: true,
-        header: 'Status',
+        header: 'Lifecycle Status',
+      },
+      {
+        cell: ({ row }) => <JobStageChips stages={row.original.stages} />,
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Stages',
+        id: 'stages',
       },
       {
         id: 'actions',

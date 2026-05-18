@@ -7,10 +7,9 @@ import {
   JobStageStatusInput,
   type UUID,
 } from '@pkg/schema';
-import { CheckCircleIcon, CircleIcon, LockIcon, PlayIcon } from 'lucide-react';
+import { CheckCircleIcon, CircleIcon, PlayIcon } from 'lucide-react';
 import React from 'react';
 
-import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
@@ -39,20 +38,19 @@ export const StagePanel: React.FC<StagePanelProps> = ({
   onStart,
   stage,
 }) => {
-  const [status, setStatus] = React.useState<JobStageStatus>(stage.access === 'visible' ? stage.status : 'pending');
+  const [status, setStatus] = React.useState<JobStageStatus>(stage.status);
   const startAvailability = stage.access === 'visible' ? stage.transitionAvailability?.start : undefined;
   const statusAvailability = stage.access === 'visible' ? stage.transitionAvailability?.['set-status'] : undefined;
   const completeAvailability = stage.access === 'visible' ? stage.transitionAvailability?.complete : undefined;
-  const hasStageStarted = stage.access === 'visible' && Boolean(stage.startedAt);
+  const hasStageStarted = Boolean(stage.startedAt);
   const isActiveStage = hasStageStarted && !stage.completedAt;
-  const isStartDisabled = isPending || !startAvailability?.allowed;
-  const isStatusDisabled = isPending || !hasStageStarted || !statusAvailability?.allowed;
-  const isCompleteDisabled = isPending || !completeAvailability?.allowed;
+  const isStageEditable = stage.access === 'visible';
+  const isStartDisabled = isPending || !isStageEditable || !startAvailability?.allowed;
+  const isStatusDisabled = isPending || !isStageEditable || !hasStageStarted || !statusAvailability?.allowed;
+  const isCompleteDisabled = isPending || !isStageEditable || !completeAvailability?.allowed;
 
   React.useEffect(() => {
-    if (stage.access === 'visible') {
-      setStatus(stage.status);
-    }
+    setStatus(stage.status);
   }, [stage]);
 
   return (
@@ -75,86 +73,77 @@ export const StagePanel: React.FC<StagePanelProps> = ({
           </div>
           <div className="font-medium">{stageLabels[stage.stage]}</div>
         </div>
-        {stage.access === 'locked' ? (
-          <Badge variant="outline">
-            <LockIcon data-icon="inline-start" />
-            Locked
-          </Badge>
-        ) : (
-          <JobStageStatusBadge stage={stage.stage} status={stage.status} />
-        )}
+        <JobStageStatusBadge stage={stage.stage} status={stage.status} />
       </div>
-      {stage.access === 'visible' ? (
-        <div className="mt-4 flex flex-col gap-3">
-          <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-            <div>Started: {formatDate(stage.startedAt, 'short', 'Not started')}</div>
-            <div>Completed: {formatDate(stage.completedAt, 'short', 'Not completed')}</div>
+      <div className="mt-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+          <div>Started: {formatDate(stage.startedAt, 'short', 'Not started')}</div>
+          <div>Completed: {formatDate(stage.completedAt, 'short', 'Not completed')}</div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button
+            disabled={isStartDisabled}
+            onClick={() => onStart({ id: jobId, stage: stage.stage })}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <PlayIcon data-icon="inline-start" />
+            Start
+          </Button>
+          <div className="flex gap-2">
+            <Select
+              disabled={isStatusDisabled}
+              onValueChange={(value) => {
+                if (!value || value === status) return;
+
+                const nextStatus = value as JobStageStatus;
+                const input = JobStageStatusInput.parse({ id: jobId, stage: stage.stage, status: nextStatus });
+                if (nextStatus === 'complete' && !stage.completedAt) {
+                  onSetCompleteStatus(input);
+                  return;
+                }
+
+                setStatus(nextStatus);
+                onSetStatus(input);
+              }}
+              value={status}
+            >
+              <SelectTrigger aria-label={`${stageLabels[stage.stage]} status`} className="min-w-0 flex-1">
+                <JobStageStatusSelectValue stage={stage.stage} status={status} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {JOB_STAGE_STATUSES[stage.stage].map((option) => (
+                    <SelectItem
+                      key={option}
+                      leading={<JobStageStatusIcon stage={stage.stage} status={option} />}
+                      value={option}
+                    >
+                      {jobStageStatusLabels[option]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="flex flex-col gap-2">
-            <Button
-              disabled={isStartDisabled}
-              onClick={() => onStart({ id: jobId, stage: stage.stage })}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <PlayIcon data-icon="inline-start" />
-              Start
-            </Button>
-            <div className="flex gap-2">
-              <Select
-                disabled={isStatusDisabled}
-                onValueChange={(value) => {
-                  if (!value || value === status) return;
-
-                  const nextStatus = value as JobStageStatus;
-                  const input = JobStageStatusInput.parse({ id: jobId, stage: stage.stage, status: nextStatus });
-                  if (nextStatus === 'complete' && !stage.completedAt) {
-                    onSetCompleteStatus(input);
-                    return;
-                  }
-
-                  setStatus(nextStatus);
-                  onSetStatus(input);
-                }}
-                value={status}
-              >
-                <SelectTrigger aria-label={`${stageLabels[stage.stage]} status`} className="min-w-0 flex-1">
-                  <JobStageStatusSelectValue stage={stage.stage} status={status} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {JOB_STAGE_STATUSES[stage.stage].map((option) => (
-                      <SelectItem
-                        key={option}
-                        leading={<JobStageStatusIcon stage={stage.stage} status={option} />}
-                        value={option}
-                      >
-                        {jobStageStatusLabels[option]}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              disabled={isCompleteDisabled}
-              onClick={() => onComplete({ id: jobId, stage: stage.stage })}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <CheckCircleIcon data-icon="inline-start" />
-              Complete
-            </Button>
+          <Button
+            disabled={isCompleteDisabled}
+            onClick={() => onComplete({ id: jobId, stage: stage.stage })}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <CheckCircleIcon data-icon="inline-start" />
+            Complete
+          </Button>
+          {isStageEditable ? (
             <StageControlReason
               reason={startAvailability?.reason ?? statusAvailability?.reason ?? completeAvailability?.reason}
             />
-          </div>
+          ) : null}
         </div>
-      ) : (
-        <div className="mt-4 text-sm text-muted-foreground">Stage details hidden.</div>
-      )}
+      </div>
     </div>
   );
 };

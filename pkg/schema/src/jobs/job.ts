@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { Department } from '../auth/authorization.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { SortDirection } from '../common/sort.js';
@@ -96,6 +95,22 @@ export const JobStage = z.discriminatedUnion('stage', [
   AssemblyJobStage,
   DispatchJobStage,
 ]);
+
+const ProcurementJobStageSummary = ProcurementJobStage.extend({
+  department: z.literal('procurement'),
+});
+const FabricationJobStageSummary = FabricationJobStage.extend({
+  department: z.literal('fabrication'),
+});
+const PaintJobStageSummary = PaintJobStage.extend({
+  department: z.literal('paint'),
+});
+const AssemblyJobStageSummary = AssemblyJobStage.extend({
+  department: z.literal('assembly'),
+});
+const DispatchJobStageSummary = DispatchJobStage.extend({
+  department: z.literal('dispatch'),
+});
 
 export type JobEventDerivationStage = z.infer<typeof JobEventDerivationStage>;
 export const JobEventDerivationStage = z.object({
@@ -198,24 +213,50 @@ export const DerivedStageJobEvent = z.discriminatedUnion('eventType', [
   }),
 ]);
 
-export type LockedJobStage = z.infer<typeof LockedJobStage>;
-export const LockedJobStage = z.object({
-  access: z.literal('locked'),
-  department: Department,
-  sequence: z.int().min(1).max(5),
-  stage: JobStageName,
-});
+export type JobStageSummary = z.infer<typeof JobStageSummary>;
+export const JobStageSummary = z.discriminatedUnion('stage', [
+  ProcurementJobStageSummary,
+  FabricationJobStageSummary,
+  PaintJobStageSummary,
+  AssemblyJobStageSummary,
+  DispatchJobStageSummary,
+]);
+
+export type SummaryJobStage = z.infer<typeof SummaryJobStage>;
+export const SummaryJobStage = z.discriminatedUnion('stage', [
+  ProcurementJobStageSummary.extend({ access: z.literal('summary') }),
+  FabricationJobStageSummary.extend({ access: z.literal('summary') }),
+  PaintJobStageSummary.extend({ access: z.literal('summary') }),
+  AssemblyJobStageSummary.extend({ access: z.literal('summary') }),
+  DispatchJobStageSummary.extend({ access: z.literal('summary') }),
+]);
 
 export type VisibleJobStage = z.infer<typeof VisibleJobStage>;
-export const VisibleJobStage = JobStageBase.extend({
-  access: z.literal('visible'),
-  department: Department,
-  stage: JobStageName,
-  transitionAvailability: StageTransitionAvailability.optional(),
-});
+export const VisibleJobStage = z.discriminatedUnion('stage', [
+  ProcurementJobStageSummary.extend({
+    access: z.literal('visible'),
+    transitionAvailability: StageTransitionAvailability.optional(),
+  }),
+  FabricationJobStageSummary.extend({
+    access: z.literal('visible'),
+    transitionAvailability: StageTransitionAvailability.optional(),
+  }),
+  PaintJobStageSummary.extend({
+    access: z.literal('visible'),
+    transitionAvailability: StageTransitionAvailability.optional(),
+  }),
+  AssemblyJobStageSummary.extend({
+    access: z.literal('visible'),
+    transitionAvailability: StageTransitionAvailability.optional(),
+  }),
+  DispatchJobStageSummary.extend({
+    access: z.literal('visible'),
+    transitionAvailability: StageTransitionAvailability.optional(),
+  }),
+]);
 
 export type JobStageRollup = z.infer<typeof JobStageRollup>;
-export const JobStageRollup = z.discriminatedUnion('access', [VisibleJobStage, LockedJobStage]);
+export const JobStageRollup = z.union([VisibleJobStage, SummaryJobStage]);
 
 export type Job = z.infer<typeof Job>;
 export const Job = z.object({
@@ -234,6 +275,7 @@ export const JobSummary = Job.extend({
   productModelCode: z.string().trim().min(1),
   productName: z.string().trim().min(1),
   quoteCode: QuoteCode.nullable(),
+  stages: z.array(JobStageSummary).length(5),
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;

@@ -17,8 +17,6 @@ export type ListQuoteSalespeopleTool = AiToolBase<
 
 export const listQuoteSalespeopleTool: ListQuoteSalespeopleTool = {
   name: 'listQuoteSalespeople',
-  description:
-    'List users who can be assigned as quote salespeople. This tool does not accept filters, sorting, or paging, so use it only when the user needs the salesperson roster or needs to identify a salesperson id for a quote-related follow-up.',
   inputSchema: ListQuoteSalespeopleInput,
   jsonSchema: z.toJSONSchema(ListQuoteSalespeopleInput) as Record<string, unknown>,
   requiredPermission: 'quote:read',

@@ -1,34 +1,44 @@
+import { createDomainGuidancePrompt } from './ai-domain-guidance.js';
 import type { AiToolName } from './ai-tools.js';
 
-const SYSTEM_PROMPT_INTRO = 'You are a helpful assistant for the Jedidiah Equipment platform.';
-
-const BASE_SYSTEM_PROMPT_LINES = [
-  'Format responses as GitHub-flavored Markdown for a web UI.',
-  'Your response is displayed in a Markdown renderer, so use pure Markdown syntax and do not use HTML tags.',
-  'Use tables when they make comparisons or lists easier to scan.',
-  // 'When you use a table, include a header row and separator row, keep cell text concise, and preserve line breaks.',
+const ASSISTANT_ROLE_PROMPT = [
+  'You are the Jedidiah Platform assistant.',
+  'Help users understand Customers, Quotes, Jobs, Products, Users, and Audit Events using the tools available to you.',
+  'Answer in the platform language: Customer, Quote, Job, Pipeline, Stage, Department, App Role, Audit Event, and Job Event.',
+  'For user-facing Job progress, present the five Job Stages as Departments: Procurement, Fabrication, Assembly, Paint, and Dispatch.',
 ];
 
-// Commented out for now because we already privide the tools with descriptions, and we don't want to duplicate them here.
-// Might be useful to add back in the future if we want to add more tool-specific instructions.
+const TOOL_USE_PROMPT = [
+  'Use tools for current platform data; do not guess records, statuses, prices, or links.',
+  'Prefer narrow searches before broad scans. Use list tools to find candidate records, then get tools when a specific record needs detail.',
+  'If the available tools or permissions do not expose the data needed, say what is missing instead of inventing an answer.',
+  'When results are ambiguous, ask the user to choose rather than pretending one record is the obvious match.',
+];
 
-// const TOOL_PROMPT_LINES: Record<AiToolName, string> = {
-//   listAuditEvents: 'You can review audit history using the listAuditEvents tool.',
-//   listProducts: 'You can search and list products using the listProducts tool.',
-//   listUsers: 'You can list users using the listUsers tool.',
-// };
+const RESPONSE_STYLE_PROMPT = [
+  'Be concise and operational. Start with the direct answer, then add the supporting details that matter.',
+  'Use public identifiers in prose: Job Code, Quote Code, Customer company name, Product name, or User name/email.',
+  'Do not show UUIDs in prose unless the user explicitly asks for storage identifiers.',
+  'Use GitHub-flavored Markdown for a web UI.',
+  'Your response is displayed in a Markdown renderer, so use pure Markdown syntax and do not use HTML tags.',
+  'Use Markdown links only when the link comes from tool result link metadata or code-owned route metadata.',
+  'When a tool result record includes a links array, use those links for the matching labels you mention, especially the main record label.',
+  'Use tables when they make comparisons or lists easier to scan; otherwise prefer short paragraphs or bullets.',
+];
 
-export function createSystemPrompt(_toolNames: readonly AiToolName[]): string {
-  const toolPromptLines: string[] = [];
+const PROMPT_SECTIONS = [
+  ['Tool Use', TOOL_USE_PROMPT],
+  ['Response Style', RESPONSE_STYLE_PROMPT],
+] as const;
 
-  //for (const toolName of toolNames) {
-  //toolPromptLines.push(`You can use the ${toolName} tool to ${toolName}.`);
-  // const line = TOOL_PROMPT_LINES[toolName];
+export function createSystemPrompt(toolNames: readonly AiToolName[]): string {
+  return [
+    renderSection('Role', ASSISTANT_ROLE_PROMPT),
+    createDomainGuidancePrompt(toolNames),
+    ...PROMPT_SECTIONS.map(([title, lines]) => renderSection(title, lines)),
+  ].join('\n\n');
+}
 
-  // if (line) {
-  //   toolPromptLines.push(line);
-  // }
-  //}
-
-  return [SYSTEM_PROMPT_INTRO, ...toolPromptLines, ...BASE_SYSTEM_PROMPT_LINES].join('\n');
+function renderSection(title: string, lines: readonly string[]): string {
+  return [`## ${title}`, ...lines.map((line) => `- ${line}`)].join('\n');
 }

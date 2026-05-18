@@ -157,7 +157,7 @@ async function streamChatCompletion({
       },
     );
 
-    log.ai.info({ model, tools, messages }, 'starting chat');
+    log.ai.info({ model, toolNames: authorizedToolNames, messages }, 'starting chat');
 
     // runTools handles the full agentic loop: executes tool calls, feeds results back
     // to the model, and continues streaming until the model stops requesting tools.

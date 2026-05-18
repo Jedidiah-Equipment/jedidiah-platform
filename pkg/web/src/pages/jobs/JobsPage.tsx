@@ -220,7 +220,7 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
         cell: ({ row }) => <JobStageChips stages={row.original.stages} />,
         enableColumnFilter: false,
         enableSorting: false,
-        header: 'Stages',
+        header: 'Departments',
         id: 'stages',
       },
       {

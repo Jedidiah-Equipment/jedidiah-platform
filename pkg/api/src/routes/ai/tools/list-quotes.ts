@@ -8,8 +8,6 @@ export type ListQuotesTool = AiToolBase<'listQuotes', QuoteListResult, QuoteList
 
 export const listQuotesTool: ListQuotesTool = {
   name: 'listQuotes',
-  description:
-    'List quotes. Use filters.statuses to choose draft, sent, accepted, rejected, or an empty array for all statuses. Use search for quote UUIDs, partial UUIDs, customer company names, product names, product model codes, quote codes such as QUO-00001, or linked job codes such as JOB-00001. Use sortBy, sortDirection, page, and pageSize to return the right quote slice.',
   inputSchema: QuoteListInput,
   jsonSchema: z.toJSONSchema(QuoteListInput) as Record<string, unknown>,
   requiredPermission: 'quote:read',

@@ -14,8 +14,6 @@ export type GetCustomerTool = AiToolBase<'getCustomer', Customer, GetCustomerInp
 
 export const getCustomerTool: GetCustomerTool = {
   name: 'getCustomer',
-  description:
-    'Get one customer by its UUID. Use this only after a customer id is known; use listCustomers first when searching by company name, email, or partial id.',
   inputSchema: GetCustomerInput,
   jsonSchema: z.toJSONSchema(GetCustomerInput) as Record<string, unknown>,
   requiredPermission: 'customer:read',

@@ -1,8 +1,15 @@
-import { CustomerNotFoundError, createCustomer, getCustomer, listCustomers, updateCustomer } from '@pkg/core';
+import {
+  type CustomerCoreError,
+  createCustomer,
+  getCustomer,
+  isCustomerCoreError,
+  listCustomers,
+  updateCustomer,
+} from '@pkg/core';
 import { CustomerCreateInput, CustomerListInput, CustomerUpdateInput, UUID } from '@pkg/schema';
-import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
+import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const customersRouter = router({
@@ -28,16 +35,18 @@ export const customersRouter = router({
 });
 
 async function mapCustomerErrors<T>(action: () => Promise<T>): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (error instanceof CustomerNotFoundError) {
-      throw new TRPCError({
+  return mapKnownCoreError(action, isCustomerCoreError, mapCustomerCoreError);
+}
+
+function mapCustomerCoreError(error: CustomerCoreError): CoreErrorMapping<CustomerCoreError['code']> {
+  switch (error.code) {
+    case 'customer.not_found':
+      return {
+        appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Customer not found.',
-      });
-    }
-
-    throw error;
+      };
   }
+
+  return assertNever(error as never);
 }

@@ -11,6 +11,7 @@ import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-que
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
 import { Badge } from '@/components/ui/badge.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { formatDate } from '@/utils/date.js';
@@ -203,7 +204,7 @@ export const AuditTable: React.FC = () => {
   return (
     <DataTable
       emptyMessage="No audit events found."
-      errorMessage={auditQuery.error?.message}
+      errorMessage={getApiQueryErrorMessage(auditQuery.error, 'Unable to load audit events.')}
       hideGlobalFilter
       isLoading={isLoading}
       tableClassName="table-fixed"

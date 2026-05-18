@@ -5,9 +5,11 @@ import { ArrowLeftIcon } from 'lucide-react';
 import type React from 'react';
 import { toast } from 'sonner';
 
+import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CustomerForm } from './components/CustomerForm.js';
 
@@ -19,6 +21,7 @@ export const CustomerEditPage: React.FC<CustomerEditPageProps> = ({ customerId }
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const trpc = useTRPC();
+  const showMutationError = useApiMutationErrorToast();
   const customerQuery = useQuery(trpc.customers.get.queryOptions({ id: customerId }));
   const updateCustomerMutation = useMutation(
     trpc.customers.update.mutationOptions({
@@ -31,7 +34,7 @@ export const CustomerEditPage: React.FC<CustomerEditPageProps> = ({ customerId }
         await navigate({ to: '/customers' });
       },
       onError: (error) => {
-        toast.error(error.message);
+        showMutationError(error, 'Unable to update customer.');
       },
     }),
   );
@@ -51,7 +54,7 @@ export const CustomerEditPage: React.FC<CustomerEditPageProps> = ({ customerId }
         </CardHeader>
         <CardContent>
           {customerQuery.isPending ? <CustomerFormSkeleton /> : null}
-          {customerQuery.error ? <p className="text-sm text-destructive">{customerQuery.error.message}</p> : null}
+          <ErrorMessage error={customerQuery.error} fallbackMessage="Unable to load customer." />
           {customerQuery.data ? (
             <CustomerForm
               initialCustomer={customerQuery.data}

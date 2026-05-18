@@ -1,17 +1,17 @@
 import type { Department } from '@pkg/schema';
 
 export const departmentLabels: Record<Department, string> = {
-  assembly: 'Assembly',
-  dispatch: 'Dispatch',
+  procurement: 'Procurement',
   fabrication: 'Fabrication',
   paint: 'Paint',
-  procurement: 'Procurement',
+  assembly: 'Assembly',
+  dispatch: 'Dispatch',
 };
 
 export const departmentShortLabels: Record<Department, string> = {
-  assembly: 'Asm',
-  dispatch: 'Dispatch',
+  procurement: 'Proc',
   fabrication: 'Fab',
   paint: 'Paint',
-  procurement: 'Proc',
+  assembly: 'Asm',
+  dispatch: 'Dispatch',
 };

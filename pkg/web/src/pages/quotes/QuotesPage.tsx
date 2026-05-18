@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import { formatCurrency } from '@/utils/number.js';
@@ -238,7 +239,7 @@ const QuoteTable: React.FC = () => {
   return (
     <DataTable
       emptyMessage="No quotes found."
-      errorMessage={quotesQuery.error?.message}
+      errorMessage={getApiQueryErrorMessage(quotesQuery.error, 'Unable to load quotes.')}
       globalFilterPlaceholder="Search quotes..."
       isLoading={isLoading}
       table={table}

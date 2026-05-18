@@ -24,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { Separator } from '@/components/ui/separator.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import { getJobLifecycleStatusColorClassNames, JobLifecycleStatusBadge } from './components/JobLifecycleStatusBadge.js';
@@ -274,7 +275,7 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
   return (
     <DataTable
       emptyMessage="No jobs found."
-      errorMessage={jobsQuery.error?.message}
+      errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
       isLoading={isLoading}
       table={table}

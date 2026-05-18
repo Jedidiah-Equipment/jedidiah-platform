@@ -6,12 +6,14 @@ import { ArrowLeftIcon } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 
+import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import { JobLifecycleStatusBadge } from '../jobs/components/JobLifecycleStatusBadge.js';
@@ -31,6 +33,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const accessQuery = useAccess();
+  const showMutationError = useApiMutationErrorToast();
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const job = jobQuery.data;
   const [confirmation, setConfirmation] = React.useState<JobTransitionConfirmation | null>(null);
@@ -43,7 +46,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         await refreshJob();
         toast.success('Stage started');
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => showMutationError(error, 'Unable to start job stage.'),
     }),
   );
   const setStageStatusMutation = useMutation(
@@ -52,7 +55,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         await refreshJob();
         toast.success('Stage status updated');
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => showMutationError(error, 'Unable to update job stage.'),
     }),
   );
   const completeStageMutation = useMutation(
@@ -61,7 +64,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         await refreshJob();
         toast.success('Stage completed');
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => showMutationError(error, 'Unable to complete job stage.'),
     }),
   );
   const pauseJobMutation = useMutation(
@@ -70,7 +73,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         await refreshJob();
         toast.success('Job paused');
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => showMutationError(error, 'Unable to pause job.'),
     }),
   );
   const resumeJobMutation = useMutation(
@@ -79,7 +82,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         await refreshJob();
         toast.success('Job resumed');
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => showMutationError(error, 'Unable to resume job.'),
     }),
   );
   const cancelJobMutation = useMutation(
@@ -88,7 +91,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         await refreshJob();
         toast.success('Job cancelled');
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => showMutationError(error, 'Unable to cancel job.'),
     }),
   );
   const isTransitionPending =
@@ -180,7 +183,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Separator />
-          {jobQuery.error ? <p className="text-sm text-destructive">{jobQuery.error.message}</p> : null}
+          <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
           {job ? (
             <>
               <div className="grid gap-3 text-sm sm:grid-cols-3">

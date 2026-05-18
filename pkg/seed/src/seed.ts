@@ -4,6 +4,7 @@ import {
   acceptQuote,
   cancelJob,
   completeJobStage,
+  createCustomer,
   createJob,
   createJobFromQuote,
   createProduct,
@@ -19,6 +20,7 @@ import {
 import { account, closeDatabaseConnection, type Db, db, user, userDepartment } from '@pkg/db';
 import { createUserAccessSummary, demoUsers, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import {
+  type CustomerCreateInput,
   type JobStageName,
   type JobStageStatus,
   JobStageStatusInput,
@@ -50,6 +52,69 @@ const equipmentFamilies = [
 ] as const;
 
 const equipmentSeries = ['Atlas', 'Summit', 'Vertex', 'Forge', 'Apex'] as const;
+
+const seedProductionCustomers = [
+  {
+    companyName: 'Kopano Quarry Operations',
+    contactPerson: 'Naledi Mokoena',
+    email: 'naledi.mokoena@kopanoquarry.test',
+  },
+  {
+    companyName: 'Mkhonto Plant Hire',
+    contactPerson: 'Pieter Smit',
+    email: 'pieter.smit@mkhontoplant.test',
+  },
+  {
+    companyName: 'Silver Ridge Aggregates',
+    contactPerson: 'Ayesha Khan',
+    email: 'ayesha.khan@silverridge.test',
+  },
+  {
+    companyName: 'Ndlovu Civils',
+    contactPerson: 'Thabo Ndlovu',
+    email: 'thabo.ndlovu@ndlovucivils.test',
+  },
+  {
+    companyName: 'Karoo Bulk Earthworks',
+    contactPerson: 'Megan Jacobs',
+    email: 'megan.jacobs@karoobulk.test',
+  },
+  {
+    companyName: 'Umgeni Roadworks',
+    contactPerson: 'Sizwe Zulu',
+    email: 'sizwe.zulu@umgeniroadworks.test',
+  },
+  {
+    companyName: 'Thaba Mining Supplies',
+    contactPerson: 'Ruan Botha',
+    email: 'ruan.botha@thabamining.test',
+  },
+  {
+    companyName: 'Marula Contracting',
+    contactPerson: 'Zanele Dube',
+    email: 'zanele.dube@marulacontracting.test',
+  },
+  {
+    companyName: 'West Coast Materials',
+    contactPerson: null,
+    email: null,
+  },
+  {
+    companyName: 'Northbank Infrastructure',
+    contactPerson: 'Kiran Patel',
+    email: 'kiran.patel@northbank.test',
+  },
+  {
+    companyName: 'Ironvale Construction',
+    contactPerson: null,
+    email: null,
+  },
+  {
+    companyName: 'Helderberg Logistics',
+    contactPerson: 'Lara Meyer',
+    email: 'lara.meyer@helderberglogistics.test',
+  },
+] as const;
 
 const seedJobScenarios = [
   {
@@ -109,35 +174,55 @@ const seedStageStatusProgression = {
 
 const seedQuoteScenarios = [
   {
-    companyName: 'Apex Quarry Services',
+    customer: {
+      companyName: 'Apex Quarry Services',
+      contactPerson: 'Gareth Morgan',
+      email: 'gareth.morgan@apexquarry.test',
+    },
     discount: 7_500,
     notes: 'Initial budgetary quote for the north pit loader replacement.',
     status: 'draft',
     validUntil: '2026-06-15',
   },
   {
-    companyName: 'Blue Ridge Plant Hire',
+    customer: {
+      companyName: 'Blue Ridge Plant Hire',
+      contactPerson: 'Lindiwe Mthembu',
+      email: 'lindiwe.mthembu@blueridgeplant.test',
+    },
     discount: 12_000,
     notes: 'Sent after procurement confirmed availability.',
     status: 'sent',
     validUntil: '2026-06-22',
   },
   {
-    companyName: 'Copperline Civils',
+    customer: {
+      companyName: 'Copperline Civils',
+      contactPerson: 'Hendrik le Roux',
+      email: 'hendrik.leroux@copperlinecivils.test',
+    },
     discount: 0,
     notes: 'Accepted by operations lead; waiting for production scheduling.',
     status: 'accepted',
     validUntil: '2026-07-01',
   },
   {
-    companyName: 'Delta Aggregate Works',
+    customer: {
+      companyName: 'Delta Aggregate Works',
+      contactPerson: null,
+      email: null,
+    },
     discount: 18_500,
     notes: 'Accepted and converted to a production job.',
     status: 'accepted-converted',
     validUntil: '2026-07-08',
   },
   {
-    companyName: 'Eagle Bulk Earthworks',
+    customer: {
+      companyName: 'Eagle Bulk Earthworks',
+      contactPerson: 'Farah Daniels',
+      email: 'farah.daniels@eaglebulk.test',
+    },
     discount: 10_000,
     notes: 'Rejected after customer chose a rental option.',
     status: 'rejected',
@@ -175,8 +260,10 @@ type SeedProductUpdate = Pick<SeedProduct, 'basePrice' | 'description'>;
 
 type SeededProduct = Pick<Product, 'id' | 'options'>;
 
+type SeedCustomer = Pick<CustomerCreateInput, 'companyName' | 'contactPerson' | 'email'>;
+
 type SeedQuoteScenario = {
-  companyName: string;
+  customer: SeedCustomer;
   discount: number;
   notes: string;
   status: QuoteStatus | 'accepted-converted';
@@ -192,7 +279,7 @@ export function createSeedProducts(count = seedProductCount): SeedProduct[] {
     return {
       basePrice: 125_000 + sequence * 18_750,
       currencyCode: 'ZAR',
-      description: `${series} ${family.toLowerCase()} configured for local demo inventory.`,
+      description: `${series} ${family.toLowerCase()} configured for regional equipment inventory.`,
       modelCode: `JED-${family
         .split(' ')
         .map((part) => part[0])
@@ -485,13 +572,18 @@ async function createQuoteBackedSeedJob({
   salesUserId: string;
   scenarioIndex: number;
 }) {
+  const customer = await createCustomer({
+    actorUserId: salesUserId,
+    db,
+    input: createSeedCustomerInput(getSeedProductionCustomer(scenarioIndex)),
+  });
   const quote = await createQuote({
     actorUserId: salesUserId,
     db,
     input: {
       customer: {
-        type: 'inline',
-        companyName: `Seed Production Customer ${String(scenarioIndex + 1).padStart(2, '0')}`,
+        type: 'existing',
+        customerId: customer.id,
       },
       discount: getSeedJobQuoteDiscount(scenarioIndex),
       notes: 'Accepted seed quote converted into a production job.',
@@ -533,13 +625,18 @@ async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly
       throw new Error('Seed quote product lookup failed');
     }
 
+    const customer = await createCustomer({
+      actorUserId,
+      db,
+      input: createSeedCustomerInput(scenario.customer),
+    });
     const quote = await createQuote({
       actorUserId,
       db,
       input: {
         customer: {
-          type: 'inline',
-          companyName: scenario.companyName,
+          type: 'existing',
+          customerId: customer.id,
         },
         discount: scenario.discount,
         notes: scenario.notes,
@@ -717,6 +814,27 @@ function getSeedJobQuoteDiscount(scenarioIndex: number): number {
   return scenarioIndex % 3 === 0 ? 8_500 : 3_000 + scenarioIndex * 750;
 }
 
+function getSeedProductionCustomer(scenarioIndex: number): SeedCustomer {
+  const customer = seedProductionCustomers[(scenarioIndex - seedStandaloneJobCount) % seedProductionCustomers.length];
+
+  if (!customer) {
+    throw new Error('Seed production customer lookup failed');
+  }
+
+  return customer;
+}
+
+function createSeedCustomerInput(customer: SeedCustomer): CustomerCreateInput {
+  return {
+    address: null,
+    companyName: customer.companyName,
+    contactPerson: customer.contactPerson,
+    email: customer.email,
+    notes: null,
+    phone: null,
+  };
+}
+
 function getSeedIsoDate({ dayOffset, month, year }: { dayOffset: number; month: number; year: number }): string {
   const date = new Date(Date.UTC(year, month, dayOffset));
 
@@ -747,7 +865,7 @@ function applySeedProductUpdate({
   };
 
   if ((productIndex + updateOrdinal) % 2 === 0) {
-    const nextDescription = `${getBaseSeedDescription(product)} Price review ${updateOrdinal} captured for demo audit history.`;
+    const nextDescription = `${getBaseSeedDescription(product)} Price review ${updateOrdinal} captured after supplier review.`;
 
     nextProduct.description = nextDescription;
   }

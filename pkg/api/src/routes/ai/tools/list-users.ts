@@ -8,8 +8,6 @@ export type ListUsersTool = AiToolBase<'listUsers', UserListResult, UserListInpu
 
 export const listUsersTool: ListUsersTool = {
   name: 'listUsers',
-  description:
-    'List all users as safe summaries: id, name, email, emailVerified, and role. This tool does not accept filters, sorting, or paging, so use it only when the user needs the user roster or needs to identify a user id for a more specific follow-up query.',
   inputSchema: UserListInput,
   jsonSchema: z.toJSONSchema(UserListInput) as Record<string, unknown>,
   requiredPermission: 'user:list',

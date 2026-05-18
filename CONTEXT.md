@@ -22,6 +22,10 @@ _Avoid_: Workflow, Process.
 One of the five fixed steps in the Pipeline, owned by a single Department. Represented by a `job_stage` row; all five rows are materialised at Job creation.
 _Avoid_: Step, Phase, Task.
 
+**Department-facing Stage Label**:
+User-facing production progress should label the five fixed Job Stages by their owning Departments: Procurement, Fabrication, Assembly, Paint, and Dispatch. Internally these remain **Stages** and `job_stage` rows; in UI and assistant answers, users experience them as Departments.
+_Avoid_: Stage 1, Stage 2, Stage 3, Stage 4, Stage 5 in user-facing copy.
+
 **Sequence Number**:
 The 1..5 position of a Stage in the Pipeline. `(job_id, sequence)` is unique; sequence is how *order* is enforced, not the stage name.
 

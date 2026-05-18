@@ -249,7 +249,18 @@ describe('POST /ai/chat-stream', () => {
       expect(events[1]).toEqual({
         id: (events[0] as { id: string }).id,
         result: {
-          items: [product],
+          items: [
+            {
+              ...product,
+              links: [
+                {
+                  entity: 'Product',
+                  href: '/products/00000000-0000-4000-8000-000000000001/edit',
+                  label: 'Apex Forklift',
+                },
+              ],
+            },
+          ],
           sortBy: 'name',
           sortDirection: 'asc',
           total: 1,

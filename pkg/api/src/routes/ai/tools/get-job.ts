@@ -14,8 +14,6 @@ export type GetJobTool = AiToolBase<'getJob', JobDetail, GetJobInput, AiContext>
 
 export const getJobTool: GetJobTool = {
   name: 'getJob',
-  description:
-    'Get one job by its UUID, including visible stage details and workflow events for the caller. Use this only after a job id is known; use listJobs first when searching by JOB-00001-style code, numeric code, or partial id.',
   inputSchema: GetJobInput,
   jsonSchema: z.toJSONSchema(GetJobInput) as Record<string, unknown>,
   requiredPermission: 'job:read',

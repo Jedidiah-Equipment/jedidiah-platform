@@ -48,6 +48,7 @@ export const StagePanel: React.FC<StagePanelProps> = ({
   const isStartDisabled = isPending || !isStageEditable || !startAvailability?.allowed;
   const isStatusDisabled = isPending || !isStageEditable || !hasStageStarted || !statusAvailability?.allowed;
   const isCompleteDisabled = isPending || !isStageEditable || !completeAvailability?.allowed;
+  const departmentLabel = stageLabels[stage.stage];
 
   React.useEffect(() => {
     setStatus(stage.status);
@@ -62,16 +63,16 @@ export const StagePanel: React.FC<StagePanelProps> = ({
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <div
             className={cn(
               'text-xs font-medium uppercase text-muted-foreground',
               isActiveStage && 'text-emerald-700 dark:text-emerald-300',
             )}
           >
-            Stage {stage.sequence}
+            Department
           </div>
-          <div className="font-medium">{stageLabels[stage.stage]}</div>
+          <div className="font-medium">{departmentLabel}</div>
         </div>
         <JobStageStatusBadge stage={stage.stage} status={stage.status} />
       </div>
@@ -109,7 +110,7 @@ export const StagePanel: React.FC<StagePanelProps> = ({
               }}
               value={status}
             >
-              <SelectTrigger aria-label={`${stageLabels[stage.stage]} status`} className="min-w-0 flex-1">
+              <SelectTrigger aria-label={`${departmentLabel} department status`} className="min-w-0 flex-1">
                 <JobStageStatusSelectValue stage={stage.stage} status={status} />
               </SelectTrigger>
               <SelectContent>

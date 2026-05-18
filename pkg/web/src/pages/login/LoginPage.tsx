@@ -1,4 +1,4 @@
-import { demoUsers, roleLabels } from '@pkg/domain';
+import { demoUsers, departmentLabels, roleLabels } from '@pkg/domain';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { AlertCircleIcon, Loader2Icon, LogInIcon } from 'lucide-react';
@@ -12,7 +12,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FieldGroup } from '@/components/ui/field.js';
 import { authClient } from '@/lib/auth-client.js';
 import { clearReactQueryCache } from '@/lib/trpc-cache.js';
-import { departmentLabels } from '@/pages/users/components/department-labels.js';
 import { LoginForm } from './types.js';
 
 type LoginPageProps = Record<string, never>;

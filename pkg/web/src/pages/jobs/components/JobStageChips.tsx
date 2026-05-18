@@ -1,4 +1,4 @@
-import { jobStageStatusLabels } from '@pkg/domain';
+import { departmentShortLabels, jobStageStatusLabels } from '@pkg/domain';
 import type { JobStageSummary } from '@pkg/schema';
 import type React from 'react';
 
@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { cn } from '@/lib/utils.js';
 import { stageLabels } from '@/pages/job-detail/constants.js';
-import { departmentShortLabels } from '@/pages/users/components/department-labels.js';
 import { getJobStageStatusColorClassNames } from './job-stage-status-color.js';
 
 type JobStageChipsProps = {

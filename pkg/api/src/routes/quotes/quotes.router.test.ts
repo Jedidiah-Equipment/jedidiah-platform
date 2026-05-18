@@ -61,7 +61,7 @@ describe('quotes.create', () => {
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
-      message: 'Quote salesperson must be a sales or admin user.',
+      message: 'Quote includes an invalid customer, product, or salesperson.',
     });
   });
 });

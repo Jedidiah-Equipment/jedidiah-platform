@@ -12,6 +12,7 @@ import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-que
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
 import { Button } from '@/components/ui/button.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 
@@ -180,7 +181,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
   return (
     <DataTable
       emptyMessage="No customers found."
-      errorMessage={customersQuery.error?.message}
+      errorMessage={getApiQueryErrorMessage(customersQuery.error, 'Unable to load customers.')}
       globalFilterPlaceholder="Search customers..."
       isLoading={isLoading}
       table={table}

@@ -5,10 +5,12 @@ import { ArrowLeftIcon } from 'lucide-react';
 import type React from 'react';
 import { toast } from 'sonner';
 
+import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteForm } from './components/QuoteForm.js';
 import { QuoteStatusBadge } from './components/QuoteStatusBadge.js';
@@ -21,6 +23,7 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const showMutationError = useApiMutationErrorToast();
   const isEditing = Boolean(quoteId);
   const quoteQuery = useQuery({
     ...trpc.quotes.get.queryOptions({ id: quoteId ?? '' }),
@@ -34,7 +37,7 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
         toast.success('Quote created');
         await navigate({ params: { id: created.id }, to: '/quotes/$id' });
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => showMutationError(error, 'Unable to create quote.'),
     }),
   );
   const updateMutation = useMutation(
@@ -44,7 +47,7 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
         toast.success('Quote updated');
         await navigate({ params: { id: updated.id }, to: '/quotes/$id' });
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => showMutationError(error, 'Unable to update quote.'),
     }),
   );
   const isPending = createMutation.isPending || updateMutation.isPending;
@@ -90,7 +93,7 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
         </CardHeader>
         <CardContent>
           <Separator className="mb-4" />
-          {quoteQuery.error ? <p className="mb-4 text-sm text-destructive">{quoteQuery.error.message}</p> : null}
+          <ErrorMessage className="mb-4" error={quoteQuery.error} fallbackMessage="Unable to load quote." />
           {isEditing && quoteQuery.isPending ? <QuoteFormSkeleton /> : null}
           {!isEditing || quote ? (
             <QuoteForm

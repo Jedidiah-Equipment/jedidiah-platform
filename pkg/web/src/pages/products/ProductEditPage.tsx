@@ -5,9 +5,11 @@ import { ArrowLeftIcon } from 'lucide-react';
 import type React from 'react';
 import { toast } from 'sonner';
 
+import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductForm } from './components/ProductForm.js';
 
@@ -19,6 +21,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const trpc = useTRPC();
+  const showMutationError = useApiMutationErrorToast();
   const productQuery = useQuery(trpc.products.get.queryOptions({ id: productId }));
   const updateProductMutation = useMutation(
     trpc.products.update.mutationOptions({
@@ -31,7 +34,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
         await navigate({ to: '/products' });
       },
       onError: (error) => {
-        toast.error(error.message);
+        showMutationError(error, 'Unable to update product.');
       },
     }),
   );
@@ -51,7 +54,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
         </CardHeader>
         <CardContent>
           {productQuery.isPending ? <ProductFormSkeleton /> : null}
-          {productQuery.error ? <p className="text-sm text-destructive">{productQuery.error.message}</p> : null}
+          <ErrorMessage error={productQuery.error} fallbackMessage="Unable to load product." />
           {productQuery.data ? (
             <ProductForm
               initialProduct={productQuery.data}

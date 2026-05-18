@@ -1,8 +1,8 @@
-import { listUsers, setUserDepartments, UserNotFoundError } from '@pkg/core';
+import { isUserCoreError, listUsers, setUserDepartments, type UserCoreError } from '@pkg/core';
 import { AuthId, Department } from '@pkg/schema';
-import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
+import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 const UserDepartmentInput = z.object({
@@ -27,16 +27,19 @@ export const usersRouter = router({
 });
 
 async function mapUserErrors<T>(action: () => Promise<T>): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (error instanceof UserNotFoundError) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'User not found.',
-      });
-    }
-
-    throw error;
-  }
+  return mapKnownCoreError(action, isUserCoreError, mapUserCoreError);
 }
+
+function mapUserCoreError(error: UserCoreError): CoreErrorMapping<UserCoreError['code']> {
+  return userErrorMappings[error.code];
+}
+
+const userErrorMappings = {
+  'user.not_found': {
+    appCode: 'user.not_found',
+    code: 'NOT_FOUND',
+    message: 'User not found.',
+  },
+} satisfies {
+  [TCode in UserCoreError['code']]: CoreErrorMapping<TCode>;
+};

@@ -43,10 +43,15 @@ describe('AI result projections', () => {
     const result = {
       items: [
         {
+          customerCompanyName: 'Apex Quarry Services',
+          customerId: '00000000-0000-4000-8000-000000000005',
           id: '00000000-0000-4000-8000-000000000003',
           code: 'QUO-00003',
           jobCode: 'JOB-00004',
           jobId: '00000000-0000-4000-8000-000000000004',
+          productId: '00000000-0000-4000-8000-000000000006',
+          productModelCode: 'JED-SS-003',
+          productName: 'Vertex Skid Steer 003',
         },
       ],
       total: 1,
@@ -62,10 +67,20 @@ describe('AI result projections', () => {
             href: '/quotes/00000000-0000-4000-8000-000000000003',
             label: 'QUO-00003',
           },
+          customerLink: {
+            entity: 'Customer',
+            href: '/customers/00000000-0000-4000-8000-000000000005/edit',
+            label: 'Apex Quarry Services',
+          },
           jobLink: {
             entity: 'Job',
             href: '/jobs/00000000-0000-4000-8000-000000000004',
             label: 'JOB-00004',
+          },
+          productLink: {
+            entity: 'Product',
+            href: '/products/00000000-0000-4000-8000-000000000006/edit',
+            label: 'Vertex Skid Steer 003',
           },
         },
       ],

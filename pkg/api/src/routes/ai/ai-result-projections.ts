@@ -86,7 +86,11 @@ function projectQuote(value: unknown): unknown {
   }
 
   const label = typeof value.code === 'string' ? value.code : null;
-  const projected = addAssistantLink(value, label ? createAiLink('Quote', label, value.id) : null);
+  const projected = {
+    ...addAssistantLink(value, label ? createAiLink('Quote', label, value.id) : null),
+    ...createFieldLink('Customer', 'customerLink', value.customerCompanyName, value.customerId),
+    ...createFieldLink('Product', 'productLink', value.productName, value.productId),
+  };
 
   if (typeof value.jobCode === 'string' && typeof value.jobId === 'string') {
     return {
@@ -107,6 +111,21 @@ function addAssistantLink<T extends LinkableRecord>(value: T, link: AiLink | nul
     ...value,
     assistantLink: link,
   };
+}
+
+function createFieldLink<TLinkField extends string>(
+  entity: AiLink['entity'],
+  field: TLinkField,
+  label: unknown,
+  id: unknown,
+): Record<TLinkField, AiLink> | Record<string, never> {
+  if (typeof label !== 'string' || typeof id !== 'string') {
+    return {};
+  }
+
+  return {
+    [field]: createAiLink(entity, label, id),
+  } as Record<TLinkField, AiLink>;
 }
 
 function isRecord(value: unknown): value is LinkableRecord {

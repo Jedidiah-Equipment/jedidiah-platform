@@ -11,7 +11,3 @@ export function createOpenAIClient(): AiOpenAIClient {
     apiKey: config.OPENAI_API_KEY,
   });
 }
-
-export function getOpenAIModel(): string {
-  return getApiConfig().OPENAI_MODEL;
-}

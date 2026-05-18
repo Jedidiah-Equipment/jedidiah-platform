@@ -5,16 +5,18 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ChatCompletionStream } from 'openai/lib/ChatCompletionStream';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { z } from 'zod';
-
+import { getApiConfig } from '@/env.js';
 import { log } from '@/logger.js';
 import { type AiContext, buildAiContext } from './ai-context.js';
-import { type AiOpenAIClient, createOpenAIClient, getOpenAIModel } from './ai-openai.js';
+import { type AiOpenAIClient, createOpenAIClient } from './ai-openai.js';
 import { createSystemPrompt } from './ai-prompts.js';
 import { closeStream, SSE_HEADERS, writeError, writeEvent } from './ai-sse.js';
 import { type AiToolName, createRunnableTools, getAuthorizedToolNames, getAuthorizedTools } from './ai-tools.js';
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const STREAM_TIMEOUT_MS = 60_000;
+
+const config = getApiConfig();
 
 export type CreateOpenAIClient = () => Pick<AiOpenAIClient, 'chat'>;
 
@@ -29,7 +31,7 @@ export async function registerAiStreamRoute(
   options: RegisterAiStreamRouteOptions = {},
 ): Promise<void> {
   const createClient = options.createOpenAIClient ?? createOpenAIClient;
-  const model = options.model ?? getOpenAIModel();
+  const model = options.model ?? config.OPENAI_MODEL;
   const createContext = options.buildContext ?? buildAiContext;
 
   app.post('/ai/chat-stream', async (request, reply) => {
@@ -164,6 +166,7 @@ async function streamChatCompletion({
     stream = client.chat.completions.runTools({
       model,
       messages,
+      reasoning_effort: 'minimal', // TODO: make this configurable
       stream: true,
       tools,
     }) as unknown as ChatCompletionStream;

@@ -10,9 +10,10 @@ import {
   quotes,
   user,
 } from '@pkg/db';
-import { computeQuoteTotal, evaluateQuoteTransition, validateDiscount } from '@pkg/domain';
+import { computeQuoteTotal, evaluateQuoteTransition, parseJobCodeSearch, validateDiscount } from '@pkg/domain';
 import {
   type AuthId,
+  JobCode,
   ProductCurrencyCode,
   Quote,
   type QuoteCreateInput,
@@ -70,6 +71,7 @@ type QuoteListRow = {
   productName: string;
   salesPersonEmail: string | null;
   salesPersonName: string | null;
+  jobCode: number | null;
   jobId: string | null;
 };
 
@@ -155,6 +157,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
       productName: products.name,
       salesPersonEmail: user.email,
       salesPersonName: user.name,
+      jobCode: jobs.code,
       jobId: jobs.id,
     })
     .from(quotes)
@@ -174,6 +177,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
     .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
     .where(where);
 
   return {
@@ -195,6 +199,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       productName: products.name,
       salesPersonEmail: user.email,
       salesPersonName: user.name,
+      jobCode: jobs.code,
       jobId: jobs.id,
     })
     .from(quotes)
@@ -370,6 +375,7 @@ function mapQuoteSummary(row: QuoteListRow): QuoteSummary {
   return {
     ...mapQuote(row.quote),
     customerCompanyName: row.customerCompanyName,
+    jobCode: row.jobCode === null ? null : JobCode.parse(row.jobCode),
     jobId: row.jobId,
     productCurrencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
     productModelCode: row.productModelCode,
@@ -572,13 +578,16 @@ function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
   if (input.search) {
     const searchPattern = createLikeSearchPattern(input.search);
     const codeSearch = parseQuoteCodeSearch(input.search);
+    const jobCodeSearch = parseJobCodeSearch(input.search);
     const globalSearchWhere = or(
       sql`${quotes.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
       sql`${quotes.code}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
       sql`${customers.companyName} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
       sql`${products.name} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
       sql`${products.modelCode} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
+      sql`${jobs.code}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
       codeSearch === undefined ? undefined : eq(quotes.code, codeSearch),
+      jobCodeSearch === undefined ? undefined : eq(jobs.code, jobCodeSearch),
     );
 
     if (globalSearchWhere) {
@@ -595,6 +604,7 @@ function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
     code: sql`${quotes.code}`,
     createdAt: sql`${quotes.createdAt}`,
     customerCompanyName: sql`${customers.companyName}`,
+    jobCode: sql`${jobs.code}`,
     productName: sql`${products.name}`,
     status: sql`${quotes.status}`,
     total,

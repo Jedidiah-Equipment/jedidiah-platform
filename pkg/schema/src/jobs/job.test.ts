@@ -47,6 +47,7 @@ describe('JobDetail', () => {
         productId: '00000000-0000-4000-8000-000000000002',
         productModelCode: 'WL-100',
         productName: 'Wheel Loader',
+        quoteCode: null,
         quoteId: null,
         stages: [
           {

@@ -2,7 +2,7 @@ import { useDebouncedValue } from '@mantine/hooks';
 import type { Product, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTRPC } from '@/lib/trpc.js';
 import { EntityCombobox, mergeSelectedOption } from './EntityCombobox.js';
@@ -11,18 +11,13 @@ export type QuoteProductOption = Pick<Product, 'basePrice' | 'currencyCode' | 'i
 
 type QuoteProductComboboxProps = {
   disabled: boolean;
-  onResolvedSelected?: (product: QuoteProductOption | null) => void;
   onSelected: (product: QuoteProductOption | null) => void;
   value: UUID | '';
 };
 
-export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
-  disabled,
-  onResolvedSelected,
-  onSelected,
-  value,
-}) => {
+export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({ disabled, onSelected, value }) => {
   const trpc = useTRPC();
+  const onSelectedRef = useRef(onSelected);
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 250);
   const productsQuery = useQuery(
@@ -56,12 +51,16 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
   const valueProduct = options.find((product) => product.id === value) ?? null;
 
   useEffect(() => {
+    onSelectedRef.current = onSelected;
+  }, [onSelected]);
+
+  useEffect(() => {
     if (value && !valueProduct) {
       return;
     }
 
-    onResolvedSelected?.(valueProduct);
-  }, [onResolvedSelected, value, valueProduct]);
+    onSelectedRef.current(valueProduct);
+  }, [value, valueProduct]);
 
   return (
     <EntityCombobox

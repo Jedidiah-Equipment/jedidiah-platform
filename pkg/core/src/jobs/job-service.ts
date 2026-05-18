@@ -17,6 +17,7 @@ import {
   evaluateStageTransition,
   getStageTransitionAvailability,
   JOB_STAGE_PIPELINE,
+  parseJobCodeSearch,
   type StageTransition,
 } from '@pkg/domain';
 import {
@@ -39,6 +40,7 @@ import {
   type JobStageRollup,
   type JobStageStatusInput,
   type JobSummary,
+  QuoteCode,
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
@@ -61,8 +63,10 @@ type JobRow = typeof jobs.$inferSelect;
 type JobEventRow = typeof jobEvents.$inferSelect;
 type JobStageRow = typeof jobStages.$inferSelect;
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
+type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'>;
 type JobWithProductRow = JobRow & {
   product: ProductRow;
+  quote: QuoteRow | null;
 };
 type JobAuditRecord = Pick<JobRow, 'code' | 'dueDate' | 'lifecycleStatus' | 'productId' | 'quoteId'>;
 
@@ -304,6 +308,11 @@ export async function listJobs({
           name: true,
         },
       },
+      quote: {
+        columns: {
+          code: true,
+        },
+      },
     },
   });
 
@@ -364,6 +373,11 @@ export async function getJob({
         columns: {
           modelCode: true,
           name: true,
+        },
+      },
+      quote: {
+        columns: {
+          code: true,
         },
       },
       stages: {
@@ -576,6 +590,7 @@ function mapJobSummary(row: JobWithProductRow): JobSummary {
     ...mapJob(row),
     productModelCode: row.product.modelCode,
     productName: row.product.name,
+    quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,
   };
 }
 
@@ -826,18 +841,6 @@ function mapJobAuditRecord(
     productId: job.productId,
     quoteId: job.quoteId,
   };
-}
-
-function parseJobCodeSearch(search: string): number | undefined {
-  const normalized = search.trim().replace(/^JOB-/i, '');
-
-  if (!/^\d+$/.test(normalized)) {
-    return undefined;
-  }
-
-  const code = Number.parseInt(normalized, 10);
-
-  return Number.isSafeInteger(code) && code > 0 ? code : undefined;
 }
 
 async function completeJobLifecycle({

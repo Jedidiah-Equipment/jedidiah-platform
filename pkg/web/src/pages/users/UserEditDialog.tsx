@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
@@ -22,6 +23,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const accessQuery = useAccess();
+  const showMutationError = useApiMutationErrorToast();
   const access = accessQuery.data;
   const [baselineUser, setBaselineUser] = useState(user);
 
@@ -94,7 +96,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       toast.success('User updated');
     },
     onError: (error) => {
-      toast.error(error.message);
+      showMutationError(error, 'Unable to update user.');
     },
   });
 
@@ -106,7 +108,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       toast.success('User password updated');
     },
     onError: (error) => {
-      toast.error(error.message);
+      showMutationError(error, 'Unable to update user password.');
     },
   });
 

@@ -1,5 +1,5 @@
 import fastifyCors from '@fastify/cors';
-import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
+import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 
 import { registerAuthHandler } from './auth/handler.js';
@@ -8,6 +8,7 @@ import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
 import { createContext } from './trpc/context.js';
+import { shouldLogTRPCError } from './trpc/errors.js';
 import { appRouter } from './trpc/router.js';
 
 export async function buildServer(config: ApiConfig = getApiConfig()) {
@@ -29,12 +30,19 @@ export async function buildServer(config: ApiConfig = getApiConfig()) {
   await registerAiStreamRoute(app);
   await registerHealthRoutes(app);
 
+  const trpcOptions = {
+    router: appRouter,
+    createContext,
+    onError({ error, path, type }) {
+      if (!shouldLogTRPCError(error)) return;
+
+      log.root.error({ error, path, type }, 'Unexpected tRPC error');
+    },
+  } satisfies FastifyTRPCPluginOptions<typeof appRouter>['trpcOptions'];
+
   await app.register(fastifyTRPCPlugin, {
     prefix: '/trpc',
-    trpcOptions: {
-      router: appRouter,
-      createContext,
-    },
+    trpcOptions,
   });
 
   return app;

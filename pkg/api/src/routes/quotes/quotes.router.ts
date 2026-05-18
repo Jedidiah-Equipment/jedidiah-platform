@@ -2,15 +2,12 @@ import {
   acceptQuote,
   createQuote,
   getQuote,
+  isQuoteCoreError,
   listCustomers,
   listProducts,
   listQuoteSalespeople,
   listQuotes,
-  QuoteDiscountInvalidError,
-  QuoteFrozenError,
-  QuoteInvalidReferenceError,
-  QuoteNotFoundError,
-  QuoteTransitionDeniedError,
+  type QuoteCoreError,
   rejectQuote,
   sendQuote,
   updateQuote,
@@ -25,11 +22,11 @@ import {
   QuoteUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { log } from '@/logger.js';
 
+import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const quotesRouter = router({
@@ -83,37 +80,42 @@ export const quotesRouter = router({
 });
 
 async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (error instanceof QuoteNotFoundError) {
-      throw new TRPCError({
+  return mapKnownCoreError(action, isQuoteCoreError, mapQuoteCoreError);
+}
+
+function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {
+  switch (error.code) {
+    case 'quote.not_found':
+      return {
+        appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Quote not found.',
-      });
-    }
-
-    if (error instanceof QuoteTransitionDeniedError || error instanceof QuoteFrozenError) {
-      throw new TRPCError({
+      };
+    case 'quote.transition_denied':
+      return {
+        appCode: error.code,
         code: 'FORBIDDEN',
-        message: error.message,
-      });
-    }
-
-    if (error instanceof QuoteDiscountInvalidError) {
-      throw new TRPCError({
+        message: 'Quote cannot move to that state.',
+      };
+    case 'quote.frozen':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: 'Sent quotes cannot be edited.',
+      };
+    case 'quote.discount_invalid':
+      return {
+        appCode: error.code,
         code: 'BAD_REQUEST',
-        message: error.message,
-      });
-    }
-
-    if (error instanceof QuoteInvalidReferenceError) {
-      throw new TRPCError({
+        message: 'Quote discount is invalid.',
+      };
+    case 'quote.invalid_reference':
+      return {
+        appCode: error.code,
         code: 'BAD_REQUEST',
-        message: error.message,
-      });
-    }
-
-    throw error;
+        message: 'Quote includes an invalid customer, product, or salesperson.',
+      };
+    default:
+      return assertNever(error);
   }
 }

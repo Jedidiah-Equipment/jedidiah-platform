@@ -1,8 +1,15 @@
-import { CustomerNotFoundError, createCustomer, getCustomer, listCustomers, updateCustomer } from '@pkg/core';
+import {
+  type CustomerCoreError,
+  createCustomer,
+  getCustomer,
+  isCustomerCoreError,
+  listCustomers,
+  updateCustomer,
+} from '@pkg/core';
 import { CustomerCreateInput, CustomerListInput, CustomerUpdateInput, UUID } from '@pkg/schema';
-import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
+import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const customersRouter = router({
@@ -28,16 +35,19 @@ export const customersRouter = router({
 });
 
 async function mapCustomerErrors<T>(action: () => Promise<T>): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (error instanceof CustomerNotFoundError) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'Customer not found.',
-      });
-    }
-
-    throw error;
-  }
+  return mapKnownCoreError(action, isCustomerCoreError, mapCustomerCoreError);
 }
+
+function mapCustomerCoreError(error: CustomerCoreError): CoreErrorMapping<CustomerCoreError['code']> {
+  return customerErrorMappings[error.code];
+}
+
+const customerErrorMappings = {
+  'customer.not_found': {
+    appCode: 'customer.not_found',
+    code: 'NOT_FOUND',
+    message: 'Customer not found.',
+  },
+} satisfies {
+  [TCode in CustomerCoreError['code']]: CoreErrorMapping<TCode>;
+};

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductForm } from './components/ProductForm.js';
 
@@ -13,6 +14,7 @@ export const ProductCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const trpc = useTRPC();
+  const showMutationError = useApiMutationErrorToast();
   const createProductMutation = useMutation(
     trpc.products.create.mutationOptions({
       onSuccess: async () => {
@@ -21,7 +23,7 @@ export const ProductCreatePage: React.FC = () => {
         await navigate({ to: '/products' });
       },
       onError: (error) => {
-        toast.error(error.message);
+        showMutationError(error, 'Unable to create product.');
       },
     }),
   );

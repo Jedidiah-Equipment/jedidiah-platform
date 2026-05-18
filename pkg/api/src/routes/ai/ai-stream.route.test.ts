@@ -252,11 +252,13 @@ describe('POST /ai/chat-stream', () => {
           items: [
             {
               ...product,
-              assistantLink: {
-                entity: 'Product',
-                href: '/products/00000000-0000-4000-8000-000000000001/edit',
-                label: 'Apex Forklift',
-              },
+              links: [
+                {
+                  entity: 'Product',
+                  href: '/products/00000000-0000-4000-8000-000000000001/edit',
+                  label: 'Apex Forklift',
+                },
+              ],
             },
           ],
           sortBy: 'name',

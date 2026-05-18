@@ -17,5 +17,6 @@ describe('AI system prompt', () => {
     expect(prompt).toContain('## Response Style');
     expect(prompt).toContain('use pure Markdown syntax and do not use HTML tags');
     expect(prompt).toContain('Use Markdown links only when the link comes from tool result link metadata');
+    expect(prompt).toContain('use those Markdown links for the matching business identifiers');
   });
 });

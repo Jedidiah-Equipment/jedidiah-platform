@@ -40,6 +40,7 @@ export type AssistantChatStore = {
 
 const ASSISTANT_CHAT_PERSIST_NAME = 'assistant-chats';
 const DEFAULT_CHAT_TITLE = 'New chat';
+const MAX_PERSISTED_ASSISTANT_CHATS = 20;
 
 const testStorage: StateStorage = {
   getItem: () => null,
@@ -128,7 +129,7 @@ export const useAssistantChatStore = create<AssistantChatStore>()(
       storage: createJSONStorage(getAssistantChatStorage),
       partialize: (state) => ({
         activeChatId: state.activeChatId,
-        chats: state.chats,
+        chats: trimAssistantChatsForPersistence(state.chats, state.activeChatId),
       }),
       version: 1,
     },
@@ -217,12 +218,37 @@ function upsertRepositoryItem(
   repository: AssistantChatRepository,
   item: SerializedMessageRepositoryItem,
 ): AssistantChatRepository {
-  const messages = repository.messages.filter((entry) => entry.message.id !== item.message.id);
+  const itemExists = repository.messages.some((entry) => entry.message.id === item.message.id);
 
   return {
-    headId: item.message.id,
-    messages: [...messages, item],
+    headId: itemExists ? (repository.headId ?? item.message.id) : item.message.id,
+    messages: itemExists
+      ? repository.messages.map((entry) => (entry.message.id === item.message.id ? item : entry))
+      : [...repository.messages, item],
   };
+}
+
+export function trimAssistantChatsForPersistence(
+  chats: Record<string, AssistantChat>,
+  activeChatId: string,
+): Record<string, AssistantChat> {
+  const sortedChats = getSortedAssistantChats(chats);
+  const keptChats = new Map<string, AssistantChat>();
+  const activeChat = chats[activeChatId];
+
+  if (activeChat) {
+    keptChats.set(activeChat.id, activeChat);
+  }
+
+  for (const chat of sortedChats) {
+    if (keptChats.size >= MAX_PERSISTED_ASSISTANT_CHATS) {
+      break;
+    }
+
+    keptChats.set(chat.id, chat);
+  }
+
+  return Object.fromEntries(keptChats);
 }
 
 function serializeRepositoryItem(item: ExportedMessageRepositoryItem): SerializedMessageRepositoryItem {

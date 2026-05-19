@@ -3,6 +3,7 @@ import { type AiToolBase, type Product, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
+import { toAiToolJsonSchema } from './json-schema.js';
 
 const GetProductInput = z.object({
   id: UUID,
@@ -15,7 +16,7 @@ export type GetProductTool = AiToolBase<'getProduct', Product, GetProductInput, 
 export const getProductTool: GetProductTool = {
   name: 'getProduct',
   inputSchema: GetProductInput,
-  jsonSchema: z.toJSONSchema(GetProductInput) as Record<string, unknown>,
+  jsonSchema: toAiToolJsonSchema(GetProductInput),
   requiredPermission: 'product:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = GetProductInput.parse(args);

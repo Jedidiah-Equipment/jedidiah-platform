@@ -7,9 +7,11 @@ import { aiToolDescriptors, createToolDescription } from '@/routes/ai/ai-tool-de
 import {
   AI_TOOL_NAMES,
   aiTools,
+  createAgentTools,
   dispatchToolCall,
   getAuthorizedToolNames,
   getAuthorizedTools,
+  toStrictJsonObjectParameters,
 } from '@/routes/ai/ai-tools.js';
 import { mockSession } from '@/test/test-utils.js';
 
@@ -36,6 +38,31 @@ describe('aiTools', () => {
       expect(aiTools[name].description).toBe(createToolDescription(aiToolDescriptors[name]));
       expect(aiTools[name].description).toContain(aiToolDescriptors[name].purpose);
       expect(aiTools[name].jsonSchema).toEqual(expect.objectContaining({ type: 'object' }));
+    }
+  });
+
+  test('creates strict Agents tools with closed object parameter schemas', () => {
+    for (const name of AI_TOOL_NAMES) {
+      expect(() => toStrictJsonObjectParameters(name, aiTools[name].jsonSchema)).not.toThrow();
+    }
+
+    const tools = createAgentTools(
+      getAuthorizedTools(
+        createUserAccessSummary({
+          role: 'admin',
+          userId: 'test-user-id',
+        }),
+      ),
+      () => undefined,
+      () => undefined,
+    );
+
+    for (const tool of tools) {
+      expect(tool.type).toBe('function');
+
+      if (tool.type === 'function') {
+        expect(tool.strict).toBe(true);
+      }
     }
   });
 

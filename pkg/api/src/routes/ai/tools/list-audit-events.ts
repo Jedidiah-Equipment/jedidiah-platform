@@ -1,15 +1,15 @@
 import * as core from '@pkg/core';
 import { type AiToolBase, AuditListInput, type AuditListResult } from '@pkg/schema';
-import { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
+import { toAiToolJsonSchema } from './json-schema.js';
 
 export type ListAuditEventsTool = AiToolBase<'listAuditEvents', AuditListResult, AuditListInput, AiContext>;
 
 export const listAuditEventsTool: ListAuditEventsTool = {
   name: 'listAuditEvents',
   inputSchema: AuditListInput,
-  jsonSchema: z.toJSONSchema(AuditListInput) as Record<string, unknown>,
+  jsonSchema: toAiToolJsonSchema(AuditListInput),
   requiredPermission: 'audit:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = AuditListInput.parse(args ?? {});

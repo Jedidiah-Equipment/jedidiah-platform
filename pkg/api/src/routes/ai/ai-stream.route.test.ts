@@ -164,9 +164,10 @@ describe('POST /ai/chat-stream', () => {
     ]);
   });
 
-  test('decodes byte token deltas before writing SSE frames', async () => {
+  test('decodes split multi-byte token deltas before writing SSE frames', async () => {
     const app = Fastify();
-    const stream = new StubAgentTextStream(() => textDeltas(new TextEncoder().encode('Compact')));
+    const bytes = new TextEncoder().encode('A💛B');
+    const stream = new StubAgentTextStream(() => textDeltas(bytes.slice(0, 2), bytes.slice(2, 4), bytes.slice(4)));
 
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext(),
@@ -183,9 +184,10 @@ describe('POST /ai/chat-stream', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(readSseDataLines(response.body)).toEqual([
-      JSON.stringify({ type: 'token', delta: 'Compact' }),
-      JSON.stringify({ type: 'done' }),
+    expect(readSseDataLines(response.body).map((line) => JSON.parse(line))).toEqual([
+      { type: 'token', delta: 'A' },
+      { type: 'token', delta: '💛B' },
+      { type: 'done' },
     ]);
   });
 

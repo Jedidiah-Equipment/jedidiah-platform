@@ -1,15 +1,15 @@
 import * as core from '@pkg/core';
 import { type AiToolBase, JobListInput, type JobListResult } from '@pkg/schema';
-import { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
+import { toAiToolJsonSchema } from './json-schema.js';
 
 export type ListJobsTool = AiToolBase<'listJobs', JobListResult, JobListInput, AiContext>;
 
 export const listJobsTool: ListJobsTool = {
   name: 'listJobs',
   inputSchema: JobListInput,
-  jsonSchema: z.toJSONSchema(JobListInput) as Record<string, unknown>,
+  jsonSchema: toAiToolJsonSchema(JobListInput),
   requiredPermission: 'job:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = JobListInput.parse(args ?? {});

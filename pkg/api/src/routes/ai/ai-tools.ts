@@ -47,6 +47,7 @@ type RegisteredAiTool = AiTool & {
 type AiToolMap = Record<AiToolName, RegisteredAiTool>;
 export type AuthorizedAiTools = Partial<AiToolMap>;
 type StrictJsonObjectParameters = Extract<ToolInputParameters, { additionalProperties: false }>;
+type JsonSchemaObject = Record<string, unknown>;
 
 type InternalToolResult =
   | {
@@ -135,7 +136,7 @@ export function createAgentTools(
     createAgentTool({
       name,
       description: tool.description,
-      parameters: tool.jsonSchema as StrictJsonObjectParameters,
+      parameters: toStrictJsonObjectParameters(name, tool.jsonSchema),
       strict: true,
       async execute(args, runContext) {
         const ctx = runContext?.context;
@@ -185,4 +186,64 @@ function withGeneratedDescription<TTool extends AiTool>(tool: TTool): TTool & { 
     ...tool,
     description: createToolDescription(aiToolDescriptors[tool.name]),
   };
+}
+
+export function toStrictJsonObjectParameters(
+  name: AiToolName,
+  schema: Record<string, unknown>,
+): StrictJsonObjectParameters {
+  const issues = getStrictJsonSchemaIssues(schema, name);
+
+  if (issues.length > 0) {
+    throw new Error(`AI tool ${name} must declare a strict object JSON schema: ${issues.join('; ')}`);
+  }
+
+  return schema as StrictJsonObjectParameters;
+}
+
+function getStrictJsonSchemaIssues(schema: unknown, path: string): string[] {
+  const issues: string[] = [];
+
+  collectStrictJsonSchemaIssues(schema, path, issues);
+
+  return issues;
+}
+
+function collectStrictJsonSchemaIssues(schema: unknown, path: string, issues: string[]): void {
+  if (Array.isArray(schema)) {
+    schema.forEach((item, index) => {
+      collectStrictJsonSchemaIssues(item, `${path}[${index}]`, issues);
+    });
+    return;
+  }
+
+  if (!isJsonSchemaObject(schema)) {
+    return;
+  }
+
+  if (schema.type === 'object') {
+    if (schema.additionalProperties !== false) {
+      issues.push(`${path} object schema must set additionalProperties: false`);
+    }
+
+    const properties = schema.properties;
+
+    if (!isJsonSchemaObject(properties)) {
+      issues.push(`${path} object schema must declare properties`);
+    } else {
+      for (const [propertyName, propertySchema] of Object.entries(properties)) {
+        collectStrictJsonSchemaIssues(propertySchema, `${path}.properties.${propertyName}`, issues);
+      }
+    }
+  }
+
+  for (const compositionKey of ['$defs', 'items', 'anyOf', 'oneOf', 'allOf'] as const) {
+    if (compositionKey in schema) {
+      collectStrictJsonSchemaIssues(schema[compositionKey], `${path}.${compositionKey}`, issues);
+    }
+  }
+}
+
+function isJsonSchemaObject(value: unknown): value is JsonSchemaObject {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

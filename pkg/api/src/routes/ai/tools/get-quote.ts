@@ -3,6 +3,7 @@ import { type AiToolBase, type QuoteDetail, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
+import { toAiToolJsonSchema } from './json-schema.js';
 
 const GetQuoteInput = z.object({
   id: UUID,
@@ -15,7 +16,7 @@ export type GetQuoteTool = AiToolBase<'getQuote', QuoteDetail, GetQuoteInput, Ai
 export const getQuoteTool: GetQuoteTool = {
   name: 'getQuote',
   inputSchema: GetQuoteInput,
-  jsonSchema: z.toJSONSchema(GetQuoteInput) as Record<string, unknown>,
+  jsonSchema: toAiToolJsonSchema(GetQuoteInput),
   requiredPermission: 'quote:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = GetQuoteInput.parse(args);

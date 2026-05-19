@@ -3,6 +3,7 @@ import type { AiToolBase, UserListResult } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
+import { toAiToolJsonSchema } from './json-schema.js';
 
 const ListQuoteSalespeopleInput = z.strictObject({});
 
@@ -18,7 +19,10 @@ export type ListQuoteSalespeopleTool = AiToolBase<
 export const listQuoteSalespeopleTool: ListQuoteSalespeopleTool = {
   name: 'listQuoteSalespeople',
   inputSchema: ListQuoteSalespeopleInput,
-  jsonSchema: z.toJSONSchema(ListQuoteSalespeopleInput) as Record<string, unknown>,
+  jsonSchema: {
+    ...toAiToolJsonSchema(ListQuoteSalespeopleInput),
+    required: [],
+  },
   requiredPermission: 'quote:read',
   async handler(args: unknown, ctx: AiContext) {
     ListQuoteSalespeopleInput.parse(args ?? {});

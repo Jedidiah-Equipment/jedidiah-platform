@@ -11,6 +11,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb.js';
 import { Button } from '@/components/ui/button.js';
+import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Separator } from '@/components/ui/separator.js';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar.js';
 import { useTheme } from '@/hooks/use-theme.js';
@@ -27,9 +28,9 @@ export const AuthenticatedRouteShell: React.FC<AuthenticatedRouteShellProps> = (
   });
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-svh min-h-0 overflow-hidden">
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-h-0">
         <header className="flex h-16 shrink-0 items-center gap-2 px-4">
           <div className="flex min-w-0 items-center gap-2">
             <SidebarTrigger className="-ml-1" />
@@ -63,7 +64,7 @@ export const AuthenticatedRouteShell: React.FC<AuthenticatedRouteShellProps> = (
             </Button>
           </div>
         </header>
-        {children}
+        <ScrollArea className="min-h-0 flex-1">{children}</ScrollArea>
       </SidebarInset>
     </SidebarProvider>
   );

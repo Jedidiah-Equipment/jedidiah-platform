@@ -1,15 +1,15 @@
 import * as core from '@pkg/core';
 import { type AiToolBase, UserListInput, type UserListResult } from '@pkg/schema';
-import { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
+import { toAiToolJsonSchema } from './json-schema.js';
 
 export type ListUsersTool = AiToolBase<'listUsers', UserListResult, UserListInput, AiContext>;
 
 export const listUsersTool: ListUsersTool = {
   name: 'listUsers',
   inputSchema: UserListInput,
-  jsonSchema: z.toJSONSchema(UserListInput) as Record<string, unknown>,
+  jsonSchema: toAiToolJsonSchema(UserListInput),
   requiredPermission: 'user:list',
   async handler(args: unknown, ctx: AiContext) {
     UserListInput.parse(args ?? {});

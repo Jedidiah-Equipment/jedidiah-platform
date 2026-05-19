@@ -1,14 +1,13 @@
 import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobDetail, JobStageStatusInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { ArrowLeftIcon } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 
+import { ButtonLink } from '@/components/ButtonLink.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { PrimaryLink } from '@/components/PrimaryLink.js';
-import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
@@ -160,10 +159,10 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <div>
-        <Button render={<Link to="/jobs" />} variant="ghost">
+        <ButtonLink to="/jobs" variant="ghost">
           <ArrowLeftIcon data-icon="inline-start" />
           Jobs
-        </Button>
+        </ButtonLink>
       </div>
       <Card>
         <CardHeader>

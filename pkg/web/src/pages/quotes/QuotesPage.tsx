@@ -1,12 +1,13 @@
 import { hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { ArrowRightIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { ButtonLink } from '@/components/ButtonLink.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
@@ -58,10 +59,10 @@ export const QuotesPage: React.FC = () => {
               <CardDescription>Sales</CardDescription>
               <CardTitle>Quotes</CardTitle>
             </div>
-            <Button render={<Link to="/quotes/new" />}>
+            <ButtonLink to="/quotes/new">
               <PlusIcon data-icon="inline-start" />
               New quote
-            </Button>
+            </ButtonLink>
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">

@@ -139,7 +139,7 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="min-w-[26rem] whitespace-normal">
+                      <TableCell className="min-w-104 whitespace-normal">
                         <div className="flex flex-wrap gap-1">
                           {getRolePermissions(demoUser.role).map((permission) => (
                             <PermissionBadge key={permission} permission={permission} />

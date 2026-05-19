@@ -32,6 +32,7 @@ export const ApiConfig = z.object({
   AUTH_TRUSTED_ORIGINS: TrustedOrigins,
   OPENAI_API_KEY: z.string().min(1),
   OPENAI_MODEL: z.string().min(1).default('gpt-5.5'),
+  OPENAI_REASONING_EFFORT: z.enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh']).default('low'),
   PORT: z.coerce.number().int().positive().default(7002),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
   LOG_DOMAINS_DISABLED: z.string().optional(),

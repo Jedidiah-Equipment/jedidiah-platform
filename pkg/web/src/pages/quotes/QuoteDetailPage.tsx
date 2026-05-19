@@ -1,12 +1,13 @@
 import { hasPermission } from '@pkg/domain';
 import type { QuoteDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { ArrowLeftIcon, BriefcaseBusinessIcon, CalendarIcon, EditIcon, Loader2Icon, XIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { ButtonLink } from '@/components/ButtonLink.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
@@ -118,10 +119,10 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <div>
-        <Button render={<Link to="/quotes" />} variant="ghost">
+        <ButtonLink to="/quotes" variant="ghost">
           <ArrowLeftIcon data-icon="inline-start" />
           Quotes
-        </Button>
+        </ButtonLink>
       </div>
       <Card>
         <CardHeader>
@@ -147,10 +148,10 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
             <>
               <div className="flex flex-wrap gap-2">
                 {canUpdateQuote && quote.status === 'draft' ? (
-                  <Button render={<Link params={{ id: quote.id }} to="/quotes/$id/edit" />} variant="outline">
+                  <ButtonLink params={{ id: quote.id }} to="/quotes/$id/edit" variant="outline">
                     <EditIcon data-icon="inline-start" />
                     Edit
-                  </Button>
+                  </ButtonLink>
                 ) : null}
                 {canUpdateQuote && quote.status === 'draft' ? (
                   <Button disabled={isStatePending} onClick={() => confirmSendQuote(quote.id)}>

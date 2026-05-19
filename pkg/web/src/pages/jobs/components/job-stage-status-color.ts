@@ -5,14 +5,22 @@ type JobStageStatusColorClassNames = {
   icon: string;
 };
 
-type JobStageStatusColor = 'orange' | 'emerald' | 'gray' | 'purple' | 'blue' | 'red';
+type JobStageStatusColor = 'sky' | 'blue' | 'indigo' | 'emerald' | 'gray' | 'red';
 
-const inBetweenColors = ['orange', 'purple', 'blue'] as const satisfies readonly JobStageStatusColor[];
+const inBetweenColors = ['sky', 'blue', 'indigo'] as const satisfies readonly JobStageStatusColor[];
 
 const jobStageStatusColorClassNames = {
-  orange: {
-    badge: 'border-orange-500/50 bg-orange-500/15 text-orange-800 dark:text-orange-200',
-    icon: 'fill-orange-500 text-orange-500',
+  sky: {
+    badge: 'border-sky-500/50 bg-sky-500/15 text-sky-800 dark:text-sky-200',
+    icon: 'fill-sky-500 text-sky-500',
+  },
+  blue: {
+    badge: 'border-blue-500/50 bg-blue-500/15 text-blue-800 dark:text-blue-200',
+    icon: 'fill-blue-500 text-blue-500',
+  },
+  indigo: {
+    badge: 'border-indigo-500/50 bg-indigo-500/15 text-indigo-800 dark:text-indigo-200',
+    icon: 'fill-indigo-500 text-indigo-500',
   },
   emerald: {
     badge: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200',
@@ -22,14 +30,6 @@ const jobStageStatusColorClassNames = {
     badge: 'border-gray-400/50 bg-gray-500/10 text-gray-700 dark:text-gray-200',
     icon: 'fill-gray-400 text-gray-400',
   },
-  purple: {
-    badge: 'border-purple-500/50 bg-purple-500/15 text-purple-800 dark:text-purple-200',
-    icon: 'fill-purple-500 text-purple-500',
-  },
-  blue: {
-    badge: 'border-blue-500/50 bg-blue-500/15 text-blue-800 dark:text-blue-200',
-    icon: 'fill-blue-500 text-blue-500',
-  },
   red: {
     badge: 'border-red-500/50 bg-red-500/15 text-red-800 dark:text-red-200',
     icon: 'fill-red-500 text-red-500',
@@ -37,7 +37,7 @@ const jobStageStatusColorClassNames = {
 } as const satisfies Record<JobStageStatusColor, JobStageStatusColorClassNames>;
 
 // Status colors are intentionally concrete Tailwind classes so the build can see them.
-// Pending is gray, complete is green, and in-between workflow statuses progress amber -> teal -> indigo.
+// Pending is gray, complete is green, and in-between workflow statuses progress light -> dark blue.
 export function getJobStageStatusColorClassNames(
   stage: JobStageName,
   status: JobStageStatus,

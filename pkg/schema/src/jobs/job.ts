@@ -125,6 +125,7 @@ const JobEventBase = z.object({
   jobId: UUID,
   stageId: UUID.nullable(),
   actorUserId: z.string().trim().min(1).nullable(),
+  actorName: z.string().trim().min(1).nullable(),
   occurredAt: z.iso.datetime(),
 });
 

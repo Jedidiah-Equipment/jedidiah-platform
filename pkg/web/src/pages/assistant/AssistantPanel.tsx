@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Thread } from '@/components/assistant-ui/thread.js';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button.js';
 import { Button } from '@/components/ui/button.js';
+import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
 
 import {
@@ -69,7 +70,7 @@ function AssistantChatFrame() {
       <aside className="flex min-h-0 flex-col rounded-lg border bg-background">
         <div className="border-b p-2">
           <Button
-            className="w-full justify-start"
+            className="w-full justify-start text-sm!"
             disabled={isRunning}
             onClick={() => newChat()}
             type="button"
@@ -79,8 +80,8 @@ function AssistantChatFrame() {
             New Chat
           </Button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          <div className="flex flex-col gap-1">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex flex-col gap-1 p-2">
             {chats.map((chat) => {
               const isActive = chat.id === activeChatId;
 
@@ -95,7 +96,7 @@ function AssistantChatFrame() {
                   <button
                     aria-current={isActive ? 'true' : undefined}
                     className={cn(
-                      'flex h-full min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50',
+                      'flex h-full min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm! outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50',
                       isActive && 'font-medium',
                     )}
                     disabled={isRunning}
@@ -119,7 +120,7 @@ function AssistantChatFrame() {
               );
             })}
           </div>
-        </div>
+        </ScrollArea>
       </aside>
       <Thread />
     </div>

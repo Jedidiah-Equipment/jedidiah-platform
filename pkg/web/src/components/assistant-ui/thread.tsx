@@ -12,6 +12,7 @@ import type { FC } from 'react';
 
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
 
 import { MarkdownText } from './markdown-text.js';
@@ -19,17 +20,23 @@ import { TooltipIconButton } from './tooltip-icon-button.js';
 
 export const Thread: FC = () => {
   return (
-    <ThreadPrimitive.Root className="flex h-full min-h-0 min-w-0 flex-col rounded-lg border bg-background">
-      <ThreadPrimitive.Viewport
-        className="relative flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth"
-        turnAnchor="top"
+    <ScrollAreaRoot
+      render={<ThreadPrimitive.Root className="flex h-full min-h-0 min-w-0 flex-col rounded-lg border bg-background" />}
+    >
+      <ScrollAreaViewport
+        render={
+          <ThreadPrimitive.Viewport
+            className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden scroll-smooth"
+            turnAnchor="top"
+          />
+        }
       >
-        <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-4">
+        <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-1 flex-col px-4 pt-4">
           <AuiIf condition={(state) => state.thread.isEmpty}>
             <ThreadWelcome />
           </AuiIf>
 
-          <div className="flex flex-col gap-6 pb-8">
+          <div className="flex w-full min-w-0 flex-col gap-6 pb-8">
             <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
           </div>
 
@@ -38,8 +45,9 @@ export const Thread: FC = () => {
             <Composer />
           </ThreadPrimitive.ViewportFooter>
         </div>
-      </ThreadPrimitive.Viewport>
-    </ThreadPrimitive.Root>
+      </ScrollAreaViewport>
+      <ScrollBar />
+    </ScrollAreaRoot>
   );
 };
 
@@ -112,7 +120,7 @@ const Composer: FC = () => {
 
 const AssistantMessage: FC = () => {
   return (
-    <MessagePrimitive.Root className="group/message relative min-w-0">
+    <MessagePrimitive.Root className="group/message relative w-full min-w-0">
       <div className="min-w-0 px-2 text-sm leading-6">
         <MessagePrimitive.Parts>
           {({ part }) => {
@@ -137,7 +145,9 @@ const AssistantMessage: FC = () => {
         </MessagePrimitive.Parts>
         <MessageError />
       </div>
-      <AssistantActionBar />
+      <div className="h-9 pt-1">
+        <AssistantActionBar />
+      </div>
     </MessagePrimitive.Root>
   );
 };
@@ -158,7 +168,7 @@ const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       autohide="not-last"
-      className="ms-1 mt-1 flex items-center gap-1 text-muted-foreground"
+      className="ms-1 flex items-center gap-1 text-muted-foreground"
       hideWhenRunning
     >
       <ActionBarPrimitive.Copy
@@ -181,8 +191,8 @@ const AssistantActionBar: FC = () => {
 
 const UserMessage: FC = () => {
   return (
-    <MessagePrimitive.Root className="grid min-w-0 grid-cols-[minmax(4rem,1fr)_auto] px-2">
-      <div className="col-start-2 min-w-0 max-w-[min(42rem,85%)] rounded-lg bg-primary px-3 py-2 text-primary-foreground text-sm leading-6">
+    <MessagePrimitive.Root className="block w-full min-w-0 px-2">
+      <div className="ml-auto w-fit min-w-0 max-w-[min(42rem,85%)] rounded-lg bg-primary px-3 py-2 text-primary-foreground text-sm leading-6">
         <MessagePrimitive.Parts />
       </div>
     </MessagePrimitive.Root>

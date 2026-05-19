@@ -205,6 +205,7 @@ describe('JobEvent', () => {
   it('validates stage workflow events by event type', () => {
     expect(
       JobEvent.parse({
+        actorName: 'Test User',
         actorUserId: 'test-user-id',
         eventType: 'stage.status_changed',
         id: '00000000-0000-4000-8000-000000000001',
@@ -218,6 +219,7 @@ describe('JobEvent', () => {
         stageId: '00000000-0000-4000-8000-000000000003',
       }),
     ).toMatchObject({
+      actorName: 'Test User',
       eventType: 'stage.status_changed',
       payload: {
         fromStatus: 'pending',
@@ -229,6 +231,7 @@ describe('JobEvent', () => {
   it('rejects payloads that do not match the event type', () => {
     expect(() =>
       JobEvent.parse({
+        actorName: 'Test User',
         actorUserId: 'test-user-id',
         eventType: 'stage.completed',
         id: '00000000-0000-4000-8000-000000000001',
@@ -247,6 +250,7 @@ describe('JobEvent', () => {
   it('validates job lifecycle workflow events', () => {
     expect(
       JobEvent.parse({
+        actorName: null,
         actorUserId: 'test-user-id',
         eventType: 'job.paused',
         id: '00000000-0000-4000-8000-000000000001',

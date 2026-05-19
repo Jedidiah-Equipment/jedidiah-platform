@@ -20,7 +20,7 @@ describe('AppRole', () => {
   it('accepts job roles', () => {
     expect(AppRole.parse('job-supervisor')).toBe('job-supervisor');
     expect(AppRole.parse('job-stage-editor')).toBe('job-stage-editor');
-    expect(AppRole.parse('job-viewer')).toBe('job-viewer');
+    expect(AppRole.parse('sales')).toBe('sales');
   });
 });
 
@@ -40,7 +40,7 @@ describe('UserAccessSummary', () => {
     expect(() =>
       UserAccessSummary.parse({
         permissions: [],
-        role: 'product-viewer',
+        role: 'sales',
         userId: 'user_123',
       }),
     ).toThrow();
@@ -49,7 +49,7 @@ describe('UserAccessSummary', () => {
       UserAccessSummary.parse({
         departments: ['assembly'],
         permissions: [],
-        role: 'product-viewer',
+        role: 'sales',
         userId: 'user_123',
       }).departments,
     ).toEqual(['assembly']);
@@ -64,7 +64,7 @@ describe('UserSummary', () => {
         emailVerified: true,
         id: 'user_123',
         name: 'User Example',
-        role: 'product-viewer',
+        role: 'sales',
       }),
     ).toThrow();
 
@@ -75,7 +75,7 @@ describe('UserSummary', () => {
         emailVerified: true,
         id: 'user_123',
         name: 'User Example',
-        role: 'product-viewer',
+        role: 'sales',
       }).departments,
     ).toEqual(['dispatch']);
   });

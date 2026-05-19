@@ -25,7 +25,7 @@ describe('users.list', () => {
       emailVerified: true,
       id: 'viewer-user-id',
       name: 'Viewer User',
-      role: 'product-viewer',
+      role: 'sales',
     });
 
     const result = await context.createCaller().users.list();
@@ -37,7 +37,7 @@ describe('users.list', () => {
         emailVerified: true,
         id: 'viewer-user-id',
         name: 'Viewer User',
-        role: 'product-viewer',
+        role: 'sales',
       },
     ]);
   });
@@ -67,7 +67,7 @@ describe('users.list', () => {
       email: 'department-target@example.com',
       id: 'department-target-user-id',
       name: 'Department Target',
-      role: 'product-viewer',
+      role: 'sales',
     });
     const caller = context.createCaller(mockSession('product-editor'));
 
@@ -94,7 +94,7 @@ describe('users.list', () => {
       email: 'multi-department@example.com',
       id: multiDepartmentUserId,
       name: 'Multi Department User',
-      role: 'product-viewer',
+      role: 'sales',
     });
 
     await context.createCaller().users.setDepartments({

@@ -26,7 +26,7 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({ canAssignDepartm
     emailVerified: false,
     name: '',
     password: '',
-    role: 'product-viewer',
+    role: 'sales',
   };
   const form = useAppForm({
     defaultValues,

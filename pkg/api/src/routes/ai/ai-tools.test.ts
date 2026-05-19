@@ -19,7 +19,7 @@ function createAiContext(access: UserAccessSummary | null = null): AiContext {
   return {
     access,
     db: {} as AiContext['db'],
-    session: mockSession(access?.role ?? 'product-viewer'),
+    session: mockSession(access?.role ?? 'sales'),
   };
 }
 
@@ -27,7 +27,7 @@ function createAccessWithNoProductRead(): UserAccessSummary {
   return {
     departments: [],
     permissions: [],
-    role: 'product-viewer',
+    role: 'sales',
     userId: 'test-user-id',
   };
 }
@@ -85,7 +85,7 @@ describe('aiTools', () => {
   test('returns product tools for product readers', () => {
     const tools = getAuthorizedTools(
       createUserAccessSummary({
-        role: 'product-viewer',
+        role: 'product-editor',
         userId: 'test-user-id',
       }),
     );
@@ -111,12 +111,12 @@ describe('aiTools', () => {
   });
 
   test('returns job tools for job readers', () => {
-    const tools = getAuthorizedTools(
-      createUserAccessSummary({
-        role: 'job-viewer',
-        userId: 'test-user-id',
-      }),
-    );
+    const tools = getAuthorizedTools({
+      departments: [],
+      permissions: ['job:read'],
+      role: 'sales',
+      userId: 'test-user-id',
+    });
 
     expect(getAuthorizedToolNames(tools)).toEqual(['listJobs', 'getJob']);
   });
@@ -125,7 +125,7 @@ describe('aiTools', () => {
     const tools = getAuthorizedTools({
       departments: [],
       permissions: ['customer:read'],
-      role: 'product-viewer',
+      role: 'sales',
       userId: 'test-user-id',
     });
 
@@ -136,7 +136,7 @@ describe('aiTools', () => {
     const tools = getAuthorizedTools({
       departments: [],
       permissions: ['audit:read', 'user:list'],
-      role: 'product-viewer',
+      role: 'sales',
       userId: 'test-user-id',
     });
 

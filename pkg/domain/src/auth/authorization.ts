@@ -1,18 +1,16 @@
 import type { AppPermission, AppRole, Department, JobStageName, UserAccessSummary } from '@pkg/schema';
 
-export const DEFAULT_APP_ROLE = 'product-viewer' satisfies AppRole;
+export const DEFAULT_APP_ROLE = 'sales' satisfies AppRole;
 
 // Only Job access can depend on department memberships, so request access summaries use this set
 // to avoid reading user_department for roles whose authorization cannot be department-scoped.
-export const DEPARTMENT_AWARE_ROLES = new Set<AppRole>(['job-stage-editor', 'job-supervisor', 'job-viewer']);
+export const DEPARTMENT_AWARE_ROLES = new Set<AppRole>(['job-stage-editor', 'job-supervisor']);
 
 export const roleLabels = {
   admin: 'Administrator',
   'job-stage-editor': 'Job Department Manager',
   'job-supervisor': 'Job supervisor',
-  'job-viewer': 'Job viewer',
   'product-editor': 'Product manager',
-  'product-viewer': 'Product viewer',
   sales: 'Sales',
 } as const satisfies Record<AppRole, string>;
 
@@ -93,9 +91,6 @@ export const appRoleAccess = {
   'product-editor': {
     product: ['read', 'create', 'update'],
   },
-  'product-viewer': {
-    product: ['read'],
-  },
   'job-supervisor': {
     job: ['read', 'create', 'update'],
     'job-stage': ['read', 'update'],
@@ -104,10 +99,6 @@ export const appRoleAccess = {
   'job-stage-editor': {
     job: ['read'],
     'job-stage': ['read', 'update'],
-  },
-  'job-viewer': {
-    job: ['read'],
-    'job-stage': ['read'],
   },
   sales: {
     quote: ['read', 'create', 'update'],

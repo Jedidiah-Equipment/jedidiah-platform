@@ -10,19 +10,19 @@ describe('getUserAccessSummary', () => {
     await expect(
       getUserAccessSummary({
         db,
-        role: 'product-viewer',
+        role: 'sales',
         userId: 'user_123',
       }),
     ).resolves.toEqual({
       departments: [],
-      permissions: ['product:read'],
-      role: 'product-viewer',
+      permissions: ['quote:create', 'quote:read', 'quote:update'],
+      role: 'sales',
       userId: 'user_123',
     });
     expect(select).not.toHaveBeenCalled();
   });
 
-  it.each(['job-stage-editor', 'job-supervisor', 'job-viewer'] as const)('loads departments for %s', async (role) => {
+  it.each(['job-stage-editor', 'job-supervisor'] as const)('loads departments for %s', async (role) => {
     const { db, select } = createDepartmentDb([{ department: 'paint' }, { department: 'dispatch' }]);
 
     await expect(

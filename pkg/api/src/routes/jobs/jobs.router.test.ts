@@ -66,7 +66,7 @@ describe('jobs.create', () => {
   });
 
   test('rejects users without job create permission', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-viewer'));
+    const caller = context.createCaller(mockSession('job-stage-editor'));
 
     await expect(caller.jobs.create({ productId: context.product.id })).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -75,9 +75,9 @@ describe('jobs.create', () => {
 });
 
 describe('jobs.list', () => {
-  test('returns active jobs by default for cross-cutting job viewers', async ({ context }) => {
+  test('returns active jobs by default for cross-cutting job supervisors', async ({ context }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const viewerCaller = context.createCaller(mockSession('job-viewer'));
+    const viewerCaller = context.createCaller(mockSession('job-supervisor'));
 
     const created = await supervisorCaller.jobs.create({ productId: context.product.id });
     const paused = await supervisorCaller.jobs.create({ productId: context.product.id });
@@ -266,11 +266,11 @@ describe('jobs.list', () => {
 
   test('rejects users without job read permission', async ({ context }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const productViewerCaller = context.createCaller(mockSession('product-viewer'));
+    const salesCaller = context.createCaller(mockSession('sales'));
 
     await supervisorCaller.jobs.create({ productId: context.product.id });
 
-    await expect(productViewerCaller.jobs.list({})).rejects.toMatchObject({
+    await expect(salesCaller.jobs.list({})).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });

@@ -46,14 +46,6 @@ export const demoUsers = [
   },
   {
     departments: [],
-    id: 'seed-product-viewer-user',
-    name: 'Leo',
-    email: createDemoUserEmail('Leo'),
-    password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'product-viewer',
-  },
-  {
-    departments: [],
     id: 'seed-job-supervisor-user',
     name: 'Ray',
     email: createDemoUserEmail('Ray'),

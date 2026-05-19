@@ -1,26 +1,30 @@
 import { differenceInSeconds, formatDate as formatDateDfns, fromUnixTime, parseISO } from 'date-fns';
 import { z } from 'zod';
 
-type Format = 'short' | 'medium' | 'long' | 'duration' | 'duration-short' | (string & NonNullable<unknown>);
+export type DateFormat = 'short' | 'medium' | 'long' | 'duration' | 'duration-short' | (string & NonNullable<unknown>);
 
-export const formatDate = (date?: Date | string | number | null, format: Format = 'short', emptyValue?: string) => {
-  let parsedDate: Date | null = null;
-
+export const parseDate = (date?: Date | string | number | null): Date | null => {
   if (date instanceof Date) {
-    parsedDate = date;
+    return date;
   }
 
   if (typeof date === 'string') {
     if (z.coerce.number().safeParse(date).success) {
-      parsedDate = fromUnixTime(Number.parseInt(date, 10));
-    } else {
-      parsedDate = parseISO(date);
+      return fromUnixTime(Number.parseInt(date, 10));
     }
+
+    return parseISO(date);
   }
 
   if (typeof date === 'number') {
-    parsedDate = fromUnixTime(date);
+    return fromUnixTime(date);
   }
+
+  return null;
+};
+
+export const formatDate = (date?: Date | string | number | null, format: DateFormat = 'short', emptyValue?: string) => {
+  const parsedDate = parseDate(date);
 
   if (!parsedDate) {
     return emptyValue ?? '';

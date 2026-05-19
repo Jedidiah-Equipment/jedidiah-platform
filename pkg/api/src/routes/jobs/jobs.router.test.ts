@@ -432,6 +432,7 @@ describe('job stage transitions', () => {
       'stage.status_changed',
       'stage.completed',
     ]);
+    expect(detail.workflowEvents.map((event) => event.actorName)).toEqual(['Test User', 'Test User', 'Test User']);
   });
 
   test('hides workflow events outside the viewer stage scope', async ({ context }) => {

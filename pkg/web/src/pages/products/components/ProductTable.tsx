@@ -5,6 +5,7 @@ import { PencilIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { DateDisplay } from '@/components/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
@@ -13,7 +14,6 @@ import { getPrimarySort, type SortOptions } from '@/components/data-table/table-
 import { Button } from '@/components/ui/button.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatDate } from '@/utils/date.js';
 import { formatCurrency } from '@/utils/number.js';
 
 type ProductTableProps = {
@@ -108,14 +108,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
       },
       {
         accessorKey: 'createdAt',
-        cell: ({ row }) => formatDate(row.original.createdAt),
+        cell: ({ row }) => <DateDisplay date={row.original.createdAt} />,
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Created',
       },
       {
         accessorKey: 'updatedAt',
-        cell: ({ row }) => formatDate(row.original.updatedAt),
+        cell: ({ row }) => <DateDisplay date={row.original.updatedAt} />,
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Updated',

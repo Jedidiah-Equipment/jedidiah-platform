@@ -5,6 +5,7 @@ import type React from 'react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { DateDisplay } from '@/components/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
@@ -14,7 +15,6 @@ import { Badge } from '@/components/ui/badge.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { formatDate } from '@/utils/date.js';
 
 type DateRangeFilterValue = {
   end?: string;
@@ -116,7 +116,7 @@ export const AuditTable: React.FC = () => {
     () => [
       {
         accessorKey: 'occurredAt',
-        cell: ({ row }) => formatDate(row.original.occurredAt, 'medium'),
+        cell: ({ row }) => <DateDisplay date={row.original.occurredAt} format="medium" />,
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Occurred',

@@ -10,10 +10,10 @@ import {
 import { CheckCircleIcon, CircleIcon, PlayIcon } from 'lucide-react';
 import React from 'react';
 
+import { DateDisplay } from '@/components/DateDisplay.js';
 import { Button } from '@/components/ui/button.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
-import { formatDate } from '@/utils/date.js';
 import { JobStageStatusBadge } from '../../jobs/components/JobStageStatusBadge.js';
 import { getJobStageStatusColorClassNames } from '../../jobs/components/job-stage-status-color.js';
 import { stageLabels } from '../constants.js';
@@ -78,8 +78,12 @@ export const StagePanel: React.FC<StagePanelProps> = ({
       </div>
       <div className="mt-4 flex flex-col gap-3">
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <div>Started: {formatDate(stage.startedAt, 'short', 'Not started')}</div>
-          <div>Completed: {formatDate(stage.completedAt, 'short', 'Not completed')}</div>
+          <div>
+            Started: <DateDisplay date={stage.startedAt} emptyValue="Not started" />
+          </div>
+          <div>
+            Completed: <DateDisplay date={stage.completedAt} emptyValue="Not completed" />
+          </div>
         </div>
         <div className="flex flex-col gap-2">
           <Button

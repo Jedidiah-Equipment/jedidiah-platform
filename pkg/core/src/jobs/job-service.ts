@@ -10,6 +10,7 @@ import {
   LIKE_SEARCH_ESCAPE,
   type products,
   quotes,
+  type user,
 } from '@pkg/db';
 import {
   canViewStage,
@@ -59,6 +60,9 @@ import {
 
 type JobRow = typeof jobs.$inferSelect;
 type JobEventRow = typeof jobEvents.$inferSelect;
+type JobEventWithActorRow = JobEventRow & {
+  actor: Pick<typeof user.$inferSelect, 'name'> | null;
+};
 type JobStageRow = typeof jobStages.$inferSelect;
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
 type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'>;
@@ -122,8 +126,17 @@ export function mapJobStage(row: JobStageRow): JobStage {
 }
 
 export function mapJobEvent(row: JobEventRow): JobEvent {
+  return parseJobEvent(row, null);
+}
+
+function mapJobEventWithActor(row: JobEventWithActorRow): JobEvent {
+  return parseJobEvent(row, row.actor?.name ?? null);
+}
+
+function parseJobEvent(row: JobEventRow, actorName: string | null): JobEvent {
   // DB currently stores event_type as text; this parse intentionally fails fast until the column is constrained.
   return JobEvent.parse({
+    actorName,
     actorUserId: row.actorUserId,
     eventType: row.eventType,
     id: row.id,
@@ -379,6 +392,13 @@ export async function getJob({
     with: {
       events: {
         orderBy: [asc(jobEvents.occurredAt), asc(jobEvents.id)],
+        with: {
+          actor: {
+            columns: {
+              name: true,
+            },
+          },
+        },
       },
       product: {
         columns: {
@@ -679,7 +699,7 @@ function mapJobWorkflowEvents({
   stageRows,
 }: {
   access: UserAccessSummary;
-  eventRows: JobEventRow[];
+  eventRows: JobEventWithActorRow[];
   stageRows: JobStageRow[];
 }): JobEvent[] {
   const stageRowsById = new Map(stageRows.map((stage) => [stage.id, stage]));
@@ -691,7 +711,7 @@ function mapJobWorkflowEvents({
       const stage = stageRowsById.get(event.stageId);
       return stage ? canViewStage(access, stage) : false;
     })
-    .map(mapJobEvent);
+    .map(mapJobEventWithActor);
 }
 
 async function transitionJobStage({

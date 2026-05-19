@@ -21,4 +21,6 @@ Follow `../../.sandcastle/CODING_STANDARDS.md`.
   `Intl.DateTimeFormat`, `toLocaleDateString`, or `toLocaleString` formatting in components.
 - Displayed currency values must use `src/utils/number.ts` `formatCurrency`; do not add one-off
   `Intl.NumberFormat` currency-style formatting in components.
+- Prefer `src/components/ui/scroll-area.tsx` `ScrollArea` for page and panel scrolling instead of
+  native `overflow-y-auto`.
 - Do not test via the browser unless asked.

@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { ButtonLink } from '@/components/ButtonLink.js';
+import { DateDisplay } from '@/components/DateDisplay.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
@@ -28,7 +29,6 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatDate } from '@/utils/date.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { useQuoteStateMutation } from './hooks/use-quote-state-mutation.js';
@@ -183,8 +183,11 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                 <QuoteFact label="Status" value={quoteStatusLabels[quote.status]} />
                 <QuoteFact label="Product" value={`${quote.productName} (${quote.productModelCode})`} />
                 <QuoteFact label="Salesperson" value={quote.salesPersonName ?? 'Unassigned'} />
-                <QuoteFact label="Valid until" value={formatDate(quote.validUntil, 'short', 'Not set')} />
-                <QuoteFact label="Sent" value={formatDate(quote.sentAt, 'medium', 'Not sent')} />
+                <QuoteFact label="Valid until" value={<DateDisplay date={quote.validUntil} emptyValue="Not set" />} />
+                <QuoteFact
+                  label="Sent"
+                  value={<DateDisplay date={quote.sentAt} emptyValue="Not sent" format="medium" />}
+                />
                 <QuoteFact label="Total" value={formatCurrency(quote.total, currencyCode)} />
                 <QuoteFact label="Discount" value={formatCurrency(quote.discount, currencyCode)} />
                 <QuoteFact
@@ -323,7 +326,7 @@ const CreateJobFromQuoteDialog: React.FC<{
                 }
               >
                 <CalendarIcon data-icon="inline-start" />
-                <span className="min-w-0 truncate">{formatDate(dueDate || null, 'short', 'No due date')}</span>
+                <DateDisplay className="min-w-0 truncate" date={dueDate || null} emptyValue="No due date" />
               </PopoverTrigger>
               <PopoverContent align="start" className="w-auto p-0">
                 <Calendar

@@ -5,6 +5,7 @@ import { PanelLeftIcon } from 'lucide-react';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -334,17 +335,16 @@ function SidebarSeparator({ className, ...props }: React.ComponentProps<typeof S
   );
 }
 
-function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
+function SidebarContent({ children, className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div
+    <ScrollArea
       data-slot="sidebar-content"
       data-sidebar="content"
-      className={cn(
-        'no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-auto group-data-[collapsible=icon]:overflow-hidden',
-        className,
-      )}
+      className={cn('min-h-0 flex-1 group-data-[collapsible=icon]:overflow-hidden', className)}
       {...props}
-    />
+    >
+      <div className="flex min-h-full flex-col gap-0">{children}</div>
+    </ScrollArea>
   );
 }
 

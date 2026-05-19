@@ -1,4 +1,3 @@
-import { jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobCode, JobListInput, JobSummary, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -82,16 +81,16 @@ const JobCodeHoverCard: React.FC<{
   const job = jobQuery.data?.items[0] ?? null;
 
   return (
-    <HoverCard onOpenChange={setIsOpen} open={isOpen}>
-      <HoverCardTrigger render={children} />
-      <HoverCardContent align="start" className="w-96 max-w-[calc(100vw-2rem)]">
+    <HoverCard onOpenChange={setIsOpen}>
+      <HoverCardTrigger render={<span className="inline-flex">{children}</span>} />
+      <HoverCardContent align="start" className="w-96 max-w-[calc(100vw-2rem)]" side="top">
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="truncate font-medium">{jobCode}</div>
-              <div className="text-xs text-muted-foreground">Job state</div>
             </div>
             {job ? <JobLifecycleStatusBadge className="shrink-0" status={job.lifecycleStatus} /> : null}
+            {jobQuery.isFetching ? <Skeleton className="h-7 w-20 shrink-0 rounded-full" /> : null}
           </div>
           <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job preview." />
           {jobQuery.isFetching ? <JobPreviewSkeleton /> : null}
@@ -109,7 +108,7 @@ const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => (
   <div className="flex flex-col gap-3">
     <div className="grid grid-cols-2 gap-2 text-sm">
       <JobPreviewFact label="Due" value={<DateDisplay date={job.dueDate} emptyValue="No date" />} />
-      <JobPreviewFact label="Status" value={jobLifecycleStatusLabels[job.lifecycleStatus]} />
+      <JobPreviewFact label="Customer" value={job.customerCompanyName ?? 'Standalone'} />
       <JobPreviewFact label="Product" value={`${job.productName} (${job.productModelCode})`} />
       <JobPreviewFact label="Quote" value={job.quoteCode ?? 'None'} />
     </div>

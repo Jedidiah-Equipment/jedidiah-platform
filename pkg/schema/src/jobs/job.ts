@@ -273,6 +273,7 @@ export const Job = z.object({
 
 export type JobSummary = z.infer<typeof JobSummary>;
 export const JobSummary = Job.extend({
+  customerCompanyName: z.string().trim().min(1).nullable(),
   productModelCode: z.string().trim().min(1),
   productName: z.string().trim().min(1),
   quoteCode: QuoteCode.nullable(),

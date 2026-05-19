@@ -23,9 +23,3 @@ export const authClient = createAuthClient({
   baseURL: config.authBaseUrl,
   plugins: [adminClient({ ac, roles: authRoles })],
 });
-
-export async function getCurrentSession() {
-  const { data } = await authClient.getSession();
-
-  return data;
-}

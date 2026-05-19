@@ -1,18 +1,11 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 import { AuthenticatedRouteShell } from '@/components/app-shell/AuthenticatedRouteShell.js';
-import { getCurrentSession } from '@/lib/auth-client.js';
+import { requireRouteSession } from '@/lib/route-auth.js';
 
 export const Route = createFileRoute('/_authed')({
-  beforeLoad: async () => {
-    const session = await getCurrentSession();
-
-    if (!session) {
-      throw redirect({
-        to: '/login',
-      });
-    }
-
+  beforeLoad: async ({ context }) => {
+    const session = await requireRouteSession(context);
     return { session };
   },
   component: AuthedRoute,

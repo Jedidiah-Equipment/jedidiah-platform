@@ -3,9 +3,10 @@ import { auditEvents, type Db, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { AppRole } from '@pkg/schema';
 import pino from 'pino';
-import { describe, expect } from 'vitest';
+import { beforeEach, describe, expect } from 'vitest';
 
 import { parseBetterAuthRole } from '@/auth/session.js';
+import { clearMockEmailMessages, getMockEmailMessages } from '@/email/mock-email.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
@@ -211,6 +212,65 @@ describe('users.list', () => {
         userId: currentDepartmentUserId,
       }),
     ).resolves.toEqual([]);
+  });
+});
+
+describe('users.sendVerificationEmail', () => {
+  beforeEach(() => {
+    clearMockEmailMessages();
+  });
+
+  test('rejects unauthenticated callers', async ({ context }) => {
+    await expect(
+      context.createAnonCaller().users.sendVerificationEmail({ userId: '00000000-0000-4000-8000-000000000099' }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  test('rejects non-admin roles', async ({ context }) => {
+    await expect(
+      context
+        .createCaller(mockSession('sales'))
+        .users.sendVerificationEmail({ userId: '00000000-0000-4000-8000-000000000099' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('returns NOT_FOUND for unknown userId', async ({ context }) => {
+    await expect(
+      context.createCaller().users.sendVerificationEmail({ userId: '00000000-0000-4000-8000-000000000099' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  test('returns BAD_REQUEST when user email is already verified', async ({ context }) => {
+    await createUser(context.db, {
+      email: 'verified@example.com',
+      emailVerified: true,
+      id: '00000000-0000-4000-8000-000000000010',
+      name: 'Verified User',
+      role: 'sales',
+    });
+
+    await expect(
+      context.createCaller().users.sendVerificationEmail({ userId: '00000000-0000-4000-8000-000000000010' }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  test('sends mock verification email for unverified user', async ({ context }) => {
+    await createUser(context.db, {
+      email: 'unverified@example.com',
+      emailVerified: false,
+      id: '00000000-0000-4000-8000-000000000011',
+      name: 'Unverified User',
+      role: 'sales',
+    });
+
+    await context.createCaller().users.sendVerificationEmail({
+      userId: '00000000-0000-4000-8000-000000000011',
+    });
+
+    const messages = getMockEmailMessages();
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({ to: 'unverified@example.com', type: 'email-verification' });
+    expect(messages[0]?.url).toContain('/verify-email?token=');
   });
 });
 

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { AppPermission, AppRole, Department, UserAccessSummary, UserPassword, UserSummary } from './authorization.js';
+import {
+  AppPermission,
+  AppRole,
+  Department,
+  UserAccessSummary,
+  UserAccount,
+  UserPassword,
+  UserSummary,
+} from './authorization.js';
 
 describe('Department', () => {
   it('accepts supported job departments', () => {
@@ -78,6 +86,26 @@ describe('UserSummary', () => {
         role: 'sales',
       }).departments,
     ).toEqual(['dispatch']);
+  });
+});
+
+describe('UserAccount', () => {
+  it('parses a user without department memberships', () => {
+    expect(
+      UserAccount.parse({
+        email: 'user@example.com',
+        emailVerified: true,
+        id: 'user_123',
+        name: 'User Example',
+        role: 'sales',
+      }),
+    ).toEqual({
+      email: 'user@example.com',
+      emailVerified: true,
+      id: 'user_123',
+      name: 'User Example',
+      role: 'sales',
+    });
   });
 });
 

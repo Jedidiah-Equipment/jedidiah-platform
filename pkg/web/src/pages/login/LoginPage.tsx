@@ -1,6 +1,6 @@
 import { demoUsers, departmentLabels, getRolePermissions, roleLabels } from '@pkg/domain';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { AlertCircleIcon, Loader2Icon, LogInIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
@@ -16,9 +16,7 @@ import { authClient } from '@/lib/auth-client.js';
 import { clearReactQueryCache } from '@/lib/trpc-cache.js';
 import { LoginForm } from './types.js';
 
-type LoginPageProps = Record<string, never>;
-
-export const LoginPage: React.FC<LoginPageProps> = () => {
+export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +72,19 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
                   {(field) => <field.TextField autoComplete="email" inputMode="email" label="Email" />}
                 </form.AppField>
 
-                <form.AppField name="password">{(field) => <field.PasswordField label="Password" />}</form.AppField>
+                <form.AppField name="password">
+                  {(field) => (
+                    <div className="flex flex-col gap-1">
+                      <field.PasswordField label="Password" />
+                      <Link
+                        className="self-end text-sm text-muted-foreground hover:text-foreground"
+                        to="/forgot-password"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+                  )}
+                </form.AppField>
 
                 {error ? (
                   <Alert variant="destructive">

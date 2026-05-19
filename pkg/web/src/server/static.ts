@@ -34,6 +34,11 @@ await app.register(fastifyStatic, {
   wildcard: false,
 });
 
+app.get('/health', async () => ({
+  ok: true,
+  ...config.deployment,
+}));
+
 app.get('/assets/*', (request, reply) => {
   const { '*': assetPath } = request.params as { '*': string };
 

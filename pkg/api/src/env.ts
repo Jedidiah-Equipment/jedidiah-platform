@@ -32,7 +32,7 @@ export const ApiConfig = z
     AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
     AUTH_TRUSTED_ORIGINS: TrustedOrigins,
     EMAIL_PROVIDER: z.enum(['mock', 'resend']).default('mock'),
-    EMAIL_FROM: z.string().min(1).default('noreply@jedidiahequipment.com'),
+    EMAIL_FROM: z.string().min(1).default('noreply@jedidiahequipment.co.za'),
     RESEND_API_KEY: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_MODEL: z.string().min(1).default('gpt-5.5'),

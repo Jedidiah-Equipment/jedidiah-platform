@@ -28,7 +28,7 @@ export async function buildServer(config: ApiConfig = getApiConfig()) {
 
   await registerAuthHandler(app);
   await registerAiStreamRoute(app);
-  await registerHealthRoutes(app);
+  await registerHealthRoutes(app, config);
 
   const trpcOptions = {
     router: appRouter,

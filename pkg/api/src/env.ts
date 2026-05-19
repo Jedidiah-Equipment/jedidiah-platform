@@ -40,6 +40,11 @@ export const ApiConfig = z
     PORT: z.coerce.number().int().positive().default(7002),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
     LOG_DOMAINS_DISABLED: z.string().optional(),
+    RAILWAY_DEPLOYMENT_ID: z.string().min(1).optional(),
+    RAILWAY_SNAPSHOT_ID: z.string().min(1).optional(),
+    RAILWAY_SERVICE_NAME: z.string().min(1).optional(),
+    RAILWAY_ENVIRONMENT_NAME: z.string().min(1).optional(),
+    RAILWAY_GIT_COMMIT_SHA: z.string().min(1).optional(),
   })
   .superRefine((config, ctx) => {
     if (config.EMAIL_PROVIDER === 'resend' && !config.RESEND_API_KEY) {

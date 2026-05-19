@@ -16,9 +16,22 @@ export const ServerConfig = z
     APP_BASE_URL: z.url(),
     API_BASE_URL: z.url(),
     AUTH_BASE_URL: z.url(),
+    RAILWAY_DEPLOYMENT_ID: z.string().min(1).optional(),
+    RAILWAY_SNAPSHOT_ID: z.string().min(1).optional(),
+    RAILWAY_SERVICE_NAME: z.string().min(1).optional(),
+    RAILWAY_ENVIRONMENT_NAME: z.string().min(1).optional(),
+    RAILWAY_GIT_COMMIT_SHA: z.string().min(1).optional(),
   })
   .transform((env) => ({
     port: env.PORT,
+    deployment: {
+      appEnv: env.APP_ENV,
+      serviceName: env.RAILWAY_SERVICE_NAME ?? null,
+      environmentName: env.RAILWAY_ENVIRONMENT_NAME ?? null,
+      deploymentId: env.RAILWAY_DEPLOYMENT_ID ?? null,
+      snapshotId: env.RAILWAY_SNAPSHOT_ID ?? null,
+      commitSha: env.RAILWAY_GIT_COMMIT_SHA ?? null,
+    },
     clientConfig: {
       appEnv: env.APP_ENV,
       appBaseUrl: env.APP_BASE_URL,

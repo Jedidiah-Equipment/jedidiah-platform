@@ -182,6 +182,27 @@ describe('assistant chat persistence', () => {
 
     expect(deriveAssistantChatTitle(chat.repository)).toBe('Please summarize customer activity');
   });
+
+  it('keeps the title based on the first user turn after later prompts', () => {
+    const chat = createAssistantChat('chat-1', new Date('2026-05-18T12:00:00.000Z'));
+    const withFirstTurn = appendAssistantChatRepositoryItem(
+      chat,
+      repositoryItem(userMessage('message-1', 'Show me active jobs'), null),
+      new Date('2026-05-18T12:01:00.000Z'),
+    );
+    const withAssistant = appendAssistantChatRepositoryItem(
+      withFirstTurn,
+      repositoryItem(assistantMessage('message-2', 'Here are the active jobs.'), 'message-1'),
+      new Date('2026-05-18T12:02:00.000Z'),
+    );
+    const withFollowUp = appendAssistantChatRepositoryItem(
+      withAssistant,
+      repositoryItem(userMessage('message-3', 'Now filter that to welding'), 'message-2'),
+      new Date('2026-05-18T12:03:00.000Z'),
+    );
+
+    expect(withFollowUp.title).toBe('Show me active jobs');
+  });
 });
 
 function repositoryItem(message: ThreadMessage, parentId: string | null): ExportedMessageRepositoryItem {

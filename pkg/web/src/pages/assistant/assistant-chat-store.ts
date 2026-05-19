@@ -180,22 +180,25 @@ export function appendAssistantChatRepositoryItem(
 }
 
 export function deriveAssistantChatTitle(repository: AssistantChatRepository): string {
-  const titleParts: string[] = [];
-
   for (const item of repository.messages) {
     if (item.message.role !== 'user') {
       continue;
     }
 
-    for (const part of item.message.content) {
-      if (part.type === 'text') {
-        titleParts.push(part.text);
-      }
-    }
+    const text = item.message.content
+      .filter((part) => part.type === 'text')
+      .map((part) => part.text)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return formatAssistantChatTitle(text);
   }
 
-  const text = titleParts.join(' ').replace(/\s+/g, ' ').trim();
+  return DEFAULT_CHAT_TITLE;
+}
 
+function formatAssistantChatTitle(text: string): string {
   if (!text) {
     return DEFAULT_CHAT_TITLE;
   }

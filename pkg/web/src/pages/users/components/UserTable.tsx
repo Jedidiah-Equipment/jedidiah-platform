@@ -20,7 +20,6 @@ import {
 } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPageCount, type SortOptions } from '@/components/data-table/table-state.js';
-import { DepartmentIcon } from '@/components/departments/index.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 
@@ -108,7 +107,7 @@ export const UserTable: React.FC<UserTableProps> = ({
       },
       {
         accessorKey: 'role',
-        cell: ({ row }) => <Badge variant="outline">{roleLabels[row.original.role]}</Badge>,
+        cell: ({ row }) => <span>{roleLabels[row.original.role]}</span>,
         enableColumnFilter: true,
         enableSorting: true,
         filterFn: userRoleFilter,
@@ -116,7 +115,7 @@ export const UserTable: React.FC<UserTableProps> = ({
       },
       {
         accessorKey: 'departments',
-        cell: ({ row }) => <DepartmentBadges departments={row.original.departments} />,
+        cell: ({ row }) => <DepartmentList departments={row.original.departments} />,
         enableColumnFilter: true,
         enableSorting: false,
         filterFn: userDepartmentsFilter,
@@ -124,11 +123,7 @@ export const UserTable: React.FC<UserTableProps> = ({
       },
       {
         accessorKey: 'emailVerified',
-        cell: ({ row }) => (
-          <Badge variant={row.original.emailVerified ? 'secondary' : 'outline'}>
-            {row.original.emailVerified ? 'Verified' : 'Unverified'}
-          </Badge>
-        ),
+        cell: ({ row }) => <span>{row.original.emailVerified ? 'Verified' : 'Unverified'}</span>,
         enableColumnFilter: true,
         enableSorting: true,
         filterFn: userEmailVerifiedFilter,
@@ -272,21 +267,12 @@ function userDepartmentsFilter(row: { original: UserSummary }, _columnId: string
   );
 }
 
-const DepartmentBadges: React.FC<{ departments: UserSummary['departments'] }> = ({ departments }) => {
+const DepartmentList: React.FC<{ departments: UserSummary['departments'] }> = ({ departments }) => {
   if (departments.length === 0) {
     return <span className="text-muted-foreground">None</span>;
   }
 
-  return (
-    <div className="flex flex-wrap gap-1">
-      {departments.map((department) => (
-        <Badge key={department} variant="secondary">
-          <DepartmentIcon department={department} />
-          {departmentLabels[department]}
-        </Badge>
-      ))}
-    </div>
-  );
+  return <span>{departments.map((department) => departmentLabels[department]).join(', ')}</span>;
 };
 
 function normalizeFilterValue(value: unknown): string {

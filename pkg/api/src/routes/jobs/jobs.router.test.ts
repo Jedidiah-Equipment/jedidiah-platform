@@ -428,9 +428,9 @@ describe('job stage transitions', () => {
 
     const detail = await caller.jobs.get({ id: created.id });
     expect(detail.workflowEvents.map((event) => event.eventType)).toEqual([
-      'stage.started',
-      'stage.status_changed',
       'stage.completed',
+      'stage.status_changed',
+      'stage.started',
     ]);
     expect(detail.workflowEvents.map((event) => event.actorName)).toEqual(['Test User', 'Test User', 'Test User']);
   });

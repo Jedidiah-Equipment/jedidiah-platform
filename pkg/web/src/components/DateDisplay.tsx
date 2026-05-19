@@ -39,7 +39,6 @@ export const DateDisplay: React.FC<DateDisplayProps> = ({
         render={
           <span
             className={cn('cursor-help decoration-dotted underline-offset-2 hover:underline', className)}
-            title={display.tooltip}
             {...props}
           >
             {display.label}

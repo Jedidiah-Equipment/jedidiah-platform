@@ -1,6 +1,7 @@
 import { AuditEntityType, type AuditEvent, type AuditListInput } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { EyeIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -12,9 +13,13 @@ import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-que
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
 import { Badge } from '@/components/ui/badge.js';
+import { Button } from '@/components/ui/button.js';
+import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover.js';
+import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
+import { formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
 
 type DateRangeFilterValue = {
   end?: string;
@@ -46,6 +51,9 @@ const auditActionColorClassNames = {
   deleted: 'border-red-500/50 bg-red-500/15 text-red-800 dark:text-red-200',
   updated: 'border-orange-500/50 bg-orange-500/15 text-orange-800 dark:text-orange-200',
 } as const satisfies Record<AuditEvent['action'], string>;
+
+const auditChangesRawJsonClassName =
+  'max-h-44 overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-xs whitespace-pre-wrap text-muted-foreground';
 
 const auditEntityTypeOptions = AuditEntityType.options.map((entityType) => ({
   label: auditEntityTypeLabels[entityType],
@@ -139,7 +147,9 @@ export const AuditTable: React.FC = () => {
       },
       {
         accessorKey: 'entityType',
-        cell: ({ row }) => <Badge variant="outline">{auditEntityTypeLabels[row.original.entityType]}</Badge>,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">{auditEntityTypeLabels[row.original.entityType]}</span>
+        ),
         enableColumnFilter: true,
         enableSorting: false,
         header: 'Entity',
@@ -161,10 +171,14 @@ export const AuditTable: React.FC = () => {
       },
       {
         accessorKey: 'summary',
-        cell: ({ row }) => <span className="text-muted-foreground">{row.original.summary}</span>,
+        cell: ({ row }) => <span className="block truncate text-muted-foreground">{row.original.summary}</span>,
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Summary',
+        meta: {
+          cellClassName: 'max-w-[28rem]',
+          headerClassName: 'w-[28rem]',
+        },
       },
       {
         accessorKey: 'changes',
@@ -173,8 +187,8 @@ export const AuditTable: React.FC = () => {
         enableSorting: false,
         header: 'Changes',
         meta: {
-          cellClassName: 'max-w-80',
-          headerClassName: 'w-80',
+          cellClassName: 'max-w-[42rem]',
+          headerClassName: 'w-[42rem]',
         },
       },
     ],
@@ -286,8 +300,96 @@ const ChangesCell: React.FC<ChangesCellProps> = ({ changes }) => {
     return <span className="text-muted-foreground">None</span>;
   }
 
-  return <code className="block truncate font-mono text-xs text-muted-foreground">{JSON.stringify(changes)}</code>;
+  const displays = getAuditChangeDisplays(changes);
+  const previewDisplays = displays.slice(0, 2);
+  const hiddenCount = displays.length - previewDisplays.length;
+
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        {previewDisplays.map((display) => (
+          <span
+            className="max-w-72 shrink-0 truncate rounded-md border border-border/70 bg-muted/30 px-1.5 py-0.5 text-xs text-muted-foreground"
+            key={display.key}
+            title={`${display.field}: ${display.from} -> ${display.to}`}
+          >
+            <AuditChangePreviewText display={display} />
+          </span>
+        ))}
+        {hiddenCount > 0 ? (
+          <Badge className="shrink-0 text-muted-foreground" variant="outline">
+            +{hiddenCount}
+          </Badge>
+        ) : null}
+      </div>
+      <AuditChangesDetails changes={changes} displays={displays} />
+    </div>
+  );
 };
+
+type AuditChangePreviewTextProps = {
+  display: ReturnType<typeof getAuditChangeDisplays>[number];
+};
+
+const AuditChangePreviewText: React.FC<AuditChangePreviewTextProps> = ({ display }) => {
+  const [label, value] = display.preview.split(/:(.*)/s);
+
+  if (!value) {
+    return <span className="font-medium text-foreground">{display.preview}</span>;
+  }
+
+  return (
+    <>
+      <span className="font-medium text-foreground">{label}:</span>
+      {value}
+    </>
+  );
+};
+
+type AuditChangesDetailsProps = {
+  changes: NonNullable<AuditTableEvent['changes']>;
+  displays: ReturnType<typeof getAuditChangeDisplays>;
+};
+
+const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, displays }) => (
+  <Popover>
+    <PopoverTrigger render={<Button aria-label="View audit changes" size="icon-xs" variant="ghost" />}>
+      <EyeIcon />
+    </PopoverTrigger>
+    <PopoverContent align="end" className="w-[min(42rem,calc(100vw-2rem))] gap-3 p-3">
+      <PopoverHeader>
+        <PopoverTitle>Change details</PopoverTitle>
+      </PopoverHeader>
+
+      <ScrollArea className="max-h-80">
+        <div className="min-w-[34rem] space-y-3 pr-3">
+          <div className="overflow-hidden rounded-md border">
+            <div className="grid grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)] border-b bg-muted/40 text-xs font-medium text-muted-foreground">
+              <div className="px-2 py-1.5">Field</div>
+              <div className="px-2 py-1.5">From</div>
+              <div className="px-2 py-1.5">To</div>
+            </div>
+            {displays.map((display) => (
+              <div
+                className="grid grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)] border-b text-xs last:border-b-0"
+                key={display.key}
+              >
+                <div className="px-2 py-1.5 font-medium text-foreground">{display.field}</div>
+                <div className="min-w-0 break-words px-2 py-1.5 text-muted-foreground">{display.from}</div>
+                <div className="min-w-0 break-words px-2 py-1.5 text-muted-foreground">{display.to}</div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-muted-foreground">Raw JSON</div>
+            <pre className={auditChangesRawJsonClassName}>{formatAuditChangesJson(changes)}</pre>
+          </div>
+        </div>
+      </ScrollArea>
+    </PopoverContent>
+  </Popover>
+);
 
 function getMultiSelectFilterValue(columnFilters: ColumnFiltersState, id: 'actorUserId' | 'entityType'): string[] {
   const value = columnFilters.find((filter) => filter.id === id)?.value;

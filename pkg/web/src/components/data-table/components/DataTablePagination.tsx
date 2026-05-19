@@ -3,7 +3,9 @@ import type React from 'react';
 import {
   Pagination,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
+  PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination.js';
@@ -25,11 +27,12 @@ export function DataTablePagination<TData>({
   const pagination = table.getState().pagination;
   const page = pagination.pageIndex + 1;
   const pageCount = table.getPageCount();
+  const paginationItems = getPaginationItems(page, pageCount);
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="text-sm text-muted-foreground">{totalLabel(total)}</div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+        <div className="text-sm text-muted-foreground">{totalLabel(total)}</div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Rows</span>
           <Select
@@ -50,22 +53,50 @@ export function DataTablePagination<TData>({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {pageCount}
-          </span>
-          <Pagination className="w-auto">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()} />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext disabled={!table.getCanNextPage()} onClick={() => table.nextPage()} />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
       </div>
+      <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()} />
+          </PaginationItem>
+          {paginationItems.map((item, index) => (
+            <PaginationItem key={item === 'ellipsis' ? `ellipsis-${index}` : item}>
+              {item === 'ellipsis' ? (
+                <PaginationEllipsis />
+              ) : (
+                <PaginationLink isActive={item === page} onClick={() => table.setPageIndex(item - 1)}>
+                  {item}
+                </PaginationLink>
+              )}
+            </PaginationItem>
+          ))}
+          <PaginationItem>
+            <PaginationNext disabled={!table.getCanNextPage()} onClick={() => table.nextPage()} />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
     </div>
   );
+}
+
+type PaginationItemValue = 'ellipsis' | number;
+
+export function getPaginationItems(page: number, pageCount: number): PaginationItemValue[] {
+  if (pageCount <= 3) {
+    return range(1, pageCount);
+  }
+
+  if (page <= 3) {
+    return [1, 2, 3, 'ellipsis'];
+  }
+
+  if (page >= pageCount - 2) {
+    return ['ellipsis', ...range(pageCount - 2, pageCount)];
+  }
+
+  return ['ellipsis', page - 1, page, page + 1, 'ellipsis'];
+}
+
+function range(start: number, end: number): number[] {
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }

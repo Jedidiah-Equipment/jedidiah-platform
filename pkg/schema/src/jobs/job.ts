@@ -285,7 +285,8 @@ export const JobSortBy = z.enum(['code', 'createdAt', 'id', 'lifecycleStatus']);
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
-    lifecycleStatuses: z.array(JobLifecycleStatus),
+    jobId: UUID.optional(),
+    lifecycleStatuses: z.array(JobLifecycleStatus).default(['active']),
   })
   .default({
     lifecycleStatuses: ['active'],

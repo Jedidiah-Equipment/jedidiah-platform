@@ -14,13 +14,13 @@ import { useConstrainedTableState } from '@/components/data-table/hooks/use-cons
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
-import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 
@@ -183,7 +183,12 @@ const QuoteTable: React.FC = () => {
       {
         accessorKey: 'jobCode',
         cell: ({ row }) => (
-          <QuoteJobCode canOpenJob={canOpenJobs} jobCode={row.original.jobCode} jobId={row.original.jobId} />
+          <JobCodeDisplay
+            canOpenJob={canOpenJobs}
+            jobCode={row.original.jobCode}
+            jobId={row.original.jobId}
+            withHoverCard
+          />
         ),
         enableColumnFilter: false,
         enableSorting: true,
@@ -248,26 +253,6 @@ const QuoteTable: React.FC = () => {
       totalLabel={(value) => `${value} ${value === 1 ? 'quote' : 'quotes'}`}
     />
   );
-};
-
-const QuoteJobCode: React.FC<{
-  canOpenJob: boolean;
-  jobCode: QuoteSummary['jobCode'];
-  jobId: QuoteSummary['jobId'];
-}> = ({ canOpenJob, jobCode, jobId }) => {
-  if (!jobCode) {
-    return <span className="text-muted-foreground">None</span>;
-  }
-
-  if (canOpenJob && jobId) {
-    return (
-      <PrimaryLink params={{ id: jobId }} to="/jobs/$id">
-        {jobCode}
-      </PrimaryLink>
-    );
-  }
-
-  return <span className="font-medium">{jobCode}</span>;
 };
 
 function useQuoteListInput(): QuoteListInput {

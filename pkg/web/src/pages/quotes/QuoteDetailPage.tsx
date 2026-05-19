@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import type { QuoteDetail, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowLeftIcon, BriefcaseBusinessIcon, CalendarIcon, EditIcon, Loader2Icon, XIcon } from 'lucide-react';
@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { ButtonLink } from '@/components/ButtonLink.js';
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
-import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { Button } from '@/components/ui/button.js';
 import { Calendar } from '@/components/ui/calendar.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -29,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { useQuoteStateMutation } from './hooks/use-quote-state-mutation.js';
@@ -200,7 +200,14 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                 />
                 <QuoteFact
                   label="Job"
-                  value={<QuoteJobLink canOpenJob={canOpenJobs} jobCode={quote.jobCode} jobId={quote.jobId} />}
+                  value={
+                    <JobCodeDisplay
+                      canOpenJob={canOpenJobs}
+                      jobCode={quote.jobCode}
+                      jobId={quote.jobId}
+                      withHoverCard
+                    />
+                  }
                 />
               </div>
               {quote.notes ? (
@@ -229,26 +236,6 @@ const QuoteFact: React.FC<{ label: string; value: React.ReactNode }> = ({ label,
     <div className="mt-1 wrap-break-word">{value}</div>
   </div>
 );
-
-const QuoteJobLink: React.FC<{
-  canOpenJob: boolean;
-  jobCode: QuoteDetail['jobCode'];
-  jobId: QuoteDetail['jobId'];
-}> = ({ canOpenJob, jobCode, jobId }) => {
-  if (!jobCode) {
-    return <span className="text-muted-foreground">None</span>;
-  }
-
-  if (canOpenJob && jobId) {
-    return (
-      <PrimaryLink params={{ id: jobId }} to="/jobs/$id">
-        {jobCode}
-      </PrimaryLink>
-    );
-  }
-
-  return <span className="font-medium">{jobCode}</span>;
-};
 
 const QuoteTransitionConfirmationDialog: React.FC<{
   confirmation: QuoteTransitionConfirmation | null;

@@ -165,6 +165,45 @@ describe('jobs.list', () => {
     expect(result.total).toBe(2);
   });
 
+  test('filters directly by job id and combines with lifecycle filtering', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const active = await caller.jobs.create({ productId: context.product.id });
+    const paused = await caller.jobs.create({ productId: context.product.id });
+
+    await caller.jobs.pause({ id: paused.id });
+
+    await expectJobListIds(
+      caller,
+      {
+        filters: {
+          jobId: active.id,
+          lifecycleStatuses: [],
+        },
+      },
+      [active.id],
+    );
+    await expectJobListIds(
+      caller,
+      {
+        filters: {
+          jobId: paused.id,
+          lifecycleStatuses: [],
+        },
+      },
+      [paused.id],
+    );
+    await expectJobListIds(
+      caller,
+      {
+        filters: {
+          jobId: paused.id,
+          lifecycleStatuses: ['active'],
+        },
+      },
+      [],
+    );
+  });
+
   test('pages list results and reports the filtered total', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const jobs = [

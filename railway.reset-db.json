@@ -1,0 +1,35 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "pnpm --filter @pkg/seed... build",
+    "watchPatterns": [
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "turbo.json",
+      "tsconfig.base.json",
+      "pkg/core/**",
+      "pkg/db/**",
+      "pkg/domain/**",
+      "pkg/schema/**",
+      "pkg/seed/**"
+    ]
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter @pkg/seed db:reset:remote",
+    "restartPolicyType": "NEVER"
+  },
+  "environments": {
+    "staging": {
+      "deploy": {
+        "restartPolicyType": "NEVER"
+      }
+    },
+    "production": {
+      "deploy": {
+        "restartPolicyType": "NEVER"
+      }
+    }
+  }
+}

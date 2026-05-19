@@ -15,6 +15,13 @@ export function createAuth(database: Db) {
     baseURL: config.API_BASE_URL,
     secret: config.AUTH_SECRET,
     trustedOrigins: config.AUTH_TRUSTED_ORIGINS,
+    advanced: {
+      defaultCookieAttributes: {
+        partitioned: config.APP_ENV !== 'development',
+        sameSite: config.APP_ENV === 'development' ? 'lax' : 'none',
+        secure: config.APP_ENV !== 'development',
+      },
+    },
     database: drizzleAdapter(database, {
       provider: 'pg',
       schema,

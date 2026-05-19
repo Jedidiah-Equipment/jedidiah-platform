@@ -53,7 +53,7 @@ const ThreadWelcome: FC = () => {
   return (
     <div className="my-auto flex min-h-72 flex-col justify-center px-2">
       <h1 className="font-semibold text-2xl">Assistant</h1>
-      <p className="text-muted-foreground text-sm">This conversation is not saved.</p>
+      <p className="text-muted-foreground text-sm">Conversations are saved locally in this browser.</p>
     </div>
   );
 };

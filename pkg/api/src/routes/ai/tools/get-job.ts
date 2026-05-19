@@ -3,6 +3,7 @@ import { type AiToolBase, type JobDetail, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
+import { toAiToolJsonSchema } from './json-schema.js';
 
 const GetJobInput = z.object({
   id: UUID,
@@ -15,7 +16,7 @@ export type GetJobTool = AiToolBase<'getJob', JobDetail, GetJobInput, AiContext>
 export const getJobTool: GetJobTool = {
   name: 'getJob',
   inputSchema: GetJobInput,
-  jsonSchema: z.toJSONSchema(GetJobInput) as Record<string, unknown>,
+  jsonSchema: toAiToolJsonSchema(GetJobInput),
   requiredPermission: 'job:read',
   async handler(args: unknown, ctx: AiContext) {
     const input = GetJobInput.parse(args);

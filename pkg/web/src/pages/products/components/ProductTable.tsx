@@ -34,7 +34,7 @@ export const useProductTableStore = createPersistedDataTableStore({
 });
 
 const productSortOptions: SortOptions<ProductListInput> = {
-  allowedSortIds: ['basePrice', 'createdAt', 'id', 'modelCode', 'name'],
+  allowedSortIds: ['basePrice', 'createdAt', 'modelCode', 'name'],
   defaultSort: {
     id: 'name',
   },
@@ -121,15 +121,15 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
         header: 'Updated',
       },
       {
-        accessorKey: 'id',
+        accessorKey: 'description',
         cell: ({ row }) => (
-          <span className="block max-w-[240px] truncate font-mono text-xs text-muted-foreground">
-            {row.original.id}
+          <span className="block max-w-[320px] truncate text-sm text-muted-foreground">
+            {row.original.description ?? '-'}
           </span>
         ),
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'ID',
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Summary',
       },
     ];
 
@@ -211,7 +211,6 @@ export function useProductListInput(): ProductListInput {
     () =>
       ({
         columnFilters: {
-          id: getColumnFilterValue(columnFilters, 'id'),
           modelCode: getColumnFilterValue(columnFilters, 'modelCode'),
           name: getColumnFilterValue(columnFilters, 'name'),
         },
@@ -225,7 +224,7 @@ export function useProductListInput(): ProductListInput {
   );
 }
 
-function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'id' | 'modelCode' | 'name'): string | undefined {
+function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'modelCode' | 'name'): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;

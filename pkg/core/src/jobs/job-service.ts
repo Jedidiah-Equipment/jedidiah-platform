@@ -1,5 +1,6 @@
 import {
   createLikeSearchPattern,
+  type customers,
   type DatabaseTransaction,
   type Db,
   getPaginationOffset,
@@ -65,7 +66,10 @@ type JobEventWithActorRow = JobEventRow & {
 };
 type JobStageRow = typeof jobStages.$inferSelect;
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
-type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'>;
+type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName'>;
+type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'> & {
+  customer: CustomerRow;
+};
 type JobWithProductRow = JobRow & {
   product: ProductRow;
   quote: QuoteRow | null;
@@ -324,6 +328,13 @@ export async function listJobs({
         columns: {
           code: true,
         },
+        with: {
+          customer: {
+            columns: {
+              companyName: true,
+            },
+          },
+        },
       },
       stages: {
         columns: {
@@ -413,6 +424,13 @@ export async function getJob({
       quote: {
         columns: {
           code: true,
+        },
+        with: {
+          customer: {
+            columns: {
+              companyName: true,
+            },
+          },
         },
       },
       stages: {
@@ -623,6 +641,7 @@ async function completeJobStageFromStatus({
 function mapJobSummary(row: JobWithProductRow): JobSummary {
   return {
     ...mapJob(row),
+    customerCompanyName: row.quote?.customer.companyName ?? null,
     productModelCode: row.product.modelCode,
     productName: row.product.name,
     quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,

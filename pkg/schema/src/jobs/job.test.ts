@@ -45,6 +45,7 @@ describe('JobDetail', () => {
       JobDetail.parse({
         code: 'JOB-00001',
         createdAt: '2026-05-15T08:00:00.000Z',
+        customerCompanyName: null,
         dueDate: null,
         id: jobId,
         lifecycleStatus: 'active',
@@ -176,6 +177,7 @@ describe('JobSummary', () => {
     const summary = {
       code: 'JOB-00001',
       createdAt: '2026-05-15T08:00:00.000Z',
+      customerCompanyName: null,
       dueDate: null,
       id: jobId,
       lifecycleStatus: 'active',

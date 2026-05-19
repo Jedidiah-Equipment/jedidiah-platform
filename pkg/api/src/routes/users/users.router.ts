@@ -1,9 +1,15 @@
-import { isUserCoreError, listUsers, setUserDepartments, type UserCoreError } from '@pkg/core';
+import { getUserById, isUserCoreError, listUsers, setUserDepartments, type UserCoreError } from '@pkg/core';
 import { AuthId, Department } from '@pkg/schema';
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
+import { getApiConfig } from '@/env.js';
+
+import { createAuth } from '../../auth/auth.js';
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
+
+const config = getApiConfig();
 
 const UserDepartmentInput = z.object({
   departments: z.array(Department),
@@ -23,6 +29,22 @@ export const usersRouter = router({
           userId: input.userId,
         }),
       );
+    }),
+  sendVerificationEmail: authorizedProcedure('user:update')
+    .input(z.object({ userId: AuthId }))
+    .mutation(async ({ ctx, input }) => {
+      const targetUser = await mapUserErrors(() => getUserById({ db: ctx.db, userId: input.userId }));
+
+      if (targetUser.emailVerified) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Email is already verified.' });
+      }
+
+      await createAuth(ctx.db).api.sendVerificationEmail({
+        body: {
+          callbackURL: `${config.APP_BASE_URL}/login`,
+          email: targetUser.email,
+        },
+      });
     }),
 });
 

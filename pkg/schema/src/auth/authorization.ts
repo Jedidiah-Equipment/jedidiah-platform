@@ -57,6 +57,11 @@ export const UserSummary = z.object({
   role: AppRole,
 });
 
+export type UserAccount = z.infer<typeof UserAccount>;
+export const UserAccount = UserSummary.omit({
+  departments: true,
+});
+
 export type UserListInput = z.infer<typeof UserListInput>;
 export const UserListInput = z.object({});
 

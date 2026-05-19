@@ -6,6 +6,7 @@ import {
   AuthId,
   Department,
   type UserAccessSummary,
+  UserAccount,
   type UserListResult,
   type UserSummary,
 } from '@pkg/schema';
@@ -28,6 +29,26 @@ export function mapUser(row: UserRow): UserSummary {
     name: row.name,
     role: AppRole.parse(row.role),
   };
+}
+
+export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): Promise<UserAccount> {
+  const [row] = await db
+    .select({
+      email: user.email,
+      emailVerified: user.emailVerified,
+      id: user.id,
+      name: user.name,
+      role: user.role,
+    })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+
+  if (!row) {
+    throw new UserNotFoundError(userId);
+  }
+
+  return UserAccount.parse(row);
 }
 
 export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {

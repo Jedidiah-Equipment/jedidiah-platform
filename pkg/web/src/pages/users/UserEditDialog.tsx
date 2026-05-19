@@ -1,10 +1,12 @@
 import { hasPermission } from '@pkg/domain';
 import type { Department, UserSummary } from '@pkg/schema';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { MailCheckIcon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -100,6 +102,16 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
     },
   });
 
+  const sendVerificationMutation = useMutation({
+    ...trpc.users.sendVerificationEmail.mutationOptions(),
+    onSuccess: async () => {
+      toast.success('Verification email sent');
+    },
+    onError: (error) => {
+      showMutationError(error, 'Unable to send verification email.');
+    },
+  });
+
   const setPasswordMutation = useMutation({
     mutationFn: async (value: UserPasswordFormValues) =>
       unwrapAuthResult(await authClient.admin.setUserPassword({ newPassword: value.newPassword, userId: user.id })),
@@ -130,6 +142,17 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
           onPasswordSubmit={(value) => setPasswordMutation.mutateAsync(value)}
           onSubmit={(value) => saveUserMutation.mutateAsync(value)}
         />
+        {canUpdateProfile && !baselineUser.emailVerified ? (
+          <Button
+            className="w-full"
+            disabled={sendVerificationMutation.isPending}
+            onClick={() => sendVerificationMutation.mutate({ userId: baselineUser.id })}
+            variant="outline"
+          >
+            <MailCheckIcon data-icon="inline-start" />
+            {sendVerificationMutation.isPending ? 'Sending' : 'Send verification email'}
+          </Button>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

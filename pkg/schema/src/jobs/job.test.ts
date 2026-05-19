@@ -6,6 +6,7 @@ import {
   JobDetail,
   JobEvent,
   JobEventDerivationStage,
+  JobListFilters,
   JobStageRollup,
   JobStageStatusInput,
   JobStageSummary,
@@ -198,6 +199,31 @@ describe('JobSummary', () => {
 
     expect(JobSummary.parse(summary).stages).toHaveLength(5);
     expect(() => JobSummary.parse({ ...summary, stages: summary.stages.slice(0, 4) })).toThrow();
+  });
+});
+
+describe('JobListFilters', () => {
+  it('accepts an optional job id filter while preserving default active filtering', () => {
+    expect(JobListFilters.parse(undefined)).toEqual({
+      lifecycleStatuses: ['active'],
+    });
+    expect(
+      JobListFilters.parse({
+        jobId: '00000000-0000-4000-8000-000000000001',
+      }),
+    ).toEqual({
+      jobId: '00000000-0000-4000-8000-000000000001',
+      lifecycleStatuses: ['active'],
+    });
+    expect(
+      JobListFilters.parse({
+        jobId: '00000000-0000-4000-8000-000000000001',
+        lifecycleStatuses: [],
+      }),
+    ).toEqual({
+      jobId: '00000000-0000-4000-8000-000000000001',
+      lifecycleStatuses: [],
+    });
   });
 });
 

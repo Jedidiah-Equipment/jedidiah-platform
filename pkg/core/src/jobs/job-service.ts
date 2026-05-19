@@ -353,6 +353,10 @@ export async function listJobs({
 function buildJobListWhere(input: JobListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
+  if (input.filters.jobId) {
+    conditions.push(eq(jobs.id, input.filters.jobId));
+  }
+
   if (input.filters.lifecycleStatuses.length > 0) {
     conditions.push(inArray(jobs.lifecycleStatus, input.filters.lifecycleStatuses));
   }

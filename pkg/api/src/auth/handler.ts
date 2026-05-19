@@ -43,9 +43,18 @@ async function handleAuthRequest(request: FastifyRequest, reply: FastifyReply): 
     );
 
     reply.status(response.status);
+    const setCookieHeaders = response.headers.getSetCookie();
+
     response.headers.forEach((value, key) => {
-      reply.header(key, value);
+      if (key.toLowerCase() !== 'set-cookie') {
+        reply.header(key, value);
+      }
     });
+
+    if (setCookieHeaders.length > 0) {
+      reply.header('set-cookie', setCookieHeaders);
+    }
+
     reply.send(response.body ? await response.text() : null);
   } catch (error) {
     request.log.error({ error }, 'Authentication request failed');

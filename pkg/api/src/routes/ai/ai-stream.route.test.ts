@@ -2,13 +2,15 @@ import type { Server } from 'node:http';
 import http from 'node:http';
 
 import fastifyCors from '@fastify/cors';
+import { RunContext, type Tool } from '@openai/agents';
 import * as productsCore from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
 import Fastify from 'fastify';
 import { describe, expect, test, vi } from 'vitest';
 
 import type { AiContext } from '@/routes/ai/ai-context.js';
-import { type CreateOpenAIClient, registerAiStreamRoute } from '@/routes/ai/ai-stream.route.js';
+import type { AiAgentRunInput, AiAgentRunner } from '@/routes/ai/ai-openai.js';
+import { registerAiStreamRoute } from '@/routes/ai/ai-stream.route.js';
 import { mockSession } from '@/test/test-utils.js';
 
 function createAiContext({
@@ -27,25 +29,19 @@ function createAiContext({
   };
 }
 
-function createClient(...streams: StubCompletionStream[]): ReturnType<CreateOpenAIClient> {
-  const runToolsMock = vi.fn((params: unknown) => {
-    const nextStream = streams.shift();
-
-    if (!nextStream) {
-      throw new Error('No stub completion stream was queued');
-    }
-
-    nextStream.setParams(params);
-    return nextStream;
-  });
-
+function createRunner(...streams: StubAgentTextStream[]): AiAgentRunner {
   return {
-    chat: {
-      completions: {
-        runTools: runToolsMock,
-      },
-    },
-  } as unknown as ReturnType<CreateOpenAIClient>;
+    run: vi.fn(async (input: AiAgentRunInput) => {
+      const nextStream = streams.shift();
+
+      if (!nextStream) {
+        throw new Error('No stub agent stream was queued');
+      }
+
+      nextStream.setInput(input);
+      return nextStream;
+    }),
+  };
 }
 
 function readSseDataLines(body: string): string[] {
@@ -55,55 +51,75 @@ function readSseDataLines(body: string): string[] {
     .map((line) => line.slice('data: '.length));
 }
 
-class StubCompletionStream {
+class StubAgentTextStream implements AsyncIterable<string | Uint8Array> {
   readonly abort = vi.fn(() => {
-    this.resolveDone();
+    this.resolvePending();
   });
 
-  readonly listeners = new Map<string, Array<(payload: unknown) => void>>();
+  private input: AiAgentRunInput | null = null;
+  private resolvePending: () => void = () => undefined;
 
-  private resolveDone: () => void = () => undefined;
-  private params: unknown = null;
+  constructor(private readonly run: (input: AiAgentRunInput) => AsyncIterable<string | Uint8Array>) {}
 
-  constructor(private readonly run: (stream: StubCompletionStream, params: unknown) => Promise<void> | void) {}
+  setInput(input: AiAgentRunInput): void {
+    this.input = input;
 
-  setParams(params: unknown): void {
-    this.params = params;
-  }
-
-  on(event: string, listener: (payload: unknown) => void): StubCompletionStream {
-    const listeners = this.listeners.get(event) ?? [];
-    listeners.push(listener);
-    this.listeners.set(event, listeners);
-    return this;
-  }
-
-  async done(): Promise<void> {
-    await new Promise<void>((resolve) => {
-      this.resolveDone = resolve;
-      queueMicrotask(async () => {
-        await this.run(this, this.params);
-        resolve();
-      });
-    });
-  }
-
-  emit(event: string, payload: unknown): void {
-    for (const listener of this.listeners.get(event) ?? []) {
-      listener(payload);
+    if (input.signal.aborted) {
+      this.abort();
+      return;
     }
+
+    input.signal.addEventListener('abort', this.abort, { once: true });
+  }
+
+  async *[Symbol.asyncIterator](): AsyncIterator<string | Uint8Array> {
+    if (!this.input) {
+      throw new Error('Stub agent stream was consumed before input was set');
+    }
+
+    yield* this.run(this.input);
+  }
+
+  pending(): AsyncIterable<string | Uint8Array> {
+    return {
+      [Symbol.asyncIterator]: async function* (this: StubAgentTextStream) {
+        await new Promise<void>((resolve) => {
+          this.resolvePending = resolve;
+        });
+      }.bind(this),
+    };
   }
 }
 
+function textDeltas(...deltas: (string | Uint8Array)[]): AsyncIterable<string | Uint8Array> {
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const delta of deltas) {
+        yield delta;
+      }
+    },
+  };
+}
+
+function getFunctionTool(input: AiAgentRunInput, name: string): Extract<Tool<AiContext>, { type: 'function' }> {
+  const functionTool = input.agent.tools.find((tool): tool is Extract<Tool<AiContext>, { type: 'function' }> => {
+    return tool.type === 'function' && tool.name === name;
+  });
+
+  if (!functionTool) {
+    throw new Error(`Expected function tool ${name} to be exposed`);
+  }
+
+  return functionTool;
+}
+
 describe('POST /ai/chat-stream', () => {
-  test('returns 401 without constructing the OpenAI client when there is no session', async () => {
+  test('returns 401 without constructing the agent runner when there is no session', async () => {
     const app = Fastify();
-    const createOpenAIClient = vi.fn(() =>
-      createClient(new StubCompletionStream(() => undefined)),
-    ) as CreateOpenAIClient;
+    const createAgentRunner = vi.fn(() => createRunner(new StubAgentTextStream(() => textDeltas())));
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext({ session: null }),
-      createOpenAIClient,
+      createAgentRunner,
       model: 'test-model',
     });
 
@@ -116,19 +132,16 @@ describe('POST /ai/chat-stream', () => {
     });
 
     expect(response.statusCode).toBe(401);
-    expect(createOpenAIClient).not.toHaveBeenCalled();
+    expect(createAgentRunner).not.toHaveBeenCalled();
   });
 
   test('streams token and done SSE frames in order for an authenticated request', async () => {
     const app = Fastify();
-    const stream = new StubCompletionStream((stub) => {
-      stub.emit('content.delta', { delta: 'Com' });
-      stub.emit('content.delta', { delta: 'pact' });
-    });
+    const stream = new StubAgentTextStream(() => textDeltas('Com', 'pact'));
 
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext(),
-      createOpenAIClient: () => createClient(stream),
+      createAgentRunner: () => createRunner(stream),
       model: 'test-model',
     });
 
@@ -151,11 +164,34 @@ describe('POST /ai/chat-stream', () => {
     ]);
   });
 
+  test('decodes byte token deltas before writing SSE frames', async () => {
+    const app = Fastify();
+    const stream = new StubAgentTextStream(() => textDeltas(new TextEncoder().encode('Compact')));
+
+    await registerAiStreamRoute(app, {
+      buildContext: async () => createAiContext(),
+      createAgentRunner: () => createRunner(stream),
+      model: 'test-model',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/ai/chat-stream',
+      payload: {
+        messages: [{ role: 'user', content: 'Show me loaders' }],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(readSseDataLines(response.body)).toEqual([
+      JSON.stringify({ type: 'token', delta: 'Compact' }),
+      JSON.stringify({ type: 'done' }),
+    ]);
+  });
+
   test('preserves CORS headers on streamed responses', async () => {
     const app = Fastify();
-    const stream = new StubCompletionStream((stub) => {
-      stub.emit('content.delta', { delta: 'Compact' });
-    });
+    const stream = new StubAgentTextStream(() => textDeltas('Compact'));
 
     await app.register(fastifyCors, {
       credentials: true,
@@ -163,7 +199,7 @@ describe('POST /ai/chat-stream', () => {
     });
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext(),
-      createOpenAIClient: () => createClient(stream),
+      createAgentRunner: () => createRunner(stream),
       model: 'test-model',
     });
 
@@ -203,17 +239,12 @@ describe('POST /ai/chat-stream', () => {
       total: 1,
     });
 
-    // runTools handles the full loop in a single runner — simulate it calling the tool
+    // The Agents runner owns the model/tool loop; simulate it calling the tool
     // then streaming the follow-up response in one pass.
-    const stream = new StubCompletionStream(async (stub, params) => {
-      const { tools } = params as {
-        tools: Array<{ function: { name: string; function: (args: unknown) => Promise<unknown> } }>;
-      };
-      const listProductsTool = tools.find((t) => t.function.name === 'listProducts');
-      await listProductsTool?.function.function(null);
-      stub.emit('content.delta', {
-        delta: 'You have Apex Forklift (AF-25) at ZAR 332,500.00.',
-      });
+    const stream = new StubAgentTextStream(async function* (input) {
+      const listProductsTool = getFunctionTool(input, 'listProducts');
+      await listProductsTool.invoke(new RunContext(input.context), 'null');
+      yield 'You have Apex Forklift (AF-25) at ZAR 332,500.00.';
     });
 
     try {
@@ -225,7 +256,7 @@ describe('POST /ai/chat-stream', () => {
               userId: 'test-user-id',
             }),
           }),
-        createOpenAIClient: () => createClient(stream),
+        createAgentRunner: () => createRunner(stream),
         model: 'test-model',
       });
 
@@ -284,14 +315,13 @@ describe('POST /ai/chat-stream', () => {
   test('does not expose tools without the required permission', async () => {
     const app = Fastify();
     let exposedToolNames: string[] | null = null;
+    let reasoningEffort: unknown = null;
     let systemPrompt: string | null = null;
-    const stream = new StubCompletionStream((_stub, params) => {
-      const { messages, tools } = params as {
-        messages: Array<{ content: string; role: string }>;
-        tools: Array<{ function: { name: string } }>;
-      };
-      exposedToolNames = tools.map((tool) => tool.function.name);
-      systemPrompt = messages.find((message) => message.role === 'system')?.content ?? null;
+    const stream = new StubAgentTextStream((input) => {
+      exposedToolNames = input.agent.tools.map((tool) => tool.name);
+      reasoningEffort = input.agent.modelSettings.reasoning?.effort;
+      systemPrompt = typeof input.agent.instructions === 'string' ? input.agent.instructions : null;
+      return textDeltas();
     });
 
     await registerAiStreamRoute(app, {
@@ -304,8 +334,9 @@ describe('POST /ai/chat-stream', () => {
             userId: 'test-user-id',
           },
         }),
-      createOpenAIClient: () => createClient(stream),
+      createAgentRunner: () => createRunner(stream),
       model: 'test-model',
+      reasoningEffort: 'minimal',
     });
 
     const response = await app.inject({
@@ -318,17 +349,16 @@ describe('POST /ai/chat-stream', () => {
 
     expect(response.statusCode).toBe(200);
     expect(exposedToolNames).toEqual([]);
+    expect(reasoningEffort).toBe('minimal');
     expect(systemPrompt).not.toContain('listProducts');
   });
 
   test('returns 400 for oversized authenticated payloads', async () => {
     const app = Fastify();
-    const createOpenAIClient = vi.fn(() =>
-      createClient(new StubCompletionStream(() => undefined)),
-    ) as CreateOpenAIClient;
+    const createAgentRunner = vi.fn(() => createRunner(new StubAgentTextStream(() => textDeltas())));
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext(),
-      createOpenAIClient,
+      createAgentRunner,
       model: 'test-model',
     });
 
@@ -344,23 +374,28 @@ describe('POST /ai/chat-stream', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(createOpenAIClient).not.toHaveBeenCalled();
+    expect(createAgentRunner).not.toHaveBeenCalled();
   });
 
   test('aborts the upstream stream when the client disconnects mid-stream', async () => {
     const app = Fastify();
-    const stream = new StubCompletionStream((stub) => {
-      stub.emit('content.delta', { delta: 'Com' });
-      return new Promise(() => undefined);
+    let stream: StubAgentTextStream;
+    stream = new StubAgentTextStream(() => {
+      return {
+        async *[Symbol.asyncIterator](): AsyncIterator<string | Uint8Array> {
+          yield 'Com';
+          yield* stream.pending();
+        },
+      };
     });
 
     await registerAiStreamRoute(app, {
       buildContext: async () => createAiContext(),
-      createOpenAIClient: () => createClient(stream),
+      createAgentRunner: () => createRunner(stream),
       model: 'test-model',
     });
 
-    await app.listen({ port: 0 });
+    await app.listen({ host: '127.0.0.1', port: 0 });
 
     try {
       const server = app.server as Server;

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "pnpm --filter @pkg/web... build",
+    "watchPatterns": [
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "turbo.json",
+      "tsconfig.base.json",
+      "pkg/api/**",
+      "pkg/domain/**",
+      "pkg/schema/**",
+      "pkg/web/**"
+    ]
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter @pkg/web start",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "environments": {
+    "staging": {
+      "deploy": {
+        "numReplicas": 1
+      }
+    },
+    "production": {
+      "deploy": {
+        "numReplicas": 1
+      }
+    }
+  }
+}

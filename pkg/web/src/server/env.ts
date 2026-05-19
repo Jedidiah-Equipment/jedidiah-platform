@@ -13,17 +13,17 @@ export const ServerConfig = z
   .object({
     APP_ENV: AppEnv,
     PORT: z.coerce.number().int().positive().default(7001),
-    PUBLIC_APP_BASE_URL: z.url(),
-    PUBLIC_API_BASE_URL: z.url(),
-    PUBLIC_AUTH_BASE_URL: z.url(),
+    APP_BASE_URL: z.url(),
+    API_BASE_URL: z.url(),
+    AUTH_BASE_URL: z.url(),
   })
   .transform((env) => ({
     port: env.PORT,
     clientConfig: {
       appEnv: env.APP_ENV,
-      appBaseUrl: env.PUBLIC_APP_BASE_URL,
-      apiBaseUrl: env.PUBLIC_API_BASE_URL,
-      authBaseUrl: env.PUBLIC_AUTH_BASE_URL,
+      appBaseUrl: env.APP_BASE_URL,
+      apiBaseUrl: env.API_BASE_URL,
+      authBaseUrl: env.AUTH_BASE_URL,
     },
   }));
 

@@ -42,7 +42,7 @@ function createAiContext(db: Db, access: UserAccessSummary): AiContext {
   return {
     access,
     db,
-    session: mockSession(access.role ?? 'product-viewer'),
+    session: mockSession(access.role),
   };
 }
 
@@ -63,7 +63,7 @@ async function createActorUser(db: Db) {
 describe('listProductsTool', () => {
   test('returns the same product list result shape as products.list', async ({ context }) => {
     const adminCaller = context.createCaller();
-    const viewerCaller = context.createCaller(mockSession('product-viewer'));
+    const editorCaller = context.createCaller(mockSession('product-editor'));
     await createProduct(adminCaller, 'Compact Loader', {
       modelCode: 'CL-100',
     });
@@ -82,13 +82,13 @@ describe('listProductsTool', () => {
       sortDirection: 'asc',
     } as const;
     const access = createUserAccessSummary({
-      role: 'product-viewer',
+      role: 'product-editor',
       userId: 'test-user-id',
     });
 
     const [toolResult, trpcResult] = await Promise.all([
       listProductsTool.handler(input, createAiContext(context.db, access)),
-      viewerCaller.products.list(input),
+      editorCaller.products.list(input),
     ]);
 
     expect(toolResult).toEqual(trpcResult);
@@ -96,7 +96,7 @@ describe('listProductsTool', () => {
 
   test('treats null tool args as the default product list input', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'product-viewer',
+      role: 'product-editor',
       userId: 'test-user-id',
     });
     const listProductsSpy = vi.spyOn(productsCore, 'listProducts').mockResolvedValue({
@@ -131,7 +131,7 @@ describe('listProductsTool', () => {
 
   test('rejects invalid product list args', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'product-viewer',
+      role: 'product-editor',
       userId: 'test-user-id',
     });
 

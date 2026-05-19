@@ -23,7 +23,7 @@ describe('admin user safety policy', () => {
     await expect(
       context.auth.api.setRole({
         body: {
-          role: 'product-viewer',
+          role: 'sales',
           userId: admin.user.id,
         },
         headers,
@@ -39,7 +39,7 @@ describe('admin user safety policy', () => {
       email: 'target-user@example.com',
       id: 'target-user-id',
       name: 'Target User',
-      role: 'product-viewer',
+      role: 'sales',
     });
 
     await expect(
@@ -62,12 +62,12 @@ describe('admin user safety policy', () => {
       name: 'Other Admin',
       role: 'admin',
     });
-    await setStoredRole(context.databaseClient, admin.user.id, 'product-viewer');
+    await setStoredRole(context.databaseClient, admin.user.id, 'sales');
 
     await expect(
       context.auth.api.setRole({
         body: {
-          role: 'product-viewer',
+          role: 'sales',
           userId: 'other-admin-user-id',
         },
         headers,
@@ -87,13 +87,13 @@ describe('admin user safety policy', () => {
 
     const result = await context.auth.api.setRole({
       body: {
-        role: 'product-viewer',
+        role: 'sales',
         userId: 'other-admin-user-id',
       },
       headers,
     });
 
-    expect(result.user.role).toBe('product-viewer');
+    expect(result.user.role).toBe('sales');
   });
 
   test('rejects role removal from the last admin through adminUpdateUser', async ({ context }) => {
@@ -106,13 +106,13 @@ describe('admin user safety policy', () => {
       name: 'Only Other Admin',
       role: 'admin',
     });
-    await setStoredRole(context.databaseClient, admin.user.id, 'product-viewer');
+    await setStoredRole(context.databaseClient, admin.user.id, 'sales');
 
     await expect(
       context.auth.api.adminUpdateUser({
         body: {
           data: {
-            role: 'product-viewer',
+            role: 'sales',
           },
           userId: 'only-other-admin-user-id',
         },

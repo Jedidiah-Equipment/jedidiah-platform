@@ -48,7 +48,7 @@ describe('listJobsTool', () => {
 
   test('treats null tool args as the default job list input', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'job-viewer',
+      role: 'job-supervisor',
       userId: 'test-user-id',
     });
     const listJobsSpy = vi.spyOn(core, 'listJobs').mockResolvedValue({
@@ -79,7 +79,7 @@ describe('listJobsTool', () => {
 
   test('rejects invalid job list args', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'job-viewer',
+      role: 'job-supervisor',
       userId: 'test-user-id',
     });
 

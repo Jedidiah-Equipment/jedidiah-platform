@@ -2,15 +2,7 @@ import { z } from 'zod';
 
 import { AuthId } from './auth-id.js';
 
-export const APP_ROLES = [
-  'admin',
-  'product-editor',
-  'product-viewer',
-  'job-supervisor',
-  'job-stage-editor',
-  'job-viewer',
-  'sales',
-] as const;
+export const APP_ROLES = ['admin', 'product-editor', 'job-supervisor', 'job-stage-editor', 'sales'] as const;
 
 export type AppRole = z.infer<typeof AppRole>;
 export const AppRole = z.enum(APP_ROLES);

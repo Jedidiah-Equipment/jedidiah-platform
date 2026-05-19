@@ -8,7 +8,7 @@ describe('parseBetterAuthRole', () => {
   });
 
   test('accepts the first role from better-auth array-shaped values', () => {
-    expect(parseBetterAuthRole(['job-viewer', 'admin'])).toBe('job-viewer');
+    expect(parseBetterAuthRole(['job-supervisor', 'admin'])).toBe('job-supervisor');
   });
 
   test('rejects unsupported role strings', () => {

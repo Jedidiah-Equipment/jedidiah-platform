@@ -126,10 +126,11 @@ schema changes that produced them.
 - `products` tRPC procedures for authenticated list/create/update
 - `users` tRPC procedures (list, create, and update) gated by `user:list` / `user:edit` permissions
 
-App roles are `admin`, `product-editor`, and `product-viewer`. Role-to-permission mapping lives in
-`@pkg/core/auth/authorization` and is shared between the Better Auth admin plugin, server
-procedures, and the web access hooks. Server-side procedures use `authorizedProcedure(permission)`
-in `pkg/api/src/trpc/init.ts`; clients use `useAccess` / `canAccess` in `pkg/web`.
+App roles are `admin`, `product-editor`, `job-supervisor`, `job-stage-editor`, and `sales`.
+Role-to-permission mapping lives in `@pkg/domain/auth/authorization` and is shared between the
+Better Auth admin plugin, server procedures, and the web access hooks. Server-side procedures use
+`authorizedProcedure(permission)` in `pkg/api/src/trpc/init.ts`; clients use `useAccess` /
+`canAccess` in `pkg/web`.
 
 Email/password auth is enabled. Email verification and password reset emails are mocked locally by
 recording/logging the generated email payloads; no real email provider is configured yet.

@@ -50,7 +50,7 @@ describe('getJobTool', () => {
 
   test('surfaces the core not-found message for missing jobs', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'job-viewer',
+      role: 'job-supervisor',
       userId: 'test-user-id',
     });
 
@@ -66,7 +66,7 @@ describe('getJobTool', () => {
 
   test('rejects invalid job get args', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'job-viewer',
+      role: 'job-supervisor',
       userId: 'test-user-id',
     });
 

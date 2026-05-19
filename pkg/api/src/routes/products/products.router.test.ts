@@ -202,8 +202,8 @@ describe('products.create', () => {
     expect(created.name).toBe('Editor Created Product');
   });
 
-  test('rejects product viewers', async ({ context }) => {
-    const caller = context.createCaller(mockSession('product-viewer'));
+  test('rejects users without product create permission', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
 
     await expect(
       caller.products.create({
@@ -226,15 +226,15 @@ describe('products.list', () => {
     });
   });
 
-  test('allows product viewers to list products', async ({ context }) => {
+  test('allows product editors to list products', async ({ context }) => {
     const adminCaller = context.createCaller();
-    const viewerCaller = context.createCaller(mockSession('product-viewer'));
+    const editorCaller = context.createCaller(mockSession('product-editor'));
 
-    await createProduct(adminCaller, 'Viewer Product');
+    await createProduct(adminCaller, 'Editor Product');
 
-    const result = await viewerCaller.products.list({});
+    const result = await editorCaller.products.list({});
 
-    expect(productNames(result.items)).toEqual(['Viewer Product']);
+    expect(productNames(result.items)).toEqual(['Editor Product']);
   });
 
   test('lists products with default name sorting', async ({ context }) => {
@@ -633,18 +633,18 @@ describe('products.update', () => {
     expect(updated.name).toBe('Editor Product Plus');
   });
 
-  test('rejects product viewers', async ({ context }) => {
+  test('rejects users without product update permission', async ({ context }) => {
     const adminCaller = context.createCaller();
-    const viewerCaller = context.createCaller(mockSession('product-viewer'));
-    const created = await createProduct(adminCaller, 'Viewer Update Product');
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const created = await createProduct(adminCaller, 'Sales Update Product');
 
     await expect(
-      viewerCaller.products.update({
+      salesCaller.products.update({
         basePrice: created.basePrice,
         description: created.description,
         id: created.id,
         modelCode: created.modelCode,
-        name: 'Viewer Update Product Plus',
+        name: 'Sales Update Product Plus',
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',

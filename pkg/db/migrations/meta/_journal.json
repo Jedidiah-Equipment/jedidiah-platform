@@ -106,6 +106,13 @@
       "when": 1779042655024,
       "tag": "0014_high_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1779191196247,
+      "tag": "0015_sticky_wong",
+      "breakpoints": true
     }
   ]
 }

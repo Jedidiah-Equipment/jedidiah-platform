@@ -26,7 +26,7 @@ describe('listUsersTool', () => {
       email: 'viewer@example.com',
       id: 'viewer-user-id',
       name: 'Viewer User',
-      role: 'product-viewer',
+      role: 'sales',
     });
     const access = createUserAccessSummary({
       role: 'admin',

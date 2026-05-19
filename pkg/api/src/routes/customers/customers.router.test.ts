@@ -120,7 +120,7 @@ describe('customers.list', () => {
   });
 
   test('rejects non-admin customer lists', async ({ context }) => {
-    await expect(context.createCaller(mockSession('product-viewer')).customers.list({})).rejects.toMatchObject({
+    await expect(context.createCaller(mockSession('product-editor')).customers.list({})).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });

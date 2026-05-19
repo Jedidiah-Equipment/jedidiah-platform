@@ -39,7 +39,7 @@ const viewerProfiles = [
     name: 'admin',
   },
   {
-    access: createUserAccessSummary({ role: 'job-viewer', userId: 'viewer' }),
+    access: createUserAccessSummary({ role: 'sales', userId: 'viewer' }),
     editablePaint: false,
     name: 'viewer',
   },

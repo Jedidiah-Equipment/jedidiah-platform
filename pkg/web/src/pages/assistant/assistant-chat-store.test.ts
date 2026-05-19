@@ -7,6 +7,7 @@ import {
   createAssistantChatHistoryAdapter,
   deriveAssistantChatTitle,
   getSortedAssistantChats,
+  trimAssistantChatsForPersistence,
   useAssistantChatStore,
 } from './assistant-chat-store.js';
 
@@ -202,6 +203,47 @@ describe('assistant chat persistence', () => {
     );
 
     expect(withFollowUp.title).toBe('Show me active jobs');
+  });
+
+  it('updates repository items without moving earlier messages to the end', () => {
+    const chat = createAssistantChat('chat-1', new Date('2026-05-18T12:00:00.000Z'));
+    const withUser = appendAssistantChatRepositoryItem(
+      chat,
+      repositoryItem(userMessage('message-1', 'Original opening prompt'), null),
+      new Date('2026-05-18T12:01:00.000Z'),
+    );
+    const withAssistant = appendAssistantChatRepositoryItem(
+      withUser,
+      repositoryItem(assistantMessage('message-2', 'Original response'), 'message-1'),
+      new Date('2026-05-18T12:02:00.000Z'),
+    );
+    const updated = appendAssistantChatRepositoryItem(
+      withAssistant,
+      repositoryItem(userMessage('message-1', 'Edited opening prompt'), null),
+      new Date('2026-05-18T12:03:00.000Z'),
+    );
+
+    expect(updated.repository.headId).toBe('message-2');
+    expect(updated.repository.messages.map((item) => item.message.id)).toEqual(['message-1', 'message-2']);
+    expect(updated.repository.messages[0]?.message.content).toEqual([{ text: 'Edited opening prompt', type: 'text' }]);
+  });
+
+  it('trims persisted chats to the active chat and most recent chats', () => {
+    const chats = Object.fromEntries(
+      Array.from({ length: 25 }, (_, index) => {
+        const chat = createAssistantChat(`chat-${index}`, new Date(Date.UTC(2026, 4, 18, 12, index)));
+
+        return [chat.id, chat];
+      }),
+    );
+
+    const trimmedChats = trimAssistantChatsForPersistence(chats, 'chat-0');
+
+    expect(Object.keys(trimmedChats)).toHaveLength(20);
+    expect(trimmedChats['chat-0']).toBeDefined();
+    expect(trimmedChats['chat-24']).toBeDefined();
+    expect(trimmedChats['chat-6']).toBeDefined();
+    expect(trimmedChats['chat-5']).toBeUndefined();
   });
 });
 

@@ -15,7 +15,6 @@ import { createAgentTools, getAuthorizedToolNames, getAuthorizedTools } from './
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const STREAM_TIMEOUT_MS = 60_000;
 
-const config = getApiConfig();
 const MAX_AGENT_TURNS = 10;
 type AiReasoningEffort = ApiConfig['OPENAI_REASONING_EFFORT'];
 
@@ -30,9 +29,10 @@ export async function registerAiStreamRoute(
   app: FastifyInstance,
   options: RegisterAiStreamRouteOptions = {},
 ): Promise<void> {
+  const config = getAiStreamRouteConfig(options);
   const createRunner = options.createAgentRunner ?? createAiAgentRunner;
-  const model = options.model ?? config.OPENAI_MODEL;
-  const reasoningEffort = options.reasoningEffort ?? config.OPENAI_REASONING_EFFORT;
+  const model = config.model;
+  const reasoningEffort = config.reasoningEffort;
   const createContext = options.buildContext ?? buildAiContext;
 
   app.post('/ai/chat-stream', async (request, reply) => {
@@ -183,8 +183,10 @@ async function streamChatCompletion({
       signal: abortController.signal,
     });
 
+    const textDecoder = new TextDecoder();
+
     for await (const delta of stream) {
-      const textDelta = decodeTextDelta(delta);
+      const textDelta = decodeTextDelta(delta, textDecoder);
 
       log.ai.trace({ delta: textDelta }, 'content delta');
 
@@ -194,6 +196,15 @@ async function streamChatCompletion({
           delta: textDelta,
         });
       }
+    }
+
+    const finalTextDelta = textDecoder.decode();
+
+    if (isWritable && finalTextDelta) {
+      writeEvent(reply, {
+        type: 'token',
+        delta: finalTextDelta,
+      });
     }
 
     log.ai.info('stream done');
@@ -227,8 +238,27 @@ function getStreamHeaders(reply: FastifyReply): OutgoingHttpHeaders {
   };
 }
 
-function decodeTextDelta(delta: string | Uint8Array): string {
-  return typeof delta === 'string' ? delta : new TextDecoder().decode(delta);
+function getAiStreamRouteConfig(options: RegisterAiStreamRouteOptions): {
+  model: string;
+  reasoningEffort: AiReasoningEffort;
+} {
+  if (options.model && options.reasoningEffort) {
+    return {
+      model: options.model,
+      reasoningEffort: options.reasoningEffort,
+    };
+  }
+
+  const config = getApiConfig();
+
+  return {
+    model: options.model ?? config.OPENAI_MODEL,
+    reasoningEffort: options.reasoningEffort ?? config.OPENAI_REASONING_EFFORT,
+  };
+}
+
+function decodeTextDelta(delta: string | Uint8Array, decoder: InstanceType<typeof TextDecoder>): string {
+  return typeof delta === 'string' ? delta : decoder.decode(delta, { stream: true });
 }
 
 function createAgentInput(messages: ChatStreamMessage[]): AgentInputItem[] {

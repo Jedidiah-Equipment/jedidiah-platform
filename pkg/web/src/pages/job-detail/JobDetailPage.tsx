@@ -36,14 +36,14 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const job = jobQuery.data;
   const [confirmation, setConfirmation] = React.useState<JobTransitionConfirmation | null>(null);
-  const refreshJob = async () => {
-    await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: jobId }));
+  const refreshJobs = async () => {
+    await queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
   };
   const getDepartmentLabel = (input: JobStageTransitionInput | JobStageStatusInput) => stageLabels[input.stage];
   const startStageMutation = useMutation(
     trpc.jobs.startStage.mutationOptions({
-      onSuccess: async (_stage, input) => {
-        await refreshJob();
+      onSuccess: async (_updatedJob, input) => {
+        await refreshJobs();
         toast.success(`${getDepartmentLabel(input)} started`);
       },
       onError: (error) => showMutationError(error, 'Unable to start department work.'),
@@ -51,8 +51,8 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   );
   const setStageStatusMutation = useMutation(
     trpc.jobs.setStageStatus.mutationOptions({
-      onSuccess: async (_stage, input) => {
-        await refreshJob();
+      onSuccess: async (_updatedJob, input) => {
+        await refreshJobs();
         toast.success(`${getDepartmentLabel(input)} status updated`);
       },
       onError: (error) => showMutationError(error, 'Unable to update department status.'),
@@ -60,8 +60,8 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   );
   const completeStageMutation = useMutation(
     trpc.jobs.completeStage.mutationOptions({
-      onSuccess: async (_stage, input) => {
-        await refreshJob();
+      onSuccess: async (_updatedJob, input) => {
+        await refreshJobs();
         toast.success(`${getDepartmentLabel(input)} completed`);
       },
       onError: (error) => showMutationError(error, 'Unable to complete department work.'),
@@ -70,7 +70,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const pauseJobMutation = useMutation(
     trpc.jobs.pause.mutationOptions({
       onSuccess: async () => {
-        await refreshJob();
+        await refreshJobs();
         toast.success('Job paused');
       },
       onError: (error) => showMutationError(error, 'Unable to pause job.'),
@@ -79,7 +79,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const resumeJobMutation = useMutation(
     trpc.jobs.resume.mutationOptions({
       onSuccess: async () => {
-        await refreshJob();
+        await refreshJobs();
         toast.success('Job resumed');
       },
       onError: (error) => showMutationError(error, 'Unable to resume job.'),
@@ -88,7 +88,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const cancelJobMutation = useMutation(
     trpc.jobs.cancel.mutationOptions({
       onSuccess: async () => {
-        await refreshJob();
+        await refreshJobs();
         toast.success('Job cancelled');
       },
       onError: (error) => showMutationError(error, 'Unable to cancel job.'),

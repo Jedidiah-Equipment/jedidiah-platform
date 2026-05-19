@@ -391,7 +391,7 @@ export async function getJob({
     where: eq(jobs.id, id),
     with: {
       events: {
-        orderBy: [asc(jobEvents.occurredAt), asc(jobEvents.id)],
+        orderBy: [desc(jobEvents.occurredAt), desc(jobEvents.id)],
         with: {
           actor: {
             columns: {
@@ -711,7 +711,13 @@ function mapJobWorkflowEvents({
       const stage = stageRowsById.get(event.stageId);
       return stage ? canViewStage(access, stage) : false;
     })
-    .map(mapJobEventWithActor);
+    .map(mapJobEventWithActor)
+    .sort(compareJobEventsNewestFirst);
+}
+
+function compareJobEventsNewestFirst(left: JobEvent, right: JobEvent): number {
+  const occurredAtOrder = right.occurredAt.localeCompare(left.occurredAt);
+  return occurredAtOrder === 0 ? right.id.localeCompare(left.id) : occurredAtOrder;
 }
 
 async function transitionJobStage({
@@ -805,6 +811,7 @@ async function applyJobStageTransition({
     actorUserId,
     eventType: jobEvent.eventType,
     jobId: id,
+    occurredAt: new Date(),
     payload: jobEvent.payload,
     stageId: updatedStage.id,
   });
@@ -948,6 +955,7 @@ async function applyJobLifecycleStatusChange({
     actorUserId,
     eventType,
     jobId: id,
+    occurredAt: new Date(),
     payload: {
       fromLifecycleStatus: before.lifecycleStatus,
       toLifecycleStatus: nextStatus,

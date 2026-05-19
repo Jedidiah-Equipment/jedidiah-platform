@@ -33,6 +33,7 @@ export type AssistantChatStore = {
   chats: Record<string, AssistantChat>;
   appendRepositoryItem: (chatId: string, item: ExportedMessageRepositoryItem) => void;
   createChat: () => string;
+  deleteChat: (chatId: string) => void;
   newChat: () => string;
   selectChat: (chatId: string) => void;
 };
@@ -75,6 +76,32 @@ export const useAssistantChatStore = create<AssistantChatStore>()(
 
         return chat.id;
       },
+      deleteChat: (chatId) =>
+        set((state) => {
+          if (!state.chats[chatId]) {
+            return state;
+          }
+
+          const remainingChats = Object.fromEntries(
+            Object.entries(state.chats).filter(([candidateChatId]) => candidateChatId !== chatId),
+          );
+
+          if (state.activeChatId !== chatId) {
+            return {
+              chats: remainingChats,
+            };
+          }
+
+          const nextActiveChat = getSortedAssistantChats(remainingChats)[0] ?? createAssistantChat();
+
+          return {
+            activeChatId: nextActiveChat.id,
+            chats: {
+              ...remainingChats,
+              [nextActiveChat.id]: nextActiveChat,
+            },
+          };
+        }),
       newChat: () => {
         const state = get();
         const activeChat = state.chats[state.activeChatId];

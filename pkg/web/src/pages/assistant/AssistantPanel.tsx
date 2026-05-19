@@ -1,9 +1,10 @@
 import { AssistantRuntimeProvider, useAuiState, useLocalRuntime } from '@assistant-ui/react';
-import { MessageSquareIcon, PlusIcon } from 'lucide-react';
+import { MessageSquareIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { Thread } from '@/components/assistant-ui/thread.js';
+import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button.js';
 import { Button } from '@/components/ui/button.js';
 import { cn } from '@/lib/utils.js';
 
@@ -51,10 +52,11 @@ function AssistantRuntimeSession({ activeChatId }: { activeChatId: string }) {
 }
 
 function AssistantChatFrame() {
-  const { activeChatId, chatRecords, newChat, selectChat } = useAssistantChatStore(
+  const { activeChatId, chatRecords, deleteChat, newChat, selectChat } = useAssistantChatStore(
     useShallow((state) => ({
       activeChatId: state.activeChatId,
       chatRecords: state.chats,
+      deleteChat: state.deleteChat,
       newChat: state.newChat,
       selectChat: state.selectChat,
     })),
@@ -83,20 +85,37 @@ function AssistantChatFrame() {
               const isActive = chat.id === activeChatId;
 
               return (
-                <button
-                  aria-current={isActive ? 'true' : undefined}
+                <div
                   className={cn(
-                    'flex h-9 min-w-0 items-center gap-2 rounded-md px-2 text-left text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50',
-                    isActive && 'bg-muted font-medium',
+                    'group flex h-9 min-w-0 items-center rounded-md transition-colors hover:bg-muted',
+                    isActive && 'bg-muted',
                   )}
-                  disabled={isRunning}
                   key={chat.id}
-                  onClick={() => selectChat(chat.id)}
-                  type="button"
                 >
-                  <MessageSquareIcon className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{chat.title}</span>
-                </button>
+                  <button
+                    aria-current={isActive ? 'true' : undefined}
+                    className={cn(
+                      'flex h-full min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50',
+                      isActive && 'font-medium',
+                    )}
+                    disabled={isRunning}
+                    onClick={() => selectChat(chat.id)}
+                    type="button"
+                  >
+                    <MessageSquareIcon className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{chat.title}</span>
+                  </button>
+                  <TooltipIconButton
+                    className="mr-1 size-7 text-muted-foreground opacity-70 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
+                    disabled={isRunning}
+                    onClick={() => deleteChat(chat.id)}
+                    side="right"
+                    tooltip="Delete chat"
+                    type="button"
+                  >
+                    <Trash2Icon />
+                  </TooltipIconButton>
+                </div>
               );
             })}
           </div>

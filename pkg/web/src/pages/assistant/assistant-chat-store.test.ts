@@ -104,6 +104,65 @@ describe('assistant chat persistence', () => {
     expect(useAssistantChatStore.getState().chats[firstChat.id]?.title).toBe('First');
   });
 
+  it('deletes an inactive chat without changing the active chat', () => {
+    const firstChat = createAssistantChat('chat-1', new Date('2026-05-18T12:00:00.000Z'));
+    const secondChat = createAssistantChat('chat-2', new Date('2026-05-18T12:01:00.000Z'));
+
+    useAssistantChatStore.setState({
+      activeChatId: firstChat.id,
+      chats: {
+        [firstChat.id]: firstChat,
+        [secondChat.id]: secondChat,
+      },
+    });
+
+    useAssistantChatStore.getState().deleteChat(secondChat.id);
+
+    expect(useAssistantChatStore.getState().activeChatId).toBe(firstChat.id);
+    expect(useAssistantChatStore.getState().chats).toEqual({
+      [firstChat.id]: firstChat,
+    });
+  });
+
+  it('deletes the active chat and selects the most recently updated remaining chat', () => {
+    const activeChat = createAssistantChat('chat-1', new Date('2026-05-18T12:00:00.000Z'));
+    const olderChat = createAssistantChat('chat-2', new Date('2026-05-18T12:01:00.000Z'));
+    const newerChat = createAssistantChat('chat-3', new Date('2026-05-18T12:02:00.000Z'));
+
+    useAssistantChatStore.setState({
+      activeChatId: activeChat.id,
+      chats: {
+        [activeChat.id]: activeChat,
+        [olderChat.id]: olderChat,
+        [newerChat.id]: newerChat,
+      },
+    });
+
+    useAssistantChatStore.getState().deleteChat(activeChat.id);
+
+    expect(useAssistantChatStore.getState().activeChatId).toBe(newerChat.id);
+    expect(Object.keys(useAssistantChatStore.getState().chats).sort()).toEqual([olderChat.id, newerChat.id]);
+  });
+
+  it('deletes the only chat and creates a replacement active chat', () => {
+    const activeChat = createAssistantChat('chat-1', new Date('2026-05-18T12:00:00.000Z'));
+
+    useAssistantChatStore.setState({
+      activeChatId: activeChat.id,
+      chats: {
+        [activeChat.id]: activeChat,
+      },
+    });
+
+    useAssistantChatStore.getState().deleteChat(activeChat.id);
+
+    const state = useAssistantChatStore.getState();
+
+    expect(state.activeChatId).not.toBe(activeChat.id);
+    expect(state.chats[state.activeChatId]?.repository.messages).toEqual([]);
+    expect(Object.keys(state.chats)).toEqual([state.activeChatId]);
+  });
+
   it('sorts chats by most recently updated first', () => {
     const older = createAssistantChat('chat-1', new Date('2026-05-18T12:00:00.000Z'));
     const newer = createAssistantChat('chat-2', new Date('2026-05-18T12:01:00.000Z'));

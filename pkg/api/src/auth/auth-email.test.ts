@@ -67,13 +67,6 @@ describe('email verification callback', () => {
   });
 
   test('captures email-verification mock email with app base URL', async ({ context }) => {
-    await context.auth.api.sendVerificationEmail({
-      body: { email: 'newuser@example.com' },
-      asResponse: false,
-    });
-
-    // sendVerificationEmail returns without sending if user doesn't exist
-    // so create the user first then request verification
     await createUserWithCredential(context.db, {
       email: 'toverify@example.com',
       emailVerified: false,

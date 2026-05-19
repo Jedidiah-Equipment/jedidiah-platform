@@ -13,9 +13,15 @@ import { FieldGroup } from '@/components/ui/field.js';
 import { authClient } from '@/lib/auth-client.js';
 import { Route } from '@/routes/reset-password.js';
 
-const ResetPasswordForm = z.object({
-  newPassword: UserPassword,
-});
+const ResetPasswordForm = z
+  .object({
+    confirmNewPassword: UserPassword,
+    newPassword: UserPassword,
+  })
+  .refine((value) => value.confirmNewPassword === value.newPassword, {
+    message: 'Passwords must match.',
+    path: ['confirmNewPassword'],
+  });
 
 type ResetPasswordForm = z.infer<typeof ResetPasswordForm>;
 
@@ -25,7 +31,7 @@ export const ResetPasswordPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const form = useAppForm({
-    defaultValues: { newPassword: '' } satisfies ResetPasswordForm,
+    defaultValues: { confirmNewPassword: '', newPassword: '' } satisfies ResetPasswordForm,
     validators: { onSubmit: ResetPasswordForm },
     onSubmit: async ({ value }) => {
       setError(null);
@@ -44,8 +50,6 @@ export const ResetPasswordPage: React.FC = () => {
       }
     },
   });
-
-  const isExpiredError = error?.toLowerCase().includes('invalid') || error?.toLowerCase().includes('expired');
 
   return (
     <section className="flex min-h-screen items-center justify-center px-6 py-12">
@@ -69,22 +73,19 @@ export const ResetPasswordPage: React.FC = () => {
               <form.AppField name="newPassword">
                 {(field) => <field.PasswordField autoComplete="new-password" label="New password" />}
               </form.AppField>
+              <form.AppField name="confirmNewPassword">
+                {(field) => <field.PasswordField autoComplete="new-password" label="Confirm password" />}
+              </form.AppField>
 
               {error ? (
                 <Alert variant="destructive">
                   <AlertCircleIcon />
                   <AlertTitle>Unable to reset password</AlertTitle>
                   <AlertDescription>
-                    {isExpiredError ? (
-                      <>
-                        Reset link is invalid or has expired.{' '}
-                        <Link className="underline" to="/forgot-password">
-                          Request a new one.
-                        </Link>
-                      </>
-                    ) : (
-                      error
-                    )}
+                    {error}{' '}
+                    <Link className="underline" to="/forgot-password">
+                      Request a new link.
+                    </Link>
                   </AlertDescription>
                 </Alert>
               ) : null}

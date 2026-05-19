@@ -9,6 +9,7 @@ export interface EmailPayload {
   to: string;
   subject: string;
   html: string;
+  text: string;
   url: string;
   token: string;
   type: EmailType;
@@ -36,6 +37,7 @@ function createResendSender(config: ApiConfig): EmailSender {
         to: payload.to,
         subject: payload.subject,
         html: payload.html,
+        text: payload.text,
       });
 
       if (error) {
@@ -54,7 +56,7 @@ function createMockSender(config: ApiConfig): EmailSender {
         {
           to: payload.to,
           subject: payload.subject,
-          text: payload.html,
+          text: payload.text,
           url: payload.url,
           token: payload.token,
           type: payload.type,

@@ -38,7 +38,7 @@ export function DataTable<TData>({
   globalFilterPlaceholder = 'Search...',
   hideGlobalFilter = false,
   isLoading = false,
-  loadingRowCount = 4,
+  loadingRowCount = 10,
   pageSizeOptions = [10, 25, 50],
   table,
   tableClassName,

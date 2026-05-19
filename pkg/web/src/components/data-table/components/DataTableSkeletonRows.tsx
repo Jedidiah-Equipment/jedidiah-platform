@@ -13,8 +13,8 @@ export function DataTableSkeletonRows({ columns, rows }: DataTableSkeletonRowsPr
   return rowKeys.map((rowKey) => (
     <TableRow key={rowKey}>
       {columnKeys.map((columnKey) => (
-        <TableCell key={`${rowKey}-${columnKey}`}>
-          <Skeleton className={columnKey === columnKeys.at(-1) ? 'h-4 w-20' : 'h-4 w-full'} />
+        <TableCell className="h-12" key={`${rowKey}-${columnKey}`}>
+          <Skeleton className={columnKey === columnKeys.at(-1) ? 'h-5 w-20' : 'h-5 w-full'} />
         </TableCell>
       ))}
     </TableRow>

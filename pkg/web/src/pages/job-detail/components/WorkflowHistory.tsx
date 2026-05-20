@@ -7,6 +7,7 @@ import { DateDisplay } from '@/components/DateDisplay.js';
 import { DepartmentIcon } from '@/components/departments/index.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
+import { formatDate } from '@/utils/date.js';
 import { stageLabels } from '../constants.js';
 import { getStageStatusChangeCopy } from './workflow-history-copy.js';
 
@@ -102,11 +103,7 @@ function getWorkflowEventLabel(event: JobEvent): string {
 
 function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
   if (event.eventType === 'stage.started') {
-    return (
-      <>
-        Started at <DateDisplay date={event.payload.startedAt} format="medium" />
-      </>
-    );
+    return `Started at ${formatDate(event.payload.startedAt, 'long')}`;
   }
 
   if (event.eventType === 'stage.completed') {

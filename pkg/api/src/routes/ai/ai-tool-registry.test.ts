@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { aiLinkMetadata } from './ai-link-metadata.js';
-import { projectAiToolResult } from './ai-result-projections.js';
+import { projectAiToolResult } from './ai-tool-registry.js';
 
 describe('AI result projections', () => {
   test('adds Job and linked Quote metadata without mutating the base result', () => {

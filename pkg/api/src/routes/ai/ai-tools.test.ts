@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 
 import type { AiContext } from '@/routes/ai/ai-context.js';
 import { aiToolDescriptors, createToolDescription } from '@/routes/ai/ai-tool-descriptors.js';
+import { AI_TOOL_REGISTRY } from '@/routes/ai/ai-tool-registry.js';
 import {
   AI_TOOL_NAMES,
   aiTools,
@@ -33,6 +34,21 @@ function createAccessWithNoProductRead(): UserAccessSummary {
 }
 
 describe('aiTools', () => {
+  test('derives public tool surfaces from the ordered registry', () => {
+    expect(AI_TOOL_NAMES).toEqual(AI_TOOL_REGISTRY.map((record) => record.tool.name));
+
+    for (const record of AI_TOOL_REGISTRY) {
+      expect(aiTools[record.tool.name]).toMatchObject({
+        name: record.tool.name,
+        requiredPermission: record.tool.requiredPermission,
+      });
+      expect(aiToolDescriptors[record.tool.name]).toMatchObject({
+        name: record.tool.name,
+        purpose: record.descriptor.purpose,
+      });
+    }
+  });
+
   test('generates registered tool descriptions from structured descriptors', () => {
     for (const name of AI_TOOL_NAMES) {
       expect(aiTools[name].description).toBe(createToolDescription(aiToolDescriptors[name]));

@@ -120,4 +120,15 @@ describe('AI result projections', () => {
       ],
     });
   });
+
+  test('keeps non-linkable results as explicit identity projections', () => {
+    const result = {
+      items: [{ email: 'planner@example.com', id: 'user-id', name: 'Planner User' }],
+      total: 1,
+    };
+
+    expect(projectAiToolResult('listUsers', result)).toBe(result);
+    expect(projectAiToolResult('listQuoteSalespeople', result)).toBe(result);
+    expect(projectAiToolResult('listAuditEvents', result)).toBe(result);
+  });
 });

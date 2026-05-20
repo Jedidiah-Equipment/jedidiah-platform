@@ -1,14 +1,14 @@
 import {
-  createLikeSearchPattern,
+  createEscapedContainsSearchCondition,
   type customers,
   type DatabaseTransaction,
   type Db,
-  getPaginationOffset,
+  getPaginationQueryOptions,
+  getSortOrder,
   getUniqueViolationConstraint,
   jobEvents,
   jobStages,
   jobs,
-  LIKE_SEARCH_ESCAPE,
   type products,
   quotes,
   type user,
@@ -44,7 +44,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   createAuditChanges,
@@ -300,7 +300,7 @@ export async function listJobs({
 }): Promise<JobListResult> {
   const where = buildJobListWhere(input);
   const sortColumn = getJobSortColumn(input.sortBy);
-  const orderBy = input.sortDirection === 'desc' ? desc(sortColumn) : asc(sortColumn);
+  const orderBy = getSortOrder(sortColumn, input.sortDirection);
 
   const rows = await db.query.jobs.findMany({
     columns: {
@@ -315,8 +315,7 @@ export async function listJobs({
     },
     where,
     orderBy: [orderBy, asc(jobs.id)],
-    limit: input.pageSize,
-    offset: getPaginationOffset(input),
+    ...getPaginationQueryOptions(input),
     with: {
       product: {
         columns: {
@@ -373,11 +372,16 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   if (input.search) {
-    const searchPattern = createLikeSearchPattern(input.search);
     const codeSearch = parseJobCodeSearch(input.search);
-    conditions.push(
-      sql`(${jobs.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE} or ${jobs.code}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}${codeSearch === undefined ? sql`` : sql` or ${jobs.code} = ${codeSearch}`})`,
+    const searchWhere = or(
+      createEscapedContainsSearchCondition(sql`${jobs.id}::text`, input.search),
+      createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.search),
+      codeSearch === undefined ? undefined : eq(jobs.code, codeSearch),
     );
+
+    if (searchWhere) {
+      conditions.push(searchWhere);
+    }
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

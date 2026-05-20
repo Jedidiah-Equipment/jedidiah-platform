@@ -1,6 +1,5 @@
 import {
   createEscapedContainsSearchCondition,
-  createPagedListResult,
   type customers,
   type DatabaseTransaction,
   type Db,
@@ -353,12 +352,12 @@ export async function listJobs({
 
   const total = await db.$count(jobs, where);
 
-  return createPagedListResult({
+  return {
     items: rows.map(mapJobSummary),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
     total,
-  });
+  };
 }
 
 function buildJobListWhere(input: JobListInput): SQL | undefined {
@@ -374,13 +373,15 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
 
   if (input.search) {
     const codeSearch = parseJobCodeSearch(input.search);
-    conditions.push(
-      or(
-        createEscapedContainsSearchCondition(sql`${jobs.id}::text`, input.search),
-        createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.search),
-        codeSearch === undefined ? undefined : eq(jobs.code, codeSearch),
-      ) ?? sql`false`,
+    const searchWhere = or(
+      createEscapedContainsSearchCondition(sql`${jobs.id}::text`, input.search),
+      createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.search),
+      codeSearch === undefined ? undefined : eq(jobs.code, codeSearch),
     );
+
+    if (searchWhere) {
+      conditions.push(searchWhere);
+    }
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

@@ -1,7 +1,6 @@
 import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
-  createPagedListResult,
   type Db,
   getPaginationQueryOptions,
   getSortOrder,
@@ -90,12 +89,12 @@ export async function listProducts({
 
   const [rows, total] = await Promise.all([productsQuery, db.$count(products, where)]);
 
-  return createPagedListResult({
+  return {
     items: rows.map((row) => mapProduct(row, row.options)),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
-  });
+  };
 }
 
 function buildProductListWhere(listInput: ProductListInput): SQL | undefined {

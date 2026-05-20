@@ -1,6 +1,5 @@
 import {
   createGlobalSearchCondition,
-  createPagedListResult,
   customers,
   type DatabaseTransaction,
   type Db,
@@ -147,7 +146,6 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
   const where = buildQuoteListWhere(input);
   const sortColumn = getQuoteSortColumn(input.sortBy);
   const orderBy = getSortOrder(sortColumn, input.sortDirection);
-  const filteredQuotes = createFilteredQuoteIdsSubquery({ db, where });
 
   const rowsQuery = withPagination(
     db
@@ -163,12 +161,12 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
         jobCode: jobs.code,
         jobId: jobs.id,
       })
-      .from(filteredQuotes)
-      .innerJoin(quotes, eq(quotes.id, filteredQuotes.quoteId))
+      .from(quotes)
       .innerJoin(customers, eq(quotes.customerId, customers.id))
       .innerJoin(products, eq(quotes.productId, products.id))
       .leftJoin(user, eq(quotes.salesPersonId, user.id))
       .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
+      .where(where)
       .orderBy(orderBy, asc(quotes.id))
       .$dynamic(),
     input,
@@ -178,29 +176,20 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     .select({
       count: sql<number>`count(*)`,
     })
-    .from(filteredQuotes);
-
-  const rows = await rowsQuery;
-
-  return createPagedListResult({
-    items: rows.map(mapQuoteSummary),
-    sortBy: input.sortBy,
-    sortDirection: input.sortDirection,
-    total: Number(totalRow?.count ?? 0),
-  });
-}
-
-function createFilteredQuoteIdsSubquery({ db, where }: { db: Db; where: SQL | undefined }) {
-  return db
-    .select({
-      quoteId: quotes.id,
-    })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
     .innerJoin(products, eq(quotes.productId, products.id))
     .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
-    .where(where)
-    .as('filtered_quotes');
+    .where(where);
+
+  const rows = await rowsQuery;
+
+  return {
+    items: rows.map(mapQuoteSummary),
+    sortBy: input.sortBy,
+    sortDirection: input.sortDirection,
+    total: Number(totalRow?.count ?? 0),
+  };
 }
 
 export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<QuoteDetail> {

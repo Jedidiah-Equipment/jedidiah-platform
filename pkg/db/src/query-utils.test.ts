@@ -5,7 +5,6 @@ import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   createLikeSearchPattern,
-  createPagedListResult,
   getPaginationOffset,
   getPaginationQueryOptions,
   getSortOrder,
@@ -53,24 +52,6 @@ describe('getSortOrder', () => {
   it('maps sort directions to order expressions', () => {
     expect(getSortOrder(sql`name`, 'asc')).toBeDefined();
     expect(getSortOrder(sql`name`, 'desc')).toBeDefined();
-  });
-});
-
-describe('createPagedListResult', () => {
-  it('shapes common paged list metadata', () => {
-    expect(
-      createPagedListResult({
-        items: [{ id: 'item-1' }],
-        sortBy: 'name',
-        sortDirection: 'asc',
-        total: 1,
-      }),
-    ).toEqual({
-      items: [{ id: 'item-1' }],
-      sortBy: 'name',
-      sortDirection: 'asc',
-      total: 1,
-    });
   });
 });
 

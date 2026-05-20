@@ -1,12 +1,4 @@
-import {
-  auditEvents,
-  createPagedListResult,
-  type DatabaseTransaction,
-  type Db,
-  getSortOrder,
-  user,
-  withPagination,
-} from '@pkg/db';
+import { auditEvents, type DatabaseTransaction, type Db, getSortOrder, user, withPagination } from '@pkg/db';
 import type {
   AuditAction,
   AuditChanges,
@@ -250,12 +242,12 @@ export async function listAuditEvents({ db, input }: { db: Db; input: AuditListI
 
   const [rows, total] = await Promise.all([rowsQuery, db.$count(auditEvents, where)]);
 
-  return createPagedListResult({
+  return {
     items: rows.map(mapAuditEvent),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
     total,
-  });
+  };
 }
 
 function buildAuditListWhere(input: AuditListInput): SQL | undefined {

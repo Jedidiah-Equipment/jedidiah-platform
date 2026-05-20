@@ -1,11 +1,6 @@
-import type { PagedQueryInput, PagedQueryResult, SortDirection } from '@pkg/schema';
+import type { PagedQueryInput, SortDirection } from '@pkg/schema';
 import { asc, desc, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
-
-type PagedListResultInput<TItem, TSortBy extends string> = PagedQueryResult<TItem> & {
-  sortBy: TSortBy;
-  sortDirection: SortDirection;
-};
 
 export const LIKE_SEARCH_ESCAPE = '!';
 
@@ -44,20 +39,6 @@ export function withPagination<TQuery extends PgSelect>(query: TQuery, paginatio
   const { limit, offset } = getPaginationQueryOptions(pagination);
 
   return query.limit(limit).offset(offset);
-}
-
-export function createPagedListResult<TItem, TSortBy extends string>({
-  items,
-  total,
-  sortBy,
-  sortDirection,
-}: PagedListResultInput<TItem, TSortBy>): PagedListResultInput<TItem, TSortBy> {
-  return {
-    items,
-    total,
-    sortBy,
-    sortDirection,
-  };
 }
 
 export function isUniqueViolation(error: unknown): boolean {

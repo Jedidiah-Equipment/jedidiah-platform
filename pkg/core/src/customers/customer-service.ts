@@ -1,7 +1,6 @@
 import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
-  createPagedListResult,
   customers,
   type Db,
   getPaginationQueryOptions,
@@ -48,12 +47,12 @@ export async function listCustomers({ db, input }: { db: Db; input: CustomerList
   });
   const total = await db.$count(customers, where);
 
-  return createPagedListResult({
+  return {
     items: rows.map(mapCustomer),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
-  });
+  };
 }
 
 function buildCustomerListWhere(input: CustomerListInput): SQL | undefined {

@@ -1,81 +1,36 @@
 import {
   createEscapedContainsSearchCondition,
-  type customers,
-  type DatabaseTransaction,
   type Db,
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
-  jobEvents,
   jobStages,
   jobs,
-  type products,
   quotes,
-  type user,
 } from '@pkg/db';
-import {
-  canViewStage,
-  deriveStageJobEvent,
-  evaluateStageTransition,
-  getStageTransitionAvailability,
-  JOB_STAGE_PIPELINE,
-  parseJobCodeSearch,
-  type StageTransition,
-} from '@pkg/domain';
-import {
-  type AuthId,
-  Job,
-  type JobCreateFromQuoteInput,
-  type JobCreateInput,
-  type JobDetail,
+import { JOB_STAGE_PIPELINE, parseJobCodeSearch } from '@pkg/domain';
+import type {
+  AuthId,
+  JobCreateFromQuoteInput,
+  JobCreateInput,
+  JobDetail,
   JobEvent,
-  JobEventDerivationStage,
-  type JobLifecycleStatus,
-  type JobListInput,
-  type JobListResult,
-  type JobSortBy,
-  JobStage,
-  type JobStageName,
-  type JobStageRollup,
-  type JobStageStatusInput,
-  JobStageSummary,
-  type JobSummary,
-  QuoteCode,
-  type UserAccessSummary,
-  type UUID,
+  JobLifecycleStatus,
+  JobListInput,
+  JobListResult,
+  JobStageName,
+  JobStageStatusInput,
+  UserAccessSummary,
+  UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 
-import {
-  createAuditChanges,
-  insertAuditEvent,
-  jobAuditDescriptor,
-  jobStageAuditDescriptor,
-} from '../audit/audit-service.js';
-import {
-  JobLifecycleTransitionDeniedError,
-  JobNotFoundError,
-  JobQuoteConversionDeniedError,
-  JobStageTransitionDeniedError,
-} from './job-errors.js';
-
-type JobRow = typeof jobs.$inferSelect;
-type JobEventRow = typeof jobEvents.$inferSelect;
-type JobEventWithActorRow = JobEventRow & {
-  actor: Pick<typeof user.$inferSelect, 'name'> | null;
-};
-type JobStageRow = typeof jobStages.$inferSelect;
-type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
-type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName'>;
-type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'> & {
-  customer: CustomerRow;
-};
-type JobWithProductRow = JobRow & {
-  product: ProductRow;
-  quote: QuoteRow | null;
-  stages: JobStageRow[];
-};
-type JobAuditRecord = Pick<JobRow, 'code' | 'dueDate' | 'lifecycleStatus' | 'productId' | 'quoteId'>;
+import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
+import { JobLifecycleTransitionDeniedError, JobNotFoundError, JobQuoteConversionDeniedError } from './job-errors.js';
+import { applyJobLifecycleStatusChange } from './job-lifecycle-service.js';
+import { mapJobAuditRecord } from './job-mappers.js';
+import { applyJobStageTransition } from './job-pipeline-service.js';
+import { getJob, getJobSortColumn, mapJobSummary } from './job-read-service.js';
 
 type JobLifecycleTransition = 'pause' | 'resume' | 'cancel';
 
@@ -103,62 +58,6 @@ const jobLifecycleTransitionConfig = {
     nextStatus: JobLifecycleStatus;
   }
 >;
-
-export function mapJob(row: JobRow): Job {
-  return Job.parse({
-    createdAt: row.createdAt.toISOString(),
-    code: row.code,
-    dueDate: row.dueDate,
-    id: row.id,
-    lifecycleStatus: row.lifecycleStatus,
-    productId: row.productId,
-    quoteId: row.quoteId,
-    updatedAt: row.updatedAt.toISOString(),
-  });
-}
-
-export function mapJobStage(row: JobStageRow): JobStage {
-  return JobStage.parse({
-    completedAt: row.completedAt?.toISOString() ?? null,
-    id: row.id,
-    jobId: row.jobId,
-    sequence: row.sequence,
-    stage: row.stage,
-    startedAt: row.startedAt?.toISOString() ?? null,
-    status: row.status,
-  });
-}
-
-export function mapJobEvent(row: JobEventRow): JobEvent {
-  return parseJobEvent(row, null);
-}
-
-function mapJobEventWithActor(row: JobEventWithActorRow): JobEvent {
-  return parseJobEvent(row, row.actor?.name ?? null);
-}
-
-function parseJobEvent(row: JobEventRow, actorName: string | null): JobEvent {
-  // DB currently stores event_type as text; this parse intentionally fails fast until the column is constrained.
-  return JobEvent.parse({
-    actorName,
-    actorUserId: row.actorUserId,
-    eventType: row.eventType,
-    id: row.id,
-    jobId: row.jobId,
-    occurredAt: row.occurredAt.toISOString(),
-    payload: row.payload,
-    stageId: row.stageId,
-  });
-}
-
-function mapJobEventDerivationStage(row: JobStageRow): JobEventDerivationStage {
-  return JobEventDerivationStage.parse({
-    completedAt: row.completedAt?.toISOString() ?? null,
-    stage: row.stage,
-    startedAt: row.startedAt?.toISOString() ?? null,
-    status: row.status,
-  });
-}
 
 export async function createJob({
   db,
@@ -387,73 +286,6 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-export async function getJob({
-  db,
-  id,
-  access,
-}: {
-  db: Db | DatabaseTransaction;
-  id: UUID;
-  access: UserAccessSummary;
-}): Promise<JobDetail> {
-  const row = await db.query.jobs.findFirst({
-    columns: {
-      createdAt: true,
-      code: true,
-      dueDate: true,
-      id: true,
-      lifecycleStatus: true,
-      productId: true,
-      quoteId: true,
-      updatedAt: true,
-    },
-    where: eq(jobs.id, id),
-    with: {
-      events: {
-        orderBy: [desc(jobEvents.occurredAt), desc(jobEvents.id)],
-        with: {
-          actor: {
-            columns: {
-              name: true,
-            },
-          },
-        },
-      },
-      product: {
-        columns: {
-          modelCode: true,
-          name: true,
-        },
-      },
-      quote: {
-        columns: {
-          code: true,
-        },
-        with: {
-          customer: {
-            columns: {
-              companyName: true,
-            },
-          },
-        },
-      },
-      stages: {
-        orderBy: [asc(jobStages.sequence)],
-      },
-    },
-  });
-
-  if (!row) {
-    throw new JobNotFoundError(id);
-  }
-
-  return {
-    ...mapJobSummary(row),
-    stages: mapJobDetailStages({ access, job: row, stageRows: row.stages }),
-    workflowEvents: mapJobWorkflowEvents({ access, eventRows: row.events, stageRows: row.stages }),
-  };
-}
-
 export async function pauseJob({
   db,
   access,
@@ -509,16 +341,13 @@ export async function startJobStage({
   id: UUID;
   stage: JobStageName;
 }): Promise<JobDetail> {
-  return transitionJobStage({
+  return applyJobStageTransition({
     access,
     actorUserId,
     db,
     id,
     stage,
-    transition: 'start',
-    values: {
-      startedAt: new Date(),
-    },
+    intent: { transition: 'start' },
   });
 }
 
@@ -533,20 +362,13 @@ export async function setJobStageStatus({
   actorUserId: AuthId;
   input: JobStageStatusInput;
 }): Promise<JobDetail> {
-  if (input.status === 'complete') {
-    return completeJobStageFromStatus({ access, actorUserId, db, id: input.id, stage: input.stage });
-  }
-
-  return transitionJobStage({
+  return applyJobStageTransition({
     access,
     actorUserId,
     db,
     id: input.id,
     stage: input.stage,
-    transition: 'set-status',
-    values: {
-      status: input.status,
-    },
+    intent: { status: input.status, transition: 'set-status' },
   });
 }
 
@@ -563,296 +385,14 @@ export async function completeJobStage({
   id: UUID;
   stage: JobStageName;
 }): Promise<JobDetail> {
-  return transitionJobStage({
+  return applyJobStageTransition({
     access,
     actorUserId,
     db,
     id,
     stage,
-    transition: 'complete',
-    values: {
-      completedAt: new Date(),
-      status: 'complete',
-    },
+    intent: { transition: 'complete' },
   });
-}
-
-async function completeJobStageFromStatus({
-  db,
-  access,
-  actorUserId,
-  id,
-  stage,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-  stage: JobStageName;
-}): Promise<JobDetail> {
-  return db.transaction(async (tx) => {
-    const transitionTarget = await readStageTransitionTarget({ db: tx, id, stage });
-    const result = evaluateStageTransition({
-      access,
-      job: transitionTarget.job,
-      previousStage: transitionTarget.previousStage,
-      stage: {
-        ...transitionTarget.stage,
-        completedAt: null,
-      },
-      transition: 'complete',
-    });
-
-    if (!result.allowed) {
-      throw new JobStageTransitionDeniedError(result.reason);
-    }
-
-    if (transitionTarget.stage.completedAt) {
-      if (transitionTarget.stage.status !== 'complete') {
-        return applyJobStageTransition({
-          access,
-          actorUserId,
-          id,
-          stage,
-          transition: 'set-status',
-          transitionTarget,
-          tx,
-          values: {
-            status: 'complete',
-          },
-        });
-      }
-
-      return getJob({ access, db: tx, id });
-    }
-
-    return applyJobStageTransition({
-      access,
-      actorUserId,
-      id,
-      stage,
-      transition: 'complete',
-      transitionTarget,
-      tx,
-      values: {
-        completedAt: new Date(),
-        status: 'complete',
-      },
-    });
-  });
-}
-
-function mapJobSummary(row: JobWithProductRow): JobSummary {
-  return {
-    ...mapJob(row),
-    customerCompanyName: row.quote?.customer.companyName ?? null,
-    productModelCode: row.product.modelCode,
-    productName: row.product.name,
-    quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,
-    stages: row.stages.map(mapJobStageSummary),
-  };
-}
-
-function mapJobStageSummary(row: JobStageRow): JobStageSummary {
-  return JobStageSummary.parse({
-    ...mapJobStage(row),
-    department: row.stage,
-  });
-}
-
-function getJobSortColumn(sortBy: JobSortBy): SQL {
-  const columns = {
-    code: sql`${jobs.code}`,
-    createdAt: sql`${jobs.createdAt}`,
-    id: sql`${jobs.id}`,
-    lifecycleStatus: sql`${jobs.lifecycleStatus}`,
-  } as const satisfies Record<JobSortBy, SQL>;
-
-  return columns[sortBy];
-}
-
-function mapStageAccess({
-  access,
-  job,
-  previousStage,
-  stage,
-}: {
-  access: UserAccessSummary;
-  job: JobRow;
-  previousStage: JobStageRow | null;
-  stage: JobStageRow;
-}): JobStageRollup {
-  if (canViewStage(access, stage)) {
-    return {
-      ...mapJobStageSummary(stage),
-      access: 'visible',
-      transitionAvailability: getStageTransitionAvailability({
-        access,
-        job,
-        previousStage,
-        stage,
-      }),
-    };
-  }
-
-  return {
-    ...mapJobStageSummary(stage),
-    access: 'summary',
-  };
-}
-
-function mapJobDetailStages({
-  access,
-  job,
-  stageRows,
-}: {
-  access: UserAccessSummary;
-  job: JobRow;
-  stageRows: JobStageRow[];
-}): JobStageRollup[] {
-  return stageRows.map((stageRow, index) =>
-    mapStageAccess({
-      access,
-      job,
-      previousStage: index === 0 ? null : (stageRows[index - 1] ?? null),
-      stage: stageRow,
-    }),
-  );
-}
-
-function mapJobWorkflowEvents({
-  access,
-  eventRows,
-  stageRows,
-}: {
-  access: UserAccessSummary;
-  eventRows: JobEventWithActorRow[];
-  stageRows: JobStageRow[];
-}): JobEvent[] {
-  const stageRowsById = new Map(stageRows.map((stage) => [stage.id, stage]));
-
-  return eventRows
-    .filter((event) => {
-      if (!event.stageId) return true;
-
-      const stage = stageRowsById.get(event.stageId);
-      return stage ? canViewStage(access, stage) : false;
-    })
-    .map(mapJobEventWithActor)
-    .sort(compareJobEventsNewestFirst);
-}
-
-function compareJobEventsNewestFirst(left: JobEvent, right: JobEvent): number {
-  const occurredAtOrder = right.occurredAt.localeCompare(left.occurredAt);
-  return occurredAtOrder === 0 ? right.id.localeCompare(left.id) : occurredAtOrder;
-}
-
-async function transitionJobStage({
-  db,
-  access,
-  actorUserId,
-  id,
-  stage,
-  transition,
-  values,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-  stage: JobStageName;
-  transition: StageTransition;
-  values: Partial<Pick<JobStageRow, 'completedAt' | 'startedAt' | 'status'>>;
-}): Promise<JobDetail> {
-  return db.transaction(async (tx) => {
-    const transitionTarget = await readStageTransitionTarget({ db: tx, id, stage });
-    return applyJobStageTransition({ access, actorUserId, id, stage, transition, transitionTarget, tx, values });
-  });
-}
-
-async function applyJobStageTransition({
-  access,
-  actorUserId,
-  id,
-  stage,
-  transition,
-  transitionTarget,
-  tx,
-  values,
-}: {
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-  stage: JobStageName;
-  transition: StageTransition;
-  transitionTarget: StageTransitionTarget;
-  tx: DatabaseTransaction;
-  values: Partial<Pick<JobStageRow, 'completedAt' | 'startedAt' | 'status'>>;
-}): Promise<JobDetail> {
-  const result = evaluateStageTransition({
-    access,
-    job: transitionTarget.job,
-    previousStage: transitionTarget.previousStage,
-    stage: transitionTarget.stage,
-    transition,
-  });
-
-  if (!result.allowed) {
-    throw new JobStageTransitionDeniedError(result.reason);
-  }
-
-  const [updatedStage] = await tx
-    .update(jobStages)
-    .set(values)
-    .where(and(eq(jobStages.jobId, id), eq(jobStages.stage, stage)))
-    .returning();
-
-  if (!updatedStage) {
-    throw new JobNotFoundError(id);
-  }
-
-  await insertAuditEvent({
-    db: tx,
-    input: {
-      action: 'updated',
-      actorUserId,
-      after: mapJobStage(updatedStage),
-      before: mapJobStage(transitionTarget.stage),
-      changes: createAuditChanges(mapJobStage(transitionTarget.stage), mapJobStage(updatedStage), {
-        completedAt: 'completed at',
-        startedAt: 'started at',
-        status: 'status',
-      }),
-      entityId: updatedStage.id,
-      entityType: jobStageAuditDescriptor.entityType,
-    },
-  });
-
-  const jobEvent = deriveStageJobEvent({
-    after: mapJobEventDerivationStage(updatedStage),
-    before: mapJobEventDerivationStage(transitionTarget.stage),
-    transition,
-  });
-
-  await tx.insert(jobEvents).values({
-    actorUserId,
-    eventType: jobEvent.eventType,
-    jobId: id,
-    occurredAt: new Date(),
-    payload: jobEvent.payload,
-    stageId: updatedStage.id,
-  });
-
-  if (transition === 'complete' && updatedStage.stage === 'dispatch') {
-    await completeJobLifecycle({
-      actorUserId,
-      before: transitionTarget.job,
-      id,
-      tx,
-    });
-  }
-
-  return getJob({ access, db: tx, id });
 }
 
 async function transitionJobLifecycle({
@@ -901,96 +441,6 @@ async function transitionJobLifecycle({
   });
 }
 
-function mapJobAuditRecord(
-  job: Pick<JobRow, 'code' | 'dueDate' | 'lifecycleStatus' | 'productId' | 'quoteId'>,
-): JobAuditRecord {
-  return {
-    code: job.code,
-    dueDate: job.dueDate,
-    lifecycleStatus: job.lifecycleStatus,
-    productId: job.productId,
-    quoteId: job.quoteId,
-  };
-}
-
-async function completeJobLifecycle({
-  actorUserId,
-  before,
-  id,
-  tx,
-}: {
-  actorUserId: AuthId;
-  before: JobAuditRecord;
-  id: UUID;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  await applyJobLifecycleStatusChange({
-    actorUserId,
-    before,
-    eventType: 'job.completed',
-    id,
-    nextStatus: 'complete',
-    tx,
-  });
-}
-
-async function applyJobLifecycleStatusChange({
-  actorUserId,
-  before,
-  eventType,
-  id,
-  nextStatus,
-  tx,
-}: {
-  actorUserId: AuthId;
-  before: JobAuditRecord;
-  eventType: Extract<JobEvent['eventType'], `job.${string}`>;
-  id: UUID;
-  nextStatus: JobLifecycleStatus;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  const [updatedJob] = await tx
-    .update(jobs)
-    .set({
-      lifecycleStatus: nextStatus,
-      updatedAt: new Date(),
-    })
-    .where(eq(jobs.id, id))
-    .returning();
-
-  if (!updatedJob) {
-    throw new JobNotFoundError(id);
-  }
-
-  const after = mapJobAuditRecord(updatedJob);
-  await insertAuditEvent({
-    db: tx,
-    input: {
-      action: 'updated',
-      actorUserId,
-      after,
-      before,
-      changes: createAuditChanges(before, after, {
-        lifecycleStatus: jobAuditDescriptor.fields.lifecycleStatus ?? 'lifecycle status',
-      }),
-      entityId: updatedJob.id,
-      entityType: jobAuditDescriptor.entityType,
-    },
-  });
-
-  await tx.insert(jobEvents).values({
-    actorUserId,
-    eventType,
-    jobId: id,
-    occurredAt: new Date(),
-    payload: {
-      fromLifecycleStatus: before.lifecycleStatus,
-      toLifecycleStatus: nextStatus,
-    },
-    stageId: null,
-  });
-}
-
 function getLifecycleTransitionDeniedReason(
   transition: JobLifecycleTransition,
   lifecycleStatus: JobLifecycleStatus,
@@ -1008,45 +458,4 @@ function getLifecycleTransitionDeniedReason(
   }
 
   return 'Only active or paused jobs can be cancelled.';
-}
-
-type StageTransitionTarget = {
-  job: JobAuditRecord;
-  previousStage: JobStageRow | null;
-  stage: JobStageRow;
-};
-
-async function readStageTransitionTarget({
-  db,
-  id,
-  stage,
-}: {
-  db: DatabaseTransaction;
-  id: UUID;
-  stage: JobStageName;
-}): Promise<StageTransitionTarget> {
-  const rows = await db
-    .select({
-      job: jobs,
-      stage: jobStages,
-    })
-    .from(jobs)
-    .innerJoin(jobStages, eq(jobStages.jobId, jobs.id))
-    .where(eq(jobs.id, id))
-    .orderBy(asc(jobStages.sequence))
-    .for('update');
-
-  const currentStageIndex = rows.findIndex((row) => row.stage.stage === stage);
-  const currentRow = rows[currentStageIndex];
-  const currentStage = currentRow?.stage;
-
-  if (!currentStage) {
-    throw new JobNotFoundError(id);
-  }
-
-  return {
-    job: mapJobAuditRecord(currentRow.job),
-    previousStage: currentStageIndex > 0 ? (rows[currentStageIndex - 1]?.stage ?? null) : null,
-    stage: currentStage,
-  };
 }

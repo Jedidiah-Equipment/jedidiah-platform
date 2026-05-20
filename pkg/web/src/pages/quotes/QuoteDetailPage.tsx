@@ -142,9 +142,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
             {canUpdateQuote && quote.status === 'sent' ? (
               <>
                 <Button disabled={isStatePending} onClick={() => confirmAcceptQuote(quote.id)}>
-                  {acceptMutation.isPending ? (
-                    <Loader2Icon data-icon="inline-start" className="animate-spin" />
-                  ) : null}
+                  {acceptMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
                   Accept
                 </Button>
                 <Button disabled={isStatePending} onClick={() => confirmRejectQuote(quote.id)} variant="outline">
@@ -164,29 +162,19 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
             <QuoteFact label="Product" value={`${quote.productName} (${quote.productModelCode})`} />
             <QuoteFact label="Salesperson" value={quote.salesPersonName ?? 'Unassigned'} />
             <QuoteFact label="Valid until" value={<DateDisplay date={quote.validUntil} emptyValue="Not set" />} />
-            <QuoteFact
-              label="Sent"
-              value={<DateDisplay date={quote.sentAt} emptyValue="Not sent" format="medium" />}
-            />
+            <QuoteFact label="Sent" value={<DateDisplay date={quote.sentAt} emptyValue="Not sent" format="medium" />} />
             <QuoteFact label="Total" value={formatCurrency(quote.total, currencyCode)} />
             <QuoteFact label="Discount" value={formatCurrency(quote.discount, currencyCode)} />
             <QuoteFact
               label="Quoted base price"
               value={
-                quote.quotedBasePrice === null
-                  ? 'Not snapshotted'
-                  : formatCurrency(quote.quotedBasePrice, currencyCode)
+                quote.quotedBasePrice === null ? 'Not snapshotted' : formatCurrency(quote.quotedBasePrice, currencyCode)
               }
             />
             <QuoteFact
               label="Job"
               value={
-                <JobCodeDisplay
-                  canOpenJob={canOpenJobs}
-                  jobCode={quote.jobCode}
-                  jobId={quote.jobId}
-                  withHoverCard
-                />
+                <JobCodeDisplay canOpenJob={canOpenJobs} jobCode={quote.jobCode} jobId={quote.jobId} withHoverCard />
               }
             />
           </div>

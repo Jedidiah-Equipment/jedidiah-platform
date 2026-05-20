@@ -28,11 +28,7 @@ export const ProductCreatePage: React.FC = () => {
   );
 
   return (
-    <EditPageLayout
-      back={<BackButton to="/products">Products</BackButton>}
-      description="Catalog"
-      title="New product"
-    >
+    <EditPageLayout back={<BackButton to="/products">Products</BackButton>} description="Catalog" title="New product">
       <ProductForm
         isPending={createProductMutation.isPending}
         onSubmit={(value) =>

@@ -1,6 +1,7 @@
 import type React from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Separator } from '@/components/ui/separator.js';
 
 type EditPageLayoutProps = {
   back: React.ReactNode;
@@ -21,8 +22,9 @@ export const EditPageLayout: React.FC<EditPageLayoutProps> = ({ back, badge, chi
           {badge}
         </div>
       </CardHeader>
-      <CardContent className="max-w-2xl">
-        {children}
+      <CardContent className="flex flex-col gap-4">
+        <Separator />
+        <div className="max-w-2xl">{children}</div>
       </CardContent>
     </Card>
   </div>

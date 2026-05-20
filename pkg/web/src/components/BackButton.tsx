@@ -10,7 +10,12 @@ type BackButtonAnchorProps = React.ComponentProps<'a'> & Pick<VariantProps<typeo
 
 const BackButtonAnchor = React.forwardRef<HTMLAnchorElement, BackButtonAnchorProps>(
   ({ className, size = 'default', children, ...props }, ref) => (
-    <a ref={ref} data-slot="back-button" className={cn(buttonVariants({ variant: 'ghost', size, className }))} {...props}>
+    <a
+      ref={ref}
+      data-slot="back-button"
+      className={cn(buttonVariants({ variant: 'ghost', size, className }))}
+      {...props}
+    >
       <ArrowLeftIcon data-icon="inline-start" />
       {children}
     </a>

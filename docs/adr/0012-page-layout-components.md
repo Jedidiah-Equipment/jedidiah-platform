@@ -12,10 +12,10 @@ All existing List, Detail, and Edit pages share the same outer wrapper (`flex fl
 Slots: `title`, `description`, `action` (primary button), `children` (table content).
 
 **`DetailPageLayout`** — full-width, non-sticky header with back button. Optional `aside` slot rendered as a sticky right column at `xl` breakpoint (fixed `22rem` width). When `aside` is omitted the layout is single-column.
-Slots: `title`, `description`, `backTo`, `aside`, `children`.
+Slots: `title`, `description`, `back` (rendered ReactNode — use `BackButton`), `badge`, `aside`, `children`.
 
-**`EditPageLayout`** — non-sticky header with back button, form content constrained to `max-w-2xl`.
-Slots: `title`, `description`, `backTo`, `children`.
+**`EditPageLayout`** — non-sticky header with back button, form content constrained to `max-w-2xl` and centered.
+Slots: `title`, `description`, `back` (rendered ReactNode — use `BackButton`), `badge`, `children`.
 
 The `<Card>` wrapper is baked into each component. Pages pass content as children and cannot omit or rewrap it.
 

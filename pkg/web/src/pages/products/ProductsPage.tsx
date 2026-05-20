@@ -27,9 +27,7 @@ export const ProductsPage: React.FC = () => {
     >
       <ProductTable
         onEditProduct={
-          canUpdateProduct
-            ? (product) => navigate({ to: '/products/$id/edit', params: { id: product.id } })
-            : undefined
+          canUpdateProduct ? (product) => navigate({ to: '/products/$id/edit', params: { id: product.id } }) : undefined
         }
         showEditActions={canUpdateProduct}
       />

@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { BackButton } from '@/components/BackButton.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
-import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -71,7 +70,9 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
     <EditPageLayout
       back={
         quoteId ? (
-          <BackButton params={{ id: quoteId }} to="/quotes/$id">Quote</BackButton>
+          <BackButton params={{ id: quoteId }} to="/quotes/$id">
+            Quote
+          </BackButton>
         ) : (
           <BackButton to="/quotes">Quotes</BackButton>
         )
@@ -80,8 +81,7 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
       description="Sales"
       title={isEditing ? 'Edit quote' : 'New quote'}
     >
-      <Separator className="mb-4" />
-      <ErrorMessage className="mb-4" error={quoteQuery.error} fallbackMessage="Unable to load quote." />
+      <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
       {isEditing && quoteQuery.isPending ? <QuoteFormSkeleton /> : null}
       {!isEditing || quote ? (
         <QuoteForm

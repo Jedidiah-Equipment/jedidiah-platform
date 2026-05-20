@@ -7,8 +7,8 @@ import { toast } from 'sonner';
 import { BackButton } from '@/components/BackButton.js';
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
-import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { PrimaryLink } from '@/components/PrimaryLink.js';
+import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -172,9 +172,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
             <JobFact label="Updated" value={<DateDisplay date={job.updatedAt} />} />
             <JobFact
               label="Quote"
-              value={
-                <JobQuoteLink canOpenQuote={canOpenQuotes} quoteCode={job.quoteCode} quoteId={job.quoteId} />
-              }
+              value={<JobQuoteLink canOpenQuote={canOpenQuotes} quoteCode={job.quoteCode} quoteId={job.quoteId} />}
             />
           </div>
           {canUpdateJob ? (

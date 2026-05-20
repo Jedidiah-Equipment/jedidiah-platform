@@ -9,6 +9,7 @@ type DetailPageLayoutProps = {
   back: React.ReactNode;
   badge?: React.ReactNode;
   children: React.ReactNode;
+  // title/description are optional: undefined triggers a loading skeleton rather than rendering empty content
   description?: string | undefined;
   title?: string | undefined;
 };

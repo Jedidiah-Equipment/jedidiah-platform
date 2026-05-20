@@ -1,4 +1,5 @@
-import { AppEnv, NodeEnv } from '@pkg/schema';
+import { isRemoteAppEnv } from '@pkg/domain';
+import { AppEnv, EnvBoolean, NodeEnv } from '@pkg/schema';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
@@ -40,6 +41,9 @@ export const ApiConfig = z
     PORT: z.coerce.number().int().positive().default(7002),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
     LOG_DOMAINS_DISABLED: z.string().optional(),
+    POSTHOG_ENABLED: EnvBoolean.optional(),
+    POSTHOG_PROJECT_TOKEN: z.string().min(1).optional(),
+    POSTHOG_HOST: z.string().url().default('https://us.i.posthog.com'),
     RAILWAY_DEPLOYMENT_ID: z.string().min(1).optional(),
     RAILWAY_SNAPSHOT_ID: z.string().min(1).optional(),
     RAILWAY_SERVICE_NAME: z.string().min(1).optional(),
@@ -52,6 +56,15 @@ export const ApiConfig = z
         code: z.ZodIssueCode.custom,
         message: 'RESEND_API_KEY is required when EMAIL_PROVIDER is resend',
         path: ['RESEND_API_KEY'],
+      });
+    }
+
+    const posthogEnabled = config.POSTHOG_ENABLED ?? isRemoteAppEnv(config.APP_ENV);
+    if (posthogEnabled && !config.POSTHOG_PROJECT_TOKEN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'POSTHOG_PROJECT_TOKEN is required when PostHog is enabled',
+        path: ['POSTHOG_PROJECT_TOKEN'],
       });
     }
   });

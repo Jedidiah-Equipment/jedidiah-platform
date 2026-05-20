@@ -21,7 +21,8 @@
     "db:migrate:test": "pnpm --filter @pkg/db build && NODE_ENV=test pnpm --filter @pkg/db db:migrate",
     "db:seed": "pnpm --filter @pkg/seed db:seed",
     "db:studio": "pnpm --filter @pkg/db db:studio",
-    "update-package-versions": "pnpm up --recursive --interactive"
+    "update-package-versions": "pnpm up --recursive --interactive",
+    "prepare": "pnpm lint:fix && pnpm typecheck && pnpm build && pnpm test"
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",
@@ -42,7 +43,12 @@
     "vitest": "^3.2.4"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "@posthog/cli"
+    ],
     "ignoredBuiltDependencies": [
+      "core-js",
+      "protobufjs",
       "msw"
     ]
   }

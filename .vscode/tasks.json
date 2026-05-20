@@ -17,6 +17,20 @@
       "problemMatcher": "$tsc"
     },
     {
+      "label": "Typecheck All",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["turbo", "run", "typecheck"],
+      "group": {
+        "kind": "build",
+      },
+      "icon": {
+        "id": "check",
+        "color": "terminal.ansiYellow"
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
       "label": "Build Api",
       "type": "shell",
       "command": "pnpm",

@@ -53,7 +53,6 @@ const mainNavItems = [
     permission: 'product:read',
     link: linkOptions({
       to: '/products',
-      search: { page: 1, pageSize: 10, search: '', sortBy: 'name', sortDirection: 'asc' },
     }),
     icon: BoxesIcon,
   },

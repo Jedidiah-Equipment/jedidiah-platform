@@ -41,7 +41,7 @@ export async function buildServer(
       if (!shouldLogTRPCError(error)) return;
 
       log.root.error({ error, path, type }, 'Unexpected tRPC error');
-      observability.captureException(error, { path, type, source: 'trpc' });
+      observability.captureException(error, { properties: { path, type, source: 'trpc' } });
     },
   } satisfies FastifyTRPCPluginOptions<typeof appRouter>['trpcOptions'];
 

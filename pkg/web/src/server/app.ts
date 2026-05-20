@@ -21,17 +21,19 @@ export function buildWebServer(config: ServerConfig, options: WebServerOptions =
     wildcard: false,
   });
 
-  app.register(fastifyHttpProxy, {
-    upstream: config.posthogProxy.assetHost,
-    prefix: config.posthogProxy.assetPath,
-    rewritePrefix: '/static',
-  });
+  if (config.posthogProxy.enabled) {
+    app.register(fastifyHttpProxy, {
+      upstream: config.posthogProxy.assetHost,
+      prefix: config.posthogProxy.assetPath,
+      rewritePrefix: '/static',
+    });
 
-  app.register(fastifyHttpProxy, {
-    upstream: config.posthogProxy.ingestHost,
-    prefix: config.posthogProxy.apiPath,
-    rewritePrefix: '',
-  });
+    app.register(fastifyHttpProxy, {
+      upstream: config.posthogProxy.ingestHost,
+      prefix: config.posthogProxy.apiPath,
+      rewritePrefix: '',
+    });
+  }
 
   app.get('/health', async () => ({
     ok: true,

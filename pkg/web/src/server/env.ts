@@ -34,7 +34,7 @@ const ServerEnv = z.object({
   POSTHOG_SOURCEMAPS_ENABLED: EnvBoolean.optional(),
   POSTHOG_API_KEY: z.string().min(1).optional(),
   POSTHOG_PROJECT_ID: z.string().min(1).optional(),
-  POSTHOG_API_HOST: z.url().default(POSTHOG_UI_HOST),
+  POSTHOG_SOURCEMAPS_HOST: z.url().default(POSTHOG_UI_HOST),
   RAILWAY_DEPLOYMENT_ID: z.string().min(1).optional(),
   RAILWAY_SNAPSHOT_ID: z.string().min(1).optional(),
   RAILWAY_SERVICE_NAME: z.string().min(1).optional(),
@@ -79,6 +79,7 @@ export const ServerConfig = ServerEnv.superRefine((env, ctx) => {
   return {
     port: env.PORT,
     posthogProxy: {
+      enabled: env.POSTHOG_ENABLED ?? isRemoteAppEnv(env.APP_ENV),
       apiPath: POSTHOG_CLIENT_API_HOST,
       assetPath: POSTHOG_PROXY_ASSET_PATH,
       ingestHost: env.POSTHOG_INGEST_HOST,
@@ -88,7 +89,7 @@ export const ServerConfig = ServerEnv.superRefine((env, ctx) => {
       enabled: env.POSTHOG_SOURCEMAPS_ENABLED ?? env.POSTHOG_ENABLED ?? isRemoteAppEnv(env.APP_ENV),
       apiKey: env.POSTHOG_API_KEY ?? null,
       projectId: env.POSTHOG_PROJECT_ID ?? null,
-      host: env.POSTHOG_API_HOST,
+      host: env.POSTHOG_SOURCEMAPS_HOST,
     },
     deployment: {
       appEnv: env.APP_ENV,

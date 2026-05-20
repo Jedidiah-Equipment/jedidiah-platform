@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { usePostHog } from 'posthog-js/react';
 import { useEffect } from 'react';
-import { getClientConfig } from '@/lib/app-config.ts';
+import { getClientConfig } from '@/lib/app-config.js';
 import { authClient } from '@/lib/auth-client.js';
 import { clearReactQueryCache } from '@/lib/trpc-cache.js';
 

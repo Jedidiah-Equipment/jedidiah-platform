@@ -7,13 +7,25 @@ const observability = createObservability(config);
 const app = await buildServer(config, observability);
 
 process.on('uncaughtException', (error) => {
-  observability.captureException(error, { source: 'uncaughtException' });
-  app.log.error(error);
-  process.exitCode = 1;
+  void shutdownAfterFatalException(error);
 });
 
+async function shutdownAfterFatalException(error: Error): Promise<void> {
+  observability.captureException(error, { properties: { source: 'uncaughtException' } });
+  app.log.error(error);
+
+  try {
+    await app.close();
+  } catch (closeError) {
+    app.log.error({ error: closeError }, 'Failed to close API server after uncaught exception');
+    await observability.flush();
+  }
+
+  process.exit(1);
+}
+
 process.on('unhandledRejection', (reason) => {
-  observability.captureException(reason, { source: 'unhandledRejection' });
+  observability.captureException(reason, { properties: { source: 'unhandledRejection' } });
   app.log.error({ reason }, 'Unhandled rejection');
 });
 
@@ -23,7 +35,7 @@ try {
     port: config.PORT,
   });
 } catch (error) {
-  observability.captureException(error, { source: 'startup' });
+  observability.captureException(error, { properties: { source: 'startup' } });
   app.log.error(error);
   await observability.flush();
   process.exit(1);

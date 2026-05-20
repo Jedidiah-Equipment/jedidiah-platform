@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ApiConfig } from './env.js';
-import { createObservability, isPostHogEnabled, type ObservabilityClient } from './observability.js';
+import { createObservability, isPostHogEnabled, type PostHogObservabilityClient } from './observability.js';
 
 function mockConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return {
@@ -28,11 +28,11 @@ function mockConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   } as unknown as ApiConfig;
 }
 
-function mockClient(): ObservabilityClient {
+function mockClient(): PostHogObservabilityClient {
   return {
     captureException: vi.fn(),
     flush: vi.fn(async () => undefined),
-  };
+  } as unknown as PostHogObservabilityClient;
 }
 
 describe('API observability', () => {
@@ -52,7 +52,7 @@ describe('API observability', () => {
     );
     const error = new Error('broken');
 
-    observability.captureException(error, { route: '/trpc' }, 'user_1');
+    observability.captureException(error, { distinctId: 'user_1', properties: { route: '/trpc' } });
 
     expect(client.captureException).toHaveBeenCalledWith(
       error,

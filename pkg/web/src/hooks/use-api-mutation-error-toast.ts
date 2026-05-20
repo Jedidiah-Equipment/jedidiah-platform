@@ -15,6 +15,9 @@ export function useApiMutationErrorToast() {
       if (config.posthog.enabled) {
         posthog.captureException(error, { source: 'api_mutation' });
       }
+      if (config.appEnv === 'development') {
+        console.error('Mutation failed', error);
+      }
       toast.error(getApiMutationErrorMessage(error, fallbackMessage));
     },
     [posthog],

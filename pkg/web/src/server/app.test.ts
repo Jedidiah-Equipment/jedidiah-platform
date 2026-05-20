@@ -11,6 +11,7 @@ function mockConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
   return {
     port: 7001,
     posthogProxy: {
+      enabled: false,
       apiPath: '/info',
       assetPath: '/info/static',
       ingestHost: 'https://us.i.posthog.com',
@@ -68,6 +69,7 @@ describe('web server', () => {
     const app = buildWebServer(
       mockConfig({
         posthogProxy: {
+          enabled: true,
           apiPath: '/info',
           assetPath: '/info/static',
           ingestHost: `http://127.0.0.1:${upstreamAddress.port}`,
@@ -113,6 +115,7 @@ describe('web server', () => {
     const app = buildWebServer(
       mockConfig({
         posthogProxy: {
+          enabled: true,
           apiPath: '/info',
           assetPath: '/info/static',
           ingestHost: 'https://us.i.posthog.com',

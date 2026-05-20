@@ -1,14 +1,12 @@
 import type { QuoteCreateInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeftIcon } from 'lucide-react';
 import type React from 'react';
 import { toast } from 'sonner';
 
-import { ButtonLink } from '@/components/ButtonLink.js';
+import { BackButton } from '@/components/BackButton.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Separator } from '@/components/ui/separator.js';
+import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -69,44 +67,32 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <div>
-        {quoteId ? (
-          <ButtonLink params={{ id: quoteId }} to="/quotes/$id" variant="ghost">
-            <ArrowLeftIcon data-icon="inline-start" />
+    <EditPageLayout
+      back={
+        quoteId ? (
+          <BackButton params={{ id: quoteId }} to="/quotes/$id">
             Quote
-          </ButtonLink>
+          </BackButton>
         ) : (
-          <ButtonLink to="/quotes" variant="ghost">
-            <ArrowLeftIcon data-icon="inline-start" />
-            Quotes
-          </ButtonLink>
-        )}
-      </div>
-      <Card>
-        <CardHeader>
-          <CardDescription>Sales</CardDescription>
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle>{isEditing ? 'Edit quote' : 'New quote'}</CardTitle>
-            {quote ? <QuoteStatusBadge status={quote.status} /> : null}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Separator className="mb-4" />
-          <ErrorMessage className="mb-4" error={quoteQuery.error} fallbackMessage="Unable to load quote." />
-          {isEditing && quoteQuery.isPending ? <QuoteFormSkeleton /> : null}
-          {!isEditing || quote ? (
-            <QuoteForm
-              initialQuote={quote}
-              isPending={isPending}
-              key={quote?.id ?? 'new'}
-              onSubmit={onSubmit}
-              submitLabel={isEditing ? 'Save quote' : 'Create quote'}
-            />
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
+          <BackButton to="/quotes">Quotes</BackButton>
+        )
+      }
+      badge={quote ? <QuoteStatusBadge status={quote.status} /> : undefined}
+      description="Sales"
+      title={isEditing ? 'Edit quote' : 'New quote'}
+    >
+      <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
+      {isEditing && quoteQuery.isPending ? <QuoteFormSkeleton /> : null}
+      {!isEditing || quote ? (
+        <QuoteForm
+          initialQuote={quote}
+          isPending={isPending}
+          key={quote?.id ?? 'new'}
+          onSubmit={onSubmit}
+          submitLabel={isEditing ? 'Save quote' : 'Create quote'}
+        />
+      ) : null}
+    </EditPageLayout>
   );
 };
 

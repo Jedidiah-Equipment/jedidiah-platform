@@ -30,7 +30,7 @@ export const AuthenticatedRouteShell: React.FC<AuthenticatedRouteShellProps> = (
   return (
     <SidebarProvider className="h-svh min-h-0 overflow-hidden">
       <AppSidebar />
-      <SidebarInset className="min-h-0">
+      <SidebarInset className="min-h-0 min-w-0">
         <header className="flex h-16 shrink-0 items-center gap-2 px-4">
           <div className="flex min-w-0 items-center gap-2">
             <SidebarTrigger className="-ml-1" />
@@ -38,7 +38,7 @@ export const AuthenticatedRouteShell: React.FC<AuthenticatedRouteShellProps> = (
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink render={<Link to="/dashboard" />}>Jedidiah Equipment</BreadcrumbLink>
+                  <BreadcrumbLink render={<Link to="/dashboard" />}>Jedidiah</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>

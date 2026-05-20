@@ -5,9 +5,8 @@ import { ShieldIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 
+import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Separator } from '@/components/ui/separator.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -31,37 +30,31 @@ export const UsersPage: React.FC = () => {
   const [editingUser, setEditingUser] = useState<UserSummary | null>(null);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex flex-col gap-1">
-              <CardDescription>Access</CardDescription>
-              <CardTitle>Users</CardTitle>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">
-                <ShieldIcon data-icon="inline-start" />
-                User access
-              </Badge>
-              <UserCreateDialog />
-            </div>
+    <>
+      <ListPageLayout
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">
+              <ShieldIcon data-icon="inline-start" />
+              User access
+            </Badge>
+            <UserCreateDialog />
           </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Separator />
-          <UserTable
-            currentUserId={access?.userId}
-            errorMessage={getApiQueryErrorMessage(usersQuery.error, 'Unable to load users.')}
-            isLoading={usersQuery.isPending}
-            onEditUser={canManageUsers ? setEditingUser : undefined}
-            showEditActions={canManageUsers}
-            users={usersQuery.data?.users ?? emptyUsers}
-          />
-        </CardContent>
-      </Card>
+        }
+        description="Access"
+        title="Users"
+      >
+        <UserTable
+          currentUserId={access?.userId}
+          errorMessage={getApiQueryErrorMessage(usersQuery.error, 'Unable to load users.')}
+          isLoading={usersQuery.isPending}
+          onEditUser={canManageUsers ? setEditingUser : undefined}
+          showEditActions={canManageUsers}
+          users={usersQuery.data?.users ?? emptyUsers}
+        />
+      </ListPageLayout>
 
       {editingUser ? <UserEditDialog user={editingUser} onClose={() => setEditingUser(null)} /> : null}
-    </div>
+    </>
   );
 };

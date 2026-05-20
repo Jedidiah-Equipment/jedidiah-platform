@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input.js';
 type DataTableSearchProps<TData> = {
   debounceMs: number;
   placeholder: string;
+  rightSection?: React.ReactNode;
   table: Table<TData>;
 };
 
-export function DataTableSearch<TData>({ debounceMs, placeholder, table }: DataTableSearchProps<TData>) {
+export function DataTableSearch<TData>({ debounceMs, placeholder, rightSection, table }: DataTableSearchProps<TData>) {
   const globalFilter = String(table.getState().globalFilter ?? '');
   const [globalFilterDraft, setGlobalFilterDraft] = useState(globalFilter);
   const [debouncedGlobalFilter] = useDebouncedValue(globalFilterDraft, debounceMs);
@@ -36,6 +37,7 @@ export function DataTableSearch<TData>({ debounceMs, placeholder, table }: DataT
           value={globalFilterDraft}
         />
       </div>
+      {rightSection}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import type React from 'react';
 
-import { PermissionBadge } from '@/components/PermissionBadge.js';
+import { PermissionBadge } from '@/components/common/PermissionBadge.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';

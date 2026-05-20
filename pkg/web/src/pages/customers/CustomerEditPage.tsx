@@ -4,8 +4,8 @@ import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { toast } from 'sonner';
 
-import { BackButton } from '@/components/BackButton.js';
-import { ErrorMessage } from '@/components/ErrorMessage.js';
+import { BackButton } from '@/components/button/BackButton.js';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';

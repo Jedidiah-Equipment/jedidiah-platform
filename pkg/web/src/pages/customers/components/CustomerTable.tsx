@@ -4,8 +4,7 @@ import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable
 import { PencilIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
-
-import { DateDisplay } from '@/components/DateDisplay.js';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';

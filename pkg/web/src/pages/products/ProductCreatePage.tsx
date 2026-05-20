@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { toast } from 'sonner';
 
-import { BackButton } from '@/components/BackButton.js';
+import { BackButton } from '@/components/button/BackButton.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';

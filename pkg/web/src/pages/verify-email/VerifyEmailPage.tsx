@@ -3,7 +3,7 @@ import { AlertCircleIcon, CheckCircleIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 
-import { AppBrand } from '@/components/AppBrand.js';
+import { AppBrand } from '@/components/common/AppBrand.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { authClient } from '@/lib/auth-client.js';

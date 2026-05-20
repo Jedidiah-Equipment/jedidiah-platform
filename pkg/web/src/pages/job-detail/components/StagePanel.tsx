@@ -10,7 +10,7 @@ import {
 import { CheckCircleIcon, CircleIcon, PlayIcon } from 'lucide-react';
 import React from 'react';
 
-import { DateDisplay } from '@/components/DateDisplay.js';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { Button } from '@/components/ui/button.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';

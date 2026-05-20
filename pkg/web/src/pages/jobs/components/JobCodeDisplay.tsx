@@ -3,9 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
-import { DateDisplay } from '@/components/DateDisplay.js';
-import { ErrorMessage } from '@/components/ErrorMessage.js';
-import { PrimaryLink } from '@/components/PrimaryLink.js';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';

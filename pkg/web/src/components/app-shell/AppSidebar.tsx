@@ -1,9 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-
-import { AppBrand } from '@/components/AppBrand.js';
 import { AppNavMain } from '@/components/app-shell/AppNavMain.js';
 import { AppNavUser } from '@/components/app-shell/AppNavUser.js';
+import { AppBrand } from '@/components/common/AppBrand.js';
 import {
   Sidebar,
   SidebarContent,

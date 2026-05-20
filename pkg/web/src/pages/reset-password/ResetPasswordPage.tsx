@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { z } from 'zod';
 
-import { AppBrand } from '@/components/AppBrand.js';
+import { AppBrand } from '@/components/common/AppBrand.js';
 import { useAppForm } from '@/components/form/index.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';

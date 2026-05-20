@@ -2,12 +2,15 @@ export { closeDatabaseConnection, db, queryClient } from './client.js';
 export { createDatabaseClient, type DatabaseClient, type Db } from './database-client.js';
 export { getDatabaseConfig, getDatabaseUrl } from './env.js';
 export {
+  createEscapedContainsSearchCondition,
+  createGlobalSearchCondition,
   createLikeSearchPattern,
   getPaginationOffset,
+  getPaginationQueryOptions,
+  getSortOrder,
   getUniqueViolationConstraint,
   isUniqueViolation,
   LIKE_SEARCH_ESCAPE,
-  type PaginationInput,
   withPagination,
 } from './query-utils.js';
 export * from './schema.js';

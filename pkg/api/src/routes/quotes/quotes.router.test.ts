@@ -89,6 +89,96 @@ describe('quotes.update', () => {
 });
 
 describe('quotes.list', () => {
+  test('searches joined quote fields and keeps totals aligned with filtered rows', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const crusherProduct = await createProduct(context.db, {
+      modelCode: 'CRUSH-77',
+      name: 'Crusher Bucket',
+    });
+    const acceptedQuote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Acme Mining',
+      discount: 150,
+      productId: context.product.id,
+    });
+    const draftQuote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Beta Civil',
+      discount: 25,
+      productId: crusherProduct.id,
+    });
+    const sentQuote = await salesCaller.quotes.send({ id: acceptedQuote.id });
+    const finalQuote = await salesCaller.quotes.accept({ id: sentQuote.id });
+    const job = await supervisorCaller.jobs.createFromQuote({
+      dueDate: '2026-08-15',
+      quoteId: finalQuote.id,
+    });
+
+    await expect(
+      salesCaller.quotes.list({
+        filters: {
+          statuses: ['accepted'],
+        },
+        page: 1,
+        pageSize: 10,
+        search: 'Acme',
+        sortBy: 'customerCompanyName',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        {
+          code: finalQuote.code,
+          customerCompanyName: 'Acme Mining',
+          jobCode: job.code,
+        },
+      ],
+    });
+
+    await expect(
+      salesCaller.quotes.list({
+        filters: {
+          statuses: [],
+        },
+        page: 1,
+        pageSize: 10,
+        search: job.code,
+        sortBy: 'jobCode',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        {
+          code: finalQuote.code,
+          jobCode: job.code,
+        },
+      ],
+    });
+
+    await expect(
+      salesCaller.quotes.list({
+        filters: {
+          statuses: ['draft'],
+        },
+        page: 1,
+        pageSize: 10,
+        search: 'Crusher',
+        sortBy: 'total',
+        sortDirection: 'desc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        {
+          code: draftQuote.code,
+          productName: 'Crusher Bucket',
+          total: crusherProduct.basePrice - 25,
+        },
+      ],
+    });
+  });
+
   test('floors stale draft totals when current product price drops below discount', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
     const created = await createReadyQuote(caller, context.product.id);
@@ -200,6 +290,31 @@ async function createReadyQuote(caller: AppRouterCaller, productId: string) {
   });
 }
 
+async function createNamedQuote(
+  caller: AppRouterCaller,
+  {
+    customerCompanyName,
+    discount,
+    productId,
+  }: {
+    customerCompanyName: string;
+    discount: number;
+    productId: string;
+  },
+) {
+  return caller.quotes.create({
+    customer: {
+      type: 'inline',
+      companyName: customerCompanyName,
+    },
+    discount,
+    notes: null,
+    productId,
+    salesPersonId: 'test-user-id',
+    validUntil: '2026-06-30',
+  });
+}
+
 function toUpdateInput(quote: QuoteDetail) {
   return {
     id: quote.id,
@@ -229,7 +344,7 @@ async function createActorUser(db: Db) {
   });
 }
 
-async function createProduct(db: Db) {
+async function createProduct(db: Db, overrides: Partial<typeof products.$inferInsert> = {}) {
   const [product] = await db
     .insert(products)
     .values({
@@ -237,6 +352,7 @@ async function createProduct(db: Db) {
       currencyCode: 'ZAR',
       modelCode: 'QUOTE-001',
       name: 'Quote Test Product',
+      ...overrides,
     })
     .returning();
 

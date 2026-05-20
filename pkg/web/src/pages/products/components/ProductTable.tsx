@@ -1,16 +1,16 @@
-import type { Product, ProductListInput } from '@pkg/schema';
+import { type Product, type ProductListInput, ProductSortBy } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { PencilIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
+import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
-import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
+import type { SortOptions } from '@/components/data-table/table-state.js';
 import { Button } from '@/components/ui/button.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -34,7 +34,7 @@ export const useProductTableStore = createPersistedDataTableStore({
 });
 
 const productSortOptions: SortOptions<ProductListInput> = {
-  allowedSortIds: ['basePrice', 'createdAt', 'modelCode', 'name'],
+  allowedSortIds: ProductSortBy.options,
   defaultSort: {
     id: 'name',
   },
@@ -42,43 +42,25 @@ const productSortOptions: SortOptions<ProductListInput> = {
 
 export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showEditActions }) => {
   const trpc = useTRPC();
-  const productListInput = useProductListInput();
+
+  const tableController = useServerSideTableController({
+    store: useProductTableStore,
+    sortOptions: productSortOptions,
+    getListInputExtras: getProductListInputExtras,
+  });
 
   const productsQuery = useQuery(
-    trpc.products.list.queryOptions(productListInput, {
+    trpc.products.list.queryOptions(tableController.listInput, {
       placeholderData: keepPreviousData,
     }),
   );
 
   const { items: products, total, isLoading } = usePagedQueryResult(productsQuery);
 
-  const {
-    columnFilters,
-    globalFilter,
-    pagination,
-    setColumnFilters,
-    setGlobalFilter,
-    setPageIndex,
-    setPagination,
-    setSorting,
-    sorting,
-  } = useProductTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      setColumnFilters: state.setColumnFilters,
-      setGlobalFilter: state.setGlobalFilter,
-      setPageIndex: state.setPageIndex,
-      setPagination: state.setPagination,
-      setSorting: state.setSorting,
-      sorting: state.sorting,
-    })),
-  );
   const tableState = useConstrainedTableState({
-    pagination,
-    setPageIndex,
-    sorting,
+    pagination: tableController.pagination,
+    setPageIndex: tableController.setPageIndex,
+    sorting: tableController.sorting,
     sortOptions: productSortOptions,
     total,
   });
@@ -169,15 +151,15 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
-    onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: setPagination,
-    onSortingChange: setSorting,
+    onColumnFiltersChange: tableController.setColumnFilters,
+    onGlobalFilterChange: tableController.setGlobalFilter,
+    onPaginationChange: tableController.setPagination,
+    onSortingChange: tableController.setSorting,
     pageCount: tableState.pageCount,
     rowCount: total,
     state: {
-      columnFilters,
-      globalFilter,
+      columnFilters: tableController.columnFilters,
+      globalFilter: tableController.globalFilter,
       pagination: tableState.pagination,
       sorting: tableState.sorting,
     },
@@ -196,32 +178,13 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
   );
 };
 
-export function useProductListInput(): ProductListInput {
-  const { columnFilters, globalFilter, pagination, sorting } = useProductTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      sorting: state.sorting,
-    })),
-  );
-  const sort = getPrimarySort(sorting, productSortOptions);
-
-  return useMemo(
-    () =>
-      ({
-        columnFilters: {
-          modelCode: getColumnFilterValue(columnFilters, 'modelCode'),
-          name: getColumnFilterValue(columnFilters, 'name'),
-        },
-        page: pagination.pageIndex + 1,
-        pageSize: pagination.pageSize,
-        search: globalFilter,
-        sortBy: sort.id,
-        sortDirection: sort.desc ? 'desc' : 'asc',
-      }) satisfies ProductListInput,
-    [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id],
-  );
+function getProductListInputExtras(columnFilters: ColumnFiltersState) {
+  return {
+    columnFilters: {
+      modelCode: getColumnFilterValue(columnFilters, 'modelCode'),
+      name: getColumnFilterValue(columnFilters, 'name'),
+    },
+  } satisfies Pick<ProductListInput, 'columnFilters'>;
 }
 
 function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'modelCode' | 'name'): string | undefined {

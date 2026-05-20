@@ -57,6 +57,9 @@ export const UserSummary = z.object({
   role: AppRole,
 });
 
+export type UserSortBy = z.infer<typeof UserSortBy>;
+export const UserSortBy = z.enum(['email', 'emailVerified', 'name', 'role']);
+
 export type UserAccount = z.infer<typeof UserAccount>;
 export const UserAccount = UserSummary.omit({
   departments: true,

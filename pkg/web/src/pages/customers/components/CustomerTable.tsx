@@ -1,17 +1,17 @@
-import type { Customer, CustomerListInput } from '@pkg/schema';
+import { type Customer, type CustomerListInput, CustomerSortBy } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { PencilIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
+import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
-import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
+import type { SortOptions } from '@/components/data-table/table-state.js';
 import { Button } from '@/components/ui/button.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -33,7 +33,7 @@ export const useCustomerTableStore = createPersistedDataTableStore({
 });
 
 const customerSortOptions: SortOptions<CustomerListInput> = {
-  allowedSortIds: ['companyName', 'createdAt', 'email', 'id'],
+  allowedSortIds: CustomerSortBy.options,
   defaultSort: {
     id: 'companyName',
   },
@@ -41,43 +41,25 @@ const customerSortOptions: SortOptions<CustomerListInput> = {
 
 export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) => {
   const trpc = useTRPC();
-  const customerListInput = useCustomerListInput();
+
+  const tableController = useServerSideTableController({
+    store: useCustomerTableStore,
+    sortOptions: customerSortOptions,
+    getListInputExtras: getCustomerListInputExtras,
+  });
 
   const customersQuery = useQuery(
-    trpc.customers.list.queryOptions(customerListInput, {
+    trpc.customers.list.queryOptions(tableController.listInput, {
       placeholderData: keepPreviousData,
     }),
   );
 
   const { items: customers, total, isLoading } = usePagedQueryResult(customersQuery);
 
-  const {
-    columnFilters,
-    globalFilter,
-    pagination,
-    setColumnFilters,
-    setGlobalFilter,
-    setPageIndex,
-    setPagination,
-    setSorting,
-    sorting,
-  } = useCustomerTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      setColumnFilters: state.setColumnFilters,
-      setGlobalFilter: state.setGlobalFilter,
-      setPageIndex: state.setPageIndex,
-      setPagination: state.setPagination,
-      setSorting: state.setSorting,
-      sorting: state.sorting,
-    })),
-  );
   const tableState = useConstrainedTableState({
-    pagination,
-    setPageIndex,
-    sorting,
+    pagination: tableController.pagination,
+    setPageIndex: tableController.setPageIndex,
+    sorting: tableController.sorting,
     sortOptions: customerSortOptions,
     total,
   });
@@ -164,15 +146,15 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
-    onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: setPagination,
-    onSortingChange: setSorting,
+    onColumnFiltersChange: tableController.setColumnFilters,
+    onGlobalFilterChange: tableController.setGlobalFilter,
+    onPaginationChange: tableController.setPagination,
+    onSortingChange: tableController.setSorting,
     pageCount: tableState.pageCount,
     rowCount: total,
     state: {
-      columnFilters,
-      globalFilter,
+      columnFilters: tableController.columnFilters,
+      globalFilter: tableController.globalFilter,
       pagination: tableState.pagination,
       sorting: tableState.sorting,
     },
@@ -191,33 +173,14 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
   );
 };
 
-export function useCustomerListInput(): CustomerListInput {
-  const { columnFilters, globalFilter, pagination, sorting } = useCustomerTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      sorting: state.sorting,
-    })),
-  );
-  const sort = getPrimarySort(sorting, customerSortOptions);
-
-  return useMemo(
-    () =>
-      ({
-        columnFilters: {
-          companyName: getColumnFilterValue(columnFilters, 'companyName'),
-          email: getColumnFilterValue(columnFilters, 'email'),
-          id: getColumnFilterValue(columnFilters, 'id'),
-        },
-        page: pagination.pageIndex + 1,
-        pageSize: pagination.pageSize,
-        search: globalFilter,
-        sortBy: sort.id,
-        sortDirection: sort.desc ? 'desc' : 'asc',
-      }) satisfies CustomerListInput,
-    [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id],
-  );
+function getCustomerListInputExtras(columnFilters: ColumnFiltersState) {
+  return {
+    columnFilters: {
+      companyName: getColumnFilterValue(columnFilters, 'companyName'),
+      email: getColumnFilterValue(columnFilters, 'email'),
+      id: getColumnFilterValue(columnFilters, 'id'),
+    },
+  } satisfies Pick<CustomerListInput, 'columnFilters'>;
 }
 
 function getColumnFilterValue(

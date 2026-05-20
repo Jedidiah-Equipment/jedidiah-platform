@@ -1,6 +1,6 @@
 import type { PaginationState, SortingState } from '@tanstack/react-table';
 
-type SortId<TSortSource extends string | { sortBy: string }> = TSortSource extends string
+export type SortId<TSortSource extends string | { sortBy: string }> = TSortSource extends string
   ? TSortSource
   : TSortSource extends { sortBy: infer TSortId extends string }
     ? TSortId

@@ -1,10 +1,13 @@
 import type { SortingState } from '@tanstack/react-table';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { constrainPagination, constrainSorting, getPageCount, getPrimarySort } from './table-state.js';
 
+const TestSortBy = z.enum(['name', 'email', 'role']);
+
 const sortOptions = {
-  allowedSortIds: ['name', 'email', 'role'],
+  allowedSortIds: TestSortBy.options,
   defaultSort: {
     id: 'email',
   },

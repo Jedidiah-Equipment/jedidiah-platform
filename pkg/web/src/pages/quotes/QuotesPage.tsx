@@ -1,19 +1,19 @@
 import { hasPermission } from '@pkg/domain';
-import { type QuoteListInput, QuoteStatus, type QuoteSummary } from '@pkg/schema';
+import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { ArrowRightIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import { ButtonLink } from '@/components/ButtonLink.js';
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
+import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
-import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
+import type { SortOptions } from '@/components/data-table/table-state.js';
 import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -36,7 +36,7 @@ export const useQuoteTableStore = createPersistedDataTableStore({
 });
 
 const quoteSortOptions: SortOptions<QuoteListInput> = {
-  allowedSortIds: ['code', 'createdAt', 'customerCompanyName', 'jobCode', 'productName', 'status', 'total'],
+  allowedSortIds: QuoteSortBy.options,
   defaultSort: {
     desc: true,
     id: 'createdAt',
@@ -69,43 +69,25 @@ const QuoteTable: React.FC = () => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const accessQuery = useAccess();
-  const quoteListInput = useQuoteListInput();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
 
+  const tableController = useServerSideTableController({
+    store: useQuoteTableStore,
+    sortOptions: quoteSortOptions,
+    getListInputExtras: getQuoteListInputExtras,
+  });
+
   const quotesQuery = useQuery(
-    trpc.quotes.list.queryOptions(quoteListInput, {
+    trpc.quotes.list.queryOptions(tableController.listInput, {
       placeholderData: keepPreviousData,
     }),
   );
   const { items: quotes, total, isLoading } = usePagedQueryResult(quotesQuery);
 
-  const {
-    columnFilters,
-    globalFilter,
-    pagination,
-    setColumnFilters,
-    setGlobalFilter,
-    setPageIndex,
-    setPagination,
-    setSorting,
-    sorting,
-  } = useQuoteTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      setColumnFilters: state.setColumnFilters,
-      setGlobalFilter: state.setGlobalFilter,
-      setPageIndex: state.setPageIndex,
-      setPagination: state.setPagination,
-      setSorting: state.setSorting,
-      sorting: state.sorting,
-    })),
-  );
   const tableState = useConstrainedTableState({
-    pagination,
-    setPageIndex,
-    sorting,
+    pagination: tableController.pagination,
+    setPageIndex: tableController.setPageIndex,
+    sorting: tableController.sorting,
     sortOptions: quoteSortOptions,
     total,
   });
@@ -219,15 +201,15 @@ const QuoteTable: React.FC = () => {
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
-    onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: setPagination,
-    onSortingChange: setSorting,
+    onColumnFiltersChange: tableController.setColumnFilters,
+    onGlobalFilterChange: tableController.setGlobalFilter,
+    onPaginationChange: tableController.setPagination,
+    onSortingChange: tableController.setSorting,
     pageCount: tableState.pageCount,
     rowCount: total,
     state: {
-      columnFilters,
-      globalFilter,
+      columnFilters: tableController.columnFilters,
+      globalFilter: tableController.globalFilter,
       pagination: tableState.pagination,
       sorting: tableState.sorting,
     },
@@ -246,37 +228,18 @@ const QuoteTable: React.FC = () => {
   );
 };
 
-function useQuoteListInput(): QuoteListInput {
-  const { columnFilters, globalFilter, pagination, sorting } = useQuoteTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      sorting: state.sorting,
-    })),
-  );
-  const sort = getPrimarySort(sorting, quoteSortOptions);
-
-  return useMemo(
-    () =>
-      ({
-        filters: {
-          statuses: getStatusFilterValues(columnFilters),
-        },
-        page: pagination.pageIndex + 1,
-        pageSize: pagination.pageSize,
-        search: globalFilter,
-        sortBy: sort.id,
-        sortDirection: sort.desc ? 'desc' : 'asc',
-      }) satisfies QuoteListInput,
-    [columnFilters, globalFilter, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id],
-  );
-}
-
 function getStatusFilterValues(columnFilters: ColumnFiltersState) {
   const value = columnFilters.find((filter) => filter.id === 'status')?.value;
 
   return Array.isArray(value)
     ? value.filter((item): item is QuoteSummary['status'] => QuoteStatus.safeParse(item).success)
     : [];
+}
+
+function getQuoteListInputExtras(columnFilters: ColumnFiltersState) {
+  return {
+    filters: {
+      statuses: getStatusFilterValues(columnFilters),
+    },
+  } satisfies Pick<QuoteListInput, 'filters'>;
 }

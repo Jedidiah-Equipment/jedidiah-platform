@@ -6,46 +6,13 @@ import type { ChatEvent, UserAccessSummary } from '@pkg/schema';
 
 import { log } from '@/logger.js';
 import type { AiContext } from './ai-context.js';
-import { projectAiToolResult } from './ai-result-projections.js';
-import { aiToolDescriptors, createToolDescription } from './ai-tool-descriptors.js';
-import { getCustomerTool } from './tools/get-customer.js';
-import { getJobTool } from './tools/get-job.js';
-import { getProductTool } from './tools/get-product.js';
-import { getQuoteTool } from './tools/get-quote.js';
-import { listAuditEventsTool } from './tools/list-audit-events.js';
-import { listCustomersTool } from './tools/list-customers.js';
-import { listJobsTool } from './tools/list-jobs.js';
-import { listProductsTool } from './tools/list-products.js';
-import { listQuoteCustomersTool } from './tools/list-quote-customers.js';
-import { listQuoteProductsTool } from './tools/list-quote-products.js';
-import { listQuoteSalespeopleTool } from './tools/list-quote-salespeople.js';
-import { listQuotesTool } from './tools/list-quotes.js';
-import { listUsersTool } from './tools/list-users.js';
-import type { AiTool } from './tools/type.js';
+import type { AiToolName, RegisteredAiTool } from './ai-tool-registry.js';
+import { AI_TOOL_NAMES, aiTools, projectAiToolResult } from './ai-tool-registry.js';
 
-export const AI_TOOL_NAMES = [
-  listProductsTool.name,
-  getProductTool.name,
-  listCustomersTool.name,
-  getCustomerTool.name,
-  listJobsTool.name,
-  getJobTool.name,
-  listQuotesTool.name,
-  getQuoteTool.name,
-  listQuoteCustomersTool.name,
-  listQuoteProductsTool.name,
-  listQuoteSalespeopleTool.name,
-  listAuditEventsTool.name,
-  listUsersTool.name,
-] as const;
-export type AiToolName = (typeof AI_TOOL_NAMES)[number];
+export type { AiToolName } from './ai-tool-registry.js';
+export { AI_TOOL_NAMES, aiTools } from './ai-tool-registry.js';
 
-type RegisteredAiTool = AiTool & {
-  description: string;
-};
-
-type AiToolMap = Record<AiToolName, RegisteredAiTool>;
-export type AuthorizedAiTools = Partial<AiToolMap>;
+export type AuthorizedAiTools = Partial<Record<AiToolName, RegisteredAiTool>>;
 type StrictJsonObjectParameters = Extract<ToolInputParameters, { additionalProperties: false }>;
 type JsonSchemaObject = Record<string, unknown>;
 
@@ -60,22 +27,6 @@ type InternalToolResult =
       ok: false;
       error: string;
     };
-
-export const aiTools: AiToolMap = {
-  [getCustomerTool.name]: withGeneratedDescription(getCustomerTool),
-  [getJobTool.name]: withGeneratedDescription(getJobTool),
-  [getProductTool.name]: withGeneratedDescription(getProductTool),
-  [getQuoteTool.name]: withGeneratedDescription(getQuoteTool),
-  [listAuditEventsTool.name]: withGeneratedDescription(listAuditEventsTool),
-  [listCustomersTool.name]: withGeneratedDescription(listCustomersTool),
-  [listJobsTool.name]: withGeneratedDescription(listJobsTool),
-  [listProductsTool.name]: withGeneratedDescription(listProductsTool),
-  [listQuoteCustomersTool.name]: withGeneratedDescription(listQuoteCustomersTool),
-  [listQuoteProductsTool.name]: withGeneratedDescription(listQuoteProductsTool),
-  [listQuoteSalespeopleTool.name]: withGeneratedDescription(listQuoteSalespeopleTool),
-  [listQuotesTool.name]: withGeneratedDescription(listQuotesTool),
-  [listUsersTool.name]: withGeneratedDescription(listUsersTool),
-};
 
 export function getAuthorizedTools(access: UserAccessSummary | null): AuthorizedAiTools {
   const authorizedTools: AuthorizedAiTools = {};
@@ -179,13 +130,6 @@ function getToolEntries(tools: AuthorizedAiTools): Array<[AiToolName, Registered
   }
 
   return entries;
-}
-
-function withGeneratedDescription<TTool extends AiTool>(tool: TTool): TTool & { description: string } {
-  return {
-    ...tool,
-    description: createToolDescription(aiToolDescriptors[tool.name]),
-  };
 }
 
 export function toStrictJsonObjectParameters(

@@ -10,9 +10,9 @@ import { toast } from 'sonner';
 import { ButtonLink } from '@/components/ButtonLink.js';
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
+import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { Calendar } from '@/components/ui/calendar.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
-import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -117,116 +116,99 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <div>
+    <DetailPageLayout
+      back={
         <ButtonLink to="/quotes" variant="ghost">
           <ArrowLeftIcon data-icon="inline-start" />
           Quotes
         </ButtonLink>
-      </div>
-      <Card>
-        <CardHeader>
-          {quote ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex flex-col gap-1">
-                <CardDescription>{quote.code}</CardDescription>
-                <CardTitle>{quote.customerCompanyName}</CardTitle>
-              </div>
-              <QuoteStatusBadge status={quote.status} />
+      }
+      badge={quote ? <QuoteStatusBadge status={quote.status} /> : undefined}
+      description={quote?.code}
+      title={quote?.customerCompanyName}
+    >
+      <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
+      {quote ? (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {canUpdateQuote && quote.status === 'draft' ? (
+              <ButtonLink params={{ id: quote.id }} to="/quotes/$id/edit" variant="outline">
+                <EditIcon data-icon="inline-start" />
+                Edit
+              </ButtonLink>
+            ) : null}
+            {canUpdateQuote && quote.status === 'draft' ? (
+              <Button disabled={isStatePending} onClick={() => confirmSendQuote(quote.id)}>
+                {sendMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+                Send
+              </Button>
+            ) : null}
+            {canUpdateQuote && quote.status === 'sent' ? (
+              <>
+                <Button disabled={isStatePending} onClick={() => confirmAcceptQuote(quote.id)}>
+                  {acceptMutation.isPending ? (
+                    <Loader2Icon data-icon="inline-start" className="animate-spin" />
+                  ) : null}
+                  Accept
+                </Button>
+                <Button disabled={isStatePending} onClick={() => confirmRejectQuote(quote.id)} variant="outline">
+                  Reject
+                </Button>
+              </>
+            ) : null}
+            {canCreateJob && quote.status === 'accepted' && !quote.jobId ? (
+              <CreateJobFromQuoteDialog
+                isPending={createJobMutation.isPending}
+                onCreate={(dueDate) => createJobMutation.mutate({ quoteId: quote.id, dueDate })}
+              />
+            ) : null}
+          </div>
+          <div className="grid gap-3 text-sm md:grid-cols-3">
+            <QuoteFact label="Status" value={quoteStatusLabels[quote.status]} />
+            <QuoteFact label="Product" value={`${quote.productName} (${quote.productModelCode})`} />
+            <QuoteFact label="Salesperson" value={quote.salesPersonName ?? 'Unassigned'} />
+            <QuoteFact label="Valid until" value={<DateDisplay date={quote.validUntil} emptyValue="Not set" />} />
+            <QuoteFact
+              label="Sent"
+              value={<DateDisplay date={quote.sentAt} emptyValue="Not sent" format="medium" />}
+            />
+            <QuoteFact label="Total" value={formatCurrency(quote.total, currencyCode)} />
+            <QuoteFact label="Discount" value={formatCurrency(quote.discount, currencyCode)} />
+            <QuoteFact
+              label="Quoted base price"
+              value={
+                quote.quotedBasePrice === null
+                  ? 'Not snapshotted'
+                  : formatCurrency(quote.quotedBasePrice, currencyCode)
+              }
+            />
+            <QuoteFact
+              label="Job"
+              value={
+                <JobCodeDisplay
+                  canOpenJob={canOpenJobs}
+                  jobCode={quote.jobCode}
+                  jobId={quote.jobId}
+                  withHoverCard
+                />
+              }
+            />
+          </div>
+          {quote.notes ? (
+            <div className="rounded-md border p-3 text-sm">
+              <div className="mb-1 font-medium">Notes</div>
+              <p className="whitespace-pre-wrap text-muted-foreground">{quote.notes}</p>
             </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-8 w-64" />
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Separator />
-          <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
-          {quote ? (
-            <>
-              <div className="flex flex-wrap gap-2">
-                {canUpdateQuote && quote.status === 'draft' ? (
-                  <ButtonLink params={{ id: quote.id }} to="/quotes/$id/edit" variant="outline">
-                    <EditIcon data-icon="inline-start" />
-                    Edit
-                  </ButtonLink>
-                ) : null}
-                {canUpdateQuote && quote.status === 'draft' ? (
-                  <Button disabled={isStatePending} onClick={() => confirmSendQuote(quote.id)}>
-                    {sendMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-                    Send
-                  </Button>
-                ) : null}
-                {canUpdateQuote && quote.status === 'sent' ? (
-                  <>
-                    <Button disabled={isStatePending} onClick={() => confirmAcceptQuote(quote.id)}>
-                      {acceptMutation.isPending ? (
-                        <Loader2Icon data-icon="inline-start" className="animate-spin" />
-                      ) : null}
-                      Accept
-                    </Button>
-                    <Button disabled={isStatePending} onClick={() => confirmRejectQuote(quote.id)} variant="outline">
-                      Reject
-                    </Button>
-                  </>
-                ) : null}
-                {canCreateJob && quote.status === 'accepted' && !quote.jobId ? (
-                  <CreateJobFromQuoteDialog
-                    isPending={createJobMutation.isPending}
-                    onCreate={(dueDate) => createJobMutation.mutate({ quoteId: quote.id, dueDate })}
-                  />
-                ) : null}
-              </div>
-              <div className="grid gap-3 text-sm md:grid-cols-3">
-                <QuoteFact label="Status" value={quoteStatusLabels[quote.status]} />
-                <QuoteFact label="Product" value={`${quote.productName} (${quote.productModelCode})`} />
-                <QuoteFact label="Salesperson" value={quote.salesPersonName ?? 'Unassigned'} />
-                <QuoteFact label="Valid until" value={<DateDisplay date={quote.validUntil} emptyValue="Not set" />} />
-                <QuoteFact
-                  label="Sent"
-                  value={<DateDisplay date={quote.sentAt} emptyValue="Not sent" format="medium" />}
-                />
-                <QuoteFact label="Total" value={formatCurrency(quote.total, currencyCode)} />
-                <QuoteFact label="Discount" value={formatCurrency(quote.discount, currencyCode)} />
-                <QuoteFact
-                  label="Quoted base price"
-                  value={
-                    quote.quotedBasePrice === null
-                      ? 'Not snapshotted'
-                      : formatCurrency(quote.quotedBasePrice, currencyCode)
-                  }
-                />
-                <QuoteFact
-                  label="Job"
-                  value={
-                    <JobCodeDisplay
-                      canOpenJob={canOpenJobs}
-                      jobCode={quote.jobCode}
-                      jobId={quote.jobId}
-                      withHoverCard
-                    />
-                  }
-                />
-              </div>
-              {quote.notes ? (
-                <div className="rounded-md border p-3 text-sm">
-                  <div className="mb-1 font-medium">Notes</div>
-                  <p className="whitespace-pre-wrap text-muted-foreground">{quote.notes}</p>
-                </div>
-              ) : null}
-            </>
           ) : null}
-          {quoteQuery.isLoading ? <Skeleton className="h-40" /> : null}
-        </CardContent>
-      </Card>
+        </>
+      ) : null}
+      {quoteQuery.isLoading ? <Skeleton className="h-40" /> : null}
       <QuoteTransitionConfirmationDialog
         confirmation={confirmation}
         isPending={isStatePending}
         onClose={() => setConfirmation(null)}
       />
-    </div>
+    </DetailPageLayout>
   );
 };
 

@@ -6,8 +6,8 @@ import type React from 'react';
 import { toast } from 'sonner';
 
 import { ErrorMessage } from '@/components/ErrorMessage.js';
+import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -40,38 +40,33 @@ export const CustomerEditPage: React.FC<CustomerEditPageProps> = ({ customerId }
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <div>
+    <EditPageLayout
+      back={
         <Button onClick={() => navigate({ to: '/customers' })} type="button" variant="ghost">
           <ArrowLeftIcon data-icon="inline-start" />
           Customers
         </Button>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardDescription>Directory</CardDescription>
-          <CardTitle>Edit customer</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {customerQuery.isPending ? <CustomerFormSkeleton /> : null}
-          <ErrorMessage error={customerQuery.error} fallbackMessage="Unable to load customer." />
-          {customerQuery.data ? (
-            <CustomerForm
-              initialCustomer={customerQuery.data}
-              isPending={updateCustomerMutation.isPending}
-              key={customerQuery.data.id}
-              onSubmit={(value) =>
-                updateCustomerMutation.mutateAsync({
-                  ...value,
-                  id: customerQuery.data.id,
-                })
-              }
-              submitLabel="Save customer"
-            />
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
+      }
+      description="Directory"
+      title="Edit customer"
+    >
+      {customerQuery.isPending ? <CustomerFormSkeleton /> : null}
+      <ErrorMessage error={customerQuery.error} fallbackMessage="Unable to load customer." />
+      {customerQuery.data ? (
+        <CustomerForm
+          initialCustomer={customerQuery.data}
+          isPending={updateCustomerMutation.isPending}
+          key={customerQuery.data.id}
+          onSubmit={(value) =>
+            updateCustomerMutation.mutateAsync({
+              ...value,
+              id: customerQuery.data.id,
+            })
+          }
+          submitLabel="Save customer"
+        />
+      ) : null}
+    </EditPageLayout>
   );
 };
 

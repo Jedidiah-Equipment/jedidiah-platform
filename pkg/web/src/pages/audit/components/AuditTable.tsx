@@ -1,17 +1,17 @@
-import { AuditEntityType, type AuditEvent, type AuditListInput } from '@pkg/schema';
+import { AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { EyeIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
+import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
-import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
+import type { SortOptions } from '@/components/data-table/table-state.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover.js';
@@ -73,7 +73,7 @@ export const useAuditTableStore = createPersistedDataTableStore({
 });
 
 const auditSortOptions: SortOptions<AuditListInput> = {
-  allowedSortIds: ['occurredAt'],
+  allowedSortIds: AuditSortBy.options,
   defaultSort: {
     desc: true,
     id: 'occurredAt',
@@ -82,8 +82,15 @@ const auditSortOptions: SortOptions<AuditListInput> = {
 
 export const AuditTable: React.FC = () => {
   const trpc = useTRPC();
-  const auditListInput = useAuditListInput();
+
+  const tableController = useServerSideTableController({
+    store: useAuditTableStore,
+    sortOptions: auditSortOptions,
+    getListInputExtras: getAuditListInputExtras,
+  });
+
   const usersQuery = useQuery(trpc.users.list.queryOptions());
+
   const actorFilterOptions = useMemo(
     () =>
       usersQuery.data?.users.map((user) => ({
@@ -94,28 +101,16 @@ export const AuditTable: React.FC = () => {
   );
 
   const auditQuery = useQuery(
-    trpc.audit.list.queryOptions(auditListInput, {
+    trpc.audit.list.queryOptions(tableController.listInput, {
       placeholderData: keepPreviousData,
     }),
   );
   const { items: auditEvents, total, isLoading } = usePagedQueryResult<AuditTableEvent>(auditQuery);
 
-  const { columnFilters, pagination, setColumnFilters, setPageIndex, setPagination, setSorting, sorting } =
-    useAuditTableStore(
-      useShallow((state) => ({
-        columnFilters: state.columnFilters,
-        pagination: state.pagination,
-        setColumnFilters: state.setColumnFilters,
-        setPageIndex: state.setPageIndex,
-        setPagination: state.setPagination,
-        setSorting: state.setSorting,
-        sorting: state.sorting,
-      })),
-    );
   const tableState = useConstrainedTableState({
-    pagination,
-    setPageIndex,
-    sorting,
+    pagination: tableController.pagination,
+    setPageIndex: tableController.setPageIndex,
+    sorting: tableController.sorting,
     sortOptions: auditSortOptions,
     total,
   });
@@ -203,13 +198,13 @@ export const AuditTable: React.FC = () => {
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
-    onColumnFiltersChange: setColumnFilters,
-    onPaginationChange: setPagination,
-    onSortingChange: setSorting,
+    onColumnFiltersChange: tableController.setColumnFilters,
+    onPaginationChange: tableController.setPagination,
+    onSortingChange: tableController.setSorting,
     pageCount: tableState.pageCount,
     rowCount: total,
     state: {
-      columnFilters,
+      columnFilters: tableController.columnFilters,
       pagination: tableState.pagination,
       sorting: tableState.sorting,
     },
@@ -229,35 +224,20 @@ export const AuditTable: React.FC = () => {
   );
 };
 
-function useAuditListInput() {
-  const { columnFilters, pagination, sorting } = useAuditTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      pagination: state.pagination,
-      sorting: state.sorting,
-    })),
-  );
-  const sort = getPrimarySort(sorting, auditSortOptions);
+function getAuditListInputExtras(columnFilters: ColumnFiltersState) {
+  const occurredAtRange = getDateRangeFilterValue(columnFilters, 'occurredAt');
+  const occurredAtStart = occurredAtRange.start ? toLocalDayStartIso(occurredAtRange.start) : undefined;
+  const occurredAtEnd = occurredAtRange.end ? toLocalDayEndIso(occurredAtRange.end) : undefined;
 
-  return useMemo(() => {
-    const occurredAtRange = getDateRangeFilterValue(columnFilters, 'occurredAt');
-    const occurredAtStart = occurredAtRange.start ? toLocalDayStartIso(occurredAtRange.start) : undefined;
-    const occurredAtEnd = occurredAtRange.end ? toLocalDayEndIso(occurredAtRange.end) : undefined;
-    const sortDirection = sort.desc ? ('desc' as const) : ('asc' as const);
-
-    return {
-      filters: {
-        actorUserIds: getMultiSelectFilterValue(columnFilters, 'actorUserId'),
-        entityTypes: getEntityTypeFilterValue(columnFilters),
-        ...(occurredAtStart ? { occurredAtStart } : {}),
-        ...(occurredAtEnd ? { occurredAtEnd } : {}),
-      },
-      page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize,
-      sortBy: sort.id,
-      sortDirection,
-    };
-  }, [columnFilters, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id]);
+  return {
+    filters: {
+      actorUserIds: getMultiSelectFilterValue(columnFilters, 'actorUserId'),
+      entityIds: [],
+      entityTypes: getEntityTypeFilterValue(columnFilters),
+      ...(occurredAtStart ? { occurredAtStart } : {}),
+      ...(occurredAtEnd ? { occurredAtEnd } : {}),
+    },
+  } satisfies Pick<AuditListInput, 'filters'>;
 }
 
 type ActorCellProps = {

@@ -4,6 +4,7 @@ import {
   type JobLifecycleStatus,
   type JobListInput,
   type JobListStatusFilter,
+  JobSortBy,
   type JobSummary,
 } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -11,15 +12,15 @@ import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { ArrowRightIcon, CircleIcon } from 'lucide-react';
 import type React from 'react';
-import { useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
+import { useCallback, useMemo } from 'react';
 
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
+import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
-import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
+import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PrimaryLink } from '@/components/PrimaryLink.js';
 import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
 import { Button } from '@/components/ui/button.js';
@@ -47,7 +48,7 @@ export const useJobTableStore = createPersistedDataTableStore({
 });
 
 const jobSortOptions: SortOptions<JobListInput> = {
-  allowedSortIds: ['createdAt', 'id', 'lifecycleStatus'],
+  allowedSortIds: JobSortBy.options,
   defaultSort: {
     id: 'createdAt',
   },
@@ -106,44 +107,27 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
   const trpc = useTRPC();
   const navigate = useNavigate();
   const accessQuery = useAccess();
-  const jobListInput = useJobListInput(status);
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
+  const getListInputExtras = useCallback(() => getJobListInputExtras(status), [status]);
+
+  const tableController = useServerSideTableController({
+    store: useJobTableStore,
+    sortOptions: jobSortOptions,
+    getListInputExtras,
+  });
 
   const jobsQuery = useQuery(
-    trpc.jobs.list.queryOptions(jobListInput, {
+    trpc.jobs.list.queryOptions(tableController.listInput, {
       placeholderData: keepPreviousData,
     }),
   );
   const { items: jobs, total, isLoading } = usePagedQueryResult(jobsQuery);
 
-  const {
-    columnFilters,
-    globalFilter,
-    pagination,
-    setColumnFilters,
-    setGlobalFilter,
-    setPageIndex,
-    setPagination,
-    setSorting,
-    sorting,
-  } = useJobTableStore(
-    useShallow((state) => ({
-      columnFilters: state.columnFilters,
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      setColumnFilters: state.setColumnFilters,
-      setGlobalFilter: state.setGlobalFilter,
-      setPageIndex: state.setPageIndex,
-      setPagination: state.setPagination,
-      setSorting: state.setSorting,
-      sorting: state.sorting,
-    })),
-  );
   const tableState = useConstrainedTableState({
-    pagination,
-    setPageIndex,
-    sorting,
+    pagination: tableController.pagination,
+    setPageIndex: tableController.setPageIndex,
+    sorting: tableController.sorting,
     sortOptions: jobSortOptions,
     total,
   });
@@ -245,15 +229,15 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
-    onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: setPagination,
-    onSortingChange: setSorting,
+    onColumnFiltersChange: tableController.setColumnFilters,
+    onGlobalFilterChange: tableController.setGlobalFilter,
+    onPaginationChange: tableController.setPagination,
+    onSortingChange: tableController.setSorting,
     pageCount: tableState.pageCount,
     rowCount: total,
     state: {
-      columnFilters,
-      globalFilter,
+      columnFilters: tableController.columnFilters,
+      globalFilter: tableController.globalFilter,
       pagination: tableState.pagination,
       sorting: tableState.sorting,
     },
@@ -292,30 +276,12 @@ const JobQuoteCode: React.FC<{
   return <span className="font-medium">{quoteCode}</span>;
 };
 
-function useJobListInput(status: JobListStatusFilter): JobListInput {
-  const { globalFilter, pagination, sorting } = useJobTableStore(
-    useShallow((state) => ({
-      globalFilter: state.globalFilter,
-      pagination: state.pagination,
-      sorting: state.sorting,
-    })),
-  );
-  const sort = getPrimarySort(sorting, jobSortOptions);
-
-  return useMemo(
-    () =>
-      ({
-        filters: {
-          lifecycleStatuses: status === 'all' ? [] : [status],
-        },
-        page: pagination.pageIndex + 1,
-        pageSize: pagination.pageSize,
-        search: globalFilter,
-        sortBy: sort.id,
-        sortDirection: sort.desc ? 'desc' : 'asc',
-      }) satisfies JobListInput,
-    [globalFilter, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id, status],
-  );
+function getJobListInputExtras(status: JobListStatusFilter) {
+  return {
+    filters: {
+      lifecycleStatuses: status === 'all' ? [] : [status],
+    },
+  } satisfies Pick<JobListInput, 'filters'>;
 }
 
 function getJobListStatusFilterLabel(status: JobListStatusFilter): string {

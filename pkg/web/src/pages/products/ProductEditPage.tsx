@@ -1,13 +1,12 @@
 import type { UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeftIcon } from 'lucide-react';
 import type React from 'react';
 import { toast } from 'sonner';
 
+import { BackButton } from '@/components/BackButton.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
-import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -40,43 +39,29 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <div>
-        <Button onClick={() => navigate({ to: '/products' })} type="button" variant="ghost">
-          <ArrowLeftIcon data-icon="inline-start" />
-          Products
-        </Button>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardDescription>Catalog</CardDescription>
-          <CardTitle>Edit product</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {productQuery.isPending ? <ProductFormSkeleton /> : null}
-          <ErrorMessage error={productQuery.error} fallbackMessage="Unable to load product." />
-          {productQuery.data ? (
-            <ProductForm
-              initialProduct={productQuery.data}
-              isPending={updateProductMutation.isPending}
-              key={productQuery.data.id}
-              onSubmit={(value) =>
-                updateProductMutation.mutateAsync({
-                  basePrice: value.basePrice,
-                  currencyCode: 'ZAR',
-                  description: value.description,
-                  id: productQuery.data.id,
-                  modelCode: value.modelCode,
-                  name: value.name,
-                  options: value.options,
-                })
-              }
-              submitLabel="Save product"
-            />
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
+    <EditPageLayout back={<BackButton to="/products">Products</BackButton>} description="Catalog" title="Edit product">
+      {productQuery.isPending ? <ProductFormSkeleton /> : null}
+      <ErrorMessage error={productQuery.error} fallbackMessage="Unable to load product." />
+      {productQuery.data ? (
+        <ProductForm
+          initialProduct={productQuery.data}
+          isPending={updateProductMutation.isPending}
+          key={productQuery.data.id}
+          onSubmit={(value) =>
+            updateProductMutation.mutateAsync({
+              basePrice: value.basePrice,
+              currencyCode: 'ZAR',
+              description: value.description,
+              id: productQuery.data.id,
+              modelCode: value.modelCode,
+              name: value.name,
+              options: value.options,
+            })
+          }
+          submitLabel="Save product"
+        />
+      ) : null}
+    </EditPageLayout>
   );
 };
 

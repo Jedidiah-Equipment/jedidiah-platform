@@ -1,16 +1,14 @@
 import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobDetail, JobStageStatusInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 
-import { ButtonLink } from '@/components/ButtonLink.js';
+import { BackButton } from '@/components/BackButton.js';
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { PrimaryLink } from '@/components/PrimaryLink.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Separator } from '@/components/ui/separator.js';
+import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -157,91 +155,63 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <div>
-        <ButtonLink to="/jobs" variant="ghost">
-          <ArrowLeftIcon data-icon="inline-start" />
-          Jobs
-        </ButtonLink>
-      </div>
-      <Card>
-        <CardHeader>
-          {job ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex flex-col gap-1">
-                <CardDescription>{job.productModelCode}</CardDescription>
-                <CardTitle>{job.productName}</CardTitle>
-              </div>
-              <JobLifecycleStatusBadge status={job.lifecycleStatus} />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-8 w-64" />
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Separator />
-          <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
-          {job ? (
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-              <div className="flex min-w-0 flex-col gap-4">
-                <div className="grid gap-3 text-sm sm:grid-cols-3">
-                  <JobFact label="Job ID" value={job.id} />
-                  <JobFact label="Created" value={<DateDisplay date={job.createdAt} />} />
-                  <JobFact label="Due date" value={<DateDisplay date={job.dueDate} emptyValue="No date" />} />
-                  <JobFact label="Updated" value={<DateDisplay date={job.updatedAt} />} />
-                  <JobFact
-                    label="Quote"
-                    value={
-                      <JobQuoteLink canOpenQuote={canOpenQuotes} quoteCode={job.quoteCode} quoteId={job.quoteId} />
-                    }
-                  />
-                </div>
-                {canUpdateJob ? (
-                  <LifecycleControls
-                    isPending={isTransitionPending}
-                    lifecycleStatus={job.lifecycleStatus}
-                    onCancel={() => confirmCancelJob(job.id)}
-                    onPause={() => confirmPauseJob(job.id)}
-                    onResume={() => resumeJobMutation.mutate({ id: job.id })}
-                  />
-                ) : null}
-                {job.lifecycleStatus !== 'active' ? (
-                  <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
-                    Department controls are disabled while this job is {jobLifecycleStatusLabels[job.lifecycleStatus]}.
-                  </div>
-                ) : null}
-                <div className="grid gap-3 lg:grid-cols-5">
-                  {job.stages.map((stage) => (
-                    <StagePanel
-                      isPending={isTransitionPending}
-                      jobId={job.id}
-                      key={`${stage.sequence}-${stage.stage}`}
-                      onComplete={confirmCompleteStage}
-                      onSetCompleteStatus={confirmSetCompleteStageStatus}
-                      onSetStatus={(input) => setStageStatusMutation.mutate(input)}
-                      onStart={(input) => startStageMutation.mutate(input)}
-                      stage={stage}
-                    />
-                  ))}
-                </div>
-              </div>
-              <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-                <WorkflowHistory events={job.workflowEvents} />
-              </aside>
+    <DetailPageLayout
+      aside={job ? <WorkflowHistory events={job.workflowEvents} /> : undefined}
+      back={<BackButton to="/jobs">Jobs</BackButton>}
+      badge={job ? <JobLifecycleStatusBadge status={job.lifecycleStatus} /> : undefined}
+      description={job?.productModelCode}
+      title={job?.productName}
+    >
+      <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
+      {job ? (
+        <>
+          <div className="grid gap-3 text-sm sm:grid-cols-3">
+            <JobFact label="Job ID" value={job.id} />
+            <JobFact label="Created" value={<DateDisplay date={job.createdAt} />} />
+            <JobFact label="Due date" value={<DateDisplay date={job.dueDate} emptyValue="No date" />} />
+            <JobFact label="Updated" value={<DateDisplay date={job.updatedAt} />} />
+            <JobFact
+              label="Quote"
+              value={<JobQuoteLink canOpenQuote={canOpenQuotes} quoteCode={job.quoteCode} quoteId={job.quoteId} />}
+            />
+          </div>
+          {canUpdateJob ? (
+            <LifecycleControls
+              isPending={isTransitionPending}
+              lifecycleStatus={job.lifecycleStatus}
+              onCancel={() => confirmCancelJob(job.id)}
+              onPause={() => confirmPauseJob(job.id)}
+              onResume={() => resumeJobMutation.mutate({ id: job.id })}
+            />
+          ) : null}
+          {job.lifecycleStatus !== 'active' ? (
+            <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
+              Department controls are disabled while this job is {jobLifecycleStatusLabels[job.lifecycleStatus]}.
             </div>
           ) : null}
-          {jobQuery.isLoading ? <Skeleton className="h-48" /> : null}
-        </CardContent>
-      </Card>
+          <div className="grid gap-3 lg:grid-cols-5">
+            {job.stages.map((stage) => (
+              <StagePanel
+                isPending={isTransitionPending}
+                jobId={job.id}
+                key={`${stage.sequence}-${stage.stage}`}
+                onComplete={confirmCompleteStage}
+                onSetCompleteStatus={confirmSetCompleteStageStatus}
+                onSetStatus={(input) => setStageStatusMutation.mutate(input)}
+                onStart={(input) => startStageMutation.mutate(input)}
+                stage={stage}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+      {jobQuery.isLoading ? <Skeleton className="h-48" /> : null}
       <JobTransitionConfirmationDialog
         confirmation={confirmation}
         isPending={isTransitionPending}
         onClose={() => setConfirmation(null)}
       />
-    </div>
+    </DetailPageLayout>
   );
 };
 

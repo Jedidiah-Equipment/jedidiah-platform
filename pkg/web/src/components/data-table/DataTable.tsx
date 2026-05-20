@@ -25,6 +25,7 @@ type DataTableProps<TData> = {
   isLoading?: boolean;
   loadingRowCount?: number;
   pageSizeOptions?: number[];
+  rightSection?: React.ReactNode;
   tableClassName?: string;
   table: TanStackTable<TData>;
   total: number;
@@ -40,6 +41,7 @@ export function DataTable<TData>({
   isLoading = false,
   loadingRowCount = 10,
   pageSizeOptions = [10, 25, 50],
+  rightSection,
   table,
   tableClassName,
   total,
@@ -49,9 +51,14 @@ export function DataTable<TData>({
 
   return (
     <div className="flex flex-col gap-4">
-      {hideGlobalFilter ? null : (
-        <DataTableSearch debounceMs={filterDebounceMs} placeholder={globalFilterPlaceholder} table={table} />
-      )}
+      {!hideGlobalFilter || rightSection ? (
+        <DataTableSearch
+          debounceMs={filterDebounceMs}
+          placeholder={globalFilterPlaceholder}
+          rightSection={rightSection}
+          table={table}
+        />
+      ) : null}
 
       {errorMessage ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -59,7 +66,7 @@ export function DataTable<TData>({
         </div>
       ) : null}
 
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-lg border">
         <Table className={tableClassName}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

@@ -14,9 +14,8 @@ import { useConstrainedTableState } from '@/components/data-table/hooks/use-cons
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
+import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Separator } from '@/components/ui/separator.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -51,26 +50,18 @@ const quoteStatusFilterOptions = QuoteStatus.options.map((status) => ({
 
 export const QuotesPage: React.FC = () => {
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex flex-col gap-1">
-              <CardDescription>Sales</CardDescription>
-              <CardTitle>Quotes</CardTitle>
-            </div>
-            <ButtonLink to="/quotes/new">
-              <PlusIcon data-icon="inline-start" />
-              New quote
-            </ButtonLink>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Separator />
-          <QuoteTable />
-        </CardContent>
-      </Card>
-    </div>
+    <ListPageLayout
+      action={
+        <ButtonLink to="/quotes/new">
+          <PlusIcon data-icon="inline-start" />
+          New quote
+        </ButtonLink>
+      }
+      description="Sales"
+      title="Quotes"
+    >
+      <QuoteTable />
+    </ListPageLayout>
   );
 };
 

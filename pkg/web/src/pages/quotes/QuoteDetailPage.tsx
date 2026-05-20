@@ -7,10 +7,10 @@ import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { BackButton } from '@/components/BackButton.js';
-import { ButtonLink } from '@/components/ButtonLink.js';
-import { DateDisplay } from '@/components/DateDisplay.js';
-import { ErrorMessage } from '@/components/ErrorMessage.js';
+import { BackButton } from '@/components/button/BackButton.js';
+import { ButtonLink } from '@/components/button/ButtonLink.js';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { Calendar } from '@/components/ui/calendar.js';

@@ -2,8 +2,7 @@ import { jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobEvent } from '@pkg/schema';
 import { ClockIcon, HistoryIcon, UserCircleIcon } from 'lucide-react';
 import type React from 'react';
-
-import { DateDisplay } from '@/components/DateDisplay.js';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DepartmentIcon } from '@/components/departments/index.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';

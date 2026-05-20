@@ -3,7 +3,7 @@ import { APP_ROLES, AppRole } from '@pkg/schema';
 import { ChevronDownIcon } from 'lucide-react';
 import type React from 'react';
 
-import { PermissionBadge } from '@/components/PermissionBadge.js';
+import { PermissionBadge } from '@/components/common/PermissionBadge.js';
 import { Button } from '@/components/ui/button.js';
 import {
   DropdownMenu,

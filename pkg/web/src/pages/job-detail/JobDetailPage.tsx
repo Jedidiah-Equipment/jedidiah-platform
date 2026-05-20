@@ -4,10 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { toast } from 'sonner';
 
-import { BackButton } from '@/components/BackButton.js';
-import { DateDisplay } from '@/components/DateDisplay.js';
-import { ErrorMessage } from '@/components/ErrorMessage.js';
-import { PrimaryLink } from '@/components/PrimaryLink.js';
+import { BackButton } from '@/components/button/BackButton.js';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';

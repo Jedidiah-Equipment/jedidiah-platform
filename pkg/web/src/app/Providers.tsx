@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner.js';
 import { TooltipProvider } from '@/components/ui/tooltip.js';
 import { createQueryClient } from '@/lib/query-client.js';
 import { createTrpcClient, createTrpcOptions, TRPCProvider } from '@/lib/trpc.js';
+import { PostHogProvider } from '@/providers/PostHogProvider.js';
 import { ThemeProvider } from '@/providers/ThemeProvider.js';
 import { router } from './router.js';
 
@@ -22,8 +23,10 @@ export const Providers: React.FC<ProvidersProps> = () => {
       <TRPCProvider queryClient={queryClient} trpcClient={trpcClient}>
         <ThemeProvider defaultTheme="dark" storageKey="jedidiah-theme">
           <TooltipProvider>
-            <RouterProvider context={{ queryClient, trpc }} router={router} />
-            <Toaster />
+            <PostHogProvider>
+              <RouterProvider context={{ queryClient, trpc }} router={router} />
+              <Toaster />
+            </PostHogProvider>
           </TooltipProvider>
         </ThemeProvider>
       </TRPCProvider>

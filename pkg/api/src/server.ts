@@ -6,12 +6,16 @@ import { registerAuthHandler } from './auth/handler.js';
 import { type ApiConfig, getApiConfig } from './env.js';
 import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
+import { createObservability, type Observability } from './observability.js';
 import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
 import { createContext } from './trpc/context.js';
 import { shouldLogTRPCError } from './trpc/errors.js';
 import { appRouter } from './trpc/router.js';
 
-export async function buildServer(config: ApiConfig = getApiConfig()) {
+export async function buildServer(
+  config: ApiConfig = getApiConfig(),
+  observability: Observability = createObservability(config),
+) {
   log.root.info({ config }, 'Building server');
 
   const app = Fastify({
@@ -37,12 +41,17 @@ export async function buildServer(config: ApiConfig = getApiConfig()) {
       if (!shouldLogTRPCError(error)) return;
 
       log.root.error({ error, path, type }, 'Unexpected tRPC error');
+      observability.captureException(error, { properties: { path, type, source: 'trpc' } });
     },
   } satisfies FastifyTRPCPluginOptions<typeof appRouter>['trpcOptions'];
 
   await app.register(fastifyTRPCPlugin, {
     prefix: '/trpc',
     trpcOptions,
+  });
+
+  app.addHook('onClose', async () => {
+    await observability.flush();
   });
 
   return app;

@@ -8,5 +8,5 @@
     "composite": false
   },
   "include": ["src/server/**/*.ts"],
-  "references": [{ "path": "../../pkg/schema" }]
+  "references": [{ "path": "../../pkg/schema" }, { "path": "../../pkg/domain" }]
 }

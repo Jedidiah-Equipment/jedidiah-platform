@@ -1,5 +1,5 @@
 import { departmentLabels, roleLabels } from '@pkg/domain';
-import type { AuthId, UserSummary } from '@pkg/schema';
+import { type AuthId, UserSortBy, type UserSummary } from '@pkg/schema';
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -32,7 +32,7 @@ type UserTableProps = {
   onEditUser: ((user: UserSummary) => void) | undefined;
 };
 
-type UserTableSortBy = keyof Pick<UserSummary, 'email' | 'emailVerified' | 'name' | 'role'>;
+type UserTableSortBy = UserSortBy;
 
 type UserTableSortInput = {
   sortBy: UserTableSortBy;
@@ -51,7 +51,7 @@ export const useUserTableStore = createPersistedDataTableStore({
 });
 
 const userSortOptions: SortOptions<UserTableSortInput> = {
-  allowedSortIds: ['name', 'email', 'role', 'emailVerified'],
+  allowedSortIds: UserSortBy.options,
   defaultSort: {
     id: 'email',
   },

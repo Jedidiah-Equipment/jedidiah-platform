@@ -362,7 +362,7 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, disp
       </PopoverHeader>
 
       <ScrollArea className="max-h-80">
-        <div className="min-w-[34rem] space-y-3 pr-3">
+        <div className="min-w-136 space-y-3 pr-3">
           <div className="overflow-hidden rounded-md border">
             <div className="grid grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)] border-b bg-muted/40 text-xs font-medium text-muted-foreground">
               <div className="px-2 py-1.5">Field</div>
@@ -375,8 +375,8 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, disp
                 key={display.key}
               >
                 <div className="px-2 py-1.5 font-medium text-foreground">{display.field}</div>
-                <div className="min-w-0 break-words px-2 py-1.5 text-muted-foreground">{display.from}</div>
-                <div className="min-w-0 break-words px-2 py-1.5 text-muted-foreground">{display.to}</div>
+                <div className="min-w-0 wrap-break-word px-2 py-1.5 text-muted-foreground">{display.from}</div>
+                <div className="min-w-0 wrap-break-word px-2 py-1.5 text-muted-foreground">{display.to}</div>
               </div>
             ))}
           </div>

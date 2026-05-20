@@ -18,6 +18,8 @@ type DateDisplayParts = {
   tooltip: string | null;
 };
 
+const SECONDS_PER_DAY = 24 * 60 * 60;
+
 export type DateDisplayProps = Omit<React.ComponentPropsWithoutRef<'span'>, 'children'> & {
   date?: Date | string | number | null;
   emptyValue?: string | undefined;
@@ -80,17 +82,24 @@ export function getDateDisplayParts({
 
   if (!isAfter(parsedDate, now)) {
     const tooltip = formatDate(parsedDate, 'medium');
+    const secondsAgo = differenceInSeconds(now, parsedDate, {
+      roundingMethod: 'floor',
+    });
 
     if (isSameDay(parsedDate, now)) {
       return {
-        label: `today at ${formatDateFns(parsedDate, 'HH:mm')}`,
+        label: `Today at ${formatDateFns(parsedDate, 'HH:mm')}`,
         tooltip,
       };
     }
 
-    if (isSameDay(parsedDate, subDays(now, 1))) {
+    const isPreviousCalendarDay = isSameDay(parsedDate, subDays(now, 1));
+    // The duration formatter floors whole days, so anything from one full day
+    // up to but not including two full days would otherwise render as "1d ago".
+    const wouldRenderAsOneDayAgo = secondsAgo >= SECONDS_PER_DAY && secondsAgo < 2 * SECONDS_PER_DAY;
+    if (isPreviousCalendarDay || wouldRenderAsOneDayAgo) {
       return {
-        label: `yesterday at ${formatDateFns(parsedDate, 'HH:mm')}`,
+        label: `Yesterday at ${formatDateFns(parsedDate, 'HH:mm')}`,
         tooltip,
       };
     }

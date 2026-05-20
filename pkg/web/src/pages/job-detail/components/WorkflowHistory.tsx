@@ -7,9 +7,8 @@ import { DateDisplay } from '@/components/DateDisplay.js';
 import { DepartmentIcon } from '@/components/departments/index.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
-import { formatDate } from '@/utils/date.js';
 import { stageLabels } from '../constants.js';
-import { getStageStatusChangeCopy } from './workflow-history-copy.js';
+import { getStageStartedMetadata, getStageStatusChangeCopy } from './workflow-history-copy.js';
 
 type WorkflowHistoryProps = {
   events: JobEvent[];
@@ -49,7 +48,7 @@ const WorkflowHistoryItem: React.FC<{ event: JobEvent }> = ({ event }) => (
           {getWorkflowEventStageIcon(event)}
           <span className="truncate">{getWorkflowEventLabel(event)}</span>
         </div>
-        <div className="text-muted-foreground">{getWorkflowEventMetadata(event)}</div>
+        <div className="text-muted-foreground text-xs pt-0.5">{getWorkflowEventMetadata(event)}</div>
       </div>
       <div className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
         <div className="flex min-w-0 items-center gap-1.5">
@@ -70,7 +69,7 @@ function getWorkflowEventStageIcon(event: JobEvent): React.ReactNode {
     return null;
   }
 
-  return <DepartmentIcon className="size-4 shrink-0 text-muted-foreground" department={event.payload.stage} />;
+  return <DepartmentIcon className="size-4 shrink-0" department={event.payload.stage} />;
 }
 
 function getWorkflowEventLabel(event: JobEvent): string {
@@ -103,7 +102,7 @@ function getWorkflowEventLabel(event: JobEvent): string {
 
 function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
   if (event.eventType === 'stage.started') {
-    return `Started at ${formatDate(event.payload.startedAt, 'long')}`;
+    return getStageStartedMetadata(event.payload);
   }
 
   if (event.eventType === 'stage.completed') {

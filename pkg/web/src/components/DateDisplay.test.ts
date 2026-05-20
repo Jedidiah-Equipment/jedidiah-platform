@@ -7,15 +7,27 @@ const now = new Date(2026, 4, 19, 12, 0, 0);
 describe('DateDisplay', () => {
   it('uses a today label with a medium-date tooltip for same-day past dates', () => {
     expect(getDateDisplayParts({ date: new Date(2026, 4, 19, 11, 57, 0), now })).toEqual({
-      label: 'today at 11:57',
+      label: 'Today at 11:57',
       tooltip: 'May 19th, 11:57:00',
     });
   });
 
   it('uses a yesterday label with a medium-date tooltip for previous-day dates', () => {
     expect(getDateDisplayParts({ date: new Date(2026, 4, 18, 14, 0, 0), now })).toEqual({
-      label: 'yesterday at 14:00',
+      label: 'Yesterday at 14:00',
       tooltip: 'May 18th, 14:00:00',
+    });
+  });
+
+  it('uses a yesterday label instead of a one-day duration bucket', () => {
+    expect(
+      getDateDisplayParts({
+        date: new Date(2026, 4, 18, 13, 6, 0),
+        now: new Date(2026, 4, 20, 10, 4, 0),
+      }),
+    ).toEqual({
+      label: 'Yesterday at 13:06',
+      tooltip: 'May 18th, 13:06:00',
     });
   });
 

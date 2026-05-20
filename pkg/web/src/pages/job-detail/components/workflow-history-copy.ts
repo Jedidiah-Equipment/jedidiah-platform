@@ -14,6 +14,10 @@ type StageStatusChangeCopy = {
   metadata: string;
 };
 
+type StageStartedCopyInput = {
+  stage: JobStageName;
+};
+
 type StageStatusFor<Stage extends JobStageName> = (typeof JOB_STAGE_STATUSES)[Stage][number];
 
 type StageStatusChangeLabels = {
@@ -23,7 +27,7 @@ type StageStatusChangeLabels = {
 const stageStatusChangeLabels = {
   assembly: {
     complete: 'Assembly completed',
-    'in-progress': 'Assembly started',
+    'in-progress': 'Assembly started assembling',
     pending: 'Assembly waiting to start',
     qc: 'Assembly moved to QC',
   },
@@ -76,6 +80,10 @@ export function getStageStatusChangeCopy(input: StageStatusChangeCopyInput): Sta
     label: getStageStatusChangeLabel(input),
     metadata: fromStatusMetadata[input.fromStatus],
   };
+}
+
+export function getStageStartedMetadata(input: StageStartedCopyInput): string {
+  return `${stageLabels[input.stage]} is now active`;
 }
 
 function getStageStatusChangeLabel(input: StageStatusChangeCopyInput): string {

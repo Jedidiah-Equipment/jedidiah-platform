@@ -22,7 +22,7 @@ type UseServerSideTableControllerOptions<
   TSortSource extends string | { sortBy: string },
   TExtras extends ListInputExtras = Record<string, never>,
 > = {
-  getListInputExtras?: (columnFilters: ColumnFiltersState) => TExtras;
+  getListInputExtras: (columnFilters: ColumnFiltersState) => TExtras;
   store: DataTableStoreHook;
   sortOptions: SortOptions<TSortSource>;
 };
@@ -55,16 +55,18 @@ export function useServerSideTableController<
     })),
   );
   const sort = getPrimarySort(sorting, sortOptions);
-  const listInput = useMemo<ServerSideTableListInputBase<SortId<TSortSource>> & TExtras>(
+  const listInput = useMemo(
     () =>
-      ({
-        page: pagination.pageIndex + 1,
-        pageSize: pagination.pageSize,
-        search: globalFilter,
-        sortBy: sort.id,
-        sortDirection: sort.desc ? 'desc' : 'asc',
-        ...(getListInputExtras?.(columnFilters) ?? {}),
-      }) as ServerSideTableListInputBase<SortId<TSortSource>> & TExtras,
+      createServerSideTableListInput(
+        {
+          page: pagination.pageIndex + 1,
+          pageSize: pagination.pageSize,
+          search: globalFilter,
+          sortBy: sort.id,
+          sortDirection: sort.desc ? 'desc' : 'asc',
+        } satisfies ServerSideTableListInputBase<SortId<TSortSource>>,
+        getListInputExtras(columnFilters),
+      ),
     [columnFilters, getListInputExtras, globalFilter, pagination.pageIndex, pagination.pageSize, sort.desc, sort.id],
   );
 
@@ -80,4 +82,14 @@ export function useServerSideTableController<
     setSorting,
     sorting,
   };
+}
+
+function createServerSideTableListInput<TSortBy extends string, TExtras extends ListInputExtras>(
+  base: ServerSideTableListInputBase<TSortBy>,
+  extras: TExtras,
+) {
+  return {
+    ...base,
+    ...extras,
+  } satisfies ServerSideTableListInputBase<TSortBy> & TExtras;
 }

@@ -32,10 +32,8 @@ type UserTableProps = {
   onEditUser: ((user: UserSummary) => void) | undefined;
 };
 
-type UserTableSortBy = UserSortBy;
-
 type UserTableSortInput = {
-  sortBy: UserTableSortBy;
+  sortBy: UserSortBy;
 };
 
 export const useUserTableStore = createPersistedDataTableStore({

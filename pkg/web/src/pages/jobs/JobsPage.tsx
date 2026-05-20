@@ -12,7 +12,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { ArrowRightIcon, CircleIcon } from 'lucide-react';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -109,11 +109,12 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
   const accessQuery = useAccess();
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
+  const getListInputExtras = useCallback(() => getJobListInputExtras(status), [status]);
 
   const tableController = useServerSideTableController({
     store: useJobTableStore,
     sortOptions: jobSortOptions,
-    getListInputExtras: () => getJobListInputExtras(status),
+    getListInputExtras,
   });
 
   const jobsQuery = useQuery(

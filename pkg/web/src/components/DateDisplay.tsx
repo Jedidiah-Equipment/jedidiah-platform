@@ -1,4 +1,12 @@
-import { differenceInSeconds, isWithinInterval, subWeeks } from 'date-fns';
+import {
+  differenceInSeconds,
+  formatDate as formatDateFns,
+  isAfter,
+  isSameDay,
+  isWithinInterval,
+  subDays,
+  subWeeks,
+} from 'date-fns';
 import type React from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
@@ -68,6 +76,24 @@ export function getDateDisplayParts({
       label: emptyValue ?? '',
       tooltip: null,
     };
+  }
+
+  if (!isAfter(parsedDate, now)) {
+    const tooltip = formatDate(parsedDate, 'medium');
+
+    if (isSameDay(parsedDate, now)) {
+      return {
+        label: `today at ${formatDateFns(parsedDate, 'HH:mm')}`,
+        tooltip,
+      };
+    }
+
+    if (isSameDay(parsedDate, subDays(now, 1))) {
+      return {
+        label: `yesterday at ${formatDateFns(parsedDate, 'HH:mm')}`,
+        tooltip,
+      };
+    }
   }
 
   if (isWithinRecentDateWindow(parsedDate, now)) {

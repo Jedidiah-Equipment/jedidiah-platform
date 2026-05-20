@@ -41,4 +41,30 @@ describe('workflow history copy', () => {
       metadata: 'After QC completed',
     });
   });
+
+  it('keeps queued stages readable when work starts', () => {
+    expect(
+      getStageStatusChangeCopy({
+        fromStatus: 'pending',
+        stage: 'procurement',
+        toStatus: 'ordering',
+      }),
+    ).toEqual({
+      label: 'Procurement started ordering',
+      metadata: 'After the stage was queued',
+    });
+  });
+
+  it('keeps post-completion status changes readable', () => {
+    expect(
+      getStageStatusChangeCopy({
+        fromStatus: 'complete',
+        stage: 'assembly',
+        toStatus: 'qc',
+      }),
+    ).toEqual({
+      label: 'Assembly moved to QC',
+      metadata: 'After the stage was completed',
+    });
+  });
 });

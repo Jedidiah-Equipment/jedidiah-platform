@@ -1,5 +1,5 @@
 import { jobStageStatusLabels } from '@pkg/domain';
-import type { JobStageName, JobStageStatus } from '@pkg/schema';
+import type { JOB_STAGE_STATUSES, JobStageName, JobStageStatus } from '@pkg/schema';
 
 import { stageLabels } from '../constants.js';
 
@@ -14,7 +14,13 @@ type StageStatusChangeCopy = {
   metadata: string;
 };
 
-const stageStatusChangeLabels: Record<JobStageName, Partial<Record<JobStageStatus, string>>> = {
+type StageStatusFor<Stage extends JobStageName> = (typeof JOB_STAGE_STATUSES)[Stage][number];
+
+type StageStatusChangeLabels = {
+  [Stage in JobStageName]: Record<StageStatusFor<Stage>, string>;
+};
+
+const stageStatusChangeLabels = {
   assembly: {
     complete: 'Assembly completed',
     'in-progress': 'Assembly started',
@@ -47,29 +53,33 @@ const stageStatusChangeLabels: Record<JobStageName, Partial<Record<JobStageStatu
     partial: 'Procurement partially received items',
     pending: 'Procurement waiting to start',
   },
-};
+} as const satisfies StageStatusChangeLabels;
 
-const completedStatusPhrases = {
-  complete: 'completion',
-  curing: 'curing',
-  cutting: 'cutting',
-  dispatched: 'dispatch',
-  'in-progress': 'assembly work',
-  ordering: 'ordering',
-  painting: 'painting',
-  partial: 'partial receipt',
-  pending: 'waiting to start',
-  prep: 'prep',
-  qc: 'QC',
-  ready: 'dispatch readiness',
-  welding: 'welding',
+const fromStatusMetadata = {
+  complete: 'After the stage was completed',
+  curing: 'After curing completed',
+  cutting: 'After cutting completed',
+  dispatched: 'After dispatch completed',
+  'in-progress': 'After assembly work completed',
+  ordering: 'After ordering completed',
+  painting: 'After painting completed',
+  partial: 'After items were partially received',
+  pending: 'After the stage was queued',
+  prep: 'After prep completed',
+  qc: 'After QC completed',
+  ready: 'After dispatch was marked ready',
+  welding: 'After welding completed',
 } as const satisfies Record<JobStageStatus, string>;
 
 export function getStageStatusChangeCopy(input: StageStatusChangeCopyInput): StageStatusChangeCopy {
   return {
-    label:
-      stageStatusChangeLabels[input.stage][input.toStatus] ??
-      `${stageLabels[input.stage]} moved to ${jobStageStatusLabels[input.toStatus]}`,
-    metadata: `After ${completedStatusPhrases[input.fromStatus]} completed`,
+    label: getStageStatusChangeLabel(input),
+    metadata: fromStatusMetadata[input.fromStatus],
   };
+}
+
+function getStageStatusChangeLabel(input: StageStatusChangeCopyInput): string {
+  const labels = stageStatusChangeLabels[input.stage] as Partial<Record<JobStageStatus, string>>;
+
+  return labels[input.toStatus] ?? `${stageLabels[input.stage]} moved to ${jobStageStatusLabels[input.toStatus]}`;
 }

@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { getStageStatusChangeCopy } from './workflow-history-copy.js';
+import { getStageStartedMetadata, getStageStatusChangeCopy } from './workflow-history-copy.js';
 
 describe('workflow history copy', () => {
+  it('describes started stages without repeating the event timestamp', () => {
+    expect(
+      getStageStartedMetadata({
+        stage: 'procurement',
+      }),
+    ).toBe('Procurement is now active');
+  });
+
   it('describes paint curing in end-user language', () => {
     expect(
       getStageStatusChangeCopy({

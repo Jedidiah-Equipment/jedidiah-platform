@@ -1,9 +1,11 @@
 import {
-  createLikeSearchPattern,
+  createEscapedContainsSearchCondition,
+  createGlobalSearchCondition,
+  createPagedListResult,
   type Db,
-  getPaginationOffset,
+  getPaginationQueryOptions,
+  getSortOrder,
   getUniqueViolationConstraint,
-  LIKE_SEARCH_ESCAPE,
   productOptions,
   products,
 } from '@pkg/db';
@@ -18,7 +20,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { ProductCurrencyCode } from '@pkg/schema';
-import { and, asc, desc, eq, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
@@ -52,7 +54,7 @@ export async function listProducts({
   log: Logger;
 }): Promise<ProductListResult> {
   const sortColumn = getProductSortColumn(input.sortBy);
-  const orderBy = input.sortDirection === 'desc' ? desc(sortColumn) : asc(sortColumn);
+  const orderBy = getSortOrder(sortColumn, input.sortDirection);
   const where = buildProductListWhere(input);
   const productsQuery = db.query.products.findMany({
     columns: {
@@ -67,8 +69,7 @@ export async function listProducts({
     },
     where,
     orderBy: [orderBy],
-    limit: input.pageSize,
-    offset: getPaginationOffset(input),
+    ...getPaginationQueryOptions(input),
     with: {
       options: {
         where: isNull(productOptions.deletedAt),
@@ -89,25 +90,24 @@ export async function listProducts({
 
   const [rows, total] = await Promise.all([productsQuery, db.$count(products, where)]);
 
-  return {
+  return createPagedListResult({
     items: rows.map((row) => mapProduct(row, row.options)),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
-  };
+  });
 }
 
 function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
   if (listInput.search) {
-    const searchPattern = createLikeSearchPattern(listInput.search);
-    const globalSearchWhere = or(
-      sql`${products.description} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${products.modelCode} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${products.name} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${products.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-    );
+    const globalSearchWhere = createGlobalSearchCondition(listInput.search, [
+      sql`${products.description}`,
+      sql`${products.modelCode}`,
+      sql`${products.name}`,
+      sql`${products.id}::text`,
+    ]);
 
     if (globalSearchWhere) {
       conditions.push(globalSearchWhere);
@@ -115,18 +115,17 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
   }
 
   if (listInput.columnFilters.name) {
-    const searchPattern = createLikeSearchPattern(listInput.columnFilters.name);
-    conditions.push(sql`${products.name} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
+    conditions.push(createEscapedContainsSearchCondition(sql`${products.name}`, listInput.columnFilters.name));
   }
 
   if (listInput.columnFilters.modelCode) {
-    const searchPattern = createLikeSearchPattern(listInput.columnFilters.modelCode);
-    conditions.push(sql`${products.modelCode} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
+    conditions.push(
+      createEscapedContainsSearchCondition(sql`${products.modelCode}`, listInput.columnFilters.modelCode),
+    );
   }
 
   if (listInput.columnFilters.id) {
-    const searchPattern = createLikeSearchPattern(listInput.columnFilters.id);
-    conditions.push(sql`${products.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
+    conditions.push(createEscapedContainsSearchCondition(sql`${products.id}::text`, listInput.columnFilters.id));
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

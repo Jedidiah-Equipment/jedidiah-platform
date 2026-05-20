@@ -1,4 +1,12 @@
-import { auditEvents, type DatabaseTransaction, type Db, user, withPagination } from '@pkg/db';
+import {
+  auditEvents,
+  createPagedListResult,
+  type DatabaseTransaction,
+  type Db,
+  getSortOrder,
+  user,
+  withPagination,
+} from '@pkg/db';
 import type {
   AuditAction,
   AuditChanges,
@@ -8,7 +16,7 @@ import type {
   AuditListResult,
 } from '@pkg/schema';
 import { formatJobCode, formatQuoteCode, JobCode, QuoteCode } from '@pkg/schema';
-import { and, asc, desc, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
 type AuditRecord = Record<string, unknown>;
 
@@ -217,7 +225,7 @@ export async function insertAuditEvent({
 export async function listAuditEvents({ db, input }: { db: Db; input: AuditListInput }): Promise<AuditListResult> {
   const where = buildAuditListWhere(input);
   const sortColumn = auditEvents.occurredAt;
-  const orderBy = input.sortDirection === 'asc' ? asc(sortColumn) : desc(sortColumn);
+  const orderBy = getSortOrder(sortColumn, input.sortDirection);
   const rowsQuery = withPagination(
     db
       .select({
@@ -242,12 +250,12 @@ export async function listAuditEvents({ db, input }: { db: Db; input: AuditListI
 
   const [rows, total] = await Promise.all([rowsQuery, db.$count(auditEvents, where)]);
 
-  return {
+  return createPagedListResult({
     items: rows.map(mapAuditEvent),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
     total,
-  };
+  });
 }
 
 function buildAuditListWhere(input: AuditListInput): SQL | undefined {

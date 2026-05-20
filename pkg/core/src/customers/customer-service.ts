@@ -1,4 +1,12 @@
-import { createLikeSearchPattern, customers, type Db, getPaginationOffset, LIKE_SEARCH_ESCAPE } from '@pkg/db';
+import {
+  createEscapedContainsSearchCondition,
+  createGlobalSearchCondition,
+  createPagedListResult,
+  customers,
+  type Db,
+  getPaginationQueryOptions,
+  getSortOrder,
+} from '@pkg/db';
 import type {
   AuthId,
   Customer,
@@ -8,7 +16,7 @@ import type {
   CustomerUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
 import { createAuditChanges, customerAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
 import { CustomerNotFoundError } from './customer-errors.js';
@@ -31,34 +39,32 @@ export function mapCustomer(row: CustomerRow): Customer {
 
 export async function listCustomers({ db, input }: { db: Db; input: CustomerListInput }): Promise<CustomerListResult> {
   const sortColumn = getCustomerSortColumn(input.sortBy);
-  const orderBy = input.sortDirection === 'desc' ? desc(sortColumn) : asc(sortColumn);
+  const orderBy = getSortOrder(sortColumn, input.sortDirection);
   const where = buildCustomerListWhere(input);
   const rows = await db.query.customers.findMany({
     where,
     orderBy: [orderBy, asc(customers.id)],
-    limit: input.pageSize,
-    offset: getPaginationOffset(input),
+    ...getPaginationQueryOptions(input),
   });
   const total = await db.$count(customers, where);
 
-  return {
+  return createPagedListResult({
     items: rows.map(mapCustomer),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
-  };
+  });
 }
 
 function buildCustomerListWhere(input: CustomerListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
   if (input.search) {
-    const searchPattern = createLikeSearchPattern(input.search);
-    const globalSearchWhere = or(
-      sql`${customers.companyName} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${customers.email} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${customers.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-    );
+    const globalSearchWhere = createGlobalSearchCondition(input.search, [
+      sql`${customers.companyName}`,
+      sql`${customers.email}`,
+      sql`${customers.id}::text`,
+    ]);
 
     if (globalSearchWhere) {
       conditions.push(globalSearchWhere);
@@ -66,18 +72,17 @@ function buildCustomerListWhere(input: CustomerListInput): SQL | undefined {
   }
 
   if (input.columnFilters.companyName) {
-    const searchPattern = createLikeSearchPattern(input.columnFilters.companyName);
-    conditions.push(sql`${customers.companyName} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
+    conditions.push(
+      createEscapedContainsSearchCondition(sql`${customers.companyName}`, input.columnFilters.companyName),
+    );
   }
 
   if (input.columnFilters.email) {
-    const searchPattern = createLikeSearchPattern(input.columnFilters.email);
-    conditions.push(sql`${customers.email} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
+    conditions.push(createEscapedContainsSearchCondition(sql`${customers.email}`, input.columnFilters.email));
   }
 
   if (input.columnFilters.id) {
-    const searchPattern = createLikeSearchPattern(input.columnFilters.id);
-    conditions.push(sql`${customers.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`);
+    conditions.push(createEscapedContainsSearchCondition(sql`${customers.id}::text`, input.columnFilters.id));
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

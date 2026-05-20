@@ -1,14 +1,15 @@
 import {
-  createLikeSearchPattern,
+  createGlobalSearchCondition,
+  createPagedListResult,
   customers,
   type DatabaseTransaction,
   type Db,
-  getPaginationOffset,
+  getSortOrder,
   jobs,
-  LIKE_SEARCH_ESCAPE,
   products,
   quotes,
   user,
+  withPagination,
 } from '@pkg/db';
 import { computeQuoteTotal, evaluateQuoteTransition, parseJobCodeSearch, validateDiscount } from '@pkg/domain';
 import {
@@ -30,7 +31,7 @@ import {
   UserSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   createAuditChanges,
@@ -145,47 +146,61 @@ export async function createQuote({
 export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput }): Promise<QuoteListResult> {
   const where = buildQuoteListWhere(input);
   const sortColumn = getQuoteSortColumn(input.sortBy);
-  const orderBy = input.sortDirection === 'desc' ? desc(sortColumn) : asc(sortColumn);
+  const orderBy = getSortOrder(sortColumn, input.sortDirection);
+  const filteredQuotes = createFilteredQuoteIdsSubquery({ db, where });
 
-  const rows = await db
-    .select({
-      quote: quotes,
-      customerCompanyName: customers.companyName,
-      productBasePrice: products.basePrice,
-      productCurrencyCode: products.currencyCode,
-      productModelCode: products.modelCode,
-      productName: products.name,
-      salesPersonEmail: user.email,
-      salesPersonName: user.name,
-      jobCode: jobs.code,
-      jobId: jobs.id,
-    })
-    .from(quotes)
-    .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
-    .leftJoin(user, eq(quotes.salesPersonId, user.id))
-    .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
-    .where(where)
-    .orderBy(orderBy, asc(quotes.id))
-    .limit(input.pageSize)
-    .offset(getPaginationOffset(input));
+  const rowsQuery = withPagination(
+    db
+      .select({
+        quote: quotes,
+        customerCompanyName: customers.companyName,
+        productBasePrice: products.basePrice,
+        productCurrencyCode: products.currencyCode,
+        productModelCode: products.modelCode,
+        productName: products.name,
+        salesPersonEmail: user.email,
+        salesPersonName: user.name,
+        jobCode: jobs.code,
+        jobId: jobs.id,
+      })
+      .from(filteredQuotes)
+      .innerJoin(quotes, eq(quotes.id, filteredQuotes.quoteId))
+      .innerJoin(customers, eq(quotes.customerId, customers.id))
+      .innerJoin(products, eq(quotes.productId, products.id))
+      .leftJoin(user, eq(quotes.salesPersonId, user.id))
+      .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
+      .orderBy(orderBy, asc(quotes.id))
+      .$dynamic(),
+    input,
+  );
 
   const [totalRow] = await db
     .select({
       count: sql<number>`count(*)`,
     })
-    .from(quotes)
-    .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
-    .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
-    .where(where);
+    .from(filteredQuotes);
 
-  return {
+  const rows = await rowsQuery;
+
+  return createPagedListResult({
     items: rows.map(mapQuoteSummary),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
     total: Number(totalRow?.count ?? 0),
-  };
+  });
+}
+
+function createFilteredQuoteIdsSubquery({ db, where }: { db: Db; where: SQL | undefined }) {
+  return db
+    .select({
+      quoteId: quotes.id,
+    })
+    .from(quotes)
+    .innerJoin(customers, eq(quotes.customerId, customers.id))
+    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
+    .where(where)
+    .as('filtered_quotes');
 }
 
 export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<QuoteDetail> {
@@ -576,16 +591,17 @@ function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
   }
 
   if (input.search) {
-    const searchPattern = createLikeSearchPattern(input.search);
     const codeSearch = parseQuoteCodeSearch(input.search);
     const jobCodeSearch = parseJobCodeSearch(input.search);
     const globalSearchWhere = or(
-      sql`${quotes.id}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${quotes.code}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${customers.companyName} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${products.name} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${products.modelCode} ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
-      sql`${jobs.code}::text ilike ${searchPattern} escape ${LIKE_SEARCH_ESCAPE}`,
+      createGlobalSearchCondition(input.search, [
+        sql`${quotes.id}::text`,
+        sql`${quotes.code}::text`,
+        sql`${customers.companyName}`,
+        sql`${products.name}`,
+        sql`${products.modelCode}`,
+        sql`${jobs.code}::text`,
+      ]),
       codeSearch === undefined ? undefined : eq(quotes.code, codeSearch),
       jobCodeSearch === undefined ? undefined : eq(jobs.code, jobCodeSearch),
     );

@@ -1,12 +1,14 @@
-import { jobLifecycleStatusLabels, jobStageStatusLabels } from '@pkg/domain';
+import { jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobEvent } from '@pkg/schema';
 import { ClockIcon, HistoryIcon, UserCircleIcon } from 'lucide-react';
 import type React from 'react';
 
 import { DateDisplay } from '@/components/DateDisplay.js';
+import { DepartmentIcon } from '@/components/departments/index.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
 import { stageLabels } from '../constants.js';
+import { getStageStatusChangeCopy } from './workflow-history-copy.js';
 
 type WorkflowHistoryProps = {
   events: JobEvent[];
@@ -42,7 +44,10 @@ const WorkflowHistoryItem: React.FC<{ event: JobEvent }> = ({ event }) => (
     <span className={cn('mt-1.5 size-2.5 rounded-full ring-4 ring-background', getWorkflowEventColor(event))} />
     <div className="flex min-w-0 flex-col gap-2">
       <div className="min-w-0">
-        <div className="truncate font-medium">{getWorkflowEventLabel(event)}</div>
+        <div className="flex min-w-0 items-center gap-2 font-medium">
+          {getWorkflowEventStageIcon(event)}
+          <span className="truncate">{getWorkflowEventLabel(event)}</span>
+        </div>
         <div className="text-muted-foreground">{getWorkflowEventMetadata(event)}</div>
       </div>
       <div className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
@@ -58,6 +63,14 @@ const WorkflowHistoryItem: React.FC<{ event: JobEvent }> = ({ event }) => (
     </div>
   </li>
 );
+
+function getWorkflowEventStageIcon(event: JobEvent): React.ReactNode {
+  if (!isStageWorkflowEvent(event)) {
+    return null;
+  }
+
+  return <DepartmentIcon className="size-4 shrink-0 text-muted-foreground" department={event.payload.stage} />;
+}
 
 function getWorkflowEventLabel(event: JobEvent): string {
   if (event.eventType === 'stage.started') {
@@ -84,7 +97,7 @@ function getWorkflowEventLabel(event: JobEvent): string {
     return 'Job completed';
   }
 
-  return `${stageLabels[event.payload.stage]} status changed`;
+  return getStageStatusChangeCopy(event.payload).label;
 }
 
 function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
@@ -115,7 +128,7 @@ function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
     }`;
   }
 
-  return `${jobStageStatusLabels[event.payload.fromStatus]} to ${jobStageStatusLabels[event.payload.toStatus]}`;
+  return getStageStatusChangeCopy(event.payload).metadata;
 }
 
 function getWorkflowEventActorLabel(event: JobEvent): string {
@@ -124,6 +137,16 @@ function getWorkflowEventActorLabel(event: JobEvent): string {
   }
 
   return event.actorUserId ? 'Unknown user' : 'System';
+}
+
+function isStageWorkflowEvent(
+  event: JobEvent,
+): event is Extract<JobEvent, { eventType: 'stage.started' | 'stage.completed' | 'stage.status_changed' }> {
+  return (
+    event.eventType === 'stage.started' ||
+    event.eventType === 'stage.completed' ||
+    event.eventType === 'stage.status_changed'
+  );
 }
 
 function getWorkflowEventColor(event: JobEvent): string {

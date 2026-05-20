@@ -48,6 +48,9 @@ export const StagePanel: React.FC<StagePanelProps> = ({
   const isStartDisabled = isPending || !isStageEditable || !startAvailability?.allowed;
   const isStatusDisabled = isPending || !isStageEditable || !hasStageStarted || !statusAvailability?.allowed;
   const isCompleteDisabled = isPending || !isStageEditable || !completeAvailability?.allowed;
+  const isPendingStage = stage.status === 'pending' && !hasStageStarted && !stage.completedAt;
+  const canStartPendingStage = isPendingStage && startAvailability?.allowed;
+  const isBlockedPendingStage = isPendingStage && !startAvailability?.allowed;
   const departmentLabel = stageLabels[stage.stage];
 
   React.useEffect(() => {
@@ -58,8 +61,10 @@ export const StagePanel: React.FC<StagePanelProps> = ({
     <div
       className={cn(
         'min-h-36 rounded-md border bg-background p-3',
-        isActiveStage &&
-          'border-emerald-500/70 bg-emerald-50 shadow-[0_0_0_1px_rgba(16,185,129,0.25)] dark:bg-emerald-500/10',
+        isActiveStage && 'border-blue-500/70 bg-blue-50 shadow-[0_0_0_1px_rgba(59,130,246,0.22)] dark:bg-blue-500/10',
+        canStartPendingStage &&
+          'border-cyan-500/70 bg-cyan-50 shadow-[0_0_0_1px_rgba(6,182,212,0.22)] dark:bg-cyan-500/10',
+        isBlockedPendingStage && 'border-gray-400/70 bg-muted/30 dark:bg-gray-500/10',
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -67,7 +72,8 @@ export const StagePanel: React.FC<StagePanelProps> = ({
           <div
             className={cn(
               'text-xs font-medium uppercase text-muted-foreground',
-              isActiveStage && 'text-emerald-700 dark:text-emerald-300',
+              isActiveStage && 'text-blue-700 dark:text-blue-300',
+              canStartPendingStage && 'text-cyan-700 dark:text-cyan-300',
             )}
           >
             Department

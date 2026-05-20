@@ -4,14 +4,18 @@ import {
   ComposerPrimitive,
   ErrorPrimitive,
   MessagePrimitive,
+  type PartState,
+  SuggestionPrimitive,
   ThreadPrimitive,
+  type ToolCallMessagePartProps,
   useAuiState,
 } from '@assistant-ui/react';
 import { ArrowDownIcon, ArrowUpIcon, CopyIcon, RefreshCwIcon, SquareIcon } from 'lucide-react';
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@/components/ui/scroll-area.js';
 import { cn } from '@/lib/utils.js';
 
@@ -59,10 +63,29 @@ const ThreadMessage: FC = () => {
 
 const ThreadWelcome: FC = () => {
   return (
-    <div className="my-auto flex min-h-72 flex-col justify-center px-2">
-      <h1 className="font-semibold text-2xl">Assistant</h1>
-      <p className="text-muted-foreground text-sm">Conversations are saved locally in this browser.</p>
+    <div className="my-auto flex min-h-72 flex-col justify-center gap-5 px-2">
+      <div>
+        <h1 className="font-semibold text-2xl">Assistant</h1>
+        <p className="text-muted-foreground text-sm">Conversations are saved locally in this browser.</p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <ThreadPrimitive.Suggestions>
+          {({ suggestion }) => <SuggestionItem title={suggestion.title} />}
+        </ThreadPrimitive.Suggestions>
+      </div>
     </div>
+  );
+};
+
+const SuggestionItem: FC<{ title: string }> = ({ title }) => {
+  return (
+    <SuggestionPrimitive.Trigger
+      className="min-h-10 rounded-md border bg-muted/35 px-3 py-2 text-left text-muted-foreground text-sm leading-5 transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      send
+      type="button"
+    >
+      <span className="text-sm leading-5">{title}</span>
+    </SuggestionPrimitive.Trigger>
   );
 };
 
@@ -122,27 +145,28 @@ const AssistantMessage: FC = () => {
   return (
     <MessagePrimitive.Root className="group/message relative w-full min-w-0">
       <div className="min-w-0 px-2 text-sm leading-6">
-        <MessagePrimitive.Parts>
-          {({ part }) => {
+        <MessagePrimitive.GroupedParts groupBy={groupToolCallParts}>
+          {({ part, children }) => {
+            if (part.type === 'group-tool-calls') {
+              return <ToolCallGroup count={part.indices.length}>{children}</ToolCallGroup>;
+            }
+
             if (part.type === 'text') {
               if (part.status?.type === 'running' && part.text.length === 0) {
-                return <div className="text-muted-foreground">Thinking...</div>;
+                return <ThinkingText />;
               }
 
               return <MarkdownText />;
             }
 
             if (part.type === 'tool-call') {
-              return (
-                <div className="mb-3 inline-flex max-w-full pe-2">
-                  <ToolCallBadge result={part.result} status={part.status.type} toolName={part.toolName} />
-                </div>
-              );
+              return <ToolCallDetail {...part} />;
             }
 
             return null;
           }}
-        </MessagePrimitive.Parts>
+        </MessagePrimitive.GroupedParts>
+        <AssistantThinking />
         <MessageError />
       </div>
       <div className="h-9 pt-1">
@@ -152,15 +176,58 @@ const AssistantMessage: FC = () => {
   );
 };
 
-const ToolCallBadge: FC<{
-  result: unknown;
-  status: string;
-  toolName: string;
-}> = ({ result, status, toolName }) => {
+const AssistantThinking: FC = () => {
+  const isThinking = useAuiState(
+    (state) =>
+      state.message.status?.type === 'running' &&
+      !state.message.parts.some((part) => part.type === 'text' && part.text.length > 0),
+  );
+
+  return isThinking ? <ThinkingText /> : null;
+};
+
+const ThinkingText: FC = () => {
   return (
-    <Badge className="max-w-full truncate border-primary/50 bg-primary/20 px-3 py-1 text-foreground" variant="outline">
-      tool call - {toolName}: {formatToolStatus(status, result)}
-    </Badge>
+    <div>
+      <span className="inline-flex bg-[linear-gradient(110deg,var(--muted-foreground)_0%,var(--muted-foreground)_35%,var(--foreground)_50%,var(--muted-foreground)_65%,var(--muted-foreground)_100%)] bg-[length:220%_100%] bg-clip-text text-sm text-transparent [animation:assistant-thinking-shimmer_1.6s_linear_infinite]">
+        Thinking...
+      </span>
+    </div>
+  );
+};
+
+const groupToolCallParts = (part: PartState): readonly ['group-tool-calls'] | null => {
+  return part.type === 'tool-call' ? ['group-tool-calls'] : null;
+};
+
+const ToolCallGroup: FC<{ children: ReactNode; count: number }> = ({ children, count }) => {
+  return (
+    <div className="mb-3 inline-flex max-w-full pe-2">
+      <HoverCard>
+        <HoverCardTrigger
+          render={
+            <Badge
+              className="max-w-full cursor-default truncate border-border/70 bg-muted/30 px-2 py-0.5 font-normal text-muted-foreground text-xs"
+              variant="outline"
+            >
+              tool calls {count}
+            </Badge>
+          }
+        />
+        <HoverCardContent align="start" className="w-72 max-w-[calc(100vw-2rem)] p-2" side="top">
+          <div className="divide-y divide-border/70">{children}</div>
+        </HoverCardContent>
+      </HoverCard>
+    </div>
+  );
+};
+
+const ToolCallDetail: FC<ToolCallMessagePartProps> = ({ result, status, toolName }) => {
+  return (
+    <div className="flex items-center justify-between gap-3 px-1 py-2 text-xs first:pt-1 last:pb-1">
+      <span className="truncate font-medium text-foreground">{toolName}</span>
+      <span className="shrink-0 text-muted-foreground">{formatToolStatus(status.type, result)}</span>
+    </div>
   );
 };
 
@@ -228,12 +295,12 @@ function formatToolStatus(status: string, result: unknown): string {
 }
 
 function getResultCount(result: unknown): number | null {
-  if (isRecord(result) && typeof result.total === 'number') {
-    return result.total;
-  }
-
   if (isRecord(result) && Array.isArray(result.items)) {
     return result.items.length;
+  }
+
+  if (isRecord(result) && typeof result.total === 'number') {
+    return result.total;
   }
 
   if (Array.isArray(result)) {

@@ -165,8 +165,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
       {job ? (
         <>
-          <div className="grid gap-3 text-sm sm:grid-cols-3">
-            <JobFact label="Job ID" value={job.id} />
+          <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <JobFact label="Created" value={<DateDisplay date={job.createdAt} />} />
             <JobFact label="Due date" value={<DateDisplay date={job.dueDate} emptyValue="No date" />} />
             <JobFact label="Updated" value={<DateDisplay date={job.updatedAt} />} />

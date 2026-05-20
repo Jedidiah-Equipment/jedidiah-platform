@@ -1,4 +1,4 @@
-import { AssistantRuntimeProvider, useAuiState, useLocalRuntime } from '@assistant-ui/react';
+import { AssistantRuntimeProvider, Suggestions, useAui, useAuiState, useLocalRuntime } from '@assistant-ui/react';
 import { MessageSquareIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -15,6 +15,15 @@ import {
   useAssistantChatStore,
 } from './assistant-chat-store.js';
 import { jedidiahChatAdapter } from './assistant-ui-adapter.js';
+
+export const ASSISTANT_EXAMPLE_QUESTIONS: string[] = [
+  'how is the job for Marula Contracting going?',
+  'show me quotes waiting for customer approval',
+  'which jobs are behind schedule?',
+  'what work is active in Production?',
+  'find recent audit activity for quote changes',
+  'which customers have open jobs?',
+];
 
 export function AssistantPanel() {
   const { activeChatId, activeChat } = useAssistantChatStore(
@@ -38,6 +47,9 @@ export function AssistantPanel() {
 }
 
 function AssistantRuntimeSession({ activeChatId }: { activeChatId: string }) {
+  const aui = useAui({
+    suggestions: Suggestions(ASSISTANT_EXAMPLE_QUESTIONS),
+  });
   const history = useMemo(() => createAssistantChatHistoryAdapter(activeChatId), [activeChatId]);
   const runtime = useLocalRuntime(jedidiahChatAdapter, {
     adapters: {
@@ -46,7 +58,7 @@ function AssistantRuntimeSession({ activeChatId }: { activeChatId: string }) {
   });
 
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
+    <AssistantRuntimeProvider aui={aui} runtime={runtime}>
       <AssistantChatFrame />
     </AssistantRuntimeProvider>
   );

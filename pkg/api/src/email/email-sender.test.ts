@@ -95,6 +95,7 @@ describe('ApiConfig email validation', () => {
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_live_key',
         OPENAI_API_KEY: 'sk-test',
+        POSTHOG_ENABLED: 'false',
       }),
     ).not.toThrow();
   });

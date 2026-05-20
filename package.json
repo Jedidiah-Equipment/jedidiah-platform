@@ -43,7 +43,12 @@
     "vitest": "^3.2.4"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "@posthog/cli"
+    ],
     "ignoredBuiltDependencies": [
+      "core-js",
+      "protobufjs",
       "msw"
     ]
   }

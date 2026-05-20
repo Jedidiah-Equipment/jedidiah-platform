@@ -4,6 +4,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { AlertCircleIcon, Loader2Icon, LogInIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import { AppBrand } from '@/components/AppBrand.js';
 import { useAppForm } from '@/components/form/index.js';
 import { PermissionBadge } from '@/components/PermissionBadge.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
@@ -53,9 +54,7 @@ export const LoginPage: React.FC = () => {
       <div className="flex w-full max-w-5xl flex-col items-center gap-4">
         <Card className="w-full max-w-[420px]">
           <CardHeader>
-            <CardDescription className="font-medium uppercase tracking-[0.18em] text-primary">
-              Jedidiah Equipment
-            </CardDescription>
+            <AppBrand />
             <CardTitle className="text-3xl">Sign in</CardTitle>
           </CardHeader>
 

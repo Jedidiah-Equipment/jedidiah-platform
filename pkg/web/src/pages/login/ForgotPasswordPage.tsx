@@ -4,10 +4,11 @@ import type React from 'react';
 import { useState } from 'react';
 import { z } from 'zod';
 
+import { AppBrand } from '@/components/AppBrand.js';
 import { useAppForm } from '@/components/form/index.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { FieldGroup } from '@/components/ui/field.js';
 import { authClient } from '@/lib/auth-client.js';
 
@@ -40,9 +41,7 @@ export const ForgotPasswordPage: React.FC = () => {
     <section className="flex min-h-screen items-center justify-center px-6 py-12">
       <Card className="w-full max-w-[420px]">
         <CardHeader>
-          <CardDescription className="font-medium uppercase tracking-[0.18em] text-primary">
-            Jedidiah Equipment
-          </CardDescription>
+          <AppBrand />
           <CardTitle className="text-3xl">Reset password</CardTitle>
         </CardHeader>
 

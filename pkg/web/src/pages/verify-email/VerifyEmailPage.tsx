@@ -3,8 +3,9 @@ import { AlertCircleIcon, CheckCircleIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 
+import { AppBrand } from '@/components/AppBrand.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { authClient } from '@/lib/auth-client.js';
 import { Route } from '@/routes/verify-email.js';
 
@@ -36,9 +37,7 @@ export const VerifyEmailPage: React.FC = () => {
     <section className="flex min-h-screen items-center justify-center px-6 py-12">
       <Card className="w-full max-w-[420px]">
         <CardHeader>
-          <CardDescription className="font-medium uppercase tracking-[0.18em] text-primary">
-            Jedidiah Equipment
-          </CardDescription>
+          <AppBrand />
           <CardTitle className="text-3xl">Email verification</CardTitle>
         </CardHeader>
 

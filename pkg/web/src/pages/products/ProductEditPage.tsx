@@ -1,13 +1,12 @@
 import type { UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeftIcon } from 'lucide-react';
 import type React from 'react';
 import { toast } from 'sonner';
 
+import { BackButton } from '@/components/BackButton.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
-import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -41,12 +40,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
 
   return (
     <EditPageLayout
-      back={
-        <Button onClick={() => navigate({ to: '/products' })} type="button" variant="ghost">
-          <ArrowLeftIcon data-icon="inline-start" />
-          Products
-        </Button>
-      }
+      back={<BackButton to="/products">Products</BackButton>}
       description="Catalog"
       title="Edit product"
     >

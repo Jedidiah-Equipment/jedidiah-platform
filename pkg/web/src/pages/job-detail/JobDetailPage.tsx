@@ -1,11 +1,10 @@
 import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobDetail, JobStageStatusInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 
-import { ButtonLink } from '@/components/ButtonLink.js';
+import { BackButton } from '@/components/BackButton.js';
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
@@ -158,12 +157,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   return (
     <DetailPageLayout
       aside={job ? <WorkflowHistory events={job.workflowEvents} /> : undefined}
-      back={
-        <ButtonLink to="/jobs" variant="ghost">
-          <ArrowLeftIcon data-icon="inline-start" />
-          Jobs
-        </ButtonLink>
-      }
+      back={<BackButton to="/jobs">Jobs</BackButton>}
       badge={job ? <JobLifecycleStatusBadge status={job.lifecycleStatus} /> : undefined}
       description={job?.productModelCode}
       title={job?.productName}

@@ -2,11 +2,12 @@ import { hasPermission } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeftIcon, BriefcaseBusinessIcon, CalendarIcon, EditIcon, Loader2Icon, XIcon } from 'lucide-react';
+import { BriefcaseBusinessIcon, CalendarIcon, EditIcon, Loader2Icon, XIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { BackButton } from '@/components/BackButton.js';
 import { ButtonLink } from '@/components/ButtonLink.js';
 import { DateDisplay } from '@/components/DateDisplay.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
@@ -117,12 +118,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
 
   return (
     <DetailPageLayout
-      back={
-        <ButtonLink to="/quotes" variant="ghost">
-          <ArrowLeftIcon data-icon="inline-start" />
-          Quotes
-        </ButtonLink>
-      }
+      back={<BackButton to="/quotes">Quotes</BackButton>}
       badge={quote ? <QuoteStatusBadge status={quote.status} /> : undefined}
       description={quote?.code}
       title={quote?.customerCompanyName}

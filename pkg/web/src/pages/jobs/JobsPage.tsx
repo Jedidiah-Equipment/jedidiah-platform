@@ -20,8 +20,8 @@ import { useConstrainedTableState } from '@/components/data-table/hooks/use-cons
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPrimarySort, type SortOptions } from '@/components/data-table/table-state.js';
-import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
 import { PrimaryLink } from '@/components/PrimaryLink.js';
+import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -58,18 +58,17 @@ export const JobsPage: React.FC<JobsPageProps> = ({ status }) => {
 
   return (
     <ListPageLayout description="Production" title="Jobs">
-      <JobStatusFilter
-        onStatusChange={(nextStatus) => {
-          void navigate({
-            search: {
-              status: nextStatus,
-            },
-            to: '/jobs',
-          });
-        }}
+      <JobTable
+        rightSection={
+          <JobStatusFilter
+            onStatusChange={(nextStatus) => {
+              void navigate({ search: { status: nextStatus }, to: '/jobs' });
+            }}
+            status={status}
+          />
+        }
         status={status}
       />
-      <JobTable status={status} />
     </ListPageLayout>
   );
 };
@@ -78,33 +77,32 @@ const JobStatusFilter: React.FC<{
   onStatusChange: (status: JobListStatusFilter) => void;
   status: JobListStatusFilter;
 }> = ({ onStatusChange, status }) => (
-  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-    <div className="text-sm font-medium">Lifecycle status</div>
-    <Select
-      onValueChange={(value) => {
-        if (!value || value === status) return;
-
-        onStatusChange(value as JobListStatusFilter);
-      }}
-      value={status}
-    >
-      <SelectTrigger aria-label="Lifecycle status" className="w-full sm:w-48">
-        <JobListStatusFilterSelectValue status={status} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          {JOB_LIST_STATUS_FILTERS.map((option) => (
-            <SelectItem key={option} leading={<JobListStatusFilterIcon status={option} />} value={option}>
-              {getJobListStatusFilterLabel(option)}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  </div>
+  <Select
+    onValueChange={(value) => {
+      if (!value || value === status) return;
+      onStatusChange(value as JobListStatusFilter);
+    }}
+    value={status}
+  >
+    <SelectTrigger aria-label="Lifecycle status" className="w-full sm:w-48">
+      <JobListStatusFilterSelectValue status={status} />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectGroup>
+        {JOB_LIST_STATUS_FILTERS.map((option) => (
+          <SelectItem key={option} leading={<JobListStatusFilterIcon status={option} />} value={option}>
+            {getJobListStatusFilterLabel(option)}
+          </SelectItem>
+        ))}
+      </SelectGroup>
+    </SelectContent>
+  </Select>
 );
 
-const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
+const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatusFilter }> = ({
+  rightSection,
+  status,
+}) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const accessQuery = useAccess();
@@ -203,7 +201,7 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
         cell: ({ row }) => <JobLifecycleStatusBadge status={row.original.lifecycleStatus} />,
         enableColumnFilter: false,
         enableSorting: true,
-        header: 'Lifecycle Status',
+        header: 'Status',
       },
       {
         cell: ({ row }) => <JobStageChips stages={row.original.stages} />,
@@ -267,6 +265,7 @@ const JobTable: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
       isLoading={isLoading}
+      rightSection={rightSection}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`}

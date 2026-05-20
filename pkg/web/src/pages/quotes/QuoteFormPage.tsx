@@ -1,11 +1,10 @@
 import type { QuoteCreateInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeftIcon } from 'lucide-react';
 import type React from 'react';
 import { toast } from 'sonner';
 
-import { ButtonLink } from '@/components/ButtonLink.js';
+import { BackButton } from '@/components/BackButton.js';
 import { ErrorMessage } from '@/components/ErrorMessage.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Separator } from '@/components/ui/separator.js';
@@ -72,15 +71,9 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
     <EditPageLayout
       back={
         quoteId ? (
-          <ButtonLink params={{ id: quoteId }} to="/quotes/$id" variant="ghost">
-            <ArrowLeftIcon data-icon="inline-start" />
-            Quote
-          </ButtonLink>
+          <BackButton params={{ id: quoteId }} to="/quotes/$id">Quote</BackButton>
         ) : (
-          <ButtonLink to="/quotes" variant="ghost">
-            <ArrowLeftIcon data-icon="inline-start" />
-            Quotes
-          </ButtonLink>
+          <BackButton to="/quotes">Quotes</BackButton>
         )
       }
       badge={quote ? <QuoteStatusBadge status={quote.status} /> : undefined}

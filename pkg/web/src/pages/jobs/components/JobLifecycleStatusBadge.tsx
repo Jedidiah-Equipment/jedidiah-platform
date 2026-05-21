@@ -45,7 +45,12 @@ export function JobLifecycleStatusBadge({ className, status, ...props }: JobLife
   const color = getJobLifecycleStatusColorClassNames(status);
 
   return (
-    <Badge className={cn(color.badge, className)} variant="outline" {...props}>
+    <Badge
+      aria-label={`Job status: ${jobLifecycleStatusLabels[status]}`}
+      className={cn(color.badge, className)}
+      variant="outline"
+      {...props}
+    >
       {jobLifecycleStatusLabels[status]}
     </Badge>
   );

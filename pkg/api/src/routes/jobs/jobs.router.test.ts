@@ -121,6 +121,76 @@ describe('jobs.list', () => {
       expect(result.items.every((item) => item.lifecycleStatus === status)).toBe(true);
     }
   });
+
+  test('sorts by due end and actual end', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const laterDueJob = await caller.jobs.create({ dueEnd: '2026-08-20', productId: context.product.id });
+    const earlierDueJob = await caller.jobs.create({ dueEnd: '2026-08-10', productId: context.product.id });
+
+    const dueEndSorted = await caller.jobs.list({
+      filters: { lifecycleStatuses: [] },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'dueEnd',
+      sortDirection: 'asc',
+    });
+    expect(filterJobIds(dueEndSorted.items, [earlierDueJob.id, laterDueJob.id])).toEqual([
+      earlierDueJob.id,
+      laterDueJob.id,
+    ]);
+
+    const earlierActualJob = await caller.jobs.create({ productId: context.product.id });
+    const laterActualJob = await caller.jobs.create({ productId: context.product.id });
+    await context.databaseClient.queryClient`
+      update job
+      set actual_start = '2026-08-01T08:00:00.000Z',
+        actual_end = case
+          when id = ${earlierActualJob.id} then '2026-08-12T08:00:00.000Z'
+          when id = ${laterActualJob.id} then '2026-08-18T08:00:00.000Z'
+          else actual_end
+        end
+      where id in (${earlierActualJob.id}, ${laterActualJob.id})
+    `;
+
+    const actualEndSorted = await caller.jobs.list({
+      filters: { lifecycleStatuses: ['complete'] },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'actualEnd',
+      sortDirection: 'desc',
+    });
+    expect(filterJobIds(actualEndSorted.items, [laterActualJob.id, earlierActualJob.id])).toEqual([
+      laterActualJob.id,
+      earlierActualJob.id,
+    ]);
+  });
+});
+
+describe('jobs.get', () => {
+  test('keeps stage summaries, station bookings, and workflow events visible across departments', async ({
+    context,
+  }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const job = await createJobWithStationBookings({
+      caller: supervisorCaller,
+      db: context.db,
+      productId: context.product.id,
+      stages: ['fabrication'],
+    });
+    await supervisorCaller.jobs.startStationBooking({ id: getStageBooking(job, 'fabrication').id });
+
+    const paintCaller = createScopedCaller(context.db, 'job-department-manager', ['paint']);
+    const visibleJob = await paintCaller.jobs.get({ id: job.id });
+    const fabrication = getStage(visibleJob, 'fabrication');
+
+    expect(fabrication.access).toBe('summary');
+    expect(fabrication.stations).toHaveLength(1);
+    expect(visibleJob.workflowEvents.map((event) => event.eventType).sort()).toEqual([
+      'job.started',
+      'stage.started',
+      'station.started',
+    ]);
+  });
 });
 
 describe('jobs stage transitions', () => {
@@ -847,6 +917,12 @@ async function listJobEventTypes(db: Db, jobId: string) {
   const rows = (await db.select().from(jobEvents)).filter((event) => event.jobId === jobId);
 
   return rows.map((event) => event.eventType).sort();
+}
+
+function filterJobIds(items: readonly { id: string }[], targetIds: readonly string[]): string[] {
+  const targetIdSet = new Set(targetIds);
+
+  return items.map((item) => item.id).filter((id) => targetIdSet.has(id));
 }
 
 async function createCancelledJob(caller: AppRouterCaller, productId: string) {

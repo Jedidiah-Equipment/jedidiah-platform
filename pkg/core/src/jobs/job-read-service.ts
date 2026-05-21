@@ -122,14 +122,16 @@ export async function getJob({
   return {
     ...mapJobSummary(row),
     stages: mapJobDetailStages({ access, job: row, stageRows: row.stages }),
-    workflowEvents: mapJobWorkflowEvents({ access, eventRows: row.events, stageRows: row.stages }),
+    workflowEvents: mapJobWorkflowEvents({ eventRows: row.events }),
   };
 }
 
 export function getJobSortColumn(sortBy: JobSortBy): SQL {
   const columns = {
+    actualEnd: sql`${jobs.actualEnd}`,
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
+    dueEnd: sql`${jobs.dueEnd}`,
     id: sql`${jobs.id}`,
     // Derived lifecycle sorting is a UI contract: not-started, active, complete, paused, cancelled.
     lifecycleStatus: sql`case when ${jobs.isCancelled} then 5 when ${jobs.isPaused} then 4 when ${jobs.actualEnd} is not null then 3 when ${jobs.actualStart} is not null then 2 else 1 end`,
@@ -206,26 +208,8 @@ function mapJobDetailStages({
   );
 }
 
-function mapJobWorkflowEvents({
-  access,
-  eventRows,
-  stageRows,
-}: {
-  access: UserAccessSummary;
-  eventRows: JobEventWithActorRow[];
-  stageRows: JobStageRow[];
-}) {
-  const stageRowsById = new Map(stageRows.map((stage) => [stage.id, stage]));
-
-  return eventRows
-    .filter((event) => {
-      if (!event.stageId) return true;
-
-      const stage = stageRowsById.get(event.stageId);
-      return stage ? canViewStage(access, stage) : false;
-    })
-    .map(mapJobEventWithActor)
-    .sort(compareJobEventsNewestFirst);
+function mapJobWorkflowEvents({ eventRows }: { eventRows: JobEventWithActorRow[] }) {
+  return eventRows.map(mapJobEventWithActor).sort(compareJobEventsNewestFirst);
 }
 
 function compareJobEventsNewestFirst(

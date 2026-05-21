@@ -15,7 +15,12 @@ export function JobStageStatusBadge({ className, stage, status, ...props }: JobS
   const color = getJobStageStatusColorClassNames(stage, status);
 
   return (
-    <Badge className={cn(color.badge, className)} variant="outline" {...props}>
+    <Badge
+      aria-label={`${stage} status: ${jobStageStatusLabels[status]}`}
+      className={cn(color.badge, className)}
+      variant="outline"
+      {...props}
+    >
       {jobStageStatusLabels[status]}
     </Badge>
   );

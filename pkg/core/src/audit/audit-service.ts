@@ -40,6 +40,7 @@ export const productAuditDescriptor: AuditEntityDescriptor = {
   fields: {
     basePrice: 'base price',
     currencyCode: 'currency',
+    departmentConfigs: 'Department defaults',
     description: 'description',
     modelCode: 'model code',
     name: 'name',

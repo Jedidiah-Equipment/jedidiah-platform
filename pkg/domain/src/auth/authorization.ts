@@ -94,6 +94,7 @@ export const appRoleAccess = {
   'job-supervisor': {
     job: ['read', 'create', 'update'],
     'job-stage': ['read', 'update'],
+    product: ['read'],
     quote: ['read'],
   },
   'job-department-manager': {

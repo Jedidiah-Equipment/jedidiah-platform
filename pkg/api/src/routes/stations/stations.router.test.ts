@@ -59,6 +59,17 @@ describe('stations.create', () => {
 });
 
 describe('stations.list', () => {
+  test('allows product editors to read stations for Product defaults', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const productEditorCaller = context.createCaller(mockSession('product-editor'));
+
+    await createStation(supervisorCaller, 'Weld Bay 1', 'fabrication');
+
+    const result = await productEditorCaller.stations.list({ department: 'fabrication', isActive: true });
+
+    expect(result.map((station) => station.name)).toEqual(['Weld Bay 1']);
+  });
+
   test('lists and filters stations by department and active state', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     await createStation(caller, 'Assembly Bench 1', 'assembly', 30);

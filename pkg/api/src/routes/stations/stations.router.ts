@@ -14,12 +14,11 @@ import {
   StationSetActiveInput,
   StationUpdateInput,
 } from '@pkg/schema';
-
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const stationsRouter = router({
-  list: authorizedProcedure('job:read')
+  list: authorizedProcedure(['job:read', 'product:update'])
     .input(StationListInput)
     .query(({ ctx, input }) => listStations({ db: ctx.db, input })),
 

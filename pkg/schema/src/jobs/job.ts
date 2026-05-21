@@ -172,6 +172,20 @@ const JobLifecycleChangedEventPayload = z.object({
   toLifecycleStatus: JobLifecycleStatus,
 });
 
+export type JobDateEditEntityLevel = z.infer<typeof JobDateEditEntityLevel>;
+export const JobDateEditEntityLevel = z.enum(['job', 'stage', 'station-booking']);
+
+export type JobDateEditField = z.infer<typeof JobDateEditField>;
+export const JobDateEditField = z.enum(['due_start', 'due_end', 'actual_start', 'actual_end']);
+
+const DateOverriddenJobEventPayload = z.object({
+  entityId: UUID,
+  entityLevel: JobDateEditEntityLevel,
+  field: JobDateEditField,
+  newValue: z.union([z.iso.date(), z.iso.datetime()]).nullable(),
+  oldValue: z.union([z.iso.date(), z.iso.datetime()]).nullable(),
+});
+
 const StageStartedJobEvent = JobEventBase.extend({
   eventType: z.literal('stage.started'),
   payload: StageStartedJobEventPayload,
@@ -241,6 +255,11 @@ const JobCompletedEvent = JobEventBase.extend({
   payload: JobLifecycleChangedEventPayload,
 });
 
+const DateOverriddenEvent = JobEventBase.extend({
+  eventType: z.literal('date.overridden'),
+  payload: DateOverriddenJobEventPayload,
+});
+
 export type JobEvent = z.infer<typeof JobEvent>;
 export const JobEvent = z.discriminatedUnion('eventType', [
   StageStartedJobEvent,
@@ -256,6 +275,7 @@ export const JobEvent = z.discriminatedUnion('eventType', [
   JobCancelledEvent,
   JobUncancelledEvent,
   JobCompletedEvent,
+  DateOverriddenEvent,
 ]);
 
 export type DerivedStageJobEvent = z.infer<typeof DerivedStageJobEvent>;
@@ -473,3 +493,27 @@ export type JobStationBookingTransitionInput = z.infer<typeof JobStationBookingT
 export const JobStationBookingTransitionInput = z.object({
   id: UUID,
 });
+
+export type JobDateEditInput = z.infer<typeof JobDateEditInput>;
+export const JobDateEditInput = z
+  .object({
+    entityId: UUID,
+    entityLevel: JobDateEditEntityLevel,
+    field: JobDateEditField,
+    value: z.union([z.iso.date(), z.iso.datetime()]).nullable(),
+  })
+  .superRefine((input, context) => {
+    if (input.value === null) return;
+
+    const parser = input.field.startsWith('due_') ? z.iso.date() : z.iso.datetime();
+    const result = parser.safeParse(input.value);
+    if (!result.success) {
+      context.addIssue({
+        code: 'custom',
+        path: ['value'],
+        message: input.field.startsWith('due_')
+          ? 'Due-date edits require a date value.'
+          : 'Actual-date edits require a datetime value.',
+      });
+    }
+  });

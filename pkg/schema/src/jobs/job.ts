@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-import { Department } from '../auth/authorization.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
+import { Station } from '../stations/station.js';
 
 export { formatJobCode, JobCode } from '../common/public-code.js';
 
@@ -52,17 +52,6 @@ const DateFields = z.object({
   dueEndSetManually: z.boolean(),
   dueStart: z.iso.date().nullable(),
   dueStartSetManually: z.boolean(),
-});
-
-export type Station = z.infer<typeof Station>;
-export const Station = z.object({
-  id: UUID,
-  name: z.string().trim().min(1),
-  department: Department,
-  isActive: z.boolean(),
-  displayOrder: z.int(),
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
 });
 
 export type StationBooking = z.infer<typeof StationBooking>;

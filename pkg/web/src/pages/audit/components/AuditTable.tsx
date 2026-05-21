@@ -36,6 +36,7 @@ const auditEntityTypeLabels = {
   product: 'Product',
   product_option: 'Product option',
   quote: 'Quote',
+  station: 'Station',
   user: 'User',
 } as const satisfies Record<(typeof AuditEntityType.options)[number], string>;
 

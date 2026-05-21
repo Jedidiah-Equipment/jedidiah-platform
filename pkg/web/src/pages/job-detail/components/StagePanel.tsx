@@ -1,6 +1,6 @@
 import { jobStageStatusLabels } from '@pkg/domain';
-import type { JobStageRollup, UUID } from '@pkg/schema';
-import { CheckCircleIcon, PlayIcon } from 'lucide-react';
+import type { JobStageRollup, StationBooking, UUID } from '@pkg/schema';
+import { CheckCircleIcon, PlayIcon, SquareIcon } from 'lucide-react';
 import type React from 'react';
 
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -15,10 +15,20 @@ type StagePanelProps = {
   jobId: UUID;
   onComplete: (input: JobStageTransitionInput) => void;
   onStart: (input: JobStageTransitionInput) => void;
+  onStartStationBooking: (input: { id: UUID }) => void;
+  onStopStationBooking: (input: { id: UUID }) => void;
   stage: JobStageRollup;
 };
 
-export const StagePanel: React.FC<StagePanelProps> = ({ isPending, jobId, onComplete, onStart, stage }) => {
+export const StagePanel: React.FC<StagePanelProps> = ({
+  isPending,
+  jobId,
+  onComplete,
+  onStart,
+  onStartStationBooking,
+  onStopStationBooking,
+  stage,
+}) => {
   const startAvailability = stage.access === 'visible' ? stage.transitionAvailability?.start : undefined;
   const stopAvailability = stage.access === 'visible' ? stage.transitionAvailability?.stop : undefined;
   const isStageEditable = stage.access === 'visible';
@@ -29,6 +39,7 @@ export const StagePanel: React.FC<StagePanelProps> = ({ isPending, jobId, onComp
   const isPendingStage = stage.state === 'pending' && !hasStageStarted && !stage.actualEnd;
   const canStartPendingStage = isPendingStage && startAvailability?.allowed;
   const isBlockedPendingStage = isPendingStage && !startAvailability?.allowed;
+  const showStationBookings = isStageEditable && stage.stations.length > 0;
   const departmentLabel = stageLabels[stage.stage];
 
   return (
@@ -68,6 +79,19 @@ export const StagePanel: React.FC<StagePanelProps> = ({ isPending, jobId, onComp
             Completed: <DateDisplay date={stage.actualEnd} emptyValue="Not completed" />
           </div>
         </div>
+        {showStationBookings ? (
+          <div className="flex flex-col gap-2">
+            {stage.stations.map((booking) => (
+              <StationBookingControl
+                booking={booking}
+                disabled={!isStageEditable || isPending}
+                key={booking.id}
+                onStart={onStartStationBooking}
+                onStop={onStopStationBooking}
+              />
+            ))}
+          </div>
+        ) : null}
         <div className="flex flex-col gap-2">
           <Button
             disabled={isStartDisabled}
@@ -100,3 +124,46 @@ export const StagePanel: React.FC<StagePanelProps> = ({ isPending, jobId, onComp
 
 const StageControlReason: React.FC<{ reason: string | null | undefined }> = ({ reason }) =>
   reason ? <div className="text-xs text-muted-foreground">{reason}</div> : null;
+
+const StationBookingControl: React.FC<{
+  booking: StationBooking;
+  disabled: boolean;
+  onStart: (input: { id: UUID }) => void;
+  onStop: (input: { id: UUID }) => void;
+}> = ({ booking, disabled, onStart, onStop }) => {
+  const canStart = booking.state === 'pending';
+  const canStop = booking.state === 'in-progress';
+  const buttonDisabled = disabled || booking.state === 'complete';
+
+  return (
+    <div className="rounded-md border bg-muted/20 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium">{booking.station.name}</div>
+          <div className="text-xs text-muted-foreground">{jobStageStatusLabels[booking.state]}</div>
+        </div>
+        {booking.state === 'complete' ? (
+          <div className="shrink-0 text-right text-xs text-muted-foreground">
+            <div className="font-medium text-foreground">Completed</div>
+            <DateDisplay date={booking.actualEnd} format="medium" />
+          </div>
+        ) : canStop ? (
+          <Button disabled={buttonDisabled} onClick={() => onStop({ id: booking.id })} size="sm" type="button">
+            <SquareIcon data-icon="inline-start" />
+            Stop
+          </Button>
+        ) : (
+          <Button
+            disabled={buttonDisabled || !canStart}
+            onClick={() => onStart({ id: booking.id })}
+            size="sm"
+            type="button"
+          >
+            <PlayIcon data-icon="inline-start" />
+            Start
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};

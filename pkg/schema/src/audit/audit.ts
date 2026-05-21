@@ -13,6 +13,7 @@ export const AuditEntityType = z.enum([
   'customer',
   'job',
   'job_stage',
+  'job_stage_station',
   'product',
   'product_option',
   'quote',

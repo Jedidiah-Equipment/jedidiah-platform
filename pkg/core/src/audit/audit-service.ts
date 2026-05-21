@@ -129,6 +129,23 @@ export const jobStageAuditDescriptor: AuditEntityDescriptor = {
   },
 };
 
+export const jobStageStationAuditDescriptor: AuditEntityDescriptor = {
+  entityType: 'job_stage_station',
+  noun: 'station booking',
+  primaryLabelField: 'stationId',
+  fields: {
+    actualEnd: 'actual end',
+    actualEndSetManually: 'actual end override',
+    actualStart: 'actual start',
+    actualStartSetManually: 'actual start override',
+    dueEnd: 'due end',
+    dueEndSetManually: 'due end override',
+    dueStart: 'due start',
+    dueStartSetManually: 'due start override',
+    stationId: 'station',
+  },
+};
+
 export const stationAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'station',
   noun: 'station',
@@ -174,6 +191,7 @@ const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   customer: customerAuditDescriptor,
   job: jobAuditDescriptor,
   job_stage: jobStageAuditDescriptor,
+  job_stage_station: jobStageStationAuditDescriptor,
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
   quote: quoteAuditDescriptor,

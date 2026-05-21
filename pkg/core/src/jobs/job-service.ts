@@ -38,6 +38,10 @@ import {
 import { mapJobAuditRecord } from './job-mappers.js';
 import { applyJobStageTransition } from './job-pipeline-service.js';
 import { getJob, getJobSortColumn, mapJobSummary } from './job-read-service.js';
+import {
+  startStationBooking as startStationBookingTransition,
+  stopStationBooking as stopStationBookingTransition,
+} from './station-booking-service.js';
 
 type JobLifecycleTransition = 'cancel' | 'pause' | 'resume' | 'uncancel';
 
@@ -496,6 +500,34 @@ export async function completeJobStage({
     stage,
     intent: { transition: 'complete' },
   });
+}
+
+export async function startStationBooking({
+  db,
+  access,
+  actorUserId,
+  id,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  id: UUID;
+}): Promise<JobDetail> {
+  return startStationBookingTransition({ access, actorUserId, db, id });
+}
+
+export async function stopStationBooking({
+  db,
+  access,
+  actorUserId,
+  id,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  id: UUID;
+}): Promise<JobDetail> {
+  return stopStationBookingTransition({ access, actorUserId, db, id });
 }
 
 async function transitionJobLifecycle({

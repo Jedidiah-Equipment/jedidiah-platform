@@ -75,7 +75,7 @@ export function cascadeDown<Key extends string = string>(input: CascadeDownInput
 
 export function cascadeUp(input: CascadeUpInput): CascadeUpParent {
   const derivedStart = minDate(input.children.map((child) => child.actualStart));
-  const derivedEnd = maxDate(input.children.map((child) => child.actualEnd));
+  const derivedEnd = maxDateWhenAllPresent(input.children.map((child) => child.actualEnd));
   const actualStartSticky = resolveSticky({
     value: input.currentParent.actualStart,
     setManually: input.stickyMarker?.actualStartSetManually ?? false,
@@ -225,7 +225,9 @@ function minDate(dates: readonly (Date | null)[]): Date | null {
   return new Date(Math.min(...timestamps));
 }
 
-function maxDate(dates: readonly (Date | null)[]): Date | null {
+function maxDateWhenAllPresent(dates: readonly (Date | null)[]): Date | null {
+  if (dates.some((date) => !date)) return null;
+
   const timestamps = dates.filter((date): date is Date => Boolean(date)).map((date) => date.getTime());
   if (timestamps.length === 0) return null;
 

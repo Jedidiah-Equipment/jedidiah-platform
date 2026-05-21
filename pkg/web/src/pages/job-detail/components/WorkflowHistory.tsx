@@ -80,8 +80,24 @@ function getWorkflowEventLabel(event: JobEvent): string {
     return `${stageLabels[event.payload.stage]} completed`;
   }
 
+  if (event.eventType === 'stage.ended') {
+    return `${stageLabels[event.payload.stage]} ended`;
+  }
+
   if (event.eventType === 'stage.stopped') {
     return `${stageLabels[event.payload.stage]} stopped`;
+  }
+
+  if (event.eventType === 'station.started') {
+    return `${event.payload.stationName} started`;
+  }
+
+  if (event.eventType === 'station.ended') {
+    return `${event.payload.stationName} ended`;
+  }
+
+  if (event.eventType === 'job.started') {
+    return 'Job started';
   }
 
   if (event.eventType === 'job.paused') {
@@ -128,7 +144,32 @@ function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
     );
   }
 
+  if (event.eventType === 'stage.ended') {
+    return (
+      <>
+        Ended at <DateDisplay date={event.payload.actualEnd} format="medium" />
+      </>
+    );
+  }
+
+  if (event.eventType === 'station.started') {
+    return (
+      <>
+        {stageLabels[event.payload.stage]} at <DateDisplay date={event.payload.actualStart} format="medium" />
+      </>
+    );
+  }
+
+  if (event.eventType === 'station.ended') {
+    return (
+      <>
+        {stageLabels[event.payload.stage]} at <DateDisplay date={event.payload.actualEnd} format="medium" />
+      </>
+    );
+  }
+
   if (
+    event.eventType === 'job.started' ||
     event.eventType === 'job.paused' ||
     event.eventType === 'job.resumed' ||
     event.eventType === 'job.cancelled' ||
@@ -151,24 +192,36 @@ function getWorkflowEventActorLabel(event: JobEvent): string {
   return event.actorUserId ? 'Unknown user' : 'System';
 }
 
-function isStageWorkflowEvent(
-  event: JobEvent,
-): event is Extract<
+function isStageWorkflowEvent(event: JobEvent): event is Extract<
   JobEvent,
-  { eventType: 'stage.started' | 'stage.stopped' | 'stage.completed' | 'stage.status_changed' }
+  {
+    eventType:
+      | 'stage.started'
+      | 'stage.ended'
+      | 'stage.stopped'
+      | 'stage.completed'
+      | 'stage.status_changed'
+      | 'station.started'
+      | 'station.ended';
+  }
 > {
   return (
     event.eventType === 'stage.started' ||
+    event.eventType === 'stage.ended' ||
     event.eventType === 'stage.stopped' ||
     event.eventType === 'stage.completed' ||
-    event.eventType === 'stage.status_changed'
+    event.eventType === 'stage.status_changed' ||
+    event.eventType === 'station.started' ||
+    event.eventType === 'station.ended'
   );
 }
 
 function getWorkflowEventColor(event: JobEvent): string {
   if (
     event.eventType === 'stage.completed' ||
+    event.eventType === 'stage.ended' ||
     event.eventType === 'stage.stopped' ||
+    event.eventType === 'station.ended' ||
     event.eventType === 'job.completed'
   ) {
     return 'bg-emerald-500';
@@ -185,7 +238,9 @@ function getWorkflowEventColor(event: JobEvent): string {
   if (
     event.eventType === 'job.resumed' ||
     event.eventType === 'job.uncancelled' ||
-    event.eventType === 'stage.started'
+    event.eventType === 'job.started' ||
+    event.eventType === 'stage.started' ||
+    event.eventType === 'station.started'
   ) {
     return 'bg-sky-500';
   }

@@ -1,5 +1,5 @@
-import { computeDefaults, departmentLabels, JOB_STAGE_PIPELINE } from '@pkg/domain';
-import type { JobCreateInput, JobStageName, Product, QuoteSummary, Station, UUID } from '@pkg/schema';
+import { departmentLabels, JOB_STAGE_PIPELINE } from '@pkg/domain';
+import type { QuoteSummary, Station, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
@@ -29,6 +29,18 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteCustomerCombobox, type QuoteCustomerOption } from '@/pages/quotes/components/QuoteCustomerCombobox.js';
 import { QuoteProductCombobox } from '@/pages/quotes/components/QuoteProductCombobox.js';
+import {
+  buildCreateJobInput,
+  createDefaultStages,
+  createEmptyStages,
+  formatStageList,
+  getInfeasibleMessage,
+  getUnconfiguredStages,
+  mergeDefaultStages,
+  type StageDraft,
+  type StationBookingDraft,
+  toDateInputValue,
+} from './create-job-dialog-helpers.js';
 
 type CreateJobDialogProps = {
   quote?: QuoteSummary;
@@ -36,24 +48,6 @@ type CreateJobDialogProps = {
 };
 
 type AnchorKind = 'start' | 'end';
-
-type StageDraft = {
-  dueEnd: string;
-  dueEndSetManually: boolean;
-  dueStart: string;
-  dueStartSetManually: boolean;
-  stage: JobStageName;
-  stationBookings: StationBookingDraft[];
-};
-
-type StationBookingDraft = {
-  dueEnd: string;
-  dueEndSetManually: boolean;
-  dueStart: string;
-  dueStartSetManually: boolean;
-  id: string;
-  stationId: UUID;
-};
 
 const todayInputValue = toDateInputValue(new Date());
 
@@ -71,7 +65,7 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
   const [stages, setStages] = useState<StageDraft[]>(() => createEmptyStages());
 
   const productQuery = useQuery({
-    ...trpc.products.get.queryOptions({ id: productId || '00000000-0000-4000-8000-000000000000' }),
+    ...trpc.products.get.queryOptions({ id: productId as UUID }),
     enabled: Boolean(productId),
   });
   const stationsQuery = useQuery(trpc.stations.list.queryOptions({ isActive: true }));
@@ -79,7 +73,15 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
   const selectedProduct = productQuery.data ?? null;
   const stations = stationsQuery.data ?? [];
   const defaultStages = useMemo(
-    () => (selectedProduct ? createDefaultStages(selectedProduct, anchorKind, anchorDate) : createEmptyStages()),
+    () =>
+      selectedProduct
+        ? createDefaultStages({
+            anchorDate,
+            anchorKind,
+            createDraftId,
+            product: selectedProduct,
+          })
+        : createEmptyStages(),
     [anchorDate, anchorKind, selectedProduct],
   );
   const infeasibleMessage = getInfeasibleMessage(stages);
@@ -183,7 +185,6 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
           <div className="grid gap-3">
             {stages.map((stage) => (
               <StageEditor
-                defaultStage={defaultStages.find((item) => item.stage === stage.stage) ?? null}
                 key={stage.stage}
                 onChange={(nextStage) =>
                   setStages((currentStages) =>
@@ -210,6 +211,7 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
                 buildCreateJobInput({
                   productId,
                   quoteId: quote?.id ?? null,
+                  anchorKind,
                   stages,
                 }),
               )
@@ -243,11 +245,10 @@ const WarningBanner: React.FC<{ children: React.ReactNode; title: string }> = ({
 );
 
 const StageEditor: React.FC<{
-  defaultStage: StageDraft | null;
   onChange: (stage: StageDraft) => void;
   stage: StageDraft;
   stations: Station[];
-}> = ({ defaultStage, onChange, stage, stations }) => {
+}> = ({ onChange, stage, stations }) => {
   const bookedStationIds = new Set(stage.stationBookings.map((booking) => booking.stationId));
   const availableStations = stations.filter((station) => !bookedStationIds.has(station.id));
 
@@ -264,14 +265,11 @@ const StageEditor: React.FC<{
               ...stage,
               stationBookings: [
                 ...stage.stationBookings,
-                {
+                createStationBookingDraft({
                   dueEnd: stage.dueEnd,
-                  dueEndSetManually: false,
                   dueStart: stage.dueStart,
-                  dueStartSetManually: false,
-                  id: createDraftId(),
                   stationId: station.id,
-                },
+                }),
               ],
             });
           }}
@@ -295,7 +293,6 @@ const StageEditor: React.FC<{
 
       <div className="grid gap-2 md:grid-cols-2">
         <DateEditor
-          defaultValue={defaultStage?.dueStart ?? ''}
           label="Stage start"
           onChange={(value, setManually) =>
             onChange({
@@ -311,7 +308,6 @@ const StageEditor: React.FC<{
           value={stage.dueStart}
         />
         <DateEditor
-          defaultValue={defaultStage?.dueEnd ?? ''}
           label="Stage end"
           onChange={(value, setManually) =>
             onChange({
@@ -344,7 +340,6 @@ const StageEditor: React.FC<{
                   <span className="truncate">{station?.name ?? 'Selected Station'}</span>
                 </div>
                 <DateEditor
-                  defaultValue={stage.dueStart}
                   label="Booking start"
                   onChange={(value, setManually) =>
                     onChange({
@@ -358,7 +353,6 @@ const StageEditor: React.FC<{
                   value={booking.dueStart}
                 />
                 <DateEditor
-                  defaultValue={stage.dueEnd}
                   label="Booking end"
                   onChange={(value, setManually) =>
                     onChange({
@@ -395,12 +389,11 @@ const StageEditor: React.FC<{
 };
 
 const DateEditor: React.FC<{
-  defaultValue: string;
   label: string;
   onChange: (value: string, setManually: boolean) => void;
   setManually: boolean;
   value: string;
-}> = ({ defaultValue, label, onChange, setManually, value }) => {
+}> = ({ label, onChange, setManually, value }) => {
   const inputId = useId();
 
   return (
@@ -412,159 +405,13 @@ const DateEditor: React.FC<{
       </label>
       <Input
         id={inputId}
-        onChange={(event) => onChange(event.target.value, event.target.value !== defaultValue)}
+        onChange={(event) => onChange(event.target.value, event.target.value !== '')}
         type="date"
         value={value}
       />
     </div>
   );
 };
-
-function createDefaultStages(product: Product, anchorKind: AnchorKind, anchorDate: string): StageDraft[] {
-  const result = computeDefaults({
-    anchor: {
-      kind: anchorKind,
-      value: fromDateInputValue(anchorDate),
-    },
-    productPerDeptConfig: product.departmentConfigs.map((config) => ({
-      defaultStationIds: config.defaultStationIds,
-      durationDays: config.durationDays,
-      stage: config.department,
-    })),
-  });
-
-  return JOB_STAGE_PIPELINE.map(({ stage }) => {
-    const defaultStage = result.stages.find((item) => item.stage === stage);
-    if (!defaultStage) return createEmptyStage(stage);
-
-    return {
-      dueEnd: toDateInputValue(defaultStage.dueEnd),
-      dueEndSetManually: false,
-      dueStart: toDateInputValue(defaultStage.dueStart),
-      dueStartSetManually: false,
-      stage,
-      stationBookings: result.stationBookings
-        .filter((booking) => booking.stage === stage)
-        .map((booking) => ({
-          dueEnd: toDateInputValue(booking.dueEnd),
-          dueEndSetManually: false,
-          dueStart: toDateInputValue(booking.dueStart),
-          dueStartSetManually: false,
-          id: createDraftId(),
-          stationId: booking.stationId,
-        })),
-    };
-  });
-}
-
-function mergeDefaultStages(currentStages: StageDraft[], defaultStages: StageDraft[]): StageDraft[] {
-  return defaultStages.map((defaultStage) => {
-    const currentStage = currentStages.find((stage) => stage.stage === defaultStage.stage);
-    if (!currentStage) return defaultStage;
-
-    return {
-      ...defaultStage,
-      dueEnd: currentStage.dueEndSetManually ? currentStage.dueEnd : defaultStage.dueEnd,
-      dueEndSetManually: currentStage.dueEndSetManually,
-      dueStart: currentStage.dueStartSetManually ? currentStage.dueStart : defaultStage.dueStart,
-      dueStartSetManually: currentStage.dueStartSetManually,
-      stationBookings: mergeDefaultBookings(currentStage, defaultStage),
-    };
-  });
-}
-
-function mergeDefaultBookings(currentStage: StageDraft, defaultStage: StageDraft): StationBookingDraft[] {
-  const currentByStationId = new Map(currentStage.stationBookings.map((booking) => [booking.stationId, booking]));
-
-  return defaultStage.stationBookings.map((defaultBooking) => {
-    const currentBooking = currentByStationId.get(defaultBooking.stationId);
-    if (!currentBooking) return defaultBooking;
-
-    return {
-      ...defaultBooking,
-      dueEnd: currentBooking.dueEndSetManually ? currentBooking.dueEnd : defaultBooking.dueEnd,
-      dueEndSetManually: currentBooking.dueEndSetManually,
-      dueStart: currentBooking.dueStartSetManually ? currentBooking.dueStart : defaultBooking.dueStart,
-      dueStartSetManually: currentBooking.dueStartSetManually,
-      id: currentBooking.id,
-    };
-  });
-}
-
-function buildCreateJobInput({
-  productId,
-  quoteId,
-  stages,
-}: {
-  productId: UUID | '';
-  quoteId: UUID | null;
-  stages: StageDraft[];
-}): JobCreateInput {
-  if (!productId) {
-    throw new Error('Product is required to create a job.');
-  }
-
-  const firstStage = stages[0];
-  const lastStage = stages[stages.length - 1];
-
-  return {
-    dueEnd: lastStage?.dueEnd || null,
-    dueEndSetManually: false,
-    dueStart: firstStage?.dueStart || null,
-    dueStartSetManually: false,
-    productId,
-    quoteId,
-    stages: stages.map((stage) => ({
-      dueEnd: stage.dueEnd || null,
-      dueEndSetManually: stage.dueEndSetManually,
-      dueStart: stage.dueStart || null,
-      dueStartSetManually: stage.dueStartSetManually,
-      stage: stage.stage,
-      stationBookings: stage.stationBookings.map((booking) => ({
-        dueEnd: booking.dueEnd || null,
-        dueEndSetManually: booking.dueEndSetManually,
-        dueStart: booking.dueStart || null,
-        dueStartSetManually: booking.dueStartSetManually,
-        stationId: booking.stationId,
-      })),
-    })),
-  };
-}
-
-function createEmptyStages(): StageDraft[] {
-  return JOB_STAGE_PIPELINE.map(({ stage }) => createEmptyStage(stage));
-}
-
-function createEmptyStage(stage: JobStageName): StageDraft {
-  return {
-    dueEnd: '',
-    dueEndSetManually: false,
-    dueStart: '',
-    dueStartSetManually: false,
-    stage,
-    stationBookings: [],
-  };
-}
-
-function getUnconfiguredStages(product: Product): JobStageName[] {
-  const configsByDepartment = new Map(product.departmentConfigs.map((config) => [config.department, config]));
-
-  return JOB_STAGE_PIPELINE.flatMap(({ stage }) => {
-    const config = configsByDepartment.get(stage);
-    return !config || config.durationDays === 0 || config.defaultStationIds.length === 0 ? [stage] : [];
-  });
-}
-
-function getInfeasibleMessage(stages: StageDraft[]): string | null {
-  const invertedStage = stages.find(
-    (stage) => stage.dueStart && stage.dueEnd && stage.dueStart.localeCompare(stage.dueEnd) > 0,
-  );
-  if (invertedStage) {
-    return `${departmentLabels[invertedStage.stage]} starts after it ends. You can still save, but the dates need attention.`;
-  }
-
-  return null;
-}
 
 function getQuoteCustomerOption(quote: QuoteSummary | undefined): QuoteCustomerOption | null {
   if (!quote) return null;
@@ -576,18 +423,25 @@ function getQuoteCustomerOption(quote: QuoteSummary | undefined): QuoteCustomerO
   };
 }
 
-function formatStageList(stages: JobStageName[]): string {
-  return stages.map((stage) => departmentLabels[stage]).join(', ');
-}
-
-function fromDateInputValue(value: string): Date {
-  return new Date(`${value || todayInputValue}T00:00:00.000Z`);
-}
-
-function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
 function createDraftId(): string {
-  return globalThis.crypto?.randomUUID() ?? `${Date.now()}-${Math.random()}`;
+  return globalThis.crypto.randomUUID();
+}
+
+function createStationBookingDraft({
+  dueEnd,
+  dueStart,
+  stationId,
+}: {
+  dueEnd: string;
+  dueStart: string;
+  stationId: UUID;
+}): StationBookingDraft {
+  return {
+    dueEnd,
+    dueEndSetManually: false,
+    dueStart,
+    dueStartSetManually: false,
+    id: createDraftId(),
+    stationId,
+  };
 }

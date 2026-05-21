@@ -296,6 +296,15 @@ describe('jobs.createFromQuote', () => {
       productId: alternateProduct.id,
       quoteId: accepted.id,
     });
+    await expect(
+      supervisorCaller.jobs.create({
+        productId: alternateProduct.id,
+        quoteId: accepted.id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Quote has already been converted into a job.',
+    });
   });
 });
 

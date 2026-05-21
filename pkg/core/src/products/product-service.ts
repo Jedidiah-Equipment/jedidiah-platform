@@ -260,7 +260,6 @@ export async function updateProduct({
         return mapProduct(before, optionRows, departmentConfigRows.rows);
       }
 
-      const shouldUpdateProductRow = productChanges !== null || departmentConfigRows.changes !== null;
       const [row] = await tx
         .update(products)
         .set({
@@ -274,7 +273,7 @@ export async function updateProduct({
         .where(eq(products.id, input.id))
         .returning();
 
-      if (!row || !shouldUpdateProductRow) {
+      if (!row) {
         throw new ProductNotFoundError(input.id);
       }
 

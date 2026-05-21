@@ -137,5 +137,7 @@ function areProductDepartmentConfigsEqual(
   left: readonly ProductDepartmentConfig[],
   right: readonly ProductDepartmentConfig[],
 ): boolean {
+  // Both sides are canonicalized through mapProductDepartmentConfigs: fixed Department order,
+  // DTO fields only, and no row metadata. Keep that invariant if this comparison grows.
   return JSON.stringify(left) === JSON.stringify(right);
 }

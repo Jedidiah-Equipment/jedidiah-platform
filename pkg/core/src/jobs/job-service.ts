@@ -46,6 +46,7 @@ import {
 } from './station-booking-service.js';
 
 type JobLifecycleTransition = 'cancel' | 'pause' | 'resume' | 'uncancel';
+type ConvertibleQuoteRow = typeof quotes.$inferSelect & { productId: UUID };
 
 export async function createJob({
   db,
@@ -201,7 +202,7 @@ async function validateJobQuoteForCreate({
   allowedStatuses?: readonly QuoteStatus[];
   quoteId: UUID;
   tx: DatabaseTransaction;
-}) {
+}): Promise<ConvertibleQuoteRow> {
   if (!hasPermission(access, 'quote:read')) {
     throw new JobQuoteConversionDeniedError('Quote not found.');
   }
@@ -216,6 +217,10 @@ async function validateJobQuoteForCreate({
     throw new JobQuoteConversionDeniedError('Only draft or accepted quotes can be converted into jobs.');
   }
 
+  if (!quote.productId) {
+    throw new JobQuoteConversionDeniedError('Quote must have a product before it can be converted into a job.');
+  }
+
   const existingJob = await tx.query.jobs.findFirst({
     columns: {
       id: true,
@@ -227,7 +232,7 @@ async function validateJobQuoteForCreate({
     throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
   }
 
-  return quote;
+  return { ...quote, productId: quote.productId };
 }
 
 function buildJobStageInsertValues({

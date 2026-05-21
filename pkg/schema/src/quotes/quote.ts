@@ -29,7 +29,7 @@ export const Quote = z.object({
   id: UUID,
   code: QuoteCode,
   customerId: UUID,
-  productId: UUID,
+  productId: UUID.nullable(),
   salesPersonId: AuthId.nullable(),
   status: QuoteStatus.default('draft'),
   discount: Price,
@@ -45,12 +45,12 @@ export const Quote = z.object({
 export type QuoteSummary = z.infer<typeof QuoteSummary>;
 export const QuoteSummary = Quote.extend({
   customerCompanyName: z.string().trim().min(1),
-  productCurrencyCode: ProductCurrencyCode,
-  productModelCode: z.string().trim().min(1),
-  productName: z.string().trim().min(1),
+  productCurrencyCode: ProductCurrencyCode.nullable(),
+  productModelCode: z.string().trim().min(1).nullable(),
+  productName: z.string().trim().min(1).nullable(),
   salesPersonEmail: z.email().nullable(),
   salesPersonName: z.string().trim().min(1).nullable(),
-  total: Price,
+  total: Price.nullable(),
   jobCode: JobCode.nullable(),
   jobId: UUID.nullable(),
 });
@@ -79,9 +79,9 @@ export const QuoteExistingCustomerInput = z.object({
 export type QuoteCreateInput = z.infer<typeof QuoteCreateInput>;
 export const QuoteCreateInput = z.object({
   customer: QuoteCustomerInput,
-  productId: UUID,
-  salesPersonId: AuthId,
-  discount: z.coerce.number().pipe(Price),
+  productId: UUID.nullable().default(null),
+  salesPersonId: AuthId.nullable().default(null),
+  discount: z.coerce.number().pipe(Price).default(0),
   validUntil: z.iso.date().nullable().default(null),
   notes: QuoteNotesInput,
 });

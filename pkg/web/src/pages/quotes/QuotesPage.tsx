@@ -23,6 +23,7 @@ import { CreateJobDialog } from '@/pages/jobs/components/CreateJobDialog.js';
 import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
+import { canCreateJobFromQuote } from './quote-job-eligibility.js';
 
 export const useQuoteTableStore = createPersistedDataTableStore({
   initialState: {
@@ -121,8 +122,10 @@ const QuoteTable: React.FC = () => {
         accessorKey: 'productName',
         cell: ({ row }) => (
           <>
-            {row.original.productName}
-            <span className="ml-2 text-muted-foreground">{row.original.productModelCode}</span>
+            {row.original.productName ?? <span className="text-muted-foreground">Not set</span>}
+            {row.original.productModelCode ? (
+              <span className="ml-2 text-muted-foreground">{row.original.productModelCode}</span>
+            ) : null}
           </>
         ),
         enableColumnFilter: false,
@@ -131,8 +134,12 @@ const QuoteTable: React.FC = () => {
       },
       {
         accessorKey: 'total',
-        cell: ({ row }) =>
-          formatCurrency(row.original.total, row.original.quotedCurrencyCode ?? row.original.productCurrencyCode),
+        cell: ({ row }) => {
+          const currencyCode = row.original.quotedCurrencyCode ?? row.original.productCurrencyCode;
+          return row.original.total === null || currencyCode === null
+            ? 'Not set'
+            : formatCurrency(row.original.total, currencyCode);
+        },
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Total',
@@ -173,7 +180,7 @@ const QuoteTable: React.FC = () => {
         id: 'actions',
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
-            {canCreateJob ? (
+            {canCreateJob && canCreateJobFromQuote(row.original.status, row.original.productId) ? (
               <CreateJobDialog
                 quote={row.original}
                 trigger={

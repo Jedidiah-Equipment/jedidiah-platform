@@ -14,7 +14,7 @@ describe('demoUsers', () => {
   });
 
   it('defines one stage editor for each department', () => {
-    const stageEditors = demoUsers.filter((user) => user.role === 'job-stage-editor');
+    const stageEditors = demoUsers.filter((user) => user.role === 'job-department-manager');
 
     expect(stageEditors.map((user) => user.departments[0]).sort()).toEqual([...DEPARTMENTS].sort());
   });

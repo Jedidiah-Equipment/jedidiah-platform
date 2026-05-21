@@ -80,6 +80,10 @@ function getWorkflowEventLabel(event: JobEvent): string {
     return `${stageLabels[event.payload.stage]} completed`;
   }
 
+  if (event.eventType === 'stage.stopped') {
+    return `${stageLabels[event.payload.stage]} stopped`;
+  }
+
   if (event.eventType === 'job.paused') {
     return 'Job paused';
   }
@@ -112,6 +116,14 @@ function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
     );
   }
 
+  if (event.eventType === 'stage.stopped') {
+    return (
+      <>
+        Stopped at <DateDisplay date={event.payload.actualEnd} format="medium" />
+      </>
+    );
+  }
+
   if (
     event.eventType === 'job.paused' ||
     event.eventType === 'job.resumed' ||
@@ -136,16 +148,24 @@ function getWorkflowEventActorLabel(event: JobEvent): string {
 
 function isStageWorkflowEvent(
   event: JobEvent,
-): event is Extract<JobEvent, { eventType: 'stage.started' | 'stage.completed' | 'stage.status_changed' }> {
+): event is Extract<
+  JobEvent,
+  { eventType: 'stage.started' | 'stage.stopped' | 'stage.completed' | 'stage.status_changed' }
+> {
   return (
     event.eventType === 'stage.started' ||
+    event.eventType === 'stage.stopped' ||
     event.eventType === 'stage.completed' ||
     event.eventType === 'stage.status_changed'
   );
 }
 
 function getWorkflowEventColor(event: JobEvent): string {
-  if (event.eventType === 'stage.completed' || event.eventType === 'job.completed') {
+  if (
+    event.eventType === 'stage.completed' ||
+    event.eventType === 'stage.stopped' ||
+    event.eventType === 'job.completed'
+  ) {
     return 'bg-emerald-500';
   }
 

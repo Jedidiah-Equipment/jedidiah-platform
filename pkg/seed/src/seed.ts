@@ -13,22 +13,19 @@ import {
   rejectQuote,
   resumeJob,
   sendQuote,
-  setJobStageStatus,
   startJobStage,
   updateProduct,
 } from '@pkg/core';
 import { account, closeDatabaseConnection, type Db, db, user, userDepartment } from '@pkg/db';
 import { createUserAccessSummary, demoUsers, JOB_STAGE_PIPELINE } from '@pkg/domain';
-import {
-  type CustomerCreateInput,
-  type JobStageName,
-  type JobStageStatus,
-  JobStageStatusInput,
-  type Product,
-  type ProductCreateInput,
-  type ProductOptionUpsertInput,
-  type QuoteStatus,
-  type UUID,
+import type {
+  CustomerCreateInput,
+  JobStageName,
+  Product,
+  ProductCreateInput,
+  ProductOptionUpsertInput,
+  QuoteStatus,
+  UUID,
 } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { inArray, sql } from 'drizzle-orm';
@@ -121,56 +118,48 @@ const seedJobScenarios = [
     stageProgress: null,
   },
   {
-    stageProgress: { stage: 'procurement', status: 'ordering' },
+    stageProgress: { stage: 'procurement' },
   },
   {
-    stageProgress: { stage: 'procurement', status: 'partial' },
+    stageProgress: { stage: 'procurement' },
   },
   {
-    stageProgress: { stage: 'fabrication', status: 'cutting' },
+    stageProgress: { stage: 'fabrication' },
   },
   {
-    stageProgress: { stage: 'fabrication', status: 'welding' },
+    stageProgress: { stage: 'fabrication' },
   },
   {
-    stageProgress: { stage: 'assembly', status: 'in-progress' },
+    stageProgress: { stage: 'assembly' },
   },
   {
-    stageProgress: { stage: 'assembly', status: 'qc' },
+    stageProgress: { stage: 'assembly' },
   },
   {
-    stageProgress: { stage: 'paint', status: 'prep' },
+    stageProgress: { stage: 'paint' },
   },
   {
-    stageProgress: { stage: 'paint', status: 'painting' },
+    stageProgress: { stage: 'paint' },
   },
   {
-    stageProgress: { stage: 'paint', status: 'curing' },
+    stageProgress: { stage: 'paint' },
     lifecycleTransitions: ['cancel'],
   },
   {
-    stageProgress: { stage: 'dispatch', status: 'ready' },
+    stageProgress: { stage: 'supply' },
   },
   {
     stageProgress: 'complete',
   },
   {
-    stageProgress: { stage: 'assembly', status: 'in-progress' },
+    stageProgress: { stage: 'assembly' },
     lifecycleTransitions: ['pause'],
   },
   {
-    stageProgress: { stage: 'fabrication', status: 'qc' },
+    stageProgress: { stage: 'fabrication' },
     lifecycleTransitions: ['pause', 'resume'],
   },
 ] as const satisfies readonly SeedJobScenario[];
-
-const seedStageStatusProgression = {
-  assembly: ['in-progress', 'qc'],
-  dispatch: ['ready', 'dispatched'],
-  fabrication: ['cutting', 'welding', 'qc'],
-  paint: ['prep', 'painting', 'curing'],
-  procurement: ['ordering', 'partial'],
-} as const satisfies Record<JobStageName, readonly JobStageStatus[]>;
 
 const seedQuoteScenarios = [
   {
@@ -246,7 +235,7 @@ type SeedProductOption = ProductCreateInput['options'][number] & {
 
 type SeedJobScenario = {
   lifecycleTransitions?: readonly SeedJobLifecycleTransition[];
-  stageProgress: { stage: JobStageName; status: JobStageStatus } | 'complete' | null;
+  stageProgress: { stage: JobStageName } | 'complete' | null;
 };
 
 type SeedJobLifecycleTransition = 'pause' | 'resume' | 'cancel';
@@ -600,7 +589,7 @@ async function createQuoteBackedSeedJob({
     actorUserId,
     db,
     input: {
-      dueDate: getSeedJobDueDate(scenarioIndex),
+      dueEnd: getSeedJobDueDate(scenarioIndex),
       quoteId: accepted.id,
     },
   });
@@ -669,7 +658,7 @@ async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly
         actorUserId: supervisorUserId,
         db,
         input: {
-          dueDate: '2026-08-15',
+          dueEnd: '2026-08-15',
           quoteId: accepted.id,
         },
       });
@@ -700,20 +689,11 @@ async function applySeedJobScenario({
 
   for (const { stage } of JOB_STAGE_PIPELINE.slice(0, completedStageCount)) {
     await startJobStage({ access, actorUserId, db, id, stage });
-    await advanceStageStatuses({ access, actorUserId, db, id, stage });
     await completeJobStage({ access, actorUserId, db, id, stage });
   }
 
   if (activeStageProgress) {
     await startJobStage({ access, actorUserId, db, id, stage: activeStageProgress.stage });
-    await advanceStageStatuses({
-      access,
-      actorUserId,
-      db,
-      id,
-      stage: activeStageProgress.stage,
-      targetStatus: activeStageProgress.status,
-    });
   }
 
   await applySeedJobLifecycleTransitions({
@@ -750,43 +730,6 @@ async function applySeedJobLifecycleTransitions({
     }
 
     await cancelJob({ access, actorUserId, db, id });
-  }
-}
-
-async function advanceStageStatuses({
-  access,
-  actorUserId,
-  db,
-  id,
-  stage,
-  targetStatus = 'complete',
-}: {
-  access: ReturnType<typeof createUserAccessSummary>;
-  actorUserId: string;
-  db: Db;
-  id: UUID;
-  stage: JobStageName;
-  targetStatus?: JobStageStatus;
-}): Promise<void> {
-  for (const status of seedStageStatusProgression[stage]) {
-    if (targetStatus === 'pending') {
-      return;
-    }
-
-    await setJobStageStatus({
-      access,
-      actorUserId,
-      db,
-      input: JobStageStatusInput.parse({
-        id,
-        stage,
-        status,
-      }),
-    });
-
-    if (status === targetStatus) {
-      return;
-    }
   }
 }
 

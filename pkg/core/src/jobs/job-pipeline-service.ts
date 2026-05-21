@@ -34,7 +34,7 @@ type StageTransitionTarget = {
 };
 
 type StageTransitionPolicyOverride = {
-  completedAt: Date | null;
+  actualEnd: Date | null;
   transition: StageTransition;
 };
 
@@ -43,7 +43,7 @@ type EffectiveStageIntent =
       kind: 'apply';
       policyOverride?: StageTransitionPolicyOverride;
       transition: StageTransition;
-      values: Partial<Pick<JobStageRow, 'completedAt' | 'startedAt' | 'status'>>;
+      values: Partial<Pick<JobStageRow, 'actualEnd' | 'actualStart'>>;
     }
   | {
       kind: 'noop';
@@ -109,7 +109,7 @@ function resolveEffectiveIntent({
       kind: 'apply',
       transition: 'start',
       values: {
-        startedAt: new Date(),
+        actualStart: new Date(),
       },
     };
   }
@@ -117,50 +117,30 @@ function resolveEffectiveIntent({
   if (intent.transition === 'complete') {
     return {
       kind: 'apply',
-      transition: 'complete',
+      transition: 'stop',
       values: {
-        completedAt: new Date(),
-        status: 'complete',
+        actualEnd: new Date(),
       },
     };
   }
 
   if (intent.status !== 'complete') {
-    return {
-      kind: 'apply',
-      transition: 'set-status',
-      values: {
-        status: intent.status,
-      },
-    };
+    throw new JobStageTransitionDeniedError('Stage status text has been retired.');
   }
 
-  if (transitionTarget.stage.completedAt) {
+  if (transitionTarget.stage.actualEnd) {
     const completedStatusRelockPolicy = createCompletedStatusRelockPolicy();
-
-    if (transitionTarget.stage.status === 'complete') {
-      return {
-        kind: 'noop',
-        policyOverride: completedStatusRelockPolicy,
-      };
-    }
-
     return {
-      kind: 'apply',
+      kind: 'noop',
       policyOverride: completedStatusRelockPolicy,
-      transition: 'set-status',
-      values: {
-        status: 'complete',
-      },
     };
   }
 
   return {
     kind: 'apply',
-    transition: 'complete',
+    transition: 'stop',
     values: {
-      completedAt: new Date(),
-      status: 'complete',
+      actualEnd: new Date(),
     },
   };
 }
@@ -168,8 +148,8 @@ function resolveEffectiveIntent({
 function createCompletedStatusRelockPolicy(): StageTransitionPolicyOverride {
   return {
     // The stage is already historically complete but status drifted; evaluate access/order as a completion attempt.
-    completedAt: null,
-    transition: 'complete',
+    actualEnd: null,
+    transition: 'stop',
   };
 }
 
@@ -191,7 +171,7 @@ function assertStageTransitionAllowed({
     stage: policyOverride
       ? {
           ...transitionTarget.stage,
-          completedAt: policyOverride.completedAt,
+          actualEnd: policyOverride.actualEnd,
         }
       : transitionTarget.stage,
     transition,
@@ -219,7 +199,7 @@ async function writeJobStageTransition({
   transition: StageTransition;
   transitionTarget: StageTransitionTarget;
   tx: DatabaseTransaction;
-  values: Partial<Pick<JobStageRow, 'completedAt' | 'startedAt' | 'status'>>;
+  values: Partial<Pick<JobStageRow, 'actualEnd' | 'actualStart'>>;
 }): Promise<JobDetail> {
   const [updatedStage] = await tx
     .update(jobStages)
@@ -242,9 +222,8 @@ async function writeJobStageTransition({
       after: afterStage,
       before: beforeStage,
       changes: createAuditChanges(beforeStage, afterStage, {
-        completedAt: 'completed at',
-        startedAt: 'started at',
-        status: 'status',
+        actualEnd: 'actual end',
+        actualStart: 'actual start',
       }),
       entityId: updatedStage.id,
       entityType: jobStageAuditDescriptor.entityType,
@@ -266,7 +245,7 @@ async function writeJobStageTransition({
     stageId: updatedStage.id,
   });
 
-  if (transition === 'complete' && updatedStage.stage === 'dispatch') {
+  if (transition === 'stop' && updatedStage.stage === 'assembly') {
     await completeJobLifecycle({
       actorUserId,
       before: transitionTarget.job,

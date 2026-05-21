@@ -109,7 +109,7 @@ describe('quotes.list', () => {
     const sentQuote = await salesCaller.quotes.send({ id: acceptedQuote.id });
     const finalQuote = await salesCaller.quotes.accept({ id: sentQuote.id });
     const job = await supervisorCaller.jobs.createFromQuote({
-      dueDate: '2026-08-15',
+      dueEnd: '2026-08-15',
       quoteId: finalQuote.id,
     });
 
@@ -257,14 +257,14 @@ describe('jobs.createFromQuote', () => {
     });
 
     const job = await supervisorCaller.jobs.createFromQuote({
-      dueDate: '2026-08-15',
+      dueEnd: '2026-08-15',
       quoteId: accepted.id,
     });
     const jobRows = await context.db.select().from(jobs);
     const stageRows = await context.db.select().from(jobStages);
 
     expect(job).toMatchObject({
-      dueDate: '2026-08-15',
+      dueEnd: '2026-08-15',
       productId: context.product.id,
       quoteId: accepted.id,
     });

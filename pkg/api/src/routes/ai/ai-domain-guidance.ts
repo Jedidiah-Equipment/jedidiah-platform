@@ -36,7 +36,7 @@ export const AI_DOMAIN_RELATIONSHIPS = [
     from: 'Job',
     to: 'Department',
     meaning:
-      'Every Job has five fixed Pipeline Stages, but users experience and label them as Departments: Procurement, Fabrication, Assembly, Paint, Dispatch.',
+      'Every Job has five fixed Pipeline Stages, but users experience and label them as Departments: Procurement, Supply, Fabrication, Paint, Assembly.',
   },
 ] satisfies readonly AiDomainRelationship[];
 

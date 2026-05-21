@@ -16,7 +16,7 @@ describe('Department', () => {
     expect(Department.parse('fabrication')).toBe('fabrication');
     expect(Department.parse('paint')).toBe('paint');
     expect(Department.parse('assembly')).toBe('assembly');
-    expect(Department.parse('dispatch')).toBe('dispatch');
+    expect(Department.parse('supply')).toBe('supply');
   });
 
   it('rejects unsupported department values', () => {
@@ -27,7 +27,7 @@ describe('Department', () => {
 describe('AppRole', () => {
   it('accepts job roles', () => {
     expect(AppRole.parse('job-supervisor')).toBe('job-supervisor');
-    expect(AppRole.parse('job-stage-editor')).toBe('job-stage-editor');
+    expect(AppRole.parse('job-department-manager')).toBe('job-department-manager');
     expect(AppRole.parse('sales')).toBe('sales');
   });
 });
@@ -78,14 +78,14 @@ describe('UserSummary', () => {
 
     expect(
       UserSummary.parse({
-        departments: ['dispatch'],
+        departments: ['supply'],
         email: 'user@example.com',
         emailVerified: true,
         id: 'user_123',
         name: 'User Example',
         role: 'sales',
       }).departments,
-    ).toEqual(['dispatch']);
+    ).toEqual(['supply']);
   });
 });
 

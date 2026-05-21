@@ -168,14 +168,14 @@ describe('users.list', () => {
       email: 'current-department@example.com',
       id: currentDepartmentUserId,
       name: 'Current Department User',
-      role: 'job-stage-editor',
+      role: 'job-department-manager',
     });
 
-    const session = mockSession('job-stage-editor');
+    const session = mockSession('job-department-manager');
     session.user.id = currentDepartmentUserId;
 
     await context.createCaller().users.setDepartments({
-      departments: ['dispatch'],
+      departments: ['supply'],
       userId: currentDepartmentUserId,
     });
 
@@ -195,9 +195,9 @@ describe('users.list', () => {
     });
 
     await expect(caller.auth.access()).resolves.toMatchObject({
-      departments: ['dispatch'],
+      departments: ['supply'],
       permissions: ['job-stage:read', 'job-stage:update', 'job:read'],
-      role: 'job-stage-editor',
+      role: 'job-department-manager',
       userId: currentDepartmentUserId,
     });
 

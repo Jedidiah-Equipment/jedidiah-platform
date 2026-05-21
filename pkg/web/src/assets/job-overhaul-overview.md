@@ -40,7 +40,7 @@ JOB
 
 Three things to notice:
 
-- **Five stages now**: Procurement → Supply → Fabrication → Paint → Assembly. *Dispatch is gone* (we'll handle shipping separately).
+- **Five stages now**: Procurement → Supply → Fabrication → Paint → Assembly. *Supply is gone* (we'll handle shipping separately).
 - **Supply is new**: it's the in-house side of materials — receiving, QC, staging — distinct from Procurement, which is talking to vendors.
 - **Stations live under Stages**: a Station is a specific physical resource (Weld Bay 1, Paint Booth A). Each one carries its own dates.
 

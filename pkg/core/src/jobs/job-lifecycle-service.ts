@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 
 import { createAuditChanges, insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { JobNotFoundError } from './job-errors.js';
-import { type JobAuditRecord, mapJobAuditRecord } from './job-mappers.js';
+import { deriveJobLifecycleStatus, type JobAuditRecord, mapJobAuditRecord } from './job-mappers.js';
 
 export async function completeJobLifecycle({
   actorUserId,
@@ -44,10 +44,7 @@ export async function applyJobLifecycleStatusChange({
 }): Promise<void> {
   const [updatedJob] = await tx
     .update(jobs)
-    .set({
-      lifecycleStatus: nextStatus,
-      updatedAt: new Date(),
-    })
+    .set(getJobLifecycleUpdateValues(nextStatus))
     .where(eq(jobs.id, id))
     .returning();
 
@@ -65,7 +62,9 @@ export async function applyJobLifecycleStatusChange({
       after,
       before,
       changes: createAuditChanges(before, after, {
-        lifecycleStatus: jobAuditDescriptor.fields.lifecycleStatus ?? 'lifecycle status',
+        actualEnd: jobAuditDescriptor.fields.actualEnd ?? 'actual end',
+        isCancelled: jobAuditDescriptor.fields.isCancelled ?? 'cancelled',
+        isPaused: jobAuditDescriptor.fields.isPaused ?? 'paused',
       }),
       entityId: updatedJob.id,
       entityType: jobAuditDescriptor.entityType,
@@ -78,9 +77,26 @@ export async function applyJobLifecycleStatusChange({
     jobId: id,
     occurredAt: new Date(),
     payload: {
-      fromLifecycleStatus: before.lifecycleStatus,
+      fromLifecycleStatus: deriveJobLifecycleStatus(before),
       toLifecycleStatus: nextStatus,
     },
     stageId: null,
   });
+}
+
+function getJobLifecycleUpdateValues(nextStatus: JobLifecycleStatus): Partial<typeof jobs.$inferInsert> {
+  const updatedAt = new Date();
+
+  switch (nextStatus) {
+    case 'active':
+      return { isPaused: false, updatedAt };
+    case 'cancelled':
+      return { isCancelled: true, updatedAt };
+    case 'complete':
+      return { actualEnd: updatedAt, updatedAt };
+    case 'not-started':
+      return { actualEnd: null, actualStart: null, isCancelled: false, isPaused: false, updatedAt };
+    case 'paused':
+      return { isPaused: true, updatedAt };
+  }
 }

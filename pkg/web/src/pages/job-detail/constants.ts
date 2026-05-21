@@ -5,5 +5,5 @@ export const stageLabels = {
   fabrication: 'Fabrication',
   paint: 'Paint',
   assembly: 'Assembly',
-  dispatch: 'Dispatch',
+  supply: 'Supply',
 } as const satisfies Record<JobStageName, string>;

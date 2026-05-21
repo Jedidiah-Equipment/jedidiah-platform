@@ -7,79 +7,46 @@ describe('deriveStageJobEvent', () => {
     expect(
       deriveStageJobEvent({
         after: {
-          completedAt: null,
+          actualEnd: null,
+          actualStart: '2026-05-15T08:00:00.000Z',
           stage: 'procurement',
-          startedAt: '2026-05-15T08:00:00.000Z',
-          status: 'pending',
         },
         before: {
-          completedAt: null,
+          actualEnd: null,
+          actualStart: null,
           stage: 'procurement',
-          startedAt: null,
-          status: 'pending',
         },
         transition: 'start',
       }),
     ).toEqual({
       eventType: 'stage.started',
       payload: {
+        actualStart: '2026-05-15T08:00:00.000Z',
         stage: 'procurement',
-        startedAt: '2026-05-15T08:00:00.000Z',
-        status: 'pending',
       },
     });
   });
 
-  it('maps status transitions to stage.status_changed events', () => {
+  it('maps stop transitions to stage.stopped events', () => {
     expect(
       deriveStageJobEvent({
         after: {
-          completedAt: null,
+          actualEnd: '2026-05-15T09:00:00.000Z',
+          actualStart: '2026-05-15T08:00:00.000Z',
           stage: 'procurement',
-          startedAt: '2026-05-15T08:00:00.000Z',
-          status: 'ordering',
         },
         before: {
-          completedAt: null,
+          actualEnd: null,
+          actualStart: '2026-05-15T08:00:00.000Z',
           stage: 'procurement',
-          startedAt: '2026-05-15T08:00:00.000Z',
-          status: 'pending',
         },
-        transition: 'set-status',
+        transition: 'stop',
       }),
     ).toEqual({
-      eventType: 'stage.status_changed',
+      eventType: 'stage.stopped',
       payload: {
-        fromStatus: 'pending',
+        actualEnd: '2026-05-15T09:00:00.000Z',
         stage: 'procurement',
-        toStatus: 'ordering',
-      },
-    });
-  });
-
-  it('maps complete transitions to stage.completed events', () => {
-    expect(
-      deriveStageJobEvent({
-        after: {
-          completedAt: '2026-05-15T09:00:00.000Z',
-          stage: 'procurement',
-          startedAt: '2026-05-15T08:00:00.000Z',
-          status: 'complete',
-        },
-        before: {
-          completedAt: null,
-          stage: 'procurement',
-          startedAt: '2026-05-15T08:00:00.000Z',
-          status: 'ordering',
-        },
-        transition: 'complete',
-      }),
-    ).toEqual({
-      eventType: 'stage.completed',
-      payload: {
-        completedAt: '2026-05-15T09:00:00.000Z',
-        stage: 'procurement',
-        status: 'complete',
       },
     });
   });

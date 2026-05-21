@@ -152,7 +152,7 @@ Department-Aware. Cross-cutting when the User has no Departments; scoped when an
 - Toggle `isPaused`, `isCancelled`
 - Manage the Station Catalog
 
-**`job-department-manager`** (renamed from `job-stage-editor`):
+**`job-department-manager`** (renamed from `job-department-manager`):
 Department-Aware. Reads Stage Detail and Station Bookings for owned Departments (or all if unscoped). The only mutation is **Start/Stop on Station Bookings** in their Departments. Cannot edit due dates, override actual dates, or change the Station list.
 _Future_: a `job-department-member` role is anticipated — same as `job-department-manager` but further scoped to specific Stations (user↔Station link). Out of scope for now.
 

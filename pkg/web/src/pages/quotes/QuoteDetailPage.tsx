@@ -153,7 +153,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
             {canCreateJob && quote.status === 'accepted' && !quote.jobId ? (
               <CreateJobFromQuoteDialog
                 isPending={createJobMutation.isPending}
-                onCreate={(dueDate) => createJobMutation.mutate({ quoteId: quote.id, dueDate })}
+                onCreate={(dueEnd) => createJobMutation.mutate({ quoteId: quote.id, dueEnd })}
               />
             ) : null}
           </div>
@@ -245,10 +245,10 @@ const QuoteTransitionConfirmationDialog: React.FC<{
 
 const CreateJobFromQuoteDialog: React.FC<{
   isPending: boolean;
-  onCreate: (dueDate: string | null) => void;
+  onCreate: (dueEnd: string | null) => void;
 }> = ({ isPending, onCreate }) => {
-  const [dueDate, setDueDate] = useState('');
-  const selectedDueDate = parseDateInputValue(dueDate);
+  const [dueEnd, setDueDate] = useState('');
+  const selectedDueDate = parseDateInputValue(dueEnd);
 
   return (
     <Dialog>
@@ -279,7 +279,7 @@ const CreateJobFromQuoteDialog: React.FC<{
                 }
               >
                 <CalendarIcon data-icon="inline-start" />
-                <DateDisplay className="min-w-0 truncate" date={dueDate || null} emptyValue="No due date" />
+                <DateDisplay className="min-w-0 truncate" date={dueEnd || null} emptyValue="No due date" />
               </PopoverTrigger>
               <PopoverContent align="start" className="w-auto p-0">
                 <Calendar
@@ -291,7 +291,7 @@ const CreateJobFromQuoteDialog: React.FC<{
             </Popover>
             <Button
               aria-label="Clear due date"
-              disabled={!dueDate}
+              disabled={!dueEnd}
               onClick={() => setDueDate('')}
               size="icon"
               type="button"
@@ -302,7 +302,7 @@ const CreateJobFromQuoteDialog: React.FC<{
           </div>
         </div>
         <DialogFooter>
-          <Button disabled={isPending} onClick={() => onCreate(dueDate || null)}>
+          <Button disabled={isPending} onClick={() => onCreate(dueEnd || null)}>
             {isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
             Create job
           </Button>

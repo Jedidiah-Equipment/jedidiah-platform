@@ -134,12 +134,12 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     });
   };
   const confirmCompleteStageTransition = (input: JobStageTransitionInput, onConfirm: () => void) => {
-    const isDispatchStage = input.stage === 'dispatch';
+    const isSupplyStage = input.stage === 'supply';
 
     setConfirmation({
-      body: isDispatchStage
+      body: isSupplyStage
         ? [
-            'This will complete Dispatch and mark the whole Job as complete.',
+            'This will complete Supply and mark the whole Job as complete.',
             'After this, no department can make more updates. The Job cannot be paused, resumed, or cancelled.',
             'The existing Job history will stay as it is.',
           ]
@@ -148,10 +148,10 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
             'The next department will be able to start handling the Job.',
             `${stageLabels[input.stage]} will still be able to update their status later if they need to show late changes, but their part will stay completed.`,
           ],
-      confirmLabel: isDispatchStage ? 'Complete job' : `Complete ${stageLabels[input.stage]}`,
+      confirmLabel: isSupplyStage ? 'Complete job' : `Complete ${stageLabels[input.stage]}`,
       confirmVariant: 'default',
       onConfirm,
-      title: isDispatchStage ? 'Complete Dispatch and finish job?' : `Complete ${stageLabels[input.stage]}?`,
+      title: isSupplyStage ? 'Complete Supply and finish job?' : `Complete ${stageLabels[input.stage]}?`,
     });
   };
   const confirmCompleteStage = (input: JobStageTransitionInput) => {
@@ -174,7 +174,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         <>
           <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <JobFact label="Created" value={<DateDisplay date={job.createdAt} />} />
-            <JobFact label="Due date" value={<DateDisplay date={job.dueDate} emptyValue="No date" />} />
+            <JobFact label="Due date" value={<DateDisplay date={job.dueEnd} emptyValue="No date" />} />
             <JobFact label="Updated" value={<DateDisplay date={job.updatedAt} />} />
             <JobFact
               label="Quote"

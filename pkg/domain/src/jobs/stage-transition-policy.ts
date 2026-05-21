@@ -1,26 +1,27 @@
-import type { JobLifecycleStatus, JobStageName, UserAccessSummary } from '@pkg/schema';
+import type { JobStageName, UserAccessSummary } from '@pkg/schema';
 
 import { canEditStage } from '../auth/authorization.js';
 
-export const STAGE_TRANSITIONS = ['start', 'set-status', 'complete'] as const;
+export const STAGE_TRANSITIONS = ['start', 'stop'] as const;
 
 export type StageTransition = (typeof STAGE_TRANSITIONS)[number];
 
 export type StageTransitionPolicyStage = {
-  completedAt: unknown | null;
+  actualEnd: unknown | null;
+  actualStart: unknown | null;
   sequence: number;
   stage: JobStageName;
-  startedAt: unknown | null;
 };
 
 export type StageTransitionPolicyJob = {
-  lifecycleStatus: JobLifecycleStatus;
+  isCancelled: boolean;
+  isPaused: boolean;
 };
 
 export type StageTransitionPolicyInput = {
   access: UserAccessSummary | null | undefined;
   job: StageTransitionPolicyJob;
-  previousStage: Pick<StageTransitionPolicyStage, 'completedAt'> | null;
+  previousStage: Pick<StageTransitionPolicyStage, 'actualEnd'> | null;
   stage: StageTransitionPolicyStage;
   transition: StageTransition;
 };
@@ -38,8 +39,12 @@ export type StageTransitionPolicyResult =
 export type StageTransitionAvailability = Record<StageTransition, StageTransitionPolicyResult>;
 
 export function evaluateStageTransition(input: StageTransitionPolicyInput): StageTransitionPolicyResult {
-  if (input.job.lifecycleStatus !== 'active') {
-    return deny('Job is not active.');
+  if (input.job.isCancelled) {
+    return deny('Job is cancelled.');
+  }
+
+  if (input.job.isPaused) {
+    return deny('Job is paused.');
   }
 
   if (!canEditStage(input.access, input.stage)) {
@@ -50,45 +55,43 @@ export function evaluateStageTransition(input: StageTransitionPolicyInput): Stag
     return evaluateStartTransition(input);
   }
 
-  if (input.transition === 'complete') {
-    return evaluateCompleteTransition(input);
-  }
-
-  if (!input.stage.startedAt) {
-    return deny('Stage has not started.');
-  }
-
-  return allow();
+  return evaluateStopTransition(input);
 }
 
 export function getStageTransitionAvailability(
   input: Omit<StageTransitionPolicyInput, 'transition'>,
-): StageTransitionAvailability {
+): StageTransitionAvailability & {
+  complete: StageTransitionPolicyResult;
+  'set-status': StageTransitionPolicyResult;
+} {
+  const stop = evaluateStageTransition({ ...input, transition: 'stop' });
+
   return {
-    complete: evaluateStageTransition({ ...input, transition: 'complete' }),
-    'set-status': evaluateStageTransition({ ...input, transition: 'set-status' }),
+    complete: stop,
+    'set-status': stop,
     start: evaluateStageTransition({ ...input, transition: 'start' }),
+    stop,
   };
 }
 
 function evaluateStartTransition(input: StageTransitionPolicyInput): StageTransitionPolicyResult {
-  if (input.stage.startedAt) {
+  if (input.stage.actualStart) {
     return deny('Stage has already started.');
   }
 
-  if (input.previousStage && !input.previousStage.completedAt) {
+  if (input.previousStage && !input.previousStage.actualEnd) {
     return deny('Previous stage is not complete.');
   }
 
   return allow();
 }
 
-function evaluateCompleteTransition(input: StageTransitionPolicyInput): StageTransitionPolicyResult {
-  if (!input.stage.startedAt) {
+function evaluateStopTransition(input: StageTransitionPolicyInput): StageTransitionPolicyResult {
+  if (!input.stage.actualStart) {
     return deny('Stage has not started.');
   }
 
-  if (input.stage.completedAt) {
+  if (input.stage.actualEnd) {
     return deny('Stage is already complete.');
   }
 

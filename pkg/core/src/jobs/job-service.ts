@@ -23,12 +23,12 @@ import type {
   UserAccessSummary,
   UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, or, type SQL, sql } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { JobLifecycleTransitionDeniedError, JobNotFoundError, JobQuoteConversionDeniedError } from './job-errors.js';
 import { applyJobLifecycleStatusChange } from './job-lifecycle-service.js';
-import { mapJobAuditRecord } from './job-mappers.js';
+import { deriveJobLifecycleStatus, mapJobAuditRecord } from './job-mappers.js';
 import { applyJobStageTransition } from './job-pipeline-service.js';
 import { getJob, getJobSortColumn, mapJobSummary } from './job-read-service.js';
 
@@ -53,7 +53,7 @@ const jobLifecycleTransitionConfig = {
 } as const satisfies Record<
   JobLifecycleTransition,
   {
-    allowedFrom: readonly JobLifecycleStatus[];
+    allowedFrom: readonly ReturnType<typeof deriveJobLifecycleStatus>[];
     eventType: Extract<JobEvent['eventType'], `job.${string}`>;
     nextStatus: JobLifecycleStatus;
   }
@@ -74,7 +74,10 @@ export async function createJob({
     const [job] = await tx
       .insert(jobs)
       .values({
-        dueDate: input.dueDate ?? null,
+        dueEnd: input.dueEnd ?? null,
+        dueEndSetManually: input.dueEnd !== undefined && input.dueEnd !== null,
+        dueStart: input.dueStart ?? null,
+        dueStartSetManually: input.dueStart !== undefined && input.dueStart !== null,
         productId: input.productId,
       })
       .returning();
@@ -88,7 +91,6 @@ export async function createJob({
         jobId: job.id,
         sequence,
         stage,
-        status: 'pending' as const,
       })),
     );
 
@@ -128,8 +130,8 @@ export async function createJobFromQuote({
         throw new JobQuoteConversionDeniedError('Quote not found.');
       }
 
-      if (quote.status !== 'accepted') {
-        throw new JobQuoteConversionDeniedError('Only accepted quotes can be converted into jobs.');
+      if (quote.status !== 'accepted' && quote.status !== 'draft') {
+        throw new JobQuoteConversionDeniedError('Only draft or accepted quotes can be converted into jobs.');
       }
 
       const existingJob = await tx.query.jobs.findFirst({
@@ -146,7 +148,10 @@ export async function createJobFromQuote({
       const [job] = await tx
         .insert(jobs)
         .values({
-          dueDate: input.dueDate ?? null,
+          dueEnd: input.dueEnd ?? null,
+          dueEndSetManually: input.dueEnd !== undefined && input.dueEnd !== null,
+          dueStart: input.dueStart ?? null,
+          dueStartSetManually: input.dueStart !== undefined && input.dueStart !== null,
           productId: quote.productId,
           quoteId: quote.id,
         })
@@ -161,7 +166,6 @@ export async function createJobFromQuote({
           jobId: job.id,
           sequence,
           stage,
-          status: 'pending' as const,
         })),
       );
 
@@ -206,8 +210,16 @@ export async function listJobs({
       createdAt: true,
       id: true,
       code: true,
-      dueDate: true,
-      lifecycleStatus: true,
+      actualEnd: true,
+      actualEndSetManually: true,
+      actualStart: true,
+      actualStartSetManually: true,
+      dueEnd: true,
+      dueEndSetManually: true,
+      dueStart: true,
+      dueStartSetManually: true,
+      isCancelled: true,
+      isPaused: true,
       productId: true,
       quoteId: true,
       updatedAt: true,
@@ -236,15 +248,27 @@ export async function listJobs({
       },
       stages: {
         columns: {
-          completedAt: true,
+          actualEnd: true,
+          actualEndSetManually: true,
+          actualStart: true,
+          actualStartSetManually: true,
+          dueEnd: true,
+          dueEndSetManually: true,
+          dueStart: true,
+          dueStartSetManually: true,
           id: true,
           jobId: true,
           sequence: true,
           stage: true,
-          startedAt: true,
-          status: true,
         },
         orderBy: [asc(jobStages.sequence)],
+        with: {
+          stations: {
+            with: {
+              station: true,
+            },
+          },
+        },
       },
     },
   });
@@ -267,7 +291,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   if (input.filters.lifecycleStatuses.length > 0) {
-    conditions.push(inArray(jobs.lifecycleStatus, input.filters.lifecycleStatuses));
+    conditions.push(buildLifecycleStatusWhere(input.filters.lifecycleStatuses));
   }
 
   if (input.search) {
@@ -284,6 +308,32 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+function buildLifecycleStatusWhere(statuses: readonly JobLifecycleStatus[]): SQL {
+  const conditions = statuses.map((status) => {
+    switch (status) {
+      case 'active':
+        return and(
+          eq(jobs.isCancelled, false),
+          eq(jobs.isPaused, false),
+          sql`${jobs.actualStart} is not null`,
+          sql`${jobs.actualEnd} is null`,
+        );
+      case 'cancelled':
+        return eq(jobs.isCancelled, true);
+      case 'complete':
+        return and(eq(jobs.isCancelled, false), eq(jobs.isPaused, false), sql`${jobs.actualEnd} is not null`);
+      case 'not-started':
+        return and(eq(jobs.isCancelled, false), eq(jobs.isPaused, false), sql`${jobs.actualStart} is null`);
+      case 'paused':
+        return and(eq(jobs.isCancelled, false), eq(jobs.isPaused, true));
+      default:
+        return sql`false`;
+    }
+  });
+
+  return or(...conditions) ?? sql`false`;
 }
 
 export async function pauseJob({
@@ -422,10 +472,9 @@ async function transitionJobLifecycle({
     }
 
     const config = jobLifecycleTransitionConfig[transition];
-    if (!(config.allowedFrom as readonly JobLifecycleStatus[]).includes(row.job.lifecycleStatus)) {
-      throw new JobLifecycleTransitionDeniedError(
-        getLifecycleTransitionDeniedReason(transition, row.job.lifecycleStatus),
-      );
+    const lifecycleStatus = deriveJobLifecycleStatus(row.job);
+    if (!(config.allowedFrom as readonly JobLifecycleStatus[]).includes(lifecycleStatus)) {
+      throw new JobLifecycleTransitionDeniedError(getLifecycleTransitionDeniedReason(transition, lifecycleStatus));
     }
 
     await applyJobLifecycleStatusChange({

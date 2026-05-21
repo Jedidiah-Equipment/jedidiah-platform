@@ -1,9 +1,14 @@
 import { type DatabaseTransaction, type Db, jobEvents, jobStages, jobs } from '@pkg/db';
 import { deriveStageJobEvent, evaluateStageTransition, type StageTransition } from '@pkg/domain';
-import type { AuthId, JobDetail, JobStageName, JobStageStatusInput, UserAccessSummary, UUID } from '@pkg/schema';
+import type { AuthId, JobDetail, JobStageName, UserAccessSummary, UUID } from '@pkg/schema';
 import { and, asc, eq } from 'drizzle-orm';
 
-import { createAuditChanges, insertAuditEvent, jobStageAuditDescriptor } from '../audit/audit-service.js';
+import {
+  createAuditChanges,
+  insertAuditEvent,
+  jobAuditDescriptor,
+  jobStageAuditDescriptor,
+} from '../audit/audit-service.js';
 import { JobNotFoundError, JobStageTransitionDeniedError } from './job-errors.js';
 import { completeJobLifecycle } from './job-lifecycle-service.js';
 import {
@@ -20,10 +25,6 @@ type JobPipelineTransition =
       transition: 'start';
     }
   | {
-      status: JobStageStatusInput['status'];
-      transition: 'set-status';
-    }
-  | {
       transition: 'complete';
     };
 
@@ -33,22 +34,10 @@ type StageTransitionTarget = {
   stage: JobStageRow;
 };
 
-type StageTransitionPolicyOverride = {
-  completedAt: Date | null;
+type EffectiveStageIntent = {
   transition: StageTransition;
+  values: Partial<Pick<JobStageRow, 'actualEnd' | 'actualStart'>>;
 };
-
-type EffectiveStageIntent =
-  | {
-      kind: 'apply';
-      policyOverride?: StageTransitionPolicyOverride;
-      transition: StageTransition;
-      values: Partial<Pick<JobStageRow, 'completedAt' | 'startedAt' | 'status'>>;
-    }
-  | {
-      kind: 'noop';
-      policyOverride: StageTransitionPolicyOverride;
-    };
 
 export async function applyJobStageTransition({
   db,
@@ -67,22 +56,13 @@ export async function applyJobStageTransition({
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const transitionTarget = await readStageTransitionTarget({ db: tx, id, stage });
-    const effectiveIntent = resolveEffectiveIntent({ intent, transitionTarget });
-    const policyTransition =
-      effectiveIntent.kind === 'noop'
-        ? effectiveIntent.policyOverride.transition
-        : (effectiveIntent.policyOverride?.transition ?? effectiveIntent.transition);
+    const effectiveIntent = resolveEffectiveIntent(intent);
 
     assertStageTransitionAllowed({
       access,
-      transition: policyTransition,
+      transition: effectiveIntent.transition,
       transitionTarget,
-      ...(effectiveIntent.policyOverride ? { policyOverride: effectiveIntent.policyOverride } : {}),
     });
-
-    if (effectiveIntent.kind === 'noop') {
-      return getJob({ access, db: tx, id });
-    }
 
     return writeJobStageTransition({
       access,
@@ -97,90 +77,35 @@ export async function applyJobStageTransition({
   });
 }
 
-function resolveEffectiveIntent({
-  intent,
-  transitionTarget,
-}: {
-  intent: JobPipelineTransition;
-  transitionTarget: StageTransitionTarget;
-}): EffectiveStageIntent {
+function resolveEffectiveIntent(intent: JobPipelineTransition): EffectiveStageIntent {
   if (intent.transition === 'start') {
     return {
-      kind: 'apply',
       transition: 'start',
       values: {
-        startedAt: new Date(),
+        actualStart: new Date(),
       },
     };
   }
 
   if (intent.transition === 'complete') {
     return {
-      kind: 'apply',
-      transition: 'complete',
+      transition: 'stop',
       values: {
-        completedAt: new Date(),
-        status: 'complete',
+        actualEnd: new Date(),
       },
     };
   }
 
-  if (intent.status !== 'complete') {
-    return {
-      kind: 'apply',
-      transition: 'set-status',
-      values: {
-        status: intent.status,
-      },
-    };
-  }
-
-  if (transitionTarget.stage.completedAt) {
-    const completedStatusRelockPolicy = createCompletedStatusRelockPolicy();
-
-    if (transitionTarget.stage.status === 'complete') {
-      return {
-        kind: 'noop',
-        policyOverride: completedStatusRelockPolicy,
-      };
-    }
-
-    return {
-      kind: 'apply',
-      policyOverride: completedStatusRelockPolicy,
-      transition: 'set-status',
-      values: {
-        status: 'complete',
-      },
-    };
-  }
-
-  return {
-    kind: 'apply',
-    transition: 'complete',
-    values: {
-      completedAt: new Date(),
-      status: 'complete',
-    },
-  };
-}
-
-function createCompletedStatusRelockPolicy(): StageTransitionPolicyOverride {
-  return {
-    // The stage is already historically complete but status drifted; evaluate access/order as a completion attempt.
-    completedAt: null,
-    transition: 'complete',
-  };
+  const exhaustive: never = intent;
+  throw new Error(`Unsupported job stage transition: ${JSON.stringify(exhaustive)}`);
 }
 
 function assertStageTransitionAllowed({
   access,
-  policyOverride,
   transition,
   transitionTarget,
 }: {
   access: UserAccessSummary;
-  policyOverride?: StageTransitionPolicyOverride;
   transition: StageTransition;
   transitionTarget: StageTransitionTarget;
 }): void {
@@ -188,12 +113,7 @@ function assertStageTransitionAllowed({
     access,
     job: transitionTarget.job,
     previousStage: transitionTarget.previousStage,
-    stage: policyOverride
-      ? {
-          ...transitionTarget.stage,
-          completedAt: policyOverride.completedAt,
-        }
-      : transitionTarget.stage,
+    stage: transitionTarget.stage,
     transition,
   });
 
@@ -219,7 +139,7 @@ async function writeJobStageTransition({
   transition: StageTransition;
   transitionTarget: StageTransitionTarget;
   tx: DatabaseTransaction;
-  values: Partial<Pick<JobStageRow, 'completedAt' | 'startedAt' | 'status'>>;
+  values: Partial<Pick<JobStageRow, 'actualEnd' | 'actualStart'>>;
 }): Promise<JobDetail> {
   const [updatedStage] = await tx
     .update(jobStages)
@@ -233,6 +153,34 @@ async function writeJobStageTransition({
 
   const beforeStage = mapJobStage(transitionTarget.stage);
   const afterStage = mapJobStage(updatedStage);
+  const jobActualStart = transition === 'start' && !transitionTarget.job.actualStart ? values.actualStart : null;
+
+  if (jobActualStart) {
+    const [updatedJob] = await tx
+      .update(jobs)
+      .set({ actualStart: jobActualStart, updatedAt: new Date() })
+      .where(eq(jobs.id, id))
+      .returning();
+
+    if (!updatedJob) {
+      throw new JobNotFoundError(id);
+    }
+
+    await insertAuditEvent({
+      db: tx,
+      input: {
+        action: 'updated',
+        actorUserId,
+        after: mapJobAuditRecord(updatedJob),
+        before: transitionTarget.job,
+        changes: createAuditChanges(transitionTarget.job, mapJobAuditRecord(updatedJob), {
+          actualStart: jobAuditDescriptor.fields.actualStart ?? 'actual start',
+        }),
+        entityId: updatedJob.id,
+        entityType: jobAuditDescriptor.entityType,
+      },
+    });
+  }
 
   await insertAuditEvent({
     db: tx,
@@ -242,9 +190,8 @@ async function writeJobStageTransition({
       after: afterStage,
       before: beforeStage,
       changes: createAuditChanges(beforeStage, afterStage, {
-        completedAt: 'completed at',
-        startedAt: 'started at',
-        status: 'status',
+        actualEnd: 'actual end',
+        actualStart: 'actual start',
       }),
       entityId: updatedStage.id,
       entityType: jobStageAuditDescriptor.entityType,
@@ -266,7 +213,7 @@ async function writeJobStageTransition({
     stageId: updatedStage.id,
   });
 
-  if (transition === 'complete' && updatedStage.stage === 'dispatch') {
+  if (transition === 'stop' && updatedStage.stage === 'assembly') {
     await completeJobLifecycle({
       actorUserId,
       before: transitionTarget.job,

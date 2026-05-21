@@ -1,21 +1,12 @@
 import { jobStageStatusLabels } from '@pkg/domain';
-import {
-  JOB_STAGE_STATUSES,
-  type JobStageName,
-  type JobStageRollup,
-  type JobStageStatus,
-  JobStageStatusInput,
-  type UUID,
-} from '@pkg/schema';
-import { CheckCircleIcon, CircleIcon, PlayIcon } from 'lucide-react';
-import React from 'react';
+import type { JobStageRollup, UUID } from '@pkg/schema';
+import { CheckCircleIcon, PlayIcon } from 'lucide-react';
+import type React from 'react';
 
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { Button } from '@/components/ui/button.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
 import { JobStageStatusBadge } from '../../jobs/components/JobStageStatusBadge.js';
-import { getJobStageStatusColorClassNames } from '../../jobs/components/job-stage-status-color.js';
 import { stageLabels } from '../constants.js';
 import type { JobStageTransitionInput } from '../types.js';
 
@@ -23,39 +14,22 @@ type StagePanelProps = {
   isPending: boolean;
   jobId: UUID;
   onComplete: (input: JobStageTransitionInput) => void;
-  onSetCompleteStatus: (input: JobStageStatusInput) => void;
-  onSetStatus: (input: JobStageStatusInput) => void;
   onStart: (input: JobStageTransitionInput) => void;
   stage: JobStageRollup;
 };
 
-export const StagePanel: React.FC<StagePanelProps> = ({
-  isPending,
-  jobId,
-  onComplete,
-  onSetCompleteStatus,
-  onSetStatus,
-  onStart,
-  stage,
-}) => {
-  const [status, setStatus] = React.useState<JobStageStatus>(stage.status);
+export const StagePanel: React.FC<StagePanelProps> = ({ isPending, jobId, onComplete, onStart, stage }) => {
   const startAvailability = stage.access === 'visible' ? stage.transitionAvailability?.start : undefined;
-  const statusAvailability = stage.access === 'visible' ? stage.transitionAvailability?.['set-status'] : undefined;
-  const completeAvailability = stage.access === 'visible' ? stage.transitionAvailability?.complete : undefined;
-  const hasStageStarted = Boolean(stage.startedAt);
-  const isActiveStage = hasStageStarted && !stage.completedAt;
+  const stopAvailability = stage.access === 'visible' ? stage.transitionAvailability?.stop : undefined;
   const isStageEditable = stage.access === 'visible';
+  const hasStageStarted = Boolean(stage.actualStart);
+  const isActiveStage = hasStageStarted && !stage.actualEnd;
   const isStartDisabled = isPending || !isStageEditable || !startAvailability?.allowed;
-  const isStatusDisabled = isPending || !isStageEditable || !hasStageStarted || !statusAvailability?.allowed;
-  const isCompleteDisabled = isPending || !isStageEditable || !completeAvailability?.allowed;
-  const isPendingStage = stage.status === 'pending' && !hasStageStarted && !stage.completedAt;
+  const isCompleteDisabled = isPending || !isStageEditable || !stopAvailability?.allowed;
+  const isPendingStage = stage.state === 'pending' && !hasStageStarted && !stage.actualEnd;
   const canStartPendingStage = isPendingStage && startAvailability?.allowed;
   const isBlockedPendingStage = isPendingStage && !startAvailability?.allowed;
   const departmentLabel = stageLabels[stage.stage];
-
-  React.useEffect(() => {
-    setStatus(stage.status);
-  }, [stage]);
 
   return (
     <div
@@ -80,15 +54,18 @@ export const StagePanel: React.FC<StagePanelProps> = ({
           </div>
           <div className="font-medium">{departmentLabel}</div>
         </div>
-        <JobStageStatusBadge stage={stage.stage} status={stage.status} />
+        <JobStageStatusBadge stage={stage.stage} status={stage.state} />
       </div>
       <div className="mt-4 flex flex-col gap-3">
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
           <div>
-            Started: <DateDisplay date={stage.startedAt} emptyValue="Not started" />
+            State: <span className="text-foreground">{jobStageStatusLabels[stage.state]}</span>
           </div>
           <div>
-            Completed: <DateDisplay date={stage.completedAt} emptyValue="Not completed" />
+            Started: <DateDisplay date={stage.actualStart} emptyValue="Not started" />
+          </div>
+          <div>
+            Completed: <DateDisplay date={stage.actualEnd} emptyValue="Not completed" />
           </div>
         </div>
         <div className="flex flex-col gap-2">
@@ -102,42 +79,6 @@ export const StagePanel: React.FC<StagePanelProps> = ({
             <PlayIcon data-icon="inline-start" />
             Start
           </Button>
-          <div className="flex gap-2">
-            <Select
-              disabled={isStatusDisabled}
-              onValueChange={(value) => {
-                if (!value || value === status) return;
-
-                const nextStatus = value as JobStageStatus;
-                const input = JobStageStatusInput.parse({ id: jobId, stage: stage.stage, status: nextStatus });
-                if (nextStatus === 'complete' && !stage.completedAt) {
-                  onSetCompleteStatus(input);
-                  return;
-                }
-
-                setStatus(nextStatus);
-                onSetStatus(input);
-              }}
-              value={status}
-            >
-              <SelectTrigger aria-label={`${departmentLabel} department status`} className="min-w-0 flex-1">
-                <JobStageStatusSelectValue stage={stage.stage} status={status} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {JOB_STAGE_STATUSES[stage.stage].map((option) => (
-                    <SelectItem
-                      key={option}
-                      leading={<JobStageStatusIcon stage={stage.stage} status={option} />}
-                      value={option}
-                    >
-                      {jobStageStatusLabels[option]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
           <Button
             disabled={isCompleteDisabled}
             onClick={() => onComplete({ id: jobId, stage: stage.stage })}
@@ -149,9 +90,7 @@ export const StagePanel: React.FC<StagePanelProps> = ({
             Complete
           </Button>
           {isStageEditable ? (
-            <StageControlReason
-              reason={startAvailability?.reason ?? statusAvailability?.reason ?? completeAvailability?.reason}
-            />
+            <StageControlReason reason={startAvailability?.reason ?? stopAvailability?.reason} />
           ) : null}
         </div>
       </div>
@@ -161,20 +100,3 @@ export const StagePanel: React.FC<StagePanelProps> = ({
 
 const StageControlReason: React.FC<{ reason: string | null | undefined }> = ({ reason }) =>
   reason ? <div className="text-xs text-muted-foreground">{reason}</div> : null;
-
-const JobStageStatusSelectValue: React.FC<{ stage: JobStageName; status: JobStageStatus }> = ({ stage, status }) => (
-  <span className="flex min-w-0 flex-1 items-center gap-2 text-left" data-slot="select-value">
-    <JobStageStatusIcon stage={stage} status={status} />
-    <span className="truncate">{jobStageStatusLabels[status]}</span>
-  </span>
-);
-
-const JobStageStatusIcon: React.FC<{ stage: JobStageName; status: JobStageStatus }> = ({ stage, status }) => {
-  const color = getJobStageStatusColorClassNames(stage, status);
-
-  return (
-    <span className="inline-flex size-3 shrink-0 items-center justify-center">
-      <CircleIcon aria-hidden="true" className={cn('size-3', color.icon)} strokeWidth={0} />
-    </span>
-  );
-};

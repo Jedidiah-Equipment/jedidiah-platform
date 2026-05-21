@@ -26,7 +26,7 @@ describe('getJobTool', () => {
     });
     const paintAccess = createUserAccessSummary({
       departments: ['paint'],
-      role: 'job-stage-editor',
+      role: 'job-department-manager',
       userId: 'test-user-id',
     });
     const supervisorCaller = createCaller(context.db, supervisorAccess);

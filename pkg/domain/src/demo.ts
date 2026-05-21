@@ -11,10 +11,10 @@ export type DemoUser = {
 
 const demoJobStageEditors = {
   assembly: 'Max',
-  dispatch: 'Sam',
   fabrication: 'Ben',
   paint: 'Eli',
   procurement: 'Dan',
+  supply: 'Sam',
 } as const satisfies Record<Department, string>;
 
 export const DEFAULT_DEMO_USER_PASSWORD: UserPassword = UserPassword.parse('123');
@@ -55,11 +55,11 @@ export const demoUsers = [
   ...DEPARTMENTS.map(
     (department): DemoUser => ({
       departments: [department],
-      id: `seed-job-stage-editor-${department}-user`,
+      id: `seed-job-department-manager-${department}-user`,
       name: demoJobStageEditors[department],
       email: createDemoUserEmail(demoJobStageEditors[department]),
       password: DEFAULT_DEMO_USER_PASSWORD,
-      role: 'job-stage-editor',
+      role: 'job-department-manager',
     }),
   ),
 ] as const satisfies readonly DemoUser[];

@@ -1,6 +1,7 @@
-import type { JobLifecycleStatus, JobStageName, JobStageStatus } from '@pkg/schema';
+import type { Department, JobStageName } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
+  boolean,
   date,
   index,
   integer,
@@ -28,8 +29,16 @@ export const jobs = pgTable(
       .notNull()
       .references(() => products.id, { onDelete: 'restrict' }),
     quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'restrict' }),
-    dueDate: date('due_date', { mode: 'string' }),
-    lifecycleStatus: text('lifecycle_status').notNull().default('active').$type<JobLifecycleStatus>(),
+    dueStart: date('due_start', { mode: 'string' }),
+    dueStartSetManually: boolean('due_start_set_manually').notNull().default(false),
+    dueEnd: date('due_end', { mode: 'string' }),
+    dueEndSetManually: boolean('due_end_set_manually').notNull().default(false),
+    actualStart: timestamp('actual_start', { mode: 'date', withTimezone: true }),
+    actualStartSetManually: boolean('actual_start_set_manually').notNull().default(false),
+    actualEnd: timestamp('actual_end', { mode: 'date', withTimezone: true }),
+    actualEndSetManually: boolean('actual_end_set_manually').notNull().default(false),
+    isPaused: boolean('is_paused').notNull().default(false),
+    isCancelled: boolean('is_cancelled').notNull().default(false),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
@@ -45,13 +54,62 @@ export const jobStages = pgTable(
       .references(() => jobs.id, { onDelete: 'cascade' }),
     sequence: integer('sequence').notNull(),
     stage: text('stage').notNull().$type<JobStageName>(),
-    status: text('status').notNull().default('pending').$type<JobStageStatus>(),
-    startedAt: timestamp('started_at', { mode: 'date', withTimezone: true }),
-    completedAt: timestamp('completed_at', { mode: 'date', withTimezone: true }),
+    dueStart: date('due_start', { mode: 'string' }),
+    dueStartSetManually: boolean('due_start_set_manually').notNull().default(false),
+    dueEnd: date('due_end', { mode: 'string' }),
+    dueEndSetManually: boolean('due_end_set_manually').notNull().default(false),
+    actualStart: timestamp('actual_start', { mode: 'date', withTimezone: true }),
+    actualStartSetManually: boolean('actual_start_set_manually').notNull().default(false),
+    actualEnd: timestamp('actual_end', { mode: 'date', withTimezone: true }),
+    actualEndSetManually: boolean('actual_end_set_manually').notNull().default(false),
   },
   (table) => [
     uniqueIndex('job_stage_job_id_sequence_unique').on(table.jobId, table.sequence),
     uniqueIndex('job_stage_job_id_stage_unique').on(table.jobId, table.stage),
+  ],
+);
+
+export const stations = pgTable(
+  'station',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    department: text('department').notNull().$type<Department>(),
+    isActive: boolean('is_active').notNull().default(true),
+    displayOrder: integer('display_order').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('station_department_display_order_idx').on(table.department, table.displayOrder),
+    uniqueIndex('station_department_name_unique').on(table.department, table.name),
+  ],
+);
+
+export const jobStageStations = pgTable(
+  'job_stage_station',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    jobStageId: uuid('job_stage_id')
+      .notNull()
+      .references(() => jobStages.id, { onDelete: 'cascade' }),
+    stationId: uuid('station_id')
+      .notNull()
+      .references(() => stations.id, { onDelete: 'restrict' }),
+    dueStart: date('due_start', { mode: 'string' }),
+    dueStartSetManually: boolean('due_start_set_manually').notNull().default(false),
+    dueEnd: date('due_end', { mode: 'string' }),
+    dueEndSetManually: boolean('due_end_set_manually').notNull().default(false),
+    actualStart: timestamp('actual_start', { mode: 'date', withTimezone: true }),
+    actualStartSetManually: boolean('actual_start_set_manually').notNull().default(false),
+    actualEnd: timestamp('actual_end', { mode: 'date', withTimezone: true }),
+    actualEndSetManually: boolean('actual_end_set_manually').notNull().default(false),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('job_stage_station_job_stage_id_idx').on(table.jobStageId),
+    index('job_stage_station_station_id_idx').on(table.stationId),
   ],
 );
 
@@ -87,10 +145,26 @@ export const jobsRelations = relations(jobs, ({ many, one }) => ({
   stages: many(jobStages),
 }));
 
-export const jobStagesRelations = relations(jobStages, ({ one }) => ({
+export const jobStagesRelations = relations(jobStages, ({ many, one }) => ({
   job: one(jobs, {
     fields: [jobStages.jobId],
     references: [jobs.id],
+  }),
+  stations: many(jobStageStations),
+}));
+
+export const stationsRelations = relations(stations, ({ many }) => ({
+  bookings: many(jobStageStations),
+}));
+
+export const jobStageStationsRelations = relations(jobStageStations, ({ one }) => ({
+  jobStage: one(jobStages, {
+    fields: [jobStageStations.jobStageId],
+    references: [jobStages.id],
+  }),
+  station: one(stations, {
+    fields: [jobStageStations.stationId],
+    references: [stations.id],
   }),
 }));
 

@@ -173,8 +173,8 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
 
     baseColumns.push(
       {
-        accessorKey: 'dueDate',
-        cell: ({ row }) => <DateDisplay date={row.original.dueDate} emptyValue="No date" />,
+        accessorKey: 'dueEnd',
+        cell: ({ row }) => <DateDisplay date={row.original.dueEnd} emptyValue="No date" />,
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Due',

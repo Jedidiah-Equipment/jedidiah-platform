@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { Department } from '../auth/authorization.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { SortDirection } from '../common/sort.js';
@@ -8,35 +9,21 @@ import { UUID } from '../common/uuid.js';
 export { formatJobCode, JobCode } from '../common/public-code.js';
 
 // Unordered list of job stages. Use JOB_STAGE_PIPELINE for ordered list.
-export const JOB_STAGES = ['procurement', 'fabrication', 'assembly', 'paint', 'dispatch'] as const;
+export const JOB_STAGES = ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const;
 
 export type JobStageName = z.infer<typeof JobStageName>;
 export const JobStageName = z.enum(JOB_STAGES);
 
+export type JobWorkState = z.infer<typeof JobWorkState>;
+export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
+
 export type JobLifecycleStatus = z.infer<typeof JobLifecycleStatus>;
-export const JobLifecycleStatus = z.enum(['active', 'paused', 'complete', 'cancelled']);
+export const JobLifecycleStatus = z.enum(['not-started', 'active', 'paused', 'complete', 'cancelled']);
 
 export const JOB_LIST_STATUS_FILTERS = ['all', ...JobLifecycleStatus.options] as const;
 
 export type JobListStatusFilter = z.infer<typeof JobListStatusFilter>;
 export const JobListStatusFilter = z.union([JobLifecycleStatus, z.literal('all')]);
-
-export const JOB_STAGE_STATUSES = {
-  assembly: ['pending', 'in-progress', 'qc', 'complete'],
-  dispatch: ['pending', 'ready', 'dispatched', 'complete'],
-  fabrication: ['pending', 'cutting', 'welding', 'qc', 'complete'],
-  paint: ['pending', 'prep', 'painting', 'curing', 'complete'],
-  procurement: ['pending', 'ordering', 'partial', 'complete'],
-} as const satisfies Record<JobStageName, readonly [string, ...string[]]>;
-
-export type JobStageStatus = z.infer<typeof JobStageStatus>;
-export const JobStageStatus = z.enum([
-  ...JOB_STAGE_STATUSES.procurement,
-  ...JOB_STAGE_STATUSES.fabrication,
-  ...JOB_STAGE_STATUSES.assembly,
-  ...JOB_STAGE_STATUSES.paint,
-  ...JOB_STAGE_STATUSES.dispatch,
-]);
 
 export type StageTransitionPolicyResult = z.infer<typeof StageTransitionPolicyResult>;
 export const StageTransitionPolicyResult = z.discriminatedUnion('allowed', [
@@ -52,72 +39,101 @@ export const StageTransitionPolicyResult = z.discriminatedUnion('allowed', [
 
 export type StageTransitionAvailability = z.infer<typeof StageTransitionAvailability>;
 export const StageTransitionAvailability = z.object({
-  complete: StageTransitionPolicyResult,
-  'set-status': StageTransitionPolicyResult,
   start: StageTransitionPolicyResult,
+  stop: StageTransitionPolicyResult,
 });
 
-const JobStageBase = z.object({
+const DateFields = z.object({
+  actualEnd: z.iso.datetime().nullable(),
+  actualEndSetManually: z.boolean(),
+  actualStart: z.iso.datetime().nullable(),
+  actualStartSetManually: z.boolean(),
+  dueEnd: z.iso.date().nullable(),
+  dueEndSetManually: z.boolean(),
+  dueStart: z.iso.date().nullable(),
+  dueStartSetManually: z.boolean(),
+});
+
+export type Station = z.infer<typeof Station>;
+export const Station = z.object({
+  id: UUID,
+  name: z.string().trim().min(1),
+  department: Department,
+  isActive: z.boolean(),
+  displayOrder: z.int(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
+export type StationBooking = z.infer<typeof StationBooking>;
+export const StationBooking = DateFields.extend({
+  id: UUID,
+  jobStageId: UUID,
+  stationId: UUID,
+  station: Station,
+  state: JobWorkState,
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
+const JobStageBase = DateFields.extend({
   id: UUID,
   jobId: UUID,
   sequence: z.int().min(1).max(5),
-  status: JobStageStatus.default('pending'),
-  startedAt: z.iso.datetime().nullable(),
-  completedAt: z.iso.datetime().nullable(),
+  state: JobWorkState,
 });
 
 const ProcurementJobStage = JobStageBase.extend({
   stage: z.literal('procurement'),
-  status: z.enum(JOB_STAGE_STATUSES.procurement).default('pending'),
+});
+const SupplyJobStage = JobStageBase.extend({
+  stage: z.literal('supply'),
 });
 const FabricationJobStage = JobStageBase.extend({
   stage: z.literal('fabrication'),
-  status: z.enum(JOB_STAGE_STATUSES.fabrication).default('pending'),
 });
 const PaintJobStage = JobStageBase.extend({
   stage: z.literal('paint'),
-  status: z.enum(JOB_STAGE_STATUSES.paint).default('pending'),
 });
 const AssemblyJobStage = JobStageBase.extend({
   stage: z.literal('assembly'),
-  status: z.enum(JOB_STAGE_STATUSES.assembly).default('pending'),
-});
-const DispatchJobStage = JobStageBase.extend({
-  stage: z.literal('dispatch'),
-  status: z.enum(JOB_STAGE_STATUSES.dispatch).default('pending'),
 });
 
 export type JobStage = z.infer<typeof JobStage>;
 export const JobStage = z.discriminatedUnion('stage', [
   ProcurementJobStage,
+  SupplyJobStage,
   FabricationJobStage,
   PaintJobStage,
   AssemblyJobStage,
-  DispatchJobStage,
 ]);
 
 const ProcurementJobStageSummary = ProcurementJobStage.extend({
   department: z.literal('procurement'),
+  stations: z.array(StationBooking),
+});
+const SupplyJobStageSummary = SupplyJobStage.extend({
+  department: z.literal('supply'),
+  stations: z.array(StationBooking),
 });
 const FabricationJobStageSummary = FabricationJobStage.extend({
   department: z.literal('fabrication'),
+  stations: z.array(StationBooking),
 });
 const PaintJobStageSummary = PaintJobStage.extend({
   department: z.literal('paint'),
+  stations: z.array(StationBooking),
 });
 const AssemblyJobStageSummary = AssemblyJobStage.extend({
   department: z.literal('assembly'),
-});
-const DispatchJobStageSummary = DispatchJobStage.extend({
-  department: z.literal('dispatch'),
+  stations: z.array(StationBooking),
 });
 
 export type JobEventDerivationStage = z.infer<typeof JobEventDerivationStage>;
 export const JobEventDerivationStage = z.object({
-  completedAt: z.iso.datetime().nullable(),
+  actualEnd: z.iso.datetime().nullable(),
+  actualStart: z.iso.datetime().nullable(),
   stage: JobStageName,
-  startedAt: z.iso.datetime().nullable(),
-  status: JobStageStatus,
 });
 
 const JobEventBase = z.object({
@@ -131,19 +147,25 @@ const JobEventBase = z.object({
 
 const StageStartedJobEventPayload = z.object({
   stage: JobStageName,
-  status: JobStageStatus,
-  startedAt: z.iso.datetime(),
+  actualStart: z.iso.datetime(),
 });
 
+const StageStoppedJobEventPayload = z.object({
+  stage: JobStageName,
+  actualEnd: z.iso.datetime(),
+});
+
+// Historical workflow rows may still contain pre-0016 stage status/completion events.
+// New writes only produce DerivedStageJobEvent variants below.
 const StageStatusChangedJobEventPayload = z.object({
   stage: JobStageName,
-  fromStatus: JobStageStatus,
-  toStatus: JobStageStatus,
+  fromStatus: JobWorkState,
+  toStatus: JobWorkState,
 });
 
 const StageCompletedJobEventPayload = z.object({
   stage: JobStageName,
-  status: JobStageStatus,
+  status: JobWorkState,
   completedAt: z.iso.datetime(),
 });
 
@@ -155,6 +177,11 @@ const JobLifecycleChangedEventPayload = z.object({
 const StageStartedJobEvent = JobEventBase.extend({
   eventType: z.literal('stage.started'),
   payload: StageStartedJobEventPayload,
+});
+
+const StageStoppedJobEvent = JobEventBase.extend({
+  eventType: z.literal('stage.stopped'),
+  payload: StageStoppedJobEventPayload,
 });
 
 const StageStatusChangedJobEvent = JobEventBase.extend({
@@ -190,6 +217,7 @@ const JobCompletedEvent = JobEventBase.extend({
 export type JobEvent = z.infer<typeof JobEvent>;
 export const JobEvent = z.discriminatedUnion('eventType', [
   StageStartedJobEvent,
+  StageStoppedJobEvent,
   StageStatusChangedJobEvent,
   StageCompletedJobEvent,
   JobPausedEvent,
@@ -205,36 +233,36 @@ export const DerivedStageJobEvent = z.discriminatedUnion('eventType', [
     payload: StageStartedJobEventPayload,
   }),
   z.object({
-    eventType: z.literal('stage.status_changed'),
-    payload: StageStatusChangedJobEventPayload,
-  }),
-  z.object({
-    eventType: z.literal('stage.completed'),
-    payload: StageCompletedJobEventPayload,
+    eventType: z.literal('stage.stopped'),
+    payload: StageStoppedJobEventPayload,
   }),
 ]);
 
 export type JobStageSummary = z.infer<typeof JobStageSummary>;
 export const JobStageSummary = z.discriminatedUnion('stage', [
   ProcurementJobStageSummary,
+  SupplyJobStageSummary,
   FabricationJobStageSummary,
   PaintJobStageSummary,
   AssemblyJobStageSummary,
-  DispatchJobStageSummary,
 ]);
 
 export type SummaryJobStage = z.infer<typeof SummaryJobStage>;
 export const SummaryJobStage = z.discriminatedUnion('stage', [
   ProcurementJobStageSummary.extend({ access: z.literal('summary') }),
+  SupplyJobStageSummary.extend({ access: z.literal('summary') }),
   FabricationJobStageSummary.extend({ access: z.literal('summary') }),
   PaintJobStageSummary.extend({ access: z.literal('summary') }),
   AssemblyJobStageSummary.extend({ access: z.literal('summary') }),
-  DispatchJobStageSummary.extend({ access: z.literal('summary') }),
 ]);
 
 export type VisibleJobStage = z.infer<typeof VisibleJobStage>;
 export const VisibleJobStage = z.discriminatedUnion('stage', [
   ProcurementJobStageSummary.extend({
+    access: z.literal('visible'),
+    transitionAvailability: StageTransitionAvailability.optional(),
+  }),
+  SupplyJobStageSummary.extend({
     access: z.literal('visible'),
     transitionAvailability: StageTransitionAvailability.optional(),
   }),
@@ -250,23 +278,20 @@ export const VisibleJobStage = z.discriminatedUnion('stage', [
     access: z.literal('visible'),
     transitionAvailability: StageTransitionAvailability.optional(),
   }),
-  DispatchJobStageSummary.extend({
-    access: z.literal('visible'),
-    transitionAvailability: StageTransitionAvailability.optional(),
-  }),
 ]);
 
 export type JobStageRollup = z.infer<typeof JobStageRollup>;
 export const JobStageRollup = z.union([VisibleJobStage, SummaryJobStage]);
 
 export type Job = z.infer<typeof Job>;
-export const Job = z.object({
+export const Job = DateFields.extend({
   id: UUID,
   code: JobCode,
   productId: UUID,
   quoteId: UUID.nullable(),
-  dueDate: z.iso.date().nullable(),
-  lifecycleStatus: JobLifecycleStatus.default('active'),
+  isPaused: z.boolean(),
+  isCancelled: z.boolean(),
+  lifecycleStatus: JobLifecycleStatus,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -302,13 +327,15 @@ export const JobDetail = JobSummary.extend({
 export type JobCreateInput = z.infer<typeof JobCreateInput>;
 export const JobCreateInput = z.object({
   productId: UUID,
-  dueDate: z.iso.date().nullable().optional(),
+  dueEnd: z.iso.date().nullable().optional(),
+  dueStart: z.iso.date().nullable().optional(),
 });
 
 export type JobCreateFromQuoteInput = z.infer<typeof JobCreateFromQuoteInput>;
 export const JobCreateFromQuoteInput = z.object({
   quoteId: UUID,
-  dueDate: z.iso.date().nullable().optional(),
+  dueEnd: z.iso.date().nullable().optional(),
+  dueStart: z.iso.date().nullable().optional(),
 });
 
 export type JobListInput = z.infer<typeof JobListInput>;
@@ -335,27 +362,3 @@ export type JobLifecycleTransitionInput = z.infer<typeof JobLifecycleTransitionI
 export const JobLifecycleTransitionInput = z.object({
   id: UUID,
 });
-
-export type JobStageStatusInput = z.infer<typeof JobStageStatusInput>;
-export const JobStageStatusInput = z.discriminatedUnion('stage', [
-  JobStageTransitionInput.extend({
-    stage: z.literal('procurement'),
-    status: z.enum(JOB_STAGE_STATUSES.procurement),
-  }),
-  JobStageTransitionInput.extend({
-    stage: z.literal('fabrication'),
-    status: z.enum(JOB_STAGE_STATUSES.fabrication),
-  }),
-  JobStageTransitionInput.extend({
-    stage: z.literal('paint'),
-    status: z.enum(JOB_STAGE_STATUSES.paint),
-  }),
-  JobStageTransitionInput.extend({
-    stage: z.literal('assembly'),
-    status: z.enum(JOB_STAGE_STATUSES.assembly),
-  }),
-  JobStageTransitionInput.extend({
-    stage: z.literal('dispatch'),
-    status: z.enum(JOB_STAGE_STATUSES.dispatch),
-  }),
-]);

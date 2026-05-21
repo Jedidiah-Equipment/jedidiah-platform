@@ -9,7 +9,6 @@ import {
   listJobs,
   pauseJob,
   resumeJob,
-  setJobStageStatus,
   startJobStage,
 } from '@pkg/core';
 import {
@@ -17,7 +16,6 @@ import {
   JobCreateInput,
   JobLifecycleTransitionInput,
   JobListInput,
-  JobStageStatusInput,
   JobStageTransitionInput,
   UUID,
 } from '@pkg/schema';
@@ -98,19 +96,6 @@ export const jobsRouter = router({
           db: ctx.db,
           id: input.id,
           stage: input.stage,
-        }),
-      ),
-    ),
-
-  setStageStatus: authorizedProcedure('job-stage:update')
-    .input(JobStageStatusInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        setJobStageStatus({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          input,
         }),
       ),
     ),

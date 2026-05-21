@@ -35,7 +35,12 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ events }) => {
   );
 
   return (
-    <section className="grid h-[calc(100vh-7rem)] grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden rounded-md border bg-muted/10 p-3">
+    <section
+      className={cn(
+        'grid h-[calc(100vh-7rem)] gap-3 overflow-hidden rounded-md border bg-muted/10 p-3',
+        events.length > 0 ? 'grid-rows-[auto_auto_minmax(0,1fr)]' : 'grid-rows-[auto_minmax(0,1fr)]',
+      )}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <HistoryIcon className="size-4 shrink-0 text-muted-foreground" />

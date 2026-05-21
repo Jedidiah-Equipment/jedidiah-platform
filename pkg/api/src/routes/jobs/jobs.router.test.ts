@@ -1,4 +1,4 @@
-import { type Db, products } from '@pkg/db';
+import { auditEvents, type Db, jobEvents, products } from '@pkg/db';
 import type { JobLifecycleStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -90,6 +90,63 @@ describe('jobs stage transitions', () => {
     });
     expect(completedStage?.actualEnd).toEqual(expect.any(String));
     expect(completed.workflowEvents.map((event) => event.eventType)).toEqual(['stage.stopped', 'stage.started']);
+  });
+
+  test('refuses stage writes while a job is paused or cancelled', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const pausedJob = await caller.jobs.pause({ id: (await caller.jobs.create({ productId: context.product.id })).id });
+    const cancelledJob = await caller.jobs.cancel({
+      id: (await caller.jobs.create({ productId: context.product.id })).id,
+    });
+
+    await expect(caller.jobs.startStage({ id: pausedJob.id, stage: 'procurement' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Job is paused.',
+    });
+    await expect(caller.jobs.startStage({ id: cancelledJob.id, stage: 'procurement' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Job is cancelled.',
+    });
+  });
+});
+
+describe('jobs lifecycle toggles', () => {
+  test('pauses, resumes, cancels, and uncancels with paired workflow and audit events', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({ productId: context.product.id });
+    const initialStages = job.stages;
+
+    const paused = await caller.jobs.pause({ id: job.id });
+    expect(paused).toMatchObject({ isCancelled: false, isPaused: true, lifecycleStatus: 'paused' });
+
+    const resumed = await caller.jobs.resume({ id: job.id });
+    expect(resumed).toMatchObject({ isCancelled: false, isPaused: false, lifecycleStatus: 'not-started' });
+
+    const cancelled = await caller.jobs.cancel({ id: job.id });
+    expect(cancelled).toMatchObject({ isCancelled: true, isPaused: false, lifecycleStatus: 'cancelled' });
+
+    const uncancelled = await caller.jobs.uncancel({ id: job.id });
+    expect(uncancelled).toMatchObject({ isCancelled: false, isPaused: false, lifecycleStatus: 'not-started' });
+    expect(uncancelled.stages).toEqual(initialStages);
+
+    const workflowEvents = (await context.db.select().from(jobEvents)).filter((event) => event.jobId === job.id);
+    expect(workflowEvents.map((event) => event.eventType).sort()).toEqual([
+      'job.cancelled',
+      'job.paused',
+      'job.resumed',
+      'job.uncancelled',
+    ]);
+
+    const auditRows = (await context.db.select().from(auditEvents)).filter((event) => event.entityId === job.id);
+    expect(auditRows.filter((event) => event.action === 'updated')).toHaveLength(4);
+  });
+
+  test('limits lifecycle toggles to roles with job update access', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const departmentCaller = context.createCaller(mockSession('job-department-manager'));
+    const job = await supervisorCaller.jobs.create({ productId: context.product.id });
+
+    await expect(departmentCaller.jobs.pause({ id: job.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
 

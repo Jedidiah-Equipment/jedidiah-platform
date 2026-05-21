@@ -14,7 +14,6 @@ import type {
   JobCreateFromQuoteInput,
   JobCreateInput,
   JobDetail,
-  JobEvent,
   JobLifecycleStatus,
   JobListInput,
   JobListResult,
@@ -26,37 +25,17 @@ import { and, asc, eq, or, type SQL, sql } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { JobLifecycleTransitionDeniedError, JobNotFoundError, JobQuoteConversionDeniedError } from './job-errors.js';
-import { applyJobLifecycleStatusChange } from './job-lifecycle-service.js';
-import { deriveJobLifecycleStatus, mapJobAuditRecord } from './job-mappers.js';
+import {
+  cancelJobLifecycle,
+  pauseJobLifecycle,
+  resumeJobLifecycle,
+  uncancelJobLifecycle,
+} from './job-lifecycle-service.js';
+import { mapJobAuditRecord } from './job-mappers.js';
 import { applyJobStageTransition } from './job-pipeline-service.js';
 import { getJob, getJobSortColumn, mapJobSummary } from './job-read-service.js';
 
-type JobLifecycleTransition = 'pause' | 'resume' | 'cancel';
-
-const jobLifecycleTransitionConfig = {
-  cancel: {
-    allowedFrom: ['active', 'paused'],
-    eventType: 'job.cancelled',
-    nextStatus: 'cancelled',
-  },
-  pause: {
-    allowedFrom: ['active'],
-    eventType: 'job.paused',
-    nextStatus: 'paused',
-  },
-  resume: {
-    allowedFrom: ['paused'],
-    eventType: 'job.resumed',
-    nextStatus: 'active',
-  },
-} as const satisfies Record<
-  JobLifecycleTransition,
-  {
-    allowedFrom: readonly ReturnType<typeof deriveJobLifecycleStatus>[];
-    eventType: Extract<JobEvent['eventType'], `job.${string}`>;
-    nextStatus: JobLifecycleStatus;
-  }
->;
+type JobLifecycleTransition = 'cancel' | 'pause' | 'resume' | 'uncancel';
 
 export async function createJob({
   db,
@@ -324,7 +303,12 @@ function buildLifecycleStatusWhere(statuses: readonly JobLifecycleStatus[]): SQL
       case 'complete':
         return and(eq(jobs.isCancelled, false), eq(jobs.isPaused, false), sql`${jobs.actualEnd} is not null`);
       case 'not-started':
-        return and(eq(jobs.isCancelled, false), eq(jobs.isPaused, false), sql`${jobs.actualStart} is null`);
+        return and(
+          eq(jobs.isCancelled, false),
+          eq(jobs.isPaused, false),
+          sql`${jobs.actualStart} is null`,
+          sql`${jobs.actualEnd} is null`,
+        );
       case 'paused':
         return and(eq(jobs.isCancelled, false), eq(jobs.isPaused, true));
       default:
@@ -375,6 +359,20 @@ export async function cancelJob({
   id: UUID;
 }): Promise<JobDetail> {
   return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'cancel' });
+}
+
+export async function uncancelJob({
+  db,
+  access,
+  actorUserId,
+  id,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  id: UUID;
+}): Promise<JobDetail> {
+  return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'uncancel' });
 }
 
 export async function startJobStage({
@@ -449,18 +447,13 @@ async function transitionJobLifecycle({
       throw new JobNotFoundError(id);
     }
 
-    const config = jobLifecycleTransitionConfig[transition];
-    const lifecycleStatus = deriveJobLifecycleStatus(row.job);
-    if (!(config.allowedFrom as readonly JobLifecycleStatus[]).includes(lifecycleStatus)) {
-      throw new JobLifecycleTransitionDeniedError(getLifecycleTransitionDeniedReason(transition, lifecycleStatus));
-    }
+    assertLifecycleFlagTransitionAllowed(row.job, transition);
 
-    await applyJobLifecycleStatusChange({
+    await applyLifecycleFlagTransition({
       actorUserId,
       before: mapJobAuditRecord(row.job),
-      eventType: config.eventType,
       id,
-      nextStatus: config.nextStatus,
+      transition,
       tx,
     });
 
@@ -468,21 +461,48 @@ async function transitionJobLifecycle({
   });
 }
 
-function getLifecycleTransitionDeniedReason(
+function assertLifecycleFlagTransitionAllowed(
+  job: Pick<typeof jobs.$inferSelect, 'isCancelled' | 'isPaused'>,
   transition: JobLifecycleTransition,
-  lifecycleStatus: JobLifecycleStatus,
-): string {
-  if (lifecycleStatus === 'complete' || lifecycleStatus === 'cancelled') {
-    return 'Terminal jobs cannot change lifecycle status.';
+): void {
+  if (transition === 'pause' && job.isPaused) {
+    throw new JobLifecycleTransitionDeniedError('Job is already paused.');
   }
 
-  if (transition === 'pause') {
-    return 'Only active jobs can be paused.';
+  if (transition === 'resume' && !job.isPaused) {
+    throw new JobLifecycleTransitionDeniedError('Job is not paused.');
   }
 
-  if (transition === 'resume') {
-    return 'Only paused jobs can be resumed.';
+  if (transition === 'cancel' && job.isCancelled) {
+    throw new JobLifecycleTransitionDeniedError('Job is already cancelled.');
   }
 
-  return 'Only active or paused jobs can be cancelled.';
+  if (transition === 'uncancel' && !job.isCancelled) {
+    throw new JobLifecycleTransitionDeniedError('Job is not cancelled.');
+  }
+}
+
+async function applyLifecycleFlagTransition({
+  actorUserId,
+  before,
+  id,
+  transition,
+  tx,
+}: {
+  actorUserId: AuthId;
+  before: ReturnType<typeof mapJobAuditRecord>;
+  id: UUID;
+  transition: JobLifecycleTransition;
+  tx: Parameters<typeof pauseJobLifecycle>[0]['tx'];
+}): Promise<void> {
+  switch (transition) {
+    case 'cancel':
+      return cancelJobLifecycle({ actorUserId, before, id, tx });
+    case 'pause':
+      return pauseJobLifecycle({ actorUserId, before, id, tx });
+    case 'resume':
+      return resumeJobLifecycle({ actorUserId, before, id, tx });
+    case 'uncancel':
+      return uncancelJobLifecycle({ actorUserId, before, id, tx });
+  }
 }

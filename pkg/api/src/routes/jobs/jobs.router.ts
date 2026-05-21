@@ -10,6 +10,7 @@ import {
   pauseJob,
   resumeJob,
   startJobStage,
+  uncancelJob,
 } from '@pkg/core';
 import {
   JobCreateFromQuoteInput,
@@ -78,6 +79,19 @@ export const jobsRouter = router({
     .mutation(({ ctx, input }) =>
       mapJobErrors(() =>
         cancelJob({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          id: input.id,
+        }),
+      ),
+    ),
+
+  uncancel: authorizedProcedure('job:update')
+    .input(JobLifecycleTransitionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        uncancelJob({
           access: ctx.access,
           actorUserId: ctx.session.user.id,
           db: ctx.db,

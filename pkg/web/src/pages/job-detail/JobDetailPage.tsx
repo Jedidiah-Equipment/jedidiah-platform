@@ -83,12 +83,22 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       onError: (error) => showMutationError(error, 'Unable to cancel job.'),
     }),
   );
+  const uncancelJobMutation = useMutation(
+    trpc.jobs.uncancel.mutationOptions({
+      onSuccess: async () => {
+        await refreshJobs();
+        toast.success('Job uncancelled');
+      },
+      onError: (error) => showMutationError(error, 'Unable to uncancel job.'),
+    }),
+  );
   const isTransitionPending =
     startStageMutation.isPending ||
     completeStageMutation.isPending ||
     pauseJobMutation.isPending ||
     resumeJobMutation.isPending ||
-    cancelJobMutation.isPending;
+    cancelJobMutation.isPending ||
+    uncancelJobMutation.isPending;
   const canUpdateJob = hasPermission(accessQuery.data, 'job:update');
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
@@ -108,7 +118,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     setConfirmation({
       body: [
         'This will cancel the Job for everyone. No department will be able to pick it up again or continue work afterward.',
-        'The Job will stay visible, along with its history. Each department will still show where the work stopped.',
+        'The Job will stay visible, along with its history. A supervisor can uncancel it later if work should continue.',
       ],
       confirmLabel: 'Cancel job',
       confirmVariant: 'destructive',
@@ -117,13 +127,13 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     });
   };
   const confirmCompleteStageTransition = (input: JobStageTransitionInput, onConfirm: () => void) => {
-    const isSupplyStage = input.stage === 'supply';
+    const isFinalStage = input.stage === 'assembly';
 
     setConfirmation({
-      body: isSupplyStage
+      body: isFinalStage
         ? [
-            'This will complete Supply and mark the whole Job as complete.',
-            'After this, no department can make more updates. The Job cannot be paused, resumed, or cancelled.',
+            'This will complete Assembly and mark the whole Job as complete.',
+            'The Job status will be derived from that completion date unless it is paused or cancelled later.',
             'The existing Job history will stay as it is.',
           ]
         : [
@@ -131,10 +141,10 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
             'The next department will be able to start handling the Job.',
             `${stageLabels[input.stage]} will stay completed. A supervisor can correct the recorded actual dates later if needed.`,
           ],
-      confirmLabel: isSupplyStage ? 'Complete job' : `Complete ${stageLabels[input.stage]}`,
+      confirmLabel: isFinalStage ? 'Complete job' : `Complete ${stageLabels[input.stage]}`,
       confirmVariant: 'default',
       onConfirm,
-      title: isSupplyStage ? 'Complete Supply and finish job?' : `Complete ${stageLabels[input.stage]}?`,
+      title: isFinalStage ? 'Complete Assembly and finish job?' : `Complete ${stageLabels[input.stage]}?`,
     });
   };
   const confirmCompleteStage = (input: JobStageTransitionInput) => {
@@ -164,12 +174,15 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
             <LifecycleControls
               isPending={isTransitionPending}
               lifecycleStatus={job.lifecycleStatus}
+              isCancelled={job.isCancelled}
+              isPaused={job.isPaused}
               onCancel={() => confirmCancelJob(job.id)}
               onPause={() => confirmPauseJob(job.id)}
               onResume={() => resumeJobMutation.mutate({ id: job.id })}
+              onUncancel={() => uncancelJobMutation.mutate({ id: job.id })}
             />
           ) : null}
-          {job.lifecycleStatus !== 'active' ? (
+          {job.isPaused || job.isCancelled ? (
             <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
               Department controls are disabled while this job is {jobLifecycleStatusLabels[job.lifecycleStatus]}.
             </div>

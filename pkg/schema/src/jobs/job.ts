@@ -319,12 +319,86 @@ export const JobDetail = JobSummary.extend({
   workflowEvents: z.array(JobEvent),
 });
 
-export type JobCreateInput = z.infer<typeof JobCreateInput>;
-export const JobCreateInput = z.object({
-  productId: UUID,
+export type JobCreateStationBookingInput = z.infer<typeof JobCreateStationBookingInput>;
+export const JobCreateStationBookingInput = z.object({
   dueEnd: z.iso.date().nullable().optional(),
+  dueEndSetManually: z.boolean().optional(),
   dueStart: z.iso.date().nullable().optional(),
+  dueStartSetManually: z.boolean().optional(),
+  stationId: UUID,
 });
+
+export type JobCreateStageInput = z.infer<typeof JobCreateStageInput>;
+export const JobCreateStageInput = z.object({
+  dueEnd: z.iso.date().nullable().optional(),
+  dueEndSetManually: z.boolean().optional(),
+  dueStart: z.iso.date().nullable().optional(),
+  dueStartSetManually: z.boolean().optional(),
+  stage: JobStageName,
+  stationBookings: z.array(JobCreateStationBookingInput).default([]),
+});
+
+export type JobCreateInput = z.infer<typeof JobCreateInput>;
+export const JobCreateInput = z
+  .object({
+    dueEnd: z.iso.date().nullable().optional(),
+    dueEndSetManually: z.boolean().optional(),
+    dueStart: z.iso.date().nullable().optional(),
+    dueStartSetManually: z.boolean().optional(),
+    productId: UUID,
+    quoteId: UUID.nullable().optional(),
+    stages: z.array(JobCreateStageInput).optional(),
+  })
+  .superRefine((value, context) => {
+    if (!value.stages) return;
+
+    const seenStages = new Map<JobStageName, number>();
+    value.stages.forEach((stage, index) => {
+      const previousIndex = seenStages.get(stage.stage);
+      if (previousIndex !== undefined) {
+        context.addIssue({
+          code: 'custom',
+          path: ['stages', index, 'stage'],
+          message: 'Job stage can only be included once',
+        });
+        context.addIssue({
+          code: 'custom',
+          path: ['stages', previousIndex, 'stage'],
+          message: 'Job stage can only be included once',
+        });
+      }
+      seenStages.set(stage.stage, index);
+
+      const seenStationIds = new Map<string, number>();
+      stage.stationBookings.forEach((booking, bookingIndex) => {
+        const previousBookingIndex = seenStationIds.get(booking.stationId);
+        if (previousBookingIndex !== undefined) {
+          context.addIssue({
+            code: 'custom',
+            path: ['stages', index, 'stationBookings', bookingIndex, 'stationId'],
+            message: 'Station can only be booked once per stage',
+          });
+          context.addIssue({
+            code: 'custom',
+            path: ['stages', index, 'stationBookings', previousBookingIndex, 'stationId'],
+            message: 'Station can only be booked once per stage',
+          });
+        }
+        seenStationIds.set(booking.stationId, bookingIndex);
+      });
+    });
+
+    for (const stage of JOB_STAGES) {
+      if (!seenStages.has(stage)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['stages'],
+          message: 'Job create stages must include every production stage',
+        });
+        return;
+      }
+    }
+  });
 
 export type JobCreateFromQuoteInput = z.infer<typeof JobCreateFromQuoteInput>;
 export const JobCreateFromQuoteInput = z.object({

@@ -1,11 +1,9 @@
 import { hasPermission } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { BriefcaseBusinessIcon, CalendarIcon, EditIcon, Loader2Icon, XIcon } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { BriefcaseBusinessIcon, EditIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 import { BackButton } from '@/components/button/BackButton.js';
 import { ButtonLink } from '@/components/button/ButtonLink.js';
@@ -13,7 +11,6 @@ import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { Calendar } from '@/components/ui/calendar.js';
 import {
   Dialog,
   DialogContent,
@@ -21,13 +18,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog.js';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { CreateJobDialog } from '@/pages/jobs/components/CreateJobDialog.js';
 import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
@@ -47,10 +42,7 @@ type QuoteTransitionConfirmation = {
 
 export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const accessQuery = useAccess();
-  const showMutationError = useApiMutationErrorToast();
   const [confirmation, setConfirmation] = useState<QuoteTransitionConfirmation | null>(null);
 
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
@@ -60,19 +52,6 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
   const acceptMutation = useQuoteStateMutation({ action: 'accept', successMessage: 'Quote accepted' });
   const rejectMutation = useQuoteStateMutation({ action: 'reject', successMessage: 'Quote rejected' });
 
-  const createJobMutation = useMutation(
-    trpc.jobs.createFromQuote.mutationOptions({
-      onSuccess: async (job) => {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() }),
-          queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() }),
-        ]);
-        toast.success('Job created');
-        await navigate({ params: { id: job.id }, to: '/jobs/$id' });
-      },
-      onError: (error) => showMutationError(error, 'Unable to create job from quote.'),
-    }),
-  );
   const currencyCode = quote?.quotedCurrencyCode ?? quote?.productCurrencyCode;
 
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
@@ -150,10 +129,15 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                 </Button>
               </>
             ) : null}
-            {canCreateJob && quote.status === 'accepted' && !quote.jobId ? (
-              <CreateJobFromQuoteDialog
-                isPending={createJobMutation.isPending}
-                onCreate={(dueEnd) => createJobMutation.mutate({ quoteId: quote.id, dueEnd })}
+            {canCreateJob && !quote.jobId ? (
+              <CreateJobDialog
+                quote={quote}
+                trigger={
+                  <Button>
+                    <BriefcaseBusinessIcon data-icon="inline-start" />
+                    Create job
+                  </Button>
+                }
               />
             ) : null}
           </div>
@@ -242,96 +226,3 @@ const QuoteTransitionConfirmationDialog: React.FC<{
     </DialogContent>
   </Dialog>
 );
-
-const CreateJobFromQuoteDialog: React.FC<{
-  isPending: boolean;
-  onCreate: (dueEnd: string | null) => void;
-}> = ({ isPending, onCreate }) => {
-  const [dueEnd, setDueDate] = useState('');
-  const selectedDueDate = parseDateInputValue(dueEnd);
-
-  return (
-    <Dialog>
-      <DialogTrigger render={<Button />}>
-        <BriefcaseBusinessIcon data-icon="inline-start" />
-        Create job
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Create job from quote</DialogTitle>
-          <DialogDescription className="flex flex-col gap-2">
-            <span>This will create a Job from the accepted Quote with the standard production stages.</span>
-            <span>The Quote will stay accepted and visible for history, and the new Job will link back to it.</span>
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-2">
-          <div className="text-sm font-medium">Due date</div>
-          <div className="flex items-center gap-2">
-            <Popover>
-              <PopoverTrigger
-                render={
-                  <Button
-                    className="min-w-0 flex-1 justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
-                    data-empty={!selectedDueDate}
-                    type="button"
-                    variant="outline"
-                  />
-                }
-              >
-                <CalendarIcon data-icon="inline-start" />
-                <DateDisplay className="min-w-0 truncate" date={dueEnd || null} emptyValue="No due date" />
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  onSelect={(date) => setDueDate(date ? getDateInputValue(date) : '')}
-                  selected={selectedDueDate}
-                />
-              </PopoverContent>
-            </Popover>
-            <Button
-              aria-label="Clear due date"
-              disabled={!dueEnd}
-              onClick={() => setDueDate('')}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              <XIcon />
-            </Button>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button disabled={isPending} onClick={() => onCreate(dueEnd || null)}>
-            {isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-            Create job
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-function parseDateInputValue(value: string): Date | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const [year, month, day] = value.split('-').map(Number);
-
-  if (year === undefined || month === undefined || day === undefined) {
-    return undefined;
-  }
-
-  const date = new Date(year, month - 1, day);
-
-  return Number.isNaN(date.getTime()) ? undefined : date;
-}
-
-function getDateInputValue(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}

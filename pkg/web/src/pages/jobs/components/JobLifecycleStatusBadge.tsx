@@ -27,6 +27,10 @@ const jobLifecycleStatusColorClassNames = {
     badge: 'border-blue-500/50 bg-blue-500/15 text-blue-800 dark:text-blue-200',
     icon: 'fill-blue-500 text-blue-500',
   },
+  'not-started': {
+    badge: 'border-slate-500/50 bg-slate-500/15 text-slate-800 dark:text-slate-200',
+    icon: 'fill-slate-500 text-slate-500',
+  },
   paused: {
     badge: 'border-orange-500/50 bg-orange-500/15 text-orange-800 dark:text-orange-200',
     icon: 'fill-orange-500 text-orange-500',

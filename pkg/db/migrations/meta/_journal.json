@@ -113,6 +113,13 @@
       "when": 1779191196247,
       "tag": "0015_sticky_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1779365423805,
+      "tag": "0016_perfect_starbolt",
+      "breakpoints": true
     }
   ]
 }

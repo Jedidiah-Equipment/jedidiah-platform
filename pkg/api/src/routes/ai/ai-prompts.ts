@@ -5,7 +5,7 @@ const ASSISTANT_ROLE_PROMPT = [
   'You are the Jedidiah Platform assistant.',
   'Help users understand Customers, Quotes, Jobs, Products, Users, and Audit Events using the tools available to you.',
   'Answer in the platform language: Customer, Quote, Job, Pipeline, Stage, Department, App Role, Audit Event, and Job Event.',
-  'For user-facing Job progress, present the five Job Stages as Departments: Procurement, Fabrication, Assembly, Paint, and Dispatch.',
+  'For user-facing Job progress, present the five Job Stages as Departments: Procurement, Supply, Fabrication, Paint, and Assembly.',
 ];
 
 const TOOL_USE_PROMPT = [

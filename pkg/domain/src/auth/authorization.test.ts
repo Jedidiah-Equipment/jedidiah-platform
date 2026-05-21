@@ -55,7 +55,7 @@ describe('getRolePermissions', () => {
   });
 
   it('grants department-scoped stage write permissions to job stage editors', () => {
-    expect(getRolePermissions('job-stage-editor')).toEqual(['job-stage:read', 'job-stage:update', 'job:read']);
+    expect(getRolePermissions('job-department-manager')).toEqual(['job-stage:read', 'job-stage:update', 'job:read']);
   });
 
   it('grants quote-only permissions to sales', () => {
@@ -113,7 +113,7 @@ describe('hasPermission', () => {
 });
 
 describe('job authorization policy', () => {
-  const stages = ['procurement', 'fabrication', 'assembly', 'paint', 'dispatch'] as const;
+  const stages = ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const;
   type Stage = (typeof stages)[number];
 
   it('covers the viewer profile by stage matrix', () => {
@@ -121,7 +121,7 @@ describe('job authorization policy', () => {
       {
         access: createUserAccessSummary({
           departments: ['paint'],
-          role: 'job-stage-editor',
+          role: 'job-department-manager',
           userId: 'user_123',
         }),
         editableStages: ['paint'],
@@ -129,12 +129,12 @@ describe('job authorization policy', () => {
       },
       {
         access: createUserAccessSummary({
-          departments: ['fabrication', 'dispatch'],
-          role: 'job-stage-editor',
+          departments: ['fabrication', 'supply'],
+          role: 'job-department-manager',
           userId: 'user_123',
         }),
-        editableStages: ['fabrication', 'dispatch'],
-        viewableStages: ['fabrication', 'dispatch'],
+        editableStages: ['fabrication', 'supply'],
+        viewableStages: ['fabrication', 'supply'],
       },
       {
         access: createUserAccessSummary({
@@ -163,7 +163,7 @@ describe('job authorization policy', () => {
       {
         access: createUserAccessSummary({
           departments: [],
-          role: 'job-stage-editor',
+          role: 'job-department-manager',
           userId: 'user_123',
         }),
         editableStages: stages,
@@ -191,7 +191,7 @@ describe('job authorization policy', () => {
   it('scopes single-department job stage editors to their department', () => {
     const access = createUserAccessSummary({
       departments: ['paint'],
-      role: 'job-stage-editor',
+      role: 'job-department-manager',
       userId: 'user_123',
     });
 
@@ -205,7 +205,7 @@ describe('job authorization policy', () => {
   it('keeps stage detail read gated by job-stage read plus department scope', () => {
     const paintScopedAccess = createUserAccessSummary({
       departments: ['paint'],
-      role: 'job-stage-editor',
+      role: 'job-department-manager',
       userId: 'user_123',
     });
     const jobOnlyAccess = {
@@ -223,14 +223,14 @@ describe('job authorization policy', () => {
 
   it('scopes multi-department job stage editors to any of their departments', () => {
     const access = createUserAccessSummary({
-      departments: ['fabrication', 'dispatch'],
-      role: 'job-stage-editor',
+      departments: ['fabrication', 'supply'],
+      role: 'job-department-manager',
       userId: 'user_123',
     });
 
     expect(canViewJob(access)).toBe(true);
     expect(canViewStage(access, { stage: 'fabrication' })).toBe(true);
-    expect(canEditStage(access, { stage: 'dispatch' })).toBe(true);
+    expect(canEditStage(access, { stage: 'supply' })).toBe(true);
     expect(canViewStage(access, { stage: 'procurement' })).toBe(false);
     expect(canEditStage(access, { stage: 'paint' })).toBe(false);
   });
@@ -271,13 +271,13 @@ describe('job authorization policy', () => {
   it('treats job stage editors with no selected departments as all-stage editors', () => {
     const access = createUserAccessSummary({
       departments: [],
-      role: 'job-stage-editor',
+      role: 'job-department-manager',
       userId: 'user_123',
     });
 
     expect(canViewJob(access)).toBe(true);
     expect(canViewStage(access, { stage: 'paint' })).toBe(true);
     expect(canEditStage(access, { stage: 'paint' })).toBe(true);
-    expect(canEditStage(access, { stage: 'dispatch' })).toBe(true);
+    expect(canEditStage(access, { stage: 'supply' })).toBe(true);
   });
 });

@@ -11,7 +11,7 @@ const ac = createAccessControl(authorizationStatement);
 
 const authRoles = {
   admin: ac.newRole(appRoleAccess.admin),
-  'job-stage-editor': ac.newRole(appRoleAccess['job-stage-editor']),
+  'job-department-manager': ac.newRole(appRoleAccess['job-department-manager']),
   'job-supervisor': ac.newRole(appRoleAccess['job-supervisor']),
   'product-editor': ac.newRole(appRoleAccess['product-editor']),
   sales: ac.newRole(appRoleAccess.sales),

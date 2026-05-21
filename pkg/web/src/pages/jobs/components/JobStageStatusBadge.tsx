@@ -1,5 +1,5 @@
 import { jobStageStatusLabels } from '@pkg/domain';
-import type { JobStageName, JobStageStatus } from '@pkg/schema';
+import type { JobStageName, JobWorkState } from '@pkg/schema';
 import type React from 'react';
 
 import { Badge } from '@/components/ui/badge.js';
@@ -8,7 +8,7 @@ import { getJobStageStatusColorClassNames } from './job-stage-status-color.js';
 
 type JobStageStatusBadgeProps = Omit<React.ComponentProps<typeof Badge>, 'children' | 'variant'> & {
   stage: JobStageName;
-  status: JobStageStatus;
+  status: JobWorkState;
 };
 
 export function JobStageStatusBadge({ className, stage, status, ...props }: JobStageStatusBadgeProps) {

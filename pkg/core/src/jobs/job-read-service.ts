@@ -26,9 +26,11 @@ import {
   type JobEventWithActorRow,
   type JobRow,
   type JobStageRow,
+  type JobStageStationWithStationRow,
   mapJob,
   mapJobEventWithActor,
   mapJobStage,
+  mapStationBooking,
 } from './job-mappers.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
@@ -39,7 +41,7 @@ type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'> & {
 type JobWithProductRow = JobRow & {
   product: ProductRow;
   quote: QuoteRow | null;
-  stages: JobStageRow[];
+  stages: (JobStageRow & { stations: JobStageStationWithStationRow[] })[];
 };
 
 export async function getJob({
@@ -55,9 +57,17 @@ export async function getJob({
     columns: {
       createdAt: true,
       code: true,
-      dueDate: true,
+      actualEnd: true,
+      actualEndSetManually: true,
+      actualStart: true,
+      actualStartSetManually: true,
       id: true,
-      lifecycleStatus: true,
+      dueEnd: true,
+      dueEndSetManually: true,
+      dueStart: true,
+      dueStartSetManually: true,
+      isCancelled: true,
+      isPaused: true,
       productId: true,
       quoteId: true,
       updatedAt: true,
@@ -94,6 +104,13 @@ export async function getJob({
       },
       stages: {
         orderBy: [asc(jobStages.sequence)],
+        with: {
+          stations: {
+            with: {
+              station: true,
+            },
+          },
+        },
       },
     },
   });
@@ -114,7 +131,8 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
-    lifecycleStatus: sql`${jobs.lifecycleStatus}`,
+    // Derived lifecycle sorting is a UI contract: not-started, active, complete, paused, cancelled.
+    lifecycleStatus: sql`case when ${jobs.isCancelled} then 5 when ${jobs.isPaused} then 4 when ${jobs.actualEnd} is not null then 3 when ${jobs.actualStart} is not null then 2 else 1 end`,
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];
@@ -131,10 +149,11 @@ export function mapJobSummary(row: JobWithProductRow): JobSummary {
   };
 }
 
-function mapJobStageSummary(row: JobStageRow): JobStageSummary {
+function mapJobStageSummary(row: JobStageRow & { stations?: JobStageStationWithStationRow[] }): JobStageSummary {
   return JobStageSummary.parse({
     ...mapJobStage(row),
     department: row.stage,
+    stations: row.stations?.map(mapStationBooking) ?? [],
   });
 }
 

@@ -2,12 +2,12 @@ import { z } from 'zod';
 
 import { AuthId } from './auth-id.js';
 
-export const APP_ROLES = ['admin', 'product-editor', 'job-supervisor', 'job-stage-editor', 'sales'] as const;
+export const APP_ROLES = ['admin', 'product-editor', 'job-supervisor', 'job-department-manager', 'sales'] as const;
 
 export type AppRole = z.infer<typeof AppRole>;
 export const AppRole = z.enum(APP_ROLES);
 
-export const DEPARTMENTS = ['procurement', 'fabrication', 'assembly', 'paint', 'dispatch'] as const;
+export const DEPARTMENTS = ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const;
 
 export type Department = z.infer<typeof Department>;
 export const Department = z.enum(DEPARTMENTS);

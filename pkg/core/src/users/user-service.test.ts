@@ -22,8 +22,8 @@ describe('getUserAccessSummary', () => {
     expect(select).not.toHaveBeenCalled();
   });
 
-  it.each(['job-stage-editor', 'job-supervisor'] as const)('loads departments for %s', async (role) => {
-    const { db, select } = createDepartmentDb([{ department: 'paint' }, { department: 'dispatch' }]);
+  it.each(['job-department-manager', 'job-supervisor'] as const)('loads departments for %s', async (role) => {
+    const { db, select } = createDepartmentDb([{ department: 'paint' }, { department: 'supply' }]);
 
     await expect(
       getUserAccessSummary({
@@ -32,7 +32,7 @@ describe('getUserAccessSummary', () => {
         userId: 'user_123',
       }),
     ).resolves.toMatchObject({
-      departments: ['paint', 'dispatch'],
+      departments: ['paint', 'supply'],
       role,
       userId: 'user_123',
     });

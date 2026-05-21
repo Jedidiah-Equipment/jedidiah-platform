@@ -465,6 +465,10 @@ function assertLifecycleFlagTransitionAllowed(
   job: Pick<typeof jobs.$inferSelect, 'isCancelled' | 'isPaused'>,
   transition: JobLifecycleTransition,
 ): void {
+  if (job.isCancelled && (transition === 'pause' || transition === 'resume')) {
+    throw new JobLifecycleTransitionDeniedError('Cancelled jobs cannot be paused or resumed.');
+  }
+
   if (transition === 'pause' && job.isPaused) {
     throw new JobLifecycleTransitionDeniedError('Job is already paused.');
   }

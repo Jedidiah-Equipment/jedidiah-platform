@@ -174,6 +174,27 @@ describe('jobs lifecycle toggles', () => {
     expect(uncancelled.lifecycleStatus).toBe('complete');
   });
 
+  test('blocks pause and resume while a job is cancelled', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const pausedJob = await caller.jobs.pause({ id: (await createActiveJob(caller, context.product.id)).id });
+    const cancelledPausedJob = await caller.jobs.cancel({ id: pausedJob.id });
+
+    await expect(caller.jobs.resume({ id: cancelledPausedJob.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Cancelled jobs cannot be paused or resumed.',
+    });
+    await expect(caller.jobs.pause({ id: cancelledPausedJob.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Cancelled jobs cannot be paused or resumed.',
+    });
+
+    const uncancelled = await caller.jobs.uncancel({ id: cancelledPausedJob.id });
+    expect(uncancelled.lifecycleStatus).toBe('paused');
+
+    const resumed = await caller.jobs.resume({ id: cancelledPausedJob.id });
+    expect(resumed.lifecycleStatus).toBe('active');
+  });
+
   test('limits lifecycle toggles to roles with job update access', async ({ context }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const departmentCaller = context.createCaller(mockSession('job-department-manager'));

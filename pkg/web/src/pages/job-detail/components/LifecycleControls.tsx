@@ -41,7 +41,13 @@ export const LifecycleControls: React.FC<LifecycleControlsProps> = ({
             <PauseIcon data-icon="inline-start" />
             Pause
           </Button>
-          <Button disabled={isPending || !isPaused} onClick={onResume} size="sm" type="button" variant="outline">
+          <Button
+            disabled={isPending || isCancelled || !isPaused}
+            onClick={onResume}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
             <RotateCcwIcon data-icon="inline-start" />
             Resume
           </Button>

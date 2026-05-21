@@ -1,4 +1,4 @@
-import { hasPermission, JOB_STAGE_PIPELINE, jobLifecycleStatusLabels } from '@pkg/domain';
+import { FINAL_JOB_STAGE, hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
@@ -21,8 +21,6 @@ import { StagePanel } from './components/StagePanel.js';
 import { WorkflowHistory } from './components/WorkflowHistory.js';
 import { stageLabels } from './constants.js';
 import type { JobStageTransitionInput, JobTransitionConfirmation } from './types.js';
-
-const finalJobStage = getFinalJobStage();
 
 type JobDetailPageProps = {
   jobId: UUID;
@@ -129,8 +127,8 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     });
   };
   const confirmCompleteStageTransition = (input: JobStageTransitionInput, onConfirm: () => void) => {
-    const isFinalStage = input.stage === finalJobStage;
-    const finalStageLabel = stageLabels[finalJobStage];
+    const isFinalStage = input.stage === FINAL_JOB_STAGE;
+    const finalStageLabel = stageLabels[FINAL_JOB_STAGE];
 
     setConfirmation({
       body: isFinalStage
@@ -213,15 +211,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     </DetailPageLayout>
   );
 };
-
-function getFinalJobStage() {
-  const finalStep = JOB_STAGE_PIPELINE[JOB_STAGE_PIPELINE.length - 1];
-  if (!finalStep) {
-    throw new Error('Job stage pipeline must include a final stage.');
-  }
-
-  return finalStep.stage;
-}
 
 const JobQuoteLink: React.FC<{
   canOpenQuote: boolean;

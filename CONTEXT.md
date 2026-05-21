@@ -1,180 +1,262 @@
 # Jedidiah Platform
 
-Domain language for the Jedidiah production-floor platform. The core unit being tracked is a **Job** — one physical product instance moving through a fixed five-stage pipeline.
+Domain language for the Jedidiah production-floor platform. The core unit being tracked is a **Job** — one physical product instance moving through a five-stage manufacturing pipeline. Each Stage is owned by a Department and contains one or more **Stations** that do the physical work.
 
 ## Language
 
 ### Job & pipeline
 
 **Job**:
-The platform's unit of production-floor tracking — one physical product instance being built end-to-end.
+The platform's unit of production-floor tracking — one physical product instance being built end-to-end. A Job may originate from a Quote (the typical path) or be created directly (stock builds, R&D, warranty rebuilds).
 _Avoid_: Order, Work Order, Build, Ticket.
 
 **Customer**:
-A standalone business/organization record with contact details. A Customer reaches a Job only through a Quote — there is no direct Customer↔Job link.
-_Avoid_: Job customer, Product customer (the link runs via Quote, not directly).
+A standalone business/organization record with contact details. A Customer reaches a Job only through a Quote. A Job created directly (no Quote) has no Customer.
+_Avoid_: Job customer, Product customer.
 
 **Pipeline**:
-The fixed, sequential sequence of five stages every Job moves through: Procurement → Fabrication → Assembly → Paint → Dispatch.
+The five-stage manufacturing sequence: Procurement → Supply → Fabrication → Paint → Assembly. The sequence is the **default ordering for due-date defaulting and visual layout only**; actual work is not gated by it (see **Advisory Ordering**).
 _Avoid_: Workflow, Process.
 
 **Stage**:
-One of the five fixed steps in the Pipeline, owned by a single Department. Represented by a `job_stage` row; all five rows are materialised at Job creation.
+One of the five fixed steps in the Pipeline, owned by a single Department. Represented by a `job_stage` row; all five rows are materialised at Job creation. A Stage has due/actual dates and one or more **Station Bookings**.
 _Avoid_: Step, Phase, Task.
 
 **Department-facing Stage Label**:
-User-facing production progress should label the five fixed Job Stages by their owning Departments: Procurement, Fabrication, Assembly, Paint, and Dispatch. Internally these remain **Stages** and `job_stage` rows; in UI and assistant answers, users experience them as Departments.
-_Avoid_: Stage 1, Stage 2, Stage 3, Stage 4, Stage 5 in user-facing copy.
+Stages are user-facing labelled by their owning Departments: Procurement, Supply, Fabrication, Paint, Assembly. Internally these remain **Stages** and `job_stage` rows.
+_Avoid_: Stage 1..5 in user-facing copy.
 
 **Sequence Number**:
-The 1..5 position of a Stage in the Pipeline. `(job_id, sequence)` is unique; sequence is how *order* is enforced, not the stage name.
+The 1..5 default position of a Stage in the Pipeline. Used for visual ordering and due-date defaulting only — not for gating.
+
+**Procurement**:
+The vendor-facing purchasing Stage. Owned by the Procurement Department.
+
+**Supply**:
+The Stage covering in-house receipt, QC, and staging of materials purchased during Procurement. Owned by the Supply Department. Distinct from Procurement (which is vendor-facing). Commonly overlaps with Procurement and Fabrication in time.
+
+**Fabrication**:
+The Stage covering metalwork, machining, and component manufacture. Owned by the Fabrication Department.
+
+**Paint**:
+The Stage covering surface preparation and painting — typically of fabricated parts before final assembly. Owned by the Paint Department.
+
+**Assembly**:
+The Stage covering final assembly, fit-out, and QC of the finished product. Owned by the Assembly Department. The last manufacturing stage; logistics/dispatch is handled outside the Job model.
+
+**Advisory Ordering**:
+The Pipeline order is a default for due-date computation and visual ordering, not a gate. Any Stage may be started or ended in any order; the data records what actually happened. Gating may be re-introduced later via configuration if floor discipline requires it.
+_Avoid_: "sequential pipeline", "next stage", "Pipeline reachability" — these terms applied to the older gated model and are retired.
+
+### Station model
+
+**Station**:
+A named physical resource that performs floor work for exactly one Department — e.g. "Weld Bay 1", "Paint Booth A". A catalog record (`station` table) independent of any Job. Managed by admins and `job-supervisor`s. Soft-deactivated (`is_active = false`) when retired; never hard-deleted.
+_Avoid_: Workstation, Cell, Bench (use Station consistently).
+
+**Station Booking**:
+A Job's use of a Station within its owning Stage. Represented by a `job_stage_station` row carrying its own due/actual dates. Created at Job creation (defaults from the Product), editable by `job-supervisor`. The unit a Department Manager Starts/Stops.
+
+**Station Catalog**:
+The set of all Stations across all Departments. Read by anyone with `job:read` (to render Job views). Mutated by admins and `job-supervisor`s.
+
+### Dates & defaulting
 
 **Due Date**:
-An optional target completion date on a Job. Set at creation — via the create-from-Quote dialog or direct Job creation — and editable afterwards by anyone with `job:update`. A target only: it does not gate the Pipeline or Job Lifecycle.
+A planned start or end date at any of the three levels (Job, Stage, Station Booking). Editable only by `job-supervisor` and `admin`. Two fields per level: `due_start`, `due_end`.
+
+**Actual Date**:
+The recorded real start or end date at any level. Set by Department Managers via Start/Stop, by auto-cascade from lower levels, or by direct `job-supervisor` override. Two fields per level: `actual_start`, `actual_end`.
+
+**Date Cascade (Down)**:
+When a higher-level due date is created or shifted, lower-level due dates auto-recompute — *unless they were manually set*, in which case they're "sticky" and untouched. Direction:
+- At Job creation, the supervisor enters Job `due_start` **or** `due_end` (toggle). The system walks forward (from `due_start`) or backward (from `due_end`) through Stage durations from the Product, then propagates to Station Bookings.
+- After creation, editing a Job-level due date shifts auto fields by the same delta; sticky fields are pinned.
+- A warning (not a block) is shown when the implied schedule is infeasible (e.g. due-end too soon for total Product duration).
+
+**Date Cascade (Up)**:
+When a Station Booking's actual date is recorded, the parent Stage's `actual_start` defaults to MIN of its station starts and `actual_end` defaults to MAX of its station ends — *unless manually set*. Same MIN/MAX rule cascades from Stage to Job. Manually set fields are sticky; clearing them re-enables auto-derivation.
+
+**Sticky Override**:
+A date field that has been set explicitly (not derived) is sticky: future cascades do not overwrite it. Tracked per field via a `*_set_manually` marker (or `set_by_user_id`). Clearing the value re-enables the auto rule. Applies uniformly to due dates (cascade-down) and actual dates (cascade-up).
+
+**Product Duration**:
+Per-Department duration defined on a Product, used to compute default due dates at Job creation. Five sub-forms per Product (one per Department), each carrying a duration and a default Station list. A Product not yet configured for a Department defaults to 0 days and no stations; the Create-Job dialog warns.
 
 ### Status & lifecycle
 
-**Stage Status**:
-A Stage's per-department workflow position (e.g. "awaiting-supplier", "in-press"). Stored as `text` on `job_stage`; validated app-side via a Zod discriminated union keyed on `stage`. The per-stage status enums are deferred to each department's implementing slice.
+**Derived Job Status**:
+The Job's user-facing state, computed from flags and dates with this precedence:
+```
+isCancelled                              → 'cancelled'
+isPaused                                 → 'paused'
+job.actual_end IS NOT NULL               → 'complete'
+job.actual_start IS NOT NULL             → 'active'
+else                                     → 'not-started'
+```
+Not stored — derived on read.
+_Avoid_: Job Lifecycle Status (the previous *stored* enum is retired).
 
-**Stage Summary**:
-The "where is this Stage at" snapshot of a Stage — its **Stage Status**, `started_at`, and `completed_at`. Considered part of the **Job** aggregate: any User with `job:read` sees the Stage Summary of **all five** Stages, unscoped, regardless of Department membership. Carries no edit affordances. This is what powers the per-Department chips on the jobs table and the readonly Stage panels on the job detail page.
-_Avoid_: "Locked stage" / "hidden stage" — there is no longer any Stage a Job-reader cannot see at summary level.
+**Derived Stage / Station Status**:
+Computed from actual dates with no separate enum:
+```
+actual_start IS NULL                     → 'pending'
+actual_start set, actual_end NULL        → 'in-progress'
+actual_end set                           → 'complete'
+```
+Not stored.
+_Avoid_: Stage Status (the previous per-department text enum is retired).
 
-**Stage Detail**:
-The in-scope view of a Stage: the **Stage Summary** plus its edit affordances (transition availability) and any future per-Stage captured data. Gated by `job-stage:read` / `job-stage:update` **and** Department **Scope** — a User sees Stage Detail only for Stages owned by their Departments (or all Stages, if unscoped). Today the only "detail" beyond the Summary is the transition controls; richer per-Stage data capture is deferred.
+**`isPaused`**:
+A boolean Job-level flag. When `true`: Department Managers cannot click Start/Stop on Station Bookings, and they cannot record actual dates. `job-supervisor`s can still edit any date (planners often pause *to* re-plan). Reversible.
 
-**Stage Completion**:
-A one-way latch on a Stage: `completed_at` may be set once and is not unset by normal workflow. Completing a Stage sets both `completed_at` and `status = 'complete'`; selecting the `complete` Stage Status uses the same completion semantics. Selecting `complete` after `completed_at` is set never rewrites `completed_at`: it only moves `status` back to `complete` when needed, and is a true no-op if the status is already `complete`. Later status edits may move away from `complete`, but they never clear `completed_at`.
-_Avoid_: "Closed stage", "finished stage" (overloaded).
+**`isCancelled`**:
+A boolean Job-level flag. When `true`: same blocks as `isPaused`. Reversible by `job-supervisor` (prototype model; may later become a one-way latch).
 
-**Job Lifecycle Status**:
-A Job-level state (`active | paused | complete | cancelled`) governing whether *any* Stage on the Job is open to mutation. Independent of Stage progress.
-_Avoid_: Job Status, Job State (collides with Stage Status).
+**Job Lifecycle Does Not Cascade**:
+Pausing or cancelling a Job does not mutate Stage or Station Booking rows. Date history is preserved honestly; the pause/cancel gates write access at the API/UI layers.
 
-**Job-Level Lifecycle Does Not Cascade**:
-Pausing or cancelling a Job does **not** mutate Stage rows. Stage rows preserve their honest history; lifecycle gating is enforced at the API/UI layers, not by rewriting Stage data.
+**Auto-Start / Auto-Complete Cascade**:
+- First Station Booking to record `actual_start` in a Stage auto-sets the Stage's `actual_start` (if not sticky).
+- First Stage to record `actual_start` auto-sets the Job's `actual_start` (if not sticky).
+- Last Station Booking to record `actual_end` in a Stage auto-sets the Stage's `actual_end` (if not sticky).
+- Last Stage to record `actual_end` auto-sets the Job's `actual_end` (if not sticky). When that happens, the Derived Job Status becomes `complete`.
 
-**Auto-Complete-Job Transition**:
-The single Stage→Job write: completing the Dispatch Stage atomically sets `job.lifecycle_status = 'complete'` in the same transaction.
+**Date Editability**:
+Both due and actual dates are freely editable by `job-supervisor` and `admin`. There is no one-way completion latch (supersedes the previous "completion latch" rule). The audit trail (`AuditEvent` + `date.overridden` Job Event) is the safety net.
+
+**Re-Start Refused**:
+A Department Manager cannot re-Start a Station Booking that has both `actual_start` and `actual_end` set. The fix path is to ask a `job-supervisor` to clear `actual_end`.
 
 ### People & access
 
 **Department**:
-One of the five fixed teams that own a Stage: Procurement, Fabrication, Paint, Assembly, Dispatch. Modelled as a Zod enum. A User may belong to zero or more Departments via the `user_department` junction table.
+One of the five fixed teams that own a Stage: Procurement, Supply, Fabrication, Paint, Assembly. Modelled as a Zod enum. A User may belong to zero or more Departments via the `user_department` junction table.
 _Avoid_: Team, Group.
 
 **App Role**:
-A flat role assigned to a User that grants verb capabilities on resources. Roles say "what verbs you can call"; they do not by themselves say "on which rows". See **Scope**.
+A flat role assigned to a User that grants verb capabilities on resources.
 
 **Scope**:
-The rule that determines *which rows* a User's Job/Job-Stage verbs apply to. Scope is a property of the **User's Department-membership set**, not of their Role: a User with one or more Department memberships is **scoped** — verbs apply only to Stages owned by those Departments; a User with an empty membership set is **unscoped** — verbs apply to every Stage the Role permits. Empty membership means "all Departments", not "no access". Scope is enforced by the **Job Authorization Policy** (the `can*Stage` functions in `pkg/domain/src/auth/authorization.ts`) — it is not encoded in the permission strings. Scope governs **Stage Detail** read and Stage writes only; **Stage Summary** is part of the Job and is never scoped.
+The rule that determines *which rows* a User's Job/Stage/Station verbs apply to. Scope is a property of the **User's Department-membership set**, not of their Role: a User with one or more memberships is **scoped** to those Departments; a User with an empty membership set is **unscoped** (verbs apply to all rows the Role permits). Scope governs **Stage Detail** read and Station-write affordances; Stage Summary and Station Summary are part of the Job aggregate and are never scoped.
 
-**Department-Aware Role**:
-A Role for which Department membership is consulted, so a User holding it can be either scoped or unscoped depending on their memberships. Currently: `job-stage-editor` and `job-supervisor` — the members of `DEPARTMENT_AWARE_ROLES`. For these roles `user_department` is read when the access summary is built.
-_Avoid_: "Department-Scoped Role" (scope is a property of the User, not the Role).
-
-**Department-Blind Role**:
-A Role for which Department membership is never consulted; its verbs always apply cross-cutting. Currently: `admin`, `product-editor`, and `sales` — none of which have Department-scoped Job access. `user_department` is never read for these roles, so such a User is always unscoped.
-_Avoid_: "Cross-Cutting Role" applied to `job-supervisor` — it is Department-Aware and cross-cutting only when the User has no Departments.
-
-**`job-stage-editor`**:
-Department-Aware Role. Reads and writes Stages owned by the User's Departments; with no Departments selected, reads and writes all Stages.
+**`admin`**:
+Department-Blind. All verbs everywhere, including Station Catalog management.
 
 **`job-supervisor`**:
-Department-Aware, read+write Role for planners/supervisors. Includes Job lifecycle transitions (pause/resume/cancel). Cross-cutting when the User has no Departments; scoped to the User's Departments when any are assigned.
+Department-Aware. Cross-cutting when the User has no Departments; scoped when any are assigned. Capabilities:
+- Create Jobs (from Quote or directly)
+- Configure all due dates at all three levels
+- Override any actual date at any level
+- Add/remove Station Bookings on a Job, before or after creation
+- Toggle `isPaused`, `isCancelled`
+- Manage the Station Catalog
+
+**`job-department-manager`** (renamed from `job-stage-editor`):
+Department-Aware. Reads Stage Detail and Station Bookings for owned Departments (or all if unscoped). The only mutation is **Start/Stop on Station Bookings** in their Departments. Cannot edit due dates, override actual dates, or change the Station list.
+_Future_: a `job-department-member` role is anticipated — same as `job-department-manager` but further scoped to specific Stations (user↔Station link). Out of scope for now.
 
 **`sales`**:
-Department-Blind Role for the sales team. Grants `quote:*` (create, read, update Quotes) and nothing on Jobs or Stages. A Salesperson holding it cannot convert an accepted Quote into a Job — that is a `job-supervisor`/`admin` action.
+Department-Blind. `quote:*` only. Cannot create Jobs.
 
-### Logs
-
-**Audit Event**:
-Existing field-level forensic log. Records *what field changed from what to what, by whom, when*. Extended with `job`, `job_stage`, and `quote` entity types. Quote state changes are recorded with Audit Events only — there is no typed Quote event log (see ADR-0008).
-
-**Job Event**:
-New typed workflow-transition log (`job_event` table). Records *which business transition occurred*: `stage.started`, `stage.status_changed`, `stage.completed`, `job.paused`, `job.resumed`, `job.cancelled`, `job.completed`. Payload is a Zod-validated discriminated union on `event_type`.
-
-**Dual Logging**:
-Every state-changing endpoint writes both an Audit Event and a Job Event in the same transaction. The workflow-history UI queries Job Event; the forensic-audit UI queries Audit Event. Neither replaces the other.
-
-**Workflow History**:
-The user-facing chronological view of a Job's Job Events. Distinct from the forensic Audit log.
-
-### UI conventions
-
-**Completed-Stage Visibility**:
-A UI/query-default convention — list views hide Stages whose `completed_at` is set; an `includeCompleted` toggle reveals them. **No persisted flag**; not an authorization concept. Detail views always show the full Pipeline.
-
-### Customers
-
-**Customer**:
-A business or organization the company builds equipment for. A standalone directory record — Company Name is the only required field; Email, Address (free-text), Contact Person, Phone, and Notes are optional. A Customer can be quick-created inline while drafting a Quote with just a Company Name.
-_Avoid_: Client, Account, Buyer. "Contact" is a field on a Customer (`contactPerson`), not a synonym for Customer.
+**`product-editor`**:
+Department-Blind. Manages Products and their per-Department duration sub-forms.
 
 ### Quotes
 
 **Quote**:
-A sales offer to build one Product for one Customer at an agreed price — the bridge between a Customer and the production floor. An accepted Quote can spawn at most one Job.
+A sales offer associated with one Customer, optionally specifying a Product, price, discount, and validity window. **Customer is the only required field** at creation; Product and price may be filled in later. A Quote may spawn at most one Job. A Job *may* originate from a Quote but is not required to (see **Direct Job Creation**).
 _Avoid_: Estimate, Proposal, Bid, Order.
 
+**Quote Required Fields**:
+At creation, only `customer_id` is required. Product, price, discount, valid-until, salesperson, and notes are all optional until the Quote is sent. **Quote Send** enforces that Product (and therefore Quoted Price) is set, since send-latches require something to latch.
+
 **Quote Code**:
-A Quote's human-facing reference, an auto-incrementing number rendered as `QUO-00001`. The sales-side counterpart of a Job Code; the UUID remains the storage key.
+A Quote's human-facing reference, an auto-incrementing number rendered as `QUO-00001`.
 
 **Quote Status**:
-A Quote's position in a fixed linear lifecycle: `draft → sent → (accepted | rejected)`. A separate concept from Job Lifecycle Status and Stage Status.
-_Avoid_: Quote State.
+A Quote's fixed linear lifecycle: `draft → sent → (accepted | rejected)`.
 
 **Quote Send**:
-Sending a Quote (`draft → sent`) latches it: Customer, Product, discount, valid-until, salesperson, notes, and the snapshotted price all become immutable. After send only Status may change, and only to `accepted` or `rejected`. Revisions are made by issuing a new `draft` Quote, not by editing a sent one.
-
-**Quoted Price**:
-The Product's `base_price` and currency, copied onto the Quote on send. The Quote total is `Quoted Price − discount` and never moves when the Product is later re-priced.
-_Avoid_: live price, current price.
-
-**Quote Discount**:
-A fixed cash amount subtracted from the Quoted Price, in the Quote's currency. Constrained to `0 ≤ discount ≤ Quoted Price`, so a Quote total is never negative.
-_Avoid_: percentage discount, markdown.
-
-**Valid Until**:
-An informational expiry date on a Quote — used for display and sorting only. It never changes Quote Status and never blocks acceptance; there is deliberately no `expired` status.
-
-**Salesperson**:
-The User who owns a Quote. Any User whose App Role grants `quote:*` — currently the `sales` or `admin` Role.
-_Avoid_: Quote owner, Account manager.
+Sending a Quote latches it: Customer, Product, discount, valid-until, salesperson, notes, and the snapshotted price become immutable.
 
 **Quote Conversion**:
-Creating the single Job from an `accepted` Quote, done by a `job-supervisor` or `admin` (not the Salesperson). The new Job copies the Quote's Product; the conversion dialog also sets the Job's optional Due Date.
+Creating the single Job from a Quote in **`draft`** or **`accepted`** status, done by a `job-supervisor` or `admin`. Triggered from a per-Quote-row "Create Job" button — never automatic. Hidden when the Quote is `sent` (awaiting customer response) or `rejected`. Opens the Create-Job dialog with defaults from the Quote (Customer always; Product if set) and, when a Product is chosen, the Product's per-Department durations and default stations. All fields editable.
+_Avoid_: "Auto-Convert on Accept" — there is no such trigger. _Avoid_: "Accepted-only conversion" — Draft Quotes can also spawn Jobs.
+
+**Direct Job Creation**:
+Creating a Job with no associated Quote — for stock builds, R&D prototypes, or warranty rebuilds. Uses the same Create-Job dialog, with Customer and Quote fields left empty.
+
+**Salesperson**:
+The User who owns a Quote.
+
+**Quoted Price / Quote Discount / Valid Until**:
+Unchanged from prior model — see Quote section in ADR-0006.
+
+### Logs
+
+**Audit Event**:
+Field-level forensic log: *what field changed from what to what, by whom, when*. Extended to cover `job`, `job_stage`, `job_stage_station`, and `station` entity types.
+
+**Job Event**:
+Typed workflow-transition log (`job_event` table). New taxonomy:
+- `station.started`, `station.ended`
+- `stage.started`, `stage.ended` (emitted only when auto-cascaded from station events)
+- `job.started`, `job.completed` (emitted only when auto-cascaded from stage events)
+- `job.paused`, `job.resumed`, `job.cancelled`, `job.uncancelled`
+- `date.overridden` (any supervisor-direct date edit; payload carries `entity_level`, `entity_id`, `field`, `old_value`, `new_value`)
+
+**Dual Logging**:
+Every state-changing endpoint writes both an Audit Event and a Job Event in the same transaction.
+
+**Workflow History**:
+The user-facing chronological view of a Job's Job Events.
+
+### UI conventions
+
+**Station Booking Summary on Job List**:
+Per-Stage progress on the jobs list is rendered as a count chip (e.g. "Fabrication: 2/3 stations done"), not per-station chips. Detail comes on the Job detail page.
+
+**Station Summary visibility**:
+Station Booking dates (due + actual) are part of the Job aggregate — every `job:read` user sees them, regardless of Department membership. **Stage Detail and Station write affordances** (Start/Stop) remain Department-scoped. This extends ADR-0010.
+
+**Gantt (deferred)**:
+A planned visualization of Stage/Station Bookings across a Job and across the Job list. Used (later) to detect cross-Job conflicts on a shared Station ("Station A is overdouble-booked"). Not implemented yet; the data model supports the query via `(station_id, due_start, due_end, actual_start, actual_end)` per booking.
 
 ## Relationships
 
 - A **Job** has exactly five **Stages**, materialised at creation, one per **Department** in fixed Pipeline order.
-- A **Stage** is owned by exactly one **Department**.
+- A **Stage** is owned by exactly one **Department** and has zero or more **Station Bookings**.
+- A **Station Booking** references exactly one **Station** in the catalog.
+- A **Station** belongs to exactly one **Department**.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
-- A **Stage** mutation requires: (verb permission from the User's Role) AND (the Job's Lifecycle Status is `active`) AND (the Stage's Sequence is reachable per the Stage Transition Policy) AND (Scope rule — if the User has Department memberships, the Stage's Department is among them; a User with no memberships is unscoped).
-- Pipeline reachability is governed by `completed_at`, not by the Stage Status label. `status = 'complete'` is synchronized with completion when first selected, but status edits after completion do not reopen or re-block the Pipeline.
-- Every Stage state change writes one **Audit Event** + one **Job Event** in the same transaction.
-- A **Quote** references exactly one **Customer**, one **Product**, and one **Salesperson** — the Customer↔Quote link lives on the Quote.
-- A **Customer** has zero or more **Quotes**. A Customer remains standalone with respect to **Jobs**, **Stages**, and **Products** — it reaches them only along the **Customer → Quote → Job** chain.
-- An `accepted` **Quote** may be converted into at most one **Job**; the **Job → Quote** link is optional — a Job can also be created directly with no Quote. A Job created from a Quote copies that Quote's **Product**.
-- A **Quote** state change writes one **Audit Event** (`entity_type = 'quote'`) and no **Job Event**.
+- A Station-Booking write (Start/Stop) requires: (verb from Role) AND (Job is not paused/cancelled) AND (Scope rule on the booking's Department).
+- A due-date or actual-date *override* requires `job-supervisor` or `admin`.
+- Every Station-Booking state change writes one **Audit Event** + one or more **Job Events** (the direct event + any cascaded stage/job event) in the same transaction.
+- A **Quote** references one **Customer**, one **Product**, one **Salesperson**.
+- A **Quote** in `draft` or `accepted` status may be converted into at most one **Job**; **Job → Quote** is optional. `sent` and `rejected` Quotes cannot spawn Jobs.
+- A **Product** carries five Department sub-forms, each with a default duration and default Station list.
 
 ## Example dialogue
 
-> **Dev:** "If I pause a **Job** mid-Fabrication, what happens to the Fabrication **Stage**?"
-> **Domain expert:** "Nothing. **Job-Level Lifecycle Does Not Cascade**. The Stage keeps its `status` and `started_at`; we just refuse writes to it until the Job is active again."
+> **Dev:** "I'm starting Paint on a Job whose Fabrication isn't done. Allowed?"
+> **Domain expert:** "Yes — **Advisory Ordering**. The pipeline is a default for due-date layout, not a gate. The dates will record honestly what happened."
 
-> **Dev:** "A planner needs to see every Job's progress. **Department** member of all five?"
-> **Domain expert:** "No — that would be a hack. They get the **`job-supervisor`** Role with *no* Department memberships. An **unscoped** User sees the whole Pipeline; assigning Departments would narrow them."
+> **Dev:** "If I clear a Station Booking's `actual_end`, does the Stage's `actual_end` recompute?"
+> **Domain expert:** "Yes — if the Stage's `actual_end` was auto-derived. If a supervisor manually set it, it's **sticky** and stays. Clear the sticky value to re-enable the cascade."
 
-> **Dev:** "A **Quote** was accepted, then the customer asks for a bigger discount. Can the **Salesperson** edit it?"
-> **Domain expert:** "No — the **Quote** was frozen the moment it was sent. They issue a new `draft` **Quote**. The accepted one keeps its snapshotted **Quoted Price** honest — and it's a `job-supervisor`, not the Salesperson, who turns it into a **Job**."
+> **Dev:** "A Quote is accepted. Does a Job appear?"
+> **Domain expert:** "No. A `job-supervisor` clicks **Create Job** on the Quote row. The dialog opens with defaults; all fields are editable. Same button also works on **draft** Quotes — useful when the customer has verbally agreed and we want a head start. It's hidden while the Quote is `sent` or `rejected`."
 
-> **Dev:** "Procurement marked their **Stage** complete but now they need to add a late PO. Allowed?"
-> **Domain expert:** "Yes. **Stage Completion** is a one-way latch on `completed_at`, but **Stage Status** keeps moving after. They can still update status, but we never clear `completed_at`."
+> **Dev:** "A Department Manager misclicked Stop. Can they re-Start?"
+> **Domain expert:** "No — **Re-Start Refused**. They ask a supervisor to clear `actual_end`, then re-Start."
+
+> **Dev:** "Where did Stage Status go?"
+> **Domain expert:** "Retired. State is now derived from dates: `pending | in-progress | complete`. If we ever need richer station-level state, we'll add it at the Station level."
 
 ## Flagged ambiguities
 
-- "Status" was used ambiguously between **Stage Status** (per-Stage workflow position) and **Job Lifecycle Status** (Job-level mutability gate). Resolved: distinct concepts on different rows.
-- "`job-supervisor`" felt like a "split brain" alongside the Role enum — the discomfort came from missing the **Scope** concept. It is not a hack: both `job-stage-editor` and `job-supervisor` are **Department-Aware**. Whether a User is scoped depends on their Department memberships, not on which of the two Roles they hold.
-- "Sales" previously overlapped with a read-only Job-visibility concept. Resolved: `sales` is a distinct Department-Blind App Role carrying the `quote:*` permissions and no Job access.
+- "Stage Status" was a rich per-department text enum. **Retired** — derived from dates now. Any richness needed later belongs at the Station level, not the Stage level.
+- "Job Lifecycle Status" was a stored enum. **Retired** as a stored field — replaced by `isPaused`, `isCancelled` booleans + derived status.
+- "Pipeline reachability / sequential gating" was the previous model. **Retired** — see **Advisory Ordering**.
+- "Stage Completion is a One-Way Latch" was ADR-0005. **Retired** — see ADR-0017.

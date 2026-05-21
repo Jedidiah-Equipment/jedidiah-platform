@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './../routes/__root'
 import { Route as VerifyEmailRouteImport } from './../routes/verify-email'
 import { Route as ResetPasswordRouteImport } from './../routes/reset-password'
 import { Route as LoginRouteImport } from './../routes/login'
+import { Route as JobOverhaulOverviewRouteImport } from './../routes/job-overhaul-overview'
 import { Route as ForgotPasswordRouteImport } from './../routes/forgot-password'
 import { Route as AuthedRouteImport } from './../routes/_authed'
 import { Route as IndexRouteImport } from './../routes/index'
@@ -49,6 +50,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JobOverhaulOverviewRoute = JobOverhaulOverviewRouteImport.update({
+  id: '/job-overhaul-overview',
+  path: '/job-overhaul-overview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -169,6 +175,7 @@ const AuthedCustomersIdEditRoute = AuthedCustomersIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/job-overhaul-overview': typeof JobOverhaulOverviewRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -196,6 +203,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/job-overhaul-overview': typeof JobOverhaulOverviewRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/job-overhaul-overview': typeof JobOverhaulOverviewRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/forgot-password'
+    | '/job-overhaul-overview'
     | '/login'
     | '/reset-password'
     | '/verify-email'
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/forgot-password'
+    | '/job-overhaul-overview'
     | '/login'
     | '/reset-password'
     | '/verify-email'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authed'
     | '/forgot-password'
+    | '/job-overhaul-overview'
     | '/login'
     | '/reset-password'
     | '/verify-email'
@@ -330,6 +342,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  JobOverhaulOverviewRoute: typeof JobOverhaulOverviewRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
@@ -356,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/job-overhaul-overview': {
+      id: '/job-overhaul-overview'
+      path: '/job-overhaul-overview'
+      fullPath: '/job-overhaul-overview'
+      preLoaderRoute: typeof JobOverhaulOverviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -615,6 +635,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  JobOverhaulOverviewRoute: JobOverhaulOverviewRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   VerifyEmailRoute: VerifyEmailRoute,

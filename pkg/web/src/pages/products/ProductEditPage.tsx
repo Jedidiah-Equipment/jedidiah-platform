@@ -51,6 +51,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
             updateProductMutation.mutateAsync({
               basePrice: value.basePrice,
               currencyCode: 'ZAR',
+              departmentConfigs: value.departmentConfigs,
               description: value.description,
               id: productQuery.data.id,
               modelCode: value.modelCode,

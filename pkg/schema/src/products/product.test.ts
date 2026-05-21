@@ -15,6 +15,7 @@ describe('ProductCreateInput', () => {
     ).toEqual({
       basePrice: 1234.56,
       currencyCode: 'ZAR',
+      departmentConfigs: [],
       description: 'Earthmoving equipment',
       modelCode: 'WL-100',
       name: 'Wheel Loader',

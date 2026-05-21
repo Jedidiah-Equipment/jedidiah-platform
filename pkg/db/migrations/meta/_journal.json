@@ -120,6 +120,13 @@
       "when": 1779365423805,
       "tag": "0016_perfect_starbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1779373447175,
+      "tag": "0017_talented_tempest",
+      "breakpoints": true
     }
   ]
 }

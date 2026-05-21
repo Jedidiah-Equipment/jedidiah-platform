@@ -60,6 +60,12 @@ function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductC
         code: 'CONFLICT',
         message: 'A product option with this code already exists for this product.',
       };
+    case 'product.department_station_mismatch':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'Default stations must belong to the matching Department.',
+      };
     case 'product.option_not_found':
       return {
         appCode: error.code,

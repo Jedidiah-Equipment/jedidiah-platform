@@ -21,13 +21,16 @@ import { account, closeDatabaseConnection, type Db, db, user, userDepartment } f
 import { createUserAccessSummary, demoUsers, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import type {
   CustomerCreateInput,
+  Department,
   JobStageName,
   Product,
   ProductCreateInput,
+  ProductDepartmentConfig,
   ProductOptionUpsertInput,
   QuoteStatus,
   UUID,
 } from '@pkg/schema';
+import { DEPARTMENTS } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { inArray, sql } from 'drizzle-orm';
 
@@ -261,7 +264,7 @@ type SeedProductPlan = {
 
 type SeedProductUpdate = Pick<SeedProduct, 'basePrice' | 'description'>;
 
-type SeededProduct = Pick<Product, 'id' | 'options'>;
+type SeededProduct = Pick<Product, 'departmentConfigs' | 'id' | 'options'>;
 
 type SeedCustomer = Pick<CustomerCreateInput, 'companyName' | 'contactPerson' | 'email'>;
 
@@ -282,6 +285,7 @@ export function createSeedProducts(count = seedProductCount): SeedProduct[] {
     return {
       basePrice: 125_000 + sequence * 18_750,
       currencyCode: 'ZAR',
+      departmentConfigs: createZeroDepartmentConfigs(),
       description: `${series} ${family.toLowerCase()} configured for regional equipment inventory.`,
       modelCode: `JED-${family
         .split(' ')
@@ -291,6 +295,14 @@ export function createSeedProducts(count = seedProductCount): SeedProduct[] {
       options: createSeedProductOptions(index),
     };
   });
+}
+
+function createZeroDepartmentConfigs(): ProductDepartmentConfig[] {
+  return DEPARTMENTS.map((department: Department) => ({
+    defaultStationIds: [],
+    department,
+    durationDays: 0,
+  }));
 }
 
 function createSeedProductOptions(productIndex: number): SeedProductOption[] {
@@ -506,6 +518,7 @@ async function seedProductsWithCore({
           id: product.id,
           basePrice: update.basePrice,
           currencyCode: product.currencyCode,
+          departmentConfigs: product.departmentConfigs,
           description: update.description,
           modelCode: product.modelCode,
           name: product.name,

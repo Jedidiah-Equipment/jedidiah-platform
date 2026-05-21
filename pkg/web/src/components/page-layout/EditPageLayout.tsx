@@ -24,7 +24,7 @@ export const EditPageLayout: React.FC<EditPageLayoutProps> = ({ back, badge, chi
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Separator />
-        <div className="max-w-2xl">{children}</div>
+        <div className="mx-auto w-full max-w-5xl">{children}</div>
       </CardContent>
     </Card>
   </div>

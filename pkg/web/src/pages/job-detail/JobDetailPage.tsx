@@ -20,6 +20,7 @@ import { LifecycleControls } from './components/LifecycleControls.js';
 import { StagePanel } from './components/StagePanel.js';
 import { WorkflowHistory } from './components/WorkflowHistory.js';
 import { stageLabels } from './constants.js';
+import { getStageStatusToastCopy } from './stage-status-toast-copy.js';
 import type { JobStageTransitionInput, JobTransitionConfirmation } from './types.js';
 
 type JobDetailPageProps = {
@@ -50,8 +51,14 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const setStageStatusMutation = useMutation(
     trpc.jobs.setStageStatus.mutationOptions({
       onSuccess: async (_updatedJob, input) => {
+        const previousStage = job?.stages.find((stage) => stage.stage === input.stage);
+        const successToast = getStageStatusToastCopy({
+          fromStatus: previousStage?.status,
+          stage: input.stage,
+          toStatus: input.status,
+        });
         await refreshJobs();
-        toast.success(`${getDepartmentLabel(input)} status updated`);
+        toast.success(successToast.title, { description: successToast.description });
       },
       onError: (error) => showMutationError(error, 'Unable to update department status.'),
     }),

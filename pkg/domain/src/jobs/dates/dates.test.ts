@@ -168,7 +168,7 @@ describe('cascadeDown', () => {
 });
 
 describe('cascadeUp', () => {
-  it('derives parent actual dates from child min start and max end while ignoring nulls', () => {
+  it('derives parent actual start from child min start while ignoring nulls', () => {
     const result = cascadeUp({
       children: [
         { actualEnd: null, actualStart: null },
@@ -182,6 +182,21 @@ describe('cascadeUp', () => {
     });
 
     expect(toDateTimeIso(result.actualStart)).toBe('2026-05-20T09:00:00.000Z');
+    expect(result.actualEnd).toBeNull();
+  });
+
+  it('derives parent actual end from child max end only when every child has ended', () => {
+    const result = cascadeUp({
+      children: [
+        { actualEnd: dateTime('2026-05-21T12:00:00.000Z'), actualStart: dateTime('2026-05-21T08:00:00.000Z') },
+        { actualEnd: dateTime('2026-05-22T13:00:00.000Z'), actualStart: dateTime('2026-05-20T09:00:00.000Z') },
+      ],
+      currentParent: {
+        actualEnd: null,
+        actualStart: null,
+      },
+    });
+
     expect(toDateTimeIso(result.actualEnd)).toBe('2026-05-22T13:00:00.000Z');
   });
 

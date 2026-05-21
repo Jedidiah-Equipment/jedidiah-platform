@@ -56,6 +56,24 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       onError: (error) => showMutationError(error, 'Unable to complete department work.'),
     }),
   );
+  const startStationBookingMutation = useMutation(
+    trpc.jobs.startStationBooking.mutationOptions({
+      onSuccess: async () => {
+        await refreshJobs();
+        toast.success('Station booking started');
+      },
+      onError: (error) => showMutationError(error, 'Unable to start station booking.'),
+    }),
+  );
+  const stopStationBookingMutation = useMutation(
+    trpc.jobs.stopStationBooking.mutationOptions({
+      onSuccess: async () => {
+        await refreshJobs();
+        toast.success('Station booking ended');
+      },
+      onError: (error) => showMutationError(error, 'Unable to end station booking.'),
+    }),
+  );
   const pauseJobMutation = useMutation(
     trpc.jobs.pause.mutationOptions({
       onSuccess: async () => {
@@ -95,6 +113,8 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const isTransitionPending =
     startStageMutation.isPending ||
     completeStageMutation.isPending ||
+    startStationBookingMutation.isPending ||
+    stopStationBookingMutation.isPending ||
     pauseJobMutation.isPending ||
     resumeJobMutation.isPending ||
     cancelJobMutation.isPending ||
@@ -195,7 +215,9 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
                 jobId={job.id}
                 key={`${stage.sequence}-${stage.stage}`}
                 onComplete={confirmCompleteStage}
+                onStartStationBooking={(input) => startStationBookingMutation.mutate(input)}
                 onStart={(input) => startStageMutation.mutate(input)}
+                onStopStationBooking={(input) => stopStationBookingMutation.mutate(input)}
                 stage={stage}
               />
             ))}

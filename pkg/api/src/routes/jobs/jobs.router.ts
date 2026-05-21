@@ -10,6 +10,8 @@ import {
   pauseJob,
   resumeJob,
   startJobStage,
+  startStationBooking,
+  stopStationBooking,
   uncancelJob,
 } from '@pkg/core';
 import {
@@ -18,6 +20,7 @@ import {
   JobLifecycleTransitionInput,
   JobListInput,
   JobStageTransitionInput,
+  JobStationBookingTransitionInput,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -127,6 +130,32 @@ export const jobsRouter = router({
         }),
       ),
     ),
+
+  startStationBooking: authorizedProcedure('job-stage:update')
+    .input(JobStationBookingTransitionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        startStationBooking({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          id: input.id,
+        }),
+      ),
+    ),
+
+  stopStationBooking: authorizedProcedure('job-stage:update')
+    .input(JobStationBookingTransitionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        stopStationBooking({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          id: input.id,
+        }),
+      ),
+    ),
 });
 
 async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -140,6 +169,18 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Job not found.',
+      };
+    case 'job.station_booking_not_found':
+      return {
+        appCode: error.code,
+        code: 'NOT_FOUND',
+        message: 'Station booking not found.',
+      };
+    case 'job.station_booking_transition_denied':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: error.message,
       };
     case 'job.stage_transition_denied':
       return {

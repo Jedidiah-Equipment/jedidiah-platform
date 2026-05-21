@@ -274,6 +274,38 @@ describe('jobs.createFromQuote', () => {
       code: 'FORBIDDEN',
     });
   });
+
+  test('keeps the Quote link when creating a job with a supervisor-selected Product', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const alternateProduct = await createProduct(context.db, {
+      modelCode: 'ALT-QUOTE-001',
+      name: 'Alternate Quote Product',
+    });
+    const created = await createReadyQuote(salesCaller, context.product.id);
+    const sent = await salesCaller.quotes.send({ id: created.id });
+    const accepted = await salesCaller.quotes.accept({ id: sent.id });
+
+    const job = await supervisorCaller.jobs.create({
+      dueEnd: '2026-08-15',
+      productId: alternateProduct.id,
+      quoteId: accepted.id,
+    });
+
+    expect(job).toMatchObject({
+      productId: alternateProduct.id,
+      quoteId: accepted.id,
+    });
+    await expect(
+      supervisorCaller.jobs.create({
+        productId: alternateProduct.id,
+        quoteId: accepted.id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Quote has already been converted into a job.',
+    });
+  });
 });
 
 async function createReadyQuote(caller: AppRouterCaller, productId: string) {

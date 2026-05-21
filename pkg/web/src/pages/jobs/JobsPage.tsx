@@ -10,7 +10,7 @@ import {
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { ArrowRightIcon, CircleIcon } from 'lucide-react';
+import { ArrowRightIcon, CircleIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { CreateJobDialog } from './components/CreateJobDialog.js';
 import { getJobLifecycleStatusColorClassNames, JobLifecycleStatusBadge } from './components/JobLifecycleStatusBadge.js';
 import { JobStageChips } from './components/JobStageChips.js';
 
@@ -55,9 +56,26 @@ const jobSortOptions: SortOptions<JobListInput> = {
 
 export const JobsPage: React.FC<JobsPageProps> = ({ status }) => {
   const navigate = useNavigate();
+  const accessQuery = useAccess();
+  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
 
   return (
-    <ListPageLayout description="Production" title="Jobs">
+    <ListPageLayout
+      action={
+        canCreateJob ? (
+          <CreateJobDialog
+            trigger={
+              <Button>
+                <PlusIcon data-icon="inline-start" />
+                New job
+              </Button>
+            }
+          />
+        ) : undefined
+      }
+      description="Production"
+      title="Jobs"
+    >
       <JobTable
         rightSection={
           <JobStatusFilter

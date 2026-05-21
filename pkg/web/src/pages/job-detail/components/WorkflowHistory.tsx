@@ -45,20 +45,22 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ events }) => {
           {filteredEvents.length}
         </span>
       </div>
-      <Select onValueChange={(value) => setFamily(value as WorkflowEventFamily)} value={family}>
-        <SelectTrigger aria-label="Workflow history filter" className="w-full" size="sm">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {workflowEventFamilies.map((option) => (
-              <SelectItem key={option} value={option}>
-                {workflowEventFamilyLabels[option]}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+      {events.length > 0 ? (
+        <Select onValueChange={(value) => setFamily(value as WorkflowEventFamily)} value={family}>
+          <SelectTrigger aria-label="Workflow history filter" className="w-full" size="sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {workflowEventFamilies.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {workflowEventFamilyLabels[option]}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      ) : null}
       {filteredEvents.length > 0 ? (
         <ScrollArea className="min-h-0 pr-2">
           <ol className="flex flex-col gap-2">
@@ -226,26 +228,37 @@ function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
   if (event.eventType === 'date.overridden') {
     return `${getDateOverrideFieldLabel(event.payload.field)} changed from ${formatDateOverrideValue(
       event.payload.oldValue,
-    )} -> ${formatDateOverrideValue(event.payload.newValue)}`;
+    )} → ${formatDateOverrideValue(event.payload.newValue)}`;
   }
 
   return getStageStatusChangeCopy(event.payload).metadata;
 }
 
 function getWorkflowEventFamily(event: JobEvent): WorkflowEventFamily {
-  if (event.eventType === 'date.overridden') {
-    return 'date';
+  switch (event.eventType) {
+    case 'date.overridden':
+      return 'date';
+    case 'station.ended':
+    case 'station.started':
+      return 'station';
+    case 'stage.completed':
+    case 'stage.ended':
+    case 'stage.started':
+    case 'stage.status_changed':
+    case 'stage.stopped':
+      return 'stage';
+    case 'job.cancelled':
+    case 'job.completed':
+    case 'job.paused':
+    case 'job.resumed':
+    case 'job.started':
+    case 'job.uncancelled':
+      return 'job';
+    default: {
+      const exhaustive: never = event;
+      return exhaustive;
+    }
   }
-
-  if (event.eventType === 'station.started' || event.eventType === 'station.ended') {
-    return 'station';
-  }
-
-  if (event.eventType.startsWith('stage.')) {
-    return 'stage';
-  }
-
-  return 'job';
 }
 
 function getWorkflowEventActorLabel(event: JobEvent): string {

@@ -127,17 +127,17 @@ describe('jobs.list', () => {
     const laterDueJob = await caller.jobs.create({ dueEnd: '2026-08-20', productId: context.product.id });
     const earlierDueJob = await caller.jobs.create({ dueEnd: '2026-08-10', productId: context.product.id });
 
-    await expect(
-      caller.jobs.list({
-        filters: { lifecycleStatuses: [] },
-        page: 1,
-        pageSize: 20,
-        sortBy: 'dueEnd',
-        sortDirection: 'asc',
-      }),
-    ).resolves.toMatchObject({
-      items: [{ id: earlierDueJob.id }, { id: laterDueJob.id }],
+    const dueEndSorted = await caller.jobs.list({
+      filters: { lifecycleStatuses: [] },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'dueEnd',
+      sortDirection: 'asc',
     });
+    expect(filterJobIds(dueEndSorted.items, [earlierDueJob.id, laterDueJob.id])).toEqual([
+      earlierDueJob.id,
+      laterDueJob.id,
+    ]);
 
     const earlierActualJob = await caller.jobs.create({ productId: context.product.id });
     const laterActualJob = await caller.jobs.create({ productId: context.product.id });
@@ -152,17 +152,17 @@ describe('jobs.list', () => {
       where id in (${earlierActualJob.id}, ${laterActualJob.id})
     `;
 
-    await expect(
-      caller.jobs.list({
-        filters: { lifecycleStatuses: ['complete'] },
-        page: 1,
-        pageSize: 20,
-        sortBy: 'actualEnd',
-        sortDirection: 'desc',
-      }),
-    ).resolves.toMatchObject({
-      items: [{ id: laterActualJob.id }, { id: earlierActualJob.id }],
+    const actualEndSorted = await caller.jobs.list({
+      filters: { lifecycleStatuses: ['complete'] },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'actualEnd',
+      sortDirection: 'desc',
     });
+    expect(filterJobIds(actualEndSorted.items, [laterActualJob.id, earlierActualJob.id])).toEqual([
+      laterActualJob.id,
+      earlierActualJob.id,
+    ]);
   });
 });
 
@@ -917,6 +917,12 @@ async function listJobEventTypes(db: Db, jobId: string) {
   const rows = (await db.select().from(jobEvents)).filter((event) => event.jobId === jobId);
 
   return rows.map((event) => event.eventType).sort();
+}
+
+function filterJobIds(items: readonly { id: string }[], targetIds: readonly string[]): string[] {
+  const targetIdSet = new Set(targetIds);
+
+  return items.map((item) => item.id).filter((id) => targetIdSet.has(id));
 }
 
 async function createCancelledJob(caller: AppRouterCaller, productId: string) {

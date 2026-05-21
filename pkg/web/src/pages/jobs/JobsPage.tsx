@@ -189,21 +189,27 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
       });
     }
 
-    baseColumns.push(
-      {
-        accessorKey: 'dueEnd',
-        cell: ({ row }) => <DateDisplay date={row.original.dueEnd} emptyValue="No date" />,
-        enableColumnFilter: false,
-        enableSorting: true,
-        header: 'Due',
-      },
-      {
+    const showActualEndColumn = status === 'complete';
+
+    baseColumns.push({
+      accessorKey: 'dueEnd',
+      cell: ({ row }) => <DateDisplay date={row.original.dueEnd} emptyValue="No date" />,
+      enableColumnFilter: false,
+      enableSorting: true,
+      header: 'Due',
+    });
+
+    if (showActualEndColumn) {
+      baseColumns.push({
         accessorKey: 'actualEnd',
         cell: ({ row }) => <DateDisplay date={row.original.actualEnd} emptyValue="Open" format="medium" />,
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Actual end',
-      },
+      });
+    }
+
+    baseColumns.push(
       {
         accessorKey: 'lifecycleStatus',
         cell: ({ row }) => <JobLifecycleStatusBadge status={row.original.lifecycleStatus} />,
@@ -243,7 +249,7 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
     );
 
     return baseColumns;
-  }, [canOpenQuotes, navigate]);
+  }, [canOpenQuotes, navigate, status]);
 
   const table = useReactTable({
     columns,

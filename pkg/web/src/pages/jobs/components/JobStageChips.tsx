@@ -31,7 +31,7 @@ export const JobStageChips: React.FC<JobStageChipsProps> = ({ stages }) => (
               <Badge
                 aria-label={tooltip}
                 className={cn(
-                  'min-w-28 justify-center gap-1.5 focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                  'w-20 justify-center gap-1.5 focus-visible:ring-[3px] focus-visible:ring-ring/50',
                   color.badge,
                 )}
                 tabIndex={0}

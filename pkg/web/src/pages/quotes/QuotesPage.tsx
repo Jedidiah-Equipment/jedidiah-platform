@@ -3,7 +3,7 @@ import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { ArrowRightIcon, PlusIcon } from 'lucide-react';
+import { ArrowRightIcon, BriefcaseBusinessIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { ButtonLink } from '@/components/button/ButtonLink.js';
@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { CreateJobDialog } from '@/pages/jobs/components/CreateJobDialog.js';
 import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
@@ -70,6 +71,7 @@ const QuoteTable: React.FC = () => {
   const navigate = useNavigate();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
+  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
 
   const tableController = useServerSideTableController({
     store: useQuoteTableStore,
@@ -170,7 +172,17 @@ const QuoteTable: React.FC = () => {
       {
         id: 'actions',
         cell: ({ row }) => (
-          <div className="text-right">
+          <div className="flex justify-end gap-1">
+            {canCreateJob ? (
+              <CreateJobDialog
+                quote={row.original}
+                trigger={
+                  <Button aria-label={`Create job from quote ${row.original.code}`} size="icon-sm" variant="outline">
+                    <BriefcaseBusinessIcon />
+                  </Button>
+                }
+              />
+            ) : null}
             <Button
               aria-label={`Open quote ${row.original.code}`}
               onClick={() => navigate({ params: { id: row.original.id }, to: '/quotes/$id' })}
@@ -190,7 +202,7 @@ const QuoteTable: React.FC = () => {
         },
       },
     ],
-    [canOpenJobs, navigate],
+    [canCreateJob, canOpenJobs, navigate],
   );
 
   const table = useReactTable({

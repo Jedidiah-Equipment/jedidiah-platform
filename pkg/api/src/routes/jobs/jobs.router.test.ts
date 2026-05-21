@@ -1,4 +1,4 @@
-import { auditEvents, type Db, jobEvents, products } from '@pkg/db';
+import { auditEvents, type Db, jobEvents, jobStageStations, products, stations } from '@pkg/db';
 import type { JobLifecycleStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -39,6 +39,60 @@ describe('jobs.create', () => {
     expect(job.stages.map((stage) => stage.state)).toEqual(['pending', 'pending', 'pending', 'pending', 'pending']);
     expect(job.stages.every((stage) => stage.stations.length === 0)).toBe(true);
     expect('dueDate' in job).toBe(false);
+  });
+
+  test('creates stage dates and station bookings from the reviewed create payload', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const [station] = await context.db
+      .insert(stations)
+      .values({
+        department: 'fabrication',
+        displayOrder: 1,
+        name: 'Weld Bay 1',
+      })
+      .returning();
+
+    if (!station) {
+      throw new Error('Station insert did not return a row');
+    }
+
+    const job = await caller.jobs.create({
+      dueEnd: '2026-08-10',
+      dueStart: '2026-08-01',
+      productId: context.product.id,
+      stages: [
+        createStageInput('procurement', '2026-08-01', '2026-08-02'),
+        createStageInput('supply', '2026-08-02', '2026-08-03'),
+        createStageInput('fabrication', '2026-08-03', '2026-08-07', station.id),
+        createStageInput('paint', '2026-08-07', '2026-08-08'),
+        createStageInput('assembly', '2026-08-08', '2026-08-10'),
+      ],
+    });
+
+    expect(job).toMatchObject({
+      dueEnd: '2026-08-10',
+      dueStart: '2026-08-01',
+      dueEndSetManually: true,
+      dueStartSetManually: true,
+    });
+    expect(job.stages.find((stage) => stage.stage === 'fabrication')).toMatchObject({
+      dueEnd: '2026-08-07',
+      dueEndSetManually: true,
+      dueStart: '2026-08-03',
+      dueStartSetManually: false,
+      stations: [
+        {
+          dueEnd: '2026-08-07',
+          dueEndSetManually: false,
+          dueStart: '2026-08-04',
+          dueStartSetManually: true,
+          stationId: station.id,
+        },
+      ],
+    });
+
+    const stationRows = await context.db.select().from(jobStageStations);
+    expect(stationRows).toHaveLength(1);
   });
 });
 
@@ -232,6 +286,29 @@ async function createPausedJob(caller: AppRouterCaller, productId: string) {
 
   return caller.jobs.pause({ id: activeJob.id });
 }
+
+function createStageInput(stage: JobCreateStageName, dueStart: string, dueEnd: string, stationId?: string) {
+  return {
+    dueEnd,
+    dueEndSetManually: stage === 'fabrication',
+    dueStart,
+    dueStartSetManually: false,
+    stage,
+    stationBookings: stationId
+      ? [
+          {
+            dueEnd,
+            dueEndSetManually: false,
+            dueStart: '2026-08-04',
+            dueStartSetManually: true,
+            stationId,
+          },
+        ]
+      : [],
+  };
+}
+
+type JobCreateStageName = 'procurement' | 'supply' | 'fabrication' | 'paint' | 'assembly';
 
 async function createProduct(db: Db): Promise<{ id: string }> {
   const [product] = await db

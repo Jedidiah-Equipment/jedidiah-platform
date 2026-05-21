@@ -4,6 +4,7 @@ import {
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
+  jobStageStations,
   jobStages,
   jobs,
   quotes,
@@ -13,6 +14,7 @@ import type {
   AuthId,
   JobCreateFromQuoteInput,
   JobCreateInput,
+  JobCreateStageInput,
   JobDetail,
   JobLifecycleStatus,
   JobListInput,
@@ -48,90 +50,38 @@ export async function createJob({
   input: JobCreateInput;
   actorUserId: AuthId;
 }): Promise<JobDetail> {
-  return db.transaction(async (tx) => {
-    const [job] = await tx
-      .insert(jobs)
-      .values({
-        dueEnd: input.dueEnd ?? null,
-        dueEndSetManually: input.dueEnd != null,
-        dueStart: input.dueStart ?? null,
-        dueStartSetManually: input.dueStart != null,
-        productId: input.productId,
-      })
-      .returning();
-
-    if (!job) {
-      throw new Error('Job insert did not return a row');
-    }
-
-    await tx.insert(jobStages).values(
-      JOB_STAGE_PIPELINE.map(({ sequence, stage }) => ({
-        jobId: job.id,
-        sequence,
-        stage,
-      })),
-    );
-
-    await insertAuditEvent({
-      db: tx,
-      input: {
-        action: 'created',
-        actorUserId,
-        after: mapJobAuditRecord(job),
-        before: null,
-        changes: null,
-        entityId: job.id,
-        entityType: jobAuditDescriptor.entityType,
-      },
-    });
-
-    return getJob({ access, db: tx, id: job.id });
-  });
-}
-
-export async function createJobFromQuote({
-  db,
-  access,
-  input,
-  actorUserId,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  input: JobCreateFromQuoteInput;
-  actorUserId: AuthId;
-}): Promise<JobDetail> {
   try {
     return await db.transaction(async (tx) => {
-      const [quote] = await tx.select().from(quotes).where(eq(quotes.id, input.quoteId)).for('update');
+      const quoteId = input.quoteId ?? null;
 
-      if (!quote) {
-        throw new JobQuoteConversionDeniedError('Quote not found.');
-      }
+      if (quoteId) {
+        const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
-      if (quote.status !== 'accepted' && quote.status !== 'draft') {
-        throw new JobQuoteConversionDeniedError('Only draft or accepted quotes can be converted into jobs.');
-      }
+        if (!quote) {
+          throw new JobQuoteConversionDeniedError('Quote not found.');
+        }
 
-      const existingJob = await tx.query.jobs.findFirst({
-        columns: {
-          id: true,
-        },
-        where: eq(jobs.quoteId, input.quoteId),
-      });
+        const existingJob = await tx.query.jobs.findFirst({
+          columns: {
+            id: true,
+          },
+          where: eq(jobs.quoteId, quoteId),
+        });
 
-      if (existingJob) {
-        throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
+        if (existingJob) {
+          throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
+        }
       }
 
       const [job] = await tx
         .insert(jobs)
         .values({
           dueEnd: input.dueEnd ?? null,
-          dueEndSetManually: input.dueEnd != null,
+          dueEndSetManually: input.dueEndSetManually ?? input.dueEnd != null,
           dueStart: input.dueStart ?? null,
-          dueStartSetManually: input.dueStart != null,
-          productId: quote.productId,
-          quoteId: quote.id,
+          dueStartSetManually: input.dueStartSetManually ?? input.dueStart != null,
+          productId: input.productId,
+          quoteId,
         })
         .returning();
 
@@ -139,13 +89,32 @@ export async function createJobFromQuote({
         throw new Error('Job insert did not return a row');
       }
 
-      await tx.insert(jobStages).values(
-        JOB_STAGE_PIPELINE.map(({ sequence, stage }) => ({
-          jobId: job.id,
-          sequence,
-          stage,
-        })),
-      );
+      const stageRows = await tx
+        .insert(jobStages)
+        .values(buildJobStageInsertValues({ inputStages: input.stages, jobId: job.id }))
+        .returning();
+
+      const stageRowsByStage = new Map(stageRows.map((stage) => [stage.stage, stage]));
+      const stationBookingValues =
+        input.stages?.flatMap((stage) => {
+          const stageRow = stageRowsByStage.get(stage.stage);
+          if (!stageRow) {
+            throw new Error(`Missing inserted row for ${stage.stage}.`);
+          }
+
+          return stage.stationBookings.map((booking) => ({
+            dueEnd: booking.dueEnd ?? null,
+            dueEndSetManually: booking.dueEndSetManually ?? false,
+            dueStart: booking.dueStart ?? null,
+            dueStartSetManually: booking.dueStartSetManually ?? false,
+            jobStageId: stageRow.id,
+            stationId: booking.stationId,
+          }));
+        }) ?? [];
+
+      if (stationBookingValues.length > 0) {
+        await tx.insert(jobStageStations).values(stationBookingValues);
+      }
 
       await insertAuditEvent({
         db: tx,
@@ -169,6 +138,64 @@ export async function createJobFromQuote({
 
     throw error;
   }
+}
+
+export async function createJobFromQuote({
+  db,
+  access,
+  input,
+  actorUserId,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  input: JobCreateFromQuoteInput;
+  actorUserId: AuthId;
+}): Promise<JobDetail> {
+  const [quote] = await db.select().from(quotes).where(eq(quotes.id, input.quoteId));
+
+  if (!quote) {
+    throw new JobQuoteConversionDeniedError('Quote not found.');
+  }
+
+  if (quote.status !== 'accepted' && quote.status !== 'draft') {
+    throw new JobQuoteConversionDeniedError('Only draft or accepted quotes can be converted into jobs.');
+  }
+
+  return createJob({
+    actorUserId,
+    access,
+    db,
+    input: {
+      dueEnd: input.dueEnd,
+      dueStart: input.dueStart,
+      productId: quote.productId,
+      quoteId: quote.id,
+    },
+  });
+}
+
+function buildJobStageInsertValues({
+  inputStages,
+  jobId,
+}: {
+  inputStages: readonly JobCreateStageInput[] | undefined;
+  jobId: UUID;
+}) {
+  const inputStagesByStage = new Map(inputStages?.map((stage) => [stage.stage, stage]) ?? []);
+
+  return JOB_STAGE_PIPELINE.map(({ sequence, stage }) => {
+    const inputStage = inputStagesByStage.get(stage);
+
+    return {
+      dueEnd: inputStage?.dueEnd ?? null,
+      dueEndSetManually: inputStage?.dueEndSetManually ?? false,
+      dueStart: inputStage?.dueStart ?? null,
+      dueStartSetManually: inputStage?.dueStartSetManually ?? false,
+      jobId,
+      sequence,
+      stage,
+    };
+  });
 }
 
 export async function listJobs({

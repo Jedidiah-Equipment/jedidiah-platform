@@ -144,6 +144,15 @@ const StageStoppedJobEventPayload = z.object({
   actualEnd: z.iso.datetime(),
 });
 
+const StationTransitionJobEventPayload = z.object({
+  actualEnd: z.iso.datetime().optional(),
+  actualStart: z.iso.datetime().optional(),
+  stage: JobStageName,
+  stationBookingId: UUID,
+  stationId: UUID,
+  stationName: z.string().trim().min(1),
+});
+
 // Historical workflow rows may still contain pre-0016 stage status/completion events.
 // New writes only produce DerivedStageJobEvent variants below.
 const StageStatusChangedJobEventPayload = z.object({
@@ -173,6 +182,25 @@ const StageStoppedJobEvent = JobEventBase.extend({
   payload: StageStoppedJobEventPayload,
 });
 
+const StageEndedJobEvent = JobEventBase.extend({
+  eventType: z.literal('stage.ended'),
+  payload: StageStoppedJobEventPayload,
+});
+
+const StationStartedJobEvent = JobEventBase.extend({
+  eventType: z.literal('station.started'),
+  payload: StationTransitionJobEventPayload.extend({
+    actualStart: z.iso.datetime(),
+  }),
+});
+
+const StationEndedJobEvent = JobEventBase.extend({
+  eventType: z.literal('station.ended'),
+  payload: StationTransitionJobEventPayload.extend({
+    actualEnd: z.iso.datetime(),
+  }),
+});
+
 const StageStatusChangedJobEvent = JobEventBase.extend({
   eventType: z.literal('stage.status_changed'),
   payload: StageStatusChangedJobEventPayload,
@@ -185,6 +213,11 @@ const StageCompletedJobEvent = JobEventBase.extend({
 
 const JobPausedEvent = JobEventBase.extend({
   eventType: z.literal('job.paused'),
+  payload: JobLifecycleChangedEventPayload,
+});
+
+const JobStartedEvent = JobEventBase.extend({
+  eventType: z.literal('job.started'),
   payload: JobLifecycleChangedEventPayload,
 });
 
@@ -212,9 +245,13 @@ export type JobEvent = z.infer<typeof JobEvent>;
 export const JobEvent = z.discriminatedUnion('eventType', [
   StageStartedJobEvent,
   StageStoppedJobEvent,
+  StageEndedJobEvent,
+  StationStartedJobEvent,
+  StationEndedJobEvent,
   StageStatusChangedJobEvent,
   StageCompletedJobEvent,
   JobPausedEvent,
+  JobStartedEvent,
   JobResumedEvent,
   JobCancelledEvent,
   JobUncancelledEvent,
@@ -429,5 +466,10 @@ export const JobStageTransitionInput = z.object({
 
 export type JobLifecycleTransitionInput = z.infer<typeof JobLifecycleTransitionInput>;
 export const JobLifecycleTransitionInput = z.object({
+  id: UUID,
+});
+
+export type JobStationBookingTransitionInput = z.infer<typeof JobStationBookingTransitionInput>;
+export const JobStationBookingTransitionInput = z.object({
   id: UUID,
 });

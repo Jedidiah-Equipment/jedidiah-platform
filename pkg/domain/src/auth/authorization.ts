@@ -156,6 +156,10 @@ export type JobStageResource = {
   stage: JobStageName;
 };
 
+export type StationBookingResource = {
+  department: Department;
+};
+
 export type JobResource = {
   stages: readonly JobStageResource[];
 };
@@ -172,6 +176,13 @@ export function canEditStage(access: UserAccessSummary | null | undefined, stage
   return hasPermission(access, 'job-stage:update') && canAccessStageDepartment(access, stage);
 }
 
+export function canEditStationBooking(
+  access: UserAccessSummary | null | undefined,
+  booking: StationBookingResource,
+): boolean {
+  return hasPermission(access, 'job-stage:update') && canAccessDepartment(access, booking.department);
+}
+
 export function canViewQuote(access: UserAccessSummary | null | undefined): boolean {
   return hasPermission(access, 'quote:read');
 }
@@ -185,10 +196,14 @@ export function canEditQuote(access: UserAccessSummary | null | undefined): bool
 }
 
 function canAccessStageDepartment(access: UserAccessSummary | null | undefined, stage: JobStageResource): boolean {
+  return canAccessDepartment(access, stage.stage);
+}
+
+function canAccessDepartment(access: UserAccessSummary | null | undefined, department: Department): boolean {
   if (!access) return false;
 
   // If the user has no departments, they have cross-cutting access to all stages
   if (access.departments.length === 0) return true;
 
-  return access.departments.includes(stage.stage);
+  return access.departments.includes(department);
 }

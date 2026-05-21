@@ -12,7 +12,7 @@ import {
   UUID,
 } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2Icon, PlusIcon, Trash2Icon } from 'lucide-react';
+import { Loader2Icon, PlusIcon, Trash2Icon, XIcon } from 'lucide-react';
 import type React from 'react';
 import { z } from 'zod';
 import { DepartmentIcon } from '@/components/departments/index.js';
@@ -315,8 +315,17 @@ const DepartmentStationPicker: React.FC<DepartmentStationPickerProps> = ({
       {inactiveSelectedStations.length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {inactiveSelectedStations.map((station) => (
-            <Badge key={station.id} variant="secondary">
+            <Badge className="gap-1 pr-1" key={station.id} variant="secondary">
               {station.name} inactive
+              <Button
+                aria-label={`Remove inactive station ${station.name}`}
+                onClick={() => setStationSelected(station.id, false)}
+                size="icon-xs"
+                type="button"
+                variant="ghost"
+              >
+                <XIcon />
+              </Button>
             </Badge>
           ))}
         </div>

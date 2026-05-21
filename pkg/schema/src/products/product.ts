@@ -74,6 +74,7 @@ export const ProductCreateInput = z
     options: z.array(ProductOptionCreateInput).default([]),
   })
   .superRefine(rejectDuplicateDepartmentConfigs)
+  .superRefine(rejectDuplicateDefaultStationIds)
   .superRefine(rejectDuplicateOptionCodes);
 
 export type ProductUpdateInput = z.infer<typeof ProductUpdateInput>;
@@ -89,6 +90,7 @@ export const ProductUpdateInput = z
     options: z.array(ProductOptionUpsertInput).default([]),
   })
   .superRefine(rejectDuplicateDepartmentConfigs)
+  .superRefine(rejectDuplicateDefaultStationIds)
   .superRefine(rejectDuplicateOptionCodes);
 
 export type ProductListInput = z.infer<typeof ProductListInput>;
@@ -129,6 +131,35 @@ function rejectDuplicateDepartmentConfigs(
     }
 
     seenDepartments.set(config.department, index);
+  });
+}
+
+function rejectDuplicateDefaultStationIds(
+  value: { departmentConfigs: Array<{ defaultStationIds: string[] }> },
+  context: z.RefinementCtx,
+): void {
+  const seenStationIds = new Map<string, Array<number | string>>();
+
+  value.departmentConfigs.forEach((config, configIndex) => {
+    config.defaultStationIds.forEach((stationId, stationIndex) => {
+      const previousPath = seenStationIds.get(stationId);
+
+      if (previousPath) {
+        context.addIssue({
+          code: 'custom',
+          path: ['departmentConfigs', configIndex, 'defaultStationIds', stationIndex],
+          message: 'Default station can only be assigned once per product',
+        });
+        context.addIssue({
+          code: 'custom',
+          path: ['departmentConfigs', ...previousPath],
+          message: 'Default station can only be assigned once per product',
+        });
+        return;
+      }
+
+      seenStationIds.set(stationId, [configIndex, 'defaultStationIds', stationIndex]);
+    });
   });
 }
 

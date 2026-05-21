@@ -10,6 +10,7 @@ import {
   products,
 } from '@pkg/db';
 import type {
+  AuditChanges,
   AuthId,
   Logger,
   Product,
@@ -201,7 +202,7 @@ export async function createProduct({
         },
       });
 
-      return mapProduct(row, optionRows, departmentConfigRows);
+      return mapProduct(row, optionRows, departmentConfigRows.rows);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
@@ -234,7 +235,7 @@ export async function updateProduct({
         modelCode: productInput.modelCode,
         name: productInput.name,
       };
-      const changes = createAuditChanges(before, after, productAuditDescriptor.fields);
+      const productChanges = createAuditChanges(before, after, getProductCatalogAuditFields());
       const optionRows = await syncProductOptions({
         tx,
         productId: input.id,
@@ -246,11 +247,20 @@ export async function updateProduct({
         productId: input.id,
         incomingConfigs: departmentConfigs,
       });
+      const changes = mergeAuditChanges(productChanges, {
+        departmentConfigs: departmentConfigRows.changes
+          ? {
+              from: departmentConfigRows.changes.before,
+              to: departmentConfigRows.changes.after,
+            }
+          : undefined,
+      });
 
       if (!changes) {
-        return mapProduct(before, optionRows, departmentConfigRows);
+        return mapProduct(before, optionRows, departmentConfigRows.rows);
       }
 
+      const shouldUpdateProductRow = productChanges !== null || departmentConfigRows.changes !== null;
       const [row] = await tx
         .update(products)
         .set({
@@ -264,7 +274,7 @@ export async function updateProduct({
         .where(eq(products.id, input.id))
         .returning();
 
-      if (!row) {
+      if (!row || !shouldUpdateProductRow) {
         throw new ProductNotFoundError(input.id);
       }
 
@@ -281,11 +291,32 @@ export async function updateProduct({
         },
       });
 
-      return mapProduct(row, optionRows, departmentConfigRows);
+      return mapProduct(row, optionRows, departmentConfigRows.rows);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
   }
+}
+
+function mergeAuditChanges(
+  baseChanges: AuditChanges | null,
+  extraChanges: Record<string, { from: unknown; to: unknown } | undefined>,
+): AuditChanges | null {
+  const changes: AuditChanges = { ...(baseChanges ?? {}) };
+
+  for (const [field, change] of Object.entries(extraChanges)) {
+    if (change) {
+      changes[field] = change;
+    }
+  }
+
+  return Object.keys(changes).length > 0 ? changes : null;
+}
+
+function getProductCatalogAuditFields(): Record<string, string> {
+  const { departmentConfigs: _departmentConfigs, ...fields } = productAuditDescriptor.fields;
+
+  return fields;
 }
 
 function getProductSortColumn(sortBy: ProductListInput['sortBy']) {

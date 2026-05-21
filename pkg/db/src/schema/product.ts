@@ -1,5 +1,5 @@
 import type { Department } from '@pkg/schema';
-import { sql } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { check, integer, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 export const products = pgTable(
@@ -39,3 +39,10 @@ export const productDepartmentConfigs = pgTable(
     uniqueIndex('product_department_config_product_id_department_unique').on(table.productId, table.department),
   ],
 );
+
+export const productDepartmentConfigsRelations = relations(productDepartmentConfigs, ({ one }) => ({
+  product: one(products, {
+    fields: [productDepartmentConfigs.productId],
+    references: [products.id],
+  }),
+}));

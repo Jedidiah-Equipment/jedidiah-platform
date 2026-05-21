@@ -1,4 +1,4 @@
-import { auditEvents, type Db, productOptions, stations, user } from '@pkg/db';
+import { auditEvents, type Db, productDepartmentConfigs, productOptions, stations, user } from '@pkg/db';
 import type { Department, Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -586,6 +586,41 @@ describe('products.update', () => {
     });
   });
 
+  test('rejects the same default Station assigned to multiple Departments', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Duplicate Station Product');
+    const station = await createStation(context.db, {
+      department: 'paint',
+      name: 'Paint Booth A',
+    });
+
+    await expect(
+      caller.products.update({
+        basePrice: created.basePrice,
+        currencyCode: created.currencyCode,
+        departmentConfigs: [
+          {
+            defaultStationIds: [station.id],
+            department: 'paint',
+            durationDays: 1,
+          },
+          {
+            defaultStationIds: [station.id],
+            department: 'assembly',
+            durationDays: 1,
+          },
+        ],
+        description: created.description,
+        id: created.id,
+        modelCode: created.modelCode,
+        name: created.name,
+        options: created.options,
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+  });
+
   test('keeps inactive Stations persisted on existing Products', async ({ context }) => {
     const caller = context.createCaller();
     const station = await createStation(context.db, {
@@ -619,6 +654,45 @@ describe('products.update', () => {
       department: 'assembly',
       durationDays: 1,
     });
+  });
+
+  test('does not rewrite unchanged Department config rows', async ({ context }) => {
+    const caller = context.createCaller();
+    const station = await createStation(context.db, {
+      department: 'assembly',
+      name: 'Assembly Bench 1',
+    });
+    const created = await createProduct(caller, 'Stable Department Config Product', {
+      departmentConfigs: [
+        {
+          defaultStationIds: [station.id],
+          department: 'assembly',
+          durationDays: 1,
+        },
+      ],
+    });
+    const [beforeRow] = (await context.db.select().from(productDepartmentConfigs)).filter(
+      (row) => row.productId === created.id,
+    );
+
+    await caller.products.update({
+      basePrice: created.basePrice,
+      currencyCode: created.currencyCode,
+      departmentConfigs: created.departmentConfigs,
+      description: created.description,
+      id: created.id,
+      modelCode: created.modelCode,
+      name: created.name,
+      options: created.options,
+    });
+
+    const [afterRow] = (await context.db.select().from(productDepartmentConfigs)).filter(
+      (row) => row.productId === created.id,
+    );
+
+    expect(afterRow?.id).toBe(beforeRow?.id);
+    expect(afterRow?.createdAt).toEqual(beforeRow?.createdAt);
+    expect(afterRow?.updatedAt).toEqual(beforeRow?.updatedAt);
   });
 
   test('diffs product options without replacing unchanged option ids', async ({ context }) => {
@@ -723,6 +797,54 @@ describe('products.update', () => {
         summary: 'Renamed product "Wheel Loader" to "Wheel Loader XL"',
       },
     ]);
+  });
+
+  test('records an audit event for Department config-only updates', async ({ context }) => {
+    const session = mockSession('admin');
+    const caller = context.createCaller(session);
+    const created = await createProduct(caller, 'Department Audit Product');
+    const station = await createStation(context.db, {
+      department: 'fabrication',
+      name: 'Weld Bay 1',
+    });
+
+    await caller.products.update({
+      basePrice: created.basePrice,
+      currencyCode: created.currencyCode,
+      departmentConfigs: [
+        {
+          defaultStationIds: [station.id],
+          department: 'fabrication',
+          durationDays: 4,
+        },
+      ],
+      description: created.description,
+      id: created.id,
+      modelCode: created.modelCode,
+      name: created.name,
+      options: created.options,
+    });
+
+    const events = await listAuditEvents(context.db);
+
+    expect(events.at(-1)).toMatchObject({
+      action: 'updated',
+      actorUserId: session.user.id,
+      changes: {
+        departmentConfigs: {
+          to: expect.arrayContaining([
+            {
+              defaultStationIds: [station.id],
+              department: 'fabrication',
+              durationDays: 4,
+            },
+          ]),
+        },
+      },
+      entityId: created.id,
+      entityType: 'product',
+      summary: 'Updated product "Department Audit Product"',
+    });
   });
 
   test('trims product names', async ({ context }) => {

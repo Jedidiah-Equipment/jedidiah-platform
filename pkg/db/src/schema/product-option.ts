@@ -36,10 +36,3 @@ export const productOptionsRelations = relations(productOptions, ({ one }) => ({
     references: [products.id],
   }),
 }));
-
-export const productDepartmentConfigsRelations = relations(productDepartmentConfigs, ({ one }) => ({
-  product: one(products, {
-    fields: [productDepartmentConfigs.productId],
-    references: [products.id],
-  }),
-}));

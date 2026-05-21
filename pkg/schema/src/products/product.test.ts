@@ -53,6 +53,30 @@ describe('ProductCreateInput', () => {
       }),
     ).toThrow();
   });
+
+  it('rejects duplicate default station ids', () => {
+    const stationId = '00000000-0000-4000-8000-000000000001';
+
+    expect(() =>
+      ProductCreateInput.parse({
+        basePrice: 1_000,
+        departmentConfigs: [
+          {
+            defaultStationIds: [stationId],
+            department: 'fabrication',
+            durationDays: 1,
+          },
+          {
+            defaultStationIds: [stationId],
+            department: 'paint',
+            durationDays: 1,
+          },
+        ],
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+      }),
+    ).toThrow();
+  });
 });
 
 describe('Product', () => {

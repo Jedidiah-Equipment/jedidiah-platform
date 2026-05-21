@@ -41,9 +41,11 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
-export function authorizedProcedure(permission: AppPermission) {
+export function authorizedProcedure(permission: AppPermission | readonly AppPermission[]) {
+  const permissions = Array.isArray(permission) ? permission : [permission];
+
   return protectedProcedure.use(({ ctx, next }) => {
-    if (!ctx.access || !hasPermission(ctx.access, permission)) {
+    if (!ctx.access || !permissions.some((candidate) => hasPermission(ctx.access, candidate))) {
       throw createAuthTRPCError({
         appCode: 'auth.forbidden',
         code: 'FORBIDDEN',

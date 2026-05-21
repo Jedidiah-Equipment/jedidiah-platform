@@ -7,7 +7,6 @@ import {
   setStationActive,
   updateStation,
 } from '@pkg/core';
-import { hasPermission } from '@pkg/domain';
 import {
   StationCreateInput,
   StationDeleteInput,
@@ -15,21 +14,13 @@ import {
   StationSetActiveInput,
   StationUpdateInput,
 } from '@pkg/schema';
-import { assertNever, type CoreErrorMapping, createAuthTRPCError, mapKnownCoreError } from '../../trpc/errors.js';
-import { authorizedProcedure, protectedProcedure, router } from '../../trpc/init.js';
+import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
+import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const stationsRouter = router({
-  list: protectedProcedure.input(StationListInput).query(({ ctx, input }) => {
-    if (!hasPermission(ctx.access, 'job:read') && !hasPermission(ctx.access, 'product:update')) {
-      throw createAuthTRPCError({
-        appCode: 'auth.forbidden',
-        code: 'FORBIDDEN',
-        message: 'You do not have permission to perform this action.',
-      });
-    }
-
-    return listStations({ db: ctx.db, input });
-  }),
+  list: authorizedProcedure(['job:read', 'product:update'])
+    .input(StationListInput)
+    .query(({ ctx, input }) => listStations({ db: ctx.db, input })),
 
   create: authorizedProcedure('job:update')
     .input(StationCreateInput)

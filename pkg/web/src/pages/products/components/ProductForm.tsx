@@ -110,45 +110,49 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
               <h2 className="text-sm font-medium">Production defaults</h2>
               {stationsQuery.isPending ? <Skeleton className="h-32 w-full" /> : null}
               <div className="grid gap-3 xl:grid-cols-2">
-                {field.state.value.map((config, index) => (
-                  <DepartmentConfigFields
-                    activeStations={filterActiveStations(stationsQuery.data ?? [], config.department)}
-                    config={config}
-                    key={config.department}
-                    renderDurationField={() => (
-                      <form.Field name={`departmentConfigs[${index}].durationDays`}>
-                        {(durationField) => (
-                          <Field>
-                            <FieldLabel htmlFor={durationField.name}>Duration</FieldLabel>
-                            <Input
-                              autoComplete="off"
-                              id={durationField.name}
-                              min={0}
-                              name={durationField.name}
-                              onBlur={durationField.handleBlur}
-                              onChange={(event) => durationField.handleChange(Number(event.target.value || 0))}
-                              placeholder="0"
-                              type="number"
-                              value={durationField.state.value}
+                {field.state.value.map((config, index) => {
+                  const activeStations = filterActiveStations(stationsQuery.data ?? [], config.department);
+
+                  return (
+                    <DepartmentConfigFields
+                      activeStations={activeStations}
+                      config={config}
+                      key={config.department}
+                      renderDurationField={() => (
+                        <form.Field name={`departmentConfigs[${index}].durationDays`}>
+                          {(durationField) => (
+                            <Field>
+                              <FieldLabel htmlFor={durationField.name}>Duration</FieldLabel>
+                              <Input
+                                autoComplete="off"
+                                id={durationField.name}
+                                min={0}
+                                name={durationField.name}
+                                onBlur={durationField.handleBlur}
+                                onChange={(event) => durationField.handleChange(Number(event.target.value || 0))}
+                                placeholder="0"
+                                type="number"
+                                value={durationField.state.value}
+                              />
+                            </Field>
+                          )}
+                        </form.Field>
+                      )}
+                      renderStationIdsField={() => (
+                        <form.Field name={`departmentConfigs[${index}].defaultStationIds`}>
+                          {(stationIdsField) => (
+                            <DepartmentStationPicker
+                              activeStations={activeStations}
+                              allStations={stationsQuery.data ?? []}
+                              selectedStationIds={stationIdsField.state.value}
+                              onSelectedStationIdsChange={stationIdsField.handleChange}
                             />
-                          </Field>
-                        )}
-                      </form.Field>
-                    )}
-                    renderStationIdsField={() => (
-                      <form.Field name={`departmentConfigs[${index}].defaultStationIds`}>
-                        {(stationIdsField) => (
-                          <DepartmentStationPicker
-                            activeStations={filterActiveStations(stationsQuery.data ?? [], config.department)}
-                            allStations={stationsQuery.data ?? []}
-                            selectedStationIds={stationIdsField.state.value}
-                            onSelectedStationIdsChange={stationIdsField.handleChange}
-                          />
-                        )}
-                      </form.Field>
-                    )}
-                  />
-                ))}
+                          )}
+                        </form.Field>
+                      )}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}

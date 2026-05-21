@@ -511,6 +511,30 @@ describe('jobs.editDate', () => {
     });
   });
 
+  test('does not emit workflow or audit events for true no-op edits', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({
+      dueEnd: '2026-08-10',
+      productId: context.product.id,
+    });
+    const beforeUpdatedAt = job.updatedAt;
+
+    const unchanged = await caller.jobs.editDate({
+      entityId: job.id,
+      entityLevel: 'job',
+      field: 'due_end',
+      value: '2026-08-10',
+    });
+
+    expect(unchanged.updatedAt).toBe(beforeUpdatedAt);
+    await expect(listJobEventTypes(context.db, job.id)).resolves.toEqual([]);
+
+    const auditRows = (await context.db.select().from(auditEvents)).filter(
+      (event) => event.entityId === job.id && event.action === 'updated',
+    );
+    expect(auditRows).toHaveLength(0);
+  });
+
   test('clears actual dates back to auto and cascades parents back to null', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     let job = await createJobWithStationBookings({

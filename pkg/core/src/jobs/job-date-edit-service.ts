@@ -106,6 +106,9 @@ async function editJobLevelDate({
   if (isDueField(input.field)) {
     assertDueDateEditKeepsRange({ field: input.field, row: beforeJob, value: input.value });
   }
+  if (isNoOpDateEdit({ field: input.field, row: beforeJob, value: input.value })) {
+    return { jobId: beforeJob.id };
+  }
   const updatedJob = await updateJobDateField({ field: input.field, id: beforeJob.id, tx, value: input.value });
   const afterJob = mapJobAuditRecord(updatedJob);
   const beforeAuditJob = mapJobAuditRecord(beforeJob);
@@ -160,6 +163,9 @@ async function editStageLevelDate({
   const beforeJob = await readJobForUpdate(beforeStage.jobId, tx);
   if (isDueField(input.field)) {
     assertDueDateEditKeepsRange({ field: input.field, row: beforeStage, value: input.value });
+  }
+  if (isNoOpDateEdit({ field: input.field, row: beforeStage, value: input.value })) {
+    return { jobId: beforeStage.jobId };
   }
   const updatedStage = await updateStageDateField({ field: input.field, id: beforeStage.id, tx, value: input.value });
 
@@ -222,6 +228,9 @@ async function editStationBookingLevelDate({
   }
   if (input.field === 'actual_end' && input.value !== null && !target.booking.actualStart) {
     throw new JobDateEditInvalidError('Station booking must be started before its actual end can be set.');
+  }
+  if (isNoOpDateEdit({ field: input.field, row: target.booking, value: input.value })) {
+    return { jobId: target.stage.jobId };
   }
   const updatedBooking = await updateStationBookingDateField({
     field: input.field,
@@ -928,6 +937,37 @@ function assertDueDateRange({ dueEnd, dueStart }: { dueEnd: string | null; dueSt
 
   if (parseDateOnly(dueStart).getTime() > parseDateOnly(dueEnd).getTime()) {
     throw new JobDateEditInvalidError('Due start must be on or before due end.');
+  }
+}
+
+function isNoOpDateEdit({
+  field,
+  row,
+  value,
+}: {
+  field: DateField;
+  row: Record<string, unknown>;
+  value: string | null;
+}): boolean {
+  const nextSetManually = value !== null;
+  return (
+    serializeDateEditValue(getDateFieldValue(row, field)) === value &&
+    getDateFieldManualValue(row, field) === nextSetManually
+  );
+}
+
+function getDateFieldManualValue(record: Record<string, unknown>, field: DateField): boolean {
+  switch (field) {
+    case 'actual_end':
+      return record.actualEndSetManually === true;
+    case 'actual_start':
+      return record.actualStartSetManually === true;
+    case 'due_end':
+      return record.dueEndSetManually === true;
+    case 'due_start':
+      return record.dueStartSetManually === true;
+    default:
+      return assertNever(field);
   }
 }
 

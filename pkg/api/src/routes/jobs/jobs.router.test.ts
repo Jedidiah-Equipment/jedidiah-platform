@@ -141,6 +141,39 @@ describe('jobs lifecycle toggles', () => {
     expect(auditRows.filter((event) => event.action === 'updated')).toHaveLength(4);
   });
 
+  test('restores date-derived status when uncancelling a started job', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const activeJob = await createActiveJob(caller, context.product.id);
+
+    const cancelled = await caller.jobs.cancel({ id: activeJob.id });
+    expect(cancelled.lifecycleStatus).toBe('cancelled');
+
+    const uncancelled = await caller.jobs.uncancel({ id: activeJob.id });
+    expect(uncancelled).toMatchObject({
+      isCancelled: false,
+      isPaused: false,
+      lifecycleStatus: 'active',
+    });
+  });
+
+  test('keeps flag precedence explicit for completed jobs', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const completeJob = await createCompleteJob(caller, context.product.id);
+    expect(completeJob.lifecycleStatus).toBe('complete');
+
+    const paused = await caller.jobs.pause({ id: completeJob.id });
+    expect(paused.lifecycleStatus).toBe('paused');
+
+    const resumed = await caller.jobs.resume({ id: completeJob.id });
+    expect(resumed.lifecycleStatus).toBe('complete');
+
+    const cancelled = await caller.jobs.cancel({ id: completeJob.id });
+    expect(cancelled.lifecycleStatus).toBe('cancelled');
+
+    const uncancelled = await caller.jobs.uncancel({ id: completeJob.id });
+    expect(uncancelled.lifecycleStatus).toBe('complete');
+  });
+
   test('limits lifecycle toggles to roles with job update access', async ({ context }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const departmentCaller = context.createCaller(mockSession('job-department-manager'));

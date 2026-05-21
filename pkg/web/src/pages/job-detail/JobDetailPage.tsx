@@ -1,4 +1,4 @@
-import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
+import { hasPermission, JOB_STAGE_PIPELINE, jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
@@ -21,6 +21,8 @@ import { StagePanel } from './components/StagePanel.js';
 import { WorkflowHistory } from './components/WorkflowHistory.js';
 import { stageLabels } from './constants.js';
 import type { JobStageTransitionInput, JobTransitionConfirmation } from './types.js';
+
+const finalJobStage = getFinalJobStage();
 
 type JobDetailPageProps = {
   jobId: UUID;
@@ -127,12 +129,13 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     });
   };
   const confirmCompleteStageTransition = (input: JobStageTransitionInput, onConfirm: () => void) => {
-    const isFinalStage = input.stage === 'assembly';
+    const isFinalStage = input.stage === finalJobStage;
+    const finalStageLabel = stageLabels[finalJobStage];
 
     setConfirmation({
       body: isFinalStage
         ? [
-            'This will complete Assembly and mark the whole Job as complete.',
+            `This will complete ${finalStageLabel} and mark the whole Job as complete.`,
             'The Job status will be derived from that completion date unless it is paused or cancelled later.',
             'The existing Job history will stay as it is.',
           ]
@@ -144,7 +147,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       confirmLabel: isFinalStage ? 'Complete job' : `Complete ${stageLabels[input.stage]}`,
       confirmVariant: 'default',
       onConfirm,
-      title: isFinalStage ? 'Complete Assembly and finish job?' : `Complete ${stageLabels[input.stage]}?`,
+      title: isFinalStage ? `Complete ${finalStageLabel} and finish job?` : `Complete ${stageLabels[input.stage]}?`,
     });
   };
   const confirmCompleteStage = (input: JobStageTransitionInput) => {
@@ -210,6 +213,15 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     </DetailPageLayout>
   );
 };
+
+function getFinalJobStage() {
+  const finalStep = JOB_STAGE_PIPELINE[JOB_STAGE_PIPELINE.length - 1];
+  if (!finalStep) {
+    throw new Error('Job stage pipeline must include a final stage.');
+  }
+
+  return finalStep.stage;
+}
 
 const JobQuoteLink: React.FC<{
   canOpenQuote: boolean;

@@ -1,15 +1,17 @@
 import type { JobLifecycleStatus, JobWorkState } from '@pkg/schema';
 
+type ActualTimestamp = Date | string | null;
+
 export type JobStatusDerivationInput = {
-  actualEnd: unknown | null;
-  actualStart: unknown | null;
+  actualEnd: ActualTimestamp;
+  actualStart: ActualTimestamp;
   isCancelled: boolean;
   isPaused: boolean;
 };
 
 export type LevelStatusDerivationInput = {
-  actualEnd: unknown | null;
-  actualStart: unknown | null;
+  actualEnd: ActualTimestamp;
+  actualStart: ActualTimestamp;
 };
 
 export type ActualWriteGuardInput = {

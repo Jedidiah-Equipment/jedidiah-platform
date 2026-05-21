@@ -6,7 +6,9 @@ import { createAuditChanges, insertAuditEvent, jobAuditDescriptor } from '../aud
 import { JobNotFoundError } from './job-errors.js';
 import { deriveJobLifecycleStatus, type JobAuditRecord, mapJobAuditRecord } from './job-mappers.js';
 
-type JobLifecycleUpdateInput = {
+type WriteJobLifecycleChangeInput = {
+  actorUserId: AuthId;
+  before: JobAuditRecord;
   changes: Partial<Record<keyof JobAuditRecord, string>>;
   eventType: Extract<JobEvent['eventType'], `job.${string}`>;
   id: UUID;
@@ -172,10 +174,7 @@ async function writeJobLifecycleChange({
   id,
   tx,
   values,
-}: {
-  actorUserId: AuthId;
-  before: JobAuditRecord;
-} & JobLifecycleUpdateInput): Promise<void> {
+}: WriteJobLifecycleChangeInput): Promise<void> {
   const [updatedJob] = await tx.update(jobs).set(values).where(eq(jobs.id, id)).returning();
 
   if (!updatedJob) {

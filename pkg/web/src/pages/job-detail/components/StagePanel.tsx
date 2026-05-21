@@ -22,6 +22,59 @@ type StagePanelProps = {
   onStopStationBooking: (input: { id: UUID }) => void;
   stage: JobStageRollup;
 };
+type DateEditableRecord = Pick<
+  JobStageRollup | StationBooking,
+  | 'actualEnd'
+  | 'actualEndSetManually'
+  | 'actualStart'
+  | 'actualStartSetManually'
+  | 'dueEnd'
+  | 'dueEndSetManually'
+  | 'dueStart'
+  | 'dueStartSetManually'
+  | 'id'
+>;
+type DateFieldRowConfig = {
+  emptyValue: string;
+  field: JobDateEditInput['field'];
+  label: string;
+  setManuallyKey: keyof Pick<
+    DateEditableRecord,
+    'actualEndSetManually' | 'actualStartSetManually' | 'dueEndSetManually' | 'dueStartSetManually'
+  >;
+  valueKey: keyof Pick<DateEditableRecord, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>;
+};
+
+const dateFieldRows = [
+  {
+    emptyValue: 'No date',
+    field: 'due_start',
+    label: 'Due start',
+    setManuallyKey: 'dueStartSetManually',
+    valueKey: 'dueStart',
+  },
+  {
+    emptyValue: 'No date',
+    field: 'due_end',
+    label: 'Due end',
+    setManuallyKey: 'dueEndSetManually',
+    valueKey: 'dueEnd',
+  },
+  {
+    emptyValue: 'Not started',
+    field: 'actual_start',
+    label: 'Started',
+    setManuallyKey: 'actualStartSetManually',
+    valueKey: 'actualStart',
+  },
+  {
+    emptyValue: 'Not completed',
+    field: 'actual_end',
+    label: 'Completed',
+    setManuallyKey: 'actualEndSetManually',
+    valueKey: 'actualEnd',
+  },
+] as const satisfies readonly DateFieldRowConfig[];
 
 export const StagePanel: React.FC<StagePanelProps> = ({
   canEditDates,
@@ -77,66 +130,14 @@ export const StagePanel: React.FC<StagePanelProps> = ({
           <div>
             State: <span className="text-foreground">{jobStageStatusLabels[stage.state]}</span>
           </div>
-          <div>
-            Due start:{' '}
-            <EditableDateValue
-              canEdit={canEditDates}
-              disabled={isPending}
-              emptyValue="No date"
-              entityId={stage.id}
-              entityLevel="stage"
-              field="due_start"
-              label={`${departmentLabel} due start`}
-              onEdit={onEditDate}
-              setManually={stage.dueStartSetManually}
-              value={stage.dueStart}
-            />
-          </div>
-          <div>
-            Due end:{' '}
-            <EditableDateValue
-              canEdit={canEditDates}
-              disabled={isPending}
-              emptyValue="No date"
-              entityId={stage.id}
-              entityLevel="stage"
-              field="due_end"
-              label={`${departmentLabel} due end`}
-              onEdit={onEditDate}
-              setManually={stage.dueEndSetManually}
-              value={stage.dueEnd}
-            />
-          </div>
-          <div>
-            Started:{' '}
-            <EditableDateValue
-              canEdit={canEditDates}
-              disabled={isPending}
-              emptyValue="Not started"
-              entityId={stage.id}
-              entityLevel="stage"
-              field="actual_start"
-              label={`${departmentLabel} actual start`}
-              onEdit={onEditDate}
-              setManually={stage.actualStartSetManually}
-              value={stage.actualStart}
-            />
-          </div>
-          <div>
-            Completed:{' '}
-            <EditableDateValue
-              canEdit={canEditDates}
-              disabled={isPending}
-              emptyValue="Not completed"
-              entityId={stage.id}
-              entityLevel="stage"
-              field="actual_end"
-              label={`${departmentLabel} actual end`}
-              onEdit={onEditDate}
-              setManually={stage.actualEndSetManually}
-              value={stage.actualEnd}
-            />
-          </div>
+          <DateFieldRows
+            canEdit={canEditDates}
+            disabled={isPending}
+            entityLabel={departmentLabel}
+            entityLevel="stage"
+            onEdit={onEditDate}
+            record={stage}
+          />
         </div>
         {showStationBookings ? (
           <div className="flex flex-col gap-2">
@@ -204,68 +205,15 @@ const StationBookingControl: React.FC<{
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{booking.station.name}</div>
           <div className="text-xs text-muted-foreground">{jobStageStatusLabels[booking.state]}</div>
-          <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-            <div>
-              Due start:{' '}
-              <EditableDateValue
-                canEdit={canEditDates}
-                disabled={disabled}
-                emptyValue="No date"
-                entityId={booking.id}
-                entityLevel="station-booking"
-                field="due_start"
-                label={`${booking.station.name} due start`}
-                onEdit={onEditDate}
-                setManually={booking.dueStartSetManually}
-                value={booking.dueStart}
-              />
-            </div>
-            <div>
-              Due end:{' '}
-              <EditableDateValue
-                canEdit={canEditDates}
-                disabled={disabled}
-                emptyValue="No date"
-                entityId={booking.id}
-                entityLevel="station-booking"
-                field="due_end"
-                label={`${booking.station.name} due end`}
-                onEdit={onEditDate}
-                setManually={booking.dueEndSetManually}
-                value={booking.dueEnd}
-              />
-            </div>
-            <div>
-              Started:{' '}
-              <EditableDateValue
-                canEdit={canEditDates}
-                disabled={disabled}
-                emptyValue="Not started"
-                entityId={booking.id}
-                entityLevel="station-booking"
-                field="actual_start"
-                label={`${booking.station.name} actual start`}
-                onEdit={onEditDate}
-                setManually={booking.actualStartSetManually}
-                value={booking.actualStart}
-              />
-            </div>
-            <div>
-              Completed:{' '}
-              <EditableDateValue
-                canEdit={canEditDates}
-                disabled={disabled}
-                emptyValue="Not completed"
-                entityId={booking.id}
-                entityLevel="station-booking"
-                field="actual_end"
-                label={`${booking.station.name} actual end`}
-                onEdit={onEditDate}
-                setManually={booking.actualEndSetManually}
-                value={booking.actualEnd}
-              />
-            </div>
-          </div>
+          <DateFieldRows
+            canEdit={canEditDates}
+            className="mt-2 grid gap-1 text-xs text-muted-foreground"
+            disabled={disabled}
+            entityLabel={booking.station.name}
+            entityLevel="station-booking"
+            onEdit={onEditDate}
+            record={booking}
+          />
         </div>
         {booking.state === 'complete' ? (
           <div className="shrink-0 text-right text-xs text-muted-foreground">
@@ -292,3 +240,33 @@ const StationBookingControl: React.FC<{
     </div>
   );
 };
+
+const DateFieldRows: React.FC<{
+  canEdit: boolean;
+  className?: string;
+  disabled: boolean;
+  entityLabel: string;
+  entityLevel: JobDateEditInput['entityLevel'];
+  onEdit: (input: JobDateEditInput) => void;
+  record: DateEditableRecord;
+}> = ({ canEdit, className = 'contents', disabled, entityLabel, entityLevel, onEdit, record }) => (
+  <div className={className}>
+    {dateFieldRows.map((dateField) => (
+      <div key={dateField.field}>
+        {dateField.label}:{' '}
+        <EditableDateValue
+          canEdit={canEdit}
+          disabled={disabled}
+          emptyValue={dateField.emptyValue}
+          entityId={record.id}
+          entityLevel={entityLevel}
+          field={dateField.field}
+          label={`${entityLabel} ${dateField.label.toLowerCase()}`}
+          onEdit={onEdit}
+          setManually={record[dateField.setManuallyKey]}
+          value={record[dateField.valueKey]}
+        />
+      </div>
+    ))}
+  </div>
+);

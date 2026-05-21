@@ -1,29 +1,10 @@
-import { jobStageStatusLabels } from '@pkg/domain';
-import type { JobStageName, JobWorkState } from '@pkg/schema';
+import type { JobStageName } from '@pkg/schema';
 
 import { stageLabels } from '../constants.js';
-
-type StageStatusChangeCopyInput = {
-  fromStatus: JobWorkState;
-  stage: JobStageName;
-  toStatus: JobWorkState;
-};
-
-type StageStatusChangeCopy = {
-  label: string;
-  metadata: string;
-};
 
 type StageStartedCopyInput = {
   stage: JobStageName;
 };
-
-export function getStageStatusChangeCopy(input: StageStatusChangeCopyInput): StageStatusChangeCopy {
-  return {
-    label: `${stageLabels[input.stage]} moved to ${jobStageStatusLabels[input.toStatus]}`,
-    metadata: `Previously ${jobStageStatusLabels[input.fromStatus]}`,
-  };
-}
 
 export function getStageStartedMetadata(input: StageStartedCopyInput): string {
   return `${stageLabels[input.stage]} is now active`;

@@ -44,6 +44,45 @@ describe('quotes.create', () => {
     expect(events.map((event) => event.entityType)).toEqual(['customer', 'quote']);
   });
 
+  test('creates a customer-only draft quote', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    const created = await caller.quotes.create({
+      customer: {
+        type: 'inline',
+        companyName: 'Acme Mining',
+      },
+      notes: null,
+    });
+
+    expect(created).toMatchObject({
+      customerCompanyName: 'Acme Mining',
+      productId: null,
+      productName: null,
+      salesPersonId: null,
+      status: 'draft',
+      total: null,
+    });
+  });
+
+  test('rejects a discount when the draft quote has no product', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await expect(
+      caller.quotes.create({
+        customer: {
+          type: 'inline',
+          companyName: 'Acme Mining',
+        },
+        discount: 100,
+        notes: null,
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Quote discount is invalid.',
+    });
+  });
+
   test('rejects an unknown salesperson id as bad input', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 

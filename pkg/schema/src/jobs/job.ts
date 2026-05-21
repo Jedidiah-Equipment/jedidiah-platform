@@ -153,14 +153,6 @@ const StationTransitionJobEventPayload = z.object({
   stationName: z.string().trim().min(1),
 });
 
-// Historical workflow rows may still contain pre-0016 stage status/completion events.
-// New writes only produce DerivedStageJobEvent variants below.
-const StageStatusChangedJobEventPayload = z.object({
-  stage: JobStageName,
-  fromStatus: JobWorkState,
-  toStatus: JobWorkState,
-});
-
 const StageCompletedJobEventPayload = z.object({
   stage: JobStageName,
   status: JobWorkState,
@@ -215,11 +207,6 @@ const StationEndedJobEvent = JobEventBase.extend({
   }),
 });
 
-const StageStatusChangedJobEvent = JobEventBase.extend({
-  eventType: z.literal('stage.status_changed'),
-  payload: StageStatusChangedJobEventPayload,
-});
-
 const StageCompletedJobEvent = JobEventBase.extend({
   eventType: z.literal('stage.completed'),
   payload: StageCompletedJobEventPayload,
@@ -267,7 +254,6 @@ export const JobEvent = z.discriminatedUnion('eventType', [
   StageEndedJobEvent,
   StationStartedJobEvent,
   StationEndedJobEvent,
-  StageStatusChangedJobEvent,
   StageCompletedJobEvent,
   JobPausedEvent,
   JobStartedEvent,

@@ -65,10 +65,10 @@ type QuoteAuditRecord = Pick<
 type QuoteListRow = {
   quote: QuoteRow;
   customerCompanyName: string;
-  productBasePrice: number;
-  productCurrencyCode: string;
-  productModelCode: string;
-  productName: string;
+  productBasePrice: number | null;
+  productCurrencyCode: string | null;
+  productModelCode: string | null;
+  productName: string | null;
   salesPersonEmail: string | null;
   salesPersonName: string | null;
   jobCode: number | null;
@@ -105,9 +105,16 @@ export async function createQuote({
 }): Promise<QuoteDetail> {
   return db.transaction(async (tx) => {
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
-    const product = await readProductForQuote({ productId: input.productId, tx });
-    await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
-    assertValidDiscount({ basePrice: product.basePrice, discount: input.discount });
+    if (input.productId) {
+      const product = await readProductForQuote({ productId: input.productId, tx });
+      assertValidDiscount({ basePrice: product.basePrice, discount: input.discount });
+    } else {
+      assertDraftWithoutProductHasNoDiscount(input.discount);
+    }
+
+    if (input.salesPersonId) {
+      await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
+    }
 
     const [row] = await tx
       .insert(quotes)
@@ -163,7 +170,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
       })
       .from(quotes)
       .innerJoin(customers, eq(quotes.customerId, customers.id))
-      .innerJoin(products, eq(quotes.productId, products.id))
+      .leftJoin(products, eq(quotes.productId, products.id))
       .leftJoin(user, eq(quotes.salesPersonId, user.id))
       .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
       .where(where)
@@ -178,7 +185,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
     .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
     .where(where);
 
@@ -208,7 +215,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
     .leftJoin(user, eq(quotes.salesPersonId, user.id))
     .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
     .where(eq(quotes.id, id));
@@ -261,9 +268,16 @@ export async function updateQuote({
     }
 
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
-    const product = await readProductForQuote({ productId: input.productId, tx });
-    await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
-    assertValidDiscount({ basePrice: product.basePrice, discount: input.discount });
+    if (input.productId) {
+      const product = await readProductForQuote({ productId: input.productId, tx });
+      assertValidDiscount({ basePrice: product.basePrice, discount: input.discount });
+    } else {
+      assertDraftWithoutProductHasNoDiscount(input.discount);
+    }
+
+    if (input.salesPersonId) {
+      await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
+    }
 
     const after = {
       ...before,
@@ -381,12 +395,12 @@ function mapQuoteSummary(row: QuoteListRow): QuoteSummary {
     customerCompanyName: row.customerCompanyName,
     jobCode: row.jobCode === null ? null : JobCode.parse(row.jobCode),
     jobId: row.jobId,
-    productCurrencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
+    productCurrencyCode: row.productCurrencyCode === null ? null : ProductCurrencyCode.parse(row.productCurrencyCode),
     productModelCode: row.productModelCode,
     productName: row.productName,
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,
-    total: computeQuoteTotal({ discount: row.quote.discount, quotedBasePrice }),
+    total: quotedBasePrice === null ? null : computeQuoteTotal({ discount: row.quote.discount, quotedBasePrice }),
   };
 }
 
@@ -452,7 +466,11 @@ async function transitionQuote({
   });
 }
 
-function assertCompleteDraft(quote: QuoteRow): void {
+function assertCompleteDraft(quote: QuoteRow): asserts quote is QuoteRow & {
+  productId: UUID;
+  salesPersonId: AuthId;
+  validUntil: string;
+} {
   if (!quote.customerId || !quote.productId || !quote.salesPersonId || !quote.validUntil) {
     throw new QuoteTransitionDeniedError('Quote is missing required fields.');
   }
@@ -553,6 +571,12 @@ function assertValidDiscount({ basePrice, discount }: { basePrice: number; disco
 
   if (!result.allowed) {
     throw new QuoteDiscountInvalidError(result.reason);
+  }
+}
+
+function assertDraftWithoutProductHasNoDiscount(discount: number): void {
+  if (discount !== 0) {
+    throw new QuoteDiscountInvalidError('Quote discount requires a product.');
   }
 }
 

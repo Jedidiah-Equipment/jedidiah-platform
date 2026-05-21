@@ -3,6 +3,7 @@ import {
   completeJobStage,
   createJob,
   createJobFromQuote,
+  editJobDate,
   getJob,
   isJobCoreError,
   type JobCoreError,
@@ -17,6 +18,7 @@ import {
 import {
   JobCreateFromQuoteInput,
   JobCreateInput,
+  JobDateEditInput,
   JobLifecycleTransitionInput,
   JobListInput,
   JobStageTransitionInput,
@@ -103,6 +105,19 @@ export const jobsRouter = router({
       ),
     ),
 
+  editDate: authorizedProcedure('job:update')
+    .input(JobDateEditInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        editJobDate({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          input,
+        }),
+      ),
+    ),
+
   startStage: authorizedProcedure('job-stage:update')
     .input(JobStageTransitionInput)
     .mutation(({ ctx, input }) =>
@@ -169,6 +184,24 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Job not found.',
+      };
+    case 'job.date_edit_target_not_found':
+      return {
+        appCode: error.code,
+        code: 'NOT_FOUND',
+        message: 'Date target not found.',
+      };
+    case 'job.date_edit_denied':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: error.message,
+      };
+    case 'job.date_edit_invalid':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: error.message,
       };
     case 'job.station_booking_not_found':
       return {

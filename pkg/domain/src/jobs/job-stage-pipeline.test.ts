@@ -1,7 +1,7 @@
 import { JOB_STAGES } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { JOB_STAGE_PIPELINE } from './job-stage-pipeline.js';
+import { FINAL_JOB_STAGE, JOB_STAGE_PIPELINE } from './job-stage-pipeline.js';
 
 describe('JOB_STAGE_PIPELINE', () => {
   it('keeps the production workflow in order', () => {
@@ -19,5 +19,9 @@ describe('JOB_STAGE_PIPELINE', () => {
 
     expect(new Set(pipelineStages)).toHaveProperty('size', JOB_STAGES.length);
     expect([...pipelineStages].sort()).toEqual([...JOB_STAGES].sort());
+  });
+
+  it('exports the final stage from the production workflow', () => {
+    expect(FINAL_JOB_STAGE).toBe('assembly');
   });
 });

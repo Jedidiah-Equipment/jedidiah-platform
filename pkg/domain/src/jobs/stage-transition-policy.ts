@@ -1,6 +1,7 @@
 import type { JobStageName, UserAccessSummary } from '@pkg/schema';
 
 import { canEditStage } from '../auth/authorization.js';
+import { evaluateActualWriteGuard } from './status/index.js';
 
 export const STAGE_TRANSITIONS = ['start', 'stop'] as const;
 
@@ -39,12 +40,9 @@ export type StageTransitionPolicyResult =
 export type StageTransitionAvailability = Record<StageTransition, StageTransitionPolicyResult>;
 
 export function evaluateStageTransition(input: StageTransitionPolicyInput): StageTransitionPolicyResult {
-  if (input.job.isCancelled) {
-    return deny('Job is cancelled.');
-  }
-
-  if (input.job.isPaused) {
-    return deny('Job is paused.');
+  const actualWriteGuard = evaluateActualWriteGuard(input.job);
+  if (!actualWriteGuard.allowed) {
+    return actualWriteGuard;
   }
 
   if (!canEditStage(input.access, input.stage)) {

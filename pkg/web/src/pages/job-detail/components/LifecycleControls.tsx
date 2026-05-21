@@ -6,22 +6,26 @@ import { Button } from '@/components/ui/button.js';
 import { JobLifecycleStatusBadge } from '../../jobs/components/JobLifecycleStatusBadge.js';
 
 type LifecycleControlsProps = {
+  isCancelled: boolean;
+  isPaused: boolean;
   isPending: boolean;
   lifecycleStatus: JobLifecycleStatus;
   onCancel: () => void;
   onPause: () => void;
   onResume: () => void;
+  onUncancel: () => void;
 };
 
 export const LifecycleControls: React.FC<LifecycleControlsProps> = ({
+  isCancelled,
+  isPaused,
   isPending,
   lifecycleStatus,
   onCancel,
   onPause,
   onResume,
+  onUncancel,
 }) => {
-  const isTerminal = lifecycleStatus === 'complete' || lifecycleStatus === 'cancelled';
-
   return (
     <section className="rounded-md border bg-muted/20 p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -33,18 +37,12 @@ export const LifecycleControls: React.FC<LifecycleControlsProps> = ({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            disabled={isPending || lifecycleStatus !== 'active'}
-            onClick={onPause}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
+          <Button disabled={isPending || isPaused} onClick={onPause} size="sm" type="button" variant="outline">
             <PauseIcon data-icon="inline-start" />
             Pause
           </Button>
           <Button
-            disabled={isPending || lifecycleStatus !== 'paused'}
+            disabled={isPending || isCancelled || !isPaused}
             onClick={onResume}
             size="sm"
             type="button"
@@ -53,9 +51,13 @@ export const LifecycleControls: React.FC<LifecycleControlsProps> = ({
             <RotateCcwIcon data-icon="inline-start" />
             Resume
           </Button>
-          <Button disabled={isPending || isTerminal} onClick={onCancel} size="sm" type="button" variant="destructive">
+          <Button disabled={isPending || isCancelled} onClick={onCancel} size="sm" type="button" variant="destructive">
             <XCircleIcon data-icon="inline-start" />
             Cancel
+          </Button>
+          <Button disabled={isPending || !isCancelled} onClick={onUncancel} size="sm" type="button" variant="outline">
+            <RotateCcwIcon data-icon="inline-start" />
+            Uncancel
           </Button>
         </div>
       </div>

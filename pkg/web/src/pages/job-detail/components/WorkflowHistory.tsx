@@ -96,6 +96,10 @@ function getWorkflowEventLabel(event: JobEvent): string {
     return 'Job cancelled';
   }
 
+  if (event.eventType === 'job.uncancelled') {
+    return 'Job uncancelled';
+  }
+
   if (event.eventType === 'job.completed') {
     return 'Job completed';
   }
@@ -128,6 +132,7 @@ function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
     event.eventType === 'job.paused' ||
     event.eventType === 'job.resumed' ||
     event.eventType === 'job.cancelled' ||
+    event.eventType === 'job.uncancelled' ||
     event.eventType === 'job.completed'
   ) {
     return `${jobLifecycleStatusLabels[event.payload.fromLifecycleStatus]} to ${
@@ -177,7 +182,11 @@ function getWorkflowEventColor(event: JobEvent): string {
     return 'bg-destructive';
   }
 
-  if (event.eventType === 'job.resumed' || event.eventType === 'stage.started') {
+  if (
+    event.eventType === 'job.resumed' ||
+    event.eventType === 'job.uncancelled' ||
+    event.eventType === 'stage.started'
+  ) {
     return 'bg-sky-500';
   }
 

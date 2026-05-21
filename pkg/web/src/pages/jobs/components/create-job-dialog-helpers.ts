@@ -1,5 +1,6 @@
 import { computeDefaults, departmentLabels, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import type { JobCreateInput, JobStageName, Product, UUID } from '@pkg/schema';
+import { format, parse } from 'date-fns';
 
 export type AnchorKind = 'start' | 'end';
 
@@ -194,19 +195,9 @@ export function formatStageList(stages: JobStageName[]): string {
 }
 
 export function fromDateInputValue(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
-
-  if (!year || !month || !day) {
-    return new Date();
-  }
-
-  return new Date(year, month - 1, day);
+  return value ? parse(value, 'yyyy-MM-dd', new Date()) : new Date();
 }
 
 export function toDateInputValue(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
+  return format(date, 'yyyy-MM-dd');
 }

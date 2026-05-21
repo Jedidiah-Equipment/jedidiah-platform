@@ -1,4 +1,6 @@
 import type { AppRole } from '@pkg/schema';
+import { expect } from 'vitest';
+import { z } from 'zod';
 
 import type { Context } from '@/trpc/context.js';
 
@@ -25,4 +27,8 @@ export function mockSession(role: AppRole = 'admin'): NonNullable<Context['sessi
       updatedAt: new Date(),
     },
   } as NonNullable<Context['session']>;
+}
+
+export function expectIsoDatetime(value: unknown): asserts value is string {
+  expect(z.iso.datetime().safeParse(value).success).toBe(true);
 }

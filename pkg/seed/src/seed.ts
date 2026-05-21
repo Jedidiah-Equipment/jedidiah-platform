@@ -9,6 +9,7 @@ import {
   createJobFromQuote,
   createProduct,
   createQuote,
+  createStation,
   pauseJob,
   rejectQuote,
   resumeJob,
@@ -34,6 +35,19 @@ const seedProductCount = 10;
 const seedProductMinAgeDays = 7;
 const seedProductAgeDayRange = 22;
 const seedStandaloneJobCount = 2;
+
+const seedStations = [
+  { department: 'procurement', displayOrder: 10, name: 'PO Desk' },
+  { department: 'procurement', displayOrder: 20, name: 'Vendor Follow-up' },
+  { department: 'supply', displayOrder: 10, name: 'Goods-In Bay' },
+  { department: 'supply', displayOrder: 20, name: 'Stores Cage' },
+  { department: 'fabrication', displayOrder: 10, name: 'Weld Bay 1' },
+  { department: 'fabrication', displayOrder: 20, name: 'Weld Bay 2' },
+  { department: 'paint', displayOrder: 10, name: 'Paint Booth A' },
+  { department: 'paint', displayOrder: 20, name: 'Prep Bay' },
+  { department: 'assembly', displayOrder: 10, name: 'Assembly Bench 1' },
+  { department: 'assembly', displayOrder: 20, name: 'Final QA Bay' },
+] as const satisfies readonly Parameters<typeof createStation>[0]['input'][];
 
 const equipmentFamilies = [
   'Wheel Loader',
@@ -422,6 +436,11 @@ export async function seedDatabase(database?: Db): Promise<void> {
   console.info(`[db:seed] Upserted ${demoUsers.length} credential account(s)`);
   console.info(`[db:seed] Rebuilding ${seedProductPlans.length} product scenario(s) through core services`);
 
+  await seedStationsWithCore({
+    actorUserId: 'seed-job-supervisor-user',
+    db: activeDb,
+  });
+
   const seededProducts = await seedProductsWithCore({
     actorUserIds: productEditorUserIds,
     db: activeDb,
@@ -439,8 +458,20 @@ export async function seedDatabase(database?: Db): Promise<void> {
   });
 
   console.info(
-    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededProducts.length} product scenario(s), ${seedJobScenarios.length} job scenario(s) (${seedJobScenarios.length - seedStandaloneJobCount} quote-backed), and ${seedQuoteScenarios.length} standalone quote scenario(s)`,
+    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seedStations.length} station(s), ${seededProducts.length} product scenario(s), ${seedJobScenarios.length} job scenario(s) (${seedJobScenarios.length - seedStandaloneJobCount} quote-backed), and ${seedQuoteScenarios.length} standalone quote scenario(s)`,
   );
+}
+
+async function seedStationsWithCore({ actorUserId, db }: { actorUserId: string; db: Db }): Promise<void> {
+  console.info(`[db:seed] Creating ${seedStations.length} station catalog row(s)`);
+
+  for (const input of seedStations) {
+    await createStation({
+      actorUserId,
+      db,
+      input,
+    });
+  }
 }
 
 async function seedProductsWithCore({

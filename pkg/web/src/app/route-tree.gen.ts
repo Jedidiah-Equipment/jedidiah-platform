@@ -24,6 +24,7 @@ import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboa
 import { Route as AuthedCustomersRouteImport } from './../routes/_authed.customers'
 import { Route as AuthedAuditRouteImport } from './../routes/_authed.audit'
 import { Route as AuthedAssistantRouteImport } from './../routes/_authed.assistant'
+import { Route as AuthedStationsRouteImport } from './../routes/_authed.stations'
 import { Route as AuthedQuotesIndexRouteImport } from './../routes/_authed.quotes.index'
 import { Route as AuthedProductsIndexRouteImport } from './../routes/_authed.products.index'
 import { Route as AuthedJobsIndexRouteImport } from './../routes/_authed.jobs.index'
@@ -111,6 +112,11 @@ const AuthedAssistantRoute = AuthedAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedStationsRoute = AuthedStationsRouteImport.update({
+  id: '/stations',
+  path: '/stations',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedQuotesIndexRoute = AuthedQuotesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/products': typeof AuthedProductsRouteWithChildren
   '/quotes': typeof AuthedQuotesRouteWithChildren
   '/users': typeof AuthedUsersRoute
+  '/stations': typeof AuthedStationsRoute
   '/customers/new': typeof AuthedCustomersNewRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/products/new': typeof AuthedProductsNewRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByTo {
   '/audit': typeof AuthedAuditRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/users': typeof AuthedUsersRoute
+  '/stations': typeof AuthedStationsRoute
   '/customers/new': typeof AuthedCustomersNewRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/products/new': typeof AuthedProductsNewRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/_authed/products': typeof AuthedProductsRouteWithChildren
   '/_authed/quotes': typeof AuthedQuotesRouteWithChildren
   '/_authed/users': typeof AuthedUsersRoute
+  '/_authed/stations': typeof AuthedStationsRoute
   '/_authed/customers/new': typeof AuthedCustomersNewRoute
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
   '/_authed/products/new': typeof AuthedProductsNewRoute
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/quotes'
     | '/users'
+    | '/stations'
     | '/customers/new'
     | '/jobs/$id'
     | '/products/new'
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/dashboard'
     | '/users'
+    | '/stations'
     | '/customers/new'
     | '/jobs/$id'
     | '/products/new'
@@ -324,6 +335,7 @@ export interface FileRouteTypes {
     | '/_authed/products'
     | '/_authed/quotes'
     | '/_authed/users'
+    | '/_authed/stations'
     | '/_authed/customers/new'
     | '/_authed/jobs/$id'
     | '/_authed/products/new'
@@ -404,6 +416,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AuthedUsersRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/stations': {
+      id: '/_authed/stations'
+      path: '/stations'
+      fullPath: '/stations'
+      preLoaderRoute: typeof AuthedStationsRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/quotes': {
@@ -615,6 +634,7 @@ interface AuthedRouteChildren {
   AuthedProductsRoute: typeof AuthedProductsRouteWithChildren
   AuthedQuotesRoute: typeof AuthedQuotesRouteWithChildren
   AuthedUsersRoute: typeof AuthedUsersRoute
+  AuthedStationsRoute: typeof AuthedStationsRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
@@ -625,6 +645,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedJobsRoute: AuthedJobsRouteWithChildren,
   AuthedProductsRoute: AuthedProductsRouteWithChildren,
   AuthedQuotesRoute: AuthedQuotesRouteWithChildren,
+  AuthedStationsRoute: AuthedStationsRoute,
   AuthedUsersRoute: AuthedUsersRoute,
 }
 

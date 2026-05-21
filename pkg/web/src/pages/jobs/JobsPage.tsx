@@ -194,8 +194,15 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
         accessorKey: 'dueEnd',
         cell: ({ row }) => <DateDisplay date={row.original.dueEnd} emptyValue="No date" />,
         enableColumnFilter: false,
-        enableSorting: false,
+        enableSorting: true,
         header: 'Due',
+      },
+      {
+        accessorKey: 'actualEnd',
+        cell: ({ row }) => <DateDisplay date={row.original.actualEnd} emptyValue="Open" format="medium" />,
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Actual end',
       },
       {
         accessorKey: 'lifecycleStatus',

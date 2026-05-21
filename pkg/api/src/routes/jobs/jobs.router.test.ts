@@ -121,6 +121,76 @@ describe('jobs.list', () => {
       expect(result.items.every((item) => item.lifecycleStatus === status)).toBe(true);
     }
   });
+
+  test('sorts by due end and actual end', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const laterDueJob = await caller.jobs.create({ dueEnd: '2026-08-20', productId: context.product.id });
+    const earlierDueJob = await caller.jobs.create({ dueEnd: '2026-08-10', productId: context.product.id });
+
+    await expect(
+      caller.jobs.list({
+        filters: { lifecycleStatuses: [] },
+        page: 1,
+        pageSize: 20,
+        sortBy: 'dueEnd',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      items: [{ id: earlierDueJob.id }, { id: laterDueJob.id }],
+    });
+
+    const earlierActualJob = await caller.jobs.create({ productId: context.product.id });
+    const laterActualJob = await caller.jobs.create({ productId: context.product.id });
+    await context.databaseClient.queryClient`
+      update job
+      set actual_start = '2026-08-01T08:00:00.000Z',
+        actual_end = case
+          when id = ${earlierActualJob.id} then '2026-08-12T08:00:00.000Z'
+          when id = ${laterActualJob.id} then '2026-08-18T08:00:00.000Z'
+          else actual_end
+        end
+      where id in (${earlierActualJob.id}, ${laterActualJob.id})
+    `;
+
+    await expect(
+      caller.jobs.list({
+        filters: { lifecycleStatuses: ['complete'] },
+        page: 1,
+        pageSize: 20,
+        sortBy: 'actualEnd',
+        sortDirection: 'desc',
+      }),
+    ).resolves.toMatchObject({
+      items: [{ id: laterActualJob.id }, { id: earlierActualJob.id }],
+    });
+  });
+});
+
+describe('jobs.get', () => {
+  test('keeps stage summaries, station bookings, and workflow events visible across departments', async ({
+    context,
+  }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const job = await createJobWithStationBookings({
+      caller: supervisorCaller,
+      db: context.db,
+      productId: context.product.id,
+      stages: ['fabrication'],
+    });
+    await supervisorCaller.jobs.startStationBooking({ id: getStageBooking(job, 'fabrication').id });
+
+    const paintCaller = createScopedCaller(context.db, 'job-department-manager', ['paint']);
+    const visibleJob = await paintCaller.jobs.get({ id: job.id });
+    const fabrication = getStage(visibleJob, 'fabrication');
+
+    expect(fabrication.access).toBe('summary');
+    expect(fabrication.stations).toHaveLength(1);
+    expect(visibleJob.workflowEvents.map((event) => event.eventType).sort()).toEqual([
+      'job.started',
+      'stage.started',
+      'station.started',
+    ]);
+  });
 });
 
 describe('jobs stage transitions', () => {

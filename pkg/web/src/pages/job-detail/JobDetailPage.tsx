@@ -206,6 +206,8 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
             ))}
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <JobFact label="Job code" value={<span className="font-medium">{job.code}</span>} />
+            <JobFact label="Customer" value={job.customerCompanyName ?? 'Stock build'} />
             <JobFact label="Created" value={<DateDisplay date={job.createdAt} />} />
             <JobFact label="Updated" value={<DateDisplay date={job.updatedAt} />} />
             <JobFact

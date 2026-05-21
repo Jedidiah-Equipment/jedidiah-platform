@@ -27,6 +27,7 @@ import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { useQuoteStateMutation } from './hooks/use-quote-state-mutation.js';
+import { canCreateJobFromQuote } from './quote-job-eligibility.js';
 
 type QuoteDetailPageProps = {
   quoteId: UUID;
@@ -52,7 +53,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
   const acceptMutation = useQuoteStateMutation({ action: 'accept', successMessage: 'Quote accepted' });
   const rejectMutation = useQuoteStateMutation({ action: 'reject', successMessage: 'Quote rejected' });
 
-  const currencyCode = quote?.quotedCurrencyCode ?? quote?.productCurrencyCode;
+  const currencyCode = quote?.quotedCurrencyCode ?? quote?.productCurrencyCode ?? undefined;
 
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
@@ -129,7 +130,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                 </Button>
               </>
             ) : null}
-            {canCreateJob && !quote.jobId ? (
+            {canCreateJob && canCreateJobFromQuote(quote.status, quote.productId) && !quote.jobId ? (
               <CreateJobDialog
                 quote={quote}
                 trigger={
@@ -143,11 +144,17 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
           </div>
           <div className="grid gap-3 text-sm md:grid-cols-3">
             <QuoteFact label="Status" value={quoteStatusLabels[quote.status]} />
-            <QuoteFact label="Product" value={`${quote.productName} (${quote.productModelCode})`} />
+            <QuoteFact
+              label="Product"
+              value={quote.productName ? `${quote.productName} (${quote.productModelCode})` : 'Not set'}
+            />
             <QuoteFact label="Salesperson" value={quote.salesPersonName ?? 'Unassigned'} />
             <QuoteFact label="Valid until" value={<DateDisplay date={quote.validUntil} emptyValue="Not set" />} />
             <QuoteFact label="Sent" value={<DateDisplay date={quote.sentAt} emptyValue="Not sent" format="medium" />} />
-            <QuoteFact label="Total" value={formatCurrency(quote.total, currencyCode)} />
+            <QuoteFact
+              label="Total"
+              value={quote.total === null ? 'Not set' : formatCurrency(quote.total, currencyCode)}
+            />
             <QuoteFact label="Discount" value={formatCurrency(quote.discount, currencyCode)} />
             <QuoteFact
               label="Quoted base price"

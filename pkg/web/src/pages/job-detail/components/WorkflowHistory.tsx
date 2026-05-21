@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
 import { stageLabels } from '../constants.js';
-import { getStageStartedMetadata, getStageStatusChangeCopy } from './workflow-history-copy.js';
+import { getStageStartedMetadata } from './workflow-history-copy.js';
 
 type WorkflowHistoryProps = {
   events: JobEvent[];
@@ -169,7 +169,7 @@ function getWorkflowEventLabel(event: JobEvent): string {
     return `${getDateOverrideEntityLabel(event.payload.entityLevel)} date edited`;
   }
 
-  return getStageStatusChangeCopy(event.payload).label;
+  assertUnhandledWorkflowEvent(event);
 }
 
 function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
@@ -236,7 +236,7 @@ function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
     )} → ${formatDateOverrideValue(event.payload.newValue)}`;
   }
 
-  return getStageStatusChangeCopy(event.payload).metadata;
+  assertUnhandledWorkflowEvent(event);
 }
 
 function getWorkflowEventFamily(event: JobEvent): WorkflowEventFamily {
@@ -249,7 +249,6 @@ function getWorkflowEventFamily(event: JobEvent): WorkflowEventFamily {
     case 'stage.completed':
     case 'stage.ended':
     case 'stage.started':
-    case 'stage.status_changed':
     case 'stage.stopped':
       return 'stage';
     case 'job.cancelled':
@@ -282,7 +281,6 @@ function isStageWorkflowEvent(event: JobEvent): event is Extract<
       | 'stage.ended'
       | 'stage.stopped'
       | 'stage.completed'
-      | 'stage.status_changed'
       | 'station.started'
       | 'station.ended';
   }
@@ -292,7 +290,6 @@ function isStageWorkflowEvent(event: JobEvent): event is Extract<
     event.eventType === 'stage.ended' ||
     event.eventType === 'stage.stopped' ||
     event.eventType === 'stage.completed' ||
-    event.eventType === 'stage.status_changed' ||
     event.eventType === 'station.started' ||
     event.eventType === 'station.ended'
   );
@@ -359,4 +356,8 @@ function getDateOverrideFieldLabel(field: Extract<JobEvent, { eventType: 'date.o
 
 function formatDateOverrideValue(value: string | null): string {
   return value ?? 'auto';
+}
+
+function assertUnhandledWorkflowEvent(event: never): never {
+  throw new Error(`Unhandled workflow event: ${(event as JobEvent).eventType}`);
 }

@@ -45,7 +45,7 @@ const QuoteFormValues = z
       });
     }
 
-    if (!UUID.safeParse(value.productId).success) {
+    if (value.productId !== '' && !UUID.safeParse(value.productId).success) {
       context.addIssue({
         code: 'custom',
         message: 'Select a product',
@@ -53,11 +53,19 @@ const QuoteFormValues = z
       });
     }
 
-    if (!AuthId.safeParse(value.salesPersonId).success) {
+    if (value.salesPersonId !== '' && !AuthId.safeParse(value.salesPersonId).success) {
       context.addIssue({
         code: 'custom',
         message: 'Select a salesperson',
         path: ['salesPersonId'],
+      });
+    }
+
+    if (value.productId === '' && value.discount !== 0) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Select a product before adding a discount',
+        path: ['discount'],
       });
     }
   });
@@ -121,8 +129,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 },
           discount: value.discount,
           notes: value.notes,
-          productId: value.productId,
-          salesPersonId: value.salesPersonId,
+          productId: value.productId || null,
+          salesPersonId: value.salesPersonId || null,
           validUntil: value.validUntil || null,
         }),
       );
@@ -267,7 +275,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             {(field) => (
               <field.CurrencyField
                 {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
-                disabled={isFrozen}
+                disabled={isFrozen || !selectedProduct}
                 label="Discount"
               />
             )}

@@ -27,9 +27,7 @@ export const quotes = pgTable(
     customerId: uuid('customer_id')
       .notNull()
       .references(() => customers.id, { onDelete: 'restrict' }),
-    productId: uuid('product_id')
-      .notNull()
-      .references(() => products.id, { onDelete: 'restrict' }),
+    productId: uuid('product_id').references(() => products.id, { onDelete: 'restrict' }),
     salesPersonId: text('sales_person_id').references(() => user.id, { onDelete: 'set null' }),
     status: text('status').notNull().default('draft').$type<QuoteStatus>(),
     discount: numeric('discount', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),

@@ -15,8 +15,8 @@ type JobStageChipsProps = {
 export const JobStageChips: React.FC<JobStageChipsProps> = ({ stages }) => (
   <div className="flex min-w-48 flex-wrap gap-1">
     {stages.map((stage) => {
-      const color = getJobStageStatusColorClassNames(stage.stage, stage.status);
-      const tooltip = `${stageLabels[stage.stage]} — ${jobStageStatusLabels[stage.status]}`;
+      const color = getJobStageStatusColorClassNames(stage.stage, stage.state);
+      const tooltip = `${stageLabels[stage.stage]} — ${jobStageStatusLabels[stage.state]}`;
 
       return (
         <Tooltip key={stage.id}>

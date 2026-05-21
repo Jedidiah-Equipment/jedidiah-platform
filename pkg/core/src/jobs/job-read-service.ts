@@ -131,6 +131,7 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
+    // Derived lifecycle sorting is a UI contract: not-started, active, complete, paused, cancelled.
     lifecycleStatus: sql`case when ${jobs.isCancelled} then 5 when ${jobs.isPaused} then 4 when ${jobs.actualEnd} is not null then 3 when ${jobs.actualStart} is not null then 2 else 1 end`,
   } as const satisfies Record<JobSortBy, SQL>;
 

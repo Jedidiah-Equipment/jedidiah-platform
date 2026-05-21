@@ -78,7 +78,43 @@ describe('stage transition policy', () => {
           stage: createStage({ actualEnd: null, actualStart: null, sequence: 1, stage: 'procurement' }),
         }),
       ).sort(),
-    ).toEqual(['complete', 'set-status', 'start', 'stop']);
+    ).toEqual(['start', 'stop']);
+  });
+
+  it.each([
+    ['admin', 'pending after previous completion', true, false],
+    ['admin', 'pending before previous completion', false, false],
+    ['admin', 'in progress', false, true],
+    ['admin', 'complete', false, false],
+    ['job-supervisor', 'pending after previous completion', true, false],
+    ['job-supervisor', 'pending before previous completion', false, false],
+    ['job-supervisor', 'in progress', false, true],
+    ['job-supervisor', 'complete', false, false],
+    ['job-department-manager:owned', 'pending after previous completion', true, false],
+    ['job-department-manager:owned', 'pending before previous completion', false, false],
+    ['job-department-manager:owned', 'in progress', false, true],
+    ['job-department-manager:owned', 'complete', false, false],
+    ['job-department-manager:other', 'pending after previous completion', false, false],
+    ['job-department-manager:other', 'pending before previous completion', false, false],
+    ['job-department-manager:other', 'in progress', false, false],
+    ['job-department-manager:other', 'complete', false, false],
+    ['sales', 'pending after previous completion', false, false],
+    ['sales', 'pending before previous completion', false, false],
+    ['sales', 'in progress', false, false],
+    ['sales', 'complete', false, false],
+  ] as const)('evaluates %s access for a %s stage', (accessFixture, stageFixture, expectedStartAllowed, expectedStopAllowed) => {
+    const availability = getStageTransitionAvailability({
+      access: createAccess(accessFixture),
+      job: baseJob,
+      previousStage:
+        stageFixture === 'pending before previous completion'
+          ? { actualEnd: null }
+          : { actualEnd: '2026-05-15T07:00:00.000Z' },
+      stage: createPolicyStage(stageFixture),
+    });
+
+    expect(availability.start.allowed).toBe(expectedStartAllowed);
+    expect(availability.stop.allowed).toBe(expectedStopAllowed);
   });
 });
 
@@ -91,4 +127,40 @@ function createStage(input: {
   expect(JOB_STAGES).toContain(input.stage);
 
   return input;
+}
+
+function createAccess(
+  fixture: 'admin' | 'job-department-manager:other' | 'job-department-manager:owned' | 'job-supervisor' | 'sales',
+) {
+  switch (fixture) {
+    case 'job-department-manager:owned':
+      return createUserAccessSummary({ departments: ['paint'], role: 'job-department-manager', userId: fixture });
+    case 'job-department-manager:other':
+      return createUserAccessSummary({ departments: ['supply'], role: 'job-department-manager', userId: fixture });
+    default:
+      return createUserAccessSummary({ role: fixture, userId: fixture });
+  }
+}
+
+function createPolicyStage(
+  fixture: 'complete' | 'in progress' | 'pending after previous completion' | 'pending before previous completion',
+) {
+  switch (fixture) {
+    case 'complete':
+      return createStage({
+        actualEnd: '2026-05-15T09:00:00.000Z',
+        actualStart: '2026-05-15T08:00:00.000Z',
+        sequence: 4,
+        stage: 'paint',
+      });
+    case 'in progress':
+      return createStage({
+        actualEnd: null,
+        actualStart: '2026-05-15T08:00:00.000Z',
+        sequence: 4,
+        stage: 'paint',
+      });
+    default:
+      return createStage({ actualEnd: null, actualStart: null, sequence: 4, stage: 'paint' });
+  }
 }

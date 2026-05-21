@@ -60,17 +60,10 @@ export function evaluateStageTransition(input: StageTransitionPolicyInput): Stag
 
 export function getStageTransitionAvailability(
   input: Omit<StageTransitionPolicyInput, 'transition'>,
-): StageTransitionAvailability & {
-  complete: StageTransitionPolicyResult;
-  'set-status': StageTransitionPolicyResult;
-} {
-  const stop = evaluateStageTransition({ ...input, transition: 'stop' });
-
+): StageTransitionAvailability {
   return {
-    complete: stop,
-    'set-status': stop,
     start: evaluateStageTransition({ ...input, transition: 'start' }),
-    stop,
+    stop: evaluateStageTransition({ ...input, transition: 'stop' }),
   };
 }
 

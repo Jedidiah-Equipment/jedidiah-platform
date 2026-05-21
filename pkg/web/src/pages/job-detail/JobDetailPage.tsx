@@ -1,5 +1,5 @@
 import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
-import type { JobDetail, JobStageStatusInput, UUID } from '@pkg/schema';
+import type { JobDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { toast } from 'sonner';
@@ -20,7 +20,6 @@ import { LifecycleControls } from './components/LifecycleControls.js';
 import { StagePanel } from './components/StagePanel.js';
 import { WorkflowHistory } from './components/WorkflowHistory.js';
 import { stageLabels } from './constants.js';
-import { getStageStatusToastCopy } from './stage-status-toast-copy.js';
 import type { JobStageTransitionInput, JobTransitionConfirmation } from './types.js';
 
 type JobDetailPageProps = {
@@ -38,7 +37,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const refreshJobs = async () => {
     await queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
   };
-  const getDepartmentLabel = (input: JobStageTransitionInput | JobStageStatusInput) => stageLabels[input.stage];
+  const getDepartmentLabel = (input: JobStageTransitionInput) => stageLabels[input.stage];
   const startStageMutation = useMutation(
     trpc.jobs.startStage.mutationOptions({
       onSuccess: async (_updatedJob, input) => {
@@ -46,21 +45,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         toast.success(`${getDepartmentLabel(input)} started`);
       },
       onError: (error) => showMutationError(error, 'Unable to start department work.'),
-    }),
-  );
-  const setStageStatusMutation = useMutation(
-    trpc.jobs.setStageStatus.mutationOptions({
-      onSuccess: async (_updatedJob, input) => {
-        const previousStage = job?.stages.find((stage) => stage.stage === input.stage);
-        const successToast = getStageStatusToastCopy({
-          fromStatus: previousStage?.status,
-          stage: input.stage,
-          toStatus: input.status,
-        });
-        await refreshJobs();
-        toast.success(successToast.title, { description: successToast.description });
-      },
-      onError: (error) => showMutationError(error, 'Unable to update department status.'),
     }),
   );
   const completeStageMutation = useMutation(
@@ -101,7 +85,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   );
   const isTransitionPending =
     startStageMutation.isPending ||
-    setStageStatusMutation.isPending ||
     completeStageMutation.isPending ||
     pauseJobMutation.isPending ||
     resumeJobMutation.isPending ||
@@ -112,7 +95,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const confirmPauseJob = (id: UUID) => {
     setConfirmation({
       body: [
-        'This will pause the Job for everyone. Department managers will not be able to start work, mark their part as complete, or update their department status until a supervisor resumes it.',
+        'This will pause the Job for everyone. Department managers will not be able to start work or mark their part as complete until a supervisor resumes it.',
         'Nothing already recorded on the Job will change. People can still view the Job and its history.',
       ],
       confirmLabel: 'Pause job',
@@ -146,7 +129,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         : [
             `This will mark ${stageLabels[input.stage]}'s part of the Job as complete.`,
             'The next department will be able to start handling the Job.',
-            `${stageLabels[input.stage]} will still be able to update their status later if they need to show late changes, but their part will stay completed.`,
+            `${stageLabels[input.stage]} will stay completed. A supervisor can correct the recorded actual dates later if needed.`,
           ],
       confirmLabel: isSupplyStage ? 'Complete job' : `Complete ${stageLabels[input.stage]}`,
       confirmVariant: 'default',
@@ -157,10 +140,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const confirmCompleteStage = (input: JobStageTransitionInput) => {
     confirmCompleteStageTransition(input, () => completeStageMutation.mutate(input));
   };
-  const confirmSetCompleteStageStatus = (input: JobStageStatusInput) => {
-    confirmCompleteStageTransition(input, () => setStageStatusMutation.mutate(input));
-  };
-
   return (
     <DetailPageLayout
       aside={job ? <WorkflowHistory events={job.workflowEvents} /> : undefined}
@@ -202,8 +181,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
                 jobId={job.id}
                 key={`${stage.sequence}-${stage.stage}`}
                 onComplete={confirmCompleteStage}
-                onSetCompleteStatus={confirmSetCompleteStageStatus}
-                onSetStatus={(input) => setStageStatusMutation.mutate(input)}
                 onStart={(input) => startStageMutation.mutate(input)}
                 stage={stage}
               />

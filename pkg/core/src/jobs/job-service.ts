@@ -19,7 +19,6 @@ import type {
   JobListInput,
   JobListResult,
   JobStageName,
-  JobStageStatusInput,
   UserAccessSummary,
   UUID,
 } from '@pkg/schema';
@@ -75,9 +74,9 @@ export async function createJob({
       .insert(jobs)
       .values({
         dueEnd: input.dueEnd ?? null,
-        dueEndSetManually: input.dueEnd !== undefined && input.dueEnd !== null,
+        dueEndSetManually: input.dueEnd != null,
         dueStart: input.dueStart ?? null,
-        dueStartSetManually: input.dueStart !== undefined && input.dueStart !== null,
+        dueStartSetManually: input.dueStart != null,
         productId: input.productId,
       })
       .returning();
@@ -149,9 +148,9 @@ export async function createJobFromQuote({
         .insert(jobs)
         .values({
           dueEnd: input.dueEnd ?? null,
-          dueEndSetManually: input.dueEnd !== undefined && input.dueEnd !== null,
+          dueEndSetManually: input.dueEnd != null,
           dueStart: input.dueStart ?? null,
-          dueStartSetManually: input.dueStart !== undefined && input.dueStart !== null,
+          dueStartSetManually: input.dueStart != null,
           productId: quote.productId,
           quoteId: quote.id,
         })
@@ -398,27 +397,6 @@ export async function startJobStage({
     id,
     stage,
     intent: { transition: 'start' },
-  });
-}
-
-export async function setJobStageStatus({
-  db,
-  access,
-  actorUserId,
-  input,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  input: JobStageStatusInput;
-}): Promise<JobDetail> {
-  return applyJobStageTransition({
-    access,
-    actorUserId,
-    db,
-    id: input.id,
-    stage: input.stage,
-    intent: { status: input.status, transition: 'set-status' },
   });
 }
 

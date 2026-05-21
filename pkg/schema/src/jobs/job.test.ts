@@ -6,7 +6,7 @@ import {
   JobCreateFromQuoteInput,
   JobEventDerivationStage,
   JobListFilters,
-  JobStageStatusInput,
+  JobWorkState,
 } from './job.js';
 
 describe('JobCode', () => {
@@ -62,25 +62,9 @@ describe('JobEventDerivationStage', () => {
   });
 });
 
-describe('JobStageStatusInput', () => {
+describe('JobWorkState', () => {
   it('only accepts derived stage states', () => {
-    expect(
-      JobStageStatusInput.parse({
-        id: '00000000-0000-4000-8000-000000000001',
-        stage: 'fabrication',
-        status: 'complete',
-      }),
-    ).toEqual({
-      id: '00000000-0000-4000-8000-000000000001',
-      stage: 'fabrication',
-      status: 'complete',
-    });
-    expect(() =>
-      JobStageStatusInput.parse({
-        id: '00000000-0000-4000-8000-000000000001',
-        stage: 'fabrication',
-        status: 'welding',
-      }),
-    ).toThrow();
+    expect(JobWorkState.parse('complete')).toBe('complete');
+    expect(() => JobWorkState.parse('welding')).toThrow();
   });
 });

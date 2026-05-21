@@ -17,17 +17,6 @@ export const JobStageName = z.enum(JOB_STAGES);
 export type JobWorkState = z.infer<typeof JobWorkState>;
 export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
 
-export const JOB_STAGE_STATUSES = {
-  assembly: ['pending', 'in-progress', 'complete'],
-  fabrication: ['pending', 'in-progress', 'complete'],
-  paint: ['pending', 'in-progress', 'complete'],
-  procurement: ['pending', 'in-progress', 'complete'],
-  supply: ['pending', 'in-progress', 'complete'],
-} as const satisfies Record<JobStageName, readonly [string, ...string[]]>;
-
-export type JobStageStatus = z.infer<typeof JobStageStatus>;
-export const JobStageStatus = JobWorkState;
-
 export type JobLifecycleStatus = z.infer<typeof JobLifecycleStatus>;
 export const JobLifecycleStatus = z.enum(['not-started', 'active', 'paused', 'complete', 'cancelled']);
 
@@ -50,8 +39,6 @@ export const StageTransitionPolicyResult = z.discriminatedUnion('allowed', [
 
 export type StageTransitionAvailability = z.infer<typeof StageTransitionAvailability>;
 export const StageTransitionAvailability = z.object({
-  complete: StageTransitionPolicyResult,
-  'set-status': StageTransitionPolicyResult,
   start: StageTransitionPolicyResult,
   stop: StageTransitionPolicyResult,
 });
@@ -94,9 +81,6 @@ const JobStageBase = DateFields.extend({
   jobId: UUID,
   sequence: z.int().min(1).max(5),
   state: JobWorkState,
-  status: JobWorkState,
-  startedAt: z.iso.datetime().nullable(),
-  completedAt: z.iso.datetime().nullable(),
 });
 
 const ProcurementJobStage = JobStageBase.extend({
@@ -171,15 +155,17 @@ const StageStoppedJobEventPayload = z.object({
   actualEnd: z.iso.datetime(),
 });
 
+// Historical workflow rows may still contain pre-0016 stage status/completion events.
+// New writes only produce DerivedStageJobEvent variants below.
 const StageStatusChangedJobEventPayload = z.object({
   stage: JobStageName,
-  fromStatus: JobStageStatus,
-  toStatus: JobStageStatus,
+  fromStatus: JobWorkState,
+  toStatus: JobWorkState,
 });
 
 const StageCompletedJobEventPayload = z.object({
   stage: JobStageName,
-  status: JobStageStatus,
+  status: JobWorkState,
   completedAt: z.iso.datetime(),
 });
 
@@ -306,7 +292,6 @@ export const Job = DateFields.extend({
   isPaused: z.boolean(),
   isCancelled: z.boolean(),
   lifecycleStatus: JobLifecycleStatus,
-  dueDate: z.iso.date().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -376,9 +361,4 @@ export const JobStageTransitionInput = z.object({
 export type JobLifecycleTransitionInput = z.infer<typeof JobLifecycleTransitionInput>;
 export const JobLifecycleTransitionInput = z.object({
   id: UUID,
-});
-
-export type JobStageStatusInput = z.infer<typeof JobStageStatusInput>;
-export const JobStageStatusInput = JobStageTransitionInput.extend({
-  status: JobWorkState,
 });

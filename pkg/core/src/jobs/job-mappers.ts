@@ -58,7 +58,6 @@ export function mapJob(row: JobRow): Job {
     createdAt: row.createdAt.toISOString(),
     dueEnd: row.dueEnd,
     dueEndSetManually: row.dueEndSetManually,
-    dueDate: row.dueEnd,
     dueStart: row.dueStart,
     dueStartSetManually: row.dueStartSetManually,
     id: row.id,
@@ -138,9 +137,6 @@ export function mapJobStage(row: JobStageRow): JobStage {
     sequence: row.sequence,
     stage: row.stage,
     state,
-    status: state,
-    startedAt: row.actualStart?.toISOString() ?? null,
-    completedAt: row.actualEnd?.toISOString() ?? null,
   });
 }
 

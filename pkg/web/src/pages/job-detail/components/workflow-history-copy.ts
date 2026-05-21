@@ -1,12 +1,12 @@
 import { jobStageStatusLabels } from '@pkg/domain';
-import type { JobStageName, JobStageStatus } from '@pkg/schema';
+import type { JobStageName, JobWorkState } from '@pkg/schema';
 
 import { stageLabels } from '../constants.js';
 
 type StageStatusChangeCopyInput = {
-  fromStatus: JobStageStatus;
+  fromStatus: JobWorkState;
   stage: JobStageName;
-  toStatus: JobStageStatus;
+  toStatus: JobWorkState;
 };
 
 type StageStatusChangeCopy = {

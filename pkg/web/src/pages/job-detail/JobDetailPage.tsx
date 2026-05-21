@@ -1,5 +1,5 @@
 import { FINAL_JOB_STAGE, hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
-import type { JobDetail, UUID } from '@pkg/schema';
+import type { JobDateEditInput, JobDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { toast } from 'sonner';
@@ -194,74 +194,16 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       {job ? (
         <>
           <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <JobFact
-              label="Due start"
-              value={
-                <EditableDateValue
-                  canEdit={canUpdateJob}
-                  disabled={isTransitionPending}
-                  emptyValue="No date"
-                  entityId={job.id}
-                  entityLevel="job"
-                  field="due_start"
-                  label="Job due start"
-                  onEdit={(input) => editDateMutation.mutate(input)}
-                  setManually={job.dueStartSetManually}
-                  value={job.dueStart}
-                />
-              }
-            />
-            <JobFact
-              label="Due end"
-              value={
-                <EditableDateValue
-                  canEdit={canUpdateJob}
-                  disabled={isTransitionPending}
-                  emptyValue="No date"
-                  entityId={job.id}
-                  entityLevel="job"
-                  field="due_end"
-                  label="Job due end"
-                  onEdit={(input) => editDateMutation.mutate(input)}
-                  setManually={job.dueEndSetManually}
-                  value={job.dueEnd}
-                />
-              }
-            />
-            <JobFact
-              label="Actual start"
-              value={
-                <EditableDateValue
-                  canEdit={canUpdateJob}
-                  disabled={isTransitionPending}
-                  emptyValue="Not started"
-                  entityId={job.id}
-                  entityLevel="job"
-                  field="actual_start"
-                  label="Job actual start"
-                  onEdit={(input) => editDateMutation.mutate(input)}
-                  setManually={job.actualStartSetManually}
-                  value={job.actualStart}
-                />
-              }
-            />
-            <JobFact
-              label="Actual end"
-              value={
-                <EditableDateValue
-                  canEdit={canUpdateJob}
-                  disabled={isTransitionPending}
-                  emptyValue="Not completed"
-                  entityId={job.id}
-                  entityLevel="job"
-                  field="actual_end"
-                  label="Job actual end"
-                  onEdit={(input) => editDateMutation.mutate(input)}
-                  setManually={job.actualEndSetManually}
-                  value={job.actualEnd}
-                />
-              }
-            />
+            {jobDateFacts.map((dateFact) => (
+              <JobDateFact
+                canEdit={canUpdateJob}
+                disabled={isTransitionPending}
+                job={job}
+                key={dateFact.field}
+                onEdit={(input) => editDateMutation.mutate(input)}
+                {...dateFact}
+              />
+            ))}
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <JobFact label="Created" value={<DateDisplay date={job.createdAt} />} />
@@ -315,6 +257,79 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     </DetailPageLayout>
   );
 };
+
+const jobDateFacts = [
+  {
+    emptyValue: 'No date',
+    field: 'due_start',
+    label: 'Due start',
+    setManuallyKey: 'dueStartSetManually',
+    valueKey: 'dueStart',
+  },
+  {
+    emptyValue: 'No date',
+    field: 'due_end',
+    label: 'Due end',
+    setManuallyKey: 'dueEndSetManually',
+    valueKey: 'dueEnd',
+  },
+  {
+    emptyValue: 'Not started',
+    field: 'actual_start',
+    label: 'Actual start',
+    setManuallyKey: 'actualStartSetManually',
+    valueKey: 'actualStart',
+  },
+  {
+    emptyValue: 'Not completed',
+    field: 'actual_end',
+    label: 'Actual end',
+    setManuallyKey: 'actualEndSetManually',
+    valueKey: 'actualEnd',
+  },
+] as const satisfies readonly {
+  emptyValue: string;
+  field: JobDateEditInput['field'];
+  label: string;
+  setManuallyKey: keyof Pick<
+    JobDetail,
+    'actualEndSetManually' | 'actualStartSetManually' | 'dueEndSetManually' | 'dueStartSetManually'
+  >;
+  valueKey: keyof Pick<JobDetail, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>;
+}[];
+
+const JobDateFact: React.FC<{
+  canEdit: boolean;
+  disabled: boolean;
+  emptyValue: string;
+  field: JobDateEditInput['field'];
+  job: JobDetail;
+  label: string;
+  onEdit: (input: JobDateEditInput) => void;
+  setManuallyKey: keyof Pick<
+    JobDetail,
+    'actualEndSetManually' | 'actualStartSetManually' | 'dueEndSetManually' | 'dueStartSetManually'
+  >;
+  valueKey: keyof Pick<JobDetail, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>;
+}> = ({ canEdit, disabled, emptyValue, field, job, label, onEdit, setManuallyKey, valueKey }) => (
+  <JobFact
+    label={label}
+    value={
+      <EditableDateValue
+        canEdit={canEdit}
+        disabled={disabled}
+        emptyValue={emptyValue}
+        entityId={job.id}
+        entityLevel="job"
+        field={field}
+        label={`Job ${label.toLowerCase()}`}
+        onEdit={onEdit}
+        setManually={job[setManuallyKey]}
+        value={job[valueKey]}
+      />
+    }
+  />
+);
 
 const JobQuoteLink: React.FC<{
   canOpenQuote: boolean;

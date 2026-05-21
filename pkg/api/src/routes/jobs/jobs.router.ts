@@ -197,6 +197,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         code: 'FORBIDDEN',
         message: error.message,
       };
+    case 'job.date_edit_invalid':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: error.message,
+      };
     case 'job.station_booking_not_found':
       return {
         appCode: error.code,

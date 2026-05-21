@@ -439,6 +439,78 @@ describe('jobs.editDate', () => {
     expect(workflowEvents).toEqual(['date.overridden']);
   });
 
+  test('rejects due edits that would invert the edited row window', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({
+      dueEnd: '2026-08-10',
+      dueStart: '2026-08-01',
+      productId: context.product.id,
+      stages: [
+        createStageInput('procurement', '2026-08-01', '2026-08-02'),
+        createStageInput('supply', '2026-08-02', '2026-08-03'),
+        createStageInput('fabrication', '2026-08-03', '2026-08-07'),
+        createStageInput('paint', '2026-08-07', '2026-08-08'),
+        createStageInput('assembly', '2026-08-08', '2026-08-10'),
+      ],
+    });
+
+    await expect(
+      caller.jobs.editDate({
+        entityId: job.id,
+        entityLevel: 'job',
+        field: 'due_end',
+        value: '2026-07-31',
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Due start must be on or before due end.',
+    });
+
+    await expect(
+      caller.jobs.editDate({
+        entityId: getStage(job, 'fabrication').id,
+        entityLevel: 'stage',
+        field: 'due_start',
+        value: '2026-08-08',
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Due start must be on or before due end.',
+    });
+  });
+
+  test('clearing a job due anchor does not shift existing stage or station windows', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await createJobWithStationBookings({
+      caller,
+      db: context.db,
+      productId: context.product.id,
+      stages: ['fabrication'],
+    });
+    const beforeStage = getStage(job, 'fabrication');
+    const beforeBooking = getStageBooking(job, 'fabrication');
+
+    const updated = await caller.jobs.editDate({
+      entityId: job.id,
+      entityLevel: 'job',
+      field: 'due_end',
+      value: null,
+    });
+
+    expect(updated).toMatchObject({
+      dueEnd: null,
+      dueEndSetManually: false,
+    });
+    expect(getStage(updated, 'fabrication')).toMatchObject({
+      dueEnd: beforeStage.dueEnd,
+      dueStart: beforeStage.dueStart,
+    });
+    expect(getStageBooking(updated, 'fabrication')).toMatchObject({
+      dueEnd: beforeBooking.dueEnd,
+      dueStart: beforeBooking.dueStart,
+    });
+  });
+
   test('clears actual dates back to auto and cascades parents back to null', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     let job = await createJobWithStationBookings({
@@ -505,6 +577,28 @@ describe('jobs.editDate', () => {
     const workflowEvents = await listJobEventTypes(context.db, job.id);
     expect(workflowEvents.filter((eventType) => eventType === 'date.overridden')).toHaveLength(1);
     expect(workflowEvents.filter((eventType) => eventType === 'job.completed')).toHaveLength(1);
+  });
+
+  test('rejects setting a booking actual end before it has started', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await createJobWithStationBookings({
+      caller,
+      db: context.db,
+      productId: context.product.id,
+      stages: ['fabrication'],
+    });
+
+    await expect(
+      caller.jobs.editDate({
+        entityId: getStageBooking(job, 'fabrication').id,
+        entityLevel: 'station-booking',
+        field: 'actual_end',
+        value: '2026-08-15T12:00:00.000Z',
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Station booking must be started before its actual end can be set.',
+    });
   });
 
   test('clearing the last booking actual end uncompletes auto parents', async ({ context }) => {

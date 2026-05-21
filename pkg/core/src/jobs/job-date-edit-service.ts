@@ -18,7 +18,12 @@ import {
   jobStageAuditDescriptor,
   jobStageStationAuditDescriptor,
 } from '../audit/audit-service.js';
-import { JobDateEditDeniedError, JobDateEditTargetNotFoundError, JobNotFoundError } from './job-errors.js';
+import {
+  JobDateEditDeniedError,
+  JobDateEditInvalidError,
+  JobDateEditTargetNotFoundError,
+  JobNotFoundError,
+} from './job-errors.js';
 import {
   type JobAuditRecord,
   type JobStageRow,
@@ -37,6 +42,13 @@ type AuditRecord = Record<string, unknown>;
 type AuditDescriptor = {
   entityType: AuditEntityType;
   fields: Record<string, string>;
+};
+type DueDateShiftRow<Key extends string = string> = {
+  dueEnd: string | null;
+  dueEndSetManually: boolean;
+  dueStart: string | null;
+  dueStartSetManually: boolean;
+  id: Key;
 };
 
 export async function editJobDate({
@@ -91,6 +103,9 @@ async function editJobLevelDate({
   tx: DatabaseTransaction;
 }): Promise<{ jobId: UUID }> {
   const beforeJob = await readJobForUpdate(input.entityId, tx);
+  if (isDueField(input.field)) {
+    assertDueDateEditKeepsRange({ field: input.field, row: beforeJob, value: input.value });
+  }
   const updatedJob = await updateJobDateField({ field: input.field, id: beforeJob.id, tx, value: input.value });
   const afterJob = mapJobAuditRecord(updatedJob);
   const beforeAuditJob = mapJobAuditRecord(beforeJob);
@@ -124,6 +139,9 @@ async function editJobLevelDate({
       previousValue: getDateFieldValue(beforeAuditJob, input.field) as string | null,
       tx,
     });
+  } else if (isDueField(input.field)) {
+    // Clearing a Job due anchor only re-enables the Job field's auto state. There is no remaining
+    // delta to apply safely, so existing Stage and Station Booking windows stay as-is.
   }
 
   return { jobId: updatedJob.id };
@@ -140,6 +158,9 @@ async function editStageLevelDate({
 }): Promise<{ jobId: UUID }> {
   const beforeStage = await readStageForUpdate(input.entityId, tx);
   const beforeJob = await readJobForUpdate(beforeStage.jobId, tx);
+  if (isDueField(input.field)) {
+    assertDueDateEditKeepsRange({ field: input.field, row: beforeStage, value: input.value });
+  }
   const updatedStage = await updateStageDateField({ field: input.field, id: beforeStage.id, tx, value: input.value });
 
   await insertDateEditAuditEvents({
@@ -196,6 +217,12 @@ async function editStationBookingLevelDate({
 }): Promise<{ jobId: UUID }> {
   const target = await readStationBookingForUpdate(input.entityId, tx);
   const beforeJob = await readJobForUpdate(target.stage.jobId, tx);
+  if (isDueField(input.field)) {
+    assertDueDateEditKeepsRange({ field: input.field, row: target.booking, value: input.value });
+  }
+  if (input.field === 'actual_end' && input.value !== null && !target.booking.actualStart) {
+    throw new JobDateEditInvalidError('Station booking must be started before its actual end can be set.');
+  }
   const updatedBooking = await updateStationBookingDateField({
     field: input.field,
     id: target.booking.id,
@@ -256,27 +283,12 @@ async function cascadeJobDueDates({
   tx: DatabaseTransaction;
 }): Promise<void> {
   const stages = await tx.select().from(jobStages).where(eq(jobStages.jobId, jobId)).for('update');
-  const anchor = {
-    kind: anchorField === 'due_start' ? 'start' : 'end',
-    value: parseDateOnly(nextValue),
-    ...(previousValue ? { previousValue: parseDateOnly(previousValue) } : {}),
-  } as const;
-  const nextStages = cascadeDown({
-    anchor,
-    currentLevels: stages.map((stage) => ({
-      dueEnd: parseOptionalDateOnly(stage.dueEnd),
-      dueStart: parseOptionalDateOnly(stage.dueStart),
-      key: stage.id,
-    })),
-    durations: stages.map((stage) => ({ durationDays: 0, key: stage.id })),
-    mode: 'shift',
-    stickyMarkers: stages.map((stage) => ({
-      dueEndSetManually: stage.dueEndSetManually,
-      dueStartSetManually: stage.dueStartSetManually,
-      key: stage.id,
-    })),
+  const nextStageById = shiftDueDateRows({
+    anchorField,
+    nextValue,
+    previousValue,
+    rows: stages,
   });
-  const nextStageById = new Map(nextStages.map((stage) => [stage.key, stage]));
 
   for (const beforeStage of stages) {
     const nextStage = nextStageById.get(beforeStage.id);
@@ -285,8 +297,8 @@ async function cascadeJobDueDates({
     const afterStage = await updateStageDueFieldsIfChanged({
       actorUserId,
       beforeStage,
-      nextDueEnd: formatOptionalDateOnly(nextStage.dueEnd),
-      nextDueStart: formatOptionalDateOnly(nextStage.dueStart),
+      nextDueEnd: nextStage.dueEnd,
+      nextDueStart: nextStage.dueStart,
       tx,
     });
     await cascadeStageDueDatesByDelta({
@@ -363,17 +375,21 @@ async function cascadeStageDueDatesByDelta({
 
   if (deltaDays === 0) return;
 
-  for (const booking of bookings) {
-    const nextBookingDueStart = booking.dueStartSetManually
-      ? booking.dueStart
-      : shiftDateOnly(booking.dueStart, deltaDays);
-    const nextBookingDueEnd = booking.dueEndSetManually ? booking.dueEnd : shiftDateOnly(booking.dueEnd, deltaDays);
+  const nextBookingById = shiftDueDateRows({
+    anchorField: 'due_start',
+    nextValue: shiftDateOnly('2000-01-01', deltaDays) ?? '2000-01-01',
+    previousValue: '2000-01-01',
+    rows: bookings,
+  });
 
+  for (const booking of bookings) {
+    const nextBooking = nextBookingById.get(booking.id);
+    if (!nextBooking) continue;
     await updateStationBookingDueFieldsIfChanged({
       actorUserId,
       beforeBooking: booking,
-      nextDueEnd: nextBookingDueEnd,
-      nextDueStart: nextBookingDueStart,
+      nextDueEnd: nextBooking.dueEnd,
+      nextDueStart: nextBooking.dueStart,
       tx,
     });
   }
@@ -508,6 +524,7 @@ async function updateStageDueFieldsIfChanged({
   if (beforeStage.dueStart === nextDueStart && beforeStage.dueEnd === nextDueEnd) {
     return beforeStage;
   }
+  assertDueDateRange({ dueEnd: nextDueEnd, dueStart: nextDueStart });
 
   const [updatedStage] = await tx
     .update(jobStages)
@@ -547,6 +564,7 @@ async function updateStationBookingDueFieldsIfChanged({
   if (beforeBooking.dueStart === nextDueStart && beforeBooking.dueEnd === nextDueEnd) {
     return;
   }
+  assertDueDateRange({ dueEnd: nextDueEnd, dueStart: nextDueStart });
 
   const [updatedBooking] = await tx
     .update(jobStageStations)
@@ -844,16 +862,98 @@ function isActualField(field: DateField): field is ActualField {
   return field === 'actual_start' || field === 'actual_end';
 }
 
+function shiftDueDateRows<Key extends string>({
+  anchorField,
+  nextValue,
+  previousValue,
+  rows,
+}: {
+  anchorField: DueField;
+  nextValue: string;
+  previousValue: string | null;
+  rows: readonly DueDateShiftRow<Key>[];
+}): Map<Key, { dueEnd: string | null; dueStart: string | null }> {
+  const anchor = {
+    kind: anchorField === 'due_start' ? 'start' : 'end',
+    value: parseDateOnly(nextValue),
+    ...(previousValue ? { previousValue: parseDateOnly(previousValue) } : {}),
+  } as const;
+
+  // Shift mode only uses the anchor delta and each row's current dates/sticky markers. Durations are
+  // deliberately zero placeholders so every due shift, including bookings, goes through one helper.
+  const shiftedRows = cascadeDown({
+    anchor,
+    currentLevels: rows.map((row) => ({
+      dueEnd: parseOptionalDateOnly(row.dueEnd),
+      dueStart: parseOptionalDateOnly(row.dueStart),
+      key: row.id,
+    })),
+    durations: rows.map((row) => ({ durationDays: 0, key: row.id })),
+    mode: 'shift',
+    stickyMarkers: rows.map((row) => ({
+      dueEndSetManually: row.dueEndSetManually,
+      dueStartSetManually: row.dueStartSetManually,
+      key: row.id,
+    })),
+  });
+
+  return new Map(
+    shiftedRows.map((row) => [
+      row.key,
+      {
+        dueEnd: formatOptionalDateOnly(row.dueEnd),
+        dueStart: formatOptionalDateOnly(row.dueStart),
+      },
+    ]),
+  );
+}
+
+function assertDueDateEditKeepsRange({
+  field,
+  row,
+  value,
+}: {
+  field: DueField;
+  row: Pick<DueDateShiftRow, 'dueEnd' | 'dueStart'>;
+  value: string | null;
+}): void {
+  assertDueDateRange({
+    dueEnd: field === 'due_end' ? value : row.dueEnd,
+    dueStart: field === 'due_start' ? value : row.dueStart,
+  });
+}
+
+function assertDueDateRange({ dueEnd, dueStart }: { dueEnd: string | null; dueStart: string | null }): void {
+  if (!dueEnd || !dueStart) return;
+
+  if (parseDateOnly(dueStart).getTime() > parseDateOnly(dueEnd).getTime()) {
+    throw new JobDateEditInvalidError('Due start must be on or before due end.');
+  }
+}
+
 function parseOptionalDateOnly(value: string | null): Date | null {
   return value ? parseDateOnly(value) : null;
 }
 
 function parseDateOnly(value: string): Date {
-  return new Date(`${value}T00:00:00.000Z`);
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) {
+    throw new JobDateEditInvalidError('Date value must be a valid date.');
+  }
+
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function formatDateOnly(value: Date): string {
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(value.getUTCDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 function formatOptionalDateOnly(value: Date | null): string | null {
-  return value ? value.toISOString().slice(0, 10) : null;
+  return value ? formatDateOnly(value) : null;
 }
 
 function shiftDateOnly(value: string | null, deltaDays: number): string | null {

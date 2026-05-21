@@ -16,6 +16,7 @@ import type {
   JobCreateFromQuoteInput,
   JobCreateInput,
   JobCreateStageInput,
+  JobDateEditInput,
   JobDetail,
   JobLifecycleStatus,
   JobListInput,
@@ -28,6 +29,7 @@ import type {
 import { and, asc, eq, or, type SQL, sql } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
+import { editJobDate as editJobDateService } from './job-date-edit-service.js';
 import { JobLifecycleTransitionDeniedError, JobNotFoundError, JobQuoteConversionDeniedError } from './job-errors.js';
 import {
   cancelJobLifecycle,
@@ -528,6 +530,20 @@ export async function stopStationBooking({
   id: UUID;
 }): Promise<JobDetail> {
   return stopStationBookingTransition({ access, actorUserId, db, id });
+}
+
+export async function editJobDate({
+  db,
+  access,
+  actorUserId,
+  input,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  input: JobDateEditInput;
+}): Promise<JobDetail> {
+  return editJobDateService({ access, actorUserId, db, input });
 }
 
 async function transitionJobLifecycle({

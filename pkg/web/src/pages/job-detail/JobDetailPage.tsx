@@ -14,6 +14,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { JobLifecycleStatusBadge } from '../jobs/components/JobLifecycleStatusBadge.js';
+import { EditableDateValue } from './components/EditableDateValue.js';
 import { JobFact } from './components/JobFact.js';
 import { JobTransitionConfirmationDialog } from './components/JobTransitionConfirmationDialog.js';
 import { LifecycleControls } from './components/LifecycleControls.js';
@@ -74,6 +75,15 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       onError: (error) => showMutationError(error, 'Unable to end station booking.'),
     }),
   );
+  const editDateMutation = useMutation(
+    trpc.jobs.editDate.mutationOptions({
+      onSuccess: async () => {
+        await refreshJobs();
+        toast.success('Date updated');
+      },
+      onError: (error) => showMutationError(error, 'Unable to update date.'),
+    }),
+  );
   const pauseJobMutation = useMutation(
     trpc.jobs.pause.mutationOptions({
       onSuccess: async () => {
@@ -115,6 +125,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     completeStageMutation.isPending ||
     startStationBookingMutation.isPending ||
     stopStationBookingMutation.isPending ||
+    editDateMutation.isPending ||
     pauseJobMutation.isPending ||
     resumeJobMutation.isPending ||
     cancelJobMutation.isPending ||
@@ -183,8 +194,77 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       {job ? (
         <>
           <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <JobFact
+              label="Due start"
+              value={
+                <EditableDateValue
+                  canEdit={canUpdateJob}
+                  disabled={isTransitionPending}
+                  emptyValue="No date"
+                  entityId={job.id}
+                  entityLevel="job"
+                  field="due_start"
+                  label="Job due start"
+                  onEdit={(input) => editDateMutation.mutate(input)}
+                  setManually={job.dueStartSetManually}
+                  value={job.dueStart}
+                />
+              }
+            />
+            <JobFact
+              label="Due end"
+              value={
+                <EditableDateValue
+                  canEdit={canUpdateJob}
+                  disabled={isTransitionPending}
+                  emptyValue="No date"
+                  entityId={job.id}
+                  entityLevel="job"
+                  field="due_end"
+                  label="Job due end"
+                  onEdit={(input) => editDateMutation.mutate(input)}
+                  setManually={job.dueEndSetManually}
+                  value={job.dueEnd}
+                />
+              }
+            />
+            <JobFact
+              label="Actual start"
+              value={
+                <EditableDateValue
+                  canEdit={canUpdateJob}
+                  disabled={isTransitionPending}
+                  emptyValue="Not started"
+                  entityId={job.id}
+                  entityLevel="job"
+                  field="actual_start"
+                  label="Job actual start"
+                  onEdit={(input) => editDateMutation.mutate(input)}
+                  setManually={job.actualStartSetManually}
+                  value={job.actualStart}
+                />
+              }
+            />
+            <JobFact
+              label="Actual end"
+              value={
+                <EditableDateValue
+                  canEdit={canUpdateJob}
+                  disabled={isTransitionPending}
+                  emptyValue="Not completed"
+                  entityId={job.id}
+                  entityLevel="job"
+                  field="actual_end"
+                  label="Job actual end"
+                  onEdit={(input) => editDateMutation.mutate(input)}
+                  setManually={job.actualEndSetManually}
+                  value={job.actualEnd}
+                />
+              }
+            />
+          </div>
+          <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <JobFact label="Created" value={<DateDisplay date={job.createdAt} />} />
-            <JobFact label="Due date" value={<DateDisplay date={job.dueEnd} emptyValue="No date" />} />
             <JobFact label="Updated" value={<DateDisplay date={job.updatedAt} />} />
             <JobFact
               label="Quote"
@@ -214,7 +294,9 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
                 isPending={isTransitionPending}
                 jobId={job.id}
                 key={`${stage.sequence}-${stage.stage}`}
+                canEditDates={canUpdateJob}
                 onComplete={confirmCompleteStage}
+                onEditDate={(input) => editDateMutation.mutate(input)}
                 onStartStationBooking={(input) => startStationBookingMutation.mutate(input)}
                 onStart={(input) => startStageMutation.mutate(input)}
                 onStopStationBooking={(input) => stopStationBookingMutation.mutate(input)}

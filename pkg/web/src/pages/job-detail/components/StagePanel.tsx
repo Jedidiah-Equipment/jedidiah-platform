@@ -1,5 +1,5 @@
 import { jobStageStatusLabels } from '@pkg/domain';
-import type { JobStageRollup, StationBooking, UUID } from '@pkg/schema';
+import type { JobDateEditInput, JobStageRollup, StationBooking, UUID } from '@pkg/schema';
 import { CheckCircleIcon, PlayIcon, SquareIcon } from 'lucide-react';
 import type React from 'react';
 
@@ -9,11 +9,14 @@ import { cn } from '@/lib/utils.js';
 import { JobStageStatusBadge } from '../../jobs/components/JobStageStatusBadge.js';
 import { stageLabels } from '../constants.js';
 import type { JobStageTransitionInput } from '../types.js';
+import { EditableDateValue } from './EditableDateValue.js';
 
 type StagePanelProps = {
+  canEditDates: boolean;
   isPending: boolean;
   jobId: UUID;
   onComplete: (input: JobStageTransitionInput) => void;
+  onEditDate: (input: JobDateEditInput) => void;
   onStart: (input: JobStageTransitionInput) => void;
   onStartStationBooking: (input: { id: UUID }) => void;
   onStopStationBooking: (input: { id: UUID }) => void;
@@ -21,9 +24,11 @@ type StagePanelProps = {
 };
 
 export const StagePanel: React.FC<StagePanelProps> = ({
+  canEditDates,
   isPending,
   jobId,
   onComplete,
+  onEditDate,
   onStart,
   onStartStationBooking,
   onStopStationBooking,
@@ -73,10 +78,64 @@ export const StagePanel: React.FC<StagePanelProps> = ({
             State: <span className="text-foreground">{jobStageStatusLabels[stage.state]}</span>
           </div>
           <div>
-            Started: <DateDisplay date={stage.actualStart} emptyValue="Not started" />
+            Due start:{' '}
+            <EditableDateValue
+              canEdit={canEditDates}
+              disabled={isPending}
+              emptyValue="No date"
+              entityId={stage.id}
+              entityLevel="stage"
+              field="due_start"
+              label={`${departmentLabel} due start`}
+              onEdit={onEditDate}
+              setManually={stage.dueStartSetManually}
+              value={stage.dueStart}
+            />
           </div>
           <div>
-            Completed: <DateDisplay date={stage.actualEnd} emptyValue="Not completed" />
+            Due end:{' '}
+            <EditableDateValue
+              canEdit={canEditDates}
+              disabled={isPending}
+              emptyValue="No date"
+              entityId={stage.id}
+              entityLevel="stage"
+              field="due_end"
+              label={`${departmentLabel} due end`}
+              onEdit={onEditDate}
+              setManually={stage.dueEndSetManually}
+              value={stage.dueEnd}
+            />
+          </div>
+          <div>
+            Started:{' '}
+            <EditableDateValue
+              canEdit={canEditDates}
+              disabled={isPending}
+              emptyValue="Not started"
+              entityId={stage.id}
+              entityLevel="stage"
+              field="actual_start"
+              label={`${departmentLabel} actual start`}
+              onEdit={onEditDate}
+              setManually={stage.actualStartSetManually}
+              value={stage.actualStart}
+            />
+          </div>
+          <div>
+            Completed:{' '}
+            <EditableDateValue
+              canEdit={canEditDates}
+              disabled={isPending}
+              emptyValue="Not completed"
+              entityId={stage.id}
+              entityLevel="stage"
+              field="actual_end"
+              label={`${departmentLabel} actual end`}
+              onEdit={onEditDate}
+              setManually={stage.actualEndSetManually}
+              value={stage.actualEnd}
+            />
           </div>
         </div>
         {showStationBookings ? (
@@ -86,6 +145,8 @@ export const StagePanel: React.FC<StagePanelProps> = ({
                 booking={booking}
                 disabled={!isStageEditable || isPending}
                 key={booking.id}
+                canEditDates={canEditDates}
+                onEditDate={onEditDate}
                 onStart={onStartStationBooking}
                 onStop={onStopStationBooking}
               />
@@ -127,20 +188,84 @@ const StageControlReason: React.FC<{ reason: string | null | undefined }> = ({ r
 
 const StationBookingControl: React.FC<{
   booking: StationBooking;
+  canEditDates: boolean;
   disabled: boolean;
+  onEditDate: (input: JobDateEditInput) => void;
   onStart: (input: { id: UUID }) => void;
   onStop: (input: { id: UUID }) => void;
-}> = ({ booking, disabled, onStart, onStop }) => {
+}> = ({ booking, canEditDates, disabled, onEditDate, onStart, onStop }) => {
   const canStart = booking.state === 'pending';
   const canStop = booking.state === 'in-progress';
   const buttonDisabled = disabled || booking.state === 'complete';
 
   return (
     <div className="rounded-md border bg-muted/20 p-2">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{booking.station.name}</div>
           <div className="text-xs text-muted-foreground">{jobStageStatusLabels[booking.state]}</div>
+          <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+            <div>
+              Due start:{' '}
+              <EditableDateValue
+                canEdit={canEditDates}
+                disabled={disabled}
+                emptyValue="No date"
+                entityId={booking.id}
+                entityLevel="station-booking"
+                field="due_start"
+                label={`${booking.station.name} due start`}
+                onEdit={onEditDate}
+                setManually={booking.dueStartSetManually}
+                value={booking.dueStart}
+              />
+            </div>
+            <div>
+              Due end:{' '}
+              <EditableDateValue
+                canEdit={canEditDates}
+                disabled={disabled}
+                emptyValue="No date"
+                entityId={booking.id}
+                entityLevel="station-booking"
+                field="due_end"
+                label={`${booking.station.name} due end`}
+                onEdit={onEditDate}
+                setManually={booking.dueEndSetManually}
+                value={booking.dueEnd}
+              />
+            </div>
+            <div>
+              Started:{' '}
+              <EditableDateValue
+                canEdit={canEditDates}
+                disabled={disabled}
+                emptyValue="Not started"
+                entityId={booking.id}
+                entityLevel="station-booking"
+                field="actual_start"
+                label={`${booking.station.name} actual start`}
+                onEdit={onEditDate}
+                setManually={booking.actualStartSetManually}
+                value={booking.actualStart}
+              />
+            </div>
+            <div>
+              Completed:{' '}
+              <EditableDateValue
+                canEdit={canEditDates}
+                disabled={disabled}
+                emptyValue="Not completed"
+                entityId={booking.id}
+                entityLevel="station-booking"
+                field="actual_end"
+                label={`${booking.station.name} actual end`}
+                onEdit={onEditDate}
+                setManually={booking.actualEndSetManually}
+                value={booking.actualEnd}
+              />
+            </div>
+          </div>
         </div>
         {booking.state === 'complete' ? (
           <div className="shrink-0 text-right text-xs text-muted-foreground">

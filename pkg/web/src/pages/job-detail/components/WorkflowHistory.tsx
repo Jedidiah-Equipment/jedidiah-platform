@@ -120,6 +120,10 @@ function getWorkflowEventLabel(event: JobEvent): string {
     return 'Job completed';
   }
 
+  if (event.eventType === 'date.overridden') {
+    return `${getDateOverrideEntityLabel(event.payload.entityLevel)} date edited`;
+  }
+
   return getStageStatusChangeCopy(event.payload).label;
 }
 
@@ -181,6 +185,12 @@ function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
     }`;
   }
 
+  if (event.eventType === 'date.overridden') {
+    return `${getDateOverrideFieldLabel(event.payload.field)} changed from ${formatDateOverrideValue(
+      event.payload.oldValue,
+    )} to ${formatDateOverrideValue(event.payload.newValue)}`;
+  }
+
   return getStageStatusChangeCopy(event.payload).metadata;
 }
 
@@ -239,6 +249,7 @@ function getWorkflowEventColor(event: JobEvent): string {
     event.eventType === 'job.resumed' ||
     event.eventType === 'job.uncancelled' ||
     event.eventType === 'job.started' ||
+    event.eventType === 'date.overridden' ||
     event.eventType === 'stage.started' ||
     event.eventType === 'station.started'
   ) {
@@ -246,4 +257,34 @@ function getWorkflowEventColor(event: JobEvent): string {
   }
 
   return 'bg-primary';
+}
+
+function getDateOverrideEntityLabel(
+  entityLevel: Extract<JobEvent, { eventType: 'date.overridden' }>['payload']['entityLevel'],
+) {
+  switch (entityLevel) {
+    case 'job':
+      return 'Job';
+    case 'stage':
+      return 'Department';
+    case 'station-booking':
+      return 'Station booking';
+  }
+}
+
+function getDateOverrideFieldLabel(field: Extract<JobEvent, { eventType: 'date.overridden' }>['payload']['field']) {
+  switch (field) {
+    case 'actual_end':
+      return 'Actual end';
+    case 'actual_start':
+      return 'Actual start';
+    case 'due_end':
+      return 'Due end';
+    case 'due_start':
+      return 'Due start';
+  }
+}
+
+function formatDateOverrideValue(value: string | null): string {
+  return value ?? 'auto';
 }

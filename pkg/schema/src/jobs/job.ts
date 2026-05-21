@@ -209,6 +209,11 @@ const JobCancelledEvent = JobEventBase.extend({
   payload: JobLifecycleChangedEventPayload,
 });
 
+const JobUncancelledEvent = JobEventBase.extend({
+  eventType: z.literal('job.uncancelled'),
+  payload: JobLifecycleChangedEventPayload,
+});
+
 const JobCompletedEvent = JobEventBase.extend({
   eventType: z.literal('job.completed'),
   payload: JobLifecycleChangedEventPayload,
@@ -223,6 +228,7 @@ export const JobEvent = z.discriminatedUnion('eventType', [
   JobPausedEvent,
   JobResumedEvent,
   JobCancelledEvent,
+  JobUncancelledEvent,
   JobCompletedEvent,
 ]);
 

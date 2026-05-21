@@ -1,4 +1,5 @@
 import type { jobEvents, jobStageStations, jobStages, jobs, stations, user } from '@pkg/db';
+import { deriveJobStatus, deriveLevelStatus } from '@pkg/domain';
 import type { JobLifecycleStatus, JobWorkState } from '@pkg/schema';
 import { Job, JobEvent, JobEventDerivationStage, JobStage, Station, StationBooking } from '@pkg/schema';
 
@@ -33,19 +34,13 @@ export type JobAuditRecord = Pick<
 export function deriveJobLifecycleStatus(
   row: Pick<JobRow, 'actualEnd' | 'actualStart' | 'isCancelled' | 'isPaused'>,
 ): JobLifecycleStatus {
-  if (row.isCancelled) return 'cancelled';
-  if (row.isPaused) return 'paused';
-  if (row.actualEnd) return 'complete';
-  if (row.actualStart) return 'active';
-  return 'not-started';
+  return deriveJobStatus(row);
 }
 
 export function deriveWorkState(
   row: Pick<JobStageRow | JobStageStationRow, 'actualEnd' | 'actualStart'>,
 ): JobWorkState {
-  if (row.actualEnd) return 'complete';
-  if (row.actualStart) return 'in-progress';
-  return 'pending';
+  return deriveLevelStatus(row);
 }
 
 export function mapJob(row: JobRow): Job {

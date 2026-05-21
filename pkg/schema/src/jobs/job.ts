@@ -358,7 +358,7 @@ export const JobSummary = Job.extend({
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
-export const JobSortBy = z.enum(['code', 'createdAt', 'id', 'lifecycleStatus']);
+export const JobSortBy = z.enum(['actualEnd', 'code', 'createdAt', 'dueEnd', 'id', 'lifecycleStatus']);
 
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z

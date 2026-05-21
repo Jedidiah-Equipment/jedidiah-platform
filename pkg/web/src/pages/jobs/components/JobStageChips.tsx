@@ -1,4 +1,4 @@
-import { departmentShortLabels, jobStageStatusLabels } from '@pkg/domain';
+import { departmentShortLabels } from '@pkg/domain';
 import type { JobStageSummary } from '@pkg/schema';
 import type React from 'react';
 
@@ -16,7 +16,13 @@ export const JobStageChips: React.FC<JobStageChipsProps> = ({ stages }) => (
   <div className="flex min-w-48 flex-wrap gap-1">
     {stages.map((stage) => {
       const color = getJobStageStatusColorClassNames(stage.stage, stage.state);
-      const tooltip = `${stageLabels[stage.stage]} — ${jobStageStatusLabels[stage.state]}`;
+      const completedBookings = stage.stations.filter((station) => station.actualEnd).length;
+      const totalBookings = stage.stations.length;
+      const countLabel = `${completedBookings}/${totalBookings}`;
+      const tooltip =
+        totalBookings === 0
+          ? `${stageLabels[stage.stage]} has no station bookings`
+          : `${stageLabels[stage.stage]} ${completedBookings} of ${totalBookings} station bookings complete`;
 
       return (
         <Tooltip key={stage.id}>
@@ -25,13 +31,16 @@ export const JobStageChips: React.FC<JobStageChipsProps> = ({ stages }) => (
               <Badge
                 aria-label={tooltip}
                 className={cn(
-                  'min-w-12 justify-center focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                  'w-20 justify-center gap-1.5 focus-visible:ring-[3px] focus-visible:ring-ring/50',
                   color.badge,
                 )}
                 tabIndex={0}
                 variant="outline"
               >
-                {departmentShortLabels[stage.department]}
+                <span>{departmentShortLabels[stage.department]}</span>
+                <span aria-hidden="true" className="text-muted-foreground">
+                  {countLabel}
+                </span>
               </Badge>
             }
           />

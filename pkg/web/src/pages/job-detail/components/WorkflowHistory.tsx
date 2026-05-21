@@ -2,9 +2,11 @@ import { jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobEvent } from '@pkg/schema';
 import { ClockIcon, HistoryIcon, UserCircleIcon } from 'lucide-react';
 import type React from 'react';
+import { useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DepartmentIcon } from '@/components/departments/index.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
 import { stageLabels } from '../constants.js';
 import { getStageStartedMetadata, getStageStatusChangeCopy } from './workflow-history-copy.js';
@@ -13,30 +15,73 @@ type WorkflowHistoryProps = {
   events: JobEvent[];
 };
 
-export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ events }) => (
-  <section className="grid h-[calc(100vh-7rem)] grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden rounded-md border bg-muted/10 p-3">
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-2">
-        <HistoryIcon className="size-4 shrink-0 text-muted-foreground" />
-        <h2 className="truncate font-medium">Workflow history</h2>
+type WorkflowEventFamily = 'all' | 'job' | 'stage' | 'station' | 'date';
+
+const workflowEventFamilyLabels = {
+  all: 'All',
+  date: 'Dates',
+  job: 'Job',
+  stage: 'Departments',
+  station: 'Stations',
+} as const satisfies Record<WorkflowEventFamily, string>;
+
+const workflowEventFamilies = Object.keys(workflowEventFamilyLabels) as WorkflowEventFamily[];
+
+export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ events }) => {
+  const [family, setFamily] = useState<WorkflowEventFamily>('all');
+  const filteredEvents = useMemo(
+    () => events.filter((event) => family === 'all' || getWorkflowEventFamily(event) === family),
+    [events, family],
+  );
+
+  return (
+    <section
+      className={cn(
+        'grid h-[calc(100vh-7rem)] gap-3 overflow-hidden rounded-md border bg-muted/10 p-3',
+        events.length > 0 ? 'grid-rows-[auto_auto_minmax(0,1fr)]' : 'grid-rows-[auto_minmax(0,1fr)]',
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <HistoryIcon className="size-4 shrink-0 text-muted-foreground" />
+          <h2 className="truncate font-medium">Workflow history</h2>
+        </div>
+        <span className="shrink-0 rounded-md border bg-background px-2 py-0.5 text-xs text-muted-foreground">
+          {filteredEvents.length}
+        </span>
       </div>
-      <span className="shrink-0 rounded-md border bg-background px-2 py-0.5 text-xs text-muted-foreground">
-        {events.length}
-      </span>
-    </div>
-    {events.length > 0 ? (
-      <ScrollArea className="min-h-0 pr-2">
-        <ol className="flex flex-col gap-2">
-          {events.map((event) => (
-            <WorkflowHistoryItem event={event} key={event.id} />
-          ))}
-        </ol>
-      </ScrollArea>
-    ) : (
-      <div className="rounded-md border bg-background p-3 text-sm text-muted-foreground">No workflow events yet.</div>
-    )}
-  </section>
-);
+      {events.length > 0 ? (
+        <Select onValueChange={(value) => setFamily(value as WorkflowEventFamily)} value={family}>
+          <SelectTrigger aria-label="Workflow history filter" className="w-full" size="sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {workflowEventFamilies.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {workflowEventFamilyLabels[option]}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      ) : null}
+      {filteredEvents.length > 0 ? (
+        <ScrollArea className="min-h-0 pr-2">
+          <ol className="flex flex-col gap-2">
+            {filteredEvents.map((event) => (
+              <WorkflowHistoryItem event={event} key={event.id} />
+            ))}
+          </ol>
+        </ScrollArea>
+      ) : (
+        <div className="rounded-md border bg-background p-3 text-sm text-muted-foreground">
+          No workflow events found.
+        </div>
+      )}
+    </section>
+  );
+};
 
 const WorkflowHistoryItem: React.FC<{ event: JobEvent }> = ({ event }) => (
   <li className="grid grid-cols-[0.75rem_minmax(0,1fr)] gap-3 rounded-md border bg-background p-3 text-sm">
@@ -188,10 +233,37 @@ function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
   if (event.eventType === 'date.overridden') {
     return `${getDateOverrideFieldLabel(event.payload.field)} changed from ${formatDateOverrideValue(
       event.payload.oldValue,
-    )} to ${formatDateOverrideValue(event.payload.newValue)}`;
+    )} → ${formatDateOverrideValue(event.payload.newValue)}`;
   }
 
   return getStageStatusChangeCopy(event.payload).metadata;
+}
+
+function getWorkflowEventFamily(event: JobEvent): WorkflowEventFamily {
+  switch (event.eventType) {
+    case 'date.overridden':
+      return 'date';
+    case 'station.ended':
+    case 'station.started':
+      return 'station';
+    case 'stage.completed':
+    case 'stage.ended':
+    case 'stage.started':
+    case 'stage.status_changed':
+    case 'stage.stopped':
+      return 'stage';
+    case 'job.cancelled':
+    case 'job.completed':
+    case 'job.paused':
+    case 'job.resumed':
+    case 'job.started':
+    case 'job.uncancelled':
+      return 'job';
+    default: {
+      const exhaustive: never = event;
+      return exhaustive;
+    }
+  }
 }
 
 function getWorkflowEventActorLabel(event: JobEvent): string {

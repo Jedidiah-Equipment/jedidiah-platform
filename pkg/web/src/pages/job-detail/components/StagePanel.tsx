@@ -97,7 +97,7 @@ export const StagePanel: React.FC<StagePanelProps> = ({
   const isPendingStage = stage.state === 'pending' && !hasStageStarted && !stage.actualEnd;
   const canStartPendingStage = isPendingStage && startAvailability?.allowed;
   const isBlockedPendingStage = isPendingStage && !startAvailability?.allowed;
-  const showStationBookings = isStageEditable && stage.stations.length > 0;
+  const showStationBookings = stage.stations.length > 0;
   const departmentLabel = stageLabels[stage.stage];
 
   return (
@@ -144,7 +144,8 @@ export const StagePanel: React.FC<StagePanelProps> = ({
             {stage.stations.map((booking) => (
               <StationBookingControl
                 booking={booking}
-                disabled={!isStageEditable || isPending}
+                canTransition={isStageEditable}
+                disabled={isPending}
                 key={booking.id}
                 canEditDates={canEditDates}
                 onEditDate={onEditDate}
@@ -154,31 +155,31 @@ export const StagePanel: React.FC<StagePanelProps> = ({
             ))}
           </div>
         ) : null}
-        <div className="flex flex-col gap-2">
-          <Button
-            disabled={isStartDisabled}
-            onClick={() => onStart({ id: jobId, stage: stage.stage })}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <PlayIcon data-icon="inline-start" />
-            Start
-          </Button>
-          <Button
-            disabled={isCompleteDisabled}
-            onClick={() => onComplete({ id: jobId, stage: stage.stage })}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <CheckCircleIcon data-icon="inline-start" />
-            Complete
-          </Button>
-          {isStageEditable ? (
+        {isStageEditable ? (
+          <div className="flex flex-col gap-2">
+            <Button
+              disabled={isStartDisabled}
+              onClick={() => onStart({ id: jobId, stage: stage.stage })}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <PlayIcon data-icon="inline-start" />
+              Start
+            </Button>
+            <Button
+              disabled={isCompleteDisabled}
+              onClick={() => onComplete({ id: jobId, stage: stage.stage })}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <CheckCircleIcon data-icon="inline-start" />
+              Complete
+            </Button>
             <StageControlReason reason={startAvailability?.reason ?? stopAvailability?.reason} />
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -189,12 +190,13 @@ const StageControlReason: React.FC<{ reason: string | null | undefined }> = ({ r
 
 const StationBookingControl: React.FC<{
   booking: StationBooking;
+  canTransition: boolean;
   canEditDates: boolean;
   disabled: boolean;
   onEditDate: (input: JobDateEditInput) => void;
   onStart: (input: { id: UUID }) => void;
   onStop: (input: { id: UUID }) => void;
-}> = ({ booking, canEditDates, disabled, onEditDate, onStart, onStop }) => {
+}> = ({ booking, canEditDates, canTransition, disabled, onEditDate, onStart, onStop }) => {
   const canStart = booking.state === 'pending';
   const canStop = booking.state === 'in-progress';
   const buttonDisabled = disabled || booking.state === 'complete';
@@ -215,10 +217,10 @@ const StationBookingControl: React.FC<{
             record={booking}
           />
         </div>
-        {booking.state === 'complete' ? (
+        {!canTransition || booking.state === 'complete' ? (
           <div className="shrink-0 text-right text-xs text-muted-foreground">
-            <div className="font-medium text-foreground">Completed</div>
-            <DateDisplay date={booking.actualEnd} format="medium" />
+            <div className="font-medium text-foreground">{jobStageStatusLabels[booking.state]}</div>
+            <DateDisplay date={booking.actualEnd} emptyValue="No actual end" format="medium" />
           </div>
         ) : canStop ? (
           <Button disabled={buttonDisabled} onClick={() => onStop({ id: booking.id })} size="sm" type="button">

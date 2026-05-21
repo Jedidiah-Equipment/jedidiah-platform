@@ -128,6 +128,18 @@ export const jobStageAuditDescriptor: AuditEntityDescriptor = {
   },
 };
 
+export const stationAuditDescriptor: AuditEntityDescriptor = {
+  entityType: 'station',
+  noun: 'station',
+  primaryLabelField: 'name',
+  fields: {
+    department: 'department',
+    displayOrder: 'display order',
+    isActive: 'active',
+    name: 'name',
+  },
+};
+
 export const quoteAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'quote',
   noun: 'quote',
@@ -164,6 +176,7 @@ const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
   quote: quoteAuditDescriptor,
+  station: stationAuditDescriptor,
   user: userAuditDescriptor,
 };
 

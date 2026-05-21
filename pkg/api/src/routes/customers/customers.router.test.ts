@@ -3,7 +3,7 @@ import type { Customer } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
-import { mockSession } from '@/test/test-utils.js';
+import { expectIsoDatetime, mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
@@ -396,8 +396,4 @@ async function createActorUser(db: Db) {
     role: 'admin',
     updatedAt: now,
   });
-}
-
-function expectIsoDatetime(value: string) {
-  expect(new Date(value).toISOString()).toBe(value);
 }

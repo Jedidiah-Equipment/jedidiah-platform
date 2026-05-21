@@ -35,6 +35,7 @@ export const ProductCreatePage: React.FC = () => {
           createProductMutation.mutateAsync({
             basePrice: value.basePrice,
             currencyCode: 'ZAR',
+            departmentConfigs: value.departmentConfigs,
             description: value.description,
             modelCode: value.modelCode,
             name: value.name,

@@ -5,10 +5,12 @@ import {
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
+  type productDepartmentConfigs,
   productOptions,
   products,
 } from '@pkg/db';
 import type {
+  AuditChanges,
   AuthId,
   Logger,
   Product,
@@ -23,18 +25,25 @@ import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
+import { mapProductDepartmentConfigs, syncProductDepartmentConfigs } from './product-department-config-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
 import { insertProductOptions, mapProductOption, syncProductOptions } from './product-option-service.js';
 
 type ProductRow = typeof products.$inferSelect;
+type ProductDepartmentConfigRow = typeof productDepartmentConfigs.$inferSelect;
 type ProductOptionRow = typeof productOptions.$inferSelect;
 
-export function mapProduct(row: ProductRow, options: ProductOptionRow[] = []): Product {
+export function mapProduct(
+  row: ProductRow,
+  options: ProductOptionRow[] = [],
+  departmentConfigs: ProductDepartmentConfigRow[] = [],
+): Product {
   return {
     basePrice: row.basePrice,
     createdAt: row.createdAt.toISOString(),
     currencyCode: ProductCurrencyCode.parse(row.currencyCode),
     description: row.description,
+    departmentConfigs: mapProductDepartmentConfigs(departmentConfigs),
     id: row.id,
     modelCode: row.modelCode,
     name: row.name,
@@ -74,6 +83,7 @@ export async function listProducts({
         where: isNull(productOptions.deletedAt),
         orderBy: [asc(productOptions.code)],
       },
+      departmentConfigs: true,
     },
   });
   const productsSql = productsQuery.toSQL();
@@ -90,7 +100,7 @@ export async function listProducts({
   const [rows, total] = await Promise.all([productsQuery, db.$count(products, where)]);
 
   return {
-    items: rows.map((row) => mapProduct(row, row.options)),
+    items: rows.map((row) => mapProduct(row, row.options, row.departmentConfigs)),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
@@ -131,25 +141,22 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
 }
 
 export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
-  const rows = await db
-    .select({
-      option: productOptions,
-      product: products,
-    })
-    .from(products)
-    .leftJoin(productOptions, and(eq(productOptions.productId, products.id), isNull(productOptions.deletedAt)))
-    .where(eq(products.id, id))
-    .orderBy(asc(productOptions.code));
-  const productRow = rows[0]?.product;
+  const row = await db.query.products.findFirst({
+    where: eq(products.id, id),
+    with: {
+      departmentConfigs: true,
+      options: {
+        where: isNull(productOptions.deletedAt),
+        orderBy: [asc(productOptions.code)],
+      },
+    },
+  });
 
-  if (!productRow) {
+  if (!row) {
     throw new ProductNotFoundError(id);
   }
 
-  return mapProduct(
-    productRow,
-    rows.flatMap((row) => (row.option ? [row.option] : [])),
-  );
+  return mapProduct(row, row.options, row.departmentConfigs);
 }
 
 export async function createProduct({
@@ -163,7 +170,7 @@ export async function createProduct({
 }): Promise<Product> {
   try {
     return await db.transaction(async (tx) => {
-      const { options, ...productInput } = input;
+      const { departmentConfigs, options, ...productInput } = input;
       const [row] = await tx.insert(products).values(productInput).returning();
 
       if (!row) {
@@ -175,6 +182,11 @@ export async function createProduct({
         productId: row.id,
         incomingOptions: options,
         actorUserId,
+      });
+      const departmentConfigRows = await syncProductDepartmentConfigs({
+        tx,
+        productId: row.id,
+        incomingConfigs: departmentConfigs,
       });
 
       await insertAuditEvent({
@@ -190,7 +202,7 @@ export async function createProduct({
         },
       });
 
-      return mapProduct(row, optionRows);
+      return mapProduct(row, optionRows, departmentConfigRows.rows);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
@@ -214,7 +226,7 @@ export async function updateProduct({
         throw new ProductNotFoundError(input.id);
       }
 
-      const { options, ...productInput } = input;
+      const { departmentConfigs, options, ...productInput } = input;
       const after = {
         ...before,
         basePrice: productInput.basePrice,
@@ -223,16 +235,29 @@ export async function updateProduct({
         modelCode: productInput.modelCode,
         name: productInput.name,
       };
-      const changes = createAuditChanges(before, after, productAuditDescriptor.fields);
+      const productChanges = createAuditChanges(before, after, getProductCatalogAuditFields());
       const optionRows = await syncProductOptions({
         tx,
         productId: input.id,
         incomingOptions: options,
         actorUserId,
       });
+      const departmentConfigRows = await syncProductDepartmentConfigs({
+        tx,
+        productId: input.id,
+        incomingConfigs: departmentConfigs,
+      });
+      const changes = mergeAuditChanges(productChanges, {
+        departmentConfigs: departmentConfigRows.changes
+          ? {
+              from: departmentConfigRows.changes.before,
+              to: departmentConfigRows.changes.after,
+            }
+          : undefined,
+      });
 
       if (!changes) {
-        return mapProduct(before, optionRows);
+        return mapProduct(before, optionRows, departmentConfigRows.rows);
       }
 
       const [row] = await tx
@@ -265,11 +290,32 @@ export async function updateProduct({
         },
       });
 
-      return mapProduct(row, optionRows);
+      return mapProduct(row, optionRows, departmentConfigRows.rows);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
   }
+}
+
+function mergeAuditChanges(
+  baseChanges: AuditChanges | null,
+  extraChanges: Record<string, { from: unknown; to: unknown } | undefined>,
+): AuditChanges | null {
+  const changes: AuditChanges = { ...(baseChanges ?? {}) };
+
+  for (const [field, change] of Object.entries(extraChanges)) {
+    if (change) {
+      changes[field] = change;
+    }
+  }
+
+  return Object.keys(changes).length > 0 ? changes : null;
+}
+
+function getProductCatalogAuditFields(): Record<string, string> {
+  const { departmentConfigs: _departmentConfigs, ...fields } = productAuditDescriptor.fields;
+
+  return fields;
 }
 
 function getProductSortColumn(sortBy: ProductListInput['sortBy']) {

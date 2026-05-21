@@ -50,6 +50,7 @@ describe('getRolePermissions', () => {
       'job:create',
       'job:read',
       'job:update',
+      'product:read',
       'quote:read',
     ]);
   });

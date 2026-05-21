@@ -69,7 +69,7 @@ export const UserCreateDialog: React.FC = () => {
         New user
       </Button>
       <Dialog onOpenChange={setIsOpen} open={isOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>New user</DialogTitle>
             <DialogDescription>Create a user with email/password access.</DialogDescription>

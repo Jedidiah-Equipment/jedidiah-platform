@@ -17,7 +17,7 @@ import {
 import { jedidiahChatAdapter } from './assistant-ui-adapter.js';
 
 export const ASSISTANT_EXAMPLE_QUESTIONS: string[] = [
-  'how is the job for Marula Contracting going?',
+  'how is the job for Thaba Mining Supplies going?',
   'show me quotes waiting for customer approval',
   'which jobs are behind schedule?',
   'what work is active in Production?',

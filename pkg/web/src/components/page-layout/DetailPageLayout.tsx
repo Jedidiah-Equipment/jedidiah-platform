@@ -49,7 +49,7 @@ export const DetailPageLayout: React.FC<DetailPageLayoutProps> = ({
             <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">{aside}</aside>
           </div>
         ) : (
-          children
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">{children}</div>
         )}
       </CardContent>
     </Card>

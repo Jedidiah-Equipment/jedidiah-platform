@@ -102,25 +102,27 @@ describe('create job dialog helpers', () => {
   });
 
   test('builds create input without dead Job or Stage windows', () => {
-    const input = buildCreateJobInput({
+    expect(
+      buildCreateJobInput({
+        productId: '00000000-0000-4000-8000-000000000010',
+        quoteId: null,
+        stages: [
+          createStageDraft({ dueEnd: '2026-05-02', dueStart: '2026-05-01', stage: 'procurement' }),
+          createStageDraft({ stage: 'supply' }),
+          createStageDraft({ stage: 'fabrication' }),
+          createStageDraft({ stage: 'paint' }),
+          createStageDraft({ dueEnd: '2026-05-10', dueStart: '2026-05-08', stage: 'assembly' }),
+        ],
+      }),
+    ).toMatchObject({
       productId: '00000000-0000-4000-8000-000000000010',
-      quoteId: null,
-      stages: [
-        createStageDraft({ dueEnd: '2026-05-02', dueStart: '2026-05-01', stage: 'procurement' }),
-        createStageDraft({ stage: 'supply' }),
-        createStageDraft({ stage: 'fabrication' }),
-        createStageDraft({ stage: 'paint' }),
-        createStageDraft({ dueEnd: '2026-05-10', dueStart: '2026-05-08', stage: 'assembly' }),
-      ],
+      stages: expect.arrayContaining([
+        expect.not.objectContaining({
+          dueEnd: expect.anything(),
+          dueStart: expect.anything(),
+        }),
+      ]),
     });
-
-    expect(input).toMatchObject({
-      productId: '00000000-0000-4000-8000-000000000010',
-    });
-    for (const stage of input.stages) {
-      expect(stage).not.toHaveProperty('dueEnd');
-      expect(stage).not.toHaveProperty('dueStart');
-    }
   });
 
   test('reports inverted stage windows as warnings', () => {

@@ -322,8 +322,12 @@ describe('jobs.listSharedStationBookings', () => {
         createStageInput('assembly', '2026-08-10', '2026-08-12'),
       ],
     });
-    await caller.jobs.startStationBooking({ id: getStageBooking(completedSharedStationJob, 'fabrication').id });
-    await caller.jobs.stopStationBooking({ id: getStageBooking(completedSharedStationJob, 'fabrication').id });
+    await context.databaseClient.queryClient`
+      update job
+      set actual_start = '2026-08-01T08:00:00.000Z',
+        actual_end = '2026-08-12T16:00:00.000Z'
+      where id = ${completedSharedStationJob.id}
+    `;
     const futureSharedStationJob = await caller.jobs.create({
       productId: context.product.id,
       stages: [

@@ -20,8 +20,8 @@ import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CreateJobDialog } from '@/pages/jobs/components/CreateJobDialog.js';
-import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
+import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { canCreateJobFromQuote } from './quote-job-eligibility.js';
 
@@ -255,26 +255,3 @@ function getQuoteListInputExtras(columnFilters: ColumnFiltersState) {
     },
   } satisfies Pick<QuoteListInput, 'filters'>;
 }
-
-const QuoteLinkedJobs: React.FC<{
-  canOpenJobs: boolean;
-  linkedJobs: QuoteSummary['linkedJobs'];
-}> = ({ canOpenJobs, linkedJobs }) => {
-  if (linkedJobs.length === 0) {
-    return <span className="text-muted-foreground">-</span>;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {linkedJobs.map((job) => (
-        <JobCodeDisplay
-          key={job.jobId}
-          canOpenJob={canOpenJobs}
-          jobCode={job.jobCode}
-          jobId={job.jobId}
-          withHoverCard
-        />
-      ))}
-    </div>
-  );
-};

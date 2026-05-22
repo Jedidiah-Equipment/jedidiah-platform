@@ -29,11 +29,7 @@ import { and, asc, eq, or, type SQL, sql } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { editJobDate as editJobDateService } from './job-date-edit-service.js';
-import {
-  JobLifecycleTransitionDeniedError,
-  JobNotFoundError,
-  JobQuoteCreateFromQuoteDeniedError,
-} from './job-errors.js';
+import { JobCreateFromQuoteDeniedError, JobLifecycleTransitionDeniedError, JobNotFoundError } from './job-errors.js';
 import {
   cancelJobLifecycle,
   pauseJobLifecycle,
@@ -191,17 +187,17 @@ async function validateJobQuoteForCreate({
   tx: DatabaseTransaction;
 }): Promise<void> {
   if (!hasPermission(access, 'quote:read')) {
-    throw new JobQuoteCreateFromQuoteDeniedError('Quote not found.');
+    throw new JobCreateFromQuoteDeniedError('Quote not found.');
   }
 
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
-    throw new JobQuoteCreateFromQuoteDeniedError('Quote not found.');
+    throw new JobCreateFromQuoteDeniedError('Quote not found.');
   }
 
   if (allowedStatuses && !allowedStatuses.includes(quote.status)) {
-    throw new JobQuoteCreateFromQuoteDeniedError("This quote's status does not allow job creation.");
+    throw new JobCreateFromQuoteDeniedError("This quote's status does not allow job creation.");
   }
 
   return;

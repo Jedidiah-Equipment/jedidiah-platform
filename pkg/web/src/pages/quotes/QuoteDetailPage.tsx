@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import type { QuoteSummary, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { BriefcaseBusinessIcon, EditIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
@@ -23,8 +23,8 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CreateJobDialog } from '@/pages/jobs/components/CreateJobDialog.js';
-import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
+import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { useQuoteStateMutation } from './hooks/use-quote-state-mutation.js';
 import { canCreateJobFromQuote } from './quote-job-eligibility.js';
@@ -163,7 +163,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
               }
             />
             <QuoteFact
-              label="Job"
+              label="Jobs"
               value={<QuoteLinkedJobs canOpenJobs={canOpenJobs} linkedJobs={quote.linkedJobs} />}
             />
           </div>
@@ -191,29 +191,6 @@ const QuoteFact: React.FC<{ label: string; value: React.ReactNode }> = ({ label,
     <div className="mt-1 wrap-break-word">{value}</div>
   </div>
 );
-
-const QuoteLinkedJobs: React.FC<{
-  canOpenJobs: boolean;
-  linkedJobs: QuoteSummary['linkedJobs'];
-}> = ({ canOpenJobs, linkedJobs }) => {
-  if (linkedJobs.length === 0) {
-    return <span className="text-muted-foreground">-</span>;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {linkedJobs.map((job) => (
-        <JobCodeDisplay
-          key={job.jobId}
-          canOpenJob={canOpenJobs}
-          jobCode={job.jobCode}
-          jobId={job.jobId}
-          withHoverCard
-        />
-      ))}
-    </div>
-  );
-};
 
 const QuoteTransitionConfirmationDialog: React.FC<{
   confirmation: QuoteTransitionConfirmation | null;

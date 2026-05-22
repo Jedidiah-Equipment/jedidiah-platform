@@ -443,14 +443,6 @@ export const JobCreateInput = z
     }
   });
 
-export type JobCreateFromQuoteInput = z.infer<typeof JobCreateFromQuoteInput>;
-export const JobCreateFromQuoteInput = z.object({
-  quoteId: UUID,
-  dueEnd: z.iso.date().nullable().optional(),
-  dueStart: z.iso.date().nullable().optional(),
-  productId: UUID,
-});
-
 export type JobListInput = z.infer<typeof JobListInput>;
 export const JobListInput = PagedQueryInput.extend({
   filters: JobListFilters,

@@ -13,7 +13,6 @@ import {
 import { hasPermission, JOB_STAGE_PIPELINE, parseJobCodeSearch } from '@pkg/domain';
 import type {
   AuthId,
-  JobCreateFromQuoteInput,
   JobCreateInput,
   JobCreateStageInput,
   JobDateEditInput,
@@ -72,64 +71,20 @@ export async function createJob({
   }
 }
 
-export async function createJobFromQuote({
-  db,
-  access,
-  input,
-  actorUserId,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  input: JobCreateFromQuoteInput;
-  actorUserId: AuthId;
-}): Promise<JobDetail> {
-  try {
-    return await db.transaction(async (tx) => {
-      await validateJobQuoteForCreate({
-        allowedStatuses: JOB_ELIGIBLE_QUOTE_STATUSES,
-        access,
-        quoteId: input.quoteId,
-        tx,
-      });
-
-      return createJobInTransaction({
-        access,
-        actorUserId,
-        input: {
-          dueEnd: input.dueEnd,
-          dueStart: input.dueStart,
-          productId: input.productId,
-          quoteId: input.quoteId,
-        },
-        skipQuoteValidation: true,
-        tx,
-      });
-    });
-  } catch (error) {
-    if (getUniqueViolationConstraint(error) === 'job_quote_id_unique') {
-      throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
-    }
-
-    throw error;
-  }
-}
-
 async function createJobInTransaction({
   access,
   actorUserId,
   input,
-  skipQuoteValidation = false,
   tx,
 }: {
   access: UserAccessSummary;
   actorUserId: AuthId;
   input: JobCreateInput;
-  skipQuoteValidation?: boolean;
   tx: DatabaseTransaction;
 }): Promise<JobDetail> {
   const quoteId = input.quoteId ?? null;
 
-  if (quoteId && !skipQuoteValidation) {
+  if (quoteId) {
     await validateJobQuoteForCreate({ access, allowedStatuses: JOB_ELIGIBLE_QUOTE_STATUSES, quoteId, tx });
   }
 

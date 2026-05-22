@@ -103,6 +103,9 @@ export function applyCreateScheduleGanttDueRangeEdit({
     };
   }
 
+  const dueStartChanged = row.dueStart !== nextRange.dueStart;
+  const dueEndChanged = row.dueEnd !== nextRange.dueEnd;
+
   if (row.level === 'stage') {
     return {
       kind: 'stages',
@@ -111,13 +114,13 @@ export function applyCreateScheduleGanttDueRangeEdit({
           ? {
               ...stage,
               dueEnd: nextRange.dueEnd,
-              dueEndSetManually: true,
+              dueEndSetManually: dueEndChanged ? true : stage.dueEndSetManually,
               dueStart: nextRange.dueStart,
-              dueStartSetManually: true,
+              dueStartSetManually: dueStartChanged ? true : stage.dueStartSetManually,
               stationBookings: stage.stationBookings.map((booking) => ({
                 ...booking,
-                dueEnd: booking.dueEndSetManually ? booking.dueEnd : nextRange.dueEnd,
-                dueStart: booking.dueStartSetManually ? booking.dueStart : nextRange.dueStart,
+                dueEnd: dueEndChanged && !booking.dueEndSetManually ? nextRange.dueEnd : booking.dueEnd,
+                dueStart: dueStartChanged && !booking.dueStartSetManually ? nextRange.dueStart : booking.dueStart,
               })),
             }
           : stage,
@@ -134,9 +137,9 @@ export function applyCreateScheduleGanttDueRangeEdit({
           ? {
               ...booking,
               dueEnd: nextRange.dueEnd,
-              dueEndSetManually: true,
+              dueEndSetManually: dueEndChanged ? true : booking.dueEndSetManually,
               dueStart: nextRange.dueStart,
-              dueStartSetManually: true,
+              dueStartSetManually: dueStartChanged ? true : booking.dueStartSetManually,
             }
           : booking,
       ),

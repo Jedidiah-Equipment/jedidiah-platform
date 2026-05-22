@@ -1,7 +1,6 @@
 import { type DatabaseTransaction, type Db, jobEvents, jobStageStations, jobStages, jobs, stations } from '@pkg/db';
 import {
   canEditStationBooking,
-  deriveJobStatus,
   deriveMilestoneEvents,
   evaluateActualWriteGuard,
   rollupJobSchedule,
@@ -111,7 +110,6 @@ async function transitionStationBooking({
     await insertDerivedMilestoneEvents({
       actorUserId,
       afterStages,
-      beforeJob: target.job,
       beforeStages: target.stages,
       editedStageId: target.stage.id,
       jobId: target.jobId,
@@ -237,7 +235,6 @@ async function readStagesWithBookingsForUpdate(jobId: UUID, tx: DatabaseTransact
 async function insertDerivedMilestoneEvents({
   actorUserId,
   afterStages,
-  beforeJob,
   beforeStages,
   editedStageId,
   jobId,
@@ -245,7 +242,6 @@ async function insertDerivedMilestoneEvents({
 }: {
   actorUserId: AuthId;
   afterStages: StageWithBookings[];
-  beforeJob: JobAuditRecord;
   beforeStages: StageWithBookings[];
   editedStageId: UUID;
   jobId: UUID;
@@ -286,8 +282,6 @@ async function insertDerivedMilestoneEvents({
 
     await insertJobMilestoneEvent({
       actorUserId,
-      beforeJob,
-      beforeWindow: beforeJobSchedule.actualWindow,
       eventType,
       jobId,
       nextWindow: afterJobSchedule.actualWindow,
@@ -371,39 +365,30 @@ async function insertStageMilestoneEvent({
 
 async function insertJobMilestoneEvent({
   actorUserId,
-  beforeJob,
-  beforeWindow,
   eventType,
   jobId,
   nextWindow,
   tx,
 }: {
   actorUserId: AuthId;
-  beforeJob: JobAuditRecord;
-  beforeWindow: { end: Date | null; start: Date | null };
   eventType: Extract<JobEvent['eventType'], 'job.completed' | 'job.started'>;
   jobId: UUID;
   nextWindow: { end: Date | null; start: Date | null };
   tx: DatabaseTransaction;
 }): Promise<void> {
+  const value = eventType === 'job.started' ? nextWindow.start : nextWindow.end;
+
+  if (!value) {
+    throw new Error(`${eventType} requires an actual value.`);
+  }
+
   await tx.insert(jobEvents).values({
     actorUserId,
     eventType,
     jobId,
     occurredAt: new Date(),
     payload: {
-      fromLifecycleStatus: deriveJobStatus({
-        actualEnd: beforeWindow.end,
-        actualStart: beforeWindow.start,
-        isCancelled: beforeJob.isCancelled,
-        isPaused: beforeJob.isPaused,
-      }),
-      toLifecycleStatus: deriveJobStatus({
-        actualEnd: nextWindow.end,
-        actualStart: nextWindow.start,
-        isCancelled: beforeJob.isCancelled,
-        isPaused: beforeJob.isPaused,
-      }),
+      [eventType === 'job.started' ? 'actualStart' : 'actualEnd']: value.toISOString(),
     },
     stageId: null,
   });

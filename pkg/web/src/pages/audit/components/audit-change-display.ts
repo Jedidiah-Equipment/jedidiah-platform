@@ -27,7 +27,6 @@ const auditFieldLabels: Record<string, string> = {
   discount: 'Discount',
   dueDate: 'Due date',
   email: 'Email',
-  lifecycleStatus: 'Lifecycle status',
   member: 'Department membership',
   modelCode: 'Model code',
   name: 'Name',

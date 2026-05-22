@@ -34,7 +34,7 @@ describe('audit change display helpers', () => {
   it('formats multiple field changes in insertion order', () => {
     expect(
       getAuditChangeDisplays({
-        lifecycleStatus: {
+        status: {
           from: 'active',
           to: 'paused',
         },
@@ -45,10 +45,10 @@ describe('audit change display helpers', () => {
       }),
     ).toEqual([
       {
-        field: 'Lifecycle status',
+        field: 'Status',
         from: 'active',
-        key: 'lifecycleStatus',
-        preview: 'Lifecycle status: active -> paused',
+        key: 'status',
+        preview: 'Status: active -> paused',
         to: 'paused',
       },
       {

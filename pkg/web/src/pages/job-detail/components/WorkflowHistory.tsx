@@ -1,4 +1,4 @@
-import { jobLifecycleStatusLabels } from '@pkg/domain';
+import { jobStatusLabels } from '@pkg/domain';
 import type { JobEvent } from '@pkg/schema';
 import { ClockIcon, HistoryIcon, UserCircleIcon } from 'lucide-react';
 import type React from 'react';
@@ -145,24 +145,12 @@ function getWorkflowEventLabel(event: JobEvent): string {
     return 'Job started';
   }
 
-  if (event.eventType === 'job.paused') {
-    return 'Job paused';
-  }
-
-  if (event.eventType === 'job.resumed') {
-    return 'Job resumed';
-  }
-
-  if (event.eventType === 'job.cancelled') {
-    return 'Job cancelled';
-  }
-
-  if (event.eventType === 'job.uncancelled') {
-    return 'Job uncancelled';
-  }
-
   if (event.eventType === 'job.completed') {
     return 'Job completed';
+  }
+
+  if (event.eventType === 'job.status-changed') {
+    return 'Job status changed';
   }
 
   if (event.eventType === 'date.overridden') {
@@ -217,17 +205,24 @@ function getWorkflowEventMetadata(event: JobEvent): React.ReactNode {
     );
   }
 
-  if (
-    event.eventType === 'job.started' ||
-    event.eventType === 'job.paused' ||
-    event.eventType === 'job.resumed' ||
-    event.eventType === 'job.cancelled' ||
-    event.eventType === 'job.uncancelled' ||
-    event.eventType === 'job.completed'
-  ) {
-    return `${jobLifecycleStatusLabels[event.payload.fromLifecycleStatus]} to ${
-      jobLifecycleStatusLabels[event.payload.toLifecycleStatus]
-    }`;
+  if (event.eventType === 'job.started') {
+    return (
+      <>
+        Started at <DateDisplay date={event.payload.actualStart} format="medium" />
+      </>
+    );
+  }
+
+  if (event.eventType === 'job.completed') {
+    return (
+      <>
+        Completed at <DateDisplay date={event.payload.actualEnd} format="medium" />
+      </>
+    );
+  }
+
+  if (event.eventType === 'job.status-changed') {
+    return `${jobStatusLabels[event.payload.from]} to ${jobStatusLabels[event.payload.to]}`;
   }
 
   if (event.eventType === 'date.overridden') {
@@ -251,12 +246,9 @@ function getWorkflowEventFamily(event: JobEvent): WorkflowEventFamily {
     case 'stage.started':
     case 'stage.stopped':
       return 'stage';
-    case 'job.cancelled':
     case 'job.completed':
-    case 'job.paused':
-    case 'job.resumed':
     case 'job.started':
-    case 'job.uncancelled':
+    case 'job.status-changed':
       return 'job';
     default: {
       const exhaustive: never = event;
@@ -306,18 +298,9 @@ function getWorkflowEventColor(event: JobEvent): string {
     return 'bg-emerald-500';
   }
 
-  if (event.eventType === 'job.paused') {
-    return 'bg-amber-500';
-  }
-
-  if (event.eventType === 'job.cancelled') {
-    return 'bg-destructive';
-  }
-
   if (
-    event.eventType === 'job.resumed' ||
-    event.eventType === 'job.uncancelled' ||
     event.eventType === 'job.started' ||
+    event.eventType === 'job.status-changed' ||
     event.eventType === 'date.overridden' ||
     event.eventType === 'stage.started' ||
     event.eventType === 'station.started'

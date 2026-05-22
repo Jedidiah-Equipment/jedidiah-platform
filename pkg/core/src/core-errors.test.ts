@@ -4,7 +4,6 @@ import { CustomerNotFoundError, isCustomerCoreError } from './customers/customer
 import {
   isJobCoreError,
   JobCreateFromQuoteDeniedError,
-  JobLifecycleTransitionDeniedError,
   JobNotFoundError,
   JobStageTransitionDeniedError,
 } from './jobs/job-errors.js';
@@ -56,7 +55,6 @@ describe('core error codes and guards', () => {
   it('identifies job core errors', () => {
     expect(new JobNotFoundError('job-id').code).toBe('job.not_found');
     expect(new JobStageTransitionDeniedError('diagnostic').code).toBe('job.stage_transition_denied');
-    expect(new JobLifecycleTransitionDeniedError('diagnostic').code).toBe('job.lifecycle_transition_denied');
     expect(new JobCreateFromQuoteDeniedError('diagnostic').code).toBe('job.create_from_quote_denied');
     expect(isJobCoreError(new JobStageTransitionDeniedError('diagnostic'))).toBe(true);
   });

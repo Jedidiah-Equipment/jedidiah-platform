@@ -20,8 +20,8 @@ import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CreateJobDialog } from './components/CreateJobDialog.js';
-import { JobLifecycleStatusBadge } from './components/JobLifecycleStatusBadge.js';
 import { JobStageChips } from './components/JobStageChips.js';
+import { JobStatusBadge } from './components/JobStatusBadge.js';
 
 export const useJobTableStore = createPersistedDataTableStore({
   initialState: {
@@ -148,10 +148,10 @@ const JobTable: React.FC = () => {
 
     baseColumns.push(
       {
-        accessorKey: 'lifecycleStatus',
-        cell: ({ row }) => <JobLifecycleStatusBadge status={row.original.lifecycleStatus} />,
+        accessorKey: 'status',
+        cell: ({ row }) => <JobStatusBadge status={row.original.status} />,
         enableColumnFilter: false,
-        enableSorting: false,
+        enableSorting: true,
         header: 'Status',
       },
       {

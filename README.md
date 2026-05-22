@@ -173,12 +173,12 @@ Jobs are currently date-driven rather than status-dropdown-driven:
   with companion manual markers so supervisor overrides stay sticky across later cascades.
 - Product Department configs carry duration days and default Station IDs; the Create Job dialog uses
   those defaults to build the initial Stage windows and Station Bookings.
-- Job lifecycle is derived from dates plus `isPaused` and `isCancelled`. Stage and Station Booking
-  work state is derived from actual dates.
+- Job status is stored manually as `pending`, `active`, `paused`, `complete`, or `cancelled`. Stage
+  and Station Booking work state is derived from actual dates.
 - Department managers start/stop Station Bookings in their Departments. Stage and Job actuals roll
   up from Station Booking actuals unless a supervisor has manually overridden the field.
-- Supervisors and admins can edit dates directly, pause/resume, cancel/uncancel, and every direct
-  date edit records a `date.overridden` Job Event and an Audit Event.
+- Supervisors and admins can edit dates directly, and every direct date edit records a
+  `date.overridden` Job Event and an Audit Event.
 - Pipeline order is advisory for planning and display. It is not a server-side gate.
 - A Quote may source multiple Jobs. Draft, sent, and accepted Quotes can source Jobs; rejected
   Quotes cannot.

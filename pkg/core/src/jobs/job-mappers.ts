@@ -1,6 +1,6 @@
 import type { jobEvents, jobStageStations, jobStages, jobs, stations, user } from '@pkg/db';
-import { deriveJobStatus, deriveLevelStatus } from '@pkg/domain';
-import type { JobLifecycleStatus, JobWorkState } from '@pkg/schema';
+import { deriveLevelStatus } from '@pkg/domain';
+import type { JobWorkState } from '@pkg/schema';
 import { Job, JobEvent, JobStage, Station, StationBooking } from '@pkg/schema';
 
 export type JobRow = typeof jobs.$inferSelect;
@@ -14,16 +14,7 @@ export type JobStageStationRow = typeof jobStageStations.$inferSelect;
 export type JobStageStationWithStationRow = JobStageStationRow & {
   station: StationRow;
 };
-export type JobAuditRecord = Pick<JobRow, 'code' | 'dueDate' | 'isCancelled' | 'isPaused' | 'productId' | 'quoteId'>;
-
-export function deriveJobLifecycleStatus(row: {
-  actualEnd: Date | null;
-  actualStart: Date | null;
-  isCancelled: boolean;
-  isPaused: boolean;
-}): JobLifecycleStatus {
-  return deriveJobStatus(row);
-}
+export type JobAuditRecord = Pick<JobRow, 'code' | 'dueDate' | 'productId' | 'quoteId' | 'status'>;
 
 export function deriveWorkState(row: { actualEnd: Date | null; actualStart: Date | null }): JobWorkState {
   return deriveLevelStatus(row);
@@ -35,16 +26,9 @@ export function mapJob(row: JobRow): Job {
     createdAt: row.createdAt.toISOString(),
     dueDate: row.dueDate,
     id: row.id,
-    isCancelled: row.isCancelled,
-    isPaused: row.isPaused,
-    lifecycleStatus: deriveJobLifecycleStatus({
-      actualEnd: null,
-      actualStart: null,
-      isCancelled: row.isCancelled,
-      isPaused: row.isPaused,
-    }),
     productId: row.productId,
     quoteId: row.quoteId,
+    status: row.status,
     updatedAt: row.updatedAt.toISOString(),
   });
 }
@@ -53,10 +37,9 @@ export function mapJobAuditRecord(job: JobAuditRecord): JobAuditRecord {
   return {
     code: job.code,
     dueDate: job.dueDate,
-    isCancelled: job.isCancelled,
-    isPaused: job.isPaused,
     productId: job.productId,
     quoteId: job.quoteId,
+    status: job.status,
   };
 }
 

@@ -99,28 +99,21 @@ Manager clicks Start on PO Desk (a Procurement station)
 | Change a due date                       |          ✘         |      ✔     |   ✔   |
 | Change an actual date (override)        |          ✘         |      ✔     |   ✔   |
 | Add/remove Stations from a Job          |          ✘         |      ✔     |   ✔   |
-| Pause / cancel a Job                    |          ✘         |      ✔     |   ✔   |
+| Change Job status                       |          ✘         |      ✔     |   ✔   |
 
 A supervisor can change *any* date at *any* time. Every change is logged.
 
 ---
 
-## Job status — no more dropdowns
+## Job status
 
-We're getting rid of the "Status" dropdown. The Job's status is **automatically calculated** from the dates and two switches:
+Job status is stored directly on the Job and set manually:
 
 ```
-isCancelled?    →  Cancelled
-   else
-isPaused?       →  Paused
-   else
-actual-end set? →  Complete
-   else
-actual-start    →  Active
-   else            Not started
+pending → active → paused → complete → cancelled
 ```
 
-The same idea works for Stages and Stations:
+Stage and Station work state is still derived from actual dates:
 
 ```
 no actual-start          →  Pending
@@ -128,15 +121,7 @@ actual-start, no end     →  In progress
 actual-end set           →  Complete
 ```
 
-**Why?** The dates *are* the truth. A Stage either started or it didn't — there's no need to type the word "In progress" anywhere.
-
----
-
-## Pause and Cancel
-
-- **Pause** stops Start/Stop buttons for department managers. Supervisors can still re-plan dates while paused. Flip it back off when ready.
-- **Cancel** does the same. For now it's reversible (we're in prototype mode).
-- Neither one touches the existing dates. They are honest history.
+Status does not touch existing dates. It only gates whether department managers can Start/Stop Station Bookings; supervisors can still edit dates at any status.
 
 ---
 
@@ -218,4 +203,3 @@ Things we discussed but are **not building yet** — flagged so no one is surpri
 | **Override**        | A supervisor changing a date directly (logged)                                |
 | **Sticky**          | A date that's been set manually — it won't be overwritten by auto-calculation |
 | **Advisory**        | Stage order is a default for planning, not a rule the system enforces         |
-

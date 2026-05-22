@@ -9,6 +9,7 @@ import { JobStageStatusBadge } from '../../jobs/components/JobStageStatusBadge.j
 import { stageLabels } from '../constants.js';
 
 type StagePanelProps = {
+  canTransitionStationBooking: boolean;
   isPending: boolean;
   onStartStationBooking: (input: { id: UUID }) => void;
   onStopStationBooking: (input: { id: UUID }) => void;
@@ -16,12 +17,13 @@ type StagePanelProps = {
 };
 
 export const StagePanel: React.FC<StagePanelProps> = ({
+  canTransitionStationBooking,
   isPending,
   onStartStationBooking,
   onStopStationBooking,
   stage,
 }) => {
-  const isStageEditable = stage.access === 'visible';
+  const isStageEditable = stage.access === 'visible' && canTransitionStationBooking;
   const isActiveStage = stage.actualWindow.start && !stage.actualWindow.end;
   const showStationBookings = stage.stations.length > 0;
   const departmentLabel = stageLabels[stage.stage];

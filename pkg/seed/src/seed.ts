@@ -2,15 +2,12 @@ import { pathToFileURL } from 'node:url';
 import './load-db-env.js';
 import {
   acceptQuote,
-  cancelJob,
   createCustomer,
   createJob,
   createProduct,
   createQuote,
   createStation,
-  pauseJob,
   rejectQuote,
-  resumeJob,
   sendQuote,
   updateProduct,
 } from '@pkg/core';
@@ -22,6 +19,7 @@ import {
   jobEvents,
   jobStageStations,
   jobStages,
+  jobs,
   user,
   userDepartment,
 } from '@pkg/db';
@@ -32,6 +30,7 @@ import type {
   JobCreateInput,
   JobCreateStageInput,
   JobStageName,
+  JobStatus,
   Product,
   ProductCreateInput,
   ProductDepartmentConfig,
@@ -180,7 +179,7 @@ const seedJobScenarios = [
   {
     plannedEndOffsetDays: -2,
     stageProgress: { stage: 'paint' },
-    lifecycleTransitions: ['cancel'],
+    status: 'cancelled',
   },
   {
     plannedEndOffsetDays: 16,
@@ -193,12 +192,12 @@ const seedJobScenarios = [
   {
     plannedEndOffsetDays: 6,
     stageProgress: { stage: 'assembly' },
-    lifecycleTransitions: ['pause'],
+    status: 'paused',
   },
   {
     plannedEndOffsetDays: 11,
     stageProgress: { stage: 'fabrication' },
-    lifecycleTransitions: ['pause', 'resume'],
+    status: 'active',
   },
 ] as const satisfies readonly SeedJobScenario[];
 
@@ -276,11 +275,9 @@ type SeedProductOption = ProductCreateInput['options'][number] & {
 
 type SeedJobScenario = {
   plannedEndOffsetDays: number;
-  lifecycleTransitions?: readonly SeedJobLifecycleTransition[];
+  status?: JobStatus;
   stageProgress: { stage: JobStageName } | 'complete' | null;
 };
-
-type SeedJobLifecycleTransition = 'pause' | 'resume' | 'cancel';
 
 type SeedProductPlan = {
   initial: SeedProduct;
@@ -733,8 +730,6 @@ async function seedJobsWithCore({
           });
 
     await applySeedJobScenario({
-      access,
-      actorUserId,
       db,
       id: created.id,
       scenario,
@@ -1054,52 +1049,16 @@ async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly
 }
 
 async function applySeedJobScenario({
-  access,
-  actorUserId,
   db,
   id,
   scenario,
 }: {
-  access: ReturnType<typeof createUserAccessSummary>;
-  actorUserId: string;
   db: Db;
   id: UUID;
   scenario: SeedJobScenario;
 }): Promise<void> {
-  await applySeedJobLifecycleTransitions({
-    access,
-    actorUserId,
-    db,
-    id,
-    transitions: scenario.lifecycleTransitions ?? [],
-  });
-}
-
-async function applySeedJobLifecycleTransitions({
-  access,
-  actorUserId,
-  db,
-  id,
-  transitions,
-}: {
-  access: ReturnType<typeof createUserAccessSummary>;
-  actorUserId: string;
-  db: Db;
-  id: UUID;
-  transitions: readonly SeedJobLifecycleTransition[];
-}): Promise<void> {
-  for (const transition of transitions) {
-    if (transition === 'pause') {
-      await pauseJob({ access, actorUserId, db, id });
-      continue;
-    }
-
-    if (transition === 'resume') {
-      await resumeJob({ access, actorUserId, db, id });
-      continue;
-    }
-
-    await cancelJob({ access, actorUserId, db, id });
+  if (scenario.status) {
+    await db.update(jobs).set({ status: scenario.status, updatedAt: new Date() }).where(eq(jobs.id, id));
   }
 }
 

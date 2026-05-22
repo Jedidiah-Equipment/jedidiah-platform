@@ -1,4 +1,4 @@
-import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
+import { hasPermission, jobStatusLabels } from '@pkg/domain';
 import type { JobDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckIcon } from 'lucide-react';
@@ -16,14 +16,11 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { JobLifecycleStatusBadge } from '../jobs/components/JobLifecycleStatusBadge.js';
+import { JobStatusBadge } from '../jobs/components/JobStatusBadge.js';
 import { JobFact } from './components/JobFact.js';
-import { JobTransitionConfirmationDialog } from './components/JobTransitionConfirmationDialog.js';
-import { LifecycleControls } from './components/LifecycleControls.js';
 import { ScheduleGantt } from './components/ScheduleGantt.js';
 import { StagePanel } from './components/StagePanel.js';
 import { WorkflowHistory } from './components/WorkflowHistory.js';
-import type { JobTransitionConfirmation } from './types.js';
 
 type JobDetailPageProps = {
   jobId: UUID;
@@ -36,7 +33,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const showMutationError = useApiMutationErrorToast();
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const job = jobQuery.data;
-  const [confirmation, setConfirmation] = React.useState<JobTransitionConfirmation | null>(null);
   const refreshJobs = async () => {
     await queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
   };
@@ -58,42 +54,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       onError: (error) => showMutationError(error, 'Unable to end station booking.'),
     }),
   );
-  const pauseJobMutation = useMutation(
-    trpc.jobs.pause.mutationOptions({
-      onSuccess: async () => {
-        await refreshJobs();
-        toast.success('Job paused');
-      },
-      onError: (error) => showMutationError(error, 'Unable to pause job.'),
-    }),
-  );
-  const resumeJobMutation = useMutation(
-    trpc.jobs.resume.mutationOptions({
-      onSuccess: async () => {
-        await refreshJobs();
-        toast.success('Job resumed');
-      },
-      onError: (error) => showMutationError(error, 'Unable to resume job.'),
-    }),
-  );
-  const cancelJobMutation = useMutation(
-    trpc.jobs.cancel.mutationOptions({
-      onSuccess: async () => {
-        await refreshJobs();
-        toast.success('Job cancelled');
-      },
-      onError: (error) => showMutationError(error, 'Unable to cancel job.'),
-    }),
-  );
-  const uncancelJobMutation = useMutation(
-    trpc.jobs.uncancel.mutationOptions({
-      onSuccess: async () => {
-        await refreshJobs();
-        toast.success('Job uncancelled');
-      },
-      onError: (error) => showMutationError(error, 'Unable to uncancel job.'),
-    }),
-  );
   const editDueDateMutation = useMutation(
     trpc.jobs.editDate.mutationOptions({
       onSuccess: async () => {
@@ -104,45 +64,15 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     }),
   );
   const isTransitionPending =
-    startStationBookingMutation.isPending ||
-    stopStationBookingMutation.isPending ||
-    pauseJobMutation.isPending ||
-    resumeJobMutation.isPending ||
-    cancelJobMutation.isPending ||
-    uncancelJobMutation.isPending ||
-    editDueDateMutation.isPending;
+    startStationBookingMutation.isPending || stopStationBookingMutation.isPending || editDueDateMutation.isPending;
   const canUpdateJob = hasPermission(accessQuery.data, 'job:update');
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
-  const confirmPauseJob = (id: UUID) => {
-    setConfirmation({
-      body: [
-        'This will pause the Job for everyone. Department managers will not be able to start work or mark their part as complete until a supervisor resumes it.',
-        'Nothing already recorded on the Job will change. People can still view the Job and its history.',
-      ],
-      confirmLabel: 'Pause job',
-      confirmVariant: 'outline',
-      onConfirm: () => pauseJobMutation.mutate({ id }),
-      title: 'Pause job?',
-    });
-  };
-  const confirmCancelJob = (id: UUID) => {
-    setConfirmation({
-      body: [
-        'This will cancel the Job for everyone. No department will be able to pick it up again or continue work afterward.',
-        'The Job will stay visible, along with its history. A supervisor can uncancel it later if work should continue.',
-      ],
-      confirmLabel: 'Cancel job',
-      confirmVariant: 'destructive',
-      onConfirm: () => cancelJobMutation.mutate({ id }),
-      title: 'Cancel job?',
-    });
-  };
   return (
     <DetailPageLayout
       aside={job ? <WorkflowHistory events={job.workflowEvents} /> : undefined}
       back={<BackButton to="/jobs">Jobs</BackButton>}
-      badge={job ? <JobLifecycleStatusBadge status={job.lifecycleStatus} /> : undefined}
+      badge={job ? <JobStatusBadge status={job.status} /> : undefined}
       description={job?.productModelCode}
       title={job?.productName}
     >
@@ -180,27 +110,16 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
               value={<JobQuoteLink canOpenQuote={canOpenQuotes} quoteCode={job.quoteCode} quoteId={job.quoteId} />}
             />
           </div>
-          {canUpdateJob ? (
-            <LifecycleControls
-              isPending={isTransitionPending}
-              lifecycleStatus={job.lifecycleStatus}
-              isCancelled={job.isCancelled}
-              isPaused={job.isPaused}
-              onCancel={() => confirmCancelJob(job.id)}
-              onPause={() => confirmPauseJob(job.id)}
-              onResume={() => resumeJobMutation.mutate({ id: job.id })}
-              onUncancel={() => uncancelJobMutation.mutate({ id: job.id })}
-            />
-          ) : null}
-          {job.isPaused || job.isCancelled ? (
+          {job.status !== 'active' ? (
             <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
-              Department controls are disabled while this job is {jobLifecycleStatusLabels[job.lifecycleStatus]}.
+              Department controls are disabled while this job is {jobStatusLabels[job.status]}.
             </div>
           ) : null}
           <ScheduleGantt canEditSchedule={canUpdateJob} job={job} />
           <div className="grid gap-3 lg:grid-cols-5">
             {job.stages.map((stage) => (
               <StagePanel
+                canTransitionStationBooking={job.status === 'active'}
                 isPending={isTransitionPending}
                 key={`${stage.sequence}-${stage.stage}`}
                 onStartStationBooking={(input) => startStationBookingMutation.mutate(input)}
@@ -212,11 +131,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         </>
       ) : null}
       {jobQuery.isLoading ? <Skeleton className="h-48" /> : null}
-      <JobTransitionConfirmationDialog
-        confirmation={confirmation}
-        isPending={isTransitionPending}
-        onClose={() => setConfirmation(null)}
-      />
     </DetailPageLayout>
   );
 };

@@ -17,8 +17,8 @@ export const JobStageName = z.enum(JOB_STAGES);
 export type JobWorkState = z.infer<typeof JobWorkState>;
 export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
 
-export type JobLifecycleStatus = z.infer<typeof JobLifecycleStatus>;
-export const JobLifecycleStatus = z.enum(['not-started', 'active', 'paused', 'complete', 'cancelled']);
+export type JobStatus = z.infer<typeof JobStatus>;
+export const JobStatus = z.enum(['pending', 'active', 'paused', 'complete', 'cancelled']);
 
 const StationBookingDateFields = z.object({
   actualEnd: z.iso.datetime().nullable(),
@@ -152,9 +152,14 @@ const StageCompletedJobEventPayload = z.object({
   completedAt: z.iso.datetime(),
 });
 
-const JobLifecycleChangedEventPayload = z.object({
-  fromLifecycleStatus: JobLifecycleStatus,
-  toLifecycleStatus: JobLifecycleStatus,
+const JobMilestoneEventPayload = z.object({
+  actualEnd: z.iso.datetime().optional(),
+  actualStart: z.iso.datetime().optional(),
+});
+
+const JobStatusChangedEventPayload = z.object({
+  from: JobStatus,
+  to: JobStatus,
 });
 
 export type JobDateEditEntityLevel = z.infer<typeof JobDateEditEntityLevel>;
@@ -205,34 +210,23 @@ const StageCompletedJobEvent = JobEventBase.extend({
   payload: StageCompletedJobEventPayload,
 });
 
-const JobPausedEvent = JobEventBase.extend({
-  eventType: z.literal('job.paused'),
-  payload: JobLifecycleChangedEventPayload,
-});
-
 const JobStartedEvent = JobEventBase.extend({
   eventType: z.literal('job.started'),
-  payload: JobLifecycleChangedEventPayload,
-});
-
-const JobResumedEvent = JobEventBase.extend({
-  eventType: z.literal('job.resumed'),
-  payload: JobLifecycleChangedEventPayload,
-});
-
-const JobCancelledEvent = JobEventBase.extend({
-  eventType: z.literal('job.cancelled'),
-  payload: JobLifecycleChangedEventPayload,
-});
-
-const JobUncancelledEvent = JobEventBase.extend({
-  eventType: z.literal('job.uncancelled'),
-  payload: JobLifecycleChangedEventPayload,
+  payload: JobMilestoneEventPayload.extend({
+    actualStart: z.iso.datetime(),
+  }),
 });
 
 const JobCompletedEvent = JobEventBase.extend({
   eventType: z.literal('job.completed'),
-  payload: JobLifecycleChangedEventPayload,
+  payload: JobMilestoneEventPayload.extend({
+    actualEnd: z.iso.datetime(),
+  }),
+});
+
+const JobStatusChangedEvent = JobEventBase.extend({
+  eventType: z.literal('job.status-changed'),
+  payload: JobStatusChangedEventPayload,
 });
 
 const DateOverriddenEvent = JobEventBase.extend({
@@ -248,12 +242,9 @@ export const JobEvent = z.discriminatedUnion('eventType', [
   StationStartedJobEvent,
   StationEndedJobEvent,
   StageCompletedJobEvent,
-  JobPausedEvent,
   JobStartedEvent,
-  JobResumedEvent,
-  JobCancelledEvent,
-  JobUncancelledEvent,
   JobCompletedEvent,
+  JobStatusChangedEvent,
   DateOverriddenEvent,
 ]);
 
@@ -306,11 +297,9 @@ export const Job = z.object({
   ...JobDueDateFields.shape,
   productId: UUID,
   quoteId: UUID.nullable(),
-  isPaused: z.boolean(),
-  isCancelled: z.boolean(),
-  lifecycleStatus: JobLifecycleStatus,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+  status: JobStatus,
 });
 
 export type JobSummary = z.infer<typeof JobSummary>;
@@ -324,7 +313,7 @@ export const JobSummary = Job.extend({
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
-export const JobSortBy = z.enum(['code', 'createdAt', 'dueDate', 'id']);
+export const JobSortBy = z.enum(['code', 'createdAt', 'dueDate', 'id', 'status']);
 
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
@@ -359,7 +348,7 @@ export const JobSharedStationBookingJob = z.object({
   customerCompanyName: z.string().trim().min(1).nullable(),
   jobCode: JobCode,
   jobId: UUID,
-  lifecycleStatus: JobLifecycleStatus,
+  status: JobStatus,
   productModelCode: z.string().trim().min(1),
   productName: z.string().trim().min(1),
   quoteCode: QuoteCode.nullable(),
@@ -454,11 +443,6 @@ export type JobListResult = z.infer<typeof JobListResult>;
 export const JobListResult = createPagedQueryResult(JobSummary).extend({
   sortBy: JobSortBy,
   sortDirection: SortDirection,
-});
-
-export type JobLifecycleTransitionInput = z.infer<typeof JobLifecycleTransitionInput>;
-export const JobLifecycleTransitionInput = z.object({
-  id: UUID,
 });
 
 export type JobSharedStationBookingsInput = z.infer<typeof JobSharedStationBookingsInput>;

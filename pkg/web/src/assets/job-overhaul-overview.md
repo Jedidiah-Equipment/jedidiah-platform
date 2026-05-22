@@ -40,7 +40,7 @@ JOB
 
 Three things to notice:
 
-- **Five stages now**: Procurement → Supply → Fabrication → Paint → Assembly. *Supply is gone* (we'll handle shipping separately).
+- **Five stages now**: Procurement → Supply → Fabrication → Paint → Assembly. *Dispatch is gone* (we'll handle shipping separately).
 - **Supply is new**: it's the in-house side of materials — receiving, QC, staging — distinct from Procurement, which is talking to vendors.
 - **Stations live under Stages**: a Station is a specific physical resource (Weld Bay 1, Paint Booth A). Each one carries its own dates.
 
@@ -99,28 +99,21 @@ Manager clicks Start on PO Desk (a Procurement station)
 | Change a due date                       |          ✘         |      ✔     |   ✔   |
 | Change an actual date (override)        |          ✘         |      ✔     |   ✔   |
 | Add/remove Stations from a Job          |          ✘         |      ✔     |   ✔   |
-| Pause / cancel a Job                    |          ✘         |      ✔     |   ✔   |
+| Change Job status                       |          ✘         |      ✔     |   ✔   |
 
 A supervisor can change *any* date at *any* time. Every change is logged.
 
 ---
 
-## Job status — no more dropdowns
+## Job status
 
-We're getting rid of the "Status" dropdown. The Job's status is **automatically calculated** from the dates and two switches:
+Job status is stored directly on the Job and set manually:
 
 ```
-isCancelled?    →  Cancelled
-   else
-isPaused?       →  Paused
-   else
-actual-end set? →  Complete
-   else
-actual-start    →  Active
-   else            Not started
+pending → active → paused → complete → cancelled
 ```
 
-The same idea works for Stages and Stations:
+Stage and Station work state is still derived from actual dates:
 
 ```
 no actual-start          →  Pending
@@ -128,15 +121,7 @@ actual-start, no end     →  In progress
 actual-end set           →  Complete
 ```
 
-**Why?** The dates *are* the truth. A Stage either started or it didn't — there's no need to type the word "In progress" anywhere.
-
----
-
-## Pause and Cancel
-
-- **Pause** stops Start/Stop buttons for department managers. Supervisors can still re-plan dates while paused. Flip it back off when ready.
-- **Cancel** does the same. For now it's reversible (we're in prototype mode).
-- Neither one touches the existing dates. They are honest history.
+Status does not touch existing dates. It only gates whether department managers can Start/Stop Station Bookings; supervisors can still edit dates at any status.
 
 ---
 
@@ -146,15 +131,14 @@ actual-end set           →  Complete
 
 A Quote now needs **only a Customer** to exist — everything else (Product, price, discount, valid-until, etc.) is optional until the Quote is sent. This means a salesperson can log a customer enquiry in seconds and fill in the rest later.
 
-A Job can be created from a Quote while it is in **Draft**, **Sent**, or **Accepted** status. The paths are deliberate:
+A Job can be created from a Quote while it is in **Draft** *or* **Accepted** status. The two are deliberate:
 
 - **Draft → Job**: lets the team kick off production planning informally — useful when the customer has verbally agreed and we want a head start.
-- **Sent → Job**: lets the team start from a quote that is already with the customer, while the supervisor still chooses the Job Product in the dialog.
 - **Accepted → Job**: the formal, post-customer-signoff path.
 
-Once a Quote is **Draft**, **Sent**, or **Accepted**, the Create Job button is available. Rejected Quotes can't become Jobs at all.
+Once a Quote has been **Sent** (awaiting the customer), the Create Job button is hidden until the customer responds — we don't want to spin up production while terms are out for review. Rejected Quotes can't become Jobs at all.
 
-**Never automatic.** A **"Create Job"** button appears on the Quote row when the Quote is Draft, Sent, or Accepted. A supervisor clicks it and the Create-Job dialog opens with:
+**Never automatic.** A **"Create Job"** button appears on the Quote row when the Quote is Draft or Accepted. A supervisor clicks it and the Create-Job dialog opens with:
 
 - Customer pre-filled from the Quote (always present)
 - Product pre-filled from the Quote *if set* (supervisor can pick one in the dialog if the Quote didn't have one yet)

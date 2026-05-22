@@ -1,5 +1,4 @@
 import {
-  cancelJob,
   createJob,
   editJobDate,
   getJob,
@@ -7,16 +6,12 @@ import {
   type JobCoreError,
   listJobs,
   listSharedStationBookings,
-  pauseJob,
-  resumeJob,
   startStationBooking,
   stopStationBooking,
-  uncancelJob,
 } from '@pkg/core';
 import {
   JobCreateInput,
   JobDateEditInput,
-  JobLifecycleTransitionInput,
   JobListInput,
   JobSharedStationBookingsInput,
   JobStationBookingTransitionInput,
@@ -44,58 +39,6 @@ export const jobsRouter = router({
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => createJob({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id })),
-    ),
-
-  pause: authorizedProcedure('job:update')
-    .input(JobLifecycleTransitionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        pauseJob({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          id: input.id,
-        }),
-      ),
-    ),
-
-  resume: authorizedProcedure('job:update')
-    .input(JobLifecycleTransitionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        resumeJob({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          id: input.id,
-        }),
-      ),
-    ),
-
-  cancel: authorizedProcedure('job:update')
-    .input(JobLifecycleTransitionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        cancelJob({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          id: input.id,
-        }),
-      ),
-    ),
-
-  uncancel: authorizedProcedure('job:update')
-    .input(JobLifecycleTransitionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        uncancelJob({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          id: input.id,
-        }),
-      ),
     ),
 
   editDate: authorizedProcedure('job:update')
@@ -181,12 +124,6 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         message: error.message,
       };
     case 'job.stage_transition_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
-    case 'job.lifecycle_transition_denied':
       return {
         appCode: error.code,
         code: 'FORBIDDEN',

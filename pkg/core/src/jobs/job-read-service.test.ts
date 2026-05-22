@@ -44,7 +44,7 @@ describe('mapJobSummary', () => {
       ],
     });
 
-    expect(summary.lifecycleStatus).toBe('active');
+    expect(summary.status).toBe('pending');
     expect(summary.actualWindow).toEqual({
       end: null,
       start: '2026-05-01T07:00:00.000Z',
@@ -77,8 +77,6 @@ function jobRow() {
     createdAt: now,
     dueDate: null,
     id: '00000000-0000-4000-8000-000000000001',
-    isCancelled: false,
-    isPaused: false,
     product: {
       modelCode: 'MODEL-001',
       name: 'Test Product',
@@ -86,6 +84,7 @@ function jobRow() {
     productId: '00000000-0000-4000-8000-000000000002',
     quote: null,
     quoteId: null,
+    status: 'pending' as const,
     updatedAt: now,
   };
 }

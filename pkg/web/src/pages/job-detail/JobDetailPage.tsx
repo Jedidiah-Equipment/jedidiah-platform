@@ -1,5 +1,5 @@
 import { hasPermission, jobStatusLabels } from '@pkg/domain';
-import type { JobDetail, UUID } from '@pkg/schema';
+import { type JobDetail, JobStatus, type UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckIcon } from 'lucide-react';
 import React from 'react';
@@ -12,6 +12,7 @@ import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { useAppForm } from '@/components/form/index.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -63,8 +64,20 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       onError: (error) => showMutationError(error, 'Unable to update Job Due Date.'),
     }),
   );
+  const setStatusMutation = useMutation(
+    trpc.jobs.setStatus.mutationOptions({
+      onSuccess: async () => {
+        await refreshJobs();
+        toast.success('Job status updated');
+      },
+      onError: (error) => showMutationError(error, 'Unable to update job status.'),
+    }),
+  );
   const isTransitionPending =
-    startStationBookingMutation.isPending || stopStationBookingMutation.isPending || editDueDateMutation.isPending;
+    startStationBookingMutation.isPending ||
+    stopStationBookingMutation.isPending ||
+    editDueDateMutation.isPending ||
+    setStatusMutation.isPending;
   const canUpdateJob = hasPermission(accessQuery.data, 'job:update');
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
@@ -72,7 +85,16 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     <DetailPageLayout
       aside={job ? <WorkflowHistory events={job.workflowEvents} /> : undefined}
       back={<BackButton to="/jobs">Jobs</BackButton>}
-      badge={job ? <JobStatusBadge status={job.status} /> : undefined}
+      badge={
+        job ? (
+          <JobStatusControl
+            canUpdate={canUpdateJob}
+            isPending={setStatusMutation.isPending}
+            onStatusChange={(status) => setStatusMutation.mutate({ id: job.id, status })}
+            status={job.status}
+          />
+        ) : undefined
+      }
       description={job?.productModelCode}
       title={job?.productName}
     >
@@ -132,6 +154,43 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       ) : null}
       {jobQuery.isLoading ? <Skeleton className="h-48" /> : null}
     </DetailPageLayout>
+  );
+};
+
+const JobStatusControl: React.FC<{
+  canUpdate: boolean;
+  isPending: boolean;
+  onStatusChange: (status: JobStatus) => void;
+  status: JobStatus;
+}> = ({ canUpdate, isPending, onStatusChange, status }) => {
+  if (!canUpdate) {
+    return <JobStatusBadge status={status} />;
+  }
+
+  return (
+    <Select
+      disabled={isPending}
+      onValueChange={(value) => {
+        const nextStatus = JobStatus.parse(value);
+        if (nextStatus !== status) {
+          onStatusChange(nextStatus);
+        }
+      }}
+      value={status}
+    >
+      <SelectTrigger aria-label="Job status" size="sm">
+        <SelectValue>{jobStatusLabels[status]}</SelectValue>
+      </SelectTrigger>
+      <SelectContent align="end">
+        <SelectGroup>
+          {JobStatus.options.map((option) => (
+            <SelectItem key={option} value={option}>
+              {jobStatusLabels[option]}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 };
 

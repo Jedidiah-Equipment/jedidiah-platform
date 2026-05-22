@@ -32,6 +32,8 @@ import {
   stopStationBooking as stopStationBookingTransition,
 } from './station-booking-service.js';
 
+export { setJobStatus } from './job-status-service.js';
+
 const JOB_ELIGIBLE_QUOTE_STATUSES: readonly QuoteStatus[] = ['accepted', 'draft', 'sent'];
 
 export async function createJob({

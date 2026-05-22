@@ -362,6 +362,101 @@ describe('jobs.listSharedStationBookings', () => {
   });
 });
 
+describe('jobs.setStatus', () => {
+  test('allows supervisors to update job status any-to-any and emits audit plus workflow events', async ({
+    context,
+  }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    let job = await caller.jobs.create({ productId: context.product.id });
+    job = await caller.jobs.setStatus({ id: job.id, status: 'cancelled' });
+
+    expect(job.status).toBe('cancelled');
+    expect(job.workflowEvents).toHaveLength(1);
+    expect(job.workflowEvents[0]).toMatchObject({
+      eventType: 'job.status-changed',
+      payload: {
+        from: 'pending',
+        to: 'cancelled',
+      },
+    });
+
+    const activeJob = await caller.jobs.setStatus({ id: job.id, status: 'active' });
+    expect(activeJob.status).toBe('active');
+
+    const statusEvents = (await context.db.select().from(jobEvents)).filter((event) => event.jobId === job.id);
+    expect(statusEvents.map((event) => event.eventType).sort()).toEqual(['job.status-changed', 'job.status-changed']);
+    expect(statusEvents.map((event) => event.payload)).toEqual(
+      expect.arrayContaining([
+        {
+          from: 'pending',
+          to: 'cancelled',
+        },
+        {
+          from: 'cancelled',
+          to: 'active',
+        },
+      ]),
+    );
+
+    const auditRows = (await context.db.select().from(auditEvents)).filter(
+      (event) => event.entityId === job.id && event.action === 'updated',
+    );
+    expect(auditRows).toHaveLength(2);
+    expect(auditRows.map((event) => event.changes)).toEqual(
+      expect.arrayContaining([
+        {
+          status: {
+            from: 'pending',
+            to: 'cancelled',
+          },
+        },
+        {
+          status: {
+            from: 'cancelled',
+            to: 'active',
+          },
+        },
+      ]),
+    );
+  });
+
+  test('allows admins to update job status', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ productId: context.product.id });
+
+    await expect(caller.jobs.setStatus({ id: job.id, status: 'paused' })).resolves.toMatchObject({
+      status: 'paused',
+    });
+  });
+
+  test('rejects non-supervisor status updates and emits no events', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const departmentCaller = context.createCaller(mockSession('job-department-manager'));
+    const job = await supervisorCaller.jobs.create({ productId: context.product.id });
+
+    await expect(departmentCaller.jobs.setStatus({ id: job.id, status: 'active' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(listJobEventTypes(context.db, job.id)).resolves.toEqual([]);
+
+    const auditRows = (await context.db.select().from(auditEvents)).filter(
+      (event) => event.entityId === job.id && event.action === 'updated',
+    );
+    expect(auditRows).toHaveLength(0);
+  });
+
+  test('returns not found for a missing job', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+
+    await expect(
+      caller.jobs.setStatus({ id: '00000000-0000-4000-8000-000000009999', status: 'active' }),
+    ).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Job not found.',
+    });
+  });
+});
+
 describe('jobs station booking transitions', () => {
   test('first start emits derived stage and job start milestones', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));

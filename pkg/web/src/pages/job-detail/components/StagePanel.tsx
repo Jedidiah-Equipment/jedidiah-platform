@@ -1,19 +1,15 @@
 import { jobStageStatusLabels } from '@pkg/domain';
 import type { JobStageRollup, StationBooking, UUID } from '@pkg/schema';
-import { CheckCircleIcon, PlayIcon, SquareIcon } from 'lucide-react';
+import { PlayIcon, SquareIcon } from 'lucide-react';
 import type React from 'react';
 
 import { Button } from '@/components/ui/button.js';
 import { cn } from '@/lib/utils.js';
 import { JobStageStatusBadge } from '../../jobs/components/JobStageStatusBadge.js';
 import { stageLabels } from '../constants.js';
-import type { JobStageTransitionInput } from '../types.js';
 
 type StagePanelProps = {
   isPending: boolean;
-  jobId: UUID;
-  onComplete: (input: JobStageTransitionInput) => void;
-  onStart: (input: JobStageTransitionInput) => void;
   onStartStationBooking: (input: { id: UUID }) => void;
   onStopStationBooking: (input: { id: UUID }) => void;
   stage: JobStageRollup;
@@ -21,23 +17,12 @@ type StagePanelProps = {
 
 export const StagePanel: React.FC<StagePanelProps> = ({
   isPending,
-  jobId,
-  onComplete,
-  onStart,
   onStartStationBooking,
   onStopStationBooking,
   stage,
 }) => {
-  const startAvailability = stage.access === 'visible' ? stage.transitionAvailability?.start : undefined;
-  const stopAvailability = stage.access === 'visible' ? stage.transitionAvailability?.stop : undefined;
   const isStageEditable = stage.access === 'visible';
-  const hasStageStarted = Boolean(stage.actualStart);
-  const isActiveStage = hasStageStarted && !stage.actualEnd;
-  const isStartDisabled = isPending || !isStageEditable || !startAvailability?.allowed;
-  const isCompleteDisabled = isPending || !isStageEditable || !stopAvailability?.allowed;
-  const isPendingStage = stage.state === 'pending' && !hasStageStarted && !stage.actualEnd;
-  const canStartPendingStage = isPendingStage && startAvailability?.allowed;
-  const isBlockedPendingStage = isPendingStage && !startAvailability?.allowed;
+  const isActiveStage = stage.actualWindow.start && !stage.actualWindow.end;
   const showStationBookings = stage.stations.length > 0;
   const departmentLabel = stageLabels[stage.stage];
 
@@ -46,9 +31,6 @@ export const StagePanel: React.FC<StagePanelProps> = ({
       className={cn(
         'min-h-36 rounded-md border bg-background p-3',
         isActiveStage && 'border-blue-500/70 bg-blue-50 shadow-[0_0_0_1px_rgba(59,130,246,0.22)] dark:bg-blue-500/10',
-        canStartPendingStage &&
-          'border-cyan-500/70 bg-cyan-50 shadow-[0_0_0_1px_rgba(6,182,212,0.22)] dark:bg-cyan-500/10',
-        isBlockedPendingStage && 'border-gray-400/70 bg-muted/30 dark:bg-gray-500/10',
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -57,7 +39,6 @@ export const StagePanel: React.FC<StagePanelProps> = ({
             className={cn(
               'text-xs font-medium uppercase text-muted-foreground',
               isActiveStage && 'text-blue-700 dark:text-blue-300',
-              canStartPendingStage && 'text-cyan-700 dark:text-cyan-300',
             )}
           >
             Department
@@ -86,38 +67,10 @@ export const StagePanel: React.FC<StagePanelProps> = ({
             ))}
           </div>
         ) : null}
-        {isStageEditable ? (
-          <div className="flex flex-col gap-2">
-            <Button
-              disabled={isStartDisabled}
-              onClick={() => onStart({ id: jobId, stage: stage.stage })}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <PlayIcon data-icon="inline-start" />
-              Start
-            </Button>
-            <Button
-              disabled={isCompleteDisabled}
-              onClick={() => onComplete({ id: jobId, stage: stage.stage })}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <CheckCircleIcon data-icon="inline-start" />
-              Complete
-            </Button>
-            <StageControlReason reason={startAvailability?.reason ?? stopAvailability?.reason} />
-          </div>
-        ) : null}
       </div>
     </div>
   );
 };
-
-const StageControlReason: React.FC<{ reason: string | null | undefined }> = ({ reason }) =>
-  reason ? <div className="text-xs text-muted-foreground">{reason}</div> : null;
 
 const StationBookingControl: React.FC<{
   booking: StationBooking;

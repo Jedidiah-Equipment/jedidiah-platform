@@ -1,4 +1,4 @@
-import { FINAL_JOB_STAGE, hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
+import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckIcon } from 'lucide-react';
@@ -23,8 +23,7 @@ import { LifecycleControls } from './components/LifecycleControls.js';
 import { ScheduleGantt } from './components/ScheduleGantt.js';
 import { StagePanel } from './components/StagePanel.js';
 import { WorkflowHistory } from './components/WorkflowHistory.js';
-import { stageLabels } from './constants.js';
-import type { JobStageTransitionInput, JobTransitionConfirmation } from './types.js';
+import type { JobTransitionConfirmation } from './types.js';
 
 type JobDetailPageProps = {
   jobId: UUID;
@@ -41,25 +40,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const refreshJobs = async () => {
     await queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
   };
-  const getDepartmentLabel = (input: JobStageTransitionInput) => stageLabels[input.stage];
-  const startStageMutation = useMutation(
-    trpc.jobs.startStage.mutationOptions({
-      onSuccess: async (_updatedJob, input) => {
-        await refreshJobs();
-        toast.success(`${getDepartmentLabel(input)} started`);
-      },
-      onError: (error) => showMutationError(error, 'Unable to start department work.'),
-    }),
-  );
-  const completeStageMutation = useMutation(
-    trpc.jobs.completeStage.mutationOptions({
-      onSuccess: async (_updatedJob, input) => {
-        await refreshJobs();
-        toast.success(`${getDepartmentLabel(input)} completed`);
-      },
-      onError: (error) => showMutationError(error, 'Unable to complete department work.'),
-    }),
-  );
   const startStationBookingMutation = useMutation(
     trpc.jobs.startStationBooking.mutationOptions({
       onSuccess: async () => {
@@ -124,8 +104,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     }),
   );
   const isTransitionPending =
-    startStageMutation.isPending ||
-    completeStageMutation.isPending ||
     startStationBookingMutation.isPending ||
     stopStationBookingMutation.isPending ||
     pauseJobMutation.isPending ||
@@ -159,31 +137,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       onConfirm: () => cancelJobMutation.mutate({ id }),
       title: 'Cancel job?',
     });
-  };
-  const confirmCompleteStageTransition = (input: JobStageTransitionInput, onConfirm: () => void) => {
-    const isFinalStage = input.stage === FINAL_JOB_STAGE;
-    const finalStageLabel = stageLabels[FINAL_JOB_STAGE];
-
-    setConfirmation({
-      body: isFinalStage
-        ? [
-            `This will complete ${finalStageLabel} and mark the whole Job as complete.`,
-            'The Job status will be derived from that completion date unless it is paused or cancelled later.',
-            'The existing Job history will stay as it is.',
-          ]
-        : [
-            `This will mark ${stageLabels[input.stage]}'s part of the Job as complete.`,
-            'The next department will be able to start handling the Job.',
-            `${stageLabels[input.stage]} will stay completed. A supervisor can correct the recorded actual dates later if needed.`,
-          ],
-      confirmLabel: isFinalStage ? 'Complete job' : `Complete ${stageLabels[input.stage]}`,
-      confirmVariant: 'default',
-      onConfirm,
-      title: isFinalStage ? `Complete ${finalStageLabel} and finish job?` : `Complete ${stageLabels[input.stage]}?`,
-    });
-  };
-  const confirmCompleteStage = (input: JobStageTransitionInput) => {
-    confirmCompleteStageTransition(input, () => completeStageMutation.mutate(input));
   };
   return (
     <DetailPageLayout
@@ -249,11 +202,8 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
             {job.stages.map((stage) => (
               <StagePanel
                 isPending={isTransitionPending}
-                jobId={job.id}
                 key={`${stage.sequence}-${stage.stage}`}
-                onComplete={confirmCompleteStage}
                 onStartStationBooking={(input) => startStationBookingMutation.mutate(input)}
-                onStart={(input) => startStageMutation.mutate(input)}
                 onStopStationBooking={(input) => stopStationBookingMutation.mutate(input)}
                 stage={stage}
               />

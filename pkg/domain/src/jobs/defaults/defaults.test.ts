@@ -13,11 +13,11 @@ describe('computeDefaults', () => {
     });
 
     expect(toStageIso(result.stages)).toEqual([
-      { stage: 'procurement', dueStart: '2026-05-01', dueEnd: '2026-05-03', durationDays: 2 },
-      { stage: 'supply', dueStart: '2026-05-03', dueEnd: '2026-05-04', durationDays: 1 },
-      { stage: 'fabrication', dueStart: '2026-05-04', dueEnd: '2026-05-07', durationDays: 3 },
-      { stage: 'paint', dueStart: '2026-05-07', dueEnd: '2026-05-08', durationDays: 1 },
-      { stage: 'assembly', dueStart: '2026-05-08', dueEnd: '2026-05-10', durationDays: 2 },
+      { stage: 'procurement', plannedStart: '2026-05-01', plannedEnd: '2026-05-03', durationDays: 2 },
+      { stage: 'supply', plannedStart: '2026-05-03', plannedEnd: '2026-05-04', durationDays: 1 },
+      { stage: 'fabrication', plannedStart: '2026-05-04', plannedEnd: '2026-05-07', durationDays: 3 },
+      { stage: 'paint', plannedStart: '2026-05-07', plannedEnd: '2026-05-08', durationDays: 1 },
+      { stage: 'assembly', plannedStart: '2026-05-08', plannedEnd: '2026-05-10', durationDays: 2 },
     ]);
     expect(result.warning).toBeNull();
   });
@@ -32,11 +32,11 @@ describe('computeDefaults', () => {
     });
 
     expect(toStageIso(result.stages)).toEqual([
-      { stage: 'procurement', dueStart: '2026-05-01', dueEnd: '2026-05-03', durationDays: 2 },
-      { stage: 'supply', dueStart: '2026-05-03', dueEnd: '2026-05-04', durationDays: 1 },
-      { stage: 'fabrication', dueStart: '2026-05-04', dueEnd: '2026-05-07', durationDays: 3 },
-      { stage: 'paint', dueStart: '2026-05-07', dueEnd: '2026-05-08', durationDays: 1 },
-      { stage: 'assembly', dueStart: '2026-05-08', dueEnd: '2026-05-10', durationDays: 2 },
+      { stage: 'procurement', plannedStart: '2026-05-01', plannedEnd: '2026-05-03', durationDays: 2 },
+      { stage: 'supply', plannedStart: '2026-05-03', plannedEnd: '2026-05-04', durationDays: 1 },
+      { stage: 'fabrication', plannedStart: '2026-05-04', plannedEnd: '2026-05-07', durationDays: 3 },
+      { stage: 'paint', plannedStart: '2026-05-07', plannedEnd: '2026-05-08', durationDays: 1 },
+      { stage: 'assembly', plannedStart: '2026-05-08', plannedEnd: '2026-05-10', durationDays: 2 },
     ]);
   });
 
@@ -50,11 +50,11 @@ describe('computeDefaults', () => {
     });
 
     expect(toStageIso(result.stages)).toEqual([
-      { stage: 'procurement', dueStart: '2026-05-01', dueEnd: '2026-05-01', durationDays: 0 },
-      { stage: 'supply', dueStart: '2026-05-01', dueEnd: '2026-05-01', durationDays: 0 },
-      { stage: 'fabrication', dueStart: '2026-05-01', dueEnd: '2026-05-03', durationDays: 2 },
-      { stage: 'paint', dueStart: '2026-05-03', dueEnd: '2026-05-03', durationDays: 0 },
-      { stage: 'assembly', dueStart: '2026-05-03', dueEnd: '2026-05-03', durationDays: 0 },
+      { stage: 'procurement', plannedStart: '2026-05-01', plannedEnd: '2026-05-01', durationDays: 0 },
+      { stage: 'supply', plannedStart: '2026-05-01', plannedEnd: '2026-05-01', durationDays: 0 },
+      { stage: 'fabrication', plannedStart: '2026-05-01', plannedEnd: '2026-05-03', durationDays: 2 },
+      { stage: 'paint', plannedStart: '2026-05-03', plannedEnd: '2026-05-03', durationDays: 0 },
+      { stage: 'assembly', plannedStart: '2026-05-03', plannedEnd: '2026-05-03', durationDays: 0 },
     ]);
     expect(result.stationBookings).toHaveLength(1);
   });
@@ -66,8 +66,8 @@ describe('computeDefaults', () => {
         value: date('2026-05-01'),
       },
       pinnedWindow: {
-        dueEnd: date('2026-05-05'),
-        dueStart: date('2026-05-01'),
+        plannedEnd: date('2026-05-05'),
+        plannedStart: date('2026-05-01'),
       },
       productPerDeptConfig: productConfig,
     });
@@ -75,8 +75,8 @@ describe('computeDefaults', () => {
     expect(result.warning?.kind).toBe('infeasible-window');
     expect(toStageIso(result.stages).at(-1)).toEqual({
       stage: 'assembly',
-      dueStart: '2026-05-08',
-      dueEnd: '2026-05-10',
+      plannedStart: '2026-05-08',
+      plannedEnd: '2026-05-10',
       durationDays: 2,
     });
   });
@@ -91,10 +91,10 @@ describe('computeDefaults', () => {
     });
 
     expect(toStationIso(result.stationBookings)).toEqual([
-      { stage: 'procurement', stationId: 'procurement-1', dueStart: '2026-05-01', dueEnd: '2026-05-03' },
-      { stage: 'fabrication', stationId: 'weld-bay-1', dueStart: '2026-05-04', dueEnd: '2026-05-07' },
-      { stage: 'fabrication', stationId: 'weld-bay-2', dueStart: '2026-05-04', dueEnd: '2026-05-07' },
-      { stage: 'paint', stationId: 'paint-booth-1', dueStart: '2026-05-07', dueEnd: '2026-05-08' },
+      { stage: 'procurement', stationId: 'procurement-1', plannedStart: '2026-05-01', plannedEnd: '2026-05-03' },
+      { stage: 'fabrication', stationId: 'weld-bay-1', plannedStart: '2026-05-04', plannedEnd: '2026-05-07' },
+      { stage: 'fabrication', stationId: 'weld-bay-2', plannedStart: '2026-05-04', plannedEnd: '2026-05-07' },
+      { stage: 'paint', stationId: 'paint-booth-1', plannedStart: '2026-05-07', plannedEnd: '2026-05-08' },
     ]);
   });
 
@@ -105,8 +105,8 @@ describe('computeDefaults', () => {
         value: date('2026-05-01'),
       },
       pinnedWindow: {
-        dueEnd: date('2026-05-05'),
-        dueStart: date('2026-05-01'),
+        plannedEnd: date('2026-05-05'),
+        plannedStart: date('2026-05-01'),
       },
       productPerDeptConfig: productConfig,
     });
@@ -135,8 +135,8 @@ function date(value: string): Date {
 function toStageIso(stages: ReturnType<typeof computeDefaults>['stages']) {
   return stages.map((stage) => ({
     stage: stage.stage,
-    dueStart: toDateIso(stage.dueStart),
-    dueEnd: toDateIso(stage.dueEnd),
+    plannedStart: toDateIso(stage.plannedStart),
+    plannedEnd: toDateIso(stage.plannedEnd),
     durationDays: stage.durationDays,
   }));
 }
@@ -145,8 +145,8 @@ function toStationIso(stationBookings: ReturnType<typeof computeDefaults>['stati
   return stationBookings.map((stationBooking) => ({
     stage: stationBooking.stage,
     stationId: stationBooking.stationId,
-    dueStart: toDateIso(stationBooking.dueStart),
-    dueEnd: toDateIso(stationBooking.dueEnd),
+    plannedStart: toDateIso(stationBooking.plannedStart),
+    plannedEnd: toDateIso(stationBooking.plannedEnd),
   }));
 }
 

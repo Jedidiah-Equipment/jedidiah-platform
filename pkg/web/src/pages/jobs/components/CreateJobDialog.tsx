@@ -35,7 +35,7 @@ import {
   toDateInputValue,
 } from './create-job-dialog-helpers.js';
 import {
-  applyCreateScheduleGanttDueRangeEdit,
+  applyCreateScheduleGanttPlannedRangeEdit,
   buildCreateScheduleGanttRows,
 } from './create-job-schedule-gantt-adapter.js';
 
@@ -195,8 +195,8 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
             <ScheduleGantt
               canEditSchedule={!createJobMutation.isPending}
               mode="create"
-              onEditDueRange={(row, nextRange) => {
-                const edit = applyCreateScheduleGanttDueRangeEdit({
+              onEditPlannedRange={(row, nextRange) => {
+                const edit = applyCreateScheduleGanttPlannedRangeEdit({
                   anchorKind,
                   nextRange,
                   row,
@@ -302,8 +302,8 @@ const StageEditor: React.FC<{
               stationBookings: [
                 ...stage.stationBookings,
                 createStationBookingDraft({
-                  dueEnd: stage.dueEnd,
-                  dueStart: stage.dueStart,
+                  plannedEnd: stage.plannedEnd,
+                  plannedStart: stage.plannedStart,
                   stationId: station.id,
                 }),
               ],
@@ -367,32 +367,30 @@ function createDraftId(): string {
 }
 
 function getCascadedEndDate(stages: StageDraft[]): string {
-  const bookingDueEnds = stages
-    .flatMap((stage) => stage.stationBookings.map((booking) => booking.dueEnd))
+  const bookingPlannedEnds = stages
+    .flatMap((stage) => stage.stationBookings.map((booking) => booking.plannedEnd))
     .filter((value) => value !== '')
     .sort();
-  const stageDueEnds = stages
-    .map((stage) => stage.dueEnd)
+  const stagePlannedEnds = stages
+    .map((stage) => stage.plannedEnd)
     .filter((value) => value !== '')
     .sort();
 
-  return bookingDueEnds.at(-1) ?? stageDueEnds.at(-1) ?? '';
+  return bookingPlannedEnds.at(-1) ?? stagePlannedEnds.at(-1) ?? '';
 }
 
 function createStationBookingDraft({
-  dueEnd,
-  dueStart,
+  plannedEnd,
+  plannedStart,
   stationId,
 }: {
-  dueEnd: string;
-  dueStart: string;
+  plannedEnd: string;
+  plannedStart: string;
   stationId: UUID;
 }): StationBookingDraft {
   return {
-    dueEnd,
-    dueEndSetManually: false,
-    dueStart,
-    dueStartSetManually: false,
+    plannedEnd,
+    plannedStart,
     id: createDraftId(),
     stationId,
   };

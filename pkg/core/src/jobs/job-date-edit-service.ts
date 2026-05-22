@@ -28,7 +28,7 @@ import { type JobAuditRecord, type JobStageRow, type JobStageStationRow, mapJobA
 import { getJob } from './job-read-service.js';
 
 type DateField = JobDateEditInput['field'];
-type DueField = Extract<DateField, 'due_start' | 'due_end'>;
+type PlannedField = Extract<DateField, 'planned_start' | 'planned_end'>;
 type ActualField = Extract<DateField, 'actual_start' | 'actual_end'>;
 type DateEditEntityLevel = JobDateEditInput['entityLevel'];
 type DateEditValue = string | null;
@@ -107,8 +107,8 @@ async function editStationBookingLevelDate({
   tx: DatabaseTransaction;
 }): Promise<{ jobId: UUID }> {
   const target = await readStationBookingForUpdate(input.entityId, tx);
-  if (isDueField(input.field)) {
-    assertDueDateEditKeepsRange({ field: input.field, row: target.booking, value: input.value });
+  if (isPlannedField(input.field)) {
+    assertPlannedDateEditKeepsRange({ field: input.field, row: target.booking, value: input.value });
   }
   if (isActualField(input.field)) {
     assertActualDateEditKeepsRange({ field: input.field, row: target.booking, value: input.value });
@@ -311,19 +311,17 @@ async function updateStationBookingDateField({
 }
 
 function createDateUpdate(field: DateField, value: DateEditValue) {
-  const setManually = value !== null;
-
   switch (field) {
     case 'actual_end':
-      return { actualEnd: value ? new Date(value) : null, actualEndSetManually: setManually };
+      return { actualEnd: value ? new Date(value) : null };
     case 'actual_start':
-      return { actualStart: value ? new Date(value) : null, actualStartSetManually: setManually };
+      return { actualStart: value ? new Date(value) : null };
     case 'due_date':
       return { dueDate: value };
-    case 'due_end':
-      return { dueEnd: value, dueEndSetManually: setManually };
-    case 'due_start':
-      return { dueStart: value, dueStartSetManually: setManually };
+    case 'planned_end':
+      return { plannedEnd: value };
+    case 'planned_start':
+      return { plannedStart: value };
     default:
       return assertNever(field);
   }
@@ -542,10 +540,10 @@ function getDateFieldValue(record: Record<string, unknown>, field: DateField): u
       return record.actualStart;
     case 'due_date':
       return record.dueDate;
-    case 'due_end':
-      return record.dueEnd;
-    case 'due_start':
-      return record.dueStart;
+    case 'planned_end':
+      return record.plannedEnd;
+    case 'planned_start':
+      return record.plannedStart;
     default:
       return assertNever(field);
   }
@@ -557,8 +555,8 @@ function serializeDateEditValue(value: unknown): string | null {
   return String(value);
 }
 
-function isDueField(field: DateField): field is DueField {
-  return field === 'due_start' || field === 'due_end';
+function isPlannedField(field: DateField): field is PlannedField {
+  return field === 'planned_start' || field === 'planned_end';
 }
 
 function isDueDateField(field: DateField): field is Extract<DateField, 'due_date'> {
@@ -569,18 +567,18 @@ function isActualField(field: DateField): field is ActualField {
   return field === 'actual_start' || field === 'actual_end';
 }
 
-function assertDueDateEditKeepsRange({
+function assertPlannedDateEditKeepsRange({
   field,
   row,
   value,
 }: {
-  field: DueField;
-  row: Pick<JobStageStationRow, 'dueEnd' | 'dueStart'>;
+  field: PlannedField;
+  row: Pick<JobStageStationRow, 'plannedEnd' | 'plannedStart'>;
   value: string | null;
 }): void {
   assertDueDateRange({
-    dueEnd: field === 'due_end' ? value : row.dueEnd,
-    dueStart: field === 'due_start' ? value : row.dueStart,
+    plannedEnd: field === 'planned_end' ? value : row.plannedEnd,
+    plannedStart: field === 'planned_start' ? value : row.plannedStart,
   });
 }
 
@@ -599,11 +597,17 @@ function assertActualDateEditKeepsRange({
   });
 }
 
-function assertDueDateRange({ dueEnd, dueStart }: { dueEnd: string | null; dueStart: string | null }): void {
-  if (!dueEnd || !dueStart) return;
+function assertDueDateRange({
+  plannedEnd,
+  plannedStart,
+}: {
+  plannedEnd: string | null;
+  plannedStart: string | null;
+}): void {
+  if (!plannedEnd || !plannedStart) return;
 
-  if (parseDateOnly(dueStart).getTime() > parseDateOnly(dueEnd).getTime()) {
-    throw new JobDateEditInvalidError('Due start must be on or before due end.');
+  if (parseDateOnly(plannedStart).getTime() > parseDateOnly(plannedEnd).getTime()) {
+    throw new JobDateEditInvalidError('Planned start must be on or before planned end.');
   }
 }
 
@@ -624,30 +628,7 @@ function isNoOpDateEdit({
   row: Record<string, unknown>;
   value: string | null;
 }): boolean {
-  if (isDueDateField(field)) {
-    return serializeDateEditValue(getDateFieldValue(row, field)) === value;
-  }
-
-  const nextSetManually = value !== null;
-  return (
-    serializeDateEditValue(getDateFieldValue(row, field)) === value &&
-    getDateFieldManualValue(row, field) === nextSetManually
-  );
-}
-
-function getDateFieldManualValue(record: Record<string, unknown>, field: Exclude<DateField, 'due_date'>): boolean {
-  switch (field) {
-    case 'actual_end':
-      return record.actualEndSetManually === true;
-    case 'actual_start':
-      return record.actualStartSetManually === true;
-    case 'due_end':
-      return record.dueEndSetManually === true;
-    case 'due_start':
-      return record.dueStartSetManually === true;
-    default:
-      return assertNever(field);
-  }
+  return serializeDateEditValue(getDateFieldValue(row, field)) === value;
 }
 
 function parseDateOnly(value: string): Date {
@@ -660,13 +641,13 @@ function parseDateOnly(value: string): Date {
 }
 
 function mapScheduleRollupBookings(
-  bookings: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[],
+  bookings: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'plannedEnd' | 'plannedStart'>[],
 ) {
   return bookings.map((booking) => ({
     actualEnd: booking.actualEnd,
     actualStart: booking.actualStart,
-    plannedEnd: parseDateOnlyAsUtc(booking.dueEnd),
-    plannedStart: parseDateOnlyAsUtc(booking.dueStart),
+    plannedEnd: parseDateOnlyAsUtc(booking.plannedEnd),
+    plannedStart: parseDateOnlyAsUtc(booking.plannedStart),
   }));
 }
 

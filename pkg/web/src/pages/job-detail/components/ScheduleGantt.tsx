@@ -30,16 +30,16 @@ import { cn } from '@/lib/utils.js';
 
 import {
   buildScheduleGanttRows,
-  type DueDragAction,
   getScheduleGanttActualDateEdits,
   getScheduleGanttActualDisplay,
   getScheduleGanttActualRangeAfterDrag,
-  getScheduleGanttDueDateEdits,
-  getScheduleGanttDueDisplay,
-  getScheduleGanttDueRangeAfterDrag,
   getScheduleGanttOccupancyDisplay,
+  getScheduleGanttPlannedDateEdits,
+  getScheduleGanttPlannedDisplay,
+  getScheduleGanttPlannedRangeAfterDrag,
   getScheduleGanttTimelineDayCount,
-  type OptimisticDueRange,
+  type OptimisticPlannedRange,
+  type PlannedDragAction,
   parseScheduleDate,
   type ScheduleGanttRow,
 } from './schedule-gantt-helpers.js';
@@ -53,7 +53,7 @@ type ScheduleGanttProps =
   | {
       canEditSchedule: boolean;
       mode: 'create';
-      onEditDueRange: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
+      onEditPlannedRange: (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => void;
       rows: ScheduleGanttRow[];
     };
 
@@ -75,7 +75,9 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
-  const [optimisticDueRanges, setOptimisticDueRanges] = React.useState<Record<string, OptimisticDueRange>>({});
+  const [optimisticPlannedRanges, setOptimisticPlannedRanges] = React.useState<Record<string, OptimisticPlannedRange>>(
+    {},
+  );
   const sharedBookingsQuery = useQuery({
     ...trpc.jobs.listSharedStationBookings.queryOptions({ jobId: job?.id ?? '' }),
     enabled: job !== null,
@@ -97,11 +99,11 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
     const sourceRows = createRows ?? (job ? buildScheduleGanttRows(job) : []);
 
     return sourceRows.map((row) => {
-      const optimisticRange = optimisticDueRanges[row.id];
+      const optimisticRange = optimisticPlannedRanges[row.id];
 
       return optimisticRange ? { ...row, ...optimisticRange } : row;
     });
-  }, [createRows, job, optimisticDueRanges]);
+  }, [createRows, job, optimisticPlannedRanges]);
   const stageIds = React.useMemo(() => rows.filter((row) => row.level === 'stage').map((row) => row.id), [rows]);
   const [collapsedStageIds, setCollapsedStageIds] = React.useState<Set<string>>(() => new Set());
   const visibleRows = React.useMemo<ScheduleGanttRenderableRow[]>(
@@ -157,27 +159,27 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
       return { jobId: job.id, jobIds: next };
     });
   };
-  const editDueRange = async (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => {
-    if (!row.dueStart || !row.dueEnd) return;
+  const editPlannedRange = async (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => {
+    if (!row.plannedStart || !row.plannedEnd) return;
 
     if (isCreateMode) {
-      props.onEditDueRange(row, nextRange);
+      props.onEditPlannedRange(row, nextRange);
       return;
     }
 
     if (!job) return;
 
-    setOptimisticDueRanges((current) => ({ ...current, [row.id]: nextRange }));
+    setOptimisticPlannedRanges((current) => ({ ...current, [row.id]: nextRange }));
 
     let attemptedEdit = false;
     try {
-      for (const edit of getScheduleGanttDueDateEdits({
+      for (const edit of getScheduleGanttPlannedDateEdits({
         entityId: row.entityId,
         entityLevel: row.level === 'station' ? 'station-booking' : row.level,
-        nextDueEnd: nextRange.dueEnd,
-        nextDueStart: nextRange.dueStart,
-        previousDueEnd: row.dueEnd,
-        previousDueStart: row.dueStart,
+        nextPlannedEnd: nextRange.plannedEnd,
+        nextPlannedStart: nextRange.plannedStart,
+        previousPlannedEnd: row.plannedEnd,
+        previousPlannedStart: row.plannedStart,
       })) {
         attemptedEdit = true;
         await editDateMutation.mutateAsync(edit);
@@ -189,7 +191,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
         await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
       }
     } finally {
-      setOptimisticDueRanges((current) => {
+      setOptimisticPlannedRanges((current) => {
         const next = { ...current };
         delete next[row.id];
         return next;
@@ -234,12 +236,12 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
           <h2 className="text-base font-semibold">Schedule</h2>
           <p className="text-sm text-muted-foreground">
             {isCreateMode
-              ? 'Due ranges by Job, Department, and Station.'
-              : 'Due ranges and actual progress by Job, Department, and Station.'}
+              ? 'Planned windows by Job, Department, and Station.'
+              : 'Planned windows and actual progress by Job, Department, and Station.'}
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <LegendItem className="border border-sky-500/70 bg-transparent" label="Due" />
+          <LegendItem className="border border-sky-500/70 bg-transparent" label="Planned" />
           {isCreateMode ? null : <LegendItem className="bg-sky-600" label="Actual" />}
           {isCreateMode ? null : <LegendItem className="bg-red-600" label="Job Due Date" />}
           {isCreateMode ? null : (
@@ -273,7 +275,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
               <GanttMarker
                 className="border-red-700 bg-red-600 text-white"
                 date={jobDueDate}
-                id={`job-due-date-${job?.id ?? ''}`}
+                id={`job-planned-date-${job?.id ?? ''}`}
                 label="Job Due Date"
               />
             ) : null}
@@ -284,10 +286,10 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
                     canEditActualBars={
                       row.level === 'station' && !isCreateMode && props.canEditSchedule && !editDateMutation.isPending
                     }
-                    canEditDueBars={row.level === 'station' && props.canEditSchedule && !editDateMutation.isPending}
+                    canEditPlannedBars={row.level === 'station' && props.canEditSchedule && !editDateMutation.isPending}
                     key={row.id}
                     onEditActualDates={editActualDates}
-                    onEditDueRange={editDueRange}
+                    onEditPlannedRange={editPlannedRange}
                     overlays={row.overlays}
                     row={row}
                   />
@@ -401,17 +403,17 @@ const ScheduleGanttSidebar: React.FC<{
 
 const ScheduleGanttTimelineRow: React.FC<{
   canEditActualBars: boolean;
-  canEditDueBars: boolean;
+  canEditPlannedBars: boolean;
   onEditActualDates: (row: ScheduleGanttRow, nextRange: { actualEnd: string | null; actualStart: string }) => void;
-  onEditDueRange: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
+  onEditPlannedRange: (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => void;
   overlays: JobSharedStationBookingJob[];
   row: ScheduleGanttRow;
-}> = ({ canEditActualBars, canEditDueBars, onEditActualDates, onEditDueRange, overlays, row }) => (
+}> = ({ canEditActualBars, canEditPlannedBars, onEditActualDates, onEditPlannedRange, overlays, row }) => (
   <ScheduleGanttTimelineRowInner
     canEditActualBars={canEditActualBars}
-    canEditDueBars={canEditDueBars}
+    canEditPlannedBars={canEditPlannedBars}
     onEditActualDates={onEditActualDates}
-    onEditDueRange={onEditDueRange}
+    onEditPlannedRange={onEditPlannedRange}
     overlays={overlays}
     row={row}
   />
@@ -419,12 +421,12 @@ const ScheduleGanttTimelineRow: React.FC<{
 
 const ScheduleGanttTimelineRowInner: React.FC<{
   canEditActualBars: boolean;
-  canEditDueBars: boolean;
+  canEditPlannedBars: boolean;
   onEditActualDates: (row: ScheduleGanttRow, nextRange: { actualEnd: string | null; actualStart: string }) => void;
-  onEditDueRange: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
+  onEditPlannedRange: (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => void;
   overlays: JobSharedStationBookingJob[];
   row: ScheduleGanttRow;
-}> = ({ canEditActualBars, canEditDueBars, onEditActualDates, onEditDueRange, overlays, row }) => {
+}> = ({ canEditActualBars, canEditPlannedBars, onEditActualDates, onEditPlannedRange, overlays, row }) => {
   const gantt = useGanttContext();
   const dayCount = getScheduleGanttTimelineDayCount(gantt.timelineData);
 
@@ -434,7 +436,7 @@ const ScheduleGanttTimelineRowInner: React.FC<{
       style={{ height: ROW_HEIGHT, width: `calc(var(--gantt-column-width) * ${dayCount})` }}
     >
       <ScheduleGanttOccupancyOverlays jobs={overlays} />
-      <ScheduleGanttDueRange canEdit={canEditDueBars} onEdit={onEditDueRange} row={row} />
+      <ScheduleGanttPlannedRange canEdit={canEditPlannedBars} onEdit={onEditPlannedRange} row={row} />
       <ScheduleGanttActualRange canEdit={canEditActualBars} onEdit={onEditActualDates} row={row} />
     </div>
   );
@@ -480,19 +482,19 @@ const ScheduleGanttOccupancyBar: React.FC<{
   );
 };
 
-const ScheduleGanttDueRange: React.FC<{
+const ScheduleGanttPlannedRange: React.FC<{
   canEdit: boolean;
-  onEdit: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
+  onEdit: (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => void;
   row: ScheduleGanttRow;
 }> = ({ canEdit, onEdit, row }) => {
-  const due = getScheduleGanttDueDisplay(row);
+  const planned = getScheduleGanttPlannedDisplay(row);
 
-  if (due.kind === 'none') {
+  if (planned.kind === 'none') {
     return null;
   }
 
-  if (due.kind === 'milestone') {
-    return <ScheduleGanttMilestone date={due.date} label={due.label} />;
+  if (planned.kind === 'milestone') {
+    return <ScheduleGanttMilestone date={planned.date} label={planned.label} />;
   }
 
   return (
@@ -503,19 +505,19 @@ const ScheduleGanttDueRange: React.FC<{
       )}
       editable={canEdit}
       onEdit={(action, dayDelta) => {
-        const nextRange = getScheduleGanttDueRangeAfterDrag({
+        const nextRange = getScheduleGanttPlannedRangeAfterDrag({
           action,
           dayDelta,
-          dueEnd: row.dueEnd,
-          dueStart: row.dueStart,
+          plannedEnd: row.plannedEnd,
+          plannedStart: row.plannedStart,
         });
         if (nextRange) {
           onEdit(row, nextRange);
         }
       }}
-      end={due.end}
-      label={due.label}
-      start={due.start}
+      end={planned.end}
+      label={planned.label}
+      start={planned.start}
     />
   );
 };
@@ -569,12 +571,12 @@ const ScheduleGanttBar: React.FC<{
   editable?: boolean;
   end: Date;
   label: string;
-  onEdit?: (action: DueDragAction, dayDelta: number) => void;
+  onEdit?: (action: PlannedDragAction, dayDelta: number) => void;
   start: Date;
   topOffset?: number;
 }> = ({ className, editable = false, end, label, onEdit, start, topOffset = 0 }) => {
   const gantt = useGanttContext();
-  const dragStartRef = React.useRef<{ action: DueDragAction; pointerX: number } | null>(null);
+  const dragStartRef = React.useRef<{ action: PlannedDragAction; pointerX: number } | null>(null);
   const left = getGanttOffset(start, gantt);
   const width = getGanttWidth(start, end, gantt);
   const commitDrag = React.useCallback(
@@ -590,7 +592,7 @@ const ScheduleGanttBar: React.FC<{
     },
     [gantt.columnWidth, onEdit],
   );
-  const startDrag = React.useCallback((event: React.PointerEvent<Element>, action: DueDragAction) => {
+  const startDrag = React.useCallback((event: React.PointerEvent<Element>, action: PlannedDragAction) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     dragStartRef.current = { action, pointerX: event.clientX };
   }, []);

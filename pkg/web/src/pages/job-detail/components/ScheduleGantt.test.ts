@@ -10,10 +10,10 @@ import {
   getScheduleGanttActualDateEdits,
   getScheduleGanttActualDisplay,
   getScheduleGanttActualRangeAfterDrag,
-  getScheduleGanttDueDateEdits,
-  getScheduleGanttDueDisplay,
-  getScheduleGanttDueRangeAfterDrag,
   getScheduleGanttOccupancyDisplay,
+  getScheduleGanttPlannedDateEdits,
+  getScheduleGanttPlannedDisplay,
+  getScheduleGanttPlannedRangeAfterDrag,
   getScheduleGanttTimelineDayCount,
   parseScheduleDate,
   parseScheduleDateTimeInputValue,
@@ -33,8 +33,8 @@ describe('buildScheduleGanttRows', () => {
         title: 'Procurement',
       }),
       expect.objectContaining({
-        dueEnd: '2026-05-03',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-03',
+        plannedStart: '2026-05-01',
         id: `station-${bookingIds['procurement-1']}`,
         level: 'station',
         parentId: `stage-${stageIds.procurement}`,
@@ -50,8 +50,8 @@ describe('buildScheduleGanttRows', () => {
       expect.objectContaining({
         actualEnd: null,
         actualStart: null,
-        dueEnd: null,
-        dueStart: null,
+        plannedEnd: null,
+        plannedStart: null,
         id: `station-${bookingIds['fabrication-1']}`,
         level: 'station',
         parentId: `stage-${stageIds.fabrication}`,
@@ -67,8 +67,8 @@ describe('buildScheduleGanttRows', () => {
       {
         actualEnd: '2026-05-04T16:00:00.000Z',
         actualStart: '2026-05-02T08:00:00.000Z',
-        dueEnd: '2026-05-05',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-05',
+        plannedStart: '2026-05-01',
         id: bookingIds['fabrication-1'],
         jobStageId: stageIds.fabrication,
         stage: 'fabrication',
@@ -81,8 +81,8 @@ describe('buildScheduleGanttRows', () => {
       {
         actualEnd: null,
         actualStart: null,
-        dueEnd: '2026-05-05',
-        dueStart: '2026-05-03',
+        plannedEnd: '2026-05-05',
+        plannedStart: '2026-05-03',
         id: bookingIds['fabrication-1'],
         jobStageId: stageIds.fabrication,
         stage: 'fabrication',
@@ -106,15 +106,15 @@ describe('buildScheduleGanttRows', () => {
 });
 
 describe('schedule date display helpers', () => {
-  it('renders due ranges as inclusive planned tracks', () => {
-    const display = getScheduleGanttDueDisplay({
-      dueEnd: '2026-05-03',
-      dueStart: '2026-05-01',
+  it('renders planned ranges as inclusive planned tracks', () => {
+    const display = getScheduleGanttPlannedDisplay({
+      plannedEnd: '2026-05-03',
+      plannedStart: '2026-05-01',
     });
 
     expect(display).toMatchObject({
       kind: 'range',
-      label: 'Due May 1, 2026 to May 3, 2026',
+      label: 'Planned May 1, 2026 to May 3, 2026',
     });
     if (display.kind !== 'range') throw new Error('Expected range display.');
     expect(toLocalDateKey(display.start)).toBe('2026-05-01');
@@ -122,17 +122,17 @@ describe('schedule date display helpers', () => {
   });
 
   it.each([
-    ['start-only', { dueEnd: null, dueStart: '2026-05-01' }, 'Due start May 1, 2026'],
-    ['end-only', { dueEnd: '2026-05-03', dueStart: null }, 'Due end May 3, 2026'],
-  ])('renders %s due dates as milestones', (_case, row, label) => {
-    expect(getScheduleGanttDueDisplay(row)).toMatchObject({
+    ['start-only', { plannedEnd: null, plannedStart: '2026-05-01' }, 'Planned start May 1, 2026'],
+    ['end-only', { plannedEnd: '2026-05-03', plannedStart: null }, 'Planned end May 3, 2026'],
+  ])('renders %s planned dates as milestones', (_case, row, label) => {
+    expect(getScheduleGanttPlannedDisplay(row)).toMatchObject({
       kind: 'milestone',
       label,
     });
   });
 
   it('returns no due display when both due dates are missing', () => {
-    expect(getScheduleGanttDueDisplay({ dueEnd: null, dueStart: null })).toEqual({ kind: 'none' });
+    expect(getScheduleGanttPlannedDisplay({ plannedEnd: null, plannedStart: null })).toEqual({ kind: 'none' });
   });
 
   it('runs in-progress actuals through the supplied today marker', () => {
@@ -214,79 +214,79 @@ describe('schedule date display helpers', () => {
 
   it('moves a due range by whole days', () => {
     expect(
-      getScheduleGanttDueRangeAfterDrag({
+      getScheduleGanttPlannedRangeAfterDrag({
         action: 'move',
         dayDelta: 2,
-        dueEnd: '2026-05-03',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-03',
+        plannedStart: '2026-05-01',
       }),
     ).toEqual({
-      dueEnd: '2026-05-05',
-      dueStart: '2026-05-03',
+      plannedEnd: '2026-05-05',
+      plannedStart: '2026-05-03',
     });
   });
 
   it('resizes due ranges from either edge', () => {
     expect(
-      getScheduleGanttDueRangeAfterDrag({
+      getScheduleGanttPlannedRangeAfterDrag({
         action: 'resize-start',
         dayDelta: -1,
-        dueEnd: '2026-05-03',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-03',
+        plannedStart: '2026-05-01',
       }),
     ).toEqual({
-      dueEnd: '2026-05-03',
-      dueStart: '2026-04-30',
+      plannedEnd: '2026-05-03',
+      plannedStart: '2026-04-30',
     });
     expect(
-      getScheduleGanttDueRangeAfterDrag({
+      getScheduleGanttPlannedRangeAfterDrag({
         action: 'resize-end',
         dayDelta: 2,
-        dueEnd: '2026-05-03',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-03',
+        plannedStart: '2026-05-01',
       }),
     ).toEqual({
-      dueEnd: '2026-05-05',
-      dueStart: '2026-05-01',
+      plannedEnd: '2026-05-05',
+      plannedStart: '2026-05-01',
     });
   });
 
   it('collapses inverted edge resizes to a one-day range', () => {
     expect(
-      getScheduleGanttDueRangeAfterDrag({
+      getScheduleGanttPlannedRangeAfterDrag({
         action: 'resize-start',
         dayDelta: 5,
-        dueEnd: '2026-05-03',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-03',
+        plannedStart: '2026-05-01',
       }),
     ).toEqual({
-      dueEnd: '2026-05-06',
-      dueStart: '2026-05-06',
+      plannedEnd: '2026-05-06',
+      plannedStart: '2026-05-06',
     });
   });
 
   it('orders two date edits so each intermediate due range stays valid', () => {
     expect(
-      getScheduleGanttDueDateEdits({
+      getScheduleGanttPlannedDateEdits({
         entityId: ids.job,
         entityLevel: 'job',
-        nextDueEnd: '2026-05-12',
-        nextDueStart: '2026-05-10',
-        previousDueEnd: '2026-05-03',
-        previousDueStart: '2026-05-01',
+        nextPlannedEnd: '2026-05-12',
+        nextPlannedStart: '2026-05-10',
+        previousPlannedEnd: '2026-05-03',
+        previousPlannedStart: '2026-05-01',
       }).map((edit) => edit.field),
-    ).toEqual(['due_end', 'due_start']);
+    ).toEqual(['planned_end', 'planned_start']);
 
     expect(
-      getScheduleGanttDueDateEdits({
+      getScheduleGanttPlannedDateEdits({
         entityId: ids.job,
         entityLevel: 'job',
-        nextDueEnd: '2026-04-27',
-        nextDueStart: '2026-04-25',
-        previousDueEnd: '2026-05-03',
-        previousDueStart: '2026-05-01',
+        nextPlannedEnd: '2026-04-27',
+        nextPlannedStart: '2026-04-25',
+        previousPlannedEnd: '2026-05-03',
+        previousPlannedStart: '2026-05-01',
       }).map((edit) => edit.field),
-    ).toEqual(['due_start', 'due_end']);
+    ).toEqual(['planned_start', 'planned_end']);
   });
 
   it('formats and parses local date-time picker values for actuals', () => {
@@ -406,8 +406,8 @@ function createJobDetail(): JobDetail {
   const stages = [
     createStage('procurement', 1, [
       createStationBooking('procurement-1', 'Procurement Desk', {
-        dueEnd: '2026-05-03',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-03',
+        plannedStart: '2026-05-01',
       }),
     ]),
     createStage('supply', 2),
@@ -423,18 +423,14 @@ function createJobDetail(): JobDetail {
 
   return JobDetail.parse({
     actualEnd: null,
-    actualEndSetManually: false,
     actualStart: '2026-05-01T08:00:00.000Z',
-    actualStartSetManually: false,
     actualWindow: toSchemaWindow(jobSchedule.actualWindow),
     code: 'JOB-00001',
     createdAt: '2026-05-01T08:00:00.000Z',
     customerCompanyName: 'ACME',
     dueDate: '2026-05-12',
-    dueEnd: '2026-05-10',
-    dueEndSetManually: false,
-    dueStart: '2026-05-01',
-    dueStartSetManually: false,
+    plannedEnd: '2026-05-10',
+    plannedStart: '2026-05-01',
     id: ids.job,
     isCancelled: false,
     isPaused: false,
@@ -457,15 +453,11 @@ function createStage(stage: JobStageName, sequence: number, stations: StationBoo
   return {
     access: 'visible',
     actualEnd: null,
-    actualEndSetManually: false,
     actualStart: null,
-    actualStartSetManually: false,
     actualWindow: toSchemaWindow(stageSchedule.actualWindow),
     department: stage,
-    dueEnd: null,
-    dueEndSetManually: false,
-    dueStart: null,
-    dueStartSetManually: false,
+    plannedEnd: null,
+    plannedStart: null,
     id: stageIds[stage],
     jobId: ids.job,
     plannedWindow: toSchemaWindow(stageSchedule.plannedWindow),
@@ -473,10 +465,6 @@ function createStage(stage: JobStageName, sequence: number, stations: StationBoo
     stage,
     state: 'pending',
     stations,
-    transitionAvailability: {
-      start: { allowed: true, reason: null },
-      stop: { allowed: false, reason: 'Not started' },
-    },
   };
 }
 
@@ -484,8 +472,8 @@ function toScheduleRollupBookings(stations: StationBooking[]) {
   return stations.map((station) => ({
     actualEnd: station.actualEnd ? new Date(station.actualEnd) : null,
     actualStart: station.actualStart ? new Date(station.actualStart) : null,
-    plannedEnd: station.dueEnd ? new Date(`${station.dueEnd}T00:00:00.000Z`) : null,
-    plannedStart: station.dueStart ? new Date(`${station.dueStart}T00:00:00.000Z`) : null,
+    plannedEnd: station.plannedEnd ? new Date(`${station.plannedEnd}T00:00:00.000Z`) : null,
+    plannedStart: station.plannedStart ? new Date(`${station.plannedStart}T00:00:00.000Z`) : null,
   }));
 }
 
@@ -499,20 +487,16 @@ function toSchemaWindow(window: ScheduleRollupWindow) {
 function createStationBooking(
   id: 'fabrication-1' | 'procurement-1',
   name: string,
-  dates: { dueEnd?: string; dueStart?: string } = {},
+  dates: { plannedEnd?: string; plannedStart?: string } = {},
 ): StationBooking {
   const stage = id.startsWith('procurement') ? 'procurement' : 'fabrication';
 
   return {
     actualEnd: null,
-    actualEndSetManually: false,
     actualStart: null,
-    actualStartSetManually: false,
     createdAt: '2026-05-01T08:00:00.000Z',
-    dueEnd: dates.dueEnd ?? null,
-    dueEndSetManually: false,
-    dueStart: dates.dueStart ?? null,
-    dueStartSetManually: false,
+    plannedEnd: dates.plannedEnd ?? null,
+    plannedStart: dates.plannedStart ?? null,
     id: bookingIds[id],
     jobStageId: stageIds[stage],
     state: 'pending',

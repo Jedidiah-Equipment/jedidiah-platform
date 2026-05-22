@@ -26,10 +26,6 @@ describe('jobs.create', () => {
 
     expect(job).toMatchObject({
       dueDate: null,
-      dueEnd: null,
-      dueEndSetManually: false,
-      dueStart: null,
-      dueStartSetManually: false,
       lifecycleStatus: 'not-started',
     });
     expect(job.stages.map((stage) => stage.stage)).toEqual([
@@ -72,22 +68,12 @@ describe('jobs.create', () => {
 
     expect(job).toMatchObject({
       dueDate: '2026-08-10',
-      dueEnd: null,
-      dueStart: null,
-      dueEndSetManually: false,
-      dueStartSetManually: false,
     });
     expect(job.stages.find((stage) => stage.stage === 'fabrication')).toMatchObject({
-      dueEnd: null,
-      dueEndSetManually: false,
-      dueStart: null,
-      dueStartSetManually: false,
       stations: [
         {
-          dueEnd: '2026-08-07',
-          dueEndSetManually: false,
-          dueStart: '2026-08-04',
-          dueStartSetManually: true,
+          plannedEnd: '2026-08-07',
+          plannedStart: '2026-08-03',
           stationId: station.id,
         },
       ],
@@ -188,10 +174,7 @@ describe('jobs.get', () => {
 
     const detail = await caller.jobs.get({ id: job.id });
     const procurement = getStage(detail, 'procurement');
-    const supply = getStage(detail, 'supply');
     expect(detail).toMatchObject({
-      actualEnd: null,
-      actualStart: null,
       actualWindow: {
         end: null,
         start: '2026-08-01T08:00:00.000Z',
@@ -199,52 +182,11 @@ describe('jobs.get', () => {
       lifecycleStatus: 'active',
     });
     expect(procurement).toMatchObject({
-      actualEnd: null,
-      actualStart: null,
       actualWindow: {
         end: '2026-08-01T12:00:00.000Z',
         start: '2026-08-01T08:00:00.000Z',
       },
       state: 'complete',
-    });
-    expect('transitionAvailability' in supply ? supply.transitionAvailability?.start : null).toEqual({
-      allowed: true,
-      reason: null,
-    });
-  });
-
-  test('preserves persisted stage actuals for transition availability when bookings have no actuals', async ({
-    context,
-  }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
-      caller,
-      db: context.db,
-      productId: context.product.id,
-      stages: ['procurement'],
-    });
-
-    const started = await caller.jobs.startStage({ id: job.id, stage: 'procurement' });
-    const detail = await caller.jobs.get({ id: started.id });
-    const procurement = getStage(detail, 'procurement');
-
-    expect(procurement).toMatchObject({
-      actualStart: expect.any(String),
-      actualWindow: {
-        end: null,
-        start: null,
-      },
-      state: 'pending',
-    });
-    expect('transitionAvailability' in procurement ? procurement.transitionAvailability : null).toMatchObject({
-      start: {
-        allowed: false,
-        reason: 'Stage has already started.',
-      },
-      stop: {
-        allowed: true,
-        reason: null,
-      },
     });
   });
 });
@@ -325,10 +267,10 @@ describe('jobs.listSharedStationBookings', () => {
       ],
     });
     await context.databaseClient.queryClient`
-      update job
+      update job_stage_station
       set actual_start = '2026-08-01T08:00:00.000Z',
         actual_end = '2026-08-12T16:00:00.000Z'
-      where id = ${completedSharedStationJob.id}
+      where id = ${getStageBooking(completedSharedStationJob, 'fabrication').id}
     `;
     const futureSharedStationJob = await caller.jobs.create({
       productId: context.product.id,
@@ -342,8 +284,8 @@ describe('jobs.listSharedStationBookings', () => {
     });
     await context.databaseClient.queryClient`
       update job_stage_station
-      set due_start = '2027-01-05',
-        due_end = '2027-01-09'
+      set planned_start = '2027-01-05',
+        planned_end = '2027-01-09'
       where id = ${getStageBooking(futureSharedStationJob, 'fabrication').id}
     `;
     const unrelatedJob = await caller.jobs.create({
@@ -390,50 +332,6 @@ describe('jobs.listSharedStationBookings', () => {
   });
 });
 
-describe('jobs stage transitions', () => {
-  test('starts and completes stages through actual dates', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await caller.jobs.create({ productId: context.product.id });
-
-    const started = await caller.jobs.startStage({ id: job.id, stage: 'procurement' });
-    const startedStage = started.stages.find((stage) => stage.stage === 'procurement');
-
-    expect(started.lifecycleStatus).toBe('active');
-    expect(startedStage).toMatchObject({
-      actualEnd: null,
-      state: 'in-progress',
-    });
-    expect(startedStage?.actualStart).toEqual(expect.any(String));
-
-    const completed = await caller.jobs.completeStage({ id: job.id, stage: 'procurement' });
-    const completedStage = completed.stages.find((stage) => stage.stage === 'procurement');
-
-    expect(completed.lifecycleStatus).toBe('active');
-    expect(completedStage).toMatchObject({
-      state: 'complete',
-    });
-    expect(completedStage?.actualEnd).toEqual(expect.any(String));
-    expect(completed.workflowEvents.map((event) => event.eventType)).toEqual(['stage.stopped', 'stage.started']);
-  });
-
-  test('refuses stage writes while a job is paused or cancelled', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    const pausedJob = await caller.jobs.pause({ id: (await caller.jobs.create({ productId: context.product.id })).id });
-    const cancelledJob = await caller.jobs.cancel({
-      id: (await caller.jobs.create({ productId: context.product.id })).id,
-    });
-
-    await expect(caller.jobs.startStage({ id: pausedJob.id, stage: 'procurement' })).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-      message: 'Job is paused.',
-    });
-    await expect(caller.jobs.startStage({ id: cancelledJob.id, stage: 'procurement' })).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-      message: 'Job is cancelled.',
-    });
-  });
-});
-
 describe('jobs station booking transitions', () => {
   test('first start emits derived stage and job start milestones', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
@@ -449,11 +347,8 @@ describe('jobs station booking transitions', () => {
     const updatedStage = updated.stages.find((stage) => stage.stage === 'fabrication');
 
     expect(updated.lifecycleStatus).toBe('active');
-    expect(updated.actualStart).toBeNull();
     expect(updated.actualWindow.start).toEqual(expect.any(String));
     expect(updatedStage).toMatchObject({
-      actualEnd: null,
-      actualStart: null,
       state: 'in-progress',
     });
     expect(updatedStage?.actualWindow.start).toEqual(expect.any(String));
@@ -489,9 +384,8 @@ describe('jobs station booking transitions', () => {
     const completed = await caller.jobs.stopStationBooking({ id: getStageBooking(job, 'assembly').id });
 
     expect(completed.lifecycleStatus).toBe('complete');
-    expect(completed.actualEnd).toBeNull();
     expect(completed.actualWindow.end).toEqual(expect.any(String));
-    expect(completed.stages.every((stage) => stage.actualEnd === null && stage.actualWindow.end)).toBe(true);
+    expect(completed.stages.every((stage) => stage.actualWindow.end)).toBe(true);
 
     const workflowEvents = await listJobEventTypes(context.db, job.id);
     expect(workflowEvents.filter((eventType) => eventType === 'station.ended')).toHaveLength(5);
@@ -519,44 +413,6 @@ describe('jobs station booking transitions', () => {
     });
 
     await expect(listJobEventTypes(context.db, job.id)).resolves.toEqual(beforeEvents);
-  });
-
-  test('allows station booking starts when only the dead parent stage actual is complete', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
-      caller,
-      db: context.db,
-      productId: context.product.id,
-      stages: ['procurement'],
-    });
-
-    job = await caller.jobs.startStage({ id: job.id, stage: 'procurement' });
-    await caller.jobs.completeStage({ id: job.id, stage: 'procurement' });
-    await expect(
-      caller.jobs.startStationBooking({ id: getStageBooking(job, 'procurement').id }),
-    ).resolves.toMatchObject({
-      lifecycleStatus: 'active',
-    });
-  });
-
-  test('allows station booking starts when only dead parent job actuals are complete', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
-      caller,
-      db: context.db,
-      productId: context.product.id,
-      stages: ['fabrication'],
-    });
-
-    for (const stage of ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const) {
-      job = await caller.jobs.startStage({ id: job.id, stage });
-      job = await caller.jobs.completeStage({ id: job.id, stage });
-    }
-    await expect(
-      caller.jobs.startStationBooking({ id: getStageBooking(job, 'fabrication').id }),
-    ).resolves.toMatchObject({
-      lifecycleStatus: 'active',
-    });
   });
 
   test('refuses station booking writes while a job is paused and emits no events', async ({ context }) => {
@@ -593,27 +449,6 @@ describe('jobs station booking transitions', () => {
       message: 'Job is cancelled.',
     });
     await expect(listJobEventTypes(context.db, job.id)).resolves.toEqual(['job.cancelled']);
-  });
-
-  test('keeps sticky parent actual dates pinned during cascade', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
-      caller,
-      db: context.db,
-      productId: context.product.id,
-      stages: ['fabrication'],
-    });
-    const stickyStart = new Date('2026-05-01T08:00:00.000Z');
-    await context.databaseClient.queryClient`
-      update job_stage
-      set actual_start = ${stickyStart.toISOString()}, actual_start_set_manually = true
-      where id = ${getStage(job, 'fabrication').id}
-    `;
-
-    const updated = await caller.jobs.startStationBooking({ id: getStageBooking(job, 'fabrication').id });
-    const updatedStage = getStage(updated, 'fabrication');
-
-    expect(updatedStage.actualStart).toBe(stickyStart.toISOString());
   });
 
   test('scopes department manager booking writes to the booking station department', async ({ context }) => {
@@ -674,28 +509,21 @@ describe('jobs.editDate', () => {
     const updated = await caller.jobs.editDate({
       entityId: getStageBooking(job, 'fabrication').id,
       entityLevel: 'station-booking',
-      field: 'due_end',
+      field: 'planned_end',
       value: '2026-08-09',
     });
     const procurement = getStage(updated, 'procurement');
     const fabrication = getStage(updated, 'fabrication');
     const booking = getStageBooking(updated, 'fabrication');
 
-    expect(updated).toMatchObject({
-      dueEnd: null,
-      dueStart: null,
-    });
-    expect(procurement).toMatchObject({
-      dueEnd: beforeProcurement.dueEnd,
-      dueStart: beforeProcurement.dueStart,
-    });
-    expect(fabrication).toMatchObject({
-      dueEnd: beforeFabrication.dueEnd,
-      dueStart: beforeFabrication.dueStart,
+    expect(procurement.plannedWindow).toEqual(beforeProcurement.plannedWindow);
+    expect(fabrication.plannedWindow).toEqual({
+      ...beforeFabrication.plannedWindow,
+      end: '2026-08-09T00:00:00.000Z',
     });
     expect(booking).toMatchObject({
-      dueEnd: '2026-08-09',
-      dueStart: '2026-08-04',
+      plannedEnd: '2026-08-09',
+      plannedStart: '2026-08-03',
     });
 
     const workflowEvents = await listJobEventTypes(context.db, job.id);
@@ -722,16 +550,11 @@ describe('jobs.editDate', () => {
 
     expect(updated).toMatchObject({
       dueDate: '2026-08-20',
-      dueEnd: job.dueEnd,
-      dueStart: job.dueStart,
     });
-    expect(getStage(updated, 'fabrication')).toMatchObject({
-      dueEnd: beforeStage.dueEnd,
-      dueStart: beforeStage.dueStart,
-    });
+    expect(getStage(updated, 'fabrication').plannedWindow).toEqual(beforeStage.plannedWindow);
     expect(getStageBooking(updated, 'fabrication')).toMatchObject({
-      dueEnd: beforeBooking.dueEnd,
-      dueStart: beforeBooking.dueStart,
+      plannedEnd: beforeBooking.plannedEnd,
+      plannedStart: beforeBooking.plannedStart,
     });
 
     const cleared = await caller.jobs.editDate({
@@ -742,13 +565,10 @@ describe('jobs.editDate', () => {
     });
 
     expect(cleared.dueDate).toBeNull();
-    expect(getStage(cleared, 'fabrication')).toMatchObject({
-      dueEnd: beforeStage.dueEnd,
-      dueStart: beforeStage.dueStart,
-    });
+    expect(getStage(cleared, 'fabrication').plannedWindow).toEqual(beforeStage.plannedWindow);
     expect(getStageBooking(cleared, 'fabrication')).toMatchObject({
-      dueEnd: beforeBooking.dueEnd,
-      dueStart: beforeBooking.dueStart,
+      plannedEnd: beforeBooking.plannedEnd,
+      plannedStart: beforeBooking.plannedStart,
     });
 
     const workflowEvents = (await context.db.select().from(jobEvents)).filter((event) => event.jobId === job.id);
@@ -826,12 +646,12 @@ describe('jobs.editDate', () => {
       caller.jobs.editDate({
         entityId: getStageBooking(job, 'fabrication').id,
         entityLevel: 'station-booking',
-        field: 'due_end',
+        field: 'planned_end',
         value: '2026-07-31',
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
-      message: 'Due start must be on or before due end.',
+      message: 'Planned start must be on or before planned end.',
     });
   });
 
@@ -848,7 +668,7 @@ describe('jobs.editDate', () => {
       caller.jobs.editDate({
         entityId: getStage(job, 'fabrication').id,
         entityLevel: 'stage',
-        field: 'due_start',
+        field: 'planned_start',
         value: '2026-08-02',
       }),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
@@ -868,8 +688,8 @@ describe('jobs.editDate', () => {
     const unchanged = await caller.jobs.editDate({
       entityId: booking.id,
       entityLevel: 'station-booking',
-      field: 'due_start',
-      value: booking.dueStart,
+      field: 'planned_start',
+      value: booking.plannedStart,
     });
 
     expect(unchanged.updatedAt).toBe(beforeUpdatedAt);
@@ -899,16 +719,13 @@ describe('jobs.editDate', () => {
     });
 
     expect(cleared).toMatchObject({
-      actualStart: null,
       lifecycleStatus: 'not-started',
     });
     expect(getStage(cleared, 'fabrication')).toMatchObject({
-      actualStart: null,
       state: 'pending',
     });
     expect(getStageBooking(cleared, 'fabrication')).toMatchObject({
       actualStart: null,
-      actualStartSetManually: false,
       state: 'pending',
     });
   });
@@ -936,14 +753,12 @@ describe('jobs.editDate', () => {
     });
 
     expect(completed).toMatchObject({
-      actualEnd: null,
       actualWindow: {
         end: '2026-08-15T12:00:00.000Z',
       },
       lifecycleStatus: 'complete',
     });
     expect(getStage(completed, 'assembly')).toMatchObject({
-      actualEnd: null,
       actualWindow: {
         end: '2026-08-15T12:00:00.000Z',
       },
@@ -999,16 +814,13 @@ describe('jobs.editDate', () => {
     });
 
     expect(reopened).toMatchObject({
-      actualEnd: null,
       lifecycleStatus: 'active',
     });
     expect(getStage(reopened, 'assembly')).toMatchObject({
-      actualEnd: null,
       state: 'in-progress',
     });
     expect(getStageBooking(reopened, 'assembly')).toMatchObject({
       actualEnd: null,
-      actualEndSetManually: false,
       state: 'in-progress',
     });
   });
@@ -1022,7 +834,7 @@ describe('jobs.editDate', () => {
       departmentCaller.jobs.editDate({
         entityId: job.id,
         entityLevel: 'job',
-        field: 'due_end',
+        field: 'planned_end',
         value: '2026-08-12',
       }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -1062,7 +874,7 @@ describe('jobs lifecycle toggles', () => {
 
   test('restores date-derived status when uncancelling a started job', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const activeJob = await createActiveJob(caller, context.product.id);
+    const activeJob = await createActiveJob(caller, context.db, context.product.id);
 
     const cancelled = await caller.jobs.cancel({ id: activeJob.id });
     expect(cancelled.lifecycleStatus).toBe('cancelled');
@@ -1077,7 +889,7 @@ describe('jobs lifecycle toggles', () => {
 
   test('keeps flag precedence explicit for completed jobs', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const completeJob = await createCompleteJob(caller, context.product.id);
+    const completeJob = await createCompleteJob(caller, context.db, context.product.id);
     expect(completeJob.lifecycleStatus).toBe('complete');
 
     const paused = await caller.jobs.pause({ id: completeJob.id });
@@ -1095,7 +907,9 @@ describe('jobs lifecycle toggles', () => {
 
   test('blocks pause and resume while a job is cancelled', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const pausedJob = await caller.jobs.pause({ id: (await createActiveJob(caller, context.product.id)).id });
+    const pausedJob = await caller.jobs.pause({
+      id: (await createActiveJob(caller, context.db, context.product.id)).id,
+    });
     const cancelledPausedJob = await caller.jobs.cancel({ id: pausedJob.id });
 
     await expect(caller.jobs.resume({ id: cancelledPausedJob.id })).rejects.toMatchObject({
@@ -1123,10 +937,15 @@ describe('jobs lifecycle toggles', () => {
   });
 });
 
-async function createActiveJob(caller: AppRouterCaller, productId: string) {
-  const job = await caller.jobs.create({ productId });
+async function createActiveJob(caller: AppRouterCaller, db: Db, productId: string) {
+  const job = await createJobWithStationBookings({
+    caller,
+    db,
+    productId,
+    stages: ['procurement'],
+  });
 
-  return caller.jobs.startStage({ id: job.id, stage: 'procurement' });
+  return caller.jobs.startStationBooking({ id: getStageBooking(job, 'procurement').id });
 }
 
 function createScopedCaller(db: Db, role: AppRole, departments: Department[]): AppRouterCaller {
@@ -1207,31 +1026,33 @@ function filterJobIds(items: readonly { id: string }[], targetIds: readonly stri
   return items.map((item) => item.id).filter((id) => targetIdSet.has(id));
 }
 
-async function createCompleteJob(caller: AppRouterCaller, productId: string) {
-  let job = await caller.jobs.create({ productId });
+async function createCompleteJob(caller: AppRouterCaller, db: Db, productId: string) {
+  let job = await createJobWithStationBookings({
+    caller,
+    db,
+    productId,
+    stages: ['procurement', 'supply', 'fabrication', 'paint', 'assembly'],
+  });
 
   for (const stage of ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const) {
-    job = await caller.jobs.startStage({ id: job.id, stage });
-    job = await caller.jobs.completeStage({ id: job.id, stage });
+    job = await caller.jobs.startStationBooking({ id: getStageBooking(job, stage).id });
+  }
+
+  for (const stage of ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const) {
+    job = await caller.jobs.stopStationBooking({ id: getStageBooking(job, stage).id });
   }
 
   return job;
 }
 
-function createStageInput(stage: JobCreateStageName, dueStart: string, dueEnd: string, stationId?: string) {
+function createStageInput(stage: JobCreateStageName, plannedStart: string, plannedEnd: string, stationId?: string) {
   return {
-    dueEnd,
-    dueEndSetManually: stage === 'fabrication',
-    dueStart,
-    dueStartSetManually: false,
     stage,
     stationBookings: stationId
       ? [
           {
-            dueEnd,
-            dueEndSetManually: false,
-            dueStart: '2026-08-04',
-            dueStartSetManually: true,
+            plannedEnd,
+            plannedStart,
             stationId,
           },
         ]

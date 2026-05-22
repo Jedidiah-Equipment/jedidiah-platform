@@ -1,7 +1,7 @@
 import { departmentLabels } from '@pkg/domain';
 import type { Station } from '@pkg/schema';
 
-import type { OptimisticDueRange, ScheduleGanttRow } from '@/pages/job-detail/components/schedule-gantt-helpers.js';
+import type { OptimisticPlannedRange, ScheduleGanttRow } from '@/pages/job-detail/components/schedule-gantt-helpers.js';
 
 import type { StageDraft } from './create-job-dialog-helpers.js';
 
@@ -30,8 +30,8 @@ export function buildCreateScheduleGanttRows({
     {
       actualEnd: null,
       actualStart: null,
-      dueEnd: jobWindow.dueEnd,
-      dueStart: jobWindow.dueStart,
+      plannedEnd: jobWindow.plannedEnd,
+      plannedStart: jobWindow.plannedStart,
       entityId: 'create-job',
       id: 'create-job',
       level: 'job',
@@ -59,8 +59,8 @@ export function buildCreateScheduleGanttRows({
         ...stage.stationBookings.map((booking) => ({
           actualEnd: null,
           actualStart: null,
-          dueEnd: booking.dueEnd || null,
-          dueStart: booking.dueStart || null,
+          plannedEnd: booking.plannedEnd || null,
+          plannedStart: booking.plannedStart || null,
           entityId: booking.id,
           id: getCreateStationRowId(booking.id),
           level: 'station' as const,
@@ -74,19 +74,16 @@ export function buildCreateScheduleGanttRows({
   ];
 }
 
-export function applyCreateScheduleGanttDueRangeEdit({
+export function applyCreateScheduleGanttPlannedRangeEdit({
   nextRange,
   row,
   stages,
 }: {
   anchorKind: 'end' | 'start';
-  nextRange: OptimisticDueRange;
+  nextRange: OptimisticPlannedRange;
   row: ScheduleGanttRow;
   stages: StageDraft[];
 }): CreateScheduleGanttEdit {
-  const dueStartChanged = row.dueStart !== nextRange.dueStart;
-  const dueEndChanged = row.dueEnd !== nextRange.dueEnd;
-
   if (row.level !== 'station') {
     return { kind: 'stages', stages };
   }
@@ -99,10 +96,8 @@ export function applyCreateScheduleGanttDueRangeEdit({
         booking.id === row.entityId
           ? {
               ...booking,
-              dueEnd: nextRange.dueEnd,
-              dueEndSetManually: dueEndChanged ? true : booking.dueEndSetManually,
-              dueStart: nextRange.dueStart,
-              dueStartSetManually: dueStartChanged ? true : booking.dueStartSetManually,
+              plannedEnd: nextRange.plannedEnd,
+              plannedStart: nextRange.plannedStart,
             }
           : booking,
       ),
@@ -118,21 +113,21 @@ function getCreateStationRowId(bookingId: string): string {
   return `create-station-${bookingId}`;
 }
 
-function getDraftWindow(bookings: { dueEnd: string; dueStart: string }[]): {
-  dueEnd: string | null;
-  dueStart: string | null;
+function getDraftWindow(bookings: { plannedEnd: string; plannedStart: string }[]): {
+  plannedEnd: string | null;
+  plannedStart: string | null;
 } {
-  const dueStarts = bookings
-    .map((booking) => booking.dueStart)
+  const plannedStarts = bookings
+    .map((booking) => booking.plannedStart)
     .filter((value) => value !== '')
     .sort();
-  const dueEnds = bookings
-    .map((booking) => booking.dueEnd)
+  const plannedEnds = bookings
+    .map((booking) => booking.plannedEnd)
     .filter((value) => value !== '')
     .sort();
 
   return {
-    dueEnd: dueEnds.at(-1) ?? null,
-    dueStart: dueStarts[0] ?? null,
+    plannedEnd: plannedEnds.at(-1) ?? null,
+    plannedStart: plannedStarts[0] ?? null,
   };
 }

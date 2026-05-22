@@ -148,6 +148,13 @@
       "when": 1779459404697,
       "tag": "0020_parallel_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779466344892,
+      "tag": "0021_worthless_sunspot",
+      "breakpoints": true
     }
   ]
 }

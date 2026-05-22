@@ -5,7 +5,7 @@ import type { ScheduleGanttRow } from '@/pages/job-detail/components/schedule-ga
 
 import type { StageDraft } from './create-job-dialog-helpers.js';
 import {
-  applyCreateScheduleGanttDueRangeEdit,
+  applyCreateScheduleGanttPlannedRangeEdit,
   buildCreateScheduleGanttRows,
 } from './create-job-schedule-gantt-adapter.js';
 
@@ -15,16 +15,16 @@ describe('create job schedule gantt adapter', () => {
       expect.objectContaining({
         actualEnd: null,
         actualStart: null,
-        dueEnd: '2026-05-03',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-03',
+        plannedStart: '2026-05-01',
         id: 'create-job',
         level: 'job',
       }),
       expect.objectContaining({
         actualEnd: null,
         actualStart: null,
-        dueEnd: '2026-05-03',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-03',
+        plannedStart: '2026-05-01',
         id: 'create-stage-fabrication',
         level: 'stage',
         title: 'Fabrication',
@@ -32,8 +32,8 @@ describe('create job schedule gantt adapter', () => {
       expect.objectContaining({
         actualEnd: null,
         actualStart: null,
-        dueEnd: '2026-05-03',
-        dueStart: '2026-05-01',
+        plannedEnd: '2026-05-03',
+        plannedStart: '2026-05-01',
         id: 'create-station-booking-1',
         level: 'station',
         parentId: 'create-stage-fabrication',
@@ -45,10 +45,10 @@ describe('create job schedule gantt adapter', () => {
   test('ignores edits for derived draft Job and Stage rows', () => {
     const stages = createStages();
 
-    const edit = applyCreateScheduleGanttDueRangeEdit({
+    const edit = applyCreateScheduleGanttPlannedRangeEdit({
       anchorKind: 'start',
-      nextRange: { dueEnd: '2026-05-12', dueStart: '2026-05-01' },
-      row: createRow({ dueEnd: '2026-05-10', dueStart: '2026-05-01', level: 'job' }),
+      nextRange: { plannedEnd: '2026-05-12', plannedStart: '2026-05-01' },
+      row: createRow({ plannedEnd: '2026-05-10', plannedStart: '2026-05-01', level: 'job' }),
       stages,
     });
 
@@ -56,9 +56,9 @@ describe('create job schedule gantt adapter', () => {
   });
 
   test('dragging a draft station booking pins only changed booking edges', () => {
-    const edit = applyCreateScheduleGanttDueRangeEdit({
+    const edit = applyCreateScheduleGanttPlannedRangeEdit({
       anchorKind: 'end',
-      nextRange: { dueEnd: '2026-05-04', dueStart: '2026-05-01' },
+      nextRange: { plannedEnd: '2026-05-04', plannedStart: '2026-05-01' },
       row: createRow({ entityId: 'booking-1', level: 'station' }),
       stages: createStages(),
     });
@@ -67,14 +67,12 @@ describe('create job schedule gantt adapter', () => {
       kind: 'stages',
       stages: [
         {
-          dueEnd: '2026-05-03',
-          dueStart: '2026-05-01',
+          plannedEnd: '2026-05-03',
+          plannedStart: '2026-05-01',
           stationBookings: [
             {
-              dueEnd: '2026-05-04',
-              dueEndSetManually: true,
-              dueStart: '2026-05-01',
-              dueStartSetManually: false,
+              plannedEnd: '2026-05-04',
+              plannedStart: '2026-05-01',
             },
           ],
         },
@@ -86,17 +84,13 @@ describe('create job schedule gantt adapter', () => {
 function createStages(): StageDraft[] {
   return [
     {
-      dueEnd: '2026-05-03',
-      dueEndSetManually: false,
-      dueStart: '2026-05-01',
-      dueStartSetManually: false,
+      plannedEnd: '2026-05-03',
+      plannedStart: '2026-05-01',
       stage: 'fabrication',
       stationBookings: [
         {
-          dueEnd: '2026-05-03',
-          dueEndSetManually: false,
-          dueStart: '2026-05-01',
-          dueStartSetManually: false,
+          plannedEnd: '2026-05-03',
+          plannedStart: '2026-05-01',
           id: 'booking-1',
           stationId: '00000000-0000-4000-8000-000000000003',
         },
@@ -121,8 +115,8 @@ function createRow(overrides: Partial<ScheduleGanttRow> = {}): ScheduleGanttRow 
   return {
     actualEnd: null,
     actualStart: null,
-    dueEnd: '2026-05-03',
-    dueStart: '2026-05-01',
+    plannedEnd: '2026-05-03',
+    plannedStart: '2026-05-01',
     entityId: 'create-job',
     id: 'create-job',
     level: 'job',

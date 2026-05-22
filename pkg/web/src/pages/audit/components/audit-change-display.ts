@@ -13,6 +13,8 @@ export type AuditChangeDisplay = {
 
 const auditFieldLabels: Record<string, string> = {
   address: 'Address',
+  actualEnd: 'Actual end',
+  actualStart: 'Actual start',
   basePrice: 'Base price',
   code: 'Code',
   companyName: 'Company name',
@@ -23,7 +25,7 @@ const auditFieldLabels: Record<string, string> = {
   department: 'Department',
   description: 'Description',
   discount: 'Discount',
-  dueEnd: 'Due date',
+  dueDate: 'Due date',
   email: 'Email',
   lifecycleStatus: 'Lifecycle status',
   member: 'Department membership',
@@ -31,6 +33,8 @@ const auditFieldLabels: Record<string, string> = {
   name: 'Name',
   notes: 'Notes',
   phone: 'Phone',
+  plannedEnd: 'Planned end',
+  plannedStart: 'Planned start',
   price: 'Price',
   productId: 'Product',
   quoteId: 'Quote',
@@ -44,7 +48,17 @@ const auditFieldLabels: Record<string, string> = {
 };
 
 const currencyFields = new Set(['basePrice', 'discount', 'price', 'quotedBasePrice']);
-const dateFields = new Set(['completedAt', 'dueEnd', 'sentAt', 'startedAt', 'validUntil']);
+const dateFields = new Set([
+  'actualEnd',
+  'actualStart',
+  'completedAt',
+  'dueDate',
+  'plannedEnd',
+  'plannedStart',
+  'sentAt',
+  'startedAt',
+  'validUntil',
+]);
 
 export function getAuditChangeDisplays(changes: AuditChangeMap | null): AuditChangeDisplay[] {
   if (!changes) {

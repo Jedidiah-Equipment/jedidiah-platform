@@ -2,16 +2,9 @@ import { departmentLabels, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import type { QuoteSummary, Station, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import {
-  AlertTriangleIcon,
-  BriefcaseBusinessIcon,
-  CalendarDaysIcon,
-  Loader2Icon,
-  PlusIcon,
-  Trash2Icon,
-} from 'lucide-react';
+import { AlertTriangleIcon, BriefcaseBusinessIcon, Loader2Icon, PlusIcon, Trash2Icon } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { DatePicker } from '@/components/common/DatePicker.js';
@@ -27,6 +20,7 @@ import {
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { ScheduleGantt } from '@/pages/job-detail/components/ScheduleGantt.js';
 import { QuoteProductCombobox } from '@/pages/quotes/components/QuoteProductCombobox.js';
 import {
   buildCreateJobInput,
@@ -40,6 +34,10 @@ import {
   type StationBookingDraft,
   toDateInputValue,
 } from './create-job-dialog-helpers.js';
+import {
+  applyCreateScheduleGanttDueRangeEdit,
+  buildCreateScheduleGanttRows,
+} from './create-job-schedule-gantt-adapter.js';
 
 type CreateJobDialogProps = {
   quote?: QuoteSummary;
@@ -81,6 +79,7 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
         : createEmptyStages(),
     [anchorDate, anchorKind, selectedProduct],
   );
+  const scheduleRows = useMemo(() => buildCreateScheduleGanttRows({ stages, stations }), [stages, stations]);
   const infeasibleMessage = getInfeasibleMessage(stages);
   const unconfiguredStages = selectedProduct ? getUnconfiguredStages(selectedProduct) : [];
 
@@ -173,6 +172,26 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
           ) : null}
 
           <div className="grid gap-3">
+            <ScheduleGantt
+              canEditSchedule={!createJobMutation.isPending}
+              mode="create"
+              onEditDueRange={(row, nextRange) => {
+                const edit = applyCreateScheduleGanttDueRangeEdit({
+                  anchorKind,
+                  nextRange,
+                  row,
+                  stages,
+                });
+
+                if (edit.kind === 'anchor') {
+                  setAnchorKind(edit.anchorKind);
+                  setAnchorDate(edit.anchorDate);
+                } else {
+                  setStages(edit.stages);
+                }
+              }}
+              rows={scheduleRows}
+            />
             {stages.map((stage) => (
               <StageEditor
                 key={stage.stage}
@@ -288,39 +307,6 @@ const StageEditor: React.FC<{
         </Select>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-2">
-        <DateEditor
-          label="Stage start"
-          onChange={(value, setManually) =>
-            onChange({
-              ...stage,
-              dueStart: value,
-              dueStartSetManually: setManually,
-              stationBookings: stage.stationBookings.map((booking) =>
-                booking.dueStartSetManually ? booking : { ...booking, dueStart: value },
-              ),
-            })
-          }
-          setManually={stage.dueStartSetManually}
-          value={stage.dueStart}
-        />
-        <DateEditor
-          label="Stage end"
-          onChange={(value, setManually) =>
-            onChange({
-              ...stage,
-              dueEnd: value,
-              dueEndSetManually: setManually,
-              stationBookings: stage.stationBookings.map((booking) =>
-                booking.dueEndSetManually ? booking : { ...booking, dueEnd: value },
-              ),
-            })
-          }
-          setManually={stage.dueEndSetManually}
-          value={stage.dueEnd}
-        />
-      </div>
-
       <div className="grid gap-2">
         {stage.stationBookings.length === 0 ? (
           <div className="rounded-lg border border-dashed p-2 text-sm text-muted-foreground">No Stations selected</div>
@@ -328,40 +314,11 @@ const StageEditor: React.FC<{
           stage.stationBookings.map((booking) => {
             const station = stations.find((item) => item.id === booking.stationId);
             return (
-              <div
-                className="grid gap-2 rounded-lg border p-2 md:grid-cols-[minmax(0,1fr)_11rem_11rem_auto]"
-                key={booking.id}
-              >
+              <div className="grid gap-2 rounded-lg border p-2 md:grid-cols-[minmax(0,1fr)_auto]" key={booking.id}>
                 <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
                   <BriefcaseBusinessIcon className="size-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{station?.name ?? 'Selected Station'}</span>
                 </div>
-                <DateEditor
-                  label="Booking start"
-                  onChange={(value, setManually) =>
-                    onChange({
-                      ...stage,
-                      stationBookings: stage.stationBookings.map((item) =>
-                        item.id === booking.id ? { ...item, dueStart: value, dueStartSetManually: setManually } : item,
-                      ),
-                    })
-                  }
-                  setManually={booking.dueStartSetManually}
-                  value={booking.dueStart}
-                />
-                <DateEditor
-                  label="Booking end"
-                  onChange={(value, setManually) =>
-                    onChange({
-                      ...stage,
-                      stationBookings: stage.stationBookings.map((item) =>
-                        item.id === booking.id ? { ...item, dueEnd: value, dueEndSetManually: setManually } : item,
-                      ),
-                    })
-                  }
-                  setManually={booking.dueEndSetManually}
-                  value={booking.dueEnd}
-                />
                 <Button
                   aria-label="Remove Station"
                   onClick={() =>
@@ -382,31 +339,6 @@ const StageEditor: React.FC<{
         )}
       </div>
     </section>
-  );
-};
-
-const DateEditor: React.FC<{
-  label: string;
-  onChange: (value: string, setManually: boolean) => void;
-  setManually: boolean;
-  value: string;
-}> = ({ label, onChange, setManually, value }) => {
-  const inputId = useId();
-
-  return (
-    <div className="grid gap-1 text-xs font-medium text-muted-foreground">
-      <label className="flex items-center gap-1" htmlFor={inputId}>
-        <CalendarDaysIcon className="size-3.5" />
-        {label}
-        {setManually ? <span className="text-foreground">Pinned</span> : null}
-      </label>
-      <DatePicker
-        clearable
-        id={inputId}
-        onChange={(nextValue) => onChange(nextValue, nextValue !== '')}
-        value={value}
-      />
-    </div>
   );
 };
 

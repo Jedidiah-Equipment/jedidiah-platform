@@ -1,4 +1,4 @@
-import { account, type DatabaseClient, type Db, user } from '@pkg/db';
+import { account, type Db, sql, user } from '@pkg/db';
 import { DEFAULT_DEMO_USER_PASSWORD } from '@pkg/domain';
 import type { AppRole } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
@@ -7,12 +7,11 @@ import { describe, expect } from 'vitest';
 import { createTester, type TesterScope } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 
-const test = createTester(({ auth, databaseClient, db }) => ({ auth, databaseClient, db }));
+const test = createTester(({ auth, db }) => ({ auth, db }));
 
 type AuthPolicyContext = {
   auth: TesterScope['auth'];
   db: Db;
-  databaseClient: DatabaseClient;
 };
 
 describe('admin user safety policy', () => {
@@ -62,7 +61,7 @@ describe('admin user safety policy', () => {
       name: 'Other Admin',
       role: 'admin',
     });
-    await setStoredRole(context.databaseClient, admin.user.id, 'sales');
+    await setStoredRole(context.db, admin.user.id, 'sales');
 
     await expect(
       context.auth.api.setRole({
@@ -106,7 +105,7 @@ describe('admin user safety policy', () => {
       name: 'Only Other Admin',
       role: 'admin',
     });
-    await setStoredRole(context.databaseClient, admin.user.id, 'sales');
+    await setStoredRole(context.db, admin.user.id, 'sales');
 
     await expect(
       context.auth.api.adminUpdateUser({
@@ -156,12 +155,12 @@ function convertSetCookieToCookie(headers: Headers): Headers {
   return cookieHeaders;
 }
 
-async function setStoredRole(databaseClient: DatabaseClient, userId: string, role: AppRole): Promise<void> {
-  await databaseClient.queryClient`
+async function setStoredRole(db: Db, userId: string, role: AppRole): Promise<void> {
+  await db.execute(sql`
     UPDATE "user"
     SET role = ${role}, updated_at = ${new Date().toISOString()}
     WHERE id = ${userId}
-  `;
+  `);
 }
 
 async function createUser(

@@ -1,5 +1,5 @@
 import * as core from '@pkg/core';
-import { type Db, products } from '@pkg/db';
+import { type Db, products, sql } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import { type JobListInput, Product, type UserAccessSummary } from '@pkg/schema';
 import pino from 'pino';
@@ -12,11 +12,11 @@ import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
-const test = createTester(async ({ databaseClient, db }) => {
+const test = createTester(async ({ db }) => {
   await createActorUser(db, 'job-supervisor');
   const product = await createProduct(db);
 
-  return { databaseClient, db, product };
+  return { db, product };
 });
 
 describe('listJobsTool', () => {
@@ -52,16 +52,16 @@ describe('listJobsTool', () => {
     const supervisorCaller = createCaller(context.db, supervisorAccess);
     const activeJob = await supervisorCaller.jobs.create({ productId: context.product.id });
     const pausedJob = await supervisorCaller.jobs.create({ productId: context.product.id });
-    await context.databaseClient.queryClient`
+    await context.db.execute(sql`
       update job
       set status = 'active'
       where id = ${activeJob.id}
-    `;
-    await context.databaseClient.queryClient`
+    `);
+    await context.db.execute(sql`
       update job
       set status = 'paused'
       where id = ${pausedJob.id}
-    `;
+    `);
     const input: JobListInput = {
       filters: { status: 'active' },
       page: 1,

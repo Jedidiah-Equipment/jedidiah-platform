@@ -99,7 +99,7 @@ describe('jobs.list', () => {
     await context.setJobStatus(pausedJob.id, 'paused');
 
     const activeJobs = await caller.jobs.list({
-      filters: { status: 'active' },
+      filters: { statuses: ['active'] },
       page: 1,
       pageSize: 20,
       sortBy: 'code',
@@ -107,6 +107,74 @@ describe('jobs.list', () => {
     });
 
     expect(filterJobIds(activeJobs.items, [activeJob.id, pausedJob.id, pendingJob.id])).toEqual([activeJob.id]);
+  });
+
+  test('filters by multiple stored job statuses', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const activeJob = await caller.jobs.create({ productId: context.product.id });
+    const pausedJob = await caller.jobs.create({ productId: context.product.id });
+    const completeJob = await caller.jobs.create({ productId: context.product.id });
+    const pendingJob = await caller.jobs.create({ productId: context.product.id });
+    await context.setJobStatus(activeJob.id, 'active');
+    await context.setJobStatus(pausedJob.id, 'paused');
+    await context.setJobStatus(completeJob.id, 'complete');
+
+    const filteredJobs = await caller.jobs.list({
+      filters: { statuses: ['active', 'paused'] },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'code',
+      sortDirection: 'asc',
+    });
+
+    expect(filterJobIds(filteredJobs.items, [activeJob.id, pausedJob.id, completeJob.id, pendingJob.id])).toEqual([
+      activeJob.id,
+      pausedJob.id,
+    ]);
+  });
+
+  test('sorts by stored job status logical order in both directions', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const cancelledJob = await caller.jobs.create({ productId: context.product.id });
+    const activeJob = await caller.jobs.create({ productId: context.product.id });
+    const completeJob = await caller.jobs.create({ productId: context.product.id });
+    const pausedJob = await caller.jobs.create({ productId: context.product.id });
+    const pendingJob = await caller.jobs.create({ productId: context.product.id });
+    await context.setJobStatus(cancelledJob.id, 'cancelled');
+    await context.setJobStatus(activeJob.id, 'active');
+    await context.setJobStatus(completeJob.id, 'complete');
+    await context.setJobStatus(pausedJob.id, 'paused');
+
+    const targetIds = [activeJob.id, cancelledJob.id, completeJob.id, pausedJob.id, pendingJob.id];
+    const ascStatusSorted = await caller.jobs.list({
+      filters: { statuses: [] },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'status',
+      sortDirection: 'asc',
+    });
+    expect(filterJobIds(ascStatusSorted.items, targetIds)).toEqual([
+      pendingJob.id,
+      activeJob.id,
+      pausedJob.id,
+      completeJob.id,
+      cancelledJob.id,
+    ]);
+
+    const descStatusSorted = await caller.jobs.list({
+      filters: { statuses: [] },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'status',
+      sortDirection: 'desc',
+    });
+    expect(filterJobIds(descStatusSorted.items, targetIds)).toEqual([
+      cancelledJob.id,
+      completeJob.id,
+      pausedJob.id,
+      activeJob.id,
+      pendingJob.id,
+    ]);
   });
 
   test('sorts by job due date', async ({ context }) => {
@@ -127,7 +195,7 @@ describe('jobs.list', () => {
       value: '2026-08-10',
     });
     const dueDateSorted = await caller.jobs.list({
-      filters: {},
+      filters: { statuses: [] },
       page: 1,
       pageSize: 20,
       sortBy: 'dueDate',
@@ -140,7 +208,7 @@ describe('jobs.list', () => {
     ]);
 
     const dueDateSortedDesc = await caller.jobs.list({
-      filters: {},
+      filters: { statuses: [] },
       page: 1,
       pageSize: 20,
       sortBy: 'dueDate',
@@ -1011,7 +1079,7 @@ function createScopedCaller(db: Db, role: AppRole, departments: Department[]): A
   });
 }
 
-type JobStatusForTest = 'active' | 'cancelled' | 'paused';
+type JobStatusForTest = 'active' | 'cancelled' | 'complete' | 'paused';
 type SetJobStatus = (jobId: string, status: JobStatusForTest) => Promise<void>;
 
 type CreateJobWithStationBookingsOptions = {

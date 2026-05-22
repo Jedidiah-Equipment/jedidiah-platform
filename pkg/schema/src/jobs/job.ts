@@ -322,9 +322,11 @@ export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
     jobId: UUID.optional(),
-    status: JobStatus.optional(),
+    statuses: z.array(JobStatus).default([]),
   })
-  .default({});
+  .default({
+    statuses: [],
+  });
 
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({

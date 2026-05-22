@@ -232,6 +232,84 @@ describe('jobs.get', () => {
       'station.started',
     ]);
   });
+
+  test('derives detail windows and transition availability from station bookings', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await createJobWithStationBookings({
+      caller,
+      db: context.db,
+      productId: context.product.id,
+      stages: ['procurement', 'supply'],
+    });
+
+    await context.databaseClient.queryClient`
+      update job_stage_station
+      set actual_start = '2026-08-01T08:00:00.000Z',
+        actual_end = '2026-08-01T12:00:00.000Z'
+      where id = ${getStageBooking(job, 'procurement').id}
+    `;
+
+    const detail = await caller.jobs.get({ id: job.id });
+    const procurement = getStage(detail, 'procurement');
+    const supply = getStage(detail, 'supply');
+    expect(detail).toMatchObject({
+      actualEnd: null,
+      actualStart: null,
+      actualWindow: {
+        end: null,
+        start: '2026-08-01T08:00:00.000Z',
+      },
+      lifecycleStatus: 'active',
+    });
+    expect(procurement).toMatchObject({
+      actualEnd: null,
+      actualStart: null,
+      actualWindow: {
+        end: '2026-08-01T12:00:00.000Z',
+        start: '2026-08-01T08:00:00.000Z',
+      },
+      state: 'complete',
+    });
+    expect('transitionAvailability' in supply ? supply.transitionAvailability?.start : null).toEqual({
+      allowed: true,
+      reason: null,
+    });
+  });
+
+  test('preserves persisted stage actuals for transition availability when bookings have no actuals', async ({
+    context,
+  }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await createJobWithStationBookings({
+      caller,
+      db: context.db,
+      productId: context.product.id,
+      stages: ['procurement'],
+    });
+
+    const started = await caller.jobs.startStage({ id: job.id, stage: 'procurement' });
+    const detail = await caller.jobs.get({ id: started.id });
+    const procurement = getStage(detail, 'procurement');
+
+    expect(procurement).toMatchObject({
+      actualStart: expect.any(String),
+      actualWindow: {
+        end: null,
+        start: null,
+      },
+      state: 'pending',
+    });
+    expect('transitionAvailability' in procurement ? procurement.transitionAvailability : null).toMatchObject({
+      start: {
+        allowed: false,
+        reason: 'Stage has already started.',
+      },
+      stop: {
+        allowed: true,
+        reason: null,
+      },
+    });
+  });
 });
 
 describe('jobs.listSharedStationBookings', () => {

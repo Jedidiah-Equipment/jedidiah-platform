@@ -1,3 +1,4 @@
+import { rollupJobSchedule, rollupStageSchedule, type ScheduleRollupWindow } from '@pkg/domain';
 import type { JobStageName, StationBooking } from '@pkg/schema';
 import { JobDetail } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
@@ -387,12 +388,18 @@ function createJobDetail(): JobDetail {
     createStage('paint', 4),
     createStage('assembly', 5),
   ];
+  const jobSchedule = rollupJobSchedule(
+    stages.map((stage) => ({
+      bookings: toScheduleRollupBookings(stage.stations),
+    })),
+  );
 
   return JobDetail.parse({
     actualEnd: null,
     actualEndSetManually: false,
     actualStart: '2026-05-01T08:00:00.000Z',
     actualStartSetManually: false,
+    actualWindow: toSchemaWindow(jobSchedule.actualWindow),
     code: 'JOB-00001',
     createdAt: '2026-05-01T08:00:00.000Z',
     customerCompanyName: 'ACME',
@@ -405,6 +412,7 @@ function createJobDetail(): JobDetail {
     isCancelled: false,
     isPaused: false,
     lifecycleStatus: 'active',
+    plannedWindow: toSchemaWindow(jobSchedule.plannedWindow),
     productId: ids.product,
     productModelCode: 'MODEL',
     productName: 'Machine',
@@ -417,12 +425,15 @@ function createJobDetail(): JobDetail {
 }
 
 function createStage(stage: JobStageName, sequence: number, stations: StationBooking[] = []) {
+  const stageSchedule = rollupStageSchedule(toScheduleRollupBookings(stations));
+
   return {
     access: 'visible',
     actualEnd: null,
     actualEndSetManually: false,
     actualStart: null,
     actualStartSetManually: false,
+    actualWindow: toSchemaWindow(stageSchedule.actualWindow),
     department: stage,
     dueEnd: null,
     dueEndSetManually: false,
@@ -430,6 +441,7 @@ function createStage(stage: JobStageName, sequence: number, stations: StationBoo
     dueStartSetManually: false,
     id: stageIds[stage],
     jobId: ids.job,
+    plannedWindow: toSchemaWindow(stageSchedule.plannedWindow),
     sequence,
     stage,
     state: 'pending',
@@ -438,6 +450,22 @@ function createStage(stage: JobStageName, sequence: number, stations: StationBoo
       start: { allowed: true, reason: null },
       stop: { allowed: false, reason: 'Not started' },
     },
+  };
+}
+
+function toScheduleRollupBookings(stations: StationBooking[]) {
+  return stations.map((station) => ({
+    actualEnd: station.actualEnd ? new Date(station.actualEnd) : null,
+    actualStart: station.actualStart ? new Date(station.actualStart) : null,
+    plannedEnd: station.dueEnd ? new Date(`${station.dueEnd}T00:00:00.000Z`) : null,
+    plannedStart: station.dueStart ? new Date(`${station.dueStart}T00:00:00.000Z`) : null,
+  }));
+}
+
+function toSchemaWindow(window: ScheduleRollupWindow) {
+  return {
+    end: window.end?.toISOString() ?? null,
+    start: window.start?.toISOString() ?? null,
   };
 }
 

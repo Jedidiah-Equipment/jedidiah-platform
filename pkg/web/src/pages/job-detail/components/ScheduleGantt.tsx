@@ -1,8 +1,8 @@
-import { jobStageStatusLabels } from '@pkg/domain';
-import type { JobDetail, JobStageRollup, StationBooking } from '@pkg/schema';
-import { addDays, isBefore, startOfDay } from 'date-fns';
+import type { JobDetail } from '@pkg/schema';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronDownIcon, ChevronRightIcon, CircleIcon, DiamondIcon } from 'lucide-react';
 import React from 'react';
+import { toast } from 'sonner';
 
 import {
   GanttFeatureList,
@@ -15,25 +15,25 @@ import {
   useGanttContext,
 } from '@/components/kibo-ui/gantt/index.js';
 import { Button } from '@/components/ui/button.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { formatDate, parseDate } from '@/utils/date.js';
 
-import { stageLabels } from '../constants.js';
+import {
+  buildScheduleGanttRows,
+  type DueDragAction,
+  getScheduleGanttActualDisplay,
+  getScheduleGanttDueDateEdits,
+  getScheduleGanttDueDisplay,
+  getScheduleGanttDueRangeAfterDrag,
+  getScheduleGanttTimelineDayCount,
+  type OptimisticDueRange,
+  type ScheduleGanttRow,
+} from './schedule-gantt-helpers.js';
 
 type ScheduleGanttProps = {
+  canEditDueBars: boolean;
   job: JobDetail;
-};
-
-export type ScheduleGanttRow = {
-  actualEnd: string | null;
-  actualStart: string | null;
-  dueEnd: string | null;
-  dueStart: string | null;
-  id: string;
-  level: 'job' | 'stage' | 'station';
-  parentId: string | null;
-  statusLabel: string;
-  title: string;
 };
 
 type ScheduleGanttRenderableRow = ScheduleGanttRow & {
@@ -44,8 +44,25 @@ type ScheduleGanttRenderableRow = ScheduleGanttRow & {
 const SIDEBAR_WIDTH = 300;
 const ROW_HEIGHT = 42;
 
-export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ job }) => {
-  const rows = React.useMemo(() => buildScheduleGanttRows(job), [job]);
+export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditDueBars, job }) => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const showMutationError = useApiMutationErrorToast();
+  const [optimisticDueRanges, setOptimisticDueRanges] = React.useState<Record<string, OptimisticDueRange>>({});
+  const editDateMutation = useMutation(
+    trpc.jobs.editDate.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to reschedule job.'),
+    }),
+  );
+  const rows = React.useMemo(
+    () =>
+      buildScheduleGanttRows(job).map((row) => {
+        const optimisticRange = optimisticDueRanges[row.id];
+
+        return optimisticRange ? { ...row, ...optimisticRange } : row;
+      }),
+    [job, optimisticDueRanges],
+  );
   const stageIds = React.useMemo(() => rows.filter((row) => row.level === 'stage').map((row) => row.id), [rows]);
   const [collapsedStageIds, setCollapsedStageIds] = React.useState<Set<string>>(() => new Set());
   const visibleRows = React.useMemo<ScheduleGanttRenderableRow[]>(
@@ -74,6 +91,37 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ job }) => {
       }
       return next;
     });
+  };
+  const editDueRange = async (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => {
+    if (!row.dueStart || !row.dueEnd) return;
+
+    setOptimisticDueRanges((current) => ({ ...current, [row.id]: nextRange }));
+
+    try {
+      for (const edit of getScheduleGanttDueDateEdits({
+        entityId: row.entityId,
+        entityLevel: row.level === 'station' ? 'station-booking' : row.level,
+        nextDueEnd: nextRange.dueEnd,
+        nextDueStart: nextRange.dueStart,
+        previousDueEnd: row.dueEnd,
+        previousDueStart: row.dueStart,
+      })) {
+        await editDateMutation.mutateAsync(edit);
+      }
+      await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
+      toast.success('Schedule updated');
+      setOptimisticDueRanges((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+    } catch {
+      setOptimisticDueRanges((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+    }
   };
 
   return (
@@ -105,7 +153,16 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ job }) => {
           <GanttTimeline>
             <GanttHeader />
             <GanttFeatureList className="absolute top-0 left-0 h-full w-max space-y-0">
-              {visibleRows.map((row) => (row.visible ? <ScheduleGanttTimelineRow key={row.id} row={row} /> : null))}
+              {visibleRows.map((row) =>
+                row.visible ? (
+                  <ScheduleGanttTimelineRow
+                    canEditDueBars={canEditDueBars && !editDateMutation.isPending}
+                    key={row.id}
+                    onEditDueRange={editDueRange}
+                    row={row}
+                  />
+                ) : null,
+              )}
               <GanttToday className="bg-primary text-primary-foreground" />
             </GanttFeatureList>
           </GanttTimeline>
@@ -114,58 +171,6 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ job }) => {
     </section>
   );
 };
-
-export function buildScheduleGanttRows(job: JobDetail): ScheduleGanttRow[] {
-  return [
-    createJobRow(job),
-    ...job.stages.flatMap((stage) => [
-      createStageRow(stage),
-      ...stage.stations.map((station) => createStationRow(stage, station)),
-    ]),
-  ];
-}
-
-function createJobRow(job: JobDetail): ScheduleGanttRow {
-  return {
-    actualEnd: job.actualEnd,
-    actualStart: job.actualStart,
-    dueEnd: job.dueEnd,
-    dueStart: job.dueStart,
-    id: `job-${job.id}`,
-    level: 'job',
-    parentId: null,
-    statusLabel: 'Job',
-    title: job.code,
-  };
-}
-
-function createStageRow(stage: JobStageRollup): ScheduleGanttRow {
-  return {
-    actualEnd: stage.actualEnd,
-    actualStart: stage.actualStart,
-    dueEnd: stage.dueEnd,
-    dueStart: stage.dueStart,
-    id: `stage-${stage.id}`,
-    level: 'stage',
-    parentId: null,
-    statusLabel: jobStageStatusLabels[stage.state],
-    title: stageLabels[stage.stage],
-  };
-}
-
-function createStationRow(stage: JobStageRollup, station: StationBooking): ScheduleGanttRow {
-  return {
-    actualEnd: station.actualEnd,
-    actualStart: station.actualStart,
-    dueEnd: station.dueEnd,
-    dueStart: station.dueStart,
-    id: `station-${station.id}`,
-    level: 'station',
-    parentId: `stage-${stage.id}`,
-    statusLabel: jobStageStatusLabels[station.state],
-    title: station.station.name,
-  };
-}
 
 const ScheduleGanttSidebar: React.FC<{
   collapsedStageIds: Set<string>;
@@ -225,11 +230,19 @@ const ScheduleGanttSidebar: React.FC<{
   </div>
 );
 
-const ScheduleGanttTimelineRow: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => (
-  <ScheduleGanttTimelineRowInner row={row} />
+const ScheduleGanttTimelineRow: React.FC<{
+  canEditDueBars: boolean;
+  onEditDueRange: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
+  row: ScheduleGanttRow;
+}> = ({ canEditDueBars, onEditDueRange, row }) => (
+  <ScheduleGanttTimelineRowInner canEditDueBars={canEditDueBars} onEditDueRange={onEditDueRange} row={row} />
 );
 
-const ScheduleGanttTimelineRowInner: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => {
+const ScheduleGanttTimelineRowInner: React.FC<{
+  canEditDueBars: boolean;
+  onEditDueRange: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
+  row: ScheduleGanttRow;
+}> = ({ canEditDueBars, onEditDueRange, row }) => {
   const gantt = useGanttContext();
   const dayCount = getScheduleGanttTimelineDayCount(gantt.timelineData);
 
@@ -238,13 +251,17 @@ const ScheduleGanttTimelineRowInner: React.FC<{ row: ScheduleGanttRow }> = ({ ro
       className={cn('relative border-b', row.level === 'job' && 'bg-muted/20')}
       style={{ height: ROW_HEIGHT, width: `calc(var(--gantt-column-width) * ${dayCount})` }}
     >
-      <ScheduleGanttDueRange row={row} />
+      <ScheduleGanttDueRange canEdit={canEditDueBars} onEdit={onEditDueRange} row={row} />
       <ScheduleGanttActualRange row={row} />
     </div>
   );
 };
 
-const ScheduleGanttDueRange: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => {
+const ScheduleGanttDueRange: React.FC<{
+  canEdit: boolean;
+  onEdit: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
+  row: ScheduleGanttRow;
+}> = ({ canEdit, onEdit, row }) => {
   const due = getScheduleGanttDueDisplay(row);
 
   if (due.kind === 'none') {
@@ -255,7 +272,24 @@ const ScheduleGanttDueRange: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => 
     return <ScheduleGanttMilestone date={due.date} label={due.label} />;
   }
 
-  return <ScheduleGanttBar className="border border-sky-500/70 bg-sky-500/10" {...due} />;
+  return (
+    <ScheduleGanttBar
+      className="border border-sky-500/70 bg-sky-500/10"
+      editable={canEdit}
+      onEdit={(action, dayDelta) => {
+        const nextRange = getScheduleGanttDueRangeAfterDrag({
+          action,
+          dayDelta,
+          dueEnd: row.dueEnd,
+          dueStart: row.dueStart,
+        });
+        if (nextRange) {
+          onEdit(row, nextRange);
+        }
+      }}
+      {...due}
+    />
+  );
 };
 
 const ScheduleGanttActualRange: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => {
@@ -277,22 +311,67 @@ const ScheduleGanttActualRange: React.FC<{ row: ScheduleGanttRow }> = ({ row }) 
 
 const ScheduleGanttBar: React.FC<{
   className: string;
+  editable?: boolean;
   end: Date;
   label: string;
+  onEdit?: (action: DueDragAction, dayDelta: number) => void;
   start: Date;
-}> = ({ className, end, label, start }) => {
+}> = ({ className, editable = false, end, label, onEdit, start }) => {
   const gantt = useGanttContext();
+  const dragStartRef = React.useRef<{ action: DueDragAction; pointerX: number } | null>(null);
   const left = getGanttOffset(start, gantt);
   const width = getGanttWidth(start, end, gantt);
+  const commitDrag = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const dragStart = dragStartRef.current;
+      dragStartRef.current = null;
+      if (!dragStart || !onEdit) return;
+
+      const dayDelta = Math.round((event.clientX - dragStart.pointerX) / gantt.columnWidth);
+      if (dayDelta !== 0) {
+        onEdit(dragStart.action, dayDelta);
+      }
+    },
+    [gantt.columnWidth, onEdit],
+  );
+  const startDrag = React.useCallback((event: React.PointerEvent<Element>, action: DueDragAction) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStartRef.current = { action, pointerX: event.clientX };
+  }, []);
 
   return (
     <div
       aria-label={label}
-      className={cn('absolute top-1/2 h-4 -translate-y-1/2 rounded-sm', className)}
+      className={cn('absolute top-1/2 h-4 -translate-y-1/2 rounded-sm', editable && 'cursor-grab', className)}
+      onPointerDown={editable ? (event) => startDrag(event, 'move') : undefined}
+      onPointerUp={editable ? commitDrag : undefined}
       role="img"
       style={{ left: Math.round(left), width: Math.max(Math.round(width), 10) }}
       title={label}
-    />
+    >
+      {editable ? (
+        <>
+          <span
+            aria-hidden="true"
+            className="absolute top-0 left-0 h-full w-2 cursor-ew-resize rounded-l-sm"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              startDrag(event, 'resize-start');
+            }}
+            onPointerUp={commitDrag}
+          />
+          <span
+            aria-hidden="true"
+            className="absolute top-0 right-0 h-full w-2 cursor-ew-resize rounded-r-sm"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              startDrag(event, 'resize-end');
+            }}
+            onPointerUp={commitDrag}
+          />
+        </>
+      ) : null}
+    </div>
   );
 };
 
@@ -320,91 +399,3 @@ const LegendItem: React.FC<{ className: string; label: string }> = ({ className,
     {label}
   </span>
 );
-
-export function parseScheduleDate(value: string | null): Date | null {
-  const date = parseDate(value);
-
-  return date ? startOfDay(date) : null;
-}
-
-export function getActualEndForDisplay(start: Date, end: Date | null, now = new Date()): Date {
-  if (end) {
-    return addDays(startOfDay(end), 1);
-  }
-
-  const today = now;
-
-  return isBefore(today, start) ? addDays(start, 1) : today;
-}
-
-export function getScheduleGanttTimelineDayCount(
-  timelineData: { quarters: { months: { days: number }[] }[] }[],
-): number {
-  return timelineData.reduce(
-    (total, year) =>
-      total +
-      year.quarters.reduce(
-        (yearTotal, quarter) =>
-          yearTotal + quarter.months.reduce((quarterTotal, month) => quarterTotal + month.days, 0),
-        0,
-      ),
-    0,
-  );
-}
-
-export function getScheduleGanttDueDisplay(
-  row: Pick<ScheduleGanttRow, 'dueEnd' | 'dueStart'>,
-):
-  | { kind: 'none' }
-  | { date: Date; kind: 'milestone'; label: string }
-  | { end: Date; kind: 'range'; label: string; start: Date } {
-  const start = parseScheduleDate(row.dueStart);
-  const end = parseScheduleDate(row.dueEnd);
-
-  if (!start && !end) {
-    return { kind: 'none' };
-  }
-
-  if (!start || !end) {
-    const date = start ?? end;
-
-    if (!date) {
-      return { kind: 'none' };
-    }
-
-    return {
-      date,
-      kind: 'milestone',
-      label: start ? `Due start ${formatDate(start, 'short')}` : `Due end ${formatDate(date, 'short')}`,
-    };
-  }
-
-  return {
-    end: addDays(end, 1),
-    kind: 'range',
-    label: `Due ${formatDate(start, 'short')} to ${formatDate(end, 'short')}`,
-    start,
-  };
-}
-
-export function getScheduleGanttActualDisplay(
-  row: Pick<ScheduleGanttRow, 'actualEnd' | 'actualStart'>,
-  now = new Date(),
-): { kind: 'none' } | { end: Date; kind: 'range'; label: string; openEnded: boolean; start: Date } {
-  const start = parseScheduleDate(row.actualStart);
-  const end = parseScheduleDate(row.actualEnd);
-
-  if (!start) {
-    return { kind: 'none' };
-  }
-
-  return {
-    end: getActualEndForDisplay(start, end, now),
-    kind: 'range',
-    label: end
-      ? `Actual ${formatDate(start, 'short')} to ${formatDate(end, 'short')}`
-      : `Actual ${formatDate(start, 'short')} through today`,
-    openEnded: !end,
-    start,
-  };
-}

@@ -11,6 +11,7 @@ import {
   getScheduleGanttDueDateEdits,
   getScheduleGanttDueDisplay,
   getScheduleGanttDueRangeAfterDrag,
+  getScheduleGanttOccupancyDisplay,
   getScheduleGanttTimelineDayCount,
   parseScheduleDate,
   parseScheduleDateTimeInputValue,
@@ -57,6 +58,48 @@ describe('buildScheduleGanttRows', () => {
       expect.objectContaining({ id: `stage-${stageIds.paint}`, level: 'stage', parentId: null, title: 'Paint' }),
       expect.objectContaining({ id: `stage-${stageIds.assembly}`, level: 'stage', parentId: null, title: 'Assembly' }),
     ]);
+  });
+
+  it('renders shared-station occupancy as actual ranges before due ranges', () => {
+    const actualDisplay = getScheduleGanttOccupancyDisplay(
+      {
+        actualEnd: '2026-05-04T16:00:00.000Z',
+        actualStart: '2026-05-02T08:00:00.000Z',
+        dueEnd: '2026-05-05',
+        dueStart: '2026-05-01',
+        id: bookingIds['fabrication-1'],
+        jobStageId: stageIds.fabrication,
+        stage: 'fabrication',
+        stationId: stationIds['fabrication-1'],
+        stationName: 'Weld Bay',
+      },
+      'JOB-00002',
+    );
+    const dueDisplay = getScheduleGanttOccupancyDisplay(
+      {
+        actualEnd: null,
+        actualStart: null,
+        dueEnd: '2026-05-05',
+        dueStart: '2026-05-03',
+        id: bookingIds['fabrication-1'],
+        jobStageId: stageIds.fabrication,
+        stage: 'fabrication',
+        stationId: stationIds['fabrication-1'],
+        stationName: 'Weld Bay',
+      },
+      'JOB-00002',
+    );
+
+    expect(actualDisplay).toMatchObject({
+      label: 'JOB-00002 actual on Weld Bay',
+      openEnded: false,
+    });
+    if (actualDisplay.kind === 'none' || dueDisplay.kind === 'none') {
+      throw new Error('Expected occupancy ranges.');
+    }
+    expect(toLocalDateKey(actualDisplay.start)).toBe('2026-05-02');
+    expect(toLocalDateKey(dueDisplay.start)).toBe('2026-05-03');
+    expect(toLocalDateKey(dueDisplay.end)).toBe('2026-05-06');
   });
 });
 

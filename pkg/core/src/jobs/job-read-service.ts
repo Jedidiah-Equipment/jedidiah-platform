@@ -3,6 +3,7 @@ import {
   type DatabaseTransaction,
   type Db,
   jobEvents,
+  jobStageStations,
   jobStages,
   jobs,
   type products,
@@ -11,6 +12,7 @@ import {
 import { canViewStage, getStageTransitionAvailability } from '@pkg/domain';
 import {
   type JobDetail,
+  JobSharedStationBookingsResult,
   type JobSortBy,
   type JobStageRollup,
   JobStageSummary,
@@ -19,7 +21,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { asc, desc, eq, type SQL, sql } from 'drizzle-orm';
+import { asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
 import { JobNotFoundError } from './job-errors.js';
 import {
@@ -42,6 +44,11 @@ type JobWithProductRow = JobRow & {
   product: ProductRow;
   quote: QuoteRow | null;
   stages: (JobStageRow & { stations: JobStageStationWithStationRow[] })[];
+};
+type SharedStationBookingRow = JobStageStationWithStationRow & {
+  jobStage: JobStageRow & {
+    job: JobWithProductRow;
+  };
 };
 
 export async function getJob({
@@ -124,6 +131,160 @@ export async function getJob({
     stages: mapJobDetailStages({ access, job: row, stageRows: row.stages }),
     workflowEvents: mapJobWorkflowEvents({ eventRows: row.events }),
   };
+}
+
+export async function listSharedStationBookings({
+  db,
+  jobId,
+}: {
+  db: Db | DatabaseTransaction;
+  jobId: UUID;
+}): Promise<JobSharedStationBookingsResult> {
+  const currentBookings = await db
+    .select({
+      stationId: jobStageStations.stationId,
+    })
+    .from(jobStageStations)
+    .innerJoin(jobStages, eq(jobStages.id, jobStageStations.jobStageId))
+    .where(eq(jobStages.jobId, jobId));
+  const sharedStationIds = [...new Set(currentBookings.map((booking) => booking.stationId))];
+
+  if (sharedStationIds.length === 0) {
+    return { jobs: [] };
+  }
+
+  const rows = await db.query.jobStageStations.findMany({
+    orderBy: [asc(jobStageStations.stationId), asc(jobStageStations.dueStart), asc(jobStageStations.id)],
+    where: (booking) => inArray(booking.stationId, sharedStationIds),
+    with: {
+      jobStage: {
+        with: {
+          job: {
+            columns: {
+              actualEnd: true,
+              actualEndSetManually: true,
+              actualStart: true,
+              actualStartSetManually: true,
+              code: true,
+              createdAt: true,
+              dueEnd: true,
+              dueEndSetManually: true,
+              dueStart: true,
+              dueStartSetManually: true,
+              id: true,
+              isCancelled: true,
+              isPaused: true,
+              productId: true,
+              quoteId: true,
+              updatedAt: true,
+            },
+            with: {
+              product: {
+                columns: {
+                  modelCode: true,
+                  name: true,
+                },
+              },
+              quote: {
+                columns: {
+                  code: true,
+                },
+                with: {
+                  customer: {
+                    columns: {
+                      companyName: true,
+                    },
+                  },
+                },
+              },
+              stages: {
+                columns: {
+                  actualEnd: true,
+                  actualEndSetManually: true,
+                  actualStart: true,
+                  actualStartSetManually: true,
+                  dueEnd: true,
+                  dueEndSetManually: true,
+                  dueStart: true,
+                  dueStartSetManually: true,
+                  id: true,
+                  jobId: true,
+                  sequence: true,
+                  stage: true,
+                },
+                orderBy: [asc(jobStages.sequence)],
+                with: {
+                  stations: {
+                    with: {
+                      station: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      station: true,
+    },
+  });
+
+  const otherRows = rows.filter((row) => row.jobStage.jobId !== jobId) as SharedStationBookingRow[];
+
+  return JobSharedStationBookingsResult.parse({
+    jobs: mapSharedStationBookingJobs(otherRows),
+  });
+}
+
+function mapSharedStationBookingJobs(rows: SharedStationBookingRow[]) {
+  const jobsById = new Map<UUID, ReturnType<typeof mapJobSummary> & { bookings: SharedStationBookingRow[] }>();
+
+  for (const row of rows) {
+    const jobId = row.jobStage.jobId;
+    const existing = jobsById.get(jobId);
+    if (existing) {
+      existing.bookings.push(row);
+      continue;
+    }
+
+    jobsById.set(jobId, {
+      ...mapJobSummary(row.jobStage.job),
+      bookings: [row],
+    });
+  }
+
+  return [...jobsById.values()]
+    .sort((left, right) => left.code.localeCompare(right.code))
+    .map((job) => ({
+      bookings: job.bookings.sort(compareSharedStationBookings).map((booking) => ({
+        actualEnd: booking.actualEnd?.toISOString() ?? null,
+        actualStart: booking.actualStart?.toISOString() ?? null,
+        dueEnd: booking.dueEnd,
+        dueStart: booking.dueStart,
+        id: booking.id,
+        jobStageId: booking.jobStageId,
+        stage: booking.jobStage.stage,
+        stationId: booking.stationId,
+        stationName: booking.station.name,
+      })),
+      customerCompanyName: job.customerCompanyName,
+      jobCode: job.code,
+      jobId: job.id,
+      lifecycleStatus: job.lifecycleStatus,
+      productModelCode: job.productModelCode,
+      productName: job.productName,
+      quoteCode: job.quoteCode,
+    }));
+}
+
+function compareSharedStationBookings(left: SharedStationBookingRow, right: SharedStationBookingRow): number {
+  const stationOrder = left.station.displayOrder - right.station.displayOrder;
+  if (stationOrder !== 0) return stationOrder;
+
+  const leftStart = left.actualStart?.toISOString() ?? left.dueStart ?? '';
+  const rightStart = right.actualStart?.toISOString() ?? right.dueStart ?? '';
+  const startOrder = leftStart.localeCompare(rightStart);
+  return startOrder === 0 ? left.id.localeCompare(right.id) : startOrder;
 }
 
 export function getJobSortColumn(sortBy: JobSortBy): SQL {

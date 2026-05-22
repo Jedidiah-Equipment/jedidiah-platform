@@ -74,6 +74,7 @@ const EMPTY_SELECTED_OVERLAY_JOB_IDS = new Set<string>();
 export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
   const isCreateMode = props.mode === 'create';
   const job = isCreateMode ? null : props.job;
+  const createRows = isCreateMode ? props.rows : null;
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
@@ -96,14 +97,14 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
   );
 
   const rows = React.useMemo(() => {
-    const sourceRows = isCreateMode ? props.rows : buildScheduleGanttRows(props.job);
+    const sourceRows = createRows ?? (job ? buildScheduleGanttRows(job) : []);
 
     return sourceRows.map((row) => {
       const optimisticRange = optimisticDueRanges[row.id];
 
       return optimisticRange ? { ...row, ...optimisticRange } : row;
     });
-  }, [isCreateMode, optimisticDueRanges, props]);
+  }, [createRows, job, optimisticDueRanges]);
   const stageIds = React.useMemo(() => rows.filter((row) => row.level === 'stage').map((row) => row.id), [rows]);
   const [collapsedStageIds, setCollapsedStageIds] = React.useState<Set<string>>(() => new Set());
   const visibleRows = React.useMemo<ScheduleGanttRenderableRow[]>(

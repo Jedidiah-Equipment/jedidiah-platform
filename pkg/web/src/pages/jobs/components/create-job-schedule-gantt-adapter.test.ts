@@ -53,6 +53,28 @@ describe('create job schedule gantt adapter', () => {
     expect(edit).toEqual({ anchorDate: '2026-05-12', anchorKind: 'end', kind: 'anchor' });
   });
 
+  test('resizing the draft job start edge switches planning to the start anchor', () => {
+    const edit = applyCreateScheduleGanttDueRangeEdit({
+      anchorKind: 'end',
+      nextRange: { dueEnd: '2026-05-10', dueStart: '2026-05-03' },
+      row: createRow({ dueEnd: '2026-05-10', dueStart: '2026-05-01', level: 'job' }),
+      stages: createStages(),
+    });
+
+    expect(edit).toEqual({ anchorDate: '2026-05-03', anchorKind: 'start', kind: 'anchor' });
+  });
+
+  test('resizing the draft job end edge switches planning to the end anchor', () => {
+    const edit = applyCreateScheduleGanttDueRangeEdit({
+      anchorKind: 'start',
+      nextRange: { dueEnd: '2026-05-12', dueStart: '2026-05-01' },
+      row: createRow({ dueEnd: '2026-05-10', dueStart: '2026-05-01', level: 'job' }),
+      stages: createStages(),
+    });
+
+    expect(edit).toEqual({ anchorDate: '2026-05-12', anchorKind: 'end', kind: 'anchor' });
+  });
+
   test('dragging a draft stage updates non-manual station bookings with the stage range', () => {
     const edit = applyCreateScheduleGanttDueRangeEdit({
       anchorKind: 'end',

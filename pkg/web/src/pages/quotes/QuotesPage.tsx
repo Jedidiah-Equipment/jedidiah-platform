@@ -163,24 +163,17 @@ const QuoteTable: React.FC = () => {
         },
       },
       {
-        accessorKey: 'jobCode',
-        cell: ({ row }) => (
-          <JobCodeDisplay
-            canOpenJob={canOpenJobs}
-            jobCode={row.original.jobCode}
-            jobId={row.original.jobId}
-            withHoverCard
-          />
-        ),
+        accessorKey: 'linkedJobs',
+        cell: ({ row }) => <QuoteLinkedJobs canOpenJobs={canOpenJobs} linkedJobs={row.original.linkedJobs} />,
         enableColumnFilter: false,
-        enableSorting: true,
+        enableSorting: false,
         header: 'Job',
       },
       {
         id: 'actions',
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
-            {canCreateJob && canCreateJobFromQuote(row.original.status, row.original.productId) ? (
+            {canCreateJob && canCreateJobFromQuote(row.original.status) ? (
               <CreateJobDialog
                 quote={row.original}
                 trigger={
@@ -262,3 +255,26 @@ function getQuoteListInputExtras(columnFilters: ColumnFiltersState) {
     },
   } satisfies Pick<QuoteListInput, 'filters'>;
 }
+
+const QuoteLinkedJobs: React.FC<{
+  canOpenJobs: boolean;
+  linkedJobs: QuoteSummary['linkedJobs'];
+}> = ({ canOpenJobs, linkedJobs }) => {
+  if (linkedJobs.length === 0) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {linkedJobs.map((job) => (
+        <JobCodeDisplay
+          key={job.jobId}
+          canOpenJob={canOpenJobs}
+          jobCode={job.jobCode}
+          jobId={job.jobId}
+          withHoverCard
+        />
+      ))}
+    </div>
+  );
+};

@@ -42,17 +42,22 @@ export const Quote = z.object({
   updatedAt: z.iso.datetime(),
 });
 
+export type QuoteLinkedJob = z.infer<typeof QuoteLinkedJob>;
+export const QuoteLinkedJob = z.object({
+  jobCode: JobCode,
+  jobId: UUID,
+});
+
 export type QuoteSummary = z.infer<typeof QuoteSummary>;
 export const QuoteSummary = Quote.extend({
   customerCompanyName: z.string().trim().min(1),
+  linkedJobs: z.array(QuoteLinkedJob),
   productCurrencyCode: ProductCurrencyCode.nullable(),
   productModelCode: z.string().trim().min(1).nullable(),
   productName: z.string().trim().min(1).nullable(),
   salesPersonEmail: z.email().nullable(),
   salesPersonName: z.string().trim().min(1).nullable(),
   total: Price.nullable(),
-  jobCode: JobCode.nullable(),
-  jobId: UUID.nullable(),
 });
 
 export type QuoteDetail = z.infer<typeof QuoteDetail>;
@@ -103,15 +108,7 @@ export const QuoteDecisionInput = z.object({
 });
 
 export type QuoteSortBy = z.infer<typeof QuoteSortBy>;
-export const QuoteSortBy = z.enum([
-  'code',
-  'createdAt',
-  'customerCompanyName',
-  'jobCode',
-  'productName',
-  'status',
-  'total',
-]);
+export const QuoteSortBy = z.enum(['code', 'createdAt', 'customerCompanyName', 'productName', 'status', 'total']);
 
 export type QuoteListFilters = z.infer<typeof QuoteListFilters>;
 export const QuoteListFilters = z

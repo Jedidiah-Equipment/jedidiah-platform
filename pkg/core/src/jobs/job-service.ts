@@ -4,7 +4,6 @@ import {
   type Db,
   getPaginationQueryOptions,
   getSortOrder,
-  getUniqueViolationConstraint,
   jobStageStations,
   jobStages,
   jobs,
@@ -30,7 +29,11 @@ import { and, asc, eq, or, type SQL, sql } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { editJobDate as editJobDateService } from './job-date-edit-service.js';
-import { JobLifecycleTransitionDeniedError, JobNotFoundError, JobQuoteConversionDeniedError } from './job-errors.js';
+import {
+  JobLifecycleTransitionDeniedError,
+  JobNotFoundError,
+  JobQuoteCreateFromQuoteDeniedError,
+} from './job-errors.js';
 import {
   cancelJobLifecycle,
   pauseJobLifecycle,
@@ -59,17 +62,9 @@ export async function createJob({
   input: JobCreateInput;
   actorUserId: AuthId;
 }): Promise<JobDetail> {
-  try {
-    return await db.transaction(async (tx) => {
-      return createJobInTransaction({ access, actorUserId, input, tx });
-    });
-  } catch (error) {
-    if (getUniqueViolationConstraint(error) === 'job_quote_id_unique') {
-      throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
-    }
-
-    throw error;
-  }
+  return db.transaction(async (tx) => {
+    return createJobInTransaction({ access, actorUserId, input, tx });
+  });
 }
 
 export async function createJobFromQuote({
@@ -83,35 +78,27 @@ export async function createJobFromQuote({
   input: JobCreateFromQuoteInput;
   actorUserId: AuthId;
 }): Promise<JobDetail> {
-  try {
-    return await db.transaction(async (tx) => {
-      const quote = await validateJobQuoteForCreate({
-        allowedStatuses: ['accepted', 'draft'],
-        access,
-        quoteId: input.quoteId,
-        tx,
-      });
-
-      return createJobInTransaction({
-        access,
-        actorUserId,
-        input: {
-          dueEnd: input.dueEnd,
-          dueStart: input.dueStart,
-          productId: quote.productId,
-          quoteId: quote.id,
-        },
-        skipQuoteValidation: true,
-        tx,
-      });
+  return db.transaction(async (tx) => {
+    const quote = await validateJobQuoteForCreate({
+      allowedStatuses: ['accepted', 'draft', 'sent'],
+      access,
+      quoteId: input.quoteId,
+      tx,
     });
-  } catch (error) {
-    if (getUniqueViolationConstraint(error) === 'job_quote_id_unique') {
-      throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
-    }
 
-    throw error;
-  }
+    return createJobInTransaction({
+      access,
+      actorUserId,
+      input: {
+        dueEnd: input.dueEnd,
+        dueStart: input.dueStart,
+        productId: quote.productId,
+        quoteId: quote.id,
+      },
+      skipQuoteValidation: true,
+      tx,
+    });
+  });
 }
 
 async function createJobInTransaction({
@@ -204,32 +191,21 @@ async function validateJobQuoteForCreate({
   tx: DatabaseTransaction;
 }): Promise<ConvertibleQuoteRow> {
   if (!hasPermission(access, 'quote:read')) {
-    throw new JobQuoteConversionDeniedError('Quote not found.');
+    throw new JobQuoteCreateFromQuoteDeniedError('Quote not found.');
   }
 
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
-    throw new JobQuoteConversionDeniedError('Quote not found.');
+    throw new JobQuoteCreateFromQuoteDeniedError('Quote not found.');
   }
 
   if (allowedStatuses && !allowedStatuses.includes(quote.status)) {
-    throw new JobQuoteConversionDeniedError('Only draft or accepted quotes can be converted into jobs.');
+    throw new JobQuoteCreateFromQuoteDeniedError('Only draft, sent, or accepted quotes can source jobs.');
   }
 
   if (!quote.productId) {
-    throw new JobQuoteConversionDeniedError('Quote must have a product before it can be converted into a job.');
-  }
-
-  const existingJob = await tx.query.jobs.findFirst({
-    columns: {
-      id: true,
-    },
-    where: eq(jobs.quoteId, quoteId),
-  });
-
-  if (existingJob) {
-    throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
+    throw new JobQuoteCreateFromQuoteDeniedError('Quote must have a product before it can source a job.');
   }
 
   return { ...quote, productId: quote.productId };

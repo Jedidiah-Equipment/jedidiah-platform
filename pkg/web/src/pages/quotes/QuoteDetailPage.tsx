@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import type { UUID } from '@pkg/schema';
+import type { QuoteSummary, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { BriefcaseBusinessIcon, EditIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
@@ -87,7 +87,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
     setConfirmation({
       body: [
         'This will mark the Quote as rejected.',
-        'After rejection, the Quote cannot be accepted, edited, or converted into a Job. It will stay visible for history.',
+        'After rejection, the Quote cannot be accepted, edited, or used to create a Job. It will stay visible for history.',
       ],
       confirmLabel: 'Reject quote',
       confirmVariant: 'destructive',
@@ -130,7 +130,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                 </Button>
               </>
             ) : null}
-            {canCreateJob && canCreateJobFromQuote(quote.status, quote.productId) && !quote.jobId ? (
+            {canCreateJob && canCreateJobFromQuote(quote.status) ? (
               <CreateJobDialog
                 quote={quote}
                 trigger={
@@ -164,9 +164,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
             />
             <QuoteFact
               label="Job"
-              value={
-                <JobCodeDisplay canOpenJob={canOpenJobs} jobCode={quote.jobCode} jobId={quote.jobId} withHoverCard />
-              }
+              value={<QuoteLinkedJobs canOpenJobs={canOpenJobs} linkedJobs={quote.linkedJobs} />}
             />
           </div>
           {quote.notes ? (
@@ -193,6 +191,29 @@ const QuoteFact: React.FC<{ label: string; value: React.ReactNode }> = ({ label,
     <div className="mt-1 wrap-break-word">{value}</div>
   </div>
 );
+
+const QuoteLinkedJobs: React.FC<{
+  canOpenJobs: boolean;
+  linkedJobs: QuoteSummary['linkedJobs'];
+}> = ({ canOpenJobs, linkedJobs }) => {
+  if (linkedJobs.length === 0) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {linkedJobs.map((job) => (
+        <JobCodeDisplay
+          key={job.jobId}
+          canOpenJob={canOpenJobs}
+          jobCode={job.jobCode}
+          jobId={job.jobId}
+          withHoverCard
+        />
+      ))}
+    </div>
+  );
+};
 
 const QuoteTransitionConfirmationDialog: React.FC<{
   confirmation: QuoteTransitionConfirmation | null;

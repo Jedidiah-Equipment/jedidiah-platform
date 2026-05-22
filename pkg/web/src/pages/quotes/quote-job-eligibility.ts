@@ -1,5 +1,5 @@
-import type { QuoteStatus, UUID } from '@pkg/schema';
+import type { QuoteStatus } from '@pkg/schema';
 
-export function canCreateJobFromQuote(status: QuoteStatus, productId: UUID | null): boolean {
-  return (status === 'draft' || status === 'accepted') && productId !== null;
+export function canCreateJobFromQuote(status: QuoteStatus): boolean {
+  return status === 'draft' || status === 'sent' || status === 'accepted';
 }

@@ -222,8 +222,8 @@ const seedQuoteScenarios = [
       email: null,
     },
     discount: 18_500,
-    notes: 'Accepted and converted to a production job.',
-    status: 'accepted-converted',
+    notes: 'Accepted and used to create a production job.',
+    status: 'accepted-with-job',
     validUntil: '2026-07-08',
   },
   {
@@ -277,7 +277,7 @@ type SeedQuoteScenario = {
   customer: SeedCustomer;
   discount: number;
   notes: string;
-  status: QuoteStatus | 'accepted-converted';
+  status: QuoteStatus | 'accepted-with-job';
   validUntil: string;
 };
 
@@ -737,7 +737,7 @@ async function createQuoteBackedSeedJob({
         customerId: customer.id,
       },
       discount: getSeedJobQuoteDiscount(scenarioIndex),
-      notes: 'Accepted seed quote converted into a production job.',
+      notes: 'Accepted seed quote used to create a production job.',
       productId: product.id,
       salesPersonId: salesUserId,
       validUntil: getSeedJobQuoteValidUntil(scenarioIndex),
@@ -870,7 +870,7 @@ async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly
 
     const accepted = await acceptQuote({ actorUserId, db, input: { id: sent.id } });
 
-    if (scenario.status === 'accepted-converted') {
+    if (scenario.status === 'accepted-with-job') {
       await createJobFromQuote({
         access: supervisorAccess,
         actorUserId: supervisorUserId,

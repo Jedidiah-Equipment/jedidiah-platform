@@ -5,7 +5,7 @@ import {
   isJobCoreError,
   JobLifecycleTransitionDeniedError,
   JobNotFoundError,
-  JobQuoteConversionDeniedError,
+  JobQuoteCreateFromQuoteDeniedError,
   JobStageTransitionDeniedError,
 } from './jobs/job-errors.js';
 import {
@@ -57,7 +57,7 @@ describe('core error codes and guards', () => {
     expect(new JobNotFoundError('job-id').code).toBe('job.not_found');
     expect(new JobStageTransitionDeniedError('diagnostic').code).toBe('job.stage_transition_denied');
     expect(new JobLifecycleTransitionDeniedError('diagnostic').code).toBe('job.lifecycle_transition_denied');
-    expect(new JobQuoteConversionDeniedError('diagnostic').code).toBe('job.quote_conversion_denied');
+    expect(new JobQuoteCreateFromQuoteDeniedError('diagnostic').code).toBe('job.quote_create_from_quote_denied');
     expect(isJobCoreError(new JobStageTransitionDeniedError('diagnostic'))).toBe(true);
   });
 });

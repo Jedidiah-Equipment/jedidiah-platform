@@ -19,4 +19,4 @@ A Quote is a commitment shown to a customer: its terms and price must not silent
 - The Quote carries a snapshot price column that deliberately duplicates Product data; this is intended, not drift.
 - Correcting a sent Quote is a new-Quote operation, not an edit.
 - `quote.product_id`, `quoted_price`, and the other latch fields are nullable in `draft` and enforced non-null on send.
-- Job conversion is permitted from `draft` and `accepted` Quotes (see CONTEXT.md's `Quote Conversion`), but is hidden on `sent` and `rejected`.
+- Creating Jobs from Quotes is permitted from `draft`, `sent`, and `accepted` Quotes (see CONTEXT.md's `Create Job from Quote`), but is hidden on `rejected`.

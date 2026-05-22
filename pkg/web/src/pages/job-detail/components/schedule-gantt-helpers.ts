@@ -218,16 +218,10 @@ export function getScheduleGanttDueDateEdits({
 
   const startMovesAfterPreviousEnd =
     differenceInCalendarDays(parseDateOnly(nextDueStart), parseDateOnly(previousDueEnd)) > 0;
-  const endMovesBeforePreviousStart =
-    differenceInCalendarDays(parseDateOnly(nextDueEnd), parseDateOnly(previousDueStart)) < 0;
 
   if (startMovesAfterPreviousEnd) {
     const [startEdit, endEdit] = edits;
     return endEdit && startEdit ? [endEdit, startEdit] : edits;
-  }
-  if (endMovesBeforePreviousStart) {
-    const [startEdit, endEdit] = edits;
-    return startEdit && endEdit ? [startEdit, endEdit] : edits;
   }
 
   return edits;

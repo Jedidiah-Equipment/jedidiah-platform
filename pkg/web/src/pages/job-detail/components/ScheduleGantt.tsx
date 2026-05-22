@@ -323,7 +323,7 @@ const ScheduleGanttBar: React.FC<{
   const left = getGanttOffset(start, gantt);
   const width = getGanttWidth(start, end, gantt);
   const commitDrag = React.useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
+    (event: React.PointerEvent<Element>) => {
       const dragStart = dragStartRef.current;
       dragStartRef.current = null;
       if (!dragStart || !onEdit) return;
@@ -339,40 +339,52 @@ const ScheduleGanttBar: React.FC<{
     event.currentTarget.setPointerCapture(event.pointerId);
     dragStartRef.current = { action, pointerX: event.clientX };
   }, []);
+  const cancelDrag = React.useCallback(() => {
+    dragStartRef.current = null;
+  }, []);
+
+  if (!editable) {
+    return (
+      <div
+        aria-label={label}
+        className={cn('absolute top-1/2 h-4 -translate-y-1/2 rounded-sm', className)}
+        role="img"
+        style={{ left: Math.round(left), width: Math.max(Math.round(width), 10) }}
+        title={label}
+      />
+    );
+  }
 
   return (
-    <div
-      aria-label={label}
-      className={cn('absolute top-1/2 h-4 -translate-y-1/2 rounded-sm', editable && 'cursor-grab', className)}
-      onPointerDown={editable ? (event) => startDrag(event, 'move') : undefined}
-      onPointerUp={editable ? commitDrag : undefined}
-      role="img"
+    <button
+      aria-label={`${label}; drag to move, drag either edge to resize`}
+      className={cn('absolute top-1/2 h-4 -translate-y-1/2 cursor-grab appearance-none rounded-sm p-0', className)}
+      onPointerCancel={cancelDrag}
+      onPointerDown={(event) => startDrag(event, 'move')}
+      onPointerUp={commitDrag}
       style={{ left: Math.round(left), width: Math.max(Math.round(width), 10) }}
       title={label}
+      type="button"
     >
-      {editable ? (
-        <>
-          <span
-            aria-hidden="true"
-            className="absolute top-0 left-0 h-full w-2 cursor-ew-resize rounded-l-sm"
-            onPointerDown={(event) => {
-              event.stopPropagation();
-              startDrag(event, 'resize-start');
-            }}
-            onPointerUp={commitDrag}
-          />
-          <span
-            aria-hidden="true"
-            className="absolute top-0 right-0 h-full w-2 cursor-ew-resize rounded-r-sm"
-            onPointerDown={(event) => {
-              event.stopPropagation();
-              startDrag(event, 'resize-end');
-            }}
-            onPointerUp={commitDrag}
-          />
-        </>
-      ) : null}
-    </div>
+      <span
+        className="absolute top-0 left-0 h-full w-2 cursor-ew-resize rounded-l-sm"
+        onPointerCancel={cancelDrag}
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          startDrag(event, 'resize-start');
+        }}
+        onPointerUp={commitDrag}
+      />
+      <span
+        className="absolute top-0 right-0 h-full w-2 cursor-ew-resize rounded-r-sm"
+        onPointerCancel={cancelDrag}
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          startDrag(event, 'resize-end');
+        }}
+        onPointerUp={commitDrag}
+      />
+    </button>
   );
 };
 

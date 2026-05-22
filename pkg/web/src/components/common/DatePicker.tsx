@@ -5,6 +5,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button.js';
 import { Calendar } from '@/components/ui/calendar.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
+import { formatDate } from '@/utils/date.js';
 
 const dateOnlyFormat = 'yyyy-MM-dd';
 
@@ -92,5 +93,5 @@ export function formatDatePickerValue(date: Date): string {
 }
 
 export function formatDatePickerDisplayValue(date: Date): string {
-  return format(date, 'dd/MM/yyyy');
+  return formatDate(date, 'short');
 }

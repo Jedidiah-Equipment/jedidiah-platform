@@ -25,7 +25,7 @@ describe('formatDatePickerValue', () => {
 });
 
 describe('formatDatePickerDisplayValue', () => {
-  it('formats the selected date in South African day-first format', () => {
-    expect(formatDatePickerDisplayValue(new Date(2026, 4, 22))).toBe('22/05/2026');
+  it('formats the selected date with the shared short date format', () => {
+    expect(formatDatePickerDisplayValue(new Date(2026, 4, 22))).toBe('May 22, 2026');
   });
 });

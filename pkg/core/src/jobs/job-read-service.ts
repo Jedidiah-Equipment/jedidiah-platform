@@ -10,7 +10,14 @@ import {
   quotes,
   stations,
 } from '@pkg/db';
-import { canViewStage, getStageTransitionAvailability } from '@pkg/domain';
+import {
+  canViewStage,
+  getStageTransitionAvailability,
+  rollupJobSchedule,
+  rollupStageSchedule,
+  type ScheduleRollupBooking,
+  type ScheduleRollupWindow,
+} from '@pkg/domain';
 import {
   JobCode,
   type JobDetail,
@@ -20,6 +27,7 @@ import {
   JobStageSummary,
   type JobSummary,
   QuoteCode,
+  type ScheduleWindow,
   type SortDirection,
   type UserAccessSummary,
   type UUID,
@@ -29,6 +37,7 @@ import { and, asc, desc, eq, inArray, ne, type SQL, type SQLWrapper, sql } from 
 import { JobNotFoundError } from './job-errors.js';
 import {
   deriveJobLifecycleStatus,
+  deriveWorkState,
   type JobEventWithActorRow,
   type JobRow,
   type JobStageRow,
@@ -389,7 +398,7 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     dueDate: sql`${jobs.dueDate}`,
     dueEnd: sql`${jobs.dueEnd}`,
     id: sql`${jobs.id}`,
-    // Derived lifecycle sorting is a UI contract: not-started, active, complete, paused, cancelled.
+    // Lifecycle sorting intentionally stays on stored Job actual fields until list filtering moves to derived windows.
     lifecycleStatus: sql`case when ${jobs.isCancelled} then 5 when ${jobs.isPaused} then 4 when ${jobs.actualEnd} is not null then 3 when ${jobs.actualStart} is not null then 2 else 1 end`,
   } as const satisfies Record<JobSortBy, SQL>;
 
@@ -407,20 +416,51 @@ export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection)
 }
 
 export function mapJobSummary(row: JobWithProductRow): JobSummary {
+  const mappedJob = mapJob(row);
+  const hasRollupBookings = row.stages.some(hasScheduleRollupBookings);
+  const stageSchedules = row.stages.map(mapStageSchedule);
+  const jobSchedule = rollupJobSchedule(stageSchedules.map(({ bookings }) => ({ bookings })));
+
   return {
-    ...mapJob(row),
+    ...mappedJob,
+    actualWindow: mapScheduleWindow(jobSchedule.actualWindow),
     customerCompanyName: row.quote?.customer.companyName ?? null,
+    lifecycleStatus: hasRollupBookings
+      ? deriveJobLifecycleStatus({
+          actualEnd: jobSchedule.actualWindow.end,
+          actualStart: jobSchedule.actualWindow.start,
+          isCancelled: row.isCancelled,
+          isPaused: row.isPaused,
+        })
+      : mappedJob.lifecycleStatus,
+    plannedWindow: mapScheduleWindow(jobSchedule.plannedWindow),
     productModelCode: row.product.modelCode,
     productName: row.product.name,
     quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,
-    stages: row.stages.map(mapJobStageSummary),
+    stages: row.stages.map((stage, index) =>
+      mapJobStageSummary(stage, stageSchedules[index] ?? mapStageSchedule(stage)),
+    ),
   };
 }
 
-function mapJobStageSummary(row: JobStageRow & { stations?: JobStageStationWithStationRow[] }): JobStageSummary {
+function mapJobStageSummary(
+  row: JobStageRow & { stations?: JobStageStationWithStationRow[] },
+  stageSchedule = mapStageSchedule(row),
+): JobStageSummary {
+  const mappedStage = mapJobStage(row);
+  const hasRollupBookings = hasScheduleRollupBookings(row);
+
   return JobStageSummary.parse({
-    ...mapJobStage(row),
+    ...mappedStage,
+    actualWindow: mapScheduleWindow(stageSchedule.actualWindow),
     department: row.stage,
+    plannedWindow: mapScheduleWindow(stageSchedule.plannedWindow),
+    state: hasRollupBookings
+      ? deriveWorkState({
+          actualEnd: stageSchedule.actualWindow.end,
+          actualStart: stageSchedule.actualWindow.start,
+        })
+      : mappedStage.state,
     stations: row.stations?.map(mapStationBooking) ?? [],
   });
 }
@@ -429,28 +469,46 @@ function mapStageAccess({
   access,
   job,
   previousStage,
+  previousStageSchedule,
   stage,
+  stageSchedule,
 }: {
   access: UserAccessSummary;
   job: JobRow;
-  previousStage: JobStageRow | null;
-  stage: JobStageRow;
+  previousStage: (JobStageRow & { stations?: JobStageStationWithStationRow[] }) | null;
+  previousStageSchedule: StageScheduleProjection | null;
+  stage: JobStageRow & { stations?: JobStageStationWithStationRow[] };
+  stageSchedule: StageScheduleProjection;
 }): JobStageRollup {
+  const previousStageHasRollupBookings = previousStage ? hasScheduleRollupBookings(previousStage) : false;
+  const stageHasRollupBookings = hasScheduleRollupBookings(stage);
+
   if (canViewStage(access, stage)) {
     return {
-      ...mapJobStageSummary(stage),
+      ...mapJobStageSummary(stage, stageSchedule),
       access: 'visible',
       transitionAvailability: getStageTransitionAvailability({
         access,
         job,
-        previousStage,
-        stage,
+        previousStage: previousStage
+          ? {
+              ...previousStage,
+              actualEnd:
+                previousStage.actualEnd ??
+                (previousStageHasRollupBookings ? (previousStageSchedule?.actualWindow.end ?? null) : null),
+            }
+          : null,
+        stage: {
+          ...stage,
+          actualEnd: stage.actualEnd ?? (stageHasRollupBookings ? stageSchedule.actualWindow.end : null),
+          actualStart: stage.actualStart ?? (stageHasRollupBookings ? stageSchedule.actualWindow.start : null),
+        },
       }),
     };
   }
 
   return {
-    ...mapJobStageSummary(stage),
+    ...mapJobStageSummary(stage, stageSchedule),
     access: 'summary',
   };
 }
@@ -462,16 +520,63 @@ function mapJobDetailStages({
 }: {
   access: UserAccessSummary;
   job: JobRow;
-  stageRows: JobStageRow[];
+  stageRows: (JobStageRow & { stations?: JobStageStationWithStationRow[] })[];
 }): JobStageRollup[] {
+  const stageSchedules = stageRows.map(mapStageSchedule);
+
   return stageRows.map((stageRow, index) =>
     mapStageAccess({
       access,
       job,
       previousStage: index === 0 ? null : (stageRows[index - 1] ?? null),
+      previousStageSchedule: index === 0 ? null : (stageSchedules[index - 1] ?? null),
       stage: stageRow,
+      stageSchedule: stageSchedules[index] ?? mapStageSchedule(stageRow),
     }),
   );
+}
+
+type StageScheduleProjection = ReturnType<typeof rollupStageSchedule> & {
+  bookings: ScheduleRollupBooking[];
+};
+
+function mapStageSchedule(row: {
+  stations?: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[];
+}): StageScheduleProjection {
+  const bookings = mapScheduleRollupBookings(row);
+
+  return {
+    ...rollupStageSchedule(bookings),
+    bookings,
+  };
+}
+
+function mapScheduleRollupBookings(row: {
+  stations?: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[];
+}): ScheduleRollupBooking[] {
+  return (
+    row.stations?.map((station) => ({
+      actualEnd: station.actualEnd,
+      actualStart: station.actualStart,
+      plannedEnd: parseDateOnlyAsUtc(station.dueEnd),
+      plannedStart: parseDateOnlyAsUtc(station.dueStart),
+    })) ?? []
+  );
+}
+
+function hasScheduleRollupBookings(row: { stations?: readonly unknown[] }): boolean {
+  return (row.stations?.length ?? 0) > 0;
+}
+
+function mapScheduleWindow(window: ScheduleRollupWindow): ScheduleWindow {
+  return {
+    end: window.end?.toISOString() ?? null,
+    start: window.start?.toISOString() ?? null,
+  };
+}
+
+function parseDateOnlyAsUtc(value: string | null): Date | null {
+  return value ? new Date(`${value}T00:00:00.000Z`) : null;
 }
 
 function mapJobWorkflowEvents({ eventRows }: { eventRows: JobEventWithActorRow[] }) {

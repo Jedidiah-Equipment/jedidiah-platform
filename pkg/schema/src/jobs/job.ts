@@ -54,6 +54,17 @@ const DateFields = z.object({
   dueStartSetManually: z.boolean(),
 });
 
+export type ScheduleWindow = z.infer<typeof ScheduleWindow>;
+export const ScheduleWindow = z.object({
+  end: z.iso.datetime().nullable(),
+  start: z.iso.datetime().nullable(),
+});
+
+const DerivedScheduleFields = z.object({
+  actualWindow: ScheduleWindow,
+  plannedWindow: ScheduleWindow,
+});
+
 const JobDueDateFields = z.object({
   dueDate: z.iso.date().nullable(),
 });
@@ -103,22 +114,27 @@ export const JobStage = z.discriminatedUnion('stage', [
 
 const ProcurementJobStageSummary = ProcurementJobStage.extend({
   department: z.literal('procurement'),
+  ...DerivedScheduleFields.shape,
   stations: z.array(StationBooking),
 });
 const SupplyJobStageSummary = SupplyJobStage.extend({
   department: z.literal('supply'),
+  ...DerivedScheduleFields.shape,
   stations: z.array(StationBooking),
 });
 const FabricationJobStageSummary = FabricationJobStage.extend({
   department: z.literal('fabrication'),
+  ...DerivedScheduleFields.shape,
   stations: z.array(StationBooking),
 });
 const PaintJobStageSummary = PaintJobStage.extend({
   department: z.literal('paint'),
+  ...DerivedScheduleFields.shape,
   stations: z.array(StationBooking),
 });
 const AssemblyJobStageSummary = AssemblyJobStage.extend({
   department: z.literal('assembly'),
+  ...DerivedScheduleFields.shape,
   stations: z.array(StationBooking),
 });
 
@@ -342,6 +358,7 @@ export const Job = DateFields.extend({
 export type JobSummary = z.infer<typeof JobSummary>;
 export const JobSummary = Job.extend({
   customerCompanyName: z.string().trim().min(1).nullable(),
+  ...DerivedScheduleFields.shape,
   productModelCode: z.string().trim().min(1),
   productName: z.string().trim().min(1),
   quoteCode: QuoteCode.nullable(),

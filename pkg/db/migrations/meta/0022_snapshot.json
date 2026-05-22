@@ -1142,7 +1142,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "job_status_check": {
+          "name": "job_status_check",
+          "value": "\"job\".\"status\" in ('pending', 'active', 'paused', 'complete', 'cancelled')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.station": {

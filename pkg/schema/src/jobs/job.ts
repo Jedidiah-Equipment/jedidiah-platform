@@ -152,9 +152,12 @@ const StageCompletedJobEventPayload = z.object({
   completedAt: z.iso.datetime(),
 });
 
-const JobMilestoneEventPayload = z.object({
-  actualEnd: z.iso.datetime().optional(),
+const JobStartedEventPayload = z.object({
   actualStart: z.iso.datetime().optional(),
+});
+
+const JobCompletedEventPayload = z.object({
+  actualEnd: z.iso.datetime().optional(),
 });
 
 const JobStatusChangedEventPayload = z.object({
@@ -212,14 +215,14 @@ const StageCompletedJobEvent = JobEventBase.extend({
 
 const JobStartedEvent = JobEventBase.extend({
   eventType: z.literal('job.started'),
-  payload: JobMilestoneEventPayload.extend({
+  payload: JobStartedEventPayload.extend({
     actualStart: z.iso.datetime(),
   }),
 });
 
 const JobCompletedEvent = JobEventBase.extend({
   eventType: z.literal('job.completed'),
-  payload: JobMilestoneEventPayload.extend({
+  payload: JobCompletedEventPayload.extend({
     actualEnd: z.iso.datetime(),
   }),
 });
@@ -319,6 +322,7 @@ export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
     jobId: UUID.optional(),
+    status: JobStatus.optional(),
   })
   .default({});
 

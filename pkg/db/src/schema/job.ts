@@ -2,6 +2,7 @@ import type { Department, JobStageName, JobStatus } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -34,7 +35,11 @@ export const jobs = pgTable(
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [uniqueIndex('job_code_unique').on(table.code), index('job_quote_id_idx').on(table.quoteId)],
+  (table) => [
+    check('job_status_check', sql`${table.status} in ('pending', 'active', 'paused', 'complete', 'cancelled')`),
+    uniqueIndex('job_code_unique').on(table.code),
+    index('job_quote_id_idx').on(table.quoteId),
+  ],
 );
 
 export const jobStages = pgTable(

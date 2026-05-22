@@ -1,4 +1,4 @@
-import { auditEvents, type Db, jobEvents, jobStageStations, jobs, products, stations } from '@pkg/db';
+import { auditEvents, type DatabaseClient, type Db, jobEvents, jobStageStations, products, stations } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { AppRole, Department, JobDetail, JobStageName } from '@pkg/schema';
 import pino from 'pino';
@@ -12,8 +12,17 @@ import { createAppRouterCaller } from '@/trpc/router.js';
 const test = createTester(async ({ databaseClient, db }) => {
   await createActorUser(db, 'job-supervisor');
   const product = await createProduct(db);
+  const setJobStatus: SetJobStatus = (jobId, status) => updateJobStatus(databaseClient.queryClient, jobId, status);
 
-  return { databaseClient, db, product };
+  return {
+    createJobWithStationBookings: (
+      options: Omit<CreateJobWithStationBookingsOptions, 'db' | 'setJobStatus'>,
+    ): Promise<JobDetail> => createJobWithStationBookings({ ...options, db, setJobStatus }),
+    databaseClient,
+    db,
+    product,
+    setJobStatus,
+  };
 });
 
 describe('jobs.create', () => {
@@ -85,6 +94,25 @@ describe('jobs.create', () => {
 });
 
 describe('jobs.list', () => {
+  test('filters by stored job status', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const activeJob = await caller.jobs.create({ productId: context.product.id });
+    const pausedJob = await caller.jobs.create({ productId: context.product.id });
+    const pendingJob = await caller.jobs.create({ productId: context.product.id });
+    await context.setJobStatus(activeJob.id, 'active');
+    await context.setJobStatus(pausedJob.id, 'paused');
+
+    const activeJobs = await caller.jobs.list({
+      filters: { status: 'active' },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'code',
+      sortDirection: 'asc',
+    });
+
+    expect(filterJobIds(activeJobs.items, [activeJob.id, pausedJob.id, pendingJob.id])).toEqual([activeJob.id]);
+  });
+
   test('sorts by job due date', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const laterDueDateJob = await caller.jobs.create({ productId: context.product.id });
@@ -135,9 +163,8 @@ describe('jobs.get', () => {
     context,
   }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
+    const job = await context.createJobWithStationBookings({
       caller: supervisorCaller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -158,9 +185,8 @@ describe('jobs.get', () => {
 
   test('derives detail windows and transition availability from station bookings', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
+    const job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['procurement', 'supply'],
     });
@@ -339,9 +365,8 @@ describe('jobs.listSharedStationBookings', () => {
 describe('jobs station booking transitions', () => {
   test('first start emits derived stage and job start milestones', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
+    const job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -369,9 +394,8 @@ describe('jobs station booking transitions', () => {
 
   test('last stop emits derived stage and job completion milestones', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
+    let job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['procurement', 'supply', 'fabrication', 'paint', 'assembly'],
     });
@@ -399,9 +423,8 @@ describe('jobs station booking transitions', () => {
 
   test('refuses restart after a booking has ended and emits no events', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
+    let job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -421,13 +444,12 @@ describe('jobs station booking transitions', () => {
 
   test('refuses station booking writes unless the job status is active and emits no events', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
+    let job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
-    await updateAllJobStatuses(context.db, 'paused');
+    await context.setJobStatus(job.id, 'paused');
     job = await caller.jobs.get({ id: job.id });
     const booking = getStageBooking(job, 'fabrication');
 
@@ -440,13 +462,12 @@ describe('jobs station booking transitions', () => {
 
   test('refuses station booking writes while a job is cancelled and emits no events', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
+    let job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
-    await updateAllJobStatuses(context.db, 'cancelled');
+    await context.setJobStatus(job.id, 'cancelled');
     job = await caller.jobs.get({ id: job.id });
     const booking = getStageBooking(job, 'fabrication');
 
@@ -459,9 +480,8 @@ describe('jobs station booking transitions', () => {
 
   test('scopes department manager booking writes to the booking station department', async ({ context }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
+    const job = await context.createJobWithStationBookings({
       caller: supervisorCaller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -538,9 +558,8 @@ describe('jobs.editDate', () => {
 
   test('sets and clears the Job Due Date without shifting schedule windows', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
+    const job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -641,9 +660,8 @@ describe('jobs.editDate', () => {
 
   test('rejects due edits that would invert the edited row window', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
+    const job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -663,9 +681,8 @@ describe('jobs.editDate', () => {
 
   test('rejects stage-level direct date edits', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
+    const job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -682,9 +699,8 @@ describe('jobs.editDate', () => {
 
   test('does not emit workflow or audit events for true no-op Station Booking edits', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
+    const job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -709,9 +725,8 @@ describe('jobs.editDate', () => {
 
   test('clears actual dates back to auto and cascades parents back to null', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
+    let job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -738,9 +753,8 @@ describe('jobs.editDate', () => {
 
   test('actual override cascades completion and emits one override event', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
+    let job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['procurement', 'supply', 'fabrication', 'paint', 'assembly'],
     });
@@ -778,9 +792,8 @@ describe('jobs.editDate', () => {
 
   test('rejects setting a booking actual end before it has started', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
+    const job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['fabrication'],
     });
@@ -800,9 +813,8 @@ describe('jobs.editDate', () => {
 
   test('clearing the last booking actual end uncompletes auto parents', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
+    let job = await context.createJobWithStationBookings({
       caller,
-      db: context.db,
       productId: context.product.id,
       stages: ['procurement', 'supply', 'fabrication', 'paint', 'assembly'],
     });
@@ -860,17 +872,24 @@ function createScopedCaller(db: Db, role: AppRole, departments: Department[]): A
   });
 }
 
+type JobStatusForTest = 'active' | 'cancelled' | 'paused';
+type SetJobStatus = (jobId: string, status: JobStatusForTest) => Promise<void>;
+
+type CreateJobWithStationBookingsOptions = {
+  caller: AppRouterCaller;
+  db: Db;
+  productId: string;
+  setJobStatus: SetJobStatus;
+  stages: readonly JobStageName[];
+};
+
 async function createJobWithStationBookings({
   caller,
   db,
   productId,
+  setJobStatus,
   stages,
-}: {
-  caller: AppRouterCaller;
-  db: Db;
-  productId: string;
-  stages: readonly JobStageName[];
-}): Promise<JobDetail> {
+}: CreateJobWithStationBookingsOptions): Promise<JobDetail> {
   const stationRows = await db
     .insert(stations)
     .values(
@@ -892,13 +911,21 @@ async function createJobWithStationBookings({
     }),
   });
 
-  await updateAllJobStatuses(db, 'active');
+  await setJobStatus(job.id, 'active');
 
   return caller.jobs.get({ id: job.id });
 }
 
-async function updateAllJobStatuses(db: Db, status: 'active' | 'cancelled' | 'paused'): Promise<void> {
-  await db.update(jobs).set({ status });
+async function updateJobStatus(
+  queryClient: DatabaseClient['queryClient'],
+  jobId: string,
+  status: JobStatusForTest,
+): Promise<void> {
+  await queryClient`
+    update job
+    set status = ${status}
+    where id = ${jobId}
+  `;
 }
 
 function getStage(job: JobDetail, stageName: JobStageName) {

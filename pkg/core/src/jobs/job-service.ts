@@ -239,6 +239,10 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     conditions.push(eq(jobs.id, input.filters.jobId));
   }
 
+  if (input.filters.status) {
+    conditions.push(eq(jobs.status, input.filters.status));
+  }
+
   if (input.search) {
     const codeSearch = parseJobCodeSearch(input.search);
     const searchWhere = or(

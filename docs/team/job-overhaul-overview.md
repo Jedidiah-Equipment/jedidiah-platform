@@ -11,14 +11,14 @@ We're giving every Job a clearer shape so the floor and the office see the same 
 1. A **Job** is broken into **Stages** (one per Department).
 2. Each Stage is broken into **Stations** (a physical resource that does the work).
 3. Every level has **planned dates** and **actual dates**.
-4. **Pause** and **Cancel** are independent switches on the Job, not part of progress.
-5. **Status is no longer typed in** — it's read off the dates.
+4. **Job status** is stored directly as Pending, Active, Paused, Complete, or Cancelled.
+5. **Progress is still read from dates** on the Job, Stages, and Stations.
 
 ---
 
 ## The new Job shape
 
-```
+```text
 JOB
  ├── Stage: Procurement         (due 1–5 May,   actual …)
  │    ├── Station: PO Desk      (due 1–3 May,   actual 1 May – 2 May)
@@ -65,7 +65,7 @@ When a supervisor creates a Job:
 2. The system uses the Product's per-Department durations to fill in every Stage and every Station's due dates automatically.
 3. The supervisor can tweak any field before saving.
 
-```
+```text
 Supervisor enters:  Job due-end = 30 May
                     │
                     ▼  (system walks backwards through durations)
@@ -83,7 +83,7 @@ Assembly:           22–30 May   (8 days)
 - When the **last** Station in a Stage stops, the Stage's actual-end is filled in automatically.
 - Same rule rolls up to the Job.
 
-```
+```text
 Manager clicks Start on PO Desk (a Procurement station)
       │
       ├──► PO Desk actual-start = now
@@ -109,13 +109,13 @@ A supervisor can change *any* date at *any* time. Every change is logged.
 
 Job status is stored directly on the Job and set manually:
 
-```
+```text
 pending → active → paused → complete → cancelled
 ```
 
 Stage and Station work state is still derived from actual dates:
 
-```
+```text
 no actual-start          →  Pending
 actual-start, no end     →  In progress
 actual-end set           →  Complete

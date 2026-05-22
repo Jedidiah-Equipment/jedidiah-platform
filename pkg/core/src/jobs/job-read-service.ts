@@ -220,7 +220,7 @@ export async function listSharedStationBookings({
         inArray(jobStageStations.stationId, sharedStationIds),
         ne(jobStages.jobId, jobId),
         eq(jobs.isCancelled, false),
-        sql`${jobs.actualEnd} is null`,
+        getJobHasOpenStationBookingCondition(),
         getStationBookingOverlapsWindowCondition(scheduleWindow),
       ),
     )
@@ -229,6 +229,16 @@ export async function listSharedStationBookings({
   return JobSharedStationBookingsResult.parse({
     jobs: mapSharedStationBookingJobs(rows.map(mapSharedStationBookingRow)),
   });
+}
+
+function getJobHasOpenStationBookingCondition(): SQL {
+  return sql`exists (
+    select 1
+    from job_stage open_js
+    inner join job_stage_station open_jss on open_jss.job_stage_id = open_js.id
+    where open_js.job_id = ${jobs.id}
+      and open_jss.actual_end is null
+  )`;
 }
 
 function getStationContentionScheduleWindow(

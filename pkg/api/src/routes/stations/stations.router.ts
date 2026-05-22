@@ -3,17 +3,10 @@ import {
   isStationCoreError,
   listStations,
   type StationCoreError,
-  StationHardDeleteUnsupportedError,
   setStationActive,
   updateStation,
 } from '@pkg/core';
-import {
-  StationCreateInput,
-  StationDeleteInput,
-  StationListInput,
-  StationSetActiveInput,
-  StationUpdateInput,
-} from '@pkg/schema';
+import { StationCreateInput, StationListInput, StationSetActiveInput, StationUpdateInput } from '@pkg/schema';
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
@@ -22,30 +15,22 @@ export const stationsRouter = router({
     .input(StationListInput)
     .query(({ ctx, input }) => listStations({ db: ctx.db, input })),
 
-  create: authorizedProcedure('job:update')
+  create: authorizedProcedure('station:update')
     .input(StationCreateInput)
     .mutation(({ ctx, input }) =>
       mapStationErrors(() => createStation({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  update: authorizedProcedure('job:update')
+  update: authorizedProcedure('station:update')
     .input(StationUpdateInput)
     .mutation(({ ctx, input }) =>
       mapStationErrors(() => updateStation({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
 
-  setActive: authorizedProcedure('job:update')
+  setActive: authorizedProcedure('station:update')
     .input(StationSetActiveInput)
     .mutation(({ ctx, input }) =>
       mapStationErrors(() => setStationActive({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
-    ),
-
-  delete: authorizedProcedure('job:update')
-    .input(StationDeleteInput)
-    .mutation(({ input }) =>
-      mapStationErrors(async () => {
-        throw new StationHardDeleteUnsupportedError(input.id);
-      }),
     ),
 });
 
@@ -60,12 +45,6 @@ function mapStationCoreError(error: StationCoreError): CoreErrorMapping<StationC
         appCode: error.code,
         code: 'CONFLICT',
         message: 'A station with this name already exists in that Department.',
-      };
-    case 'station.hard_delete_unsupported':
-      return {
-        appCode: error.code,
-        code: 'METHOD_NOT_SUPPORTED',
-        message: 'Stations cannot be hard deleted. Deactivate the station instead.',
       };
     case 'station.not_found':
       return {

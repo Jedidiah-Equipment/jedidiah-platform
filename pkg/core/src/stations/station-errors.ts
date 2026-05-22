@@ -20,23 +20,8 @@ export class StationNotFoundError extends Error {
   }
 }
 
-export class StationHardDeleteUnsupportedError extends Error {
-  readonly code = 'station.hard_delete_unsupported';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Station hard delete is not supported: ${id}`);
-    this.name = 'StationHardDeleteUnsupportedError';
-    this.metadata = { id };
-  }
-}
-
-export type StationCoreError = DuplicateStationNameError | StationHardDeleteUnsupportedError | StationNotFoundError;
+export type StationCoreError = DuplicateStationNameError | StationNotFoundError;
 
 export function isStationCoreError(error: unknown): error is StationCoreError {
-  return (
-    error instanceof DuplicateStationNameError ||
-    error instanceof StationHardDeleteUnsupportedError ||
-    error instanceof StationNotFoundError
-  );
+  return error instanceof DuplicateStationNameError || error instanceof StationNotFoundError;
 }

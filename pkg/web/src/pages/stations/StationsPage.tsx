@@ -24,7 +24,9 @@ export const StationsPage: React.FC = () => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
-  const canMutateStations = useCan('job:update').can;
+
+  const canMutateStations = useCan('station:update').can;
+
   const stationsQuery = useQuery(
     trpc.stations.list.queryOptions(
       {},

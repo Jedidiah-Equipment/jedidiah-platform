@@ -14,8 +14,8 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('stations.create', () => {
-  test('allows job supervisors to create stations', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+  test('allows admins to create stations', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
     const station = await createStation(caller, 'Weld Bay 1', 'fabrication');
 
     expect(station).toMatchObject({
@@ -28,8 +28,8 @@ describe('stations.create', () => {
     expectIsoDatetime(station.updatedAt);
   });
 
-  test('rejects users without job update permission', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-department-manager'));
+  test('rejects job supervisors without station update permission', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
 
     await expect(
       caller.stations.create({
@@ -43,7 +43,7 @@ describe('stations.create', () => {
   });
 
   test('returns a clean conflict for duplicate names inside a department', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
 
     await createStation(caller, 'Weld Bay 1', 'fabrication');
 
@@ -60,10 +60,10 @@ describe('stations.create', () => {
 
 describe('stations.list', () => {
   test('allows product editors to read stations for Product defaults', async ({ context }) => {
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const productEditorCaller = context.createCaller(mockSession('product-editor'));
 
-    await createStation(supervisorCaller, 'Weld Bay 1', 'fabrication');
+    await createStation(adminCaller, 'Weld Bay 1', 'fabrication');
 
     const result = await productEditorCaller.stations.list({ department: 'fabrication', isActive: true });
 
@@ -71,7 +71,7 @@ describe('stations.list', () => {
   });
 
   test('lists and filters stations by department and active state', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     await createStation(caller, 'Assembly Bench 1', 'assembly', 30);
     const active = await createStation(caller, 'Weld Bay 1', 'fabrication', 20);
     const inactive = await createStation(caller, 'Weld Bay 2', 'fabrication', 10);
@@ -95,7 +95,7 @@ describe('stations.list', () => {
 
 describe('stations.update', () => {
   test('renames, reorders, deactivates, and reactivates stations', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const station = await createStation(caller, 'Weld Bay 1', 'fabrication');
 
     const updated = await caller.stations.update({
@@ -112,7 +112,7 @@ describe('stations.update', () => {
   });
 
   test('records audit events for catalog changes', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const station = await createStation(caller, 'Weld Bay 1', 'fabrication');
     await caller.stations.update({ id: station.id, displayOrder: 5, name: 'Weld Cell 1' });
     await caller.stations.setActive({ id: station.id, isActive: false });
@@ -155,23 +155,28 @@ describe('stations.update', () => {
       },
     ]);
   });
-});
 
-describe('stations.delete', () => {
-  test('rejects hard delete', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    const station = await createStation(caller, 'Weld Bay 1', 'fabrication');
+  test('rejects job supervisors without station update permission', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const station = await createStation(adminCaller, 'Weld Bay 1', 'fabrication');
 
-    await expect(caller.stations.delete({ id: station.id })).rejects.toMatchObject({
-      code: 'METHOD_NOT_SUPPORTED',
-      message: 'Stations cannot be hard deleted. Deactivate the station instead.',
+    await expect(
+      supervisorCaller.stations.update({
+        id: station.id,
+        displayOrder: 5,
+        name: 'Weld Cell 1',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(supervisorCaller.stations.setActive({ id: station.id, isActive: false })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
     });
   });
 });
 
 describe('station booking history', () => {
   test('keeps historical bookings resolvable after station deactivation', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const station = await createStation(caller, 'Weld Bay 1', 'fabrication');
     const job = await caller.jobs.create({ productId: context.product.id });
     const stage = job.stages.find((candidate) => candidate.stage === 'fabrication');

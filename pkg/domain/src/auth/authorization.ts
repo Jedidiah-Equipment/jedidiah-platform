@@ -30,6 +30,7 @@ export const permissionLabels = {
   'quote:create': 'Create quotes',
   'quote:read': 'View quotes',
   'quote:update': 'Update quotes',
+  'station:update': 'Update stations',
   'user:assign-departments': 'Assign departments',
   'user:create': 'Add users',
   'user:list': 'View users',
@@ -54,6 +55,7 @@ export const permissionDescriptions = {
   'quote:create': 'Create new sales quotes.',
   'quote:read': 'View sales quotes.',
   'quote:update': 'Update sales quote details and decisions.',
+  'station:update': 'Create, edit, activate, and deactivate station catalog records.',
   'user:assign-departments': "Manage a user's department access.",
   'user:create': 'Add new application users.',
   'user:list': 'View application users.',
@@ -69,6 +71,7 @@ export const authorizationStatement = {
   'job-stage': ['read', 'update'],
   product: ['read', 'create', 'update'],
   quote: ['read', 'create', 'update'],
+  station: ['update'],
   user: ['list', 'create', 'update', 'set-role', 'set-password', 'assign-departments'],
 } as const;
 
@@ -86,6 +89,7 @@ export const appRoleAccess = {
     'job-stage': ['read', 'update'],
     product: ['read', 'create', 'update'],
     quote: ['read', 'create', 'update'],
+    station: ['update'],
     user: ['list', 'create', 'update', 'set-role', 'set-password', 'assign-departments'],
   },
   'product-editor': {

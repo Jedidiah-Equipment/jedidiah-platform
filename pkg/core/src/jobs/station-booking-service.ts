@@ -1,27 +1,18 @@
 import { type DatabaseTransaction, type Db, jobEvents, jobStageStations, jobStages, jobs, stations } from '@pkg/db';
-import { canEditStationBooking, cascadeUp, deriveJobStatus, evaluateActualWriteGuard } from '@pkg/domain';
+import {
+  canEditStationBooking,
+  deriveJobStatus,
+  deriveMilestoneEvents,
+  evaluateActualWriteGuard,
+  rollupJobSchedule,
+  rollupStageSchedule,
+} from '@pkg/domain';
 import type { AuthId, JobDetail, JobEvent, UserAccessSummary, UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
-import {
-  createAuditChanges,
-  insertAuditEvent,
-  jobAuditDescriptor,
-  jobStageAuditDescriptor,
-  jobStageStationAuditDescriptor,
-} from '../audit/audit-service.js';
-import {
-  JobNotFoundError,
-  JobStationBookingNotFoundError,
-  JobStationBookingTransitionDeniedError,
-} from './job-errors.js';
-import {
-  type JobAuditRecord,
-  type JobStageRow,
-  type JobStageStationRow,
-  mapJobAuditRecord,
-  mapJobStage,
-} from './job-mappers.js';
+import { createAuditChanges, insertAuditEvent, jobStageStationAuditDescriptor } from '../audit/audit-service.js';
+import { JobStationBookingNotFoundError, JobStationBookingTransitionDeniedError } from './job-errors.js';
+import type { JobAuditRecord, JobStageRow, JobStageStationRow } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
 type StationBookingTransition = 'start' | 'stop';
@@ -31,8 +22,11 @@ type StationBookingTarget = {
   job: JobAuditRecord;
   jobId: UUID;
   stage: JobStageRow;
+  stages: StageWithBookings[];
   station: typeof stations.$inferSelect;
 };
+
+type StageWithBookings = JobStageRow & { stations: JobStageStationRow[] };
 
 export async function startStationBooking({
   access,
@@ -113,15 +107,13 @@ async function transitionStationBooking({
       tx,
     });
 
-    await cascadeStageActuals({
+    const afterStages = await readStagesWithBookingsForUpdate(target.jobId, tx);
+    await insertDerivedMilestoneEvents({
       actorUserId,
-      beforeStage: target.stage,
-      tx,
-    });
-
-    await cascadeJobActuals({
-      actorUserId,
+      afterStages,
       beforeJob: target.job,
+      beforeStages: target.stages,
+      editedStageId: target.stage.id,
       jobId: target.jobId,
       tx,
     });
@@ -153,11 +145,18 @@ function assertStationBookingTransitionAllowed({
       throw new JobStationBookingTransitionDeniedError('Station booking has already ended.');
     }
 
-    if (target.job.actualEnd) {
+    const jobSchedule = rollupJobSchedule(
+      target.stages.map((stage) => ({ bookings: mapScheduleRollupBookings(stage.stations) })),
+    );
+    const stageSchedule = rollupStageSchedule(
+      mapScheduleRollupBookings(target.stages.find((stage) => stage.id === target.stage.id)?.stations ?? []),
+    );
+
+    if (jobSchedule.actualWindow.end) {
       throw new JobStationBookingTransitionDeniedError('Job is already complete.');
     }
 
-    if (target.stage.actualEnd) {
+    if (stageSchedule.actualWindow.end) {
       throw new JobStationBookingTransitionDeniedError('Stage is already complete.');
     }
 
@@ -201,134 +200,114 @@ async function readStationBookingTarget({
   if (!row) {
     throw new JobStationBookingNotFoundError(id);
   }
+  const stages = await readStagesWithBookingsForUpdate(row.job.id, tx);
 
   return {
     booking: row.booking,
-    job: mapJobAuditRecord(row.job),
+    job: {
+      actualEnd: row.job.actualEnd,
+      actualEndSetManually: row.job.actualEndSetManually,
+      actualStart: row.job.actualStart,
+      actualStartSetManually: row.job.actualStartSetManually,
+      code: row.job.code,
+      dueDate: row.job.dueDate,
+      dueEnd: row.job.dueEnd,
+      dueEndSetManually: row.job.dueEndSetManually,
+      dueStart: row.job.dueStart,
+      dueStartSetManually: row.job.dueStartSetManually,
+      isCancelled: row.job.isCancelled,
+      isPaused: row.job.isPaused,
+      productId: row.job.productId,
+      quoteId: row.job.quoteId,
+    },
     jobId: row.job.id,
     stage: row.stage,
+    stages,
     station: row.station,
   };
 }
 
-async function cascadeStageActuals({
-  actorUserId,
-  beforeStage,
-  tx,
-}: {
-  actorUserId: AuthId;
-  beforeStage: JobStageRow;
-  tx: DatabaseTransaction;
-}): Promise<JobStageRow> {
-  const bookings = await tx
+async function readStagesWithBookingsForUpdate(jobId: UUID, tx: DatabaseTransaction): Promise<StageWithBookings[]> {
+  const stageRows = await tx.select().from(jobStages).where(eq(jobStages.jobId, jobId)).for('update');
+  const bookingRows = await tx
     .select()
     .from(jobStageStations)
-    .where(eq(jobStageStations.jobStageId, beforeStage.id))
+    .innerJoin(jobStages, eq(jobStages.id, jobStageStations.jobStageId))
+    .where(eq(jobStages.jobId, jobId))
     .for('update');
+  const bookingsByStageId = new Map<UUID, JobStageStationRow[]>();
 
-  const nextActuals = cascadeUp({
-    children: bookings,
-    currentParent: beforeStage,
-    stickyMarker: beforeStage,
-  });
-
-  if (
-    datesEqual(beforeStage.actualStart, nextActuals.actualStart) &&
-    datesEqual(beforeStage.actualEnd, nextActuals.actualEnd)
-  ) {
-    return beforeStage;
+  for (const row of bookingRows) {
+    const bookings = bookingsByStageId.get(row.job_stage.id) ?? [];
+    bookings.push(row.job_stage_station);
+    bookingsByStageId.set(row.job_stage.id, bookings);
   }
 
-  const [updatedStage] = await tx
-    .update(jobStages)
-    .set(nextActuals)
-    .where(eq(jobStages.id, beforeStage.id))
-    .returning();
-
-  if (!updatedStage) {
-    throw new JobNotFoundError(beforeStage.jobId);
-  }
-
-  await insertAuditEvent({
-    db: tx,
-    input: {
-      action: 'updated',
-      actorUserId,
-      after: mapJobStage(updatedStage),
-      before: mapJobStage(beforeStage),
-      changes: createAuditChanges(mapJobStage(beforeStage), mapJobStage(updatedStage), jobStageAuditDescriptor.fields),
-      entityId: updatedStage.id,
-      entityType: jobStageAuditDescriptor.entityType,
-    },
-  });
-
-  if (!beforeStage.actualStart && updatedStage.actualStart) {
-    await insertStageCascadeEvent({ actorUserId, eventType: 'stage.started', stage: updatedStage, tx });
-  }
-
-  if (!beforeStage.actualEnd && updatedStage.actualEnd) {
-    await insertStageCascadeEvent({ actorUserId, eventType: 'stage.ended', stage: updatedStage, tx });
-  }
-
-  return updatedStage;
+  return stageRows.map((stage) => ({
+    ...stage,
+    stations: bookingsByStageId.get(stage.id) ?? [],
+  }));
 }
 
-async function cascadeJobActuals({
+async function insertDerivedMilestoneEvents({
   actorUserId,
+  afterStages,
   beforeJob,
+  beforeStages,
+  editedStageId,
   jobId,
   tx,
 }: {
   actorUserId: AuthId;
+  afterStages: StageWithBookings[];
   beforeJob: JobAuditRecord;
+  beforeStages: StageWithBookings[];
+  editedStageId: UUID;
   jobId: UUID;
   tx: DatabaseTransaction;
 }): Promise<void> {
-  const stages = await tx.select().from(jobStages).where(eq(jobStages.jobId, jobId)).for('update');
-  const nextActuals = cascadeUp({
-    children: stages,
-    currentParent: beforeJob,
-    stickyMarker: beforeJob,
+  const beforeStage = beforeStages.find((stage) => stage.id === editedStageId);
+  const afterStage = afterStages.find((stage) => stage.id === editedStageId);
+  if (!beforeStage || !afterStage) {
+    throw new JobStationBookingNotFoundError(editedStageId);
+  }
+
+  const beforeStageSchedule = rollupStageSchedule(mapScheduleRollupBookings(beforeStage.stations));
+  const afterStageSchedule = rollupStageSchedule(mapScheduleRollupBookings(afterStage.stations));
+  const beforeJobSchedule = rollupJobSchedule(
+    beforeStages.map((stage) => ({ bookings: mapScheduleRollupBookings(stage.stations) })),
+  );
+  const afterJobSchedule = rollupJobSchedule(
+    afterStages.map((stage) => ({ bookings: mapScheduleRollupBookings(stage.stations) })),
+  );
+  const events = deriveMilestoneEvents({
+    job: { after: afterJobSchedule.actualWindow, before: beforeJobSchedule.actualWindow },
+    stage: { after: afterStageSchedule.actualWindow, before: beforeStageSchedule.actualWindow },
   });
 
-  if (
-    datesEqual(beforeJob.actualStart, nextActuals.actualStart) &&
-    datesEqual(beforeJob.actualEnd, nextActuals.actualEnd)
-  ) {
-    return;
-  }
+  for (const eventType of events) {
+    if (eventType === 'stage.started' || eventType === 'stage.ended') {
+      await insertStageMilestoneEvent({
+        actorUserId,
+        eventType,
+        jobId,
+        stage: afterStage,
+        tx,
+        value:
+          eventType === 'stage.started' ? afterStageSchedule.actualWindow.start : afterStageSchedule.actualWindow.end,
+      });
+      continue;
+    }
 
-  const [updatedJob] = await tx
-    .update(jobs)
-    .set({ ...nextActuals, updatedAt: new Date() })
-    .where(eq(jobs.id, jobId))
-    .returning();
-
-  if (!updatedJob) {
-    throw new JobNotFoundError(jobId);
-  }
-
-  const afterJob = mapJobAuditRecord(updatedJob);
-
-  await insertAuditEvent({
-    db: tx,
-    input: {
-      action: 'updated',
+    await insertJobMilestoneEvent({
       actorUserId,
-      after: afterJob,
-      before: beforeJob,
-      changes: createAuditChanges(beforeJob, afterJob, jobAuditDescriptor.fields),
-      entityId: updatedJob.id,
-      entityType: jobAuditDescriptor.entityType,
-    },
-  });
-
-  if (!beforeJob.actualStart && updatedJob.actualStart) {
-    await insertJobCascadeEvent({ actorUserId, beforeJob, eventType: 'job.started', job: updatedJob, tx });
-  }
-
-  if (!beforeJob.actualEnd && updatedJob.actualEnd) {
-    await insertJobCascadeEvent({ actorUserId, beforeJob, eventType: 'job.completed', job: updatedJob, tx });
+      beforeJob,
+      beforeWindow: beforeJobSchedule.actualWindow,
+      eventType,
+      jobId,
+      nextWindow: afterJobSchedule.actualWindow,
+      tx,
+    });
   }
 }
 
@@ -373,64 +352,91 @@ async function insertStationTransitionEvent({
   });
 }
 
-async function insertStageCascadeEvent({
+async function insertStageMilestoneEvent({
   actorUserId,
   eventType,
+  jobId,
   stage,
   tx,
+  value,
 }: {
   actorUserId: AuthId;
   eventType: 'stage.started' | 'stage.ended';
+  jobId: UUID;
   stage: JobStageRow;
   tx: DatabaseTransaction;
+  value: Date | null;
 }): Promise<void> {
-  const actualValue = eventType === 'stage.started' ? stage.actualStart : stage.actualEnd;
-
-  if (!actualValue) {
+  if (!value) {
     throw new Error(`${eventType} requires an actual value.`);
   }
 
   await tx.insert(jobEvents).values({
     actorUserId,
     eventType,
-    jobId: stage.jobId,
+    jobId,
     occurredAt: new Date(),
     payload: {
-      [eventType === 'stage.started' ? 'actualStart' : 'actualEnd']: actualValue.toISOString(),
+      [eventType === 'stage.started' ? 'actualStart' : 'actualEnd']: value.toISOString(),
       stage: stage.stage,
     },
     stageId: stage.id,
   });
 }
 
-async function insertJobCascadeEvent({
+async function insertJobMilestoneEvent({
   actorUserId,
   beforeJob,
+  beforeWindow,
   eventType,
-  job,
+  jobId,
+  nextWindow,
   tx,
 }: {
   actorUserId: AuthId;
   beforeJob: JobAuditRecord;
+  beforeWindow: { end: Date | null; start: Date | null };
   eventType: Extract<JobEvent['eventType'], 'job.completed' | 'job.started'>;
-  job: typeof jobs.$inferSelect;
+  jobId: UUID;
+  nextWindow: { end: Date | null; start: Date | null };
   tx: DatabaseTransaction;
 }): Promise<void> {
   await tx.insert(jobEvents).values({
     actorUserId,
     eventType,
-    jobId: job.id,
+    jobId,
     occurredAt: new Date(),
     payload: {
-      fromLifecycleStatus: deriveJobStatus(beforeJob),
-      toLifecycleStatus: deriveJobStatus(job),
+      fromLifecycleStatus: deriveJobStatus({
+        actualEnd: beforeWindow.end,
+        actualStart: beforeWindow.start,
+        isCancelled: beforeJob.isCancelled,
+        isPaused: beforeJob.isPaused,
+      }),
+      toLifecycleStatus: deriveJobStatus({
+        actualEnd: nextWindow.end,
+        actualStart: nextWindow.start,
+        isCancelled: beforeJob.isCancelled,
+        isPaused: beforeJob.isPaused,
+      }),
     },
     stageId: null,
   });
 }
 
-function datesEqual(left: Date | null, right: Date | null): boolean {
-  return (left?.getTime() ?? null) === (right?.getTime() ?? null);
+function mapScheduleRollupBookings(
+  bookings: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[],
+) {
+  return bookings.map((booking) => ({
+    actualEnd: booking.actualEnd,
+    actualStart: booking.actualStart,
+    plannedEnd: parseDateOnlyAsUtc(booking.dueEnd),
+    plannedStart: parseDateOnlyAsUtc(booking.dueStart),
+  }));
+}
+
+function parseDateOnlyAsUtc(value: string | null): Date | null {
+  return value ? new Date(`${value}T00:00:00.000Z`) : null;
 }
 
 function assertReturnedRow<TRow>(rows: readonly TRow[], message: string): TRow {

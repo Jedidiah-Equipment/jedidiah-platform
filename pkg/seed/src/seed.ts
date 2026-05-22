@@ -577,7 +577,6 @@ export async function seedDatabase(database?: Db): Promise<void> {
   await seedQuotesWithCore({
     db: activeDb,
     products: seededProducts,
-    seedDate,
   });
 
   console.info(
@@ -845,10 +844,6 @@ function createSeedJobInput({
   }
 
   return {
-    dueEnd: toSeedIsoDate(lastStage.dueEnd),
-    dueEndSetManually: true,
-    dueStart: toSeedIsoDate(firstStage.dueStart),
-    dueStartSetManually: false,
     productId: product.id,
     quoteId,
     stages: defaultStages.stages.map(
@@ -1019,15 +1014,7 @@ async function updateSeedStageWorkflowEvent({
     );
 }
 
-async function seedQuotesWithCore({
-  db,
-  products,
-  seedDate,
-}: {
-  db: Db;
-  products: readonly Product[];
-  seedDate: Date;
-}): Promise<void> {
+async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly Product[] }): Promise<void> {
   if (products.length === 0) {
     return;
   }
@@ -1090,7 +1077,6 @@ async function seedQuotesWithCore({
         actorUserId: supervisorUserId,
         db,
         input: {
-          dueEnd: toSeedIsoDate(addSeedDays(seedDate, 30)),
           productId: product.id,
           quoteId: accepted.id,
         },

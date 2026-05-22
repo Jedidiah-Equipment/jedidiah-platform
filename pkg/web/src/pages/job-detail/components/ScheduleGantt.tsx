@@ -286,8 +286,12 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
               {visibleRows.map((row) =>
                 row.visible ? (
                   <ScheduleGanttTimelineRow
-                    canEditActualBars={!isCreateMode && props.canEditSchedule && !editDateMutation.isPending}
-                    canEditDueBars={props.canEditSchedule && !editDateMutation.isPending}
+                    canEditActualBars={
+                      row.level === 'station' && !isCreateMode && props.canEditSchedule && !editDateMutation.isPending
+                    }
+                    canEditDueBars={
+                      (isCreateMode || row.level === 'station') && props.canEditSchedule && !editDateMutation.isPending
+                    }
                     key={row.id}
                     onEditActualDates={editActualDates}
                     onEditDueRange={editDueRange}

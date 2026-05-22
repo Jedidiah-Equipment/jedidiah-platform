@@ -101,10 +101,9 @@ describe('create job dialog helpers', () => {
     });
   });
 
-  test('marks only the selected job anchor as manually set', () => {
+  test('builds create input without dead Job or Stage windows', () => {
     expect(
       buildCreateJobInput({
-        anchorKind: 'end',
         productId: '00000000-0000-4000-8000-000000000010',
         quoteId: null,
         stages: [
@@ -116,10 +115,13 @@ describe('create job dialog helpers', () => {
         ],
       }),
     ).toMatchObject({
-      dueEnd: '2026-05-10',
-      dueEndSetManually: true,
-      dueStart: '2026-05-01',
-      dueStartSetManually: false,
+      productId: '00000000-0000-4000-8000-000000000010',
+      stages: expect.arrayContaining([
+        expect.not.objectContaining({
+          dueEnd: expect.anything(),
+          dueStart: expect.anything(),
+        }),
+      ]),
     });
   });
 

@@ -114,12 +114,10 @@ export function mergeDefaultBookings(currentStage: StageDraft, defaultStage: Sta
 }
 
 export function buildCreateJobInput({
-  anchorKind,
   productId,
   quoteId,
   stages,
 }: {
-  anchorKind: AnchorKind;
   productId: UUID | '';
   quoteId: UUID | null;
   stages: StageDraft[];
@@ -128,21 +126,10 @@ export function buildCreateJobInput({
     throw new Error('Product is required to create a job.');
   }
 
-  const firstStage = stages[0];
-  const lastStage = stages[stages.length - 1];
-
   return {
-    dueEnd: lastStage?.dueEnd || null,
-    dueEndSetManually: anchorKind === 'end',
-    dueStart: firstStage?.dueStart || null,
-    dueStartSetManually: anchorKind === 'start',
     productId,
     quoteId,
     stages: stages.map((stage) => ({
-      dueEnd: stage.dueEnd || null,
-      dueEndSetManually: stage.dueEndSetManually,
-      dueStart: stage.dueStart || null,
-      dueStartSetManually: stage.dueStartSetManually,
       stage: stage.stage,
       stationBookings: stage.stationBookings.map((booking) => ({
         dueEnd: booking.dueEnd || null,

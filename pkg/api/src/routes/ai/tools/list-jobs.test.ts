@@ -28,9 +28,7 @@ describe('listJobsTool', () => {
     const supervisorCaller = createCaller(context.db, supervisorAccess);
     const created = await supervisorCaller.jobs.create({ productId: context.product.id });
     const input: JobListInput = {
-      filters: {
-        lifecycleStatuses: ['active'],
-      },
+      filters: {},
       page: 1,
       pageSize: 10,
       search: created.code,

@@ -1,16 +1,9 @@
-import { hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
-import {
-  JOB_LIST_STATUS_FILTERS,
-  type JobLifecycleStatus,
-  type JobListInput,
-  type JobListStatusFilter,
-  JobSortBy,
-  type JobSummary,
-} from '@pkg/schema';
+import { hasPermission } from '@pkg/domain';
+import { type JobListInput, JobSortBy, type JobSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { ArrowRightIcon, CircleIcon, PlusIcon } from 'lucide-react';
+import { ArrowRightIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -23,17 +16,12 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CreateJobDialog } from './components/CreateJobDialog.js';
-import { getJobLifecycleStatusColorClassNames, JobLifecycleStatusBadge } from './components/JobLifecycleStatusBadge.js';
+import { JobLifecycleStatusBadge } from './components/JobLifecycleStatusBadge.js';
 import { JobStageChips } from './components/JobStageChips.js';
-
-type JobsPageProps = {
-  status: JobListStatusFilter;
-};
 
 export const useJobTableStore = createPersistedDataTableStore({
   initialState: {
@@ -45,6 +33,7 @@ export const useJobTableStore = createPersistedDataTableStore({
     ],
   },
   persistName: 'jobs-table',
+  persistVersion: 2,
 });
 
 const jobSortOptions: SortOptions<JobListInput> = {
@@ -54,8 +43,7 @@ const jobSortOptions: SortOptions<JobListInput> = {
   },
 };
 
-export const JobsPage: React.FC<JobsPageProps> = ({ status }) => {
-  const navigate = useNavigate();
+export const JobsPage: React.FC = () => {
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
 
@@ -76,57 +64,18 @@ export const JobsPage: React.FC<JobsPageProps> = ({ status }) => {
       description="Production"
       title="Jobs"
     >
-      <JobTable
-        rightSection={
-          <JobStatusFilter
-            onStatusChange={(nextStatus) => {
-              void navigate({ search: { status: nextStatus }, to: '/jobs' });
-            }}
-            status={status}
-          />
-        }
-        status={status}
-      />
+      <JobTable />
     </ListPageLayout>
   );
 };
 
-const JobStatusFilter: React.FC<{
-  onStatusChange: (status: JobListStatusFilter) => void;
-  status: JobListStatusFilter;
-}> = ({ onStatusChange, status }) => (
-  <Select
-    onValueChange={(value) => {
-      if (!value || value === status) return;
-      onStatusChange(value as JobListStatusFilter);
-    }}
-    value={status}
-  >
-    <SelectTrigger aria-label="Lifecycle status" className="w-full sm:w-48">
-      <JobListStatusFilterSelectValue status={status} />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectGroup>
-        {JOB_LIST_STATUS_FILTERS.map((option) => (
-          <SelectItem key={option} leading={<JobListStatusFilterIcon status={option} />} value={option}>
-            {getJobListStatusFilterLabel(option)}
-          </SelectItem>
-        ))}
-      </SelectGroup>
-    </SelectContent>
-  </Select>
-);
-
-const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatusFilter }> = ({
-  rightSection,
-  status,
-}) => {
+const JobTable: React.FC = () => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const accessQuery = useAccess();
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
-  const getListInputExtras = useCallback(() => getJobListInputExtras(status), [status]);
+  const getListInputExtras = useCallback(() => getJobListInputExtras(), []);
 
   const tableController = useServerSideTableController({
     store: useJobTableStore,
@@ -189,8 +138,6 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
       });
     }
 
-    const showActualEndColumn = status === 'complete';
-
     baseColumns.push({
       accessorKey: 'dueDate',
       cell: ({ row }) => <DateDisplay date={row.original.dueDate} emptyValue="No date" />,
@@ -199,30 +146,12 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
       header: 'Due date',
     });
 
-    baseColumns.push({
-      accessorKey: 'dueEnd',
-      cell: ({ row }) => <DateDisplay date={row.original.dueEnd} emptyValue="No date" />,
-      enableColumnFilter: false,
-      enableSorting: true,
-      header: 'Due',
-    });
-
-    if (showActualEndColumn) {
-      baseColumns.push({
-        accessorKey: 'actualEnd',
-        cell: ({ row }) => <DateDisplay date={row.original.actualEnd} emptyValue="Open" format="medium" />,
-        enableColumnFilter: false,
-        enableSorting: true,
-        header: 'Actual end',
-      });
-    }
-
     baseColumns.push(
       {
         accessorKey: 'lifecycleStatus',
         cell: ({ row }) => <JobLifecycleStatusBadge status={row.original.lifecycleStatus} />,
         enableColumnFilter: false,
-        enableSorting: true,
+        enableSorting: false,
         header: 'Status',
       },
       {
@@ -257,7 +186,7 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
     );
 
     return baseColumns;
-  }, [canOpenQuotes, navigate, status]);
+  }, [canOpenQuotes, navigate]);
 
   const table = useReactTable({
     columns,
@@ -287,7 +216,6 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
       isLoading={isLoading}
-      rightSection={rightSection}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`}
@@ -314,36 +242,8 @@ const JobQuoteCode: React.FC<{
   return <span className="font-medium">{quoteCode}</span>;
 };
 
-function getJobListInputExtras(status: JobListStatusFilter) {
+function getJobListInputExtras() {
   return {
-    filters: {
-      lifecycleStatuses: status === 'all' ? [] : [status],
-    },
+    filters: {},
   } satisfies Pick<JobListInput, 'filters'>;
 }
-
-function getJobListStatusFilterLabel(status: JobListStatusFilter): string {
-  if (status === 'all') return 'All';
-
-  return jobLifecycleStatusLabels[status];
-}
-
-const JobListStatusFilterSelectValue: React.FC<{ status: JobListStatusFilter }> = ({ status }) => (
-  <span className="flex min-w-0 flex-1 items-center gap-2 text-left" data-slot="select-value">
-    <JobListStatusFilterIcon status={status} />
-    <span className="truncate">{getJobListStatusFilterLabel(status)}</span>
-  </span>
-);
-
-const JobListStatusFilterIcon: React.FC<{ status: JobListStatusFilter }> = ({ status }) => {
-  const iconClassName =
-    status === 'all'
-      ? 'fill-gray-400 text-gray-400'
-      : getJobLifecycleStatusColorClassNames(status satisfies JobLifecycleStatus).icon;
-
-  return (
-    <span className="inline-flex size-3 shrink-0 items-center justify-center">
-      <CircleIcon aria-hidden="true" className={iconClassName} strokeWidth={0} />
-    </span>
-  );
-};

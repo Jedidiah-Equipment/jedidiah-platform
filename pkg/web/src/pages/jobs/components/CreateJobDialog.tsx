@@ -220,7 +220,6 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
                 buildCreateJobInput({
                   productId,
                   quoteId: quote?.id ?? null,
-                  anchorKind,
                   stages,
                 }),
               )

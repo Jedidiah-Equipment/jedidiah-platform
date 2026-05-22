@@ -16,10 +16,8 @@ describe('JOB_STAGES', () => {
 });
 
 describe('JobListFilters', () => {
-  it('preserves default active filtering', () => {
-    expect(JobListFilters.parse(undefined)).toEqual({
-      lifecycleStatuses: ['active'],
-    });
+  it('defaults to no job list filters', () => {
+    expect(JobListFilters.parse(undefined)).toEqual({});
   });
 });
 

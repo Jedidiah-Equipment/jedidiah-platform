@@ -12,10 +12,8 @@ import { hasPermission, JOB_STAGE_PIPELINE, parseJobCodeSearch } from '@pkg/doma
 import type {
   AuthId,
   JobCreateInput,
-  JobCreateStageInput,
   JobDateEditInput,
   JobDetail,
-  JobLifecycleStatus,
   JobListInput,
   JobListResult,
   JobStageName,
@@ -81,10 +79,6 @@ async function createJobInTransaction({
   const [job] = await tx
     .insert(jobs)
     .values({
-      dueEnd: input.dueEnd ?? null,
-      dueEndSetManually: input.dueEndSetManually ?? input.dueEnd != null,
-      dueStart: input.dueStart ?? null,
-      dueStartSetManually: input.dueStartSetManually ?? input.dueStart != null,
       productId: input.productId,
       quoteId,
     })
@@ -96,7 +90,7 @@ async function createJobInTransaction({
 
   const stageRows = await tx
     .insert(jobStages)
-    .values(buildJobStageInsertValues({ inputStages: input.stages, jobId: job.id }))
+    .values(buildJobStageInsertValues({ jobId: job.id }))
     .returning();
 
   const stageRowsByStage = new Map(stageRows.map((stage) => [stage.stage, stage]));
@@ -165,23 +159,9 @@ async function validateJobQuoteForCreate({
   return;
 }
 
-function buildJobStageInsertValues({
-  inputStages,
-  jobId,
-}: {
-  inputStages: readonly JobCreateStageInput[] | undefined;
-  jobId: UUID;
-}) {
-  const inputStagesByStage = new Map(inputStages?.map((stage) => [stage.stage, stage]) ?? []);
-
+function buildJobStageInsertValues({ jobId }: { jobId: UUID }) {
   return JOB_STAGE_PIPELINE.map(({ sequence, stage }) => {
-    const inputStage = inputStagesByStage.get(stage);
-
     return {
-      dueEnd: inputStage?.dueEnd ?? null,
-      dueEndSetManually: inputStage?.dueEndSetManually ?? false,
-      dueStart: inputStage?.dueStart ?? null,
-      dueStartSetManually: inputStage?.dueStartSetManually ?? false,
       jobId,
       sequence,
       stage,
@@ -286,10 +266,6 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     conditions.push(eq(jobs.id, input.filters.jobId));
   }
 
-  if (input.filters.lifecycleStatuses.length > 0) {
-    conditions.push(buildLifecycleStatusWhere(input.filters.lifecycleStatuses));
-  }
-
   if (input.search) {
     const codeSearch = parseJobCodeSearch(input.search);
     const searchWhere = or(
@@ -304,37 +280,6 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;
-}
-
-function buildLifecycleStatusWhere(statuses: readonly JobLifecycleStatus[]): SQL {
-  const conditions = statuses.map((status) => {
-    switch (status) {
-      case 'active':
-        return and(
-          eq(jobs.isCancelled, false),
-          eq(jobs.isPaused, false),
-          sql`${jobs.actualStart} is not null`,
-          sql`${jobs.actualEnd} is null`,
-        );
-      case 'cancelled':
-        return eq(jobs.isCancelled, true);
-      case 'complete':
-        return and(eq(jobs.isCancelled, false), eq(jobs.isPaused, false), sql`${jobs.actualEnd} is not null`);
-      case 'not-started':
-        return and(
-          eq(jobs.isCancelled, false),
-          eq(jobs.isPaused, false),
-          sql`${jobs.actualStart} is null`,
-          sql`${jobs.actualEnd} is null`,
-        );
-      case 'paused':
-        return and(eq(jobs.isCancelled, false), eq(jobs.isPaused, true));
-      default:
-        return sql`false`;
-    }
-  });
-
-  return or(...conditions) ?? sql`false`;
 }
 
 export async function pauseJob({

@@ -1,5 +1,11 @@
 import { type DatabaseTransaction, type Db, jobEvents, jobStageStations, jobStages, jobs } from '@pkg/db';
-import { cascadeDown, cascadeUp, deriveJobStatus, hasPermission } from '@pkg/domain';
+import {
+  deriveJobStatus,
+  deriveMilestoneEvents,
+  hasPermission,
+  rollupJobSchedule,
+  rollupStageSchedule,
+} from '@pkg/domain';
 import type {
   AuditEntityType,
   AuthId,
@@ -15,22 +21,10 @@ import {
   createAuditChanges,
   insertAuditEvent,
   jobAuditDescriptor,
-  jobStageAuditDescriptor,
   jobStageStationAuditDescriptor,
 } from '../audit/audit-service.js';
-import {
-  JobDateEditDeniedError,
-  JobDateEditInvalidError,
-  JobDateEditTargetNotFoundError,
-  JobNotFoundError,
-} from './job-errors.js';
-import {
-  type JobAuditRecord,
-  type JobStageRow,
-  type JobStageStationRow,
-  mapJobAuditRecord,
-  mapJobStage,
-} from './job-mappers.js';
+import { JobDateEditDeniedError, JobDateEditInvalidError, JobDateEditTargetNotFoundError } from './job-errors.js';
+import { type JobAuditRecord, type JobStageRow, type JobStageStationRow, mapJobAuditRecord } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
 type DateField = JobDateEditInput['field'];
@@ -43,13 +37,7 @@ type AuditDescriptor = {
   entityType: AuditEntityType;
   fields: Record<string, string>;
 };
-type DueDateShiftRow<Key extends string = string> = {
-  dueEnd: string | null;
-  dueEndSetManually: boolean;
-  dueStart: string | null;
-  dueStartSetManually: boolean;
-  id: Key;
-};
+type StageWithBookings = JobStageRow & { stations: JobStageStationRow[] };
 
 export async function editJobDate({
   access,
@@ -85,7 +73,7 @@ async function applyDateEdit({
     case 'job':
       return editJobLevelDate({ actorUserId, input, tx });
     case 'stage':
-      return editStageLevelDate({ actorUserId, input, tx });
+      throw new JobDateEditInvalidError('Stage dates are derived from Station Bookings.');
     case 'station-booking':
       return editStationBookingLevelDate({ actorUserId, input, tx });
     default:
@@ -106,51 +94,81 @@ async function editJobLevelDate({
   if (isDueDateField(input.field)) {
     return editJobDueDate({ actorUserId, beforeJob, input, tx });
   }
+  throw new JobDateEditInvalidError('Only Job Due Date can be edited on a Job.');
+}
+
+async function editStationBookingLevelDate({
+  actorUserId,
+  input,
+  tx,
+}: {
+  actorUserId: AuthId;
+  input: JobDateEditInput;
+  tx: DatabaseTransaction;
+}): Promise<{ jobId: UUID }> {
+  const target = await readStationBookingForUpdate(input.entityId, tx);
   if (isDueField(input.field)) {
-    assertDueDateEditKeepsRange({ field: input.field, row: beforeJob, value: input.value });
+    assertDueDateEditKeepsRange({ field: input.field, row: target.booking, value: input.value });
   }
-  if (isNoOpDateEdit({ field: input.field, row: beforeJob, value: input.value })) {
-    return { jobId: beforeJob.id };
+  if (isActualField(input.field)) {
+    assertActualDateEditKeepsRange({ field: input.field, row: target.booking, value: input.value });
   }
-  const updatedJob = await updateJobDateField({ field: input.field, id: beforeJob.id, tx, value: input.value });
-  const afterJob = mapJobAuditRecord(updatedJob);
-  const beforeAuditJob = mapJobAuditRecord(beforeJob);
+  if (input.field === 'actual_end' && input.value !== null && !target.booking.actualStart) {
+    throw new JobDateEditInvalidError('Station booking must be started before its actual end can be set.');
+  }
+  if (isDueDateField(input.field)) {
+    throw new JobDateEditInvalidError('Job Due Date can only be edited on a Job.');
+  }
+  if (isNoOpDateEdit({ field: input.field, row: target.booking, value: input.value })) {
+    return { jobId: target.stage.jobId };
+  }
+  const beforeStages = isActualField(input.field)
+    ? await readStagesWithBookingsForUpdate(target.stage.jobId, tx)
+    : undefined;
+  const updatedBooking = await updateStationBookingDateField({
+    field: input.field,
+    id: target.booking.id,
+    tx,
+    value: input.value,
+  });
 
   await insertDateEditAuditEvents({
     actorUserId,
-    after: afterJob,
-    before: beforeAuditJob,
-    descriptor: jobAuditDescriptor,
-    entityId: updatedJob.id,
+    after: updatedBooking,
+    before: target.booking,
+    descriptor: jobStageStationAuditDescriptor,
+    entityId: updatedBooking.id,
     tx,
   });
   await insertDateOverriddenEvent({
     actorUserId,
-    entityId: updatedJob.id,
+    entityId: updatedBooking.id,
     entityLevel: input.entityLevel,
     field: input.field,
-    jobId: updatedJob.id,
-    newValue: serializeDateEditValue(getDateFieldValue(afterJob, input.field)),
-    oldValue: serializeDateEditValue(getDateFieldValue(beforeAuditJob, input.field)),
-    stageId: null,
+    jobId: target.stage.jobId,
+    newValue: serializeDateEditValue(getDateFieldValue(updatedBooking, input.field)),
+    oldValue: serializeDateEditValue(getDateFieldValue(target.booking, input.field)),
+    stageId: target.stage.id,
     tx,
   });
 
-  if (isDueField(input.field) && input.value !== null) {
-    await cascadeJobDueDates({
+  if (isActualField(input.field)) {
+    if (!beforeStages) {
+      throw new Error('Expected stage snapshot before actual date edit.');
+    }
+    const afterStages = await readStagesWithBookingsForUpdate(target.stage.jobId, tx);
+    await insertDerivedMilestoneEvents({
       actorUserId,
-      anchorField: input.field,
-      jobId: updatedJob.id,
-      nextValue: input.value,
-      previousValue: getDateFieldValue(beforeAuditJob, input.field) as string | null,
+      afterStages,
+      beforeJob: target.job,
+      beforeStages,
+      editedStageId: target.stage.id,
+      jobId: target.stage.jobId,
       tx,
     });
-  } else if (isDueField(input.field)) {
-    // Clearing a Job due anchor only re-enables the Job field's auto state. There is no remaining
-    // delta to apply safely, so existing Stage and Station Booking windows stay as-is.
   }
 
-  return { jobId: updatedJob.id };
+  return { jobId: target.stage.jobId };
 }
 
 async function editJobDueDate({
@@ -195,451 +213,6 @@ async function editJobDueDate({
   return { jobId: updatedJob.id };
 }
 
-async function editStageLevelDate({
-  actorUserId,
-  input,
-  tx,
-}: {
-  actorUserId: AuthId;
-  input: JobDateEditInput;
-  tx: DatabaseTransaction;
-}): Promise<{ jobId: UUID }> {
-  const beforeStage = await readStageForUpdate(input.entityId, tx);
-  const beforeJob = await readJobForUpdate(beforeStage.jobId, tx);
-  if (isDueField(input.field)) {
-    assertDueDateEditKeepsRange({ field: input.field, row: beforeStage, value: input.value });
-  }
-  if (isNoOpDateEdit({ field: input.field, row: beforeStage, value: input.value })) {
-    return { jobId: beforeStage.jobId };
-  }
-  const updatedStage = await updateStageDateField({ field: input.field, id: beforeStage.id, tx, value: input.value });
-
-  await insertDateEditAuditEvents({
-    actorUserId,
-    after: mapJobStage(updatedStage),
-    before: mapJobStage(beforeStage),
-    descriptor: jobStageAuditDescriptor,
-    entityId: updatedStage.id,
-    tx,
-  });
-  await insertDateOverriddenEvent({
-    actorUserId,
-    entityId: updatedStage.id,
-    entityLevel: input.entityLevel,
-    field: input.field,
-    jobId: updatedStage.jobId,
-    newValue: serializeDateEditValue(getDateFieldValue(updatedStage, input.field)),
-    oldValue: serializeDateEditValue(getDateFieldValue(beforeStage, input.field)),
-    stageId: updatedStage.id,
-    tx,
-  });
-
-  if (isDueField(input.field) && input.value !== null) {
-    await cascadeStageDueDates({
-      actorUserId,
-      anchorField: input.field,
-      nextValue: input.value,
-      previousValue: getDateFieldValue(beforeStage, input.field) as string | null,
-      stageId: updatedStage.id,
-      tx,
-    });
-  }
-
-  if (isActualField(input.field)) {
-    await cascadeJobActuals({
-      actorUserId,
-      beforeJob: mapJobAuditRecord(beforeJob),
-      jobId: beforeStage.jobId,
-      tx,
-    });
-  }
-
-  return { jobId: beforeStage.jobId };
-}
-
-async function editStationBookingLevelDate({
-  actorUserId,
-  input,
-  tx,
-}: {
-  actorUserId: AuthId;
-  input: JobDateEditInput;
-  tx: DatabaseTransaction;
-}): Promise<{ jobId: UUID }> {
-  const target = await readStationBookingForUpdate(input.entityId, tx);
-  const beforeJob = await readJobForUpdate(target.stage.jobId, tx);
-  if (isDueField(input.field)) {
-    assertDueDateEditKeepsRange({ field: input.field, row: target.booking, value: input.value });
-  }
-  if (input.field === 'actual_end' && input.value !== null && !target.booking.actualStart) {
-    throw new JobDateEditInvalidError('Station booking must be started before its actual end can be set.');
-  }
-  if (isNoOpDateEdit({ field: input.field, row: target.booking, value: input.value })) {
-    return { jobId: target.stage.jobId };
-  }
-  const updatedBooking = await updateStationBookingDateField({
-    field: input.field,
-    id: target.booking.id,
-    tx,
-    value: input.value,
-  });
-
-  await insertDateEditAuditEvents({
-    actorUserId,
-    after: updatedBooking,
-    before: target.booking,
-    descriptor: jobStageStationAuditDescriptor,
-    entityId: updatedBooking.id,
-    tx,
-  });
-  await insertDateOverriddenEvent({
-    actorUserId,
-    entityId: updatedBooking.id,
-    entityLevel: input.entityLevel,
-    field: input.field,
-    jobId: target.stage.jobId,
-    newValue: serializeDateEditValue(getDateFieldValue(updatedBooking, input.field)),
-    oldValue: serializeDateEditValue(getDateFieldValue(target.booking, input.field)),
-    stageId: target.stage.id,
-    tx,
-  });
-
-  if (isActualField(input.field)) {
-    await cascadeStageActuals({
-      actorUserId,
-      beforeStage: target.stage,
-      tx,
-    });
-    await cascadeJobActuals({
-      actorUserId,
-      beforeJob: mapJobAuditRecord(beforeJob),
-      jobId: target.stage.jobId,
-      tx,
-    });
-  }
-
-  return { jobId: target.stage.jobId };
-}
-
-async function cascadeJobDueDates({
-  actorUserId,
-  anchorField,
-  jobId,
-  nextValue,
-  previousValue,
-  tx,
-}: {
-  actorUserId: AuthId;
-  anchorField: DueField;
-  jobId: UUID;
-  nextValue: string;
-  previousValue: string | null;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  const stages = await tx.select().from(jobStages).where(eq(jobStages.jobId, jobId)).for('update');
-  const nextStageById = shiftDueDateRows({
-    anchorField,
-    nextValue,
-    previousValue,
-    rows: stages,
-  });
-
-  for (const beforeStage of stages) {
-    const nextStage = nextStageById.get(beforeStage.id);
-    if (!nextStage) continue;
-
-    const afterStage = await updateStageDueFieldsIfChanged({
-      actorUserId,
-      beforeStage,
-      nextDueEnd: nextStage.dueEnd,
-      nextDueStart: nextStage.dueStart,
-      tx,
-    });
-    await cascadeStageDueDatesByDelta({
-      actorUserId,
-      nextDueEnd: afterStage.dueEnd,
-      nextDueStart: afterStage.dueStart,
-      previousDueEnd: beforeStage.dueEnd,
-      previousDueStart: beforeStage.dueStart,
-      stageId: beforeStage.id,
-      tx,
-    });
-  }
-}
-
-async function cascadeStageDueDates({
-  actorUserId,
-  anchorField,
-  nextValue,
-  previousValue,
-  stageId,
-  tx,
-}: {
-  actorUserId: AuthId;
-  anchorField: DueField;
-  nextValue: string;
-  previousValue: string | null;
-  stageId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  const delta = getDayDelta(previousValue, nextValue);
-  await cascadeStageDueDatesByDelta({
-    actorUserId,
-    nextDueEnd: anchorField === 'due_end' ? nextValue : null,
-    nextDueStart: anchorField === 'due_start' ? nextValue : null,
-    previousDueEnd: anchorField === 'due_end' ? previousValue : null,
-    previousDueStart: anchorField === 'due_start' ? previousValue : null,
-    stageId,
-    tx,
-    explicitDeltaDays: delta,
-  });
-}
-
-async function cascadeStageDueDatesByDelta({
-  actorUserId,
-  explicitDeltaDays,
-  nextDueEnd,
-  nextDueStart,
-  previousDueEnd,
-  previousDueStart,
-  stageId,
-  tx,
-}: {
-  actorUserId: AuthId;
-  explicitDeltaDays?: number;
-  nextDueEnd: string | null;
-  nextDueStart: string | null;
-  previousDueEnd: string | null;
-  previousDueStart: string | null;
-  stageId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  const bookings = await tx
-    .select()
-    .from(jobStageStations)
-    .where(eq(jobStageStations.jobStageId, stageId))
-    .for('update');
-  const deltaDays =
-    explicitDeltaDays ??
-    (nextDueStart && previousDueStart
-      ? getDayDelta(previousDueStart, nextDueStart)
-      : nextDueEnd && previousDueEnd
-        ? getDayDelta(previousDueEnd, nextDueEnd)
-        : 0);
-
-  if (deltaDays === 0) return;
-
-  const nextBookingById = shiftDueDateRows({
-    anchorField: 'due_start',
-    nextValue: shiftDateOnly('2000-01-01', deltaDays) ?? '2000-01-01',
-    previousValue: '2000-01-01',
-    rows: bookings,
-  });
-
-  for (const booking of bookings) {
-    const nextBooking = nextBookingById.get(booking.id);
-    if (!nextBooking) continue;
-    await updateStationBookingDueFieldsIfChanged({
-      actorUserId,
-      beforeBooking: booking,
-      nextDueEnd: nextBooking.dueEnd,
-      nextDueStart: nextBooking.dueStart,
-      tx,
-    });
-  }
-}
-
-async function cascadeStageActuals({
-  actorUserId,
-  beforeStage,
-  tx,
-}: {
-  actorUserId: AuthId;
-  beforeStage: JobStageRow;
-  tx: DatabaseTransaction;
-}): Promise<JobStageRow> {
-  const bookings = await tx
-    .select()
-    .from(jobStageStations)
-    .where(eq(jobStageStations.jobStageId, beforeStage.id))
-    .for('update');
-
-  const nextActuals = cascadeUp({
-    children: bookings,
-    currentParent: beforeStage,
-    stickyMarker: beforeStage,
-  });
-
-  if (
-    datesEqual(beforeStage.actualStart, nextActuals.actualStart) &&
-    datesEqual(beforeStage.actualEnd, nextActuals.actualEnd)
-  ) {
-    return beforeStage;
-  }
-
-  const [updatedStage] = await tx
-    .update(jobStages)
-    .set(nextActuals)
-    .where(eq(jobStages.id, beforeStage.id))
-    .returning();
-
-  if (!updatedStage) {
-    throw new JobNotFoundError(beforeStage.jobId);
-  }
-
-  await insertDateEditAuditEvents({
-    actorUserId,
-    after: mapJobStage(updatedStage),
-    before: mapJobStage(beforeStage),
-    descriptor: jobStageAuditDescriptor,
-    entityId: updatedStage.id,
-    tx,
-  });
-
-  if (!beforeStage.actualStart && updatedStage.actualStart) {
-    await insertStageCascadeEvent({ actorUserId, eventType: 'stage.started', stage: updatedStage, tx });
-  }
-
-  if (!beforeStage.actualEnd && updatedStage.actualEnd) {
-    await insertStageCascadeEvent({ actorUserId, eventType: 'stage.ended', stage: updatedStage, tx });
-  }
-
-  return updatedStage;
-}
-
-async function cascadeJobActuals({
-  actorUserId,
-  beforeJob,
-  jobId,
-  tx,
-}: {
-  actorUserId: AuthId;
-  beforeJob: JobAuditRecord;
-  jobId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  const stages = await tx.select().from(jobStages).where(eq(jobStages.jobId, jobId)).for('update');
-  const nextActuals = cascadeUp({
-    children: stages,
-    currentParent: beforeJob,
-    stickyMarker: beforeJob,
-  });
-
-  if (
-    datesEqual(beforeJob.actualStart, nextActuals.actualStart) &&
-    datesEqual(beforeJob.actualEnd, nextActuals.actualEnd)
-  ) {
-    return;
-  }
-
-  const [updatedJob] = await tx
-    .update(jobs)
-    .set({ ...nextActuals, updatedAt: new Date() })
-    .where(eq(jobs.id, jobId))
-    .returning();
-
-  if (!updatedJob) {
-    throw new JobNotFoundError(jobId);
-  }
-
-  const afterJob = mapJobAuditRecord(updatedJob);
-
-  await insertDateEditAuditEvents({
-    actorUserId,
-    after: afterJob,
-    before: beforeJob,
-    descriptor: jobAuditDescriptor,
-    entityId: updatedJob.id,
-    tx,
-  });
-
-  if (!beforeJob.actualStart && updatedJob.actualStart) {
-    await insertJobCascadeEvent({ actorUserId, beforeJob, eventType: 'job.started', job: updatedJob, tx });
-  }
-
-  if (!beforeJob.actualEnd && updatedJob.actualEnd) {
-    await insertJobCascadeEvent({ actorUserId, beforeJob, eventType: 'job.completed', job: updatedJob, tx });
-  }
-}
-
-async function updateStageDueFieldsIfChanged({
-  actorUserId,
-  beforeStage,
-  nextDueEnd,
-  nextDueStart,
-  tx,
-}: {
-  actorUserId: AuthId;
-  beforeStage: JobStageRow;
-  nextDueEnd: string | null;
-  nextDueStart: string | null;
-  tx: DatabaseTransaction;
-}): Promise<JobStageRow> {
-  if (beforeStage.dueStart === nextDueStart && beforeStage.dueEnd === nextDueEnd) {
-    return beforeStage;
-  }
-  assertDueDateRange({ dueEnd: nextDueEnd, dueStart: nextDueStart });
-
-  const [updatedStage] = await tx
-    .update(jobStages)
-    .set({ dueEnd: nextDueEnd, dueStart: nextDueStart })
-    .where(eq(jobStages.id, beforeStage.id))
-    .returning();
-
-  if (!updatedStage) {
-    throw new JobDateEditTargetNotFoundError(beforeStage.id);
-  }
-
-  await insertDateEditAuditEvents({
-    actorUserId,
-    after: mapJobStage(updatedStage),
-    before: mapJobStage(beforeStage),
-    descriptor: jobStageAuditDescriptor,
-    entityId: updatedStage.id,
-    tx,
-  });
-
-  return updatedStage;
-}
-
-async function updateStationBookingDueFieldsIfChanged({
-  actorUserId,
-  beforeBooking,
-  nextDueEnd,
-  nextDueStart,
-  tx,
-}: {
-  actorUserId: AuthId;
-  beforeBooking: JobStageStationRow;
-  nextDueEnd: string | null;
-  nextDueStart: string | null;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  if (beforeBooking.dueStart === nextDueStart && beforeBooking.dueEnd === nextDueEnd) {
-    return;
-  }
-  assertDueDateRange({ dueEnd: nextDueEnd, dueStart: nextDueStart });
-
-  const [updatedBooking] = await tx
-    .update(jobStageStations)
-    .set({ dueEnd: nextDueEnd, dueStart: nextDueStart, updatedAt: new Date() })
-    .where(eq(jobStageStations.id, beforeBooking.id))
-    .returning();
-
-  if (!updatedBooking) {
-    throw new JobDateEditTargetNotFoundError(beforeBooking.id);
-  }
-
-  await insertDateEditAuditEvents({
-    actorUserId,
-    after: updatedBooking,
-    before: beforeBooking,
-    descriptor: jobStageStationAuditDescriptor,
-    entityId: updatedBooking.id,
-    tx,
-  });
-}
-
 async function readJobForUpdate(id: UUID, tx: DatabaseTransaction) {
   const [job] = await tx.select().from(jobs).where(eq(jobs.id, id)).for('update');
   if (!job) {
@@ -648,25 +221,19 @@ async function readJobForUpdate(id: UUID, tx: DatabaseTransaction) {
   return job;
 }
 
-async function readStageForUpdate(id: UUID, tx: DatabaseTransaction): Promise<JobStageRow> {
-  const [stage] = await tx.select().from(jobStages).where(eq(jobStages.id, id)).for('update');
-  if (!stage) {
-    throw new JobDateEditTargetNotFoundError(id);
-  }
-  return stage;
-}
-
 async function readStationBookingForUpdate(
   id: UUID,
   tx: DatabaseTransaction,
-): Promise<{ booking: JobStageStationRow; stage: JobStageRow }> {
+): Promise<{ booking: JobStageStationRow; job: JobAuditRecord; stage: JobStageRow }> {
   const [row] = await tx
     .select({
       booking: jobStageStations,
+      job: jobs,
       stage: jobStages,
     })
     .from(jobStageStations)
     .innerJoin(jobStages, eq(jobStages.id, jobStageStations.jobStageId))
+    .innerJoin(jobs, eq(jobs.id, jobStages.jobId))
     .where(eq(jobStageStations.id, id))
     .for('update');
 
@@ -674,7 +241,29 @@ async function readStationBookingForUpdate(
     throw new JobDateEditTargetNotFoundError(id);
   }
 
-  return row;
+  return { booking: row.booking, job: mapJobAuditRecord(row.job), stage: row.stage };
+}
+
+async function readStagesWithBookingsForUpdate(jobId: UUID, tx: DatabaseTransaction): Promise<StageWithBookings[]> {
+  const stageRows = await tx.select().from(jobStages).where(eq(jobStages.jobId, jobId)).for('update');
+  const bookingRows = await tx
+    .select()
+    .from(jobStageStations)
+    .innerJoin(jobStages, eq(jobStages.id, jobStageStations.jobStageId))
+    .where(eq(jobStages.jobId, jobId))
+    .for('update');
+  const bookingsByStageId = new Map<UUID, JobStageStationRow[]>();
+
+  for (const row of bookingRows) {
+    const bookings = bookingsByStageId.get(row.job_stage.id) ?? [];
+    bookings.push(row.job_stage_station);
+    bookingsByStageId.set(row.job_stage.id, bookings);
+  }
+
+  return stageRows.map((stage) => ({
+    ...stage,
+    stations: bookingsByStageId.get(stage.id) ?? [],
+  }));
 }
 
 async function updateJobDateField({
@@ -697,28 +286,6 @@ async function updateJobDateField({
     throw new JobDateEditTargetNotFoundError(id);
   }
   return job;
-}
-
-async function updateStageDateField({
-  field,
-  id,
-  tx,
-  value,
-}: {
-  field: DateField;
-  id: UUID;
-  tx: DatabaseTransaction;
-  value: DateEditValue;
-}) {
-  const [stage] = await tx
-    .update(jobStages)
-    .set(createDateUpdate(field, value))
-    .where(eq(jobStages.id, id))
-    .returning();
-  if (!stage) {
-    throw new JobDateEditTargetNotFoundError(id);
-  }
-  return stage;
 }
 
 async function updateStationBookingDateField({
@@ -833,57 +400,135 @@ async function insertDateOverriddenEvent({
   });
 }
 
-async function insertStageCascadeEvent({
+async function insertDerivedMilestoneEvents({
   actorUserId,
-  eventType,
-  stage,
+  afterStages,
+  beforeJob,
+  beforeStages,
+  editedStageId,
+  jobId,
   tx,
 }: {
   actorUserId: AuthId;
-  eventType: 'stage.started' | 'stage.ended';
-  stage: JobStageRow;
+  afterStages: StageWithBookings[];
+  beforeJob: JobAuditRecord;
+  beforeStages: StageWithBookings[];
+  editedStageId: UUID;
+  jobId: UUID;
   tx: DatabaseTransaction;
 }): Promise<void> {
-  const actualValue = eventType === 'stage.started' ? stage.actualStart : stage.actualEnd;
+  const beforeStage = beforeStages.find((stage) => stage.id === editedStageId);
+  const afterStage = afterStages.find((stage) => stage.id === editedStageId);
+  if (!beforeStage || !afterStage) {
+    throw new JobDateEditTargetNotFoundError(editedStageId);
+  }
 
-  if (!actualValue) {
+  const beforeStageSchedule = rollupStageSchedule(mapScheduleRollupBookings(beforeStage.stations));
+  const afterStageSchedule = rollupStageSchedule(mapScheduleRollupBookings(afterStage.stations));
+  const beforeJobSchedule = rollupJobSchedule(
+    beforeStages.map((stage) => ({ bookings: mapScheduleRollupBookings(stage.stations) })),
+  );
+  const afterJobSchedule = rollupJobSchedule(
+    afterStages.map((stage) => ({ bookings: mapScheduleRollupBookings(stage.stations) })),
+  );
+  const events = deriveMilestoneEvents({
+    job: { after: afterJobSchedule.actualWindow, before: beforeJobSchedule.actualWindow },
+    stage: { after: afterStageSchedule.actualWindow, before: beforeStageSchedule.actualWindow },
+  });
+
+  for (const eventType of events) {
+    if (eventType === 'stage.started' || eventType === 'stage.ended') {
+      await insertStageMilestoneEvent({
+        actorUserId,
+        eventType,
+        jobId,
+        stage: afterStage,
+        value:
+          eventType === 'stage.started' ? afterStageSchedule.actualWindow.start : afterStageSchedule.actualWindow.end,
+        tx,
+      });
+      continue;
+    }
+
+    await insertJobMilestoneEvent({
+      actorUserId,
+      beforeJob,
+      beforeWindow: beforeJobSchedule.actualWindow,
+      eventType,
+      jobId,
+      nextWindow: afterJobSchedule.actualWindow,
+      tx,
+    });
+  }
+}
+
+async function insertStageMilestoneEvent({
+  actorUserId,
+  eventType,
+  jobId,
+  stage,
+  tx,
+  value,
+}: {
+  actorUserId: AuthId;
+  eventType: 'stage.started' | 'stage.ended';
+  jobId: UUID;
+  stage: JobStageRow;
+  tx: DatabaseTransaction;
+  value: Date | null;
+}): Promise<void> {
+  if (!value) {
     throw new Error(`${eventType} requires an actual value.`);
   }
 
   await tx.insert(jobEvents).values({
     actorUserId,
     eventType,
-    jobId: stage.jobId,
+    jobId,
     occurredAt: new Date(),
     payload: {
-      [eventType === 'stage.started' ? 'actualStart' : 'actualEnd']: actualValue.toISOString(),
+      [eventType === 'stage.started' ? 'actualStart' : 'actualEnd']: value.toISOString(),
       stage: stage.stage,
     },
     stageId: stage.id,
   });
 }
 
-async function insertJobCascadeEvent({
+async function insertJobMilestoneEvent({
   actorUserId,
   beforeJob,
+  beforeWindow,
   eventType,
-  job,
+  jobId,
+  nextWindow,
   tx,
 }: {
   actorUserId: AuthId;
   beforeJob: JobAuditRecord;
+  beforeWindow: { end: Date | null; start: Date | null };
   eventType: Extract<JobEvent['eventType'], 'job.completed' | 'job.started'>;
-  job: typeof jobs.$inferSelect;
+  jobId: UUID;
+  nextWindow: { end: Date | null; start: Date | null };
   tx: DatabaseTransaction;
 }): Promise<void> {
   await tx.insert(jobEvents).values({
     actorUserId,
     eventType,
-    jobId: job.id,
+    jobId,
     occurredAt: new Date(),
     payload: {
-      fromLifecycleStatus: deriveJobStatus(beforeJob),
-      toLifecycleStatus: deriveJobStatus(job),
+      fromLifecycleStatus: deriveJobStatus({
+        actualEnd: beforeWindow.end,
+        actualStart: beforeWindow.start,
+        isCancelled: beforeJob.isCancelled,
+        isPaused: beforeJob.isPaused,
+      }),
+      toLifecycleStatus: deriveJobStatus({
+        actualEnd: nextWindow.end,
+        actualStart: nextWindow.start,
+        isCancelled: beforeJob.isCancelled,
+        isPaused: beforeJob.isPaused,
+      }),
     },
     stageId: null,
   });
@@ -924,59 +569,13 @@ function isActualField(field: DateField): field is ActualField {
   return field === 'actual_start' || field === 'actual_end';
 }
 
-function shiftDueDateRows<Key extends string>({
-  anchorField,
-  nextValue,
-  previousValue,
-  rows,
-}: {
-  anchorField: DueField;
-  nextValue: string;
-  previousValue: string | null;
-  rows: readonly DueDateShiftRow<Key>[];
-}): Map<Key, { dueEnd: string | null; dueStart: string | null }> {
-  const anchor = {
-    kind: anchorField === 'due_start' ? 'start' : 'end',
-    value: parseDateOnly(nextValue),
-    ...(previousValue ? { previousValue: parseDateOnly(previousValue) } : {}),
-  } as const;
-
-  // Shift mode only uses the anchor delta and each row's current dates/sticky markers. Durations are
-  // deliberately zero placeholders so every due shift, including bookings, goes through one helper.
-  const shiftedRows = cascadeDown({
-    anchor,
-    currentLevels: rows.map((row) => ({
-      dueEnd: parseOptionalDateOnly(row.dueEnd),
-      dueStart: parseOptionalDateOnly(row.dueStart),
-      key: row.id,
-    })),
-    durations: rows.map((row) => ({ durationDays: 0, key: row.id })),
-    mode: 'shift',
-    stickyMarkers: rows.map((row) => ({
-      dueEndSetManually: row.dueEndSetManually,
-      dueStartSetManually: row.dueStartSetManually,
-      key: row.id,
-    })),
-  });
-
-  return new Map(
-    shiftedRows.map((row) => [
-      row.key,
-      {
-        dueEnd: formatOptionalDateOnly(row.dueEnd),
-        dueStart: formatOptionalDateOnly(row.dueStart),
-      },
-    ]),
-  );
-}
-
 function assertDueDateEditKeepsRange({
   field,
   row,
   value,
 }: {
   field: DueField;
-  row: Pick<DueDateShiftRow, 'dueEnd' | 'dueStart'>;
+  row: Pick<JobStageStationRow, 'dueEnd' | 'dueStart'>;
   value: string | null;
 }): void {
   assertDueDateRange({
@@ -985,11 +584,34 @@ function assertDueDateEditKeepsRange({
   });
 }
 
+function assertActualDateEditKeepsRange({
+  field,
+  row,
+  value,
+}: {
+  field: ActualField;
+  row: Pick<JobStageStationRow, 'actualEnd' | 'actualStart'>;
+  value: string | null;
+}): void {
+  assertActualDateRange({
+    actualEnd: field === 'actual_end' ? (value ? new Date(value) : null) : row.actualEnd,
+    actualStart: field === 'actual_start' ? (value ? new Date(value) : null) : row.actualStart,
+  });
+}
+
 function assertDueDateRange({ dueEnd, dueStart }: { dueEnd: string | null; dueStart: string | null }): void {
   if (!dueEnd || !dueStart) return;
 
   if (parseDateOnly(dueStart).getTime() > parseDateOnly(dueEnd).getTime()) {
     throw new JobDateEditInvalidError('Due start must be on or before due end.');
+  }
+}
+
+function assertActualDateRange({ actualEnd, actualStart }: { actualEnd: Date | null; actualStart: Date | null }): void {
+  if (!actualEnd || !actualStart) return;
+
+  if (actualStart.getTime() > actualEnd.getTime()) {
+    throw new JobDateEditInvalidError('Actual start must be on or before actual end.');
   }
 }
 
@@ -1028,10 +650,6 @@ function getDateFieldManualValue(record: Record<string, unknown>, field: Exclude
   }
 }
 
-function parseOptionalDateOnly(value: string | null): Date | null {
-  return value ? parseDateOnly(value) : null;
-}
-
 function parseDateOnly(value: string): Date {
   const [year, month, day] = value.split('-').map(Number);
   if (!year || !month || !day) {
@@ -1041,33 +659,19 @@ function parseDateOnly(value: string): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-function formatDateOnly(value: Date): string {
-  const year = value.getUTCFullYear();
-  const month = String(value.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(value.getUTCDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
+function mapScheduleRollupBookings(
+  bookings: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[],
+) {
+  return bookings.map((booking) => ({
+    actualEnd: booking.actualEnd,
+    actualStart: booking.actualStart,
+    plannedEnd: parseDateOnlyAsUtc(booking.dueEnd),
+    plannedStart: parseDateOnlyAsUtc(booking.dueStart),
+  }));
 }
 
-function formatOptionalDateOnly(value: Date | null): string | null {
-  return value ? formatDateOnly(value) : null;
-}
-
-function shiftDateOnly(value: string | null, deltaDays: number): string | null {
-  if (!value) return null;
-
-  const date = parseDateOnly(value);
-  date.setUTCDate(date.getUTCDate() + deltaDays);
-  return formatOptionalDateOnly(date);
-}
-
-function getDayDelta(previousValue: string | null, nextValue: string): number {
-  if (!previousValue) return 0;
-  return Math.round((parseDateOnly(nextValue).getTime() - parseDateOnly(previousValue).getTime()) / 86_400_000);
-}
-
-function datesEqual(left: Date | null, right: Date | null): boolean {
-  return (left?.getTime() ?? null) === (right?.getTime() ?? null);
+function parseDateOnlyAsUtc(value: string | null): Date | null {
+  return value ? new Date(`${value}T00:00:00.000Z`) : null;
 }
 
 function assertNever(value: never): never {

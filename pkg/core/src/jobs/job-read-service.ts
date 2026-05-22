@@ -392,14 +392,10 @@ function compareSharedStationBookings(left: SharedStationBookingRow, right: Shar
 
 export function getJobSortColumn(sortBy: JobSortBy): SQL {
   const columns = {
-    actualEnd: sql`${jobs.actualEnd}`,
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
     dueDate: sql`${jobs.dueDate}`,
-    dueEnd: sql`${jobs.dueEnd}`,
     id: sql`${jobs.id}`,
-    // Lifecycle sorting intentionally stays on stored Job actual fields until list filtering moves to derived windows.
-    lifecycleStatus: sql`case when ${jobs.isCancelled} then 5 when ${jobs.isPaused} then 4 when ${jobs.actualEnd} is not null then 3 when ${jobs.actualStart} is not null then 2 else 1 end`,
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];

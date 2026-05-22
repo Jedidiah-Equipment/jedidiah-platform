@@ -20,11 +20,6 @@ export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
 export type JobLifecycleStatus = z.infer<typeof JobLifecycleStatus>;
 export const JobLifecycleStatus = z.enum(['not-started', 'active', 'paused', 'complete', 'cancelled']);
 
-export const JOB_LIST_STATUS_FILTERS = ['all', ...JobLifecycleStatus.options] as const;
-
-export type JobListStatusFilter = z.infer<typeof JobListStatusFilter>;
-export const JobListStatusFilter = z.union([JobLifecycleStatus, z.literal('all')]);
-
 export type StageTransitionPolicyResult = z.infer<typeof StageTransitionPolicyResult>;
 export const StageTransitionPolicyResult = z.discriminatedUnion('allowed', [
   z.object({
@@ -366,17 +361,14 @@ export const JobSummary = Job.extend({
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
-export const JobSortBy = z.enum(['actualEnd', 'code', 'createdAt', 'dueDate', 'dueEnd', 'id', 'lifecycleStatus']);
+export const JobSortBy = z.enum(['code', 'createdAt', 'dueDate', 'id']);
 
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
     jobId: UUID.optional(),
-    lifecycleStatuses: z.array(JobLifecycleStatus).default(['active']),
   })
-  .default({
-    lifecycleStatuses: ['active'],
-  });
+  .default({});
 
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
@@ -437,10 +429,6 @@ export const JobCreateStageInput = z.object({
 export type JobCreateInput = z.infer<typeof JobCreateInput>;
 export const JobCreateInput = z
   .object({
-    dueEnd: z.iso.date().nullable().optional(),
-    dueEndSetManually: z.boolean().optional(),
-    dueStart: z.iso.date().nullable().optional(),
-    dueStartSetManually: z.boolean().optional(),
     productId: UUID,
     quoteId: UUID.nullable().optional(),
     stages: z.array(JobCreateStageInput).optional(),
@@ -541,6 +529,27 @@ export const JobDateEditInput = z
   })
   .superRefine((input, context) => {
     if (input.field === 'due_date' && input.entityLevel !== 'job') {
+      context.addIssue({
+        code: 'custom',
+        path: ['field'],
+        message: 'Job Due Date can only be edited on a Job.',
+      });
+    }
+    if (input.entityLevel === 'job' && input.field !== 'due_date') {
+      context.addIssue({
+        code: 'custom',
+        path: ['field'],
+        message: 'Only Job Due Date can be edited on a Job.',
+      });
+    }
+    if (input.entityLevel === 'stage') {
+      context.addIssue({
+        code: 'custom',
+        path: ['entityLevel'],
+        message: 'Stage dates are derived from Station Bookings.',
+      });
+    }
+    if (input.entityLevel === 'station-booking' && input.field === 'due_date') {
       context.addIssue({
         code: 'custom',
         path: ['field'],

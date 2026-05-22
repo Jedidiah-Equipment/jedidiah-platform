@@ -49,7 +49,7 @@ import {
 } from './station-booking-service.js';
 
 type JobLifecycleTransition = 'cancel' | 'pause' | 'resume' | 'uncancel';
-type ConvertibleQuoteRow = typeof quotes.$inferSelect & { productId: UUID };
+const JOB_ELIGIBLE_QUOTE_STATUSES: readonly QuoteStatus[] = ['accepted', 'draft', 'sent'];
 
 export async function createJob({
   db,
@@ -79,8 +79,8 @@ export async function createJobFromQuote({
   actorUserId: AuthId;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
-    const quote = await validateJobQuoteForCreate({
-      allowedStatuses: ['accepted', 'draft', 'sent'],
+    await validateJobQuoteForCreate({
+      allowedStatuses: JOB_ELIGIBLE_QUOTE_STATUSES,
       access,
       quoteId: input.quoteId,
       tx,
@@ -92,8 +92,8 @@ export async function createJobFromQuote({
       input: {
         dueEnd: input.dueEnd,
         dueStart: input.dueStart,
-        productId: quote.productId,
-        quoteId: quote.id,
+        productId: input.productId,
+        quoteId: input.quoteId,
       },
       skipQuoteValidation: true,
       tx,
@@ -117,7 +117,7 @@ async function createJobInTransaction({
   const quoteId = input.quoteId ?? null;
 
   if (quoteId && !skipQuoteValidation) {
-    await validateJobQuoteForCreate({ access, quoteId, tx });
+    await validateJobQuoteForCreate({ access, allowedStatuses: JOB_ELIGIBLE_QUOTE_STATUSES, quoteId, tx });
   }
 
   const [job] = await tx
@@ -189,7 +189,7 @@ async function validateJobQuoteForCreate({
   allowedStatuses?: readonly QuoteStatus[];
   quoteId: UUID;
   tx: DatabaseTransaction;
-}): Promise<ConvertibleQuoteRow> {
+}): Promise<void> {
   if (!hasPermission(access, 'quote:read')) {
     throw new JobQuoteCreateFromQuoteDeniedError('Quote not found.');
   }
@@ -201,14 +201,10 @@ async function validateJobQuoteForCreate({
   }
 
   if (allowedStatuses && !allowedStatuses.includes(quote.status)) {
-    throw new JobQuoteCreateFromQuoteDeniedError('Only draft, sent, or accepted quotes can source jobs.');
+    throw new JobQuoteCreateFromQuoteDeniedError("This quote's status does not allow job creation.");
   }
 
-  if (!quote.productId) {
-    throw new JobQuoteCreateFromQuoteDeniedError('Quote must have a product before it can source a job.');
-  }
-
-  return { ...quote, productId: quote.productId };
+  return;
 }
 
 function buildJobStageInsertValues({

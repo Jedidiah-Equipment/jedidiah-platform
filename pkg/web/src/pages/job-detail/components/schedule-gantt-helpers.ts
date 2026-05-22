@@ -63,10 +63,10 @@ export function buildScheduleGanttRows(job: JobDetail): ScheduleGanttRow[] {
 
 function createJobRow(job: JobDetail): ScheduleGanttRow {
   return {
-    actualEnd: job.actualEnd,
-    actualStart: job.actualStart,
-    dueEnd: job.dueEnd,
-    dueStart: job.dueStart,
+    actualEnd: job.actualWindow.end,
+    actualStart: job.actualWindow.start,
+    dueEnd: toDateOnly(job.plannedWindow.end),
+    dueStart: toDateOnly(job.plannedWindow.start),
     entityId: job.id,
     id: `job-${job.id}`,
     level: 'job',
@@ -79,10 +79,10 @@ function createJobRow(job: JobDetail): ScheduleGanttRow {
 
 function createStageRow(stage: JobStageRollup): ScheduleGanttRow {
   return {
-    actualEnd: stage.actualEnd,
-    actualStart: stage.actualStart,
-    dueEnd: stage.dueEnd,
-    dueStart: stage.dueStart,
+    actualEnd: stage.actualWindow.end,
+    actualStart: stage.actualWindow.start,
+    dueEnd: toDateOnly(stage.plannedWindow.end),
+    dueStart: toDateOnly(stage.plannedWindow.start),
     entityId: stage.id,
     id: `stage-${stage.id}`,
     level: 'stage',
@@ -107,6 +107,10 @@ function createStationRow(stage: JobStageRollup, station: StationBooking): Sched
     statusLabel: jobStageStatusLabels[station.state],
     title: station.station.name,
   };
+}
+
+function toDateOnly(value: string | null): string | null {
+  return value?.slice(0, 10) ?? null;
 }
 
 export function parseScheduleDate(value: string | null): Date | null {

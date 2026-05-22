@@ -63,7 +63,6 @@ const JobCodeHoverCard: React.FC<{
       ({
         filters: {
           jobId,
-          lifecycleStatuses: [],
         },
         page: 1,
         pageSize: 1,
@@ -107,7 +106,7 @@ const JobCodeHoverCard: React.FC<{
 const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => (
   <div className="flex flex-col gap-3">
     <div className="grid grid-cols-2 gap-2 text-sm">
-      <JobPreviewFact label="Due" value={<DateDisplay date={job.dueEnd} emptyValue="No date" />} />
+      <JobPreviewFact label="Due date" value={<DateDisplay date={job.dueDate} emptyValue="No date" />} />
       <JobPreviewFact label="Customer" value={job.customerCompanyName ?? 'Standalone'} />
       <JobPreviewFact label="Product" value={`${job.productName} (${job.productModelCode})`} />
       <JobPreviewFact label="Quote" value={job.quoteCode ?? 'None'} />

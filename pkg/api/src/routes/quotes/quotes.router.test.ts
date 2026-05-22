@@ -148,7 +148,6 @@ describe('quotes.list', () => {
     const sentQuote = await salesCaller.quotes.send({ id: acceptedQuote.id });
     const finalQuote = await salesCaller.quotes.accept({ id: sentQuote.id });
     const job = await supervisorCaller.jobs.create({
-      dueEnd: '2026-08-15',
       productId: context.product.id,
       quoteId: finalQuote.id,
     });
@@ -319,7 +318,6 @@ describe('jobs.create with quote links', () => {
     });
 
     const job = await supervisorCaller.jobs.create({
-      dueEnd: '2026-08-15',
       productId: context.product.id,
       quoteId: accepted.id,
     });
@@ -327,7 +325,7 @@ describe('jobs.create with quote links', () => {
     const stageRows = await context.db.select().from(jobStages);
 
     expect(job).toMatchObject({
-      dueEnd: '2026-08-15',
+      dueEnd: null,
       productId: context.product.id,
       quoteId: accepted.id,
     });
@@ -370,13 +368,12 @@ describe('jobs.create with quote links', () => {
     const sent = await salesCaller.quotes.send({ id: created.id });
 
     const job = await supervisorCaller.jobs.create({
-      dueEnd: '2026-08-15',
       productId: context.product.id,
       quoteId: sent.id,
     });
 
     expect(job).toMatchObject({
-      dueEnd: '2026-08-15',
+      dueEnd: null,
       productId: context.product.id,
       quoteId: sent.id,
     });
@@ -445,7 +442,6 @@ describe('jobs.create with quote links', () => {
     const accepted = await salesCaller.quotes.accept({ id: sent.id });
 
     const job = await supervisorCaller.jobs.create({
-      dueEnd: '2026-08-15',
       productId: alternateProduct.id,
       quoteId: accepted.id,
     });

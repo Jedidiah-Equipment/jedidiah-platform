@@ -42,93 +42,17 @@ describe('create job schedule gantt adapter', () => {
     ]);
   });
 
-  test('moves the selected anchor when the draft job row is dragged', () => {
-    const edit = applyCreateScheduleGanttDueRangeEdit({
-      anchorKind: 'end',
-      nextRange: { dueEnd: '2026-05-12', dueStart: '2026-05-03' },
-      row: createRow({ dueEnd: '2026-05-10', dueStart: '2026-05-01', level: 'job' }),
-      stages: createStages(),
-    });
+  test('ignores edits for derived draft Job and Stage rows', () => {
+    const stages = createStages();
 
-    expect(edit).toEqual({ anchorDate: '2026-05-12', anchorKind: 'end', kind: 'anchor' });
-  });
-
-  test('resizing the draft job start edge switches planning to the start anchor', () => {
-    const edit = applyCreateScheduleGanttDueRangeEdit({
-      anchorKind: 'end',
-      nextRange: { dueEnd: '2026-05-10', dueStart: '2026-05-03' },
-      row: createRow({ dueEnd: '2026-05-10', dueStart: '2026-05-01', level: 'job' }),
-      stages: createStages(),
-    });
-
-    expect(edit).toEqual({ anchorDate: '2026-05-03', anchorKind: 'start', kind: 'anchor' });
-  });
-
-  test('resizing the draft job end edge switches planning to the end anchor', () => {
     const edit = applyCreateScheduleGanttDueRangeEdit({
       anchorKind: 'start',
       nextRange: { dueEnd: '2026-05-12', dueStart: '2026-05-01' },
       row: createRow({ dueEnd: '2026-05-10', dueStart: '2026-05-01', level: 'job' }),
-      stages: createStages(),
+      stages,
     });
 
-    expect(edit).toEqual({ anchorDate: '2026-05-12', anchorKind: 'end', kind: 'anchor' });
-  });
-
-  test('dragging a draft stage updates non-manual station bookings with the stage range', () => {
-    const edit = applyCreateScheduleGanttDueRangeEdit({
-      anchorKind: 'end',
-      nextRange: { dueEnd: '2026-05-05', dueStart: '2026-05-02' },
-      row: createRow({ entityId: 'fabrication', level: 'stage' }),
-      stages: createStages(),
-    });
-
-    expect(edit).toMatchObject({
-      kind: 'stages',
-      stages: [
-        {
-          dueEnd: '2026-05-05',
-          dueEndSetManually: true,
-          dueStart: '2026-05-02',
-          dueStartSetManually: true,
-          stationBookings: [
-            {
-              dueEnd: '2026-05-05',
-              dueStart: '2026-05-02',
-            },
-          ],
-        },
-      ],
-    });
-  });
-
-  test('resizing a draft stage pins only the changed edge', () => {
-    const edit = applyCreateScheduleGanttDueRangeEdit({
-      anchorKind: 'end',
-      nextRange: { dueEnd: '2026-05-03', dueStart: '2026-05-02' },
-      row: createRow({ entityId: 'fabrication', level: 'stage' }),
-      stages: createStages(),
-    });
-
-    expect(edit).toMatchObject({
-      kind: 'stages',
-      stages: [
-        {
-          dueEnd: '2026-05-03',
-          dueEndSetManually: false,
-          dueStart: '2026-05-02',
-          dueStartSetManually: true,
-          stationBookings: [
-            {
-              dueEnd: '2026-05-03',
-              dueEndSetManually: false,
-              dueStart: '2026-05-02',
-              dueStartSetManually: false,
-            },
-          ],
-        },
-      ],
-    });
+    expect(edit).toEqual({ kind: 'stages', stages });
   });
 
   test('dragging a draft station booking pins only changed booking edges', () => {

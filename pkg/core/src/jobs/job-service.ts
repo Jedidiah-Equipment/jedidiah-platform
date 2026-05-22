@@ -79,6 +79,7 @@ async function createJobInTransaction({
   const [job] = await tx
     .insert(jobs)
     .values({
+      dueDate: input.dueDate ?? null,
       productId: input.productId,
       quoteId,
     })

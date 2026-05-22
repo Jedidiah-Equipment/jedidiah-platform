@@ -103,6 +103,9 @@ async function editJobLevelDate({
   tx: DatabaseTransaction;
 }): Promise<{ jobId: UUID }> {
   const beforeJob = await readJobForUpdate(input.entityId, tx);
+  if (isDueDateField(input.field)) {
+    return editJobDueDate({ actorUserId, beforeJob, input, tx });
+  }
   if (isDueField(input.field)) {
     assertDueDateEditKeepsRange({ field: input.field, row: beforeJob, value: input.value });
   }
@@ -146,6 +149,48 @@ async function editJobLevelDate({
     // Clearing a Job due anchor only re-enables the Job field's auto state. There is no remaining
     // delta to apply safely, so existing Stage and Station Booking windows stay as-is.
   }
+
+  return { jobId: updatedJob.id };
+}
+
+async function editJobDueDate({
+  actorUserId,
+  beforeJob,
+  input,
+  tx,
+}: {
+  actorUserId: AuthId;
+  beforeJob: Awaited<ReturnType<typeof readJobForUpdate>>;
+  input: JobDateEditInput;
+  tx: DatabaseTransaction;
+}): Promise<{ jobId: UUID }> {
+  if (isNoOpDateEdit({ field: input.field, row: beforeJob, value: input.value })) {
+    return { jobId: beforeJob.id };
+  }
+
+  const updatedJob = await updateJobDateField({ field: input.field, id: beforeJob.id, tx, value: input.value });
+  const afterJob = mapJobAuditRecord(updatedJob);
+  const beforeAuditJob = mapJobAuditRecord(beforeJob);
+
+  await insertDateEditAuditEvents({
+    actorUserId,
+    after: afterJob,
+    before: beforeAuditJob,
+    descriptor: jobAuditDescriptor,
+    entityId: updatedJob.id,
+    tx,
+  });
+  await insertDateOverriddenEvent({
+    actorUserId,
+    entityId: updatedJob.id,
+    entityLevel: input.entityLevel,
+    field: input.field,
+    jobId: updatedJob.id,
+    newValue: serializeDateEditValue(getDateFieldValue(afterJob, input.field)),
+    oldValue: serializeDateEditValue(getDateFieldValue(beforeAuditJob, input.field)),
+    stageId: null,
+    tx,
+  });
 
   return { jobId: updatedJob.id };
 }
@@ -706,6 +751,8 @@ function createDateUpdate(field: DateField, value: DateEditValue) {
       return { actualEnd: value ? new Date(value) : null, actualEndSetManually: setManually };
     case 'actual_start':
       return { actualStart: value ? new Date(value) : null, actualStartSetManually: setManually };
+    case 'due_date':
+      return { dueDate: value };
     case 'due_end':
       return { dueEnd: value, dueEndSetManually: setManually };
     case 'due_start':
@@ -848,6 +895,8 @@ function getDateFieldValue(record: Record<string, unknown>, field: DateField): u
       return record.actualEnd;
     case 'actual_start':
       return record.actualStart;
+    case 'due_date':
+      return record.dueDate;
     case 'due_end':
       return record.dueEnd;
     case 'due_start':
@@ -865,6 +914,10 @@ function serializeDateEditValue(value: unknown): string | null {
 
 function isDueField(field: DateField): field is DueField {
   return field === 'due_start' || field === 'due_end';
+}
+
+function isDueDateField(field: DateField): field is Extract<DateField, 'due_date'> {
+  return field === 'due_date';
 }
 
 function isActualField(field: DateField): field is ActualField {
@@ -949,6 +1002,10 @@ function isNoOpDateEdit({
   row: Record<string, unknown>;
   value: string | null;
 }): boolean {
+  if (isDueDateField(field)) {
+    return serializeDateEditValue(getDateFieldValue(row, field)) === value;
+  }
+
   const nextSetManually = value !== null;
   return (
     serializeDateEditValue(getDateFieldValue(row, field)) === value &&
@@ -956,7 +1013,7 @@ function isNoOpDateEdit({
   );
 }
 
-function getDateFieldManualValue(record: Record<string, unknown>, field: DateField): boolean {
+function getDateFieldManualValue(record: Record<string, unknown>, field: Exclude<DateField, 'due_date'>): boolean {
   switch (field) {
     case 'actual_end':
       return record.actualEndSetManually === true;

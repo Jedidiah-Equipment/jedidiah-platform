@@ -26,6 +26,7 @@ describe('jobs.create', () => {
     });
 
     expect(job).toMatchObject({
+      dueDate: null,
       dueEnd: '2026-08-15',
       dueEndSetManually: true,
       dueStart: null,
@@ -41,7 +42,6 @@ describe('jobs.create', () => {
     ]);
     expect(job.stages.map((stage) => stage.state)).toEqual(['pending', 'pending', 'pending', 'pending', 'pending']);
     expect(job.stages.every((stage) => stage.stations.length === 0)).toBe(true);
-    expect('dueDate' in job).toBe(false);
   });
 
   test('creates stage dates and station bookings from the reviewed create payload', async ({ context }) => {
@@ -122,10 +122,51 @@ describe('jobs.list', () => {
     }
   });
 
-  test('sorts by due end and actual end', async ({ context }) => {
+  test('sorts by job due date, due end, and actual end', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
+    const laterDueDateJob = await caller.jobs.create({ productId: context.product.id });
+    const earlierDueDateJob = await caller.jobs.create({ productId: context.product.id });
+    const undatedJob = await caller.jobs.create({ productId: context.product.id });
+    await caller.jobs.editDate({
+      entityId: laterDueDateJob.id,
+      entityLevel: 'job',
+      field: 'due_date',
+      value: '2026-08-20',
+    });
+    await caller.jobs.editDate({
+      entityId: earlierDueDateJob.id,
+      entityLevel: 'job',
+      field: 'due_date',
+      value: '2026-08-10',
+    });
     const laterDueJob = await caller.jobs.create({ dueEnd: '2026-08-20', productId: context.product.id });
     const earlierDueJob = await caller.jobs.create({ dueEnd: '2026-08-10', productId: context.product.id });
+
+    const dueDateSorted = await caller.jobs.list({
+      filters: { lifecycleStatuses: [] },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'dueDate',
+      sortDirection: 'asc',
+    });
+    expect(filterJobIds(dueDateSorted.items, [earlierDueDateJob.id, laterDueDateJob.id, undatedJob.id])).toEqual([
+      earlierDueDateJob.id,
+      laterDueDateJob.id,
+      undatedJob.id,
+    ]);
+
+    const dueDateSortedDesc = await caller.jobs.list({
+      filters: { lifecycleStatuses: [] },
+      page: 1,
+      pageSize: 20,
+      sortBy: 'dueDate',
+      sortDirection: 'desc',
+    });
+    expect(filterJobIds(dueDateSortedDesc.items, [earlierDueDateJob.id, laterDueDateJob.id, undatedJob.id])).toEqual([
+      laterDueDateJob.id,
+      earlierDueDateJob.id,
+      undatedJob.id,
+    ]);
 
     const dueEndSorted = await caller.jobs.list({
       filters: { lifecycleStatuses: [] },
@@ -648,6 +689,117 @@ describe('jobs.editDate', () => {
 
     const workflowEvents = await listJobEventTypes(context.db, job.id);
     expect(workflowEvents).toEqual(['date.overridden']);
+  });
+
+  test('sets and clears the Job Due Date without shifting schedule windows', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await createJobWithStationBookings({
+      caller,
+      db: context.db,
+      productId: context.product.id,
+      stages: ['fabrication'],
+    });
+    const beforeStage = getStage(job, 'fabrication');
+    const beforeBooking = getStageBooking(job, 'fabrication');
+
+    const updated = await caller.jobs.editDate({
+      entityId: job.id,
+      entityLevel: 'job',
+      field: 'due_date',
+      value: '2026-08-20',
+    });
+
+    expect(updated).toMatchObject({
+      dueDate: '2026-08-20',
+      dueEnd: job.dueEnd,
+      dueStart: job.dueStart,
+    });
+    expect(getStage(updated, 'fabrication')).toMatchObject({
+      dueEnd: beforeStage.dueEnd,
+      dueStart: beforeStage.dueStart,
+    });
+    expect(getStageBooking(updated, 'fabrication')).toMatchObject({
+      dueEnd: beforeBooking.dueEnd,
+      dueStart: beforeBooking.dueStart,
+    });
+
+    const cleared = await caller.jobs.editDate({
+      entityId: job.id,
+      entityLevel: 'job',
+      field: 'due_date',
+      value: null,
+    });
+
+    expect(cleared.dueDate).toBeNull();
+    expect(getStage(cleared, 'fabrication')).toMatchObject({
+      dueEnd: beforeStage.dueEnd,
+      dueStart: beforeStage.dueStart,
+    });
+    expect(getStageBooking(cleared, 'fabrication')).toMatchObject({
+      dueEnd: beforeBooking.dueEnd,
+      dueStart: beforeBooking.dueStart,
+    });
+
+    const workflowEvents = (await context.db.select().from(jobEvents)).filter((event) => event.jobId === job.id);
+    expect(workflowEvents.map((event) => event.eventType)).toEqual(['date.overridden', 'date.overridden']);
+    expect(workflowEvents.map((event) => event.payload)).toEqual(
+      expect.arrayContaining([
+        {
+          entityId: job.id,
+          entityLevel: 'job',
+          field: 'due_date',
+          newValue: '2026-08-20',
+          oldValue: null,
+        },
+        {
+          entityId: job.id,
+          entityLevel: 'job',
+          field: 'due_date',
+          newValue: null,
+          oldValue: '2026-08-20',
+        },
+      ]),
+    );
+    const auditRows = (await context.db.select().from(auditEvents)).filter(
+      (event) => event.entityId === job.id && event.action === 'updated',
+    );
+    expect(auditRows).toHaveLength(2);
+  });
+
+  test('rejects Job Due Date edits below the job level', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({ productId: context.product.id });
+
+    await expect(
+      caller.jobs.editDate({
+        entityId: getStage(job, 'fabrication').id,
+        entityLevel: 'stage',
+        field: 'due_date',
+        value: '2026-08-20',
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+  });
+
+  test('does not emit workflow or audit events for no-op Job Due Date clears', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({ productId: context.product.id });
+
+    const unchanged = await caller.jobs.editDate({
+      entityId: job.id,
+      entityLevel: 'job',
+      field: 'due_date',
+      value: null,
+    });
+
+    expect(unchanged.updatedAt).toBe(job.updatedAt);
+    await expect(listJobEventTypes(context.db, job.id)).resolves.toEqual([]);
+
+    const auditRows = (await context.db.select().from(auditEvents)).filter(
+      (event) => event.entityId === job.id && event.action === 'updated',
+    );
+    expect(auditRows).toHaveLength(0);
   });
 
   test('rejects due edits that would invert the edited row window', async ({ context }) => {

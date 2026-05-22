@@ -1,6 +1,7 @@
 import { FINAL_JOB_STAGE, hasPermission, jobLifecycleStatusLabels } from '@pkg/domain';
 import type { JobDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckIcon } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 
@@ -8,7 +9,9 @@ import { BackButton } from '@/components/button/BackButton.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
+import { useAppForm } from '@/components/form/index.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
+import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -111,6 +114,15 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       onError: (error) => showMutationError(error, 'Unable to uncancel job.'),
     }),
   );
+  const editDueDateMutation = useMutation(
+    trpc.jobs.editDate.mutationOptions({
+      onSuccess: async () => {
+        await refreshJobs();
+        toast.success('Job Due Date updated');
+      },
+      onError: (error) => showMutationError(error, 'Unable to update Job Due Date.'),
+    }),
+  );
   const isTransitionPending =
     startStageMutation.isPending ||
     completeStageMutation.isPending ||
@@ -119,7 +131,8 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     pauseJobMutation.isPending ||
     resumeJobMutation.isPending ||
     cancelJobMutation.isPending ||
-    uncancelJobMutation.isPending;
+    uncancelJobMutation.isPending ||
+    editDueDateMutation.isPending;
   const canUpdateJob = hasPermission(accessQuery.data, 'job:update');
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
@@ -189,6 +202,27 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
             <JobFact label="Created" value={<DateDisplay date={job.createdAt} />} />
             <JobFact label="Updated" value={<DateDisplay date={job.updatedAt} />} />
             <JobFact
+              label="Job Due Date"
+              value={
+                canUpdateJob ? (
+                  <JobDueDateEditor
+                    dueDate={job.dueDate}
+                    isPending={editDueDateMutation.isPending}
+                    onSubmit={(value) =>
+                      editDueDateMutation.mutate({
+                        entityId: job.id,
+                        entityLevel: 'job',
+                        field: 'due_date',
+                        value,
+                      })
+                    }
+                  />
+                ) : (
+                  <DateDisplay date={job.dueDate} emptyValue="No date" />
+                )
+              }
+            />
+            <JobFact
               label="Quote"
               value={<JobQuoteLink canOpenQuote={canOpenQuotes} quoteCode={job.quoteCode} quoteId={job.quoteId} />}
             />
@@ -234,6 +268,64 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         onClose={() => setConfirmation(null)}
       />
     </DetailPageLayout>
+  );
+};
+
+const JobDueDateEditor: React.FC<{
+  dueDate: string | null;
+  isPending: boolean;
+  onSubmit: (value: string | null) => void;
+}> = ({ dueDate, isPending, onSubmit }) => {
+  const form = useAppForm({
+    defaultValues: {
+      dueDate: dueDate ?? '',
+    },
+    onSubmit: async ({ value }) => {
+      const nextDueDate = value.dueDate || null;
+      if (nextDueDate === dueDate) return;
+
+      onSubmit(nextDueDate);
+      form.reset(value);
+    },
+  });
+
+  React.useEffect(() => {
+    form.reset({ dueDate: dueDate ?? '' });
+  }, [dueDate, form]);
+
+  return (
+    <form
+      className="flex items-end gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <div className="min-w-0 flex-1">
+        <form.AppField name="dueDate">
+          {(field) => (
+            <field.DatePickerField
+              clearable
+              disabled={isPending}
+              label={<span className="sr-only">Job Due Date</span>}
+            />
+          )}
+        </form.AppField>
+      </div>
+      <form.Subscribe selector={(state) => state.values.dueDate}>
+        {(value) => (
+          <Button
+            aria-label="Save Job Due Date"
+            disabled={(value || null) === dueDate || isPending}
+            size="icon-sm"
+            type="submit"
+          >
+            <CheckIcon />
+          </Button>
+        )}
+      </form.Subscribe>
+    </form>
   );
 };
 

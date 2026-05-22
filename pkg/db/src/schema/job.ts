@@ -33,6 +33,7 @@ export const jobs = pgTable(
     dueStartSetManually: boolean('due_start_set_manually').notNull().default(false),
     dueEnd: date('due_end', { mode: 'string' }),
     dueEndSetManually: boolean('due_end_set_manually').notNull().default(false),
+    dueDate: date('due_date', { mode: 'string' }),
     actualStart: timestamp('actual_start', { mode: 'date', withTimezone: true }),
     actualStartSetManually: boolean('actual_start_set_manually').notNull().default(false),
     actualEnd: timestamp('actual_end', { mode: 'date', withTimezone: true }),

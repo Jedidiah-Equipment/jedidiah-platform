@@ -1,0 +1,1 @@
+ALTER TABLE "job" ADD COLUMN "due_date" date;

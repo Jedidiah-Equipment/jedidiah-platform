@@ -396,6 +396,7 @@ function createJobDetail(): JobDetail {
     code: 'JOB-00001',
     createdAt: '2026-05-01T08:00:00.000Z',
     customerCompanyName: 'ACME',
+    dueDate: '2026-05-12',
     dueEnd: '2026-05-10',
     dueEndSetManually: false,
     dueStart: '2026-05-01',

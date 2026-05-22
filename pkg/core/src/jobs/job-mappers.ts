@@ -23,6 +23,7 @@ export type JobAuditRecord = Pick<
   | 'code'
   | 'dueEnd'
   | 'dueEndSetManually'
+  | 'dueDate'
   | 'dueStart'
   | 'dueStartSetManually'
   | 'isCancelled'
@@ -53,6 +54,7 @@ export function mapJob(row: JobRow): Job {
     createdAt: row.createdAt.toISOString(),
     dueEnd: row.dueEnd,
     dueEndSetManually: row.dueEndSetManually,
+    dueDate: row.dueDate,
     dueStart: row.dueStart,
     dueStartSetManually: row.dueStartSetManually,
     id: row.id,
@@ -74,6 +76,7 @@ export function mapJobAuditRecord(job: JobAuditRecord): JobAuditRecord {
     code: job.code,
     dueEnd: job.dueEnd,
     dueEndSetManually: job.dueEndSetManually,
+    dueDate: job.dueDate,
     dueStart: job.dueStart,
     dueStartSetManually: job.dueStartSetManually,
     isCancelled: job.isCancelled,

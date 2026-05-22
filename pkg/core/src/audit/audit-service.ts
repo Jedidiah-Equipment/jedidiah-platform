@@ -92,6 +92,7 @@ export const jobAuditDescriptor: AuditEntityDescriptor = {
     actualEndSetManually: 'actual end override',
     actualStart: 'actual start',
     actualStartSetManually: 'actual start override',
+    dueDate: 'job due date',
     dueEnd: 'due end',
     dueEndSetManually: 'due end override',
     dueStart: 'due start',

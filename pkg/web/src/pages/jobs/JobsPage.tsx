@@ -192,6 +192,14 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode; status: JobListStatus
     const showActualEndColumn = status === 'complete';
 
     baseColumns.push({
+      accessorKey: 'dueDate',
+      cell: ({ row }) => <DateDisplay date={row.original.dueDate} emptyValue="No date" />,
+      enableColumnFilter: false,
+      enableSorting: true,
+      header: 'Due date',
+    });
+
+    baseColumns.push({
       accessorKey: 'dueEnd',
       cell: ({ row }) => <DateDisplay date={row.original.dueEnd} emptyValue="No date" />,
       enableColumnFilter: false,

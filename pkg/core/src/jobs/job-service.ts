@@ -3,7 +3,6 @@ import {
   type DatabaseTransaction,
   type Db,
   getPaginationQueryOptions,
-  getSortOrder,
   jobStageStations,
   jobStages,
   jobs,
@@ -37,7 +36,7 @@ import {
 } from './job-lifecycle-service.js';
 import { mapJobAuditRecord } from './job-mappers.js';
 import { applyJobStageTransition } from './job-pipeline-service.js';
-import { getJob, getJobSortColumn, mapJobSummary } from './job-read-service.js';
+import { getJob, getJobSortOrder, mapJobSummary } from './job-read-service.js';
 import {
   startStationBooking as startStationBookingTransition,
   stopStationBooking as stopStationBookingTransition,
@@ -199,8 +198,7 @@ export async function listJobs({
   input: JobListInput;
 }): Promise<JobListResult> {
   const where = buildJobListWhere(input);
-  const sortColumn = getJobSortColumn(input.sortBy);
-  const orderBy = getSortOrder(sortColumn, input.sortDirection);
+  const orderBy = getJobSortOrder(input.sortBy, input.sortDirection);
 
   const rows = await db.query.jobs.findMany({
     columns: {
@@ -211,6 +209,7 @@ export async function listJobs({
       actualEndSetManually: true,
       actualStart: true,
       actualStartSetManually: true,
+      dueDate: true,
       dueEnd: true,
       dueEndSetManually: true,
       dueStart: true,

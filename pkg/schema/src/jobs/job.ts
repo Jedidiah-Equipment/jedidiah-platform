@@ -54,6 +54,10 @@ const DateFields = z.object({
   dueStartSetManually: z.boolean(),
 });
 
+const JobDueDateFields = z.object({
+  dueDate: z.iso.date().nullable(),
+});
+
 export type StationBooking = z.infer<typeof StationBooking>;
 export const StationBooking = DateFields.extend({
   id: UUID,
@@ -168,7 +172,7 @@ export type JobDateEditEntityLevel = z.infer<typeof JobDateEditEntityLevel>;
 export const JobDateEditEntityLevel = z.enum(['job', 'stage', 'station-booking']);
 
 export type JobDateEditField = z.infer<typeof JobDateEditField>;
-export const JobDateEditField = z.enum(['due_start', 'due_end', 'actual_start', 'actual_end']);
+export const JobDateEditField = z.enum(['due_start', 'due_end', 'due_date', 'actual_start', 'actual_end']);
 
 const DateOverriddenJobEventPayload = z.object({
   entityId: UUID,
@@ -325,6 +329,7 @@ export type Job = z.infer<typeof Job>;
 export const Job = DateFields.extend({
   id: UUID,
   code: JobCode,
+  ...JobDueDateFields.shape,
   productId: UUID,
   quoteId: UUID.nullable(),
   isPaused: z.boolean(),
@@ -344,7 +349,7 @@ export const JobSummary = Job.extend({
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
-export const JobSortBy = z.enum(['actualEnd', 'code', 'createdAt', 'dueEnd', 'id', 'lifecycleStatus']);
+export const JobSortBy = z.enum(['actualEnd', 'code', 'createdAt', 'dueDate', 'dueEnd', 'id', 'lifecycleStatus']);
 
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
@@ -518,6 +523,14 @@ export const JobDateEditInput = z
     value: z.union([z.iso.date(), z.iso.datetime()]).nullable(),
   })
   .superRefine((input, context) => {
+    if (input.field === 'due_date' && input.entityLevel !== 'job') {
+      context.addIssue({
+        code: 'custom',
+        path: ['field'],
+        message: 'Job Due Date can only be edited on a Job.',
+      });
+    }
+
     if (input.value === null) return;
 
     const parser = input.field.startsWith('due_') ? z.iso.date() : z.iso.datetime();

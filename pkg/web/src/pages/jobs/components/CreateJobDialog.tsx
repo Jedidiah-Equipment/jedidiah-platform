@@ -27,7 +27,6 @@ import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { QuoteCustomerCombobox, type QuoteCustomerOption } from '@/pages/quotes/components/QuoteCustomerCombobox.js';
 import { QuoteProductCombobox } from '@/pages/quotes/components/QuoteProductCombobox.js';
 import {
   buildCreateJobInput,
@@ -59,8 +58,6 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
   const [open, setOpen] = useState(false);
   const [anchorKind, setAnchorKind] = useState<AnchorKind>('end');
   const [anchorDate, setAnchorDate] = useState(todayInputValue);
-  const [customerId, setCustomerId] = useState<UUID | ''>(quote?.customerId ?? '');
-  const [fallbackCustomer, setFallbackCustomer] = useState<QuoteCustomerOption | null>(getQuoteCustomerOption(quote));
   const [productId, setProductId] = useState<UUID | ''>(quote?.productId ?? '');
   const [stages, setStages] = useState<StageDraft[]>(() => createEmptyStages());
 
@@ -107,8 +104,6 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
 
     setAnchorKind('end');
     setAnchorDate(todayInputValue);
-    setCustomerId(quote?.customerId ?? '');
-    setFallbackCustomer(getQuoteCustomerOption(quote));
     setProductId(quote?.productId ?? '');
     setStages(createEmptyStages());
   }, [open, quote]);
@@ -128,18 +123,13 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
         </DialogHeader>
 
         <div className="grid gap-4">
-          <div className="grid gap-3 md:grid-cols-2">
-            <FieldBlock label="Customer">
-              <QuoteCustomerCombobox
-                disabled={createJobMutation.isPending}
-                fallbackCustomer={fallbackCustomer}
-                onSelected={(customer) => {
-                  setCustomerId(customer?.id ?? '');
-                  setFallbackCustomer(customer);
-                }}
-                value={customerId}
-              />
-            </FieldBlock>
+          <div className={quote ? 'grid gap-3 md:grid-cols-3' : 'grid gap-3'}>
+            {quote ? (
+              <>
+                <ReadOnlyField label="Quote Code" value={quote.code} />
+                <ReadOnlyField label="Customer Name" value={quote.customerCompanyName} />
+              </>
+            ) : null}
             <FieldBlock label="Product">
               <QuoteProductCombobox
                 disabled={createJobMutation.isPending}
@@ -231,6 +221,13 @@ const FieldBlock: React.FC<{ children: React.ReactNode; label: string }> = ({ ch
   <div className="grid gap-1.5 text-sm font-medium">
     <span>{label}</span>
     {children}
+  </div>
+);
+
+const ReadOnlyField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="grid gap-1.5 text-sm font-medium">
+    <span>{label}</span>
+    <div className="min-h-9 rounded-md border bg-muted/40 px-3 py-2 font-normal text-foreground">{value}</div>
   </div>
 );
 
@@ -412,16 +409,6 @@ const DateEditor: React.FC<{
     </div>
   );
 };
-
-function getQuoteCustomerOption(quote: QuoteSummary | undefined): QuoteCustomerOption | null {
-  if (!quote) return null;
-
-  return {
-    companyName: quote.customerCompanyName,
-    email: null,
-    id: quote.customerId,
-  };
-}
 
 function createDraftId(): string {
   return globalThis.crypto.randomUUID();

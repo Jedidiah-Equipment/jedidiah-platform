@@ -14,6 +14,7 @@ import type React from 'react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { DatePicker } from '@/components/common/DatePicker.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -23,7 +24,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
-import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -161,7 +161,7 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
               </div>
             </FieldBlock>
             <FieldBlock label={anchorKind === 'start' ? 'Start date' : 'End date'}>
-              <Input onChange={(event) => setAnchorDate(event.target.value)} type="date" value={anchorDate} />
+              <DatePicker onChange={setAnchorDate} value={anchorDate} />
             </FieldBlock>
           </div>
 
@@ -400,10 +400,10 @@ const DateEditor: React.FC<{
         {label}
         {setManually ? <span className="text-foreground">Pinned</span> : null}
       </label>
-      <Input
+      <DatePicker
+        clearable
         id={inputId}
-        onChange={(event) => onChange(event.target.value, event.target.value !== '')}
-        type="date"
+        onChange={(nextValue) => onChange(nextValue, nextValue !== '')}
         value={value}
       />
     </div>

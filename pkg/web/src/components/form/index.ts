@@ -1,4 +1,5 @@
 export { CurrencyField, type CurrencyFieldProps } from './CurrencyField.js';
+export { DatePickerField, type DatePickerFieldProps } from './DatePickerField.js';
 export { useFieldContext, useFormContext } from './form-context.js';
 export { NumberField, type NumberFieldProps } from './NumberField.js';
 export { PasswordField, type PasswordFieldProps } from './PasswordField.js';

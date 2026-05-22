@@ -91,17 +91,9 @@ A transient date plus a start/end choice entered in the Create-Job dialog. It ca
 
 ### Status & lifecycle
 
-**Derived Job Status**:
-The Job's user-facing state, computed from flags and dates with this precedence:
-```
-isCancelled                              → 'cancelled'
-isPaused                                 → 'paused'
-job.actual_end IS NOT NULL               → 'complete'
-job.actual_start IS NOT NULL             → 'active'
-else                                     → 'not-started'
-```
-Not stored — derived on read.
-_Avoid_: Job Lifecycle Status (the previous *stored* enum is retired).
+**Job Status**:
+A single stored field on the Job (`status`), one of `pending | active | paused | complete | cancelled`. Set manually by a `job-supervisor` or `admin`; defaults to `pending` at creation. Free-form — any value may be chosen from any value, there is no transition validation. It exists for display, filtering, and sorting, and is **decoupled from dates and station work**: a Job may read `complete` while its Station Bookings are unfinished, or sit at `active` long after every Station has ended. Its one behavioural tie is the **Start/Stop Gate**. Logical ordering for sort, select, and filter UI is `pending → active → paused → complete → cancelled`.
+_Avoid_: Derived Job Status, Job Lifecycle Status — the derived-on-read model is retired; this is a stored field again (see ADR-0021).
 
 **Derived Stage / Station Status**:
 Computed from the Actual Window with no separate enum — for a Station Booking from its stored `actual_start`/`actual_end`, for a Stage from its rolled-up Actual Window:
@@ -113,14 +105,11 @@ end present                              → 'complete'
 Not stored.
 _Avoid_: Stage Status (the previous per-department text enum is retired).
 
-**`isPaused`**:
-A boolean Job-level flag. When `true`: Department Managers cannot click Start/Stop on Station Bookings, and they cannot record actual dates. `job-supervisor`s can still edit any date (planners often pause *to* re-plan). Reversible.
+**Start/Stop Gate**:
+A Department Manager may Start or Stop a Station Booking **only while the Job's status is `active`**. Any other status (`pending`, `paused`, `complete`, `cancelled`) blocks Start/Stop. This is the sole behavioural consequence of **Job Status**. It does **not** restrict `job-supervisor` / `admin` date edits — supervisors may still override planned and actual dates at any status (planners often pause *to* re-plan).
 
-**`isCancelled`**:
-A boolean Job-level flag. When `true`: same blocks as `isPaused`. Reversible by `job-supervisor` (prototype model; may later become a one-way latch).
-
-**Job Lifecycle Does Not Cascade**:
-Pausing or cancelling a Job does not mutate Stage or Station Booking rows. Date history is preserved honestly; the pause/cancel gates write access at the API/UI layers.
+**Job Status Does Not Cascade**:
+Changing a Job's status does not mutate Stage or Station Booking rows. A `cancelled` Job whose Fabrication Booking still has `actual_start` set is an honest historical record — not something to "tidy up". The **Start/Stop Gate** enforces work-stoppage at the API/UI layers, not by writing to child rows.
 
 **Stage / Job Milestone Events**:
 A Station Booking Start/Stop recomputes the **Schedule Rollup** for the parent Stage and Job before and after the write. When a Stage's or Job's derived Actual Window `start` (or `end`) flips from absent to present, the matching `stage.started` / `stage.ended` / `job.started` / `job.completed` Job Event is emitted. Nothing is persisted — only the event row is written.
@@ -152,7 +141,7 @@ Department-Aware. Cross-cutting when the User has no Departments; scoped when an
 - Configure all due dates at all three levels
 - Override any actual date at any level
 - Add/remove Station Bookings on a Job, before or after creation
-- Toggle `isPaused`, `isCancelled`
+- Set the Job's **Status**
 - Manage the Station Catalog
 
 **`job-department-manager`** (renamed from `job-stage-editor`):
@@ -205,8 +194,8 @@ Field-level forensic log: *what field changed from what to what, by whom, when*.
 Typed workflow-transition log (`job_event` table). New taxonomy:
 - `station.started`, `station.ended`
 - `stage.started`, `stage.ended` (emitted when a Station write flips the Stage's derived Actual Window — see **Stage / Job Milestone Events**)
-- `job.started`, `job.completed` (emitted when a Station write flips the Job's derived Actual Window)
-- `job.paused`, `job.resumed`, `job.cancelled`, `job.uncancelled`
+- `job.started`, `job.completed` (emitted when a Station write flips the Job's derived Actual Window; payload carries the flipped `actualStart` / `actualEnd`)
+- `job.status-changed` (a manual **Job Status** change; payload carries `from` and `to`)
 - `date.overridden` (a supervisor-direct edit to a Station Booking date or the Job Due Date; payload carries `entity_level`, `entity_id`, `field`, `old_value`, `new_value`)
 
 **Dual Logging**:
@@ -233,7 +222,7 @@ The timeline visualization of a Job's schedule. **Station Booking** rows carry f
 - A **Station Booking** references exactly one **Station** in the catalog.
 - A **Station** belongs to exactly one **Department**.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
-- A Station-Booking write (Start/Stop) requires: (verb from Role) AND (Job is not paused/cancelled) AND (Scope rule on the booking's Department).
+- A Station-Booking write (Start/Stop) requires: (verb from Role) AND (Job status is `active` — the **Start/Stop Gate**) AND (Scope rule on the booking's Department).
 - A **Stage**'s and **Job**'s Planned and Actual Windows are derived by **Schedule Rollup** from Station Bookings — never stored, never directly edited.
 - Editing any Station Booking date, or the **Job Due Date**, requires `job-supervisor` or `admin`.
 - Every Station-Booking state change writes one **Audit Event** + one or more **Job Events** (the direct event + any derived Stage/Job milestone event) in the same transaction.
@@ -264,7 +253,7 @@ The timeline visualization of a Job's schedule. **Station Booking** rows carry f
 ## Flagged ambiguities
 
 - "Stage Status" was a rich per-department text enum. **Retired** — derived from dates now. Any richness needed later belongs at the Station level, not the Stage level.
-- "Job Lifecycle Status" was a stored enum. **Retired** as a stored field — replaced by `isPaused`, `isCancelled` booleans + derived status.
+- "Job Status" is a stored enum (`pending | active | paused | complete | cancelled`), set manually. An earlier model derived it on read from `isPaused` / `isCancelled` booleans plus dates; that derived model and the two booleans are **retired** — see ADR-0021. Note `pending` and `complete` also appear in the unrelated Stage/Station `JobWorkState` enum; the two are distinct, scoped to different levels.
 - "Pipeline reachability / sequential gating" was the previous model. **Retired** — see **Advisory Ordering**.
 - "Stage Completion is a One-Way Latch" was an earlier model. **Retired** — completion is a derived state that comes and goes with the Actual Window; the audit trail is the safety net. See ADR-0020.
 - "Quote Conversion" implied a 1:1 Quote→Job transformation. **Retired** — a Quote is the optional source of *any number* of Jobs (see **Create Job from Quote** and ADR-0018).

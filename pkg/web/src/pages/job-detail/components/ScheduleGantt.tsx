@@ -15,6 +15,9 @@ import {
   useGanttContext,
 } from '@/components/kibo-ui/gantt/index.js';
 import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -22,17 +25,21 @@ import { cn } from '@/lib/utils.js';
 import {
   buildScheduleGanttRows,
   type DueDragAction,
+  formatScheduleDateTimeInputValue,
+  getScheduleGanttActualDateEdits,
   getScheduleGanttActualDisplay,
   getScheduleGanttDueDateEdits,
   getScheduleGanttDueDisplay,
   getScheduleGanttDueRangeAfterDrag,
   getScheduleGanttTimelineDayCount,
   type OptimisticDueRange,
+  parseScheduleDateTimeInputValue,
+  resolveScheduleDateTimeInputValue,
   type ScheduleGanttRow,
 } from './schedule-gantt-helpers.js';
 
 type ScheduleGanttProps = {
-  canEditDueBars: boolean;
+  canEditSchedule: boolean;
   job: JobDetail;
 };
 
@@ -44,14 +51,14 @@ type ScheduleGanttRenderableRow = ScheduleGanttRow & {
 const SIDEBAR_WIDTH = 300;
 const ROW_HEIGHT = 42;
 
-export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditDueBars, job }) => {
+export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, job }) => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
   const [optimisticDueRanges, setOptimisticDueRanges] = React.useState<Record<string, OptimisticDueRange>>({});
   const editDateMutation = useMutation(
     trpc.jobs.editDate.mutationOptions({
-      onError: (error) => showMutationError(error, 'Unable to reschedule job.'),
+      onError: (error) => showMutationError(error, 'Unable to update schedule date.'),
     }),
   );
   const rows = React.useMemo(
@@ -124,6 +131,35 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditDueBars, jo
       });
     }
   };
+  const editActualDates = async (
+    row: ScheduleGanttRow,
+    nextRange: { actualEnd: string | null; actualStart: string },
+  ) => {
+    if (!row.actualStart) return;
+
+    let attemptedEdit = false;
+    try {
+      for (const edit of getScheduleGanttActualDateEdits({
+        entityId: row.entityId,
+        entityLevel: row.level === 'station' ? 'station-booking' : row.level,
+        nextActualEnd: nextRange.actualEnd,
+        nextActualStart: nextRange.actualStart,
+        previousActualEnd: row.actualEnd,
+        previousActualStart: row.actualStart,
+      })) {
+        attemptedEdit = true;
+        await editDateMutation.mutateAsync(edit);
+      }
+      await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
+      if (attemptedEdit) {
+        toast.success('Actual dates updated');
+      }
+    } catch {
+      if (attemptedEdit) {
+        await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
+      }
+    }
+  };
 
   return (
     <section className="flex flex-col gap-3">
@@ -157,8 +193,10 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditDueBars, jo
               {visibleRows.map((row) =>
                 row.visible ? (
                   <ScheduleGanttTimelineRow
-                    canEditDueBars={canEditDueBars && !editDateMutation.isPending}
+                    canEditActualBars={canEditSchedule && !editDateMutation.isPending}
+                    canEditDueBars={canEditSchedule && !editDateMutation.isPending}
                     key={row.id}
+                    onEditActualDates={editActualDates}
                     onEditDueRange={editDueRange}
                     row={row}
                   />
@@ -232,18 +270,28 @@ const ScheduleGanttSidebar: React.FC<{
 );
 
 const ScheduleGanttTimelineRow: React.FC<{
+  canEditActualBars: boolean;
   canEditDueBars: boolean;
+  onEditActualDates: (row: ScheduleGanttRow, nextRange: { actualEnd: string | null; actualStart: string }) => void;
   onEditDueRange: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
   row: ScheduleGanttRow;
-}> = ({ canEditDueBars, onEditDueRange, row }) => (
-  <ScheduleGanttTimelineRowInner canEditDueBars={canEditDueBars} onEditDueRange={onEditDueRange} row={row} />
+}> = ({ canEditActualBars, canEditDueBars, onEditActualDates, onEditDueRange, row }) => (
+  <ScheduleGanttTimelineRowInner
+    canEditActualBars={canEditActualBars}
+    canEditDueBars={canEditDueBars}
+    onEditActualDates={onEditActualDates}
+    onEditDueRange={onEditDueRange}
+    row={row}
+  />
 );
 
 const ScheduleGanttTimelineRowInner: React.FC<{
+  canEditActualBars: boolean;
   canEditDueBars: boolean;
+  onEditActualDates: (row: ScheduleGanttRow, nextRange: { actualEnd: string | null; actualStart: string }) => void;
   onEditDueRange: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
   row: ScheduleGanttRow;
-}> = ({ canEditDueBars, onEditDueRange, row }) => {
+}> = ({ canEditActualBars, canEditDueBars, onEditActualDates, onEditDueRange, row }) => {
   const gantt = useGanttContext();
   const dayCount = getScheduleGanttTimelineDayCount(gantt.timelineData);
 
@@ -252,7 +300,7 @@ const ScheduleGanttTimelineRowInner: React.FC<{
       className={cn('relative border-b', row.level === 'job' && 'bg-muted/20')}
       style={{ height: ROW_HEIGHT, width: `calc(var(--gantt-column-width) * ${dayCount})` }}
     >
-      <ScheduleGanttActualRange row={row} />
+      <ScheduleGanttActualRange canEdit={canEditActualBars} onEdit={onEditActualDates} row={row} />
       <ScheduleGanttDueRange canEdit={canEditDueBars} onEdit={onEditDueRange} row={row} />
     </div>
   );
@@ -293,11 +341,29 @@ const ScheduleGanttDueRange: React.FC<{
   );
 };
 
-const ScheduleGanttActualRange: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => {
+const ScheduleGanttActualRange: React.FC<{
+  canEdit: boolean;
+  onEdit: (row: ScheduleGanttRow, nextRange: { actualEnd: string | null; actualStart: string }) => void;
+  row: ScheduleGanttRow;
+}> = ({ canEdit, onEdit, row }) => {
   const actual = getScheduleGanttActualDisplay(row);
 
   if (actual.kind === 'none') {
     return null;
+  }
+
+  if (canEdit && row.actualStart) {
+    return (
+      <ScheduleGanttActualDatePopover
+        actualEnd={row.actualEnd}
+        actualStart={row.actualStart}
+        className={cn('bg-sky-600 shadow-sm', actual.openEnded && 'rounded-r-none')}
+        end={actual.end}
+        label={actual.label}
+        onConfirm={(nextRange) => onEdit(row, nextRange)}
+        start={actual.start}
+      />
+    );
   }
 
   return (
@@ -307,6 +373,106 @@ const ScheduleGanttActualRange: React.FC<{ row: ScheduleGanttRow }> = ({ row }) 
       label={actual.label}
       start={actual.start}
     />
+  );
+};
+
+const ScheduleGanttActualDatePopover: React.FC<{
+  actualEnd: string | null;
+  actualStart: string;
+  className: string;
+  end: Date;
+  label: string;
+  onConfirm: (nextRange: { actualEnd: string | null; actualStart: string }) => void;
+  start: Date;
+}> = ({ actualEnd, actualStart, className, end, label, onConfirm, start }) => {
+  const gantt = useGanttContext();
+  const [open, setOpen] = React.useState(false);
+  const actualStartInputId = React.useId();
+  const actualEndInputId = React.useId();
+  const [actualStartValue, setActualStartValue] = React.useState(() => formatScheduleDateTimeInputValue(actualStart));
+  const [actualEndValue, setActualEndValue] = React.useState(() => formatScheduleDateTimeInputValue(actualEnd));
+  const left = getGanttOffset(start, gantt);
+  const width = getGanttWidth(start, end, gantt);
+  const parsedActualStart = parseScheduleDateTimeInputValue(actualStartValue);
+  const parsedActualEnd = actualEndValue ? parseScheduleDateTimeInputValue(actualEndValue) : null;
+  const hasValidRange =
+    parsedActualStart !== null &&
+    (parsedActualEnd === null || new Date(parsedActualStart).getTime() <= new Date(parsedActualEnd).getTime());
+  const canSubmit = Boolean(parsedActualStart) && hasValidRange;
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    setActualStartValue(formatScheduleDateTimeInputValue(actualStart));
+    setActualEndValue(formatScheduleDateTimeInputValue(actualEnd));
+  }, [actualEnd, actualStart, open]);
+
+  return (
+    <Popover onOpenChange={setOpen} open={open}>
+      <PopoverTrigger
+        render={
+          <button
+            aria-label={`${label}; edit actual date`}
+            className={cn(
+              'absolute top-1/2 z-20 h-4 -translate-y-1/2 cursor-pointer appearance-none rounded-sm p-0',
+              className,
+            )}
+            style={{ left: Math.round(left), width: Math.max(Math.round(width), 10) }}
+            title={label}
+            type="button"
+          />
+        }
+      />
+      <PopoverContent align="start" className="w-80">
+        <PopoverHeader>
+          <PopoverTitle>Edit actual dates</PopoverTitle>
+        </PopoverHeader>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+
+            const nextActualStart = resolveScheduleDateTimeInputValue(actualStartValue, actualStart);
+            const nextActualEnd = resolveScheduleDateTimeInputValue(actualEndValue, actualEnd);
+            const hasNextValidRange =
+              nextActualStart !== null &&
+              (nextActualEnd === null || new Date(nextActualStart).getTime() <= new Date(nextActualEnd).getTime());
+            if (!nextActualStart || !hasNextValidRange) return;
+
+            onConfirm({ actualEnd: nextActualEnd, actualStart: nextActualStart });
+            setOpen(false);
+          }}
+        >
+          <div className="grid gap-1.5">
+            <Label htmlFor={actualStartInputId}>Actual start</Label>
+            <Input
+              id={actualStartInputId}
+              onChange={(event) => setActualStartValue(event.target.value)}
+              required
+              type="datetime-local"
+              value={actualStartValue}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={actualEndInputId}>Actual end</Label>
+            <Input
+              id={actualEndInputId}
+              onChange={(event) => setActualEndValue(event.target.value)}
+              type="datetime-local"
+              value={actualEndValue}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setOpen(false)} type="button" variant="outline">
+              Cancel
+            </Button>
+            <Button disabled={!canSubmit} type="submit">
+              Save
+            </Button>
+          </div>
+        </form>
+      </PopoverContent>
+    </Popover>
   );
 };
 

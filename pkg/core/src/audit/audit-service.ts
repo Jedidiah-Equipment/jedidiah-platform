@@ -89,10 +89,9 @@ export const jobAuditDescriptor: AuditEntityDescriptor = {
   primaryLabelFormatter: formatJobAuditLabel,
   fields: {
     dueDate: 'job due date',
-    isCancelled: 'cancelled',
-    isPaused: 'paused',
     productId: 'product',
     quoteId: 'quote',
+    status: 'status',
   },
 };
 

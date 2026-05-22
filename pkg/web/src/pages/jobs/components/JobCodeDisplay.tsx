@@ -9,8 +9,8 @@ import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { JobLifecycleStatusBadge } from './JobLifecycleStatusBadge.js';
 import { JobStageChips } from './JobStageChips.js';
+import { JobStatusBadge } from './JobStatusBadge.js';
 
 type JobCodeDisplayProps = {
   canOpenJob: boolean;
@@ -88,7 +88,7 @@ const JobCodeHoverCard: React.FC<{
             <div className="min-w-0">
               <div className="truncate font-medium">{jobCode}</div>
             </div>
-            {job ? <JobLifecycleStatusBadge className="shrink-0" status={job.lifecycleStatus} /> : null}
+            {job ? <JobStatusBadge className="shrink-0" status={job.status} /> : null}
             {jobQuery.isFetching ? <Skeleton className="h-7 w-20 shrink-0 rounded-full" /> : null}
           </div>
           <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job preview." />

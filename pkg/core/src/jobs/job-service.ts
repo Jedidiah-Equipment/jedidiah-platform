@@ -24,13 +24,7 @@ import { and, asc, eq, or, type SQL, sql } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { editJobDate as editJobDateService } from './job-date-edit-service.js';
-import { JobCreateFromQuoteDeniedError, JobLifecycleTransitionDeniedError, JobNotFoundError } from './job-errors.js';
-import {
-  cancelJobLifecycle,
-  pauseJobLifecycle,
-  resumeJobLifecycle,
-  uncancelJobLifecycle,
-} from './job-lifecycle-service.js';
+import { JobCreateFromQuoteDeniedError } from './job-errors.js';
 import { mapJobAuditRecord } from './job-mappers.js';
 import { getJob, getJobSortOrder, mapJobSummary } from './job-read-service.js';
 import {
@@ -38,7 +32,6 @@ import {
   stopStationBooking as stopStationBookingTransition,
 } from './station-booking-service.js';
 
-type JobLifecycleTransition = 'cancel' | 'pause' | 'resume' | 'uncancel';
 const JOB_ELIGIBLE_QUOTE_STATUSES: readonly QuoteStatus[] = ['accepted', 'draft', 'sent'];
 
 export async function createJob({
@@ -183,10 +176,9 @@ export async function listJobs({
       id: true,
       code: true,
       dueDate: true,
-      isCancelled: true,
-      isPaused: true,
       productId: true,
       quoteId: true,
+      status: true,
       updatedAt: true,
     },
     where,
@@ -247,6 +239,10 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     conditions.push(eq(jobs.id, input.filters.jobId));
   }
 
+  if (input.filters.status) {
+    conditions.push(eq(jobs.status, input.filters.status));
+  }
+
   if (input.search) {
     const codeSearch = parseJobCodeSearch(input.search);
     const searchWhere = or(
@@ -261,62 +257,6 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;
-}
-
-export async function pauseJob({
-  db,
-  access,
-  actorUserId,
-  id,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-}): Promise<JobDetail> {
-  return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'pause' });
-}
-
-export async function resumeJob({
-  db,
-  access,
-  actorUserId,
-  id,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-}): Promise<JobDetail> {
-  return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'resume' });
-}
-
-export async function cancelJob({
-  db,
-  access,
-  actorUserId,
-  id,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-}): Promise<JobDetail> {
-  return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'cancel' });
-}
-
-export async function uncancelJob({
-  db,
-  access,
-  actorUserId,
-  id,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-}): Promise<JobDetail> {
-  return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'uncancel' });
 }
 
 export async function startStationBooking({
@@ -359,94 +299,4 @@ export async function editJobDate({
   input: JobDateEditInput;
 }): Promise<JobDetail> {
   return editJobDateService({ access, actorUserId, db, input });
-}
-
-async function transitionJobLifecycle({
-  db,
-  access,
-  actorUserId,
-  id,
-  transition,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-  transition: JobLifecycleTransition;
-}): Promise<JobDetail> {
-  return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        job: jobs,
-      })
-      .from(jobs)
-      .where(eq(jobs.id, id))
-      .for('update');
-
-    if (!row) {
-      throw new JobNotFoundError(id);
-    }
-
-    assertLifecycleFlagTransitionAllowed(row.job, transition);
-
-    await applyLifecycleFlagTransition({
-      actorUserId,
-      before: mapJobAuditRecord(row.job),
-      id,
-      transition,
-      tx,
-    });
-
-    return getJob({ access, db: tx, id });
-  });
-}
-
-function assertLifecycleFlagTransitionAllowed(
-  job: Pick<typeof jobs.$inferSelect, 'isCancelled' | 'isPaused'>,
-  transition: JobLifecycleTransition,
-): void {
-  if (job.isCancelled && (transition === 'pause' || transition === 'resume')) {
-    throw new JobLifecycleTransitionDeniedError('Cancelled jobs cannot be paused or resumed.');
-  }
-
-  if (transition === 'pause' && job.isPaused) {
-    throw new JobLifecycleTransitionDeniedError('Job is already paused.');
-  }
-
-  if (transition === 'resume' && !job.isPaused) {
-    throw new JobLifecycleTransitionDeniedError('Job is not paused.');
-  }
-
-  if (transition === 'cancel' && job.isCancelled) {
-    throw new JobLifecycleTransitionDeniedError('Job is already cancelled.');
-  }
-
-  if (transition === 'uncancel' && !job.isCancelled) {
-    throw new JobLifecycleTransitionDeniedError('Job is not cancelled.');
-  }
-}
-
-async function applyLifecycleFlagTransition({
-  actorUserId,
-  before,
-  id,
-  transition,
-  tx,
-}: {
-  actorUserId: AuthId;
-  before: ReturnType<typeof mapJobAuditRecord>;
-  id: UUID;
-  transition: JobLifecycleTransition;
-  tx: Parameters<typeof pauseJobLifecycle>[0]['tx'];
-}): Promise<void> {
-  switch (transition) {
-    case 'cancel':
-      return cancelJobLifecycle({ actorUserId, before, id, tx });
-    case 'pause':
-      return pauseJobLifecycle({ actorUserId, before, id, tx });
-    case 'resume':
-      return resumeJobLifecycle({ actorUserId, before, id, tx });
-    case 'uncancel':
-      return uncancelJobLifecycle({ actorUserId, before, id, tx });
-  }
 }

@@ -12,11 +12,11 @@ import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
-const test = createTester(async ({ db }) => {
+const test = createTester(async ({ databaseClient, db }) => {
   await createActorUser(db, 'job-supervisor');
   const product = await createProduct(db);
 
-  return { db, product };
+  return { databaseClient, db, product };
 });
 
 describe('listJobsTool', () => {
@@ -42,6 +42,38 @@ describe('listJobsTool', () => {
     ]);
 
     expect(toolResult).toEqual(trpcResult);
+  });
+
+  test('supports stored Job Status filters described to the assistant', async ({ context }) => {
+    const supervisorAccess = createUserAccessSummary({
+      role: 'job-supervisor',
+      userId: 'test-user-id',
+    });
+    const supervisorCaller = createCaller(context.db, supervisorAccess);
+    const activeJob = await supervisorCaller.jobs.create({ productId: context.product.id });
+    const pausedJob = await supervisorCaller.jobs.create({ productId: context.product.id });
+    await context.databaseClient.queryClient`
+      update job
+      set status = 'active'
+      where id = ${activeJob.id}
+    `;
+    await context.databaseClient.queryClient`
+      update job
+      set status = 'paused'
+      where id = ${pausedJob.id}
+    `;
+    const input: JobListInput = {
+      filters: { status: 'active' },
+      page: 1,
+      pageSize: 10,
+      search: '',
+      sortBy: 'code',
+      sortDirection: 'asc',
+    };
+
+    const result = await listJobsTool.handler(input, createAiContext(context.db, supervisorAccess));
+
+    expect(result.items.map((job) => job.id)).toEqual([activeJob.id]);
   });
 
   test('treats null tool args as the default job list input', async ({ context }) => {

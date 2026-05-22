@@ -1,7 +1,8 @@
-import type { Department, JobStageName } from '@pkg/schema';
+import type { Department, JobStageName, JobStatus } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -30,12 +31,15 @@ export const jobs = pgTable(
       .references(() => products.id, { onDelete: 'restrict' }),
     quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'restrict' }),
     dueDate: date('due_date', { mode: 'string' }),
-    isPaused: boolean('is_paused').notNull().default(false),
-    isCancelled: boolean('is_cancelled').notNull().default(false),
+    status: text('status').notNull().default('pending').$type<JobStatus>(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [uniqueIndex('job_code_unique').on(table.code), index('job_quote_id_idx').on(table.quoteId)],
+  (table) => [
+    check('job_status_check', sql`${table.status} in ('pending', 'active', 'paused', 'complete', 'cancelled')`),
+    uniqueIndex('job_code_unique').on(table.code),
+    index('job_quote_id_idx').on(table.quoteId),
+  ],
 );
 
 export const jobStages = pgTable(

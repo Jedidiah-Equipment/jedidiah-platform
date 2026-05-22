@@ -155,6 +155,13 @@
       "when": 1779466344892,
       "tag": "0021_worthless_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779470189978,
+      "tag": "0022_light_morg",
+      "breakpoints": true
     }
   ]
 }

@@ -35,7 +35,6 @@ import { and, asc, desc, eq, inArray, ne, type SQL, type SQLWrapper, sql } from 
 
 import { JobNotFoundError } from './job-errors.js';
 import {
-  deriveJobLifecycleStatus,
   deriveWorkState,
   type JobEventWithActorRow,
   type JobRow,
@@ -84,10 +83,9 @@ export async function getJob({
       code: true,
       dueDate: true,
       id: true,
-      isCancelled: true,
-      isPaused: true,
       productId: true,
       quoteId: true,
+      status: true,
       updatedAt: true,
     },
     where: eq(jobs.id, id),
@@ -206,7 +204,7 @@ export async function listSharedStationBookings({
       and(
         inArray(jobStageStations.stationId, sharedStationIds),
         ne(jobStages.jobId, jobId),
-        eq(jobs.isCancelled, false),
+        ne(jobs.status, 'cancelled'),
         sql`exists (
           select 1
           from ${jobStageStations} completion_booking
@@ -343,7 +341,7 @@ function mapSharedStationBookingJobs(rows: SharedStationBookingRow[]) {
       customerCompanyName: job.customerCompanyName,
       jobCode: job.code,
       jobId: job.id,
-      lifecycleStatus: job.lifecycleStatus,
+      status: job.status,
       productModelCode: job.productModelCode,
       productName: job.productName,
       quoteCode: job.quoteCode,
@@ -355,15 +353,10 @@ function mapSharedStationBookingJobHeader(row: JobHeaderWithProductRow) {
     customerCompanyName: row.quote?.customer.companyName ?? null,
     code: JobCode.parse(row.code),
     id: row.id,
-    lifecycleStatus: deriveJobLifecycleStatus({
-      actualEnd: null,
-      actualStart: null,
-      isCancelled: row.isCancelled,
-      isPaused: row.isPaused,
-    }),
     productModelCode: row.product.modelCode,
     productName: row.product.name,
     quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,
+    status: row.status,
   };
 }
 
@@ -390,6 +383,14 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     createdAt: sql`${jobs.createdAt}`,
     dueDate: sql`${jobs.dueDate}`,
     id: sql`${jobs.id}`,
+    status: sql`case ${jobs.status}
+      when 'pending' then 1
+      when 'active' then 2
+      when 'paused' then 3
+      when 'complete' then 4
+      when 'cancelled' then 5
+      else 6
+    end`,
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];
@@ -407,7 +408,6 @@ export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection)
 
 export function mapJobSummary(row: JobWithProductRow): JobSummary {
   const mappedJob = mapJob(row);
-  const hasRollupBookings = row.stages.some(hasScheduleRollupBookings);
   const stageSchedules = row.stages.map(mapStageSchedule);
   const jobSchedule = rollupJobSchedule(stageSchedules.map(({ bookings }) => ({ bookings })));
 
@@ -415,14 +415,6 @@ export function mapJobSummary(row: JobWithProductRow): JobSummary {
     ...mappedJob,
     actualWindow: mapScheduleWindow(jobSchedule.actualWindow),
     customerCompanyName: row.quote?.customer.companyName ?? null,
-    lifecycleStatus: hasRollupBookings
-      ? deriveJobLifecycleStatus({
-          actualEnd: jobSchedule.actualWindow.end,
-          actualStart: jobSchedule.actualWindow.start,
-          isCancelled: row.isCancelled,
-          isPaused: row.isPaused,
-        })
-      : mappedJob.lifecycleStatus,
     plannedWindow: mapScheduleWindow(jobSchedule.plannedWindow),
     productModelCode: row.product.modelCode,
     productName: row.product.name,

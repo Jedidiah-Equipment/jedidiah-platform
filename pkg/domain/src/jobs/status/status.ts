@@ -1,13 +1,6 @@
-import type { JobLifecycleStatus, JobWorkState } from '@pkg/schema';
+import type { JobStatus, JobWorkState } from '@pkg/schema';
 
 type ActualTimestamp = Date | string | null;
-
-export type JobStatusDerivationInput = {
-  actualEnd: ActualTimestamp;
-  actualStart: ActualTimestamp;
-  isCancelled: boolean;
-  isPaused: boolean;
-};
 
 export type LevelStatusDerivationInput = {
   actualEnd: ActualTimestamp;
@@ -15,8 +8,7 @@ export type LevelStatusDerivationInput = {
 };
 
 export type ActualWriteGuardInput = {
-  isCancelled: boolean;
-  isPaused: boolean;
+  status: JobStatus;
 };
 
 export type ActualWriteGuardResult =
@@ -29,14 +21,6 @@ export type ActualWriteGuardResult =
       reason: string;
     };
 
-export function deriveJobStatus(input: JobStatusDerivationInput): JobLifecycleStatus {
-  if (input.isCancelled) return 'cancelled';
-  if (input.isPaused) return 'paused';
-  if (input.actualEnd) return 'complete';
-  if (input.actualStart) return 'active';
-  return 'not-started';
-}
-
 export function deriveLevelStatus(input: LevelStatusDerivationInput): JobWorkState {
   if (input.actualEnd) return 'complete';
   if (input.actualStart) return 'in-progress';
@@ -44,12 +28,8 @@ export function deriveLevelStatus(input: LevelStatusDerivationInput): JobWorkSta
 }
 
 export function evaluateActualWriteGuard(input: ActualWriteGuardInput): ActualWriteGuardResult {
-  if (input.isCancelled) {
-    return deny('Job is cancelled.');
-  }
-
-  if (input.isPaused) {
-    return deny('Job is paused.');
+  if (input.status !== 'active') {
+    return deny('Job status must be active to start or stop station bookings.');
   }
 
   return { allowed: true, reason: null };

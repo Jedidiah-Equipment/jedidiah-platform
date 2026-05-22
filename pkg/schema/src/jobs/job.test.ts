@@ -19,6 +19,11 @@ describe('JobListFilters', () => {
   it('defaults to no job list filters', () => {
     expect(JobListFilters.parse(undefined)).toEqual({});
   });
+
+  it('accepts stored Job Status filters', () => {
+    expect(JobListFilters.parse({ status: 'active' })).toEqual({ status: 'active' });
+    expect(() => JobListFilters.parse({ status: 'in-progress' })).toThrow();
+  });
 });
 
 describe('JobEvent', () => {

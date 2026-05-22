@@ -80,10 +80,10 @@ describe('createAuditSummary', () => {
     expect(
       createAuditSummary({
         action: 'updated',
-        after: { code: 'JOB-00001', lifecycleStatus: 'paused' },
-        before: { code: 'JOB-00001', lifecycleStatus: 'active' },
+        after: { code: 'JOB-00001', status: 'paused' },
+        before: { code: 'JOB-00001', status: 'active' },
         changes: {
-          lifecycleStatus: {
+          status: {
             from: 'active',
             to: 'paused',
           },
@@ -97,10 +97,10 @@ describe('createAuditSummary', () => {
     expect(
       createAuditSummary({
         action: 'updated',
-        after: { code: 1, lifecycleStatus: 'paused' },
-        before: { code: 1, lifecycleStatus: 'active' },
+        after: { code: 1, status: 'paused' },
+        before: { code: 1, status: 'active' },
         changes: {
-          lifecycleStatus: {
+          status: {
             from: 'active',
             to: 'paused',
           },

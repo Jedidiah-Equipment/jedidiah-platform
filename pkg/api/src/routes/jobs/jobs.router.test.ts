@@ -247,6 +247,49 @@ describe('jobs.listSharedStationBookings', () => {
         createStageInput('assembly', '2026-08-10', '2026-08-12'),
       ],
     });
+    const cancelledSharedStationJob = await caller.jobs.create({
+      productId: context.product.id,
+      stages: [
+        createStageInput('procurement', '2026-08-01', '2026-08-02'),
+        createStageInput('supply', '2026-08-02', '2026-08-03'),
+        createStageInput('fabrication', '2026-08-05', '2026-08-09', sharedStation.id),
+        createStageInput('paint', '2026-08-09', '2026-08-10'),
+        createStageInput('assembly', '2026-08-10', '2026-08-12'),
+      ],
+    });
+    await caller.jobs.cancel({ id: cancelledSharedStationJob.id });
+    const completedSharedStationJob = await caller.jobs.create({
+      productId: context.product.id,
+      stages: [
+        createStageInput('procurement', '2026-08-01', '2026-08-02'),
+        createStageInput('supply', '2026-08-02', '2026-08-03'),
+        createStageInput('fabrication', '2026-08-05', '2026-08-09', sharedStation.id),
+        createStageInput('paint', '2026-08-09', '2026-08-10'),
+        createStageInput('assembly', '2026-08-10', '2026-08-12'),
+      ],
+    });
+    await context.databaseClient.queryClient`
+      update job
+      set actual_start = '2026-08-01T08:00:00.000Z',
+        actual_end = '2026-08-12T16:00:00.000Z'
+      where id = ${completedSharedStationJob.id}
+    `;
+    const futureSharedStationJob = await caller.jobs.create({
+      productId: context.product.id,
+      stages: [
+        createStageInput('procurement', '2027-01-01', '2027-01-02'),
+        createStageInput('supply', '2027-01-02', '2027-01-03'),
+        createStageInput('fabrication', '2027-01-05', '2027-01-09', sharedStation.id),
+        createStageInput('paint', '2027-01-09', '2027-01-10'),
+        createStageInput('assembly', '2027-01-10', '2027-01-12'),
+      ],
+    });
+    await context.databaseClient.queryClient`
+      update job_stage_station
+      set due_start = '2027-01-05',
+        due_end = '2027-01-09'
+      where id = ${getStageBooking(futureSharedStationJob, 'fabrication').id}
+    `;
     const unrelatedJob = await caller.jobs.create({
       productId: context.product.id,
       stages: [
@@ -284,6 +327,9 @@ describe('jobs.listSharedStationBookings', () => {
       ],
     });
     expect(result.jobs.map((job) => job.jobId)).not.toContain(unrelatedJob.id);
+    expect(result.jobs.map((job) => job.jobId)).not.toContain(cancelledSharedStationJob.id);
+    expect(result.jobs.map((job) => job.jobId)).not.toContain(completedSharedStationJob.id);
+    expect(result.jobs.map((job) => job.jobId)).not.toContain(futureSharedStationJob.id);
     expect(result.jobs[0]?.bookings.map((booking) => booking.stationId)).not.toContain(unrelatedStation.id);
   });
 });

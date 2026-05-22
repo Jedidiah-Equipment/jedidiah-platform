@@ -1,13 +1,14 @@
 import {
-  type customers,
+  customers,
   type DatabaseTransaction,
   type Db,
   jobEvents,
   jobStageStations,
   jobStages,
   jobs,
-  type products,
-  type quotes,
+  products,
+  quotes,
+  stations,
 } from '@pkg/db';
 import { canViewStage, getStageTransitionAvailability } from '@pkg/domain';
 import {
@@ -22,7 +23,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, type SQL, sql } from 'drizzle-orm';
 
 import { JobNotFoundError } from './job-errors.js';
 import {
@@ -30,11 +31,13 @@ import {
   type JobEventWithActorRow,
   type JobRow,
   type JobStageRow,
+  type JobStageStationRow,
   type JobStageStationWithStationRow,
   mapJob,
   mapJobEventWithActor,
   mapJobStage,
   mapStationBooking,
+  type StationRow,
 } from './job-mappers.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
@@ -148,6 +151,10 @@ export async function listSharedStationBookings({
 }): Promise<JobSharedStationBookingsResult> {
   const currentJob = await db.query.jobs.findFirst({
     columns: {
+      actualEnd: true,
+      actualStart: true,
+      dueEnd: true,
+      dueStart: true,
       id: true,
     },
     where: eq(jobs.id, jobId),
@@ -159,6 +166,10 @@ export async function listSharedStationBookings({
 
   const currentBookings = await db
     .select({
+      actualEnd: jobStageStations.actualEnd,
+      actualStart: jobStageStations.actualStart,
+      dueEnd: jobStageStations.dueEnd,
+      dueStart: jobStageStations.dueStart,
       stationId: jobStageStations.stationId,
     })
     .from(jobStageStations)
@@ -170,63 +181,132 @@ export async function listSharedStationBookings({
     return { jobs: [] };
   }
 
-  const rows = await db.query.jobStageStations.findMany({
-    orderBy: [asc(jobStageStations.stationId), asc(jobStageStations.dueStart), asc(jobStageStations.id)],
-    where: (booking) => inArray(booking.stationId, sharedStationIds),
-    with: {
-      jobStage: {
-        with: {
-          job: {
-            columns: {
-              actualEnd: true,
-              actualEndSetManually: true,
-              actualStart: true,
-              actualStartSetManually: true,
-              code: true,
-              createdAt: true,
-              dueEnd: true,
-              dueEndSetManually: true,
-              dueStart: true,
-              dueStartSetManually: true,
-              id: true,
-              isCancelled: true,
-              isPaused: true,
-              productId: true,
-              quoteId: true,
-              updatedAt: true,
-            },
-            with: {
-              product: {
-                columns: {
-                  modelCode: true,
-                  name: true,
-                },
-              },
-              quote: {
-                columns: {
-                  code: true,
-                },
-                with: {
-                  customer: {
-                    columns: {
-                      companyName: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      station: true,
-    },
-  });
+  const scheduleWindow = getStationContentionScheduleWindow(currentJob, currentBookings);
 
-  const otherRows = rows.filter((row) => row.jobStage.jobId !== jobId) as SharedStationBookingRow[];
+  if (!scheduleWindow) {
+    return { jobs: [] };
+  }
+
+  const rows = await db
+    .select({
+      booking: jobStageStations,
+      customer: customers,
+      job: jobs,
+      product: products,
+      quote: quotes,
+      stage: jobStages,
+      station: stations,
+    })
+    .from(jobStageStations)
+    .innerJoin(jobStages, eq(jobStages.id, jobStageStations.jobStageId))
+    .innerJoin(jobs, eq(jobs.id, jobStages.jobId))
+    .innerJoin(stations, eq(stations.id, jobStageStations.stationId))
+    .innerJoin(products, eq(products.id, jobs.productId))
+    .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
+    .leftJoin(customers, eq(customers.id, quotes.customerId))
+    .where(
+      and(
+        inArray(jobStageStations.stationId, sharedStationIds),
+        ne(jobStages.jobId, jobId),
+        eq(jobs.isCancelled, false),
+        sql`${jobs.actualEnd} is null`,
+        getStationBookingOverlapsWindowCondition(scheduleWindow),
+      ),
+    )
+    .orderBy(asc(jobStageStations.stationId), asc(jobStageStations.dueStart), asc(jobStageStations.id));
 
   return JobSharedStationBookingsResult.parse({
-    jobs: mapSharedStationBookingJobs(otherRows),
+    jobs: mapSharedStationBookingJobs(rows.map(mapSharedStationBookingRow)),
   });
+}
+
+function getStationContentionScheduleWindow(
+  job: Pick<JobRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>,
+  bookings: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[],
+): { end: string; start: string } | null {
+  const dateKeys = [
+    job.dueStart,
+    job.dueEnd,
+    job.actualStart?.toISOString().slice(0, 10) ?? null,
+    job.actualEnd?.toISOString().slice(0, 10) ?? null,
+    ...bookings.flatMap((booking) => [
+      booking.dueStart,
+      booking.dueEnd,
+      booking.actualStart?.toISOString().slice(0, 10) ?? null,
+      booking.actualEnd?.toISOString().slice(0, 10) ?? null,
+    ]),
+  ].filter((value): value is string => value !== null);
+
+  if (dateKeys.length === 0) {
+    return null;
+  }
+
+  dateKeys.sort();
+  const start = dateKeys[0];
+  const end = dateKeys[dateKeys.length - 1];
+
+  if (!start || !end) {
+    return null;
+  }
+
+  return {
+    end,
+    start,
+  };
+}
+
+function getStationBookingOverlapsWindowCondition(window: { end: string; start: string }): SQL {
+  return sql`(
+    (
+      ${jobStageStations.actualStart} is not null
+      and ${jobStageStations.actualStart}::date <= cast(${window.end} as date)
+      and coalesce(${jobStageStations.actualEnd}::date, ${jobStageStations.actualStart}::date) >= cast(${window.start} as date)
+    )
+    or (
+      ${jobStageStations.actualStart} is null
+      and ${jobStageStations.dueStart} is not null
+      and ${jobStageStations.dueStart} <= cast(${window.end} as date)
+      and coalesce(${jobStageStations.dueEnd}, ${jobStageStations.dueStart}) >= cast(${window.start} as date)
+    )
+    or (
+      ${jobStageStations.actualStart} is null
+      and ${jobStageStations.dueStart} is null
+      and ${jobStageStations.dueEnd} is not null
+      and ${jobStageStations.dueEnd} >= cast(${window.start} as date)
+      and ${jobStageStations.dueEnd} <= cast(${window.end} as date)
+    )
+  )`;
+}
+
+function mapSharedStationBookingRow(row: {
+  booking: JobStageStationRow;
+  customer: CustomerRow | null;
+  job: JobRow;
+  product: ProductRow;
+  quote: typeof quotes.$inferSelect | null;
+  stage: JobStageRow;
+  station: StationRow;
+}): SharedStationBookingRow {
+  let quote: QuoteRow | null = null;
+  if (row.quote) {
+    if (!row.customer) {
+      throw new Error(`Missing customer row for quote ${row.quote.id}.`);
+    }
+    quote = { code: row.quote.code, customer: row.customer };
+  }
+
+  return {
+    ...row.booking,
+    jobStage: {
+      ...row.stage,
+      job: {
+        ...row.job,
+        product: row.product,
+        quote,
+      },
+    },
+    station: row.station,
+  };
 }
 
 function mapSharedStationBookingJobs(rows: SharedStationBookingRow[]) {

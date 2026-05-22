@@ -60,6 +60,7 @@ type ScheduleGanttRenderableRow = ScheduleGanttRow & {
 
 const SIDEBAR_WIDTH = 300;
 const ROW_HEIGHT = 42;
+const EMPTY_SHARED_BOOKING_JOBS: JobSharedStationBookingJob[] = [];
 const EMPTY_SELECTED_OVERLAY_JOB_IDS = new Set<string>();
 
 export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, job }) => {
@@ -68,7 +69,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, j
   const showMutationError = useApiMutationErrorToast();
   const [optimisticDueRanges, setOptimisticDueRanges] = React.useState<Record<string, OptimisticDueRange>>({});
   const sharedBookingsQuery = useQuery(trpc.jobs.listSharedStationBookings.queryOptions({ jobId: job.id }));
-  const sharedBookingJobs = sharedBookingsQuery.data?.jobs ?? [];
+  const sharedBookingJobs = sharedBookingsQuery.data?.jobs ?? EMPTY_SHARED_BOOKING_JOBS;
   const [overlaySelection, setOverlaySelection] = React.useState<{ jobId: string; jobIds: Set<string> }>(() => ({
     jobId: job.id,
     jobIds: new Set(),
@@ -404,24 +405,24 @@ const ScheduleGanttTimelineRowInner: React.FC<{
 
 const ScheduleGanttOccupancyOverlays: React.FC<{ jobs: JobSharedStationBookingJob[] }> = ({ jobs }) => (
   <>
-    {jobs.flatMap((job, jobIndex) =>
-      job.bookings.map((booking) => (
+    {jobs
+      .flatMap((job) => job.bookings.map((booking) => ({ booking, jobCode: job.jobCode, jobId: job.jobId })))
+      .map((overlay, laneIndex) => (
         <ScheduleGanttOccupancyBar
-          booking={booking}
-          jobCode={job.jobCode}
-          key={`${job.jobId}-${booking.id}`}
-          rowOffset={jobIndex}
+          booking={overlay.booking}
+          jobCode={overlay.jobCode}
+          key={`${overlay.jobId}-${overlay.booking.id}`}
+          laneIndex={laneIndex}
         />
-      )),
-    )}
+      ))}
   </>
 );
 
 const ScheduleGanttOccupancyBar: React.FC<{
   booking: JobSharedStationBookingJob['bookings'][number];
   jobCode: string;
-  rowOffset: number;
-}> = ({ booking, jobCode, rowOffset }) => {
+  laneIndex: number;
+}> = ({ booking, jobCode, laneIndex }) => {
   const occupancy = getScheduleGanttOccupancyDisplay(booking, jobCode);
 
   if (occupancy.kind === 'none') {
@@ -437,7 +438,7 @@ const ScheduleGanttOccupancyBar: React.FC<{
       end={occupancy.end}
       label={occupancy.label}
       start={occupancy.start}
-      topOffset={Math.min(rowOffset, 2) * 6 - 8}
+      topOffset={laneIndex * 5 - 10}
     />
   );
 };

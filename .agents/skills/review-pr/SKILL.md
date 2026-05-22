@@ -46,41 +46,25 @@ differently. Track what was dropped to report in the chat summary.
 
 ### 6. Post to the PR
 
-**Blockers → inline review comments.** Write a JSON file and submit one review:
+**Small issues + Blockers + Nitpicks → inline review comments.** Write a JSON file and submit one review per item:
 
 ```jsonc
-// /tmp/review-pr-blockers.json
+// /tmp/review-pr-items.json
 {
   "event": "COMMENT",
-  "body": "Automated review — <N> blocking issue(s) flagged inline.",
+  "body": "Automated review — <N> blocking/small/nitpick issue(s) flagged inline.",
   "comments": [
-    { "path": "src/foo.ts", "line": 42, "side": "RIGHT", "body": "**Blocker:** ..." },
-    { "path": "src/foo.ts", "start_line": 10, "line": 14, "side": "RIGHT", "body": "**Blocker:** ..." }
+    { "path": "src/foo.ts", "line": 42, "side": "RIGHT", "body": "**Blocker/Small/Nit:** ..." },
+    { "path": "src/foo.ts", "start_line": 10, "line": 14, "side": "RIGHT", "body": "**Blocker/Small/Nit:** ..." }
   ]
 }
 ```
 
-`gh api repos/$REPO/pulls/<N>/reviews --input /tmp/review-pr-blockers.json`
+`gh api repos/$REPO/pulls/<N>/reviews --input /tmp/review-pr-items.json`
 
 - `line` is the line number in the new file (RIGHT side). Use `start_line`+`line` for a range.
-- The line must appear in the diff, or GitHub returns 422. If a blocker can't be anchored to a diff line, move it into the grouped comment with a `file:line` reference instead.
-- Skip this step entirely if there are no blockers.
-
-**Small issues + nitpicks → one grouped comment.** Write a markdown file and post once:
-
-```md
-## Review notes (non-blocking)
-
-**Small issues**
-- `src/foo.ts:12` — ...
-
-**Nitpicks**
-- `src/bar.ts:30` — ...
-```
-
-`gh pr comment <N> --body-file /tmp/review-pr-group.md`
-
-- Omit a heading if its bucket is empty. Skip this step entirely if both buckets are empty.
+- The line must appear in the diff, or GitHub returns 422. If a blocker, small issue or nit can't be anchored to a diff line, move it into the grouped comment with a `file:line` reference instead.
+- Skip this step entirely if there are no blockers, small issues or nits.
 
 ### 7. Summarize in chat
 

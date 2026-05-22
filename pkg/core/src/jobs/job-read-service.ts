@@ -20,10 +20,11 @@ import {
   JobStageSummary,
   type JobSummary,
   QuoteCode,
+  type SortDirection,
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, inArray, ne, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 
 import { JobNotFoundError } from './job-errors.js';
 import {
@@ -77,6 +78,7 @@ export async function getJob({
       actualEndSetManually: true,
       actualStart: true,
       actualStartSetManually: true,
+      dueDate: true,
       id: true,
       dueEnd: true,
       dueEndSetManually: true,
@@ -384,6 +386,7 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     actualEnd: sql`${jobs.actualEnd}`,
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
+    dueDate: sql`${jobs.dueDate}`,
     dueEnd: sql`${jobs.dueEnd}`,
     id: sql`${jobs.id}`,
     // Derived lifecycle sorting is a UI contract: not-started, active, complete, paused, cancelled.
@@ -391,6 +394,16 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];
+}
+
+export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection): SQL {
+  if (sortBy === 'dueDate') {
+    return sortDirection === 'desc' ? sql`${jobs.dueDate} desc nulls last` : sql`${jobs.dueDate} asc nulls last`;
+  }
+
+  return sortDirection === 'desc'
+    ? desc(getJobSortColumn(sortBy) as SQLWrapper)
+    : asc(getJobSortColumn(sortBy) as SQLWrapper);
 }
 
 export function mapJobSummary(row: JobWithProductRow): JobSummary {

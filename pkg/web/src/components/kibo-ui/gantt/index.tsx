@@ -158,28 +158,23 @@ const getDateByMousePosition = (context: GanttContextProps, mouseX: number) => {
   return actualDate;
 };
 
-const createInitialTimelineData = (today: Date) => {
-  const data: TimelineData = [];
+const createTimelineYearData = (year: number): TimelineData[number] => ({
+  year,
+  quarters: new Array(4).fill(null).map((_, quarterIndex) => ({
+    months: new Array(3).fill(null).map((_, monthIndex) => {
+      const month = quarterIndex * 3 + monthIndex;
+      return {
+        days: getDaysInMonth(new Date(year, month, 1)),
+      };
+    }),
+  })),
+});
 
-  data.push(
-    { year: today.getFullYear() - 1, quarters: new Array(4).fill(null) },
-    { year: today.getFullYear(), quarters: new Array(4).fill(null) },
-    { year: today.getFullYear() + 1, quarters: new Array(4).fill(null) },
-  );
-
-  for (const yearObj of data) {
-    yearObj.quarters = new Array(4).fill(null).map((_, quarterIndex) => ({
-      months: new Array(3).fill(null).map((_, monthIndex) => {
-        const month = quarterIndex * 3 + monthIndex;
-        return {
-          days: getDaysInMonth(new Date(yearObj.year, month, 1)),
-        };
-      }),
-    }));
-  }
-
-  return data;
-};
+const createInitialTimelineData = (today: Date) => [
+  createTimelineYearData(today.getFullYear() - 1),
+  createTimelineYearData(today.getFullYear()),
+  createTimelineYearData(today.getFullYear() + 1),
+];
 
 const getOffset = (date: Date, timelineStartDate: Date, context: GanttContextProps) => {
   const parsedColumnWidth = (context.columnWidth * context.zoom) / 100;
@@ -1065,7 +1060,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     };
   }, []);
 
-  // Fix the useCallback to include all dependencies
+  // Keep the throttled listener stable; timeline edits use functional state updates.
   const handleScroll = useCallback(
     throttle(() => {
       const scrollElement = scrollRef.current;
@@ -1077,53 +1072,29 @@ export const GanttProvider: FC<GanttProviderProps> = ({
       setScrollX(scrollLeft);
 
       if (scrollLeft === 0) {
-        // Extend timelineData to the past
-        const firstYear = timelineData[0]?.year;
+        setTimelineData((currentTimelineData) => {
+          const firstYear = currentTimelineData[0]?.year;
 
-        if (!firstYear) {
-          return;
-        }
+          if (!firstYear) {
+            return currentTimelineData;
+          }
 
-        const newTimelineData: TimelineData = [...timelineData];
-        newTimelineData.unshift({
-          year: firstYear - 1,
-          quarters: new Array(4).fill(null).map((_, quarterIndex) => ({
-            months: new Array(3).fill(null).map((_, monthIndex) => {
-              const month = quarterIndex * 3 + monthIndex;
-              return {
-                days: getDaysInMonth(new Date(firstYear, month, 1)),
-              };
-            }),
-          })),
+          return [createTimelineYearData(firstYear - 1), ...currentTimelineData];
         });
-
-        setTimelineData(newTimelineData);
 
         // Scroll a bit forward so it's not at the very start
         scrollElement.scrollLeft = scrollElement.clientWidth;
         setScrollX(scrollElement.scrollLeft);
       } else if (scrollLeft + clientWidth >= scrollWidth) {
-        // Extend timelineData to the future
-        const lastYear = timelineData.at(-1)?.year;
+        setTimelineData((currentTimelineData) => {
+          const lastYear = currentTimelineData.at(-1)?.year;
 
-        if (!lastYear) {
-          return;
-        }
+          if (!lastYear) {
+            return currentTimelineData;
+          }
 
-        const newTimelineData: TimelineData = [...timelineData];
-        newTimelineData.push({
-          year: lastYear + 1,
-          quarters: new Array(4).fill(null).map((_, quarterIndex) => ({
-            months: new Array(3).fill(null).map((_, monthIndex) => {
-              const month = quarterIndex * 3 + monthIndex;
-              return {
-                days: getDaysInMonth(new Date(lastYear, month, 1)),
-              };
-            }),
-          })),
+          return [...currentTimelineData, createTimelineYearData(lastYear + 1)];
         });
-
-        setTimelineData(newTimelineData);
 
         // Scroll a bit back so it's not at the very end
         scrollElement.scrollLeft = scrollElement.scrollWidth - scrollElement.clientWidth;

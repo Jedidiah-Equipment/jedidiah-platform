@@ -2,7 +2,6 @@ import {
   cancelJob,
   completeJobStage,
   createJob,
-  createJobFromQuote,
   editJobDate,
   getJob,
   isJobCoreError,
@@ -16,7 +15,6 @@ import {
   uncancelJob,
 } from '@pkg/core';
 import {
-  JobCreateFromQuoteInput,
   JobCreateInput,
   JobDateEditInput,
   JobLifecycleTransitionInput,
@@ -43,14 +41,6 @@ export const jobsRouter = router({
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => createJob({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id })),
-    ),
-
-  createFromQuote: authorizedProcedure('job:create')
-    .input(JobCreateFromQuoteInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        createJobFromQuote({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id }),
-      ),
     ),
 
   pause: authorizedProcedure('job:update')

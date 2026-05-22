@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  JOB_STAGES,
-  JobCode,
-  JobCreateFromQuoteInput,
-  JobEvent,
-  JobEventDerivationStage,
-  JobListFilters,
-  JobWorkState,
-} from './job.js';
+import { JOB_STAGES, JobCode, JobEvent, JobEventDerivationStage, JobListFilters, JobWorkState } from './job.js';
 
 describe('JobCode', () => {
   it('formats DB integers as branded job codes', () => {
@@ -27,24 +19,6 @@ describe('JobListFilters', () => {
   it('preserves default active filtering', () => {
     expect(JobListFilters.parse(undefined)).toEqual({
       lifecycleStatuses: ['active'],
-    });
-  });
-});
-
-describe('JobCreateFromQuoteInput', () => {
-  it('accepts due start and end fields', () => {
-    expect(
-      JobCreateFromQuoteInput.parse({
-        quoteId: '00000000-0000-4000-8000-000000000001',
-        productId: '00000000-0000-4000-8000-000000000002',
-        dueStart: '2026-08-01',
-        dueEnd: '2026-08-15',
-      }),
-    ).toEqual({
-      quoteId: '00000000-0000-4000-8000-000000000001',
-      productId: '00000000-0000-4000-8000-000000000002',
-      dueStart: '2026-08-01',
-      dueEnd: '2026-08-15',
     });
   });
 });

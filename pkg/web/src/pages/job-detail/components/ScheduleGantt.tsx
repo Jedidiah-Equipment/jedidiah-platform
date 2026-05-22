@@ -24,9 +24,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
-import { Input } from '@/components/ui/input.js';
-import { Label } from '@/components/ui/label.js';
-import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -34,9 +31,9 @@ import { cn } from '@/lib/utils.js';
 import {
   buildScheduleGanttRows,
   type DueDragAction,
-  formatScheduleDateTimeInputValue,
   getScheduleGanttActualDateEdits,
   getScheduleGanttActualDisplay,
+  getScheduleGanttActualRangeAfterDrag,
   getScheduleGanttDueDateEdits,
   getScheduleGanttDueDisplay,
   getScheduleGanttDueRangeAfterDrag,
@@ -44,8 +41,6 @@ import {
   getScheduleGanttTimelineDayCount,
   type OptimisticDueRange,
   parseScheduleDate,
-  parseScheduleDateTimeInputValue,
-  resolveScheduleDateTimeInputValue,
   type ScheduleGanttRow,
 } from './schedule-gantt-helpers.js';
 
@@ -289,9 +284,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
                     canEditActualBars={
                       row.level === 'station' && !isCreateMode && props.canEditSchedule && !editDateMutation.isPending
                     }
-                    canEditDueBars={
-                      (isCreateMode || row.level === 'station') && props.canEditSchedule && !editDateMutation.isPending
-                    }
+                    canEditDueBars={row.level === 'station' && props.canEditSchedule && !editDateMutation.isPending}
                     key={row.id}
                     onEditActualDates={editActualDates}
                     onEditDueRange={editDueRange}
@@ -441,8 +434,8 @@ const ScheduleGanttTimelineRowInner: React.FC<{
       style={{ height: ROW_HEIGHT, width: `calc(var(--gantt-column-width) * ${dayCount})` }}
     >
       <ScheduleGanttOccupancyOverlays jobs={overlays} />
-      <ScheduleGanttActualRange canEdit={canEditActualBars} onEdit={onEditActualDates} row={row} />
       <ScheduleGanttDueRange canEdit={canEditDueBars} onEdit={onEditDueRange} row={row} />
+      <ScheduleGanttActualRange canEdit={canEditActualBars} onEdit={onEditActualDates} row={row} />
     </div>
   );
 };
@@ -504,7 +497,10 @@ const ScheduleGanttDueRange: React.FC<{
 
   return (
     <ScheduleGanttBar
-      className="border border-sky-500/70 bg-sky-500/10"
+      className={cn(
+        'border border-sky-500/70 bg-sky-500/10',
+        row.level !== 'station' && 'h-1 border-sky-500/60 bg-sky-500/50',
+      )}
       editable={canEdit}
       onEdit={(action, dayDelta) => {
         const nextRange = getScheduleGanttDueRangeAfterDrag({
@@ -517,7 +513,9 @@ const ScheduleGanttDueRange: React.FC<{
           onEdit(row, nextRange);
         }
       }}
-      {...due}
+      end={due.end}
+      label={due.label}
+      start={due.start}
     />
   );
 };
@@ -535,13 +533,22 @@ const ScheduleGanttActualRange: React.FC<{
 
   if (canEdit && row.actualStart) {
     return (
-      <ScheduleGanttActualDatePopover
-        actualEnd={row.actualEnd}
-        actualStart={row.actualStart}
-        className={cn('bg-sky-600 shadow-sm', actual.openEnded && 'rounded-r-none')}
+      <ScheduleGanttBar
+        className={cn('z-20 bg-sky-600 shadow-sm', actual.openEnded && 'rounded-r-none')}
+        editable
         end={actual.end}
         label={actual.label}
-        onConfirm={(nextRange) => onEdit(row, nextRange)}
+        onEdit={(action, dayDelta) => {
+          const nextRange = getScheduleGanttActualRangeAfterDrag({
+            action,
+            actualEnd: row.actualEnd,
+            actualStart: row.actualStart,
+            dayDelta,
+          });
+          if (nextRange) {
+            onEdit(row, nextRange);
+          }
+        }}
         start={actual.start}
       />
     );
@@ -549,111 +556,11 @@ const ScheduleGanttActualRange: React.FC<{
 
   return (
     <ScheduleGanttBar
-      className={cn('bg-sky-600 shadow-sm', actual.openEnded && 'rounded-r-none')}
+      className={cn('z-20 bg-sky-600 shadow-sm', actual.openEnded && 'rounded-r-none')}
       end={actual.end}
       label={actual.label}
       start={actual.start}
     />
-  );
-};
-
-const ScheduleGanttActualDatePopover: React.FC<{
-  actualEnd: string | null;
-  actualStart: string;
-  className: string;
-  end: Date;
-  label: string;
-  onConfirm: (nextRange: { actualEnd: string | null; actualStart: string }) => void;
-  start: Date;
-}> = ({ actualEnd, actualStart, className, end, label, onConfirm, start }) => {
-  const gantt = useGanttContext();
-  const [open, setOpen] = React.useState(false);
-  const actualStartInputId = React.useId();
-  const actualEndInputId = React.useId();
-  const [actualStartValue, setActualStartValue] = React.useState(() => formatScheduleDateTimeInputValue(actualStart));
-  const [actualEndValue, setActualEndValue] = React.useState(() => formatScheduleDateTimeInputValue(actualEnd));
-  const left = getGanttOffset(start, gantt);
-  const width = getGanttWidth(start, end, gantt);
-  const parsedActualStart = parseScheduleDateTimeInputValue(actualStartValue);
-  const parsedActualEnd = actualEndValue ? parseScheduleDateTimeInputValue(actualEndValue) : null;
-  const hasValidRange =
-    parsedActualStart !== null &&
-    (parsedActualEnd === null || new Date(parsedActualStart).getTime() <= new Date(parsedActualEnd).getTime());
-  const canSubmit = Boolean(parsedActualStart) && hasValidRange;
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    setActualStartValue(formatScheduleDateTimeInputValue(actualStart));
-    setActualEndValue(formatScheduleDateTimeInputValue(actualEnd));
-  }, [actualEnd, actualStart, open]);
-
-  return (
-    <Popover onOpenChange={setOpen} open={open}>
-      <PopoverTrigger
-        render={
-          <button
-            aria-label={`${label}; edit actual date`}
-            className={cn(
-              'absolute top-1/2 z-20 h-4 -translate-y-1/2 cursor-pointer appearance-none rounded-sm p-0',
-              className,
-            )}
-            style={{ left: Math.round(left), width: Math.max(Math.round(width), 10) }}
-            title={label}
-            type="button"
-          />
-        }
-      />
-      <PopoverContent align="start" className="w-80">
-        <PopoverHeader>
-          <PopoverTitle>Edit actual dates</PopoverTitle>
-        </PopoverHeader>
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-
-            const nextActualStart = resolveScheduleDateTimeInputValue(actualStartValue, actualStart);
-            const nextActualEnd = resolveScheduleDateTimeInputValue(actualEndValue, actualEnd);
-            const hasNextValidRange =
-              nextActualStart !== null &&
-              (nextActualEnd === null || new Date(nextActualStart).getTime() <= new Date(nextActualEnd).getTime());
-            if (!nextActualStart || !hasNextValidRange) return;
-
-            onConfirm({ actualEnd: nextActualEnd, actualStart: nextActualStart });
-            setOpen(false);
-          }}
-        >
-          <div className="grid gap-1.5">
-            <Label htmlFor={actualStartInputId}>Actual start</Label>
-            <Input
-              id={actualStartInputId}
-              onChange={(event) => setActualStartValue(event.target.value)}
-              required
-              type="datetime-local"
-              value={actualStartValue}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor={actualEndInputId}>Actual end</Label>
-            <Input
-              id={actualEndInputId}
-              onChange={(event) => setActualEndValue(event.target.value)}
-              type="datetime-local"
-              value={actualEndValue}
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setOpen(false)} type="button" variant="outline">
-              Cancel
-            </Button>
-            <Button disabled={!canSubmit} type="submit">
-              Save
-            </Button>
-          </div>
-        </form>
-      </PopoverContent>
-    </Popover>
   );
 };
 

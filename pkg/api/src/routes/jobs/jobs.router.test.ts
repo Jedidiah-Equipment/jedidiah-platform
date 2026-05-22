@@ -59,6 +59,7 @@ describe('jobs.create', () => {
     }
 
     const job = await caller.jobs.create({
+      dueDate: '2026-08-10',
       productId: context.product.id,
       stages: [
         createStageInput('procurement', '2026-08-01', '2026-08-02'),
@@ -70,6 +71,7 @@ describe('jobs.create', () => {
     });
 
     expect(job).toMatchObject({
+      dueDate: '2026-08-10',
       dueEnd: null,
       dueStart: null,
       dueEndSetManually: false,

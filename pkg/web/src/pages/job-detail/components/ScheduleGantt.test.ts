@@ -9,6 +9,7 @@ import {
   getActualEndForDisplay,
   getScheduleGanttActualDateEdits,
   getScheduleGanttActualDisplay,
+  getScheduleGanttActualRangeAfterDrag,
   getScheduleGanttDueDateEdits,
   getScheduleGanttDueDisplay,
   getScheduleGanttDueRangeAfterDrag,
@@ -372,6 +373,32 @@ describe('schedule date display helpers', () => {
         previousActualStart: '2026-05-22T08:00:00.000Z',
       }).map((edit) => edit.field),
     ).toEqual(['actual_end', 'actual_start']);
+  });
+
+  it('moves and resizes actual ranges by whole days', () => {
+    expect(
+      getScheduleGanttActualRangeAfterDrag({
+        action: 'move',
+        actualEnd: '2026-05-22T12:00:00.000Z',
+        actualStart: '2026-05-20T08:00:00.000Z',
+        dayDelta: 2,
+      }),
+    ).toEqual({
+      actualEnd: '2026-05-24T12:00:00.000Z',
+      actualStart: '2026-05-22T08:00:00.000Z',
+    });
+
+    expect(
+      getScheduleGanttActualRangeAfterDrag({
+        action: 'resize-start',
+        actualEnd: '2026-05-22T12:00:00.000Z',
+        actualStart: '2026-05-20T08:00:00.000Z',
+        dayDelta: 1,
+      }),
+    ).toEqual({
+      actualEnd: '2026-05-22T12:00:00.000Z',
+      actualStart: '2026-05-21T08:00:00.000Z',
+    });
   });
 });
 

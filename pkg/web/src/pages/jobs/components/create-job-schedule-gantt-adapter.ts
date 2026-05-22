@@ -24,15 +24,14 @@ export function buildCreateScheduleGanttRows({
   stations: Station[];
 }): ScheduleGanttRow[] {
   const stationNamesById = new Map(stations.map((station) => [station.id, station.name]));
-  const firstStage = stages[0];
-  const lastStage = stages[stages.length - 1];
+  const jobWindow = getDraftWindow(stages.flatMap((stage) => stage.stationBookings));
 
   return [
     {
       actualEnd: null,
       actualStart: null,
-      dueEnd: lastStage?.dueEnd || null,
-      dueStart: firstStage?.dueStart || null,
+      dueEnd: jobWindow.dueEnd,
+      dueStart: jobWindow.dueStart,
       entityId: 'create-job',
       id: 'create-job',
       level: 'job',
@@ -48,8 +47,7 @@ export function buildCreateScheduleGanttRows({
         {
           actualEnd: null,
           actualStart: null,
-          dueEnd: stage.dueEnd || null,
-          dueStart: stage.dueStart || null,
+          ...getDraftWindow(stage.stationBookings),
           entityId: stage.stage,
           id: stageRowId,
           level: 'stage' as const,
@@ -77,7 +75,6 @@ export function buildCreateScheduleGanttRows({
 }
 
 export function applyCreateScheduleGanttDueRangeEdit({
-  anchorKind,
   nextRange,
   row,
   stages,
@@ -87,45 +84,11 @@ export function applyCreateScheduleGanttDueRangeEdit({
   row: ScheduleGanttRow;
   stages: StageDraft[];
 }): CreateScheduleGanttEdit {
-  if (row.level === 'job') {
-    if (row.dueStart !== nextRange.dueStart && row.dueEnd === nextRange.dueEnd) {
-      return { anchorDate: nextRange.dueStart, anchorKind: 'start', kind: 'anchor' };
-    }
-
-    if (row.dueEnd !== nextRange.dueEnd && row.dueStart === nextRange.dueStart) {
-      return { anchorDate: nextRange.dueEnd, anchorKind: 'end', kind: 'anchor' };
-    }
-
-    return {
-      anchorDate: anchorKind === 'start' ? nextRange.dueStart : nextRange.dueEnd,
-      anchorKind,
-      kind: 'anchor',
-    };
-  }
-
   const dueStartChanged = row.dueStart !== nextRange.dueStart;
   const dueEndChanged = row.dueEnd !== nextRange.dueEnd;
 
-  if (row.level === 'stage') {
-    return {
-      kind: 'stages',
-      stages: stages.map((stage) =>
-        stage.stage === row.entityId
-          ? {
-              ...stage,
-              dueEnd: nextRange.dueEnd,
-              dueEndSetManually: dueEndChanged ? true : stage.dueEndSetManually,
-              dueStart: nextRange.dueStart,
-              dueStartSetManually: dueStartChanged ? true : stage.dueStartSetManually,
-              stationBookings: stage.stationBookings.map((booking) => ({
-                ...booking,
-                dueEnd: dueEndChanged && !booking.dueEndSetManually ? nextRange.dueEnd : booking.dueEnd,
-                dueStart: dueStartChanged && !booking.dueStartSetManually ? nextRange.dueStart : booking.dueStart,
-              })),
-            }
-          : stage,
-      ),
-    };
+  if (row.level !== 'station') {
+    return { kind: 'stages', stages };
   }
 
   return {
@@ -153,4 +116,23 @@ function getCreateStageRowId(stage: string): string {
 
 function getCreateStationRowId(bookingId: string): string {
   return `create-station-${bookingId}`;
+}
+
+function getDraftWindow(bookings: { dueEnd: string; dueStart: string }[]): {
+  dueEnd: string | null;
+  dueStart: string | null;
+} {
+  const dueStarts = bookings
+    .map((booking) => booking.dueStart)
+    .filter((value) => value !== '')
+    .sort();
+  const dueEnds = bookings
+    .map((booking) => booking.dueEnd)
+    .filter((value) => value !== '')
+    .sort();
+
+  return {
+    dueEnd: dueEnds.at(-1) ?? null,
+    dueStart: dueStarts[0] ?? null,
+  };
 }

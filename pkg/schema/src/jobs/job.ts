@@ -429,6 +429,7 @@ export const JobCreateStageInput = z.object({
 export type JobCreateInput = z.infer<typeof JobCreateInput>;
 export const JobCreateInput = z
   .object({
+    dueDate: z.iso.date().nullable().optional(),
     productId: UUID,
     quoteId: UUID.nullable().optional(),
     stages: z.array(JobCreateStageInput).optional(),

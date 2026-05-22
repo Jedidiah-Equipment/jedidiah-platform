@@ -1,4 +1,4 @@
-import { auditEvents, type Db, jobStages, jobs, products, quotes, user } from '@pkg/db';
+import { auditEvents, type Db, products, quotes, user } from '@pkg/db';
 import type { QuoteDetail } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -147,7 +147,7 @@ describe('quotes.list', () => {
     });
     const sentQuote = await salesCaller.quotes.send({ id: acceptedQuote.id });
     const finalQuote = await salesCaller.quotes.accept({ id: sentQuote.id });
-    const job = await supervisorCaller.jobs.createFromQuote({
+    const job = await supervisorCaller.jobs.create({
       dueEnd: '2026-08-15',
       productId: context.product.id,
       quoteId: finalQuote.id,
@@ -283,60 +283,7 @@ describe('quotes.reject', () => {
   });
 });
 
-describe('jobs.createFromQuote', () => {
-  test('converts an accepted quote into one job with stages', async ({ context }) => {
-    const salesCaller = context.createCaller(mockSession('sales'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const created = await createReadyQuote(salesCaller, context.product.id);
-    const sent = await salesCaller.quotes.send({ id: created.id });
-    const accepted = await salesCaller.quotes.accept({ id: sent.id });
-
-    await expect(supervisorCaller.quotes.get({ id: accepted.id })).resolves.toMatchObject({
-      id: accepted.id,
-      status: 'accepted',
-    });
-
-    const job = await supervisorCaller.jobs.createFromQuote({
-      dueEnd: '2026-08-15',
-      productId: context.product.id,
-      quoteId: accepted.id,
-    });
-    const jobRows = await context.db.select().from(jobs);
-    const stageRows = await context.db.select().from(jobStages);
-
-    expect(job).toMatchObject({
-      dueEnd: '2026-08-15',
-      productId: context.product.id,
-      quoteId: accepted.id,
-    });
-    expect(jobRows).toHaveLength(1);
-    expect(stageRows).toHaveLength(5);
-    await expect(
-      supervisorCaller.jobs.createFromQuote({ productId: context.product.id, quoteId: accepted.id }),
-    ).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-  });
-
-  test('converts a sent quote into one job when a Job product is selected', async ({ context }) => {
-    const salesCaller = context.createCaller(mockSession('sales'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const created = await createReadyQuote(salesCaller, context.product.id);
-    const sent = await salesCaller.quotes.send({ id: created.id });
-
-    const job = await supervisorCaller.jobs.createFromQuote({
-      dueEnd: '2026-08-15',
-      productId: context.product.id,
-      quoteId: sent.id,
-    });
-
-    expect(job).toMatchObject({
-      dueEnd: '2026-08-15',
-      productId: context.product.id,
-      quoteId: sent.id,
-    });
-  });
-
+describe('jobs.create with quote links', () => {
   test('creates jobs linked to sent and product-less quotes when a Job product is selected', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));

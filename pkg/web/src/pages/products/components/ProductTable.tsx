@@ -83,7 +83,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
       },
       {
         accessorKey: 'basePrice',
-        cell: ({ row }) => formatProductPrice(row.original),
+        cell: ({ row }) => formatCurrency(row.original.basePrice, row.original.currencyCode),
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Base price',
@@ -191,8 +191,4 @@ function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'modelCode'
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;
-}
-
-function formatProductPrice(product: Product): string {
-  return formatCurrency(product.basePrice, product.currencyCode);
 }

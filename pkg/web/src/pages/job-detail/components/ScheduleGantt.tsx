@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import {
   GanttFeatureList,
   GanttHeader,
+  GanttMarker,
   GanttProvider,
   GanttTimeline,
   GanttToday,
@@ -42,6 +43,7 @@ import {
   getScheduleGanttOccupancyDisplay,
   getScheduleGanttTimelineDayCount,
   type OptimisticDueRange,
+  parseScheduleDate,
   parseScheduleDateTimeInputValue,
   resolveScheduleDateTimeInputValue,
   type ScheduleGanttRow,
@@ -133,6 +135,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
   );
   const visibleRowCount = visibleRows.filter((row) => row.visible).length;
   const ganttHeight = Math.max(420, 60 + visibleRowCount * ROW_HEIGHT);
+  const jobDueDate = parseScheduleDate(job?.dueDate ?? null);
 
   const toggleStage = (stageId: string) => {
     setCollapsedStageIds((current) => {
@@ -243,6 +246,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <LegendItem className="border border-sky-500/70 bg-transparent" label="Due" />
           {isCreateMode ? null : <LegendItem className="bg-sky-600" label="Actual" />}
+          {isCreateMode ? null : <LegendItem className="bg-red-600" label="Job Due Date" />}
           {isCreateMode ? null : (
             <LegendItem className="bg-muted-foreground/45 ring-1 ring-muted-foreground/50" label="Other job" />
           )}
@@ -270,6 +274,14 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
           />
           <GanttTimeline>
             <GanttHeader />
+            {jobDueDate ? (
+              <GanttMarker
+                className="border-red-700 bg-red-600 text-white"
+                date={jobDueDate}
+                id={`job-due-date-${job?.id ?? ''}`}
+                label="Job Due Date"
+              />
+            ) : null}
             <GanttFeatureList className="absolute top-0 left-0 h-full w-max space-y-0">
               {visibleRows.map((row) =>
                 row.visible ? (

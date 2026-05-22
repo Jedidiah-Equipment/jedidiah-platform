@@ -410,13 +410,13 @@ async function insertJobMilestoneEvent({
 }
 
 function mapScheduleRollupBookings(
-  bookings: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[],
+  bookings: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'plannedEnd' | 'plannedStart'>[],
 ) {
   return bookings.map((booking) => ({
     actualEnd: booking.actualEnd,
     actualStart: booking.actualStart,
-    plannedEnd: parseDateOnlyAsUtc(booking.dueEnd),
-    plannedStart: parseDateOnlyAsUtc(booking.dueStart),
+    plannedEnd: parseDateOnlyAsUtc(booking.plannedEnd),
+    plannedStart: parseDateOnlyAsUtc(booking.plannedStart),
   }));
 }
 

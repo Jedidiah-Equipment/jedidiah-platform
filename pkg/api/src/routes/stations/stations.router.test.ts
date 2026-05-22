@@ -186,9 +186,9 @@ describe('station booking history', () => {
     }
 
     await context.db.insert(jobStageStations).values({
-      dueEnd: '2026-06-03',
-      dueStart: '2026-06-01',
       jobStageId: stage.id,
+      plannedEnd: '2026-06-03',
+      plannedStart: '2026-06-01',
       stationId: station.id,
     });
 

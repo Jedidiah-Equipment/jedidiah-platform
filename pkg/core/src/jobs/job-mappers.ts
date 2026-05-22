@@ -1,7 +1,7 @@
 import type { jobEvents, jobStageStations, jobStages, jobs, stations, user } from '@pkg/db';
 import { deriveJobStatus, deriveLevelStatus } from '@pkg/domain';
 import type { JobLifecycleStatus, JobWorkState } from '@pkg/schema';
-import { Job, JobEvent, JobEventDerivationStage, JobStage, Station, StationBooking } from '@pkg/schema';
+import { Job, JobEvent, JobStage, Station, StationBooking } from '@pkg/schema';
 
 export type JobRow = typeof jobs.$inferSelect;
 export type JobEventRow = typeof jobEvents.$inferSelect;
@@ -14,53 +14,35 @@ export type JobStageStationRow = typeof jobStageStations.$inferSelect;
 export type JobStageStationWithStationRow = JobStageStationRow & {
   station: StationRow;
 };
-export type JobAuditRecord = Pick<
-  JobRow,
-  | 'actualEnd'
-  | 'actualEndSetManually'
-  | 'actualStart'
-  | 'actualStartSetManually'
-  | 'code'
-  | 'dueEnd'
-  | 'dueEndSetManually'
-  | 'dueDate'
-  | 'dueStart'
-  | 'dueStartSetManually'
-  | 'isCancelled'
-  | 'isPaused'
-  | 'productId'
-  | 'quoteId'
->;
+export type JobAuditRecord = Pick<JobRow, 'code' | 'dueDate' | 'isCancelled' | 'isPaused' | 'productId' | 'quoteId'>;
 
-export function deriveJobLifecycleStatus(
-  row: Pick<JobRow, 'actualEnd' | 'actualStart' | 'isCancelled' | 'isPaused'>,
-): JobLifecycleStatus {
+export function deriveJobLifecycleStatus(row: {
+  actualEnd: Date | null;
+  actualStart: Date | null;
+  isCancelled: boolean;
+  isPaused: boolean;
+}): JobLifecycleStatus {
   return deriveJobStatus(row);
 }
 
-export function deriveWorkState(
-  row: Pick<JobStageRow | JobStageStationRow, 'actualEnd' | 'actualStart'>,
-): JobWorkState {
+export function deriveWorkState(row: { actualEnd: Date | null; actualStart: Date | null }): JobWorkState {
   return deriveLevelStatus(row);
 }
 
 export function mapJob(row: JobRow): Job {
   return Job.parse({
-    actualEnd: row.actualEnd?.toISOString() ?? null,
-    actualEndSetManually: row.actualEndSetManually,
-    actualStart: row.actualStart?.toISOString() ?? null,
-    actualStartSetManually: row.actualStartSetManually,
     code: row.code,
     createdAt: row.createdAt.toISOString(),
-    dueEnd: row.dueEnd,
-    dueEndSetManually: row.dueEndSetManually,
     dueDate: row.dueDate,
-    dueStart: row.dueStart,
-    dueStartSetManually: row.dueStartSetManually,
     id: row.id,
     isCancelled: row.isCancelled,
     isPaused: row.isPaused,
-    lifecycleStatus: deriveJobLifecycleStatus(row),
+    lifecycleStatus: deriveJobLifecycleStatus({
+      actualEnd: null,
+      actualStart: null,
+      isCancelled: row.isCancelled,
+      isPaused: row.isPaused,
+    }),
     productId: row.productId,
     quoteId: row.quoteId,
     updatedAt: row.updatedAt.toISOString(),
@@ -69,16 +51,8 @@ export function mapJob(row: JobRow): Job {
 
 export function mapJobAuditRecord(job: JobAuditRecord): JobAuditRecord {
   return {
-    actualEnd: job.actualEnd,
-    actualEndSetManually: job.actualEndSetManually,
-    actualStart: job.actualStart,
-    actualStartSetManually: job.actualStartSetManually,
     code: job.code,
-    dueEnd: job.dueEnd,
-    dueEndSetManually: job.dueEndSetManually,
     dueDate: job.dueDate,
-    dueStart: job.dueStart,
-    dueStartSetManually: job.dueStartSetManually,
     isCancelled: job.isCancelled,
     isPaused: job.isPaused,
     productId: job.productId,
@@ -101,14 +75,10 @@ export function mapStation(row: StationRow): Station {
 export function mapStationBooking(row: JobStageStationWithStationRow): StationBooking {
   return StationBooking.parse({
     actualEnd: row.actualEnd?.toISOString() ?? null,
-    actualEndSetManually: row.actualEndSetManually,
     actualStart: row.actualStart?.toISOString() ?? null,
-    actualStartSetManually: row.actualStartSetManually,
     createdAt: row.createdAt.toISOString(),
-    dueEnd: row.dueEnd,
-    dueEndSetManually: row.dueEndSetManually,
-    dueStart: row.dueStart,
-    dueStartSetManually: row.dueStartSetManually,
+    plannedEnd: row.plannedEnd,
+    plannedStart: row.plannedStart,
     id: row.id,
     jobStageId: row.jobStageId,
     state: deriveWorkState(row),
@@ -119,22 +89,12 @@ export function mapStationBooking(row: JobStageStationWithStationRow): StationBo
 }
 
 export function mapJobStage(row: JobStageRow): JobStage {
-  const state = deriveWorkState(row);
-
   return JobStage.parse({
-    actualEnd: row.actualEnd?.toISOString() ?? null,
-    actualEndSetManually: row.actualEndSetManually,
-    actualStart: row.actualStart?.toISOString() ?? null,
-    actualStartSetManually: row.actualStartSetManually,
-    dueEnd: row.dueEnd,
-    dueEndSetManually: row.dueEndSetManually,
-    dueStart: row.dueStart,
-    dueStartSetManually: row.dueStartSetManually,
     id: row.id,
     jobId: row.jobId,
     sequence: row.sequence,
     stage: row.stage,
-    state,
+    state: 'pending',
   });
 }
 
@@ -153,13 +113,5 @@ function parseJobEvent(row: JobEventRow, actorName: string | null): JobEvent {
     occurredAt: row.occurredAt.toISOString(),
     payload: row.payload,
     stageId: row.stageId,
-  });
-}
-
-export function mapJobEventDerivationStage(row: JobStageRow): JobEventDerivationStage {
-  return JobEventDerivationStage.parse({
-    actualEnd: row.actualEnd?.toISOString() ?? null,
-    actualStart: row.actualStart?.toISOString() ?? null,
-    stage: row.stage,
   });
 }

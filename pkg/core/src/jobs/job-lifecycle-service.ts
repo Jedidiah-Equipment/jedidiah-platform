@@ -16,35 +16,6 @@ type WriteJobLifecycleChangeInput = {
   values: Partial<typeof jobs.$inferInsert>;
 };
 
-export async function completeJobLifecycle({
-  actorUserId,
-  before,
-  id,
-  tx,
-}: {
-  actorUserId: AuthId;
-  before: JobAuditRecord;
-  id: UUID;
-  tx: DatabaseTransaction;
-}): Promise<void> {
-  const now = new Date();
-
-  await writeJobLifecycleChange({
-    actorUserId,
-    before,
-    changes: {
-      actualEnd: jobAuditDescriptor.fields.actualEnd ?? 'actual end',
-    },
-    eventType: 'job.completed',
-    id,
-    tx,
-    values: {
-      actualEnd: now,
-      updatedAt: now,
-    },
-  });
-}
-
 export async function pauseJobLifecycle({
   actorUserId,
   before,
@@ -202,8 +173,18 @@ async function writeJobLifecycleChange({
     jobId: id,
     occurredAt: new Date(),
     payload: {
-      fromLifecycleStatus: deriveJobLifecycleStatus(before),
-      toLifecycleStatus: deriveJobLifecycleStatus(updatedJob),
+      fromLifecycleStatus: deriveJobLifecycleStatus({
+        actualEnd: null,
+        actualStart: null,
+        isCancelled: before.isCancelled,
+        isPaused: before.isPaused,
+      }),
+      toLifecycleStatus: deriveJobLifecycleStatus({
+        actualEnd: null,
+        actualStart: null,
+        isCancelled: updatedJob.isCancelled,
+        isPaused: updatedJob.isPaused,
+      }),
     },
     stageId: null,
   });

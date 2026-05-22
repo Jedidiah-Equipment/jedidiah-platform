@@ -5,19 +5,15 @@ import { format, parse } from 'date-fns';
 export type AnchorKind = 'start' | 'end';
 
 export type StageDraft = {
-  dueEnd: string;
-  dueEndSetManually: boolean;
-  dueStart: string;
-  dueStartSetManually: boolean;
+  plannedEnd: string;
+  plannedStart: string;
   stage: JobStageName;
   stationBookings: StationBookingDraft[];
 };
 
 export type StationBookingDraft = {
-  dueEnd: string;
-  dueEndSetManually: boolean;
-  dueStart: string;
-  dueStartSetManually: boolean;
+  plannedEnd: string;
+  plannedStart: string;
   id: string;
   stationId: UUID;
 };
@@ -50,18 +46,14 @@ export function createDefaultStages({
     if (!defaultStage) return createEmptyStage(stage);
 
     return {
-      dueEnd: toDateInputValue(defaultStage.dueEnd),
-      dueEndSetManually: false,
-      dueStart: toDateInputValue(defaultStage.dueStart),
-      dueStartSetManually: false,
+      plannedEnd: toDateInputValue(defaultStage.plannedEnd),
+      plannedStart: toDateInputValue(defaultStage.plannedStart),
       stage,
       stationBookings: result.stationBookings
         .filter((booking) => booking.stage === stage)
         .map((booking) => ({
-          dueEnd: toDateInputValue(booking.dueEnd),
-          dueEndSetManually: false,
-          dueStart: toDateInputValue(booking.dueStart),
-          dueStartSetManually: false,
+          plannedEnd: toDateInputValue(booking.plannedEnd),
+          plannedStart: toDateInputValue(booking.plannedStart),
           id: createDraftId(),
           stationId: booking.stationId,
         })),
@@ -76,10 +68,6 @@ export function mergeDefaultStages(currentStages: StageDraft[], defaultStages: S
 
     return {
       ...defaultStage,
-      dueEnd: currentStage.dueEndSetManually ? currentStage.dueEnd : defaultStage.dueEnd,
-      dueEndSetManually: currentStage.dueEndSetManually,
-      dueStart: currentStage.dueStartSetManually ? currentStage.dueStart : defaultStage.dueStart,
-      dueStartSetManually: currentStage.dueStartSetManually,
       stationBookings: mergeDefaultBookings(currentStage, defaultStage),
     };
   });
@@ -96,20 +84,10 @@ export function mergeDefaultBookings(currentStage: StageDraft, defaultStage: Sta
 
       return {
         ...defaultBooking,
-        dueEnd: currentBooking.dueEndSetManually ? currentBooking.dueEnd : defaultBooking.dueEnd,
-        dueEndSetManually: currentBooking.dueEndSetManually,
-        dueStart: currentBooking.dueStartSetManually ? currentBooking.dueStart : defaultBooking.dueStart,
-        dueStartSetManually: currentBooking.dueStartSetManually,
         id: currentBooking.id,
       };
     }),
-    ...currentStage.stationBookings
-      .filter((currentBooking) => !defaultStationIds.has(currentBooking.stationId))
-      .map((currentBooking) => ({
-        ...currentBooking,
-        dueEnd: currentBooking.dueEndSetManually ? currentBooking.dueEnd : defaultStage.dueEnd,
-        dueStart: currentBooking.dueStartSetManually ? currentBooking.dueStart : defaultStage.dueStart,
-      })),
+    ...currentStage.stationBookings.filter((currentBooking) => !defaultStationIds.has(currentBooking.stationId)),
   ];
 }
 
@@ -135,10 +113,8 @@ export function buildCreateJobInput({
     stages: stages.map((stage) => ({
       stage: stage.stage,
       stationBookings: stage.stationBookings.map((booking) => ({
-        dueEnd: booking.dueEnd || null,
-        dueEndSetManually: booking.dueEndSetManually,
-        dueStart: booking.dueStart || null,
-        dueStartSetManually: booking.dueStartSetManually,
+        plannedEnd: booking.plannedEnd || null,
+        plannedStart: booking.plannedStart || null,
         stationId: booking.stationId,
       })),
     })),
@@ -151,10 +127,8 @@ export function createEmptyStages(): StageDraft[] {
 
 export function createEmptyStage(stage: JobStageName): StageDraft {
   return {
-    dueEnd: '',
-    dueEndSetManually: false,
-    dueStart: '',
-    dueStartSetManually: false,
+    plannedEnd: '',
+    plannedStart: '',
     stage,
     stationBookings: [],
   };
@@ -171,7 +145,7 @@ export function getUnconfiguredStages(product: Product): JobStageName[] {
 
 export function getInfeasibleMessage(stages: StageDraft[]): string | null {
   const invertedStage = stages.find(
-    (stage) => stage.dueStart && stage.dueEnd && stage.dueStart.localeCompare(stage.dueEnd) > 0,
+    (stage) => stage.plannedStart && stage.plannedEnd && stage.plannedStart.localeCompare(stage.plannedEnd) > 0,
   );
   if (invertedStage) {
     return `${departmentLabels[invertedStage.stage]} starts after it ends. You can still save, but the dates need attention.`;

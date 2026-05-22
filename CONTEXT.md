@@ -165,7 +165,7 @@ Department-Blind. Manages Products and their per-Department duration sub-forms.
 ### Quotes
 
 **Quote**:
-A sales offer associated with one Customer, optionally specifying a Product, price, discount, and validity window. **Customer is the only required field** at creation; Product and price may be filled in later. A Quote may spawn at most one Job. A Job *may* originate from a Quote but is not required to (see **Direct Job Creation**).
+A sales offer associated with one Customer, optionally specifying a Product, price, discount, and validity window. **Customer is the only required field** at creation; Product and price may be filled in later. A Quote may be the source of any number of Jobs (zero or more). A Job *may* originate from a Quote but is not required to (see **Direct Job Creation**).
 _Avoid_: Estimate, Proposal, Bid, Order.
 
 **Quote Required Fields**:
@@ -180,12 +180,12 @@ A Quote's fixed linear lifecycle: `draft → sent → (accepted | rejected)`.
 **Quote Send**:
 Sending a Quote latches it: Customer, Product, discount, valid-until, salesperson, notes, and the snapshotted price become immutable.
 
-**Quote Conversion**:
-Creating the single Job from a Quote in **`draft`** or **`accepted`** status, done by a `job-supervisor` or `admin`. Triggered from a per-Quote-row "Create Job" button — never automatic. Hidden when the Quote is `sent` (awaiting customer response) or `rejected`. Opens the Create-Job dialog with defaults from the Quote (Customer always; Product if set) and, when a Product is chosen, the Product's per-Department durations and default stations. All fields editable.
-_Avoid_: "Auto-Convert on Accept" — there is no such trigger. _Avoid_: "Accepted-only conversion" — Draft Quotes can also spawn Jobs.
+**Create Job from Quote**:
+Creating a Job whose `quote_id` references a Quote, done by a `job-supervisor` or `admin`. Triggered from a per-Quote-row "Create Job" button — never automatic. Available while the Quote is `draft`, `sent`, or `accepted`; hidden only for `rejected`. A Quote may be the source of any number of Jobs — the button never disappears after the first. Opens the Create-Job dialog showing the Quote Code and Customer Name read-only, with the Product defaulted to the Quote's Product if set (still editable) and, when a Product is chosen, the Product's per-Department durations and default Stations. All editable fields stay editable.
+_Avoid_: "Quote Conversion", "convert" — a Quote is never consumed or transformed; it is the optional source of Jobs. _Avoid_: "Auto-Convert on Accept" — there is no such trigger.
 
 **Direct Job Creation**:
-Creating a Job with no associated Quote — for stock builds, R&D prototypes, or warranty rebuilds. Uses the same Create-Job dialog, with Customer and Quote fields left empty.
+Creating a Job with no associated Quote — for stock builds, R&D prototypes, or warranty rebuilds. Uses the same Create-Job dialog; the dialog has no Customer or Quote picker in any mode, so direct mode shows only Product, dates, and Stations.
 
 **Salesperson**:
 The User who owns a Quote.
@@ -234,7 +234,7 @@ A planned visualization of Stage/Station Bookings across a Job and across the Jo
 - A due-date or actual-date *override* requires `job-supervisor` or `admin`.
 - Every Station-Booking state change writes one **Audit Event** + one or more **Job Events** (the direct event + any cascaded stage/job event) in the same transaction.
 - A **Quote** references one **Customer**, one **Product**, one **Salesperson**.
-- A **Quote** in `draft` or `accepted` status may be converted into at most one **Job**; **Job → Quote** is optional. `sent` and `rejected` Quotes cannot spawn Jobs.
+- A **Quote** in `draft`, `sent`, or `accepted` status may be the source of any number of **Jobs** (zero or more); **Job → Quote** is optional. `rejected` Quotes cannot source Jobs.
 - A **Product** carries five Department sub-forms, each with a default duration and default Station list.
 
 ## Example dialogue
@@ -246,7 +246,7 @@ A planned visualization of Stage/Station Bookings across a Job and across the Jo
 > **Domain expert:** "Yes — if the Stage's `actual_end` was auto-derived. If a supervisor manually set it, it's **sticky** and stays. Clear the sticky value to re-enable the cascade."
 
 > **Dev:** "A Quote is accepted. Does a Job appear?"
-> **Domain expert:** "No. A `job-supervisor` clicks **Create Job** on the Quote row. The dialog opens with defaults; all fields are editable. Same button also works on **draft** Quotes — useful when the customer has verbally agreed and we want a head start. It's hidden while the Quote is `sent` or `rejected`."
+> **Domain expert:** "No. A `job-supervisor` clicks **Create Job** on the Quote row. The dialog opens with defaults; all fields are editable. The button works on `draft`, `sent`, and `accepted` Quotes, and a Quote can source as many Jobs as you click it — it's hidden only when the Quote is `rejected`."
 
 > **Dev:** "A Department Manager misclicked Stop. Can they re-Start?"
 > **Domain expert:** "No — **Re-Start Refused**. They ask a supervisor to clear `actual_end`, then re-Start."
@@ -260,3 +260,4 @@ A planned visualization of Stage/Station Bookings across a Job and across the Jo
 - "Job Lifecycle Status" was a stored enum. **Retired** as a stored field — replaced by `isPaused`, `isCancelled` booleans + derived status.
 - "Pipeline reachability / sequential gating" was the previous model. **Retired** — see **Advisory Ordering**.
 - "Stage Completion is a One-Way Latch" was ADR-0005. **Retired** — see ADR-0017.
+- "Quote Conversion" implied a 1:1 Quote→Job transformation. **Retired** — a Quote is the optional source of *any number* of Jobs (see **Create Job from Quote** and ADR-0018).

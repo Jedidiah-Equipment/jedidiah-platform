@@ -1,5 +1,5 @@
 import { jobStageStatusLabels } from '@pkg/domain';
-import type { JobDetail, JobStageRollup, StationBooking } from '@pkg/schema';
+import type { JobDetail, JobSharedStationBooking, JobStageRollup, StationBooking } from '@pkg/schema';
 import { addDays, differenceInCalendarDays, format, isBefore, isValid, parse, startOfDay } from 'date-fns';
 
 import { formatDate, parseDate } from '@/utils/date.js';
@@ -15,6 +15,7 @@ export type ScheduleGanttRow = {
   id: string;
   level: 'job' | 'stage' | 'station';
   parentId: string | null;
+  stationId: string | null;
   statusLabel: string;
   title: string;
 };
@@ -70,6 +71,7 @@ function createJobRow(job: JobDetail): ScheduleGanttRow {
     id: `job-${job.id}`,
     level: 'job',
     parentId: null,
+    stationId: null,
     statusLabel: 'Job',
     title: job.code,
   };
@@ -85,6 +87,7 @@ function createStageRow(stage: JobStageRollup): ScheduleGanttRow {
     id: `stage-${stage.id}`,
     level: 'stage',
     parentId: null,
+    stationId: null,
     statusLabel: jobStageStatusLabels[stage.state],
     title: stageLabels[stage.stage],
   };
@@ -100,6 +103,7 @@ function createStationRow(stage: JobStageRollup, station: StationBooking): Sched
     id: `station-${station.id}`,
     level: 'station',
     parentId: `stage-${stage.id}`,
+    stationId: station.stationId,
     statusLabel: jobStageStatusLabels[station.state],
     title: station.station.name,
   };
@@ -287,6 +291,40 @@ export function getScheduleGanttActualDisplay(
       ? `Actual ${formatDate(start, 'short')} to ${formatDate(end, 'short')}`
       : `Actual ${formatDate(start, 'short')} through today`,
     openEnded: !end,
+    start,
+  };
+}
+
+export function getScheduleGanttOccupancyDisplay(
+  booking: JobSharedStationBooking,
+  jobCode: string,
+  now = new Date(),
+): { kind: 'none' } | { end: Date; kind: 'range'; label: string; openEnded: boolean; start: Date } {
+  const actual = getScheduleGanttActualDisplay(booking, now);
+
+  if (actual.kind === 'range') {
+    return {
+      end: actual.end,
+      kind: 'range',
+      label: `${jobCode} actual on ${booking.stationName}`,
+      openEnded: actual.openEnded,
+      start: actual.start,
+    };
+  }
+
+  const dueStart = parseScheduleDate(booking.dueStart);
+  const dueEnd = parseScheduleDate(booking.dueEnd);
+  const start = dueStart ?? dueEnd;
+
+  if (!start) {
+    return { kind: 'none' };
+  }
+
+  return {
+    end: addDays(dueEnd ?? start, 1),
+    kind: 'range',
+    label: `${jobCode} due on ${booking.stationName}`,
+    openEnded: false,
     start,
   };
 }

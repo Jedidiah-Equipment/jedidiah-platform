@@ -1,7 +1,7 @@
 import { departmentLabels } from '@pkg/domain';
 import {
   DEPARTMENTS,
-  type Department,
+  Department,
   Price,
   type Product,
   ProductModelCode,
@@ -20,23 +20,23 @@ import { useAppForm } from '@/components/form/index.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
+import { FieldGroup } from '@/components/ui/field.js';
 import { Label } from '@/components/ui/label.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
+
+type DepartmentConfigFormValues = z.infer<typeof DepartmentConfigFormValues>;
+const DepartmentConfigFormValues = z.object({
+  department: Department,
+  durationDays: z.number().int().min(0),
+  defaultStationIds: z.array(UUID),
+});
 
 type ProductFormValues = z.infer<typeof ProductFormValues>;
 const ProductFormValues = z.object({
   basePrice: Price,
   description: z.string(),
-  departmentConfigs: z.array(
-    z.object({
-      department: z.enum(DEPARTMENTS),
-      durationDays: z.number().int().min(0),
-      defaultStationIds: z.array(UUID),
-    }),
-  ),
+  departmentConfigs: z.array(DepartmentConfigFormValues),
   modelCode: ProductModelCode,
   name: ProductName,
   options: z.array(
@@ -59,6 +59,7 @@ type ProductFormProps = {
 export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPending, submitLabel, onSubmit }) => {
   const trpc = useTRPC();
   const stationsQuery = useQuery(trpc.stations.list.queryOptions({}));
+
   const defaultValues: ProductFormValues = {
     basePrice: initialProduct?.basePrice ?? NaN,
     description: initialProduct?.description ?? '',
@@ -73,6 +74,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
         price: option.price,
       })) ?? [],
   };
+
   const form = useAppForm({
     defaultValues,
     validators: {
@@ -119,24 +121,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
                       config={config}
                       key={config.department}
                       renderDurationField={() => (
-                        <form.Field name={`departmentConfigs[${index}].durationDays`}>
+                        <form.AppField name={`departmentConfigs[${index}].durationDays`}>
                           {(durationField) => (
-                            <Field>
-                              <FieldLabel htmlFor={durationField.name}>Duration</FieldLabel>
-                              <Input
-                                autoComplete="off"
-                                id={durationField.name}
-                                min={0}
-                                name={durationField.name}
-                                onBlur={durationField.handleBlur}
-                                onChange={(event) => durationField.handleChange(Number(event.target.value || 0))}
-                                placeholder="0"
-                                type="number"
-                                value={durationField.state.value}
-                              />
-                            </Field>
+                            <durationField.NumberField
+                              autoComplete="off"
+                              emptyValue={0}
+                              label="Est. Duration (days)"
+                              min={0}
+                              placeholder="0"
+                            />
                           )}
-                        </form.Field>
+                        </form.AppField>
                       )}
                       renderStationIdsField={() => (
                         <form.Field name={`departmentConfigs[${index}].defaultStationIds`}>
@@ -240,7 +235,7 @@ function filterActiveStations(stations: readonly Station[], department: Departme
 
 type DepartmentConfigFieldsProps = {
   activeStations: readonly Station[];
-  config: ProductFormValues['departmentConfigs'][number];
+  config: DepartmentConfigFormValues;
   renderDurationField: () => React.ReactNode;
   renderStationIdsField: () => React.ReactNode;
 };
@@ -259,7 +254,7 @@ const DepartmentConfigFields: React.FC<DepartmentConfigFieldsProps> = ({
       </div>
       <Badge variant="outline">{activeStations.length}</Badge>
     </div>
-    <div className="grid gap-3 md:grid-cols-[7rem_minmax(0,1fr)]">
+    <div className="grid gap-3 md:grid-cols-[9rem_minmax(0,1fr)]">
       {renderDurationField()}
       {renderStationIdsField()}
     </div>
@@ -269,8 +264,8 @@ const DepartmentConfigFields: React.FC<DepartmentConfigFieldsProps> = ({
 type DepartmentStationPickerProps = {
   activeStations: readonly Station[];
   allStations: readonly Station[];
-  selectedStationIds: readonly string[];
-  onSelectedStationIdsChange: (stationIds: string[]) => void;
+  selectedStationIds: readonly UUID[];
+  onSelectedStationIdsChange: (stationIds: UUID[]) => void;
 };
 
 const DepartmentStationPicker: React.FC<DepartmentStationPickerProps> = ({
@@ -284,7 +279,7 @@ const DepartmentStationPicker: React.FC<DepartmentStationPickerProps> = ({
     (station) => selectedStationIdSet.has(station.id) && !station.isActive,
   );
 
-  const setStationSelected = (stationId: string, selected: boolean) => {
+  const setStationSelected = (stationId: UUID, selected: boolean) => {
     const nextStationIds = selected
       ? [...selectedStationIds, stationId]
       : selectedStationIds.filter((selectedStationId) => selectedStationId !== stationId);

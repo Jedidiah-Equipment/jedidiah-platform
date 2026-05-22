@@ -59,7 +59,7 @@ const mainNavItems = [
   },
   {
     title: 'Stations',
-    permission: 'job:read',
+    permission: 'station:update',
     link: linkOptions({ to: '/stations' }),
     icon: FactoryIcon,
   },

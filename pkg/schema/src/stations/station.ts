@@ -47,8 +47,3 @@ export const StationSetActiveInput = z.object({
   id: UUID,
   isActive: z.boolean(),
 });
-
-export type StationDeleteInput = z.infer<typeof StationDeleteInput>;
-export const StationDeleteInput = z.object({
-  id: UUID,
-});

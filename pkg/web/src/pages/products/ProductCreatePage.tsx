@@ -10,10 +10,12 @@ import { useTRPC } from '@/lib/trpc.js';
 import { ProductForm } from './components/ProductForm.js';
 
 export const ProductCreatePage: React.FC = () => {
+  const trpc = useTRPC();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const trpc = useTRPC();
+
   const showMutationError = useApiMutationErrorToast();
+
   const createProductMutation = useMutation(
     trpc.products.create.mutationOptions({
       onSuccess: async () => {

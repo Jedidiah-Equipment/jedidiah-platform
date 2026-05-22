@@ -281,7 +281,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             )}
           </form.AppField>
           <form.AppField name="validUntil">
-            {(field) => <field.TextField disabled={isFrozen} label="Valid until" type="date" />}
+            {(field) => <field.DatePickerField clearable disabled={isFrozen} label="Valid until" />}
           </form.AppField>
           <form.Subscribe
             selector={(state) => {

@@ -39,6 +39,7 @@ describe('AppPermission', () => {
     expect(AppPermission.parse('job:update')).toBe('job:update');
     expect(AppPermission.parse('job-stage:read')).toBe('job-stage:read');
     expect(AppPermission.parse('job-stage:update')).toBe('job-stage:update');
+    expect(AppPermission.parse('station:update')).toBe('station:update');
     expect(AppPermission.parse('user:assign-departments')).toBe('user:assign-departments');
   });
 });

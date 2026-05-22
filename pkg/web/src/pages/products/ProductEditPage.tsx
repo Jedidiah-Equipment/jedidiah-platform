@@ -17,18 +17,18 @@ type ProductEditPageProps = {
 };
 
 export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) => {
+  const trpc = useTRPC();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const trpc = useTRPC();
+
   const showMutationError = useApiMutationErrorToast();
+
   const productQuery = useQuery(trpc.products.get.queryOptions({ id: productId }));
+
   const updateProductMutation = useMutation(
     trpc.products.update.mutationOptions({
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries(trpc.products.list.queryFilter()),
-          queryClient.invalidateQueries(trpc.products.get.queryFilter({ id: productId })),
-        ]);
+        await queryClient.invalidateQueries({ queryKey: trpc.products.pathKey() });
         toast.success('Product updated');
         await navigate({ to: '/products' });
       },

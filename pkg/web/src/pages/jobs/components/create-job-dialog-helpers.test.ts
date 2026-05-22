@@ -23,55 +23,50 @@ describe('create job dialog helpers', () => {
       product: createProduct(),
     });
 
-    expect(stages.map((stage) => ({ dueEnd: stage.dueEnd, dueStart: stage.dueStart, stage: stage.stage }))).toEqual([
-      { dueEnd: '2026-05-02', dueStart: '2026-05-01', stage: 'procurement' },
-      { dueEnd: '2026-05-04', dueStart: '2026-05-02', stage: 'supply' },
-      { dueEnd: '2026-05-07', dueStart: '2026-05-04', stage: 'fabrication' },
-      { dueEnd: '2026-05-08', dueStart: '2026-05-07', stage: 'paint' },
-      { dueEnd: '2026-05-10', dueStart: '2026-05-08', stage: 'assembly' },
+    expect(
+      stages.map((stage) => ({ plannedEnd: stage.plannedEnd, plannedStart: stage.plannedStart, stage: stage.stage })),
+    ).toEqual([
+      { plannedEnd: '2026-05-02', plannedStart: '2026-05-01', stage: 'procurement' },
+      { plannedEnd: '2026-05-04', plannedStart: '2026-05-02', stage: 'supply' },
+      { plannedEnd: '2026-05-07', plannedStart: '2026-05-04', stage: 'fabrication' },
+      { plannedEnd: '2026-05-08', plannedStart: '2026-05-07', stage: 'paint' },
+      { plannedEnd: '2026-05-10', plannedStart: '2026-05-08', stage: 'assembly' },
     ]);
     expect(stages.find((stage) => stage.stage === 'fabrication')?.stationBookings).toMatchObject([
       {
-        dueEnd: '2026-05-07',
-        dueStart: '2026-05-04',
+        plannedEnd: '2026-05-07',
+        plannedStart: '2026-05-04',
         id: 'draft-1',
         stationId: '00000000-0000-4000-8000-000000000003',
       },
     ]);
   });
 
-  test('keeps manually edited dates when defaults recompute', () => {
+  test('recomputes default dates and preserves manually added stations when defaults recompute', () => {
     const currentStage = createStageDraft({
-      dueStart: '2026-05-04',
-      dueStartSetManually: true,
+      plannedStart: '2026-05-04',
       stationBookings: [
         {
-          dueEnd: '2026-05-07',
-          dueEndSetManually: false,
-          dueStart: '2026-05-05',
-          dueStartSetManually: true,
+          plannedEnd: '2026-05-07',
+          plannedStart: '2026-05-05',
           id: 'existing-default-station',
           stationId: '00000000-0000-4000-8000-000000000003',
         },
         {
-          dueEnd: '2026-05-07',
-          dueEndSetManually: false,
-          dueStart: '2026-05-06',
-          dueStartSetManually: true,
+          plannedEnd: '2026-05-07',
+          plannedStart: '2026-05-06',
           id: 'added-station',
           stationId: '00000000-0000-4000-8000-000000000099',
         },
       ],
     });
     const nextDefaultStage = createStageDraft({
-      dueEnd: '2026-06-07',
-      dueStart: '2026-06-04',
+      plannedEnd: '2026-06-07',
+      plannedStart: '2026-06-04',
       stationBookings: [
         {
-          dueEnd: '2026-06-07',
-          dueEndSetManually: false,
-          dueStart: '2026-06-04',
-          dueStartSetManually: false,
+          plannedEnd: '2026-06-07',
+          plannedStart: '2026-06-04',
           id: 'new-default-station',
           stationId: '00000000-0000-4000-8000-000000000003',
         },
@@ -81,19 +76,18 @@ describe('create job dialog helpers', () => {
     const [merged] = mergeDefaultStages([currentStage], [nextDefaultStage]);
 
     expect(merged).toMatchObject({
-      dueEnd: '2026-06-07',
-      dueStart: '2026-05-04',
-      dueStartSetManually: true,
+      plannedEnd: '2026-06-07',
+      plannedStart: '2026-06-04',
       stationBookings: [
         {
-          dueEnd: '2026-06-07',
-          dueStart: '2026-05-05',
+          plannedEnd: '2026-06-07',
+          plannedStart: '2026-06-04',
           id: 'existing-default-station',
           stationId: '00000000-0000-4000-8000-000000000003',
         },
         {
-          dueEnd: '2026-06-07',
-          dueStart: '2026-05-06',
+          plannedEnd: '2026-05-07',
+          plannedStart: '2026-05-06',
           id: 'added-station',
           stationId: '00000000-0000-4000-8000-000000000099',
         },
@@ -108,11 +102,11 @@ describe('create job dialog helpers', () => {
         productId: '00000000-0000-4000-8000-000000000010',
         quoteId: null,
         stages: [
-          createStageDraft({ dueEnd: '2026-05-02', dueStart: '2026-05-01', stage: 'procurement' }),
+          createStageDraft({ plannedEnd: '2026-05-02', plannedStart: '2026-05-01', stage: 'procurement' }),
           createStageDraft({ stage: 'supply' }),
           createStageDraft({ stage: 'fabrication' }),
           createStageDraft({ stage: 'paint' }),
-          createStageDraft({ dueEnd: '2026-05-10', dueStart: '2026-05-08', stage: 'assembly' }),
+          createStageDraft({ plannedEnd: '2026-05-10', plannedStart: '2026-05-08', stage: 'assembly' }),
         ],
       }),
     ).toMatchObject({
@@ -120,8 +114,8 @@ describe('create job dialog helpers', () => {
       productId: '00000000-0000-4000-8000-000000000010',
       stages: expect.arrayContaining([
         expect.not.objectContaining({
-          dueEnd: expect.anything(),
-          dueStart: expect.anything(),
+          plannedEnd: expect.anything(),
+          plannedStart: expect.anything(),
         }),
       ]),
     });
@@ -139,7 +133,7 @@ describe('create job dialog helpers', () => {
   });
 
   test('reports inverted stage windows as warnings', () => {
-    expect(getInfeasibleMessage([createStageDraft({ dueEnd: '2026-05-01', dueStart: '2026-05-02' })])).toBe(
+    expect(getInfeasibleMessage([createStageDraft({ plannedEnd: '2026-05-01', plannedStart: '2026-05-02' })])).toBe(
       'Fabrication starts after it ends. You can still save, but the dates need attention.',
     );
   });
@@ -172,10 +166,8 @@ function createProduct(): Product {
 
 function createStageDraft(overrides: Partial<StageDraft> = {}): StageDraft {
   return {
-    dueEnd: '2026-05-07',
-    dueEndSetManually: false,
-    dueStart: '2026-05-04',
-    dueStartSetManually: false,
+    plannedEnd: '2026-05-07',
+    plannedStart: '2026-05-04',
     stage: 'fabrication',
     stationBookings: [],
     ...overrides,

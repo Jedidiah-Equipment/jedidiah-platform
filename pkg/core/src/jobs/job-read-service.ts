@@ -12,7 +12,6 @@ import {
 } from '@pkg/db';
 import {
   canViewStage,
-  getStageTransitionAvailability,
   rollupJobSchedule,
   rollupStageSchedule,
   type ScheduleRollupBooking,
@@ -83,16 +82,8 @@ export async function getJob({
     columns: {
       createdAt: true,
       code: true,
-      actualEnd: true,
-      actualEndSetManually: true,
-      actualStart: true,
-      actualStartSetManually: true,
       dueDate: true,
       id: true,
-      dueEnd: true,
-      dueEndSetManually: true,
-      dueStart: true,
-      dueStartSetManually: true,
       isCancelled: true,
       isPaused: true,
       productId: true,
@@ -148,7 +139,7 @@ export async function getJob({
 
   return {
     ...mapJobSummary(row),
-    stages: mapJobDetailStages({ access, job: row, stageRows: row.stages }),
+    stages: mapJobDetailStages({ access, stageRows: row.stages }),
     workflowEvents: mapJobWorkflowEvents({ eventRows: row.events }),
   };
 }
@@ -162,10 +153,6 @@ export async function listSharedStationBookings({
 }): Promise<JobSharedStationBookingsResult> {
   const currentJob = await db.query.jobs.findFirst({
     columns: {
-      actualEnd: true,
-      actualStart: true,
-      dueEnd: true,
-      dueStart: true,
       id: true,
     },
     where: eq(jobs.id, jobId),
@@ -179,8 +166,8 @@ export async function listSharedStationBookings({
     .select({
       actualEnd: jobStageStations.actualEnd,
       actualStart: jobStageStations.actualStart,
-      dueEnd: jobStageStations.dueEnd,
-      dueStart: jobStageStations.dueStart,
+      plannedEnd: jobStageStations.plannedEnd,
+      plannedStart: jobStageStations.plannedStart,
       stationId: jobStageStations.stationId,
     })
     .from(jobStageStations)
@@ -192,7 +179,7 @@ export async function listSharedStationBookings({
     return { jobs: [] };
   }
 
-  const scheduleWindow = getStationContentionScheduleWindow(currentJob, currentBookings);
+  const scheduleWindow = getStationContentionScheduleWindow(currentBookings);
 
   if (!scheduleWindow) {
     return { jobs: [] };
@@ -220,11 +207,18 @@ export async function listSharedStationBookings({
         inArray(jobStageStations.stationId, sharedStationIds),
         ne(jobStages.jobId, jobId),
         eq(jobs.isCancelled, false),
-        sql`${jobs.actualEnd} is null`,
+        sql`exists (
+          select 1
+          from ${jobStageStations} completion_booking
+          inner join ${jobStages} completion_stage
+            on completion_stage.id = completion_booking.job_stage_id
+          where completion_stage.job_id = ${jobs.id}
+            and completion_booking.actual_end is null
+        )`,
         getStationBookingOverlapsWindowCondition(scheduleWindow),
       ),
     )
-    .orderBy(asc(jobStageStations.stationId), asc(jobStageStations.dueStart), asc(jobStageStations.id));
+    .orderBy(asc(jobStageStations.stationId), asc(jobStageStations.plannedStart), asc(jobStageStations.id));
 
   return JobSharedStationBookingsResult.parse({
     jobs: mapSharedStationBookingJobs(rows.map(mapSharedStationBookingRow)),
@@ -232,17 +226,12 @@ export async function listSharedStationBookings({
 }
 
 function getStationContentionScheduleWindow(
-  job: Pick<JobRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>,
-  bookings: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[],
+  bookings: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'plannedEnd' | 'plannedStart'>[],
 ): { end: string; start: string } | null {
   const dateKeys = [
-    job.dueStart,
-    job.dueEnd,
-    job.actualStart?.toISOString().slice(0, 10) ?? null,
-    job.actualEnd?.toISOString().slice(0, 10) ?? null,
     ...bookings.flatMap((booking) => [
-      booking.dueStart,
-      booking.dueEnd,
+      booking.plannedStart,
+      booking.plannedEnd,
       booking.actualStart?.toISOString().slice(0, 10) ?? null,
       booking.actualEnd?.toISOString().slice(0, 10) ?? null,
     ]),
@@ -275,16 +264,16 @@ function getStationBookingOverlapsWindowCondition(window: { end: string; start: 
     )
     or (
       ${jobStageStations.actualStart} is null
-      and ${jobStageStations.dueStart} is not null
-      and ${jobStageStations.dueStart} <= cast(${window.end} as date)
-      and coalesce(${jobStageStations.dueEnd}, ${jobStageStations.dueStart}) >= cast(${window.start} as date)
+      and ${jobStageStations.plannedStart} is not null
+      and ${jobStageStations.plannedStart} <= cast(${window.end} as date)
+      and coalesce(${jobStageStations.plannedEnd}, ${jobStageStations.plannedStart}) >= cast(${window.start} as date)
     )
     or (
       ${jobStageStations.actualStart} is null
-      and ${jobStageStations.dueStart} is null
-      and ${jobStageStations.dueEnd} is not null
-      and ${jobStageStations.dueEnd} >= cast(${window.start} as date)
-      and ${jobStageStations.dueEnd} <= cast(${window.end} as date)
+      and ${jobStageStations.plannedStart} is null
+      and ${jobStageStations.plannedEnd} is not null
+      and ${jobStageStations.plannedEnd} >= cast(${window.start} as date)
+      and ${jobStageStations.plannedEnd} <= cast(${window.end} as date)
     )
   )`;
 }
@@ -343,8 +332,8 @@ function mapSharedStationBookingJobs(rows: SharedStationBookingRow[]) {
       bookings: job.bookings.sort(compareSharedStationBookings).map((booking) => ({
         actualEnd: booking.actualEnd?.toISOString() ?? null,
         actualStart: booking.actualStart?.toISOString() ?? null,
-        dueEnd: booking.dueEnd,
-        dueStart: booking.dueStart,
+        plannedEnd: booking.plannedEnd,
+        plannedStart: booking.plannedStart,
         id: booking.id,
         jobStageId: booking.jobStageId,
         stage: booking.jobStage.stage,
@@ -366,7 +355,12 @@ function mapSharedStationBookingJobHeader(row: JobHeaderWithProductRow) {
     customerCompanyName: row.quote?.customer.companyName ?? null,
     code: JobCode.parse(row.code),
     id: row.id,
-    lifecycleStatus: deriveJobLifecycleStatus(row),
+    lifecycleStatus: deriveJobLifecycleStatus({
+      actualEnd: null,
+      actualStart: null,
+      isCancelled: row.isCancelled,
+      isPaused: row.isPaused,
+    }),
     productModelCode: row.product.modelCode,
     productName: row.product.name,
     quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,
@@ -384,8 +378,8 @@ function compareSharedStationBookings(left: SharedStationBookingRow, right: Shar
   const stationOrder = left.station.displayOrder - right.station.displayOrder;
   if (stationOrder !== 0) return stationOrder;
 
-  const leftStart = left.actualStart?.toISOString() ?? left.dueStart ?? '';
-  const rightStart = right.actualStart?.toISOString() ?? right.dueStart ?? '';
+  const leftStart = left.actualStart?.toISOString() ?? left.plannedStart ?? '';
+  const rightStart = right.actualStart?.toISOString() ?? right.plannedStart ?? '';
   const startOrder = leftStart.localeCompare(rightStart);
   return startOrder === 0 ? left.id.localeCompare(right.id) : startOrder;
 }
@@ -463,43 +457,17 @@ function mapJobStageSummary(
 
 function mapStageAccess({
   access,
-  job,
-  previousStage,
-  previousStageSchedule,
   stage,
   stageSchedule,
 }: {
   access: UserAccessSummary;
-  job: JobRow;
-  previousStage: (JobStageRow & { stations?: JobStageStationWithStationRow[] }) | null;
-  previousStageSchedule: StageScheduleProjection | null;
   stage: JobStageRow & { stations?: JobStageStationWithStationRow[] };
   stageSchedule: StageScheduleProjection;
 }): JobStageRollup {
-  const previousStageHasRollupBookings = previousStage ? hasScheduleRollupBookings(previousStage) : false;
-  const stageHasRollupBookings = hasScheduleRollupBookings(stage);
-
   if (canViewStage(access, stage)) {
     return {
       ...mapJobStageSummary(stage, stageSchedule),
       access: 'visible',
-      transitionAvailability: getStageTransitionAvailability({
-        access,
-        job,
-        previousStage: previousStage
-          ? {
-              ...previousStage,
-              actualEnd:
-                previousStage.actualEnd ??
-                (previousStageHasRollupBookings ? (previousStageSchedule?.actualWindow.end ?? null) : null),
-            }
-          : null,
-        stage: {
-          ...stage,
-          actualEnd: stage.actualEnd ?? (stageHasRollupBookings ? stageSchedule.actualWindow.end : null),
-          actualStart: stage.actualStart ?? (stageHasRollupBookings ? stageSchedule.actualWindow.start : null),
-        },
-      }),
     };
   }
 
@@ -511,11 +479,9 @@ function mapStageAccess({
 
 function mapJobDetailStages({
   access,
-  job,
   stageRows,
 }: {
   access: UserAccessSummary;
-  job: JobRow;
   stageRows: (JobStageRow & { stations?: JobStageStationWithStationRow[] })[];
 }): JobStageRollup[] {
   const stageSchedules = stageRows.map(mapStageSchedule);
@@ -523,9 +489,6 @@ function mapJobDetailStages({
   return stageRows.map((stageRow, index) =>
     mapStageAccess({
       access,
-      job,
-      previousStage: index === 0 ? null : (stageRows[index - 1] ?? null),
-      previousStageSchedule: index === 0 ? null : (stageSchedules[index - 1] ?? null),
       stage: stageRow,
       stageSchedule: stageSchedules[index] ?? mapStageSchedule(stageRow),
     }),
@@ -537,7 +500,7 @@ type StageScheduleProjection = ReturnType<typeof rollupStageSchedule> & {
 };
 
 function mapStageSchedule(row: {
-  stations?: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[];
+  stations?: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'plannedEnd' | 'plannedStart'>[];
 }): StageScheduleProjection {
   const bookings = mapScheduleRollupBookings(row);
 
@@ -548,14 +511,14 @@ function mapStageSchedule(row: {
 }
 
 function mapScheduleRollupBookings(row: {
-  stations?: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'dueEnd' | 'dueStart'>[];
+  stations?: readonly Pick<JobStageStationRow, 'actualEnd' | 'actualStart' | 'plannedEnd' | 'plannedStart'>[];
 }): ScheduleRollupBooking[] {
   return (
     row.stations?.map((station) => ({
       actualEnd: station.actualEnd,
       actualStart: station.actualStart,
-      plannedEnd: parseDateOnlyAsUtc(station.dueEnd),
-      plannedStart: parseDateOnlyAsUtc(station.dueStart),
+      plannedEnd: parseDateOnlyAsUtc(station.plannedEnd),
+      plannedStart: parseDateOnlyAsUtc(station.plannedStart),
     })) ?? []
   );
 }

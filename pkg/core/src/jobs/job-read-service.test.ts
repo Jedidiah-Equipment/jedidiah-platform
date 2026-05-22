@@ -4,28 +4,24 @@ import { describe, expect, it } from 'vitest';
 import { mapJobSummary } from './job-read-service.js';
 
 describe('mapJobSummary', () => {
-  it('adds derived schedule windows from station bookings without changing stored date fields', () => {
+  it('adds derived schedule windows from station bookings', () => {
     const summary = mapJobSummary({
       ...jobRow(),
       stages: [
         stageRow('procurement', 1, {
-          actualEnd: null,
-          actualStart: null,
-          dueEnd: '2026-05-30',
-          dueStart: '2026-05-29',
           stations: [
             stationBookingRow({
               actualEnd: '2026-05-04T12:00:00.000Z',
               actualStart: '2026-05-03T08:00:00.000Z',
-              dueEnd: '2026-05-05',
-              dueStart: '2026-05-02',
+              plannedEnd: '2026-05-05',
+              plannedStart: '2026-05-02',
               id: '00000000-0000-4000-8000-000000000201',
             }),
             stationBookingRow({
               actualEnd: null,
               actualStart: '2026-05-02T09:00:00.000Z',
-              dueEnd: null,
-              dueStart: '2026-05-01',
+              plannedEnd: null,
+              plannedStart: '2026-05-01',
               id: '00000000-0000-4000-8000-000000000202',
             }),
           ],
@@ -36,8 +32,8 @@ describe('mapJobSummary', () => {
             stationBookingRow({
               actualEnd: '2026-05-05T12:00:00.000Z',
               actualStart: '2026-05-01T07:00:00.000Z',
-              dueEnd: '2026-05-06',
-              dueStart: '2026-04-30',
+              plannedEnd: '2026-05-06',
+              plannedStart: '2026-04-30',
               id: '00000000-0000-4000-8000-000000000203',
               stage: 'fabrication',
             }),
@@ -48,10 +44,6 @@ describe('mapJobSummary', () => {
       ],
     });
 
-    expect(summary.actualStart).toBeNull();
-    expect(summary.actualEnd).toBeNull();
-    expect(summary.dueStart).toBe('2026-05-10');
-    expect(summary.dueEnd).toBe('2026-05-20');
     expect(summary.lifecycleStatus).toBe('active');
     expect(summary.actualWindow).toEqual({
       end: null,
@@ -64,14 +56,10 @@ describe('mapJobSummary', () => {
 
     const procurement = summary.stages.find((stage) => stage.stage === 'procurement');
     expect(procurement).toMatchObject({
-      actualEnd: null,
-      actualStart: null,
       actualWindow: {
         end: null,
         start: '2026-05-02T09:00:00.000Z',
       },
-      dueEnd: '2026-05-30',
-      dueStart: '2026-05-29',
       plannedWindow: {
         end: null,
         start: '2026-05-01T00:00:00.000Z',
@@ -85,17 +73,9 @@ function jobRow() {
   const now = new Date('2026-05-01T00:00:00.000Z');
 
   return {
-    actualEnd: null,
-    actualEndSetManually: false,
-    actualStart: null,
-    actualStartSetManually: false,
     code: 1,
     createdAt: now,
     dueDate: null,
-    dueEnd: '2026-05-20',
-    dueEndSetManually: true,
-    dueStart: '2026-05-10',
-    dueStartSetManually: true,
     id: '00000000-0000-4000-8000-000000000001',
     isCancelled: false,
     isPaused: false,
@@ -124,14 +104,6 @@ function stageRow(
 
 function baseStageRow(stage: JobStageName, sequence: number) {
   return {
-    actualEnd: null as Date | null,
-    actualEndSetManually: false,
-    actualStart: null as Date | null,
-    actualStartSetManually: false,
-    dueEnd: null as string | null,
-    dueEndSetManually: false,
-    dueStart: null as string | null,
-    dueStartSetManually: false,
     id: stageRowIds[stage],
     jobId: '00000000-0000-4000-8000-000000000001',
     sequence,
@@ -142,8 +114,8 @@ function baseStageRow(stage: JobStageName, sequence: number) {
 function stationBookingRow(input: {
   actualEnd: string | null;
   actualStart: string | null;
-  dueEnd: string | null;
-  dueStart: string | null;
+  plannedEnd: string | null;
+  plannedStart: string | null;
   id: string;
   stage?: JobStageName;
 }) {
@@ -152,14 +124,10 @@ function stationBookingRow(input: {
 
   return {
     actualEnd: input.actualEnd ? new Date(input.actualEnd) : null,
-    actualEndSetManually: false,
     actualStart: input.actualStart ? new Date(input.actualStart) : null,
-    actualStartSetManually: false,
     createdAt: now,
-    dueEnd: input.dueEnd,
-    dueEndSetManually: false,
-    dueStart: input.dueStart,
-    dueStartSetManually: false,
+    plannedEnd: input.plannedEnd,
+    plannedStart: input.plannedStart,
     id: input.id,
     jobStageId: stageRowIds[stage],
     station: {

@@ -16,7 +16,6 @@ import type {
   JobDetail,
   JobListInput,
   JobListResult,
-  JobStageName,
   QuoteStatus,
   UserAccessSummary,
   UUID,
@@ -33,7 +32,6 @@ import {
   uncancelJobLifecycle,
 } from './job-lifecycle-service.js';
 import { mapJobAuditRecord } from './job-mappers.js';
-import { applyJobStageTransition } from './job-pipeline-service.js';
 import { getJob, getJobSortOrder, mapJobSummary } from './job-read-service.js';
 import {
   startStationBooking as startStationBookingTransition,
@@ -103,10 +101,8 @@ async function createJobInTransaction({
       }
 
       return stage.stationBookings.map((booking) => ({
-        dueEnd: booking.dueEnd ?? null,
-        dueEndSetManually: booking.dueEndSetManually ?? false,
-        dueStart: booking.dueStart ?? null,
-        dueStartSetManually: booking.dueStartSetManually ?? false,
+        plannedEnd: booking.plannedEnd ?? null,
+        plannedStart: booking.plannedStart ?? null,
         jobStageId: stageRow.id,
         stationId: booking.stationId,
       }));
@@ -186,15 +182,7 @@ export async function listJobs({
       createdAt: true,
       id: true,
       code: true,
-      actualEnd: true,
-      actualEndSetManually: true,
-      actualStart: true,
-      actualStartSetManually: true,
       dueDate: true,
-      dueEnd: true,
-      dueEndSetManually: true,
-      dueStart: true,
-      dueStartSetManually: true,
       isCancelled: true,
       isPaused: true,
       productId: true,
@@ -225,14 +213,6 @@ export async function listJobs({
       },
       stages: {
         columns: {
-          actualEnd: true,
-          actualEndSetManually: true,
-          actualStart: true,
-          actualStartSetManually: true,
-          dueEnd: true,
-          dueEndSetManually: true,
-          dueStart: true,
-          dueStartSetManually: true,
           id: true,
           jobId: true,
           sequence: true,
@@ -337,52 +317,6 @@ export async function uncancelJob({
   id: UUID;
 }): Promise<JobDetail> {
   return transitionJobLifecycle({ access, actorUserId, db, id, transition: 'uncancel' });
-}
-
-export async function startJobStage({
-  db,
-  access,
-  actorUserId,
-  id,
-  stage,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-  stage: JobStageName;
-}): Promise<JobDetail> {
-  return applyJobStageTransition({
-    access,
-    actorUserId,
-    db,
-    id,
-    stage,
-    intent: { transition: 'start' },
-  });
-}
-
-export async function completeJobStage({
-  db,
-  access,
-  actorUserId,
-  id,
-  stage,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  actorUserId: AuthId;
-  id: UUID;
-  stage: JobStageName;
-}): Promise<JobDetail> {
-  return applyJobStageTransition({
-    access,
-    actorUserId,
-    db,
-    id,
-    stage,
-    intent: { transition: 'complete' },
-  });
 }
 
 export async function startStationBooking({

@@ -88,15 +88,7 @@ export const jobAuditDescriptor: AuditEntityDescriptor = {
   primaryLabelField: 'code',
   primaryLabelFormatter: formatJobAuditLabel,
   fields: {
-    actualEnd: 'actual end',
-    actualEndSetManually: 'actual end override',
-    actualStart: 'actual start',
-    actualStartSetManually: 'actual start override',
     dueDate: 'job due date',
-    dueEnd: 'due end',
-    dueEndSetManually: 'due end override',
-    dueStart: 'due start',
-    dueStartSetManually: 'due start override',
     isCancelled: 'cancelled',
     isPaused: 'paused',
     productId: 'product',
@@ -118,16 +110,7 @@ export const jobStageAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'job_stage',
   noun: 'job stage',
   primaryLabelField: 'stage',
-  fields: {
-    actualEnd: 'actual end',
-    actualEndSetManually: 'actual end override',
-    actualStart: 'actual start',
-    actualStartSetManually: 'actual start override',
-    dueEnd: 'due end',
-    dueEndSetManually: 'due end override',
-    dueStart: 'due start',
-    dueStartSetManually: 'due start override',
-  },
+  fields: {},
 };
 
 export const jobStageStationAuditDescriptor: AuditEntityDescriptor = {
@@ -136,13 +119,9 @@ export const jobStageStationAuditDescriptor: AuditEntityDescriptor = {
   primaryLabelField: 'stationId',
   fields: {
     actualEnd: 'actual end',
-    actualEndSetManually: 'actual end override',
     actualStart: 'actual start',
-    actualStartSetManually: 'actual start override',
-    dueEnd: 'due end',
-    dueEndSetManually: 'due end override',
-    dueStart: 'due start',
-    dueStartSetManually: 'due start override',
+    plannedEnd: 'planned end',
+    plannedStart: 'planned start',
     stationId: 'station',
   },
 };

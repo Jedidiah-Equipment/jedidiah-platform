@@ -325,7 +325,6 @@ describe('jobs.create with quote links', () => {
     const stageRows = await context.db.select().from(jobStages);
 
     expect(job).toMatchObject({
-      dueEnd: null,
       productId: context.product.id,
       quoteId: accepted.id,
     });
@@ -373,7 +372,6 @@ describe('jobs.create with quote links', () => {
     });
 
     expect(job).toMatchObject({
-      dueEnd: null,
       productId: context.product.id,
       quoteId: sent.id,
     });

@@ -32,7 +32,6 @@ describe('getJobTool', () => {
     const supervisorCaller = createCaller(context.db, supervisorAccess);
     const paintCaller = createCaller(context.db, paintAccess);
     const created = await supervisorCaller.jobs.create({ productId: context.product.id });
-    await supervisorCaller.jobs.startStage({ id: created.id, stage: 'procurement' });
 
     const [toolResult, trpcResult] = await Promise.all([
       getJobTool.handler({ id: created.id }, createAiContext(context.db, paintAccess)),

@@ -1,6 +1,5 @@
 import {
   cancelJob,
-  completeJobStage,
   createJob,
   editJobDate,
   getJob,
@@ -10,7 +9,6 @@ import {
   listSharedStationBookings,
   pauseJob,
   resumeJob,
-  startJobStage,
   startStationBooking,
   stopStationBooking,
   uncancelJob,
@@ -21,7 +19,6 @@ import {
   JobLifecycleTransitionInput,
   JobListInput,
   JobSharedStationBookingsInput,
-  JobStageTransitionInput,
   JobStationBookingTransitionInput,
   UUID,
 } from '@pkg/schema';
@@ -110,34 +107,6 @@ export const jobsRouter = router({
           actorUserId: ctx.session.user.id,
           db: ctx.db,
           input,
-        }),
-      ),
-    ),
-
-  startStage: authorizedProcedure('job-stage:update')
-    .input(JobStageTransitionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        startJobStage({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          id: input.id,
-          stage: input.stage,
-        }),
-      ),
-    ),
-
-  completeStage: authorizedProcedure('job-stage:update')
-    .input(JobStageTransitionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        completeJobStage({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          id: input.id,
-          stage: input.stage,
         }),
       ),
     ),

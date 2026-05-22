@@ -1,6 +1,5 @@
 import type { JobStageName } from '@pkg/schema';
 
-import { cascadeDown } from '../dates/index.js';
 import { JOB_STAGE_PIPELINE } from '../job-stage-pipeline.js';
 
 export type PipelineDefaultsAnchor = {
@@ -15,8 +14,8 @@ export type ProductPerDeptConfig = {
 };
 
 export type PipelineDefaultsPinnedWindow = {
-  dueEnd?: Date | null;
-  dueStart?: Date | null;
+  plannedEnd?: Date | null;
+  plannedStart?: Date | null;
 };
 
 export type PipelineDefaultsInput = {
@@ -26,15 +25,15 @@ export type PipelineDefaultsInput = {
 };
 
 export type PipelineDefaultStage = {
-  dueEnd: Date;
-  dueStart: Date;
+  plannedEnd: Date;
+  plannedStart: Date;
   durationDays: number;
   stage: JobStageName;
 };
 
 export type PipelineDefaultStationBooking = {
-  dueEnd: Date;
-  dueStart: Date;
+  plannedEnd: Date;
+  plannedStart: Date;
   stage: JobStageName;
   stationId: string;
 };
@@ -57,32 +56,11 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export function computeDefaults(input: PipelineDefaultsInput): PipelineDefaultsResult {
   const orderedConfigs = orderProductConfig(input.productPerDeptConfig);
-  const stages = cascadeDown({
-    anchor: input.anchor,
-    currentLevels: [],
-    durations: orderedConfigs.map((config) => ({
-      durationDays: config.durationDays,
-      key: config.stage,
-    })),
-    mode: 'create',
-  }).map((stageDates) => {
-    const config = orderedConfigs.find((item) => item.stage === stageDates.key);
-    // Create-mode cascades generate complete windows; this guard keeps the type narrow if that contract changes.
-    if (!config || !stageDates.dueStart || !stageDates.dueEnd) {
-      throw new Error(`Missing default window for ${stageDates.key}.`);
-    }
-
-    return {
-      dueEnd: stageDates.dueEnd,
-      dueStart: stageDates.dueStart,
-      durationDays: config.durationDays,
-      stage: stageDates.key,
-    };
-  });
+  const stages = buildAnchoredStages({ anchor: input.anchor, configs: orderedConfigs });
   const stationBookings = stages.flatMap((stage) =>
     (orderedConfigs.find((config) => config.stage === stage.stage)?.defaultStationIds ?? []).map((stationId) => ({
-      dueEnd: cloneDate(stage.dueEnd),
-      dueStart: cloneDate(stage.dueStart),
+      plannedEnd: cloneDate(stage.plannedEnd),
+      plannedStart: cloneDate(stage.plannedStart),
       stage: stage.stage,
       stationId,
     })),
@@ -93,6 +71,30 @@ export function computeDefaults(input: PipelineDefaultsInput): PipelineDefaultsR
     stationBookings,
     warning: getInfeasibleWindowWarning(input.pinnedWindow, orderedConfigs),
   };
+}
+
+function buildAnchoredStages({
+  anchor,
+  configs,
+}: {
+  anchor: PipelineDefaultsAnchor;
+  configs: readonly ProductPerDeptConfig[];
+}): PipelineDefaultStage[] {
+  const totalDurationDays = configs.reduce((total, config) => total + config.durationDays, 0);
+  let cursor = anchor.kind === 'start' ? cloneDate(anchor.value) : addDays(anchor.value, -totalDurationDays);
+
+  return configs.map((config) => {
+    const plannedStart = cloneDate(cursor);
+    const plannedEnd = addDays(plannedStart, config.durationDays);
+    cursor = cloneDate(plannedEnd);
+
+    return {
+      durationDays: config.durationDays,
+      plannedEnd,
+      plannedStart,
+      stage: config.stage,
+    };
+  });
 }
 
 function orderProductConfig(configs: readonly ProductPerDeptConfig[]): ProductPerDeptConfig[] {
@@ -114,10 +116,10 @@ function getInfeasibleWindowWarning(
   pinnedWindow: PipelineDefaultsPinnedWindow | undefined,
   configs: readonly ProductPerDeptConfig[],
 ): PipelineDefaultsWarning | null {
-  if (!pinnedWindow?.dueStart || !pinnedWindow.dueEnd) return null;
+  if (!pinnedWindow?.plannedStart || !pinnedWindow.plannedEnd) return null;
 
-  // Pinned window values are UTC date-only values, matching the cascade-down due-date contract.
-  const windowDays = getWholeDayDelta(pinnedWindow.dueStart, pinnedWindow.dueEnd);
+  // Pinned window values are UTC date-only values, matching the creation-anchor date contract.
+  const windowDays = getWholeDayDelta(pinnedWindow.plannedStart, pinnedWindow.plannedEnd);
   const totalDurationDays = configs.reduce((total, config) => total + config.durationDays, 0);
   if (totalDurationDays <= windowDays) return null;
 
@@ -135,4 +137,8 @@ function getWholeDayDelta(previousValue: Date, nextValue: Date): number {
 
 function cloneDate(date: Date): Date {
   return new Date(date.getTime());
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * MILLISECONDS_PER_DAY);
 }

@@ -9,8 +9,8 @@ import { stageLabels } from '../constants.js';
 export type ScheduleGanttRow = {
   actualEnd: string | null;
   actualStart: string | null;
-  dueEnd: string | null;
-  dueStart: string | null;
+  plannedEnd: string | null;
+  plannedStart: string | null;
   entityId: string;
   id: string;
   level: 'job' | 'stage' | 'station';
@@ -20,17 +20,17 @@ export type ScheduleGanttRow = {
   title: string;
 };
 
-export type DueDragAction = 'move' | 'resize-end' | 'resize-start';
+export type PlannedDragAction = 'move' | 'resize-end' | 'resize-start';
 
-export type OptimisticDueRange = {
-  dueEnd: string;
-  dueStart: string;
+export type OptimisticPlannedRange = {
+  plannedEnd: string;
+  plannedStart: string;
 };
 
-type DueDateEdit = {
+type PlannedDateEdit = {
   entityId: string;
   entityLevel: 'job' | 'stage' | 'station-booking';
-  field: 'due_end' | 'due_start';
+  field: 'planned_end' | 'planned_start';
   value: string;
 };
 
@@ -41,9 +41,9 @@ export type ActualDateEdit = {
   value: string | null;
 };
 
-type DueDateFields = {
-  dueEnd: string | null;
-  dueStart: string | null;
+type PlannedDateFields = {
+  plannedEnd: string | null;
+  plannedStart: string | null;
 };
 
 type ActualDateFields = {
@@ -65,8 +65,8 @@ function createJobRow(job: JobDetail): ScheduleGanttRow {
   return {
     actualEnd: job.actualWindow.end,
     actualStart: job.actualWindow.start,
-    dueEnd: toDateOnly(job.plannedWindow.end),
-    dueStart: toDateOnly(job.plannedWindow.start),
+    plannedEnd: toDateOnly(job.plannedWindow.end),
+    plannedStart: toDateOnly(job.plannedWindow.start),
     entityId: job.id,
     id: `job-${job.id}`,
     level: 'job',
@@ -81,8 +81,8 @@ function createStageRow(stage: JobStageRollup): ScheduleGanttRow {
   return {
     actualEnd: stage.actualWindow.end,
     actualStart: stage.actualWindow.start,
-    dueEnd: toDateOnly(stage.plannedWindow.end),
-    dueStart: toDateOnly(stage.plannedWindow.start),
+    plannedEnd: toDateOnly(stage.plannedWindow.end),
+    plannedStart: toDateOnly(stage.plannedWindow.start),
     entityId: stage.id,
     id: `stage-${stage.id}`,
     level: 'stage',
@@ -97,8 +97,8 @@ function createStationRow(stage: JobStageRollup, station: StationBooking): Sched
   return {
     actualEnd: station.actualEnd,
     actualStart: station.actualStart,
-    dueEnd: station.dueEnd,
-    dueStart: station.dueStart,
+    plannedEnd: station.plannedEnd,
+    plannedStart: station.plannedStart,
     entityId: station.id,
     id: `station-${station.id}`,
     level: 'station',
@@ -144,14 +144,14 @@ export function getScheduleGanttTimelineDayCount(
   );
 }
 
-export function getScheduleGanttDueDisplay(
-  row: DueDateFields,
+export function getScheduleGanttPlannedDisplay(
+  row: PlannedDateFields,
 ):
   | { kind: 'none' }
   | { date: Date; kind: 'milestone'; label: string }
   | { end: Date; kind: 'range'; label: string; start: Date } {
-  const start = parseScheduleDate(row.dueStart);
-  const end = parseScheduleDate(row.dueEnd);
+  const start = parseScheduleDate(row.plannedStart);
+  const end = parseScheduleDate(row.plannedEnd);
 
   if (!start && !end) {
     return { kind: 'none' };
@@ -167,45 +167,45 @@ export function getScheduleGanttDueDisplay(
     return {
       date,
       kind: 'milestone',
-      label: start ? `Due start ${formatDate(start, 'short')}` : `Due end ${formatDate(date, 'short')}`,
+      label: start ? `Planned start ${formatDate(start, 'short')}` : `Planned end ${formatDate(date, 'short')}`,
     };
   }
 
   return {
     end: addDays(end, 1),
     kind: 'range',
-    label: `Due ${formatDate(start, 'short')} to ${formatDate(end, 'short')}`,
+    label: `Planned ${formatDate(start, 'short')} to ${formatDate(end, 'short')}`,
     start,
   };
 }
 
-export function getScheduleGanttDueRangeAfterDrag({
+export function getScheduleGanttPlannedRangeAfterDrag({
   action,
   dayDelta,
-  dueEnd,
-  dueStart,
+  plannedEnd,
+  plannedStart,
 }: {
-  action: DueDragAction;
+  action: PlannedDragAction;
   dayDelta: number;
-  dueEnd: string | null;
-  dueStart: string | null;
-}): OptimisticDueRange | null {
-  const start = parseScheduleDate(dueStart);
-  const end = parseScheduleDate(dueEnd);
+  plannedEnd: string | null;
+  plannedStart: string | null;
+}): OptimisticPlannedRange | null {
+  const start = parseScheduleDate(plannedStart);
+  const end = parseScheduleDate(plannedEnd);
   if (!start || !end) return null;
 
   const nextStart = action === 'resize-end' ? start : addDays(start, dayDelta);
   const nextEnd = action === 'resize-start' ? end : addDays(end, dayDelta);
   if (isBefore(nextEnd, nextStart)) {
     return {
-      dueEnd: formatDateOnly(action === 'resize-start' ? nextStart : nextEnd),
-      dueStart: formatDateOnly(action === 'resize-end' ? nextEnd : nextStart),
+      plannedEnd: formatDateOnly(action === 'resize-start' ? nextStart : nextEnd),
+      plannedStart: formatDateOnly(action === 'resize-end' ? nextEnd : nextStart),
     };
   }
 
   return {
-    dueEnd: formatDateOnly(nextEnd),
-    dueStart: formatDateOnly(nextStart),
+    plannedEnd: formatDateOnly(nextEnd),
+    plannedStart: formatDateOnly(nextStart),
   };
 }
 
@@ -215,7 +215,7 @@ export function getScheduleGanttActualRangeAfterDrag({
   actualStart,
   dayDelta,
 }: {
-  action: DueDragAction;
+  action: PlannedDragAction;
   actualEnd: string | null;
   actualStart: string | null;
   dayDelta: number;
@@ -242,30 +242,30 @@ export function getScheduleGanttActualRangeAfterDrag({
   };
 }
 
-export function getScheduleGanttDueDateEdits({
+export function getScheduleGanttPlannedDateEdits({
   entityId,
   entityLevel,
-  nextDueEnd,
-  nextDueStart,
-  previousDueEnd,
-  previousDueStart,
+  nextPlannedEnd,
+  nextPlannedStart,
+  previousPlannedEnd,
+  previousPlannedStart,
 }: {
   entityId: string;
   entityLevel: 'job' | 'stage' | 'station-booking';
-  nextDueEnd: string;
-  nextDueStart: string;
-  previousDueEnd: string;
-  previousDueStart: string;
-}): DueDateEdit[] {
-  const edits: DueDateEdit[] = [
-    { entityId, entityLevel, field: 'due_start' as const, value: nextDueStart },
-    { entityId, entityLevel, field: 'due_end' as const, value: nextDueEnd },
-  ].filter((edit) => (edit.field === 'due_start' ? previousDueStart : previousDueEnd) !== edit.value);
+  nextPlannedEnd: string;
+  nextPlannedStart: string;
+  previousPlannedEnd: string;
+  previousPlannedStart: string;
+}): PlannedDateEdit[] {
+  const edits: PlannedDateEdit[] = [
+    { entityId, entityLevel, field: 'planned_start' as const, value: nextPlannedStart },
+    { entityId, entityLevel, field: 'planned_end' as const, value: nextPlannedEnd },
+  ].filter((edit) => (edit.field === 'planned_start' ? previousPlannedStart : previousPlannedEnd) !== edit.value);
 
   if (edits.length !== 2) return edits;
 
   const startMovesAfterPreviousEnd =
-    differenceInCalendarDays(parseDateOnly(nextDueStart), parseDateOnly(previousDueEnd)) > 0;
+    differenceInCalendarDays(parseDateOnly(nextPlannedStart), parseDateOnly(previousPlannedEnd)) > 0;
 
   if (startMovesAfterPreviousEnd) {
     const [startEdit, endEdit] = edits;
@@ -349,16 +349,16 @@ export function getScheduleGanttOccupancyDisplay(
     };
   }
 
-  const dueStart = parseScheduleDate(booking.dueStart);
-  const dueEnd = parseScheduleDate(booking.dueEnd);
-  const start = dueStart ?? dueEnd;
+  const plannedStart = parseScheduleDate(booking.plannedStart);
+  const plannedEnd = parseScheduleDate(booking.plannedEnd);
+  const start = plannedStart ?? plannedEnd;
 
   if (!start) {
     return { kind: 'none' };
   }
 
   return {
-    end: addDays(dueEnd ?? start, 1),
+    end: addDays(plannedEnd ?? start, 1),
     kind: 'range',
     label: `${jobCode} due on ${booking.stationName}`,
     openEnded: false,

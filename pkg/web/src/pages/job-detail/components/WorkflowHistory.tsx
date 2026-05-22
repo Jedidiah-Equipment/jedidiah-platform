@@ -349,10 +349,10 @@ function getDateOverrideFieldLabel(field: Extract<JobEvent, { eventType: 'date.o
       return 'Actual start';
     case 'due_date':
       return 'Job due date';
-    case 'due_end':
-      return 'Due end';
-    case 'due_start':
-      return 'Due start';
+    case 'planned_end':
+      return 'Planned end';
+    case 'planned_start':
+      return 'Planned start';
   }
 }
 

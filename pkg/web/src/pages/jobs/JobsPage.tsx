@@ -33,6 +33,7 @@ export const useJobTableStore = createPersistedDataTableStore({
     ],
   },
   persistName: 'jobs-table',
+  persistVersion: 2,
 });
 
 const jobSortOptions: SortOptions<JobListInput> = {
@@ -68,7 +69,7 @@ export const JobsPage: React.FC = () => {
   );
 };
 
-const JobTable: React.FC<{ rightSection?: React.ReactNode }> = ({ rightSection }) => {
+const JobTable: React.FC = () => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const accessQuery = useAccess();
@@ -215,7 +216,6 @@ const JobTable: React.FC<{ rightSection?: React.ReactNode }> = ({ rightSection }
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
       globalFilterPlaceholder="Search jobs..."
       isLoading={isLoading}
-      rightSection={rightSection}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`}

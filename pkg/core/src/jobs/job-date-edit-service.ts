@@ -107,7 +107,6 @@ async function editStationBookingLevelDate({
   tx: DatabaseTransaction;
 }): Promise<{ jobId: UUID }> {
   const target = await readStationBookingForUpdate(input.entityId, tx);
-  const beforeStages = await readStagesWithBookingsForUpdate(target.stage.jobId, tx);
   if (isDueField(input.field)) {
     assertDueDateEditKeepsRange({ field: input.field, row: target.booking, value: input.value });
   }
@@ -123,6 +122,9 @@ async function editStationBookingLevelDate({
   if (isNoOpDateEdit({ field: input.field, row: target.booking, value: input.value })) {
     return { jobId: target.stage.jobId };
   }
+  const beforeStages = isActualField(input.field)
+    ? await readStagesWithBookingsForUpdate(target.stage.jobId, tx)
+    : undefined;
   const updatedBooking = await updateStationBookingDateField({
     field: input.field,
     id: target.booking.id,
@@ -151,6 +153,9 @@ async function editStationBookingLevelDate({
   });
 
   if (isActualField(input.field)) {
+    if (!beforeStages) {
+      throw new Error('Expected stage snapshot before actual date edit.');
+    }
     const afterStages = await readStagesWithBookingsForUpdate(target.stage.jobId, tx);
     await insertDerivedMilestoneEvents({
       actorUserId,

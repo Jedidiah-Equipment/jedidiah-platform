@@ -27,6 +27,7 @@ export type DataTableStore = DataTableState & {
 type CreatePersistedDataTableStoreOptions = {
   initialState?: Partial<DataTableState>;
   persistName: string;
+  persistVersion?: number;
 };
 
 const defaultState: DataTableState = {
@@ -39,7 +40,11 @@ const defaultState: DataTableState = {
   sorting: [],
 };
 
-export function createPersistedDataTableStore({ initialState, persistName }: CreatePersistedDataTableStoreOptions) {
+export function createPersistedDataTableStore({
+  initialState,
+  persistName,
+  persistVersion = 1,
+}: CreatePersistedDataTableStoreOptions) {
   const resolvedInitialState: DataTableState = {
     ...defaultState,
     ...initialState,
@@ -90,7 +95,7 @@ export function createPersistedDataTableStore({ initialState, persistName }: Cre
           pagination: state.pagination,
           sorting: state.sorting,
         }),
-        version: 1,
+        version: persistVersion,
       },
     ),
   );

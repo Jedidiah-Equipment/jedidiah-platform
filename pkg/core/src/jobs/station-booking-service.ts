@@ -12,7 +12,7 @@ import { eq } from 'drizzle-orm';
 
 import { createAuditChanges, insertAuditEvent, jobStageStationAuditDescriptor } from '../audit/audit-service.js';
 import { JobStationBookingNotFoundError, JobStationBookingTransitionDeniedError } from './job-errors.js';
-import type { JobAuditRecord, JobStageRow, JobStageStationRow } from './job-mappers.js';
+import { type JobAuditRecord, type JobStageRow, type JobStageStationRow, mapJobAuditRecord } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
 type StationBookingTransition = 'start' | 'stop';
@@ -204,22 +204,7 @@ async function readStationBookingTarget({
 
   return {
     booking: row.booking,
-    job: {
-      actualEnd: row.job.actualEnd,
-      actualEndSetManually: row.job.actualEndSetManually,
-      actualStart: row.job.actualStart,
-      actualStartSetManually: row.job.actualStartSetManually,
-      code: row.job.code,
-      dueDate: row.job.dueDate,
-      dueEnd: row.job.dueEnd,
-      dueEndSetManually: row.job.dueEndSetManually,
-      dueStart: row.job.dueStart,
-      dueStartSetManually: row.job.dueStartSetManually,
-      isCancelled: row.job.isCancelled,
-      isPaused: row.job.isPaused,
-      productId: row.job.productId,
-      quoteId: row.job.quoteId,
-    },
+    job: mapJobAuditRecord(row.job),
     jobId: row.job.id,
     stage: row.stage,
     stages,

@@ -34,11 +34,12 @@ import {
   getScheduleGanttTimelineDayCount,
   type OptimisticDueRange,
   parseScheduleDateTimeInputValue,
+  resolveScheduleDateTimeInputValue,
   type ScheduleGanttRow,
 } from './schedule-gantt-helpers.js';
 
 type ScheduleGanttProps = {
-  canEditDueBars: boolean;
+  canEditSchedule: boolean;
   job: JobDetail;
 };
 
@@ -50,7 +51,7 @@ type ScheduleGanttRenderableRow = ScheduleGanttRow & {
 const SIDEBAR_WIDTH = 300;
 const ROW_HEIGHT = 42;
 
-export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditDueBars, job }) => {
+export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, job }) => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
@@ -151,7 +152,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditDueBars, jo
       }
       await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
       if (attemptedEdit) {
-        toast.success('Actual date updated');
+        toast.success('Actual dates updated');
       }
     } catch {
       if (attemptedEdit) {
@@ -192,8 +193,8 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditDueBars, jo
               {visibleRows.map((row) =>
                 row.visible ? (
                   <ScheduleGanttTimelineRow
-                    canEditActualBars={canEditDueBars && !editDateMutation.isPending}
-                    canEditDueBars={canEditDueBars && !editDateMutation.isPending}
+                    canEditActualBars={canEditSchedule && !editDateMutation.isPending}
+                    canEditDueBars={canEditSchedule && !editDateMutation.isPending}
                     key={row.id}
                     onEditActualDates={editActualDates}
                     onEditDueRange={editDueRange}
@@ -393,12 +394,10 @@ const ScheduleGanttActualDatePopover: React.FC<{
   const left = getGanttOffset(start, gantt);
   const width = getGanttWidth(start, end, gantt);
   const parsedActualStart = parseScheduleDateTimeInputValue(actualStartValue);
-  const parsedActualEnd = actualEnd ? parseScheduleDateTimeInputValue(actualEndValue) : null;
+  const parsedActualEnd = actualEndValue ? parseScheduleDateTimeInputValue(actualEndValue) : null;
   const hasValidRange =
-    !actualEnd ||
-    (parsedActualStart !== null &&
-      parsedActualEnd !== null &&
-      new Date(parsedActualStart).getTime() <= new Date(parsedActualEnd).getTime());
+    parsedActualStart !== null &&
+    (parsedActualEnd === null || new Date(parsedActualStart).getTime() <= new Date(parsedActualEnd).getTime());
   const canSubmit = Boolean(parsedActualStart) && hasValidRange;
 
   React.useEffect(() => {
@@ -415,7 +414,7 @@ const ScheduleGanttActualDatePopover: React.FC<{
           <button
             aria-label={`${label}; edit actual date`}
             className={cn(
-              'absolute top-1/2 h-4 -translate-y-1/2 cursor-pointer appearance-none rounded-sm p-0',
+              'absolute top-1/2 z-20 h-4 -translate-y-1/2 cursor-pointer appearance-none rounded-sm p-0',
               className,
             )}
             style={{ left: Math.round(left), width: Math.max(Math.round(width), 10) }}
@@ -433,13 +432,11 @@ const ScheduleGanttActualDatePopover: React.FC<{
           onSubmit={(event) => {
             event.preventDefault();
 
-            const nextActualStart = parseScheduleDateTimeInputValue(actualStartValue);
-            const nextActualEnd = actualEnd ? parseScheduleDateTimeInputValue(actualEndValue) : null;
+            const nextActualStart = resolveScheduleDateTimeInputValue(actualStartValue, actualStart);
+            const nextActualEnd = resolveScheduleDateTimeInputValue(actualEndValue, actualEnd);
             const hasNextValidRange =
-              !actualEnd ||
-              (nextActualStart !== null &&
-                nextActualEnd !== null &&
-                new Date(nextActualStart).getTime() <= new Date(nextActualEnd).getTime());
+              nextActualStart !== null &&
+              (nextActualEnd === null || new Date(nextActualStart).getTime() <= new Date(nextActualEnd).getTime());
             if (!nextActualStart || !hasNextValidRange) return;
 
             onConfirm({ actualEnd: nextActualEnd, actualStart: nextActualStart });
@@ -456,18 +453,15 @@ const ScheduleGanttActualDatePopover: React.FC<{
               value={actualStartValue}
             />
           </div>
-          {actualEnd ? (
-            <div className="grid gap-1.5">
-              <Label htmlFor={actualEndInputId}>Actual end</Label>
-              <Input
-                id={actualEndInputId}
-                onChange={(event) => setActualEndValue(event.target.value)}
-                required
-                type="datetime-local"
-                value={actualEndValue}
-              />
-            </div>
-          ) : null}
+          <div className="grid gap-1.5">
+            <Label htmlFor={actualEndInputId}>Actual end</Label>
+            <Input
+              id={actualEndInputId}
+              onChange={(event) => setActualEndValue(event.target.value)}
+              type="datetime-local"
+              value={actualEndValue}
+            />
+          </div>
           <div className="flex justify-end gap-2">
             <Button onClick={() => setOpen(false)} type="button" variant="outline">
               Cancel

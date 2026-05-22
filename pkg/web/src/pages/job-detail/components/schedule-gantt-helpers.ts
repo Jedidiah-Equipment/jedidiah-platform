@@ -37,7 +37,7 @@ export type ActualDateEdit = {
   entityId: string;
   entityLevel: 'job' | 'stage' | 'station-booking';
   field: 'actual_end' | 'actual_start';
-  value: string;
+  value: string | null;
 };
 
 type DueDateFields = {
@@ -251,7 +251,9 @@ export function getScheduleGanttActualDateEdits({
 }): ActualDateEdit[] {
   const edits: ActualDateEdit[] = [
     { entityId, entityLevel, field: 'actual_start' as const, value: nextActualStart },
-    ...(nextActualEnd ? [{ entityId, entityLevel, field: 'actual_end' as const, value: nextActualEnd }] : []),
+    ...(nextActualEnd !== previousActualEnd
+      ? [{ entityId, entityLevel, field: 'actual_end' as const, value: nextActualEnd }]
+      : []),
   ].filter((edit) => (edit.field === 'actual_start' ? previousActualStart : previousActualEnd) !== edit.value);
 
   if (edits.length !== 2) return edits;
@@ -299,6 +301,18 @@ export function parseScheduleDateTimeInputValue(value: string): string | null {
   const parsedDate = parse(value, "yyyy-MM-dd'T'HH:mm", new Date());
 
   return isValid(parsedDate) ? parsedDate.toISOString() : null;
+}
+
+export function resolveScheduleDateTimeInputValue(value: string, previousValue: string | null): string | null {
+  if (value.trim() === '') {
+    return null;
+  }
+
+  if (previousValue && formatScheduleDateTimeInputValue(previousValue) === value) {
+    return previousValue;
+  }
+
+  return parseScheduleDateTimeInputValue(value);
 }
 
 function formatDateOnly(date: Date): string {

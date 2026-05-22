@@ -14,6 +14,7 @@ import {
   getScheduleGanttTimelineDayCount,
   parseScheduleDate,
   parseScheduleDateTimeInputValue,
+  resolveScheduleDateTimeInputValue,
 } from './schedule-gantt-helpers.js';
 
 describe('buildScheduleGanttRows', () => {
@@ -251,6 +252,14 @@ describe('schedule date display helpers', () => {
     expect(parseScheduleDateTimeInputValue('not-a-date')).toBeNull();
   });
 
+  it('keeps the original actual datetime when the minute-level input is unchanged', () => {
+    const originalValue = '2026-05-22T09:30:12.345Z';
+
+    expect(resolveScheduleDateTimeInputValue(formatScheduleDateTimeInputValue(originalValue), originalValue)).toBe(
+      originalValue,
+    );
+  });
+
   it('creates actual datetime edits for changed fields only', () => {
     expect(
       getScheduleGanttActualDateEdits({
@@ -267,6 +276,43 @@ describe('schedule date display helpers', () => {
         entityLevel: 'job',
         field: 'actual_end',
         value: '2026-05-23T12:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('does not create actual datetime edits for unchanged minute-level inputs with stored seconds', () => {
+    const actualStart = '2026-05-22T08:00:12.345Z';
+    const actualEnd = '2026-05-22T12:00:45.678Z';
+
+    expect(
+      getScheduleGanttActualDateEdits({
+        entityId: ids.job,
+        entityLevel: 'job',
+        nextActualEnd: resolveScheduleDateTimeInputValue(formatScheduleDateTimeInputValue(actualEnd), actualEnd),
+        nextActualStart:
+          resolveScheduleDateTimeInputValue(formatScheduleDateTimeInputValue(actualStart), actualStart) ?? actualStart,
+        previousActualEnd: actualEnd,
+        previousActualStart: actualStart,
+      }),
+    ).toEqual([]);
+  });
+
+  it('creates an actual end edit when clearing an existing actual end', () => {
+    expect(
+      getScheduleGanttActualDateEdits({
+        entityId: ids.job,
+        entityLevel: 'job',
+        nextActualEnd: null,
+        nextActualStart: '2026-05-22T08:00:00.000Z',
+        previousActualEnd: '2026-05-23T12:00:00.000Z',
+        previousActualStart: '2026-05-22T08:00:00.000Z',
+      }),
+    ).toEqual([
+      {
+        entityId: ids.job,
+        entityLevel: 'job',
+        field: 'actual_end',
+        value: null,
       },
     ]);
   });

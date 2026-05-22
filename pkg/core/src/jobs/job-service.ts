@@ -46,7 +46,7 @@ import {
 } from './station-booking-service.js';
 
 type JobLifecycleTransition = 'cancel' | 'pause' | 'resume' | 'uncancel';
-type ConvertibleQuoteRow = typeof quotes.$inferSelect & { productId: UUID };
+const JOB_ELIGIBLE_QUOTE_STATUSES: readonly QuoteStatus[] = ['accepted', 'draft', 'sent'];
 
 export async function createJob({
   db,
@@ -85,8 +85,8 @@ export async function createJobFromQuote({
 }): Promise<JobDetail> {
   try {
     return await db.transaction(async (tx) => {
-      const quote = await validateJobQuoteForCreate({
-        allowedStatuses: ['accepted', 'draft'],
+      await validateJobQuoteForCreate({
+        allowedStatuses: JOB_ELIGIBLE_QUOTE_STATUSES,
         access,
         quoteId: input.quoteId,
         tx,
@@ -98,8 +98,8 @@ export async function createJobFromQuote({
         input: {
           dueEnd: input.dueEnd,
           dueStart: input.dueStart,
-          productId: quote.productId,
-          quoteId: quote.id,
+          productId: input.productId,
+          quoteId: input.quoteId,
         },
         skipQuoteValidation: true,
         tx,
@@ -130,7 +130,7 @@ async function createJobInTransaction({
   const quoteId = input.quoteId ?? null;
 
   if (quoteId && !skipQuoteValidation) {
-    await validateJobQuoteForCreate({ access, quoteId, tx });
+    await validateJobQuoteForCreate({ access, allowedStatuses: JOB_ELIGIBLE_QUOTE_STATUSES, quoteId, tx });
   }
 
   const [job] = await tx
@@ -202,7 +202,7 @@ async function validateJobQuoteForCreate({
   allowedStatuses?: readonly QuoteStatus[];
   quoteId: UUID;
   tx: DatabaseTransaction;
-}): Promise<ConvertibleQuoteRow> {
+}): Promise<void> {
   if (!hasPermission(access, 'quote:read')) {
     throw new JobQuoteConversionDeniedError('Quote not found.');
   }
@@ -214,11 +214,7 @@ async function validateJobQuoteForCreate({
   }
 
   if (allowedStatuses && !allowedStatuses.includes(quote.status)) {
-    throw new JobQuoteConversionDeniedError('Only draft or accepted quotes can be converted into jobs.');
-  }
-
-  if (!quote.productId) {
-    throw new JobQuoteConversionDeniedError('Quote must have a product before it can be converted into a job.');
+    throw new JobQuoteConversionDeniedError("This quote's status does not allow job creation.");
   }
 
   const existingJob = await tx.query.jobs.findFirst({
@@ -232,7 +228,7 @@ async function validateJobQuoteForCreate({
     throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
   }
 
-  return { ...quote, productId: quote.productId };
+  return;
 }
 
 function buildJobStageInsertValues({

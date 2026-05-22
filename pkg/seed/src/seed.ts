@@ -877,6 +877,7 @@ async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly
         db,
         input: {
           dueEnd: '2026-08-15',
+          productId: product.id,
           quoteId: accepted.id,
         },
       });

@@ -130,7 +130,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                 </Button>
               </>
             ) : null}
-            {canCreateJob && canCreateJobFromQuote(quote.status, quote.productId) && !quote.jobId ? (
+            {canCreateJob && canCreateJobFromQuote({ jobId: quote.jobId, status: quote.status }) ? (
               <CreateJobDialog
                 quote={quote}
                 trigger={

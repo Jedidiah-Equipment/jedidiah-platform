@@ -1,7 +1,6 @@
 import {
   createDatabaseClient,
   createEphemeralTestDatabase,
-  type DatabaseClient,
   type Db,
   dropTestDatabase,
   getTestTemplateDatabaseUrl,
@@ -23,7 +22,6 @@ export type AppRouterCaller = ReturnType<AppRouter['createCaller']>;
 export type TesterScope = {
   auth: Auth;
   cleanup: (cleanup: Cleanup) => void;
-  databaseClient: DatabaseClient;
   databaseName: string;
   databaseUrl: string;
   db: Db;
@@ -75,7 +73,6 @@ export function createTester<T extends object = Record<string, never>>(
           const context = await createContext({
             ...callerContext,
             cleanup: (cleanup) => cleanups.push(cleanup),
-            databaseClient,
             databaseName,
             databaseUrl,
             db: databaseClient.db,

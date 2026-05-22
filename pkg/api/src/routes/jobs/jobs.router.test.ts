@@ -1,4 +1,4 @@
-import { auditEvents, type DatabaseClient, type Db, jobEvents, jobStageStations, products, stations } from '@pkg/db';
+import { auditEvents, type Db, jobEvents, jobStageStations, products, sql, stations } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { AppRole, Department, JobDetail, JobStageName } from '@pkg/schema';
 import pino from 'pino';
@@ -9,16 +9,12 @@ import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
-const test = createTester(async ({ databaseClient, db }) => {
+const test = createTester(async ({ db }) => {
   await createActorUser(db, 'job-supervisor');
   const product = await createProduct(db);
-  const setJobStatus: SetJobStatus = (jobId, status) => updateJobStatus(databaseClient.queryClient, jobId, status);
+  const setJobStatus: SetJobStatus = (jobId, status) => updateJobStatus(db, jobId, status);
 
   return {
-    createJobWithStationBookings: (
-      options: Omit<CreateJobWithStationBookingsOptions, 'db' | 'setJobStatus'>,
-    ): Promise<JobDetail> => createJobWithStationBookings({ ...options, db, setJobStatus }),
-    databaseClient,
     db,
     product,
     setJobStatus,
@@ -163,7 +159,9 @@ describe('jobs.get', () => {
     context,
   }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const job = await context.createJobWithStationBookings({
+    const job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller: supervisorCaller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -185,18 +183,20 @@ describe('jobs.get', () => {
 
   test('derives detail windows and transition availability from station bookings', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await context.createJobWithStationBookings({
+    const job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['procurement', 'supply'],
     });
 
-    await context.databaseClient.queryClient`
+    await context.db.execute(sql`
       update job_stage_station
       set actual_start = '2026-08-01T08:00:00.000Z',
         actual_end = '2026-08-01T12:00:00.000Z'
       where id = ${getStageBooking(job, 'procurement').id}
-    `;
+    `);
 
     const detail = await caller.jobs.get({ id: job.id });
     const procurement = getStage(detail, 'procurement');
@@ -281,11 +281,11 @@ describe('jobs.listSharedStationBookings', () => {
         createStageInput('assembly', '2026-08-10', '2026-08-12'),
       ],
     });
-    await context.databaseClient.queryClient`
+    await context.db.execute(sql`
       update job
       set status = 'cancelled'
       where id = ${cancelledSharedStationJob.id}
-    `;
+    `);
     const completedSharedStationJob = await caller.jobs.create({
       productId: context.product.id,
       stages: [
@@ -296,12 +296,12 @@ describe('jobs.listSharedStationBookings', () => {
         createStageInput('assembly', '2026-08-10', '2026-08-12'),
       ],
     });
-    await context.databaseClient.queryClient`
+    await context.db.execute(sql`
       update job_stage_station
       set actual_start = '2026-08-01T08:00:00.000Z',
         actual_end = '2026-08-12T16:00:00.000Z'
       where id = ${getStageBooking(completedSharedStationJob, 'fabrication').id}
-    `;
+    `);
     const futureSharedStationJob = await caller.jobs.create({
       productId: context.product.id,
       stages: [
@@ -312,12 +312,12 @@ describe('jobs.listSharedStationBookings', () => {
         createStageInput('assembly', '2027-01-10', '2027-01-12'),
       ],
     });
-    await context.databaseClient.queryClient`
+    await context.db.execute(sql`
       update job_stage_station
       set planned_start = '2027-01-05',
         planned_end = '2027-01-09'
       where id = ${getStageBooking(futureSharedStationJob, 'fabrication').id}
-    `;
+    `);
     const unrelatedJob = await caller.jobs.create({
       productId: context.product.id,
       stages: [
@@ -329,12 +329,12 @@ describe('jobs.listSharedStationBookings', () => {
       ],
     });
     const collidingBooking = getStageBooking(collidingJob, 'fabrication');
-    await context.databaseClient.queryClient`
+    await context.db.execute(sql`
       update job_stage_station
       set actual_start = '2026-08-05T08:00:00.000Z',
         actual_end = '2026-08-07T16:00:00.000Z'
       where id = ${collidingBooking.id}
-    `;
+    `);
 
     const result = await caller.jobs.listSharedStationBookings({ jobId: currentJob.id });
 
@@ -365,7 +365,9 @@ describe('jobs.listSharedStationBookings', () => {
 describe('jobs station booking transitions', () => {
   test('first start emits derived stage and job start milestones', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await context.createJobWithStationBookings({
+    const job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -394,7 +396,9 @@ describe('jobs station booking transitions', () => {
 
   test('last stop emits derived stage and job completion milestones', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await context.createJobWithStationBookings({
+    let job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['procurement', 'supply', 'fabrication', 'paint', 'assembly'],
@@ -423,7 +427,9 @@ describe('jobs station booking transitions', () => {
 
   test('refuses restart after a booking has ended and emits no events', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await context.createJobWithStationBookings({
+    let job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -444,7 +450,9 @@ describe('jobs station booking transitions', () => {
 
   test('refuses station booking writes unless the job status is active and emits no events', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await context.createJobWithStationBookings({
+    let job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -462,7 +470,9 @@ describe('jobs station booking transitions', () => {
 
   test('refuses station booking writes while a job is cancelled and emits no events', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await context.createJobWithStationBookings({
+    let job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -480,7 +490,9 @@ describe('jobs station booking transitions', () => {
 
   test('scopes department manager booking writes to the booking station department', async ({ context }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const job = await context.createJobWithStationBookings({
+    const job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller: supervisorCaller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -558,7 +570,9 @@ describe('jobs.editDate', () => {
 
   test('sets and clears the Job Due Date without shifting schedule windows', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await context.createJobWithStationBookings({
+    const job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -660,7 +674,9 @@ describe('jobs.editDate', () => {
 
   test('rejects due edits that would invert the edited row window', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await context.createJobWithStationBookings({
+    const job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -681,7 +697,9 @@ describe('jobs.editDate', () => {
 
   test('rejects stage-level direct date edits', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await context.createJobWithStationBookings({
+    const job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -699,7 +717,9 @@ describe('jobs.editDate', () => {
 
   test('does not emit workflow or audit events for true no-op Station Booking edits', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await context.createJobWithStationBookings({
+    const job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -725,7 +745,9 @@ describe('jobs.editDate', () => {
 
   test('clears actual dates back to auto and cascades parents back to null', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await context.createJobWithStationBookings({
+    let job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -753,7 +775,9 @@ describe('jobs.editDate', () => {
 
   test('actual override cascades completion and emits one override event', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await context.createJobWithStationBookings({
+    let job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['procurement', 'supply', 'fabrication', 'paint', 'assembly'],
@@ -792,7 +816,9 @@ describe('jobs.editDate', () => {
 
   test('rejects setting a booking actual end before it has started', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await context.createJobWithStationBookings({
+    const job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['fabrication'],
@@ -813,7 +839,9 @@ describe('jobs.editDate', () => {
 
   test('clearing the last booking actual end uncompletes auto parents', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await context.createJobWithStationBookings({
+    let job = await createJobWithStationBookings({
+      db: context.db,
+      setJobStatus: context.setJobStatus,
       caller,
       productId: context.product.id,
       stages: ['procurement', 'supply', 'fabrication', 'paint', 'assembly'],
@@ -916,16 +944,12 @@ async function createJobWithStationBookings({
   return caller.jobs.get({ id: job.id });
 }
 
-async function updateJobStatus(
-  queryClient: DatabaseClient['queryClient'],
-  jobId: string,
-  status: JobStatusForTest,
-): Promise<void> {
-  await queryClient`
+async function updateJobStatus(db: Db, jobId: string, status: JobStatusForTest): Promise<void> {
+  await db.execute(sql`
     update job
     set status = ${status}
     where id = ${jobId}
-  `;
+  `);
 }
 
 function getStage(job: JobDetail, stageName: JobStageName) {

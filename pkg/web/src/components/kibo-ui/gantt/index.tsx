@@ -46,7 +46,7 @@ export type GanttFeature = {
   id: string;
   name: string;
   startAt: Date;
-  endAt: Date;
+  endAt: Date | null;
   status: GanttStatus;
   lane?: string; // Optional: features with the same lane will share a row
 };
@@ -157,6 +157,8 @@ const getDateByMousePosition = (context: GanttContextProps, mouseX: number) => {
 
   return actualDate;
 };
+
+const OPEN_ENDED_FEATURE_END = new Date(8640000000000000);
 
 const createTimelineYearData = (year: number): TimelineData[number] => ({
   year,
@@ -867,6 +869,7 @@ export const GanttFeatureRow: FC<GanttFeatureRowProps> = ({ features, onMove, ch
 
   for (const feature of sortedFeatures) {
     let subRow = 0;
+    const effectiveEndAt = feature.endAt ?? OPEN_ENDED_FEATURE_END;
 
     // Find the first sub-row that's free (doesn't overlap)
     while (subRow < subRowEndTimes.length && (subRowEndTimes[subRow] ?? feature.startAt) > feature.startAt) {
@@ -875,9 +878,9 @@ export const GanttFeatureRow: FC<GanttFeatureRowProps> = ({ features, onMove, ch
 
     // Update the end time for this sub-row
     if (subRow === subRowEndTimes.length) {
-      subRowEndTimes.push(feature.endAt);
+      subRowEndTimes.push(effectiveEndAt);
     } else {
-      subRowEndTimes[subRow] = feature.endAt;
+      subRowEndTimes[subRow] = effectiveEndAt;
     }
 
     featureWithPositions.push({ ...feature, subRow });

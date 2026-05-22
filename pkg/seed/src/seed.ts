@@ -6,7 +6,6 @@ import {
   completeJobStage,
   createCustomer,
   createJob,
-  createJobFromQuote,
   createProduct,
   createQuote,
   createStation,
@@ -871,7 +870,7 @@ async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly
     const accepted = await acceptQuote({ actorUserId, db, input: { id: sent.id } });
 
     if (scenario.status === 'accepted-with-job') {
-      await createJobFromQuote({
+      await createJob({
         access: supervisorAccess,
         actorUserId: supervisorUserId,
         db,

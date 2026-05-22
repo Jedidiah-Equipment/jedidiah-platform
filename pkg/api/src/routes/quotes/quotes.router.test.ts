@@ -147,7 +147,7 @@ describe('quotes.list', () => {
     });
     const sentQuote = await salesCaller.quotes.send({ id: acceptedQuote.id });
     const finalQuote = await salesCaller.quotes.accept({ id: sentQuote.id });
-    const job = await supervisorCaller.jobs.createFromQuote({
+    const job = await supervisorCaller.jobs.create({
       dueEnd: '2026-08-15',
       productId: context.product.id,
       quoteId: finalQuote.id,
@@ -305,7 +305,7 @@ describe('quotes.reject', () => {
   });
 });
 
-describe('jobs.createFromQuote', () => {
+describe('jobs.create with quote links', () => {
   test('creates multiple jobs from one accepted quote with stages', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
@@ -318,7 +318,7 @@ describe('jobs.createFromQuote', () => {
       status: 'accepted',
     });
 
-    const job = await supervisorCaller.jobs.createFromQuote({
+    const job = await supervisorCaller.jobs.create({
       dueEnd: '2026-08-15',
       productId: context.product.id,
       quoteId: accepted.id,
@@ -334,7 +334,7 @@ describe('jobs.createFromQuote', () => {
     expect(jobRows).toHaveLength(1);
     expect(stageRows).toHaveLength(5);
 
-    const secondJob = await supervisorCaller.jobs.createFromQuote({
+    const secondJob = await supervisorCaller.jobs.create({
       productId: context.product.id,
       quoteId: accepted.id,
     });
@@ -356,7 +356,7 @@ describe('jobs.createFromQuote', () => {
     const sent = await salesCaller.quotes.send({ id: created.id });
 
     await expect(
-      supervisorCaller.jobs.createFromQuote({ productId: context.product.id, quoteId: sent.id }),
+      supervisorCaller.jobs.create({ productId: context.product.id, quoteId: sent.id }),
     ).resolves.toMatchObject({
       productId: context.product.id,
       quoteId: sent.id,
@@ -369,7 +369,7 @@ describe('jobs.createFromQuote', () => {
     const created = await createReadyQuote(salesCaller, context.product.id);
     const sent = await salesCaller.quotes.send({ id: created.id });
 
-    const job = await supervisorCaller.jobs.createFromQuote({
+    const job = await supervisorCaller.jobs.create({
       dueEnd: '2026-08-15',
       productId: context.product.id,
       quoteId: sent.id,

@@ -1,6 +1,6 @@
 import { jobStageStatusLabels } from '@pkg/domain';
 import type { JobDetail, JobStageRollup, StationBooking } from '@pkg/schema';
-import { addDays, differenceInCalendarDays, format, isBefore, startOfDay } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, isBefore, isValid, parse, startOfDay } from 'date-fns';
 
 import { formatDate, parseDate } from '@/utils/date.js';
 
@@ -31,6 +31,13 @@ type DueDateEdit = {
   entityLevel: 'job' | 'stage' | 'station-booking';
   field: 'due_end' | 'due_start';
   value: string;
+};
+
+export type ActualDateEdit = {
+  entityId: string;
+  entityLevel: 'job' | 'stage' | 'station-booking';
+  field: 'actual_end' | 'actual_start';
+  value: string | null;
 };
 
 type DueDateFields = {
@@ -227,6 +234,41 @@ export function getScheduleGanttDueDateEdits({
   return edits;
 }
 
+export function getScheduleGanttActualDateEdits({
+  entityId,
+  entityLevel,
+  nextActualEnd,
+  nextActualStart,
+  previousActualEnd,
+  previousActualStart,
+}: {
+  entityId: string;
+  entityLevel: 'job' | 'stage' | 'station-booking';
+  nextActualEnd: string | null;
+  nextActualStart: string;
+  previousActualEnd: string | null;
+  previousActualStart: string;
+}): ActualDateEdit[] {
+  const edits: ActualDateEdit[] = [
+    { entityId, entityLevel, field: 'actual_start' as const, value: nextActualStart },
+    ...(nextActualEnd !== previousActualEnd
+      ? [{ entityId, entityLevel, field: 'actual_end' as const, value: nextActualEnd }]
+      : []),
+  ].filter((edit) => (edit.field === 'actual_start' ? previousActualStart : previousActualEnd) !== edit.value);
+
+  if (edits.length !== 2) return edits;
+
+  const startMovesAfterPreviousEnd =
+    previousActualEnd !== null && new Date(nextActualStart).getTime() > new Date(previousActualEnd).getTime();
+
+  if (startMovesAfterPreviousEnd) {
+    const [startEdit, endEdit] = edits;
+    return endEdit && startEdit ? [endEdit, startEdit] : edits;
+  }
+
+  return edits;
+}
+
 export function getScheduleGanttActualDisplay(
   row: ActualDateFields,
   now = new Date(),
@@ -247,6 +289,30 @@ export function getScheduleGanttActualDisplay(
     openEnded: !end,
     start,
   };
+}
+
+export function formatScheduleDateTimeInputValue(value: string | null): string {
+  const date = parseDate(value);
+
+  return date ? format(date, "yyyy-MM-dd'T'HH:mm") : '';
+}
+
+export function parseScheduleDateTimeInputValue(value: string): string | null {
+  const parsedDate = parse(value, "yyyy-MM-dd'T'HH:mm", new Date());
+
+  return isValid(parsedDate) ? parsedDate.toISOString() : null;
+}
+
+export function resolveScheduleDateTimeInputValue(value: string, previousValue: string | null): string | null {
+  if (value.trim() === '') {
+    return null;
+  }
+
+  if (previousValue && formatScheduleDateTimeInputValue(previousValue) === value) {
+    return previousValue;
+  }
+
+  return parseScheduleDateTimeInputValue(value);
 }
 
 function formatDateOnly(date: Date): string {

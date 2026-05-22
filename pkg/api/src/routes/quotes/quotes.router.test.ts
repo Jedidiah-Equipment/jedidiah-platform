@@ -1,4 +1,4 @@
-import { auditEvents, type Db, products, quotes, user } from '@pkg/db';
+import { auditEvents, type Db, jobStages, jobs, products, quotes, user } from '@pkg/db';
 import type { QuoteDetail } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -152,6 +152,10 @@ describe('quotes.list', () => {
       productId: context.product.id,
       quoteId: finalQuote.id,
     });
+    const secondJob = await supervisorCaller.jobs.create({
+      productId: context.product.id,
+      quoteId: finalQuote.id,
+    });
 
     await expect(
       salesCaller.quotes.list({
@@ -170,7 +174,16 @@ describe('quotes.list', () => {
         {
           code: finalQuote.code,
           customerCompanyName: 'Acme Mining',
-          jobCode: job.code,
+          linkedJobs: [
+            {
+              jobCode: job.code,
+              jobId: job.id,
+            },
+            {
+              jobCode: secondJob.code,
+              jobId: secondJob.id,
+            },
+          ],
         },
       ],
     });
@@ -183,7 +196,7 @@ describe('quotes.list', () => {
         page: 1,
         pageSize: 10,
         search: job.code,
-        sortBy: 'jobCode',
+        sortBy: 'createdAt',
         sortDirection: 'asc',
       }),
     ).resolves.toMatchObject({
@@ -191,7 +204,16 @@ describe('quotes.list', () => {
       items: [
         {
           code: finalQuote.code,
-          jobCode: job.code,
+          linkedJobs: [
+            {
+              jobCode: job.code,
+              jobId: job.id,
+            },
+            {
+              jobCode: secondJob.code,
+              jobId: secondJob.id,
+            },
+          ],
         },
       ],
     });
@@ -284,6 +306,82 @@ describe('quotes.reject', () => {
 });
 
 describe('jobs.create with quote links', () => {
+  test('creates multiple jobs from one accepted quote with stages', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const created = await createReadyQuote(salesCaller, context.product.id);
+    const sent = await salesCaller.quotes.send({ id: created.id });
+    const accepted = await salesCaller.quotes.accept({ id: sent.id });
+
+    await expect(supervisorCaller.quotes.get({ id: accepted.id })).resolves.toMatchObject({
+      id: accepted.id,
+      status: 'accepted',
+    });
+
+    const job = await supervisorCaller.jobs.create({
+      dueEnd: '2026-08-15',
+      productId: context.product.id,
+      quoteId: accepted.id,
+    });
+    const jobRows = await context.db.select().from(jobs);
+    const stageRows = await context.db.select().from(jobStages);
+
+    expect(job).toMatchObject({
+      dueEnd: '2026-08-15',
+      productId: context.product.id,
+      quoteId: accepted.id,
+    });
+    expect(jobRows).toHaveLength(1);
+    expect(stageRows).toHaveLength(5);
+
+    const secondJob = await supervisorCaller.jobs.create({
+      productId: context.product.id,
+      quoteId: accepted.id,
+    });
+    const afterSecondJobRows = await context.db.select().from(jobs);
+    const afterSecondStageRows = await context.db.select().from(jobStages);
+
+    expect(secondJob).toMatchObject({
+      productId: context.product.id,
+      quoteId: accepted.id,
+    });
+    expect(afterSecondJobRows).toHaveLength(2);
+    expect(afterSecondStageRows).toHaveLength(10);
+  });
+
+  test('creates a job from a sent quote', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const created = await createReadyQuote(salesCaller, context.product.id);
+    const sent = await salesCaller.quotes.send({ id: created.id });
+
+    await expect(
+      supervisorCaller.jobs.create({ productId: context.product.id, quoteId: sent.id }),
+    ).resolves.toMatchObject({
+      productId: context.product.id,
+      quoteId: sent.id,
+    });
+  });
+
+  test('creates a job from a sent quote when a Job product is selected', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const created = await createReadyQuote(salesCaller, context.product.id);
+    const sent = await salesCaller.quotes.send({ id: created.id });
+
+    const job = await supervisorCaller.jobs.create({
+      dueEnd: '2026-08-15',
+      productId: context.product.id,
+      quoteId: sent.id,
+    });
+
+    expect(job).toMatchObject({
+      dueEnd: '2026-08-15',
+      productId: context.product.id,
+      quoteId: sent.id,
+    });
+  });
+
   test('creates jobs linked to sent and product-less quotes when a Job product is selected', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
@@ -361,9 +459,9 @@ describe('jobs.create with quote links', () => {
         productId: alternateProduct.id,
         quoteId: accepted.id,
       }),
-    ).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-      message: 'Quote has already been converted into a job.',
+    ).resolves.toMatchObject({
+      productId: alternateProduct.id,
+      quoteId: accepted.id,
     });
   });
 });

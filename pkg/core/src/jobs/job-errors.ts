@@ -76,12 +76,12 @@ export class JobDateEditTargetNotFoundError extends Error {
   }
 }
 
-export class JobQuoteConversionDeniedError extends Error {
-  readonly code = 'job.quote_conversion_denied';
+export class JobCreateFromQuoteDeniedError extends Error {
+  readonly code = 'job.create_from_quote_denied';
 
   constructor(message: string) {
     super(message);
-    this.name = 'JobQuoteConversionDeniedError';
+    this.name = 'JobCreateFromQuoteDeniedError';
   }
 }
 
@@ -91,7 +91,7 @@ export type JobCoreError =
   | JobDateEditTargetNotFoundError
   | JobLifecycleTransitionDeniedError
   | JobNotFoundError
-  | JobQuoteConversionDeniedError
+  | JobCreateFromQuoteDeniedError
   | JobStationBookingNotFoundError
   | JobStationBookingTransitionDeniedError
   | JobStageTransitionDeniedError;
@@ -103,7 +103,7 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobDateEditTargetNotFoundError ||
     error instanceof JobLifecycleTransitionDeniedError ||
     error instanceof JobNotFoundError ||
-    error instanceof JobQuoteConversionDeniedError ||
+    error instanceof JobCreateFromQuoteDeniedError ||
     error instanceof JobStationBookingNotFoundError ||
     error instanceof JobStationBookingTransitionDeniedError ||
     error instanceof JobStageTransitionDeniedError

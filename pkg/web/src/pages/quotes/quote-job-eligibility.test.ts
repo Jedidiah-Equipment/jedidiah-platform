@@ -9,10 +9,6 @@ describe('quote job eligibility', () => {
     ['accepted', true],
     ['rejected', false],
   ] as const)('returns %s eligibility as %s', (status, expected) => {
-    expect(canCreateJobFromQuote({ jobId: null, status })).toBe(expected);
-  });
-
-  test('returns false when the quote already has a linked Job', () => {
-    expect(canCreateJobFromQuote({ jobId: 'job-id', status: 'sent' })).toBe(false);
+    expect(canCreateJobFromQuote(status)).toBe(expected);
   });
 });

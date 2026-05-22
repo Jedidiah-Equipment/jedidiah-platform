@@ -71,8 +71,11 @@ type QuoteListRow = {
   productName: string | null;
   salesPersonEmail: string | null;
   salesPersonName: string | null;
-  jobCode: number | null;
-  jobId: string | null;
+};
+type QuoteLinkedJobRow = {
+  jobCode: number;
+  jobId: string;
+  quoteId: string | null;
 };
 
 export function mapQuote(row: QuoteRow): Quote {
@@ -165,14 +168,11 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
         productName: products.name,
         salesPersonEmail: user.email,
         salesPersonName: user.name,
-        jobCode: jobs.code,
-        jobId: jobs.id,
       })
       .from(quotes)
       .innerJoin(customers, eq(quotes.customerId, customers.id))
       .leftJoin(products, eq(quotes.productId, products.id))
       .leftJoin(user, eq(quotes.salesPersonId, user.id))
-      .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
       .where(where)
       .orderBy(orderBy, asc(quotes.id))
       .$dynamic(),
@@ -186,13 +186,16 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
     .leftJoin(products, eq(quotes.productId, products.id))
-    .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
     .where(where);
 
   const rows = await rowsQuery;
+  const linkedJobsByQuoteId = await getLinkedJobsByQuoteId({
+    db,
+    quoteIds: rows.map((row) => row.quote.id),
+  });
 
   return {
-    items: rows.map(mapQuoteSummary),
+    items: rows.map((row) => mapQuoteSummary(row, linkedJobsByQuoteId.get(row.quote.id) ?? [])),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
     total: Number(totalRow?.count ?? 0),
@@ -210,21 +213,20 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       productName: products.name,
       salesPersonEmail: user.email,
       salesPersonName: user.name,
-      jobCode: jobs.code,
-      jobId: jobs.id,
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
     .leftJoin(products, eq(quotes.productId, products.id))
     .leftJoin(user, eq(quotes.salesPersonId, user.id))
-    .leftJoin(jobs, eq(jobs.quoteId, quotes.id))
     .where(eq(quotes.id, id));
 
   if (!row) {
     throw new QuoteNotFoundError(id);
   }
 
-  return mapQuoteSummary(row);
+  const linkedJobsByQuoteId = await getLinkedJobsByQuoteId({ db, quoteIds: [row.quote.id] });
+
+  return mapQuoteSummary(row, linkedJobsByQuoteId.get(row.quote.id) ?? []);
 }
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {
@@ -387,14 +389,16 @@ export async function rejectQuote({
   });
 }
 
-function mapQuoteSummary(row: QuoteListRow): QuoteSummary {
+function mapQuoteSummary(row: QuoteListRow, linkedJobs: readonly QuoteLinkedJobRow[]): QuoteSummary {
   const quotedBasePrice = row.quote.quotedBasePrice ?? row.productBasePrice;
 
   return {
     ...mapQuote(row.quote),
     customerCompanyName: row.customerCompanyName,
-    jobCode: row.jobCode === null ? null : JobCode.parse(row.jobCode),
-    jobId: row.jobId,
+    linkedJobs: linkedJobs.map((job) => ({
+      jobCode: JobCode.parse(job.jobCode),
+      jobId: job.jobId,
+    })),
     productCurrencyCode: row.productCurrencyCode === null ? null : ProductCurrencyCode.parse(row.productCurrencyCode),
     productModelCode: row.productModelCode,
     productName: row.productName,
@@ -402,6 +406,39 @@ function mapQuoteSummary(row: QuoteListRow): QuoteSummary {
     salesPersonName: row.salesPersonName,
     total: quotedBasePrice === null ? null : computeQuoteTotal({ discount: row.quote.discount, quotedBasePrice }),
   };
+}
+
+async function getLinkedJobsByQuoteId({
+  db,
+  quoteIds,
+}: {
+  db: Db | DatabaseTransaction;
+  quoteIds: readonly UUID[];
+}): Promise<Map<UUID, QuoteLinkedJobRow[]>> {
+  if (quoteIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select({
+      jobCode: jobs.code,
+      jobId: jobs.id,
+      quoteId: jobs.quoteId,
+    })
+    .from(jobs)
+    .where(inArray(jobs.quoteId, quoteIds))
+    .orderBy(asc(jobs.code), asc(jobs.id));
+  const byQuoteId = new Map<UUID, QuoteLinkedJobRow[]>();
+
+  for (const row of rows) {
+    if (!row.quoteId) continue;
+
+    const group = byQuoteId.get(row.quoteId) ?? [];
+    group.push(row);
+    byQuoteId.set(row.quoteId, group);
+  }
+
+  return byQuoteId;
 }
 
 async function transitionQuote({
@@ -613,10 +650,18 @@ function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
         sql`${customers.companyName}`,
         sql`${products.name}`,
         sql`${products.modelCode}`,
-        sql`${jobs.code}::text`,
       ]),
       codeSearch === undefined ? undefined : eq(quotes.code, codeSearch),
-      jobCodeSearch === undefined ? undefined : eq(jobs.code, jobCodeSearch),
+      sql`exists (
+        select 1
+        from ${jobs}
+        where ${jobs.quoteId} = ${quotes.id}
+          and ${
+            jobCodeSearch === undefined
+              ? createGlobalSearchCondition(input.search, [sql`${jobs.code}::text`])
+              : or(createGlobalSearchCondition(input.search, [sql`${jobs.code}::text`]), eq(jobs.code, jobCodeSearch))
+          }
+      )`,
     );
 
     if (globalSearchWhere) {
@@ -633,7 +678,6 @@ function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
     code: sql`${quotes.code}`,
     createdAt: sql`${quotes.createdAt}`,
     customerCompanyName: sql`${customers.companyName}`,
-    jobCode: sql`${jobs.code}`,
     productName: sql`${products.name}`,
     status: sql`${quotes.status}`,
     total,

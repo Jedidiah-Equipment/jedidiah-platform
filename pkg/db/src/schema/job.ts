@@ -42,7 +42,7 @@ export const jobs = pgTable(
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [uniqueIndex('job_code_unique').on(table.code), uniqueIndex('job_quote_id_unique').on(table.quoteId)],
+  (table) => [uniqueIndex('job_code_unique').on(table.code), index('job_quote_id_idx').on(table.quoteId)],
 );
 
 export const jobStages = pgTable(

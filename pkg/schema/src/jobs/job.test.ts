@@ -36,11 +36,13 @@ describe('JobCreateFromQuoteInput', () => {
     expect(
       JobCreateFromQuoteInput.parse({
         quoteId: '00000000-0000-4000-8000-000000000001',
+        productId: '00000000-0000-4000-8000-000000000002',
         dueStart: '2026-08-01',
         dueEnd: '2026-08-15',
       }),
     ).toEqual({
       quoteId: '00000000-0000-4000-8000-000000000001',
+      productId: '00000000-0000-4000-8000-000000000002',
       dueStart: '2026-08-01',
       dueEnd: '2026-08-15',
     });

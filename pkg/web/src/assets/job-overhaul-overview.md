@@ -146,14 +146,15 @@ actual-end set           →  Complete
 
 A Quote now needs **only a Customer** to exist — everything else (Product, price, discount, valid-until, etc.) is optional until the Quote is sent. This means a salesperson can log a customer enquiry in seconds and fill in the rest later.
 
-A Job can be created from a Quote while it is in **Draft** *or* **Accepted** status. The two are deliberate:
+A Job can be created from a Quote while it is in **Draft**, **Sent**, or **Accepted** status. The paths are deliberate:
 
 - **Draft → Job**: lets the team kick off production planning informally — useful when the customer has verbally agreed and we want a head start.
+- **Sent → Job**: lets the team start from a quote that is already with the customer, while the supervisor still chooses the Job Product in the dialog.
 - **Accepted → Job**: the formal, post-customer-signoff path.
 
-Once a Quote has been **Sent** (awaiting the customer), the Create Job button is hidden until the customer responds — we don't want to spin up production while terms are out for review. Rejected Quotes can't become Jobs at all.
+Once a Quote is **Draft**, **Sent**, or **Accepted**, the Create Job button is available. Rejected Quotes can't become Jobs at all.
 
-**Never automatic.** A **"Create Job"** button appears on the Quote row when the Quote is Draft or Accepted. A supervisor clicks it and the Create-Job dialog opens with:
+**Never automatic.** A **"Create Job"** button appears on the Quote row when the Quote is Draft, Sent, or Accepted. A supervisor clicks it and the Create-Job dialog opens with:
 
 - Customer pre-filled from the Quote (always present)
 - Product pre-filled from the Quote *if set* (supervisor can pick one in the dialog if the Quote didn't have one yet)
@@ -218,4 +219,3 @@ Things we discussed but are **not building yet** — flagged so no one is surpri
 | **Override**        | A supervisor changing a date directly (logged)                                |
 | **Sticky**          | A date that's been set manually — it won't be overwritten by auto-calculation |
 | **Advisory**        | Stage order is a default for planning, not a rule the system enforces         |
-

@@ -180,7 +180,7 @@ const QuoteTable: React.FC = () => {
         id: 'actions',
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
-            {canCreateJob && canCreateJobFromQuote(row.original.status, row.original.productId) ? (
+            {canCreateJob && canCreateJobFromQuote({ jobId: row.original.jobId, status: row.original.status }) ? (
               <CreateJobDialog
                 quote={row.original}
                 trigger={

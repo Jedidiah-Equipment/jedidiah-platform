@@ -109,9 +109,9 @@ export function getActualEndForDisplay(start: Date, end: Date | null, now = new 
     return addDays(startOfDay(end), 1);
   }
 
-  const today = now;
+  const today = startOfDay(now);
 
-  return isBefore(today, start) ? addDays(start, 1) : today;
+  return isBefore(today, start) ? addDays(start, 1) : addDays(today, 1);
 }
 
 export function getScheduleGanttTimelineDayCount(

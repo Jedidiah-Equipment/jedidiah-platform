@@ -86,7 +86,7 @@ describe('schedule date display helpers', () => {
     expect(getScheduleGanttDueDisplay({ dueEnd: null, dueStart: null })).toEqual({ kind: 'none' });
   });
 
-  it('runs in-progress actuals to the supplied today marker', () => {
+  it('runs in-progress actuals through the supplied today marker', () => {
     const now = new Date('2026-05-22T09:30:00.000Z');
 
     expect(
@@ -98,7 +98,6 @@ describe('schedule date display helpers', () => {
         now,
       ),
     ).toMatchObject({
-      end: now,
       kind: 'range',
       label: 'Actual May 20, 2026 through today',
       openEnded: true,
@@ -112,6 +111,7 @@ describe('schedule date display helpers', () => {
     );
     if (display.kind !== 'range') throw new Error('Expected range display.');
     expect(toLocalDateKey(display.start)).toBe('2026-05-20');
+    expect(toLocalDateKey(display.end)).toBe('2026-05-23');
   });
 
   it('normalizes completed actual ends to the next day for inclusive daily width', () => {

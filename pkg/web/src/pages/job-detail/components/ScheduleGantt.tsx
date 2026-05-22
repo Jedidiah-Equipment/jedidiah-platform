@@ -97,6 +97,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditDueBars, jo
 
     setOptimisticDueRanges((current) => ({ ...current, [row.id]: nextRange }));
 
+    let attemptedEdit = false;
     try {
       for (const edit of getScheduleGanttDueDateEdits({
         entityId: row.entityId,
@@ -106,16 +107,16 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditDueBars, jo
         previousDueEnd: row.dueEnd,
         previousDueStart: row.dueStart,
       })) {
+        attemptedEdit = true;
         await editDateMutation.mutateAsync(edit);
       }
       await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
       toast.success('Schedule updated');
-      setOptimisticDueRanges((current) => {
-        const next = { ...current };
-        delete next[row.id];
-        return next;
-      });
     } catch {
+      if (attemptedEdit) {
+        await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
+      }
+    } finally {
       setOptimisticDueRanges((current) => {
         const next = { ...current };
         delete next[row.id];
@@ -251,8 +252,8 @@ const ScheduleGanttTimelineRowInner: React.FC<{
       className={cn('relative border-b', row.level === 'job' && 'bg-muted/20')}
       style={{ height: ROW_HEIGHT, width: `calc(var(--gantt-column-width) * ${dayCount})` }}
     >
-      <ScheduleGanttDueRange canEdit={canEditDueBars} onEdit={onEditDueRange} row={row} />
       <ScheduleGanttActualRange row={row} />
+      <ScheduleGanttDueRange canEdit={canEditDueBars} onEdit={onEditDueRange} row={row} />
     </div>
   );
 };

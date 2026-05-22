@@ -210,7 +210,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
               Department controls are disabled while this job is {jobLifecycleStatusLabels[job.lifecycleStatus]}.
             </div>
           ) : null}
-          <ScheduleGantt job={job} />
+          <ScheduleGantt canEditDueBars={canUpdateJob} job={job} />
           <div className="grid gap-3 lg:grid-cols-5">
             {job.stages.map((stage) => (
               <StagePanel

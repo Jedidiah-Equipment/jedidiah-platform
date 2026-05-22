@@ -6,10 +6,12 @@ import {
   buildScheduleGanttRows,
   getActualEndForDisplay,
   getScheduleGanttActualDisplay,
+  getScheduleGanttDueDateEdits,
   getScheduleGanttDueDisplay,
+  getScheduleGanttDueRangeAfterDrag,
   getScheduleGanttTimelineDayCount,
   parseScheduleDate,
-} from './ScheduleGantt.js';
+} from './schedule-gantt-helpers.js';
 
 describe('buildScheduleGanttRows', () => {
   it('keeps the Job, every Department stage, and station bookings on the chart', () => {
@@ -84,7 +86,7 @@ describe('schedule date display helpers', () => {
     expect(getScheduleGanttDueDisplay({ dueEnd: null, dueStart: null })).toEqual({ kind: 'none' });
   });
 
-  it('runs in-progress actuals to the supplied today marker', () => {
+  it('runs in-progress actuals through the supplied today marker', () => {
     const now = new Date('2026-05-22T09:30:00.000Z');
 
     expect(
@@ -96,7 +98,6 @@ describe('schedule date display helpers', () => {
         now,
       ),
     ).toMatchObject({
-      end: now,
       kind: 'range',
       label: 'Actual May 20, 2026 through today',
       openEnded: true,
@@ -110,6 +111,7 @@ describe('schedule date display helpers', () => {
     );
     if (display.kind !== 'range') throw new Error('Expected range display.');
     expect(toLocalDateKey(display.start)).toBe('2026-05-20');
+    expect(toLocalDateKey(display.end)).toBe('2026-05-23');
   });
 
   it('normalizes completed actual ends to the next day for inclusive daily width', () => {
@@ -159,6 +161,83 @@ describe('schedule date display helpers', () => {
         { quarters: [{ months: [{ days: 31 }, { days: 28 }] }] },
       ]),
     ).toBe(150);
+  });
+
+  it('moves a due range by whole days', () => {
+    expect(
+      getScheduleGanttDueRangeAfterDrag({
+        action: 'move',
+        dayDelta: 2,
+        dueEnd: '2026-05-03',
+        dueStart: '2026-05-01',
+      }),
+    ).toEqual({
+      dueEnd: '2026-05-05',
+      dueStart: '2026-05-03',
+    });
+  });
+
+  it('resizes due ranges from either edge', () => {
+    expect(
+      getScheduleGanttDueRangeAfterDrag({
+        action: 'resize-start',
+        dayDelta: -1,
+        dueEnd: '2026-05-03',
+        dueStart: '2026-05-01',
+      }),
+    ).toEqual({
+      dueEnd: '2026-05-03',
+      dueStart: '2026-04-30',
+    });
+    expect(
+      getScheduleGanttDueRangeAfterDrag({
+        action: 'resize-end',
+        dayDelta: 2,
+        dueEnd: '2026-05-03',
+        dueStart: '2026-05-01',
+      }),
+    ).toEqual({
+      dueEnd: '2026-05-05',
+      dueStart: '2026-05-01',
+    });
+  });
+
+  it('collapses inverted edge resizes to a one-day range', () => {
+    expect(
+      getScheduleGanttDueRangeAfterDrag({
+        action: 'resize-start',
+        dayDelta: 5,
+        dueEnd: '2026-05-03',
+        dueStart: '2026-05-01',
+      }),
+    ).toEqual({
+      dueEnd: '2026-05-06',
+      dueStart: '2026-05-06',
+    });
+  });
+
+  it('orders two date edits so each intermediate due range stays valid', () => {
+    expect(
+      getScheduleGanttDueDateEdits({
+        entityId: ids.job,
+        entityLevel: 'job',
+        nextDueEnd: '2026-05-12',
+        nextDueStart: '2026-05-10',
+        previousDueEnd: '2026-05-03',
+        previousDueStart: '2026-05-01',
+      }).map((edit) => edit.field),
+    ).toEqual(['due_end', 'due_start']);
+
+    expect(
+      getScheduleGanttDueDateEdits({
+        entityId: ids.job,
+        entityLevel: 'job',
+        nextDueEnd: '2026-04-27',
+        nextDueStart: '2026-04-25',
+        previousDueEnd: '2026-05-03',
+        previousDueStart: '2026-05-01',
+      }).map((edit) => edit.field),
+    ).toEqual(['due_start', 'due_end']);
   });
 });
 

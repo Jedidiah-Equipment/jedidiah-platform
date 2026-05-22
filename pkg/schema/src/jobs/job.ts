@@ -362,6 +362,37 @@ export const JobDetail = JobSummary.extend({
   workflowEvents: z.array(JobEvent),
 });
 
+export type JobSharedStationBooking = z.infer<typeof JobSharedStationBooking>;
+export const JobSharedStationBooking = DateFields.pick({
+  actualEnd: true,
+  actualStart: true,
+  dueEnd: true,
+  dueStart: true,
+}).extend({
+  id: UUID,
+  jobStageId: UUID,
+  stage: JobStageName,
+  stationId: UUID,
+  stationName: z.string().trim().min(1),
+});
+
+export type JobSharedStationBookingJob = z.infer<typeof JobSharedStationBookingJob>;
+export const JobSharedStationBookingJob = z.object({
+  bookings: z.array(JobSharedStationBooking).min(1),
+  customerCompanyName: z.string().trim().min(1).nullable(),
+  jobCode: JobCode,
+  jobId: UUID,
+  lifecycleStatus: JobLifecycleStatus,
+  productModelCode: z.string().trim().min(1),
+  productName: z.string().trim().min(1),
+  quoteCode: QuoteCode.nullable(),
+});
+
+export type JobSharedStationBookingsResult = z.infer<typeof JobSharedStationBookingsResult>;
+export const JobSharedStationBookingsResult = z.object({
+  jobs: z.array(JobSharedStationBookingJob),
+});
+
 export type JobCreateStationBookingInput = z.infer<typeof JobCreateStationBookingInput>;
 export const JobCreateStationBookingInput = z.object({
   dueEnd: z.iso.date().nullable().optional(),
@@ -466,6 +497,11 @@ export const JobStageTransitionInput = z.object({
 export type JobLifecycleTransitionInput = z.infer<typeof JobLifecycleTransitionInput>;
 export const JobLifecycleTransitionInput = z.object({
   id: UUID,
+});
+
+export type JobSharedStationBookingsInput = z.infer<typeof JobSharedStationBookingsInput>;
+export const JobSharedStationBookingsInput = z.object({
+  jobId: UUID,
 });
 
 export type JobStationBookingTransitionInput = z.infer<typeof JobStationBookingTransitionInput>;

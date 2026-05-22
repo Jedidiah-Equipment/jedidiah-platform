@@ -132,7 +132,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     descriptor: {
       purpose: 'List Quotes visible to Quote readers.',
       useWhen: [
-        'Searching by Quote Code, Customer company name, Product name, Product model code, linked Job Code, UUID, or Quote Status.',
+        'Searching by Quote Code, Customer company name, Product name, Product model code, linked Job Codes, UUID, or Quote Status.',
         'Traversing from Customer to Job through Quotes.',
       ],
       doNotUseWhen: ['The user needs full details for one Quote; call getQuote after identifying the Quote id.'],
@@ -141,10 +141,16 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Quote Code such as QUO-00001',
         'Customer company name',
         'Product name',
-        'linked Job Code',
+        'linked Job Codes',
         'Quote Status',
       ],
-      resultIdentifiers: ['Quote Code', 'Quote Status', 'Customer company name', 'linked Job Code', 'linked Job UUID'],
+      resultIdentifiers: [
+        'Quote Code',
+        'Quote Status',
+        'Customer company name',
+        'linked Job Codes',
+        'linked Job UUIDs',
+      ],
       linkTarget: aiLinkMetadata.Quote,
     },
     projectResult: (result) => projectPagedItems(result, projectQuote),
@@ -153,12 +159,12 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     tool: getQuoteTool,
     descriptor: {
       purpose: 'Get one Quote by UUID.',
-      useWhen: ['A Quote id is already known and the user needs Quote lifecycle or conversion details.'],
+      useWhen: ['A Quote id is already known and the user needs Quote lifecycle or linked Job details.'],
       doNotUseWhen: [
-        'Searching by Quote Code, Customer, Product, linked Job Code, or partial id; use listQuotes first.',
+        'Searching by Quote Code, Customer, Product, linked Job Codes, or partial id; use listQuotes first.',
       ],
       searchableIdentifiers: ['Quote UUID'],
-      resultIdentifiers: ['Quote Code', 'Quote Status', 'Customer company name', 'linked Job Code'],
+      resultIdentifiers: ['Quote Code', 'Quote Status', 'Customer company name', 'linked Job Codes'],
       linkTarget: aiLinkMetadata.Quote,
     },
     projectResult: projectQuote,
@@ -368,7 +374,7 @@ function projectQuote(value: unknown): unknown {
     label ? createAiLink('Quote', label, value.id) : null,
     createLink('Customer', value.customerCompanyName, value.customerId),
     createLink('Product', value.productName, value.productId),
-    createLink('Job', value.jobCode, value.jobId),
+    ...createLinkedJobLinks(value.linkedJobs),
   ]);
 }
 
@@ -391,6 +397,20 @@ function createLink(entity: AiLink['entity'], label: unknown, id: unknown): AiLi
   }
 
   return createAiLink(entity, label, id);
+}
+
+function createLinkedJobLinks(value: unknown): AiLink[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) =>
+      isObjectRecord(item) && typeof item.jobCode === 'string' && typeof item.jobId === 'string'
+        ? createAiLink('Job', item.jobCode, item.jobId)
+        : null,
+    )
+    .filter((link): link is AiLink => link !== null);
 }
 
 function isRecord(value: unknown): value is LinkableRecord {

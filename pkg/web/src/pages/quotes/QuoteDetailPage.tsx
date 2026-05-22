@@ -23,8 +23,8 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CreateJobDialog } from '@/pages/jobs/components/CreateJobDialog.js';
-import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
+import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { useQuoteStateMutation } from './hooks/use-quote-state-mutation.js';
 import { canCreateJobFromQuote } from './quote-job-eligibility.js';
@@ -87,7 +87,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
     setConfirmation({
       body: [
         'This will mark the Quote as rejected.',
-        'After rejection, the Quote cannot be accepted, edited, or converted into a Job. It will stay visible for history.',
+        'After rejection, the Quote cannot be accepted, edited, or used to create a Job. It will stay visible for history.',
       ],
       confirmLabel: 'Reject quote',
       confirmVariant: 'destructive',
@@ -130,7 +130,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
                 </Button>
               </>
             ) : null}
-            {canCreateJob && canCreateJobFromQuote({ jobId: quote.jobId, status: quote.status }) ? (
+            {canCreateJob && canCreateJobFromQuote(quote.status) ? (
               <CreateJobDialog
                 quote={quote}
                 trigger={
@@ -163,10 +163,8 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
               }
             />
             <QuoteFact
-              label="Job"
-              value={
-                <JobCodeDisplay canOpenJob={canOpenJobs} jobCode={quote.jobCode} jobId={quote.jobId} withHoverCard />
-              }
+              label="Jobs"
+              value={<QuoteLinkedJobs canOpenJobs={canOpenJobs} linkedJobs={quote.linkedJobs} />}
             />
           </div>
           {quote.notes ? (

@@ -217,7 +217,7 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         code: 'FORBIDDEN',
         message: error.message,
       };
-    case 'job.quote_conversion_denied':
+    case 'job.create_from_quote_denied':
       return {
         appCode: error.code,
         code: 'FORBIDDEN',

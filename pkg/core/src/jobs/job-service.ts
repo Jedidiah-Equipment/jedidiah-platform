@@ -4,7 +4,6 @@ import {
   type Db,
   getPaginationQueryOptions,
   getSortOrder,
-  getUniqueViolationConstraint,
   jobStageStations,
   jobStages,
   jobs,
@@ -29,7 +28,7 @@ import { and, asc, eq, or, type SQL, sql } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { editJobDate as editJobDateService } from './job-date-edit-service.js';
-import { JobLifecycleTransitionDeniedError, JobNotFoundError, JobQuoteConversionDeniedError } from './job-errors.js';
+import { JobCreateFromQuoteDeniedError, JobLifecycleTransitionDeniedError, JobNotFoundError } from './job-errors.js';
 import {
   cancelJobLifecycle,
   pauseJobLifecycle,
@@ -58,17 +57,9 @@ export async function createJob({
   input: JobCreateInput;
   actorUserId: AuthId;
 }): Promise<JobDetail> {
-  try {
-    return await db.transaction(async (tx) => {
-      return createJobInTransaction({ access, actorUserId, input, tx });
-    });
-  } catch (error) {
-    if (getUniqueViolationConstraint(error) === 'job_quote_id_unique') {
-      throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
-    }
-
-    throw error;
-  }
+  return db.transaction(async (tx) => {
+    return createJobInTransaction({ access, actorUserId, input, tx });
+  });
 }
 
 async function createJobInTransaction({
@@ -159,28 +150,17 @@ async function validateJobQuoteForCreate({
   tx: DatabaseTransaction;
 }): Promise<void> {
   if (!hasPermission(access, 'quote:read')) {
-    throw new JobQuoteConversionDeniedError('Quote not found.');
+    throw new JobCreateFromQuoteDeniedError('Quote not found.');
   }
 
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
-    throw new JobQuoteConversionDeniedError('Quote not found.');
+    throw new JobCreateFromQuoteDeniedError('Quote not found.');
   }
 
   if (allowedStatuses && !allowedStatuses.includes(quote.status)) {
-    throw new JobQuoteConversionDeniedError("This quote's status does not allow job creation.");
-  }
-
-  const existingJob = await tx.query.jobs.findFirst({
-    columns: {
-      id: true,
-    },
-    where: eq(jobs.quoteId, quoteId),
-  });
-
-  if (existingJob) {
-    throw new JobQuoteConversionDeniedError('Quote has already been converted into a job.');
+    throw new JobCreateFromQuoteDeniedError("This quote's status does not allow job creation.");
   }
 
   return;

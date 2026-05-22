@@ -30,7 +30,7 @@ export const AI_DOMAIN_RELATIONSHIPS = [
   {
     from: 'Quote',
     to: 'Job',
-    meaning: 'An accepted Quote may be converted into at most one Job; a Job may also exist without a Quote.',
+    meaning: 'A draft, sent, or accepted Quote may source any number of Jobs; a Job may also exist without a Quote.',
   },
   {
     from: 'Job',
@@ -53,8 +53,7 @@ export const AI_RETRIEVAL_PLAYBOOKS = [
       },
       {
         tool: 'listQuotes',
-        instruction:
-          'Find Quotes for the matched Customer; prefer accepted Quotes and Quotes with linked jobId or Job Code.',
+        instruction: 'Find Quotes for the matched Customer; prefer accepted Quotes and Quotes with linked Jobs.',
       },
       {
         tool: 'getJob',
@@ -65,7 +64,7 @@ export const AI_RETRIEVAL_PLAYBOOKS = [
       'If exactly one relevant active or paused Job exists, answer for that Job.',
       'If multiple active or paused Jobs exist, ask the user to choose and show linked Job Codes.',
       'If only complete or cancelled Jobs exist, state that there are no currently active Jobs before summarizing history.',
-      'If the Customer has Quotes but no linked Jobs, explain that no Job has been created from those Quotes yet.',
+      'If the Customer has Quotes but no linked Jobs, explain that no Jobs have been created from those Quotes yet.',
       'Do not summarize multiple Jobs as "the job" unless the user asks for a Customer overview.',
     ],
     linkTargets: [aiLinkMetadata.Job, aiLinkMetadata.Quote, aiLinkMetadata.Customer],

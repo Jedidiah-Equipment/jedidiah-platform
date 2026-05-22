@@ -20,8 +20,8 @@ import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CreateJobDialog } from '@/pages/jobs/components/CreateJobDialog.js';
-import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 import { formatCurrency } from '@/utils/number.js';
+import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { canCreateJobFromQuote } from './quote-job-eligibility.js';
 
@@ -163,24 +163,17 @@ const QuoteTable: React.FC = () => {
         },
       },
       {
-        accessorKey: 'jobCode',
-        cell: ({ row }) => (
-          <JobCodeDisplay
-            canOpenJob={canOpenJobs}
-            jobCode={row.original.jobCode}
-            jobId={row.original.jobId}
-            withHoverCard
-          />
-        ),
+        accessorKey: 'linkedJobs',
+        cell: ({ row }) => <QuoteLinkedJobs canOpenJobs={canOpenJobs} linkedJobs={row.original.linkedJobs} />,
         enableColumnFilter: false,
-        enableSorting: true,
+        enableSorting: false,
         header: 'Job',
       },
       {
         id: 'actions',
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
-            {canCreateJob && canCreateJobFromQuote({ jobId: row.original.jobId, status: row.original.status }) ? (
+            {canCreateJob && canCreateJobFromQuote(row.original.status) ? (
               <CreateJobDialog
                 quote={row.original}
                 trigger={

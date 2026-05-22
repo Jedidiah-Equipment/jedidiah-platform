@@ -4,13 +4,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildScheduleGanttRows,
+  formatScheduleDateTimeInputValue,
   getActualEndForDisplay,
+  getScheduleGanttActualDateEdits,
   getScheduleGanttActualDisplay,
   getScheduleGanttDueDateEdits,
   getScheduleGanttDueDisplay,
   getScheduleGanttDueRangeAfterDrag,
   getScheduleGanttTimelineDayCount,
   parseScheduleDate,
+  parseScheduleDateTimeInputValue,
 } from './schedule-gantt-helpers.js';
 
 describe('buildScheduleGanttRows', () => {
@@ -238,6 +241,47 @@ describe('schedule date display helpers', () => {
         previousDueStart: '2026-05-01',
       }).map((edit) => edit.field),
     ).toEqual(['due_start', 'due_end']);
+  });
+
+  it('formats and parses local date-time picker values for actuals', () => {
+    const localDate = new Date(2026, 4, 22, 9, 30);
+
+    expect(formatScheduleDateTimeInputValue(localDate.toISOString())).toBe('2026-05-22T09:30');
+    expect(parseScheduleDateTimeInputValue('2026-05-22T09:30')).toBe(localDate.toISOString());
+    expect(parseScheduleDateTimeInputValue('not-a-date')).toBeNull();
+  });
+
+  it('creates actual datetime edits for changed fields only', () => {
+    expect(
+      getScheduleGanttActualDateEdits({
+        entityId: ids.job,
+        entityLevel: 'job',
+        nextActualEnd: '2026-05-23T12:00:00.000Z',
+        nextActualStart: '2026-05-22T08:00:00.000Z',
+        previousActualEnd: '2026-05-22T12:00:00.000Z',
+        previousActualStart: '2026-05-22T08:00:00.000Z',
+      }),
+    ).toEqual([
+      {
+        entityId: ids.job,
+        entityLevel: 'job',
+        field: 'actual_end',
+        value: '2026-05-23T12:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('orders actual datetime edits so each intermediate range stays valid', () => {
+    expect(
+      getScheduleGanttActualDateEdits({
+        entityId: ids.job,
+        entityLevel: 'job',
+        nextActualEnd: '2026-05-23T12:00:00.000Z',
+        nextActualStart: '2026-05-23T08:00:00.000Z',
+        previousActualEnd: '2026-05-22T12:00:00.000Z',
+        previousActualStart: '2026-05-22T08:00:00.000Z',
+      }).map((edit) => edit.field),
+    ).toEqual(['actual_end', 'actual_start']);
   });
 });
 

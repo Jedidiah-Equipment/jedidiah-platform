@@ -83,10 +83,17 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
       },
       {
         accessorKey: 'basePrice',
-        cell: ({ row }) => formatProductPrice(row.original),
+        cell: ({ row }) => formatCurrency(row.original.basePrice, row.original.currencyCode),
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Base price',
+      },
+      {
+        id: 'estimatedDurationDays',
+        cell: ({ row }) => formatDurationDays(getEstimatedDurationDays(row.original)),
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Est Duration',
       },
       {
         accessorKey: 'createdAt',
@@ -193,6 +200,10 @@ function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'modelCode'
   return typeof value === 'string' && value ? value : undefined;
 }
 
-function formatProductPrice(product: Product): string {
-  return formatCurrency(product.basePrice, product.currencyCode);
+function getEstimatedDurationDays(product: Product): number {
+  return product.departmentConfigs.reduce((total, config) => total + config.durationDays, 0);
+}
+
+function formatDurationDays(days: number): string {
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
 }

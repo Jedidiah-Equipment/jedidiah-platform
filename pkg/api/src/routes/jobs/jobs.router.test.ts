@@ -429,6 +429,22 @@ describe('jobs.setStatus', () => {
     });
   });
 
+  test('does not emit workflow or audit events for same-status updates', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({ productId: context.product.id });
+
+    const unchanged = await caller.jobs.setStatus({ id: job.id, status: 'pending' });
+
+    expect(unchanged.status).toBe('pending');
+    expect(unchanged.updatedAt).toBe(job.updatedAt);
+    await expect(listJobEventTypes(context.db, job.id)).resolves.toEqual([]);
+
+    const auditRows = (await context.db.select().from(auditEvents)).filter(
+      (event) => event.entityId === job.id && event.action === 'updated',
+    );
+    expect(auditRows).toHaveLength(0);
+  });
+
   test('rejects non-supervisor status updates and emits no events', async ({ context }) => {
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const departmentCaller = context.createCaller(mockSession('job-department-manager'));

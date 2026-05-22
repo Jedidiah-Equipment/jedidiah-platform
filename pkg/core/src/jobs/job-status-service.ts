@@ -20,7 +20,7 @@ export async function setJobStatus({
   input: JobSetStatusInput;
 }): Promise<JobDetail> {
   if (!hasPermission(access, 'job:update')) {
-    throw new JobStatusUpdateDeniedError('Only supervisors can update job status.');
+    throw new JobStatusUpdateDeniedError('Only supervisors and admins can update job status.');
   }
 
   return db.transaction(async (tx) => {

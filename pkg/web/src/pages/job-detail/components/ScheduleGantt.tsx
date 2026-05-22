@@ -41,7 +41,7 @@ type ScheduleGanttRenderableRow = ScheduleGanttRow & {
   visible: boolean;
 };
 
-const SIDEBAR_WIDTH = 320;
+const SIDEBAR_WIDTH = 300;
 const ROW_HEIGHT = 42;
 
 export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ job }) => {
@@ -105,9 +105,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ job }) => {
           <GanttTimeline>
             <GanttHeader />
             <GanttFeatureList className="absolute top-0 left-0 h-full w-max space-y-0">
-              <div style={{ paddingTop: 'var(--gantt-header-height)' }}>
-                {visibleRows.map((row) => (row.visible ? <ScheduleGanttTimelineRow key={row.id} row={row} /> : null))}
-              </div>
+              {visibleRows.map((row) => (row.visible ? <ScheduleGanttTimelineRow key={row.id} row={row} /> : null))}
               <GanttToday className="bg-primary text-primary-foreground" />
             </GanttFeatureList>
           </GanttTimeline>
@@ -228,51 +226,51 @@ const ScheduleGanttSidebar: React.FC<{
 );
 
 const ScheduleGanttTimelineRow: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => (
-  <div
-    className={cn('relative border-b', row.level === 'job' && 'bg-muted/20')}
-    style={{ height: ROW_HEIGHT, width: 'calc(var(--gantt-column-width) * 1096)' }}
-  >
-    <ScheduleGanttDueRange row={row} />
-    <ScheduleGanttActualRange row={row} />
-  </div>
+  <ScheduleGanttTimelineRowInner row={row} />
 );
 
+const ScheduleGanttTimelineRowInner: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => {
+  const gantt = useGanttContext();
+  const dayCount = getScheduleGanttTimelineDayCount(gantt.timelineData);
+
+  return (
+    <div
+      className={cn('relative border-b', row.level === 'job' && 'bg-muted/20')}
+      style={{ height: ROW_HEIGHT, width: `calc(var(--gantt-column-width) * ${dayCount})` }}
+    >
+      <ScheduleGanttDueRange row={row} />
+      <ScheduleGanttActualRange row={row} />
+    </div>
+  );
+};
+
 const ScheduleGanttDueRange: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => {
-  const start = parseScheduleDate(row.dueStart);
-  const end = parseScheduleDate(row.dueEnd);
+  const due = getScheduleGanttDueDisplay(row);
 
-  if (!start && !end) return null;
+  if (due.kind === 'none') {
+    return null;
+  }
 
-  if (!start || !end) {
-    return <ScheduleGanttMilestone date={start ?? end} label={start ? 'Due start' : 'Due end'} />;
+  if (due.kind === 'milestone') {
+    return <ScheduleGanttMilestone date={due.date} label={due.label} />;
+  }
+
+  return <ScheduleGanttBar className="border border-sky-500/70 bg-sky-500/10" {...due} />;
+};
+
+const ScheduleGanttActualRange: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => {
+  const actual = getScheduleGanttActualDisplay(row);
+
+  if (actual.kind === 'none') {
+    return null;
   }
 
   return (
     <ScheduleGanttBar
-      className="border border-sky-500/70 bg-sky-500/10"
-      end={addDays(end, 1)}
-      label={`Due ${formatDate(start, 'short')} to ${formatDate(end, 'short')}`}
-      start={start}
-    />
-  );
-};
-
-const ScheduleGanttActualRange: React.FC<{ row: ScheduleGanttRow }> = ({ row }) => {
-  const start = parseScheduleDate(row.actualStart);
-  const end = parseScheduleDate(row.actualEnd);
-
-  if (!start) return null;
-
-  return (
-    <ScheduleGanttBar
-      className={cn('bg-sky-600 shadow-sm', !end && 'rounded-r-none')}
-      end={getActualEndForDisplay(start, end)}
-      label={
-        end
-          ? `Actual ${formatDate(start, 'short')} to ${formatDate(end, 'short')}`
-          : `Actual ${formatDate(start, 'short')} through today`
-      }
-      start={start}
+      className={cn('bg-sky-600 shadow-sm', actual.openEnded && 'rounded-r-none')}
+      end={actual.end}
+      label={actual.label}
+      start={actual.start}
     />
   );
 };
@@ -304,15 +302,14 @@ const ScheduleGanttMilestone: React.FC<{ date: Date | null; label: string }> = (
   if (!date) return null;
 
   const left = getGanttOffset(date, gantt);
-  const fullLabel = `${label} ${formatDate(date, 'short')}`;
 
   return (
     <div
-      aria-label={fullLabel}
+      aria-label={label}
       className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-sky-500 bg-background"
       role="img"
       style={{ left: Math.round(left) }}
-      title={fullLabel}
+      title={label}
     />
   );
 };
@@ -324,18 +321,90 @@ const LegendItem: React.FC<{ className: string; label: string }> = ({ className,
   </span>
 );
 
-function parseScheduleDate(value: string | null): Date | null {
+export function parseScheduleDate(value: string | null): Date | null {
   const date = parseDate(value);
 
   return date ? startOfDay(date) : null;
 }
 
-function getActualEndForDisplay(start: Date, end: Date | null): Date {
+export function getActualEndForDisplay(start: Date, end: Date | null, now = new Date()): Date {
   if (end) {
     return addDays(startOfDay(end), 1);
   }
 
-  const today = new Date();
+  const today = now;
 
   return isBefore(today, start) ? addDays(start, 1) : today;
+}
+
+export function getScheduleGanttTimelineDayCount(
+  timelineData: { quarters: { months: { days: number }[] }[] }[],
+): number {
+  return timelineData.reduce(
+    (total, year) =>
+      total +
+      year.quarters.reduce(
+        (yearTotal, quarter) =>
+          yearTotal + quarter.months.reduce((quarterTotal, month) => quarterTotal + month.days, 0),
+        0,
+      ),
+    0,
+  );
+}
+
+export function getScheduleGanttDueDisplay(
+  row: Pick<ScheduleGanttRow, 'dueEnd' | 'dueStart'>,
+):
+  | { kind: 'none' }
+  | { date: Date; kind: 'milestone'; label: string }
+  | { end: Date; kind: 'range'; label: string; start: Date } {
+  const start = parseScheduleDate(row.dueStart);
+  const end = parseScheduleDate(row.dueEnd);
+
+  if (!start && !end) {
+    return { kind: 'none' };
+  }
+
+  if (!start || !end) {
+    const date = start ?? end;
+
+    if (!date) {
+      return { kind: 'none' };
+    }
+
+    return {
+      date,
+      kind: 'milestone',
+      label: start ? `Due start ${formatDate(start, 'short')}` : `Due end ${formatDate(date, 'short')}`,
+    };
+  }
+
+  return {
+    end: addDays(end, 1),
+    kind: 'range',
+    label: `Due ${formatDate(start, 'short')} to ${formatDate(end, 'short')}`,
+    start,
+  };
+}
+
+export function getScheduleGanttActualDisplay(
+  row: Pick<ScheduleGanttRow, 'actualEnd' | 'actualStart'>,
+  now = new Date(),
+): { kind: 'none' } | { end: Date; kind: 'range'; label: string; openEnded: boolean; start: Date } {
+  const start = parseScheduleDate(row.actualStart);
+  const end = parseScheduleDate(row.actualEnd);
+
+  if (!start) {
+    return { kind: 'none' };
+  }
+
+  return {
+    end: getActualEndForDisplay(start, end, now),
+    kind: 'range',
+    label: end
+      ? `Actual ${formatDate(start, 'short')} to ${formatDate(end, 'short')}`
+      : `Actual ${formatDate(start, 'short')} through today`,
+    openEnded: !end,
+    start,
+  };
 }

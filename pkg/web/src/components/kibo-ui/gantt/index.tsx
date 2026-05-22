@@ -1,9 +1,6 @@
 // biome-ignore-all lint/a11y/noStaticElementInteractions: kibo-ui vendored timeline columns use pointer hover handlers.
 // biome-ignore-all lint/a11y/useSemanticElements: kibo-ui vendored sidebar items preserve registry interaction semantics.
 // biome-ignore-all lint/suspicious/noArrayIndexKey: kibo-ui vendored timeline columns are generated from stable date ranges.
-
-'use client';
-
 import { DndContext, MouseSensor, useDraggable, useSensor } from '@dnd-kit/core';
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
 import { useMouse, useThrottle, useWindowScroll } from '@uidotdev/usehooks';

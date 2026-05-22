@@ -1,38 +1,164 @@
-import type { JobDetail } from '@pkg/schema';
+import type { JobStageName, StationBooking } from '@pkg/schema';
+import { JobDetail } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { buildScheduleGanttRows } from './ScheduleGantt.js';
+import {
+  buildScheduleGanttRows,
+  getActualEndForDisplay,
+  getScheduleGanttActualDisplay,
+  getScheduleGanttDueDisplay,
+  getScheduleGanttTimelineDayCount,
+  parseScheduleDate,
+} from './ScheduleGantt.js';
 
 describe('buildScheduleGanttRows', () => {
   it('keeps the Job, every Department stage, and station bookings on the chart', () => {
     const job = createJobDetail();
 
     expect(buildScheduleGanttRows(job)).toEqual([
-      expect.objectContaining({ id: 'job-job-1', level: 'job', parentId: null, title: 'JOB-001' }),
-      expect.objectContaining({ id: 'stage-stage-procurement', level: 'stage', parentId: null, title: 'Procurement' }),
+      expect.objectContaining({ id: `job-${ids.job}`, level: 'job', parentId: null, title: 'JOB-00001' }),
+      expect.objectContaining({
+        id: `stage-${stageIds.procurement}`,
+        level: 'stage',
+        parentId: null,
+        title: 'Procurement',
+      }),
       expect.objectContaining({
         dueEnd: '2026-05-03',
         dueStart: '2026-05-01',
-        id: 'station-booking-procurement-1',
+        id: `station-${bookingIds['procurement-1']}`,
         level: 'station',
-        parentId: 'stage-stage-procurement',
+        parentId: `stage-${stageIds.procurement}`,
         title: 'Procurement Desk',
       }),
-      expect.objectContaining({ id: 'stage-stage-supply', level: 'stage', parentId: null, title: 'Supply' }),
-      expect.objectContaining({ id: 'stage-stage-fabrication', level: 'stage', parentId: null, title: 'Fabrication' }),
+      expect.objectContaining({ id: `stage-${stageIds.supply}`, level: 'stage', parentId: null, title: 'Supply' }),
+      expect.objectContaining({
+        id: `stage-${stageIds.fabrication}`,
+        level: 'stage',
+        parentId: null,
+        title: 'Fabrication',
+      }),
       expect.objectContaining({
         actualEnd: null,
         actualStart: null,
         dueEnd: null,
         dueStart: null,
-        id: 'station-booking-fabrication-1',
+        id: `station-${bookingIds['fabrication-1']}`,
         level: 'station',
-        parentId: 'stage-stage-fabrication',
+        parentId: `stage-${stageIds.fabrication}`,
         title: 'Weld Bay',
       }),
-      expect.objectContaining({ id: 'stage-stage-paint', level: 'stage', parentId: null, title: 'Paint' }),
-      expect.objectContaining({ id: 'stage-stage-assembly', level: 'stage', parentId: null, title: 'Assembly' }),
+      expect.objectContaining({ id: `stage-${stageIds.paint}`, level: 'stage', parentId: null, title: 'Paint' }),
+      expect.objectContaining({ id: `stage-${stageIds.assembly}`, level: 'stage', parentId: null, title: 'Assembly' }),
     ]);
+  });
+});
+
+describe('schedule date display helpers', () => {
+  it('renders due ranges as inclusive planned tracks', () => {
+    const display = getScheduleGanttDueDisplay({
+      dueEnd: '2026-05-03',
+      dueStart: '2026-05-01',
+    });
+
+    expect(display).toMatchObject({
+      kind: 'range',
+      label: 'Due May 1, 2026 to May 3, 2026',
+    });
+    if (display.kind !== 'range') throw new Error('Expected range display.');
+    expect(toLocalDateKey(display.start)).toBe('2026-05-01');
+    expect(toLocalDateKey(display.end)).toBe('2026-05-04');
+  });
+
+  it.each([
+    ['start-only', { dueEnd: null, dueStart: '2026-05-01' }, 'Due start May 1, 2026'],
+    ['end-only', { dueEnd: '2026-05-03', dueStart: null }, 'Due end May 3, 2026'],
+  ])('renders %s due dates as milestones', (_case, row, label) => {
+    expect(getScheduleGanttDueDisplay(row)).toMatchObject({
+      kind: 'milestone',
+      label,
+    });
+  });
+
+  it('returns no due display when both due dates are missing', () => {
+    expect(getScheduleGanttDueDisplay({ dueEnd: null, dueStart: null })).toEqual({ kind: 'none' });
+  });
+
+  it('runs in-progress actuals to the supplied today marker', () => {
+    const now = new Date('2026-05-22T09:30:00.000Z');
+
+    expect(
+      getScheduleGanttActualDisplay(
+        {
+          actualEnd: null,
+          actualStart: '2026-05-20T08:00:00.000Z',
+        },
+        now,
+      ),
+    ).toMatchObject({
+      end: now,
+      kind: 'range',
+      label: 'Actual May 20, 2026 through today',
+      openEnded: true,
+    });
+    const display = getScheduleGanttActualDisplay(
+      {
+        actualEnd: null,
+        actualStart: '2026-05-20T08:00:00.000Z',
+      },
+      now,
+    );
+    if (display.kind !== 'range') throw new Error('Expected range display.');
+    expect(toLocalDateKey(display.start)).toBe('2026-05-20');
+  });
+
+  it('normalizes completed actual ends to the next day for inclusive daily width', () => {
+    expect(
+      getScheduleGanttActualDisplay(
+        {
+          actualEnd: '2026-05-21T17:00:00.000Z',
+          actualStart: '2026-05-20T08:00:00.000Z',
+        },
+        new Date('2026-05-22T09:30:00.000Z'),
+      ),
+    ).toMatchObject({
+      kind: 'range',
+      label: 'Actual May 20, 2026 to May 21, 2026',
+      openEnded: false,
+    });
+    const display = getScheduleGanttActualDisplay(
+      {
+        actualEnd: '2026-05-21T17:00:00.000Z',
+        actualStart: '2026-05-20T08:00:00.000Z',
+      },
+      new Date('2026-05-22T09:30:00.000Z'),
+    );
+    if (display.kind !== 'range') throw new Error('Expected range display.');
+    expect(toLocalDateKey(display.start)).toBe('2026-05-20');
+    expect(toLocalDateKey(display.end)).toBe('2026-05-22');
+  });
+
+  it('keeps future in-progress actuals visible for at least one day', () => {
+    expect(
+      getActualEndForDisplay(new Date('2026-05-24T00:00:00.000Z'), null, new Date('2026-05-22T09:30:00.000Z')),
+    ).toEqual(new Date('2026-05-25T00:00:00.000Z'));
+  });
+
+  it('parses schedule dates to day starts', () => {
+    const parsed = parseScheduleDate('2026-05-20T08:00:00.000Z');
+
+    expect(parsed ? toLocalDateKey(parsed) : null).toBe('2026-05-20');
+    expect(parsed?.getHours()).toBe(0);
+    expect(parsed?.getMinutes()).toBe(0);
+  });
+
+  it('derives row width from the currently loaded timeline years', () => {
+    expect(
+      getScheduleGanttTimelineDayCount([
+        { quarters: [{ months: [{ days: 31 }, { days: 29 }, { days: 31 }] }] },
+        { quarters: [{ months: [{ days: 31 }, { days: 28 }] }] },
+      ]),
+    ).toBe(150);
   });
 });
 
@@ -50,23 +176,23 @@ function createJobDetail(): JobDetail {
     createStage('assembly', 5),
   ];
 
-  return {
+  return JobDetail.parse({
     actualEnd: null,
     actualEndSetManually: false,
     actualStart: '2026-05-01T08:00:00.000Z',
     actualStartSetManually: false,
-    code: 'JOB-001',
+    code: 'JOB-00001',
     createdAt: '2026-05-01T08:00:00.000Z',
     customerCompanyName: 'ACME',
     dueEnd: '2026-05-10',
     dueEndSetManually: false,
     dueStart: '2026-05-01',
     dueStartSetManually: false,
-    id: 'job-1',
+    id: ids.job,
     isCancelled: false,
     isPaused: false,
     lifecycleStatus: 'active',
-    productId: 'product-1',
+    productId: ids.product,
     productModelCode: 'MODEL',
     productName: 'Machine',
     quoteCode: null,
@@ -74,10 +200,10 @@ function createJobDetail(): JobDetail {
     stages,
     updatedAt: '2026-05-01T08:00:00.000Z',
     workflowEvents: [],
-  } as unknown as JobDetail;
+  });
 }
 
-function createStage(stage: string, sequence: number, stations: unknown[] = []) {
+function createStage(stage: JobStageName, sequence: number, stations: StationBooking[] = []) {
   return {
     access: 'visible',
     actualEnd: null,
@@ -89,8 +215,8 @@ function createStage(stage: string, sequence: number, stations: unknown[] = []) 
     dueEndSetManually: false,
     dueStart: null,
     dueStartSetManually: false,
-    id: `stage-${stage}`,
-    jobId: 'job-1',
+    id: stageIds[stage],
+    jobId: ids.job,
     sequence,
     stage,
     state: 'pending',
@@ -102,7 +228,13 @@ function createStage(stage: string, sequence: number, stations: unknown[] = []) 
   };
 }
 
-function createStationBooking(id: string, name: string, dates: { dueEnd?: string; dueStart?: string } = {}) {
+function createStationBooking(
+  id: 'fabrication-1' | 'procurement-1',
+  name: string,
+  dates: { dueEnd?: string; dueStart?: string } = {},
+): StationBooking {
+  const stage = id.startsWith('procurement') ? 'procurement' : 'fabrication';
+
   return {
     actualEnd: null,
     actualEndSetManually: false,
@@ -113,18 +245,46 @@ function createStationBooking(id: string, name: string, dates: { dueEnd?: string
     dueEndSetManually: false,
     dueStart: dates.dueStart ?? null,
     dueStartSetManually: false,
-    id: `booking-${id}`,
-    jobStageId: 'stage-1',
+    id: bookingIds[id],
+    jobStageId: stageIds[stage],
     state: 'pending',
     station: {
       createdAt: '2026-05-01T08:00:00.000Z',
-      department: 'fabrication',
-      id: `station-${id}`,
+      department: stage,
+      displayOrder: 0,
+      id: stationIds[id],
+      isActive: true,
       name,
-      status: 'active',
       updatedAt: '2026-05-01T08:00:00.000Z',
     },
-    stationId: `station-${id}`,
+    stationId: stationIds[id],
     updatedAt: '2026-05-01T08:00:00.000Z',
   };
+}
+
+const ids = {
+  job: '00000000-0000-4000-8000-000000000001',
+  product: '00000000-0000-4000-8000-000000000002',
+} as const;
+
+const stageIds = {
+  procurement: '00000000-0000-4000-8000-000000000101',
+  supply: '00000000-0000-4000-8000-000000000102',
+  fabrication: '00000000-0000-4000-8000-000000000103',
+  paint: '00000000-0000-4000-8000-000000000104',
+  assembly: '00000000-0000-4000-8000-000000000105',
+} as const satisfies Record<JobStageName, string>;
+
+const bookingIds = {
+  'procurement-1': '00000000-0000-4000-8000-000000000201',
+  'fabrication-1': '00000000-0000-4000-8000-000000000202',
+} as const;
+
+const stationIds = {
+  'procurement-1': '00000000-0000-4000-8000-000000000301',
+  'fabrication-1': '00000000-0000-4000-8000-000000000302',
+} as const;
+
+function toLocalDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }

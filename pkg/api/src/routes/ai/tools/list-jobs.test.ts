@@ -28,7 +28,7 @@ describe('listJobsTool', () => {
     const supervisorCaller = createCaller(context.db, supervisorAccess);
     const created = await supervisorCaller.jobs.create({ productId: context.product.id });
     const input: JobListInput = {
-      filters: {},
+      filters: { statuses: [] },
       page: 1,
       pageSize: 10,
       search: created.code,
@@ -63,7 +63,7 @@ describe('listJobsTool', () => {
       where id = ${pausedJob.id}
     `);
     const input: JobListInput = {
-      filters: { status: 'active' },
+      filters: { statuses: ['active'] },
       page: 1,
       pageSize: 10,
       search: '',

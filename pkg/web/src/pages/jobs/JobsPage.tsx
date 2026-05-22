@@ -1,11 +1,11 @@
-import { hasPermission } from '@pkg/domain';
-import { type JobListInput, JobSortBy, type JobSummary } from '@pkg/schema';
+import { hasPermission, jobStatusLabels } from '@pkg/domain';
+import { type JobListInput, JobSortBy, JobStatus, type JobSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { ArrowRightIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -33,7 +33,7 @@ export const useJobTableStore = createPersistedDataTableStore({
     ],
   },
   persistName: 'jobs-table',
-  persistVersion: 2,
+  persistVersion: 3,
 });
 
 const jobSortOptions: SortOptions<JobListInput> = {
@@ -42,6 +42,11 @@ const jobSortOptions: SortOptions<JobListInput> = {
     id: 'createdAt',
   },
 };
+
+const jobStatusFilterOptions = JobStatus.options.map((status) => ({
+  label: jobStatusLabels[status],
+  value: status,
+}));
 
 export const JobsPage: React.FC = () => {
   const accessQuery = useAccess();
@@ -75,12 +80,11 @@ const JobTable: React.FC = () => {
   const accessQuery = useAccess();
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
-  const getListInputExtras = useCallback(() => getJobListInputExtras(), []);
 
   const tableController = useServerSideTableController({
     store: useJobTableStore,
     sortOptions: jobSortOptions,
-    getListInputExtras,
+    getListInputExtras: getJobListInputExtras,
   });
 
   const jobsQuery = useQuery(
@@ -150,9 +154,13 @@ const JobTable: React.FC = () => {
       {
         accessorKey: 'status',
         cell: ({ row }) => <JobStatusBadge status={row.original.status} />,
-        enableColumnFilter: false,
+        enableColumnFilter: true,
         enableSorting: true,
         header: 'Status',
+        meta: {
+          filterOptions: jobStatusFilterOptions,
+          filterVariant: 'multi-select',
+        },
       },
       {
         cell: ({ row }) => <JobStageChips stages={row.original.stages} />,
@@ -242,8 +250,18 @@ const JobQuoteCode: React.FC<{
   return <span className="font-medium">{quoteCode}</span>;
 };
 
-function getJobListInputExtras() {
+function getStatusFilterValues(columnFilters: ColumnFiltersState) {
+  const value = columnFilters.find((filter) => filter.id === 'status')?.value;
+
+  return Array.isArray(value)
+    ? value.filter((item): item is JobSummary['status'] => JobStatus.safeParse(item).success)
+    : [];
+}
+
+function getJobListInputExtras(columnFilters: ColumnFiltersState) {
   return {
-    filters: {},
+    filters: {
+      statuses: getStatusFilterValues(columnFilters),
+    },
   } satisfies Pick<JobListInput, 'filters'>;
 }

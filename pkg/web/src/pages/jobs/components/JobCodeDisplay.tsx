@@ -63,6 +63,7 @@ const JobCodeHoverCard: React.FC<{
       ({
         filters: {
           jobId,
+          statuses: [],
         },
         page: 1,
         pageSize: 1,

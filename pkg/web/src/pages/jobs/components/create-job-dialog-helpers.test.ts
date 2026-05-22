@@ -104,6 +104,7 @@ describe('create job dialog helpers', () => {
   test('builds create input without dead Job or Stage windows', () => {
     expect(
       buildCreateJobInput({
+        dueDate: '2026-05-10',
         productId: '00000000-0000-4000-8000-000000000010',
         quoteId: null,
         stages: [
@@ -115,6 +116,7 @@ describe('create job dialog helpers', () => {
         ],
       }),
     ).toMatchObject({
+      dueDate: '2026-05-10',
       productId: '00000000-0000-4000-8000-000000000010',
       stages: expect.arrayContaining([
         expect.not.objectContaining({
@@ -123,6 +125,17 @@ describe('create job dialog helpers', () => {
         }),
       ]),
     });
+  });
+
+  test('passes a cleared create Job Due Date as null', () => {
+    expect(
+      buildCreateJobInput({
+        dueDate: '',
+        productId: '00000000-0000-4000-8000-000000000010',
+        quoteId: null,
+        stages: [],
+      }).dueDate,
+    ).toBeNull();
   });
 
   test('reports inverted stage windows as warnings', () => {

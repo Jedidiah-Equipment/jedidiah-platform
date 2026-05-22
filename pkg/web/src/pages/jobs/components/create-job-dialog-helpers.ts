@@ -114,10 +114,12 @@ export function mergeDefaultBookings(currentStage: StageDraft, defaultStage: Sta
 }
 
 export function buildCreateJobInput({
+  dueDate,
   productId,
   quoteId,
   stages,
 }: {
+  dueDate: string;
   productId: UUID | '';
   quoteId: UUID | null;
   stages: StageDraft[];
@@ -127,6 +129,7 @@ export function buildCreateJobInput({
   }
 
   return {
+    dueDate: dueDate || null,
     productId,
     quoteId,
     stages: stages.map((stage) => ({

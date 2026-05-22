@@ -209,6 +209,39 @@ export function getScheduleGanttDueRangeAfterDrag({
   };
 }
 
+export function getScheduleGanttActualRangeAfterDrag({
+  action,
+  actualEnd,
+  actualStart,
+  dayDelta,
+}: {
+  action: DueDragAction;
+  actualEnd: string | null;
+  actualStart: string | null;
+  dayDelta: number;
+}): { actualEnd: string | null; actualStart: string } | null {
+  if (!actualStart) return null;
+
+  const start = new Date(actualStart);
+  const end = actualEnd ? new Date(actualEnd) : null;
+  if (!isValid(start) || (end && !isValid(end))) return null;
+
+  const nextStart = action === 'resize-end' ? start : addDays(start, dayDelta);
+  const nextEnd = action === 'resize-start' ? end : end ? addDays(end, dayDelta) : null;
+  if (nextEnd && nextStart.getTime() > nextEnd.getTime()) {
+    const collapsed = action === 'resize-start' ? nextStart : nextEnd;
+    return {
+      actualEnd: collapsed.toISOString(),
+      actualStart: collapsed.toISOString(),
+    };
+  }
+
+  return {
+    actualEnd: nextEnd?.toISOString() ?? null,
+    actualStart: nextStart.toISOString(),
+  };
+}
+
 export function getScheduleGanttDueDateEdits({
   entityId,
   entityLevel,

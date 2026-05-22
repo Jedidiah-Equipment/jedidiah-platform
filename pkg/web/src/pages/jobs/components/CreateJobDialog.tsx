@@ -56,6 +56,8 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
   const [open, setOpen] = useState(false);
   const [anchorKind, setAnchorKind] = useState<AnchorKind>('end');
   const [anchorDate, setAnchorDate] = useState(todayInputValue);
+  const [dueDate, setDueDate] = useState('');
+  const [dueDateTouched, setDueDateTouched] = useState(false);
   const [productId, setProductId] = useState<UUID | ''>(quote?.productId ?? '');
   const [stages, setStages] = useState<StageDraft[]>(() => createEmptyStages());
 
@@ -103,6 +105,8 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
 
     setAnchorKind('end');
     setAnchorDate(todayInputValue);
+    setDueDate('');
+    setDueDateTouched(false);
     setProductId(quote?.productId ?? '');
     setStages(createEmptyStages());
   }, [open, quote]);
@@ -110,6 +114,12 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
   useEffect(() => {
     setStages((currentStages) => mergeDefaultStages(currentStages, defaultStages));
   }, [defaultStages]);
+
+  useEffect(() => {
+    if (dueDateTouched) return;
+
+    setDueDate(getCascadedEndDate(stages));
+  }, [dueDateTouched, stages]);
 
   const canSubmit = Boolean(productId) && stages.length === JOB_STAGE_PIPELINE.length && !createJobMutation.isPending;
 
@@ -138,8 +148,8 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
             </FieldBlock>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
-            <FieldBlock label="Planning anchor">
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_12rem]">
+            <FieldBlock label="Creation Anchor">
               <div className="grid grid-cols-2 overflow-hidden rounded-lg border p-1">
                 <Button
                   onClick={() => setAnchorKind('start')}
@@ -147,7 +157,7 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
                   type="button"
                   variant={anchorKind === 'start' ? 'default' : 'ghost'}
                 >
-                  Plan from start
+                  Anchor at start
                 </Button>
                 <Button
                   onClick={() => setAnchorKind('end')}
@@ -155,12 +165,22 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
                   type="button"
                   variant={anchorKind === 'end' ? 'default' : 'ghost'}
                 >
-                  Plan from end
+                  Anchor at end
                 </Button>
               </div>
             </FieldBlock>
-            <FieldBlock label={anchorKind === 'start' ? 'Start date' : 'End date'}>
+            <FieldBlock label="Anchor date">
               <DatePicker onChange={setAnchorDate} value={anchorDate} />
+            </FieldBlock>
+            <FieldBlock label="Job Due Date">
+              <DatePicker
+                clearable
+                onChange={(value) => {
+                  setDueDate(value);
+                  setDueDateTouched(true);
+                }}
+                value={dueDate}
+              />
             </FieldBlock>
           </div>
 
@@ -218,6 +238,7 @@ export const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ quote, trigger
             onClick={() =>
               createJobMutation.mutate(
                 buildCreateJobInput({
+                  dueDate,
                   productId,
                   quoteId: quote?.id ?? null,
                   stages,
@@ -343,6 +364,19 @@ const StageEditor: React.FC<{
 
 function createDraftId(): string {
   return globalThis.crypto.randomUUID();
+}
+
+function getCascadedEndDate(stages: StageDraft[]): string {
+  const bookingDueEnds = stages
+    .flatMap((stage) => stage.stationBookings.map((booking) => booking.dueEnd))
+    .filter((value) => value !== '')
+    .sort();
+  const stageDueEnds = stages
+    .map((stage) => stage.dueEnd)
+    .filter((value) => value !== '')
+    .sort();
+
+  return bookingDueEnds.at(-1) ?? stageDueEnds.at(-1) ?? '';
 }
 
 function createStationBookingDraft({

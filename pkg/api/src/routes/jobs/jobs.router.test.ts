@@ -194,6 +194,17 @@ describe('jobs.get', () => {
 });
 
 describe('jobs.listSharedStationBookings', () => {
+  test('returns not found for a missing current job', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+
+    await expect(
+      caller.jobs.listSharedStationBookings({ jobId: '00000000-0000-4000-8000-000000009999' }),
+    ).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Job not found.',
+    });
+  });
+
   test('returns other job bookings only on stations shared with the current job', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const [sharedStation, unrelatedStation] = await context.db

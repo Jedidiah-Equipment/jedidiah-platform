@@ -11,6 +11,7 @@ import {
 } from '@pkg/db';
 import { canViewStage, getStageTransitionAvailability } from '@pkg/domain';
 import {
+  JobCode,
   type JobDetail,
   JobSharedStationBookingsResult,
   type JobSortBy,
@@ -25,6 +26,7 @@ import { asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
 import { JobNotFoundError } from './job-errors.js';
 import {
+  deriveJobLifecycleStatus,
   type JobEventWithActorRow,
   type JobRow,
   type JobStageRow,
@@ -45,9 +47,13 @@ type JobWithProductRow = JobRow & {
   quote: QuoteRow | null;
   stages: (JobStageRow & { stations: JobStageStationWithStationRow[] })[];
 };
+type JobHeaderWithProductRow = JobRow & {
+  product: ProductRow;
+  quote: QuoteRow | null;
+};
 type SharedStationBookingRow = JobStageStationWithStationRow & {
   jobStage: JobStageRow & {
-    job: JobWithProductRow;
+    job: JobHeaderWithProductRow;
   };
 };
 
@@ -140,6 +146,17 @@ export async function listSharedStationBookings({
   db: Db | DatabaseTransaction;
   jobId: UUID;
 }): Promise<JobSharedStationBookingsResult> {
+  const currentJob = await db.query.jobs.findFirst({
+    columns: {
+      id: true,
+    },
+    where: eq(jobs.id, jobId),
+  });
+
+  if (!currentJob) {
+    throw new JobNotFoundError(jobId);
+  }
+
   const currentBookings = await db
     .select({
       stationId: jobStageStations.stationId,
@@ -197,30 +214,6 @@ export async function listSharedStationBookings({
                   },
                 },
               },
-              stages: {
-                columns: {
-                  actualEnd: true,
-                  actualEndSetManually: true,
-                  actualStart: true,
-                  actualStartSetManually: true,
-                  dueEnd: true,
-                  dueEndSetManually: true,
-                  dueStart: true,
-                  dueStartSetManually: true,
-                  id: true,
-                  jobId: true,
-                  sequence: true,
-                  stage: true,
-                },
-                orderBy: [asc(jobStages.sequence)],
-                with: {
-                  stations: {
-                    with: {
-                      station: true,
-                    },
-                  },
-                },
-              },
             },
           },
         },
@@ -237,7 +230,7 @@ export async function listSharedStationBookings({
 }
 
 function mapSharedStationBookingJobs(rows: SharedStationBookingRow[]) {
-  const jobsById = new Map<UUID, ReturnType<typeof mapJobSummary> & { bookings: SharedStationBookingRow[] }>();
+  const jobsById = new Map<UUID, ReturnType<typeof mapSharedStationBookingJobSummary>>();
 
   for (const row of rows) {
     const jobId = row.jobStage.jobId;
@@ -248,7 +241,7 @@ function mapSharedStationBookingJobs(rows: SharedStationBookingRow[]) {
     }
 
     jobsById.set(jobId, {
-      ...mapJobSummary(row.jobStage.job),
+      ...mapSharedStationBookingJobHeader(row.jobStage.job),
       bookings: [row],
     });
   }
@@ -275,6 +268,25 @@ function mapSharedStationBookingJobs(rows: SharedStationBookingRow[]) {
       productName: job.productName,
       quoteCode: job.quoteCode,
     }));
+}
+
+function mapSharedStationBookingJobHeader(row: JobHeaderWithProductRow) {
+  return {
+    customerCompanyName: row.quote?.customer.companyName ?? null,
+    code: JobCode.parse(row.code),
+    id: row.id,
+    lifecycleStatus: deriveJobLifecycleStatus(row),
+    productModelCode: row.product.modelCode,
+    productName: row.product.name,
+    quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,
+  };
+}
+
+function mapSharedStationBookingJobSummary(row: JobHeaderWithProductRow) {
+  return {
+    ...mapSharedStationBookingJobHeader(row),
+    bookings: [] as SharedStationBookingRow[],
+  };
 }
 
 function compareSharedStationBookings(left: SharedStationBookingRow, right: SharedStationBookingRow): number {

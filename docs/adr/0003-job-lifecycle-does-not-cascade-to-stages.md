@@ -1,6 +1,6 @@
 # Job-Level Lifecycle Does Not Cascade to Stage or Booking Rows
 
-Job-level state (`isPaused`, `isCancelled`, and the derived completion from dates per [ADR-0014](./0014-stage-and-job-state-derived-from-dates.md)) does not mutate Stage or Station Booking rows. Pausing or cancelling a Job leaves Stages and Bookings exactly as they were. Enforcement that no work happens while a Job is paused or cancelled lives at the UI and API guard layers — mutation endpoints check `!job.is_paused && !job.is_cancelled` before any Stage or Booking write.
+Job-level state (`isPaused`, `isCancelled`, and the derived completion from dates per [ADR-0020](./0020-station-bookings-own-all-schedule-dates.md)) does not mutate Stage or Station Booking rows. Pausing or cancelling a Job leaves Stages and Bookings exactly as they were. Enforcement that no work happens while a Job is paused or cancelled lives at the UI and API guard layers — mutation endpoints check `!job.is_paused && !job.is_cancelled` before any Stage or Booking write.
 
 ## Considered Options
 

@@ -60,6 +60,10 @@ A Job's use of a Station within its owning Stage. Represented by a `job_stage_st
 **Station Catalog**:
 The set of all Stations across all Departments. Read by anyone with `job:read` (to render Job views). Mutated by admins and `job-supervisor`s.
 
+**Station Contention**:
+Two or more Jobs holding a Station Booking on the same Station over overlapping date ranges. **Explicitly allowed** — the platform does not prevent it — but it is surfaced visually (see **Schedule Gantt**) so a planner can see and resolve it deliberately. Overlap may exist on planned (due) ranges, actual ranges, or both.
+_Avoid_: "double-booking" as an error term — contention is permitted, not a fault.
+
 ### Dates & defaulting
 
 **Due Date**:
@@ -220,8 +224,8 @@ Per-Stage progress on the jobs list is rendered as a count chip (e.g. "Fabricati
 **Station Summary visibility**:
 Station Booking dates (due + actual) are part of the Job aggregate — every `job:read` user sees them, regardless of Department membership. **Stage Detail and Station write affordances** (Start/Stop) remain Department-scoped. This extends ADR-0010.
 
-**Gantt (deferred)**:
-A planned visualization of Stage/Station Bookings across a Job and across the Job list. Used (later) to detect cross-Job conflicts on a shared Station ("Station A is overdouble-booked"). Not implemented yet; the data model supports the query via `(station_id, due_start, due_end, actual_start, actual_end)` per booking.
+**Schedule Gantt**:
+The timeline visualization of a Job's schedule — Job, Stage, and Station Booking due and actual date ranges drawn as bars on a calendar grid. The primary surface for viewing and adjusting a Job's schedule, in place of plain-text date display. Per row, the **due** range is the planned track and the **actual** range is overlaid on it, so slippage is visible at a glance. Other Jobs may be toggled in to reveal **Station Contention** on shared Stations. Used on the Job Detail page, and — in a due-dates-only form — the Create-Job dialog.
 
 ## Relationships
 

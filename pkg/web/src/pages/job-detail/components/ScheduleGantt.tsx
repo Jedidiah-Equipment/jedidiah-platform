@@ -47,10 +47,18 @@ import {
   type ScheduleGanttRow,
 } from './schedule-gantt-helpers.js';
 
-type ScheduleGanttProps = {
-  canEditSchedule: boolean;
-  job: JobDetail;
-};
+type ScheduleGanttProps =
+  | {
+      canEditSchedule: boolean;
+      job: JobDetail;
+      mode?: 'job';
+    }
+  | {
+      canEditSchedule: boolean;
+      mode: 'create';
+      onEditDueRange: (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => void;
+      rows: ScheduleGanttRow[];
+    };
 
 type ScheduleGanttRenderableRow = ScheduleGanttRow & {
   expanded: boolean;
@@ -63,34 +71,40 @@ const ROW_HEIGHT = 42;
 const EMPTY_SHARED_BOOKING_JOBS: JobSharedStationBookingJob[] = [];
 const EMPTY_SELECTED_OVERLAY_JOB_IDS = new Set<string>();
 
-export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, job }) => {
+export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
+  const isCreateMode = props.mode === 'create';
+  const job = isCreateMode ? null : props.job;
+  const createRows = isCreateMode ? props.rows : null;
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
   const [optimisticDueRanges, setOptimisticDueRanges] = React.useState<Record<string, OptimisticDueRange>>({});
-  const sharedBookingsQuery = useQuery(trpc.jobs.listSharedStationBookings.queryOptions({ jobId: job.id }));
+  const sharedBookingsQuery = useQuery({
+    ...trpc.jobs.listSharedStationBookings.queryOptions({ jobId: job?.id ?? '' }),
+    enabled: job !== null,
+  });
   const sharedBookingJobs = sharedBookingsQuery.data?.jobs ?? EMPTY_SHARED_BOOKING_JOBS;
   const [overlaySelection, setOverlaySelection] = React.useState<{ jobId: string; jobIds: Set<string> }>(() => ({
-    jobId: job.id,
+    jobId: job?.id ?? '',
     jobIds: new Set(),
   }));
   const selectedOverlayJobIds =
-    overlaySelection.jobId === job.id ? overlaySelection.jobIds : EMPTY_SELECTED_OVERLAY_JOB_IDS;
+    job && overlaySelection.jobId === job.id ? overlaySelection.jobIds : EMPTY_SELECTED_OVERLAY_JOB_IDS;
   const editDateMutation = useMutation(
     trpc.jobs.editDate.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to update schedule date.'),
     }),
   );
 
-  const rows = React.useMemo(
-    () =>
-      buildScheduleGanttRows(job).map((row) => {
-        const optimisticRange = optimisticDueRanges[row.id];
+  const rows = React.useMemo(() => {
+    const sourceRows = createRows ?? (job ? buildScheduleGanttRows(job) : []);
 
-        return optimisticRange ? { ...row, ...optimisticRange } : row;
-      }),
-    [job, optimisticDueRanges],
-  );
+    return sourceRows.map((row) => {
+      const optimisticRange = optimisticDueRanges[row.id];
+
+      return optimisticRange ? { ...row, ...optimisticRange } : row;
+    });
+  }, [createRows, job, optimisticDueRanges]);
   const stageIds = React.useMemo(() => rows.filter((row) => row.level === 'stage').map((row) => row.id), [rows]);
   const [collapsedStageIds, setCollapsedStageIds] = React.useState<Set<string>>(() => new Set());
   const visibleRows = React.useMemo<ScheduleGanttRenderableRow[]>(
@@ -132,6 +146,8 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, j
     });
   };
   const toggleOverlayJob = (jobId: string) => {
+    if (!job) return;
+
     setOverlaySelection((current) => {
       const next = new Set(current.jobId === job.id ? current.jobIds : []);
       if (next.has(jobId)) {
@@ -145,6 +161,13 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, j
   };
   const editDueRange = async (row: ScheduleGanttRow, nextRange: OptimisticDueRange) => {
     if (!row.dueStart || !row.dueEnd) return;
+
+    if (isCreateMode) {
+      props.onEditDueRange(row, nextRange);
+      return;
+    }
+
+    if (!job) return;
 
     setOptimisticDueRanges((current) => ({ ...current, [row.id]: nextRange }));
 
@@ -180,6 +203,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, j
     nextRange: { actualEnd: string | null; actualStart: string },
   ) => {
     if (!row.actualStart) return;
+    if (!job) return;
 
     let attemptedEdit = false;
     try {
@@ -211,18 +235,22 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, j
         <div>
           <h2 className="text-base font-semibold">Schedule</h2>
           <p className="text-sm text-muted-foreground">
-            Due ranges and actual progress by Job, Department, and Station.
+            {isCreateMode
+              ? 'Due ranges by Job, Department, and Station.'
+              : 'Due ranges and actual progress by Job, Department, and Station.'}
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <LegendItem className="border border-sky-500/70 bg-transparent" label="Due" />
-          <LegendItem className="bg-sky-600" label="Actual" />
-          <LegendItem className="bg-muted-foreground/45 ring-1 ring-muted-foreground/50" label="Other job" />
+          {isCreateMode ? null : <LegendItem className="bg-sky-600" label="Actual" />}
+          {isCreateMode ? null : (
+            <LegendItem className="bg-muted-foreground/45 ring-1 ring-muted-foreground/50" label="Other job" />
+          )}
           <span className="inline-flex items-center gap-1">
             <DiamondIcon data-icon="inline-start" />
             Milestone
           </span>
-          {sharedBookingJobs.length > 0 ? (
+          {!isCreateMode && sharedBookingJobs.length > 0 ? (
             <SharedStationJobPicker
               isLoading={sharedBookingsQuery.isLoading}
               jobs={sharedBookingJobs}
@@ -246,8 +274,8 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = ({ canEditSchedule, j
               {visibleRows.map((row) =>
                 row.visible ? (
                   <ScheduleGanttTimelineRow
-                    canEditActualBars={canEditSchedule && !editDateMutation.isPending}
-                    canEditDueBars={canEditSchedule && !editDateMutation.isPending}
+                    canEditActualBars={!isCreateMode && props.canEditSchedule && !editDateMutation.isPending}
+                    canEditDueBars={props.canEditSchedule && !editDateMutation.isPending}
                     key={row.id}
                     onEditActualDates={editActualDates}
                     onEditDueRange={editDueRange}

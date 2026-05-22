@@ -459,6 +459,12 @@ export const JobStationBookingTransitionInput = z.object({
   id: UUID,
 });
 
+export type JobSetStatusInput = z.infer<typeof JobSetStatusInput>;
+export const JobSetStatusInput = z.object({
+  id: UUID,
+  status: JobStatus,
+});
+
 export type JobDateEditInput = z.infer<typeof JobDateEditInput>;
 export const JobDateEditInput = z
   .object({

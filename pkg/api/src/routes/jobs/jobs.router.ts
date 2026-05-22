@@ -6,6 +6,7 @@ import {
   type JobCoreError,
   listJobs,
   listSharedStationBookings,
+  setJobStatus,
   startStationBooking,
   stopStationBooking,
 } from '@pkg/core';
@@ -13,6 +14,7 @@ import {
   JobCreateInput,
   JobDateEditInput,
   JobListInput,
+  JobSetStatusInput,
   JobSharedStationBookingsInput,
   JobStationBookingTransitionInput,
   UUID,
@@ -46,6 +48,19 @@ export const jobsRouter = router({
     .mutation(({ ctx, input }) =>
       mapJobErrors(() =>
         editJobDate({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          input,
+        }),
+      ),
+    ),
+
+  setStatus: authorizedProcedure('job:update')
+    .input(JobSetStatusInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        setJobStatus({
           access: ctx.access,
           actorUserId: ctx.session.user.id,
           db: ctx.db,
@@ -130,6 +145,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         message: error.message,
       };
     case 'job.create_from_quote_denied':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: error.message,
+      };
+    case 'job.status_update_denied':
       return {
         appCode: error.code,
         code: 'FORBIDDEN',

@@ -53,7 +53,7 @@ export function NumberField({
           setDisplayValue(event.target.value);
           field.handleChange(parseNumberFieldValue(event.target.value, emptyValue));
         }}
-        type="number"
+        type="text"
         value={displayValue}
         {...inputProps}
       />

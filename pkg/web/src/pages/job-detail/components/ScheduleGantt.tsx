@@ -69,7 +69,6 @@ const SIDEBAR_WIDTH = 300;
 const ROW_HEIGHT = 42;
 const STATION_LANE_HEIGHT = 72;
 const STATION_ROW_PADDING = 6;
-const STATION_PLANNED_OFFSET = 0;
 const STATION_ACTUAL_OFFSET = 18;
 const PLANNED_BAR_HEIGHT = 48;
 const ACTUAL_LINE_HEIGHT = 4;
@@ -159,6 +158,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
     {},
   );
   const [optimisticActualRanges, setOptimisticActualRanges] = React.useState<Record<string, OptimisticActualRange>>({});
+  const [scheduleEditCompletionKey, setScheduleEditCompletionKey] = React.useState(0);
   const sharedBookingsQuery = useQuery({
     ...trpc.jobs.listSharedStationBookings.queryOptions({ jobId: job?.id ?? '' }),
     enabled: job !== null,
@@ -255,6 +255,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
         delete next[row.id];
         return next;
       });
+      setScheduleEditCompletionKey((current) => current + 1);
     }
   };
   const editActualDates = async (
@@ -293,6 +294,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
         delete next[row.id];
         return next;
       });
+      setScheduleEditCompletionKey((current) => current + 1);
     }
   };
 
@@ -349,6 +351,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
                   key={row.id}
                   onEditActualDates={editActualDates}
                   onEditPlannedRange={editPlannedRange}
+                  previewResetVersion={scheduleEditCompletionKey}
                   row={row}
                   selectedOverlayJobIds={selectedOverlayJobIds}
                   sharedBookingJobs={sharedBookingJobs}
@@ -446,6 +449,7 @@ const ScheduleGanttTimelineRow: React.FC<{
     nextRange: { actualEnd: string | null; actualStart: string },
   ) => void;
   onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  previewResetVersion: number;
   row: ScheduleGanttRow;
   selectedOverlayJobIds: Set<string>;
   sharedBookingJobs: JobSharedStationBookingJob[];
@@ -454,6 +458,7 @@ const ScheduleGanttTimelineRow: React.FC<{
   canEditPlannedBars,
   onEditActualDates,
   onEditPlannedRange,
+  previewResetVersion,
   row,
   selectedOverlayJobIds,
   sharedBookingJobs,
@@ -463,6 +468,7 @@ const ScheduleGanttTimelineRow: React.FC<{
     canEditPlannedBars={canEditPlannedBars}
     onEditActualDates={onEditActualDates}
     onEditPlannedRange={onEditPlannedRange}
+    previewResetVersion={previewResetVersion}
     row={row}
     selectedOverlayJobIds={selectedOverlayJobIds}
     sharedBookingJobs={sharedBookingJobs}
@@ -477,6 +483,7 @@ const ScheduleGanttTimelineRowInner: React.FC<{
     nextRange: { actualEnd: string | null; actualStart: string },
   ) => void;
   onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  previewResetVersion: number;
   row: ScheduleGanttRow;
   selectedOverlayJobIds: Set<string>;
   sharedBookingJobs: JobSharedStationBookingJob[];
@@ -485,6 +492,7 @@ const ScheduleGanttTimelineRowInner: React.FC<{
   canEditPlannedBars,
   onEditActualDates,
   onEditPlannedRange,
+  previewResetVersion,
   row,
   selectedOverlayJobIds,
   sharedBookingJobs,
@@ -500,7 +508,12 @@ const ScheduleGanttTimelineRowInner: React.FC<{
       {row.level === 'job' ? (
         <>
           <ScheduleGanttPlannedRange canEdit={false} onEdit={onEditPlannedRange} row={row} />
-          <ScheduleGanttActualRange canEdit={false} onEdit={onEditActualDates} row={row} />
+          <ScheduleGanttActualRange
+            canEdit={false}
+            onEdit={onEditActualDates}
+            previewResetVersion={previewResetVersion}
+            row={row}
+          />
         </>
       ) : (
         <ScheduleGanttStationLanes
@@ -508,6 +521,7 @@ const ScheduleGanttTimelineRowInner: React.FC<{
           canEditPlannedBars={canEditPlannedBars}
           onEditActualDates={onEditActualDates}
           onEditPlannedRange={onEditPlannedRange}
+          previewResetVersion={previewResetVersion}
           row={row}
           selectedOverlayJobIds={selectedOverlayJobIds}
           sharedBookingJobs={sharedBookingJobs}
@@ -525,6 +539,7 @@ const ScheduleGanttStationLanes: React.FC<{
     nextRange: { actualEnd: string | null; actualStart: string },
   ) => void;
   onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  previewResetVersion: number;
   row: ScheduleGanttRow;
   selectedOverlayJobIds: Set<string>;
   sharedBookingJobs: JobSharedStationBookingJob[];
@@ -533,6 +548,7 @@ const ScheduleGanttStationLanes: React.FC<{
   canEditPlannedBars,
   onEditActualDates,
   onEditPlannedRange,
+  previewResetVersion,
   row,
   selectedOverlayJobIds,
   sharedBookingJobs,
@@ -546,6 +562,7 @@ const ScheduleGanttStationLanes: React.FC<{
         laneIndex={laneIndex}
         onEditActualDates={onEditActualDates}
         onEditPlannedRange={onEditPlannedRange}
+        previewResetVersion={previewResetVersion}
         overlays={getScheduleGanttStationOverlays({
           selectedOverlayJobIds,
           sharedBookingJobs,
@@ -568,6 +585,7 @@ const ScheduleGanttStationLane: React.FC<{
   ) => void;
   onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
   overlays: JobSharedStationBookingJob[];
+  previewResetVersion: number;
   row: ScheduleGanttRow;
   stationBooking: ScheduleGanttStationBooking;
 }> = ({
@@ -577,6 +595,7 @@ const ScheduleGanttStationLane: React.FC<{
   onEditActualDates,
   onEditPlannedRange,
   overlays,
+  previewResetVersion,
   row,
   stationBooking,
 }) => {
@@ -589,13 +608,15 @@ const ScheduleGanttStationLane: React.FC<{
       <ScheduleGanttPlannedRange
         canEdit={canEditPlannedBars}
         onEdit={onEditPlannedRange}
+        previewResetVersion={previewResetVersion}
         row={stationBooking}
-        topOffset={topOffset + STATION_PLANNED_OFFSET}
+        topOffset={topOffset}
         visibleLabel={stationLabel}
       />
       <ScheduleGanttActualRange
         canEdit={canEditActualBars}
         onEdit={onEditActualDates}
+        previewResetVersion={previewResetVersion}
         row={stationBooking}
         topOffset={topOffset + STATION_ACTUAL_OFFSET}
       />
@@ -652,10 +673,11 @@ const ScheduleGanttOccupancyBar: React.FC<{
 const ScheduleGanttPlannedRange: React.FC<{
   canEdit: boolean;
   onEdit: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  previewResetVersion?: number;
   row: ScheduleGanttEditableItem;
   topOffset?: number;
   visibleLabel?: string | undefined;
-}> = ({ canEdit, onEdit, row, topOffset = 0, visibleLabel }) => {
+}> = ({ canEdit, onEdit, previewResetVersion, row, topOffset = 0, visibleLabel }) => {
   const planned = getScheduleGanttPlannedDisplay(row);
 
   if (planned.kind === 'none') {
@@ -685,6 +707,7 @@ const ScheduleGanttPlannedRange: React.FC<{
       editable={canEdit}
       height={row.level === 'job' ? 4 : PLANNED_BAR_HEIGHT}
       hoverCard={getScheduleGanttHoverCardModel(row)}
+      key={`planned-${row.id}-${previewResetVersion ?? 0}`}
       onEdit={(action, dayDelta) => {
         const nextRange = getScheduleGanttPlannedRangeAfterDrag({
           action,
@@ -712,10 +735,11 @@ const ScheduleGanttPlannedRange: React.FC<{
 const ScheduleGanttActualRange: React.FC<{
   canEdit: boolean;
   onEdit: (row: ScheduleGanttEditableItem, nextRange: { actualEnd: string | null; actualStart: string }) => void;
+  previewResetVersion?: number;
   row: ScheduleGanttEditableItem;
   topOffset?: number;
   visibleLabel?: string | undefined;
-}> = ({ canEdit, onEdit, row, topOffset = 0, visibleLabel }) => {
+}> = ({ canEdit, onEdit, previewResetVersion, row, topOffset = 0, visibleLabel }) => {
   const actual = getScheduleGanttActualDisplay(row);
 
   if (actual.kind === 'none') {
@@ -730,6 +754,7 @@ const ScheduleGanttActualRange: React.FC<{
         end={actual.end}
         height={ACTUAL_LINE_HEIGHT}
         hoverCard={getScheduleGanttHoverCardModel(row)}
+        key={`actual-${row.id}-${previewResetVersion ?? 0}`}
         label={getScheduleGanttBarLabel(row, actual.label)}
         onEdit={(action, _dayDelta, millisecondDelta) => {
           const nextRange = getScheduleGanttActualRangeAfterDrag({
@@ -757,6 +782,7 @@ const ScheduleGanttActualRange: React.FC<{
       end={actual.end}
       height={ACTUAL_LINE_HEIGHT}
       hoverCard={getScheduleGanttHoverCardModel(row)}
+      key={`actual-${row.id}-${previewResetVersion ?? 0}`}
       label={getScheduleGanttBarLabel(row, actual.label)}
       start={actual.start}
       topOffset={topOffset}

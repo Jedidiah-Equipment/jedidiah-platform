@@ -183,10 +183,6 @@ export function parseScheduleDate(value: string | null): Date | null {
   return date ? startOfDay(date) : null;
 }
 
-function parseScheduleDateTime(value: string | null): Date | null {
-  return parseDate(value);
-}
-
 export function getActualEndForDisplay(start: Date, end: Date | null, now = new Date()): Date {
   if (end) {
     return end;
@@ -251,8 +247,8 @@ export function getScheduleGanttHoverCardModel(
 ): ScheduleGanttHoverCardModel {
   const plannedStart = parseScheduleDate(row.plannedStart);
   const plannedEnd = parseScheduleDate(row.plannedEnd);
-  const actualStart = parseScheduleDateTime(row.actualStart);
-  const actualEnd = parseScheduleDateTime(row.actualEnd);
+  const actualStart = parseDate(row.actualStart);
+  const actualEnd = parseDate(row.actualEnd);
   const actualDisplayEnd = actualStart ? getActualEndForDisplay(actualStart, actualEnd, now) : null;
 
   return {
@@ -504,8 +500,8 @@ export function getScheduleGanttActualDisplay(
   row: ActualDateFields,
   now = new Date(),
 ): { kind: 'none' } | { end: Date; kind: 'range'; label: string; openEnded: boolean; start: Date } {
-  const start = parseScheduleDateTime(row.actualStart);
-  const end = parseScheduleDateTime(row.actualEnd);
+  const start = parseDate(row.actualStart);
+  const end = parseDate(row.actualEnd);
 
   if (!start) {
     return { kind: 'none' };

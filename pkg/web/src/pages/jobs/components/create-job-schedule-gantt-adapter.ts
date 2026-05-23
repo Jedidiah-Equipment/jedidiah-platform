@@ -1,7 +1,11 @@
 import { departmentLabels } from '@pkg/domain';
 import type { Station } from '@pkg/schema';
 
-import type { OptimisticPlannedRange, ScheduleGanttRow } from '@/pages/job-detail/components/schedule-gantt-helpers.js';
+import type {
+  OptimisticPlannedRange,
+  ScheduleGanttEditableItem,
+  ScheduleGanttRow,
+} from '@/pages/job-detail/components/schedule-gantt-helpers.js';
 
 import type { StageDraft } from './create-job-dialog-helpers.js';
 
@@ -37,26 +41,23 @@ export function buildCreateScheduleGanttRows({
       level: 'job',
       parentId: null,
       stationId: null,
+      stationBookings: [],
       statusLabel: 'Draft',
       title: 'Draft Job',
     },
-    ...stages.flatMap((stage) => {
+    ...stages.map((stage) => {
       const stageRowId = getCreateStageRowId(stage.stage);
 
-      return [
-        {
-          actualEnd: null,
-          actualStart: null,
-          ...getDraftWindow(stage.stationBookings),
-          entityId: stage.stage,
-          id: stageRowId,
-          level: 'stage' as const,
-          parentId: null,
-          stationId: null,
-          statusLabel: 'Draft',
-          title: departmentLabels[stage.stage],
-        },
-        ...stage.stationBookings.map((booking) => ({
+      return {
+        actualEnd: null,
+        actualStart: null,
+        ...getDraftWindow(stage.stationBookings),
+        entityId: stage.stage,
+        id: stageRowId,
+        level: 'stage' as const,
+        parentId: null,
+        stationId: null,
+        stationBookings: stage.stationBookings.map((booking) => ({
           actualEnd: null,
           actualStart: null,
           plannedEnd: booking.plannedEnd || null,
@@ -65,11 +66,14 @@ export function buildCreateScheduleGanttRows({
           id: getCreateStationRowId(booking.id),
           level: 'station' as const,
           parentId: stageRowId,
+          stage: stage.stage,
           stationId: booking.stationId,
           statusLabel: 'Draft',
           title: stationNamesById.get(booking.stationId) ?? 'Selected Station',
         })),
-      ];
+        statusLabel: 'Draft',
+        title: departmentLabels[stage.stage],
+      };
     }),
   ];
 }
@@ -81,7 +85,7 @@ export function applyCreateScheduleGanttPlannedRangeEdit({
 }: {
   anchorKind: 'end' | 'start';
   nextRange: OptimisticPlannedRange;
-  row: ScheduleGanttRow;
+  row: ScheduleGanttEditableItem;
   stages: StageDraft[];
 }): CreateScheduleGanttEdit {
   if (row.level !== 'station') {

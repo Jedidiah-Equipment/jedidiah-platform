@@ -1,9 +1,9 @@
-import type { JobDetail, JobSharedStationBookingJob } from '@pkg/schema';
+import type { JobDetail, JobSharedStationBookingJob, JobStageName } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BriefcaseBusinessIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon, DiamondIcon } from 'lucide-react';
+import { BriefcaseBusinessIcon, ChevronDownIcon, CircleIcon, DiamondIcon } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
-
+import { DepartmentIcon } from '@/components/departments/index.js';
 import {
   GanttFeatureList,
   GanttHeader,
@@ -24,6 +24,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -33,15 +34,22 @@ import {
   getScheduleGanttActualDateEdits,
   getScheduleGanttActualDisplay,
   getScheduleGanttActualRangeAfterDrag,
+  getScheduleGanttBarLabel,
+  getScheduleGanttHoverCardModel,
   getScheduleGanttOccupancyDisplay,
   getScheduleGanttPlannedDateEdits,
   getScheduleGanttPlannedDisplay,
   getScheduleGanttPlannedRangeAfterDrag,
   getScheduleGanttTimelineDayCount,
+  type OptimisticActualRange,
   type OptimisticPlannedRange,
   type PlannedDragAction,
   parseScheduleDate,
+  type ScheduleGanttEditableItem,
+  type ScheduleGanttHealth,
+  type ScheduleGanttHoverCardModel,
   type ScheduleGanttRow,
+  type ScheduleGanttStationBooking,
 } from './schedule-gantt-helpers.js';
 
 type ScheduleGanttProps =
@@ -53,20 +61,92 @@ type ScheduleGanttProps =
   | {
       canEditSchedule: boolean;
       mode: 'create';
-      onEditPlannedRange: (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => void;
+      onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
       rows: ScheduleGanttRow[];
     };
 
-type ScheduleGanttRenderableRow = ScheduleGanttRow & {
-  expanded: boolean;
-  overlays: JobSharedStationBookingJob[];
-  visible: boolean;
-};
-
 const SIDEBAR_WIDTH = 300;
 const ROW_HEIGHT = 42;
+const STATION_LANE_HEIGHT = 72;
+const STATION_ROW_PADDING = 6;
+const STATION_PLANNED_OFFSET = 0;
+const STATION_ACTUAL_OFFSET = 18;
+const PLANNED_BAR_HEIGHT = 48;
+const ACTUAL_LINE_HEIGHT = 4;
 const EMPTY_SHARED_BOOKING_JOBS: JobSharedStationBookingJob[] = [];
 const EMPTY_SELECTED_OVERLAY_JOB_IDS = new Set<string>();
+const SCHEDULE_HEALTH_CLASSES = {
+  Late: 'border-red-500/60 bg-red-500/10 text-red-700 dark:text-red-200',
+  'Not started': 'border-muted-foreground/40 bg-muted text-muted-foreground',
+  'On time': 'border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200',
+  'On track': 'border-sky-500/60 bg-sky-500/10 text-sky-700 dark:text-sky-200',
+  Overdue: 'border-red-500/60 bg-red-500/10 text-red-700 dark:text-red-200',
+  Unplanned: 'border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-200',
+} as const satisfies Record<ScheduleGanttHealth, string>;
+const PLANNED_BAR_CLASSES_BY_STAGE = {
+  procurement:
+    'border-violet-500/45 bg-violet-500/5 text-violet-700 shadow-[inset_0_0_0_1px_rgb(139_92_246_/_0.08)] before:bg-violet-500/80 hover:border-violet-500/90 hover:bg-violet-500/10 focus-visible:border-violet-500/90 focus-visible:bg-violet-500/10 dark:text-violet-200',
+  supply:
+    'border-amber-500/45 bg-amber-500/5 text-amber-800 shadow-[inset_0_0_0_1px_rgb(245_158_11_/_0.08)] before:bg-amber-500/80 hover:border-amber-500/90 hover:bg-amber-500/10 focus-visible:border-amber-500/90 focus-visible:bg-amber-500/10 dark:text-amber-200',
+  fabrication:
+    'border-cyan-500/45 bg-cyan-500/5 text-cyan-800 shadow-[inset_0_0_0_1px_rgb(6_182_212_/_0.08)] before:bg-cyan-500/80 hover:border-cyan-500/90 hover:bg-cyan-500/10 focus-visible:border-cyan-500/90 focus-visible:bg-cyan-500/10 dark:text-cyan-200',
+  paint:
+    'border-rose-500/45 bg-rose-500/5 text-rose-800 shadow-[inset_0_0_0_1px_rgb(244_63_94_/_0.08)] before:bg-rose-500/80 hover:border-rose-500/90 hover:bg-rose-500/10 focus-visible:border-rose-500/90 focus-visible:bg-rose-500/10 dark:text-rose-200',
+  assembly:
+    'border-teal-500/45 bg-teal-500/5 text-teal-800 shadow-[inset_0_0_0_1px_rgb(20_184_166_/_0.08)] before:bg-teal-500/80 hover:border-teal-500/90 hover:bg-teal-500/10 focus-visible:border-teal-500/90 focus-visible:bg-teal-500/10 dark:text-teal-200',
+} as const satisfies Record<JobStageName, string>;
+
+function getScheduleGanttRowHeight(row: ScheduleGanttRow): number {
+  if (row.level !== 'stage') return ROW_HEIGHT;
+
+  return Math.max(ROW_HEIGHT, STATION_ROW_PADDING * 2 + row.stationBookings.length * STATION_LANE_HEIGHT);
+}
+
+function getStationLaneTopOffset(row: ScheduleGanttRow, laneIndex: number): number {
+  const laneCenter = STATION_ROW_PADDING + STATION_LANE_HEIGHT * laneIndex + STATION_LANE_HEIGHT / 2;
+
+  return laneCenter - getScheduleGanttRowHeight(row) / 2;
+}
+
+function getScheduleGanttStationOverlays({
+  selectedOverlayJobIds,
+  sharedBookingJobs,
+  stationId,
+}: {
+  selectedOverlayJobIds: Set<string>;
+  sharedBookingJobs: JobSharedStationBookingJob[];
+  stationId: string;
+}): JobSharedStationBookingJob[] {
+  return sharedBookingJobs
+    .filter((overlayJob) => selectedOverlayJobIds.has(overlayJob.jobId))
+    .map((overlayJob) => ({
+      ...overlayJob,
+      bookings: overlayJob.bookings.filter((booking) => booking.stationId === stationId),
+    }))
+    .filter((overlayJob) => overlayJob.bookings.length > 0);
+}
+
+function isScheduleGanttActualPastPlannedEnd(row: ScheduleGanttEditableItem, now = new Date()): boolean {
+  const plannedEnd = parseScheduleDate(row.plannedEnd);
+  if (!plannedEnd) return false;
+
+  const actualEnd = parseScheduleDate(row.actualEnd);
+  const actualComparisonDate = actualEnd ?? parseScheduleDate(now.toISOString());
+
+  return actualComparisonDate ? actualComparisonDate.getTime() > plannedEnd.getTime() : false;
+}
+
+function getScheduleGanttActualClassName(row: ScheduleGanttEditableItem): string {
+  if (isScheduleGanttActualPastPlannedEnd(row)) return 'bg-red-600 text-white';
+
+  return row.actualEnd ? 'bg-emerald-600 text-white' : 'bg-sky-600 text-white';
+}
+
+function getScheduleGanttPlannedClassName(row: ScheduleGanttEditableItem): string {
+  if (row.level === 'station') return PLANNED_BAR_CLASSES_BY_STAGE[row.stage];
+
+  return 'border-sky-500/70 bg-sky-500/10 text-sky-700 shadow-[inset_0_0_0_1px_rgb(14_165_233_/_0.12)] dark:text-sky-300';
+}
 
 export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
   const isCreateMode = props.mode === 'create';
@@ -78,6 +158,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
   const [optimisticPlannedRanges, setOptimisticPlannedRanges] = React.useState<Record<string, OptimisticPlannedRange>>(
     {},
   );
+  const [optimisticActualRanges, setOptimisticActualRanges] = React.useState<Record<string, OptimisticActualRange>>({});
   const sharedBookingsQuery = useQuery({
     ...trpc.jobs.listSharedStationBookings.queryOptions({ jobId: job?.id ?? '' }),
     enabled: job !== null,
@@ -99,52 +180,30 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
     const sourceRows = createRows ?? (job ? buildScheduleGanttRows(job) : []);
 
     return sourceRows.map((row) => {
-      const optimisticRange = optimisticPlannedRanges[row.id];
-
-      return optimisticRange ? { ...row, ...optimisticRange } : row;
-    });
-  }, [createRows, job, optimisticPlannedRanges]);
-  const stageIds = React.useMemo(() => rows.filter((row) => row.level === 'stage').map((row) => row.id), [rows]);
-  const [collapsedStageIds, setCollapsedStageIds] = React.useState<Set<string>>(() => new Set());
-  const visibleRows = React.useMemo<ScheduleGanttRenderableRow[]>(
-    () =>
-      rows.map((row) => {
-        const isCollapsedChild = row.parentId ? collapsedStageIds.has(row.parentId) : false;
-        const overlays =
-          row.level === 'station' && row.stationId
-            ? sharedBookingJobs
-                .filter((overlayJob) => selectedOverlayJobIds.has(overlayJob.jobId))
-                .map((overlayJob) => ({
-                  ...overlayJob,
-                  bookings: overlayJob.bookings.filter((booking) => booking.stationId === row.stationId),
-                }))
-                .filter((overlayJob) => overlayJob.bookings.length > 0)
-            : [];
+      const optimisticActualRange = optimisticActualRanges[row.id];
+      const optimisticPlannedRange = optimisticPlannedRanges[row.id];
+      const stationBookings = row.stationBookings.map((stationBooking) => {
+        const stationOptimisticActualRange = optimisticActualRanges[stationBooking.id];
+        const stationOptimisticPlannedRange = optimisticPlannedRanges[stationBooking.id];
 
         return {
-          ...row,
-          expanded: row.level === 'stage' ? !collapsedStageIds.has(row.id) : false,
-          overlays,
-          visible: !isCollapsedChild,
+          ...stationBooking,
+          ...stationOptimisticPlannedRange,
+          ...stationOptimisticActualRange,
         };
-      }),
-    [collapsedStageIds, rows, selectedOverlayJobIds, sharedBookingJobs],
-  );
-  const visibleRowCount = visibleRows.filter((row) => row.visible).length;
-  const ganttHeight = Math.max(420, 60 + visibleRowCount * ROW_HEIGHT);
+      });
+
+      return {
+        ...row,
+        ...optimisticPlannedRange,
+        ...optimisticActualRange,
+        stationBookings,
+      };
+    });
+  }, [createRows, job, optimisticActualRanges, optimisticPlannedRanges]);
+  const ganttHeight = Math.max(420, 60 + rows.reduce((total, row) => total + getScheduleGanttRowHeight(row), 0));
   const jobDueDate = parseScheduleDate(job?.dueDate ?? null);
 
-  const toggleStage = (stageId: string) => {
-    setCollapsedStageIds((current) => {
-      const next = new Set(current);
-      if (next.has(stageId)) {
-        next.delete(stageId);
-      } else {
-        next.add(stageId);
-      }
-      return next;
-    });
-  };
   const toggleOverlayJob = (jobId: string) => {
     if (!job) return;
 
@@ -159,7 +218,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
       return { jobId: job.id, jobIds: next };
     });
   };
-  const editPlannedRange = async (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => {
+  const editPlannedRange = async (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => {
     if (!row.plannedStart || !row.plannedEnd) return;
 
     if (isCreateMode) {
@@ -199,11 +258,13 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
     }
   };
   const editActualDates = async (
-    row: ScheduleGanttRow,
+    row: ScheduleGanttEditableItem,
     nextRange: { actualEnd: string | null; actualStart: string },
   ) => {
     if (!row.actualStart) return;
     if (!job) return;
+
+    setOptimisticActualRanges((current) => ({ ...current, [row.id]: nextRange }));
 
     let attemptedEdit = false;
     try {
@@ -226,6 +287,12 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
       if (attemptedEdit) {
         await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
       }
+    } finally {
+      setOptimisticActualRanges((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
     }
   };
 
@@ -263,12 +330,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
       </div>
       <div style={{ height: ganttHeight }}>
         <GanttProvider className="rounded-md border bg-background" range="daily" zoom={70}>
-          <ScheduleGanttSidebar
-            collapsedStageIds={collapsedStageIds}
-            rows={visibleRows}
-            stageIds={stageIds}
-            toggleStage={toggleStage}
-          />
+          <ScheduleGanttSidebar rows={rows} />
           <GanttTimeline>
             <GanttHeader />
             {jobDueDate ? (
@@ -280,21 +342,18 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
               />
             ) : null}
             <GanttFeatureList className="absolute top-0 left-0 h-full w-max space-y-0">
-              {visibleRows.map((row) =>
-                row.visible ? (
-                  <ScheduleGanttTimelineRow
-                    canEditActualBars={
-                      row.level === 'station' && !isCreateMode && props.canEditSchedule && !editDateMutation.isPending
-                    }
-                    canEditPlannedBars={row.level === 'station' && props.canEditSchedule && !editDateMutation.isPending}
-                    key={row.id}
-                    onEditActualDates={editActualDates}
-                    onEditPlannedRange={editPlannedRange}
-                    overlays={row.overlays}
-                    row={row}
-                  />
-                ) : null,
-              )}
+              {rows.map((row) => (
+                <ScheduleGanttTimelineRow
+                  canEditActualBars={!isCreateMode && props.canEditSchedule && !editDateMutation.isPending}
+                  canEditPlannedBars={props.canEditSchedule && !editDateMutation.isPending}
+                  key={row.id}
+                  onEditActualDates={editActualDates}
+                  onEditPlannedRange={editPlannedRange}
+                  row={row}
+                  selectedOverlayJobIds={selectedOverlayJobIds}
+                  sharedBookingJobs={sharedBookingJobs}
+                />
+              ))}
               <GanttToday className="bg-primary text-primary-foreground" />
             </GanttFeatureList>
           </GanttTimeline>
@@ -344,11 +403,8 @@ const SharedStationJobPicker: React.FC<{
 );
 
 const ScheduleGanttSidebar: React.FC<{
-  collapsedStageIds: Set<string>;
-  rows: ScheduleGanttRenderableRow[];
-  stageIds: string[];
-  toggleStage: (stageId: string) => void;
-}> = ({ collapsedStageIds, rows, stageIds, toggleStage }) => (
+  rows: ScheduleGanttRow[];
+}> = ({ rows }) => (
   <div
     className="sticky left-0 z-30 h-max min-h-full overflow-clip border-r bg-background/95 backdrop-blur"
     data-roadmap-ui="gantt-sidebar"
@@ -362,37 +418,18 @@ const ScheduleGanttSidebar: React.FC<{
       <span>Status</span>
     </div>
     {rows.map((row) => {
-      if (!row.visible) return null;
-
-      const isStage = stageIds.includes(row.id);
-      const isCollapsed = collapsedStageIds.has(row.id);
-
       return (
         <div
           className={cn(
             'flex items-center gap-2 border-b px-3 text-xs',
             row.level === 'job' && 'bg-muted/50 font-medium',
-            row.level === 'station' && 'pl-9',
           )}
           key={row.id}
-          style={{ height: ROW_HEIGHT }}
+          style={{ height: getScheduleGanttRowHeight(row) }}
         >
-          {isStage ? (
-            <Button
-              aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${row.title}`}
-              className="shrink-0"
-              onClick={() => toggleStage(row.id)}
-              size="icon"
-              type="button"
-              variant="ghost"
-            >
-              {isCollapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
-            </Button>
-          ) : (
-            <span className="flex size-8 shrink-0 items-center justify-center">
-              <CircleIcon className={cn('text-muted-foreground', row.level === 'station' && 'size-2 fill-current')} />
-            </span>
-          )}
+          <span className="flex size-8 shrink-0 items-center justify-center">
+            <CircleIcon className={cn('text-muted-foreground', row.level === 'stage' && 'size-2 fill-current')} />
+          </span>
           <span className="min-w-0 flex-1 truncate font-medium">{row.title}</span>
           <span className="shrink-0 text-muted-foreground">{row.statusLabel}</span>
         </div>
@@ -404,45 +441,172 @@ const ScheduleGanttSidebar: React.FC<{
 const ScheduleGanttTimelineRow: React.FC<{
   canEditActualBars: boolean;
   canEditPlannedBars: boolean;
-  onEditActualDates: (row: ScheduleGanttRow, nextRange: { actualEnd: string | null; actualStart: string }) => void;
-  onEditPlannedRange: (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => void;
-  overlays: JobSharedStationBookingJob[];
+  onEditActualDates: (
+    row: ScheduleGanttEditableItem,
+    nextRange: { actualEnd: string | null; actualStart: string },
+  ) => void;
+  onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
   row: ScheduleGanttRow;
-}> = ({ canEditActualBars, canEditPlannedBars, onEditActualDates, onEditPlannedRange, overlays, row }) => (
+  selectedOverlayJobIds: Set<string>;
+  sharedBookingJobs: JobSharedStationBookingJob[];
+}> = ({
+  canEditActualBars,
+  canEditPlannedBars,
+  onEditActualDates,
+  onEditPlannedRange,
+  row,
+  selectedOverlayJobIds,
+  sharedBookingJobs,
+}) => (
   <ScheduleGanttTimelineRowInner
     canEditActualBars={canEditActualBars}
     canEditPlannedBars={canEditPlannedBars}
     onEditActualDates={onEditActualDates}
     onEditPlannedRange={onEditPlannedRange}
-    overlays={overlays}
     row={row}
+    selectedOverlayJobIds={selectedOverlayJobIds}
+    sharedBookingJobs={sharedBookingJobs}
   />
 );
 
 const ScheduleGanttTimelineRowInner: React.FC<{
   canEditActualBars: boolean;
   canEditPlannedBars: boolean;
-  onEditActualDates: (row: ScheduleGanttRow, nextRange: { actualEnd: string | null; actualStart: string }) => void;
-  onEditPlannedRange: (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => void;
-  overlays: JobSharedStationBookingJob[];
+  onEditActualDates: (
+    row: ScheduleGanttEditableItem,
+    nextRange: { actualEnd: string | null; actualStart: string },
+  ) => void;
+  onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
   row: ScheduleGanttRow;
-}> = ({ canEditActualBars, canEditPlannedBars, onEditActualDates, onEditPlannedRange, overlays, row }) => {
+  selectedOverlayJobIds: Set<string>;
+  sharedBookingJobs: JobSharedStationBookingJob[];
+}> = ({
+  canEditActualBars,
+  canEditPlannedBars,
+  onEditActualDates,
+  onEditPlannedRange,
+  row,
+  selectedOverlayJobIds,
+  sharedBookingJobs,
+}) => {
   const gantt = useGanttContext();
   const dayCount = getScheduleGanttTimelineDayCount(gantt.timelineData);
 
   return (
     <div
       className={cn('relative border-b', row.level === 'job' && 'bg-muted/20')}
-      style={{ height: ROW_HEIGHT, width: `calc(var(--gantt-column-width) * ${dayCount})` }}
+      style={{ height: getScheduleGanttRowHeight(row), width: `calc(var(--gantt-column-width) * ${dayCount})` }}
     >
-      <ScheduleGanttOccupancyOverlays jobs={overlays} />
-      <ScheduleGanttPlannedRange canEdit={canEditPlannedBars} onEdit={onEditPlannedRange} row={row} />
-      <ScheduleGanttActualRange canEdit={canEditActualBars} onEdit={onEditActualDates} row={row} />
+      {row.level === 'job' ? (
+        <>
+          <ScheduleGanttPlannedRange canEdit={false} onEdit={onEditPlannedRange} row={row} />
+          <ScheduleGanttActualRange canEdit={false} onEdit={onEditActualDates} row={row} />
+        </>
+      ) : (
+        <ScheduleGanttStationLanes
+          canEditActualBars={canEditActualBars}
+          canEditPlannedBars={canEditPlannedBars}
+          onEditActualDates={onEditActualDates}
+          onEditPlannedRange={onEditPlannedRange}
+          row={row}
+          selectedOverlayJobIds={selectedOverlayJobIds}
+          sharedBookingJobs={sharedBookingJobs}
+        />
+      )}
     </div>
   );
 };
 
-const ScheduleGanttOccupancyOverlays: React.FC<{ jobs: JobSharedStationBookingJob[] }> = ({ jobs }) => (
+const ScheduleGanttStationLanes: React.FC<{
+  canEditActualBars: boolean;
+  canEditPlannedBars: boolean;
+  onEditActualDates: (
+    row: ScheduleGanttEditableItem,
+    nextRange: { actualEnd: string | null; actualStart: string },
+  ) => void;
+  onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  row: ScheduleGanttRow;
+  selectedOverlayJobIds: Set<string>;
+  sharedBookingJobs: JobSharedStationBookingJob[];
+}> = ({
+  canEditActualBars,
+  canEditPlannedBars,
+  onEditActualDates,
+  onEditPlannedRange,
+  row,
+  selectedOverlayJobIds,
+  sharedBookingJobs,
+}) => (
+  <>
+    {row.stationBookings.map((stationBooking, laneIndex) => (
+      <ScheduleGanttStationLane
+        canEditActualBars={canEditActualBars}
+        canEditPlannedBars={canEditPlannedBars}
+        key={stationBooking.id}
+        laneIndex={laneIndex}
+        onEditActualDates={onEditActualDates}
+        onEditPlannedRange={onEditPlannedRange}
+        overlays={getScheduleGanttStationOverlays({
+          selectedOverlayJobIds,
+          sharedBookingJobs,
+          stationId: stationBooking.stationId,
+        })}
+        row={row}
+        stationBooking={stationBooking}
+      />
+    ))}
+  </>
+);
+
+const ScheduleGanttStationLane: React.FC<{
+  canEditActualBars: boolean;
+  canEditPlannedBars: boolean;
+  laneIndex: number;
+  onEditActualDates: (
+    row: ScheduleGanttEditableItem,
+    nextRange: { actualEnd: string | null; actualStart: string },
+  ) => void;
+  onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  overlays: JobSharedStationBookingJob[];
+  row: ScheduleGanttRow;
+  stationBooking: ScheduleGanttStationBooking;
+}> = ({
+  canEditActualBars,
+  canEditPlannedBars,
+  laneIndex,
+  onEditActualDates,
+  onEditPlannedRange,
+  overlays,
+  row,
+  stationBooking,
+}) => {
+  const topOffset = getStationLaneTopOffset(row, laneIndex);
+  const stationLabel = stationBooking.title;
+
+  return (
+    <>
+      <ScheduleGanttOccupancyOverlays jobs={overlays} topOffset={topOffset + STATION_ACTUAL_OFFSET} />
+      <ScheduleGanttPlannedRange
+        canEdit={canEditPlannedBars}
+        onEdit={onEditPlannedRange}
+        row={stationBooking}
+        topOffset={topOffset + STATION_PLANNED_OFFSET}
+        visibleLabel={stationLabel}
+      />
+      <ScheduleGanttActualRange
+        canEdit={canEditActualBars}
+        onEdit={onEditActualDates}
+        row={stationBooking}
+        topOffset={topOffset + STATION_ACTUAL_OFFSET}
+      />
+    </>
+  );
+};
+
+const ScheduleGanttOccupancyOverlays: React.FC<{ jobs: JobSharedStationBookingJob[]; topOffset: number }> = ({
+  jobs,
+  topOffset,
+}) => (
   <>
     {jobs
       .flatMap((job) => job.bookings.map((booking) => ({ booking, jobCode: job.jobCode, jobId: job.jobId })))
@@ -452,6 +616,7 @@ const ScheduleGanttOccupancyOverlays: React.FC<{ jobs: JobSharedStationBookingJo
           jobCode={overlay.jobCode}
           key={`${overlay.jobId}-${overlay.booking.id}`}
           laneIndex={laneIndex}
+          topOffset={topOffset}
         />
       ))}
   </>
@@ -461,7 +626,8 @@ const ScheduleGanttOccupancyBar: React.FC<{
   booking: JobSharedStationBookingJob['bookings'][number];
   jobCode: string;
   laneIndex: number;
-}> = ({ booking, jobCode, laneIndex }) => {
+  topOffset: number;
+}> = ({ booking, jobCode, laneIndex, topOffset }) => {
   const occupancy = getScheduleGanttOccupancyDisplay(booking, jobCode);
 
   if (occupancy.kind === 'none') {
@@ -475,18 +641,21 @@ const ScheduleGanttOccupancyBar: React.FC<{
         occupancy.openEnded && 'rounded-r-none',
       )}
       end={occupancy.end}
+      height={8}
       label={occupancy.label}
       start={occupancy.start}
-      topOffset={laneIndex * 5 - 10}
+      topOffset={topOffset + laneIndex * 5 - 10}
     />
   );
 };
 
 const ScheduleGanttPlannedRange: React.FC<{
   canEdit: boolean;
-  onEdit: (row: ScheduleGanttRow, nextRange: OptimisticPlannedRange) => void;
-  row: ScheduleGanttRow;
-}> = ({ canEdit, onEdit, row }) => {
+  onEdit: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  row: ScheduleGanttEditableItem;
+  topOffset?: number;
+  visibleLabel?: string | undefined;
+}> = ({ canEdit, onEdit, row, topOffset = 0, visibleLabel }) => {
   const planned = getScheduleGanttPlannedDisplay(row);
 
   if (planned.kind === 'none') {
@@ -494,16 +663,28 @@ const ScheduleGanttPlannedRange: React.FC<{
   }
 
   if (planned.kind === 'milestone') {
-    return <ScheduleGanttMilestone date={planned.date} label={planned.label} />;
+    return (
+      <ScheduleGanttMilestone
+        date={planned.date}
+        hoverCard={getScheduleGanttHoverCardModel(row)}
+        label={getScheduleGanttBarLabel(row, planned.label)}
+        topOffset={topOffset}
+      />
+    );
   }
 
   return (
     <ScheduleGanttBar
       className={cn(
-        'border border-sky-500/70 bg-sky-500/10',
-        row.level !== 'station' && 'h-1 border-sky-500/60 bg-sky-500/50',
+        'border bg-background/80',
+        row.level === 'station' &&
+          'before:absolute before:top-0 before:left-0 before:h-full before:w-1 before:content-[""]',
+        getScheduleGanttPlannedClassName(row),
+        row.level === 'job' && 'bg-sky-500/50',
       )}
       editable={canEdit}
+      height={row.level === 'job' ? 4 : PLANNED_BAR_HEIGHT}
+      hoverCard={getScheduleGanttHoverCardModel(row)}
       onEdit={(action, dayDelta) => {
         const nextRange = getScheduleGanttPlannedRangeAfterDrag({
           action,
@@ -516,17 +697,23 @@ const ScheduleGanttPlannedRange: React.FC<{
         }
       }}
       end={planned.end}
-      label={planned.label}
+      label={getScheduleGanttBarLabel(row, planned.label)}
       start={planned.start}
+      topOffset={topOffset}
+      visibleLabel={visibleLabel}
+      visibleLabelDepartment={row.level === 'station' ? row.stage : undefined}
+      showEditHandles={row.level === 'station'}
     />
   );
 };
 
 const ScheduleGanttActualRange: React.FC<{
   canEdit: boolean;
-  onEdit: (row: ScheduleGanttRow, nextRange: { actualEnd: string | null; actualStart: string }) => void;
-  row: ScheduleGanttRow;
-}> = ({ canEdit, onEdit, row }) => {
+  onEdit: (row: ScheduleGanttEditableItem, nextRange: { actualEnd: string | null; actualStart: string }) => void;
+  row: ScheduleGanttEditableItem;
+  topOffset?: number;
+  visibleLabel?: string | undefined;
+}> = ({ canEdit, onEdit, row, topOffset = 0, visibleLabel }) => {
   const actual = getScheduleGanttActualDisplay(row);
 
   if (actual.kind === 'none') {
@@ -536,32 +723,40 @@ const ScheduleGanttActualRange: React.FC<{
   if (canEdit && row.actualStart) {
     return (
       <ScheduleGanttBar
-        className={cn('z-20 bg-sky-600 shadow-sm', actual.openEnded && 'rounded-r-none')}
+        className={cn('z-20 shadow-sm', getScheduleGanttActualClassName(row), actual.openEnded && 'rounded-r-none')}
         editable
         end={actual.end}
-        label={actual.label}
-        onEdit={(action, dayDelta) => {
+        height={ACTUAL_LINE_HEIGHT}
+        hoverCard={getScheduleGanttHoverCardModel(row)}
+        label={getScheduleGanttBarLabel(row, actual.label)}
+        onEdit={(action, _dayDelta, millisecondDelta) => {
           const nextRange = getScheduleGanttActualRangeAfterDrag({
             action,
             actualEnd: row.actualEnd,
             actualStart: row.actualStart,
-            dayDelta,
+            millisecondDelta,
           });
           if (nextRange) {
             onEdit(row, nextRange);
           }
         }}
         start={actual.start}
+        topOffset={topOffset}
+        visibleLabel={visibleLabel}
       />
     );
   }
 
   return (
     <ScheduleGanttBar
-      className={cn('z-20 bg-sky-600 shadow-sm', actual.openEnded && 'rounded-r-none')}
+      className={cn('z-20 shadow-sm', getScheduleGanttActualClassName(row), actual.openEnded && 'rounded-r-none')}
       end={actual.end}
-      label={actual.label}
+      height={ACTUAL_LINE_HEIGHT}
+      hoverCard={getScheduleGanttHoverCardModel(row)}
+      label={getScheduleGanttBarLabel(row, actual.label)}
       start={actual.start}
+      topOffset={topOffset}
+      visibleLabel={visibleLabel}
     />
   );
 };
@@ -570,97 +765,291 @@ const ScheduleGanttBar: React.FC<{
   className: string;
   editable?: boolean;
   end: Date;
+  height?: number;
+  hoverCard?: ScheduleGanttHoverCardModel | undefined;
   label: string;
-  onEdit?: (action: PlannedDragAction, dayDelta: number) => void;
+  onEdit?: (action: PlannedDragAction, dayDelta: number, millisecondDelta: number) => void;
+  showEditHandles?: boolean;
   start: Date;
   topOffset?: number;
-}> = ({ className, editable = false, end, label, onEdit, start, topOffset = 0 }) => {
+  visibleLabelDepartment?: JobStageName | undefined;
+  visibleLabel?: string | undefined;
+}> = ({
+  className,
+  editable = false,
+  end,
+  height = 16,
+  hoverCard,
+  label,
+  onEdit,
+  showEditHandles = false,
+  start,
+  topOffset = 0,
+  visibleLabelDepartment,
+  visibleLabel,
+}) => {
   const gantt = useGanttContext();
   const dragStartRef = React.useRef<{ action: PlannedDragAction; pointerX: number } | null>(null);
+  const [dragPreview, setDragPreview] = React.useState<{ action: PlannedDragAction; pixelDelta: number } | null>(null);
+  const [committedPreview, setCommittedPreview] = React.useState<{
+    left: number;
+    sourceEndTime: number;
+    sourceStartTime: number;
+    width: number;
+  } | null>(null);
+  const renderedColumnWidth = (gantt.columnWidth * gantt.zoom) / 100;
   const left = getGanttOffset(start, gantt);
   const width = getGanttWidth(start, end, gantt);
+  React.useEffect(() => {
+    if (
+      committedPreview &&
+      (committedPreview.sourceStartTime !== start.getTime() || committedPreview.sourceEndTime !== end.getTime())
+    ) {
+      setCommittedPreview(null);
+    }
+  }, [committedPreview, end, start]);
+  const previewLeft =
+    dragPreview?.action === 'move'
+      ? left + dragPreview.pixelDelta
+      : dragPreview?.action === 'resize-start'
+        ? left + Math.min(dragPreview.pixelDelta, width - 10)
+        : (committedPreview?.left ?? left);
+  const previewWidth =
+    dragPreview?.action === 'resize-start'
+      ? Math.max(width - dragPreview.pixelDelta, 10)
+      : dragPreview?.action === 'resize-end'
+        ? Math.max(width + dragPreview.pixelDelta, 10)
+        : (committedPreview?.width ?? width);
   const commitDrag = React.useCallback(
     (event: React.PointerEvent<Element>) => {
       const dragStart = dragStartRef.current;
       dragStartRef.current = null;
+      setDragPreview(null);
       if (!dragStart || !onEdit) return;
 
-      const dayDelta = Math.round((event.clientX - dragStart.pointerX) / gantt.columnWidth);
-      if (dayDelta !== 0) {
-        onEdit(dragStart.action, dayDelta);
+      const pixelDelta = event.clientX - dragStart.pointerX;
+      const dayDelta = Math.round(pixelDelta / renderedColumnWidth);
+      const millisecondDelta = Math.round((pixelDelta / renderedColumnWidth) * 24 * 60 * 60 * 1000);
+      if (dayDelta !== 0 || millisecondDelta !== 0) {
+        const nextLeft =
+          dragStart.action === 'move'
+            ? left + pixelDelta
+            : dragStart.action === 'resize-start'
+              ? left + Math.min(pixelDelta, width - 10)
+              : left;
+        const nextWidth =
+          dragStart.action === 'resize-start'
+            ? Math.max(width - pixelDelta, 10)
+            : dragStart.action === 'resize-end'
+              ? Math.max(width + pixelDelta, 10)
+              : width;
+
+        setCommittedPreview({
+          left: nextLeft,
+          sourceEndTime: end.getTime(),
+          sourceStartTime: start.getTime(),
+          width: nextWidth,
+        });
+        onEdit(dragStart.action, dayDelta, millisecondDelta);
       }
     },
-    [gantt.columnWidth, onEdit],
+    [end, left, onEdit, renderedColumnWidth, start, width],
   );
   const startDrag = React.useCallback((event: React.PointerEvent<Element>, action: PlannedDragAction) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     dragStartRef.current = { action, pointerX: event.clientX };
+    setCommittedPreview(null);
+    setDragPreview({ action, pixelDelta: 0 });
+  }, []);
+  const previewDrag = React.useCallback((event: React.PointerEvent<Element>) => {
+    const dragStart = dragStartRef.current;
+    if (!dragStart) return;
+
+    setDragPreview({ action: dragStart.action, pixelDelta: event.clientX - dragStart.pointerX });
   }, []);
   const cancelDrag = React.useCallback(() => {
     dragStartRef.current = null;
+    setDragPreview(null);
+    setCommittedPreview(null);
   }, []);
+  const wrapWithHoverCard = (element: React.ReactElement) =>
+    hoverCard ? (
+      <ScheduleGanttBarHoverCard card={hoverCard} disabled={dragPreview !== null} trigger={element} />
+    ) : (
+      element
+    );
 
   if (!editable) {
-    return (
+    return wrapWithHoverCard(
       <div
         aria-label={label}
-        className={cn('absolute top-1/2 h-4 -translate-y-1/2 rounded-sm', className)}
+        className={cn('absolute top-1/2 -translate-y-1/2 overflow-hidden rounded-sm', className)}
         role="img"
-        style={{ left: Math.round(left), top: `calc(50% + ${topOffset}px)`, width: Math.max(Math.round(width), 10) }}
-        title={label}
-      />
+        style={{
+          height,
+          left: Math.round(left),
+          top: `calc(50% + ${topOffset}px)`,
+          width: Math.max(Math.round(width), 10),
+        }}
+        title={hoverCard ? undefined : label}
+      >
+        {visibleLabel ? (
+          <span className="absolute top-1 left-2 right-2 flex min-w-0 items-center gap-1.5 text-left text-xs font-medium leading-4">
+            {visibleLabelDepartment ? (
+              <DepartmentIcon className="size-3.5 shrink-0" department={visibleLabelDepartment} />
+            ) : null}
+            <span className="min-w-0 truncate">{visibleLabel}</span>
+          </span>
+        ) : null}
+      </div>,
     );
   }
 
-  return (
+  return wrapWithHoverCard(
     <button
       aria-label={`${label}; drag to move, drag either edge to resize`}
-      className={cn('absolute top-1/2 h-4 -translate-y-1/2 cursor-grab appearance-none rounded-sm p-0', className)}
+      className={cn(
+        'group absolute top-1/2 -translate-y-1/2 cursor-grab appearance-none overflow-hidden rounded-sm p-0 transition-colors',
+        className,
+      )}
       onPointerCancel={cancelDrag}
       onPointerDown={(event) => startDrag(event, 'move')}
+      onPointerMove={previewDrag}
       onPointerUp={commitDrag}
-      style={{ left: Math.round(left), top: `calc(50% + ${topOffset}px)`, width: Math.max(Math.round(width), 10) }}
-      title={label}
+      style={{
+        height,
+        left: Math.round(previewLeft),
+        top: `calc(50% + ${topOffset}px)`,
+        width: Math.max(Math.round(previewWidth), 10),
+      }}
+      title={hoverCard ? undefined : label}
       type="button"
     >
+      {visibleLabel ? (
+        <span className="absolute top-1 left-2 right-2 flex min-w-0 items-center gap-1.5 text-left text-xs font-medium leading-4">
+          {visibleLabelDepartment ? (
+            <DepartmentIcon className="size-3.5 shrink-0" department={visibleLabelDepartment} />
+          ) : null}
+          <span className="min-w-0 truncate">{visibleLabel}</span>
+        </span>
+      ) : null}
       <span
-        className="absolute top-0 left-0 h-full w-2 cursor-ew-resize rounded-l-sm"
+        className={cn(
+          'absolute top-0 left-0 h-full w-2 cursor-ew-resize rounded-l-sm transition-opacity',
+          showEditHandles && 'bg-foreground/20 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100',
+        )}
         onPointerCancel={cancelDrag}
         onPointerDown={(event) => {
           event.stopPropagation();
           startDrag(event, 'resize-start');
         }}
+        onPointerMove={previewDrag}
         onPointerUp={commitDrag}
       />
       <span
-        className="absolute top-0 right-0 h-full w-2 cursor-ew-resize rounded-r-sm"
+        className={cn(
+          'absolute top-0 right-0 h-full w-2 cursor-ew-resize rounded-r-sm transition-opacity',
+          showEditHandles && 'bg-foreground/20 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100',
+        )}
         onPointerCancel={cancelDrag}
         onPointerDown={(event) => {
           event.stopPropagation();
           startDrag(event, 'resize-end');
         }}
+        onPointerMove={previewDrag}
         onPointerUp={commitDrag}
       />
-    </button>
+    </button>,
   );
 };
 
-const ScheduleGanttMilestone: React.FC<{ date: Date | null; label: string }> = ({ date, label }) => {
+const ScheduleGanttBarHoverCard: React.FC<{
+  card: ScheduleGanttHoverCardModel;
+  disabled?: boolean;
+  trigger: React.ReactElement;
+}> = ({ card, disabled = false, trigger }) => {
+  const [open, setOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (disabled) {
+      setOpen(false);
+    }
+  }, [disabled]);
+
+  return (
+    <HoverCard open={disabled ? false : open} onOpenChange={(nextOpen) => setOpen(disabled ? false : nextOpen)}>
+      <HoverCardTrigger render={trigger} />
+      <HoverCardContent align="start" className="w-96 max-w-[calc(100vw-2rem)] p-3" side="top">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-2">
+              {card.department ? (
+                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border bg-background">
+                  <DepartmentIcon className="size-4" department={card.department} />
+                </span>
+              ) : null}
+              <div className="min-w-0">
+                <div className="truncate font-medium">{card.title}</div>
+                <div className="truncate text-xs text-muted-foreground">{card.contextLabel}</div>
+              </div>
+            </div>
+            <span
+              className={cn(
+                'shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium',
+                SCHEDULE_HEALTH_CLASSES[card.scheduleHealth],
+              )}
+            >
+              {card.scheduleHealth}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <ScheduleGanttHoverFact label="Planned" value={card.plannedRangeLabel} />
+            <ScheduleGanttHoverFact label="Actual" value={card.actualRangeLabel} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <ScheduleGanttHoverFact label="Planned duration" value={card.plannedDurationLabel} />
+            <ScheduleGanttHoverFact label="Actual duration" value={card.actualDurationLabel} />
+          </div>
+          <div className="flex items-center justify-between gap-3 border-t pt-2 text-xs">
+            <span className="min-w-0 truncate text-muted-foreground">Workflow: {card.workflowStatusLabel}</span>
+            <span className="shrink-0 font-medium">{card.varianceLabel}</span>
+          </div>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
+
+const ScheduleGanttHoverFact: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="min-w-0 rounded-md border bg-background/70 p-2">
+    <div className="text-xs font-medium text-muted-foreground">{label}</div>
+    <div className="mt-1 break-words text-sm leading-snug">{value}</div>
+  </div>
+);
+
+const ScheduleGanttMilestone: React.FC<{
+  date: Date | null;
+  hoverCard?: ScheduleGanttHoverCardModel | undefined;
+  label: string;
+  topOffset?: number;
+}> = ({ date, hoverCard, label, topOffset = 0 }) => {
   const gantt = useGanttContext();
 
   if (!date) return null;
 
   const left = getGanttOffset(date, gantt);
 
-  return (
+  const milestone = (
     <div
       aria-label={label}
       className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-sky-500 bg-background"
       role="img"
-      style={{ left: Math.round(left) }}
-      title={label}
+      style={{ left: Math.round(left), top: `calc(50% + ${topOffset}px)` }}
+      title={hoverCard ? undefined : label}
     />
   );
+
+  return hoverCard ? <ScheduleGanttBarHoverCard card={hoverCard} trigger={milestone} /> : milestone;
 };
 
 const LegendItem: React.FC<{ className: string; label: string }> = ({ className, label }) => (

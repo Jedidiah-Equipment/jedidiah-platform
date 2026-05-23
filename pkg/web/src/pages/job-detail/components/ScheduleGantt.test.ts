@@ -10,6 +10,8 @@ import {
   getScheduleGanttActualDateEdits,
   getScheduleGanttActualDisplay,
   getScheduleGanttActualRangeAfterDrag,
+  getScheduleGanttBarLabel,
+  getScheduleGanttHoverCardModel,
   getScheduleGanttOccupancyDisplay,
   getScheduleGanttPlannedDateEdits,
   getScheduleGanttPlannedDisplay,
@@ -18,48 +20,95 @@ import {
   parseScheduleDate,
   parseScheduleDateTimeInputValue,
   resolveScheduleDateTimeInputValue,
+  type ScheduleGanttRow,
 } from './schedule-gantt-helpers.js';
 
 describe('buildScheduleGanttRows', () => {
-  it('keeps the Job, every Department stage, and station bookings on the chart', () => {
+  it('keeps the Job and every Department stage on the chart with nested station bookings', () => {
     const job = createJobDetail();
 
     expect(buildScheduleGanttRows(job)).toEqual([
-      expect.objectContaining({ id: `job-${ids.job}`, level: 'job', parentId: null, title: 'JOB-00001' }),
+      expect.objectContaining({
+        id: `job-${ids.job}`,
+        level: 'job',
+        parentId: null,
+        stationBookings: [],
+        title: 'JOB-00001',
+      }),
       expect.objectContaining({
         id: `stage-${stageIds.procurement}`,
         level: 'stage',
         parentId: null,
+        stationBookings: [
+          expect.objectContaining({
+            plannedEnd: '2026-05-03',
+            plannedStart: '2026-05-01',
+            id: `station-${bookingIds['procurement-1']}`,
+            level: 'station',
+            parentId: `stage-${stageIds.procurement}`,
+            stage: 'procurement',
+            title: 'Procurement Desk',
+          }),
+        ],
         title: 'Procurement',
-      }),
-      expect.objectContaining({
-        plannedEnd: '2026-05-03',
-        plannedStart: '2026-05-01',
-        id: `station-${bookingIds['procurement-1']}`,
-        level: 'station',
-        parentId: `stage-${stageIds.procurement}`,
-        title: 'Procurement Desk',
       }),
       expect.objectContaining({ id: `stage-${stageIds.supply}`, level: 'stage', parentId: null, title: 'Supply' }),
       expect.objectContaining({
         id: `stage-${stageIds.fabrication}`,
         level: 'stage',
         parentId: null,
+        stationBookings: [
+          expect.objectContaining({
+            actualEnd: null,
+            actualStart: null,
+            plannedEnd: null,
+            plannedStart: null,
+            id: `station-${bookingIds['fabrication-1']}`,
+            level: 'station',
+            parentId: `stage-${stageIds.fabrication}`,
+            stage: 'fabrication',
+            title: 'Weld Bay',
+          }),
+        ],
         title: 'Fabrication',
-      }),
-      expect.objectContaining({
-        actualEnd: null,
-        actualStart: null,
-        plannedEnd: null,
-        plannedStart: null,
-        id: `station-${bookingIds['fabrication-1']}`,
-        level: 'station',
-        parentId: `stage-${stageIds.fabrication}`,
-        title: 'Weld Bay',
       }),
       expect.objectContaining({ id: `stage-${stageIds.paint}`, level: 'stage', parentId: null, title: 'Paint' }),
       expect.objectContaining({ id: `stage-${stageIds.assembly}`, level: 'stage', parentId: null, title: 'Assembly' }),
     ]);
+  });
+
+  it('does not emit standalone station rows', () => {
+    expect(buildScheduleGanttRows(createJobDetail()).map((row) => row.level)).toEqual([
+      'job',
+      'stage',
+      'stage',
+      'stage',
+      'stage',
+      'stage',
+    ]);
+  });
+
+  it('orders station lanes by station display order instead of schedule dates', () => {
+    const job = createJobDetail({
+      fabricationStations: [
+        createStationBooking('fabrication-2', 'Weld Bay 2', {
+          displayOrder: 2,
+          plannedEnd: '2026-05-01',
+          plannedStart: '2026-05-01',
+        }),
+        createStationBooking('fabrication-1', 'Weld Bay 1', {
+          displayOrder: 1,
+          plannedEnd: '2026-05-10',
+          plannedStart: '2026-05-10',
+        }),
+      ],
+    });
+
+    expect(
+      buildScheduleGanttRows(job)
+        .find((row) => row.title === 'Fabrication')
+        ?.stationBookings.map((stationBooking) => stationBooking.title),
+    ).toEqual(['Weld Bay 1', 'Weld Bay 2']);
   });
 
   it('renders shared-station occupancy as actual ranges before due ranges', () => {
@@ -135,7 +184,19 @@ describe('schedule date display helpers', () => {
     expect(getScheduleGanttPlannedDisplay({ plannedEnd: null, plannedStart: null })).toEqual({ kind: 'none' });
   });
 
-  it('runs in-progress actuals through the supplied today marker', () => {
+  it('prefixes station booking bar labels with the station name', () => {
+    const stationBooking = buildScheduleGanttRows(createJobDetail())
+      .find((row) => row.title === 'Procurement')
+      ?.stationBookings.at(0);
+
+    if (!stationBooking) throw new Error('Expected a station booking.');
+
+    expect(getScheduleGanttBarLabel(stationBooking, 'Planned May 1, 2026 to May 3, 2026')).toBe(
+      'Procurement Desk: Planned May 1, 2026 to May 3, 2026',
+    );
+  });
+
+  it('runs in-progress actuals through the supplied current timestamp', () => {
     const now = new Date('2026-05-22T09:30:00.000Z');
 
     expect(
@@ -160,10 +221,11 @@ describe('schedule date display helpers', () => {
     );
     if (display.kind !== 'range') throw new Error('Expected range display.');
     expect(toLocalDateKey(display.start)).toBe('2026-05-20');
-    expect(toLocalDateKey(display.end)).toBe('2026-05-23');
+    expect(display.start).toEqual(new Date('2026-05-20T08:00:00.000Z'));
+    expect(display.end).toEqual(now);
   });
 
-  it('normalizes completed actual ends to the next day for inclusive daily width', () => {
+  it('keeps completed actual timestamps at datetime precision', () => {
     expect(
       getScheduleGanttActualDisplay(
         {
@@ -185,14 +247,14 @@ describe('schedule date display helpers', () => {
       new Date('2026-05-22T09:30:00.000Z'),
     );
     if (display.kind !== 'range') throw new Error('Expected range display.');
-    expect(toLocalDateKey(display.start)).toBe('2026-05-20');
-    expect(toLocalDateKey(display.end)).toBe('2026-05-22');
+    expect(display.start).toEqual(new Date('2026-05-20T08:00:00.000Z'));
+    expect(display.end).toEqual(new Date('2026-05-21T17:00:00.000Z'));
   });
 
-  it('keeps future in-progress actuals visible for at least one day', () => {
+  it('keeps future in-progress actuals anchored to their start', () => {
     expect(
       getActualEndForDisplay(new Date('2026-05-24T00:00:00.000Z'), null, new Date('2026-05-22T09:30:00.000Z')),
-    ).toEqual(new Date('2026-05-25T00:00:00.000Z'));
+    ).toEqual(new Date('2026-05-24T00:00:00.000Z'));
   });
 
   it('parses schedule dates to day starts', () => {
@@ -375,17 +437,17 @@ describe('schedule date display helpers', () => {
     ).toEqual(['actual_end', 'actual_start']);
   });
 
-  it('moves and resizes actual ranges by whole days', () => {
+  it('moves and resizes actual ranges by fractional-day datetime deltas', () => {
     expect(
       getScheduleGanttActualRangeAfterDrag({
         action: 'move',
         actualEnd: '2026-05-22T12:00:00.000Z',
         actualStart: '2026-05-20T08:00:00.000Z',
-        dayDelta: 2,
+        millisecondDelta: 6 * 60 * 60 * 1000,
       }),
     ).toEqual({
-      actualEnd: '2026-05-24T12:00:00.000Z',
-      actualStart: '2026-05-22T08:00:00.000Z',
+      actualEnd: '2026-05-22T18:00:00.000Z',
+      actualStart: '2026-05-20T14:00:00.000Z',
     });
 
     expect(
@@ -393,16 +455,103 @@ describe('schedule date display helpers', () => {
         action: 'resize-start',
         actualEnd: '2026-05-22T12:00:00.000Z',
         actualStart: '2026-05-20T08:00:00.000Z',
-        dayDelta: 1,
+        millisecondDelta: 90 * 60 * 1000,
       }),
     ).toEqual({
       actualEnd: '2026-05-22T12:00:00.000Z',
-      actualStart: '2026-05-21T08:00:00.000Z',
+      actualStart: '2026-05-20T09:30:00.000Z',
     });
+  });
+
+  it('builds station hover card context with planned and actual durations', () => {
+    const stationBooking = buildScheduleGanttRows(
+      createJobDetail({
+        fabricationStations: [
+          createStationBooking('fabrication-1', 'Weld Bay', {
+            actualEnd: '2026-05-03T10:00:00.000Z',
+            actualStart: '2026-05-01T08:00:00.000Z',
+            plannedEnd: '2026-05-04',
+            plannedStart: '2026-05-01',
+          }),
+        ],
+      }),
+    )
+      .find((row) => row.title === 'Fabrication')
+      ?.stationBookings.at(0);
+
+    if (!stationBooking) throw new Error('Expected station booking.');
+
+    expect(getScheduleGanttHoverCardModel(stationBooking, new Date('2026-05-04T12:00:00'))).toMatchObject({
+      actualDurationLabel: '2 days 2 hours',
+      actualRangeLabel: expect.stringMatching(/^May 1, \d{2}:\d{2} to May 3, \d{2}:\d{2}$/),
+      contextLabel: 'Fabrication station',
+      department: 'fabrication',
+      plannedDurationLabel: '4 days',
+      plannedRangeLabel: 'May 1 to May 4, 2026',
+      scheduleHealth: 'On time',
+      title: 'Weld Bay',
+      varianceLabel: '1 day ahead',
+      workflowStatusLabel: 'Pending',
+    });
+  });
+
+  it('uses the supplied current timestamp for open actual hover card durations', () => {
+    expect(
+      getScheduleGanttHoverCardModel(
+        createScheduleHoverRow({
+          actualEnd: null,
+          actualStart: '2026-05-01T08:00:00.000Z',
+          plannedEnd: '2026-05-04',
+          plannedStart: '2026-05-01',
+        }),
+        new Date('2026-05-03T14:00:00.000Z'),
+      ),
+    ).toMatchObject({
+      actualDurationLabel: '2 days 6 hours',
+      actualRangeLabel: expect.stringMatching(/^May 1, \d{2}:\d{2} to In progress$/),
+      scheduleHealth: 'On track',
+      varianceLabel: '1 day ahead',
+    });
+  });
+
+  it.each([
+    ['Unplanned', { plannedEnd: null, plannedStart: null }, '2026-05-03T12:00:00'],
+    ['Not started', { actualStart: null }, '2026-05-03T12:00:00'],
+    ['Overdue', { actualStart: null }, '2026-05-05T00:00:00'],
+    ['On track', { actualEnd: null, actualStart: '2026-05-02T08:00:00' }, '2026-05-03T12:00:00'],
+    ['Overdue', { actualEnd: null, actualStart: '2026-05-02T08:00:00' }, '2026-05-05T00:00:00'],
+    ['On time', { actualEnd: '2026-05-04T12:00:00', actualStart: '2026-05-02T08:00:00' }, '2026-05-05T00:00:00'],
+    ['Late', { actualEnd: '2026-05-05T08:00:00', actualStart: '2026-05-02T08:00:00' }, '2026-05-05T08:00:00'],
+  ])('derives %s schedule health for hover cards', (scheduleHealth, overrides, now) => {
+    expect(getScheduleGanttHoverCardModel(createScheduleHoverRow(overrides), new Date(now)).scheduleHealth).toBe(
+      scheduleHealth,
+    );
   });
 });
 
-function createJobDetail(): JobDetail {
+function createScheduleHoverRow(overrides: Partial<ScheduleGanttRow> = {}): ScheduleGanttRow {
+  return {
+    actualEnd: null,
+    actualStart: null,
+    plannedEnd: '2026-05-04',
+    plannedStart: '2026-05-01',
+    entityId: ids.job,
+    id: `job-${ids.job}`,
+    level: 'job',
+    parentId: null,
+    stationId: null,
+    stationBookings: [],
+    statusLabel: 'Job',
+    title: 'JOB-00001',
+    ...overrides,
+  };
+}
+
+function createJobDetail({
+  fabricationStations = [createStationBooking('fabrication-1', 'Weld Bay')],
+}: {
+  fabricationStations?: StationBooking[];
+} = {}): JobDetail {
   const stages = [
     createStage('procurement', 1, [
       createStationBooking('procurement-1', 'Procurement Desk', {
@@ -411,7 +560,7 @@ function createJobDetail(): JobDetail {
       }),
     ]),
     createStage('supply', 2),
-    createStage('fabrication', 3, [createStationBooking('fabrication-1', 'Weld Bay')]),
+    createStage('fabrication', 3, fabricationStations),
     createStage('paint', 4),
     createStage('assembly', 5),
   ];
@@ -483,15 +632,21 @@ function toSchemaWindow(window: ScheduleRollupWindow) {
 }
 
 function createStationBooking(
-  id: 'fabrication-1' | 'procurement-1',
+  id: 'fabrication-1' | 'fabrication-2' | 'procurement-1',
   name: string,
-  dates: { plannedEnd?: string; plannedStart?: string } = {},
+  dates: {
+    actualEnd?: string | null;
+    actualStart?: string | null;
+    displayOrder?: number;
+    plannedEnd?: string;
+    plannedStart?: string;
+  } = {},
 ): StationBooking {
   const stage = id.startsWith('procurement') ? 'procurement' : 'fabrication';
 
   return {
-    actualEnd: null,
-    actualStart: null,
+    actualEnd: dates.actualEnd ?? null,
+    actualStart: dates.actualStart ?? null,
     createdAt: '2026-05-01T08:00:00.000Z',
     plannedEnd: dates.plannedEnd ?? null,
     plannedStart: dates.plannedStart ?? null,
@@ -501,7 +656,7 @@ function createStationBooking(
     station: {
       createdAt: '2026-05-01T08:00:00.000Z',
       department: stage,
-      displayOrder: 0,
+      displayOrder: dates.displayOrder ?? 0,
       id: stationIds[id],
       isActive: true,
       name,
@@ -528,11 +683,13 @@ const stageIds = {
 const bookingIds = {
   'procurement-1': '00000000-0000-4000-8000-000000000201',
   'fabrication-1': '00000000-0000-4000-8000-000000000202',
+  'fabrication-2': '00000000-0000-4000-8000-000000000203',
 } as const;
 
 const stationIds = {
   'procurement-1': '00000000-0000-4000-8000-000000000301',
   'fabrication-1': '00000000-0000-4000-8000-000000000302',
+  'fabrication-2': '00000000-0000-4000-8000-000000000303',
 } as const;
 
 function toLocalDateKey(date: Date): string {

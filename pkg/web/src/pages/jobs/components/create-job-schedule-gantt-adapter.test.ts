@@ -1,7 +1,10 @@
 import type { Station } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
-import type { ScheduleGanttRow } from '@/pages/job-detail/components/schedule-gantt-helpers.js';
+import type {
+  ScheduleGanttRow,
+  ScheduleGanttStationBooking,
+} from '@/pages/job-detail/components/schedule-gantt-helpers.js';
 
 import type { StageDraft } from './create-job-dialog-helpers.js';
 import {
@@ -10,7 +13,7 @@ import {
 } from './create-job-schedule-gantt-adapter.js';
 
 describe('create job schedule gantt adapter', () => {
-  test('builds due-only rows for draft stages and station bookings', () => {
+  test('builds due-only Job and Stage rows with nested station bookings', () => {
     expect(buildCreateScheduleGanttRows({ stages: createStages(), stations: [createStation()] })).toEqual([
       expect.objectContaining({
         actualEnd: null,
@@ -27,19 +30,28 @@ describe('create job schedule gantt adapter', () => {
         plannedStart: '2026-05-01',
         id: 'create-stage-fabrication',
         level: 'stage',
+        stationBookings: [
+          expect.objectContaining({
+            actualEnd: null,
+            actualStart: null,
+            plannedEnd: '2026-05-03',
+            plannedStart: '2026-05-01',
+            id: 'create-station-booking-1',
+            level: 'station',
+            parentId: 'create-stage-fabrication',
+            stage: 'fabrication',
+            title: 'Weld Bay',
+          }),
+        ],
         title: 'Fabrication',
       }),
-      expect.objectContaining({
-        actualEnd: null,
-        actualStart: null,
-        plannedEnd: '2026-05-03',
-        plannedStart: '2026-05-01',
-        id: 'create-station-booking-1',
-        level: 'station',
-        parentId: 'create-stage-fabrication',
-        title: 'Weld Bay',
-      }),
     ]);
+  });
+
+  test('does not emit standalone draft station rows', () => {
+    expect(
+      buildCreateScheduleGanttRows({ stages: createStages(), stations: [createStation()] }).map((row) => row.level),
+    ).toEqual(['job', 'stage']);
   });
 
   test('ignores edits for derived draft Job and Stage rows', () => {
@@ -48,7 +60,7 @@ describe('create job schedule gantt adapter', () => {
     const edit = applyCreateScheduleGanttPlannedRangeEdit({
       anchorKind: 'start',
       nextRange: { plannedEnd: '2026-05-12', plannedStart: '2026-05-01' },
-      row: createRow({ plannedEnd: '2026-05-10', plannedStart: '2026-05-01', level: 'job' }),
+      row: createScheduleRow({ plannedEnd: '2026-05-10', plannedStart: '2026-05-01' }),
       stages,
     });
 
@@ -59,7 +71,7 @@ describe('create job schedule gantt adapter', () => {
     const edit = applyCreateScheduleGanttPlannedRangeEdit({
       anchorKind: 'end',
       nextRange: { plannedEnd: '2026-05-04', plannedStart: '2026-05-01' },
-      row: createRow({ entityId: 'booking-1', level: 'station' }),
+      row: createStationBookingRow({ entityId: 'booking-1' }),
       stages: createStages(),
     });
 
@@ -111,7 +123,7 @@ function createStation(): Station {
   };
 }
 
-function createRow(overrides: Partial<ScheduleGanttRow> = {}): ScheduleGanttRow {
+function createScheduleRow(overrides: Partial<ScheduleGanttRow> = {}): ScheduleGanttRow {
   return {
     actualEnd: null,
     actualStart: null,
@@ -122,8 +134,27 @@ function createRow(overrides: Partial<ScheduleGanttRow> = {}): ScheduleGanttRow 
     level: 'job',
     parentId: null,
     stationId: null,
+    stationBookings: [],
     statusLabel: 'Draft',
     title: 'Draft Job',
+    ...overrides,
+  };
+}
+
+function createStationBookingRow(overrides: Partial<ScheduleGanttStationBooking> = {}): ScheduleGanttStationBooking {
+  return {
+    actualEnd: null,
+    actualStart: null,
+    plannedEnd: '2026-05-03',
+    plannedStart: '2026-05-01',
+    entityId: 'booking-1',
+    id: 'create-station-booking-1',
+    level: 'station',
+    parentId: 'create-stage-fabrication',
+    stage: 'fabrication',
+    stationId: '00000000-0000-4000-8000-000000000003',
+    statusLabel: 'Draft',
+    title: 'Weld Bay',
     ...overrides,
   };
 }

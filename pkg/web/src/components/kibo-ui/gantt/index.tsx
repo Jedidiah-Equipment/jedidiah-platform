@@ -185,7 +185,7 @@ const getOffset = (date: Date, timelineStartDate: Date, context: GanttContextPro
   const fullColumns = differenceIn(startOf(date), timelineStartDate);
 
   if (context.range === 'daily') {
-    return parsedColumnWidth * fullColumns;
+    return parsedColumnWidth * fullColumns + calculateInnerOffset(date, context.range, parsedColumnWidth);
   }
 
   const partialColumns = date.getDate();

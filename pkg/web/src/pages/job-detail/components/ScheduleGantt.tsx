@@ -692,9 +692,11 @@ const ScheduleGanttPlannedRange: React.FC<{
           plannedEnd: row.plannedEnd,
           plannedStart: row.plannedStart,
         });
-        if (nextRange) {
-          onEdit(row, nextRange);
+        if (!nextRange || (nextRange.plannedEnd === row.plannedEnd && nextRange.plannedStart === row.plannedStart)) {
+          return false;
         }
+        onEdit(row, nextRange);
+        return true;
       }}
       end={planned.end}
       label={getScheduleGanttBarLabel(row, planned.label)}
@@ -736,9 +738,11 @@ const ScheduleGanttActualRange: React.FC<{
             actualStart: row.actualStart,
             millisecondDelta,
           });
-          if (nextRange) {
-            onEdit(row, nextRange);
+          if (!nextRange || (nextRange.actualEnd === row.actualEnd && nextRange.actualStart === row.actualStart)) {
+            return false;
           }
+          onEdit(row, nextRange);
+          return true;
         }}
         start={actual.start}
         topOffset={topOffset}
@@ -768,7 +772,7 @@ const ScheduleGanttBar: React.FC<{
   height?: number;
   hoverCard?: ScheduleGanttHoverCardModel | undefined;
   label: string;
-  onEdit?: (action: PlannedDragAction, dayDelta: number, millisecondDelta: number) => void;
+  onEdit?: (action: PlannedDragAction, dayDelta: number, millisecondDelta: number) => boolean;
   showEditHandles?: boolean;
   start: Date;
   topOffset?: number;
@@ -831,6 +835,9 @@ const ScheduleGanttBar: React.FC<{
       const dayDelta = Math.round(pixelDelta / renderedColumnWidth);
       const millisecondDelta = Math.round((pixelDelta / renderedColumnWidth) * 24 * 60 * 60 * 1000);
       if (dayDelta !== 0 || millisecondDelta !== 0) {
+        const didEdit = onEdit(dragStart.action, dayDelta, millisecondDelta);
+        if (!didEdit) return;
+
         const nextLeft =
           dragStart.action === 'move'
             ? left + pixelDelta
@@ -850,7 +857,6 @@ const ScheduleGanttBar: React.FC<{
           sourceStartTime: start.getTime(),
           width: nextWidth,
         });
-        onEdit(dragStart.action, dayDelta, millisecondDelta);
       }
     },
     [end, left, onEdit, renderedColumnWidth, start, width],

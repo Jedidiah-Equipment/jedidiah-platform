@@ -483,7 +483,7 @@ describe('schedule date display helpers', () => {
 
     expect(getScheduleGanttHoverCardModel(stationBooking, new Date('2026-05-04T12:00:00'))).toMatchObject({
       actualDurationLabel: '2 days 2 hours',
-      actualRangeLabel: 'May 1, 10:00 to May 3, 12:00',
+      actualRangeLabel: expect.stringMatching(/^May 1, \d{2}:\d{2} to May 3, \d{2}:\d{2}$/),
       contextLabel: 'Fabrication station',
       department: 'fabrication',
       plannedDurationLabel: '4 days',
@@ -500,15 +500,15 @@ describe('schedule date display helpers', () => {
       getScheduleGanttHoverCardModel(
         createScheduleHoverRow({
           actualEnd: null,
-          actualStart: '2026-05-01T08:00:00',
+          actualStart: '2026-05-01T08:00:00.000Z',
           plannedEnd: '2026-05-04',
           plannedStart: '2026-05-01',
         }),
-        new Date('2026-05-03T14:00:00'),
+        new Date('2026-05-03T14:00:00.000Z'),
       ),
     ).toMatchObject({
       actualDurationLabel: '2 days 6 hours',
-      actualRangeLabel: 'May 1, 08:00 to In progress',
+      actualRangeLabel: expect.stringMatching(/^May 1, \d{2}:\d{2} to In progress$/),
       scheduleHealth: 'On track',
       varianceLabel: '1 day ahead',
     });

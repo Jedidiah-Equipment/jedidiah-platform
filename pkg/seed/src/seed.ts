@@ -47,6 +47,8 @@ const seedProductCount = 10;
 const seedProductMinAgeDays = 7;
 const seedProductAgeDayRange = 22;
 const seedStandaloneJobCount = 2;
+const seedJobScheduleStartOffsetDays = -120;
+const seedJobScheduleCadenceDays = 12;
 
 const seedStations = [
   { department: 'procurement', displayOrder: 10, name: 'PO Desk' },
@@ -141,63 +143,56 @@ const seedProductionCustomers = [
 
 const seedJobScenarios = [
   {
-    plannedEndOffsetDays: 24,
+    stageProgress: 'complete',
+    status: 'complete',
+  },
+  {
+    stageProgress: 'complete',
+    status: 'complete',
+  },
+  {
+    stageProgress: 'complete',
+    status: 'complete',
+  },
+  {
+    stageProgress: 'complete',
+    status: 'complete',
+  },
+  {
+    stageProgress: 'complete',
+    status: 'complete',
+  },
+  {
+    stageProgress: 'complete',
+    status: 'complete',
+  },
+  {
+    stageProgress: 'complete',
+    status: 'complete',
+  },
+  {
+    stageProgress: 'complete',
+    status: 'complete',
+  },
+  {
+    stageProgress: 'complete',
+    status: 'complete',
+  },
+  {
+    stageProgress: { stage: 'fabrication' },
+    status: 'active',
+  },
+  {
     stageProgress: null,
   },
   {
-    plannedEndOffsetDays: 18,
-    stageProgress: { stage: 'procurement' },
+    stageProgress: null,
   },
   {
-    plannedEndOffsetDays: 22,
-    stageProgress: { stage: 'procurement' },
+    stageProgress: null,
   },
   {
-    plannedEndOffsetDays: 10,
-    stageProgress: { stage: 'fabrication' },
-  },
-  {
-    plannedEndOffsetDays: 14,
-    stageProgress: { stage: 'fabrication' },
-  },
-  {
-    plannedEndOffsetDays: 7,
-    stageProgress: { stage: 'assembly' },
-  },
-  {
-    plannedEndOffsetDays: 12,
-    stageProgress: { stage: 'assembly' },
-  },
-  {
-    plannedEndOffsetDays: 5,
-    stageProgress: { stage: 'paint' },
-  },
-  {
-    plannedEndOffsetDays: 9,
-    stageProgress: { stage: 'paint' },
-  },
-  {
-    plannedEndOffsetDays: -2,
-    stageProgress: { stage: 'paint' },
-    status: 'cancelled',
-  },
-  {
-    plannedEndOffsetDays: 16,
-    stageProgress: { stage: 'supply' },
-  },
-  {
-    plannedEndOffsetDays: -10,
-    stageProgress: 'complete',
-  },
-  {
-    plannedEndOffsetDays: 6,
-    stageProgress: { stage: 'assembly' },
-    status: 'paused',
-  },
-  {
-    plannedEndOffsetDays: 11,
-    stageProgress: { stage: 'fabrication' },
-    status: 'active',
+    stageProgress: null,
   },
 ] as const satisfies readonly SeedJobScenario[];
 
@@ -274,7 +269,6 @@ type SeedProductOption = ProductCreateInput['options'][number] & {
 };
 
 type SeedJobScenario = {
-  plannedEndOffsetDays: number;
   status?: JobStatus;
   stageProgress: { stage: JobStageName } | 'complete' | null;
 };
@@ -571,6 +565,7 @@ export async function seedDatabase(database?: Db): Promise<void> {
   await seedQuotesWithCore({
     db: activeDb,
     products: seededProducts,
+    seedDate,
   });
 
   console.info(
@@ -716,7 +711,7 @@ async function seedJobsWithCore({
             access,
             actorUserId,
             db,
-            input: createSeedJobInput({ product, scenario, seedDate }),
+            input: createSeedJobInput({ product, scenario, scenarioIndex, seedDate }),
           })
         : await createQuoteBackedSeedJob({
             access,
@@ -815,12 +810,14 @@ function createSeedJobInput({
   scenarioIndex?: number;
   seedDate?: Date;
 }): JobCreateInput {
-  const plannedEnd =
-    scenario && seedDate ? getSeedJobDueDate({ scenario, seedDate }) : getFallbackSeedJobDueDate(scenarioIndex);
+  const plannedStart =
+    scenario && seedDate
+      ? getSeedJobPlannedStartDate({ scenarioIndex, seedDate })
+      : getFallbackSeedJobPlannedStartDate(scenarioIndex);
   const defaultStages = computeDefaults({
     anchor: {
-      kind: 'end',
-      value: fromSeedIsoDate(plannedEnd),
+      kind: 'start',
+      value: fromSeedIsoDate(plannedStart),
     },
     productPerDeptConfig: product.departmentConfigs.map((config) => ({
       defaultStationIds: config.defaultStationIds,
@@ -836,6 +833,7 @@ function createSeedJobInput({
   }
 
   return {
+    dueDate: toSeedIsoDate(lastStage.plannedEnd),
     productId: product.id,
     quoteId,
     stages: defaultStages.stages.map(
@@ -875,12 +873,16 @@ async function applySeedJobTimeline({
   const stageRows = await db
     .select({
       id: jobStages.id,
+      plannedEnd: jobStageStations.plannedEnd,
+      plannedStart: jobStageStations.plannedStart,
       sequence: jobStages.sequence,
       stage: jobStages.stage,
     })
     .from(jobStages)
+    .innerJoin(jobStageStations, eq(jobStageStations.jobStageId, jobStages.id))
     .where(eq(jobStages.jobId, id))
-    .orderBy(asc(jobStages.sequence));
+    .orderBy(asc(jobStages.sequence), asc(jobStageStations.id));
+  const stageWindows = getSeedStageWindows(stageRows);
 
   const activeStageProgress = scenario.stageProgress !== 'complete' ? scenario.stageProgress : null;
   const currentStageIndex = activeStageProgress
@@ -888,18 +890,37 @@ async function applySeedJobTimeline({
     : -1;
   const completedStageCount =
     scenario.stageProgress === 'complete' ? JOB_STAGE_PIPELINE.length : Math.max(currentStageIndex, 0);
-  const jobStart = getSeedJobActualStart({ completedStageCount, scenario, scenarioIndex, seedDate });
   const completedJobEnd =
-    scenario.stageProgress === 'complete' ? getSeedJobActualEnd({ scenario, scenarioIndex, seedDate }) : null;
+    scenario.stageProgress === 'complete'
+      ? getSeedActualDate({
+          boundary: 'end',
+          plannedDate: stageWindows.at(-1)?.plannedEnd ?? seedDate,
+          scenarioIndex,
+          stageIndex: stageWindows.length - 1,
+        })
+      : null;
 
-  for (const [stageIndex, stage] of stageRows.entries()) {
+  for (const [stageIndex, stage] of stageWindows.entries()) {
     const isCompletedStage = stageIndex < completedStageCount;
     const isActiveStage = activeStageProgress?.stage === stage.stage;
-    const actualStart = isCompletedStage || isActiveStage ? addSeedDays(jobStart, Math.min(stageIndex * 2, 8)) : null;
+    const actualStart =
+      isCompletedStage || isActiveStage
+        ? getSeedActualDate({
+            boundary: 'start',
+            plannedDate: stage.plannedStart,
+            scenarioIndex,
+            stageIndex,
+          })
+        : null;
     const actualEnd = isCompletedStage
-      ? stageIndex === stageRows.length - 1 && completedJobEnd
+      ? stageIndex === stageWindows.length - 1 && completedJobEnd
         ? completedJobEnd
-        : addSeedDays(actualStart ?? jobStart, 1)
+        : getSeedActualDate({
+            boundary: 'end',
+            plannedDate: stage.plannedEnd,
+            scenarioIndex,
+            stageIndex,
+          })
       : null;
 
     await db
@@ -944,6 +965,51 @@ async function applySeedJobTimeline({
   }
 }
 
+function getSeedStageWindows(
+  rows: readonly {
+    id: UUID;
+    plannedEnd: string | null;
+    plannedStart: string | null;
+    sequence: number;
+    stage: JobStageName;
+  }[],
+): {
+  id: UUID;
+  plannedEnd: Date;
+  plannedStart: Date;
+  sequence: number;
+  stage: JobStageName;
+}[] {
+  const stageWindowsById = new Map<
+    UUID,
+    {
+      id: UUID;
+      plannedEnd: Date;
+      plannedStart: Date;
+      sequence: number;
+      stage: JobStageName;
+    }
+  >();
+
+  for (const row of rows) {
+    if (!row.plannedStart || !row.plannedEnd) {
+      throw new Error(`Seed job stage ${row.stage} is missing a planned schedule`);
+    }
+
+    if (!stageWindowsById.has(row.id)) {
+      stageWindowsById.set(row.id, {
+        id: row.id,
+        plannedEnd: fromSeedIsoDate(row.plannedEnd),
+        plannedStart: fromSeedIsoDate(row.plannedStart),
+        sequence: row.sequence,
+        stage: row.stage,
+      });
+    }
+  }
+
+  return Array.from(stageWindowsById.values()).sort((left, right) => left.sequence - right.sequence);
+}
+
 async function updateSeedStageWorkflowEvent({
   actualField,
   actorUserId,
@@ -977,13 +1043,22 @@ async function updateSeedStageWorkflowEvent({
     );
 }
 
-async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly Product[] }): Promise<void> {
+async function seedQuotesWithCore({
+  db,
+  products,
+  seedDate,
+}: {
+  db: Db;
+  products: readonly Product[];
+  seedDate: Date;
+}): Promise<void> {
   if (products.length === 0) {
     return;
   }
 
   const actorUserId = 'seed-sales-user';
   const supervisorUserId = 'seed-job-supervisor-user';
+  let acceptedWithJobCount = 0;
   const supervisorAccess = createUserAccessSummary({
     role: 'job-supervisor',
     userId: supervisorUserId,
@@ -1035,14 +1110,22 @@ async function seedQuotesWithCore({ db, products }: { db: Db; products: readonly
     const accepted = await acceptQuote({ actorUserId, db, input: { id: sent.id } });
 
     if (scenario.status === 'accepted-with-job') {
+      const acceptedJobScenarioIndex = seedJobScenarios.length + acceptedWithJobCount;
+      acceptedWithJobCount += 1;
+
       await createJob({
         access: supervisorAccess,
         actorUserId: supervisorUserId,
         db,
-        input: {
-          productId: product.id,
+        input: createSeedJobInput({
+          product,
           quoteId: accepted.id,
-        },
+          scenario: {
+            stageProgress: null,
+          },
+          scenarioIndex: acceptedJobScenarioIndex,
+          seedDate,
+        }),
       });
     }
   }
@@ -1066,49 +1149,56 @@ function getSeedProductAgeDays(productIndex: number): number {
   return seedProductMinAgeDays + ((productIndex * 5) % seedProductAgeDayRange);
 }
 
-function getSeedJobDueDate({ scenario, seedDate }: { scenario: SeedJobScenario; seedDate: Date }): string {
-  return toSeedIsoDate(addSeedDays(seedDate, scenario.plannedEndOffsetDays));
+function getSeedJobPlannedStartDate({ scenarioIndex, seedDate }: { scenarioIndex: number; seedDate: Date }): string {
+  return toSeedIsoDate(
+    addSeedDays(seedDate, seedJobScheduleStartOffsetDays + scenarioIndex * seedJobScheduleCadenceDays),
+  );
 }
 
-function getFallbackSeedJobDueDate(scenarioIndex: number): string {
+function getFallbackSeedJobPlannedStartDate(scenarioIndex: number): string {
   return getSeedIsoDate({
-    dayOffset: 42 + scenarioIndex * 4,
-    month: 6,
+    dayOffset: 23 + scenarioIndex * seedJobScheduleCadenceDays,
+    month: 1,
     year: 2026,
   });
 }
 
-function getSeedJobActualStart({
-  completedStageCount,
-  scenario,
+function getSeedActualDate({
+  boundary,
+  plannedDate,
   scenarioIndex,
-  seedDate,
+  stageIndex,
 }: {
-  completedStageCount: number;
-  scenario: SeedJobScenario;
+  boundary: 'end' | 'start';
+  plannedDate: Date;
   scenarioIndex: number;
-  seedDate: Date;
+  stageIndex: number;
 }): Date {
-  if (scenario.stageProgress === 'complete') {
-    return addSeedDays(seedDate, scenario.plannedEndOffsetDays - 12);
-  }
+  const variance = getSeedActualVarianceDays({ boundary, scenarioIndex, stageIndex });
 
-  return addSeedDays(seedDate, -Math.max(2, completedStageCount * 2 + (scenarioIndex % 3) + 2));
+  return addSeedDays(plannedDate, variance);
 }
 
-function getSeedJobActualEnd({
-  scenario,
+function getSeedActualVarianceDays({
+  boundary,
   scenarioIndex,
-  seedDate,
+  stageIndex,
 }: {
-  scenario: SeedJobScenario;
+  boundary: 'end' | 'start';
   scenarioIndex: number;
-  seedDate: Date;
-}): Date {
-  const variance = (scenarioIndex % 3) - 1;
-  const endOffset = Math.min(-1, scenario.plannedEndOffsetDays + variance);
+  stageIndex: number;
+}): number {
+  const varianceSeed = scenarioIndex * 5 + stageIndex * 3 + (boundary === 'end' ? 1 : 0);
 
-  return addSeedDays(seedDate, endOffset);
+  if (varianceSeed % 11 === 0) {
+    return -1;
+  }
+
+  if (varianceSeed % 7 === 0) {
+    return 1;
+  }
+
+  return 0;
 }
 
 function getSeedJobQuoteValidUntil(scenarioIndex: number): string {

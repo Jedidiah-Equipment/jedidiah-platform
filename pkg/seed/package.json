@@ -20,9 +20,9 @@
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "better-auth": "^1.4.7",
+    "better-auth": "^1.6.11",
     "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.44.7",
-    "tsx": "^4.20.6"
+    "drizzle-orm": "^0.45.2",
+    "tsx": "^4.22.3"
   }
 }

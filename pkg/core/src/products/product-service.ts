@@ -5,12 +5,10 @@ import {
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
-  type productDepartmentConfigs,
   productOptions,
   products,
 } from '@pkg/db';
 import type {
-  AuditChanges,
   AuthId,
   Logger,
   ProductCreateInput,
@@ -24,25 +22,18 @@ import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
-import { mapProductDepartmentConfigs, syncProductDepartmentConfigs } from './product-department-config-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
 import { insertProductOptions, mapProductOption, syncProductOptions } from './product-option-service.js';
 
 type ProductRow = typeof products.$inferSelect;
-type ProductDepartmentConfigRow = typeof productDepartmentConfigs.$inferSelect;
 type ProductOptionRow = typeof productOptions.$inferSelect;
 
-export function mapProduct(
-  row: ProductRow,
-  options: ProductOptionRow[] = [],
-  departmentConfigs: ProductDepartmentConfigRow[] = [],
-): Product {
+export function mapProduct(row: ProductRow, options: ProductOptionRow[] = []): Product {
   return Product.parse({
     basePrice: row.basePrice,
     createdAt: row.createdAt.toISOString(),
     currencyCode: ProductCurrencyCode.parse(row.currencyCode),
     description: row.description,
-    departmentConfigs: mapProductDepartmentConfigs(departmentConfigs),
     id: row.id,
     modelCode: row.modelCode,
     name: row.name,
@@ -82,7 +73,6 @@ export async function listProducts({
         where: isNull(productOptions.deletedAt),
         orderBy: [asc(productOptions.code)],
       },
-      departmentConfigs: true,
     },
   });
   const productsSql = productsQuery.toSQL();
@@ -99,7 +89,7 @@ export async function listProducts({
   const [rows, total] = await Promise.all([productsQuery, db.$count(products, where)]);
 
   return {
-    items: rows.map((row) => mapProduct(row, row.options, row.departmentConfigs)),
+    items: rows.map((row) => mapProduct(row, row.options)),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
@@ -143,7 +133,6 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
   const row = await db.query.products.findFirst({
     where: eq(products.id, id),
     with: {
-      departmentConfigs: true,
       options: {
         where: isNull(productOptions.deletedAt),
         orderBy: [asc(productOptions.code)],
@@ -155,7 +144,7 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
     throw new ProductNotFoundError(id);
   }
 
-  return mapProduct(row, row.options, row.departmentConfigs);
+  return mapProduct(row, row.options);
 }
 
 export async function createProduct({
@@ -169,7 +158,7 @@ export async function createProduct({
 }): Promise<Product> {
   try {
     return await db.transaction(async (tx) => {
-      const { departmentConfigs, options, ...productInput } = input;
+      const { options, ...productInput } = input;
       const [row] = await tx.insert(products).values(productInput).returning();
 
       if (!row) {
@@ -182,12 +171,6 @@ export async function createProduct({
         incomingOptions: options,
         actorUserId,
       });
-      const departmentConfigRows = await syncProductDepartmentConfigs({
-        tx,
-        productId: row.id,
-        incomingConfigs: departmentConfigs,
-      });
-
       await insertAuditEvent({
         db: tx,
         input: {
@@ -201,7 +184,7 @@ export async function createProduct({
         },
       });
 
-      return mapProduct(row, optionRows, departmentConfigRows.rows);
+      return mapProduct(row, optionRows);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
@@ -225,7 +208,7 @@ export async function updateProduct({
         throw new ProductNotFoundError(input.id);
       }
 
-      const { departmentConfigs, options, ...productInput } = input;
+      const { options, ...productInput } = input;
       const after = {
         ...before,
         basePrice: productInput.basePrice,
@@ -241,22 +224,10 @@ export async function updateProduct({
         incomingOptions: options,
         actorUserId,
       });
-      const departmentConfigRows = await syncProductDepartmentConfigs({
-        tx,
-        productId: input.id,
-        incomingConfigs: departmentConfigs,
-      });
-      const changes = mergeAuditChanges(productChanges, {
-        departmentConfigs: departmentConfigRows.changes
-          ? {
-              from: departmentConfigRows.changes.before,
-              to: departmentConfigRows.changes.after,
-            }
-          : undefined,
-      });
+      const changes = productChanges;
 
       if (!changes) {
-        return mapProduct(before, optionRows, departmentConfigRows.rows);
+        return mapProduct(before, optionRows);
       }
 
       const [row] = await tx
@@ -289,32 +260,15 @@ export async function updateProduct({
         },
       });
 
-      return mapProduct(row, optionRows, departmentConfigRows.rows);
+      return mapProduct(row, optionRows);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
   }
 }
 
-function mergeAuditChanges(
-  baseChanges: AuditChanges | null,
-  extraChanges: Record<string, { from: unknown; to: unknown } | undefined>,
-): AuditChanges | null {
-  const changes: AuditChanges = { ...(baseChanges ?? {}) };
-
-  for (const [field, change] of Object.entries(extraChanges)) {
-    if (change) {
-      changes[field] = change;
-    }
-  }
-
-  return Object.keys(changes).length > 0 ? changes : null;
-}
-
 function getProductCatalogAuditFields(): Record<string, string> {
-  const { departmentConfigs: _departmentConfigs, ...fields } = productAuditDescriptor.fields;
-
-  return fields;
+  return productAuditDescriptor.fields;
 }
 
 function getProductSortColumn(sortBy: ProductListInput['sortBy']) {

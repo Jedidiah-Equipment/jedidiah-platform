@@ -33,7 +33,6 @@ export const productAuditDescriptor: AuditEntityDescriptor = {
   fields: {
     basePrice: 'base price',
     currencyCode: 'currency',
-    departmentConfigs: 'Department defaults',
     description: 'description',
     modelCode: 'model code',
     name: 'name',
@@ -105,31 +104,6 @@ export const jobStageAuditDescriptor: AuditEntityDescriptor = {
   fields: {},
 };
 
-export const jobStageStationAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'job_stage_station',
-  noun: 'station booking',
-  primaryLabelField: 'stationId',
-  fields: {
-    actualEnd: 'actual end',
-    actualStart: 'actual start',
-    plannedEnd: 'planned end',
-    plannedStart: 'planned start',
-    stationId: 'station',
-  },
-};
-
-export const stationAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'station',
-  noun: 'station',
-  primaryLabelField: 'name',
-  fields: {
-    department: 'department',
-    displayOrder: 'display order',
-    isActive: 'active',
-    name: 'name',
-  },
-};
-
 export const quoteAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'quote',
   noun: 'quote',
@@ -163,11 +137,9 @@ const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   customer: customerAuditDescriptor,
   job: jobAuditDescriptor,
   job_stage: jobStageAuditDescriptor,
-  job_stage_station: jobStageStationAuditDescriptor,
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
   quote: quoteAuditDescriptor,
-  station: stationAuditDescriptor,
   user: userAuditDescriptor,
 };
 

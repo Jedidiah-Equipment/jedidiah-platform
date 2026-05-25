@@ -19,10 +19,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 import { JobStatusBadge } from '../jobs/components/JobStatusBadge.js';
 import { JobFact } from './components/JobFact.js';
-import { ScheduleGantt } from './components/ScheduleGantt.js';
 import { StagePanel } from './components/StagePanel.js';
-import { parseScheduleDate } from './components/schedule-gantt-helpers.js';
-import { WorkflowHistory } from './components/WorkflowHistory.js';
 
 type JobDetailPageProps = {
   jobId: UUID;
@@ -38,24 +35,6 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const refreshJobs = async () => {
     await queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
   };
-  const startStationBookingMutation = useMutation(
-    trpc.jobs.startStationBooking.mutationOptions({
-      onSuccess: async () => {
-        await refreshJobs();
-        toast.success('Station booking started');
-      },
-      onError: (error) => showMutationError(error, 'Unable to start station booking.'),
-    }),
-  );
-  const stopStationBookingMutation = useMutation(
-    trpc.jobs.stopStationBooking.mutationOptions({
-      onSuccess: async () => {
-        await refreshJobs();
-        toast.success('Station booking ended');
-      },
-      onError: (error) => showMutationError(error, 'Unable to end station booking.'),
-    }),
-  );
   const editDueDateMutation = useMutation(
     trpc.jobs.editJobDueDate.mutationOptions({
       onSuccess: async () => {
@@ -74,21 +53,12 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
       onError: (error) => showMutationError(error, 'Unable to update job status.'),
     }),
   );
-  const isTransitionPending =
-    startStationBookingMutation.isPending ||
-    stopStationBookingMutation.isPending ||
-    editDueDateMutation.isPending ||
-    setStatusMutation.isPending;
+  const isTransitionPending = editDueDateMutation.isPending || setStatusMutation.isPending;
   const canUpdateJob = hasPermission(accessQuery.data, 'job:update');
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
-  const scheduleInitialFallbackDate = React.useMemo(() => new Date(), []);
-  const scheduleDueDate = parseScheduleDate(job?.dueDate ?? null);
-  const scheduleInitialDate = scheduleDueDate ?? scheduleInitialFallbackDate;
-  const scheduleInitialDateAlignment = scheduleDueDate ? 'end' : 'center';
   return (
     <DetailPageLayout
-      aside={job ? <WorkflowHistory events={job.workflowEvents} /> : undefined}
       back={<BackButton to="/jobs">Jobs</BackButton>}
       badge={
         job ? (
@@ -135,28 +105,9 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
               value={<JobQuoteLink canOpenQuote={canOpenQuotes} quoteCode={job.quoteCode} quoteId={job.quoteId} />}
             />
           </div>
-          {job.status !== 'active' ? (
-            <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
-              Department controls are disabled while this job is {jobStatusLabels[job.status]}.
-            </div>
-          ) : null}
-          <ScheduleGantt
-            canEditSchedule={canUpdateJob}
-            initialDate={scheduleInitialDate}
-            initialDateAlignment={scheduleInitialDateAlignment}
-            job={job}
-            mode="job"
-          />
           <div className="grid gap-3 lg:grid-cols-5">
             {job.stages.map((stage) => (
-              <StagePanel
-                canTransitionStationBooking={job.status === 'active'}
-                isPending={isTransitionPending}
-                key={`${stage.sequence}-${stage.stage}`}
-                onStartStationBooking={(input) => startStationBookingMutation.mutate(input)}
-                onStopStationBooking={(input) => stopStationBookingMutation.mutate(input)}
-                stage={stage}
-              />
+              <StagePanel isPending={isTransitionPending} key={`${stage.sequence}-${stage.stage}`} stage={stage} />
             ))}
           </div>
         </>

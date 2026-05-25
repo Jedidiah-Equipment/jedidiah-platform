@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { JOB_STAGES, JobCode, JobEvent, JobEventDerivationStage, JobListFilters, JobWorkState } from './job.js';
+import { JOB_STAGES, JobCode, JobListFilters, JobWorkState } from './job.js';
 
 describe('JobCode', () => {
   it('formats DB integers as branded job codes', () => {
@@ -10,7 +10,7 @@ describe('JobCode', () => {
 });
 
 describe('JOB_STAGES', () => {
-  it('uses the station-overhaul departments', () => {
+  it('uses production departments', () => {
     expect(JOB_STAGES).toEqual(['procurement', 'supply', 'fabrication', 'paint', 'assembly']);
   });
 });
@@ -29,43 +29,6 @@ describe('JobListFilters', () => {
     expect(JobListFilters.parse({ jobId: '00000000-0000-4000-8000-000000000001' })).toEqual({
       jobId: '00000000-0000-4000-8000-000000000001',
       statuses: [],
-    });
-  });
-});
-
-describe('JobEvent', () => {
-  it('does not accept retired stage status change events', () => {
-    expect(() =>
-      JobEvent.parse({
-        actorName: null,
-        actorUserId: null,
-        eventType: 'stage.status_changed',
-        id: '00000000-0000-4000-8000-000000000001',
-        jobId: '00000000-0000-4000-8000-000000000002',
-        occurredAt: '2026-05-15T08:00:00.000Z',
-        payload: {
-          fromStatus: 'pending',
-          stage: 'procurement',
-          toStatus: 'active',
-        },
-        stageId: '00000000-0000-4000-8000-000000000003',
-      }),
-    ).toThrow();
-  });
-});
-
-describe('JobEventDerivationStage', () => {
-  it('uses actual date fields for derived state events', () => {
-    expect(
-      JobEventDerivationStage.parse({
-        actualEnd: null,
-        actualStart: '2026-05-15T08:00:00.000Z',
-        stage: 'procurement',
-      }),
-    ).toEqual({
-      actualEnd: null,
-      actualStart: '2026-05-15T08:00:00.000Z',
-      stage: 'procurement',
     });
   });
 });

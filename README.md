@@ -3,8 +3,8 @@
 Monorepo for the Jedidiah Equipment platform.
 
 The repository is being built in vertical slices. The current app contains email/password auth, the
-authenticated app shell, product/customer/quote/job workflows, station catalog management, audit
-history, the assistant surface, shared packages, Drizzle migrations, and root tooling. Current
+authenticated app shell, product/customer/quote/job workflows, audit history, the assistant surface,
+shared packages, Drizzle migrations, and root tooling. Current
 architecture decisions live in `docs/adr/`; `docs/team/job-overhaul-overview.md` is the friendly
 summary of the latest Job workflow model.
 
@@ -16,7 +16,7 @@ pkg/
   web/     React, Vite, TanStack Router, shadcn/ui, Better Auth client
   schema/  global Zod schemas and types shared across packages
   domain/  shared pure authorization, environment, job, quote, and demo policies
-  core/    app service logic for products, customers, quotes, jobs, stations, users, and audit
+  core/    app service logic for products, customers, quotes, jobs, users, and audit
   db/      Drizzle schema, migrations, database client, test helpers
   seed/    deterministic local/demo seed orchestration
 ```
@@ -123,15 +123,12 @@ Postgres container. This wipes local database data.
 - `quotes`
 - `job`
 - `job_stage`
-- `station`
-- `job_stage_station`
-- `job_event`
 - `audit_events`
 - `user_department`
 
-Jobs use a three-level production model: a `job` has five `job_stage` rows, and each Stage can book
-one or more Station catalog rows through `job_stage_station`. Quote-to-Job is one-to-many: a Quote
-can source zero or more Jobs, and `job.quote_id` is indexed but no longer unique.
+Jobs use a stage-level production model: a `job` has five `job_stage` rows. Quote-to-Job is
+one-to-many: a Quote can source zero or more Jobs, and `job.quote_id` is indexed but no longer
+unique.
 
 Those auth table IDs are Better Auth-owned string IDs. For app-owned domain tables, prefer UUID
 primary keys with database defaults unless there is a specific reason not to.
@@ -149,7 +146,7 @@ schema changes that produced them.
 - `/trpc/*` through tRPC
 - `POST /ai/chat-stream` for the authenticated assistant SSE stream
 - `auth.session`, `auth.me`, and `auth.access` tRPC procedures for the current user and permissions
-- `products`, `customers`, `quotes`, `jobs`, `stations`, `audit`, and `users` tRPC procedures gated by
+- `products`, `customers`, `quotes`, `jobs`, `audit`, and `users` tRPC procedures gated by
   permission-specific procedures
 
 App roles are `admin`, `product-editor`, `job-supervisor`, `job-stage-editor`, and `sales`.
@@ -161,24 +158,16 @@ Better Auth admin plugin, server procedures, and the web access hooks. Server-si
 Email/password auth is enabled. Email verification and password reset emails are mocked locally by
 recording/logging the generated email payloads unless `EMAIL_PROVIDER=resend` is configured.
 Seed users use `123` for local sign-in. The seeder creates deterministic demo users, products,
-customers, quotes, jobs, stations, departments, and audit history.
+customers, quotes, jobs, departments, and audit history.
 
 ## Job workflow notes
 
-Jobs are currently date-driven rather than status-dropdown-driven:
+Jobs currently use a stage-level workflow:
 
 - The production pipeline is five Stages: `procurement`, `supply`, `fabrication`, `paint`, and
   `assembly`.
-- Each Job, Stage, and Station Booking has due-start, due-end, actual-start, and actual-end fields,
-  with companion manual markers so supervisor overrides stay sticky across later cascades.
-- Product Department configs carry duration days and default Station IDs; the Create Job dialog uses
-  those defaults to build the initial Stage windows and Station Bookings.
-- Job status is stored manually as `pending`, `active`, `paused`, `complete`, or `cancelled`. Stage
-  and Station Booking work state is derived from actual dates.
-- Department managers start/stop Station Bookings in their Departments. Stage and Job actuals roll
-  up from Station Booking actuals unless a supervisor has manually overridden the field.
-- Supervisors and admins can edit dates directly, and every direct date edit records a
-  `date.overridden` Job Event and an Audit Event.
+- Job status is stored manually as `pending`, `active`, `paused`, `complete`, or `cancelled`.
+- Jobs have a single optional Job Due Date.
 - Pipeline order is advisory for planning and display. It is not a server-side gate.
 - A Quote may source multiple Jobs. Draft, sent, and accepted Quotes can source Jobs; rejected
   Quotes cannot.
@@ -193,7 +182,6 @@ Jobs are currently date-driven rather than status-dropdown-driven:
 - `/customers` authenticated customer directory (visible with `customer:read`)
 - `/quotes` authenticated quote workflow (visible with `quote:read`)
 - `/jobs` authenticated job workflow (visible with `job:read`)
-- `/stations` station catalog management (visible with `station:update`)
 - `/audit` authenticated audit history (visible with `audit:read`)
 - `/assistant` authenticated AI assistant
 - `/users` admin-only user management with role assignment

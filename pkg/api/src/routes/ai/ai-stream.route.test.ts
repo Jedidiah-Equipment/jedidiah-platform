@@ -229,7 +229,6 @@ describe('POST /ai/chat-stream', () => {
       createdAt: '2026-05-13T10:13:20.631Z',
       currencyCode: 'ZAR' as const,
       description: 'Apex forklift',
-      departmentConfigs: [],
       id: '00000000-0000-4000-8000-000000000001',
       modelCode: 'AF-25',
       name: 'Apex Forklift',

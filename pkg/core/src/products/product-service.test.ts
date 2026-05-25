@@ -23,13 +23,6 @@ describe('mapProduct', () => {
       createdAt: createdAt.toISOString(),
       currencyCode: 'ZAR',
       description: 'Earthmoving equipment',
-      departmentConfigs: [
-        { defaultStationIds: [], department: 'procurement', durationDays: 0 },
-        { defaultStationIds: [], department: 'supply', durationDays: 0 },
-        { defaultStationIds: [], department: 'fabrication', durationDays: 0 },
-        { defaultStationIds: [], department: 'paint', durationDays: 0 },
-        { defaultStationIds: [], department: 'assembly', durationDays: 0 },
-      ],
       id: '00000000-0000-4000-8000-000000000001',
       modelCode: 'WL-100',
       name: 'Wheel Loader',

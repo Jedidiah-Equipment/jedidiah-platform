@@ -1,22 +1,13 @@
 import {
   createJob,
-  editJobDate,
+  editJobDueDate,
   getJob,
   isJobCoreError,
   type JobCoreError,
   listJobs,
   setJobStatus,
-  startStationBooking,
-  stopStationBooking,
 } from '@pkg/core';
-import {
-  JobCreateInput,
-  JobDateEditInput,
-  JobListInput,
-  JobSetStatusInput,
-  JobStationBookingTransitionInput,
-  UUID,
-} from '@pkg/schema';
+import { JobCreateInput, JobDueDateEditInput, JobListInput, JobSetStatusInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -37,11 +28,11 @@ export const jobsRouter = router({
       mapJobErrors(() => createJob({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id })),
     ),
 
-  editDate: authorizedProcedure('job:update')
-    .input(JobDateEditInput)
+  editJobDueDate: authorizedProcedure('job:update')
+    .input(JobDueDateEditInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() =>
-        editJobDate({
+        editJobDueDate({
           access: ctx.access,
           actorUserId: ctx.session.user.id,
           db: ctx.db,
@@ -59,32 +50,6 @@ export const jobsRouter = router({
           actorUserId: ctx.session.user.id,
           db: ctx.db,
           input,
-        }),
-      ),
-    ),
-
-  startStationBooking: authorizedProcedure('job-stage:update')
-    .input(JobStationBookingTransitionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        startStationBooking({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          id: input.id,
-        }),
-      ),
-    ),
-
-  stopStationBooking: authorizedProcedure('job-stage:update')
-    .input(JobStationBookingTransitionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() =>
-        stopStationBooking({
-          access: ctx.access,
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          id: input.id,
         }),
       ),
     ),
@@ -118,24 +83,6 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
       return {
         appCode: error.code,
         code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    case 'job.station_booking_not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Station booking not found.',
-      };
-    case 'job.station_booking_transition_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
-    case 'job.stage_transition_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
         message: error.message,
       };
     case 'job.create_from_quote_denied':

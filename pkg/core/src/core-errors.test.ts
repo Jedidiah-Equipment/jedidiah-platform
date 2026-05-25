@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { CustomerNotFoundError, isCustomerCoreError } from './customers/customer-errors.js';
-import {
-  isJobCoreError,
-  JobCreateFromQuoteDeniedError,
-  JobNotFoundError,
-  JobStageTransitionDeniedError,
-} from './jobs/job-errors.js';
+import { isJobCoreError, JobCreateFromQuoteDeniedError, JobNotFoundError } from './jobs/job-errors.js';
 import {
   DuplicateProductModelCodeError,
   DuplicateProductNameError,
@@ -54,8 +49,7 @@ describe('core error codes and guards', () => {
 
   it('identifies job core errors', () => {
     expect(new JobNotFoundError('job-id').code).toBe('job.not_found');
-    expect(new JobStageTransitionDeniedError('diagnostic').code).toBe('job.stage_transition_denied');
     expect(new JobCreateFromQuoteDeniedError('diagnostic').code).toBe('job.create_from_quote_denied');
-    expect(isJobCoreError(new JobStageTransitionDeniedError('diagnostic'))).toBe(true);
+    expect(isJobCoreError(new JobCreateFromQuoteDeniedError('diagnostic'))).toBe(true);
   });
 });

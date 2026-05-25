@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
+import { DateIso } from '../common/date.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
@@ -9,17 +10,7 @@ export type AuditAction = z.infer<typeof AuditAction>;
 export const AuditAction = z.enum(['created', 'updated', 'deleted']);
 
 export type AuditEntityType = z.infer<typeof AuditEntityType>;
-export const AuditEntityType = z.enum([
-  'customer',
-  'job',
-  'job_stage',
-  'job_stage_station',
-  'product',
-  'product_option',
-  'quote',
-  'station',
-  'user',
-]);
+export const AuditEntityType = z.enum(['customer', 'job', 'job_stage', 'product', 'product_option', 'quote', 'user']);
 
 export type AuditFieldChange = z.infer<typeof AuditFieldChange>;
 export const AuditFieldChange = z.object({
@@ -33,7 +24,7 @@ export const AuditChanges = z.record(z.string(), AuditFieldChange);
 export type AuditEvent = z.infer<typeof AuditEvent>;
 export const AuditEvent = z.object({
   id: UUID,
-  occurredAt: z.iso.datetime(),
+  occurredAt: DateIso,
   actorUserId: AuthId.nullable(),
   actorName: z.string().nullable(),
   actorEmail: z.email().nullable(),
@@ -53,8 +44,8 @@ export const AuditFilters = z
     actorUserIds: z.array(AuthId).default([]),
     entityIds: z.array(z.string().trim().min(1)).default([]),
     entityTypes: z.array(AuditEntityType).default([]),
-    occurredAtStart: z.iso.datetime().optional(),
-    occurredAtEnd: z.iso.datetime().optional(),
+    occurredAtStart: DateIso.optional(),
+    occurredAtEnd: DateIso.optional(),
   })
   .default({
     actorUserIds: [],

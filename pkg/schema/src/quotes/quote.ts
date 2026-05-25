@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
+import { DateIso } from '../common/date.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
@@ -33,13 +34,13 @@ export const Quote = z.object({
   salesPersonId: AuthId.nullable(),
   status: QuoteStatus.default('draft'),
   discount: Price,
-  validUntil: z.iso.date().nullable(),
+  validUntil: DateIso.nullable(),
   notes: QuoteNotes,
   quotedBasePrice: Price.nullable(),
   quotedCurrencyCode: ProductCurrencyCode.nullable(),
-  sentAt: z.iso.datetime().nullable(),
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
+  sentAt: DateIso.nullable(),
+  createdAt: DateIso,
+  updatedAt: DateIso,
 });
 
 export type QuoteLinkedJob = z.infer<typeof QuoteLinkedJob>;
@@ -87,7 +88,7 @@ export const QuoteCreateInput = z.object({
   productId: UUID.nullable().default(null),
   salesPersonId: AuthId.nullable().default(null),
   discount: z.coerce.number().pipe(Price).default(0),
-  validUntil: z.iso.date().nullable().default(null),
+  validUntil: DateIso.nullable().default(null),
   notes: QuoteNotesInput,
 });
 

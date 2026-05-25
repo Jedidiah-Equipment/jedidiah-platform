@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/button.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { ScheduleGantt } from '@/pages/job-detail/components/ScheduleGantt.js';
 import { JobStageChips } from './components/JobStageChips.js';
 import { JobStatusBadge } from './components/JobStatusBadge.js';
 
@@ -52,8 +51,6 @@ const jobStatusFilterOptions = JobStatus.options.map((status) => ({
 export const JobsPage: React.FC = () => {
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
-  const canEditSchedule = hasPermission(accessQuery.data, 'job:update');
-  const scheduleInitialDate = useMemo(() => new Date(), []);
 
   return (
     <ListPageLayout
@@ -69,12 +66,6 @@ export const JobsPage: React.FC = () => {
       title="Jobs"
     >
       <JobTable />
-      <ScheduleGantt
-        canEditSchedule={canEditSchedule}
-        initialDate={scheduleInitialDate}
-        initialDateAlignment="start"
-        mode="global"
-      />
     </ListPageLayout>
   );
 };

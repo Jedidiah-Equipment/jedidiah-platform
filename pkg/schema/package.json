@@ -13,5 +13,8 @@
     "build": "tsc -b",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "date-fns": "^4.3.0"
   }
 }

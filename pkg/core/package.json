@@ -18,6 +18,7 @@
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
+    "date-fns": "^4.3.0",
     "drizzle-orm": "^0.45.2",
     "sql-formatter": "^15.8.0"
   }

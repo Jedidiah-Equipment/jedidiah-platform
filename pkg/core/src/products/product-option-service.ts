@@ -1,5 +1,6 @@
 import { type DatabaseTransaction, getUniqueViolationConstraint, productOptions } from '@pkg/db';
-import type { AuthId, ProductOption, ProductOptionCreateInput, ProductOptionUpsertInput, UUID } from '@pkg/schema';
+import type { AuthId, ProductOptionCreateInput, ProductOptionUpsertInput, UUID } from '@pkg/schema';
+import { ProductOption } from '@pkg/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
 import { createAuditChanges, insertAuditEvent, productOptionAuditDescriptor } from '../audit/audit-service.js';
@@ -8,7 +9,7 @@ import { DuplicateProductOptionCodeError, ProductOptionNotFoundError } from './p
 type ProductOptionRow = typeof productOptions.$inferSelect;
 
 export function mapProductOption(row: ProductOptionRow): ProductOption {
-  return {
+  return ProductOption.parse({
     code: row.code,
     createdAt: row.createdAt.toISOString(),
     id: row.id,
@@ -16,7 +17,7 @@ export function mapProductOption(row: ProductOptionRow): ProductOption {
     price: row.price,
     productId: row.productId,
     updatedAt: row.updatedAt.toISOString(),
-  };
+  });
 }
 
 export async function insertProductOptions({

@@ -6,42 +6,27 @@ import {
   createJob,
   createProduct,
   createQuote,
-  createStation,
   rejectQuote,
   sendQuote,
   updateProduct,
 } from '@pkg/core';
-import {
-  account,
-  closeDatabaseConnection,
-  type Db,
-  db,
-  jobEvents,
-  jobStageStations,
-  jobStages,
-  jobs,
-  user,
-  userDepartment,
-} from '@pkg/db';
-import { computeDefaults, createUserAccessSummary, demoUsers, JOB_STAGE_PIPELINE } from '@pkg/domain';
+import { account, closeDatabaseConnection, type Db, db, jobs, user, userDepartment } from '@pkg/db';
+import { createUserAccessSummary, demoUsers } from '@pkg/domain';
 import type {
   CustomerCreateInput,
-  Department,
   JobCreateInput,
-  JobCreateStageInput,
   JobStageName,
   JobStatus,
   Product,
   ProductCreateInput,
-  ProductDepartmentConfig,
   ProductOptionUpsertInput,
   QuoteStatus,
-  Station,
   UUID,
 } from '@pkg/schema';
-import { DEPARTMENTS } from '@pkg/schema';
+import { DateIso, DateOnlyIso } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { format, parseISO } from 'date-fns';
+import { eq, inArray, sql } from 'drizzle-orm';
 
 const seedProductCount = 10;
 const seedProductMinAgeDays = 7;
@@ -49,19 +34,6 @@ const seedProductAgeDayRange = 22;
 const seedStandaloneJobCount = 2;
 const seedJobScheduleStartOffsetDays = -120;
 const seedJobScheduleCadenceDays = 12;
-
-const seedStations = [
-  { department: 'procurement', displayOrder: 10, name: 'PO Desk' },
-  { department: 'procurement', displayOrder: 20, name: 'Vendor Follow-up' },
-  { department: 'supply', displayOrder: 10, name: 'Goods-In Bay' },
-  { department: 'supply', displayOrder: 20, name: 'Stores Cage' },
-  { department: 'fabrication', displayOrder: 10, name: 'Weld Bay 1' },
-  { department: 'fabrication', displayOrder: 20, name: 'Weld Bay 2' },
-  { department: 'paint', displayOrder: 10, name: 'Paint Booth A' },
-  { department: 'paint', displayOrder: 20, name: 'Prep Bay' },
-  { department: 'assembly', displayOrder: 10, name: 'Assembly Bench 1' },
-  { department: 'assembly', displayOrder: 20, name: 'Final QA Bay' },
-] as const satisfies readonly Parameters<typeof createStation>[0]['input'][];
 
 const equipmentFamilies = [
   'Wheel Loader',
@@ -280,11 +252,9 @@ type SeedProductPlan = {
 
 type SeedProductUpdate = Pick<SeedProduct, 'basePrice' | 'description'>;
 
-type SeededProduct = Pick<Product, 'departmentConfigs' | 'id' | 'options'>;
+type SeededProduct = Pick<Product, 'id' | 'options'>;
 
 type SeedCustomer = Pick<CustomerCreateInput, 'companyName' | 'contactPerson' | 'email'>;
-
-type SeedStationCatalog = Record<Department, Station[]>;
 
 type SeedQuoteScenario = {
   customer: SeedCustomer;
@@ -294,7 +264,7 @@ type SeedQuoteScenario = {
   validUntil: string;
 };
 
-export function createSeedProducts(stationCatalog: SeedStationCatalog, count = seedProductCount): SeedProduct[] {
+export function createSeedProducts(count = seedProductCount): SeedProduct[] {
   return Array.from({ length: count }, (_, index) => {
     const family = equipmentFamilies[index % equipmentFamilies.length] ?? equipmentFamilies[0];
     const series = equipmentSeries[index % equipmentSeries.length] ?? equipmentSeries[0];
@@ -303,10 +273,6 @@ export function createSeedProducts(stationCatalog: SeedStationCatalog, count = s
     return {
       basePrice: 125_000 + sequence * 18_750,
       currencyCode: 'ZAR',
-      departmentConfigs: createSeedDepartmentConfigs({
-        productIndex: index,
-        stationCatalog,
-      }),
       description: `${series} ${family.toLowerCase()} configured for regional equipment inventory.`,
       modelCode: `JED-${family
         .split(' ')
@@ -316,89 +282,6 @@ export function createSeedProducts(stationCatalog: SeedStationCatalog, count = s
       options: createSeedProductOptions(index),
     };
   });
-}
-
-function createSeedDepartmentConfigs({
-  productIndex,
-  stationCatalog,
-}: {
-  productIndex: number;
-  stationCatalog: SeedStationCatalog;
-}): ProductDepartmentConfig[] {
-  const fabricationStations = getSeedStations(stationCatalog, 'fabrication', 2);
-  const assemblyStations = getSeedStations(stationCatalog, 'assembly', 2);
-  const supplyStations = getSeedStations(stationCatalog, 'supply', 2);
-  const paintStations = getSeedStations(stationCatalog, 'paint', 2);
-
-  return DEPARTMENTS.map((department: Department) => ({
-    defaultStationIds: getSeedDefaultStationIds({
-      assemblyStations,
-      department,
-      fabricationStations,
-      paintStations,
-      productIndex,
-      stationCatalog,
-      supplyStations,
-    }),
-    department,
-    durationDays: getSeedDepartmentDurationDays({ department, productIndex }),
-  }));
-}
-
-function getSeedDepartmentDurationDays({
-  department,
-  productIndex,
-}: {
-  department: Department;
-  productIndex: number;
-}): number {
-  const isHeavyBuild = productIndex % 3 === 0;
-  const baseDurations = {
-    assembly: isHeavyBuild ? 4 : 3,
-    fabrication: isHeavyBuild ? 5 : 3,
-    paint: 2,
-    procurement: productIndex % 2 === 0 ? 2 : 1,
-    supply: 1,
-  } as const satisfies Record<Department, number>;
-
-  return baseDurations[department];
-}
-
-function getSeedDefaultStationIds({
-  assemblyStations,
-  department,
-  fabricationStations,
-  paintStations,
-  productIndex,
-  stationCatalog,
-  supplyStations,
-}: {
-  assemblyStations: Station[];
-  department: Department;
-  fabricationStations: Station[];
-  paintStations: Station[];
-  productIndex: number;
-  stationCatalog: SeedStationCatalog;
-  supplyStations: Station[];
-}): UUID[] {
-  switch (department) {
-    case 'assembly':
-      return productIndex % 2 === 0
-        ? [getSeedStationAt(assemblyStations, 0).id, getSeedStationAt(assemblyStations, 1).id]
-        : [getSeedStationAt(assemblyStations, 0).id];
-    case 'fabrication':
-      return productIndex % 4 === 0
-        ? [getSeedStationAt(fabricationStations, 0).id, getSeedStationAt(fabricationStations, 1).id]
-        : [getSeedStationAt(fabricationStations, 0).id];
-    case 'paint':
-      return productIndex % 3 === 0
-        ? [getSeedStationAt(paintStations, 0).id, getSeedStationAt(paintStations, 1).id]
-        : [getSeedStationAt(paintStations, 0).id];
-    case 'procurement':
-      return [getSeedStationAt(getSeedStations(stationCatalog, 'procurement', 1), 0).id];
-    case 'supply':
-      return [getSeedStationAt(supplyStations, productIndex % supplyStations.length).id];
-  }
 }
 
 function createSeedProductOptions(productIndex: number): SeedProductOption[] {
@@ -541,11 +424,7 @@ export async function seedDatabase(database?: Db): Promise<void> {
       },
     });
 
-  const stationCatalog = await seedStationsWithCore({
-    actorUserId: 'seed-job-supervisor-user',
-    db: activeDb,
-  });
-  const seedProductPlans = createSeedProductPlans(createSeedProducts(stationCatalog));
+  const seedProductPlans = createSeedProductPlans(createSeedProducts());
 
   console.info(`[db:seed] Upserted ${demoUsers.length} credential account(s)`);
   console.info(`[db:seed] Rebuilding ${seedProductPlans.length} product scenario(s) through core services`);
@@ -569,57 +448,8 @@ export async function seedDatabase(database?: Db): Promise<void> {
   });
 
   console.info(
-    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seedStations.length} station(s), ${seededProducts.length} product scenario(s), ${seedJobScenarios.length} job scenario(s) (${seedJobScenarios.length - seedStandaloneJobCount} quote-backed), and ${seedQuoteScenarios.length} standalone quote scenario(s)`,
+    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededProducts.length} product scenario(s), ${seedJobScenarios.length} job scenario(s) (${seedJobScenarios.length - seedStandaloneJobCount} quote-backed), and ${seedQuoteScenarios.length} standalone quote scenario(s)`,
   );
-}
-
-async function seedStationsWithCore({ actorUserId, db }: { actorUserId: string; db: Db }): Promise<SeedStationCatalog> {
-  console.info(`[db:seed] Creating ${seedStations.length} station catalog row(s)`);
-  const catalog = createEmptySeedStationCatalog();
-
-  for (const input of seedStations) {
-    const station = await createStation({
-      actorUserId,
-      db,
-      input,
-    });
-
-    catalog[station.department].push(station);
-  }
-
-  return catalog;
-}
-
-function createEmptySeedStationCatalog(): SeedStationCatalog {
-  return {
-    assembly: [],
-    fabrication: [],
-    paint: [],
-    procurement: [],
-    supply: [],
-  };
-}
-
-function getSeedStations(catalog: SeedStationCatalog, department: Department, minimumCount: number): Station[] {
-  const stations = catalog[department];
-
-  if (stations.length < minimumCount) {
-    throw new Error(
-      `Seed station catalog for ${department} requires at least ${minimumCount} station(s); found ${stations.length}`,
-    );
-  }
-
-  return stations;
-}
-
-function getSeedStationAt(stations: readonly Station[], index: number): Station {
-  const station = stations[index];
-
-  if (!station) {
-    throw new Error(`Seed station lookup failed for index ${index}`);
-  }
-
-  return station;
 }
 
 async function seedProductsWithCore({
@@ -654,7 +484,6 @@ async function seedProductsWithCore({
           id: product.id,
           basePrice: update.basePrice,
           currencyCode: product.currencyCode,
-          departmentConfigs: product.departmentConfigs,
           description: update.description,
           modelCode: product.modelCode,
           name: product.name,
@@ -777,7 +606,7 @@ async function createQuoteBackedSeedJob({
       notes: 'Accepted seed quote used to create a production job.',
       productId: product.id,
       salesPersonId: salesUserId,
-      validUntil: getSeedJobQuoteValidUntil(scenarioIndex),
+      validUntil: DateIso.parse(getSeedJobQuoteValidUntil(scenarioIndex)),
     },
   });
   const sent = await sendQuote({ actorUserId: salesUserId, db, input: { id: quote.id } });
@@ -814,40 +643,12 @@ function createSeedJobInput({
     scenario && seedDate
       ? getSeedJobPlannedStartDate({ scenarioIndex, seedDate })
       : getFallbackSeedJobPlannedStartDate(scenarioIndex);
-  const defaultStages = computeDefaults({
-    anchor: {
-      kind: 'start',
-      value: fromSeedIsoDate(plannedStart),
-    },
-    productPerDeptConfig: product.departmentConfigs.map((config) => ({
-      defaultStationIds: config.defaultStationIds,
-      durationDays: config.durationDays,
-      stage: config.department,
-    })),
-  });
-  const firstStage = defaultStages.stages[0];
-  const lastStage = defaultStages.stages[defaultStages.stages.length - 1];
-
-  if (!firstStage || !lastStage) {
-    throw new Error('Seed job defaults did not produce the five-stage pipeline');
-  }
+  const dueDate = addSeedDays(fromSeedIsoDate(plannedStart), 14);
 
   return {
-    dueDate: toSeedIsoDate(lastStage.plannedEnd),
+    dueDate: DateOnlyIso.parse(toSeedIsoDate(dueDate)),
     productId: product.id,
     quoteId,
-    stages: defaultStages.stages.map(
-      (stage): JobCreateStageInput => ({
-        stage: stage.stage,
-        stationBookings: defaultStages.stationBookings
-          .filter((booking) => booking.stage === stage.stage)
-          .map((booking) => ({
-            plannedEnd: toSeedIsoDate(booking.plannedEnd),
-            plannedStart: toSeedIsoDate(booking.plannedStart),
-            stationId: booking.stationId,
-          })),
-      }),
-    ),
   };
 }
 
@@ -866,181 +667,12 @@ async function applySeedJobTimeline({
   scenarioIndex: number;
   seedDate: Date;
 }): Promise<void> {
-  if (!scenario.stageProgress) {
-    return;
-  }
-
-  const stageRows = await db
-    .select({
-      id: jobStages.id,
-      plannedEnd: jobStageStations.plannedEnd,
-      plannedStart: jobStageStations.plannedStart,
-      sequence: jobStages.sequence,
-      stage: jobStages.stage,
-    })
-    .from(jobStages)
-    .innerJoin(jobStageStations, eq(jobStageStations.jobStageId, jobStages.id))
-    .where(eq(jobStages.jobId, id))
-    .orderBy(asc(jobStages.sequence), asc(jobStageStations.id));
-  const stageWindows = getSeedStageWindows(stageRows);
-
-  const activeStageProgress = scenario.stageProgress !== 'complete' ? scenario.stageProgress : null;
-  const currentStageIndex = activeStageProgress
-    ? JOB_STAGE_PIPELINE.findIndex(({ stage }) => stage === activeStageProgress.stage)
-    : -1;
-  const completedStageCount =
-    scenario.stageProgress === 'complete' ? JOB_STAGE_PIPELINE.length : Math.max(currentStageIndex, 0);
-  const completedJobEnd =
-    scenario.stageProgress === 'complete'
-      ? getSeedActualDate({
-          boundary: 'end',
-          plannedDate: stageWindows.at(-1)?.plannedEnd ?? seedDate,
-          scenarioIndex,
-          stageIndex: stageWindows.length - 1,
-        })
-      : null;
-
-  for (const [stageIndex, stage] of stageWindows.entries()) {
-    const isCompletedStage = stageIndex < completedStageCount;
-    const isActiveStage = activeStageProgress?.stage === stage.stage;
-    const actualStart =
-      isCompletedStage || isActiveStage
-        ? getSeedActualDate({
-            boundary: 'start',
-            plannedDate: stage.plannedStart,
-            scenarioIndex,
-            stageIndex,
-          })
-        : null;
-    const actualEnd = isCompletedStage
-      ? stageIndex === stageWindows.length - 1 && completedJobEnd
-        ? completedJobEnd
-        : getSeedActualDate({
-            boundary: 'end',
-            plannedDate: stage.plannedEnd,
-            scenarioIndex,
-            stageIndex,
-          })
-      : null;
-
-    await db
-      .update(jobStageStations)
-      .set({
-        actualEnd,
-        actualStart,
-        updatedAt: actualEnd ?? actualStart ?? new Date(),
-      })
-      .where(eq(jobStageStations.jobStageId, stage.id));
-
-    if (actualStart) {
-      await updateSeedStageWorkflowEvent({
-        actualField: 'actualStart',
-        actorUserId,
-        db,
-        eventType: 'stage.started',
-        jobId: id,
-        stage: stage.stage,
-        timestamp: actualStart,
-      });
-    }
-
-    if (actualEnd) {
-      await updateSeedStageWorkflowEvent({
-        actualField: 'actualEnd',
-        actorUserId,
-        db,
-        eventType: 'stage.stopped',
-        jobId: id,
-        stage: stage.stage,
-        timestamp: actualEnd,
-      });
-    }
-  }
-
-  if (completedJobEnd) {
-    await db
-      .update(jobEvents)
-      .set({ actorUserId, occurredAt: completedJobEnd })
-      .where(and(eq(jobEvents.jobId, id), eq(jobEvents.eventType, 'job.completed')));
-  }
-}
-
-function getSeedStageWindows(
-  rows: readonly {
-    id: UUID;
-    plannedEnd: string | null;
-    plannedStart: string | null;
-    sequence: number;
-    stage: JobStageName;
-  }[],
-): {
-  id: UUID;
-  plannedEnd: Date;
-  plannedStart: Date;
-  sequence: number;
-  stage: JobStageName;
-}[] {
-  const stageWindowsById = new Map<
-    UUID,
-    {
-      id: UUID;
-      plannedEnd: Date;
-      plannedStart: Date;
-      sequence: number;
-      stage: JobStageName;
-    }
-  >();
-
-  for (const row of rows) {
-    if (!row.plannedStart || !row.plannedEnd) {
-      throw new Error(`Seed job stage ${row.stage} is missing a planned schedule`);
-    }
-
-    if (!stageWindowsById.has(row.id)) {
-      stageWindowsById.set(row.id, {
-        id: row.id,
-        plannedEnd: fromSeedIsoDate(row.plannedEnd),
-        plannedStart: fromSeedIsoDate(row.plannedStart),
-        sequence: row.sequence,
-        stage: row.stage,
-      });
-    }
-  }
-
-  return Array.from(stageWindowsById.values()).sort((left, right) => left.sequence - right.sequence);
-}
-
-async function updateSeedStageWorkflowEvent({
-  actualField,
-  actorUserId,
-  db,
-  eventType,
-  jobId,
-  stage,
-  timestamp,
-}: {
-  actualField: 'actualEnd' | 'actualStart';
-  actorUserId: string;
-  db: Db;
-  eventType: 'stage.started' | 'stage.stopped';
-  jobId: UUID;
-  stage: JobStageName;
-  timestamp: Date;
-}): Promise<void> {
-  await db
-    .update(jobEvents)
-    .set({
-      actorUserId,
-      occurredAt: timestamp,
-      payload: sql`jsonb_set(${jobEvents.payload}, ${`{${actualField}}`}, to_jsonb(${timestamp.toISOString()}::text), true)`,
-    })
-    .where(
-      and(
-        eq(jobEvents.jobId, jobId),
-        eq(jobEvents.eventType, eventType),
-        sql`${jobEvents.payload}->>'stage' = ${stage}`,
-      ),
-    );
+  void actorUserId;
+  void db;
+  void id;
+  void scenario;
+  void scenarioIndex;
+  void seedDate;
 }
 
 async function seedQuotesWithCore({
@@ -1088,7 +720,7 @@ async function seedQuotesWithCore({
         notes: scenario.notes,
         productId: product.id,
         salesPersonId: actorUserId,
-        validUntil: scenario.validUntil,
+        validUntil: DateIso.parse(scenario.validUntil),
       },
     });
 
@@ -1163,44 +795,6 @@ function getFallbackSeedJobPlannedStartDate(scenarioIndex: number): string {
   });
 }
 
-function getSeedActualDate({
-  boundary,
-  plannedDate,
-  scenarioIndex,
-  stageIndex,
-}: {
-  boundary: 'end' | 'start';
-  plannedDate: Date;
-  scenarioIndex: number;
-  stageIndex: number;
-}): Date {
-  const variance = getSeedActualVarianceDays({ boundary, scenarioIndex, stageIndex });
-
-  return addSeedDays(plannedDate, variance);
-}
-
-function getSeedActualVarianceDays({
-  boundary,
-  scenarioIndex,
-  stageIndex,
-}: {
-  boundary: 'end' | 'start';
-  scenarioIndex: number;
-  stageIndex: number;
-}): number {
-  const varianceSeed = scenarioIndex * 5 + stageIndex * 3 + (boundary === 'end' ? 1 : 0);
-
-  if (varianceSeed % 11 === 0) {
-    return -1;
-  }
-
-  if (varianceSeed % 7 === 0) {
-    return 1;
-  }
-
-  return 0;
-}
-
 function getSeedJobQuoteValidUntil(scenarioIndex: number): string {
   return getSeedIsoDate({
     dayOffset: 14 + scenarioIndex * 2,
@@ -1237,15 +831,15 @@ function createSeedCustomerInput(customer: SeedCustomer): CustomerCreateInput {
 function getSeedIsoDate({ dayOffset, month, year }: { dayOffset: number; month: number; year: number }): string {
   const date = new Date(Date.UTC(year, month, dayOffset));
 
-  return date.toISOString().slice(0, 10);
+  return format(date, 'yyyy-MM-dd');
 }
 
 function fromSeedIsoDate(value: string): Date {
-  return new Date(`${value}T00:00:00.000Z`);
+  return parseISO(`${value}T00:00:00.000Z`);
 }
 
 function toSeedIsoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
+  return format(value, 'yyyy-MM-dd');
 }
 
 function addSeedDays(value: Date, dayOffset: number): Date {

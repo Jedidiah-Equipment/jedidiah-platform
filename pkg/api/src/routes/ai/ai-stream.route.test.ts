@@ -5,6 +5,7 @@ import fastifyCors from '@fastify/cors';
 import { RunContext, type Tool } from '@openai/agents';
 import * as productsCore from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
+import { Product } from '@pkg/schema';
 import Fastify from 'fastify';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -223,7 +224,7 @@ describe('POST /ai/chat-stream', () => {
 
   test('streams a final assistant answer after a tool call', async () => {
     const app = Fastify();
-    const product = {
+    const product = Product.parse({
       basePrice: 332_500,
       createdAt: '2026-05-13T10:13:20.631Z',
       currencyCode: 'ZAR' as const,
@@ -234,7 +235,7 @@ describe('POST /ai/chat-stream', () => {
       name: 'Apex Forklift',
       options: [],
       updatedAt: '2026-05-13T10:13:20.631Z',
-    };
+    });
     const listProductsSpy = vi.spyOn(productsCore, 'listProducts').mockResolvedValue({
       items: [product],
       sortBy: 'name',

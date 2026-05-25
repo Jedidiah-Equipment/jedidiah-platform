@@ -1,6 +1,6 @@
 import { rollupJobSchedule, rollupStageSchedule, type ScheduleRollupWindow } from '@pkg/domain';
 import type { JobStageName, JobSummary, StationBooking } from '@pkg/schema';
-import { JobCode, JobDetail } from '@pkg/schema';
+import { DateIso, DateOnlyIso, JobCode, JobDetail, StationBooking as StationBookingSchema } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -491,26 +491,41 @@ describe('schedule date display helpers', () => {
     });
   });
 
-  it('orders two station booking planned date edits so each intermediate range stays valid', () => {
+  it('creates station date edits for changed planned fields', () => {
     expect(
       getScheduleGanttPlannedDateEdits({
-        entityId: ids.stationBooking,
+        jobId: ids.job,
         nextPlannedEnd: '2026-05-12',
         nextPlannedStart: '2026-05-10',
         previousPlannedEnd: '2026-05-03',
         previousPlannedStart: '2026-05-01',
-      }).map((edit) => edit.field),
-    ).toEqual(['planned_end', 'planned_start']);
+        stationName: 'Weld Bay',
+      }),
+    ).toEqual([
+      {
+        field: 'planned_start',
+        jobId: ids.job,
+        stationName: 'Weld Bay',
+        value: '2026-05-10',
+      },
+      {
+        field: 'planned_end',
+        jobId: ids.job,
+        stationName: 'Weld Bay',
+        value: '2026-05-12',
+      },
+    ]);
 
     expect(
       getScheduleGanttPlannedDateEdits({
-        entityId: ids.stationBooking,
-        nextPlannedEnd: '2026-04-27',
-        nextPlannedStart: '2026-04-25',
+        jobId: ids.job,
+        nextPlannedEnd: '2026-05-03',
+        nextPlannedStart: '2026-05-01',
         previousPlannedEnd: '2026-05-03',
         previousPlannedStart: '2026-05-01',
-      }).map((edit) => edit.field),
-    ).toEqual(['planned_start', 'planned_end']);
+        stationName: 'Weld Bay',
+      }),
+    ).toEqual([]);
   });
 
   it('formats and parses local date-time picker values for actuals', () => {
@@ -529,37 +544,37 @@ describe('schedule date display helpers', () => {
     );
   });
 
-  it('creates actual datetime edits for changed fields only', () => {
+  it('creates station date edits for changed actual fields', () => {
     expect(
       getScheduleGanttActualDateEdits({
-        entityId: ids.stationBooking,
+        jobId: ids.job,
         nextActualEnd: '2026-05-23T12:00:00.000Z',
         nextActualStart: '2026-05-22T08:00:00.000Z',
         previousActualEnd: '2026-05-22T12:00:00.000Z',
         previousActualStart: '2026-05-22T08:00:00.000Z',
+        stationName: 'Weld Bay',
       }),
     ).toEqual([
       {
-        entityId: ids.stationBooking,
-        entityLevel: 'station-booking',
         field: 'actual_end',
-        value: '2026-05-23T12:00:00.000Z',
+        jobId: ids.job,
+        stationName: 'Weld Bay',
+        value: '2026-05-23',
       },
     ]);
   });
 
   it('does not create actual datetime edits for unchanged minute-level inputs with stored seconds', () => {
-    const actualStart = '2026-05-22T08:00:12.345Z';
     const actualEnd = '2026-05-22T12:00:45.678Z';
 
     expect(
       getScheduleGanttActualDateEdits({
-        entityId: ids.stationBooking,
+        jobId: ids.job,
         nextActualEnd: resolveScheduleDateTimeInputValue(formatScheduleDateTimeInputValue(actualEnd), actualEnd),
-        nextActualStart:
-          resolveScheduleDateTimeInputValue(formatScheduleDateTimeInputValue(actualStart), actualStart) ?? actualStart,
+        nextActualStart: '2026-05-22T08:00:00.000Z',
         previousActualEnd: actualEnd,
-        previousActualStart: actualStart,
+        previousActualStart: '2026-05-22T08:00:00.000Z',
+        stationName: 'Weld Bay',
       }),
     ).toEqual([]);
   });
@@ -567,32 +582,21 @@ describe('schedule date display helpers', () => {
   it('creates an actual end edit when clearing an existing actual end', () => {
     expect(
       getScheduleGanttActualDateEdits({
-        entityId: ids.stationBooking,
+        jobId: ids.job,
         nextActualEnd: null,
         nextActualStart: '2026-05-22T08:00:00.000Z',
         previousActualEnd: '2026-05-23T12:00:00.000Z',
         previousActualStart: '2026-05-22T08:00:00.000Z',
+        stationName: 'Weld Bay',
       }),
     ).toEqual([
       {
-        entityId: ids.stationBooking,
-        entityLevel: 'station-booking',
         field: 'actual_end',
+        jobId: ids.job,
+        stationName: 'Weld Bay',
         value: null,
       },
     ]);
-  });
-
-  it('orders actual datetime edits so each intermediate range stays valid', () => {
-    expect(
-      getScheduleGanttActualDateEdits({
-        entityId: ids.stationBooking,
-        nextActualEnd: '2026-05-23T12:00:00.000Z',
-        nextActualStart: '2026-05-23T08:00:00.000Z',
-        previousActualEnd: '2026-05-22T12:00:00.000Z',
-        previousActualStart: '2026-05-22T08:00:00.000Z',
-      }).map((edit) => edit.field),
-    ).toEqual(['actual_end', 'actual_start']);
   });
 
   it('moves and resizes actual ranges by fractional-day datetime deltas', () => {
@@ -784,8 +788,8 @@ function toScheduleRollupBookings(stations: StationBooking[]) {
 
 function toSchemaWindow(window: ScheduleRollupWindow) {
   return {
-    end: window.end?.toISOString() ?? null,
-    start: window.start?.toISOString() ?? null,
+    end: window.end ? DateIso.parse(window.end) : null,
+    start: window.start ? DateIso.parse(window.start) : null,
   };
 }
 
@@ -802,12 +806,12 @@ function createStationBooking(
 ): StationBooking {
   const stage = id.startsWith('procurement') ? 'procurement' : 'fabrication';
 
-  return {
+  return StationBookingSchema.parse({
     actualEnd: dates.actualEnd ?? null,
     actualStart: dates.actualStart ?? null,
     createdAt: '2026-05-01T08:00:00.000Z',
-    plannedEnd: dates.plannedEnd ?? null,
-    plannedStart: dates.plannedStart ?? null,
+    plannedEnd: dates.plannedEnd ? DateOnlyIso.parse(dates.plannedEnd) : null,
+    plannedStart: dates.plannedStart ? DateOnlyIso.parse(dates.plannedStart) : null,
     id: bookingIds[id],
     jobStageId: stageIds[stage],
     state: 'pending',
@@ -822,7 +826,7 @@ function createStationBooking(
     },
     stationId: stationIds[id],
     updatedAt: '2026-05-01T08:00:00.000Z',
-  };
+  });
 }
 
 function createScheduleStationBooking(

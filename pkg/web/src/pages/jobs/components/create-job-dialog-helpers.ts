@@ -1,5 +1,6 @@
 import { computeDefaults, departmentLabels, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import type { JobCreateInput, JobStageName, Product, Station, UUID } from '@pkg/schema';
+import { DateOnlyIso } from '@pkg/schema';
 import { format, parse } from 'date-fns';
 
 export type StageDraft = {
@@ -141,18 +142,22 @@ export function buildCreateJobInput({
   }
 
   return {
-    dueDate: dueDate || null,
+    dueDate: parseDateOnlyInput(dueDate),
     productId,
     quoteId,
     stages: stages.map((stage) => ({
       stage: stage.stage,
       stationBookings: stage.stationBookings.map((booking) => ({
-        plannedEnd: booking.plannedEnd || null,
-        plannedStart: booking.plannedStart || null,
+        plannedEnd: parseDateOnlyInput(booking.plannedEnd),
+        plannedStart: parseDateOnlyInput(booking.plannedStart),
         stationId: booking.stationId,
       })),
     })),
   };
+}
+
+function parseDateOnlyInput(value: string) {
+  return value ? DateOnlyIso.parse(value) : null;
 }
 
 export function createEmptyStages(): StageDraft[] {

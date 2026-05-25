@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Department } from '../auth/authorization.js';
+import { DateIso } from '../common/date.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { SortDirection } from '../common/sort.js';
@@ -46,8 +47,8 @@ export const Product = z.object({
   currencyCode: ProductCurrencyCode,
   departmentConfigs: z.array(ProductDepartmentConfig).default([]),
   options: z.array(ProductOption).default([]),
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
+  createdAt: DateIso,
+  updatedAt: DateIso,
 });
 
 export type ProductSortBy = z.infer<typeof ProductSortBy>;

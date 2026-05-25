@@ -13,14 +13,13 @@ import type {
   AuditChanges,
   AuthId,
   Logger,
-  Product,
   ProductCreateInput,
   ProductListInput,
   ProductListResult,
   ProductUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { ProductCurrencyCode } from '@pkg/schema';
+import { Product, ProductCurrencyCode } from '@pkg/schema';
 import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
@@ -38,7 +37,7 @@ export function mapProduct(
   options: ProductOptionRow[] = [],
   departmentConfigs: ProductDepartmentConfigRow[] = [],
 ): Product {
-  return {
+  return Product.parse({
     basePrice: row.basePrice,
     createdAt: row.createdAt.toISOString(),
     currencyCode: ProductCurrencyCode.parse(row.currencyCode),
@@ -49,7 +48,7 @@ export function mapProduct(
     name: row.name,
     options: options.map(mapProductOption),
     updatedAt: row.updatedAt.toISOString(),
-  };
+  });
 }
 
 export async function listProducts({

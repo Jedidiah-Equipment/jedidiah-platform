@@ -1,4 +1,4 @@
-import type { Product, Station } from '@pkg/schema';
+import { Product, Station } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -195,7 +195,7 @@ describe('create job dialog helpers', () => {
 });
 
 function createProduct(): Product {
-  return {
+  return Product.parse({
     basePrice: 1000,
     createdAt: '2026-05-01T00:00:00.000Z',
     currencyCode: 'ZAR',
@@ -216,11 +216,11 @@ function createProduct(): Product {
     name: 'Product',
     options: [],
     updatedAt: '2026-05-01T00:00:00.000Z',
-  };
+  });
 }
 
 function createStation(overrides: Partial<Station> = {}): Station {
-  return {
+  return Station.parse({
     createdAt: '2026-05-01T00:00:00.000Z',
     department: 'fabrication',
     displayOrder: 1,
@@ -229,7 +229,7 @@ function createStation(overrides: Partial<Station> = {}): Station {
     name: 'Station',
     updatedAt: '2026-05-01T00:00:00.000Z',
     ...overrides,
-  };
+  });
 }
 
 function createStageDraft(overrides: Partial<StageDraft> = {}): StageDraft {

@@ -45,21 +45,21 @@ export function mapJobAuditRecord(job: JobAuditRecord): JobAuditRecord {
 
 export function mapStation(row: StationRow): Station {
   return Station.parse({
-    createdAt: row.createdAt.toISOString(),
+    createdAt: row.createdAt,
     department: row.department,
     displayOrder: row.displayOrder,
     id: row.id,
     isActive: row.isActive,
     name: row.name,
-    updatedAt: row.updatedAt.toISOString(),
+    updatedAt: row.updatedAt,
   });
 }
 
 export function mapStationBooking(row: JobStageStationWithStationRow): StationBooking {
   return StationBooking.parse({
-    actualEnd: row.actualEnd?.toISOString() ?? null,
-    actualStart: row.actualStart?.toISOString() ?? null,
-    createdAt: row.createdAt.toISOString(),
+    actualEnd: row.actualEnd ?? null,
+    actualStart: row.actualStart ?? null,
+    createdAt: row.createdAt,
     plannedEnd: row.plannedEnd,
     plannedStart: row.plannedStart,
     id: row.id,
@@ -67,7 +67,7 @@ export function mapStationBooking(row: JobStageStationWithStationRow): StationBo
     state: deriveWorkState(row),
     station: mapStation(row.station),
     stationId: row.stationId,
-    updatedAt: row.updatedAt.toISOString(),
+    updatedAt: row.updatedAt,
   });
 }
 

@@ -182,18 +182,8 @@ describe('jobs.list', () => {
     const laterDueDateJob = await caller.jobs.create({ productId: context.product.id });
     const earlierDueDateJob = await caller.jobs.create({ productId: context.product.id });
     const undatedJob = await caller.jobs.create({ productId: context.product.id });
-    await caller.jobs.editDate({
-      entityId: laterDueDateJob.id,
-      entityLevel: 'job',
-      field: 'due_date',
-      value: '2026-08-20',
-    });
-    await caller.jobs.editDate({
-      entityId: earlierDueDateJob.id,
-      entityLevel: 'job',
-      field: 'due_date',
-      value: '2026-08-10',
-    });
+    await caller.jobs.editJobDueDate({ jobId: laterDueDateJob.id, dueDate: '2026-08-20' });
+    await caller.jobs.editJobDueDate({ jobId: earlierDueDateJob.id, dueDate: '2026-08-10' });
     const dueDateSorted = await caller.jobs.list({
       filters: { statuses: [] },
       page: 1,
@@ -670,7 +660,7 @@ describe('jobs station booking transitions', () => {
   });
 });
 
-describe('jobs.editDate', () => {
+describe('jobs date edits', () => {
   test('edits a Station Booking planned window without shifting any other date', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const [station] = await context.db
@@ -699,10 +689,10 @@ describe('jobs.editDate', () => {
     const beforeProcurement = getStage(job, 'procurement');
     const beforeFabrication = getStage(job, 'fabrication');
 
-    const updated = await caller.jobs.editDate({
-      entityId: getStageBooking(job, 'fabrication').id,
-      entityLevel: 'station-booking',
+    const updated = await caller.jobs.editStationDate({
       field: 'planned_end',
+      jobId: job.id,
+      stationName: 'Fabrication Date Edit Station',
       value: '2026-08-09',
     });
     const procurement = getStage(updated, 'procurement');
@@ -735,11 +725,9 @@ describe('jobs.editDate', () => {
     const beforeStage = getStage(job, 'fabrication');
     const beforeBooking = getStageBooking(job, 'fabrication');
 
-    const updated = await caller.jobs.editDate({
-      entityId: job.id,
-      entityLevel: 'job',
-      field: 'due_date',
-      value: '2026-08-20',
+    const updated = await caller.jobs.editJobDueDate({
+      dueDate: '2026-08-20',
+      jobId: job.id,
     });
 
     expect(updated).toMatchObject({
@@ -751,11 +739,9 @@ describe('jobs.editDate', () => {
       plannedStart: beforeBooking.plannedStart,
     });
 
-    const cleared = await caller.jobs.editDate({
-      entityId: job.id,
-      entityLevel: 'job',
-      field: 'due_date',
-      value: null,
+    const cleared = await caller.jobs.editJobDueDate({
+      dueDate: null,
+      jobId: job.id,
     });
 
     expect(cleared.dueDate).toBeNull();
@@ -791,31 +777,13 @@ describe('jobs.editDate', () => {
     expect(auditRows).toHaveLength(2);
   });
 
-  test('rejects Job Due Date edits below the job level', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await caller.jobs.create({ productId: context.product.id });
-
-    await expect(
-      caller.jobs.editDate({
-        entityId: getStage(job, 'fabrication').id,
-        entityLevel: 'stage',
-        field: 'due_date',
-        value: '2026-08-20',
-      }),
-    ).rejects.toMatchObject({
-      code: 'BAD_REQUEST',
-    });
-  });
-
   test('does not emit workflow or audit events for no-op Job Due Date clears', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const job = await caller.jobs.create({ productId: context.product.id });
 
-    const unchanged = await caller.jobs.editDate({
-      entityId: job.id,
-      entityLevel: 'job',
-      field: 'due_date',
-      value: null,
+    const unchanged = await caller.jobs.editJobDueDate({
+      dueDate: null,
+      jobId: job.id,
     });
 
     expect(unchanged.updatedAt).toBe(job.updatedAt);
@@ -838,36 +806,16 @@ describe('jobs.editDate', () => {
     });
 
     await expect(
-      caller.jobs.editDate({
-        entityId: getStageBooking(job, 'fabrication').id,
-        entityLevel: 'station-booking',
+      caller.jobs.editStationDate({
         field: 'planned_end',
+        jobId: job.id,
+        stationName: 'fabrication Station 1',
         value: '2026-07-31',
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
       message: 'Planned start must be on or before planned end.',
     });
-  });
-
-  test('rejects stage-level direct date edits', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
-      db: context.db,
-      setJobStatus: context.setJobStatus,
-      caller,
-      productId: context.product.id,
-      stages: ['fabrication'],
-    });
-
-    await expect(
-      caller.jobs.editDate({
-        entityId: getStage(job, 'fabrication').id,
-        entityLevel: 'stage',
-        field: 'planned_start',
-        value: '2026-08-02',
-      }),
-    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 
   test('does not emit workflow or audit events for true no-op Station Booking edits', async ({ context }) => {
@@ -882,11 +830,11 @@ describe('jobs.editDate', () => {
     const booking = getStageBooking(job, 'fabrication');
     const beforeUpdatedAt = job.updatedAt;
 
-    const unchanged = await caller.jobs.editDate({
-      entityId: booking.id,
-      entityLevel: 'station-booking',
-      field: 'planned_start',
-      value: booking.plannedStart,
+    const unchanged = await caller.jobs.editStationDate({
+      field: 'planned_end',
+      jobId: job.id,
+      stationName: 'fabrication Station 1',
+      value: booking.plannedEnd,
     });
 
     expect(unchanged.updatedAt).toBe(beforeUpdatedAt);
@@ -896,36 +844,6 @@ describe('jobs.editDate', () => {
       (event) => event.entityId === job.id && event.action === 'updated',
     );
     expect(auditRows).toHaveLength(0);
-  });
-
-  test('clears actual dates back to auto and cascades parents back to null', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    let job = await createJobWithStationBookings({
-      db: context.db,
-      setJobStatus: context.setJobStatus,
-      caller,
-      productId: context.product.id,
-      stages: ['fabrication'],
-    });
-    job = await caller.jobs.startStationBooking({ id: getStageBooking(job, 'fabrication').id });
-
-    const cleared = await caller.jobs.editDate({
-      entityId: getStageBooking(job, 'fabrication').id,
-      entityLevel: 'station-booking',
-      field: 'actual_start',
-      value: null,
-    });
-
-    expect(cleared).toMatchObject({
-      status: 'active',
-    });
-    expect(getStage(cleared, 'fabrication')).toMatchObject({
-      state: 'pending',
-    });
-    expect(getStageBooking(cleared, 'fabrication')).toMatchObject({
-      actualStart: null,
-      state: 'pending',
-    });
   });
 
   test('actual override cascades completion and emits one override event', async ({ context }) => {
@@ -944,52 +862,29 @@ describe('jobs.editDate', () => {
     }
     job = await caller.jobs.startStationBooking({ id: getStageBooking(job, 'assembly').id });
 
-    const completed = await caller.jobs.editDate({
-      entityId: getStageBooking(job, 'assembly').id,
-      entityLevel: 'station-booking',
+    const completed = await caller.jobs.editStationDate({
       field: 'actual_end',
-      value: '2026-08-15T12:00:00.000Z',
+      jobId: job.id,
+      stationName: 'assembly Station 5',
+      value: '2026-08-15',
     });
 
     expect(completed).toMatchObject({
       actualWindow: {
-        end: '2026-08-15T12:00:00.000Z',
+        end: '2026-08-15T00:00:00.000Z',
       },
       status: 'active',
     });
     expect(getStage(completed, 'assembly')).toMatchObject({
       actualWindow: {
-        end: '2026-08-15T12:00:00.000Z',
+        end: '2026-08-15T00:00:00.000Z',
       },
       state: 'complete',
     });
 
     const workflowEvents = await listJobEventTypes(context.db, job.id);
     expect(workflowEvents.filter((eventType) => eventType === 'date.overridden')).toHaveLength(1);
-    expect(workflowEvents.filter((eventType) => eventType === 'job.completed')).toHaveLength(1);
-  });
-
-  test('rejects setting a booking actual end before it has started', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    const job = await createJobWithStationBookings({
-      db: context.db,
-      setJobStatus: context.setJobStatus,
-      caller,
-      productId: context.product.id,
-      stages: ['fabrication'],
-    });
-
-    await expect(
-      caller.jobs.editDate({
-        entityId: getStageBooking(job, 'fabrication').id,
-        entityLevel: 'station-booking',
-        field: 'actual_end',
-        value: '2026-08-15T12:00:00.000Z',
-      }),
-    ).rejects.toMatchObject({
-      code: 'BAD_REQUEST',
-      message: 'Station booking must be started before its actual end can be set.',
-    });
+    expect(workflowEvents.filter((eventType) => eventType === 'job.completed')).toHaveLength(0);
   });
 
   test('clearing the last booking actual end uncompletes auto parents', async ({ context }) => {
@@ -1007,10 +902,10 @@ describe('jobs.editDate', () => {
       job = await caller.jobs.stopStationBooking({ id: getStageBooking(job, stage).id });
     }
 
-    const reopened = await caller.jobs.editDate({
-      entityId: getStageBooking(job, 'assembly').id,
-      entityLevel: 'station-booking',
+    const reopened = await caller.jobs.editStationDate({
       field: 'actual_end',
+      jobId: job.id,
+      stationName: 'assembly Station 5',
       value: null,
     });
 
@@ -1032,11 +927,9 @@ describe('jobs.editDate', () => {
     const job = await supervisorCaller.jobs.create({ productId: context.product.id });
 
     await expect(
-      departmentCaller.jobs.editDate({
-        entityId: job.id,
-        entityLevel: 'job',
-        field: 'planned_end',
-        value: '2026-08-12',
+      departmentCaller.jobs.editJobDueDate({
+        dueDate: '2026-08-12',
+        jobId: job.id,
       }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });

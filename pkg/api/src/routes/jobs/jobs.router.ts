@@ -1,6 +1,7 @@
 import {
   createJob,
-  editJobDate,
+  editJobDueDate,
+  editStationDate,
   getJob,
   isJobCoreError,
   type JobCoreError,
@@ -11,10 +12,11 @@ import {
 } from '@pkg/core';
 import {
   JobCreateInput,
-  JobDateEditInput,
+  JobDueDateEditInput,
   JobListInput,
   JobSetStatusInput,
   JobStationBookingTransitionInput,
+  StationDateEditInput,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -37,11 +39,24 @@ export const jobsRouter = router({
       mapJobErrors(() => createJob({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id })),
     ),
 
-  editDate: authorizedProcedure('job:update')
-    .input(JobDateEditInput)
+  editJobDueDate: authorizedProcedure('job:update')
+    .input(JobDueDateEditInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() =>
-        editJobDate({
+        editJobDueDate({
+          access: ctx.access,
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          input,
+        }),
+      ),
+    ),
+
+  editStationDate: authorizedProcedure('job:update')
+    .input(StationDateEditInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() =>
+        editStationDate({
           access: ctx.access,
           actorUserId: ctx.session.user.id,
           db: ctx.db,

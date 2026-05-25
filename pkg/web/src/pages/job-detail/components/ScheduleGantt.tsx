@@ -196,7 +196,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
   );
 
   const editDateMutation = useMutation(
-    trpc.jobs.editDate.mutationOptions({
+    trpc.jobs.editStationDate.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to update schedule date.'),
     }),
   );
@@ -244,17 +244,19 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
       props.onEditPlannedRange(row, nextRange);
       return;
     }
+    if (props.mode !== 'job') return;
 
     setOptimisticPlannedRanges((current) => ({ ...current, [row.id]: nextRange }));
 
     let attemptedEdit = false;
     try {
       for (const edit of getScheduleGanttPlannedDateEdits({
-        entityId: row.entityId,
+        jobId: props.job.id,
         nextPlannedEnd: nextRange.plannedEnd,
         nextPlannedStart: nextRange.plannedStart,
         previousPlannedEnd: row.plannedEnd,
         previousPlannedStart: row.plannedStart,
+        stationName: row.title,
       })) {
         attemptedEdit = true;
         await editDateMutation.mutateAsync(edit);
@@ -280,17 +282,19 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
     nextRange: { actualEnd: string | null; actualStart: string },
   ) => {
     if (!row.actualStart) return;
+    if (props.mode !== 'job') return;
 
     setOptimisticActualRanges((current) => ({ ...current, [row.id]: nextRange }));
 
     let attemptedEdit = false;
     try {
       for (const edit of getScheduleGanttActualDateEdits({
-        entityId: row.entityId,
+        jobId: props.job.id,
         nextActualEnd: nextRange.actualEnd,
         nextActualStart: nextRange.actualStart,
         previousActualEnd: row.actualEnd,
         previousActualStart: row.actualStart,
+        stationName: row.title,
       })) {
         attemptedEdit = true;
         await editDateMutation.mutateAsync(edit);

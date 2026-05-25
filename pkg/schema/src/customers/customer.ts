@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { DateIso } from '../common/date.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
@@ -40,8 +41,8 @@ export const Customer = z.object({
   contactPerson: CustomerOptionalText,
   phone: CustomerOptionalText,
   notes: CustomerOptionalText,
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
+  createdAt: DateIso,
+  updatedAt: DateIso,
 });
 
 export type CustomerSortBy = z.infer<typeof CustomerSortBy>;

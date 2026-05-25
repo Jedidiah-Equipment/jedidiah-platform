@@ -82,16 +82,16 @@ export type OptimisticActualRange = {
 };
 
 type PlannedDateEdit = {
-  entityId: string;
-  entityLevel: 'station-booking';
   field: 'planned_end' | 'planned_start';
+  jobId: string;
+  stationName: string;
   value: string;
 };
 
 export type ActualDateEdit = {
-  entityId: string;
-  entityLevel: 'station-booking';
   field: 'actual_end' | 'actual_start';
+  jobId: string;
+  stationName: string;
   value: string | null;
 };
 
@@ -104,8 +104,6 @@ type ActualDateFields = {
   actualEnd: string | null;
   actualStart: string | null;
 };
-
-const STATION_BOOKING_ENTITY_LEVEL = 'station-booking' as const;
 
 export function buildScheduleGanttRows(job: JobDetail, otherJobs: JobSummary[] = []): ScheduleGanttRow[] {
   const stageRows = job.stages.map((stage) => createStageRow(stage));
@@ -724,67 +722,50 @@ export function getScheduleGanttActualRangeAfterDrag({
 }
 
 export function getScheduleGanttPlannedDateEdits({
-  entityId,
+  jobId,
   nextPlannedEnd,
   nextPlannedStart,
   previousPlannedEnd,
   previousPlannedStart,
+  stationName,
 }: {
-  entityId: string;
+  jobId: string;
   nextPlannedEnd: string;
   nextPlannedStart: string;
   previousPlannedEnd: string;
   previousPlannedStart: string;
+  stationName: string;
 }): PlannedDateEdit[] {
-  const edits: PlannedDateEdit[] = [
-    { entityId, entityLevel: STATION_BOOKING_ENTITY_LEVEL, field: 'planned_start' as const, value: nextPlannedStart },
-    { entityId, entityLevel: STATION_BOOKING_ENTITY_LEVEL, field: 'planned_end' as const, value: nextPlannedEnd },
+  return [
+    { field: 'planned_start' as const, jobId, stationName, value: nextPlannedStart },
+    { field: 'planned_end' as const, jobId, stationName, value: nextPlannedEnd },
   ].filter((edit) => (edit.field === 'planned_start' ? previousPlannedStart : previousPlannedEnd) !== edit.value);
-
-  if (edits.length !== 2) return edits;
-
-  const startMovesAfterPreviousEnd =
-    differenceInCalendarDays(parseDateOnly(nextPlannedStart), parseDateOnly(previousPlannedEnd)) > 0;
-
-  if (startMovesAfterPreviousEnd) {
-    const [startEdit, endEdit] = edits;
-    return endEdit && startEdit ? [endEdit, startEdit] : edits;
-  }
-
-  return edits;
 }
 
 export function getScheduleGanttActualDateEdits({
-  entityId,
+  jobId,
   nextActualEnd,
   nextActualStart,
   previousActualEnd,
   previousActualStart,
+  stationName,
 }: {
-  entityId: string;
+  jobId: string;
   nextActualEnd: string | null;
   nextActualStart: string;
   previousActualEnd: string | null;
   previousActualStart: string;
+  stationName: string;
 }): ActualDateEdit[] {
-  const edits: ActualDateEdit[] = [
-    { entityId, entityLevel: STATION_BOOKING_ENTITY_LEVEL, field: 'actual_start' as const, value: nextActualStart },
-    ...(nextActualEnd !== previousActualEnd
-      ? [{ entityId, entityLevel: STATION_BOOKING_ENTITY_LEVEL, field: 'actual_end' as const, value: nextActualEnd }]
-      : []),
-  ].filter((edit) => (edit.field === 'actual_start' ? previousActualStart : previousActualEnd) !== edit.value);
+  const nextStartDate = toDateInputValue(nextActualStart);
+  const previousStartDate = toDateInputValue(previousActualStart);
+  const nextEndDate = toDateInputValue(nextActualEnd);
+  const previousEndDate = toDateInputValue(previousActualEnd);
 
-  if (edits.length !== 2) return edits;
-
-  const startMovesAfterPreviousEnd =
-    previousActualEnd !== null && new Date(nextActualStart).getTime() > new Date(previousActualEnd).getTime();
-
-  if (startMovesAfterPreviousEnd) {
-    const [startEdit, endEdit] = edits;
-    return endEdit && startEdit ? [endEdit, startEdit] : edits;
-  }
-
-  return edits;
+  return [
+    { field: 'actual_start' as const, jobId, stationName, value: nextStartDate },
+    { field: 'actual_end' as const, jobId, stationName, value: nextEndDate },
+  ].filter((edit) => (edit.field === 'actual_start' ? previousStartDate : previousEndDate) !== edit.value);
 }
 
 export function getScheduleGanttActualDisplay(
@@ -837,6 +818,8 @@ function formatDateOnly(date: Date): string {
   return format(date, 'yyyy-MM-dd');
 }
 
-function parseDateOnly(value: string): Date {
-  return startOfDay(parseDate(value) ?? new Date(value));
+function toDateInputValue(value: string | null): string | null {
+  if (!value) return null;
+
+  return formatDateOnly(new Date(value));
 }

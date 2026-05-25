@@ -8,13 +8,13 @@ import {
 } from '@pkg/db';
 import type {
   AuthId,
-  Customer,
   CustomerCreateInput,
   CustomerListInput,
   CustomerListResult,
   CustomerUpdateInput,
   UUID,
 } from '@pkg/schema';
+import { Customer } from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
 import { createAuditChanges, customerAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
@@ -23,7 +23,7 @@ import { CustomerNotFoundError } from './customer-errors.js';
 type CustomerRow = typeof customers.$inferSelect;
 
 export function mapCustomer(row: CustomerRow): Customer {
-  return {
+  return Customer.parse({
     address: row.address,
     companyName: row.companyName,
     contactPerson: row.contactPerson,
@@ -33,7 +33,7 @@ export function mapCustomer(row: CustomerRow): Customer {
     notes: row.notes,
     phone: row.phone,
     updatedAt: row.updatedAt.toISOString(),
-  };
+  });
 }
 
 export async function listCustomers({ db, input }: { db: Db; input: CustomerListInput }): Promise<CustomerListResult> {

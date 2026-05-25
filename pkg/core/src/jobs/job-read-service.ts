@@ -1,7 +1,9 @@
 import {
+  createEscapedContainsSearchCondition,
   type customers,
   type DatabaseTransaction,
   type Db,
+  getPaginationQueryOptions,
   jobEvents,
   jobStages,
   jobs,
@@ -10,6 +12,7 @@ import {
 } from '@pkg/db';
 import {
   canViewStage,
+  parseJobCodeSearch,
   rollupJobSchedule,
   rollupStageSchedule,
   type ScheduleRollupBooking,
@@ -17,17 +20,19 @@ import {
 } from '@pkg/domain';
 import {
   type JobDetail,
+  type JobListInput,
+  type JobListResult,
   type JobSortBy,
   type JobStageRollup,
   JobStageSummary,
   type JobSummary,
   QuoteCode,
-  type ScheduleWindow,
+  ScheduleWindow,
   type SortDirection,
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { asc, desc, eq, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import { JobNotFoundError } from './job-errors.js';
 import {
@@ -53,6 +58,113 @@ type JobWithProductRow = JobRow & {
   quote: QuoteRow | null;
   stages: (JobStageRow & { stations: JobStageStationWithStationRow[] })[];
 };
+
+export async function listJobs({
+  db,
+  input,
+}: {
+  db: Db;
+  access: UserAccessSummary;
+  input: JobListInput;
+}): Promise<JobListResult> {
+  const where = buildJobListWhere(input);
+  const orderBy = getJobSortOrder(input.sortBy, input.sortDirection);
+
+  const rows = await db.query.jobs.findMany({
+    columns: {
+      createdAt: true,
+      id: true,
+      code: true,
+      dueDate: true,
+      productId: true,
+      quoteId: true,
+      status: true,
+      updatedAt: true,
+    },
+    where,
+    orderBy: [orderBy, asc(jobs.id)],
+    ...getPaginationQueryOptions(input),
+    with: {
+      product: {
+        columns: {
+          modelCode: true,
+          name: true,
+        },
+      },
+      quote: {
+        columns: {
+          code: true,
+        },
+        with: {
+          customer: {
+            columns: {
+              companyName: true,
+            },
+          },
+        },
+      },
+      stages: {
+        columns: {
+          id: true,
+          jobId: true,
+          sequence: true,
+          stage: true,
+        },
+        orderBy: [asc(jobStages.sequence)],
+        with: {
+          stations: {
+            with: {
+              station: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const total = await db.$count(jobs, where);
+
+  return {
+    items: rows.map(mapJobSummary),
+    sortBy: input.sortBy,
+    sortDirection: input.sortDirection,
+    total,
+  };
+}
+
+function buildJobListWhere(input: JobListInput): SQL | undefined {
+  const conditions: SQL[] = [];
+
+  if (input.filters.jobId) {
+    conditions.push(eq(jobs.id, input.filters.jobId));
+  }
+
+  const statuses = input.filters.statuses ?? [];
+
+  if (statuses.length > 0) {
+    conditions.push(inArray(jobs.status, statuses));
+  }
+
+  if (input.filters.createdAtStart) {
+    conditions.push(gte(jobs.createdAt, new Date(input.filters.createdAtStart)));
+  }
+
+  if (input.search) {
+    const codeSearch = parseJobCodeSearch(input.search);
+    const searchWhere = or(
+      createEscapedContainsSearchCondition(sql`${jobs.id}::text`, input.search),
+      createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.search),
+      codeSearch === undefined ? undefined : eq(jobs.code, codeSearch),
+    );
+
+    if (searchWhere) {
+      conditions.push(searchWhere);
+    }
+  }
+
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
 export async function getJob({
   db,
   id,
@@ -147,13 +259,7 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
 }
 
 export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection): SQL {
-  if (sortBy === 'dueDate') {
-    return sortDirection === 'desc' ? sql`${jobs.dueDate} desc nulls last` : sql`${jobs.dueDate} asc nulls last`;
-  }
-
-  return sortDirection === 'desc'
-    ? desc(getJobSortColumn(sortBy) as SQLWrapper)
-    : asc(getJobSortColumn(sortBy) as SQLWrapper);
+  return sortDirection === 'desc' ? desc(getJobSortColumn(sortBy)) : asc(getJobSortColumn(sortBy));
 }
 
 export function mapJobSummary(row: JobWithProductRow): JobSummary {
@@ -270,10 +376,10 @@ function hasScheduleRollupBookings(row: { stations?: readonly unknown[] }): bool
 }
 
 function mapScheduleWindow(window: ScheduleRollupWindow): ScheduleWindow {
-  return {
+  return ScheduleWindow.parse({
     end: window.end?.toISOString() ?? null,
     start: window.start?.toISOString() ?? null,
-  };
+  });
 }
 
 function parseDateOnlyAsUtc(value: string | null): Date | null {

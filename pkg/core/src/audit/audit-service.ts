@@ -1,13 +1,6 @@
 import { auditEvents, type DatabaseTransaction, type Db, getSortOrder, user, withPagination } from '@pkg/db';
-import type {
-  AuditAction,
-  AuditChanges,
-  AuditEntityType,
-  AuditEvent,
-  AuditListInput,
-  AuditListResult,
-} from '@pkg/schema';
-import { formatJobCode, formatQuoteCode, JobCode, QuoteCode } from '@pkg/schema';
+import type { AuditAction, AuditChanges, AuditEntityType, AuditListInput, AuditListResult } from '@pkg/schema';
+import { AuditEvent, formatJobCode, formatQuoteCode, JobCode, QuoteCode } from '@pkg/schema';
 import { and, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
 type AuditRecord = Record<string, unknown>;
@@ -301,7 +294,7 @@ function buildAuditListWhere(input: AuditListInput): SQL | undefined {
 }
 
 function mapAuditEvent(row: AuditEventRow): AuditEvent {
-  return {
+  return AuditEvent.parse({
     action: row.action as AuditAction,
     actorEmail: row.actorEmail,
     actorName: row.actorName,
@@ -312,7 +305,7 @@ function mapAuditEvent(row: AuditEventRow): AuditEvent {
     id: row.id,
     occurredAt: row.occurredAt.toISOString(),
     summary: row.summary,
-  };
+  });
 }
 
 function getAuditEntityDescriptor(entityType: AuditEntityType): AuditEntityDescriptor {

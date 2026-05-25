@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Department } from '../auth/authorization.js';
+import { DateIso } from '../common/date.js';
 import { UUID } from '../common/uuid.js';
 
 export type StationName = z.infer<typeof StationName>;
@@ -16,8 +17,8 @@ export const Station = z.object({
   department: Department,
   isActive: z.boolean(),
   displayOrder: StationDisplayOrder,
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
+  createdAt: DateIso,
+  updatedAt: DateIso,
 });
 
 export type StationListInput = z.infer<typeof StationListInput>;

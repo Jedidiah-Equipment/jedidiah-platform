@@ -39,8 +39,9 @@ import type {
   Station,
   UUID,
 } from '@pkg/schema';
-import { DEPARTMENTS } from '@pkg/schema';
+import { DateIso, DateOnlyIso, DEPARTMENTS } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
+import { format, parseISO } from 'date-fns';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 const seedProductCount = 10;
@@ -777,7 +778,7 @@ async function createQuoteBackedSeedJob({
       notes: 'Accepted seed quote used to create a production job.',
       productId: product.id,
       salesPersonId: salesUserId,
-      validUntil: getSeedJobQuoteValidUntil(scenarioIndex),
+      validUntil: DateIso.parse(getSeedJobQuoteValidUntil(scenarioIndex)),
     },
   });
   const sent = await sendQuote({ actorUserId: salesUserId, db, input: { id: quote.id } });
@@ -833,7 +834,7 @@ function createSeedJobInput({
   }
 
   return {
-    dueDate: toSeedIsoDate(lastStage.plannedEnd),
+    dueDate: DateOnlyIso.parse(toSeedIsoDate(lastStage.plannedEnd)),
     productId: product.id,
     quoteId,
     stages: defaultStages.stages.map(
@@ -842,8 +843,8 @@ function createSeedJobInput({
         stationBookings: defaultStages.stationBookings
           .filter((booking) => booking.stage === stage.stage)
           .map((booking) => ({
-            plannedEnd: toSeedIsoDate(booking.plannedEnd),
-            plannedStart: toSeedIsoDate(booking.plannedStart),
+            plannedEnd: DateOnlyIso.parse(toSeedIsoDate(booking.plannedEnd)),
+            plannedStart: DateOnlyIso.parse(toSeedIsoDate(booking.plannedStart)),
             stationId: booking.stationId,
           })),
       }),
@@ -1088,7 +1089,7 @@ async function seedQuotesWithCore({
         notes: scenario.notes,
         productId: product.id,
         salesPersonId: actorUserId,
-        validUntil: scenario.validUntil,
+        validUntil: DateIso.parse(scenario.validUntil),
       },
     });
 
@@ -1237,15 +1238,15 @@ function createSeedCustomerInput(customer: SeedCustomer): CustomerCreateInput {
 function getSeedIsoDate({ dayOffset, month, year }: { dayOffset: number; month: number; year: number }): string {
   const date = new Date(Date.UTC(year, month, dayOffset));
 
-  return date.toISOString().slice(0, 10);
+  return format(date, 'yyyy-MM-dd');
 }
 
 function fromSeedIsoDate(value: string): Date {
-  return new Date(`${value}T00:00:00.000Z`);
+  return parseISO(`${value}T00:00:00.000Z`);
 }
 
 function toSeedIsoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
+  return format(value, 'yyyy-MM-dd');
 }
 
 function addSeedDays(value: Date, dayOffset: number): Date {

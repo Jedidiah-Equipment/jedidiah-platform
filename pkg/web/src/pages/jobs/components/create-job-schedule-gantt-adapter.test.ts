@@ -1,4 +1,4 @@
-import type { Station } from '@pkg/schema';
+import { Station } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
 import type { ScheduleGanttStationBooking } from '@/pages/job-detail/components/schedule-gantt-helpers.js';
@@ -101,7 +101,7 @@ function createStages(): StageDraft[] {
 }
 
 function createStation(): Station {
-  return {
+  return Station.parse({
     createdAt: '2026-05-01T00:00:00.000Z',
     department: 'fabrication',
     displayOrder: 1,
@@ -109,7 +109,7 @@ function createStation(): Station {
     isActive: true,
     name: 'Weld Bay',
     updatedAt: '2026-05-01T00:00:00.000Z',
-  };
+  });
 }
 
 function createStationBookingRow(overrides: Partial<ScheduleGanttStationBooking> = {}): ScheduleGanttStationBooking {

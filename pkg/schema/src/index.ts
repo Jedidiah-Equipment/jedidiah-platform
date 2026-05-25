@@ -5,6 +5,7 @@ export * from './audit/audit.js';
 export * from './auth/auth-id.js';
 export * from './auth/authorization.js';
 export * from './common/api-error.js';
+export * from './common/date.js';
 export * from './common/pagination.js';
 export * from './common/price.js';
 export * from './common/sort.js';

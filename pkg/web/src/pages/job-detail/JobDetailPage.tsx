@@ -57,7 +57,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
     }),
   );
   const editDueDateMutation = useMutation(
-    trpc.jobs.editDate.mutationOptions({
+    trpc.jobs.editJobDueDate.mutationOptions({
       onSuccess: async () => {
         await refreshJobs();
         toast.success('Job Due Date updated');
@@ -120,10 +120,8 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
                     isPending={editDueDateMutation.isPending}
                     onSubmit={(value) =>
                       editDueDateMutation.mutate({
-                        entityId: job.id,
-                        entityLevel: 'job',
-                        field: 'due_date',
-                        value,
+                        dueDate: value,
+                        jobId: job.id,
                       })
                     }
                   />

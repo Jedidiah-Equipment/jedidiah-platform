@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
+import { DateIso, DateOnlyIso } from '../common/date.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
-import { Station } from '../stations/station.js';
+import { Station, StationName } from '../stations/station.js';
 
 export { formatJobCode, JobCode } from '../common/public-code.js';
 
@@ -21,25 +22,21 @@ export type JobStatus = z.infer<typeof JobStatus>;
 export const JobStatus = z.enum(['pending', 'active', 'paused', 'complete', 'cancelled']);
 
 const StationBookingDateFields = z.object({
-  actualEnd: z.iso.datetime().nullable(),
-  actualStart: z.iso.datetime().nullable(),
-  plannedEnd: z.iso.date().nullable(),
-  plannedStart: z.iso.date().nullable(),
+  actualEnd: DateIso.nullable(),
+  actualStart: DateIso.nullable(),
+  plannedEnd: DateOnlyIso.nullable(),
+  plannedStart: DateOnlyIso.nullable(),
 });
 
 export type ScheduleWindow = z.infer<typeof ScheduleWindow>;
 export const ScheduleWindow = z.object({
-  end: z.iso.datetime().nullable(),
-  start: z.iso.datetime().nullable(),
+  end: DateIso.nullable(),
+  start: DateIso.nullable(),
 });
 
 const DerivedScheduleFields = z.object({
   actualWindow: ScheduleWindow,
   plannedWindow: ScheduleWindow,
-});
-
-const JobDueDateFields = z.object({
-  dueDate: z.iso.date().nullable(),
 });
 
 export type StationBooking = z.infer<typeof StationBooking>;
@@ -49,8 +46,8 @@ export const StationBooking = StationBookingDateFields.extend({
   stationId: UUID,
   station: Station,
   state: JobWorkState,
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
+  createdAt: DateIso,
+  updatedAt: DateIso,
 });
 
 const JobStageBase = z.object({
@@ -113,8 +110,8 @@ const AssemblyJobStageSummary = AssemblyJobStage.extend({
 
 export type JobEventDerivationStage = z.infer<typeof JobEventDerivationStage>;
 export const JobEventDerivationStage = z.object({
-  actualEnd: z.iso.datetime().nullable(),
-  actualStart: z.iso.datetime().nullable(),
+  actualEnd: DateIso.nullable(),
+  actualStart: DateIso.nullable(),
   stage: JobStageName,
 });
 
@@ -124,22 +121,22 @@ const JobEventBase = z.object({
   stageId: UUID.nullable(),
   actorUserId: z.string().trim().min(1).nullable(),
   actorName: z.string().trim().min(1).nullable(),
-  occurredAt: z.iso.datetime(),
+  occurredAt: DateIso,
 });
 
 const StageStartedJobEventPayload = z.object({
   stage: JobStageName,
-  actualStart: z.iso.datetime(),
+  actualStart: DateIso,
 });
 
 const StageStoppedJobEventPayload = z.object({
   stage: JobStageName,
-  actualEnd: z.iso.datetime(),
+  actualEnd: DateIso,
 });
 
 const StationTransitionJobEventPayload = z.object({
-  actualEnd: z.iso.datetime().optional(),
-  actualStart: z.iso.datetime().optional(),
+  actualEnd: DateIso.optional(),
+  actualStart: DateIso.optional(),
   stage: JobStageName,
   stationBookingId: UUID,
   stationId: UUID,
@@ -149,15 +146,15 @@ const StationTransitionJobEventPayload = z.object({
 const StageCompletedJobEventPayload = z.object({
   stage: JobStageName,
   status: JobWorkState,
-  completedAt: z.iso.datetime(),
+  completedAt: DateIso,
 });
 
 const JobStartedEventPayload = z.object({
-  actualStart: z.iso.datetime().optional(),
+  actualStart: DateIso.optional(),
 });
 
 const JobCompletedEventPayload = z.object({
-  actualEnd: z.iso.datetime().optional(),
+  actualEnd: DateIso.optional(),
 });
 
 const JobStatusChangedEventPayload = z.object({
@@ -175,8 +172,8 @@ const DateOverriddenJobEventPayload = z.object({
   entityId: UUID,
   entityLevel: JobDateEditEntityLevel,
   field: JobDateEditField,
-  newValue: z.union([z.iso.date(), z.iso.datetime()]).nullable(),
-  oldValue: z.union([z.iso.date(), z.iso.datetime()]).nullable(),
+  newValue: z.union([DateOnlyIso, DateIso]).nullable(),
+  oldValue: z.union([DateOnlyIso, DateIso]).nullable(),
 });
 
 const StageStartedJobEvent = JobEventBase.extend({
@@ -197,14 +194,14 @@ const StageEndedJobEvent = JobEventBase.extend({
 const StationStartedJobEvent = JobEventBase.extend({
   eventType: z.literal('station.started'),
   payload: StationTransitionJobEventPayload.extend({
-    actualStart: z.iso.datetime(),
+    actualStart: DateIso,
   }),
 });
 
 const StationEndedJobEvent = JobEventBase.extend({
   eventType: z.literal('station.ended'),
   payload: StationTransitionJobEventPayload.extend({
-    actualEnd: z.iso.datetime(),
+    actualEnd: DateIso,
   }),
 });
 
@@ -216,14 +213,14 @@ const StageCompletedJobEvent = JobEventBase.extend({
 const JobStartedEvent = JobEventBase.extend({
   eventType: z.literal('job.started'),
   payload: JobStartedEventPayload.extend({
-    actualStart: z.iso.datetime(),
+    actualStart: DateIso,
   }),
 });
 
 const JobCompletedEvent = JobEventBase.extend({
   eventType: z.literal('job.completed'),
   payload: JobCompletedEventPayload.extend({
-    actualEnd: z.iso.datetime(),
+    actualEnd: DateIso,
   }),
 });
 
@@ -297,11 +294,11 @@ export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
   code: JobCode,
-  ...JobDueDateFields.shape,
+  dueDate: DateOnlyIso.nullable(),
   productId: UUID,
   quoteId: UUID.nullable(),
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
+  createdAt: DateIso,
+  updatedAt: DateIso,
   status: JobStatus,
 });
 
@@ -321,7 +318,7 @@ export const JobSortBy = z.enum(['code', 'createdAt', 'dueDate', 'id', 'status']
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
-    createdAtStart: z.iso.datetime().optional(),
+    createdAtStart: DateIso.optional(),
     jobId: UUID.optional(),
     statuses: z.array(JobStatus).default([]),
   })
@@ -337,8 +334,8 @@ export const JobDetail = JobSummary.extend({
 
 export type JobCreateStationBookingInput = z.infer<typeof JobCreateStationBookingInput>;
 export const JobCreateStationBookingInput = z.object({
-  plannedEnd: z.iso.date().nullable().optional(),
-  plannedStart: z.iso.date().nullable().optional(),
+  plannedEnd: DateOnlyIso.nullable().optional(),
+  plannedStart: DateOnlyIso.nullable().optional(),
   stationId: UUID,
 });
 
@@ -351,7 +348,7 @@ export const JobCreateStageInput = z.object({
 export type JobCreateInput = z.infer<typeof JobCreateInput>;
 export const JobCreateInput = z
   .object({
-    dueDate: z.iso.date().nullable().optional(),
+    dueDate: DateOnlyIso.nullable().optional(),
     productId: UUID,
     quoteId: UUID.nullable().optional(),
     stages: z.array(JobCreateStageInput).optional(),
@@ -432,57 +429,24 @@ export const JobSetStatusInput = z.object({
   status: JobStatus,
 });
 
-export type JobDateEditInput = z.infer<typeof JobDateEditInput>;
-export const JobDateEditInput = z
-  .object({
-    entityId: UUID,
-    entityLevel: JobDateEditEntityLevel,
-    field: JobDateEditField,
-    value: z.union([z.iso.date(), z.iso.datetime()]).nullable(),
-  })
-  .superRefine((input, context) => {
-    if (input.field === 'due_date' && input.entityLevel !== 'job') {
-      context.addIssue({
-        code: 'custom',
-        path: ['field'],
-        message: 'Job Due Date can only be edited on a Job.',
-      });
-    }
-    if (input.entityLevel === 'job' && input.field !== 'due_date') {
-      context.addIssue({
-        code: 'custom',
-        path: ['field'],
-        message: 'Only Job Due Date can be edited on a Job.',
-      });
-    }
-    if (input.entityLevel === 'stage') {
-      context.addIssue({
-        code: 'custom',
-        path: ['entityLevel'],
-        message: 'Stage dates are derived from Station Bookings.',
-      });
-    }
-    if (input.entityLevel === 'station-booking' && input.field === 'due_date') {
-      context.addIssue({
-        code: 'custom',
-        path: ['field'],
-        message: 'Job Due Date can only be edited on a Job.',
-      });
-    }
+export type JobDueDateEditInput = z.infer<typeof JobDueDateEditInput>;
+export const JobDueDateEditInput = z.object({
+  jobId: UUID,
+  dueDate: DateOnlyIso.nullable(),
+});
 
-    if (input.value === null) return;
-
-    const isDateOnlyField =
-      input.field === 'planned_start' || input.field === 'planned_end' || input.field === 'due_date';
-    const parser = isDateOnlyField ? z.iso.date() : z.iso.datetime();
-    const result = parser.safeParse(input.value);
-    if (!result.success) {
-      context.addIssue({
-        code: 'custom',
-        path: ['value'],
-        message: isDateOnlyField
-          ? 'Schedule date edits require a date value.'
-          : 'Actual-date edits require a datetime value.',
-      });
-    }
-  });
+export type StationDateEditInput = z.infer<typeof StationDateEditInput>;
+export const StationDateEditInput = z.discriminatedUnion('field', [
+  z.object({
+    jobId: UUID,
+    stationName: StationName,
+    field: z.enum(['planned_start', 'planned_end']),
+    value: DateOnlyIso.nullable(),
+  }),
+  z.object({
+    jobId: UUID,
+    stationName: StationName,
+    field: z.enum(['actual_start', 'actual_end']),
+    value: DateIso.nullable(),
+  }),
+]);

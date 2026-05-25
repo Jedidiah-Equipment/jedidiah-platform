@@ -6,6 +6,7 @@ import type {
   StationListInput,
   StationSetActiveInput,
   StationUpdateInput,
+  UUID,
 } from '@pkg/schema';
 import { and, asc, eq, type SQL } from 'drizzle-orm';
 
@@ -23,6 +24,18 @@ export async function listStations({ db, input }: { db: Db; input: StationListIn
   });
 
   return rows.map(mapStation);
+}
+
+export async function getStation({ db, id }: { db: Db; id: UUID }): Promise<Station> {
+  const row = await db.query.stations.findFirst({
+    where: eq(stations.id, id),
+  });
+
+  if (!row) {
+    throw new StationNotFoundError(id);
+  }
+
+  return mapStation(row);
 }
 
 export async function createStation({

@@ -6,12 +6,11 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
-    "baseUrl": ".",
     "noEmit": true,
     "declaration": false,
     "declarationMap": false,
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["./src/*"],
       "@pkg/api": ["../api/src/index.ts"],
       "@pkg/domain": ["../domain/src/index.ts"],
       "@pkg/schema": ["../schema/src/index.ts"]

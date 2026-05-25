@@ -1,5 +1,3 @@
-'use client';
-
 import { cva, type VariantProps } from 'class-variance-authority';
 import { useMemo } from 'react';
 import { Label } from '@/components/ui/label';
@@ -68,7 +66,7 @@ function Field({
   ...props
 }: React.ComponentProps<'div'> & VariantProps<typeof fieldVariants>) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: shadcn keeps Field layout-neutral while preserving group semantics.
+    // biome-ignore lint/a11y/useSemanticElements: shadcn composes field groups with a div so orientation styles remain layout-owned.
     <div
       role="group"
       data-slot="field"

@@ -1,6 +1,5 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import type * as React from 'react';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: shadcn keeps InputGroup layout-neutral while preserving group semantics.
+    // biome-ignore lint/a11y/useSemanticElements: shadcn uses a div group so addons and controls can share one styled container.
     <div
       data-slot="input-group"
       role="group"
@@ -26,11 +25,11 @@ const inputGroupAddonVariants = cva(
   {
     variants: {
       align: {
-        'block-end': 'order-last w-full justify-start px-2.5 pb-2 group-has-[>input]/input-group:pb-2 [.border-t]:pt-2',
+        'inline-start': 'order-first pl-2 has-[>button]:ml-[-0.3rem] has-[>kbd]:ml-[-0.15rem]',
+        'inline-end': 'order-last pr-2 has-[>button]:mr-[-0.3rem] has-[>kbd]:mr-[-0.15rem]',
         'block-start':
           'order-first w-full justify-start px-2.5 pt-2 group-has-[>input]/input-group:pt-2 [.border-b]:pb-2',
-        'inline-end': 'order-last pr-2 has-[>button]:mr-[-0.3rem] has-[>kbd]:mr-[-0.15rem]',
-        'inline-start': 'order-first pl-2 has-[>button]:ml-[-0.3rem] has-[>kbd]:ml-[-0.15rem]',
+        'block-end': 'order-last w-full justify-start px-2.5 pb-2 group-has-[>input]/input-group:pb-2 [.border-t]:pt-2',
       },
     },
     defaultVariants: {
@@ -40,24 +39,23 @@ const inputGroupAddonVariants = cva(
 );
 
 function InputGroupAddon({
-  align = 'inline-start',
   className,
+  align = 'inline-start',
   ...props
 }: React.ComponentProps<'div'> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: shadcn forwards addon clicks to the input focus target.
-    // biome-ignore lint/a11y/useSemanticElements: shadcn keeps InputGroupAddon layout-neutral while preserving group semantics.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: click only forwards focus to the input; keyboard interaction stays on the real control.
+    // biome-ignore lint/a11y/useSemanticElements: shadcn uses a div group because addons may contain buttons, text, or icons.
     <div
       role="group"
       data-slot="input-group-addon"
       data-align={align}
       className={cn(inputGroupAddonVariants({ align }), className)}
-      onClick={(event) => {
-        if ((event.target as HTMLElement).closest('button')) {
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('button')) {
           return;
         }
-
-        event.currentTarget.parentElement?.querySelector('input')?.focus();
+        e.currentTarget.parentElement?.querySelector('input')?.focus();
       }}
       {...props}
     />
@@ -67,10 +65,10 @@ function InputGroupAddon({
 const inputGroupButtonVariants = cva('flex items-center gap-2 text-sm shadow-none', {
   variants: {
     size: {
-      'icon-sm': 'size-8 p-0 has-[>svg]:p-0',
-      'icon-xs': 'size-6 rounded-[calc(var(--radius)-3px)] p-0 has-[>svg]:p-0',
-      sm: '',
       xs: "h-6 gap-1 rounded-[calc(var(--radius)-3px)] px-1.5 [&>svg:not([class*='size-'])]:size-3.5",
+      sm: '',
+      'icon-xs': 'size-6 rounded-[calc(var(--radius)-3px)] p-0 has-[>svg]:p-0',
+      'icon-sm': 'size-8 p-0 has-[>svg]:p-0',
     },
   },
   defaultVariants: {
@@ -80,13 +78,13 @@ const inputGroupButtonVariants = cva('flex items-center gap-2 text-sm shadow-non
 
 function InputGroupButton({
   className,
-  size = 'xs',
   type = 'button',
   variant = 'ghost',
+  size = 'xs',
   ...props
 }: Omit<React.ComponentProps<typeof Button>, 'size' | 'type'> &
   VariantProps<typeof inputGroupButtonVariants> & {
-    type?: 'button' | 'reset' | 'submit';
+    type?: 'button' | 'submit' | 'reset';
   }) {
   return (
     <Button

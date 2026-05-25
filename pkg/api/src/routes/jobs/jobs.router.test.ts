@@ -285,19 +285,34 @@ describe('jobs.get', () => {
   });
 });
 
-describe('jobs.listSharedStationBookings', () => {
-  test('returns not found for a missing current job', async ({ context }) => {
+describe('jobs.list schedule filters', () => {
+  test('pageSize zero returns all matching jobs without pagination', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
+    const firstJob = await caller.jobs.create({ productId: context.product.id });
+    const secondJob = await caller.jobs.create({ productId: context.product.id });
 
-    await expect(
-      caller.jobs.listSharedStationBookings({ jobId: '00000000-0000-4000-8000-000000009999' }),
-    ).rejects.toMatchObject({
-      code: 'NOT_FOUND',
-      message: 'Job not found.',
+    const pagedResult = await caller.jobs.list({
+      filters: { statuses: [] },
+      page: 1,
+      pageSize: 1,
+      search: '',
+      sortBy: 'code',
+      sortDirection: 'asc',
     });
+    const unpagedResult = await caller.jobs.list({
+      filters: { statuses: [] },
+      page: 1,
+      pageSize: 0,
+      search: '',
+      sortBy: 'code',
+      sortDirection: 'asc',
+    });
+
+    expect(filterJobIds(pagedResult.items, [firstJob.id, secondJob.id])).toHaveLength(1);
+    expect(filterJobIds(unpagedResult.items, [firstJob.id, secondJob.id])).toEqual([firstJob.id, secondJob.id]);
   });
 
-  test('returns other job bookings only on stations shared with the current job', async ({ context }) => {
+  test('filters jobs by createdAtStart and keeps full nested station bookings', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));
     const [sharedStation, unrelatedStation] = await context.db
       .insert(stations)
@@ -319,17 +334,7 @@ describe('jobs.listSharedStationBookings', () => {
       throw new Error('Station inserts did not return rows');
     }
 
-    const currentJob = await caller.jobs.create({
-      productId: context.product.id,
-      stages: [
-        createStageInput('procurement', '2026-08-01', '2026-08-02'),
-        createStageInput('supply', '2026-08-02', '2026-08-03'),
-        createStageInput('fabrication', '2026-08-03', '2026-08-07', sharedStation.id),
-        createStageInput('paint', '2026-08-07', '2026-08-08'),
-        createStageInput('assembly', '2026-08-08', '2026-08-10'),
-      ],
-    });
-    const collidingJob = await caller.jobs.create({
+    const recentJob = await caller.jobs.create({
       productId: context.product.id,
       stages: [
         createStageInput('procurement', '2026-08-01', '2026-08-02'),
@@ -339,7 +344,7 @@ describe('jobs.listSharedStationBookings', () => {
         createStageInput('assembly', '2026-08-10', '2026-08-12'),
       ],
     });
-    const cancelledSharedStationJob = await caller.jobs.create({
+    const oldJob = await caller.jobs.create({
       productId: context.product.id,
       stages: [
         createStageInput('procurement', '2026-08-01', '2026-08-02'),
@@ -351,82 +356,53 @@ describe('jobs.listSharedStationBookings', () => {
     });
     await context.db.execute(sql`
       update job
-      set status = 'cancelled'
-      where id = ${cancelledSharedStationJob.id}
-    `);
-    const completedSharedStationJob = await caller.jobs.create({
-      productId: context.product.id,
-      stages: [
-        createStageInput('procurement', '2026-08-01', '2026-08-02'),
-        createStageInput('supply', '2026-08-02', '2026-08-03'),
-        createStageInput('fabrication', '2026-08-05', '2026-08-09', sharedStation.id),
-        createStageInput('paint', '2026-08-09', '2026-08-10'),
-        createStageInput('assembly', '2026-08-10', '2026-08-12'),
-      ],
-    });
-    await context.db.execute(sql`
-      update job_stage_station
-      set actual_start = '2026-08-01T08:00:00.000Z',
-        actual_end = '2026-08-12T16:00:00.000Z'
-      where id = ${getStageBooking(completedSharedStationJob, 'fabrication').id}
-    `);
-    const futureSharedStationJob = await caller.jobs.create({
-      productId: context.product.id,
-      stages: [
-        createStageInput('procurement', '2027-01-01', '2027-01-02'),
-        createStageInput('supply', '2027-01-02', '2027-01-03'),
-        createStageInput('fabrication', '2027-01-05', '2027-01-09', sharedStation.id),
-        createStageInput('paint', '2027-01-09', '2027-01-10'),
-        createStageInput('assembly', '2027-01-10', '2027-01-12'),
-      ],
-    });
-    await context.db.execute(sql`
-      update job_stage_station
-      set planned_start = '2027-01-05',
-        planned_end = '2027-01-09'
-      where id = ${getStageBooking(futureSharedStationJob, 'fabrication').id}
-    `);
-    const unrelatedJob = await caller.jobs.create({
-      productId: context.product.id,
-      stages: [
-        createStageInput('procurement', '2026-08-01', '2026-08-02'),
-        createStageInput('supply', '2026-08-02', '2026-08-03'),
-        createStageInput('fabrication', '2026-08-05', '2026-08-09'),
-        createStageInput('paint', '2026-08-09', '2026-08-10', unrelatedStation.id),
-        createStageInput('assembly', '2026-08-10', '2026-08-12'),
-      ],
-    });
-    const collidingBooking = getStageBooking(collidingJob, 'fabrication');
-    await context.db.execute(sql`
-      update job_stage_station
-      set actual_start = '2026-08-05T08:00:00.000Z',
-        actual_end = '2026-08-07T16:00:00.000Z'
-      where id = ${collidingBooking.id}
+      set created_at = '2025-01-01T08:00:00.000Z'
+      where id = ${oldJob.id}
     `);
 
-    const result = await caller.jobs.listSharedStationBookings({ jobId: currentJob.id });
-
-    expect(result.jobs).toHaveLength(1);
-    expect(result.jobs[0]).toMatchObject({
-      jobId: collidingJob.id,
-      jobCode: collidingJob.code,
-      productName: 'Job Router Product',
-      bookings: [
-        {
-          actualEnd: '2026-08-07T16:00:00.000Z',
-          actualStart: '2026-08-05T08:00:00.000Z',
-          id: collidingBooking.id,
-          stage: 'fabrication',
-          stationId: sharedStation.id,
-          stationName: 'Shared Weld Bay',
-        },
-      ],
+    const result = await caller.jobs.list({
+      filters: {
+        createdAtStart: '2026-01-01T00:00:00.000Z',
+        statuses: ['pending', 'active', 'paused', 'complete'],
+      },
+      page: 1,
+      pageSize: 0,
+      search: '',
+      sortBy: 'code',
+      sortDirection: 'asc',
     });
-    expect(result.jobs.map((job) => job.jobId)).not.toContain(unrelatedJob.id);
-    expect(result.jobs.map((job) => job.jobId)).not.toContain(cancelledSharedStationJob.id);
-    expect(result.jobs.map((job) => job.jobId)).not.toContain(completedSharedStationJob.id);
-    expect(result.jobs.map((job) => job.jobId)).not.toContain(futureSharedStationJob.id);
-    expect(result.jobs[0]?.bookings.map((booking) => booking.stationId)).not.toContain(unrelatedStation.id);
+
+    expect(result.items.map((job) => job.id)).toContain(recentJob.id);
+    expect(result.items.map((job) => job.id)).not.toContain(oldJob.id);
+    expect(result.items.find((job) => job.id === recentJob.id)?.stages.flatMap((stage) => stage.stations)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ stationId: sharedStation.id }),
+        expect.objectContaining({ stationId: unrelatedStation.id }),
+      ]),
+    );
+  });
+
+  test('status filters can exclude cancelled jobs while keeping completed schedule jobs', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const completedJob = await caller.jobs.create({ productId: context.product.id });
+    await context.setJobStatus(completedJob.id, 'complete');
+    const cancelledJob = await caller.jobs.create({ productId: context.product.id });
+    await context.setJobStatus(cancelledJob.id, 'cancelled');
+
+    const result = await caller.jobs.list({
+      filters: {
+        createdAtStart: '2026-01-01T00:00:00.000Z',
+        statuses: ['pending', 'active', 'paused', 'complete'],
+      },
+      page: 1,
+      pageSize: 0,
+      search: '',
+      sortBy: 'code',
+      sortDirection: 'asc',
+    });
+
+    expect(result.items.map((job) => job.id)).toContain(completedJob.id);
+    expect(result.items.map((job) => job.id)).not.toContain(cancelledJob.id);
   });
 });
 

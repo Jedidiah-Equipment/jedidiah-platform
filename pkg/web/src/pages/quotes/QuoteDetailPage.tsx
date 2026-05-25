@@ -22,7 +22,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { CreateJobDialog } from '@/pages/jobs/components/CreateJobDialog.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
@@ -131,15 +130,10 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
               </>
             ) : null}
             {canCreateJob && canCreateJobFromQuote(quote.status) ? (
-              <CreateJobDialog
-                quote={quote}
-                trigger={
-                  <Button>
-                    <BriefcaseBusinessIcon data-icon="inline-start" />
-                    Create job
-                  </Button>
-                }
-              />
+              <ButtonLink search={{ quoteId: quote.id }} to="/jobs/new">
+                <BriefcaseBusinessIcon data-icon="inline-start" />
+                Create job
+              </ButtonLink>
             ) : null}
           </div>
           <div className="grid gap-3 text-sm md:grid-cols-3">

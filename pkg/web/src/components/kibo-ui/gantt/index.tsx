@@ -1,12 +1,7 @@
-// biome-ignore-all lint/a11y/noStaticElementInteractions: kibo-ui vendored timeline columns use pointer hover handlers.
 // biome-ignore-all lint/a11y/useSemanticElements: kibo-ui vendored sidebar items preserve registry interaction semantics.
 // biome-ignore-all lint/suspicious/noArrayIndexKey: kibo-ui vendored timeline columns are generated from stable date ranges.
-import { DndContext, MouseSensor, useDraggable, useSensor } from '@dnd-kit/core';
-import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
-import { useMouse, useThrottle, useWindowScroll } from '@uidotdev/usehooks';
 import {
   addDays,
-  addMonths,
   differenceInDays,
   differenceInHours,
   differenceInMonths,
@@ -21,20 +16,12 @@ import {
   startOfDay,
   startOfMonth,
 } from 'date-fns';
-import { atom, useAtom } from 'jotai';
 import throttle from 'lodash.throttle';
-import { PlusIcon, TrashIcon } from 'lucide-react';
+import { TrashIcon } from 'lucide-react';
 import type { CSSProperties, FC, KeyboardEventHandler, MouseEventHandler, ReactNode, RefObject } from 'react';
 import { createContext, memo, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Card } from '@/components/ui/card';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { cn } from '@/lib/utils';
-
-const draggingAtom = atom(false);
-const scrollXAtom = atom(0);
-
-export const useGanttDragging = () => useAtom(draggingAtom);
-export const useGanttScrollX = () => useAtom(scrollXAtom);
 
 export type GanttStatus = {
   id: string;
@@ -75,22 +62,10 @@ export type GanttContextProps = {
   sidebarWidth: number;
   headerHeight: number;
   rowHeight: number;
-  onAddItem: ((date: Date) => void) | undefined;
   placeholderLength: number;
   timelineData: TimelineData;
   ref: RefObject<HTMLDivElement | null> | null;
   scrollToFeature?: ((feature: GanttFeature) => void) | undefined;
-};
-
-const getsDaysIn = (range: Range) => {
-  // For when range is daily
-  let fn = (_date: Date) => 1;
-
-  if (range === 'monthly' || range === 'quarterly') {
-    fn = getDaysInMonth;
-  }
-
-  return fn;
 };
 
 const getDifferenceIn = (range: Range) => {
@@ -132,33 +107,6 @@ const getEndOf = (range: Range) => {
 
   return fn;
 };
-
-const getAddRange = (range: Range) => {
-  let fn = addDays;
-
-  if (range === 'monthly' || range === 'quarterly') {
-    fn = addMonths;
-  }
-
-  return fn;
-};
-
-const getDateByMousePosition = (context: GanttContextProps, mouseX: number) => {
-  const timelineStartDate = new Date(context.timelineData[0]?.year ?? new Date().getFullYear(), 0, 1);
-  const columnWidth = (context.columnWidth * context.zoom) / 100;
-  const offset = Math.floor(mouseX / columnWidth);
-  const daysIn = getsDaysIn(context.range);
-  const addRange = getAddRange(context.range);
-  const month = addRange(timelineStartDate, offset);
-  const daysInMonth = daysIn(month);
-  const pixelsPerDay = Math.round(columnWidth / daysInMonth);
-  const dayOffset = Math.floor((mouseX % columnWidth) / pixelsPerDay);
-  const actualDate = addDays(month, dayOffset);
-
-  return actualDate;
-};
-
-const OPEN_ENDED_FEATURE_END = new Date(8640000000000000);
 
 const createTimelineYearData = (year: number): TimelineData[number] => ({
   year,
@@ -266,7 +214,6 @@ const GanttContext = createContext<GanttContextProps>({
   headerHeight: 60,
   sidebarWidth: 300,
   rowHeight: 36,
-  onAddItem: undefined,
   placeholderLength: 2,
   timelineData: [],
   ref: null,
@@ -509,75 +456,15 @@ export const GanttSidebar: FC<GanttSidebarProps> = ({ children, className }) => 
   </div>
 );
 
-export type GanttAddFeatureHelperProps = {
-  top: number;
-  className?: string;
-};
-
-export const GanttAddFeatureHelper: FC<GanttAddFeatureHelperProps> = ({ top, className }) => {
-  const [scrollX] = useGanttScrollX();
-  const gantt = useContext(GanttContext);
-  const [mousePosition, mouseRef] = useMouse<HTMLDivElement>();
-
-  const handleClick = () => {
-    const ganttRect = gantt.ref?.current?.getBoundingClientRect();
-    const x = mousePosition.x - (ganttRect?.left ?? 0) + scrollX - gantt.sidebarWidth;
-    const currentDate = getDateByMousePosition(gantt, x);
-
-    gantt.onAddItem?.(currentDate);
-  };
-
-  return (
-    <div
-      className={cn('absolute top-0 w-full px-0.5', className)}
-      ref={mouseRef}
-      style={{
-        marginTop: -gantt.rowHeight / 2,
-        transform: `translateY(${top}px)`,
-      }}
-    >
-      <button
-        className="flex h-full w-full items-center justify-center rounded-md border border-dashed p-2"
-        onClick={handleClick}
-        type="button"
-      >
-        <PlusIcon className="pointer-events-none select-none text-muted-foreground" size={16} />
-      </button>
-    </div>
-  );
-};
-
 export type GanttColumnProps = {
-  index: number;
-  isColumnSecondary?: ((item: number) => boolean) | undefined;
+  isSecondary: boolean;
 };
 
-export const GanttColumn: FC<GanttColumnProps> = ({ index, isColumnSecondary }) => {
-  const gantt = useContext(GanttContext);
-  const [dragging] = useGanttDragging();
-  const [mousePosition, mouseRef] = useMouse<HTMLDivElement>();
-  const [hovering, setHovering] = useState(false);
-  const [windowScroll] = useWindowScroll();
+export const GanttColumn: FC<GanttColumnProps> = memo(({ isSecondary }) => (
+  <div className={cn('group relative h-full overflow-hidden', isSecondary ? 'bg-secondary' : '')} />
+));
 
-  const handleMouseEnter = () => setHovering(true);
-  const handleMouseLeave = () => setHovering(false);
-
-  const top = useThrottle(
-    mousePosition.y - (mouseRef.current?.getBoundingClientRect().y ?? 0) - (windowScroll.y ?? 0),
-    10,
-  );
-
-  return (
-    <div
-      className={cn('group relative h-full overflow-hidden', isColumnSecondary?.(index) ? 'bg-secondary' : '')}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      ref={mouseRef}
-    >
-      {!dragging && hovering && gantt.onAddItem ? <GanttAddFeatureHelper top={top} /> : null}
-    </div>
-  );
-};
+GanttColumn.displayName = 'GanttColumn';
 
 export type GanttColumnsProps = {
   columns: number;
@@ -595,321 +482,7 @@ export const GanttColumns: FC<GanttColumnsProps> = ({ columns, isColumnSecondary
       }}
     >
       {Array.from({ length: columns }).map((_, index) => (
-        <GanttColumn index={index} isColumnSecondary={isColumnSecondary} key={`${id}-${index}`} />
-      ))}
-    </div>
-  );
-};
-
-export type GanttCreateMarkerTriggerProps = {
-  onCreateMarker: (date: Date) => void;
-  className?: string;
-};
-
-export const GanttCreateMarkerTrigger: FC<GanttCreateMarkerTriggerProps> = ({ onCreateMarker, className }) => {
-  const gantt = useContext(GanttContext);
-  const [mousePosition, mouseRef] = useMouse<HTMLDivElement>();
-  const [windowScroll] = useWindowScroll();
-  const x = useThrottle(
-    mousePosition.x - (mouseRef.current?.getBoundingClientRect().x ?? 0) - (windowScroll.x ?? 0),
-    10,
-  );
-
-  const date = getDateByMousePosition(gantt, x);
-
-  const handleClick = () => onCreateMarker(date);
-
-  return (
-    <div
-      className={cn(
-        'group pointer-events-none absolute top-0 left-0 h-full w-full select-none overflow-visible',
-        className,
-      )}
-      ref={mouseRef}
-    >
-      <div
-        className="-ml-2 pointer-events-auto sticky top-6 z-20 flex w-4 flex-col items-center justify-center gap-1 overflow-visible opacity-0 group-hover:opacity-100"
-        style={{ transform: `translateX(${x}px)` }}
-      >
-        <button
-          className="z-50 inline-flex h-4 w-4 items-center justify-center rounded-full bg-card"
-          onClick={handleClick}
-          type="button"
-        >
-          <PlusIcon className="text-muted-foreground" size={12} />
-        </button>
-        <div className="whitespace-nowrap rounded-full border border-border/50 bg-background/90 px-2 py-1 text-foreground text-xs backdrop-blur-lg">
-          {formatDate(date, 'MMM dd, yyyy')}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export type GanttFeatureDragHelperProps = {
-  featureId: GanttFeature['id'];
-  direction: 'left' | 'right';
-  date: Date | null;
-};
-
-export const GanttFeatureDragHelper: FC<GanttFeatureDragHelperProps> = ({ direction, featureId, date }) => {
-  const [, setDragging] = useGanttDragging();
-  const { attributes, listeners, setNodeRef } = useDraggable({
-    id: `feature-drag-helper-${featureId}`,
-  });
-
-  const isPressed = Boolean(attributes['aria-pressed']);
-
-  useEffect(() => setDragging(isPressed), [isPressed, setDragging]);
-
-  return (
-    <div
-      className={cn(
-        'group -translate-y-1/2 !cursor-col-resize absolute top-1/2 z-[3] h-full w-6 rounded-md outline-none',
-        direction === 'left' ? '-left-2.5' : '-right-2.5',
-      )}
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-    >
-      <div
-        className={cn(
-          '-translate-y-1/2 absolute top-1/2 h-[80%] w-1 rounded-sm bg-muted-foreground opacity-0 transition-all',
-          direction === 'left' ? 'left-2.5' : 'right-2.5',
-          direction === 'left' ? 'group-hover:left-0' : 'group-hover:right-0',
-          isPressed && (direction === 'left' ? 'left-0' : 'right-0'),
-          'group-hover:opacity-100',
-          isPressed && 'opacity-100',
-        )}
-      />
-      {date && (
-        <div
-          className={cn(
-            '-translate-x-1/2 absolute top-10 hidden whitespace-nowrap rounded-lg border border-border/50 bg-background/90 px-2 py-1 text-foreground text-xs backdrop-blur-lg group-hover:block',
-            isPressed && 'block',
-          )}
-        >
-          {format(date, 'MMM dd, yyyy')}
-        </div>
-      )}
-    </div>
-  );
-};
-
-export type GanttFeatureItemCardProps = Pick<GanttFeature, 'id'> & {
-  children?: ReactNode;
-};
-
-export const GanttFeatureItemCard: FC<GanttFeatureItemCardProps> = ({ id, children }) => {
-  const [, setDragging] = useGanttDragging();
-  const { attributes, listeners, setNodeRef } = useDraggable({ id });
-  const isPressed = Boolean(attributes['aria-pressed']);
-
-  useEffect(() => setDragging(isPressed), [isPressed, setDragging]);
-
-  return (
-    <Card className="h-full w-full rounded-md bg-background p-2 text-xs shadow-sm">
-      <div
-        className={cn(
-          'flex h-full w-full items-center justify-between gap-2 text-left',
-          isPressed && 'cursor-grabbing',
-        )}
-        {...attributes}
-        {...listeners}
-        ref={setNodeRef}
-      >
-        {children}
-      </div>
-    </Card>
-  );
-};
-
-export type GanttFeatureItemProps = GanttFeature & {
-  onMove?: ((id: string, startDate: Date, endDate: Date | null) => void) | undefined;
-  children?: ReactNode;
-  className?: string;
-};
-
-export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({ onMove, children, className, ...feature }) => {
-  const [scrollX] = useGanttScrollX();
-  const gantt = useContext(GanttContext);
-  const timelineStartDate = useMemo(() => new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1), [gantt.timelineData]);
-  const [startAt, setStartAt] = useState<Date>(feature.startAt);
-  const [endAt, setEndAt] = useState<Date | null>(feature.endAt);
-
-  // Memoize expensive calculations
-  const width = useMemo(() => getWidth(startAt, endAt, gantt), [startAt, endAt, gantt]);
-  const offset = useMemo(() => getOffset(startAt, timelineStartDate, gantt), [startAt, timelineStartDate, gantt]);
-
-  const addRange = useMemo(() => getAddRange(gantt.range), [gantt.range]);
-  const [mousePosition] = useMouse<HTMLDivElement>();
-
-  const [previousMouseX, setPreviousMouseX] = useState(0);
-  const [previousStartAt, setPreviousStartAt] = useState(startAt);
-  const [previousEndAt, setPreviousEndAt] = useState(endAt);
-
-  const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: {
-      distance: 10,
-    },
-  });
-
-  const handleItemDragStart = useCallback(() => {
-    setPreviousMouseX(mousePosition.x);
-    setPreviousStartAt(startAt);
-    setPreviousEndAt(endAt);
-  }, [mousePosition.x, startAt, endAt]);
-
-  const handleItemDragMove = useCallback(() => {
-    const currentDate = getDateByMousePosition(gantt, mousePosition.x);
-    const originalDate = getDateByMousePosition(gantt, previousMouseX);
-    const delta =
-      gantt.range === 'daily'
-        ? getDifferenceIn(gantt.range)(currentDate, originalDate)
-        : getInnerDifferenceIn(gantt.range)(currentDate, originalDate);
-    const newStartDate = addDays(previousStartAt, delta);
-    const newEndDate = previousEndAt ? addDays(previousEndAt, delta) : null;
-
-    setStartAt(newStartDate);
-    setEndAt(newEndDate);
-  }, [gantt, mousePosition.x, previousMouseX, previousStartAt, previousEndAt]);
-
-  const onDragEnd = useCallback(() => onMove?.(feature.id, startAt, endAt), [onMove, feature.id, startAt, endAt]);
-
-  const handleLeftDragMove = useCallback(() => {
-    const ganttRect = gantt.ref?.current?.getBoundingClientRect();
-    const x = mousePosition.x - (ganttRect?.left ?? 0) + scrollX - gantt.sidebarWidth;
-    const newStartAt = getDateByMousePosition(gantt, x);
-
-    setStartAt(newStartAt);
-  }, [gantt, mousePosition.x, scrollX]);
-
-  const handleRightDragMove = useCallback(() => {
-    const ganttRect = gantt.ref?.current?.getBoundingClientRect();
-    const x = mousePosition.x - (ganttRect?.left ?? 0) + scrollX - gantt.sidebarWidth;
-    const newEndAt = getDateByMousePosition(gantt, x);
-
-    setEndAt(newEndAt);
-  }, [gantt, mousePosition.x, scrollX]);
-
-  return (
-    <div
-      className={cn('relative flex w-max min-w-full py-0.5', className)}
-      style={{ height: 'var(--gantt-row-height)' }}
-    >
-      <div
-        className="pointer-events-auto absolute top-0.5"
-        style={{
-          height: 'calc(var(--gantt-row-height) - 4px)',
-          width: Math.round(width),
-          left: Math.round(offset),
-        }}
-      >
-        {onMove && (
-          <DndContext
-            modifiers={[restrictToHorizontalAxis]}
-            onDragEnd={onDragEnd}
-            onDragMove={handleLeftDragMove}
-            sensors={[mouseSensor]}
-          >
-            <GanttFeatureDragHelper date={startAt} direction="left" featureId={feature.id} />
-          </DndContext>
-        )}
-        <DndContext
-          modifiers={[restrictToHorizontalAxis]}
-          onDragEnd={onDragEnd}
-          onDragMove={handleItemDragMove}
-          onDragStart={handleItemDragStart}
-          sensors={[mouseSensor]}
-        >
-          <GanttFeatureItemCard id={feature.id}>
-            {children ?? <p className="flex-1 truncate text-xs">{feature.name}</p>}
-          </GanttFeatureItemCard>
-        </DndContext>
-        {onMove && (
-          <DndContext
-            modifiers={[restrictToHorizontalAxis]}
-            onDragEnd={onDragEnd}
-            onDragMove={handleRightDragMove}
-            sensors={[mouseSensor]}
-          >
-            <GanttFeatureDragHelper date={endAt ?? addRange(startAt, 2)} direction="right" featureId={feature.id} />
-          </DndContext>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export type GanttFeatureListGroupProps = {
-  children: ReactNode;
-  className?: string;
-};
-
-export const GanttFeatureListGroup: FC<GanttFeatureListGroupProps> = ({ children, className }) => (
-  <div className={className} style={{ paddingTop: 'var(--gantt-row-height)' }}>
-    {children}
-  </div>
-);
-
-export type GanttFeatureRowProps = {
-  features: GanttFeature[];
-  onMove?: (id: string, startAt: Date, endAt: Date | null) => void;
-  children?: (feature: GanttFeature) => ReactNode;
-  className?: string;
-};
-
-export const GanttFeatureRow: FC<GanttFeatureRowProps> = ({ features, onMove, children, className }) => {
-  // Sort features by start date to handle potential overlaps
-  const sortedFeatures = [...features].sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
-
-  // Calculate sub-row positions for overlapping features using a proper algorithm
-  const featureWithPositions = [];
-  const subRowEndTimes: Date[] = []; // Track when each sub-row becomes free
-
-  for (const feature of sortedFeatures) {
-    let subRow = 0;
-    const effectiveEndAt = feature.endAt ?? OPEN_ENDED_FEATURE_END;
-
-    // Find the first sub-row that's free (doesn't overlap)
-    while (subRow < subRowEndTimes.length && (subRowEndTimes[subRow] ?? feature.startAt) > feature.startAt) {
-      subRow++;
-    }
-
-    // Update the end time for this sub-row
-    if (subRow === subRowEndTimes.length) {
-      subRowEndTimes.push(effectiveEndAt);
-    } else {
-      subRowEndTimes[subRow] = effectiveEndAt;
-    }
-
-    featureWithPositions.push({ ...feature, subRow });
-  }
-
-  const maxSubRows = Math.max(1, subRowEndTimes.length);
-  const subRowHeight = 36; // Base row height
-
-  return (
-    <div
-      className={cn('relative', className)}
-      style={{
-        height: `${maxSubRows * subRowHeight}px`,
-        minHeight: 'var(--gantt-row-height)',
-      }}
-    >
-      {featureWithPositions.map((feature) => (
-        <div
-          className="absolute w-full"
-          key={feature.id}
-          style={{
-            top: `${feature.subRow * subRowHeight}px`,
-            height: `${subRowHeight}px`,
-          }}
-        >
-          <GanttFeatureItem {...feature} onMove={onMove}>
-            {children ? children(feature) : <p className="flex-1 truncate text-xs">{feature.name}</p>}
-          </GanttFeatureItem>
-        </div>
+        <GanttColumn isSecondary={isColumnSecondary?.(index) ?? false} key={`${id}-${index}`} />
       ))}
     </div>
   );
@@ -922,7 +495,7 @@ export type GanttFeatureListProps = {
 
 export const GanttFeatureList: FC<GanttFeatureListProps> = ({ className, children }) => (
   <div
-    className={cn('absolute top-0 left-0 h-full w-max space-y-4', className)}
+    className={cn('absolute top-0 left-0 h-[calc(100%-var(--gantt-header-height))] w-max space-y-4', className)}
     style={{ marginTop: 'var(--gantt-header-height)' }}
   >
     {children}
@@ -991,7 +564,9 @@ GanttMarker.displayName = 'GanttMarker';
 export type GanttProviderProps = {
   range?: Range;
   zoom?: number;
-  onAddItem?: (date: Date) => void;
+  initialDateAlignment?: 'center' | 'end' | 'start';
+  initialDate?: Date | undefined;
+  onVisibleWindowChange?: ((window: { end: Date; start: Date }) => void) | undefined;
   children: ReactNode;
   className?: string;
 };
@@ -999,13 +574,16 @@ export type GanttProviderProps = {
 export const GanttProvider: FC<GanttProviderProps> = ({
   zoom = 100,
   range = 'monthly',
-  onAddItem,
+  initialDateAlignment = 'end',
+  initialDate,
+  onVisibleWindowChange,
   children,
   className,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [timelineData, setTimelineData] = useState<TimelineData>(createInitialTimelineData(new Date()));
-  const [, setScrollX] = useGanttScrollX();
+  const initialScrollDoneRef = useRef(false);
+  const notifyVisibleWindowChangeRef = useRef<(scrollElement: HTMLDivElement) => void>(() => {});
+  const [timelineData, setTimelineData] = useState<TimelineData>(createInitialTimelineData(initialDate ?? new Date()));
   const [sidebarWidth, setSidebarWidth] = useState(0);
 
   const headerHeight = 60;
@@ -1031,12 +609,75 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     [zoom, columnWidth, sidebarWidth],
   );
 
+  const notifyVisibleWindowChange = useCallback(
+    (scrollElement: HTMLDivElement) => {
+      if (!onVisibleWindowChange) {
+        return;
+      }
+
+      const timelineStartDate = new Date(timelineData[0]?.year ?? new Date().getFullYear(), 0, 1);
+      const renderedColumnWidth = (zoom / 100) * columnWidth;
+      const visibleStartOffset = Math.max(scrollElement.scrollLeft - sidebarWidth, 0);
+      const visibleEndOffset = Math.max(scrollElement.scrollLeft + scrollElement.clientWidth - sidebarWidth, 0);
+      const start = addDays(timelineStartDate, Math.floor(visibleStartOffset / renderedColumnWidth));
+      const end = addDays(timelineStartDate, Math.ceil(visibleEndOffset / renderedColumnWidth));
+
+      onVisibleWindowChange({ end, start });
+    },
+    [columnWidth, onVisibleWindowChange, sidebarWidth, timelineData, zoom],
+  );
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth / 2 - scrollRef.current.clientWidth / 2;
-      setScrollX(scrollRef.current.scrollLeft);
+    notifyVisibleWindowChangeRef.current = notifyVisibleWindowChange;
+  }, [notifyVisibleWindowChange]);
+
+  useEffect(() => {
+    const scrollElement = scrollRef.current;
+    if (scrollElement && !initialScrollDoneRef.current) {
+      if (initialDate && sidebarWidth === 0) {
+        return;
+      }
+
+      const timelineStartDate = new Date(timelineData[0]?.year ?? new Date().getFullYear(), 0, 1);
+      const renderedColumnWidth = (zoom / 100) * columnWidth;
+      const fallbackScrollLeft = scrollElement.scrollWidth / 2 - scrollElement.clientWidth / 2;
+
+      if (initialDate) {
+        const offset = getOffset(initialDate, timelineStartDate, {
+          zoom,
+          range,
+          columnWidth,
+          sidebarWidth,
+          headerHeight,
+          rowHeight,
+          placeholderLength: 2,
+          timelineData,
+          ref: scrollRef,
+        });
+        const visibleTimelineWidth = scrollElement.clientWidth - sidebarWidth;
+        let scrollLeft = offset - visibleTimelineWidth + renderedColumnWidth * 3;
+        if (initialDateAlignment === 'center') {
+          scrollLeft = offset - visibleTimelineWidth / 2;
+        } else if (initialDateAlignment === 'start') {
+          scrollLeft = offset - renderedColumnWidth * 2;
+        }
+
+        scrollElement.scrollLeft = Math.max(0, scrollLeft);
+      } else {
+        scrollElement.scrollLeft = fallbackScrollLeft;
+      }
+      initialScrollDoneRef.current = true;
+      notifyVisibleWindowChange(scrollElement);
     }
-  }, [setScrollX]);
+  }, [
+    columnWidth,
+    initialDate,
+    initialDateAlignment,
+    notifyVisibleWindowChange,
+    range,
+    sidebarWidth,
+    timelineData,
+    zoom,
+  ]);
 
   // Update sidebar width when DOM is ready
   useEffect(() => {
@@ -1072,7 +713,6 @@ export const GanttProvider: FC<GanttProviderProps> = ({
       }
 
       const { scrollLeft, scrollWidth, clientWidth } = scrollElement;
-      setScrollX(scrollLeft);
 
       if (scrollLeft === 0) {
         setTimelineData((currentTimelineData) => {
@@ -1087,7 +727,6 @@ export const GanttProvider: FC<GanttProviderProps> = ({
 
         // Scroll a bit forward so it's not at the very start
         scrollElement.scrollLeft = scrollElement.clientWidth;
-        setScrollX(scrollElement.scrollLeft);
       } else if (scrollLeft + clientWidth >= scrollWidth) {
         setTimelineData((currentTimelineData) => {
           const lastYear = currentTimelineData.at(-1)?.year;
@@ -1101,8 +740,9 @@ export const GanttProvider: FC<GanttProviderProps> = ({
 
         // Scroll a bit back so it's not at the very end
         scrollElement.scrollLeft = scrollElement.scrollWidth - scrollElement.clientWidth;
-        setScrollX(scrollElement.scrollLeft);
       }
+
+      notifyVisibleWindowChangeRef.current(scrollElement);
     }, 100),
     [],
   );
@@ -1139,7 +779,6 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         sidebarWidth,
         headerHeight,
         rowHeight,
-        onAddItem,
         placeholderLength: 2,
         timelineData,
         ref: scrollRef,
@@ -1153,28 +792,30 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         behavior: 'smooth',
       });
     },
-    [timelineData, zoom, range, columnWidth, sidebarWidth, onAddItem],
+    [timelineData, zoom, range, columnWidth, sidebarWidth],
+  );
+
+  const contextValue = useMemo(
+    () => ({
+      zoom,
+      range,
+      headerHeight,
+      columnWidth,
+      sidebarWidth,
+      rowHeight,
+      timelineData,
+      placeholderLength: 2,
+      ref: scrollRef,
+      scrollToFeature,
+    }),
+    [zoom, range, columnWidth, sidebarWidth, timelineData, scrollToFeature],
   );
 
   return (
-    <GanttContext.Provider
-      value={{
-        zoom,
-        range,
-        headerHeight,
-        columnWidth,
-        sidebarWidth,
-        rowHeight,
-        onAddItem,
-        timelineData,
-        placeholderLength: 2,
-        ref: scrollRef,
-        scrollToFeature,
-      }}
-    >
+    <GanttContext.Provider value={contextValue}>
       <div
         className={cn(
-          'gantt relative isolate grid h-full w-full flex-none select-none overflow-auto rounded-sm bg-secondary',
+          'gantt relative isolate grid h-full w-full flex-none select-none overflow-x-auto overflow-y-hidden rounded-sm bg-secondary',
           range,
           className,
         )}

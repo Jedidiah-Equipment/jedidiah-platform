@@ -1,9 +1,12 @@
 import { rollupJobSchedule, rollupStageSchedule, type ScheduleRollupWindow } from '@pkg/domain';
-import type { JobStageName, StationBooking } from '@pkg/schema';
-import { JobDetail } from '@pkg/schema';
+import type { JobStageName, JobSummary, StationBooking } from '@pkg/schema';
+import { JobCode, JobDetail } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
+  addReadOnlyJobsToScheduleGanttRows,
+  buildScheduleGanttGlobalRows,
+  buildScheduleGanttReadOnlyStationBooking,
   buildScheduleGanttRows,
   formatScheduleDateTimeInputValue,
   getActualEndForDisplay,
@@ -12,15 +15,16 @@ import {
   getScheduleGanttActualRangeAfterDrag,
   getScheduleGanttBarLabel,
   getScheduleGanttHoverCardModel,
-  getScheduleGanttOccupancyDisplay,
   getScheduleGanttPlannedDateEdits,
   getScheduleGanttPlannedDisplay,
   getScheduleGanttPlannedRangeAfterDrag,
   getScheduleGanttTimelineDayCount,
+  packScheduleGanttStationLanes,
   parseScheduleDate,
   parseScheduleDateTimeInputValue,
   resolveScheduleDateTimeInputValue,
   type ScheduleGanttRow,
+  type ScheduleGanttStationBooking,
 } from './schedule-gantt-helpers.js';
 
 describe('buildScheduleGanttRows', () => {
@@ -29,11 +33,18 @@ describe('buildScheduleGanttRows', () => {
 
     expect(buildScheduleGanttRows(job)).toEqual([
       expect.objectContaining({
-        id: `job-${ids.job}`,
-        level: 'job',
+        id: 'job-summary',
+        level: 'stage',
         parentId: null,
-        stationBookings: [],
-        title: 'JOB-00001',
+        stationBookings: [
+          expect.objectContaining({
+            barKind: 'job',
+            laneIndex: 0,
+            readOnly: true,
+            title: 'JOB-00001',
+          }),
+        ],
+        title: 'Job',
       }),
       expect.objectContaining({
         id: `stage-${stageIds.procurement}`,
@@ -79,7 +90,7 @@ describe('buildScheduleGanttRows', () => {
 
   it('does not emit standalone station rows', () => {
     expect(buildScheduleGanttRows(createJobDetail()).map((row) => row.level)).toEqual([
-      'job',
+      'stage',
       'stage',
       'stage',
       'stage',
@@ -111,46 +122,199 @@ describe('buildScheduleGanttRows', () => {
     ).toEqual(['Weld Bay 1', 'Weld Bay 2']);
   });
 
-  it('renders shared-station occupancy as actual ranges before due ranges', () => {
-    const actualDisplay = getScheduleGanttOccupancyDisplay(
-      {
-        actualEnd: '2026-05-04T16:00:00.000Z',
-        actualStart: '2026-05-02T08:00:00.000Z',
-        plannedEnd: '2026-05-05',
-        plannedStart: '2026-05-01',
-        id: bookingIds['fabrication-1'],
-        jobStageId: stageIds.fabrication,
-        stage: 'fabrication',
-        stationId: stationIds['fabrication-1'],
-        stationName: 'Weld Bay',
-      },
-      'JOB-00002',
-    );
-    const dueDisplay = getScheduleGanttOccupancyDisplay(
-      {
-        actualEnd: null,
-        actualStart: null,
-        plannedEnd: '2026-05-05',
+  it('distributes read-only bookings across duplicate station lanes on the current job', () => {
+    const firstPrimaryBooking = createStationBooking('fabrication-1', 'Weld Bay', {
+      plannedEnd: '2026-05-02',
+      plannedStart: '2026-05-01',
+    });
+    const secondPrimaryBooking: StationBooking = {
+      ...createStationBooking('fabrication-1', 'Weld Bay', {
+        plannedEnd: '2026-05-04',
         plannedStart: '2026-05-03',
-        id: bookingIds['fabrication-1'],
-        jobStageId: stageIds.fabrication,
-        stage: 'fabrication',
-        stationId: stationIds['fabrication-1'],
-        stationName: 'Weld Bay',
-      },
-      'JOB-00002',
+      }),
+      id: '00000000-0000-4000-8000-000000000204',
+    };
+    const rows = buildScheduleGanttRows(
+      createJobDetail({ fabricationStations: [firstPrimaryBooking, secondPrimaryBooking] }),
+      [
+        createSharedStationBookingJob({ jobCode: 'JOB-00002', jobId: '00000000-0000-4000-8000-000000000402' }),
+        createSharedStationBookingJob({
+          bookingId: '00000000-0000-4000-8000-000000000403',
+          jobCode: 'JOB-00003',
+          jobId: '00000000-0000-4000-8000-000000000403',
+        }),
+      ],
     );
 
-    expect(actualDisplay).toMatchObject({
-      label: 'JOB-00002 actual on Weld Bay',
-      openEnded: false,
+    const readOnlyLaneIndexes = rows
+      .find((row) => row.title === 'Fabrication')
+      ?.stationBookings.filter((stationBooking) => stationBooking.readOnly)
+      .map((stationBooking) => stationBooking.laneIndex);
+
+    expect(readOnlyLaneIndexes).toEqual([0, 1]);
+  });
+
+  it('maps shared-station bookings into gray overlay hover rows', () => {
+    const job = createSharedStationBookingJob();
+    const booking = job.stages.flatMap((stage) => stage.stations).at(0) ?? raise('Expected shared booking.');
+    const row = buildScheduleGanttReadOnlyStationBooking({
+      booking,
+      job,
+      parentId: 'stage-fabrication',
     });
-    if (actualDisplay.kind === 'none' || dueDisplay.kind === 'none') {
-      throw new Error('Expected occupancy ranges.');
-    }
-    expect(toLocalDateKey(actualDisplay.start)).toBe('2026-05-02');
-    expect(toLocalDateKey(dueDisplay.start)).toBe('2026-05-03');
-    expect(toLocalDateKey(dueDisplay.end)).toBe('2026-05-06');
+
+    expect(row).toMatchObject({
+      actualEnd: null,
+      actualStart: '2026-05-02T08:00:00.000Z',
+      plannedEnd: '2026-05-05',
+      plannedStart: '2026-05-01',
+      level: 'station',
+      stage: 'fabrication',
+      stationId: stationIds['fabrication-1'],
+      statusLabel: 'Active',
+      title: 'JOB-00002',
+    });
+    expect(getScheduleGanttHoverCardModel(row, new Date('2026-05-03T08:00:00.000Z'))).toMatchObject({
+      contextLabel: 'Fabrication station',
+      workflowStatusLabel: 'Active',
+      title: 'JOB-00002',
+    });
+  });
+
+  it('adds fetched jobs to draft rows as read-only job and matching station bars', () => {
+    const rows = addReadOnlyJobsToScheduleGanttRows(
+      [
+        {
+          actualEnd: null,
+          actualStart: null,
+          plannedEnd: '2026-05-03',
+          plannedStart: '2026-05-01',
+          entityId: 'create-job',
+          id: 'create-job',
+          level: 'stage',
+          parentId: null,
+          stationId: null,
+          stationBookings: [
+            createScheduleStationBooking({
+              barKind: 'job',
+              id: 'create-job-summary',
+              parentId: 'create-job',
+              stationId: 'create-job',
+              title: 'Draft Job',
+            }),
+          ],
+          statusLabel: 'Draft',
+          title: 'Draft Job',
+        },
+        {
+          actualEnd: null,
+          actualStart: null,
+          plannedEnd: '2026-05-03',
+          plannedStart: '2026-05-01',
+          entityId: 'fabrication',
+          id: 'create-stage-fabrication',
+          level: 'stage',
+          parentId: null,
+          stationId: null,
+          stationBookings: [
+            createScheduleStationBooking({
+              entityId: 'draft-booking',
+              id: 'create-station-draft-booking',
+              parentId: 'create-stage-fabrication',
+            }),
+          ],
+          statusLabel: 'Draft',
+          title: 'Fabrication',
+        },
+      ],
+      [createSharedStationBookingJob()],
+    );
+
+    expect(rows[0]?.stationBookings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          barKind: 'job',
+          readOnly: true,
+          title: 'JOB-00002',
+        }),
+      ]),
+    );
+    expect(rows[1]?.stationBookings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          readOnly: true,
+          stationId: stationIds['fabrication-1'],
+          title: 'JOB-00002',
+        }),
+      ]),
+    );
+  });
+
+  it('maps global schedule bookings into station rows grouped by department', () => {
+    const rows = buildScheduleGanttGlobalRows([
+      createSharedStationBookingJob({
+        bookingId: '00000000-0000-4000-8000-000000000402',
+        jobCode: 'JOB-00004',
+        jobId: '00000000-0000-4000-8000-000000000404',
+        stage: 'paint',
+        stationId: '00000000-0000-4000-8000-000000000502',
+        stationName: 'Paint Booth',
+      }),
+      createSharedStationBookingJob({
+        bookingId: '00000000-0000-4000-8000-000000000401',
+        jobCode: 'JOB-00003',
+        jobId: '00000000-0000-4000-8000-000000000403',
+        stage: 'fabrication',
+        stationId: stationIds['fabrication-1'],
+        stationName: 'Weld Bay',
+      }),
+    ]);
+
+    expect(rows.map((row) => row.title)).toEqual(['Jobs', 'Weld Bay', 'Paint Booth']);
+    expect(rows[0]).toMatchObject({
+      id: 'global-jobs',
+      statusLabel: 'Job',
+      stationBookings: expect.arrayContaining([
+        expect.objectContaining({
+          barKind: 'job',
+          laneIndex: 0,
+          readOnly: true,
+          title: 'JOB-00003',
+        }),
+        expect.objectContaining({
+          barKind: 'job',
+          laneIndex: 0,
+          readOnly: true,
+          title: 'JOB-00004',
+        }),
+      ]),
+    });
+    expect(rows[1]).toMatchObject({
+      id: `global-station-${stationIds['fabrication-1']}`,
+      stationId: stationIds['fabrication-1'],
+      statusLabel: 'Fabrication',
+      stationBookings: [
+        expect.objectContaining({
+          level: 'station',
+          parentId: `global-station-${stationIds['fabrication-1']}`,
+          title: 'JOB-00003',
+        }),
+      ],
+    });
+  });
+
+  it('packs global station bookings into the same lane unless their displayed ranges overlap', () => {
+    const packed = packScheduleGanttStationLanes([
+      createScheduleStationBooking({ id: 'overlap-a', plannedEnd: '2026-05-04', plannedStart: '2026-05-01' }),
+      createScheduleStationBooking({ id: 'overlap-b', plannedEnd: '2026-05-05', plannedStart: '2026-05-03' }),
+      createScheduleStationBooking({ id: 'later', plannedEnd: '2026-05-08', plannedStart: '2026-05-05' }),
+    ]);
+
+    expect(packed.map((booking) => [booking.id, booking.laneIndex])).toEqual([
+      ['overlap-a', 0],
+      ['overlap-b', 1],
+      ['later', 0],
+    ]);
   });
 });
 
@@ -327,11 +491,10 @@ describe('schedule date display helpers', () => {
     });
   });
 
-  it('orders two date edits so each intermediate due range stays valid', () => {
+  it('orders two station booking planned date edits so each intermediate range stays valid', () => {
     expect(
       getScheduleGanttPlannedDateEdits({
-        entityId: ids.job,
-        entityLevel: 'job',
+        entityId: ids.stationBooking,
         nextPlannedEnd: '2026-05-12',
         nextPlannedStart: '2026-05-10',
         previousPlannedEnd: '2026-05-03',
@@ -341,8 +504,7 @@ describe('schedule date display helpers', () => {
 
     expect(
       getScheduleGanttPlannedDateEdits({
-        entityId: ids.job,
-        entityLevel: 'job',
+        entityId: ids.stationBooking,
         nextPlannedEnd: '2026-04-27',
         nextPlannedStart: '2026-04-25',
         previousPlannedEnd: '2026-05-03',
@@ -370,8 +532,7 @@ describe('schedule date display helpers', () => {
   it('creates actual datetime edits for changed fields only', () => {
     expect(
       getScheduleGanttActualDateEdits({
-        entityId: ids.job,
-        entityLevel: 'job',
+        entityId: ids.stationBooking,
         nextActualEnd: '2026-05-23T12:00:00.000Z',
         nextActualStart: '2026-05-22T08:00:00.000Z',
         previousActualEnd: '2026-05-22T12:00:00.000Z',
@@ -379,8 +540,8 @@ describe('schedule date display helpers', () => {
       }),
     ).toEqual([
       {
-        entityId: ids.job,
-        entityLevel: 'job',
+        entityId: ids.stationBooking,
+        entityLevel: 'station-booking',
         field: 'actual_end',
         value: '2026-05-23T12:00:00.000Z',
       },
@@ -393,8 +554,7 @@ describe('schedule date display helpers', () => {
 
     expect(
       getScheduleGanttActualDateEdits({
-        entityId: ids.job,
-        entityLevel: 'job',
+        entityId: ids.stationBooking,
         nextActualEnd: resolveScheduleDateTimeInputValue(formatScheduleDateTimeInputValue(actualEnd), actualEnd),
         nextActualStart:
           resolveScheduleDateTimeInputValue(formatScheduleDateTimeInputValue(actualStart), actualStart) ?? actualStart,
@@ -407,8 +567,7 @@ describe('schedule date display helpers', () => {
   it('creates an actual end edit when clearing an existing actual end', () => {
     expect(
       getScheduleGanttActualDateEdits({
-        entityId: ids.job,
-        entityLevel: 'job',
+        entityId: ids.stationBooking,
         nextActualEnd: null,
         nextActualStart: '2026-05-22T08:00:00.000Z',
         previousActualEnd: '2026-05-23T12:00:00.000Z',
@@ -416,8 +575,8 @@ describe('schedule date display helpers', () => {
       }),
     ).toEqual([
       {
-        entityId: ids.job,
-        entityLevel: 'job',
+        entityId: ids.stationBooking,
+        entityLevel: 'station-booking',
         field: 'actual_end',
         value: null,
       },
@@ -427,8 +586,7 @@ describe('schedule date display helpers', () => {
   it('orders actual datetime edits so each intermediate range stays valid', () => {
     expect(
       getScheduleGanttActualDateEdits({
-        entityId: ids.job,
-        entityLevel: 'job',
+        entityId: ids.stationBooking,
         nextActualEnd: '2026-05-23T12:00:00.000Z',
         nextActualStart: '2026-05-23T08:00:00.000Z',
         previousActualEnd: '2026-05-22T12:00:00.000Z',
@@ -667,9 +825,88 @@ function createStationBooking(
   };
 }
 
+function createScheduleStationBooking(
+  overrides: Partial<ScheduleGanttStationBooking> = {},
+): ScheduleGanttStationBooking {
+  return {
+    actualEnd: null,
+    actualStart: null,
+    plannedEnd: '2026-05-05',
+    plannedStart: '2026-05-01',
+    entityId: bookingIds['fabrication-1'],
+    id: bookingIds['fabrication-1'],
+    level: 'station',
+    parentId: `stage-${stageIds.fabrication}`,
+    stage: 'fabrication',
+    stationId: stationIds['fabrication-1'],
+    statusLabel: 'Pending',
+    title: 'Weld Bay',
+    ...overrides,
+  };
+}
+
+function createSharedStationBookingJob({
+  bookingId = bookingIds['fabrication-1'],
+  jobCode = 'JOB-00002',
+  jobId = '00000000-0000-4000-8000-000000000004',
+  stage = 'fabrication',
+  stationId = stationIds['fabrication-1'],
+  stationName = 'Weld Bay',
+}: {
+  bookingId?: string;
+  jobCode?: string;
+  jobId?: string;
+  stage?: JobStageName;
+  stationId?: string;
+  stationName?: string;
+} = {}): JobSummary {
+  const station = createStationBooking(stage === 'procurement' ? 'procurement-1' : 'fabrication-1', stationName, {
+    actualStart: '2026-05-02T08:00:00.000Z',
+    plannedEnd: '2026-05-05',
+    plannedStart: '2026-05-01',
+  });
+  const job = createJobDetail({
+    fabricationStations: stage === 'fabrication' ? [{ ...station, id: bookingId, stationId }] : [],
+  });
+
+  return JobDetail.parse({
+    ...job,
+    code: JobCode.parse(jobCode),
+    id: jobId,
+    productModelCode: 'MODEL-2',
+    productName: 'Other Machine',
+    stages: job.stages.map((jobStage) => ({
+      ...jobStage,
+      jobId,
+      stations:
+        jobStage.stage === stage
+          ? [
+              {
+                ...station,
+                id: bookingId,
+                jobStageId: jobStage.id,
+                station: {
+                  ...station.station,
+                  department: stage,
+                  id: stationId,
+                  name: stationName,
+                },
+                stationId,
+              },
+            ]
+          : [],
+    })),
+  });
+}
+
+function raise(message: string): never {
+  throw new Error(message);
+}
+
 const ids = {
   job: '00000000-0000-4000-8000-000000000001',
   product: '00000000-0000-4000-8000-000000000002',
+  stationBooking: '00000000-0000-4000-8000-000000000003',
 } as const;
 
 const stageIds = {

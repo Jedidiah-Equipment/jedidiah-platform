@@ -24,7 +24,11 @@ export function getPaginationOffset({ page, pageSize }: PagedQueryInput): number
   return (page - 1) * pageSize;
 }
 
-export function getPaginationQueryOptions(pagination: PagedQueryInput): { limit: number; offset: number } {
+export function getPaginationQueryOptions(pagination: PagedQueryInput): { limit?: number; offset?: number } {
+  if (pagination.pageSize === 0) {
+    return {};
+  }
+
   return {
     limit: pagination.pageSize,
     offset: getPaginationOffset(pagination),
@@ -36,9 +40,13 @@ export function getSortOrder(expression: SQLWrapper, sortDirection: SortDirectio
 }
 
 export function withPagination<TQuery extends PgSelect>(query: TQuery, pagination: PagedQueryInput): TQuery {
+  if (pagination.pageSize === 0) {
+    return query;
+  }
+
   const { limit, offset } = getPaginationQueryOptions(pagination);
 
-  return query.limit(limit).offset(offset);
+  return query.limit(limit ?? 0).offset(offset ?? 0);
 }
 
 export function isUniqueViolation(error: unknown): boolean {

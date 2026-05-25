@@ -9,13 +9,28 @@ import { EntityCombobox, mergeSelectedOption } from './EntityCombobox.js';
 
 export type QuoteProductOption = Pick<Product, 'basePrice' | 'currencyCode' | 'id' | 'modelCode' | 'name'>;
 
+const getProductLabel = (product: QuoteProductOption) => product.name;
+
+const renderProductComboboxItem = (product: QuoteProductOption) => (
+  <span className="flex min-w-0 flex-col">
+    <span className="truncate">{product.name}</span>
+    <span className="truncate text-xs text-muted-foreground">{product.modelCode}</span>
+  </span>
+);
+
 type QuoteProductComboboxProps = {
   disabled: boolean;
+  notifyResolvedSelection?: boolean;
   onSelected: (product: QuoteProductOption | null) => void;
   value: UUID | '';
 };
 
-export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({ disabled, onSelected, value }) => {
+export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
+  disabled,
+  notifyResolvedSelection = true,
+  onSelected,
+  value,
+}) => {
   const trpc = useTRPC();
   const onSelectedRef = useRef(onSelected);
   const [search, setSearch] = useState('');
@@ -55,12 +70,16 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({ disa
   }, [onSelected]);
 
   useEffect(() => {
+    if (!notifyResolvedSelection) {
+      return;
+    }
+
     if (value && !valueProduct) {
       return;
     }
 
     onSelectedRef.current(valueProduct);
-  }, [value, valueProduct]);
+  }, [notifyResolvedSelection, value, valueProduct]);
 
   return (
     <EntityCombobox
@@ -69,7 +88,7 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({ disa
       inputId="product-id"
       inputValue={search}
       isFetching={productsQuery.isFetching || selectedProductQuery.isFetching}
-      itemToLabel={(product) => product.name}
+      itemToLabel={getProductLabel}
       onInputValueChange={setSearch}
       onSelected={(product) => {
         onSelected(product);
@@ -77,12 +96,7 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({ disa
       }}
       options={options}
       placeholder="Search products"
-      renderItem={(product) => (
-        <span className="flex min-w-0 flex-col">
-          <span className="truncate">{product.name}</span>
-          <span className="truncate text-xs text-muted-foreground">{product.modelCode}</span>
-        </span>
-      )}
+      renderItem={renderProductComboboxItem}
       searchPlaceholder="Searching products..."
       value={valueProduct}
     />

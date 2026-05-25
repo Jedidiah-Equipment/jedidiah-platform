@@ -6,6 +6,7 @@ import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable
 import { ArrowRightIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
+import { ButtonLink } from '@/components/button/ButtonLink.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -19,7 +20,7 @@ import { Button } from '@/components/ui/button.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { CreateJobDialog } from './components/CreateJobDialog.js';
+import { ScheduleGantt } from '@/pages/job-detail/components/ScheduleGantt.js';
 import { JobStageChips } from './components/JobStageChips.js';
 import { JobStatusBadge } from './components/JobStatusBadge.js';
 
@@ -51,25 +52,29 @@ const jobStatusFilterOptions = JobStatus.options.map((status) => ({
 export const JobsPage: React.FC = () => {
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const canEditSchedule = hasPermission(accessQuery.data, 'job:update');
+  const scheduleInitialDate = useMemo(() => new Date(), []);
 
   return (
     <ListPageLayout
       action={
         canCreateJob ? (
-          <CreateJobDialog
-            trigger={
-              <Button>
-                <PlusIcon data-icon="inline-start" />
-                New job
-              </Button>
-            }
-          />
+          <ButtonLink to="/jobs/new">
+            <PlusIcon data-icon="inline-start" />
+            New job
+          </ButtonLink>
         ) : undefined
       }
       description="Production"
       title="Jobs"
     >
       <JobTable />
+      <ScheduleGantt
+        canEditSchedule={canEditSchedule}
+        initialDate={scheduleInitialDate}
+        initialDateAlignment="start"
+        mode="global"
+      />
     </ListPageLayout>
   );
 };

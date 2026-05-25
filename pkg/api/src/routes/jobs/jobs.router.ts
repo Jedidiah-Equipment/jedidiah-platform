@@ -5,7 +5,6 @@ import {
   isJobCoreError,
   type JobCoreError,
   listJobs,
-  listSharedStationBookings,
   setJobStatus,
   startStationBooking,
   stopStationBooking,
@@ -15,7 +14,6 @@ import {
   JobDateEditInput,
   JobListInput,
   JobSetStatusInput,
-  JobSharedStationBookingsInput,
   JobStationBookingTransitionInput,
   UUID,
 } from '@pkg/schema';
@@ -32,10 +30,6 @@ export const jobsRouter = router({
   get: authorizedProcedure('job:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapJobErrors(() => getJob({ db: ctx.db, access: ctx.access, id: input.id }))),
-
-  listSharedStationBookings: authorizedProcedure('job:read')
-    .input(JobSharedStationBookingsInput)
-    .query(({ ctx, input }) => mapJobErrors(() => listSharedStationBookings({ db: ctx.db, jobId: input.jobId }))),
 
   create: authorizedProcedure('job:create')
     .input(JobCreateInput)

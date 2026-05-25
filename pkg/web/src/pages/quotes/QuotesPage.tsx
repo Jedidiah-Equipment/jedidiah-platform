@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { CreateJobDialog } from '@/pages/jobs/components/CreateJobDialog.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
@@ -174,14 +173,15 @@ const QuoteTable: React.FC = () => {
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
             {canCreateJob && canCreateJobFromQuote(row.original.status) ? (
-              <CreateJobDialog
-                quote={row.original}
-                trigger={
-                  <Button aria-label={`Create job from quote ${row.original.code}`} size="icon-sm" variant="outline">
-                    <BriefcaseBusinessIcon />
-                  </Button>
-                }
-              />
+              <ButtonLink
+                aria-label={`Create job from quote ${row.original.code}`}
+                search={{ quoteId: row.original.id }}
+                size="icon-sm"
+                to="/jobs/new"
+                variant="outline"
+              >
+                <BriefcaseBusinessIcon />
+              </ButtonLink>
             ) : null}
             <Button
               aria-label={`Open quote ${row.original.code}`}

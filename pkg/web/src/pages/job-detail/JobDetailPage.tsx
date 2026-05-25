@@ -21,6 +21,7 @@ import { JobStatusBadge } from '../jobs/components/JobStatusBadge.js';
 import { JobFact } from './components/JobFact.js';
 import { ScheduleGantt } from './components/ScheduleGantt.js';
 import { StagePanel } from './components/StagePanel.js';
+import { parseScheduleDate } from './components/schedule-gantt-helpers.js';
 import { WorkflowHistory } from './components/WorkflowHistory.js';
 
 type JobDetailPageProps = {
@@ -81,6 +82,10 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const canUpdateJob = hasPermission(accessQuery.data, 'job:update');
   const canOpenQuotes =
     hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
+  const scheduleInitialFallbackDate = React.useMemo(() => new Date(), []);
+  const scheduleDueDate = parseScheduleDate(job?.dueDate ?? null);
+  const scheduleInitialDate = scheduleDueDate ?? scheduleInitialFallbackDate;
+  const scheduleInitialDateAlignment = scheduleDueDate ? 'end' : 'center';
   return (
     <DetailPageLayout
       aside={job ? <WorkflowHistory events={job.workflowEvents} /> : undefined}
@@ -137,7 +142,13 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
               Department controls are disabled while this job is {jobStatusLabels[job.status]}.
             </div>
           ) : null}
-          <ScheduleGantt canEditSchedule={canUpdateJob} job={job} />
+          <ScheduleGantt
+            canEditSchedule={canUpdateJob}
+            initialDate={scheduleInitialDate}
+            initialDateAlignment={scheduleInitialDateAlignment}
+            job={job}
+            mode="job"
+          />
           <div className="grid gap-3 lg:grid-cols-5">
             {job.stages.map((stage) => (
               <StagePanel

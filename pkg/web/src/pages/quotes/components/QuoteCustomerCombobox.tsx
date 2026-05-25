@@ -9,6 +9,15 @@ import { EntityCombobox, mergeSelectedOption } from './EntityCombobox.js';
 
 export type QuoteCustomerOption = Pick<Customer, 'companyName' | 'email' | 'id'>;
 
+const getCustomerLabel = (customer: QuoteCustomerOption) => customer.companyName;
+
+const renderCustomerComboboxItem = (customer: QuoteCustomerOption) => (
+  <span className="flex min-w-0 flex-col">
+    <span className="truncate">{customer.companyName}</span>
+    {customer.email ? <span className="truncate text-xs text-muted-foreground">{customer.email}</span> : null}
+  </span>
+);
+
 type QuoteCustomerComboboxProps = {
   disabled: boolean;
   fallbackCustomer?: QuoteCustomerOption | null;
@@ -62,7 +71,7 @@ export const QuoteCustomerCombobox: React.FC<QuoteCustomerComboboxProps> = ({
       inputId="customer-id"
       inputValue={search}
       isFetching={customersQuery.isFetching || selectedCustomerQuery.isFetching}
-      itemToLabel={(customer) => customer.companyName}
+      itemToLabel={getCustomerLabel}
       onInputValueChange={setSearch}
       onSelected={(customer) => {
         onSelected(customer);
@@ -70,12 +79,7 @@ export const QuoteCustomerCombobox: React.FC<QuoteCustomerComboboxProps> = ({
       }}
       options={options}
       placeholder="Search customers"
-      renderItem={(customer) => (
-        <span className="flex min-w-0 flex-col">
-          <span className="truncate">{customer.companyName}</span>
-          {customer.email ? <span className="truncate text-xs text-muted-foreground">{customer.email}</span> : null}
-        </span>
-      )}
+      renderItem={renderCustomerComboboxItem}
       searchPlaceholder="Searching customers..."
       value={valueCustomer}
     />

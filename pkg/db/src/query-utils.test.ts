@@ -37,6 +37,10 @@ describe('getPaginationQueryOptions', () => {
       offset: 15,
     });
   });
+
+  it('omits pagination options when page size is zero', () => {
+    expect(getPaginationQueryOptions({ page: 2, pageSize: 0 })).toEqual({});
+  });
 });
 
 describe('escaped search conditions', () => {

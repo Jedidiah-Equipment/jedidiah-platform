@@ -1,7 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import { check, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
-import { productDepartmentConfigs, products } from './product.js';
+import { products } from './product.js';
 
 export const productOptions = pgTable(
   'product_options',
@@ -26,7 +26,6 @@ export const productOptions = pgTable(
 );
 
 export const productsRelations = relations(products, ({ many }) => ({
-  departmentConfigs: many(productDepartmentConfigs),
   options: many(productOptions),
 }));
 

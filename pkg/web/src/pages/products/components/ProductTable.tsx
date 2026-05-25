@@ -89,13 +89,6 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct, showE
         header: 'Base price',
       },
       {
-        id: 'estimatedDurationDays',
-        cell: ({ row }) => formatDurationDays(getEstimatedDurationDays(row.original)),
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: 'Est Duration',
-      },
-      {
         accessorKey: 'createdAt',
         cell: ({ row }) => <DateDisplay date={row.original.createdAt} />,
         enableColumnFilter: false,
@@ -198,12 +191,4 @@ function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'modelCode'
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;
-}
-
-function getEstimatedDurationDays(product: Product): number {
-  return product.departmentConfigs.reduce((total, config) => total + config.durationDays, 0);
-}
-
-function formatDurationDays(days: number): string {
-  return `${days} ${days === 1 ? 'day' : 'days'}`;
 }

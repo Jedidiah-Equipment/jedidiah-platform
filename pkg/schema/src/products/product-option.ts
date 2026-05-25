@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { DateIso } from '../common/date.js';
 import { Price } from '../common/price.js';
 import { UUID } from '../common/uuid.js';
 
@@ -19,8 +20,8 @@ export const ProductOption = z.object({
   name: ProductOptionName,
   code: ProductOptionCode,
   price: ProductOptionPrice,
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
+  createdAt: DateIso,
+  updatedAt: DateIso,
 });
 
 export type ProductOptionCreateInput = z.infer<typeof ProductOptionCreateInput>;

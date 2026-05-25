@@ -7,7 +7,6 @@ import {
   BriefcaseBusinessIcon,
   Building2Icon,
   ClipboardListIcon,
-  FactoryIcon,
   FileTextIcon,
   GaugeIcon,
   type LucideIcon,
@@ -56,12 +55,6 @@ const mainNavItems = [
       to: '/products',
     }),
     icon: BoxesIcon,
-  },
-  {
-    title: 'Stations',
-    permission: 'station:update',
-    link: linkOptions({ to: '/stations' }),
-    icon: FactoryIcon,
   },
   {
     title: 'Customers',

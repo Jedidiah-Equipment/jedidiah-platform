@@ -9,35 +9,6 @@ export class JobNotFoundError extends Error {
   }
 }
 
-export class JobStageTransitionDeniedError extends Error {
-  readonly code = 'job.stage_transition_denied';
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'JobStageTransitionDeniedError';
-  }
-}
-
-export class JobStationBookingNotFoundError extends Error {
-  readonly code = 'job.station_booking_not_found';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Station booking not found: ${id}`);
-    this.name = 'JobStationBookingNotFoundError';
-    this.metadata = { id };
-  }
-}
-
-export class JobStationBookingTransitionDeniedError extends Error {
-  readonly code = 'job.station_booking_transition_denied';
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'JobStationBookingTransitionDeniedError';
-  }
-}
-
 export class JobDateEditDeniedError extends Error {
   readonly code = 'job.date_edit_denied';
 
@@ -91,10 +62,7 @@ export type JobCoreError =
   | JobDateEditTargetNotFoundError
   | JobNotFoundError
   | JobCreateFromQuoteDeniedError
-  | JobStatusUpdateDeniedError
-  | JobStationBookingNotFoundError
-  | JobStationBookingTransitionDeniedError
-  | JobStageTransitionDeniedError;
+  | JobStatusUpdateDeniedError;
 
 export function isJobCoreError(error: unknown): error is JobCoreError {
   return (
@@ -103,9 +71,6 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobDateEditTargetNotFoundError ||
     error instanceof JobNotFoundError ||
     error instanceof JobCreateFromQuoteDeniedError ||
-    error instanceof JobStatusUpdateDeniedError ||
-    error instanceof JobStationBookingNotFoundError ||
-    error instanceof JobStationBookingTransitionDeniedError ||
-    error instanceof JobStageTransitionDeniedError
+    error instanceof JobStatusUpdateDeniedError
   );
 }

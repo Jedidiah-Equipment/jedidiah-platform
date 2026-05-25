@@ -1,4 +1,4 @@
-import { AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
+import { AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy, DateIso } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { EyeIcon } from 'lucide-react';
@@ -33,11 +33,9 @@ const auditEntityTypeLabels = {
   customer: 'Customer',
   job: 'Job',
   job_stage: 'Job stage',
-  job_stage_station: 'Station booking',
   product: 'Product',
   product_option: 'Product option',
   quote: 'Quote',
-  station: 'Station',
   user: 'User',
 } as const satisfies Record<(typeof AuditEntityType.options)[number], string>;
 
@@ -227,8 +225,8 @@ export const AuditTable: React.FC = () => {
 
 function getAuditListInputExtras(columnFilters: ColumnFiltersState) {
   const occurredAtRange = getDateRangeFilterValue(columnFilters, 'occurredAt');
-  const occurredAtStart = occurredAtRange.start ? toLocalDayStartIso(occurredAtRange.start) : undefined;
-  const occurredAtEnd = occurredAtRange.end ? toLocalDayEndIso(occurredAtRange.end) : undefined;
+  const occurredAtStart = occurredAtRange.start ? DateIso.parse(toLocalDayStartIso(occurredAtRange.start)) : undefined;
+  const occurredAtEnd = occurredAtRange.end ? DateIso.parse(toLocalDayEndIso(occurredAtRange.end)) : undefined;
 
   return {
     filters: {

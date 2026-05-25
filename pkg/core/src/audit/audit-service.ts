@@ -1,13 +1,6 @@
 import { auditEvents, type DatabaseTransaction, type Db, getSortOrder, user, withPagination } from '@pkg/db';
-import type {
-  AuditAction,
-  AuditChanges,
-  AuditEntityType,
-  AuditEvent,
-  AuditListInput,
-  AuditListResult,
-} from '@pkg/schema';
-import { formatJobCode, formatQuoteCode, JobCode, QuoteCode } from '@pkg/schema';
+import type { AuditAction, AuditChanges, AuditEntityType, AuditListInput, AuditListResult } from '@pkg/schema';
+import { AuditEvent, formatJobCode, formatQuoteCode, JobCode, QuoteCode } from '@pkg/schema';
 import { and, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
 type AuditRecord = Record<string, unknown>;
@@ -40,7 +33,6 @@ export const productAuditDescriptor: AuditEntityDescriptor = {
   fields: {
     basePrice: 'base price',
     currencyCode: 'currency',
-    departmentConfigs: 'Department defaults',
     description: 'description',
     modelCode: 'model code',
     name: 'name',
@@ -112,31 +104,6 @@ export const jobStageAuditDescriptor: AuditEntityDescriptor = {
   fields: {},
 };
 
-export const jobStageStationAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'job_stage_station',
-  noun: 'station booking',
-  primaryLabelField: 'stationId',
-  fields: {
-    actualEnd: 'actual end',
-    actualStart: 'actual start',
-    plannedEnd: 'planned end',
-    plannedStart: 'planned start',
-    stationId: 'station',
-  },
-};
-
-export const stationAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'station',
-  noun: 'station',
-  primaryLabelField: 'name',
-  fields: {
-    department: 'department',
-    displayOrder: 'display order',
-    isActive: 'active',
-    name: 'name',
-  },
-};
-
 export const quoteAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'quote',
   noun: 'quote',
@@ -170,11 +137,9 @@ const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   customer: customerAuditDescriptor,
   job: jobAuditDescriptor,
   job_stage: jobStageAuditDescriptor,
-  job_stage_station: jobStageStationAuditDescriptor,
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
   quote: quoteAuditDescriptor,
-  station: stationAuditDescriptor,
   user: userAuditDescriptor,
 };
 
@@ -301,7 +266,7 @@ function buildAuditListWhere(input: AuditListInput): SQL | undefined {
 }
 
 function mapAuditEvent(row: AuditEventRow): AuditEvent {
-  return {
+  return AuditEvent.parse({
     action: row.action as AuditAction,
     actorEmail: row.actorEmail,
     actorName: row.actorName,
@@ -312,7 +277,7 @@ function mapAuditEvent(row: AuditEventRow): AuditEvent {
     id: row.id,
     occurredAt: row.occurredAt.toISOString(),
     summary: row.summary,
-  };
+  });
 }
 
 function getAuditEntityDescriptor(entityType: AuditEntityType): AuditEntityDescriptor {

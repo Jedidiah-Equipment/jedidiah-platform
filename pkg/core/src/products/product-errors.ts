@@ -53,22 +53,10 @@ export class ProductOptionNotFoundError extends Error {
   }
 }
 
-export class ProductDepartmentStationMismatchError extends Error {
-  readonly code = 'product.department_station_mismatch';
-  readonly metadata: { expectedDepartment: string; stationId: string };
-
-  constructor(metadata: { expectedDepartment: string; stationId: string }) {
-    super(`Station ${metadata.stationId} does not belong to Department ${metadata.expectedDepartment}`);
-    this.name = 'ProductDepartmentStationMismatchError';
-    this.metadata = metadata;
-  }
-}
-
 export type ProductCoreError =
   | DuplicateProductModelCodeError
   | DuplicateProductNameError
   | DuplicateProductOptionCodeError
-  | ProductDepartmentStationMismatchError
   | ProductNotFoundError
   | ProductOptionNotFoundError;
 
@@ -77,7 +65,6 @@ export function isProductCoreError(error: unknown): error is ProductCoreError {
     error instanceof DuplicateProductModelCodeError ||
     error instanceof DuplicateProductNameError ||
     error instanceof DuplicateProductOptionCodeError ||
-    error instanceof ProductDepartmentStationMismatchError ||
     error instanceof ProductNotFoundError ||
     error instanceof ProductOptionNotFoundError
   );

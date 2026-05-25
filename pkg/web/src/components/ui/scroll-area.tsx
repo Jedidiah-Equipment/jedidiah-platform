@@ -34,9 +34,10 @@ function ScrollBar({ className, orientation = 'vertical', ...props }: ScrollArea
     <ScrollAreaPrimitive.Scrollbar
       data-slot="scroll-area-scrollbar"
       data-orientation={orientation}
+      keepMounted={false}
       orientation={orientation}
       className={cn(
-        'flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent',
+        'flex touch-none p-px opacity-0 transition-[colors,opacity] select-none data-hovering:opacity-100 data-scrolling:opacity-100 data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent',
         className,
       )}
       {...props}

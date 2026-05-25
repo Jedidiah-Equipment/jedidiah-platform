@@ -160,6 +160,7 @@ function CalendarDayButton({
         defaultClassNames.day,
         className,
       )}
+      ref={ref}
       {...props}
     />
   );

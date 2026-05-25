@@ -4,6 +4,8 @@
     "lib": ["ES2023"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    // Required while TypeScript 6 deprecates baseUrl but still requires it for these path aliases.
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@pkg/api": ["pkg/api/src/index.ts"],

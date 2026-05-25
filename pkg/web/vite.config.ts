@@ -3,7 +3,6 @@ import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import { getServerConfig } from './src/server/env.js';
 
 const serverConfig = getServerConfig();
@@ -32,6 +31,9 @@ export default defineConfig({
   define: {
     __APP_CONFIG__: JSON.stringify(serverConfig.clientConfig),
   },
+  resolve: {
+    tsconfigPaths: true,
+  },
   plugins: [
     tanstackRouter({
       generatedRouteTree: './src/app/route-tree.gen.ts',
@@ -39,9 +41,6 @@ export default defineConfig({
     }),
     react(),
     tailwindcss(),
-    tsconfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
     ...posthogSourceMapsPlugin,
   ],
   server: {

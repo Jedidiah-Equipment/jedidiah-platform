@@ -4,9 +4,8 @@
     "rootDir": "src",
     "outDir": "dist",
     "composite": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "types": ["node", "vitest"]
   },

@@ -1,5 +1,3 @@
-'use client';
-
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { XIcon } from 'lucide-react';
 import type * as React from 'react';
@@ -90,8 +88,8 @@ function DialogFooter({
       )}
       {...props}
     >
-      {showCloseButton && <DialogPrimitive.Close render={<Button variant="outline" />}>Close</DialogPrimitive.Close>}
       {children}
+      {showCloseButton && <DialogPrimitive.Close render={<Button variant="outline" />}>Close</DialogPrimitive.Close>}
     </div>
   );
 }

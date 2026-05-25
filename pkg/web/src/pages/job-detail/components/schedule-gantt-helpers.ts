@@ -325,16 +325,31 @@ function createJobSummaryBooking(
 function addReadOnlyJobStationBookings(row: ScheduleGanttRow, otherJobs: JobSummary[]): ScheduleGanttRow {
   if (row.stationBookings.length === 0) return row;
 
-  const laneIndexesByStationId = new Map(
-    row.stationBookings.map((booking, index) => [booking.stationId, booking.laneIndex ?? index]),
-  );
+  const laneIndexesByStationId = new Map<string, number[]>();
+  row.stationBookings.forEach((booking, index) => {
+    const laneIndexes = laneIndexesByStationId.get(booking.stationId) ?? [];
+    laneIndexes.push(booking.laneIndex ?? index);
+    laneIndexesByStationId.set(booking.stationId, laneIndexes);
+  });
+  const nextLaneOffsetByStationId = new Map<string, number>();
+
+  const getNextLaneIndex = (stationId: string): number => {
+    const laneIndexes = laneIndexesByStationId.get(stationId);
+    if (!laneIndexes || laneIndexes.length === 0) return 0;
+
+    const nextOffset = nextLaneOffsetByStationId.get(stationId) ?? 0;
+    nextLaneOffsetByStationId.set(stationId, nextOffset + 1);
+
+    return laneIndexes[nextOffset % laneIndexes.length] ?? 0;
+  };
+
   const readOnlyBookings = otherJobs.flatMap((job) =>
     job.stages.flatMap((stage) =>
       stage.stations
         .filter((station) => laneIndexesByStationId.has(station.stationId))
         .map((station) => ({
           ...buildScheduleGanttReadOnlyStationBooking({ booking: station, job, parentId: row.id }),
-          laneIndex: laneIndexesByStationId.get(station.stationId) ?? 0,
+          laneIndex: getNextLaneIndex(station.stationId),
           stage: stage.stage,
         })),
     ),
@@ -374,9 +389,12 @@ function createJobStationBooking({
 }
 
 function getStageForStationBooking(job: JobSummary, booking: StationBooking): JobStageName {
-  return (
-    job.stages.find((stage) => stage.stations.some((station) => station.id === booking.id))?.stage ?? 'fabrication'
-  );
+  const stage = job.stages.find((jobStage) => jobStage.stations.some((station) => station.id === booking.id))?.stage;
+  if (!stage) {
+    throw new Error(`Station booking ${booking.id} does not belong to job ${job.id}.`);
+  }
+
+  return stage;
 }
 
 function getFirstScheduledStage(job: JobSummary): JobStageSummary | undefined {

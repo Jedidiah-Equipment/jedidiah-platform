@@ -187,11 +187,12 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
     }),
   });
 
-  const scheduleJobs = React.useMemo(() => scheduleJobsQuery.data?.items ?? [], [scheduleJobsQuery.data?.items]);
-
-  const otherScheduleJobs = React.useMemo(
-    () => (job ? scheduleJobs.filter((otherJob) => otherJob.id !== job.id) : scheduleJobs),
-    [job, scheduleJobs],
+  const scheduleJobs = React.useMemo(
+    () =>
+      job
+        ? (scheduleJobsQuery.data?.items ?? []).filter((scheduleJob) => scheduleJob.id !== job.id)
+        : (scheduleJobsQuery.data?.items ?? []),
+    [job, scheduleJobsQuery.data?.items],
   );
 
   const editDateMutation = useMutation(
@@ -205,7 +206,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
       createRows !== null
         ? addReadOnlyJobsToScheduleGanttRows(createRows, scheduleJobs)
         : job
-          ? buildScheduleGanttRows(job, otherScheduleJobs)
+          ? buildScheduleGanttRows(job, scheduleJobs)
           : buildScheduleGanttGlobalRows(scheduleJobs);
 
     return sourceRows.map((row) => {
@@ -229,7 +230,7 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
         stationBookings,
       };
     });
-  }, [createRows, job, optimisticActualRanges, optimisticPlannedRanges, otherScheduleJobs, scheduleJobs]);
+  }, [createRows, job, optimisticActualRanges, optimisticPlannedRanges, scheduleJobs]);
 
   const ganttHeight = Math.max(
     420,

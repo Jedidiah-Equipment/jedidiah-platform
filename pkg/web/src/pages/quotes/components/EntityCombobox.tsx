@@ -42,16 +42,19 @@ export function EntityCombobox<TOption extends { id: string }>({
   searchPlaceholder,
   value,
 }: EntityComboboxProps<TOption>) {
+  const selectedLabel = value ? itemToLabel(value) : '';
+  const displayInputValue = inputValue || selectedLabel;
+
   return (
     <Combobox
       disabled={disabled}
       filter={null}
-      inputValue={inputValue}
+      inputValue={displayInputValue}
       itemToStringLabel={itemToLabel}
       itemToStringValue={getEntityOptionId}
       items={options}
       onInputValueChange={(nextInputValue, eventDetails) => {
-        if (eventDetails.reason === 'item-press' || nextInputValue === inputValue) {
+        if (eventDetails.reason === 'item-press' || nextInputValue === displayInputValue) {
           return;
         }
 

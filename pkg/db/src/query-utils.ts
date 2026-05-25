@@ -44,9 +44,7 @@ export function withPagination<TQuery extends PgSelect>(query: TQuery, paginatio
     return query;
   }
 
-  const { limit, offset } = getPaginationQueryOptions(pagination);
-
-  return query.limit(limit ?? 0).offset(offset ?? 0);
+  return query.limit(pagination.pageSize).offset(getPaginationOffset(pagination));
 }
 
 export function isUniqueViolation(error: unknown): boolean {

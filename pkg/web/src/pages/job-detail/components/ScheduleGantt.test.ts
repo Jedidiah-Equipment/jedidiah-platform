@@ -122,6 +122,38 @@ describe('buildScheduleGanttRows', () => {
     ).toEqual(['Weld Bay 1', 'Weld Bay 2']);
   });
 
+  it('distributes read-only bookings across duplicate station lanes on the current job', () => {
+    const firstPrimaryBooking = createStationBooking('fabrication-1', 'Weld Bay', {
+      plannedEnd: '2026-05-02',
+      plannedStart: '2026-05-01',
+    });
+    const secondPrimaryBooking: StationBooking = {
+      ...createStationBooking('fabrication-1', 'Weld Bay', {
+        plannedEnd: '2026-05-04',
+        plannedStart: '2026-05-03',
+      }),
+      id: '00000000-0000-4000-8000-000000000204',
+    };
+    const rows = buildScheduleGanttRows(
+      createJobDetail({ fabricationStations: [firstPrimaryBooking, secondPrimaryBooking] }),
+      [
+        createSharedStationBookingJob({ jobCode: 'JOB-00002', jobId: '00000000-0000-4000-8000-000000000402' }),
+        createSharedStationBookingJob({
+          bookingId: '00000000-0000-4000-8000-000000000403',
+          jobCode: 'JOB-00003',
+          jobId: '00000000-0000-4000-8000-000000000403',
+        }),
+      ],
+    );
+
+    const readOnlyLaneIndexes = rows
+      .find((row) => row.title === 'Fabrication')
+      ?.stationBookings.filter((stationBooking) => stationBooking.readOnly)
+      .map((stationBooking) => stationBooking.laneIndex);
+
+    expect(readOnlyLaneIndexes).toEqual([0, 1]);
+  });
+
   it('maps shared-station bookings into gray overlay hover rows', () => {
     const job = createSharedStationBookingJob();
     const booking = job.stages.flatMap((stage) => stage.stations).at(0) ?? raise('Expected shared booking.');

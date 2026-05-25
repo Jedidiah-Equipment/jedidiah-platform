@@ -3,22 +3,11 @@ import type { Station } from '@pkg/schema';
 
 import type {
   OptimisticPlannedRange,
-  ScheduleGanttEditableItem,
   ScheduleGanttRow,
+  ScheduleGanttStationBooking,
 } from '@/pages/job-detail/components/schedule-gantt-helpers.js';
 
 import type { StageDraft } from './create-job-dialog-helpers.js';
-
-export type CreateScheduleGanttEdit =
-  | {
-      anchorDate: string;
-      anchorKind: 'end' | 'start';
-      kind: 'anchor';
-    }
-  | {
-      kind: 'stages';
-      stages: StageDraft[];
-    };
 
 export function buildCreateScheduleGanttRows({
   stages,
@@ -38,10 +27,28 @@ export function buildCreateScheduleGanttRows({
       plannedStart: jobWindow.plannedStart,
       entityId: 'create-job',
       id: 'create-job',
-      level: 'job',
+      level: 'stage',
       parentId: null,
       stationId: null,
-      stationBookings: [],
+      stationBookings: [
+        {
+          actualEnd: null,
+          actualStart: null,
+          plannedEnd: jobWindow.plannedEnd,
+          plannedStart: jobWindow.plannedStart,
+          barKind: 'job',
+          entityId: 'create-job',
+          id: 'create-job-summary',
+          laneIndex: 0,
+          level: 'station',
+          parentId: 'create-job',
+          readOnly: true,
+          stage: 'fabrication',
+          stationId: 'create-job',
+          statusLabel: 'Draft',
+          title: 'Draft Job',
+        },
+      ],
       statusLabel: 'Draft',
       title: 'Draft Job',
     },
@@ -83,30 +90,22 @@ export function applyCreateScheduleGanttPlannedRangeEdit({
   row,
   stages,
 }: {
-  anchorKind: 'end' | 'start';
   nextRange: OptimisticPlannedRange;
-  row: ScheduleGanttEditableItem;
+  row: ScheduleGanttStationBooking;
   stages: StageDraft[];
-}): CreateScheduleGanttEdit {
-  if (row.level !== 'station') {
-    return { kind: 'stages', stages };
-  }
-
-  return {
-    kind: 'stages',
-    stages: stages.map((stage) => ({
-      ...stage,
-      stationBookings: stage.stationBookings.map((booking) =>
-        booking.id === row.entityId
-          ? {
-              ...booking,
-              plannedEnd: nextRange.plannedEnd,
-              plannedStart: nextRange.plannedStart,
-            }
-          : booking,
-      ),
-    })),
-  };
+}): StageDraft[] {
+  return stages.map((stage) => ({
+    ...stage,
+    stationBookings: stage.stationBookings.map((booking) =>
+      booking.id === row.entityId
+        ? {
+            ...booking,
+            plannedEnd: nextRange.plannedEnd,
+            plannedStart: nextRange.plannedStart,
+          }
+        : booking,
+    ),
+  }));
 }
 
 function getCreateStageRowId(stage: string): string {

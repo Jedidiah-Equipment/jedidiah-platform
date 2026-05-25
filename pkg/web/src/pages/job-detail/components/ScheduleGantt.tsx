@@ -1,6 +1,7 @@
-import type { JobDetail, JobSharedStationBookingJob, JobStageName } from '@pkg/schema';
+import type { JobDetail, JobStageName } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BriefcaseBusinessIcon, ChevronDownIcon, CircleIcon, DiamondIcon } from 'lucide-react';
+import { subYears } from 'date-fns';
+import { CircleIcon } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 import { DepartmentIcon } from '@/components/departments/index.js';
@@ -15,28 +16,20 @@ import {
   getGanttWidth,
   useGanttContext,
 } from '@/components/kibo-ui/gantt/index.js';
-import { Button } from '@/components/ui/button.js';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
 import {
+  addReadOnlyJobsToScheduleGanttRows,
+  buildScheduleGanttGlobalRows,
   buildScheduleGanttRows,
   getScheduleGanttActualDateEdits,
   getScheduleGanttActualDisplay,
   getScheduleGanttActualRangeAfterDrag,
   getScheduleGanttBarLabel,
   getScheduleGanttHoverCardModel,
-  getScheduleGanttOccupancyDisplay,
   getScheduleGanttPlannedDateEdits,
   getScheduleGanttPlannedDisplay,
   getScheduleGanttPlannedRangeAfterDrag,
@@ -45,25 +38,41 @@ import {
   type OptimisticPlannedRange,
   type PlannedDragAction,
   parseScheduleDate,
-  type ScheduleGanttEditableItem,
+  type ScheduleGanttBarItem,
   type ScheduleGanttHealth,
   type ScheduleGanttHoverCardModel,
   type ScheduleGanttRow,
   type ScheduleGanttStationBooking,
 } from './schedule-gantt-helpers.js';
 
+export type ScheduleGanttInitialDateAlignment = 'center' | 'end' | 'start';
+
+type ScheduleGanttBaseProps = {
+  canEditSchedule: boolean;
+  initialDate: Date;
+  initialDateAlignment: ScheduleGanttInitialDateAlignment;
+};
+
+type ScheduleGanttPlannedEditHandler = (row: ScheduleGanttStationBooking, nextRange: OptimisticPlannedRange) => void;
+
+type ScheduleGanttActualEditHandler = (
+  row: ScheduleGanttStationBooking,
+  nextRange: { actualEnd: string | null; actualStart: string },
+) => void;
+
 type ScheduleGanttProps =
-  | {
-      canEditSchedule: boolean;
+  | (ScheduleGanttBaseProps & {
       job: JobDetail;
-      mode?: 'job';
-    }
-  | {
-      canEditSchedule: boolean;
+      mode: 'job';
+    })
+  | (ScheduleGanttBaseProps & {
       mode: 'create';
-      onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+      onEditPlannedRange: ScheduleGanttPlannedEditHandler;
       rows: ScheduleGanttRow[];
-    };
+    })
+  | (ScheduleGanttBaseProps & {
+      mode: 'global';
+    });
 
 const SIDEBAR_WIDTH = 300;
 const ROW_HEIGHT = 42;
@@ -72,8 +81,8 @@ const STATION_ROW_PADDING = 6;
 const STATION_ACTUAL_OFFSET = 18;
 const PLANNED_BAR_HEIGHT = 48;
 const ACTUAL_LINE_HEIGHT = 4;
-const EMPTY_SHARED_BOOKING_JOBS: JobSharedStationBookingJob[] = [];
-const EMPTY_SELECTED_OVERLAY_JOB_IDS = new Set<string>();
+const GANTT_SCROLLBAR_GUTTER = 18;
+
 const SCHEDULE_HEALTH_CLASSES = {
   Late: 'border-red-500/60 bg-red-500/10 text-red-700 dark:text-red-200',
   'Not started': 'border-muted-foreground/40 bg-muted text-muted-foreground',
@@ -98,7 +107,13 @@ const PLANNED_BAR_CLASSES_BY_STAGE = {
 function getScheduleGanttRowHeight(row: ScheduleGanttRow): number {
   if (row.level !== 'stage') return ROW_HEIGHT;
 
-  return Math.max(ROW_HEIGHT, STATION_ROW_PADDING * 2 + row.stationBookings.length * STATION_LANE_HEIGHT);
+  const laneCount =
+    row.stationBookings.reduce(
+      (maxLaneIndex, stationBooking, index) => Math.max(maxLaneIndex, stationBooking.laneIndex ?? index),
+      -1,
+    ) + 1;
+
+  return Math.max(ROW_HEIGHT, STATION_ROW_PADDING * 2 + laneCount * STATION_LANE_HEIGHT);
 }
 
 function getStationLaneTopOffset(row: ScheduleGanttRow, laneIndex: number): number {
@@ -107,25 +122,7 @@ function getStationLaneTopOffset(row: ScheduleGanttRow, laneIndex: number): numb
   return laneCenter - getScheduleGanttRowHeight(row) / 2;
 }
 
-function getScheduleGanttStationOverlays({
-  selectedOverlayJobIds,
-  sharedBookingJobs,
-  stationId,
-}: {
-  selectedOverlayJobIds: Set<string>;
-  sharedBookingJobs: JobSharedStationBookingJob[];
-  stationId: string;
-}): JobSharedStationBookingJob[] {
-  return sharedBookingJobs
-    .filter((overlayJob) => selectedOverlayJobIds.has(overlayJob.jobId))
-    .map((overlayJob) => ({
-      ...overlayJob,
-      bookings: overlayJob.bookings.filter((booking) => booking.stationId === stationId),
-    }))
-    .filter((overlayJob) => overlayJob.bookings.length > 0);
-}
-
-function isScheduleGanttActualPastPlannedEnd(row: ScheduleGanttEditableItem, now = new Date()): boolean {
+function isScheduleGanttActualPastPlannedEnd(row: ScheduleGanttBarItem, now = new Date()): boolean {
   const plannedEnd = parseScheduleDate(row.plannedEnd);
   if (!plannedEnd) return false;
 
@@ -135,41 +132,69 @@ function isScheduleGanttActualPastPlannedEnd(row: ScheduleGanttEditableItem, now
   return actualComparisonDate ? actualComparisonDate.getTime() > plannedEnd.getTime() : false;
 }
 
-function getScheduleGanttActualClassName(row: ScheduleGanttEditableItem): string {
+function getScheduleGanttActualClassName(row: ScheduleGanttBarItem): string {
   if (isScheduleGanttActualPastPlannedEnd(row)) return 'bg-red-600 text-white';
 
   return row.actualEnd ? 'bg-emerald-600 text-white' : 'bg-sky-600 text-white';
 }
 
-function getScheduleGanttPlannedClassName(row: ScheduleGanttEditableItem): string {
+function getScheduleGanttPlannedClassName(row: ScheduleGanttBarItem): string {
+  if (row.level === 'station' && row.barKind === 'job') {
+    return 'border-sky-500/70 bg-sky-500/10 text-sky-700 shadow-[inset_0_0_0_1px_rgb(14_165_233_/_0.12)] dark:text-sky-300';
+  }
+
   if (row.level === 'station') return PLANNED_BAR_CLASSES_BY_STAGE[row.stage];
 
   return 'border-sky-500/70 bg-sky-500/10 text-sky-700 shadow-[inset_0_0_0_1px_rgb(14_165_233_/_0.12)] dark:text-sky-300';
 }
 
 export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
-  const isCreateMode = props.mode === 'create';
-  const job = isCreateMode ? null : props.job;
-  const createRows = isCreateMode ? props.rows : null;
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
+
+  const mode = props.mode;
+  const job = props.mode === 'create' || props.mode === 'global' ? null : props.job;
+
+  const createRows = props.mode === 'create' ? props.rows : null;
+
+  const [scheduleEditCompletionKey, setScheduleEditCompletionKey] = React.useState(0);
+  const [optimisticActualRanges, setOptimisticActualRanges] = React.useState<Record<string, OptimisticActualRange>>({});
   const [optimisticPlannedRanges, setOptimisticPlannedRanges] = React.useState<Record<string, OptimisticPlannedRange>>(
     {},
   );
-  const [optimisticActualRanges, setOptimisticActualRanges] = React.useState<Record<string, OptimisticActualRange>>({});
-  const [scheduleEditCompletionKey, setScheduleEditCompletionKey] = React.useState(0);
-  const sharedBookingsQuery = useQuery({
-    ...trpc.jobs.listSharedStationBookings.queryOptions({ jobId: job?.id ?? '' }),
-    enabled: job !== null,
+
+  const jobDueDate = parseScheduleDate(job?.dueDate ?? null);
+
+  const globalInitialDate = React.useMemo(() => new Date(), []);
+  const ganttCreatedAtStart = React.useMemo(() => subYears(globalInitialDate, 1).toISOString(), [globalInitialDate]);
+
+  const initialDate = props.initialDate;
+  const initialDateAlignment = props.initialDateAlignment;
+  const initialScrollKey = `${mode}-${initialDateAlignment}-${initialDate.toISOString()}`;
+
+  const scheduleJobsQuery = useQuery({
+    ...trpc.jobs.list.queryOptions({
+      filters: {
+        createdAtStart: ganttCreatedAtStart,
+        statuses: ['pending', 'active', 'paused', 'complete'],
+      },
+      page: 1,
+      pageSize: 0,
+      search: '',
+      sortBy: 'createdAt',
+      sortDirection: 'asc',
+    }),
   });
-  const sharedBookingJobs = sharedBookingsQuery.data?.jobs ?? EMPTY_SHARED_BOOKING_JOBS;
-  const [overlaySelection, setOverlaySelection] = React.useState<{ jobId: string; jobIds: Set<string> }>(() => ({
-    jobId: job?.id ?? '',
-    jobIds: new Set(),
-  }));
-  const selectedOverlayJobIds =
-    job && overlaySelection.jobId === job.id ? overlaySelection.jobIds : EMPTY_SELECTED_OVERLAY_JOB_IDS;
+
+  const scheduleJobs = React.useMemo(
+    () =>
+      job
+        ? (scheduleJobsQuery.data?.items ?? []).filter((scheduleJob) => scheduleJob.id !== job.id)
+        : (scheduleJobsQuery.data?.items ?? []),
+    [job, scheduleJobsQuery.data?.items],
+  );
+
   const editDateMutation = useMutation(
     trpc.jobs.editDate.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to update schedule date.'),
@@ -177,7 +202,12 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
   );
 
   const rows = React.useMemo(() => {
-    const sourceRows = createRows ?? (job ? buildScheduleGanttRows(job) : []);
+    const sourceRows: ScheduleGanttRow[] =
+      createRows !== null
+        ? addReadOnlyJobsToScheduleGanttRows(createRows, scheduleJobs)
+        : job
+          ? buildScheduleGanttRows(job, scheduleJobs)
+          : buildScheduleGanttGlobalRows(scheduleJobs);
 
     return sourceRows.map((row) => {
       const optimisticActualRange = optimisticActualRanges[row.id];
@@ -200,33 +230,20 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
         stationBookings,
       };
     });
-  }, [createRows, job, optimisticActualRanges, optimisticPlannedRanges]);
-  const ganttHeight = Math.max(420, 60 + rows.reduce((total, row) => total + getScheduleGanttRowHeight(row), 0));
-  const jobDueDate = parseScheduleDate(job?.dueDate ?? null);
+  }, [createRows, job, optimisticActualRanges, optimisticPlannedRanges, scheduleJobs]);
 
-  const toggleOverlayJob = (jobId: string) => {
-    if (!job) return;
+  const ganttHeight = Math.max(
+    420,
+    60 + rows.reduce((total, row) => total + getScheduleGanttRowHeight(row), 0) + GANTT_SCROLLBAR_GUTTER,
+  );
 
-    setOverlaySelection((current) => {
-      const next = new Set(current.jobId === job.id ? current.jobIds : []);
-      if (next.has(jobId)) {
-        next.delete(jobId);
-      } else {
-        next.add(jobId);
-      }
-
-      return { jobId: job.id, jobIds: next };
-    });
-  };
-  const editPlannedRange = async (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => {
+  const editPlannedRange = async (row: ScheduleGanttStationBooking, nextRange: OptimisticPlannedRange) => {
     if (!row.plannedStart || !row.plannedEnd) return;
 
-    if (isCreateMode) {
+    if (props.mode === 'create') {
       props.onEditPlannedRange(row, nextRange);
       return;
     }
-
-    if (!job) return;
 
     setOptimisticPlannedRanges((current) => ({ ...current, [row.id]: nextRange }));
 
@@ -234,7 +251,6 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
     try {
       for (const edit of getScheduleGanttPlannedDateEdits({
         entityId: row.entityId,
-        entityLevel: row.level === 'station' ? 'station-booking' : row.level,
         nextPlannedEnd: nextRange.plannedEnd,
         nextPlannedStart: nextRange.plannedStart,
         previousPlannedEnd: row.plannedEnd,
@@ -243,11 +259,11 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
         attemptedEdit = true;
         await editDateMutation.mutateAsync(edit);
       }
-      await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
+      await queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
       toast.success('Schedule updated');
     } catch {
       if (attemptedEdit) {
-        await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
+        await queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
       }
     } finally {
       setOptimisticPlannedRanges((current) => {
@@ -258,12 +274,12 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
       setScheduleEditCompletionKey((current) => current + 1);
     }
   };
+
   const editActualDates = async (
-    row: ScheduleGanttEditableItem,
+    row: ScheduleGanttStationBooking,
     nextRange: { actualEnd: string | null; actualStart: string },
   ) => {
     if (!row.actualStart) return;
-    if (!job) return;
 
     setOptimisticActualRanges((current) => ({ ...current, [row.id]: nextRange }));
 
@@ -271,7 +287,6 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
     try {
       for (const edit of getScheduleGanttActualDateEdits({
         entityId: row.entityId,
-        entityLevel: row.level === 'station' ? 'station-booking' : row.level,
         nextActualEnd: nextRange.actualEnd,
         nextActualStart: nextRange.actualStart,
         previousActualEnd: row.actualEnd,
@@ -280,13 +295,13 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
         attemptedEdit = true;
         await editDateMutation.mutateAsync(edit);
       }
-      await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
+      await queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
       if (attemptedEdit) {
         toast.success('Actual dates updated');
       }
     } catch {
       if (attemptedEdit) {
-        await queryClient.invalidateQueries(trpc.jobs.get.queryFilter({ id: job.id }));
+        await queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() });
       }
     } finally {
       setOptimisticActualRanges((current) => {
@@ -299,39 +314,24 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
   };
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex min-w-0 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">Schedule</h2>
           <p className="text-sm text-muted-foreground">
-            {isCreateMode
-              ? 'Planned windows by Job, Department, and Station.'
-              : 'Planned windows and actual progress by Job, Department, and Station.'}
+            Planned windows and actual progress by Job, Department, and Station.
           </p>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <LegendItem className="border border-sky-500/70 bg-transparent" label="Planned" />
-          {isCreateMode ? null : <LegendItem className="bg-sky-600" label="Actual" />}
-          {isCreateMode ? null : <LegendItem className="bg-red-600" label="Job Due Date" />}
-          {isCreateMode ? null : (
-            <LegendItem className="bg-muted-foreground/45 ring-1 ring-muted-foreground/50" label="Other job" />
-          )}
-          <span className="inline-flex items-center gap-1">
-            <DiamondIcon data-icon="inline-start" />
-            Milestone
-          </span>
-          {!isCreateMode && sharedBookingJobs.length > 0 ? (
-            <SharedStationJobPicker
-              isLoading={sharedBookingsQuery.isLoading}
-              jobs={sharedBookingJobs}
-              onToggleJob={toggleOverlayJob}
-              selectedJobIds={selectedOverlayJobIds}
-            />
-          ) : null}
-        </div>
       </div>
-      <div style={{ height: ganttHeight }}>
-        <GanttProvider className="rounded-md border bg-background" range="daily" zoom={70}>
+      <div className="min-w-0 overflow-hidden" style={{ height: ganttHeight }}>
+        <GanttProvider
+          key={initialScrollKey}
+          className="min-w-0 rounded-md border bg-background"
+          initialDate={initialDate}
+          initialDateAlignment={initialDateAlignment}
+          range="daily"
+          zoom={70}
+        >
           <ScheduleGanttSidebar rows={rows} />
           <GanttTimeline>
             <GanttHeader />
@@ -343,18 +343,16 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
                 label="Job Due Date"
               />
             ) : null}
-            <GanttFeatureList className="absolute top-0 left-0 h-full w-max space-y-0">
+            <GanttFeatureList className="absolute top-0 left-0 w-max space-y-0">
               {rows.map((row) => (
                 <ScheduleGanttTimelineRow
-                  canEditActualBars={!isCreateMode && props.canEditSchedule && !editDateMutation.isPending}
+                  canEditActualBars={props.canEditSchedule && !editDateMutation.isPending}
                   canEditPlannedBars={props.canEditSchedule && !editDateMutation.isPending}
                   key={row.id}
                   onEditActualDates={editActualDates}
                   onEditPlannedRange={editPlannedRange}
                   previewResetVersion={scheduleEditCompletionKey}
                   row={row}
-                  selectedOverlayJobIds={selectedOverlayJobIds}
-                  sharedBookingJobs={sharedBookingJobs}
                 />
               ))}
               <GanttToday className="bg-primary text-primary-foreground" />
@@ -365,45 +363,6 @@ export const ScheduleGantt: React.FC<ScheduleGanttProps> = (props) => {
     </section>
   );
 };
-
-const SharedStationJobPicker: React.FC<{
-  isLoading: boolean;
-  jobs: JobSharedStationBookingJob[];
-  onToggleJob: (jobId: string) => void;
-  selectedJobIds: Set<string>;
-}> = ({ isLoading, jobs, onToggleJob, selectedJobIds }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger
-      render={
-        <Button disabled={isLoading} size="sm" type="button" variant="outline">
-          <BriefcaseBusinessIcon data-icon="inline-start" />
-          Station contention
-          <ChevronDownIcon data-icon="inline-end" />
-        </Button>
-      }
-    />
-    <DropdownMenuContent align="end" className="min-w-80">
-      <DropdownMenuLabel>Jobs sharing stations</DropdownMenuLabel>
-      <DropdownMenuGroup>
-        {jobs.map((job) => (
-          <DropdownMenuCheckboxItem
-            checked={selectedJobIds.has(job.jobId)}
-            className="items-start py-2 pr-8"
-            key={job.jobId}
-            onClick={() => onToggleJob(job.jobId)}
-          >
-            <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="font-medium">{job.jobCode}</span>
-              <span className="truncate text-xs text-muted-foreground">
-                {job.productModelCode} - {job.bookings.length} shared booking{job.bookings.length === 1 ? '' : 's'}
-              </span>
-            </span>
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuGroup>
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
 
 const ScheduleGanttSidebar: React.FC<{
   rows: ScheduleGanttRow[];
@@ -444,25 +403,11 @@ const ScheduleGanttSidebar: React.FC<{
 const ScheduleGanttTimelineRow: React.FC<{
   canEditActualBars: boolean;
   canEditPlannedBars: boolean;
-  onEditActualDates: (
-    row: ScheduleGanttEditableItem,
-    nextRange: { actualEnd: string | null; actualStart: string },
-  ) => void;
-  onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  onEditActualDates: ScheduleGanttActualEditHandler;
+  onEditPlannedRange: ScheduleGanttPlannedEditHandler;
   previewResetVersion: number;
   row: ScheduleGanttRow;
-  selectedOverlayJobIds: Set<string>;
-  sharedBookingJobs: JobSharedStationBookingJob[];
-}> = ({
-  canEditActualBars,
-  canEditPlannedBars,
-  onEditActualDates,
-  onEditPlannedRange,
-  previewResetVersion,
-  row,
-  selectedOverlayJobIds,
-  sharedBookingJobs,
-}) => (
+}> = ({ canEditActualBars, canEditPlannedBars, onEditActualDates, onEditPlannedRange, previewResetVersion, row }) => (
   <ScheduleGanttTimelineRowInner
     canEditActualBars={canEditActualBars}
     canEditPlannedBars={canEditPlannedBars}
@@ -470,33 +415,17 @@ const ScheduleGanttTimelineRow: React.FC<{
     onEditPlannedRange={onEditPlannedRange}
     previewResetVersion={previewResetVersion}
     row={row}
-    selectedOverlayJobIds={selectedOverlayJobIds}
-    sharedBookingJobs={sharedBookingJobs}
   />
 );
 
 const ScheduleGanttTimelineRowInner: React.FC<{
   canEditActualBars: boolean;
   canEditPlannedBars: boolean;
-  onEditActualDates: (
-    row: ScheduleGanttEditableItem,
-    nextRange: { actualEnd: string | null; actualStart: string },
-  ) => void;
-  onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  onEditActualDates: ScheduleGanttActualEditHandler;
+  onEditPlannedRange: ScheduleGanttPlannedEditHandler;
   previewResetVersion: number;
   row: ScheduleGanttRow;
-  selectedOverlayJobIds: Set<string>;
-  sharedBookingJobs: JobSharedStationBookingJob[];
-}> = ({
-  canEditActualBars,
-  canEditPlannedBars,
-  onEditActualDates,
-  onEditPlannedRange,
-  previewResetVersion,
-  row,
-  selectedOverlayJobIds,
-  sharedBookingJobs,
-}) => {
+}> = ({ canEditActualBars, canEditPlannedBars, onEditActualDates, onEditPlannedRange, previewResetVersion, row }) => {
   const gantt = useGanttContext();
   const dayCount = getScheduleGanttTimelineDayCount(gantt.timelineData);
 
@@ -523,8 +452,6 @@ const ScheduleGanttTimelineRowInner: React.FC<{
           onEditPlannedRange={onEditPlannedRange}
           previewResetVersion={previewResetVersion}
           row={row}
-          selectedOverlayJobIds={selectedOverlayJobIds}
-          sharedBookingJobs={sharedBookingJobs}
         />
       )}
     </div>
@@ -534,40 +461,21 @@ const ScheduleGanttTimelineRowInner: React.FC<{
 const ScheduleGanttStationLanes: React.FC<{
   canEditActualBars: boolean;
   canEditPlannedBars: boolean;
-  onEditActualDates: (
-    row: ScheduleGanttEditableItem,
-    nextRange: { actualEnd: string | null; actualStart: string },
-  ) => void;
-  onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  onEditActualDates: ScheduleGanttActualEditHandler;
+  onEditPlannedRange: ScheduleGanttPlannedEditHandler;
   previewResetVersion: number;
   row: ScheduleGanttRow;
-  selectedOverlayJobIds: Set<string>;
-  sharedBookingJobs: JobSharedStationBookingJob[];
-}> = ({
-  canEditActualBars,
-  canEditPlannedBars,
-  onEditActualDates,
-  onEditPlannedRange,
-  previewResetVersion,
-  row,
-  selectedOverlayJobIds,
-  sharedBookingJobs,
-}) => (
+}> = ({ canEditActualBars, canEditPlannedBars, onEditActualDates, onEditPlannedRange, previewResetVersion, row }) => (
   <>
     {row.stationBookings.map((stationBooking, laneIndex) => (
       <ScheduleGanttStationLane
         canEditActualBars={canEditActualBars}
         canEditPlannedBars={canEditPlannedBars}
         key={stationBooking.id}
-        laneIndex={laneIndex}
+        laneIndex={stationBooking.laneIndex ?? laneIndex}
         onEditActualDates={onEditActualDates}
         onEditPlannedRange={onEditPlannedRange}
         previewResetVersion={previewResetVersion}
-        overlays={getScheduleGanttStationOverlays({
-          selectedOverlayJobIds,
-          sharedBookingJobs,
-          stationId: stationBooking.stationId,
-        })}
         row={row}
         stationBooking={stationBooking}
       />
@@ -579,12 +487,8 @@ const ScheduleGanttStationLane: React.FC<{
   canEditActualBars: boolean;
   canEditPlannedBars: boolean;
   laneIndex: number;
-  onEditActualDates: (
-    row: ScheduleGanttEditableItem,
-    nextRange: { actualEnd: string | null; actualStart: string },
-  ) => void;
-  onEditPlannedRange: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
-  overlays: JobSharedStationBookingJob[];
+  onEditActualDates: ScheduleGanttActualEditHandler;
+  onEditPlannedRange: ScheduleGanttPlannedEditHandler;
   previewResetVersion: number;
   row: ScheduleGanttRow;
   stationBooking: ScheduleGanttStationBooking;
@@ -594,7 +498,6 @@ const ScheduleGanttStationLane: React.FC<{
   laneIndex,
   onEditActualDates,
   onEditPlannedRange,
-  overlays,
   previewResetVersion,
   row,
   stationBooking,
@@ -604,11 +507,11 @@ const ScheduleGanttStationLane: React.FC<{
 
   return (
     <>
-      <ScheduleGanttOccupancyOverlays jobs={overlays} topOffset={topOffset + STATION_ACTUAL_OFFSET} />
       <ScheduleGanttPlannedRange
         canEdit={canEditPlannedBars}
         onEdit={onEditPlannedRange}
         previewResetVersion={previewResetVersion}
+        readOnly={stationBooking.readOnly ?? false}
         row={stationBooking}
         topOffset={topOffset}
         visibleLabel={stationLabel}
@@ -617,6 +520,7 @@ const ScheduleGanttStationLane: React.FC<{
         canEdit={canEditActualBars}
         onEdit={onEditActualDates}
         previewResetVersion={previewResetVersion}
+        readOnly={stationBooking.readOnly ?? false}
         row={stationBooking}
         topOffset={topOffset + STATION_ACTUAL_OFFSET}
       />
@@ -624,60 +528,15 @@ const ScheduleGanttStationLane: React.FC<{
   );
 };
 
-const ScheduleGanttOccupancyOverlays: React.FC<{ jobs: JobSharedStationBookingJob[]; topOffset: number }> = ({
-  jobs,
-  topOffset,
-}) => (
-  <>
-    {jobs
-      .flatMap((job) => job.bookings.map((booking) => ({ booking, jobCode: job.jobCode, jobId: job.jobId })))
-      .map((overlay, laneIndex) => (
-        <ScheduleGanttOccupancyBar
-          booking={overlay.booking}
-          jobCode={overlay.jobCode}
-          key={`${overlay.jobId}-${overlay.booking.id}`}
-          laneIndex={laneIndex}
-          topOffset={topOffset}
-        />
-      ))}
-  </>
-);
-
-const ScheduleGanttOccupancyBar: React.FC<{
-  booking: JobSharedStationBookingJob['bookings'][number];
-  jobCode: string;
-  laneIndex: number;
-  topOffset: number;
-}> = ({ booking, jobCode, laneIndex, topOffset }) => {
-  const occupancy = getScheduleGanttOccupancyDisplay(booking, jobCode);
-
-  if (occupancy.kind === 'none') {
-    return null;
-  }
-
-  return (
-    <ScheduleGanttBar
-      className={cn(
-        'bg-muted-foreground/45 shadow-sm ring-1 ring-muted-foreground/50',
-        occupancy.openEnded && 'rounded-r-none',
-      )}
-      end={occupancy.end}
-      height={8}
-      label={occupancy.label}
-      start={occupancy.start}
-      topOffset={topOffset + laneIndex * 5 - 10}
-    />
-  );
-};
-
 const ScheduleGanttPlannedRange: React.FC<{
   canEdit: boolean;
-  onEdit: (row: ScheduleGanttEditableItem, nextRange: OptimisticPlannedRange) => void;
+  onEdit: ScheduleGanttPlannedEditHandler;
   previewResetVersion?: number;
-  row: ScheduleGanttEditableItem;
+  row: ScheduleGanttBarItem;
+  readOnly?: boolean;
   topOffset?: number;
   visibleLabel?: string | undefined;
-}> = ({ canEdit, onEdit, previewResetVersion, row, topOffset = 0, visibleLabel }) => {
+}> = ({ canEdit, onEdit, previewResetVersion, readOnly = false, row, topOffset = 0, visibleLabel }) => {
   const planned = getScheduleGanttPlannedDisplay(row);
 
   if (planned.kind === 'none') {
@@ -690,6 +549,7 @@ const ScheduleGanttPlannedRange: React.FC<{
         date={planned.date}
         hoverCard={getScheduleGanttHoverCardModel(row)}
         label={getScheduleGanttBarLabel(row, planned.label)}
+        readOnly={readOnly}
         topOffset={topOffset}
       />
     );
@@ -700,11 +560,12 @@ const ScheduleGanttPlannedRange: React.FC<{
       className={cn(
         'border bg-background/80',
         row.level === 'station' &&
+          row.barKind !== 'job' &&
           'before:absolute before:top-0 before:left-0 before:h-full before:w-1 before:content-[""]',
         getScheduleGanttPlannedClassName(row),
         row.level === 'job' && 'bg-sky-500/50',
       )}
-      editable={canEdit}
+      editable={canEdit && !readOnly && row.level === 'station'}
       height={row.level === 'job' ? 4 : PLANNED_BAR_HEIGHT}
       hoverCard={getScheduleGanttHoverCardModel(row)}
       key={`planned-${row.id}-${previewResetVersion ?? 0}`}
@@ -718,15 +579,17 @@ const ScheduleGanttPlannedRange: React.FC<{
         if (!nextRange || (nextRange.plannedEnd === row.plannedEnd && nextRange.plannedStart === row.plannedStart)) {
           return false;
         }
+        if (row.level !== 'station') return false;
         onEdit(row, nextRange);
         return true;
       }}
       end={planned.end}
       label={getScheduleGanttBarLabel(row, planned.label)}
+      readOnly={readOnly}
       start={planned.start}
       topOffset={topOffset}
       visibleLabel={visibleLabel}
-      visibleLabelDepartment={row.level === 'station' ? row.stage : undefined}
+      visibleLabelDepartment={row.level === 'station' && row.barKind !== 'job' ? row.stage : undefined}
       showEditHandles={row.level === 'station'}
     />
   );
@@ -734,19 +597,20 @@ const ScheduleGanttPlannedRange: React.FC<{
 
 const ScheduleGanttActualRange: React.FC<{
   canEdit: boolean;
-  onEdit: (row: ScheduleGanttEditableItem, nextRange: { actualEnd: string | null; actualStart: string }) => void;
+  onEdit: ScheduleGanttActualEditHandler;
   previewResetVersion?: number;
-  row: ScheduleGanttEditableItem;
+  row: ScheduleGanttBarItem;
+  readOnly?: boolean;
   topOffset?: number;
   visibleLabel?: string | undefined;
-}> = ({ canEdit, onEdit, previewResetVersion, row, topOffset = 0, visibleLabel }) => {
+}> = ({ canEdit, onEdit, previewResetVersion, readOnly = false, row, topOffset = 0, visibleLabel }) => {
   const actual = getScheduleGanttActualDisplay(row);
 
   if (actual.kind === 'none') {
     return null;
   }
 
-  if (canEdit && row.actualStart) {
+  if (canEdit && !readOnly && row.level === 'station' && row.actualStart) {
     return (
       <ScheduleGanttBar
         className={cn('z-20 shadow-sm', getScheduleGanttActualClassName(row), actual.openEnded && 'rounded-r-none')}
@@ -784,6 +648,7 @@ const ScheduleGanttActualRange: React.FC<{
       hoverCard={getScheduleGanttHoverCardModel(row)}
       key={`actual-${row.id}-${previewResetVersion ?? 0}`}
       label={getScheduleGanttBarLabel(row, actual.label)}
+      readOnly={readOnly}
       start={actual.start}
       topOffset={topOffset}
       visibleLabel={visibleLabel}
@@ -799,6 +664,7 @@ const ScheduleGanttBar: React.FC<{
   hoverCard?: ScheduleGanttHoverCardModel | undefined;
   label: string;
   onEdit?: (action: PlannedDragAction, dayDelta: number, millisecondDelta: number) => boolean;
+  readOnly?: boolean;
   showEditHandles?: boolean;
   start: Date;
   topOffset?: number;
@@ -812,6 +678,7 @@ const ScheduleGanttBar: React.FC<{
   hoverCard,
   label,
   onEdit,
+  readOnly = false,
   showEditHandles = false,
   start,
   topOffset = 0,
@@ -911,11 +778,17 @@ const ScheduleGanttBar: React.FC<{
       element
     );
 
-  if (!editable) {
+  const barClassName = cn(
+    className,
+    readOnly &&
+      'border border-muted-foreground/40 bg-muted-foreground/15 text-muted-foreground shadow-sm ring-1 ring-muted-foreground/30 before:bg-muted-foreground/70 hover:border-muted-foreground/60 hover:bg-muted-foreground/20 focus-visible:border-muted-foreground/60 focus-visible:bg-muted-foreground/20',
+  );
+
+  if (!editable || readOnly) {
     return wrapWithHoverCard(
       <div
         aria-label={label}
-        className={cn('absolute top-1/2 -translate-y-1/2 overflow-hidden rounded-sm', className)}
+        className={cn('absolute top-1/2 -translate-y-1/2 overflow-hidden rounded-sm', barClassName)}
         role="img"
         style={{
           height,
@@ -942,7 +815,7 @@ const ScheduleGanttBar: React.FC<{
       aria-label={`${label}; drag to move, drag either edge to resize`}
       className={cn(
         'group absolute top-1/2 -translate-y-1/2 cursor-grab appearance-none overflow-hidden rounded-sm p-0 transition-colors',
-        className,
+        barClassName,
       )}
       onPointerCancel={cancelDrag}
       onPointerDown={(event) => startDrag(event, 'move')}
@@ -1063,8 +936,10 @@ const ScheduleGanttMilestone: React.FC<{
   date: Date | null;
   hoverCard?: ScheduleGanttHoverCardModel | undefined;
   label: string;
+  markerClassName?: string | undefined;
+  readOnly?: boolean;
   topOffset?: number;
-}> = ({ date, hoverCard, label, topOffset = 0 }) => {
+}> = ({ date, hoverCard, label, markerClassName, readOnly = false, topOffset = 0 }) => {
   const gantt = useGanttContext();
 
   if (!date) return null;
@@ -1074,7 +949,11 @@ const ScheduleGanttMilestone: React.FC<{
   const milestone = (
     <div
       aria-label={label}
-      className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-sky-500 bg-background"
+      className={cn(
+        'absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-sky-500 bg-background',
+        markerClassName,
+        readOnly && 'border-muted-foreground/60 bg-muted-foreground/20',
+      )}
       role="img"
       style={{ left: Math.round(left), top: `calc(50% + ${topOffset}px)` }}
       title={hoverCard ? undefined : label}
@@ -1083,10 +962,3 @@ const ScheduleGanttMilestone: React.FC<{
 
   return hoverCard ? <ScheduleGanttBarHoverCard card={hoverCard} trigger={milestone} /> : milestone;
 };
-
-const LegendItem: React.FC<{ className: string; label: string }> = ({ className, label }) => (
-  <span className="inline-flex items-center gap-1">
-    <span className={cn('h-2 w-5 rounded-sm', className)} />
-    {label}
-  </span>
-);

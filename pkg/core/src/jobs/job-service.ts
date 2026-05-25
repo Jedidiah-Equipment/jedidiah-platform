@@ -20,7 +20,7 @@ import type {
   UserAccessSummary,
   UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { editJobDate as editJobDateService } from './job-date-edit-service.js';
@@ -241,8 +241,14 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     conditions.push(eq(jobs.id, input.filters.jobId));
   }
 
-  if (input.filters.statuses.length > 0) {
-    conditions.push(inArray(jobs.status, input.filters.statuses));
+  const statuses = input.filters.statuses ?? [];
+
+  if (statuses.length > 0) {
+    conditions.push(inArray(jobs.status, statuses));
+  }
+
+  if (input.filters.createdAtStart) {
+    conditions.push(gte(jobs.createdAt, new Date(input.filters.createdAtStart)));
   }
 
   if (input.search) {

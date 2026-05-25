@@ -321,6 +321,7 @@ export const JobSortBy = z.enum(['code', 'createdAt', 'dueDate', 'id', 'status']
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
+    createdAtStart: z.iso.datetime().optional(),
     jobId: UUID.optional(),
     statuses: z.array(JobStatus).default([]),
   })
@@ -332,37 +333,6 @@ export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
   stages: z.array(JobStageRollup).length(5),
   workflowEvents: z.array(JobEvent),
-});
-
-export type JobSharedStationBooking = z.infer<typeof JobSharedStationBooking>;
-export const JobSharedStationBooking = StationBookingDateFields.pick({
-  actualEnd: true,
-  actualStart: true,
-  plannedEnd: true,
-  plannedStart: true,
-}).extend({
-  id: UUID,
-  jobStageId: UUID,
-  stage: JobStageName,
-  stationId: UUID,
-  stationName: z.string().trim().min(1),
-});
-
-export type JobSharedStationBookingJob = z.infer<typeof JobSharedStationBookingJob>;
-export const JobSharedStationBookingJob = z.object({
-  bookings: z.array(JobSharedStationBooking).min(1),
-  customerCompanyName: z.string().trim().min(1).nullable(),
-  jobCode: JobCode,
-  jobId: UUID,
-  status: JobStatus,
-  productModelCode: z.string().trim().min(1),
-  productName: z.string().trim().min(1),
-  quoteCode: QuoteCode.nullable(),
-});
-
-export type JobSharedStationBookingsResult = z.infer<typeof JobSharedStationBookingsResult>;
-export const JobSharedStationBookingsResult = z.object({
-  jobs: z.array(JobSharedStationBookingJob),
 });
 
 export type JobCreateStationBookingInput = z.infer<typeof JobCreateStationBookingInput>;
@@ -449,11 +419,6 @@ export type JobListResult = z.infer<typeof JobListResult>;
 export const JobListResult = createPagedQueryResult(JobSummary).extend({
   sortBy: JobSortBy,
   sortDirection: SortDirection,
-});
-
-export type JobSharedStationBookingsInput = z.infer<typeof JobSharedStationBookingsInput>;
-export const JobSharedStationBookingsInput = z.object({
-  jobId: UUID,
 });
 
 export type JobStationBookingTransitionInput = z.infer<typeof JobStationBookingTransitionInput>;

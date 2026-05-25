@@ -25,6 +25,8 @@ type EntityComboboxProps<TOption extends { id: string }> = {
   value: TOption | null;
 };
 
+const getEntityOptionId = <TOption extends { id: string }>(option: TOption) => option.id;
+
 export function EntityCombobox<TOption extends { id: string }>({
   disabled,
   emptyMessage,
@@ -49,10 +51,10 @@ export function EntityCombobox<TOption extends { id: string }>({
       filter={null}
       inputValue={displayInputValue}
       itemToStringLabel={itemToLabel}
-      itemToStringValue={(option) => option.id}
+      itemToStringValue={getEntityOptionId}
       items={options}
-      onInputValueChange={(nextInputValue) => {
-        if (nextInputValue === displayInputValue) {
+      onInputValueChange={(nextInputValue, eventDetails) => {
+        if (eventDetails.reason === 'item-press' || nextInputValue === displayInputValue) {
           return;
         }
 

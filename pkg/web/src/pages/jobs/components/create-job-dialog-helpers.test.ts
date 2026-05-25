@@ -1,7 +1,8 @@
-import type { Product } from '@pkg/schema';
+import type { Product, Station } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
 import {
+  applySelectedStationsToStages,
   buildCreateJobInput,
   createDefaultStages,
   getInfeasibleMessage,
@@ -17,9 +18,8 @@ describe('create job dialog helpers', () => {
 
   test('computes Product defaults from the selected anchor', () => {
     const stages = createDefaultStages({
-      anchorDate: '2026-05-10',
-      anchorKind: 'end',
       createDraftId: createDeterministicDraftId(),
+      dueDate: '2026-05-10',
       product: createProduct(),
     });
 
@@ -95,6 +95,61 @@ describe('create job dialog helpers', () => {
     });
   });
 
+  test('maps one grouped station selection into stage bookings while preserving existing bookings', () => {
+    const stages = [
+      createStageDraft({
+        plannedEnd: '2026-05-02',
+        plannedStart: '2026-05-01',
+        stage: 'procurement',
+        stationBookings: [
+          {
+            plannedEnd: '2026-05-03',
+            plannedStart: '2026-05-02',
+            id: 'existing-procurement',
+            stationId: '00000000-0000-4000-8000-000000000001',
+          },
+        ],
+      }),
+      createStageDraft({ plannedEnd: '2026-05-07', plannedStart: '2026-05-04', stage: 'fabrication' }),
+    ];
+
+    expect(
+      applySelectedStationsToStages({
+        createDraftId: createDeterministicDraftId(),
+        selectedStationIds: ['00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000003'],
+        stages,
+        stations: [
+          createStation({ department: 'procurement', id: '00000000-0000-4000-8000-000000000001' }),
+          createStation({ department: 'fabrication', id: '00000000-0000-4000-8000-000000000003' }),
+          createStation({ department: 'paint', id: '00000000-0000-4000-8000-000000000005' }),
+        ],
+      }),
+    ).toMatchObject([
+      {
+        stage: 'procurement',
+        stationBookings: [
+          {
+            plannedEnd: '2026-05-03',
+            plannedStart: '2026-05-02',
+            id: 'existing-procurement',
+            stationId: '00000000-0000-4000-8000-000000000001',
+          },
+        ],
+      },
+      {
+        stage: 'fabrication',
+        stationBookings: [
+          {
+            plannedEnd: '2026-05-07',
+            plannedStart: '2026-05-04',
+            id: 'draft-1',
+            stationId: '00000000-0000-4000-8000-000000000003',
+          },
+        ],
+      },
+    ]);
+  });
+
   test('builds create input without dead Job or Stage windows', () => {
     expect(
       buildCreateJobInput({
@@ -161,6 +216,19 @@ function createProduct(): Product {
     name: 'Product',
     options: [],
     updatedAt: '2026-05-01T00:00:00.000Z',
+  };
+}
+
+function createStation(overrides: Partial<Station> = {}): Station {
+  return {
+    createdAt: '2026-05-01T00:00:00.000Z',
+    department: 'fabrication',
+    displayOrder: 1,
+    id: '00000000-0000-4000-8000-000000000003',
+    isActive: true,
+    name: 'Station',
+    updatedAt: '2026-05-01T00:00:00.000Z',
+    ...overrides,
   };
 }
 

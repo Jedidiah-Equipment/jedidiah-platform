@@ -3,7 +3,7 @@ import { z } from 'zod';
 export type PagedQueryInput = z.infer<typeof PagedQueryInput>;
 export const PagedQueryInput = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(10),
+  pageSize: z.coerce.number().int().min(0).max(100).default(10),
 });
 
 export type PagedQueryResult<TItem> = {

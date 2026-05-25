@@ -1,8 +1,6 @@
 import { computeDefaults, departmentLabels, JOB_STAGE_PIPELINE } from '@pkg/domain';
-import type { JobCreateInput, JobStageName, Product, UUID } from '@pkg/schema';
+import type { JobCreateInput, JobStageName, Product, Station, UUID } from '@pkg/schema';
 import { format, parse } from 'date-fns';
-
-export type AnchorKind = 'start' | 'end';
 
 export type StageDraft = {
   plannedEnd: string;
@@ -19,20 +17,18 @@ export type StationBookingDraft = {
 };
 
 export function createDefaultStages({
-  anchorDate,
-  anchorKind,
   createDraftId,
+  dueDate,
   product,
 }: {
-  anchorDate: string;
-  anchorKind: AnchorKind;
   createDraftId: () => string;
+  dueDate: string;
   product: Product;
 }): StageDraft[] {
   const result = computeDefaults({
     anchor: {
-      kind: anchorKind,
-      value: fromDateInputValue(anchorDate),
+      kind: 'end',
+      value: fromDateInputValue(dueDate),
     },
     productPerDeptConfig: product.departmentConfigs.map((config) => ({
       defaultStationIds: config.defaultStationIds,
@@ -89,6 +85,44 @@ export function mergeDefaultBookings(currentStage: StageDraft, defaultStage: Sta
     }),
     ...currentStage.stationBookings.filter((currentBooking) => !defaultStationIds.has(currentBooking.stationId)),
   ];
+}
+
+export function applySelectedStationsToStages({
+  createDraftId,
+  selectedStationIds,
+  stages,
+  stations,
+}: {
+  createDraftId: () => string;
+  selectedStationIds: UUID[];
+  stages: StageDraft[];
+  stations: Station[];
+}): StageDraft[] {
+  const selectedStationIdSet = new Set(selectedStationIds);
+  const stationById = new Map(stations.map((station) => [station.id, station]));
+
+  return stages.map((stage) => {
+    const currentBookingByStationId = new Map(stage.stationBookings.map((booking) => [booking.stationId, booking]));
+    const selectedStageStationIds = selectedStationIds.filter((stationId) => {
+      const station = stationById.get(stationId);
+      return station?.department === stage.stage && selectedStationIdSet.has(stationId);
+    });
+
+    return {
+      ...stage,
+      stationBookings: selectedStageStationIds.map((stationId) => {
+        const currentBooking = currentBookingByStationId.get(stationId);
+        if (currentBooking) return currentBooking;
+
+        return {
+          plannedEnd: stage.plannedEnd,
+          plannedStart: stage.plannedStart,
+          id: createDraftId(),
+          stationId,
+        };
+      }),
+    };
+  });
 }
 
 export function buildCreateJobInput({

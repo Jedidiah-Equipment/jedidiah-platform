@@ -2,7 +2,7 @@ export * from './audit/audit-service.js';
 export * from './customers/customer-errors.js';
 export * from './customers/customer-service.js';
 export * from './jobs/job-errors.js';
-export { getJob, listSharedStationBookings } from './jobs/job-read-service.js';
+export { getJob } from './jobs/job-read-service.js';
 export * from './jobs/job-service.js';
 export * from './products/product-department-config-service.js';
 export * from './products/product-errors.js';

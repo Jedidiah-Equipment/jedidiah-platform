@@ -33,6 +33,23 @@ A sales offer associated with one Customer, optionally specifying a Product, pri
 **Supplier**:
 A procurement directory record with a unique name. Suppliers are admin-managed and are not yet linked to Jobs, Products, Quotes, or Pipeline planning.
 
+**Part**:
+A purchasable item from a Supplier, identified by a globally unique code. Parts are the shared atomic layer of the bill of materials and are reused across Products via Assemblies.
+_Avoid_: Component, Item, SKU.
+
+**Assembly**:
+A named sub-assembly of a Product (e.g., chassis, axle assembly, tipper bed), composed of Parts in specified quantities. Assemblies are owned by a single Product; reuse happens at the Part layer, not the Assembly layer. An Assembly is either a **Standard Assembly** (always included in the Product's bill of materials) or an **Optional Assembly** (selectable at quote time, may override one or more Standard Assemblies).
+_Avoid_: Component, Sub-assembly, Module.
+
+**Standard Assembly**:
+An Assembly that is included in every build of the Product by default. Its cost is rolled into the Product's `base_price`.
+
+**Optional Assembly**:
+An Assembly that is selected (or not) at quote time. Carries a `price` representing the *upgrade delta* added to the Product's `base_price` when selected. When selected, an Optional Assembly may override zero or more Standard Assemblies, removing their Parts from the effective bill of materials and replacing them with its own. Optionals with no overrides are purely additive.
+
+**Effective Bill of Materials**:
+For a Quote with a selected set of Optional Assemblies, the effective BOM is (Standard Assemblies not overridden by any selected Optional) ∪ (selected Optional Assemblies). Conflict prevention — disallowing the selection of two Optionals that both override the same Standard — is the Quote's responsibility.
+
 **Create Job from Quote**:
 A `job-supervisor` or `admin` can create a Job from a Quote while the Quote is `draft`, `sent`, or `accepted`. Rejected Quotes cannot source Jobs. The Job keeps an optional `quote_id` reference.
 
@@ -40,7 +57,7 @@ A `job-supervisor` or `admin` can create a Job from a Quote while the Quote is `
 Creating a Job without a Quote. The form asks for Product and optional Job Due Date.
 
 **Audit Event**:
-Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_stage`, `product`, `product_option`, `quote`, `supplier`, and `user`.
+Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_stage`, `product`, `quote`, `supplier`, and `user`. Product Assemblies, their Parts lists, and override links are part of the `product` aggregate and audited under the `product` entity — there is no separate `product_assembly` audit entity type.
 
 ## Relationships
 

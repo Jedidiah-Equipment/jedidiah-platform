@@ -33,6 +33,7 @@ const auditEntityTypeLabels = {
   customer: 'Customer',
   job: 'Job',
   job_stage: 'Job stage',
+  part: 'Part',
   product: 'Product',
   product_option: 'Product option',
   quote: 'Quote',

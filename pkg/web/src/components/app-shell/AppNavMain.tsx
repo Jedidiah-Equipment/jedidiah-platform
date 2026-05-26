@@ -1,7 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { Link, linkOptions } from '@tanstack/react-router';
-import { Building2Icon, ClipboardListIcon, GaugeIcon, HandshakeIcon, type LucideIcon } from 'lucide-react';
+import { Building2Icon, ClipboardListIcon, GaugeIcon, HandshakeIcon, type LucideIcon, PackageIcon } from 'lucide-react';
 import type React from 'react';
 
 import {
@@ -57,6 +57,12 @@ const mainNavItems = [
     permission: 'supplier:read',
     link: linkOptions({ to: '/suppliers' }),
     icon: HandshakeIcon,
+  },
+  {
+    title: 'Parts',
+    permission: 'part:read',
+    link: linkOptions({ to: '/parts' }),
+    icon: PackageIcon,
   },
   // {
   //   title: 'Assistant',

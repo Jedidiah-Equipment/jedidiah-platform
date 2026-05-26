@@ -1,3 +1,4 @@
+export { CreatableComboboxField, type CreatableComboboxFieldProps } from './CreatableComboboxField.js';
 export { CurrencyField, type CurrencyFieldProps } from './CurrencyField.js';
 export { DatePickerField, type DatePickerFieldProps } from './DatePickerField.js';
 export { useFieldContext, useFormContext } from './form-context.js';

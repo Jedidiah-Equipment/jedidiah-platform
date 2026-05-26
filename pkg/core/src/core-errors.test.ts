@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { CustomerNotFoundError, isCustomerCoreError } from './customers/customer-errors.js';
 import { isJobCoreError, JobCreateFromQuoteDeniedError, JobNotFoundError } from './jobs/job-errors.js';
 import {
+  DuplicatePartCodeError,
+  DuplicatePartSupplierCodeError,
+  isPartCoreError,
+  PartNotFoundError,
+  PartSupplierNotFoundError,
+} from './parts/part-errors.js';
+import {
   DuplicateProductModelCodeError,
   DuplicateProductNameError,
   DuplicateProductOptionCodeError,
@@ -29,6 +36,17 @@ describe('core error codes and guards', () => {
     expect(new ProductOptionNotFoundError('option-id').code).toBe('product.option_not_found');
     expect(isProductCoreError(new ProductNotFoundError('product-id'))).toBe(true);
     expect(isProductCoreError(new Error('product.not_found'))).toBe(false);
+  });
+
+  it('identifies part core errors', () => {
+    expect(new DuplicatePartCodeError('P-100').code).toBe('part.duplicate_code');
+    expect(new DuplicatePartSupplierCodeError({ supplierCode: 'SUP-100', supplierId: 'supplier-id' }).code).toBe(
+      'part.duplicate_supplier_code',
+    );
+    expect(new PartNotFoundError('part-id').code).toBe('part.not_found');
+    expect(new PartSupplierNotFoundError('supplier-id').code).toBe('part.supplier_not_found');
+    expect(isPartCoreError(new PartNotFoundError('part-id'))).toBe(true);
+    expect(isPartCoreError(new Error('part.not_found'))).toBe(false);
   });
 
   it('identifies customer and user core errors', () => {

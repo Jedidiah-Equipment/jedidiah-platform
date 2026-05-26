@@ -5,6 +5,7 @@ export * from './schema/job.js';
 export * from './schema/product.js';
 export * from './schema/product-option.js';
 export * from './schema/quote.js';
+export * from './schema/supplier.js';
 
 import * as auditSchema from './schema/audit.js';
 import * as authSchema from './schema/auth.js';
@@ -13,6 +14,7 @@ import * as jobSchema from './schema/job.js';
 import * as productSchema from './schema/product.js';
 import * as productOptionSchema from './schema/product-option.js';
 import * as quoteSchema from './schema/quote.js';
+import * as supplierSchema from './schema/supplier.js';
 
 export const schema = {
   ...auditSchema,
@@ -22,4 +24,5 @@ export const schema = {
   ...productSchema,
   ...productOptionSchema,
   ...quoteSchema,
+  ...supplierSchema,
 };

@@ -4,8 +4,8 @@ import type React from 'react';
 import { z } from 'zod';
 
 import { useAppForm } from '@/components/form/index.js';
+import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { FieldGroup } from '@/components/ui/field.js';
 
 type CustomerFormValues = z.infer<typeof CustomerFormValues>;
 const CustomerFormValues = z.object({
@@ -61,7 +61,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialCustomer, isP
         void form.handleSubmit();
       }}
     >
-      <FieldGroup>
+      <EditFormGrid>
         <form.AppField name="companyName">
           {(field) => <field.TextField autoComplete="organization" label="Company name" />}
         </form.AppField>
@@ -72,12 +72,16 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialCustomer, isP
           {(field) => <field.TextField autoComplete="name" label="Contact person" />}
         </form.AppField>
         <form.AppField name="phone">{(field) => <field.TextField autoComplete="tel" label="Phone" />}</form.AppField>
-        <form.AppField name="address">
-          {(field) => <field.TextareaField autoComplete="street-address" label="Address" rows={4} />}
-        </form.AppField>
-        <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={4} />}</form.AppField>
-      </FieldGroup>
-      <div className="mt-4 flex justify-end gap-2">
+        <EditFormFullWidth>
+          <form.AppField name="address">
+            {(field) => <field.TextareaField autoComplete="street-address" label="Address" rows={4} />}
+          </form.AppField>
+        </EditFormFullWidth>
+        <EditFormFullWidth>
+          <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={4} />}</form.AppField>
+        </EditFormFullWidth>
+      </EditFormGrid>
+      <EditFormActions className="mt-4">
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button disabled={isSubmitting || isPending} type="submit">
@@ -86,7 +90,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialCustomer, isP
             </Button>
           )}
         </form.Subscribe>
-      </div>
+      </EditFormActions>
     </form>
   );
 };

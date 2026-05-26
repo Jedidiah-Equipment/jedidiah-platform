@@ -12,10 +12,8 @@ import {
 import {
   DuplicateProductModelCodeError,
   DuplicateProductNameError,
-  DuplicateProductOptionCodeError,
   isProductCoreError,
   ProductNotFoundError,
-  ProductOptionNotFoundError,
 } from './products/product-errors.js';
 import {
   isQuoteCoreError,
@@ -31,9 +29,7 @@ describe('core error codes and guards', () => {
   it('identifies product core errors', () => {
     expect(new DuplicateProductNameError('Loader').code).toBe('product.duplicate_name');
     expect(new DuplicateProductModelCodeError('WL-100').code).toBe('product.duplicate_model_code');
-    expect(new DuplicateProductOptionCodeError('CAB').code).toBe('product.option_duplicate_code');
     expect(new ProductNotFoundError('product-id').code).toBe('product.not_found');
-    expect(new ProductOptionNotFoundError('option-id').code).toBe('product.option_not_found');
     expect(isProductCoreError(new ProductNotFoundError('product-id'))).toBe(true);
     expect(isProductCoreError(new Error('product.not_found'))).toBe(false);
   });

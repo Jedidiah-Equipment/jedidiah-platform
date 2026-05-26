@@ -5,7 +5,6 @@ import {
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
-  productOptions,
   products,
 } from '@pkg/db';
 import type {
@@ -18,17 +17,15 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { Product, ProductCurrencyCode } from '@pkg/schema';
-import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
+import { and, eq, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
-import { insertProductOptions, mapProductOption, syncProductOptions } from './product-option-service.js';
 
 type ProductRow = typeof products.$inferSelect;
-type ProductOptionRow = typeof productOptions.$inferSelect;
 
-export function mapProduct(row: ProductRow, options: ProductOptionRow[] = []): Product {
+export function mapProduct(row: ProductRow): Product {
   return Product.parse({
     basePrice: row.basePrice,
     createdAt: row.createdAt.toISOString(),
@@ -37,7 +34,6 @@ export function mapProduct(row: ProductRow, options: ProductOptionRow[] = []): P
     id: row.id,
     modelCode: row.modelCode,
     name: row.name,
-    options: options.map(mapProductOption),
     updatedAt: row.updatedAt.toISOString(),
   });
 }
@@ -68,12 +64,6 @@ export async function listProducts({
     where,
     orderBy: [orderBy],
     ...getPaginationQueryOptions(input),
-    with: {
-      options: {
-        where: isNull(productOptions.deletedAt),
-        orderBy: [asc(productOptions.code)],
-      },
-    },
   });
   const productsSql = productsQuery.toSQL();
 
@@ -89,7 +79,7 @@ export async function listProducts({
   const [rows, total] = await Promise.all([productsQuery, db.$count(products, where)]);
 
   return {
-    items: rows.map((row) => mapProduct(row, row.options)),
+    items: rows.map((row) => mapProduct(row)),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
@@ -132,19 +122,13 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
 export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
   const row = await db.query.products.findFirst({
     where: eq(products.id, id),
-    with: {
-      options: {
-        where: isNull(productOptions.deletedAt),
-        orderBy: [asc(productOptions.code)],
-      },
-    },
   });
 
   if (!row) {
     throw new ProductNotFoundError(id);
   }
 
-  return mapProduct(row, row.options);
+  return mapProduct(row);
 }
 
 export async function createProduct({
@@ -158,19 +142,12 @@ export async function createProduct({
 }): Promise<Product> {
   try {
     return await db.transaction(async (tx) => {
-      const { options, ...productInput } = input;
-      const [row] = await tx.insert(products).values(productInput).returning();
+      const [row] = await tx.insert(products).values(input).returning();
 
       if (!row) {
         throw new Error('Product insert did not return a row');
       }
 
-      const optionRows = await insertProductOptions({
-        tx,
-        productId: row.id,
-        incomingOptions: options,
-        actorUserId,
-      });
       await insertAuditEvent({
         db: tx,
         input: {
@@ -184,7 +161,7 @@ export async function createProduct({
         },
       });
 
-      return mapProduct(row, optionRows);
+      return mapProduct(row);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
@@ -208,36 +185,29 @@ export async function updateProduct({
         throw new ProductNotFoundError(input.id);
       }
 
-      const { options, ...productInput } = input;
       const after = {
         ...before,
-        basePrice: productInput.basePrice,
-        currencyCode: productInput.currencyCode,
-        description: productInput.description,
-        modelCode: productInput.modelCode,
-        name: productInput.name,
+        basePrice: input.basePrice,
+        currencyCode: input.currencyCode,
+        description: input.description,
+        modelCode: input.modelCode,
+        name: input.name,
       };
       const productChanges = createAuditChanges(before, after, getProductCatalogAuditFields());
-      const optionRows = await syncProductOptions({
-        tx,
-        productId: input.id,
-        incomingOptions: options,
-        actorUserId,
-      });
       const changes = productChanges;
 
       if (!changes) {
-        return mapProduct(before, optionRows);
+        return mapProduct(before);
       }
 
       const [row] = await tx
         .update(products)
         .set({
-          basePrice: productInput.basePrice,
-          currencyCode: productInput.currencyCode,
-          description: productInput.description,
-          modelCode: productInput.modelCode,
-          name: productInput.name,
+          basePrice: input.basePrice,
+          currencyCode: input.currencyCode,
+          description: input.description,
+          modelCode: input.modelCode,
+          name: input.name,
           updatedAt: new Date(),
         })
         .where(eq(products.id, input.id))
@@ -260,7 +230,7 @@ export async function updateProduct({
         },
       });
 
-      return mapProduct(row, optionRows);
+      return mapProduct(row);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);

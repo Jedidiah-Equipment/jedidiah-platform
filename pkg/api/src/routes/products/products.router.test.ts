@@ -1,4 +1,4 @@
-import { auditEvents, type Db, productOptions, user } from '@pkg/db';
+import { auditEvents, type Db, user } from '@pkg/db';
 import type { Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -44,35 +44,16 @@ describe('products.create', () => {
       description: null,
       modelCode: 'WHEEL-LOADER',
       name: 'Wheel Loader',
-      options: [],
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
   });
-
-  test('creates products with options', async ({ context }) => {
-    const caller = context.createCaller();
-    const created = await createProduct(caller, 'Wheel Loader With Options', {
-      options: [
-        { code: 'CAB', name: 'Enclosed Cab', price: 12_500 },
-        { code: 'FORKS', name: 'Fork Attachment', price: 8_000 },
-      ],
-    });
-
-    expect(created.options).toMatchObject([
-      { code: 'CAB', name: 'Enclosed Cab', price: 12_500 },
-      { code: 'FORKS', name: 'Fork Attachment', price: 8_000 },
-    ]);
-    await expect(context.db.select().from(productOptions)).resolves.toHaveLength(2);
-  });
 });
 
 describe('products.update', () => {
-  test('updates product catalog fields and options', async ({ context }) => {
+  test('updates product catalog fields', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Wheel Loader Update', {
-      options: [{ code: 'CAB', name: 'Enclosed Cab', price: 12_500 }],
-    });
+    const created = await createProduct(caller, 'Wheel Loader Update');
 
     const updated = await caller.products.update({
       id: created.id,
@@ -81,12 +62,6 @@ describe('products.update', () => {
       description: 'Updated',
       modelCode: 'WHEEL-LOADER-UPDATED',
       name: 'Wheel Loader Updated',
-      options: created.options.map((option) => ({
-        id: option.id,
-        code: option.code,
-        name: 'Updated Cab',
-        price: 13_000,
-      })),
     });
 
     expect(updated).toMatchObject({
@@ -95,7 +70,6 @@ describe('products.update', () => {
       modelCode: 'WHEEL-LOADER-UPDATED',
       name: 'Wheel Loader Updated',
     });
-    expect(updated.options).toMatchObject([{ code: 'CAB', name: 'Updated Cab', price: 13_000 }]);
     await expect(context.db.select().from(auditEvents)).resolves.not.toHaveLength(0);
   });
 });

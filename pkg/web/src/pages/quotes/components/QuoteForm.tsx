@@ -12,7 +12,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { useTRPC } from '@/lib/trpc.js';
 import { formatCurrency, formatPercent } from '@/utils/number.js';
 import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
-import { QuoteProductCombobox, type QuoteProductOption } from './QuoteProductCombobox.js';
+import { type QuoteProductChoice, QuoteProductCombobox } from './QuoteProductCombobox.js';
 
 const CustomerMode = z.enum(['existing', 'inline']);
 
@@ -81,7 +81,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
   const trpc = useTRPC();
   const isEditing = Boolean(initialQuote);
   const isFrozen = initialQuote?.status !== undefined && initialQuote.status !== 'draft';
-  const [selectedProduct, setSelectedProduct] = useState<QuoteProductOption | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<QuoteProductChoice | null>(null);
   const salespeopleQuery = useQuery(trpc.quotes.salespeople.queryOptions());
   const fallbackCustomer = useMemo(
     () =>
@@ -136,7 +136,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
       );
     },
   });
-  const onProductSelected = useCallback((product: QuoteProductOption | null) => {
+  const onProductSelected = useCallback((product: QuoteProductChoice | null) => {
     setSelectedProduct((current) => {
       if (
         current?.id === product?.id &&

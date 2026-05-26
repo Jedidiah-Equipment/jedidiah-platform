@@ -9,7 +9,7 @@ The Department-Aware roles are `job-supervisor` and `job-department-manager`.
 - **Single axis — encode departments as roles.** Rejected: would explode the role enum combinatorially as Departments grow and conflate two unrelated concerns (capability vs. scope).
 - **Single axis — flat job editor/viewer roles with no Department membership at all.** Rejected: cannot express "Paint sees only Paint Stages", which is a hard requirement.
 - **Two axes, with "empty department set = unscoped".** Accepted: this keeps Department membership as the only row-scope control and avoids a second role-scope matrix. The footgun is handled operationally by making the empty-selection meaning explicit in the Users UI.
-- **Two axes, scope encoded as a `scope:` marker on each role.** Rejected: premature abstraction — the policy module can name the Department-Aware roles directly. Revisit if a third axis appears (e.g. a future `job-department-member` role scoped to specific Stations).
+- **Two axes, scope encoded as a `scope:` marker on each role.** Rejected: premature abstraction — the policy module can name the Department-Aware roles directly. Revisit only if a third authorization axis appears.
 
 ## Consequences
 

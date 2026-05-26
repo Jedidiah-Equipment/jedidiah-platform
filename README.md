@@ -1,12 +1,11 @@
-# Jedidiah Platform
+# Jedidah Ops
 
-Monorepo for the Jedidiah Equipment platform.
+Monorepo for Jedidah Ops.
 
 The repository is being built in vertical slices. The current app contains email/password auth, the
 authenticated app shell, product/customer/quote/job workflows, audit history, the assistant surface,
-shared packages, Drizzle migrations, and root tooling. Current
-architecture decisions live in `docs/adr/`; `docs/team/job-overhaul-overview.md` is the friendly
-summary of the latest Job workflow model.
+shared packages, Drizzle migrations, and root tooling. Current architecture decisions live in
+`docs/adr/`.
 
 ## Current workspace
 

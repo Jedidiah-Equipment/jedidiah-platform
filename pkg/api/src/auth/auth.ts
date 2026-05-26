@@ -11,7 +11,7 @@ const config = getApiConfig();
 
 export function createAuth(database: Db) {
   return betterAuth({
-    appName: 'Jedidiah Platform',
+    appName: 'Jedidah Ops',
     baseURL: config.API_BASE_URL,
     secret: config.AUTH_SECRET,
     trustedOrigins: config.AUTH_TRUSTED_ORIGINS,
@@ -43,9 +43,9 @@ export function createAuth(database: Db) {
         const resetUrl = `${config.APP_BASE_URL}/reset-password?token=${encodeURIComponent(token)}`;
         await emailSender.send({
           to: user.email,
-          subject: 'Reset your Jedidiah Equipment password',
-          html: `<p>Use this link to reset your Jedidiah Equipment password:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
-          text: `Use this link to reset your Jedidiah Equipment password: ${resetUrl}`,
+          subject: 'Reset your Jedidah Ops password',
+          html: `<p>Use this link to reset your Jedidah Ops password:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+          text: `Use this link to reset your Jedidah Ops password: ${resetUrl}`,
           url: resetUrl,
           token,
           type: 'password-reset',
@@ -58,9 +58,9 @@ export function createAuth(database: Db) {
         const verifyUrl = `${config.APP_BASE_URL}/verify-email?token=${encodeURIComponent(token)}`;
         await emailSender.send({
           to: user.email,
-          subject: 'Verify your Jedidiah Equipment email address',
-          html: `<p>Use this link to verify your Jedidiah Equipment email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
-          text: `Use this link to verify your Jedidiah Equipment email address: ${verifyUrl}`,
+          subject: 'Verify your Jedidah Ops email address',
+          html: `<p>Use this link to verify your Jedidah Ops email address:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+          text: `Use this link to verify your Jedidah Ops email address: ${verifyUrl}`,
           url: verifyUrl,
           token,
           type: 'email-verification',

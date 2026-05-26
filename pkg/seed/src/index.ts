@@ -1,1 +1,1 @@
-export { createSeedCustomerInputs, createSeedSupplierPlans, seedDatabase } from './seed.js';
+export { createSeedCustomerInputs, createSeedPartPlans, createSeedSupplierPlans, seedDatabase } from './seed.js';

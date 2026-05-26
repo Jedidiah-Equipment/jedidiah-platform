@@ -24,6 +24,8 @@ describe('getRolePermissions', () => {
       'job:create',
       'job:read',
       'job:update',
+      'part:read',
+      'part:update',
       'product:create',
       'product:read',
       'product:update',

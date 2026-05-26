@@ -4,6 +4,7 @@ import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
 import { customersRouter } from '../routes/customers/customers.router.js';
 import { jobsRouter } from '../routes/jobs/jobs.router.js';
+import { partsRouter } from '../routes/parts/parts.router.js';
 import { productsRouter } from '../routes/products/products.router.js';
 import { quotesRouter } from '../routes/quotes/quotes.router.js';
 import { suppliersRouter } from '../routes/suppliers/suppliers.router.js';
@@ -17,6 +18,7 @@ type AppRouterRecord = {
   auth: (typeof authRouter)['_def']['record'];
   customers: (typeof customersRouter)['_def']['record'];
   jobs: (typeof jobsRouter)['_def']['record'];
+  parts: (typeof partsRouter)['_def']['record'];
   products: (typeof productsRouter)['_def']['record'];
   quotes: (typeof quotesRouter)['_def']['record'];
   suppliers: (typeof suppliersRouter)['_def']['record'];
@@ -32,6 +34,7 @@ function createAppRouter(): AppRouter {
     auth: authRouter,
     customers: customersRouter,
     jobs: jobsRouter,
+    parts: partsRouter,
     products: productsRouter,
     quotes: quotesRouter,
     suppliers: suppliersRouter,

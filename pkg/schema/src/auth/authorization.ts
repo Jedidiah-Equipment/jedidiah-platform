@@ -22,6 +22,8 @@ export const APP_PERMISSIONS = [
   'job:update',
   'job-stage:read',
   'job-stage:update',
+  'part:read',
+  'part:update',
   'product:read',
   'product:create',
   'product:update',

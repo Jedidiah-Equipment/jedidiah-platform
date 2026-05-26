@@ -1,4 +1,4 @@
-import { type AppRole, DEPARTMENTS, type Department, UserPassword } from '@pkg/schema';
+import { type AppRole, type Department, UserPassword } from '@pkg/schema';
 
 export type DemoUser = {
   departments: readonly Department[];
@@ -8,14 +8,6 @@ export type DemoUser = {
   password: UserPassword;
   role: AppRole;
 };
-
-const demoJobStageEditors = {
-  assembly: 'Max',
-  fabrication: 'Ben',
-  paint: 'Eli',
-  procurement: 'Dan',
-  supply: 'Sam',
-} as const satisfies Record<Department, string>;
 
 export const DEFAULT_DEMO_USER_PASSWORD: UserPassword = UserPassword.parse('123');
 
@@ -28,40 +20,6 @@ export const demoUsers = [
     password: DEFAULT_DEMO_USER_PASSWORD,
     role: 'admin',
   },
-  {
-    departments: [],
-    id: 'seed-product-editor-user',
-    name: 'Joe',
-    email: createDemoUserEmail('Joe'),
-    password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'product-editor',
-  },
-  {
-    departments: [],
-    id: 'seed-sales-user',
-    name: 'Sue',
-    email: createDemoUserEmail('Sue'),
-    password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'sales',
-  },
-  {
-    departments: [],
-    id: 'seed-job-supervisor-user',
-    name: 'Ray',
-    email: createDemoUserEmail('Ray'),
-    password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'job-supervisor',
-  },
-  ...DEPARTMENTS.map(
-    (department): DemoUser => ({
-      departments: [department],
-      id: `seed-job-department-manager-${department}-user`,
-      name: demoJobStageEditors[department],
-      email: createDemoUserEmail(demoJobStageEditors[department]),
-      password: DEFAULT_DEMO_USER_PASSWORD,
-      role: 'job-department-manager',
-    }),
-  ),
 ] as const satisfies readonly DemoUser[];
 
 function createDemoUserEmail(name: string): string {

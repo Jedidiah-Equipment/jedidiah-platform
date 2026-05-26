@@ -3,7 +3,7 @@
 Monorepo for Jedidah Ops.
 
 The repository is being built in vertical slices. The current app contains email/password auth, the
-authenticated app shell, product/customer/quote/job workflows, audit history, the assistant surface,
+authenticated app shell, product/customer/supplier/quote/job workflows, audit history, the assistant surface,
 shared packages, Drizzle migrations, and root tooling. Current architecture decisions live in
 `docs/adr/`.
 
@@ -15,7 +15,7 @@ pkg/
   web/     React, Vite, TanStack Router, shadcn/ui, Better Auth client
   schema/  global Zod schemas and types shared across packages
   domain/  shared pure authorization, environment, job, quote, and demo policies
-  core/    app service logic for products, customers, quotes, jobs, users, and audit
+  core/    app service logic for products, customers, suppliers, quotes, jobs, users, and audit
   db/      Drizzle schema, migrations, database client, test helpers
   seed/    deterministic local/demo seed orchestration
 ```
@@ -119,6 +119,7 @@ Postgres container. This wipes local database data.
 - `product`
 - `product_options`
 - `customers`
+- `supplier`
 - `quotes`
 - `job`
 - `job_stage`
@@ -145,7 +146,7 @@ schema changes that produced them.
 - `/trpc/*` through tRPC
 - `POST /ai/chat-stream` for the authenticated assistant SSE stream
 - `auth.session`, `auth.me`, and `auth.access` tRPC procedures for the current user and permissions
-- `products`, `customers`, `quotes`, `jobs`, `audit`, and `users` tRPC procedures gated by
+- `products`, `customers`, `suppliers`, `quotes`, `jobs`, `audit`, and `users` tRPC procedures gated by
   permission-specific procedures
 
 App roles are `admin`, `product-editor`, `job-supervisor`, `job-stage-editor`, and `sales`.
@@ -179,6 +180,7 @@ Jobs currently use a stage-level workflow:
 - `/dashboard` authenticated dashboard shell
 - `/products` authenticated product catalog (visible with `product:read`)
 - `/customers` authenticated customer directory (visible with `customer:read`)
+- `/suppliers` authenticated supplier directory (visible with `supplier:read`)
 - `/quotes` authenticated quote workflow (visible with `quote:read`)
 - `/jobs` authenticated job workflow (visible with `job:read`)
 - `/audit` authenticated audit history (visible with `audit:read`)

@@ -2,6 +2,7 @@ import type React from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
+import { cn } from '@/lib/utils.js';
 
 type EditPageLayoutProps = {
   back: React.ReactNode;
@@ -29,3 +30,17 @@ export const EditPageLayout: React.FC<EditPageLayoutProps> = ({ back, badge, chi
     </Card>
   </div>
 );
+
+function EditFormGrid({ className, ...props }: React.ComponentProps<'div'>) {
+  return <div className={cn('grid w-full gap-5 lg:grid-cols-2', className)} {...props} />;
+}
+
+function EditFormFullWidth({ className, ...props }: React.ComponentProps<'div'>) {
+  return <div className={cn('lg:col-span-2', className)} {...props} />;
+}
+
+function EditFormActions({ className, ...props }: React.ComponentProps<'div'>) {
+  return <EditFormFullWidth className={cn('flex justify-end gap-2', className)} {...props} />;
+}
+
+export { EditFormActions, EditFormFullWidth, EditFormGrid };

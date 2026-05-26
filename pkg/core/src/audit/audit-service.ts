@@ -123,6 +123,15 @@ export const quoteAuditDescriptor: AuditEntityDescriptor = {
   },
 };
 
+export const supplierAuditDescriptor: AuditEntityDescriptor = {
+  entityType: 'supplier',
+  noun: 'supplier',
+  primaryLabelField: 'name',
+  fields: {
+    name: 'name',
+  },
+};
+
 function formatQuoteAuditLabel(value: unknown): string {
   if (typeof value === 'number') {
     return formatQuoteCode(value);
@@ -140,6 +149,7 @@ const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
   quote: quoteAuditDescriptor,
+  supplier: supplierAuditDescriptor,
   user: userAuditDescriptor,
 };
 

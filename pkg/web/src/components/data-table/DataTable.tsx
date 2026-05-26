@@ -1,6 +1,8 @@
 import { flexRender, type RowData, type Table as TanStackTable } from '@tanstack/react-table';
 import type React from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area.js';
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
+import { cn } from '@/lib/utils.js';
 import { DataTableHeader } from './components/DataTableHeader.js';
 import { DataTablePagination } from './components/DataTablePagination.js';
 import { DataTableSearch } from './components/DataTableSearch.js';
@@ -67,45 +69,48 @@ export function DataTable<TData>({
       ) : null}
 
       <div className="overflow-hidden rounded-lg border">
-        <Table className={tableClassName}>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead className={header.column.columnDef.meta?.headerClassName} key={header.id}>
-                    {header.isPlaceholder ? null : <DataTableHeader debounceMs={filterDebounceMs} header={header} />}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {isLoading ? <DataTableSkeletonRows columns={visibleColumns.length} rows={loadingRowCount} /> : null}
+        <ScrollArea className="w-full">
+          <table data-slot="table" className={cn('w-full caption-bottom text-sm', tableClassName)}>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead className={header.column.columnDef.meta?.headerClassName} key={header.id}>
+                      {header.isPlaceholder ? null : <DataTableHeader debounceMs={filterDebounceMs} header={header} />}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? <DataTableSkeletonRows columns={visibleColumns.length} rows={loadingRowCount} /> : null}
 
-            {!isLoading && table.getRowModel().rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  className="h-24 text-center text-muted-foreground"
-                  colSpan={Math.max(visibleColumns.length, 1)}
-                >
-                  {emptyMessage}
-                </TableCell>
-              </TableRow>
-            ) : null}
+              {!isLoading && table.getRowModel().rows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    className="h-24 text-center text-muted-foreground"
+                    colSpan={Math.max(visibleColumns.length, 1)}
+                  >
+                    {emptyMessage}
+                  </TableCell>
+                </TableRow>
+              ) : null}
 
-            {!isLoading
-              ? table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell className={getCellClassName(cell)} key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              : null}
-          </TableBody>
-        </Table>
+              {!isLoading
+                ? table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell className={getCellClassName(cell)} key={cell.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                : null}
+            </TableBody>
+          </table>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
 
       <DataTablePagination pageSizeOptions={pageSizeOptions} table={table} total={total} totalLabel={totalLabel} />

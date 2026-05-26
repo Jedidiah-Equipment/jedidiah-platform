@@ -30,6 +30,9 @@ Current Stage state is intentionally minimal (`pending | in-progress | complete`
 **Quote**:
 A sales offer associated with one Customer, optionally specifying a Product, price, discount, and validity window. A Quote may source any number of Jobs; creating a Job never consumes or converts the Quote.
 
+**Supplier**:
+A procurement directory record with a unique name. Suppliers are admin-managed and are not yet linked to Jobs, Products, Quotes, or Pipeline planning.
+
 **Create Job from Quote**:
 A `job-supervisor` or `admin` can create a Job from a Quote while the Quote is `draft`, `sent`, or `accepted`. Rejected Quotes cannot source Jobs. The Job keeps an optional `quote_id` reference.
 
@@ -37,7 +40,7 @@ A `job-supervisor` or `admin` can create a Job from a Quote while the Quote is `
 Creating a Job without a Quote. The form asks for Product and optional Job Due Date.
 
 **Audit Event**:
-Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_stage`, `product`, `product_option`, `quote`, and `user`.
+Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_stage`, `product`, `product_option`, `quote`, `supplier`, and `user`.
 
 ## Relationships
 
@@ -45,12 +48,15 @@ Field-level forensic log for boundary-visible changes. Current entity types incl
 - A **Job** references exactly one **Product**.
 - A **Job** may reference one **Quote**.
 - A **Quote** references one **Customer**, optionally one **Product**, and one **Salesperson** when sent.
+- A **Supplier** currently stands alone as a procurement directory record.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
 
 ## Access
 
 **admin**:
 Department-blind access to all application resources.
+
+Can read, create, and update Suppliers.
 
 **job-supervisor**:
 Can read, create, and update Jobs; can read Products and Quotes.

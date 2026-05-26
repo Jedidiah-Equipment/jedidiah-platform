@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, integer, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 export const products = pgTable(
   'products',
@@ -9,12 +9,14 @@ export const products = pgTable(
     currencyCode: text('currency_code').notNull().default('ZAR'),
     description: text('description'),
     id: uuid('id').defaultRandom().primaryKey(),
+    leadTimeDays: integer('lead_time_days').notNull(),
     modelCode: text('model_code').notNull(),
     name: text('name').notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     check('products_base_price_nonnegative', sql`${table.basePrice} >= 0`),
+    check('products_lead_time_days_nonnegative', sql`${table.leadTimeDays} >= 0`),
     uniqueIndex('products_model_code_unique').on(table.modelCode),
     uniqueIndex('products_name_unique').on(table.name),
   ],

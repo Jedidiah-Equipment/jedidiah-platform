@@ -134,6 +134,7 @@ async function createProduct(db: Db): Promise<Product> {
     .values({
       basePrice: 1_000,
       currencyCode: 'ZAR',
+      leadTimeDays: 14,
       modelCode: 'JOB-TOOL-001',
       name: 'Job Tool Product',
     })

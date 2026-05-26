@@ -230,6 +230,7 @@ describe('POST /ai/chat-stream', () => {
       currencyCode: 'ZAR' as const,
       description: 'Apex forklift',
       id: '00000000-0000-4000-8000-000000000001',
+      leadTimeDays: 14,
       modelCode: 'AF-25',
       name: 'Apex Forklift',
       options: [],

@@ -19,6 +19,7 @@ async function createProduct(
   return caller.products.create({
     basePrice: 1_000,
     description: null,
+    leadTimeDays: 14,
     modelCode: createModelCode(name),
     name,
     ...overrides,
@@ -42,11 +43,44 @@ describe('products.create', () => {
       basePrice: 1_000,
       currencyCode: 'ZAR',
       description: null,
+      leadTimeDays: 14,
       modelCode: 'WHEEL-LOADER',
       name: 'Wheel Loader',
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
+  });
+  test('rejects negative lead time days', async ({ context }) => {
+    const caller = context.createCaller();
+
+    await expect(
+      caller.products.create({
+        basePrice: 1_000,
+        description: null,
+        leadTimeDays: -1,
+        modelCode: 'NEGATIVE-LEAD-TIME',
+        name: 'Negative Lead Time',
+      }),
+    ).rejects.toThrow();
+  });
+});
+
+describe('products.read', () => {
+  test('returns lead time days on get and list', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Wheel Loader Read', { leadTimeDays: 21 });
+
+    await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
+      id: created.id,
+      leadTimeDays: 21,
+    });
+
+    const list = await caller.products.list({
+      page: 1,
+      pageSize: 10,
+    });
+
+    expect(list.items).toContainEqual(expect.objectContaining({ id: created.id, leadTimeDays: 21 }));
   });
 });
 
@@ -60,6 +94,7 @@ describe('products.update', () => {
       basePrice: 2_000,
       currencyCode: 'ZAR',
       description: 'Updated',
+      leadTimeDays: 30,
       modelCode: 'WHEEL-LOADER-UPDATED',
       name: 'Wheel Loader Updated',
     });
@@ -67,10 +102,22 @@ describe('products.update', () => {
     expect(updated).toMatchObject({
       basePrice: 2_000,
       description: 'Updated',
+      leadTimeDays: 30,
       modelCode: 'WHEEL-LOADER-UPDATED',
       name: 'Wheel Loader Updated',
     });
-    await expect(context.db.select().from(auditEvents)).resolves.not.toHaveLength(0);
+    const events = await context.db.select().from(auditEvents);
+    expect(events).not.toHaveLength(0);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        changes: expect.objectContaining({
+          leadTimeDays: {
+            from: 14,
+            to: 30,
+          },
+        }),
+      }),
+    );
   });
 });
 

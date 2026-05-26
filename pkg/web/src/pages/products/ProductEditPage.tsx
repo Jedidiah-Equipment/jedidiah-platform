@@ -55,7 +55,6 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
               id: productQuery.data.id,
               modelCode: value.modelCode,
               name: value.name,
-              options: value.options,
             })
           }
           submitLabel="Save product"

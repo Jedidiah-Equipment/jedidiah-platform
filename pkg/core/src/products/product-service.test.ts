@@ -26,7 +26,6 @@ describe('mapProduct', () => {
       id: '00000000-0000-4000-8000-000000000001',
       modelCode: 'WL-100',
       name: 'Wheel Loader',
-      options: [],
       updatedAt: updatedAt.toISOString(),
     });
   });

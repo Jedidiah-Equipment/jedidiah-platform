@@ -40,7 +40,6 @@ export const ProductCreatePage: React.FC = () => {
             description: value.description,
             modelCode: value.modelCode,
             name: value.name,
-            options: value.options,
           })
         }
         submitLabel="Create product"

@@ -31,41 +31,12 @@ export class ProductNotFoundError extends Error {
   }
 }
 
-export class DuplicateProductOptionCodeError extends Error {
-  readonly code = 'product.option_duplicate_code';
-  readonly metadata: { code: string };
-
-  constructor(code: string) {
-    super(`Product option code already exists: ${code}`);
-    this.name = 'DuplicateProductOptionCodeError';
-    this.metadata = { code };
-  }
-}
-
-export class ProductOptionNotFoundError extends Error {
-  readonly code = 'product.option_not_found';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Product option not found: ${id}`);
-    this.name = 'ProductOptionNotFoundError';
-    this.metadata = { id };
-  }
-}
-
-export type ProductCoreError =
-  | DuplicateProductModelCodeError
-  | DuplicateProductNameError
-  | DuplicateProductOptionCodeError
-  | ProductNotFoundError
-  | ProductOptionNotFoundError;
+export type ProductCoreError = DuplicateProductModelCodeError | DuplicateProductNameError | ProductNotFoundError;
 
 export function isProductCoreError(error: unknown): error is ProductCoreError {
   return (
     error instanceof DuplicateProductModelCodeError ||
     error instanceof DuplicateProductNameError ||
-    error instanceof DuplicateProductOptionCodeError ||
-    error instanceof ProductNotFoundError ||
-    error instanceof ProductOptionNotFoundError
+    error instanceof ProductNotFoundError
   );
 }

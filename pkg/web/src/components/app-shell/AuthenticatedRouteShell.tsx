@@ -38,7 +38,7 @@ export const AuthenticatedRouteShell: React.FC<AuthenticatedRouteShellProps> = (
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink render={<Link to="/dashboard" />}>Jedidiah</BreadcrumbLink>
+                  <BreadcrumbLink render={<Link to="/dashboard" />}>Jedidah Ops</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>

@@ -54,18 +54,6 @@ function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductC
         code: 'CONFLICT',
         message: 'A product with this model code already exists.',
       };
-    case 'product.option_duplicate_code':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: 'A product option with this code already exists for this product.',
-      };
-    case 'product.option_not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Product option not found.',
-      };
     case 'product.not_found':
       return {
         appCode: error.code,

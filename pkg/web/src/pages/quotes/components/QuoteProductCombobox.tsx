@@ -7,11 +7,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTRPC } from '@/lib/trpc.js';
 import { EntityCombobox, mergeSelectedOption } from './EntityCombobox.js';
 
-export type QuoteProductOption = Pick<Product, 'basePrice' | 'currencyCode' | 'id' | 'modelCode' | 'name'>;
+export type QuoteProductChoice = Pick<Product, 'basePrice' | 'currencyCode' | 'id' | 'modelCode' | 'name'>;
 
-const getProductLabel = (product: QuoteProductOption) => product.name;
+const getProductLabel = (product: QuoteProductChoice) => product.name;
 
-const renderProductComboboxItem = (product: QuoteProductOption) => (
+const renderProductComboboxItem = (product: QuoteProductChoice) => (
   <span className="flex min-w-0 flex-col">
     <span className="truncate">{product.name}</span>
     <span className="truncate text-xs text-muted-foreground">{product.modelCode}</span>
@@ -21,7 +21,7 @@ const renderProductComboboxItem = (product: QuoteProductOption) => (
 type QuoteProductComboboxProps = {
   disabled: boolean;
   notifyResolvedSelection?: boolean;
-  onSelected: (product: QuoteProductOption | null) => void;
+  onSelected: (product: QuoteProductChoice | null) => void;
   value: UUID | '';
 };
 

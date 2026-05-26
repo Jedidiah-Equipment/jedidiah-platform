@@ -4,6 +4,8 @@ export * from './customers/customer-service.js';
 export * from './jobs/job-errors.js';
 export * from './jobs/job-read-service.js';
 export * from './jobs/job-service.js';
+export * from './parts/part-errors.js';
+export * from './parts/part-service.js';
 export * from './products/product-errors.js';
 export * from './products/product-option-service.js';
 export * from './products/product-service.js';

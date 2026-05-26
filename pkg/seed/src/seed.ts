@@ -1,9 +1,9 @@
 import { pathToFileURL } from 'node:url';
 import './load-db-env.js';
-import { createCustomer, createSupplier, updateSupplier } from '@pkg/core';
+import { createCustomer, createPart, createSupplier, updatePart, updateSupplier } from '@pkg/core';
 import { account, closeDatabaseConnection, type Db, db, user, userDepartment } from '@pkg/db';
 import { demoUsers } from '@pkg/domain';
-import type { Customer, CustomerCreateInput, Supplier, SupplierCreateInput } from '@pkg/schema';
+import type { Customer, CustomerCreateInput, Part, PartCreateInput, Supplier, SupplierCreateInput } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { inArray, sql } from 'drizzle-orm';
 
@@ -86,6 +86,106 @@ type SeedSupplierPlan = {
   update?: SupplierCreateInput;
 };
 
+type SeedPartTemplate = Omit<PartCreateInput, 'supplierId'> & {
+  supplierIndex: number;
+  update?: Omit<PartCreateInput, 'code' | 'supplierId' | 'supplierCode'>;
+};
+
+type SeedPartPlan = {
+  initial: PartCreateInput;
+  update?: PartCreateInput;
+};
+
+const seedPartTemplates: readonly SeedPartTemplate[] = [
+  {
+    category: 'Hydraulics',
+    code: 'PART-HYD-001',
+    description: 'Main lift cylinder seal kit for quarry loader hydraulic systems.',
+    drawingCode: 'DRW-HYD-001',
+    finish: 'Nitrile rubber',
+    name: 'Lift cylinder seal kit',
+    supplierCode: 'AH-SK-110',
+    supplierIndex: 0,
+  },
+  {
+    category: 'Hydraulics',
+    code: 'PART-HYD-002',
+    description: 'High-pressure braided hose assembly with crimped fittings.',
+    drawingCode: null,
+    finish: 'Black rubber',
+    name: 'Braided hose assembly',
+    supplierCode: 'DHF-HOSE-2400',
+    supplierIndex: 3,
+  },
+  {
+    category: 'Fabrication',
+    code: 'PART-FAB-001',
+    description: 'Laser-cut mild steel side plate for conveyor chute repairs.',
+    drawingCode: 'DRW-FAB-041',
+    finish: 'Raw steel',
+    name: 'Conveyor chute side plate',
+    supplierCode: 'BSW-PL-410',
+    supplierIndex: 1,
+    update: {
+      category: 'Fabrication',
+      description: 'Laser-cut mild steel side plate for reinforced conveyor chute repairs.',
+      drawingCode: 'DRW-FAB-041-REV-B',
+      finish: 'Shot blasted',
+      name: 'Reinforced conveyor chute side plate',
+    },
+  },
+  {
+    category: 'Fabrication',
+    code: 'PART-FAB-002',
+    description: 'Welded guard bracket used on crusher access platforms.',
+    drawingCode: 'DRW-FAB-052',
+    finish: 'Hot-dip galvanized',
+    name: 'Crusher guard bracket',
+    supplierCode: 'FLF-BKT-052',
+    supplierIndex: 5,
+  },
+  {
+    category: 'Bearings',
+    code: 'PART-BRG-001',
+    description: 'Spherical roller bearing for vibrating screen shaft assemblies.',
+    drawingCode: null,
+    finish: 'Oiled steel',
+    name: 'Spherical roller bearing',
+    supplierCode: 'CBS-BRG-22320',
+    supplierIndex: 2,
+  },
+  {
+    category: 'Diesel',
+    code: 'PART-DSL-001',
+    description: 'Primary diesel fuel filter cartridge for plant service kits.',
+    drawingCode: null,
+    finish: 'Painted steel',
+    name: 'Primary fuel filter cartridge',
+    supplierCode: 'ERD-FIL-901',
+    supplierIndex: 4,
+  },
+  {
+    category: 'Electrical',
+    code: 'PART-ELC-001',
+    description: 'IP66 emergency stop station for conveyor safety circuits.',
+    drawingCode: 'DRW-ELC-014',
+    finish: 'Red polycarbonate',
+    name: 'Emergency stop station',
+    supplierCode: 'KEW-ESTOP-66',
+    supplierIndex: 6,
+  },
+  {
+    category: 'Paint',
+    code: 'PART-PNT-001',
+    description: 'Two-pack epoxy primer for repaired fabricated steel parts.',
+    drawingCode: null,
+    finish: 'Grey primer',
+    name: 'Epoxy primer kit',
+    supplierCode: 'NPS-EPOXY-GRY',
+    supplierIndex: 7,
+  },
+];
+
 export function createSeedCustomerInputs(): CustomerCreateInput[] {
   return seedCustomers.map((customer) => ({
     address: null,
@@ -108,6 +208,33 @@ export function createSeedSupplierPlans(): SeedSupplierPlan[] {
     if (index % 4 === 1) {
       plan.update = {
         name: `${name} Pty Ltd`,
+      };
+    }
+
+    return plan;
+  });
+}
+
+export function createSeedPartPlans(suppliers: readonly Supplier[]): SeedPartPlan[] {
+  return seedPartTemplates.map((template) => {
+    const supplier = suppliers[template.supplierIndex];
+
+    if (!supplier) {
+      throw new Error(`Missing seed supplier at index ${template.supplierIndex}`);
+    }
+
+    const { supplierIndex: _supplierIndex, update, ...initial } = template;
+    const plan: SeedPartPlan = {
+      initial: {
+        ...initial,
+        supplierId: supplier.id,
+      },
+    };
+
+    if (update) {
+      plan.update = {
+        ...plan.initial,
+        ...update,
       };
     }
 
@@ -208,8 +335,18 @@ export async function seedDatabase(database?: Db): Promise<void> {
     plans: seedSupplierPlans,
   });
 
+  const seedPartPlans = createSeedPartPlans(seededSuppliers);
+
+  console.info(`[db:seed] Creating ${seedPartPlans.length} part scenario(s) through core services`);
+
+  const seededParts = await seedPartsWithCore({
+    actorUserId: 'seed-admin-user',
+    db: activeDb,
+    plans: seedPartPlans,
+  });
+
   console.info(
-    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededCustomers.length} customer scenario(s), and ${seededSuppliers.length} supplier scenario(s)`,
+    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededCustomers.length} customer scenario(s), ${seededSuppliers.length} supplier scenario(s), and ${seededParts.length} part scenario(s)`,
   );
 }
 
@@ -270,6 +407,41 @@ async function seedSuppliersWithCore({
   }
 
   return seededSuppliers;
+}
+
+async function seedPartsWithCore({
+  actorUserId,
+  db,
+  plans,
+}: {
+  actorUserId: string;
+  db: Db;
+  plans: readonly SeedPartPlan[];
+}): Promise<Part[]> {
+  const seededParts: Part[] = [];
+
+  for (const plan of plans) {
+    let part = await createPart({
+      actorUserId,
+      db,
+      input: plan.initial,
+    });
+
+    if (plan.update) {
+      part = await updatePart({
+        actorUserId,
+        db,
+        input: {
+          id: part.id,
+          ...plan.update,
+        },
+      });
+    }
+
+    seededParts.push(part);
+  }
+
+  return seededParts;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

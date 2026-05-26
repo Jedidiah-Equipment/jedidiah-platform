@@ -39,6 +39,22 @@ export const productAuditDescriptor: AuditEntityDescriptor = {
   },
 };
 
+export const partAuditDescriptor: AuditEntityDescriptor = {
+  entityType: 'part',
+  noun: 'part',
+  primaryLabelField: 'name',
+  fields: {
+    category: 'category',
+    code: 'code',
+    description: 'description',
+    drawingCode: 'drawing code',
+    finish: 'finish',
+    name: 'name',
+    supplierCode: 'supplier code',
+    supplierId: 'supplier',
+  },
+};
+
 export const customerAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'customer',
   noun: 'customer',
@@ -146,6 +162,7 @@ const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   customer: customerAuditDescriptor,
   job: jobAuditDescriptor,
   job_stage: jobStageAuditDescriptor,
+  part: partAuditDescriptor,
   product: productAuditDescriptor,
   product_option: productOptionAuditDescriptor,
   quote: quoteAuditDescriptor,

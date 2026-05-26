@@ -1,4 +1,4 @@
-import { Price, type Product, ProductModelCode, ProductName } from '@pkg/schema';
+import { Price, type Product, ProductLeadTimeDays, ProductModelCode, ProductName } from '@pkg/schema';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { z } from 'zod';
@@ -10,6 +10,7 @@ type ProductFormValues = z.infer<typeof ProductFormValues>;
 const ProductFormValues = z.object({
   basePrice: Price,
   description: z.string(),
+  leadTimeDays: ProductLeadTimeDays,
   modelCode: ProductModelCode,
   name: ProductName,
 });
@@ -25,6 +26,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
   const defaultValues: ProductFormValues = {
     basePrice: initialProduct?.basePrice ?? NaN,
     description: initialProduct?.description ?? '',
+    leadTimeDays: initialProduct?.leadTimeDays ?? NaN,
     modelCode: initialProduct?.modelCode ?? '',
     name: initialProduct?.name ?? '',
   };
@@ -55,6 +57,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
         <form.AppField name="basePrice">
           {(field) => (
             <field.CurrencyField autoComplete="off" currencyCode="ZAR" label="Base price" placeholder="1234.56" />
+          )}
+        </form.AppField>
+        <form.AppField name="leadTimeDays">
+          {(field) => (
+            <field.NumberField autoComplete="off" inputMode="numeric" label="Lead time (days)" placeholder="14" />
           )}
         </form.AppField>
         <EditFormFullWidth>

@@ -9,6 +9,7 @@ describe('ProductCreateInput', () => {
       ProductCreateInput.parse({
         basePrice: '1234.56',
         description: '  Earthmoving equipment  ',
+        leadTimeDays: '14',
         modelCode: '  WL-100  ',
         name: '  Wheel Loader  ',
       }),
@@ -16,6 +17,7 @@ describe('ProductCreateInput', () => {
       basePrice: 1234.56,
       currencyCode: 'ZAR',
       description: 'Earthmoving equipment',
+      leadTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
     });
@@ -26,6 +28,7 @@ describe('ProductCreateInput', () => {
       ProductCreateInput.parse({
         basePrice: 0,
         description: '  ',
+        leadTimeDays: 0,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
       }).description,
@@ -36,7 +39,28 @@ describe('ProductCreateInput', () => {
     expect(() =>
       ProductCreateInput.parse({
         basePrice: -1,
+        leadTimeDays: 1,
         modelCode: '  ',
+        name: 'Wheel Loader',
+      }),
+    ).toThrow();
+  });
+
+  it('requires nonnegative whole lead time days', () => {
+    expect(() =>
+      ProductCreateInput.parse({
+        basePrice: 1,
+        leadTimeDays: -1,
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+      }),
+    ).toThrow();
+
+    expect(() =>
+      ProductCreateInput.parse({
+        basePrice: 1,
+        leadTimeDays: 1.5,
+        modelCode: 'WL-100',
         name: 'Wheel Loader',
       }),
     ).toThrow();
@@ -46,6 +70,7 @@ describe('ProductCreateInput', () => {
     expect(() =>
       ProductCreateInput.parse({
         basePrice: NaN,
+        leadTimeDays: 1,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
       }),

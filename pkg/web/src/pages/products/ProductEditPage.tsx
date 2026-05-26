@@ -53,6 +53,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
               currencyCode: 'ZAR',
               description: value.description,
               id: productQuery.data.id,
+              leadTimeDays: value.leadTimeDays,
               modelCode: value.modelCode,
               name: value.name,
             })
@@ -67,6 +68,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
 function ProductFormSkeleton() {
   return (
     <div className="flex flex-col gap-4">
+      <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />

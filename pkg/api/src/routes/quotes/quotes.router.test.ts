@@ -534,6 +534,7 @@ async function createProduct(db: Db, overrides: Partial<typeof products.$inferIn
     .values({
       basePrice: 1000,
       currencyCode: 'ZAR',
+      leadTimeDays: 14,
       modelCode: 'QUOTE-001',
       name: 'Quote Test Product',
       ...overrides,

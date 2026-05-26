@@ -169,6 +169,13 @@
       "when": 1779720795406,
       "tag": "0023_absurd_dexter_bennett",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779792438053,
+      "tag": "0024_moaning_crusher_hogan",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import { customersRouter } from '../routes/customers/customers.router.js';
 import { jobsRouter } from '../routes/jobs/jobs.router.js';
 import { productsRouter } from '../routes/products/products.router.js';
 import { quotesRouter } from '../routes/quotes/quotes.router.js';
+import { suppliersRouter } from '../routes/suppliers/suppliers.router.js';
 import { usersRouter } from '../routes/users/users.router.js';
 import { createCallerFactory, router } from './init.js';
 
@@ -18,6 +19,7 @@ type AppRouterRecord = {
   jobs: (typeof jobsRouter)['_def']['record'];
   products: (typeof productsRouter)['_def']['record'];
   quotes: (typeof quotesRouter)['_def']['record'];
+  suppliers: (typeof suppliersRouter)['_def']['record'];
   users: (typeof usersRouter)['_def']['record'];
 };
 
@@ -32,6 +34,7 @@ function createAppRouter(): AppRouter {
     jobs: jobsRouter,
     products: productsRouter,
     quotes: quotesRouter,
+    suppliers: suppliersRouter,
     users: usersRouter,
   }) as AppRouter;
 }

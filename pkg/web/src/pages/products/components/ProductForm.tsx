@@ -11,8 +11,8 @@ import { Loader2Icon, PlusIcon, Trash2Icon } from 'lucide-react';
 import type React from 'react';
 import { z } from 'zod';
 import { useAppForm } from '@/components/form/index.js';
+import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { FieldGroup } from '@/components/ui/field.js';
 
 type ProductFormValues = z.infer<typeof ProductFormValues>;
 const ProductFormValues = z.object({
@@ -70,7 +70,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
         void form.handleSubmit();
       }}
     >
-      <FieldGroup>
+      <EditFormGrid>
         <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
         <form.AppField name="modelCode">
           {(field) => <field.TextField autoComplete="off" label="Model code" />}
@@ -80,61 +80,65 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
             <field.CurrencyField autoComplete="off" currencyCode="ZAR" label="Base price" placeholder="1234.56" />
           )}
         </form.AppField>
-        <form.AppField name="description">
-          {(field) => <field.TextareaField label="Description" rows={4} />}
-        </form.AppField>
-        <form.Field name="options" mode="array">
-          {(field) => (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-medium">Options</h2>
-                <Button
-                  onClick={() => field.pushValue({ name: '', code: '', price: NaN })}
-                  type="button"
-                  variant="outline"
-                >
-                  <PlusIcon data-icon="inline-start" />
-                  Add option
-                </Button>
-              </div>
-              {field.state.value.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {field.state.value.map((option, index) => (
-                    <ProductOptionRow
-                      index={index}
-                      key={option.id ?? index}
-                      onRemove={() => field.removeValue(index)}
-                      renderCodeField={() => (
-                        <form.AppField name={`options[${index}].code`}>
-                          {(optionField) => <optionField.TextField autoComplete="off" label="Code" />}
-                        </form.AppField>
-                      )}
-                      renderNameField={() => (
-                        <form.AppField name={`options[${index}].name`}>
-                          {(optionField) => <optionField.TextField autoComplete="off" label="Name" />}
-                        </form.AppField>
-                      )}
-                      renderPriceField={() => (
-                        <form.AppField name={`options[${index}].price`}>
-                          {(optionField) => (
-                            <optionField.CurrencyField
-                              autoComplete="off"
-                              currencyCode="ZAR"
-                              label="Price"
-                              placeholder="1234.56"
-                            />
-                          )}
-                        </form.AppField>
-                      )}
-                    />
-                  ))}
+        <EditFormFullWidth>
+          <form.AppField name="description">
+            {(field) => <field.TextareaField label="Description" rows={4} />}
+          </form.AppField>
+        </EditFormFullWidth>
+        <EditFormFullWidth>
+          <form.Field name="options" mode="array">
+            {(field) => (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-medium">Options</h2>
+                  <Button
+                    onClick={() => field.pushValue({ name: '', code: '', price: NaN })}
+                    type="button"
+                    variant="outline"
+                  >
+                    <PlusIcon data-icon="inline-start" />
+                    Add option
+                  </Button>
                 </div>
-              ) : null}
-            </div>
-          )}
-        </form.Field>
-      </FieldGroup>
-      <div className="mt-4 flex justify-end gap-2">
+                {field.state.value.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {field.state.value.map((option, index) => (
+                      <ProductOptionRow
+                        index={index}
+                        key={option.id ?? index}
+                        onRemove={() => field.removeValue(index)}
+                        renderCodeField={() => (
+                          <form.AppField name={`options[${index}].code`}>
+                            {(optionField) => <optionField.TextField autoComplete="off" label="Code" />}
+                          </form.AppField>
+                        )}
+                        renderNameField={() => (
+                          <form.AppField name={`options[${index}].name`}>
+                            {(optionField) => <optionField.TextField autoComplete="off" label="Name" />}
+                          </form.AppField>
+                        )}
+                        renderPriceField={() => (
+                          <form.AppField name={`options[${index}].price`}>
+                            {(optionField) => (
+                              <optionField.CurrencyField
+                                autoComplete="off"
+                                currencyCode="ZAR"
+                                label="Price"
+                                placeholder="1234.56"
+                              />
+                            )}
+                          </form.AppField>
+                        )}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </form.Field>
+        </EditFormFullWidth>
+      </EditFormGrid>
+      <EditFormActions className="mt-4">
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button disabled={isSubmitting || isPending} type="submit">
@@ -143,7 +147,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
             </Button>
           )}
         </form.Subscribe>
-      </div>
+      </EditFormActions>
     </form>
   );
 };

@@ -1,17 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { Link, linkOptions } from '@tanstack/react-router';
-import {
-  BotIcon,
-  BoxesIcon,
-  BriefcaseBusinessIcon,
-  Building2Icon,
-  ClipboardListIcon,
-  FileTextIcon,
-  GaugeIcon,
-  type LucideIcon,
-  UsersIcon,
-} from 'lucide-react';
+import { Building2Icon, ClipboardListIcon, GaugeIcon, HandshakeIcon, type LucideIcon } from 'lucide-react';
 import type React from 'react';
 
 import {
@@ -36,26 +26,26 @@ const mainNavItems = [
     link: linkOptions({ to: '/dashboard' }),
     icon: GaugeIcon,
   },
-  {
-    title: 'Quotes',
-    permission: 'quote:read',
-    link: linkOptions({ to: '/quotes' }),
-    icon: FileTextIcon,
-  },
-  {
-    title: 'Jobs',
-    permission: 'job:read',
-    link: linkOptions({ to: '/jobs' }),
-    icon: BriefcaseBusinessIcon,
-  },
-  {
-    title: 'Products',
-    permission: 'product:read',
-    link: linkOptions({
-      to: '/products',
-    }),
-    icon: BoxesIcon,
-  },
+  // {
+  //   title: 'Quotes',
+  //   permission: 'quote:read',
+  //   link: linkOptions({ to: '/quotes' }),
+  //   icon: FileTextIcon,
+  // },
+  // {
+  //   title: 'Jobs',
+  //   permission: 'job:read',
+  //   link: linkOptions({ to: '/jobs' }),
+  //   icon: BriefcaseBusinessIcon,
+  // },
+  // {
+  //   title: 'Products',
+  //   permission: 'product:read',
+  //   link: linkOptions({
+  //     to: '/products',
+  //   }),
+  //   icon: BoxesIcon,
+  // },
   {
     title: 'Customers',
     permission: 'customer:read',
@@ -63,16 +53,22 @@ const mainNavItems = [
     icon: Building2Icon,
   },
   {
-    title: 'Assistant',
-    link: linkOptions({ to: '/assistant' }),
-    icon: BotIcon,
+    title: 'Suppliers',
+    permission: 'supplier:read',
+    link: linkOptions({ to: '/suppliers' }),
+    icon: HandshakeIcon,
   },
-  {
-    title: 'Users',
-    permission: 'user:list',
-    link: linkOptions({ to: '/users' }),
-    icon: UsersIcon,
-  },
+  // {
+  //   title: 'Assistant',
+  //   link: linkOptions({ to: '/assistant' }),
+  //   icon: BotIcon,
+  // },
+  // {
+  //   title: 'Users',
+  //   permission: 'user:list',
+  //   link: linkOptions({ to: '/users' }),
+  //   icon: UsersIcon,
+  // },
   {
     title: 'Audit',
     permission: 'audit:read',

@@ -1,56 +1,13 @@
 import { pathToFileURL } from 'node:url';
 import './load-db-env.js';
-import {
-  acceptQuote,
-  createCustomer,
-  createJob,
-  createProduct,
-  createQuote,
-  rejectQuote,
-  sendQuote,
-  updateProduct,
-} from '@pkg/core';
-import { account, closeDatabaseConnection, type Db, db, jobs, user, userDepartment } from '@pkg/db';
-import { createUserAccessSummary, demoUsers } from '@pkg/domain';
-import type {
-  CustomerCreateInput,
-  JobCreateInput,
-  JobStageName,
-  JobStatus,
-  Product,
-  ProductCreateInput,
-  ProductOptionUpsertInput,
-  QuoteStatus,
-  UUID,
-} from '@pkg/schema';
-import { DateIso, DateOnlyIso } from '@pkg/schema';
+import { createCustomer, createSupplier, updateSupplier } from '@pkg/core';
+import { account, closeDatabaseConnection, type Db, db, user, userDepartment } from '@pkg/db';
+import { demoUsers } from '@pkg/domain';
+import type { Customer, CustomerCreateInput, Supplier, SupplierCreateInput } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
-import { format, parseISO } from 'date-fns';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 
-const seedProductCount = 10;
-const seedProductMinAgeDays = 7;
-const seedProductAgeDayRange = 22;
-const seedStandaloneJobCount = 2;
-const seedJobScheduleStartOffsetDays = -120;
-const seedJobScheduleCadenceDays = 12;
-
-const equipmentFamilies = [
-  'Wheel Loader',
-  'Excavator',
-  'Skid Steer',
-  'Backhoe Loader',
-  'Telehandler',
-  'Motor Grader',
-  'Dozer',
-  'Dump Truck',
-  'Compactor',
-  'Forklift',
-] as const;
-
-const equipmentSeries = ['Atlas', 'Summit', 'Vertex', 'Forge', 'Apex'] as const;
-
-const seedProductionCustomers = [
+const seedCustomers = [
   {
     companyName: 'Kopano Quarry Operations',
     contactPerson: 'Naledi Mokoena',
@@ -111,234 +68,50 @@ const seedProductionCustomers = [
     contactPerson: 'Lara Meyer',
     email: 'lara.meyer@helderberglogistics.test',
   },
-] as const;
+] as const satisfies readonly Pick<CustomerCreateInput, 'companyName' | 'contactPerson' | 'email'>[];
 
-const seedJobScenarios = [
-  {
-    stageProgress: 'complete',
-    status: 'complete',
-  },
-  {
-    stageProgress: 'complete',
-    status: 'complete',
-  },
-  {
-    stageProgress: 'complete',
-    status: 'complete',
-  },
-  {
-    stageProgress: 'complete',
-    status: 'complete',
-  },
-  {
-    stageProgress: 'complete',
-    status: 'complete',
-  },
-  {
-    stageProgress: 'complete',
-    status: 'complete',
-  },
-  {
-    stageProgress: 'complete',
-    status: 'complete',
-  },
-  {
-    stageProgress: 'complete',
-    status: 'complete',
-  },
-  {
-    stageProgress: 'complete',
-    status: 'complete',
-  },
-  {
-    stageProgress: { stage: 'fabrication' },
-    status: 'active',
-  },
-  {
-    stageProgress: null,
-  },
-  {
-    stageProgress: null,
-  },
-  {
-    stageProgress: null,
-  },
-  {
-    stageProgress: null,
-  },
-] as const satisfies readonly SeedJobScenario[];
+const seedSuppliers = [
+  'Atlas Hydraulics',
+  'Berg Steel Works',
+  'Cape Bearing Supply',
+  'Drakensberg Hose & Fittings',
+  'East Rand Diesel Components',
+  'ForgeLine Fabrication',
+  'Kopano Electrical Wholesalers',
+  'Ndlovu Paint Systems',
+] as const satisfies readonly SupplierCreateInput['name'][];
 
-const seedQuoteScenarios = [
-  {
-    customer: {
-      companyName: 'Apex Quarry Services',
-      contactPerson: 'Gareth Morgan',
-      email: 'gareth.morgan@apexquarry.test',
-    },
-    discount: 7_500,
-    notes: 'Initial budgetary quote for the north pit loader replacement.',
-    status: 'draft',
-    validUntil: '2026-06-15',
-  },
-  {
-    customer: {
-      companyName: 'Blue Ridge Plant Hire',
-      contactPerson: 'Lindiwe Mthembu',
-      email: 'lindiwe.mthembu@blueridgeplant.test',
-    },
-    discount: 12_000,
-    notes: 'Sent after procurement confirmed availability.',
-    status: 'sent',
-    validUntil: '2026-06-22',
-  },
-  {
-    customer: {
-      companyName: 'Copperline Civils',
-      contactPerson: 'Hendrik le Roux',
-      email: 'hendrik.leroux@copperlinecivils.test',
-    },
-    discount: 0,
-    notes: 'Accepted by operations lead; waiting for production scheduling.',
-    status: 'accepted',
-    validUntil: '2026-07-01',
-  },
-  {
-    customer: {
-      companyName: 'Delta Aggregate Works',
-      contactPerson: null,
-      email: null,
-    },
-    discount: 18_500,
-    notes: 'Accepted and used to create a production job.',
-    status: 'accepted-with-job',
-    validUntil: '2026-07-08',
-  },
-  {
-    customer: {
-      companyName: 'Eagle Bulk Earthworks',
-      contactPerson: 'Farah Daniels',
-      email: 'farah.daniels@eaglebulk.test',
-    },
-    discount: 10_000,
-    notes: 'Rejected after customer chose a rental option.',
-    status: 'rejected',
-    validUntil: '2026-06-28',
-  },
-] as const satisfies readonly SeedQuoteScenario[];
-
-type SeedProduct = ProductCreateInput & {
-  name: string;
-  modelCode: string;
-  basePrice: number;
-  currencyCode: string;
-  description: string;
+type SeedSupplierPlan = {
+  initial: SupplierCreateInput;
+  update?: SupplierCreateInput;
 };
 
-type SeedProductOption = ProductCreateInput['options'][number] & {
-  name: string;
-  code: string;
-  price: number;
-};
+export function createSeedCustomerInputs(): CustomerCreateInput[] {
+  return seedCustomers.map((customer) => ({
+    address: null,
+    companyName: customer.companyName,
+    contactPerson: customer.contactPerson,
+    email: customer.email,
+    notes: null,
+    phone: null,
+  }));
+}
 
-type SeedJobScenario = {
-  status?: JobStatus;
-  stageProgress: { stage: JobStageName } | 'complete' | null;
-};
-
-type SeedProductPlan = {
-  initial: SeedProduct;
-  updates: SeedProductUpdate[];
-};
-
-type SeedProductUpdate = Pick<SeedProduct, 'basePrice' | 'description'>;
-
-type SeededProduct = Pick<Product, 'id' | 'options'>;
-
-type SeedCustomer = Pick<CustomerCreateInput, 'companyName' | 'contactPerson' | 'email'>;
-
-type SeedQuoteScenario = {
-  customer: SeedCustomer;
-  discount: number;
-  notes: string;
-  status: QuoteStatus | 'accepted-with-job';
-  validUntil: string;
-};
-
-export function createSeedProducts(count = seedProductCount): SeedProduct[] {
-  return Array.from({ length: count }, (_, index) => {
-    const family = equipmentFamilies[index % equipmentFamilies.length] ?? equipmentFamilies[0];
-    const series = equipmentSeries[index % equipmentSeries.length] ?? equipmentSeries[0];
-    const sequence = index + 1;
-
-    return {
-      basePrice: 125_000 + sequence * 18_750,
-      currencyCode: 'ZAR',
-      description: `${series} ${family.toLowerCase()} configured for regional equipment inventory.`,
-      modelCode: `JED-${family
-        .split(' ')
-        .map((part) => part[0])
-        .join('')}-${String(sequence).padStart(3, '0')}`,
-      name: `${series} ${family} ${String(sequence).padStart(3, '0')}`,
-      options: createSeedProductOptions(index),
+export function createSeedSupplierPlans(): SeedSupplierPlan[] {
+  return seedSuppliers.map((name, index) => {
+    const plan: SeedSupplierPlan = {
+      initial: {
+        name,
+      },
     };
-  });
-}
 
-function createSeedProductOptions(productIndex: number): SeedProductOption[] {
-  const sequence = productIndex + 1;
-
-  return [
-    {
-      code: 'CAB',
-      name: 'Enclosed Cab',
-      price: 11_500 + sequence * 250,
-    },
-    {
-      code: 'HYD',
-      name: 'Auxiliary Hydraulics',
-      price: 18_000 + sequence * 400,
-    },
-    {
-      code: 'GPS',
-      name: 'Fleet GPS Kit',
-      price: 7_500 + sequence * 175,
-    },
-  ];
-}
-
-function createSeedProductPlans(productsToSeed: readonly SeedProduct[]): SeedProductPlan[] {
-  return productsToSeed.map((seedProduct, productIndex) => {
-    let currentProduct = seedProduct;
-    let updateOrdinal = 0;
-    const updates: SeedProductUpdate[] = [];
-
-    const ageDays = getSeedProductAgeDays(productIndex);
-
-    for (let dayIndex = 1; dayIndex <= ageDays; dayIndex += 1) {
-      const updatesForDay = getSeedProductUpdateCount(productIndex, dayIndex);
-
-      for (let updateIndex = 0; updateIndex < updatesForDay; updateIndex += 1) {
-        updateOrdinal += 1;
-        const product = applySeedProductUpdate({
-          dayIndex,
-          product: currentProduct,
-          productIndex,
-          updateIndex,
-          updateOrdinal,
-        });
-
-        currentProduct = product;
-        updates.push({
-          basePrice: product.basePrice,
-          description: product.description,
-        });
-      }
+    if (index % 4 === 1) {
+      plan.update = {
+        name: `${name} Pty Ltd`,
+      };
     }
 
-    return {
-      initial: seedProduct,
-      updates,
-    };
+    return plan;
   });
 }
 
@@ -346,7 +119,6 @@ export async function seedDatabase(database?: Db): Promise<void> {
   // This seeder is intentionally not idempotent; use pnpm db:reset before running it.
   const activeDb = database ?? db;
   const now = new Date();
-  const seedDate = fromSeedIsoDate(toSeedIsoDate(now));
   const seedUserEmails = demoUsers.map((seedUser) => seedUser.email).join(', ');
   const seedUserIds = demoUsers.map((seedUser) => seedUser.id);
   const seedUserDepartments = demoUsers.flatMap((seedUser) =>
@@ -355,13 +127,8 @@ export async function seedDatabase(database?: Db): Promise<void> {
       userId: seedUser.id,
     })),
   );
-  const productEditorUserIds = demoUsers
-    .filter((seedUser) => seedUser.role === 'product-editor')
-    .map((seedUser) => seedUser.id);
-
-  if (productEditorUserIds.length === 0) {
-    throw new Error('At least one product-editor seed user is required to seed product audits');
-  }
+  const seedCustomerInputs = createSeedCustomerInputs();
+  const seedSupplierPlans = createSeedSupplierPlans();
 
   console.info(`[db:seed] Starting seed at ${now.toISOString()}`);
   console.info(`[db:seed] Upserting ${demoUsers.length} seed user(s): ${seedUserEmails}`);
@@ -424,466 +191,85 @@ export async function seedDatabase(database?: Db): Promise<void> {
       },
     });
 
-  const seedProductPlans = createSeedProductPlans(createSeedProducts());
-
   console.info(`[db:seed] Upserted ${demoUsers.length} credential account(s)`);
-  console.info(`[db:seed] Rebuilding ${seedProductPlans.length} product scenario(s) through core services`);
+  console.info(`[db:seed] Creating ${seedCustomerInputs.length} customer scenario(s) through core services`);
 
-  const seededProducts = await seedProductsWithCore({
-    actorUserIds: productEditorUserIds,
+  const seededCustomers = await seedCustomersWithCore({
+    actorUserId: 'seed-admin-user',
     db: activeDb,
-    plans: seedProductPlans,
+    inputs: seedCustomerInputs,
   });
 
-  await seedJobsWithCore({
-    db: activeDb,
-    products: seededProducts,
-    seedDate,
-  });
+  console.info(`[db:seed] Creating ${seedSupplierPlans.length} supplier scenario(s) through core services`);
 
-  await seedQuotesWithCore({
+  const seededSuppliers = await seedSuppliersWithCore({
+    actorUserId: 'seed-admin-user',
     db: activeDb,
-    products: seededProducts,
-    seedDate,
+    plans: seedSupplierPlans,
   });
 
   console.info(
-    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededProducts.length} product scenario(s), ${seedJobScenarios.length} job scenario(s) (${seedJobScenarios.length - seedStandaloneJobCount} quote-backed), and ${seedQuoteScenarios.length} standalone quote scenario(s)`,
+    `[db:seed] Seed complete: ${demoUsers.length} user(s), ${seededCustomers.length} customer scenario(s), and ${seededSuppliers.length} supplier scenario(s)`,
   );
 }
 
-async function seedProductsWithCore({
-  actorUserIds,
+async function seedCustomersWithCore({
+  actorUserId,
+  db,
+  inputs,
+}: {
+  actorUserId: string;
+  db: Db;
+  inputs: readonly CustomerCreateInput[];
+}): Promise<Customer[]> {
+  const seededCustomers: Customer[] = [];
+
+  for (const input of inputs) {
+    seededCustomers.push(
+      await createCustomer({
+        actorUserId,
+        db,
+        input,
+      }),
+    );
+  }
+
+  return seededCustomers;
+}
+
+async function seedSuppliersWithCore({
+  actorUserId,
   db,
   plans,
 }: {
-  actorUserIds: readonly string[];
+  actorUserId: string;
   db: Db;
-  plans: readonly SeedProductPlan[];
-}): Promise<Product[]> {
-  const seededProducts: Product[] = [];
+  plans: readonly SeedSupplierPlan[];
+}): Promise<Supplier[]> {
+  const seededSuppliers: Supplier[] = [];
 
-  for (const [planIndex, plan] of plans.entries()) {
-    const actorUserId = actorUserIds[planIndex % actorUserIds.length];
-
-    if (!actorUserId) {
-      throw new Error('At least one product-editor seed user is required to seed products');
-    }
-
-    let product = await createProduct({
+  for (const plan of plans) {
+    let supplier = await createSupplier({
       actorUserId,
       db,
       input: plan.initial,
     });
 
-    for (const update of plan.updates) {
-      product = await updateProduct({
+    if (plan.update) {
+      supplier = await updateSupplier({
         actorUserId,
         db,
         input: {
-          id: product.id,
-          basePrice: update.basePrice,
-          currencyCode: product.currencyCode,
-          description: update.description,
-          modelCode: product.modelCode,
-          name: product.name,
-          options: mapExistingProductOptionsForUpdate(product),
+          id: supplier.id,
+          ...plan.update,
         },
       });
     }
 
-    seededProducts.push(product);
+    seededSuppliers.push(supplier);
   }
 
-  return seededProducts;
-}
-
-function mapExistingProductOptionsForUpdate(product: SeededProduct): ProductOptionUpsertInput[] {
-  return product.options.map((option) => ({
-    code: option.code,
-    id: option.id,
-    name: option.name,
-    price: option.price,
-  }));
-}
-
-async function seedJobsWithCore({
-  db,
-  products,
-  seedDate,
-}: {
-  db: Db;
-  products: readonly Product[];
-  seedDate: Date;
-}): Promise<void> {
-  if (products.length === 0) {
-    return;
-  }
-
-  const actorUserId = 'seed-job-supervisor-user';
-  const salesUserId = 'seed-sales-user';
-  const access = createUserAccessSummary({
-    role: 'job-supervisor',
-    userId: actorUserId,
-  });
-
-  for (const [scenarioIndex, scenario] of seedJobScenarios.entries()) {
-    const product = products[scenarioIndex % products.length];
-
-    if (!product) {
-      throw new Error('Seed job product lookup failed');
-    }
-
-    const created =
-      scenarioIndex < seedStandaloneJobCount
-        ? await createJob({
-            access,
-            actorUserId,
-            db,
-            input: createSeedJobInput({ product, scenario, scenarioIndex, seedDate }),
-          })
-        : await createQuoteBackedSeedJob({
-            access,
-            actorUserId,
-            db,
-            product,
-            salesUserId,
-            scenario,
-            scenarioIndex,
-            seedDate,
-          });
-
-    await applySeedJobScenario({
-      db,
-      id: created.id,
-      scenario,
-    });
-
-    await applySeedJobTimeline({
-      actorUserId,
-      db,
-      id: created.id,
-      scenario,
-      scenarioIndex,
-      seedDate,
-    });
-  }
-}
-
-async function createQuoteBackedSeedJob({
-  access,
-  actorUserId,
-  db,
-  product,
-  salesUserId,
-  scenario,
-  scenarioIndex,
-  seedDate,
-}: {
-  access: ReturnType<typeof createUserAccessSummary>;
-  actorUserId: string;
-  db: Db;
-  product: Product;
-  salesUserId: string;
-  scenario: SeedJobScenario;
-  scenarioIndex: number;
-  seedDate: Date;
-}) {
-  const customer = await createCustomer({
-    actorUserId: salesUserId,
-    db,
-    input: createSeedCustomerInput(getSeedProductionCustomer(scenarioIndex)),
-  });
-  const quote = await createQuote({
-    actorUserId: salesUserId,
-    db,
-    input: {
-      customer: {
-        type: 'existing',
-        customerId: customer.id,
-      },
-      discount: getSeedJobQuoteDiscount(scenarioIndex),
-      notes: 'Accepted seed quote used to create a production job.',
-      productId: product.id,
-      salesPersonId: salesUserId,
-      validUntil: DateIso.parse(getSeedJobQuoteValidUntil(scenarioIndex)),
-    },
-  });
-  const sent = await sendQuote({ actorUserId: salesUserId, db, input: { id: quote.id } });
-  const accepted = await acceptQuote({ actorUserId: salesUserId, db, input: { id: sent.id } });
-
-  return createJob({
-    access,
-    actorUserId,
-    db,
-    input: createSeedJobInput({
-      product,
-      quoteId: accepted.id,
-      scenario,
-      scenarioIndex,
-      seedDate,
-    }),
-  });
-}
-
-function createSeedJobInput({
-  product,
-  quoteId = null,
-  scenario,
-  scenarioIndex = 0,
-  seedDate,
-}: {
-  product: Product;
-  quoteId?: UUID | null;
-  scenario?: SeedJobScenario;
-  scenarioIndex?: number;
-  seedDate?: Date;
-}): JobCreateInput {
-  const plannedStart =
-    scenario && seedDate
-      ? getSeedJobPlannedStartDate({ scenarioIndex, seedDate })
-      : getFallbackSeedJobPlannedStartDate(scenarioIndex);
-  const dueDate = addSeedDays(fromSeedIsoDate(plannedStart), 14);
-
-  return {
-    dueDate: DateOnlyIso.parse(toSeedIsoDate(dueDate)),
-    productId: product.id,
-    quoteId,
-  };
-}
-
-async function applySeedJobTimeline({
-  actorUserId,
-  db,
-  id,
-  scenario,
-  scenarioIndex,
-  seedDate,
-}: {
-  actorUserId: string;
-  db: Db;
-  id: UUID;
-  scenario: SeedJobScenario;
-  scenarioIndex: number;
-  seedDate: Date;
-}): Promise<void> {
-  void actorUserId;
-  void db;
-  void id;
-  void scenario;
-  void scenarioIndex;
-  void seedDate;
-}
-
-async function seedQuotesWithCore({
-  db,
-  products,
-  seedDate,
-}: {
-  db: Db;
-  products: readonly Product[];
-  seedDate: Date;
-}): Promise<void> {
-  if (products.length === 0) {
-    return;
-  }
-
-  const actorUserId = 'seed-sales-user';
-  const supervisorUserId = 'seed-job-supervisor-user';
-  let acceptedWithJobCount = 0;
-  const supervisorAccess = createUserAccessSummary({
-    role: 'job-supervisor',
-    userId: supervisorUserId,
-  });
-
-  for (const [scenarioIndex, scenario] of seedQuoteScenarios.entries()) {
-    const product = products[(scenarioIndex + 2) % products.length];
-
-    if (!product) {
-      throw new Error('Seed quote product lookup failed');
-    }
-
-    const customer = await createCustomer({
-      actorUserId,
-      db,
-      input: createSeedCustomerInput(scenario.customer),
-    });
-    const quote = await createQuote({
-      actorUserId,
-      db,
-      input: {
-        customer: {
-          type: 'existing',
-          customerId: customer.id,
-        },
-        discount: scenario.discount,
-        notes: scenario.notes,
-        productId: product.id,
-        salesPersonId: actorUserId,
-        validUntil: DateIso.parse(scenario.validUntil),
-      },
-    });
-
-    if (scenario.status === 'draft') {
-      continue;
-    }
-
-    const sent = await sendQuote({ actorUserId, db, input: { id: quote.id } });
-
-    if (scenario.status === 'sent') {
-      continue;
-    }
-
-    if (scenario.status === 'rejected') {
-      await rejectQuote({ actorUserId, db, input: { id: sent.id } });
-      continue;
-    }
-
-    const accepted = await acceptQuote({ actorUserId, db, input: { id: sent.id } });
-
-    if (scenario.status === 'accepted-with-job') {
-      const acceptedJobScenarioIndex = seedJobScenarios.length + acceptedWithJobCount;
-      acceptedWithJobCount += 1;
-
-      await createJob({
-        access: supervisorAccess,
-        actorUserId: supervisorUserId,
-        db,
-        input: createSeedJobInput({
-          product,
-          quoteId: accepted.id,
-          scenario: {
-            stageProgress: null,
-          },
-          scenarioIndex: acceptedJobScenarioIndex,
-          seedDate,
-        }),
-      });
-    }
-  }
-}
-
-async function applySeedJobScenario({
-  db,
-  id,
-  scenario,
-}: {
-  db: Db;
-  id: UUID;
-  scenario: SeedJobScenario;
-}): Promise<void> {
-  if (scenario.status) {
-    await db.update(jobs).set({ status: scenario.status, updatedAt: new Date() }).where(eq(jobs.id, id));
-  }
-}
-
-function getSeedProductAgeDays(productIndex: number): number {
-  return seedProductMinAgeDays + ((productIndex * 5) % seedProductAgeDayRange);
-}
-
-function getSeedJobPlannedStartDate({ scenarioIndex, seedDate }: { scenarioIndex: number; seedDate: Date }): string {
-  return toSeedIsoDate(
-    addSeedDays(seedDate, seedJobScheduleStartOffsetDays + scenarioIndex * seedJobScheduleCadenceDays),
-  );
-}
-
-function getFallbackSeedJobPlannedStartDate(scenarioIndex: number): string {
-  return getSeedIsoDate({
-    dayOffset: 23 + scenarioIndex * seedJobScheduleCadenceDays,
-    month: 1,
-    year: 2026,
-  });
-}
-
-function getSeedJobQuoteValidUntil(scenarioIndex: number): string {
-  return getSeedIsoDate({
-    dayOffset: 14 + scenarioIndex * 2,
-    month: 5,
-    year: 2026,
-  });
-}
-
-function getSeedJobQuoteDiscount(scenarioIndex: number): number {
-  return scenarioIndex % 3 === 0 ? 8_500 : 3_000 + scenarioIndex * 750;
-}
-
-function getSeedProductionCustomer(scenarioIndex: number): SeedCustomer {
-  const customer = seedProductionCustomers[(scenarioIndex - seedStandaloneJobCount) % seedProductionCustomers.length];
-
-  if (!customer) {
-    throw new Error('Seed production customer lookup failed');
-  }
-
-  return customer;
-}
-
-function createSeedCustomerInput(customer: SeedCustomer): CustomerCreateInput {
-  return {
-    address: null,
-    companyName: customer.companyName,
-    contactPerson: customer.contactPerson,
-    email: customer.email,
-    notes: null,
-    phone: null,
-  };
-}
-
-function getSeedIsoDate({ dayOffset, month, year }: { dayOffset: number; month: number; year: number }): string {
-  const date = new Date(Date.UTC(year, month, dayOffset));
-
-  return format(date, 'yyyy-MM-dd');
-}
-
-function fromSeedIsoDate(value: string): Date {
-  return parseISO(`${value}T00:00:00.000Z`);
-}
-
-function toSeedIsoDate(value: Date): string {
-  return format(value, 'yyyy-MM-dd');
-}
-
-function addSeedDays(value: Date, dayOffset: number): Date {
-  const next = new Date(value);
-
-  next.setUTCDate(next.getUTCDate() + dayOffset);
-
-  return next;
-}
-
-function getSeedProductUpdateCount(productIndex: number, dayIndex: number): number {
-  return ((productIndex + dayIndex) % 3) + 1;
-}
-
-function applySeedProductUpdate({
-  dayIndex,
-  product,
-  productIndex,
-  updateIndex,
-  updateOrdinal,
-}: {
-  dayIndex: number;
-  product: SeedProduct;
-  productIndex: number;
-  updateIndex: number;
-  updateOrdinal: number;
-}): SeedProduct {
-  const nextBasePrice = product.basePrice + 175 + productIndex * 45 + dayIndex * 12 + updateIndex * 25;
-  const nextProduct: SeedProduct = {
-    ...product,
-    basePrice: nextBasePrice,
-  };
-
-  if ((productIndex + updateOrdinal) % 2 === 0) {
-    const nextDescription = `${getBaseSeedDescription(product)} Price review ${updateOrdinal} captured after supplier review.`;
-
-    nextProduct.description = nextDescription;
-  }
-
-  return nextProduct;
-}
-
-function getBaseSeedDescription(product: SeedProduct): string {
-  return product.description.split(' Price review ')[0] ?? product.description;
+  return seededSuppliers;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

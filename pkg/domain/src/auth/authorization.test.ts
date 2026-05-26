@@ -30,6 +30,8 @@ describe('getRolePermissions', () => {
       'quote:create',
       'quote:read',
       'quote:update',
+      'supplier:read',
+      'supplier:update',
       'user:assign-departments',
       'user:create',
       'user:list',

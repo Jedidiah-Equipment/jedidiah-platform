@@ -1,6 +1,6 @@
-# Jedidiah Platform
+# Jedidah Ops
 
-Domain language for the Jedidiah production-floor platform. The core unit is a **Job**: one physical product instance moving through a five-stage manufacturing pipeline.
+Domain language for Jedidah Ops. The core unit is a **Job**: one physical product instance moving through a five-stage manufacturing pipeline.
 
 ## Language
 
@@ -25,7 +25,7 @@ A single optional date on the Job (`due_date`). It is a manually set deadline ma
 A manually stored field on the Job: `pending | active | paused | complete | cancelled`. It is used for display, filtering, sorting, and supervisor-controlled workflow communication. It does not mutate Stage rows.
 
 **Stage Work State**:
-Current Stage state is intentionally minimal (`pending | in-progress | complete`) and defaults to `pending` until the next workflow model replaces it. Do not infer station-level progress; the station model has been removed.
+Current Stage state is intentionally minimal (`pending | in-progress | complete`) and defaults to `pending` until the next workflow model replaces it. Do not infer progress from lower-level production resources unless a new workflow contract introduces them.
 
 **Quote**:
 A sales offer associated with one Customer, optionally specifying a Product, price, discount, and validity window. A Quote may source any number of Jobs; creating a Job never consumes or converts the Quote.
@@ -63,7 +63,3 @@ Can read, create, and update Products.
 
 **sales**:
 Can read, create, and update Quotes.
-
-## Current Removals
-
-The Station model, Job Stage Station bookings, Product Department configuration, and Job Event history have been removed. Do not plan new work against `station`, `job_stage_station`, `product_department_config`, or `job_event`; those names are available for a future redesign only after a new contract is written.

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { BackButton } from '@/components/button/BackButton.js';
 import { DatePicker } from '@/components/common/DatePicker.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { ReadOnlyField } from '@/components/form/ReadOnlyField.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
@@ -155,13 +156,6 @@ const FieldBlock: React.FC<{ children: React.ReactNode; label: string }> = ({ ch
   <div className="grid gap-1.5 text-sm font-medium">
     <span>{label}</span>
     {children}
-  </div>
-);
-
-const ReadOnlyField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="grid gap-1.5 text-sm font-medium">
-    <span>{label}</span>
-    <div className="min-h-9 rounded-md border bg-muted/40 px-3 py-2 font-normal text-foreground">{value}</div>
   </div>
 );
 

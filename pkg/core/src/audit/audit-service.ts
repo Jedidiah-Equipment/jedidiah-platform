@@ -34,6 +34,7 @@ export const productAuditDescriptor: AuditEntityDescriptor = {
     basePrice: 'base price',
     currencyCode: 'currency',
     description: 'description',
+    leadTimeDays: 'lead time days',
     modelCode: 'model code',
     name: 'name',
   },

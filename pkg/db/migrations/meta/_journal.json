@@ -15,6 +15,13 @@
       "when": 1779803455676,
       "tag": "0001_perfect_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779804840512,
+      "tag": "0002_heavy_pretty_boy",
+      "breakpoints": true
     }
   ]
 }

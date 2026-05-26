@@ -38,6 +38,7 @@ export const ProductCreatePage: React.FC = () => {
             basePrice: value.basePrice,
             currencyCode: 'ZAR',
             description: value.description,
+            leadTimeDays: value.leadTimeDays,
             modelCode: value.modelCode,
             name: value.name,
           })

@@ -25,6 +25,12 @@ export const ProductDescriptionInput = z
 export type ProductBasePrice = z.infer<typeof ProductBasePrice>;
 export const ProductBasePrice = z.coerce.number().pipe(Price);
 
+export type ProductLeadTimeDays = z.infer<typeof ProductLeadTimeDays>;
+export const ProductLeadTimeDays = z.number().int('Lead time must be a whole number').min(0, 'Must be zero or greater');
+
+export type ProductLeadTimeDaysInput = z.infer<typeof ProductLeadTimeDaysInput>;
+export const ProductLeadTimeDaysInput = z.coerce.number().pipe(ProductLeadTimeDays);
+
 export type ProductCurrencyCode = z.infer<typeof ProductCurrencyCode>;
 export const ProductCurrencyCode = z.literal('ZAR').default('ZAR');
 
@@ -35,6 +41,7 @@ export const Product = z.object({
   description: ProductDescription,
   modelCode: ProductModelCode,
   basePrice: ProductBasePrice,
+  leadTimeDays: ProductLeadTimeDays,
   currencyCode: ProductCurrencyCode,
   createdAt: DateIso,
   updatedAt: DateIso,
@@ -59,6 +66,7 @@ export const ProductCreateInput = z
     description: ProductDescriptionInput,
     modelCode: ProductModelCode,
     basePrice: ProductBasePrice,
+    leadTimeDays: ProductLeadTimeDaysInput,
     currencyCode: ProductCurrencyCode,
   })
   .strict();
@@ -70,6 +78,7 @@ export const ProductUpdateInput = z
     basePrice: ProductBasePrice,
     currencyCode: ProductCurrencyCode,
     description: ProductDescriptionInput,
+    leadTimeDays: ProductLeadTimeDaysInput,
     modelCode: ProductModelCode,
     name: ProductName,
   })

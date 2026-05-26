@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { Product, ProductCreateInput } from './product.js';
+import { Product, ProductAssembliesInput, ProductCreateInput, ProductUpdateInput } from './product.js';
 
 describe('ProductCreateInput', () => {
   it('normalizes product catalog fields', () => {
@@ -14,6 +14,7 @@ describe('ProductCreateInput', () => {
         name: '  Wheel Loader  ',
       }),
     ).toEqual({
+      assemblies: [],
       basePrice: 1234.56,
       currencyCode: 'ZAR',
       description: 'Earthmoving equipment',
@@ -75,6 +76,54 @@ describe('ProductCreateInput', () => {
         name: 'Wheel Loader',
       }),
     ).toThrow();
+  });
+});
+
+describe('ProductAssembliesInput', () => {
+  it('rejects duplicate override targets', () => {
+    const standardAssemblyId = '00000000-0000-4000-8000-000000000101';
+
+    expect(() =>
+      ProductAssembliesInput.parse([
+        {
+          id: standardAssemblyId,
+          kind: 'standard',
+          name: 'Standard bucket',
+          parts: [],
+        },
+        {
+          kind: 'optional',
+          name: 'Rock bucket',
+          overrideStandardAssemblyIds: [standardAssemblyId, standardAssemblyId],
+          parts: [],
+          price: 250,
+        },
+      ]),
+    ).toThrow('Override target can only be selected once per assembly');
+  });
+});
+
+describe('ProductUpdateInput', () => {
+  it('preserves omitted assemblies as undefined', () => {
+    expect(
+      ProductUpdateInput.parse({
+        id: '00000000-0000-4000-8000-000000000102',
+        basePrice: 1234.56,
+        currencyCode: 'ZAR',
+        description: '',
+        leadTimeDays: '14',
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+      }),
+    ).toEqual({
+      id: '00000000-0000-4000-8000-000000000102',
+      basePrice: 1234.56,
+      currencyCode: 'ZAR',
+      description: null,
+      leadTimeDays: 14,
+      modelCode: 'WL-100',
+      name: 'Wheel Loader',
+    });
   });
 });
 

@@ -16,3 +16,5 @@ Follow `../../.sandcastle/CODING_STANDARDS.md`.
 
 - Better Auth HTTP endpoints under `/api/auth/*` own auth mutations.
 - Keep email mocked unless asked otherwise.
+- List inputs use `pageSize: 0` as the repo's unpaged/read-all convention. Prefer that over
+  exceeding the shared page-size cap when a UI legitimately needs all rows for a picker.

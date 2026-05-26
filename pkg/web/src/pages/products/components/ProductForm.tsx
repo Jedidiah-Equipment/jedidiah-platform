@@ -1,19 +1,32 @@
-import { Price, type Product, ProductLeadTimeDays, ProductModelCode, ProductName } from '@pkg/schema';
+import {
+  type AssemblyInput,
+  Price,
+  type Product,
+  ProductAssembliesInput,
+  ProductLeadTimeDays,
+  ProductModelCode,
+  ProductName,
+} from '@pkg/schema';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { z } from 'zod';
 import { useAppForm } from '@/components/form/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 
 type ProductFormValues = z.infer<typeof ProductFormValues>;
-const ProductFormValues = z.object({
+const ProductFormFields = z.object({
   basePrice: Price,
   description: z.string(),
   leadTimeDays: ProductLeadTimeDays,
   modelCode: ProductModelCode,
   name: ProductName,
 });
+const ProductFormValues = ProductFormFields.extend({
+  assemblies: ProductAssembliesInput,
+});
+type ProductAssemblyInputValue = z.infer<typeof AssemblyInput>;
 
 type ProductFormProps = {
   initialProduct?: Product;
@@ -24,6 +37,7 @@ type ProductFormProps = {
 
 export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPending, submitLabel, onSubmit }) => {
   const defaultValues: ProductFormValues = {
+    assemblies: getInitialAssemblies(initialProduct),
     basePrice: initialProduct?.basePrice ?? NaN,
     description: initialProduct?.description ?? '',
     leadTimeDays: initialProduct?.leadTimeDays ?? NaN,
@@ -34,10 +48,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
   const form = useAppForm({
     defaultValues,
     validators: {
-      onSubmit: ProductFormValues,
+      onSubmit: validateProductForm,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit(value);
+      await onSubmit(ProductFormValues.parse(value));
     },
   });
 
@@ -69,6 +83,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
             {(field) => <field.TextareaField label="Description" rows={4} />}
           </form.AppField>
         </EditFormFullWidth>
+        <EditFormFullWidth>
+          <form.Field name="assemblies" mode="array">
+            {(assembliesField) => <ProductAssembliesEditor assembliesField={assembliesField} FormField={form.Field} />}
+          </form.Field>
+        </EditFormFullWidth>
       </EditFormGrid>
       <EditFormActions className="mt-4">
         <form.Subscribe selector={(state) => state.isSubmitting}>
@@ -83,3 +102,45 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
     </form>
   );
 };
+
+function getInitialAssemblies(initialProduct: Product | undefined): ProductAssemblyInputValue[] {
+  return (initialProduct?.assemblies ?? []).map((assembly) =>
+    assembly.kind === 'standard'
+      ? {
+          id: assembly.id,
+          kind: assembly.kind,
+          name: assembly.name,
+          parts: assembly.parts,
+        }
+      : {
+          id: assembly.id,
+          kind: assembly.kind,
+          name: assembly.name,
+          overrideStandardAssemblyIds: assembly.overrideStandardAssemblyIds,
+          parts: assembly.parts,
+          price: assembly.price,
+        },
+  );
+}
+
+function validateProductForm({ value }: { value: ProductFormValues }) {
+  const result = ProductFormValues.safeParse(value);
+
+  if (result.success) {
+    return undefined;
+  }
+
+  return {
+    fields: Object.fromEntries(result.error.issues.map((issue) => [toFormFieldName(issue.path), issue.message])),
+  };
+}
+
+function toFormFieldName(path: PropertyKey[]): string {
+  return path.reduce<string>((fieldName, pathSegment) => {
+    if (typeof pathSegment === 'number') {
+      return `${fieldName}[${pathSegment}]`;
+    }
+
+    return fieldName ? `${fieldName}.${String(pathSegment)}` : String(pathSegment);
+  }, '');
+}

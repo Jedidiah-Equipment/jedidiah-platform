@@ -20,6 +20,7 @@ describe('mapProduct', () => {
         updatedAt,
       }),
     ).toEqual({
+      assemblies: [],
       basePrice: 1234.56,
       createdAt: createdAt.toISOString(),
       currencyCode: 'ZAR',

@@ -1,4 +1,11 @@
-import { assemblyOverrides, assemblyParts, type DatabaseTransaction, type Db, parts, productAssemblies } from '@pkg/db';
+import {
+  assemblyOverrides,
+  assemblyParts,
+  type DatabaseTransaction,
+  type Db,
+  type parts,
+  productAssemblies,
+} from '@pkg/db';
 import type { Assembly, AssemblyInput, UUID } from '@pkg/schema';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 
@@ -13,11 +20,12 @@ import {
 
 type AssemblyRow = typeof productAssemblies.$inferSelect;
 type AssemblyDb = DatabaseTransaction | Db;
-type AssemblyPartRow = typeof assemblyParts.$inferSelect & {
-  partCategory: string;
-  partCode: string;
+type AssemblyListRow = AssemblyRow & {
+  assemblyParts: (typeof assemblyParts.$inferSelect & {
+    part: Pick<typeof parts.$inferSelect, 'category' | 'code'>;
+  })[];
+  optionalOverrides: (typeof assemblyOverrides.$inferSelect)[];
 };
-type OverrideRow = typeof assemblyOverrides.$inferSelect;
 
 export async function syncAssemblies({
   tx,
@@ -93,43 +101,36 @@ export async function syncAssemblies({
 }
 
 export async function listAssemblies({ tx, productId }: { tx: AssemblyDb; productId: UUID }): Promise<Assembly[]> {
-  const rows = await tx
-    .select()
-    .from(productAssemblies)
-    .where(eq(productAssemblies.productId, productId))
-    .orderBy(sql`case when ${productAssemblies.kind} = 'standard' then 0 else 1 end`, asc(productAssemblies.name));
+  const rows = await tx.query.productAssemblies.findMany({
+    where: eq(productAssemblies.productId, productId),
+    orderBy: [sql`case when ${productAssemblies.kind} = 'standard' then 0 else 1 end`, asc(productAssemblies.name)],
+    with: {
+      assemblyParts: {
+        with: {
+          part: {
+            columns: {
+              category: true,
+              code: true,
+            },
+          },
+        },
+      },
+      optionalOverrides: true,
+    },
+  });
 
-  return hydrateAssemblies({ tx, rows });
+  return rows.map(mapAssembly);
 }
 
-async function hydrateAssemblies({ tx, rows }: { tx: AssemblyDb; rows: AssemblyRow[] }): Promise<Assembly[]> {
-  if (rows.length === 0) {
-    return [];
-  }
-
-  const assemblyIds = rows.map((row) => row.id);
-  const [partRows, overrideRows] = await Promise.all([
-    tx
-      .select({
-        assemblyId: assemblyParts.assemblyId,
-        partCategory: parts.category,
-        partCode: parts.code,
-        partId: assemblyParts.partId,
-        quantity: assemblyParts.quantity,
-      })
-      .from(assemblyParts)
-      .innerJoin(parts, eq(parts.id, assemblyParts.partId))
-      .where(inArray(assemblyParts.assemblyId, assemblyIds))
-      .orderBy(asc(parts.category), asc(parts.code)),
-    tx.select().from(assemblyOverrides).where(inArray(assemblyOverrides.optionalAssemblyId, assemblyIds)),
-  ]);
-
-  return rows.map((row) => mapAssembly(row, partRows, overrideRows));
-}
-
-function mapAssembly(row: AssemblyRow, partRows: AssemblyPartRow[], overrideRows: OverrideRow[]): Assembly {
-  const assemblyPartsForRow = partRows
-    .filter((part) => part.assemblyId === row.id)
+function mapAssembly(row: AssemblyListRow): Assembly {
+  const assemblyPartsForRow = row.assemblyParts
+    .map((part) => ({
+      category: part.part.category,
+      code: part.part.code,
+      partId: part.partId,
+      quantity: part.quantity,
+    }))
+    .toSorted((left, right) => left.category.localeCompare(right.category) || left.code.localeCompare(right.code))
     .map((part) => ({
       partId: part.partId,
       quantity: part.quantity,
@@ -149,9 +150,7 @@ function mapAssembly(row: AssemblyRow, partRows: AssemblyPartRow[], overrideRows
     id: row.id,
     kind: 'optional',
     name: row.name,
-    overrideStandardAssemblyIds: overrideRows
-      .filter((override) => override.optionalAssemblyId === row.id)
-      .map((override) => override.standardAssemblyId),
+    overrideStandardAssemblyIds: row.optionalOverrides.map((override) => override.standardAssemblyId),
     parts: assemblyPartsForRow,
     price: row.price ?? 0,
     productId: row.productId,

@@ -77,6 +77,12 @@ type QuoteLinkedJobRow = {
   jobId: string;
   quoteId: string | null;
 };
+type QuoteDetailRow = QuoteRow & {
+  customer: Pick<typeof customers.$inferSelect, 'companyName'>;
+  jobs: Pick<typeof jobs.$inferSelect, 'code' | 'id'>[];
+  product: Pick<typeof products.$inferSelect, 'basePrice' | 'currencyCode' | 'modelCode' | 'name'> | null;
+  salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
+};
 
 export function mapQuote(row: QuoteRow): Quote {
   return Quote.parse({
@@ -203,30 +209,43 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
 }
 
 export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<QuoteDetail> {
-  const [row] = await db
-    .select({
-      quote: quotes,
-      customerCompanyName: customers.companyName,
-      productBasePrice: products.basePrice,
-      productCurrencyCode: products.currencyCode,
-      productModelCode: products.modelCode,
-      productName: products.name,
-      salesPersonEmail: user.email,
-      salesPersonName: user.name,
-    })
-    .from(quotes)
-    .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .leftJoin(products, eq(quotes.productId, products.id))
-    .leftJoin(user, eq(quotes.salesPersonId, user.id))
-    .where(eq(quotes.id, id));
+  const row = await db.query.quotes.findFirst({
+    where: eq(quotes.id, id),
+    with: {
+      customer: {
+        columns: {
+          companyName: true,
+        },
+      },
+      jobs: {
+        columns: {
+          code: true,
+          id: true,
+        },
+        orderBy: [asc(jobs.code), asc(jobs.id)],
+      },
+      product: {
+        columns: {
+          basePrice: true,
+          currencyCode: true,
+          modelCode: true,
+          name: true,
+        },
+      },
+      salesPerson: {
+        columns: {
+          email: true,
+          name: true,
+        },
+      },
+    },
+  });
 
   if (!row) {
     throw new QuoteNotFoundError(id);
   }
 
-  const linkedJobsByQuoteId = await getLinkedJobsByQuoteId({ db, quoteIds: [row.quote.id] });
-
-  return mapQuoteSummary(row, linkedJobsByQuoteId.get(row.quote.id) ?? []);
+  return mapQuoteDetail(row);
 }
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {
@@ -405,6 +424,25 @@ function mapQuoteSummary(row: QuoteListRow, linkedJobs: readonly QuoteLinkedJobR
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,
     total: quotedBasePrice === null ? null : computeQuoteTotal({ discount: row.quote.discount, quotedBasePrice }),
+  };
+}
+
+function mapQuoteDetail(row: QuoteDetailRow): QuoteDetail {
+  const quotedBasePrice = row.quotedBasePrice ?? row.product?.basePrice ?? null;
+
+  return {
+    ...mapQuote(row),
+    customerCompanyName: row.customer.companyName,
+    linkedJobs: row.jobs.map((job) => ({
+      jobCode: JobCode.parse(job.code),
+      jobId: job.id,
+    })),
+    productCurrencyCode: row.product?.currencyCode ? ProductCurrencyCode.parse(row.product.currencyCode) : null,
+    productModelCode: row.product?.modelCode ?? null,
+    productName: row.product?.name ?? null,
+    salesPersonEmail: row.salesPerson?.email ?? null,
+    salesPersonName: row.salesPerson?.name ?? null,
+    total: quotedBasePrice === null ? null : computeQuoteTotal({ discount: row.discount, quotedBasePrice }),
   };
 }
 

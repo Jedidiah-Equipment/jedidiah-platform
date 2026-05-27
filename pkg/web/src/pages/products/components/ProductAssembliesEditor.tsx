@@ -4,7 +4,8 @@ import { ChevronDownIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import React, { useMemo } from 'react';
 
 import { getFieldErrors } from '@/components/form/field-errors.js';
-import type { ArrayFieldApi, FieldApi, FormFieldComponent } from '@/components/form/types.js';
+import { useTypedAppFormContext } from '@/components/form/index.js';
+import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Combobox,
@@ -26,13 +27,13 @@ import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { useTRPC } from '@/lib/trpc.js';
+import type { ProductFormValues } from './ProductForm.js';
 
 const ALL_CATEGORIES = '__all__';
 const assemblyPartKeys = new WeakMap<AssemblyInput['parts'][number], string>();
 
 type ProductAssembliesEditorProps = {
   assembliesField: ArrayFieldApi<AssemblyInput>;
-  FormField: FormFieldComponent;
 };
 
 type IndexedAssembly = {
@@ -40,8 +41,24 @@ type IndexedAssembly = {
   index: number;
 };
 
-export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = ({ assembliesField, FormField }) => {
+function useProductForm() {
+  const defaultValues: ProductFormValues = {
+    assemblies: [],
+    basePrice: NaN,
+    description: '',
+    leadTimeDays: NaN,
+    modelCode: '',
+    name: '',
+  };
+
+  return useTypedAppFormContext({
+    defaultValues,
+  });
+}
+
+export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = ({ assembliesField }) => {
   const trpc = useTRPC();
+
   const partsQuery = useQuery(
     trpc.parts.list.queryOptions({
       columnFilters: {},
@@ -64,7 +81,6 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
       <AssemblyGroup
         assemblies={standardAssemblies}
         categories={categories}
-        FormField={FormField}
         kind="standard"
         onAdd={() => assembliesField.pushValue(createAssembly('standard'))}
         onRemove={assembliesField.removeValue}
@@ -75,7 +91,6 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
       <AssemblyGroup
         assemblies={optionalAssemblies}
         categories={categories}
-        FormField={FormField}
         kind="optional"
         onAdd={() => assembliesField.pushValue(createAssembly('optional'))}
         onRemove={assembliesField.removeValue}
@@ -90,7 +105,6 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
 type AssemblyGroupProps = {
   assemblies: IndexedAssembly[];
   categories: string[];
-  FormField: FormFieldComponent;
   kind: AssemblyInput['kind'];
   parts: Part[];
   standardAssemblies: IndexedAssembly[];
@@ -102,7 +116,6 @@ type AssemblyGroupProps = {
 const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
   assemblies,
   categories,
-  FormField,
   kind,
   parts,
   standardAssemblies,
@@ -123,7 +136,6 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
         <AssemblyRow
           assembly={assembly}
           categories={categories}
-          FormField={FormField}
           index={index}
           key={assembly.id}
           onRemove={() => onRemove(index)}
@@ -143,7 +155,6 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
 type AssemblyRowProps = {
   assembly: AssemblyInput;
   categories: string[];
-  FormField: FormFieldComponent;
   index: number;
   parts: Part[];
   standardAssemblies: IndexedAssembly[];
@@ -153,12 +164,12 @@ type AssemblyRowProps = {
 const AssemblyRow: React.FC<AssemblyRowProps> = ({
   assembly,
   categories,
-  FormField,
   index,
   parts,
   standardAssemblies,
   onRemove,
 }) => {
+  const FormField = useProductForm().Field;
   const partOptions = useMemo(() => parts.toSorted(compareParts), [parts]);
 
   return (
@@ -212,83 +223,80 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
             }}
           </FormField>
         ) : null}
-        {assembly.kind === 'optional' ? (
-          <OverridePicker FormField={FormField} index={index} standardAssemblies={standardAssemblies} />
-        ) : null}
+        {assembly.kind === 'optional' ? <OverridePicker index={index} standardAssemblies={standardAssemblies} /> : null}
         <div className="flex items-end justify-end">
           <Button aria-label="Remove assembly" size="icon" type="button" variant="ghost" onClick={onRemove}>
             <Trash2Icon />
           </Button>
         </div>
       </div>
-      <AssemblyPartsTable categories={categories} FormField={FormField} index={index} partOptions={partOptions} />
+      <AssemblyPartsTable categories={categories} index={index} partOptions={partOptions} />
     </div>
   );
 };
 
 type OverridePickerProps = {
-  FormField: FormFieldComponent;
   index: number;
   standardAssemblies: IndexedAssembly[];
 };
 
-const OverridePicker: React.FC<OverridePickerProps> = ({ FormField, index, standardAssemblies }) => (
-  <FormField name={`assemblies[${index}].overrideStandardAssemblyIds`}>
-    {(field: FieldApi<string[]>) => {
-      const errors = getFieldErrors(field.state.meta.errors);
-      const isInvalid = errors.length > 0;
+const OverridePicker: React.FC<OverridePickerProps> = ({ index, standardAssemblies }) => {
+  const FormField = useProductForm().Field;
 
-      return (
-        <Field data-invalid={isInvalid}>
-          <FieldLabel>Replaces Assembly</FieldLabel>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  aria-invalid={isInvalid}
-                  className="w-full justify-between"
-                  disabled={standardAssemblies.length === 0}
-                  type="button"
-                  variant="outline"
-                />
-              }
-            >
-              <span className="truncate">
-                <OverrideSummary
-                  FormField={FormField}
-                  selectedIds={field.state.value}
-                  standardAssemblies={standardAssemblies}
-                />
-              </span>
-              <ChevronDownIcon data-icon="inline-end" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-64">
-              <DropdownMenuGroup>
-                {standardAssemblies.map((standardAssembly) => (
-                  <OverrideCheckboxItem
-                    FormField={FormField}
-                    key={standardAssembly.assembly.id ?? standardAssembly.index}
-                    overrideField={field}
-                    standardAssembly={standardAssembly}
+  return (
+    <FormField name={`assemblies[${index}].overrideStandardAssemblyIds`}>
+      {(field: FieldApi<string[]>) => {
+        const errors = getFieldErrors(field.state.meta.errors);
+        const isInvalid = errors.length > 0;
+
+        return (
+          <Field data-invalid={isInvalid}>
+            <FieldLabel>Replaces Assembly</FieldLabel>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    aria-invalid={isInvalid}
+                    className="w-full justify-between"
+                    disabled={standardAssemblies.length === 0}
+                    type="button"
+                    variant="outline"
                   />
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <FieldError errors={errors} />
-        </Field>
-      );
-    }}
-  </FormField>
-);
+                }
+              >
+                <span className="truncate">
+                  <OverrideSummary selectedIds={field.state.value} standardAssemblies={standardAssemblies} />
+                </span>
+                <ChevronDownIcon data-icon="inline-end" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-64">
+                <DropdownMenuGroup>
+                  {standardAssemblies.map((standardAssembly) => (
+                    <OverrideCheckboxItem
+                      key={standardAssembly.assembly.id ?? standardAssembly.index}
+                      overrideField={field}
+                      standardAssembly={standardAssembly}
+                    />
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <FieldError errors={errors} />
+          </Field>
+        );
+      }}
+    </FormField>
+  );
+};
 
 type OverrideSummaryProps = {
-  FormField: FormFieldComponent;
   selectedIds: string[];
   standardAssemblies: IndexedAssembly[];
 };
 
-const OverrideSummary: React.FC<OverrideSummaryProps> = ({ FormField, selectedIds, standardAssemblies }) => {
+const OverrideSummary: React.FC<OverrideSummaryProps> = ({ selectedIds, standardAssemblies }) => {
+  const FormField = useProductForm().Field;
+
   if (standardAssemblies.length === 0) {
     return 'No Assemblies';
   }
@@ -315,12 +323,12 @@ const OverrideSummary: React.FC<OverrideSummaryProps> = ({ FormField, selectedId
 };
 
 type OverrideCheckboxItemProps = {
-  FormField: FormFieldComponent;
   overrideField: FieldApi<string[]>;
   standardAssembly: IndexedAssembly;
 };
 
-const OverrideCheckboxItem: React.FC<OverrideCheckboxItemProps> = ({ FormField, overrideField, standardAssembly }) => {
+const OverrideCheckboxItem: React.FC<OverrideCheckboxItemProps> = ({ overrideField, standardAssembly }) => {
+  const FormField = useProductForm().Field;
   const standardId = standardAssembly.assembly.id;
 
   return (
@@ -344,59 +352,60 @@ const OverrideCheckboxItem: React.FC<OverrideCheckboxItemProps> = ({ FormField, 
 
 type AssemblyPartsTableProps = {
   categories: string[];
-  FormField: FormFieldComponent;
   index: number;
   partOptions: Part[];
 };
 
-const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({ categories, FormField, index, partOptions }) => (
-  <FormField name={`assemblies[${index}].parts`} mode="array">
-    {(partsField: ArrayFieldApi<AssemblyInput['parts'][number]>) => (
-      <div className="mt-3 flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <h4 className="font-medium text-sm">Parts</h4>
-          <Button
-            disabled={partOptions.length === 0}
-            size="sm"
-            type="button"
-            variant="outline"
-            onClick={() => partsField.pushValue({ partId: '', quantity: 1 })}
-          >
-            <PlusIcon />
-            Add part
-          </Button>
+const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({ categories, index, partOptions }) => {
+  const FormField = useProductForm().Field;
+
+  return (
+    <FormField name={`assemblies[${index}].parts`} mode="array">
+      {(partsField: ArrayFieldApi<AssemblyInput['parts'][number]>) => (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-sm">Parts</h4>
+            <Button
+              disabled={partOptions.length === 0}
+              size="sm"
+              type="button"
+              variant="outline"
+              onClick={() => partsField.pushValue({ partId: '', quantity: 1 })}
+            >
+              <PlusIcon />
+              Add part
+            </Button>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Part</TableHead>
+                <TableHead className="w-28">Quantity</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {partsField.state.value.map((part, partIndex) => (
+                <AssemblyPartRow
+                  categories={categories}
+                  key={getAssemblyPartKey(part)}
+                  part={part}
+                  partIndex={partIndex}
+                  partOptions={partOptions}
+                  parentIndex={index}
+                  onRemove={() => partsField.removeValue(partIndex)}
+                />
+              ))}
+            </TableBody>
+          </Table>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Part</TableHead>
-              <TableHead className="w-28">Quantity</TableHead>
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {partsField.state.value.map((part, partIndex) => (
-              <AssemblyPartRow
-                categories={categories}
-                FormField={FormField}
-                key={getAssemblyPartKey(part)}
-                part={part}
-                partIndex={partIndex}
-                partOptions={partOptions}
-                parentIndex={index}
-                onRemove={() => partsField.removeValue(partIndex)}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    )}
-  </FormField>
-);
+      )}
+    </FormField>
+  );
+};
 
 type AssemblyPartRowProps = {
   categories: string[];
-  FormField: FormFieldComponent;
   parentIndex: number;
   part: AssemblyInput['parts'][number];
   partIndex: number;
@@ -406,13 +415,13 @@ type AssemblyPartRowProps = {
 
 const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
   categories,
-  FormField,
   parentIndex,
   part,
   partIndex,
   partOptions,
   onRemove,
 }) => {
+  const FormField = useProductForm().Field;
   const selectedPart = partOptions.find((option) => option.id === part.partId);
   const [category, setCategory] = React.useState(selectedPart?.category ?? ALL_CATEGORIES);
   const visibleParts = partOptions.filter((option) => category === ALL_CATEGORIES || option.category === category);

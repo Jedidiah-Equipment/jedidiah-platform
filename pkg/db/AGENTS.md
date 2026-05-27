@@ -1,7 +1,5 @@
 # db (@pkg/db)
 
-Follow `../../.sandcastle/CODING_STANDARDS.md`.
-
 ## Copy These
 
 - Table schema: `src/schema/product.ts`

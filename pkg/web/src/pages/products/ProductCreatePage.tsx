@@ -18,10 +18,10 @@ export const ProductCreatePage: React.FC = () => {
 
   const createProductMutation = useMutation(
     trpc.products.create.mutationOptions({
-      onSuccess: async () => {
+      onSuccess: async (product) => {
         await queryClient.invalidateQueries(trpc.products.list.queryFilter());
         toast.success('Product created');
-        await navigate({ to: '/products' });
+        await navigate({ to: '/products/$id/edit', params: { id: product.id } });
       },
       onError: (error) => {
         showMutationError(error, 'Unable to create product.');
@@ -37,7 +37,7 @@ export const ProductCreatePage: React.FC = () => {
           createProductMutation.mutateAsync({
             assemblies: value.assemblies,
             basePrice: value.basePrice,
-            currencyCode: 'ZAR',
+            currencyCode: value.currencyCode,
             description: value.description,
             leadTimeDays: value.leadTimeDays,
             modelCode: value.modelCode,

@@ -1,7 +1,5 @@
 # schema (@pkg/schema)
 
-Follow `../../.sandcastle/CODING_STANDARDS.md`.
-
 ## Copy These
 
 - Product schemas: `src/products/product.ts`

@@ -21,6 +21,7 @@ describe('parsePartBulkImportCsv', () => {
           description: 'Main bearing',
           drawingCode: 'DR-100',
           finish: 'Black',
+          lineNumber: 2,
           name: 'M30 Plain Nut',
           supplierCode: 'SUP-100',
           supplierName: 'Bolt & Nut',
@@ -43,6 +44,7 @@ describe('parsePartBulkImportCsv', () => {
           description: 'Main bearing',
           drawingCode: null,
           finish: 'Galv',
+          lineNumber: 1,
           name: 'Bearing',
           supplierCode: 'SUP-100',
           supplierName: 'Acme Supplies',
@@ -58,16 +60,42 @@ describe('parsePartBulkImportCsv', () => {
     expect(result.errors).toContain('Missing required column: Supplier.');
   });
 
-  it('reports row-numbered validation errors', () => {
+  it('blocks rows when the CSV parser reports file-level errors', () => {
     const result = parsePartBulkImportCsv(
       [
         'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name',
-        ',,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing',
+        'P-100,,"Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing',
       ].join('\n'),
       { hasHeader: true },
     );
 
     expect(result.rows).toEqual([]);
+    expect(result.errors).toContain('CSV parse error: Quoted field unterminated');
+  });
+
+  it('keeps valid rows while reporting row-numbered validation errors', () => {
+    const result = parsePartBulkImportCsv(
+      [
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name',
+        ',,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing',
+      ].join('\n'),
+      { hasHeader: true },
+    );
+
+    expect(result.rows).toEqual([
+      {
+        category: 'Bearings',
+        code: 'P-101',
+        description: 'Second bearing',
+        drawingCode: null,
+        finish: 'Zinc',
+        lineNumber: 3,
+        name: 'Bearing',
+        supplierCode: 'SUP-101',
+        supplierName: 'Acme Supplies',
+      },
+    ]);
     expect(result.errors).toContain('Row 2: Code - Part code is required');
   });
 
@@ -97,6 +125,7 @@ describe('parsePartBulkImportCsv', () => {
           description: 'Description',
           drawingCode: 'NC',
           finish: 'Black',
+          lineNumber: 2,
           name: 'M10 X 120 HT SHCS Bolt',
           supplierCode: 'SUP-100',
           supplierName: 'Bolt & Nut',
@@ -107,6 +136,7 @@ describe('parsePartBulkImportCsv', () => {
           description: 'Description',
           drawingCode: 'NC',
           finish: 'Galv',
+          lineNumber: 3,
           name: '1/2 X 2 HT UNC Bolt',
           supplierCode: 'SUP-101',
           supplierName: 'Bolt & Nut',

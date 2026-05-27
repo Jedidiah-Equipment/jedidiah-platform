@@ -1,6 +1,5 @@
 import type { UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { toast } from 'sonner';
 
@@ -18,7 +17,6 @@ type ProductEditPageProps = {
 
 export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) => {
   const trpc = useTRPC();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const showMutationError = useApiMutationErrorToast();
@@ -30,7 +28,6 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: trpc.products.pathKey() });
         toast.success('Product updated');
-        await navigate({ to: '/products' });
       },
       onError: (error) => {
         showMutationError(error, 'Unable to update product.');
@@ -51,7 +48,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
             updateProductMutation.mutateAsync({
               assemblies: value.assemblies,
               basePrice: value.basePrice,
-              currencyCode: 'ZAR',
+              currencyCode: value.currencyCode,
               description: value.description,
               id: productQuery.data.id,
               leadTimeDays: value.leadTimeDays,

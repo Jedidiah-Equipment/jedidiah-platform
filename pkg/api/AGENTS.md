@@ -1,7 +1,5 @@
 # api (@pkg/api)
 
-Follow `../../.sandcastle/CODING_STANDARDS.md`.
-
 ## Copy These
 
 - Thin router: `src/routes/products/products.router.ts`

@@ -1,7 +1,5 @@
 # web (@pkg/web)
 
-Follow `../../.sandcastle/CODING_STANDARDS.md`.
-
 ## Copy These
 
 - Page composition: `src/pages/products/ProductsPage.tsx`

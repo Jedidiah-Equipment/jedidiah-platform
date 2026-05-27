@@ -1,7 +1,5 @@
 # domain (@pkg/domain)
 
-Follow `../../.sandcastle/CODING_STANDARDS.md`.
-
 ## Copy These
 
 - Authorization policy: `src/auth/authorization.ts`

@@ -4,9 +4,12 @@ import { ChevronDownIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import React, { useMemo } from 'react';
 
 import { getFieldErrors } from '@/components/form/field-errors.js';
-import { useTypedAppFormContext } from '@/components/form/index.js';
+import { fieldContext } from '@/components/form/form-context.js';
+import { CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
+import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible.js';
 import {
   Combobox,
   ComboboxContent,
@@ -27,6 +30,8 @@ import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
+import { formatCurrency } from '@/utils/number.js';
 import type { ProductFormValues } from './ProductForm.js';
 
 const ALL_CATEGORIES = '__all__';
@@ -34,6 +39,7 @@ const assemblyPartKeys = new WeakMap<AssemblyInput['parts'][number], string>();
 
 type ProductAssembliesEditorProps = {
   assembliesField: ArrayFieldApi<AssemblyInput>;
+  currencyCode: string;
 };
 
 type IndexedAssembly = {
@@ -46,6 +52,7 @@ function useProductForm() {
     assemblies: [],
     basePrice: NaN,
     description: '',
+    currencyCode: 'ZAR',
     leadTimeDays: NaN,
     modelCode: '',
     name: '',
@@ -56,8 +63,9 @@ function useProductForm() {
   });
 }
 
-export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = ({ assembliesField }) => {
+export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = ({ assembliesField, currencyCode }) => {
   const trpc = useTRPC();
+  const [expandedAssemblyIds, setExpandedAssemblyIds] = React.useState<Set<string>>(new Set());
 
   const partsQuery = useQuery(
     trpc.parts.list.queryOptions({
@@ -75,28 +83,57 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
   const indexedAssemblies = assembliesField.state.value.map((assembly, index) => ({ assembly, index }));
   const standardAssemblies = getSortedAssemblies(indexedAssemblies, 'standard');
   const optionalAssemblies = getSortedAssemblies(indexedAssemblies, 'optional');
+  const handleAddAssembly = (kind: AssemblyInput['kind']) => {
+    const assembly = createAssembly(kind);
+
+    assembliesField.pushValue(assembly);
+    setExpandedAssemblyIds((current) => new Set(current).add(assembly.id ?? ''));
+  };
+  const handleExpandedChange = (assemblyId: string | undefined, isExpanded: boolean) => {
+    if (!assemblyId) {
+      return;
+    }
+
+    setExpandedAssemblyIds((current) => {
+      const next = new Set(current);
+
+      if (isExpanded) {
+        next.add(assemblyId);
+      } else {
+        next.delete(assemblyId);
+      }
+
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col gap-5">
       <AssemblyGroup
         assemblies={standardAssemblies}
         categories={categories}
+        expandedAssemblyIds={expandedAssemblyIds}
         kind="standard"
-        onAdd={() => assembliesField.pushValue(createAssembly('standard'))}
+        onAdd={() => handleAddAssembly('standard')}
+        onExpandedChange={handleExpandedChange}
         onRemove={assembliesField.removeValue}
         parts={parts}
         standardAssemblies={standardAssemblies}
         title="Standard Assemblies"
+        currencyCode={currencyCode}
       />
       <AssemblyGroup
         assemblies={optionalAssemblies}
         categories={categories}
+        expandedAssemblyIds={expandedAssemblyIds}
         kind="optional"
-        onAdd={() => assembliesField.pushValue(createAssembly('optional'))}
+        onAdd={() => handleAddAssembly('optional')}
+        onExpandedChange={handleExpandedChange}
         onRemove={assembliesField.removeValue}
         parts={parts}
         standardAssemblies={standardAssemblies}
         title="Optional Assemblies"
+        currencyCode={currencyCode}
       />
     </div>
   );
@@ -105,22 +142,28 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
 type AssemblyGroupProps = {
   assemblies: IndexedAssembly[];
   categories: string[];
+  expandedAssemblyIds: Set<string>;
+  currencyCode: string;
   kind: AssemblyInput['kind'];
   parts: Part[];
   standardAssemblies: IndexedAssembly[];
   title: string;
   onAdd: () => void;
+  onExpandedChange: (assemblyId: string | undefined, isExpanded: boolean) => void;
   onRemove: (index: number) => void;
 };
 
 const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
   assemblies,
   categories,
+  currencyCode,
+  expandedAssemblyIds,
   kind,
   parts,
   standardAssemblies,
   title,
   onAdd,
+  onExpandedChange,
   onRemove,
 }) => (
   <section className="flex flex-col gap-3">
@@ -138,9 +181,12 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
           categories={categories}
           index={index}
           key={assembly.id}
+          isExpanded={Boolean(assembly.id && expandedAssemblyIds.has(assembly.id))}
+          onExpandedChange={(isExpanded) => onExpandedChange(assembly.id, isExpanded)}
           onRemove={() => onRemove(index)}
           parts={parts}
           standardAssemblies={standardAssemblies}
+          currencyCode={currencyCode}
         />
       ))}
     </div>
@@ -155,82 +201,137 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
 type AssemblyRowProps = {
   assembly: AssemblyInput;
   categories: string[];
+  currencyCode: string;
   index: number;
+  isExpanded: boolean;
   parts: Part[];
   standardAssemblies: IndexedAssembly[];
+  onExpandedChange: (isExpanded: boolean) => void;
   onRemove: () => void;
 };
 
 const AssemblyRow: React.FC<AssemblyRowProps> = ({
   assembly,
   categories,
+  currencyCode,
   index,
+  isExpanded,
   parts,
   standardAssemblies,
+  onExpandedChange,
   onRemove,
 }) => {
-  const FormField = useProductForm().Field;
+  const productForm = useProductForm();
+  const FormField = productForm.Field;
   const partOptions = useMemo(() => parts.toSorted(compareParts), [parts]);
+  const assemblyFieldPrefix = `assemblies[${index}]`;
 
   return (
-    <div className="rounded-lg border p-3">
-      <div
-        className={
-          assembly.kind === 'optional'
-            ? 'grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem_minmax(12rem,16rem)_auto]'
-            : 'grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]'
-        }
-      >
-        <FormField name={`assemblies[${index}].name`}>
-          {(field: FieldApi<string>) => {
-            const errors = getFieldErrors(field.state.meta.errors);
-            const isInvalid = errors.length > 0;
-
-            return (
-              <Field data-invalid={isInvalid}>
-                <FieldLabel>Name</FieldLabel>
-                <Input
-                  aria-invalid={isInvalid}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                />
-                <FieldError errors={errors} />
-              </Field>
-            );
-          }}
-        </FormField>
-        {assembly.kind === 'optional' ? (
-          <FormField name={`assemblies[${index}].price`}>
-            {(field: FieldApi<number>) => {
-              const errors = getFieldErrors(field.state.meta.errors);
-              const isInvalid = errors.length > 0;
-
-              return (
-                <Field data-invalid={isInvalid}>
-                  <FieldLabel>Upgrade amount</FieldLabel>
-                  <Input
-                    aria-invalid={isInvalid}
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={Number.isFinite(field.state.value) ? String(field.state.value) : ''}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(Number(event.target.value))}
+    <productForm.Subscribe selector={(state) => hasFieldErrorsForPrefix(state.fieldMeta, assemblyFieldPrefix)}>
+      {(hasError) => (
+        <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
+          <div aria-invalid={hasError} className={cn('rounded-lg border p-3', hasError && 'border-destructive')}>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <AssemblySummary
+                assembly={assembly}
+                currencyCode={currencyCode}
+                standardAssemblies={standardAssemblies}
+              />
+              <div className="flex shrink-0 items-center gap-2">
+                <CollapsibleTrigger render={<Button size="sm" type="button" variant="outline" />}>
+                  <ChevronDownIcon
+                    aria-hidden="true"
+                    className="transition-transform group-aria-expanded/button:rotate-180"
+                    data-icon="inline-start"
                   />
-                  <FieldError errors={errors} />
-                </Field>
-              );
-            }}
-          </FormField>
+                  {isExpanded ? 'Done' : 'Edit'}
+                </CollapsibleTrigger>
+                <Button aria-label="Remove assembly" size="icon-sm" type="button" variant="ghost" onClick={onRemove}>
+                  <Trash2Icon />
+                </Button>
+              </div>
+            </div>
+            <CollapsibleContent keepMounted>
+              <div className="mt-4 flex flex-col gap-3">
+                <div
+                  className={
+                    assembly.kind === 'optional'
+                      ? 'grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem_minmax(12rem,16rem)]'
+                      : 'grid gap-3'
+                  }
+                >
+                  <FormField name={`assemblies[${index}].name`}>
+                    {(field: FieldApi<string>) => {
+                      const errors = getFieldErrors(field.state.meta.errors);
+                      const isInvalid = errors.length > 0;
+
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel>Name</FieldLabel>
+                          <Input
+                            aria-invalid={isInvalid}
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(event) => field.handleChange(event.target.value)}
+                          />
+                          <FieldError errors={errors} />
+                        </Field>
+                      );
+                    }}
+                  </FormField>
+                  {assembly.kind === 'optional' ? (
+                    <FormField name={`assemblies[${index}].price`}>
+                      {(field) => (
+                        <fieldContext.Provider value={field}>
+                          <CurrencyField
+                            autoComplete="off"
+                            currencyCode={currencyCode}
+                            label="Upgrade amount"
+                            placeholder="0.00"
+                          />
+                        </fieldContext.Provider>
+                      )}
+                    </FormField>
+                  ) : null}
+                  {assembly.kind === 'optional' ? (
+                    <OverridePicker index={index} standardAssemblies={standardAssemblies} />
+                  ) : null}
+                </div>
+                <AssemblyPartsTable categories={categories} index={index} partOptions={partOptions} />
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
+    </productForm.Subscribe>
+  );
+};
+
+type AssemblySummaryProps = {
+  assembly: AssemblyInput;
+  currencyCode: string;
+  standardAssemblies: IndexedAssembly[];
+};
+
+const AssemblySummary: React.FC<AssemblySummaryProps> = ({ assembly, currencyCode, standardAssemblies }) => {
+  const partCount = assembly.parts.length;
+
+  return (
+    <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <h4 className="min-w-0 truncate font-medium text-sm leading-5">{assembly.name || 'Unnamed assembly'}</h4>
+        <Badge variant="outline">{formatPartCount(partCount)}</Badge>
+        {assembly.kind === 'optional' ? (
+          <Badge variant="outline">{formatUpgradeAmount(assembly.price, currencyCode)}</Badge>
         ) : null}
-        {assembly.kind === 'optional' ? <OverridePicker index={index} standardAssemblies={standardAssemblies} /> : null}
-        <div className="flex items-end justify-end">
-          <Button aria-label="Remove assembly" size="icon" type="button" variant="ghost" onClick={onRemove}>
-            <Trash2Icon />
-          </Button>
-        </div>
+        {assembly.kind === 'optional' ? (
+          <Badge className="max-w-full" variant="outline">
+            <span className="truncate">
+              Replaces {formatOverrideSummary(assembly.overrideStandardAssemblyIds, standardAssemblies)}
+            </span>
+          </Badge>
+        ) : null}
       </div>
-      <AssemblyPartsTable categories={categories} index={index} partOptions={partOptions} />
     </div>
   );
 };
@@ -550,6 +651,43 @@ function compareParts(left: Part, right: Part): number {
 
 function formatPartLabel(part: Part): string {
   return `${part.code} - ${part.name}`;
+}
+
+function formatPartCount(count: number): string {
+  return `${count} ${count === 1 ? 'part' : 'parts'}`;
+}
+
+function formatUpgradeAmount(value: number, currencyCode: string): string {
+  const amount = formatCurrency(value, currencyCode);
+
+  return amount || 'Not set';
+}
+
+function formatOverrideSummary(selectedIds: string[], standardAssemblies: IndexedAssembly[]): string {
+  if (standardAssemblies.length === 0) {
+    return 'no assemblies';
+  }
+
+  if (selectedIds.length === 0) {
+    return 'none';
+  }
+
+  if (selectedIds.length > 1) {
+    return `${selectedIds.length} assemblies`;
+  }
+
+  const selectedAssembly = standardAssemblies.find(({ assembly }) => assembly.id === selectedIds[0]);
+
+  return selectedAssembly?.assembly.name || '1 assembly';
+}
+
+function hasFieldErrorsForPrefix(
+  fieldMeta: Record<string, { errors?: unknown[] } | undefined>,
+  prefix: string,
+): boolean {
+  return Object.entries(fieldMeta).some(
+    ([fieldName, meta]) => fieldName.startsWith(prefix) && (meta?.errors?.length ?? 0) > 0,
+  );
 }
 
 function toggleOverrideSelection(selectedIds: string[], id: string, checked: boolean): string[] {

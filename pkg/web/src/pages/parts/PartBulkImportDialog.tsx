@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog.js';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
+import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import {
@@ -26,6 +27,7 @@ import {
 } from './part-bulk-import-csv.js';
 
 type BulkImportResult = {
+  errors: string[];
   importedCount: number;
   updatedCount: number;
 };
@@ -49,7 +51,9 @@ export const PartBulkImportDialog: React.FC = () => {
           queryClient.invalidateQueries(trpc.parts.categories.queryFilter()),
         ]);
         setResult(data);
-        toast.success('Parts imported');
+        toast.success(
+          data.errors.length > 0 || parseResult.errors.length > 0 ? 'Parts imported with issues' : 'Parts imported',
+        );
       },
       onError: (error) => {
         showMutationError(error, 'Unable to import parts.');
@@ -102,8 +106,8 @@ export const PartBulkImportDialog: React.FC = () => {
     }
   };
 
-  const canImport =
-    file !== null && parseResult.rows.length > 0 && parseResult.errors.length === 0 && !importMutation.isPending;
+  const canImport = file !== null && parseResult.rows.length > 0 && !importMutation.isPending;
+  const displayedErrors = result ? [...parseResult.errors, ...result.errors] : parseResult.errors;
 
   return (
     <>
@@ -148,15 +152,17 @@ export const PartBulkImportDialog: React.FC = () => {
                 <FieldDescription>Turn this off when the first row is already part data.</FieldDescription>
               </FieldContent>
             </Field>
-            {parseResult.errors.length > 0 ? (
+            {displayedErrors.length > 0 ? (
               <Alert variant="destructive">
-                <AlertTitle>Import file needs changes</AlertTitle>
+                <AlertTitle>{result ? 'Import completed with issues' : 'Import file has row issues'}</AlertTitle>
                 <AlertDescription>
-                  <ul className="list-disc space-y-1 pl-4">
-                    {parseResult.errors.map((error) => (
-                      <li key={error}>{error}</li>
-                    ))}
-                  </ul>
+                  <ScrollArea className="max-h-40">
+                    <ul className="list-disc space-y-1 pl-4 pr-3">
+                      {displayedErrors.map((error) => (
+                        <li key={error}>{error}</li>
+                      ))}
+                    </ul>
+                  </ScrollArea>
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -164,13 +170,16 @@ export const PartBulkImportDialog: React.FC = () => {
               <Alert>
                 <AlertTitle>Ready to import</AlertTitle>
                 <AlertDescription>
-                  {parseResult.rows.length} {parseResult.rows.length === 1 ? 'part row' : 'part rows'} parsed.
+                  {parseResult.rows.length} {parseResult.rows.length === 1 ? 'part row' : 'part rows'} ready.
+                  {parseResult.errors.length > 0 ? ' Rows with issues will be skipped.' : null}
                 </AlertDescription>
               </Alert>
             ) : null}
             {result ? (
               <Alert>
-                <AlertTitle>Import complete</AlertTitle>
+                <AlertTitle>
+                  {displayedErrors.length > 0 ? 'Import complete with issues' : 'Import complete'}
+                </AlertTitle>
                 <AlertDescription>
                   Imported {result.importedCount} {result.importedCount === 1 ? 'part' : 'parts'} and updated{' '}
                   {result.updatedCount} {result.updatedCount === 1 ? 'part' : 'parts'}.

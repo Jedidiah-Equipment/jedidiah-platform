@@ -66,6 +66,7 @@ describe('PartBulkImportInput', () => {
             description: '  Main bearing  ',
             drawingCode: '  ',
             finish: '  Zinc  ',
+            lineNumber: 4,
             name: '  Bearing  ',
             supplierCode: '  SUP-100  ',
             supplierName: '  Acme Supplies  ',
@@ -80,6 +81,7 @@ describe('PartBulkImportInput', () => {
           description: 'Main bearing',
           drawingCode: null,
           finish: 'Zinc',
+          lineNumber: 4,
           name: 'Bearing',
           supplierCode: 'SUP-100',
           supplierName: 'Acme Supplies',
@@ -98,6 +100,7 @@ describe('PartBulkImportInput', () => {
             code: ' ',
             description: ' ',
             finish: ' ',
+            lineNumber: 1,
             name: ' ',
             supplierCode: ' ',
             supplierName: ' ',
@@ -110,7 +113,10 @@ describe('PartBulkImportInput', () => {
 
 describe('PartBulkImportResult', () => {
   it('accepts non-negative import counts', () => {
-    expect(PartBulkImportResult.parse({ importedCount: 1, updatedCount: 2 })).toEqual({
+    expect(
+      PartBulkImportResult.parse({ errors: ['Line 4: Part was skipped.'], importedCount: 1, updatedCount: 2 }),
+    ).toEqual({
+      errors: ['Line 4: Part was skipped.'],
       importedCount: 1,
       updatedCount: 2,
     });

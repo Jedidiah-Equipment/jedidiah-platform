@@ -166,6 +166,7 @@ describe('parts.bulkImport', () => {
         rows: [bulkImportRow()],
       }),
     ).resolves.toEqual({
+      errors: [],
       importedCount: 1,
       updatedCount: 0,
     });
@@ -179,12 +180,13 @@ describe('parts.bulkImport', () => {
         ],
       }),
     ).resolves.toEqual({
+      errors: [],
       importedCount: 0,
       updatedCount: 1,
     });
   });
 
-  test('returns public conflict messages for bulk import identity conflicts', async ({ context }) => {
+  test('returns row errors for bulk import identity conflicts', async ({ context }) => {
     const caller = context.createCaller();
     await caller.parts.bulkImport({ rows: [bulkImportRow()] });
 
@@ -192,14 +194,25 @@ describe('parts.bulkImport', () => {
       caller.parts.bulkImport({
         rows: [
           bulkImportRow({
+            lineNumber: 4,
             supplierCode: 'BET-100',
+            supplierName: 'Beta Supplies',
+          }),
+          bulkImportRow({
+            code: 'P-200',
+            lineNumber: 5,
+            name: 'Bolt',
+            supplierCode: 'BET-200',
             supplierName: 'Beta Supplies',
           }),
         ],
       }),
-    ).rejects.toMatchObject({
-      code: 'CONFLICT',
-      message: 'A CSV row matches an existing part code with a different supplier or supplier code.',
+    ).resolves.toEqual({
+      errors: [
+        'Line 4: Part code P-100 already exists with supplier Acme Supplies / supplier code SUP-100; CSV row has Beta Supplies / BET-100.',
+      ],
+      importedCount: 1,
+      updatedCount: 0,
     });
   });
 });
@@ -395,6 +408,7 @@ function bulkImportRow(overrides: Partial<Parameters<AppRouterCaller['parts']['b
     description: 'Main bearing',
     drawingCode: null,
     finish: 'Zinc',
+    lineNumber: 2,
     name: 'Bearing',
     supplierCode: 'SUP-100',
     supplierName: 'Acme Supplies',

@@ -87,6 +87,7 @@ export const PartBulkImportRow = z.object({
   description: PartDescription,
   drawingCode: PartDrawingCodeInput,
   finish: PartFinish,
+  lineNumber: z.number().int().min(1),
   name: PartName,
   supplierCode: PartSupplierCode,
   supplierName: SupplierCompanyName,
@@ -99,6 +100,7 @@ export const PartBulkImportInput = z.object({
 
 export type PartBulkImportResult = z.infer<typeof PartBulkImportResult>;
 export const PartBulkImportResult = z.object({
+  errors: z.array(z.string()),
   importedCount: z.number().int().min(0),
   updatedCount: z.number().int().min(0),
 });

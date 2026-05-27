@@ -305,15 +305,39 @@ export async function bulkImportParts({
 }): Promise<PartBulkImportResult> {
   try {
     return await db.transaction(async (tx) => {
+      const errors: string[] = [];
       let importedCount = 0;
       let updatedCount = 0;
 
       for (const row of input.rows) {
-        const importedSupplier = await getOrCreateImportSupplier({
-          actorUserId,
-          db: tx,
-          companyName: row.supplierName,
-        });
+        const existingSupplier = await findImportSupplier({ db: tx, companyName: row.supplierName });
+        const [partByCode] = await tx.select().from(parts).where(eq(parts.code, row.code)).for('update');
+        const [partBySupplierCode] = existingSupplier
+          ? await tx
+              .select()
+              .from(parts)
+              .where(and(eq(parts.supplierId, existingSupplier.id), eq(parts.supplierCode, row.supplierCode)))
+              .for('update')
+          : [];
+
+        if (partByCode && (!partBySupplierCode || partByCode.id !== partBySupplierCode.id)) {
+          errors.push(
+            await formatBulkImportIdentityConflict({
+              db: tx,
+              existingPart: partByCode,
+              row,
+            }),
+          );
+          continue;
+        }
+
+        const importedSupplier =
+          existingSupplier ??
+          (await createImportSupplier({
+            actorUserId,
+            db: tx,
+            companyName: row.supplierName,
+          }));
         const partInput = {
           category: row.category,
           code: row.code,
@@ -324,21 +348,6 @@ export async function bulkImportParts({
           supplierCode: row.supplierCode,
           supplierId: importedSupplier.id,
         };
-        const [partByCode] = await tx.select().from(parts).where(eq(parts.code, row.code)).for('update');
-        const [partBySupplierCode] = await tx
-          .select()
-          .from(parts)
-          .where(and(eq(parts.supplierId, importedSupplier.id), eq(parts.supplierCode, row.supplierCode)))
-          .for('update');
-
-        if (partByCode && (!partBySupplierCode || partByCode.id !== partBySupplierCode.id)) {
-          throw new PartBulkImportConflictError({
-            code: row.code,
-            supplierCode: row.supplierCode,
-            supplierName: row.supplierName,
-          });
-        }
-
         const existingPart = partByCode ?? partBySupplierCode;
 
         if (!existingPart) {
@@ -396,6 +405,7 @@ export async function bulkImportParts({
       }
 
       return {
+        errors,
         importedCount,
         updatedCount,
       };
@@ -405,7 +415,46 @@ export async function bulkImportParts({
   }
 }
 
-async function getOrCreateImportSupplier({
+async function formatBulkImportIdentityConflict({
+  db,
+  existingPart,
+  row,
+}: {
+  db: DatabaseTransaction;
+  existingPart: Pick<PartRow, 'code' | 'supplierCode' | 'supplierId'>;
+  row: PartBulkImportInput['rows'][number];
+}): Promise<string> {
+  const existingSupplier = await db.query.supplier.findFirst({
+    columns: {
+      companyName: true,
+      id: true,
+    },
+    where: eq(supplier.id, existingPart.supplierId),
+  });
+  const existingSupplierName = existingSupplier?.companyName ?? 'an unknown supplier';
+  const existingIdentity = `${existingSupplierName} / supplier code ${existingPart.supplierCode}`;
+  const importIdentity = `${row.supplierName} / ${row.supplierCode}`;
+
+  return `Line ${row.lineNumber}: Part code ${existingPart.code} already exists with supplier ${existingIdentity}; CSV row has ${importIdentity}.`;
+}
+
+async function findImportSupplier({
+  companyName,
+  db,
+}: {
+  companyName: string;
+  db: DatabaseTransaction;
+}): Promise<SupplierRow | undefined> {
+  return db.query.supplier.findFirst({
+    columns: {
+      companyName: true,
+      id: true,
+    },
+    where: sql`lower(${supplier.companyName}) = lower(${companyName})`,
+  });
+}
+
+async function createImportSupplier({
   actorUserId,
   companyName,
   db,
@@ -414,18 +463,6 @@ async function getOrCreateImportSupplier({
   companyName: string;
   db: DatabaseTransaction;
 }): Promise<SupplierRow> {
-  const existing = await db.query.supplier.findFirst({
-    columns: {
-      companyName: true,
-      id: true,
-    },
-    where: sql`lower(${supplier.companyName}) = lower(${companyName})`,
-  });
-
-  if (existing) {
-    return existing;
-  }
-
   const [created] = await db.insert(supplier).values({ companyName }).returning();
 
   if (!created) {

@@ -47,6 +47,7 @@ describe('AI result projections', () => {
           customerId: '00000000-0000-4000-8000-000000000005',
           id: '00000000-0000-4000-8000-000000000003',
           code: 'QUO-00003',
+          paymentTerms: '30% deposit, balance on delivery',
           linkedJobs: [
             {
               jobCode: 'JOB-00004',
@@ -70,6 +71,7 @@ describe('AI result projections', () => {
       items: [
         {
           ...result.items[0],
+          paymentTerms: '30% deposit, balance on delivery',
           links: [
             {
               entity: 'Quote',

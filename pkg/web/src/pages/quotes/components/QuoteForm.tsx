@@ -24,6 +24,7 @@ const QuoteFormValues = z
     discount: Price,
     inlineCompanyName: z.string(),
     notes: z.string(),
+    paymentTerms: z.string(),
     productId: z.string(),
     salesPersonId: z.string(),
     validUntil: z.union([z.literal(''), z.iso.date()]),
@@ -105,6 +106,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
     discount: initialQuote?.discount ?? 0,
     inlineCompanyName: '',
     notes: initialQuote?.notes ?? '',
+    paymentTerms: initialQuote?.paymentTerms ?? '',
     productId: initialQuote?.productId ?? '',
     salesPersonId: initialQuote?.salesPersonId ?? '',
     validUntil: initialQuote?.validUntil ?? '',
@@ -129,6 +131,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 },
           discount: value.discount,
           notes: value.notes,
+          paymentTerms: value.paymentTerms,
           productId: value.productId || null,
           salesPersonId: value.salesPersonId || null,
           validUntil: value.validUntil || null,
@@ -324,6 +327,9 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
         </div>
         <form.AppField name="notes">
           {(field) => <field.TextareaField disabled={isFrozen} label="Notes" rows={4} />}
+        </form.AppField>
+        <form.AppField name="paymentTerms">
+          {(field) => <field.TextareaField disabled={isFrozen} label="Payment Terms" rows={4} />}
         </form.AppField>
       </FieldGroup>
       <div className="flex justify-end">

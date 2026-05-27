@@ -25,6 +25,7 @@ describe('quotes.create', () => {
       },
       discount: 100,
       notes: 'Demo quote',
+      paymentTerms: '30% deposit, balance on delivery',
       productId: context.product.id,
       salesPersonId: 'test-user-id',
       validUntil: '2026-06-30',
@@ -36,6 +37,7 @@ describe('quotes.create', () => {
     expect(created).toMatchObject({
       code: 'QUO-00001',
       customerCompanyName: 'Acme Mining',
+      paymentTerms: '30% deposit, balance on delivery',
       productId: context.product.id,
       status: 'draft',
       total: context.product.basePrice - 100,
@@ -53,10 +55,12 @@ describe('quotes.create', () => {
         companyName: 'Acme Mining',
       },
       notes: null,
+      paymentTerms: ' ',
     });
 
     expect(created).toMatchObject({
       customerCompanyName: 'Acme Mining',
+      paymentTerms: null,
       productId: null,
       productName: null,
       salesPersonId: null,
@@ -76,6 +80,7 @@ describe('quotes.create', () => {
         },
         discount: 100,
         notes: null,
+        paymentTerms: null,
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
@@ -94,6 +99,7 @@ describe('quotes.create', () => {
         },
         discount: 100,
         notes: 'Demo quote',
+        paymentTerms: null,
         productId: context.product.id,
         salesPersonId: 'missing-user-id',
         validUntil: '2026-06-30',
@@ -114,15 +120,25 @@ describe('quotes.update', () => {
       ...toUpdateInput(created),
       discount: 125,
       notes: 'Updated draft terms',
+      paymentTerms: '50% deposit before fabrication',
       validUntil: '2026-07-31',
     });
+    const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+    const updateEvent = events.findLast((event) => event.entityType === 'quote' && event.action === 'updated');
 
     expect(updated).toMatchObject({
       discount: 125,
       notes: 'Updated draft terms',
+      paymentTerms: '50% deposit before fabrication',
       status: 'draft',
       total: context.product.basePrice - 125,
       validUntil: '2026-07-31',
+    });
+    expect(updateEvent?.changes).toMatchObject({
+      paymentTerms: {
+        from: null,
+        to: '50% deposit before fabrication',
+      },
     });
   });
 });
@@ -138,6 +154,7 @@ describe('quotes.list', () => {
     const acceptedQuote = await createNamedQuote(salesCaller, {
       customerCompanyName: 'Acme Mining',
       discount: 150,
+      paymentTerms: 'Paid before dispatch',
       productId: context.product.id,
     });
     const draftQuote = await createNamedQuote(salesCaller, {
@@ -173,6 +190,7 @@ describe('quotes.list', () => {
         {
           code: finalQuote.code,
           customerCompanyName: 'Acme Mining',
+          paymentTerms: 'Paid before dispatch',
           linkedJobs: [
             {
               jobCode: job.code,
@@ -282,6 +300,7 @@ describe('quotes.send', () => {
       caller.quotes.update({
         ...toUpdateInput(sent),
         notes: 'This should not save',
+        paymentTerms: 'This should not save either',
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -388,6 +407,7 @@ describe('jobs.create with quote links', () => {
         companyName: 'Customer Only Quote',
       },
       notes: null,
+      paymentTerms: null,
     });
 
     await expect(
@@ -468,6 +488,7 @@ async function createReadyQuote(caller: AppRouterCaller, productId: string) {
     },
     discount: 250,
     notes: null,
+    paymentTerms: null,
     productId,
     salesPersonId: 'test-user-id',
     validUntil: '2026-06-30',
@@ -479,10 +500,12 @@ async function createNamedQuote(
   {
     customerCompanyName,
     discount,
+    paymentTerms = null,
     productId,
   }: {
     customerCompanyName: string;
     discount: number;
+    paymentTerms?: string | null;
     productId: string;
   },
 ) {
@@ -493,6 +516,7 @@ async function createNamedQuote(
     },
     discount,
     notes: null,
+    paymentTerms,
     productId,
     salesPersonId: 'test-user-id',
     validUntil: '2026-06-30',
@@ -508,6 +532,7 @@ function toUpdateInput(quote: QuoteDetail) {
     },
     discount: quote.discount,
     notes: quote.notes,
+    paymentTerms: quote.paymentTerms,
     productId: quote.productId,
     salesPersonId: quote.salesPersonId ?? 'test-user-id',
     validUntil: quote.validUntil,

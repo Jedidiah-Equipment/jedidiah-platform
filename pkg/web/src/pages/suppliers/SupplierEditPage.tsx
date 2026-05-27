@@ -45,8 +45,8 @@ export const SupplierEditPage: React.FC<SupplierEditPageProps> = ({ supplierId }
   return (
     <EditPageLayout
       back={<BackButton to="/suppliers">Suppliers</BackButton>}
-      description="Procurement"
-      title="Edit supplier"
+      description="Edit Supplier"
+      title={supplierQuery.data?.companyName ?? 'Loading supplier...'}
     >
       {supplierQuery.isPending ? <SupplierFormSkeleton /> : null}
       <ErrorMessage error={supplierQuery.error} fallbackMessage="Unable to load supplier." />
@@ -80,7 +80,7 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ isPending, onSuppli
   return (
     <Tabs className="w-full" defaultValue="supplier">
       <TabsList variant="default">
-        <TabsTrigger value="supplier">Supplier</TabsTrigger>
+        <TabsTrigger value="supplier">Details</TabsTrigger>
         {canReadPart ? <TabsTrigger value="parts">Parts</TabsTrigger> : null}
       </TabsList>
       <TabsContent className="pt-4" value="supplier">

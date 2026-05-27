@@ -41,12 +41,15 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
+
   const [isOpen, setIsOpen] = useState(false);
   const [hasHeader, setHasHeader] = useState(true);
+
   const [file, setFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
-  const [parseResult, setParseResult] = useState<ParsePartBulkImportCsvResult>({ errors: [], rows: [] });
+
   const [result, setResult] = useState<BulkImportResult | null>(null);
+  const [parseResult, setParseResult] = useState<ParsePartBulkImportCsvResult>({ errors: [], rows: [] });
 
   const importMutation = useMutation(
     trpc.parts.bulkImport.mutationOptions({
@@ -118,7 +121,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
     <>
       <Button onClick={handleOpenButtonClick} variant="outline">
         <UploadIcon data-icon="inline-start" />
-        Bulk import
+        Bulk parts import
       </Button>
       <Dialog onOpenChange={handleOpenChange} open={isOpen}>
         <DialogContent className="sm:max-w-[600px]">

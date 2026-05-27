@@ -94,7 +94,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
       },
       {
         accessorKey: 'description',
-        cell: ({ row }) => <span className="line-clamp-2 max-w-[28rem]">{row.original.description}</span>,
+        cell: ({ row }) => <span className="line-clamp-2 max-w-md">{row.original.description}</span>,
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Description',

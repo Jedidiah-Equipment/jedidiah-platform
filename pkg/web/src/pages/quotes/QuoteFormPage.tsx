@@ -78,8 +78,8 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
         )
       }
       badge={quote ? <QuoteStatusBadge status={quote.status} /> : undefined}
-      description="Sales"
-      title={isEditing ? 'Edit quote' : 'New quote'}
+      description={isEditing ? 'Edit Quote' : 'New Quote'}
+      title={isEditing ? (quote?.code ?? 'Loading quote...') : 'Create a new quote'}
     >
       <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
       {isEditing && quoteQuery.isPending ? <QuoteFormSkeleton /> : null}

@@ -30,8 +30,8 @@ export const CustomerCreatePage: React.FC = () => {
   return (
     <EditPageLayout
       back={<BackButton to="/customers">Customers</BackButton>}
-      description="Directory"
-      title="New customer"
+      description="New Customer"
+      title="Create a new customer"
     >
       <CustomerForm
         isPending={createCustomerMutation.isPending}

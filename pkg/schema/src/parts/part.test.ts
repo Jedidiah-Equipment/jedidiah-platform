@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { Part, PartCreateInput, PartListInput } from './part.js';
+import { Part, PartBulkImportInput, PartBulkImportResult, PartCreateInput, PartListInput } from './part.js';
 
 describe('PartCreateInput', () => {
   it('normalizes part fields', () => {
@@ -51,6 +51,68 @@ describe('PartListInput', () => {
       search: '',
       sortBy: 'name',
       sortDirection: 'asc',
+    });
+  });
+});
+
+describe('PartBulkImportInput', () => {
+  it('normalizes bulk import rows', () => {
+    expect(
+      PartBulkImportInput.parse({
+        rows: [
+          {
+            category: '  Bearings  ',
+            code: '  P-100  ',
+            description: '  Main bearing  ',
+            drawingCode: '  ',
+            finish: '  Zinc  ',
+            name: '  Bearing  ',
+            supplierCode: '  SUP-100  ',
+            supplierName: '  Acme Supplies  ',
+          },
+        ],
+      }),
+    ).toEqual({
+      rows: [
+        {
+          category: 'Bearings',
+          code: 'P-100',
+          description: 'Main bearing',
+          drawingCode: null,
+          finish: 'Zinc',
+          name: 'Bearing',
+          supplierCode: 'SUP-100',
+          supplierName: 'Acme Supplies',
+        },
+      ],
+    });
+  });
+
+  it('requires rows and required row fields', () => {
+    expect(() => PartBulkImportInput.parse({ rows: [] })).toThrow();
+    expect(() =>
+      PartBulkImportInput.parse({
+        rows: [
+          {
+            category: ' ',
+            code: ' ',
+            description: ' ',
+            finish: ' ',
+            name: ' ',
+            supplierCode: ' ',
+            supplierName: ' ',
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+});
+
+describe('PartBulkImportResult', () => {
+  it('accepts non-negative import counts', () => {
+    expect(PartBulkImportResult.parse({ importedCount: 1, updatedCount: 2 })).toEqual({
+      importedCount: 1,
+      updatedCount: 2,
     });
   });
 });

@@ -139,6 +139,71 @@ describe('parts.create', () => {
   });
 });
 
+describe('parts.bulkImport', () => {
+  test('rejects unauthenticated and unauthorized bulk imports', async ({ context }) => {
+    await expect(
+      context.createAnonCaller().parts.bulkImport({
+        rows: [bulkImportRow()],
+      }),
+    ).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+
+    await expect(
+      context.createCaller(mockSession('product-editor')).parts.bulkImport({
+        rows: [bulkImportRow()],
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('bulk imports parts and returns counts', async ({ context }) => {
+    const caller = context.createCaller();
+
+    await expect(
+      caller.parts.bulkImport({
+        rows: [bulkImportRow()],
+      }),
+    ).resolves.toEqual({
+      importedCount: 1,
+      updatedCount: 0,
+    });
+
+    await expect(
+      caller.parts.bulkImport({
+        rows: [
+          bulkImportRow({
+            description: 'Updated main bearing',
+          }),
+        ],
+      }),
+    ).resolves.toEqual({
+      importedCount: 0,
+      updatedCount: 1,
+    });
+  });
+
+  test('returns public conflict messages for bulk import identity conflicts', async ({ context }) => {
+    const caller = context.createCaller();
+    await caller.parts.bulkImport({ rows: [bulkImportRow()] });
+
+    await expect(
+      caller.parts.bulkImport({
+        rows: [
+          bulkImportRow({
+            supplierCode: 'BET-100',
+            supplierName: 'Beta Supplies',
+          }),
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: 'A CSV row matches an existing part code with a different supplier or supplier code.',
+    });
+  });
+});
+
 describe('parts.list and parts.categories', () => {
   test('rejects unauthenticated and unauthorized reads', async ({ context }) => {
     await expect(context.createAnonCaller().parts.list({})).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
@@ -321,4 +386,18 @@ function createEmail(companyName: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')}@example.com`;
+}
+
+function bulkImportRow(overrides: Partial<Parameters<AppRouterCaller['parts']['bulkImport']>[0]['rows'][number]> = {}) {
+  return {
+    category: 'Bearings',
+    code: 'P-100',
+    description: 'Main bearing',
+    drawingCode: null,
+    finish: 'Zinc',
+    name: 'Bearing',
+    supplierCode: 'SUP-100',
+    supplierName: 'Acme Supplies',
+    ...overrides,
+  };
 }

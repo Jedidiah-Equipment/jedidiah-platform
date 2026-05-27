@@ -77,25 +77,11 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, showEditAction
   const columns = useMemo<ColumnDef<Part>[]>(() => {
     const tableColumns: ColumnDef<Part>[] = [
       {
-        accessorKey: 'name',
-        cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Name',
-      },
-      {
         accessorKey: 'code',
         cell: ({ row }) => <span className="font-mono text-sm">{row.original.code}</span>,
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Code',
-      },
-
-      {
-        accessorKey: 'finish',
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: 'Finish',
       },
       {
         accessorKey: 'drawingCode',
@@ -104,7 +90,13 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, showEditAction
         enableSorting: false,
         header: 'Drawing code',
       },
-
+      {
+        accessorKey: 'description',
+        cell: ({ row }) => <span className="line-clamp-2 max-w-[28rem]">{row.original.description}</span>,
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Description',
+      },
       {
         accessorKey: 'supplierName',
         cell: ({ row }) => row.original.supplier.companyName,
@@ -120,6 +112,12 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, showEditAction
         header: 'Supplier code',
       },
       {
+        accessorKey: 'finish',
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Finish',
+      },
+      {
         accessorKey: 'category',
         enableColumnFilter: true,
         enableSorting: true,
@@ -128,6 +126,13 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, showEditAction
           filterOptions: categoryFilterOptions,
           filterVariant: 'select',
         },
+      },
+      {
+        accessorKey: 'name',
+        cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Name',
       },
     ];
 

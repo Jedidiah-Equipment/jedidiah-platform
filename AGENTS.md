@@ -10,10 +10,11 @@
 
 ### Publishing PRs
 
-Use `/blast-it` when publishing normal Codex changes for review. It standardizes commit messages
-and PR titles as `<type>(<scope>): <subject>`, keeps issue references in the PR body with
-`Closes #<issue-number>` when applicable, and marks the PR ready for review. Commit message bodies
-are optional; use them only when they add durable context beyond the subject.
+- Before PR you can run `pnpm safe-to-merge` if no issues you good to go.
+- Assume the `gh` cli is installed and authenticated.
+- Use `/blast-it` when publishing normal Codex changes for review. It standardizes commit messages
+  and PR titles as `<type>(<scope>): <subject>`, keeps issue references in the PR body with
+  `Closes #<issue-number>` when applicable, and marks the PR ready for review.
 
 ### Issue tracker
 

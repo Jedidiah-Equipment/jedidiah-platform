@@ -96,6 +96,7 @@ export const PartBulkImportRow = z.object({
 export type PartBulkImportInput = z.infer<typeof PartBulkImportInput>;
 export const PartBulkImportInput = z.object({
   rows: z.array(PartBulkImportRow).min(1, 'At least one part row is required'),
+  supplierId: UUID.optional(),
 });
 
 export type PartBulkImportResult = z.infer<typeof PartBulkImportResult>;
@@ -110,6 +111,7 @@ export const PartListInput = PagedQueryInput.extend({
   search: z.string().trim().default(''),
   category: z.string().trim().optional(),
   columnFilters: PartColumnFilters,
+  supplierId: UUID.optional(),
   sortBy: PartSortBy.default('name'),
   sortDirection: SortDirection.default('asc'),
 });

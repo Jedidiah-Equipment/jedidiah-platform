@@ -36,7 +36,11 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
   );
 
   return (
-    <EditPageLayout back={<BackButton to="/products">Products</BackButton>} description="Catalog" title="Edit product">
+    <EditPageLayout
+      back={<BackButton to="/products">Products</BackButton>}
+      description="Edit Product"
+      title={productQuery.data?.name ?? 'Loading product...'}
+    >
       {productQuery.isPending ? <ProductFormSkeleton /> : null}
       <ErrorMessage error={productQuery.error} fallbackMessage="Unable to load product." />
       {productQuery.data ? (

@@ -91,6 +91,18 @@
       "problemMatcher": "$tsc"
     },
     {
+      "label": "Lint Fix",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["lint:fix"],
+      "group": "build",
+      "icon": {
+        "id": "check",
+        "color": "terminal.ansiYellow"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Start Studio",
       "type": "shell",
       "command": "pnpm",

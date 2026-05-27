@@ -22,7 +22,6 @@ import { useTRPC } from '@/lib/trpc.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
-import { canCreateJobFromQuote } from './quote-job-eligibility.js';
 
 export const useQuoteTableStore = createPersistedDataTableStore({
   initialState: {
@@ -172,7 +171,7 @@ const QuoteTable: React.FC = () => {
         id: 'actions',
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
-            {canCreateJob && canCreateJobFromQuote(row.original.status) ? (
+            {canCreateJob ? (
               <ButtonLink
                 aria-label={`Create job from quote ${row.original.code}`}
                 search={{ quoteId: row.original.id }}

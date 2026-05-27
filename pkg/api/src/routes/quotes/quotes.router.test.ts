@@ -117,6 +117,46 @@ describe('quotes.create', () => {
       message: 'Quote includes an invalid customer, product, or salesperson.',
     });
   });
+
+  test('updates status and fields on a non-draft quote with an audit event', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const created = await caller.quotes.create({
+      customer: {
+        type: 'inline',
+        companyName: 'Sent Customer',
+      },
+      discount: 50,
+      notes: null,
+      paymentTerms: null,
+      productId: context.product.id,
+      salesPersonId: 'test-user-id',
+      status: 'sent',
+      validUntil: '2026-06-30',
+    });
+
+    const updated = await caller.quotes.update({
+      ...toUpdateInput(created),
+      notes: 'Editable after sent',
+      status: 'rejected',
+    });
+    const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+    const updateEvent = events.findLast((event) => event.entityType === 'quote' && event.action === 'updated');
+
+    expect(updated).toMatchObject({
+      notes: 'Editable after sent',
+      status: 'rejected',
+    });
+    expect(updateEvent?.changes).toMatchObject({
+      notes: {
+        from: null,
+        to: 'Editable after sent',
+      },
+      status: {
+        from: 'sent',
+        to: 'rejected',
+      },
+    });
+  });
 });
 
 describe('quotes.update', () => {
@@ -171,19 +211,21 @@ describe('quotes.list', () => {
       modelCode: 'CRUSH-77',
       name: 'Crusher Bucket',
     });
-    const acceptedQuote = await createNamedQuote(salesCaller, {
+    const createdQuote = await createNamedQuote(salesCaller, {
       customerCompanyName: 'Acme Mining',
       discount: 150,
       paymentTerms: 'Paid before dispatch',
       productId: context.product.id,
+    });
+    const finalQuote = await salesCaller.quotes.update({
+      ...toUpdateInput(createdQuote),
+      status: 'accepted',
     });
     const draftQuote = await createNamedQuote(salesCaller, {
       customerCompanyName: 'Beta Civil',
       discount: 25,
       productId: crusherProduct.id,
     });
-    const sentQuote = await salesCaller.quotes.send({ id: acceptedQuote.id });
-    const finalQuote = await salesCaller.quotes.accept({ id: sentQuote.id });
     const job = await supervisorCaller.jobs.create({
       productId: context.product.id,
       quoteId: finalQuote.id,
@@ -302,56 +344,15 @@ describe('quotes.list', () => {
   });
 });
 
-describe('quotes.send', () => {
-  test('snapshots the product price and freezes later edits', async ({ context }) => {
-    const caller = context.createCaller(mockSession('sales'));
-    const created = await createReadyQuote(caller, context.product.id);
-    const sent = await caller.quotes.send({ id: created.id });
-
-    await context.db.update(products).set({ basePrice: 999_999 });
-    const afterReprice = await caller.quotes.get({ id: sent.id });
-
-    expect(sent).toMatchObject({
-      quotedBasePrice: context.product.basePrice,
-      quotedCurrencyCode: 'ZAR',
-      status: 'sent',
-      total: context.product.basePrice - created.discount,
-    });
-    expect(afterReprice.total).toBe(sent.total);
-    await expect(
-      caller.quotes.update({
-        ...toUpdateInput(sent),
-        notes: 'This should not save',
-        paymentTerms: 'This should not save either',
-      }),
-    ).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-  });
-});
-
-describe('quotes.reject', () => {
-  test('rejects a sent quote', async ({ context }) => {
-    const caller = context.createCaller(mockSession('sales'));
-    const created = await createReadyQuote(caller, context.product.id);
-    const sent = await caller.quotes.send({ id: created.id });
-
-    const rejected = await caller.quotes.reject({ id: sent.id });
-
-    expect(rejected.status).toBe('rejected');
-    await expect(caller.quotes.accept({ id: rejected.id })).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-  });
-});
-
 describe('jobs.create with quote links', () => {
   test('creates multiple jobs from one accepted quote with stages', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const created = await createReadyQuote(salesCaller, context.product.id);
-    const sent = await salesCaller.quotes.send({ id: created.id });
-    const accepted = await salesCaller.quotes.accept({ id: sent.id });
+    const accepted = await salesCaller.quotes.update({
+      ...toUpdateInput(created),
+      status: 'accepted',
+    });
 
     await expect(supervisorCaller.quotes.get({ id: accepted.id })).resolves.toMatchObject({
       id: accepted.id,
@@ -391,7 +392,10 @@ describe('jobs.create with quote links', () => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const created = await createReadyQuote(salesCaller, context.product.id);
-    const sent = await salesCaller.quotes.send({ id: created.id });
+    const sent = await salesCaller.quotes.update({
+      ...toUpdateInput(created),
+      status: 'sent',
+    });
 
     await expect(
       supervisorCaller.jobs.create({ productId: context.product.id, quoteId: sent.id }),
@@ -405,7 +409,10 @@ describe('jobs.create with quote links', () => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const created = await createReadyQuote(salesCaller, context.product.id);
-    const sent = await salesCaller.quotes.send({ id: created.id });
+    const sent = await salesCaller.quotes.update({
+      ...toUpdateInput(created),
+      status: 'sent',
+    });
 
     const job = await supervisorCaller.jobs.create({
       productId: context.product.id,
@@ -422,7 +429,10 @@ describe('jobs.create with quote links', () => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const readyQuote = await createReadyQuote(salesCaller, context.product.id);
-    const sentQuote = await salesCaller.quotes.send({ id: readyQuote.id });
+    const sentQuote = await salesCaller.quotes.update({
+      ...toUpdateInput(readyQuote),
+      status: 'sent',
+    });
     const productLessQuote = await salesCaller.quotes.create({
       customer: {
         type: 'inline',
@@ -452,21 +462,23 @@ describe('jobs.create with quote links', () => {
     });
   });
 
-  test('rejects job creation from a rejected quote', async ({ context }) => {
+  test('creates a job from a rejected quote', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const created = await createReadyQuote(salesCaller, context.product.id);
-    const sent = await salesCaller.quotes.send({ id: created.id });
-    const rejected = await salesCaller.quotes.reject({ id: sent.id });
+    const rejected = await salesCaller.quotes.update({
+      ...toUpdateInput(created),
+      status: 'rejected',
+    });
 
     await expect(
       supervisorCaller.jobs.create({
         productId: context.product.id,
         quoteId: rejected.id,
       }),
-    ).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-      message: "This quote's status does not allow job creation.",
+    ).resolves.toMatchObject({
+      productId: context.product.id,
+      quoteId: rejected.id,
     });
   });
 
@@ -478,8 +490,10 @@ describe('jobs.create with quote links', () => {
       name: 'Alternate Quote Product',
     });
     const created = await createReadyQuote(salesCaller, context.product.id);
-    const sent = await salesCaller.quotes.send({ id: created.id });
-    const accepted = await salesCaller.quotes.accept({ id: sent.id });
+    const accepted = await salesCaller.quotes.update({
+      ...toUpdateInput(created),
+      status: 'accepted',
+    });
 
     const job = await supervisorCaller.jobs.create({
       productId: alternateProduct.id,
@@ -561,6 +575,7 @@ function toUpdateInput(quote: QuoteDetail) {
     preferredDeliveryDate: quote.preferredDeliveryDate,
     productId: quote.productId,
     salesPersonId: quote.salesPersonId ?? 'test-user-id',
+    status: quote.status,
     validUntil: quote.validUntil,
   };
 }

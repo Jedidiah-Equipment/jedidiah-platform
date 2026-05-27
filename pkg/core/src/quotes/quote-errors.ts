@@ -9,26 +9,6 @@ export class QuoteNotFoundError extends Error {
   }
 }
 
-export class QuoteTransitionDeniedError extends Error {
-  readonly code = 'quote.transition_denied';
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'QuoteTransitionDeniedError';
-  }
-}
-
-export class QuoteFrozenError extends Error {
-  readonly code = 'quote.frozen';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Quote is frozen and cannot be edited: ${id}`);
-    this.name = 'QuoteFrozenError';
-    this.metadata = { id };
-  }
-}
-
 export class QuoteDiscountInvalidError extends Error {
   readonly code = 'quote.discount_invalid';
 
@@ -47,19 +27,12 @@ export class QuoteInvalidReferenceError extends Error {
   }
 }
 
-export type QuoteCoreError =
-  | QuoteDiscountInvalidError
-  | QuoteFrozenError
-  | QuoteInvalidReferenceError
-  | QuoteNotFoundError
-  | QuoteTransitionDeniedError;
+export type QuoteCoreError = QuoteDiscountInvalidError | QuoteInvalidReferenceError | QuoteNotFoundError;
 
 export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
     error instanceof QuoteDiscountInvalidError ||
-    error instanceof QuoteFrozenError ||
     error instanceof QuoteInvalidReferenceError ||
-    error instanceof QuoteNotFoundError ||
-    error instanceof QuoteTransitionDeniedError
+    error instanceof QuoteNotFoundError
   );
 }

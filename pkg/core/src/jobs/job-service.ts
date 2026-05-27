@@ -6,7 +6,6 @@ import type {
   JobDetail,
   JobDueDateEditInput,
   JobSetStatusInput,
-  QuoteStatus,
   UserAccessSummary,
   UUID,
 } from '@pkg/schema';
@@ -16,8 +15,6 @@ import { createAuditChanges, insertAuditEvent, jobAuditDescriptor } from '../aud
 import { JobCreateFromQuoteDeniedError, JobDateEditTargetNotFoundError, JobNotFoundError } from './job-errors.js';
 import { mapJobAuditRecord } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
-
-const JOB_ELIGIBLE_QUOTE_STATUSES: readonly QuoteStatus[] = ['accepted', 'draft', 'sent'];
 
 export async function createJob({
   access,
@@ -34,7 +31,7 @@ export async function createJob({
     const quoteId = input.quoteId ?? null;
 
     if (quoteId) {
-      await validateJobQuoteForCreate({ allowedStatuses: JOB_ELIGIBLE_QUOTE_STATUSES, quoteId, tx });
+      await validateJobQuoteForCreate({ quoteId, tx });
     }
 
     const [job] = await tx
@@ -75,23 +72,11 @@ export async function createJob({
   });
 }
 
-async function validateJobQuoteForCreate({
-  allowedStatuses,
-  quoteId,
-  tx,
-}: {
-  allowedStatuses?: readonly QuoteStatus[];
-  quoteId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<void> {
+async function validateJobQuoteForCreate({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<void> {
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
     throw new JobCreateFromQuoteDeniedError('Quote not found.');
-  }
-
-  if (allowedStatuses && !allowedStatuses.includes(quote.status)) {
-    throw new JobCreateFromQuoteDeniedError("This quote's status does not allow job creation.");
   }
 
   return;

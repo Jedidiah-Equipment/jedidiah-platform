@@ -1,99 +1,37 @@
 import { hasPermission } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { BriefcaseBusinessIcon, EditIcon, Loader2Icon } from 'lucide-react';
+import { BriefcaseBusinessIcon, EditIcon } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
 
 import { BackButton } from '@/components/button/BackButton.js';
 import { ButtonLink } from '@/components/button/ButtonLink.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
-import { Button } from '@/components/ui/button.js';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatCurrency } from '@/utils/number.js';
 import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
-import { useQuoteStateMutation } from './hooks/use-quote-state-mutation.js';
-import { canCreateJobFromQuote } from './quote-job-eligibility.js';
 
 type QuoteDetailPageProps = {
   quoteId: UUID;
 };
 
-type QuoteTransitionConfirmation = {
-  body: string[];
-  confirmLabel: string;
-  confirmVariant: React.ComponentProps<typeof Button>['variant'];
-  onConfirm: () => void;
-  title: string;
-};
-
 export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
   const accessQuery = useAccess();
-  const [confirmation, setConfirmation] = useState<QuoteTransitionConfirmation | null>(null);
 
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
   const quote = quoteQuery.data;
-
-  const sendMutation = useQuoteStateMutation({ action: 'send', successMessage: 'Quote sent' });
-  const acceptMutation = useQuoteStateMutation({ action: 'accept', successMessage: 'Quote accepted' });
-  const rejectMutation = useQuoteStateMutation({ action: 'reject', successMessage: 'Quote rejected' });
 
   const currencyCode = quote?.quotedCurrencyCode ?? quote?.productCurrencyCode ?? undefined;
 
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
-  const isStatePending = sendMutation.isPending || acceptMutation.isPending || rejectMutation.isPending;
-  const confirmSendQuote = (id: UUID) => {
-    setConfirmation({
-      body: [
-        'This will send the Quote and freeze it at the current product price and currency.',
-        'After sending, the Quote cannot be edited. It can only be accepted or rejected.',
-      ],
-      confirmLabel: 'Send quote',
-      confirmVariant: 'default',
-      onConfirm: () => sendMutation.mutate({ id }),
-      title: 'Send quote?',
-    });
-  };
-  const confirmAcceptQuote = (id: UUID) => {
-    setConfirmation({
-      body: [
-        'This will mark the Quote as accepted.',
-        'After acceptance, the Quote cannot be rejected or edited. A Job can be created from it by someone with Job creation access.',
-      ],
-      confirmLabel: 'Accept quote',
-      confirmVariant: 'default',
-      onConfirm: () => acceptMutation.mutate({ id }),
-      title: 'Accept quote?',
-    });
-  };
-  const confirmRejectQuote = (id: UUID) => {
-    setConfirmation({
-      body: [
-        'This will mark the Quote as rejected.',
-        'After rejection, the Quote cannot be accepted, edited, or used to create a Job. It will stay visible for history.',
-      ],
-      confirmLabel: 'Reject quote',
-      confirmVariant: 'destructive',
-      onConfirm: () => rejectMutation.mutate({ id }),
-      title: 'Reject quote?',
-    });
-  };
 
   return (
     <DetailPageLayout
@@ -106,30 +44,13 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
       {quote ? (
         <>
           <div className="flex flex-wrap gap-2">
-            {canUpdateQuote && quote.status === 'draft' ? (
+            {canUpdateQuote ? (
               <ButtonLink params={{ id: quote.id }} to="/quotes/$id/edit" variant="outline">
                 <EditIcon data-icon="inline-start" />
                 Edit
               </ButtonLink>
             ) : null}
-            {canUpdateQuote && quote.status === 'draft' ? (
-              <Button disabled={isStatePending} onClick={() => confirmSendQuote(quote.id)}>
-                {sendMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-                Send
-              </Button>
-            ) : null}
-            {canUpdateQuote && quote.status === 'sent' ? (
-              <>
-                <Button disabled={isStatePending} onClick={() => confirmAcceptQuote(quote.id)}>
-                  {acceptMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-                  Accept
-                </Button>
-                <Button disabled={isStatePending} onClick={() => confirmRejectQuote(quote.id)} variant="outline">
-                  Reject
-                </Button>
-              </>
-            ) : null}
-            {canCreateJob && canCreateJobFromQuote(quote.status) ? (
+            {canCreateJob ? (
               <ButtonLink search={{ quoteId: quote.id }} to="/jobs/new">
                 <BriefcaseBusinessIcon data-icon="inline-start" />
                 Create job
@@ -184,11 +105,6 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
         </>
       ) : null}
       {quoteQuery.isLoading ? <Skeleton className="h-40" /> : null}
-      <QuoteTransitionConfirmationDialog
-        confirmation={confirmation}
-        isPending={isStatePending}
-        onClose={() => setConfirmation(null)}
-      />
     </DetailPageLayout>
   );
 };
@@ -198,44 +114,4 @@ const QuoteFact: React.FC<{ label: string; value: React.ReactNode }> = ({ label,
     <div className="text-xs font-medium text-muted-foreground">{label}</div>
     <div className="mt-1 wrap-break-word">{value}</div>
   </div>
-);
-
-const QuoteTransitionConfirmationDialog: React.FC<{
-  confirmation: QuoteTransitionConfirmation | null;
-  isPending: boolean;
-  onClose: () => void;
-}> = ({ confirmation, isPending, onClose }) => (
-  <Dialog onOpenChange={(isOpen) => !isOpen && onClose()} open={Boolean(confirmation)}>
-    <DialogContent className="sm:max-w-lg">
-      {confirmation ? (
-        <>
-          <DialogHeader>
-            <DialogTitle>{confirmation.title}</DialogTitle>
-            <DialogDescription className="flex flex-col gap-2">
-              {confirmation.body.map((paragraph) => (
-                <span key={paragraph}>{paragraph}</span>
-              ))}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
-              Keep quote
-            </Button>
-            <Button
-              disabled={isPending}
-              onClick={() => {
-                const action = confirmation.onConfirm;
-                onClose();
-                action();
-              }}
-              type="button"
-              variant={confirmation.confirmVariant}
-            >
-              {confirmation.confirmLabel}
-            </Button>
-          </DialogFooter>
-        </>
-      ) : null}
-    </DialogContent>
-  </Dialog>
 );

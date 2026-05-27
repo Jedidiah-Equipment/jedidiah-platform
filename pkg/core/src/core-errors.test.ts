@@ -18,10 +18,8 @@ import {
 import {
   isQuoteCoreError,
   QuoteDiscountInvalidError,
-  QuoteFrozenError,
   QuoteInvalidReferenceError,
   QuoteNotFoundError,
-  QuoteTransitionDeniedError,
 } from './quotes/quote-errors.js';
 import { DuplicateSupplierNameError, isSupplierCoreError, SupplierNotFoundError } from './suppliers/supplier-errors.js';
 import { isUserCoreError, UserNotFoundError } from './users/user-errors.js';
@@ -62,11 +60,9 @@ describe('core error codes and guards', () => {
 
   it('identifies quote core errors', () => {
     expect(new QuoteNotFoundError('quote-id').code).toBe('quote.not_found');
-    expect(new QuoteTransitionDeniedError('diagnostic').code).toBe('quote.transition_denied');
-    expect(new QuoteFrozenError('quote-id').code).toBe('quote.frozen');
     expect(new QuoteDiscountInvalidError('diagnostic').code).toBe('quote.discount_invalid');
     expect(new QuoteInvalidReferenceError('diagnostic').code).toBe('quote.invalid_reference');
-    expect(isQuoteCoreError(new QuoteFrozenError('quote-id'))).toBe(true);
+    expect(isQuoteCoreError(new QuoteNotFoundError('quote-id'))).toBe(true);
   });
 
   it('identifies job core errors', () => {

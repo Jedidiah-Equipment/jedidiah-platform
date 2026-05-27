@@ -10,20 +10,17 @@ import {
   user,
   withPagination,
 } from '@pkg/db';
-import { computeQuoteTotal, evaluateQuoteTransition, parseJobCodeSearch, validateDiscount } from '@pkg/domain';
+import { computeQuoteTotal, parseJobCodeSearch, validateDiscount } from '@pkg/domain';
 import {
   type AuthId,
   JobCode,
   ProductCurrencyCode,
   Quote,
   type QuoteCreateInput,
-  type QuoteDecisionInput,
   type QuoteDetail,
   type QuoteListInput,
   type QuoteListResult,
-  type QuoteSendInput,
   type QuoteSortBy,
-  type QuoteStatus,
   type QuoteSummary,
   type QuoteUpdateInput,
   type UserListResult,
@@ -38,13 +35,7 @@ import {
   insertAuditEvent,
   quoteAuditDescriptor,
 } from '../audit/audit-service.js';
-import {
-  QuoteDiscountInvalidError,
-  QuoteFrozenError,
-  QuoteInvalidReferenceError,
-  QuoteNotFoundError,
-  QuoteTransitionDeniedError,
-} from './quote-errors.js';
+import { QuoteDiscountInvalidError, QuoteInvalidReferenceError, QuoteNotFoundError } from './quote-errors.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
 type ProductRow = typeof products.$inferSelect;
@@ -142,6 +133,7 @@ export async function createQuote({
         preferredDeliveryDate: input.preferredDeliveryDate,
         productId: input.productId,
         salesPersonId: input.salesPersonId,
+        status: input.status,
         validUntil: input.validUntil,
       })
       .returning();
@@ -293,10 +285,6 @@ export async function updateQuote({
       throw new QuoteNotFoundError(input.id);
     }
 
-    if (before.status !== 'draft') {
-      throw new QuoteFrozenError(input.id);
-    }
-
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
     if (input.productId) {
       const product = await readProductForQuote({ productId: input.productId, tx });
@@ -319,6 +307,7 @@ export async function updateQuote({
       preferredDeliveryDate: input.preferredDeliveryDate,
       productId: input.productId,
       salesPersonId: input.salesPersonId,
+      status: input.status,
       validUntil: input.validUntil,
     };
     const changes = createAuditChanges(
@@ -342,6 +331,7 @@ export async function updateQuote({
         preferredDeliveryDate: input.preferredDeliveryDate,
         productId: input.productId,
         salesPersonId: input.salesPersonId,
+        status: input.status,
         updatedAt: new Date(),
         validUntil: input.validUntil,
       })
@@ -366,60 +356,6 @@ export async function updateQuote({
     });
 
     return getQuote({ db: tx, id: row.id });
-  });
-}
-
-export async function sendQuote({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: QuoteSendInput;
-}): Promise<QuoteDetail> {
-  return transitionQuote({
-    actorUserId,
-    db,
-    id: input.id,
-    nextStatus: 'sent',
-    transition: 'send',
-  });
-}
-
-export async function acceptQuote({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: QuoteDecisionInput;
-}): Promise<QuoteDetail> {
-  return transitionQuote({
-    actorUserId,
-    db,
-    id: input.id,
-    nextStatus: 'accepted',
-    transition: 'accept',
-  });
-}
-
-export async function rejectQuote({
-  actorUserId,
-  db,
-  input,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: QuoteDecisionInput;
-}): Promise<QuoteDetail> {
-  return transitionQuote({
-    actorUserId,
-    db,
-    id: input.id,
-    nextStatus: 'rejected',
-    transition: 'reject',
   });
 }
 
@@ -492,78 +428,6 @@ async function getLinkedJobsByQuoteId({
   }
 
   return byQuoteId;
-}
-
-async function transitionQuote({
-  actorUserId,
-  db,
-  id,
-  nextStatus,
-  transition,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  id: UUID;
-  nextStatus: QuoteStatus;
-  transition: 'send' | 'accept' | 'reject';
-}): Promise<QuoteDetail> {
-  return db.transaction(async (tx) => {
-    const [before] = await tx.select().from(quotes).where(eq(quotes.id, id)).for('update');
-
-    if (!before) {
-      throw new QuoteNotFoundError(id);
-    }
-
-    const result = evaluateQuoteTransition({ from: before.status, transition });
-    if (!result.allowed) {
-      throw new QuoteTransitionDeniedError(result.reason);
-    }
-
-    const values: Partial<QuoteRow> = {
-      status: nextStatus,
-      updatedAt: new Date(),
-    };
-
-    if (transition === 'send') {
-      assertCompleteDraft(before);
-      const product = await readProductForQuote({ productId: before.productId, tx });
-      assertValidDiscount({ basePrice: product.basePrice, discount: before.discount });
-      values.quotedBasePrice = product.basePrice;
-      values.quotedCurrencyCode = product.currencyCode;
-      values.sentAt = new Date();
-    }
-
-    const [row] = await tx.update(quotes).set(values).where(eq(quotes.id, id)).returning();
-
-    if (!row) {
-      throw new QuoteNotFoundError(id);
-    }
-
-    await insertAuditEvent({
-      db: tx,
-      input: {
-        action: 'updated',
-        actorUserId,
-        after: mapQuoteAuditRecord(row),
-        before: mapQuoteAuditRecord(before),
-        changes: createAuditChanges(mapQuoteAuditRecord(before), mapQuoteAuditRecord(row), quoteAuditDescriptor.fields),
-        entityId: row.id,
-        entityType: quoteAuditDescriptor.entityType,
-      },
-    });
-
-    return getQuote({ db: tx, id: row.id });
-  });
-}
-
-function assertCompleteDraft(quote: QuoteRow): asserts quote is QuoteRow & {
-  productId: UUID;
-  salesPersonId: AuthId;
-  validUntil: string;
-} {
-  if (!quote.customerId || !quote.productId || !quote.salesPersonId || !quote.validUntil) {
-    throw new QuoteTransitionDeniedError('Quote is missing required fields.');
-  }
 }
 
 async function resolveQuoteCustomer({
@@ -650,7 +514,7 @@ async function readProductForQuote({
   const [product] = await tx.select().from(products).where(eq(products.id, productId));
 
   if (!product) {
-    throw new QuoteTransitionDeniedError('Quote product was not found.');
+    throw new QuoteInvalidReferenceError('Quote product was not found.');
   }
 
   return product;

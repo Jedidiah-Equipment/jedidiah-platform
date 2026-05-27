@@ -62,7 +62,8 @@ export function parsePartBulkImportCsv(
   const parsed = Papa.parse<string[]>(csvText, {
     skipEmptyLines: 'greedy',
   });
-  const errors = parsed.errors.map((error) => `CSV parse error: ${error.message}`);
+  const parseErrors = parsed.errors.map((error) => `CSV parse error: ${error.message}`);
+  const errors = [...parseErrors];
   const table = parsed.data;
 
   if (table.length === 0) {
@@ -73,6 +74,13 @@ export function parsePartBulkImportCsv(
   }
 
   const columnIndexes = options.hasHeader ? getHeaderColumnIndexes(table[0] ?? []) : getPositionColumnIndexes();
+
+  if (parseErrors.length > 0) {
+    return {
+      errors,
+      rows: [],
+    };
+  }
 
   if (columnIndexes.errors.length > 0) {
     return {
@@ -105,7 +113,10 @@ export function parsePartBulkImportCsv(
       return;
     }
 
-    const rowInput = buildRowInput(dataRow, columnIndexes.indexes);
+    const rowInput = {
+      ...buildRowInput(dataRow, columnIndexes.indexes),
+      lineNumber: rowNumber,
+    };
     const result = PartBulkImportRow.safeParse(rowInput);
 
     if (!result.success) {
@@ -122,7 +133,7 @@ export function parsePartBulkImportCsv(
 
   return {
     errors,
-    rows: errors.length > 0 ? [] : rows,
+    rows,
   };
 }
 

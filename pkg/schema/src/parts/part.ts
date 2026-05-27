@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
-import { Supplier } from '../suppliers/supplier.js';
+import { Supplier, SupplierCompanyName } from '../suppliers/supplier.js';
 
 export type PartName = z.infer<typeof PartName>;
 export const PartName = z.string().trim().min(1, 'Part name is required');
@@ -78,6 +78,29 @@ export const PartCreateInput = z.object({
 export type PartUpdateInput = z.infer<typeof PartUpdateInput>;
 export const PartUpdateInput = PartCreateInput.extend({
   id: UUID,
+});
+
+export type PartBulkImportRow = z.infer<typeof PartBulkImportRow>;
+export const PartBulkImportRow = z.object({
+  category: PartCategory,
+  code: PartCode,
+  description: PartDescription,
+  drawingCode: PartDrawingCodeInput,
+  finish: PartFinish,
+  name: PartName,
+  supplierCode: PartSupplierCode,
+  supplierName: SupplierCompanyName,
+});
+
+export type PartBulkImportInput = z.infer<typeof PartBulkImportInput>;
+export const PartBulkImportInput = z.object({
+  rows: z.array(PartBulkImportRow).min(1, 'At least one part row is required'),
+});
+
+export type PartBulkImportResult = z.infer<typeof PartBulkImportResult>;
+export const PartBulkImportResult = z.object({
+  importedCount: z.number().int().min(0),
+  updatedCount: z.number().int().min(0),
 });
 
 export type PartListInput = z.infer<typeof PartListInput>;

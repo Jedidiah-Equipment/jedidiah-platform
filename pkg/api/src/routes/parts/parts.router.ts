@@ -1,4 +1,5 @@
 import {
+  bulkImportParts,
   createPart,
   getPart,
   isPartCoreError,
@@ -7,7 +8,7 @@ import {
   type PartCoreError,
   updatePart,
 } from '@pkg/core';
-import { PartCreateInput, PartListInput, PartUpdateInput, UUID } from '@pkg/schema';
+import { PartBulkImportInput, PartCreateInput, PartListInput, PartUpdateInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -35,6 +36,12 @@ export const partsRouter = router({
     .mutation(({ ctx, input }) =>
       mapPartErrors(() => updatePart({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
+
+  bulkImport: authorizedProcedure('part:update')
+    .input(PartBulkImportInput)
+    .mutation(({ ctx, input }) =>
+      mapPartErrors(() => bulkImportParts({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+    ),
 });
 
 async function mapPartErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -54,6 +61,12 @@ function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError[
         appCode: error.code,
         code: 'CONFLICT',
         message: 'A part with this supplier code already exists for this supplier.',
+      };
+    case 'part.bulk_import_conflict':
+      return {
+        appCode: error.code,
+        code: 'CONFLICT',
+        message: 'A CSV row matches an existing part code with a different supplier or supplier code.',
       };
     case 'part.not_found':
       return {

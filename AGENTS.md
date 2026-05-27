@@ -8,13 +8,17 @@
 
 ## Agent skills
 
+### Publishing PRs
+
+- Before PR you can run `pnpm safe-to-merge` if no issues you good to go.
+- Assume the `gh` cli is installed and authenticated.
+- Use `/blast-it` when publishing normal Codex changes for review. It standardizes commit messages
+  and PR titles as `<type>(<scope>): <subject>`, keeps issue references in the PR body with
+  `Closes #<issue-number>` when applicable, and marks the PR ready for review.
+
 ### Issue tracker
 
 Issues and PRDs are tracked in GitHub Issues for `Jedidiah-Equipment/jedidiah-platform`. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Use the canonical triage labels unless the repo's GitHub label set is later customized. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 

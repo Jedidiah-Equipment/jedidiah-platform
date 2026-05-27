@@ -1,3 +1,4 @@
+import type { Supplier } from '@pkg/schema';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2Icon, UploadIcon } from 'lucide-react';
 import type React from 'react';
@@ -32,7 +33,11 @@ type BulkImportResult = {
   updatedCount: number;
 };
 
-export const PartBulkImportDialog: React.FC = () => {
+type PartBulkImportDialogProps = {
+  supplier?: Pick<Supplier, 'companyName' | 'id'>;
+};
+
+export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supplier }) => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
@@ -119,14 +124,16 @@ export const PartBulkImportDialog: React.FC = () => {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Bulk import parts</DialogTitle>
-            <DialogDescription>Import parts from a CSV file.</DialogDescription>
+            <DialogDescription>
+              {supplier ? `Import parts for ${supplier.companyName} from a CSV file.` : 'Import parts from a CSV file.'}
+            </DialogDescription>
           </DialogHeader>
           <form
             className="grid gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               if (canImport) {
-                importMutation.mutate({ rows: parseResult.rows });
+                importMutation.mutate({ rows: parseResult.rows, supplierId: supplier?.id });
               }
             }}
           >

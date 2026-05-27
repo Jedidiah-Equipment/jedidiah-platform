@@ -215,6 +215,41 @@ describe('parts.bulkImport', () => {
       updatedCount: 0,
     });
   });
+
+  test('bulk imports parts scoped to one supplier and rejects mismatched supplier rows', async ({ context }) => {
+    const caller = context.createCaller();
+    const supplier = await createSupplier(caller);
+
+    await expect(
+      caller.parts.bulkImport({
+        rows: [
+          bulkImportRow({
+            supplierName: 'Acme Supplies',
+          }),
+          bulkImportRow({
+            code: 'P-200',
+            lineNumber: 5,
+            name: 'Bolt',
+            supplierCode: 'BET-200',
+            supplierName: 'Beta Supplies',
+          }),
+        ],
+        supplierId: supplier.id,
+      }),
+    ).resolves.toEqual({
+      errors: ['Line 5: Supplier Beta Supplies does not match Acme Supplies.'],
+      importedCount: 1,
+      updatedCount: 0,
+    });
+
+    const scopedParts = await caller.parts.list({ supplierId: supplier.id });
+
+    expect(scopedParts.items).toHaveLength(1);
+    expect(scopedParts.items[0]).toMatchObject({
+      code: 'P-100',
+      supplierId: supplier.id,
+    });
+  });
 });
 
 describe('parts.list and parts.categories', () => {
@@ -261,11 +296,18 @@ describe('parts.list and parts.categories', () => {
     });
     const supplierSearch = await caller.parts.list({ search: 'beta' });
     const drawingSearch = await caller.parts.list({ search: 'DR-200' });
+    const supplierParts = await caller.parts.list({
+      search: 'bearings',
+      sortBy: 'code',
+      sortDirection: 'desc',
+      supplierId: acme.id,
+    });
     const categories = await caller.parts.categories();
 
     expect(partNames(list.items)).toEqual(['Bearing']);
     expect(supplierSearch.items.map((part) => part.code)).toEqual(['P-200']);
     expect(drawingSearch.items.map((part) => part.code)).toEqual(['P-200']);
+    expect(supplierParts.items.map((part) => part.code)).toEqual(['P-300', 'P-100']);
     expect(categories.categories).toEqual(['Bearings', 'Fasteners']);
   });
 

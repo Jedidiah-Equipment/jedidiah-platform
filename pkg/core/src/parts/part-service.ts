@@ -131,6 +131,10 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
     conditions.push(eq(parts.category, input.category));
   }
 
+  if (input.supplierId) {
+    conditions.push(eq(parts.supplierId, input.supplierId));
+  }
+
   if (input.columnFilters.category) {
     conditions.push(createEscapedContainsSearchCondition(sql`${parts.category}`, input.columnFilters.category));
   }
@@ -308,9 +312,20 @@ export async function bulkImportParts({
       const errors: string[] = [];
       let importedCount = 0;
       let updatedCount = 0;
+      const scopedSupplier = input.supplierId
+        ? await getImportSupplierById({ db: tx, supplierId: input.supplierId })
+        : undefined;
 
       for (const row of input.rows) {
-        const existingSupplier = await findImportSupplier({ db: tx, companyName: row.supplierName });
+        if (scopedSupplier && row.supplierName.toLowerCase() !== scopedSupplier.companyName.toLowerCase()) {
+          errors.push(
+            `Line ${row.lineNumber}: Supplier ${row.supplierName} does not match ${scopedSupplier.companyName}.`,
+          );
+          continue;
+        }
+
+        const existingSupplier =
+          scopedSupplier ?? (await findImportSupplier({ db: tx, companyName: row.supplierName }));
         const [partByCode] = await tx.select().from(parts).where(eq(parts.code, row.code)).for('update');
         const [partBySupplierCode] = existingSupplier
           ? await tx
@@ -452,6 +467,28 @@ async function findImportSupplier({
     },
     where: sql`lower(${supplier.companyName}) = lower(${companyName})`,
   });
+}
+
+async function getImportSupplierById({
+  db,
+  supplierId,
+}: {
+  db: DatabaseTransaction;
+  supplierId: UUID;
+}): Promise<SupplierRow> {
+  const row = await db.query.supplier.findFirst({
+    columns: {
+      companyName: true,
+      id: true,
+    },
+    where: eq(supplier.id, supplierId),
+  });
+
+  if (!row) {
+    throw new PartSupplierNotFoundError(supplierId);
+  }
+
+  return row;
 }
 
 async function createImportSupplier({

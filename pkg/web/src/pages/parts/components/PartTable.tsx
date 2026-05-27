@@ -1,4 +1,4 @@
-import { type Part, type PartListInput, PartSortBy } from '@pkg/schema';
+import { type Part, type PartListInput, PartSortBy, type UUID } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { PencilIcon } from 'lucide-react';
@@ -17,7 +17,9 @@ import { useTRPC } from '@/lib/trpc.js';
 
 type PartTableProps = {
   onEditPart: ((part: Part) => void) | undefined;
+  rightSection?: React.ReactNode;
   showEditActions: boolean;
+  supplierId: UUID;
 };
 
 export const usePartTableStore = createPersistedDataTableStore({
@@ -29,7 +31,7 @@ export const usePartTableStore = createPersistedDataTableStore({
       },
     ],
   },
-  persistName: 'parts-table',
+  persistName: 'supplier-parts-table',
 });
 
 const partSortOptions: SortOptions<PartListInput> = {
@@ -39,13 +41,13 @@ const partSortOptions: SortOptions<PartListInput> = {
   },
 };
 
-export const PartTable: React.FC<PartTableProps> = ({ onEditPart, showEditActions }) => {
+export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, showEditActions, supplierId }) => {
   const trpc = useTRPC();
 
   const tableController = useServerSideTableController({
     store: usePartTableStore,
     sortOptions: partSortOptions,
-    getListInputExtras: getPartListInputExtras,
+    getListInputExtras: (columnFilters) => getPartListInputExtras(columnFilters, supplierId),
   });
 
   const partsQuery = useQuery(
@@ -96,13 +98,6 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, showEditAction
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Description',
-      },
-      {
-        accessorKey: 'supplierName',
-        cell: ({ row }) => row.original.supplier.companyName,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Supplier',
       },
       {
         accessorKey: 'supplierCode',
@@ -192,6 +187,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, showEditAction
       errorMessage={getApiQueryErrorMessage(partsQuery.error, 'Unable to load parts.')}
       globalFilterPlaceholder="Search parts..."
       isLoading={isLoading}
+      rightSection={rightSection}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
@@ -199,21 +195,21 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, showEditAction
   );
 };
 
-function getPartListInputExtras(columnFilters: ColumnFiltersState) {
+function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId: UUID) {
   return {
     category: getColumnFilterValue(columnFilters, 'category'),
     columnFilters: {
       code: getColumnFilterValue(columnFilters, 'code'),
       name: getColumnFilterValue(columnFilters, 'name'),
       supplierCode: getColumnFilterValue(columnFilters, 'supplierCode'),
-      supplierName: getColumnFilterValue(columnFilters, 'supplierName'),
     },
-  } satisfies Pick<PartListInput, 'category' | 'columnFilters'>;
+    supplierId,
+  } satisfies Pick<PartListInput, 'category' | 'columnFilters' | 'supplierId'>;
 }
 
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,
-  id: 'category' | 'code' | 'name' | 'supplierCode' | 'supplierName',
+  id: 'category' | 'code' | 'name' | 'supplierCode',
 ): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 

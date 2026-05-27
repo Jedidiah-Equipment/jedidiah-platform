@@ -6,6 +6,7 @@ import {
   PartFinish,
   PartName,
   PartSupplierCode,
+  type Supplier,
   UUID,
 } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
@@ -31,26 +32,33 @@ const PartFormValues = z.object({
 });
 
 type PartFormProps = {
+  fixedSupplier?: Pick<Supplier, 'companyName' | 'id'>;
   initialPart?: Part;
   isPending: boolean;
   onSubmit: (value: PartFormValues) => Promise<unknown>;
   submitLabel: string;
 };
 
-export const PartForm: React.FC<PartFormProps> = ({ initialPart, isPending, onSubmit, submitLabel }) => {
+export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, isPending, onSubmit, submitLabel }) => {
   const trpc = useTRPC();
   const suppliersQuery = useQuery(
-    trpc.suppliers.list.queryOptions({
-      pageSize: 0,
-      sortBy: 'companyName',
-      sortDirection: 'asc',
-    }),
+    trpc.suppliers.list.queryOptions(
+      {
+        pageSize: 0,
+        sortBy: 'companyName',
+        sortDirection: 'asc',
+      },
+      {
+        enabled: !fixedSupplier,
+      },
+    ),
   );
   const supplierOptions =
     suppliersQuery.data?.items.map((supplier) => ({
       label: supplier.companyName,
       value: supplier.id,
     })) ?? [];
+  const isSupplierSelectPending = !fixedSupplier && suppliersQuery.isPending;
   const categoriesQuery = useQuery(trpc.parts.categories.queryOptions());
 
   const form = useAppForm({
@@ -62,7 +70,7 @@ export const PartForm: React.FC<PartFormProps> = ({ initialPart, isPending, onSu
       finish: initialPart?.finish ?? '',
       name: initialPart?.name ?? '',
       supplierCode: initialPart?.supplierCode ?? '',
-      supplierId: initialPart?.supplierId ?? '',
+      supplierId: fixedSupplier?.id ?? initialPart?.supplierId ?? '',
     },
     validators: {
       onSubmit: PartFormValues,
@@ -87,16 +95,18 @@ export const PartForm: React.FC<PartFormProps> = ({ initialPart, isPending, onSu
           {(field) => <field.TextField autoComplete="off" label="Drawing code" />}
         </form.AppField>
         <form.AppField name="finish">{(field) => <field.TextField autoComplete="off" label="Finish" />}</form.AppField>
-        <form.AppField name="supplierId">
-          {(field) => (
-            <field.SelectField
-              disabled={suppliersQuery.isPending}
-              label="Supplier"
-              options={supplierOptions}
-              placeholder={suppliersQuery.isPending ? 'Loading suppliers...' : 'Select supplier'}
-            />
-          )}
-        </form.AppField>
+        {fixedSupplier ? null : (
+          <form.AppField name="supplierId">
+            {(field) => (
+              <field.SelectField
+                disabled={isSupplierSelectPending}
+                label="Supplier"
+                options={supplierOptions}
+                placeholder={isSupplierSelectPending ? 'Loading suppliers...' : 'Select supplier'}
+              />
+            )}
+          </form.AppField>
+        )}
         <form.AppField name="supplierCode">
           {(field) => <field.TextField autoComplete="off" label="Supplier code" />}
         </form.AppField>
@@ -120,7 +130,7 @@ export const PartForm: React.FC<PartFormProps> = ({ initialPart, isPending, onSu
       <EditFormActions className="mt-4">
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
-            <Button disabled={isSubmitting || isPending || suppliersQuery.isPending} type="submit">
+            <Button disabled={isSubmitting || isPending || isSupplierSelectPending} type="submit">
               {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
               {submitLabel}
             </Button>

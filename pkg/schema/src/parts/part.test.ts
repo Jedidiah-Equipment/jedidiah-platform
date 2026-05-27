@@ -53,6 +53,12 @@ describe('PartListInput', () => {
       sortDirection: 'asc',
     });
   });
+
+  it('accepts supplier filters', () => {
+    expect(PartListInput.parse({ supplierId: '00000000-0000-4000-8000-000000000001' })).toMatchObject({
+      supplierId: '00000000-0000-4000-8000-000000000001',
+    });
+  });
 });
 
 describe('PartBulkImportInput', () => {
@@ -87,6 +93,28 @@ describe('PartBulkImportInput', () => {
           supplierName: 'Acme Supplies',
         },
       ],
+    });
+  });
+
+  it('accepts supplier scoped imports', () => {
+    expect(
+      PartBulkImportInput.parse({
+        rows: [
+          {
+            category: 'Bearings',
+            code: 'P-100',
+            description: 'Main bearing',
+            finish: 'Zinc',
+            lineNumber: 4,
+            name: 'Bearing',
+            supplierCode: 'SUP-100',
+            supplierName: 'Acme Supplies',
+          },
+        ],
+        supplierId: '00000000-0000-4000-8000-000000000001',
+      }),
+    ).toMatchObject({
+      supplierId: '00000000-0000-4000-8000-000000000001',
     });
   });
 

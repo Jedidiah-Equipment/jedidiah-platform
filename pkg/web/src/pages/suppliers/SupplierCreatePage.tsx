@@ -30,8 +30,8 @@ export const SupplierCreatePage: React.FC = () => {
   return (
     <EditPageLayout
       back={<BackButton to="/suppliers">Suppliers</BackButton>}
-      description="Procurement"
-      title="New supplier"
+      description="New Supplier"
+      title="Create a new supplier"
     >
       <SupplierForm
         isPending={createSupplierMutation.isPending}

@@ -41,8 +41,8 @@ export const CustomerEditPage: React.FC<CustomerEditPageProps> = ({ customerId }
   return (
     <EditPageLayout
       back={<BackButton to="/customers">Customers</BackButton>}
-      description="Directory"
-      title="Edit customer"
+      description="Edit Customer"
+      title={customerQuery.data?.companyName ?? 'Loading customer...'}
     >
       {customerQuery.isPending ? <CustomerFormSkeleton /> : null}
       <ErrorMessage error={customerQuery.error} fallbackMessage="Unable to load customer." />

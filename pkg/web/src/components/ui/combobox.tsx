@@ -11,14 +11,7 @@ function ComboboxValue({ ...props }: ComboboxPrimitive.Value.Props) {
   return <ComboboxPrimitive.Value data-slot="combobox-value" {...props} />;
 }
 
-function ComboboxTrigger({
-  className,
-  children,
-  showChevron = true,
-  ...props
-}: ComboboxPrimitive.Trigger.Props & {
-  showChevron?: boolean;
-}) {
+function ComboboxTrigger({ className, children, ...props }: ComboboxPrimitive.Trigger.Props) {
   return (
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
@@ -26,7 +19,7 @@ function ComboboxTrigger({
       {...props}
     >
       {children}
-      {showChevron ? <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" /> : null}
+      <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />
     </ComboboxPrimitive.Trigger>
   );
 }

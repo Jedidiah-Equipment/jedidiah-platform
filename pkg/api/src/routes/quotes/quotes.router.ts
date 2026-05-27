@@ -1,5 +1,4 @@
 import {
-  acceptQuote,
   createQuote,
   getQuote,
   isQuoteCoreError,
@@ -8,17 +7,13 @@ import {
   listQuoteSalespeople,
   listQuotes,
   type QuoteCoreError,
-  rejectQuote,
-  sendQuote,
   updateQuote,
 } from '@pkg/core';
 import {
   CustomerListInput,
   ProductListInput,
   QuoteCreateInput,
-  QuoteDecisionInput,
   QuoteListInput,
-  QuoteSendInput,
   QuoteUpdateInput,
   UUID,
 } from '@pkg/schema';
@@ -59,24 +54,6 @@ export const quotesRouter = router({
     .mutation(({ ctx, input }) =>
       mapQuoteErrors(() => updateQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
-
-  send: authorizedProcedure('quote:update')
-    .input(QuoteSendInput)
-    .mutation(({ ctx, input }) =>
-      mapQuoteErrors(() => sendQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
-    ),
-
-  accept: authorizedProcedure('quote:update')
-    .input(QuoteDecisionInput)
-    .mutation(({ ctx, input }) =>
-      mapQuoteErrors(() => acceptQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
-    ),
-
-  reject: authorizedProcedure('quote:update')
-    .input(QuoteDecisionInput)
-    .mutation(({ ctx, input }) =>
-      mapQuoteErrors(() => rejectQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
-    ),
 });
 
 async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -90,18 +67,6 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Quote not found.',
-      };
-    case 'quote.transition_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: 'Quote cannot move to that state.',
-      };
-    case 'quote.frozen':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: 'Sent quotes cannot be edited.',
       };
     case 'quote.discount_invalid':
       return {

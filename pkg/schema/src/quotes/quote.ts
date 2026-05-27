@@ -101,6 +101,7 @@ export const QuoteCreateInput = z.object({
   customer: QuoteCustomerInput,
   productId: UUID.nullable().default(null),
   salesPersonId: AuthId.nullable().default(null),
+  status: QuoteStatus.default('draft'),
   discount: z.coerce.number().pipe(Price).default(0),
   validUntil: DateIso.nullable().default(null),
   preferredDeliveryDate: DateOnlyIso.nullable().default(null),
@@ -112,16 +113,6 @@ export const QuoteCreateInput = z.object({
 export type QuoteUpdateInput = z.infer<typeof QuoteUpdateInput>;
 export const QuoteUpdateInput = QuoteCreateInput.extend({
   customer: QuoteExistingCustomerInput,
-  id: UUID,
-});
-
-export type QuoteSendInput = z.infer<typeof QuoteSendInput>;
-export const QuoteSendInput = z.object({
-  id: UUID,
-});
-
-export type QuoteDecisionInput = z.infer<typeof QuoteDecisionInput>;
-export const QuoteDecisionInput = z.object({
   id: UUID,
 });
 

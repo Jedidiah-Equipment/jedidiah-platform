@@ -6,5 +6,4 @@ export * from './jobs/job-code.js';
 export * from './jobs/job-stage-pipeline.js';
 export * from './jobs/job-stage-status-labels.js';
 export * from './jobs/job-status.js';
-export * from './quotes/quote-lifecycle.js';
 export * from './quotes/quote-pricing.js';

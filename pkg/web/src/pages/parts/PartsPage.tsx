@@ -6,6 +6,7 @@ import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { useCan } from '@/hooks/use-access.js';
 import { PartTable } from './components/PartTable.js';
+import { PartBulkImportDialog } from './PartBulkImportDialog.js';
 
 export const PartsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,10 +16,13 @@ export const PartsPage: React.FC = () => {
     <ListPageLayout
       action={
         canUpdatePart ? (
-          <Button onClick={() => navigate({ to: '/parts/new' })}>
-            <PlusIcon data-icon="inline-start" />
-            New part
-          </Button>
+          <div className="flex gap-2">
+            <PartBulkImportDialog />
+            <Button onClick={() => navigate({ to: '/parts/new' })}>
+              <PlusIcon data-icon="inline-start" />
+              New part
+            </Button>
+          </div>
         ) : null
       }
       description="Inventory"

@@ -1,0 +1,230 @@
+import { auditEvents, type Db, parts, supplier, user } from '@pkg/db';
+import { type PartBulkImportRow, PartListInput } from '@pkg/schema';
+import { describe, expect } from 'vitest';
+
+import { createTester } from '../test/create-tester.js';
+import { PartBulkImportConflictError } from './part-errors.js';
+import { bulkImportParts, listParts } from './part-service.js';
+
+const test = createTester(async ({ db }) => {
+  await createActorUser(db);
+
+  return { db };
+});
+
+const actorUserId = 'test-user-id';
+
+function importRow(overrides: Partial<PartBulkImportRow> = {}): PartBulkImportRow {
+  return {
+    category: 'Bearings',
+    code: 'P-100',
+    description: 'Main bearing',
+    drawingCode: null,
+    finish: 'Zinc',
+    name: 'Bearing',
+    supplierCode: 'SUP-100',
+    supplierName: 'Acme Supplies',
+    ...overrides,
+  };
+}
+
+describe('bulkImportParts', () => {
+  test('creates missing suppliers and parts with audit events', async ({ context }) => {
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow(),
+          importRow({
+            code: 'P-200',
+            name: 'Bolt',
+            supplierCode: 'BET-200',
+            supplierName: 'Beta Supplies',
+          }),
+        ],
+      },
+    });
+
+    const suppliers = await context.db.select().from(supplier).orderBy(supplier.companyName);
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+    const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+
+    expect(result).toEqual({ importedCount: 2, updatedCount: 0 });
+    expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies', 'Beta Supplies']);
+    expect(importedParts.items.map((part) => part.code)).toEqual(['P-100', 'P-200']);
+    expect(events).toMatchObject([
+      {
+        action: 'created',
+        actorUserId,
+        entityType: 'supplier',
+        summary: 'Created supplier "Acme Supplies"',
+      },
+      {
+        action: 'created',
+        actorUserId,
+        entityType: 'part',
+        summary: 'Created part "Bearing"',
+      },
+      {
+        action: 'created',
+        actorUserId,
+        entityType: 'supplier',
+        summary: 'Created supplier "Beta Supplies"',
+      },
+      {
+        action: 'created',
+        actorUserId,
+        entityType: 'part',
+        summary: 'Created part "Bolt"',
+      },
+    ]);
+  });
+
+  test('is idempotent when importing identical rows again', async ({ context }) => {
+    const input = { rows: [importRow()] };
+
+    await bulkImportParts({ actorUserId, db: context.db, input });
+    const result = await bulkImportParts({ actorUserId, db: context.db, input });
+    const events = await context.db.select().from(auditEvents);
+
+    expect(result).toEqual({ importedCount: 0, updatedCount: 0 });
+    expect(events).toHaveLength(2);
+  });
+
+  test('matches existing suppliers case-insensitively', async ({ context }) => {
+    await bulkImportParts({ actorUserId, db: context.db, input: { rows: [importRow()] } });
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({
+            code: 'P-101',
+            supplierName: 'ACME SUPPLIES',
+          }),
+        ],
+      },
+    });
+    const suppliers = await context.db.select().from(supplier);
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+
+    expect(result).toEqual({ importedCount: 0, updatedCount: 1 });
+    expect(suppliers).toHaveLength(1);
+    expect(importedParts.items[0]).toMatchObject({
+      code: 'P-101',
+      supplier: {
+        companyName: 'Acme Supplies',
+      },
+    });
+  });
+
+  test('updates changed rows when the part identity matches', async ({ context }) => {
+    const input = { rows: [importRow()] };
+    await bulkImportParts({ actorUserId, db: context.db, input });
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({
+            description: 'Updated main bearing',
+            finish: 'Painted',
+            name: 'Bearing Assembly',
+          }),
+        ],
+      },
+    });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+    const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+
+    expect(result).toEqual({ importedCount: 0, updatedCount: 1 });
+    expect(importedParts.items[0]).toMatchObject({
+      description: 'Updated main bearing',
+      finish: 'Painted',
+      name: 'Bearing Assembly',
+    });
+    expect(events.at(-1)).toMatchObject({
+      action: 'updated',
+      actorUserId,
+      changes: {
+        description: {
+          from: 'Main bearing',
+          to: 'Updated main bearing',
+        },
+        finish: {
+          from: 'Zinc',
+          to: 'Painted',
+        },
+        name: {
+          from: 'Bearing',
+          to: 'Bearing Assembly',
+        },
+      },
+      entityType: 'part',
+      summary: 'Renamed part "Bearing" to "Bearing Assembly"',
+    });
+  });
+
+  test('updates by supplier and supplier code when code changes', async ({ context }) => {
+    await bulkImportParts({ actorUserId, db: context.db, input: { rows: [importRow()] } });
+
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({
+            code: 'P-101',
+          }),
+        ],
+      },
+    });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+
+    expect(result).toEqual({ importedCount: 0, updatedCount: 1 });
+    expect(importedParts.items.map((part) => part.code)).toEqual(['P-101']);
+  });
+
+  test('conflicts when only code matches', async ({ context }) => {
+    await bulkImportParts({ actorUserId, db: context.db, input: { rows: [importRow()] } });
+
+    await expect(
+      bulkImportParts({
+        actorUserId,
+        db: context.db,
+        input: {
+          rows: [
+            importRow({
+              supplierCode: 'BET-100',
+              supplierName: 'Beta Supplies',
+            }),
+          ],
+        },
+      }),
+    ).rejects.toBeInstanceOf(PartBulkImportConflictError);
+
+    const importedParts = await context.db.select().from(parts);
+    expect(importedParts).toHaveLength(1);
+    expect(importedParts[0]).toMatchObject({
+      code: 'P-100',
+      supplierCode: 'SUP-100',
+    });
+  });
+});
+
+async function createActorUser(db: Db) {
+  const now = new Date();
+
+  await db.insert(user).values({
+    createdAt: now,
+    email: 'test@example.com',
+    emailVerified: true,
+    id: actorUserId,
+    name: 'Test User',
+    role: 'admin',
+    updatedAt: now,
+  });
+}

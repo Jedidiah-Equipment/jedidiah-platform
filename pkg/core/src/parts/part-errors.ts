@@ -42,7 +42,27 @@ export class PartSupplierNotFoundError extends Error {
   }
 }
 
+export class PartBulkImportConflictError extends Error {
+  readonly code = 'part.bulk_import_conflict';
+  readonly metadata: { code: string; supplierCode: string; supplierName: string };
+
+  constructor({
+    code,
+    supplierCode,
+    supplierName,
+  }: {
+    code: string;
+    supplierCode: string;
+    supplierName: string;
+  }) {
+    super(`Part import row conflicts with existing part identity: ${code} ${supplierName} ${supplierCode}`);
+    this.name = 'PartBulkImportConflictError';
+    this.metadata = { code, supplierCode, supplierName };
+  }
+}
+
 export type PartCoreError =
+  | PartBulkImportConflictError
   | DuplicatePartCodeError
   | DuplicatePartSupplierCodeError
   | PartNotFoundError
@@ -50,6 +70,7 @@ export type PartCoreError =
 
 export function isPartCoreError(error: unknown): error is PartCoreError {
   return (
+    error instanceof PartBulkImportConflictError ||
     error instanceof DuplicatePartCodeError ||
     error instanceof DuplicatePartSupplierCodeError ||
     error instanceof PartNotFoundError ||

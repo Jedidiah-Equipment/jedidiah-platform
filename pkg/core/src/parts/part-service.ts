@@ -12,6 +12,8 @@ import {
 import type {
   AuthId,
   Part,
+  PartBulkImportInput,
+  PartBulkImportResult,
   PartCategoryListResult,
   PartCreateInput,
   PartListInput,
@@ -22,10 +24,16 @@ import type {
 import { Part as PartSchema } from '@pkg/schema';
 import { and, asc, count, eq, or, type SQL, sql } from 'drizzle-orm';
 
-import { createAuditChanges, insertAuditEvent, partAuditDescriptor } from '../audit/audit-service.js';
+import {
+  createAuditChanges,
+  insertAuditEvent,
+  partAuditDescriptor,
+  supplierAuditDescriptor,
+} from '../audit/audit-service.js';
 import {
   DuplicatePartCodeError,
   DuplicatePartSupplierCodeError,
+  PartBulkImportConflictError,
   PartNotFoundError,
   PartSupplierNotFoundError,
 } from './part-errors.js';
@@ -286,6 +294,163 @@ export async function updatePart({
   }
 }
 
+export async function bulkImportParts({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PartBulkImportInput;
+}): Promise<PartBulkImportResult> {
+  try {
+    return await db.transaction(async (tx) => {
+      let importedCount = 0;
+      let updatedCount = 0;
+
+      for (const row of input.rows) {
+        const importedSupplier = await getOrCreateImportSupplier({
+          actorUserId,
+          db: tx,
+          companyName: row.supplierName,
+        });
+        const partInput = {
+          category: row.category,
+          code: row.code,
+          description: row.description,
+          drawingCode: row.drawingCode,
+          finish: row.finish,
+          name: row.name,
+          supplierCode: row.supplierCode,
+          supplierId: importedSupplier.id,
+        };
+        const [partByCode] = await tx.select().from(parts).where(eq(parts.code, row.code)).for('update');
+        const [partBySupplierCode] = await tx
+          .select()
+          .from(parts)
+          .where(and(eq(parts.supplierId, importedSupplier.id), eq(parts.supplierCode, row.supplierCode)))
+          .for('update');
+
+        if (partByCode && (!partBySupplierCode || partByCode.id !== partBySupplierCode.id)) {
+          throw new PartBulkImportConflictError({
+            code: row.code,
+            supplierCode: row.supplierCode,
+            supplierName: row.supplierName,
+          });
+        }
+
+        const existingPart = partByCode ?? partBySupplierCode;
+
+        if (!existingPart) {
+          const [created] = await tx.insert(parts).values(partInput).returning();
+
+          if (!created) {
+            throw new Error('Part import insert did not return a row');
+          }
+
+          await insertAuditEvent({
+            db: tx,
+            input: {
+              action: 'created',
+              actorUserId,
+              after: created,
+              before: null,
+              changes: null,
+              entityId: created.id,
+              entityType: partAuditDescriptor.entityType,
+            },
+          });
+          importedCount += 1;
+          continue;
+        }
+
+        const after = {
+          ...existingPart,
+          ...partInput,
+        };
+        const changes = createAuditChanges(existingPart, after, partAuditDescriptor.fields);
+
+        if (!changes) {
+          continue;
+        }
+
+        const [updated] = await tx.update(parts).set(partInput).where(eq(parts.id, existingPart.id)).returning();
+
+        if (!updated) {
+          throw new PartNotFoundError(existingPart.id);
+        }
+
+        await insertAuditEvent({
+          db: tx,
+          input: {
+            action: 'updated',
+            actorUserId,
+            after: updated,
+            before: existingPart,
+            changes,
+            entityId: updated.id,
+            entityType: partAuditDescriptor.entityType,
+          },
+        });
+        updatedCount += 1;
+      }
+
+      return {
+        importedCount,
+        updatedCount,
+      };
+    });
+  } catch (error) {
+    throw mapPartUniqueViolationForBulkImport(error, input);
+  }
+}
+
+async function getOrCreateImportSupplier({
+  actorUserId,
+  companyName,
+  db,
+}: {
+  actorUserId: AuthId;
+  companyName: string;
+  db: DatabaseTransaction;
+}): Promise<SupplierRow> {
+  const existing = await db.query.supplier.findFirst({
+    columns: {
+      companyName: true,
+      id: true,
+    },
+    where: sql`lower(${supplier.companyName}) = lower(${companyName})`,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const [created] = await db.insert(supplier).values({ companyName }).returning();
+
+  if (!created) {
+    throw new Error('Supplier import insert did not return a row');
+  }
+
+  await insertAuditEvent({
+    db,
+    input: {
+      action: 'created',
+      actorUserId,
+      after: created,
+      before: null,
+      changes: null,
+      entityId: created.id,
+      entityType: supplierAuditDescriptor.entityType,
+    },
+  });
+
+  return {
+    companyName: created.companyName,
+    id: created.id,
+  };
+}
+
 async function assertSupplierExists({
   db,
   supplierId,
@@ -334,6 +499,28 @@ function mapPartUniqueViolation(
 
   if (constraint?.includes('parts_code_unique') || constraint?.includes('code')) {
     return new DuplicatePartCodeError(input.code);
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function mapPartUniqueViolationForBulkImport(error: unknown, input: PartBulkImportInput): Error {
+  if (error instanceof PartBulkImportConflictError) {
+    return error;
+  }
+
+  const constraint = getUniqueViolationConstraint(error);
+  const conflictingRow =
+    constraint?.includes('parts_code_unique') || constraint?.includes('code')
+      ? input.rows.find((row) => row.code)
+      : input.rows.find((row) => row.supplierCode);
+
+  if (constraint !== null && conflictingRow) {
+    return new PartBulkImportConflictError({
+      code: conflictingRow.code,
+      supplierCode: conflictingRow.supplierCode,
+      supplierName: conflictingRow.supplierName,
+    });
   }
 
   return error instanceof Error ? error : new Error(String(error));

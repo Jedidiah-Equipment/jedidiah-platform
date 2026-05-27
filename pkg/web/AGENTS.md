@@ -21,6 +21,11 @@ Follow `../../.sandcastle/CODING_STANDARDS.md`.
   `Intl.DateTimeFormat`, `toLocaleDateString`, or `toLocaleString` formatting in components.
 - Displayed currency values must use `src/utils/number.ts` `formatCurrency`; do not add one-off
   `Intl.NumberFormat` currency-style formatting in components.
+- For TanStack Form descendants that need form context, use `useTypedAppFormContext` from
+  `src/components/form/use-app-form.ts`. Prefer form value schemas from `@pkg/schema` when their
+  input/output types match the browser form state. When a form needs a browser-specific value shape,
+  define that form schema alongside the form component, and keep shared validation rules in
+  `@pkg/schema` as reusable helpers instead of duplicating them in web.
 - Prefer `src/components/ui/scroll-area.tsx` `ScrollArea` for page and panel scrolling instead of
   native `overflow-y-auto`.
 - Do not test via the browser unless asked.

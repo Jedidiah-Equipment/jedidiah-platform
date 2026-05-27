@@ -10,7 +10,7 @@ import { SelectField } from './SelectField.js';
 import { TextareaField } from './TextareaField.js';
 import { TextField } from './TextField.js';
 
-export const { useAppForm, withFieldGroup, withForm } = createFormHook({
+export const { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } = createFormHook({
   fieldComponents: {
     CheckboxField,
     CreatableComboboxField,

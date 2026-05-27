@@ -12,14 +12,13 @@ import {
   ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
-  ComboboxInput,
   ComboboxItem,
   ComboboxList,
-  ComboboxTrigger,
   ComboboxValue,
 } from '@/components/ui/combobox.js';
 import { Input } from '@/components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
 import { formatDate } from '@/utils/date.js';
 import { getColumnLabel } from '../utils.js';
@@ -74,10 +73,6 @@ function DataTableFilterButton<TData>({ column, debounceMs }: DataTableFilterBut
   const filterValue = column.getFilterValue();
   const hasFilterValue = hasActiveFilterValue(filterValue);
 
-  if (column.columnDef.meta?.filterVariant === 'select') {
-    return <DataTableSelectFilterButton column={column} hasFilterValue={hasFilterValue} label={label} />;
-  }
-
   return (
     <Popover>
       <PopoverTrigger
@@ -111,6 +106,10 @@ type DataTableFilterControlProps<TData> = {
 
 function DataTableFilterControl<TData>({ column, debounceMs, label }: DataTableFilterControlProps<TData>) {
   const variant = column.columnDef.meta?.filterVariant ?? 'text';
+
+  if (variant === 'select') {
+    return <DataTableSelectFilter column={column} label={label} />;
+  }
 
   if (variant === 'multi-select') {
     return <DataTableMultiSelectFilter column={column} label={label} />;
@@ -171,75 +170,28 @@ function DataTableTextFilter<TData>({ column, debounceMs, label }: DataTableFilt
   );
 }
 
-type DataTableSelectFilterButtonProps<TData> = {
-  column: Column<TData, unknown>;
-  hasFilterValue: boolean;
-  label: string;
-};
-
-function DataTableSelectFilterButton<TData>({
-  column,
-  hasFilterValue,
-  label,
-}: DataTableSelectFilterButtonProps<TData>) {
-  const options: { label: string; value: string }[] = column.columnDef.meta?.filterOptions ?? [];
-  const rawFilterValue = column.getFilterValue();
-  const filterValue = typeof rawFilterValue === 'string' ? rawFilterValue : '';
-  const optionValues = options.map((option) => option.value);
-  const optionLabels = new Map<string, string>(options.map((option) => [option.value, option.label]));
-  const selectedLabel = filterValue ? (optionLabels.get(filterValue) ?? filterValue) : '';
-  const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(selectedLabel);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setInputValue(selectedLabel);
-    }
-  }, [isOpen, selectedLabel]);
+function DataTableSelectFilter<TData>({ column, label }: Pick<DataTableFilterControlProps<TData>, 'column' | 'label'>) {
+  const options = column.columnDef.meta?.filterOptions ?? [];
+  const filterValue = typeof column.getFilterValue() === 'string' ? column.getFilterValue() : '';
 
   return (
-    <Combobox<string>
-      inputValue={inputValue}
-      itemToStringLabel={(value) => optionLabels.get(value) ?? value}
-      itemToStringValue={(value) => value}
-      items={optionValues}
-      onInputValueChange={setInputValue}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        setInputValue(open ? '' : selectedLabel);
-      }}
-      onValueChange={(value) => {
-        column.setFilterValue(value || undefined);
-        setInputValue(value ? (optionLabels.get(value) ?? value) : '');
-      }}
-      value={filterValue || null}
-    >
-      <ComboboxTrigger
-        aria-label={`Filter ${label}`}
-        className={cn('w-5', hasFilterValue && 'text-primary hover:text-primary')}
-        render={<Button size="icon-xs" type="button" variant="ghost" />}
-        showChevron={false}
-      >
-        <FunnelIcon />
-      </ComboboxTrigger>
-      <ComboboxContent align="end" className="w-64">
-        <ComboboxInput
-          aria-label={`Search ${label} filter options`}
-          className="w-auto"
-          onKeyDown={(event) => event.stopPropagation()}
-          placeholder={`Filter ${label.toLowerCase()}...`}
-          showClear
-        />
-        <ComboboxEmpty>No options found.</ComboboxEmpty>
-        <ComboboxList className="max-h-64 overflow-y-auto">
-          {(value) => (
-            <ComboboxItem key={value} value={value}>
-              {optionLabels.get(value) ?? value}
-            </ComboboxItem>
-          )}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+    <div className="flex items-center gap-2">
+      <Select onValueChange={(value) => column.setFilterValue(value || undefined)} value={filterValue}>
+        <SelectTrigger aria-label={`Filter ${label}`} className="h-7 min-w-0 flex-1" size="sm">
+          <SelectValue placeholder="All" />
+        </SelectTrigger>
+        <SelectContent align="end">
+          <SelectGroup>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+      <ClearFilterButton disabled={!filterValue} label={label} onClear={() => column.setFilterValue(undefined)} />
+    </div>
   );
 }
 

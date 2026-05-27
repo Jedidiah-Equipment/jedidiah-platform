@@ -5,6 +5,7 @@ import { PencilIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
@@ -24,7 +25,7 @@ export const useSupplierTableStore = createPersistedDataTableStore({
   initialState: {
     sorting: [
       {
-        id: 'name',
+        id: 'companyName',
         desc: false,
       },
     ],
@@ -35,7 +36,7 @@ export const useSupplierTableStore = createPersistedDataTableStore({
 const supplierSortOptions: SortOptions<SupplierListInput> = {
   allowedSortIds: SupplierSortBy.options,
   defaultSort: {
-    id: 'name',
+    id: 'companyName',
   },
 };
 
@@ -67,11 +68,39 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({ onEditSupplier, sh
   const columns = useMemo<ColumnDef<Supplier>[]>(() => {
     const tableColumns: ColumnDef<Supplier>[] = [
       {
-        accessorKey: 'name',
-        cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+        accessorKey: 'companyName',
+        cell: ({ row }) => <span className="font-medium">{row.original.companyName}</span>,
         enableColumnFilter: true,
         enableSorting: true,
-        header: 'Name',
+        header: 'Company',
+      },
+      {
+        accessorKey: 'email',
+        cell: ({ row }) => <span className="text-sm">{row.original.email}</span>,
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Email',
+      },
+      {
+        accessorKey: 'contactPerson',
+        cell: ({ row }) => row.original.contactPerson ?? <span className="text-muted-foreground">None</span>,
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Contact',
+      },
+      {
+        accessorKey: 'phone',
+        cell: ({ row }) => row.original.phone ?? <span className="text-muted-foreground">None</span>,
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Phone',
+      },
+      {
+        accessorKey: 'createdAt',
+        cell: ({ row }) => <DateDisplay date={row.original.createdAt} />,
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Created',
       },
       {
         accessorKey: 'id',
@@ -92,7 +121,7 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({ onEditSupplier, sh
         cell: ({ row }) => (
           <div className="text-right">
             <Button
-              aria-label={`Edit ${row.original.name}`}
+              aria-label={`Edit ${row.original.companyName}`}
               onClick={() => onEditSupplier?.(row.original)}
               size="icon-sm"
               variant="outline"
@@ -152,13 +181,17 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({ onEditSupplier, sh
 function getSupplierListInputExtras(columnFilters: ColumnFiltersState) {
   return {
     columnFilters: {
+      companyName: getColumnFilterValue(columnFilters, 'companyName'),
+      email: getColumnFilterValue(columnFilters, 'email'),
       id: getColumnFilterValue(columnFilters, 'id'),
-      name: getColumnFilterValue(columnFilters, 'name'),
     },
   } satisfies Pick<SupplierListInput, 'columnFilters'>;
 }
 
-function getColumnFilterValue(columnFilters: ColumnFiltersState, id: 'id' | 'name'): string | undefined {
+function getColumnFilterValue(
+  columnFilters: ColumnFiltersState,
+  id: 'companyName' | 'email' | 'id',
+): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;

@@ -133,9 +133,14 @@ export const quoteAuditDescriptor: AuditEntityDescriptor = {
 export const supplierAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'supplier',
   noun: 'supplier',
-  primaryLabelField: 'name',
+  primaryLabelField: 'companyName',
   fields: {
-    name: 'name',
+    address: 'address',
+    companyName: 'company name',
+    contactPerson: 'contact person',
+    email: 'email',
+    notes: 'notes',
+    phone: 'phone',
   },
 };
 

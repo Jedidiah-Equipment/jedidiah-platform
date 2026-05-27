@@ -31,7 +31,7 @@ import {
 } from './part-errors.js';
 
 type PartRow = typeof parts.$inferSelect;
-type SupplierRow = Pick<typeof supplier.$inferSelect, 'id' | 'name'>;
+type SupplierRow = Pick<typeof supplier.$inferSelect, 'companyName' | 'id'>;
 
 type PartWithSupplierRow = PartRow & {
   supplier: SupplierRow;
@@ -62,7 +62,7 @@ export async function listParts({ db, input }: { db: Db; input: PartListInput })
         part: parts,
         supplier: {
           id: supplier.id,
-          name: supplier.name,
+          companyName: supplier.companyName,
         },
       })
       .from(parts)
@@ -111,7 +111,7 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
         sql`${parts.supplierCode}`,
         sql`${parts.id}::text`,
       ]),
-      createEscapedContainsSearchCondition(sql`${supplier.name}`, input.search),
+      createEscapedContainsSearchCondition(sql`${supplier.companyName}`, input.search),
     );
 
     if (globalSearchWhere) {
@@ -144,7 +144,9 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
   }
 
   if (input.columnFilters.supplierName) {
-    conditions.push(createEscapedContainsSearchCondition(sql`${supplier.name}`, input.columnFilters.supplierName));
+    conditions.push(
+      createEscapedContainsSearchCondition(sql`${supplier.companyName}`, input.columnFilters.supplierName),
+    );
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;
@@ -157,7 +159,7 @@ export async function getPart({ db, id }: { db: Db | DatabaseTransaction; id: UU
       supplier: {
         columns: {
           id: true,
-          name: true,
+          companyName: true,
         },
       },
     },
@@ -308,7 +310,7 @@ function getPartSortColumn(sortBy: PartListInput['sortBy']) {
   if (sortBy === 'code') return parts.code;
   if (sortBy === 'id') return parts.id;
   if (sortBy === 'supplierCode') return parts.supplierCode;
-  if (sortBy === 'supplierName') return supplier.name;
+  if (sortBy === 'supplierName') return supplier.companyName;
 
   return parts.name;
 }

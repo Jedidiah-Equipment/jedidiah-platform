@@ -26,8 +26,15 @@ type SupplierRow = typeof supplier.$inferSelect;
 
 export function mapSupplier(row: SupplierRow): Supplier {
   return SupplierSchema.parse({
+    address: row.address,
+    companyName: row.companyName,
+    contactPerson: row.contactPerson,
+    createdAt: row.createdAt.toISOString(),
+    email: row.email,
     id: row.id,
-    name: row.name,
+    notes: row.notes,
+    phone: row.phone,
+    updatedAt: row.updatedAt.toISOString(),
   });
 }
 
@@ -55,7 +62,8 @@ function buildSupplierListWhere(input: SupplierListInput): SQL | undefined {
 
   if (input.search) {
     const globalSearchWhere = createGlobalSearchCondition(input.search, [
-      sql`${supplier.name}`,
+      sql`${supplier.companyName}`,
+      sql`${supplier.email}`,
       sql`${supplier.id}::text`,
     ]);
 
@@ -64,8 +72,14 @@ function buildSupplierListWhere(input: SupplierListInput): SQL | undefined {
     }
   }
 
-  if (input.columnFilters.name) {
-    conditions.push(createEscapedContainsSearchCondition(sql`${supplier.name}`, input.columnFilters.name));
+  if (input.columnFilters.companyName) {
+    conditions.push(
+      createEscapedContainsSearchCondition(sql`${supplier.companyName}`, input.columnFilters.companyName),
+    );
+  }
+
+  if (input.columnFilters.email) {
+    conditions.push(createEscapedContainsSearchCondition(sql`${supplier.email}`, input.columnFilters.email));
   }
 
   if (input.columnFilters.id) {
@@ -143,7 +157,12 @@ export async function updateSupplier({
 
       const after = {
         ...before,
-        name: input.name,
+        address: input.address,
+        companyName: input.companyName,
+        contactPerson: input.contactPerson,
+        email: input.email,
+        notes: input.notes,
+        phone: input.phone,
       };
       const changes = createAuditChanges(before, after, supplierAuditDescriptor.fields);
 
@@ -151,7 +170,19 @@ export async function updateSupplier({
         return mapSupplier(before);
       }
 
-      const [row] = await tx.update(supplier).set({ name: input.name }).where(eq(supplier.id, input.id)).returning();
+      const [row] = await tx
+        .update(supplier)
+        .set({
+          address: input.address,
+          companyName: input.companyName,
+          contactPerson: input.contactPerson,
+          email: input.email,
+          notes: input.notes,
+          phone: input.phone,
+          updatedAt: new Date(),
+        })
+        .where(eq(supplier.id, input.id))
+        .returning();
 
       if (!row) {
         throw new SupplierNotFoundError(input.id);
@@ -178,18 +209,26 @@ export async function updateSupplier({
 }
 
 function getSupplierSortColumn(sortBy: SupplierListInput['sortBy']) {
+  if (sortBy === 'createdAt') {
+    return supplier.createdAt;
+  }
+
+  if (sortBy === 'email') {
+    return supplier.email;
+  }
+
   if (sortBy === 'id') {
     return supplier.id;
   }
 
-  return supplier.name;
+  return supplier.companyName;
 }
 
-function mapSupplierUniqueViolation(error: unknown, input: Pick<SupplierCreateInput, 'name'>): Error {
+function mapSupplierUniqueViolation(error: unknown, input: Pick<SupplierCreateInput, 'companyName'>): Error {
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint !== null) {
-    return new DuplicateSupplierNameError(input.name);
+    return new DuplicateSupplierNameError(input.companyName);
   }
 
   return error instanceof Error ? error : new Error(String(error));

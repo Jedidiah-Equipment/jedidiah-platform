@@ -12,7 +12,7 @@ const test = createTester(async ({ db }) => {
 });
 
 async function createSupplier(caller: AppRouterCaller, name = 'Acme Supplies'): Promise<Supplier> {
-  return caller.suppliers.create({ name });
+  return caller.suppliers.create({ companyName: name, email: createEmail(name) });
 }
 
 async function createPart(
@@ -87,8 +87,8 @@ describe('parts.create', () => {
       drawingCode: null,
       name: 'Bearing',
       supplier: {
+        companyName: 'Acme Supplies',
         id: supplier.id,
-        name: 'Acme Supplies',
       },
       supplierCode: 'SUP-100',
       supplierId: supplier.id,
@@ -313,4 +313,12 @@ async function createActorUser(db: Db) {
     role: 'admin',
     updatedAt: now,
   });
+}
+
+function createEmail(companyName: string): string {
+  return `${companyName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')}@example.com`;
 }

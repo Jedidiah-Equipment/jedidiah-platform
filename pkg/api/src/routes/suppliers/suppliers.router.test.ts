@@ -3,7 +3,7 @@ import type { Supplier } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
-import { mockSession } from '@/test/test-utils.js';
+import { expectIsoDatetime, mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
@@ -11,8 +11,16 @@ const test = createTester(async ({ db }) => {
   return { db };
 });
 
-async function createSupplier(caller: AppRouterCaller, name: string): Promise<Supplier> {
-  return caller.suppliers.create({ name });
+async function createSupplier(
+  caller: AppRouterCaller,
+  companyName: string,
+  overrides: Partial<Parameters<AppRouterCaller['suppliers']['create']>[0]> = {},
+): Promise<Supplier> {
+  return caller.suppliers.create({
+    companyName,
+    email: createEmail(companyName),
+    ...overrides,
+  });
 }
 
 async function createSuppliers(caller: AppRouterCaller, names: string[]): Promise<Supplier[]> {
@@ -26,19 +34,35 @@ async function createSuppliers(caller: AppRouterCaller, names: string[]): Promis
 }
 
 function supplierNames(suppliers: Supplier[]): string[] {
-  return suppliers.map((supplier) => supplier.name);
+  return suppliers.map((supplier) => supplier.companyName);
+}
+
+function createEmail(companyName: string): string {
+  return `${companyName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')}@example.com`;
 }
 
 describe('suppliers.create', () => {
   test('rejects unauthenticated supplier creates', async ({ context }) => {
-    await expect(context.createAnonCaller().suppliers.create({ name: 'Anonymous Supplier' })).rejects.toMatchObject({
+    await expect(
+      context.createAnonCaller().suppliers.create({
+        companyName: 'Anonymous Supplier',
+        email: 'anonymous@example.com',
+      }),
+    ).rejects.toMatchObject({
       code: 'UNAUTHORIZED',
     });
   });
 
   test('rejects non-admin supplier creates', async ({ context }) => {
     await expect(
-      context.createCaller(mockSession('product-editor')).suppliers.create({ name: 'Editor Supplier' }),
+      context.createCaller(mockSession('product-editor')).suppliers.create({
+        companyName: 'Editor Supplier',
+        email: 'editor@example.com',
+      }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
@@ -47,11 +71,23 @@ describe('suppliers.create', () => {
   test('creates suppliers and records audit events', async ({ context }) => {
     const session = mockSession('admin');
     const caller = context.createCaller(session);
-    const created = await createSupplier(caller, 'Acme Supplies');
+    const created = await createSupplier(caller, 'Acme Supplies', {
+      address: '12 Main Road',
+      contactPerson: 'Jane Buyer',
+      notes: 'Prefers email',
+      phone: '+27 11 555 0100',
+    });
 
     expect(created).toMatchObject({
-      name: 'Acme Supplies',
+      address: '12 Main Road',
+      companyName: 'Acme Supplies',
+      contactPerson: 'Jane Buyer',
+      email: 'acme-supplies@example.com',
+      notes: 'Prefers email',
+      phone: '+27 11 555 0100',
     });
+    expectIsoDatetime(created.createdAt);
+    expectIsoDatetime(created.updatedAt);
 
     const events = await listAuditEvents(context.db);
 
@@ -67,7 +103,7 @@ describe('suppliers.create', () => {
     ]);
   });
 
-  test('returns conflict for duplicate supplier names', async ({ context }) => {
+  test('returns conflict for duplicate supplier company names', async ({ context }) => {
     const caller = context.createCaller();
     await createSupplier(caller, 'Duplicate Supplier');
 
@@ -75,6 +111,14 @@ describe('suppliers.create', () => {
       code: 'CONFLICT',
       message: 'A supplier with this name already exists.',
     });
+  });
+
+  test('allows duplicate supplier emails', async ({ context }) => {
+    const caller = context.createCaller();
+    const first = await createSupplier(caller, 'First Supplier', { email: 'duplicate@example.com' });
+    const second = await createSupplier(caller, 'Second Supplier', { email: 'duplicate@example.com' });
+
+    expect(first.id).not.toBe(second.id);
   });
 });
 
@@ -91,7 +135,7 @@ describe('suppliers.list', () => {
     });
   });
 
-  test('lists suppliers with default name sorting', async ({ context }) => {
+  test('lists suppliers with default company name sorting', async ({ context }) => {
     const caller = context.createCaller();
     await createSuppliers(caller, ['Zeta Supplies', 'Acme Supplies']);
 
@@ -99,7 +143,7 @@ describe('suppliers.list', () => {
 
     expect(supplierNames(result.items)).toEqual(['Acme Supplies', 'Zeta Supplies']);
     expect(result.total).toBe(2);
-    expect(result.sortBy).toBe('name');
+    expect(result.sortBy).toBe('companyName');
     expect(result.sortDirection).toBe('asc');
   });
 
@@ -112,7 +156,7 @@ describe('suppliers.list', () => {
       pageSize: 2,
       columnFilters: {},
       search: '',
-      sortBy: 'name',
+      sortBy: 'companyName',
       sortDirection: 'asc',
     });
 
@@ -120,38 +164,41 @@ describe('suppliers.list', () => {
     expect(result.total).toBe(3);
   });
 
-  test('searches supplier names and IDs globally', async ({ context }) => {
+  test('searches supplier company names, emails, and IDs globally', async ({ context }) => {
     const caller = context.createCaller();
-    const acme = await createSupplier(caller, 'Acme Supplies');
-    const beta = await createSupplier(caller, 'Beta Parts');
-    await createSupplier(caller, 'Cargo Works');
+    const acme = await createSupplier(caller, 'Acme Supplies', { email: 'sales@acme.example' });
+    const beta = await createSupplier(caller, 'Beta Parts', { email: 'procurement@beta.example' });
+    await createSupplier(caller, 'Cargo Works', { email: 'hello@cargo.example' });
 
     const nameResult = await caller.suppliers.list({ search: 'acme' });
+    const emailResult = await caller.suppliers.list({ search: 'procurement' });
     const idResult = await caller.suppliers.list({ search: beta.id.slice(0, 8) });
 
     expect(nameResult.items.map((supplier) => supplier.id)).toEqual([acme.id]);
+    expect(emailResult.items.map((supplier) => supplier.id)).toEqual([beta.id]);
     expect(idResult.items.map((supplier) => supplier.id)).toEqual([beta.id]);
   });
 
   test('filters and sorts supplier lists by columns', async ({ context }) => {
     const caller = context.createCaller();
-    await createSupplier(caller, 'Acme Supplies');
-    await createSupplier(caller, 'Beta Supplies');
-    await createSupplier(caller, 'Cargo Works');
+    await createSupplier(caller, 'Acme Supplies', { email: 'sales@acme.example' });
+    await createSupplier(caller, 'Beta Supplies', { email: 'orders@beta.example' });
+    await createSupplier(caller, 'Cargo Works', { email: 'hello@cargo.example' });
 
     const result = await caller.suppliers.list({
       page: 1,
       pageSize: 10,
       columnFilters: {
-        name: 'supplies',
+        companyName: 'supplies',
       },
       search: '',
-      sortBy: 'name',
+      sortBy: 'email',
       sortDirection: 'desc',
     });
 
-    expect(supplierNames(result.items)).toEqual(['Beta Supplies', 'Acme Supplies']);
+    expect(supplierNames(result.items)).toEqual(['Acme Supplies', 'Beta Supplies']);
     expect(result.total).toBe(2);
+    expect(result.sortBy).toBe('email');
   });
 
   test('combines global search and column filters before paging and counting', async ({ context }) => {
@@ -162,10 +209,10 @@ describe('suppliers.list', () => {
       page: 1,
       pageSize: 10,
       columnFilters: {
-        name: 'bravo',
+        companyName: 'bravo',
       },
       search: 'supplies',
-      sortBy: 'name',
+      sortBy: 'companyName',
       sortDirection: 'asc',
     });
 
@@ -175,14 +222,16 @@ describe('suppliers.list', () => {
 
   test('escapes supplier list search wildcards', async ({ context }) => {
     const caller = context.createCaller();
-    await createSupplier(caller, 'Literal Supplier');
+    await createSupplier(caller, 'Literal Supplier', { email: 'literal@example.com' });
 
     const globalWildcardResult = await caller.suppliers.list({ search: '_' });
-    const nameWildcardResult = await caller.suppliers.list({ columnFilters: { name: '%' } });
+    const companyWildcardResult = await caller.suppliers.list({ columnFilters: { companyName: '%' } });
+    const emailWildcardResult = await caller.suppliers.list({ columnFilters: { email: '_' } });
     const idWildcardResult = await caller.suppliers.list({ columnFilters: { id: '%' } });
 
     expect(globalWildcardResult.items).toHaveLength(0);
-    expect(nameWildcardResult.items).toHaveLength(0);
+    expect(companyWildcardResult.items).toHaveLength(0);
+    expect(emailWildcardResult.items).toHaveLength(0);
     expect(idWildcardResult.items).toHaveLength(0);
   });
 });
@@ -193,8 +242,8 @@ describe('suppliers.get', () => {
     const created = await createSupplier(caller, 'Acme Supplies');
 
     await expect(caller.suppliers.get({ id: created.id })).resolves.toMatchObject({
+      companyName: 'Acme Supplies',
       id: created.id,
-      name: 'Acme Supplies',
     });
   });
 
@@ -212,8 +261,9 @@ describe('suppliers.update', () => {
   test('rejects unauthenticated supplier updates', async ({ context }) => {
     await expect(
       context.createAnonCaller().suppliers.update({
+        companyName: 'Anonymous Supplier',
+        email: 'anonymous@example.com',
         id: '00000000-0000-4000-8000-000000000001',
-        name: 'Anonymous Supplier',
       }),
     ).rejects.toMatchObject({
       code: 'UNAUTHORIZED',
@@ -228,7 +278,7 @@ describe('suppliers.update', () => {
     await expect(
       editorCaller.suppliers.update({
         ...created,
-        name: 'Editor Supplier Plus',
+        companyName: 'Editor Supplier Plus',
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -241,14 +291,24 @@ describe('suppliers.update', () => {
     const created = await createSupplier(caller, 'Acme Supplies');
 
     const updated = await caller.suppliers.update({
+      address: '12 Main Road',
+      companyName: 'Acme Supplies Ltd',
+      contactPerson: 'Jane Buyer',
+      email: 'sales@acme.example',
       id: created.id,
-      name: 'Acme Supplies Ltd',
+      notes: null,
+      phone: '+27 11 555 0100',
     });
 
     expect(updated).toMatchObject({
+      address: '12 Main Road',
+      companyName: 'Acme Supplies Ltd',
+      contactPerson: 'Jane Buyer',
+      email: 'sales@acme.example',
       id: created.id,
-      name: 'Acme Supplies Ltd',
+      phone: '+27 11 555 0100',
     });
+    expect(new Date(updated.updatedAt).getTime()).toBeGreaterThanOrEqual(new Date(created.updatedAt).getTime());
 
     const events = await listAuditEvents(context.db);
 
@@ -261,9 +321,25 @@ describe('suppliers.update', () => {
         action: 'updated',
         actorUserId: session.user.id,
         changes: {
-          name: {
+          address: {
+            from: null,
+            to: '12 Main Road',
+          },
+          companyName: {
             from: 'Acme Supplies',
             to: 'Acme Supplies Ltd',
+          },
+          contactPerson: {
+            from: null,
+            to: 'Jane Buyer',
+          },
+          email: {
+            from: 'acme-supplies@example.com',
+            to: 'sales@acme.example',
+          },
+          phone: {
+            from: null,
+            to: '+27 11 555 0100',
           },
         },
         entityId: created.id,
@@ -273,15 +349,42 @@ describe('suppliers.update', () => {
     ]);
   });
 
-  test('returns conflict for duplicate supplier name updates', async ({ context }) => {
+  test('stores blank optional fields as null on update', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createSupplier(caller, 'Blank Supplier', {
+      address: 'Known address',
+      contactPerson: 'Known person',
+      notes: 'Known notes',
+      phone: 'Known phone',
+    });
+
+    const updated = await caller.suppliers.update({
+      address: ' ',
+      companyName: created.companyName,
+      contactPerson: '',
+      email: created.email,
+      id: created.id,
+      notes: ' ',
+      phone: '',
+    });
+
+    expect(updated).toMatchObject({
+      address: null,
+      contactPerson: null,
+      notes: null,
+      phone: null,
+    });
+  });
+
+  test('returns conflict for duplicate supplier company name updates', async ({ context }) => {
     const caller = context.createCaller();
     const first = await createSupplier(caller, 'First Supplier');
     await createSupplier(caller, 'Second Supplier');
 
     await expect(
       caller.suppliers.update({
-        id: first.id,
-        name: 'Second Supplier',
+        ...first,
+        companyName: 'Second Supplier',
       }),
     ).rejects.toMatchObject({
       code: 'CONFLICT',
@@ -292,8 +395,9 @@ describe('suppliers.update', () => {
   test('returns not found for missing supplier updates', async ({ context }) => {
     await expect(
       context.createCaller().suppliers.update({
+        companyName: 'Missing',
+        email: 'missing@example.com',
         id: '00000000-0000-4000-8000-000000000001',
-        name: 'Missing',
       }),
     ).rejects.toMatchObject({
       code: 'NOT_FOUND',

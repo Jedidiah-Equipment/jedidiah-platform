@@ -35,6 +35,7 @@ export const ProductCreatePage: React.FC = () => {
         isPending={createProductMutation.isPending}
         onSubmit={(value) =>
           createProductMutation.mutateAsync({
+            assemblies: value.assemblies,
             basePrice: value.basePrice,
             currencyCode: 'ZAR',
             description: value.description,

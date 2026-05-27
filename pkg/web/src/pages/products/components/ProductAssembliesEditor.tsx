@@ -1,0 +1,564 @@
+import type { AssemblyInput, Part } from '@pkg/schema';
+import { useQuery } from '@tanstack/react-query';
+import { ChevronDownIcon, PlusIcon, Trash2Icon } from 'lucide-react';
+import React, { useMemo } from 'react';
+
+import { getFieldErrors } from '@/components/form/field-errors.js';
+import type { ArrayFieldApi, FieldApi, FormFieldComponent } from '@/components/form/types.js';
+import { Button } from '@/components/ui/button.js';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox.js';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu.js';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
+import { Input } from '@/components/ui/input.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
+import { useTRPC } from '@/lib/trpc.js';
+
+const ALL_CATEGORIES = '__all__';
+const assemblyPartKeys = new WeakMap<AssemblyInput['parts'][number], string>();
+
+type ProductAssembliesEditorProps = {
+  assembliesField: ArrayFieldApi<AssemblyInput>;
+  FormField: FormFieldComponent;
+};
+
+type IndexedAssembly = {
+  assembly: AssemblyInput;
+  index: number;
+};
+
+export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = ({ assembliesField, FormField }) => {
+  const trpc = useTRPC();
+  const partsQuery = useQuery(
+    trpc.parts.list.queryOptions({
+      columnFilters: {},
+      page: 1,
+      pageSize: 0,
+      sortBy: 'category',
+      sortDirection: 'asc',
+    }),
+  );
+  const categoriesQuery = useQuery(trpc.parts.categories.queryOptions());
+
+  const parts = partsQuery.data?.items ?? [];
+  const categories = categoriesQuery.data?.categories ?? [];
+  const indexedAssemblies = assembliesField.state.value.map((assembly, index) => ({ assembly, index }));
+  const standardAssemblies = getSortedAssemblies(indexedAssemblies, 'standard');
+  const optionalAssemblies = getSortedAssemblies(indexedAssemblies, 'optional');
+
+  return (
+    <div className="flex flex-col gap-5">
+      <AssemblyGroup
+        assemblies={standardAssemblies}
+        categories={categories}
+        FormField={FormField}
+        kind="standard"
+        onAdd={() => assembliesField.pushValue(createAssembly('standard'))}
+        onRemove={assembliesField.removeValue}
+        parts={parts}
+        standardAssemblies={standardAssemblies}
+        title="Standard Assemblies"
+      />
+      <AssemblyGroup
+        assemblies={optionalAssemblies}
+        categories={categories}
+        FormField={FormField}
+        kind="optional"
+        onAdd={() => assembliesField.pushValue(createAssembly('optional'))}
+        onRemove={assembliesField.removeValue}
+        parts={parts}
+        standardAssemblies={standardAssemblies}
+        title="Optional Assemblies"
+      />
+    </div>
+  );
+};
+
+type AssemblyGroupProps = {
+  assemblies: IndexedAssembly[];
+  categories: string[];
+  FormField: FormFieldComponent;
+  kind: AssemblyInput['kind'];
+  parts: Part[];
+  standardAssemblies: IndexedAssembly[];
+  title: string;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+};
+
+const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
+  assemblies,
+  categories,
+  FormField,
+  kind,
+  parts,
+  standardAssemblies,
+  title,
+  onAdd,
+  onRemove,
+}) => (
+  <section className="flex flex-col gap-3">
+    <div className="flex items-center justify-between gap-3">
+      <h3 className="font-medium text-sm">{title}</h3>
+      <Button size="sm" type="button" variant="outline" onClick={onAdd}>
+        <PlusIcon />
+        Add
+      </Button>
+    </div>
+    <div className="flex flex-col gap-3">
+      {assemblies.map(({ assembly, index }) => (
+        <AssemblyRow
+          assembly={assembly}
+          categories={categories}
+          FormField={FormField}
+          index={index}
+          key={assembly.id}
+          onRemove={() => onRemove(index)}
+          parts={parts}
+          standardAssemblies={standardAssemblies}
+        />
+      ))}
+    </div>
+    {assemblies.length === 0 ? (
+      <p className="text-muted-foreground text-sm">
+        No {kind === 'standard' ? 'standard' : 'optional'} assemblies added.
+      </p>
+    ) : null}
+  </section>
+);
+
+type AssemblyRowProps = {
+  assembly: AssemblyInput;
+  categories: string[];
+  FormField: FormFieldComponent;
+  index: number;
+  parts: Part[];
+  standardAssemblies: IndexedAssembly[];
+  onRemove: () => void;
+};
+
+const AssemblyRow: React.FC<AssemblyRowProps> = ({
+  assembly,
+  categories,
+  FormField,
+  index,
+  parts,
+  standardAssemblies,
+  onRemove,
+}) => {
+  const partOptions = useMemo(() => parts.toSorted(compareParts), [parts]);
+
+  return (
+    <div className="rounded-lg border p-3">
+      <div
+        className={
+          assembly.kind === 'optional'
+            ? 'grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem_minmax(12rem,16rem)_auto]'
+            : 'grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]'
+        }
+      >
+        <FormField name={`assemblies[${index}].name`}>
+          {(field: FieldApi<string>) => {
+            const errors = getFieldErrors(field.state.meta.errors);
+            const isInvalid = errors.length > 0;
+
+            return (
+              <Field data-invalid={isInvalid}>
+                <FieldLabel>Name</FieldLabel>
+                <Input
+                  aria-invalid={isInvalid}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+                <FieldError errors={errors} />
+              </Field>
+            );
+          }}
+        </FormField>
+        {assembly.kind === 'optional' ? (
+          <FormField name={`assemblies[${index}].price`}>
+            {(field: FieldApi<number>) => {
+              const errors = getFieldErrors(field.state.meta.errors);
+              const isInvalid = errors.length > 0;
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel>Upgrade amount</FieldLabel>
+                  <Input
+                    aria-invalid={isInvalid}
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={Number.isFinite(field.state.value) ? String(field.state.value) : ''}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(Number(event.target.value))}
+                  />
+                  <FieldError errors={errors} />
+                </Field>
+              );
+            }}
+          </FormField>
+        ) : null}
+        {assembly.kind === 'optional' ? (
+          <OverridePicker FormField={FormField} index={index} standardAssemblies={standardAssemblies} />
+        ) : null}
+        <div className="flex items-end justify-end">
+          <Button aria-label="Remove assembly" size="icon" type="button" variant="ghost" onClick={onRemove}>
+            <Trash2Icon />
+          </Button>
+        </div>
+      </div>
+      <AssemblyPartsTable categories={categories} FormField={FormField} index={index} partOptions={partOptions} />
+    </div>
+  );
+};
+
+type OverridePickerProps = {
+  FormField: FormFieldComponent;
+  index: number;
+  standardAssemblies: IndexedAssembly[];
+};
+
+const OverridePicker: React.FC<OverridePickerProps> = ({ FormField, index, standardAssemblies }) => (
+  <FormField name={`assemblies[${index}].overrideStandardAssemblyIds`}>
+    {(field: FieldApi<string[]>) => {
+      const errors = getFieldErrors(field.state.meta.errors);
+      const isInvalid = errors.length > 0;
+
+      return (
+        <Field data-invalid={isInvalid}>
+          <FieldLabel>Replaces Assembly</FieldLabel>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  aria-invalid={isInvalid}
+                  className="w-full justify-between"
+                  disabled={standardAssemblies.length === 0}
+                  type="button"
+                  variant="outline"
+                />
+              }
+            >
+              <span className="truncate">
+                <OverrideSummary
+                  FormField={FormField}
+                  selectedIds={field.state.value}
+                  standardAssemblies={standardAssemblies}
+                />
+              </span>
+              <ChevronDownIcon data-icon="inline-end" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-64">
+              <DropdownMenuGroup>
+                {standardAssemblies.map((standardAssembly) => (
+                  <OverrideCheckboxItem
+                    FormField={FormField}
+                    key={standardAssembly.assembly.id ?? standardAssembly.index}
+                    overrideField={field}
+                    standardAssembly={standardAssembly}
+                  />
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <FieldError errors={errors} />
+        </Field>
+      );
+    }}
+  </FormField>
+);
+
+type OverrideSummaryProps = {
+  FormField: FormFieldComponent;
+  selectedIds: string[];
+  standardAssemblies: IndexedAssembly[];
+};
+
+const OverrideSummary: React.FC<OverrideSummaryProps> = ({ FormField, selectedIds, standardAssemblies }) => {
+  if (standardAssemblies.length === 0) {
+    return 'No Assemblies';
+  }
+
+  if (selectedIds.length === 0) {
+    return 'None';
+  }
+
+  if (selectedIds.length > 1) {
+    return `${selectedIds.length} assemblies selected`;
+  }
+
+  const selectedAssembly = standardAssemblies.find(({ assembly }) => assembly.id === selectedIds[0]);
+
+  if (!selectedAssembly) {
+    return '1 assembly selected';
+  }
+
+  return (
+    <FormField name={`assemblies[${selectedAssembly.index}].name`}>
+      {(field: FieldApi<string>) => field.state.value || 'Unnamed standard'}
+    </FormField>
+  );
+};
+
+type OverrideCheckboxItemProps = {
+  FormField: FormFieldComponent;
+  overrideField: FieldApi<string[]>;
+  standardAssembly: IndexedAssembly;
+};
+
+const OverrideCheckboxItem: React.FC<OverrideCheckboxItemProps> = ({ FormField, overrideField, standardAssembly }) => {
+  const standardId = standardAssembly.assembly.id;
+
+  return (
+    <DropdownMenuCheckboxItem
+      checked={Boolean(standardId && overrideField.state.value.includes(standardId))}
+      disabled={!standardId}
+      onCheckedChange={(checked) => {
+        if (!standardId) {
+          return;
+        }
+
+        overrideField.handleChange(toggleOverrideSelection(overrideField.state.value, standardId, checked));
+      }}
+    >
+      <FormField name={`assemblies[${standardAssembly.index}].name`}>
+        {(field: FieldApi<string>) => field.state.value || 'Unnamed standard'}
+      </FormField>
+    </DropdownMenuCheckboxItem>
+  );
+};
+
+type AssemblyPartsTableProps = {
+  categories: string[];
+  FormField: FormFieldComponent;
+  index: number;
+  partOptions: Part[];
+};
+
+const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({ categories, FormField, index, partOptions }) => (
+  <FormField name={`assemblies[${index}].parts`} mode="array">
+    {(partsField: ArrayFieldApi<AssemblyInput['parts'][number]>) => (
+      <div className="mt-3 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium text-sm">Parts</h4>
+          <Button
+            disabled={partOptions.length === 0}
+            size="sm"
+            type="button"
+            variant="outline"
+            onClick={() => partsField.pushValue({ partId: '', quantity: 1 })}
+          >
+            <PlusIcon />
+            Add part
+          </Button>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Part</TableHead>
+              <TableHead className="w-28">Quantity</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {partsField.state.value.map((part, partIndex) => (
+              <AssemblyPartRow
+                categories={categories}
+                FormField={FormField}
+                key={getAssemblyPartKey(part)}
+                part={part}
+                partIndex={partIndex}
+                partOptions={partOptions}
+                parentIndex={index}
+                onRemove={() => partsField.removeValue(partIndex)}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    )}
+  </FormField>
+);
+
+type AssemblyPartRowProps = {
+  categories: string[];
+  FormField: FormFieldComponent;
+  parentIndex: number;
+  part: AssemblyInput['parts'][number];
+  partIndex: number;
+  partOptions: Part[];
+  onRemove: () => void;
+};
+
+const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
+  categories,
+  FormField,
+  parentIndex,
+  part,
+  partIndex,
+  partOptions,
+  onRemove,
+}) => {
+  const selectedPart = partOptions.find((option) => option.id === part.partId);
+  const [category, setCategory] = React.useState(selectedPart?.category ?? ALL_CATEGORIES);
+  const visibleParts = partOptions.filter((option) => category === ALL_CATEGORIES || option.category === category);
+
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="grid gap-2 md:grid-cols-[10rem_minmax(12rem,1fr)]">
+          <Select value={category} onValueChange={(value) => setCategory(value ?? ALL_CATEGORIES)}>
+            <SelectTrigger>
+              <SelectValue>{category === ALL_CATEGORIES ? 'All categories' : category}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={ALL_CATEGORIES}>All categories</SelectItem>
+                {categories.map((categoryOption) => (
+                  <SelectItem key={categoryOption} value={categoryOption}>
+                    {categoryOption}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <FormField name={`assemblies[${parentIndex}].parts[${partIndex}].partId`}>
+            {(field: FieldApi<string>) => {
+              const errors = getFieldErrors(field.state.meta.errors);
+              const isInvalid = errors.length > 0;
+              const selectedPart = partOptions.find((option) => option.id === field.state.value);
+              const visiblePartOptions =
+                selectedPart && !visibleParts.some((option) => option.id === selectedPart.id)
+                  ? [selectedPart, ...visibleParts]
+                  : visibleParts;
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <Combobox
+                    items={visiblePartOptions}
+                    itemToStringLabel={formatPartLabel}
+                    itemToStringValue={(option) => option.id}
+                    onValueChange={(value) => field.handleChange(value?.id ?? '')}
+                    value={selectedPart ?? null}
+                  >
+                    <ComboboxInput
+                      aria-invalid={isInvalid}
+                      className="w-full"
+                      onBlur={field.handleBlur}
+                      placeholder="Search for parts..."
+                    />
+                    <ComboboxContent>
+                      <ComboboxEmpty>No parts found.</ComboboxEmpty>
+                      <ComboboxList>
+                        {(option: Part) => (
+                          <ComboboxItem key={option.id} value={option}>
+                            {formatPartLabel(option)}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                  <FieldError errors={errors} />
+                </Field>
+              );
+            }}
+          </FormField>
+        </div>
+      </TableCell>
+      <TableCell>
+        <FormField name={`assemblies[${parentIndex}].parts[${partIndex}].quantity`}>
+          {(field: FieldApi<number>) => {
+            const errors = getFieldErrors(field.state.meta.errors);
+            const isInvalid = errors.length > 0;
+
+            return (
+              <Field data-invalid={isInvalid}>
+                <Input
+                  aria-invalid={isInvalid}
+                  inputMode="numeric"
+                  value={Number.isFinite(field.state.value) ? String(field.state.value) : ''}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(Number(event.target.value))}
+                />
+                <FieldError errors={errors} />
+              </Field>
+            );
+          }}
+        </FormField>
+      </TableCell>
+      <TableCell>
+        <Button aria-label="Remove part" size="icon" type="button" variant="ghost" onClick={onRemove}>
+          <Trash2Icon />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+};
+
+function getSortedAssemblies(assemblies: IndexedAssembly[], kind: AssemblyInput['kind']): IndexedAssembly[] {
+  return assemblies
+    .filter(({ assembly }) => assembly.kind === kind)
+    .toSorted((left, right) => left.assembly.name.localeCompare(right.assembly.name));
+}
+
+function createAssembly(kind: AssemblyInput['kind']): AssemblyInput {
+  if (kind === 'standard') {
+    return {
+      id: crypto.randomUUID(),
+      kind,
+      name: '',
+      parts: [],
+    };
+  }
+
+  return {
+    id: crypto.randomUUID(),
+    kind,
+    name: '',
+    overrideStandardAssemblyIds: [],
+    parts: [],
+    price: NaN,
+  };
+}
+
+function compareParts(left: Part, right: Part): number {
+  return left.category.localeCompare(right.category) || left.code.localeCompare(right.code);
+}
+
+function formatPartLabel(part: Part): string {
+  return `${part.code} - ${part.name}`;
+}
+
+function toggleOverrideSelection(selectedIds: string[], id: string, checked: boolean): string[] {
+  if (checked) {
+    return selectedIds.includes(id) ? selectedIds : [...selectedIds, id];
+  }
+
+  return selectedIds.filter((selectedId) => selectedId !== id);
+}
+
+function getAssemblyPartKey(part: AssemblyInput['parts'][number]): string {
+  const existingKey = assemblyPartKeys.get(part);
+
+  if (existingKey) {
+    return existingKey;
+  }
+
+  const key = crypto.randomUUID();
+  assemblyPartKeys.set(part, key);
+  return key;
+}

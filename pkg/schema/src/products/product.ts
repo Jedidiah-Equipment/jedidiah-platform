@@ -34,6 +34,158 @@ export const ProductLeadTimeDaysInput = z.coerce.number().pipe(ProductLeadTimeDa
 export type ProductCurrencyCode = z.infer<typeof ProductCurrencyCode>;
 export const ProductCurrencyCode = z.literal('ZAR').default('ZAR');
 
+export type AssemblyKind = z.infer<typeof AssemblyKind>;
+export const AssemblyKind = z.enum(['standard', 'optional']);
+
+export type AssemblyName = z.infer<typeof AssemblyName>;
+export const AssemblyName = z.string().trim().min(1, 'Assembly name is required');
+
+export type AssemblyPartQuantity = z.infer<typeof AssemblyPartQuantity>;
+export const AssemblyPartQuantity = z
+  .number()
+  .int('Quantity must be a whole number')
+  .min(1, 'Quantity must be at least 1');
+
+export type AssemblyPartQuantityInput = z.infer<typeof AssemblyPartQuantityInput>;
+export const AssemblyPartQuantityInput = z.coerce.number().pipe(AssemblyPartQuantity);
+
+export type AssemblyPart = z.infer<typeof AssemblyPart>;
+export const AssemblyPart = z.object({
+  partId: UUID,
+  quantity: AssemblyPartQuantity,
+});
+
+export type StandardAssembly = z.infer<typeof StandardAssembly>;
+export const StandardAssembly = z.object({
+  id: UUID,
+  productId: UUID,
+  kind: z.literal('standard'),
+  name: AssemblyName,
+  parts: z.array(AssemblyPart),
+});
+
+export type OptionalAssembly = z.infer<typeof OptionalAssembly>;
+export const OptionalAssembly = z.object({
+  id: UUID,
+  productId: UUID,
+  kind: z.literal('optional'),
+  name: AssemblyName,
+  price: ProductBasePrice,
+  parts: z.array(AssemblyPart),
+  overrideStandardAssemblyIds: z.array(UUID),
+});
+
+export type Assembly = z.infer<typeof Assembly>;
+export const Assembly = z.discriminatedUnion('kind', [StandardAssembly, OptionalAssembly]);
+
+export type StandardAssemblyInput = z.infer<typeof StandardAssemblyInput>;
+export const StandardAssemblyInput = z.object({
+  id: UUID.optional(),
+  kind: z.literal('standard'),
+  name: AssemblyName,
+  parts: z.array(AssemblyPart),
+});
+
+export type OptionalAssemblyInput = z.infer<typeof OptionalAssemblyInput>;
+export const OptionalAssemblyInput = z.object({
+  id: UUID.optional(),
+  kind: z.literal('optional'),
+  name: AssemblyName,
+  price: ProductBasePrice,
+  parts: z.array(AssemblyPart),
+  overrideStandardAssemblyIds: z.array(UUID).default([]),
+});
+
+export type AssemblyInput = z.infer<typeof AssemblyInput>;
+export const AssemblyInput = z.discriminatedUnion('kind', [StandardAssemblyInput, OptionalAssemblyInput]);
+
+const ProductAssemblies = z.array(AssemblyInput).superRefine((assemblies, ctx) => {
+  const assemblyNames = new Map<string, number>();
+  const standardIds = new Set<string>();
+
+  assemblies.forEach((assembly, assemblyIndex) => {
+    const normalizedName = assembly.name.trim().toLowerCase();
+    const duplicateNameIndex = assemblyNames.get(normalizedName);
+
+    if (duplicateNameIndex !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Assembly names must be unique within a product',
+        path: [assemblyIndex, 'name'],
+      });
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Assembly names must be unique within a product',
+        path: [duplicateNameIndex, 'name'],
+      });
+    } else {
+      assemblyNames.set(normalizedName, assemblyIndex);
+    }
+
+    if (assembly.kind === 'standard' && assembly.id) {
+      standardIds.add(assembly.id);
+    }
+
+    const partIds = new Map<string, number>();
+    assembly.parts.forEach((part, partIndex) => {
+      const duplicatePartIndex = partIds.get(part.partId);
+
+      if (duplicatePartIndex !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Part can only be added once per assembly',
+          path: [assemblyIndex, 'parts', partIndex, 'partId'],
+        });
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Part can only be added once per assembly',
+          path: [assemblyIndex, 'parts', duplicatePartIndex, 'partId'],
+        });
+      } else {
+        partIds.set(part.partId, partIndex);
+      }
+    });
+  });
+
+  assemblies.forEach((assembly, assemblyIndex) => {
+    if (assembly.kind !== 'optional') {
+      return;
+    }
+
+    const overrideIds = new Map<string, number>();
+
+    assembly.overrideStandardAssemblyIds.forEach((standardAssemblyId, overrideIndex) => {
+      const duplicateOverrideIndex = overrideIds.get(standardAssemblyId);
+
+      if (duplicateOverrideIndex !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Override target can only be selected once per assembly',
+          path: [assemblyIndex, 'overrideStandardAssemblyIds', overrideIndex],
+        });
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Override target can only be selected once per assembly',
+          path: [assemblyIndex, 'overrideStandardAssemblyIds', duplicateOverrideIndex],
+        });
+      } else {
+        overrideIds.set(standardAssemblyId, overrideIndex);
+      }
+
+      if (!standardIds.has(standardAssemblyId)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Override target must reference a standard assembly on this product',
+          path: [assemblyIndex, 'overrideStandardAssemblyIds', overrideIndex],
+        });
+      }
+    });
+  });
+});
+
+export type ProductAssembliesInput = z.infer<typeof ProductAssembliesInput>;
+export const ProductAssembliesInput = ProductAssemblies.default([]);
+
 export type Product = z.infer<typeof Product>;
 export const Product = z.object({
   id: UUID,
@@ -43,6 +195,7 @@ export const Product = z.object({
   basePrice: ProductBasePrice,
   leadTimeDays: ProductLeadTimeDays,
   currencyCode: ProductCurrencyCode,
+  assemblies: z.array(Assembly).default([]),
   createdAt: DateIso,
   updatedAt: DateIso,
 });
@@ -66,6 +219,7 @@ export const ProductCreateInput = z
     description: ProductDescriptionInput,
     modelCode: ProductModelCode,
     basePrice: ProductBasePrice,
+    assemblies: ProductAssembliesInput,
     leadTimeDays: ProductLeadTimeDaysInput,
     currencyCode: ProductCurrencyCode,
   })
@@ -75,6 +229,7 @@ export type ProductUpdateInput = z.infer<typeof ProductUpdateInput>;
 export const ProductUpdateInput = z
   .object({
     id: UUID,
+    assemblies: ProductAssemblies.optional(),
     basePrice: ProductBasePrice,
     currencyCode: ProductCurrencyCode,
     description: ProductDescriptionInput,

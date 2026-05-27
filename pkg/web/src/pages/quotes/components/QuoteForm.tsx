@@ -1,4 +1,4 @@
-import { AuthId, CustomerCompanyName, Price, QuoteCreateInput, type QuoteDetail, UUID } from '@pkg/schema';
+import { AuthId, CustomerCompanyName, Price, QuoteCreateInput, type QuoteDetail, QuoteStatus, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
@@ -13,6 +13,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { formatCurrency, formatPercent } from '@/utils/number.js';
 import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
 import { type QuoteProductChoice, QuoteProductCombobox } from './QuoteProductCombobox.js';
+import { quoteStatusLabels } from './QuoteStatusBadge.js';
 
 const CustomerMode = z.enum(['existing', 'inline']);
 
@@ -29,6 +30,7 @@ const QuoteFormValues = z
     preferredDeliveryDate: z.union([z.literal(''), z.iso.date()]),
     productId: z.string(),
     salesPersonId: z.string(),
+    status: QuoteStatus,
     validUntil: z.union([z.literal(''), z.iso.date()]),
   })
   .superRefine((value, context) => {
@@ -83,7 +85,6 @@ type QuoteFormProps = {
 export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, onSubmit, submitLabel }) => {
   const trpc = useTRPC();
   const isEditing = Boolean(initialQuote);
-  const isFrozen = initialQuote?.status !== undefined && initialQuote.status !== 'draft';
   const [selectedProduct, setSelectedProduct] = useState<QuoteProductChoice | null>(null);
   const salespeopleQuery = useQuery(trpc.quotes.salespeople.queryOptions());
   const fallbackCustomer = useMemo(
@@ -113,6 +114,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
     preferredDeliveryDate: initialQuote?.preferredDeliveryDate ?? '',
     productId: initialQuote?.productId ?? '',
     salesPersonId: initialQuote?.salesPersonId ?? '',
+    status: initialQuote?.status ?? 'draft',
     validUntil: initialQuote?.validUntil ?? '',
   };
   const form = useAppForm({
@@ -140,6 +142,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
           preferredDeliveryDate: value.preferredDeliveryDate || null,
           productId: value.productId || null,
           salesPersonId: value.salesPersonId || null,
+          status: value.status,
           validUntil: value.validUntil || null,
         }),
       );
@@ -170,12 +173,18 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
         void form.handleSubmit();
       }}
     >
-      {isFrozen ? (
-        <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
-          Sent quotes are read-only. Create a new draft quote for revised terms.
-        </div>
-      ) : null}
       <FieldGroup>
+        <form.AppField name="status">
+          {(field) => (
+            <field.SelectField
+              label="Status"
+              options={QuoteStatus.options.map((status) => ({
+                label: quoteStatusLabels[status],
+                value: status,
+              }))}
+            />
+          )}
+        </form.AppField>
         {isEditing ? (
           <form.Field name="customerId">
             {(field) => {
@@ -186,7 +195,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 <Field data-invalid={isInvalid}>
                   <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
                   <QuoteCustomerCombobox
-                    disabled={isFrozen}
+                    disabled={false}
                     fallbackCustomer={fallbackCustomer}
                     onSelected={(customer) => field.handleChange(customer?.id ?? '')}
                     value={field.state.value}
@@ -201,7 +210,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             <form.AppField name="customerMode">
               {(field) => (
                 <field.SelectField
-                  disabled={isFrozen}
                   label="Customer"
                   options={[
                     { label: 'Existing customer', value: 'existing' },
@@ -222,7 +230,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                         <Field data-invalid={isInvalid}>
                           <FieldLabel htmlFor={field.name}>Existing customer</FieldLabel>
                           <QuoteCustomerCombobox
-                            disabled={isFrozen}
+                            disabled={false}
                             fallbackCustomer={fallbackCustomer}
                             onSelected={(customer) => field.handleChange(customer?.id ?? '')}
                             value={field.state.value}
@@ -234,7 +242,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                   </form.Field>
                 ) : (
                   <form.AppField name="inlineCompanyName">
-                    {(field) => <field.TextField disabled={isFrozen} label="Company name" />}
+                    {(field) => <field.TextField label="Company name" />}
                   </form.AppField>
                 )
               }
@@ -251,7 +259,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 <Field data-invalid={isInvalid}>
                   <FieldLabel htmlFor={field.name}>Product</FieldLabel>
                   <QuoteProductCombobox
-                    disabled={isFrozen}
+                    disabled={false}
                     onSelected={(product) => {
                       const productId = product?.id ?? '';
 
@@ -270,12 +278,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
           </form.Field>
           <form.AppField name="salesPersonId">
             {(field) => (
-              <field.SelectField
-                disabled={isFrozen}
-                label="Salesperson"
-                options={salespersonOptions}
-                placeholder="Select salesperson"
-              />
+              <field.SelectField label="Salesperson" options={salespersonOptions} placeholder="Select salesperson" />
             )}
           </form.AppField>
         </div>
@@ -284,21 +287,21 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             {(field) => (
               <field.CurrencyField
                 {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
-                disabled={isFrozen || !selectedProduct}
+                disabled={!selectedProduct}
                 label="Discount"
               />
             )}
           </form.AppField>
           <form.AppField name="validUntil">
-            {(field) => <field.DatePickerField clearable disabled={isFrozen} label="Valid until" />}
+            {(field) => <field.DatePickerField clearable label="Valid until" />}
           </form.AppField>
           <form.AppField name="preferredDeliveryDate">
-            {(field) => <field.DatePickerField clearable disabled={isFrozen} label="Preferred delivery date" />}
+            {(field) => <field.DatePickerField clearable label="Preferred delivery date" />}
           </form.AppField>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <form.AppField name="plannedDeliveryDate">
-            {(field) => <field.DatePickerField clearable disabled={isFrozen} label="Planned delivery date" />}
+            {(field) => <field.DatePickerField clearable label="Planned delivery date" />}
           </form.AppField>
           <form.Subscribe
             selector={(state) => {
@@ -339,17 +342,15 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             )}
           </form.Subscribe>
         </div>
-        <form.AppField name="notes">
-          {(field) => <field.TextareaField disabled={isFrozen} label="Notes" rows={4} />}
-        </form.AppField>
+        <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={4} />}</form.AppField>
         <form.AppField name="paymentTerms">
-          {(field) => <field.TextareaField disabled={isFrozen} label="Payment Terms" rows={4} />}
+          {(field) => <field.TextareaField label="Payment Terms" rows={4} />}
         </form.AppField>
       </FieldGroup>
       <div className="flex justify-end">
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
-            <Button disabled={isSubmitting || isPending || isFrozen} type="submit">
+            <Button disabled={isSubmitting || isPending} type="submit">
               {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
               {submitLabel}
             </Button>

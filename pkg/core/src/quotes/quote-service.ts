@@ -54,6 +54,7 @@ type QuoteAuditRecord = Pick<
   | 'customerId'
   | 'discount'
   | 'notes'
+  | 'paymentTerms'
   | 'productId'
   | 'quotedBasePrice'
   | 'quotedCurrencyCode'
@@ -92,6 +93,7 @@ export function mapQuote(row: QuoteRow): Quote {
     discount: row.discount,
     id: row.id,
     notes: row.notes,
+    paymentTerms: row.paymentTerms,
     productId: row.productId,
     quotedBasePrice: row.quotedBasePrice,
     quotedCurrencyCode: row.quotedCurrencyCode,
@@ -131,6 +133,7 @@ export async function createQuote({
         customerId,
         discount: input.discount,
         notes: input.notes,
+        paymentTerms: input.paymentTerms,
         productId: input.productId,
         salesPersonId: input.salesPersonId,
         validUntil: input.validUntil,
@@ -305,6 +308,7 @@ export async function updateQuote({
       customerId,
       discount: input.discount,
       notes: input.notes,
+      paymentTerms: input.paymentTerms,
       productId: input.productId,
       salesPersonId: input.salesPersonId,
       validUntil: input.validUntil,
@@ -325,6 +329,7 @@ export async function updateQuote({
         customerId,
         discount: input.discount,
         notes: input.notes,
+        paymentTerms: input.paymentTerms,
         productId: input.productId,
         salesPersonId: input.salesPersonId,
         updatedAt: new Date(),
@@ -661,6 +666,7 @@ function mapQuoteAuditRecord(quote: QuoteAuditRecord): QuoteAuditRecord {
     customerId: quote.customerId,
     discount: quote.discount,
     notes: quote.notes,
+    paymentTerms: quote.paymentTerms,
     productId: quote.productId,
     quotedBasePrice: quote.quotedBasePrice,
     quotedCurrencyCode: quote.quotedCurrencyCode,

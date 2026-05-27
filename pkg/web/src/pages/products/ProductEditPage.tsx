@@ -49,6 +49,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
           key={productQuery.data.id}
           onSubmit={(value) =>
             updateProductMutation.mutateAsync({
+              assemblies: value.assemblies,
               basePrice: value.basePrice,
               currencyCode: 'ZAR',
               description: value.description,

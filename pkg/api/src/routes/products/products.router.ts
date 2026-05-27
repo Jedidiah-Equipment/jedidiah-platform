@@ -42,6 +42,32 @@ async function mapProductErrors<T>(action: () => Promise<T>): Promise<T> {
 
 function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductCoreError['code']> {
   switch (error.code) {
+    case 'product.assembly.duplicate_name':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'Assembly names must be unique within a product.',
+      };
+    case 'product.assembly.duplicate_part':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'A part can only be added once per assembly.',
+      };
+    case 'product.assembly.override_target_not_found':
+    case 'product.assembly.override_target_wrong_kind':
+    case 'product.assembly.override_target_wrong_product':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'Assembly overrides must target standard assemblies on the same product.',
+      };
+    case 'product.assembly.wrong_product':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'Assemblies must belong to the product being updated.',
+      };
     case 'product.duplicate_name':
       return {
         appCode: error.code,

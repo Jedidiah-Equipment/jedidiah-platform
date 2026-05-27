@@ -1,13 +1,18 @@
 import {
+  type assemblyOverrides,
+  type assemblyParts,
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   type Db,
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
+  type parts,
+  productAssemblies,
   products,
 } from '@pkg/db';
 import type {
+  Assembly,
   AuthId,
   Logger,
   ProductCreateInput,
@@ -21,12 +26,22 @@ import { and, eq, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
+import { listAssemblies, syncAssemblies } from './product-assembly-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
 
 type ProductRow = typeof products.$inferSelect;
+type ProductAssemblyListRow = typeof productAssemblies.$inferSelect & {
+  assemblyParts: (typeof assemblyParts.$inferSelect & {
+    part: Pick<typeof parts.$inferSelect, 'category' | 'code'>;
+  })[];
+  optionalOverrides: (typeof assemblyOverrides.$inferSelect)[];
+};
+type ProductListRow = ProductRow & { assemblies: ProductAssemblyListRow[] };
+type ProductCatalogAuditRecord = ProductRow & { assemblies: string };
 
-export function mapProduct(row: ProductRow): Product {
+export function mapProduct(row: ProductRow & { assemblies?: Assembly[] }): Product {
   return Product.parse({
+    assemblies: row.assemblies ?? [],
     basePrice: row.basePrice,
     createdAt: row.createdAt.toISOString(),
     currencyCode: ProductCurrencyCode.parse(row.currencyCode),
@@ -66,6 +81,27 @@ export async function listProducts({
     where,
     orderBy: [orderBy],
     ...getPaginationQueryOptions(input),
+    with: {
+      assemblies: {
+        orderBy: [
+          sql`case when ${productAssemblies.kind} = 'standard' then 0 else 1 end`,
+          getSortOrder(productAssemblies.name, 'asc'),
+        ],
+        with: {
+          assemblyParts: {
+            with: {
+              part: {
+                columns: {
+                  category: true,
+                  code: true,
+                },
+              },
+            },
+          },
+          optionalOverrides: true,
+        },
+      },
+    },
   });
   const productsSql = productsQuery.toSQL();
 
@@ -81,10 +117,52 @@ export async function listProducts({
   const [rows, total] = await Promise.all([productsQuery, db.$count(products, where)]);
 
   return {
-    items: rows.map((row) => mapProduct(row)),
+    items: rows.map(mapProductListRow),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
+  };
+}
+
+function mapProductListRow(row: ProductListRow): Product {
+  return mapProduct({
+    ...row,
+    assemblies: row.assemblies.map(mapProductListAssembly),
+  });
+}
+
+function mapProductListAssembly(row: ProductAssemblyListRow): Assembly {
+  const mappedParts = row.assemblyParts
+    .map((part) => ({
+      category: part.part.category,
+      code: part.part.code,
+      partId: part.partId,
+      quantity: part.quantity,
+    }))
+    .toSorted((left, right) => left.category.localeCompare(right.category) || left.code.localeCompare(right.code))
+    .map((part) => ({
+      partId: part.partId,
+      quantity: part.quantity,
+    }));
+
+  if (row.kind === 'standard') {
+    return {
+      id: row.id,
+      kind: 'standard',
+      name: row.name,
+      parts: mappedParts,
+      productId: row.productId,
+    };
+  }
+
+  return {
+    id: row.id,
+    kind: 'optional',
+    name: row.name,
+    overrideStandardAssemblyIds: row.optionalOverrides.map((override) => override.standardAssemblyId),
+    parts: mappedParts,
+    price: row.price ?? 0,
+    productId: row.productId,
   };
 }
 
@@ -130,7 +208,7 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
     throw new ProductNotFoundError(id);
   }
 
-  return mapProduct(row);
+  return mapProduct({ ...row, assemblies: await listAssemblies({ tx: db, productId: row.id }) });
 }
 
 export async function createProduct({
@@ -144,18 +222,26 @@ export async function createProduct({
 }): Promise<Product> {
   try {
     return await db.transaction(async (tx) => {
-      const [row] = await tx.insert(products).values(input).returning();
+      const { assemblies: desiredAssemblies, ...productInput } = input;
+      const [row] = await tx.insert(products).values(productInput).returning();
 
       if (!row) {
         throw new Error('Product insert did not return a row');
       }
+
+      const assemblies = await syncAssemblies({
+        tx,
+        productId: row.id,
+        desired: desiredAssemblies,
+      });
+      const after = { ...row, assemblies };
 
       await insertAuditEvent({
         db: tx,
         input: {
           action: 'created',
           actorUserId,
-          after: row,
+          after: toProductCatalogAuditRecord(after),
           before: null,
           changes: null,
           entityId: row.id,
@@ -163,7 +249,7 @@ export async function createProduct({
         },
       });
 
-      return mapProduct(row);
+      return mapProduct(after);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
@@ -187,8 +273,11 @@ export async function updateProduct({
         throw new ProductNotFoundError(input.id);
       }
 
+      const beforeAssemblies = await listAssemblies({ tx, productId: input.id });
+      const desiredAssemblies = input.assemblies ?? beforeAssemblies;
       const after = {
         ...before,
+        assemblies: desiredAssemblies,
         basePrice: input.basePrice,
         currencyCode: input.currencyCode,
         description: input.description,
@@ -196,11 +285,15 @@ export async function updateProduct({
         modelCode: input.modelCode,
         name: input.name,
       };
-      const productChanges = createAuditChanges(before, after, getProductCatalogAuditFields());
+      const productChanges = createAuditChanges(
+        toProductCatalogAuditRecord({ ...before, assemblies: beforeAssemblies }),
+        toProductCatalogAuditRecord(after),
+        getProductCatalogAuditFields(),
+      );
       const changes = productChanges;
 
       if (!changes) {
-        return mapProduct(before);
+        return mapProduct({ ...before, assemblies: beforeAssemblies });
       }
 
       const [row] = await tx
@@ -221,20 +314,29 @@ export async function updateProduct({
         throw new ProductNotFoundError(input.id);
       }
 
+      const assemblies = input.assemblies
+        ? await syncAssemblies({
+            tx,
+            productId: row.id,
+            desired: input.assemblies,
+          })
+        : beforeAssemblies;
+      const afterWithAssemblies = { ...row, assemblies };
+
       await insertAuditEvent({
         db: tx,
         input: {
           action: 'updated',
           actorUserId,
-          after: row,
-          before,
+          after: toProductCatalogAuditRecord(afterWithAssemblies),
+          before: toProductCatalogAuditRecord({ ...before, assemblies: beforeAssemblies }),
           changes,
           entityId: row.id,
           entityType: productAuditDescriptor.entityType,
         },
       });
 
-      return mapProduct(row);
+      return mapProduct(afterWithAssemblies);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
@@ -243,6 +345,43 @@ export async function updateProduct({
 
 function getProductCatalogAuditFields(): Record<string, string> {
   return productAuditDescriptor.fields;
+}
+
+function toProductCatalogAuditRecord(
+  row: ProductRow & { assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']> },
+): ProductCatalogAuditRecord {
+  return {
+    ...row,
+    assemblies: JSON.stringify(toAuditAssemblies(row.assemblies)),
+  };
+}
+
+function toAuditAssemblies(
+  assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>,
+): NonNullable<ProductUpdateInput['assemblies']> {
+  return assemblies.map((assembly) => {
+    const parts = assembly.parts
+      .map((part) => ({ partId: part.partId, quantity: part.quantity }))
+      .toSorted((left, right) => left.partId.localeCompare(right.partId));
+
+    if (assembly.kind === 'standard') {
+      return {
+        id: assembly.id,
+        kind: 'standard',
+        name: assembly.name,
+        parts,
+      };
+    }
+
+    return {
+      id: assembly.id,
+      kind: 'optional',
+      name: assembly.name,
+      overrideStandardAssemblyIds: assembly.overrideStandardAssemblyIds.toSorted(),
+      parts,
+      price: assembly.price,
+    };
+  });
 }
 
 function getProductSortColumn(sortBy: ProductListInput['sortBy']) {

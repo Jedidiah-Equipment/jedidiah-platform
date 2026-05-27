@@ -1,7 +1,14 @@
 import { hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { Link, linkOptions } from '@tanstack/react-router';
-import { Building2Icon, ClipboardListIcon, GaugeIcon, HandshakeIcon, type LucideIcon, PackageIcon } from 'lucide-react';
+import {
+  Building2Icon,
+  ClipboardListIcon,
+  GaugeIcon,
+  HandshakeIcon,
+  type LucideIcon,
+  PackageIcon,
+} from 'lucide-react';
 import type React from 'react';
 
 import {
@@ -37,14 +44,6 @@ const mainNavItems = [
   //   permission: 'job:read',
   //   link: linkOptions({ to: '/jobs' }),
   //   icon: BriefcaseBusinessIcon,
-  // },
-  // {
-  //   title: 'Products',
-  //   permission: 'product:read',
-  //   link: linkOptions({
-  //     to: '/products',
-  //   }),
-  //   icon: BoxesIcon,
   // },
   {
     title: 'Customers',

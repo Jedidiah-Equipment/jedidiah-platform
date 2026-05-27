@@ -202,13 +202,34 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
 export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
   const row = await db.query.products.findFirst({
     where: eq(products.id, id),
+    with: {
+      assemblies: {
+        orderBy: [
+          sql`case when ${productAssemblies.kind} = 'standard' then 0 else 1 end`,
+          getSortOrder(productAssemblies.name, 'asc'),
+        ],
+        with: {
+          assemblyParts: {
+            with: {
+              part: {
+                columns: {
+                  category: true,
+                  code: true,
+                },
+              },
+            },
+          },
+          optionalOverrides: true,
+        },
+      },
+    },
   });
 
   if (!row) {
     throw new ProductNotFoundError(id);
   }
 
-  return mapProduct({ ...row, assemblies: await listAssemblies({ tx: db, productId: row.id }) });
+  return mapProductListRow(row);
 }
 
 export async function createProduct({

@@ -99,7 +99,7 @@ export const OptionalAssemblyInput = z.object({
 export type AssemblyInput = z.infer<typeof AssemblyInput>;
 export const AssemblyInput = z.discriminatedUnion('kind', [StandardAssemblyInput, OptionalAssemblyInput]);
 
-const ProductAssemblies = z.array(AssemblyInput).superRefine((assemblies, ctx) => {
+export function refineProductAssemblies(assemblies: AssemblyInput[], ctx: z.RefinementCtx): void {
   const assemblyNames = new Map<string, number>();
   const standardIds = new Set<string>();
 
@@ -181,7 +181,9 @@ const ProductAssemblies = z.array(AssemblyInput).superRefine((assemblies, ctx) =
       }
     });
   });
-});
+}
+
+const ProductAssemblies = z.array(AssemblyInput).superRefine(refineProductAssemblies);
 
 export type ProductAssembliesInput = z.infer<typeof ProductAssembliesInput>;
 export const ProductAssembliesInput = ProductAssemblies.default([]);

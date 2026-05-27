@@ -1,11 +1,14 @@
 import {
   type AssemblyInput,
+  AssemblyName,
+  AssemblyPart,
   Price,
   type Product,
-  ProductAssembliesInput,
   ProductLeadTimeDays,
   ProductModelCode,
   ProductName,
+  refineProductAssemblies,
+  UUID,
 } from '@pkg/schema';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
@@ -15,7 +18,8 @@ import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/p
 import { Button } from '@/components/ui/button.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 
-type ProductFormValues = z.infer<typeof ProductFormValues>;
+export type ProductFormValues = z.infer<typeof ProductFormValues>;
+
 const ProductFormFields = z.object({
   basePrice: Price,
   description: z.string(),
@@ -23,9 +27,29 @@ const ProductFormFields = z.object({
   modelCode: ProductModelCode,
   name: ProductName,
 });
-const ProductFormValues = ProductFormFields.extend({
-  assemblies: ProductAssembliesInput,
+
+const StandardAssemblyFormInput = z.object({
+  id: UUID.optional(),
+  kind: z.literal('standard'),
+  name: AssemblyName,
+  parts: z.array(AssemblyPart),
 });
+
+const OptionalAssemblyFormInput = z.object({
+  id: UUID.optional(),
+  kind: z.literal('optional'),
+  name: AssemblyName,
+  overrideStandardAssemblyIds: z.array(UUID),
+  parts: z.array(AssemblyPart),
+  price: Price,
+});
+
+const ProductFormValues = ProductFormFields.extend({
+  assemblies: z
+    .array(z.discriminatedUnion('kind', [StandardAssemblyFormInput, OptionalAssemblyFormInput]))
+    .superRefine(refineProductAssemblies),
+});
+
 type ProductAssemblyInputValue = z.infer<typeof AssemblyInput>;
 
 type ProductFormProps = {
@@ -48,58 +72,60 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
   const form = useAppForm({
     defaultValues,
     validators: {
-      onSubmit: validateProductForm,
+      onSubmit: ProductFormValues,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit(ProductFormValues.parse(value));
+      await onSubmit(value);
     },
   });
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void form.handleSubmit();
-      }}
-    >
-      <EditFormGrid>
-        <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
-        <form.AppField name="modelCode">
-          {(field) => <field.TextField autoComplete="off" label="Model code" />}
-        </form.AppField>
-        <form.AppField name="basePrice">
-          {(field) => (
-            <field.CurrencyField autoComplete="off" currencyCode="ZAR" label="Base price" placeholder="1234.56" />
-          )}
-        </form.AppField>
-        <form.AppField name="leadTimeDays">
-          {(field) => (
-            <field.NumberField autoComplete="off" inputMode="numeric" label="Lead time (days)" placeholder="14" />
-          )}
-        </form.AppField>
-        <EditFormFullWidth>
-          <form.AppField name="description">
-            {(field) => <field.TextareaField label="Description" rows={4} />}
+    <form.AppForm>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void form.handleSubmit();
+        }}
+      >
+        <EditFormGrid>
+          <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
+          <form.AppField name="modelCode">
+            {(field) => <field.TextField autoComplete="off" label="Model code" />}
           </form.AppField>
-        </EditFormFullWidth>
-        <EditFormFullWidth>
-          <form.Field name="assemblies" mode="array">
-            {(assembliesField) => <ProductAssembliesEditor assembliesField={assembliesField} FormField={form.Field} />}
-          </form.Field>
-        </EditFormFullWidth>
-      </EditFormGrid>
-      <EditFormActions className="mt-4">
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button disabled={isSubmitting || isPending} type="submit">
-              {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-              {submitLabel}
-            </Button>
-          )}
-        </form.Subscribe>
-      </EditFormActions>
-    </form>
+          <form.AppField name="basePrice">
+            {(field) => (
+              <field.CurrencyField autoComplete="off" currencyCode="ZAR" label="Base price" placeholder="1234.56" />
+            )}
+          </form.AppField>
+          <form.AppField name="leadTimeDays">
+            {(field) => (
+              <field.NumberField autoComplete="off" inputMode="numeric" label="Lead time (days)" placeholder="14" />
+            )}
+          </form.AppField>
+          <EditFormFullWidth>
+            <form.AppField name="description">
+              {(field) => <field.TextareaField label="Description" rows={4} />}
+            </form.AppField>
+          </EditFormFullWidth>
+          <EditFormFullWidth>
+            <form.Field name="assemblies" mode="array">
+              {(assembliesField) => <ProductAssembliesEditor assembliesField={assembliesField} />}
+            </form.Field>
+          </EditFormFullWidth>
+        </EditFormGrid>
+        <EditFormActions className="mt-4">
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {(isSubmitting) => (
+              <Button disabled={isSubmitting || isPending} type="submit">
+                {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+                {submitLabel}
+              </Button>
+            )}
+          </form.Subscribe>
+        </EditFormActions>
+      </form>
+    </form.AppForm>
   );
 };
 
@@ -121,26 +147,4 @@ function getInitialAssemblies(initialProduct: Product | undefined): ProductAssem
           price: assembly.price,
         },
   );
-}
-
-function validateProductForm({ value }: { value: ProductFormValues }) {
-  const result = ProductFormValues.safeParse(value);
-
-  if (result.success) {
-    return undefined;
-  }
-
-  return {
-    fields: Object.fromEntries(result.error.issues.map((issue) => [toFormFieldName(issue.path), issue.message])),
-  };
-}
-
-function toFormFieldName(path: PropertyKey[]): string {
-  return path.reduce<string>((fieldName, pathSegment) => {
-    if (typeof pathSegment === 'number') {
-      return `${fieldName}[${pathSegment}]`;
-    }
-
-    return fieldName ? `${fieldName}.${String(pathSegment)}` : String(pathSegment);
-  }, '');
 }

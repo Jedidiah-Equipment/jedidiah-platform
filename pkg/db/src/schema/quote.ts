@@ -15,6 +15,7 @@ import {
 
 import { user } from './auth.js';
 import { customers } from './customer.js';
+import { jobs } from './job.js';
 import { products } from './product.js';
 
 export const quoteCodeSequence = pgSequence('quote_code_seq');
@@ -49,11 +50,12 @@ export const quotes = pgTable(
   ],
 );
 
-export const quotesRelations = relations(quotes, ({ one }) => ({
+export const quotesRelations = relations(quotes, ({ many, one }) => ({
   customer: one(customers, {
     fields: [quotes.customerId],
     references: [customers.id],
   }),
+  jobs: many(jobs),
   product: one(products, {
     fields: [quotes.productId],
     references: [products.id],

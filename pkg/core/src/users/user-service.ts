@@ -10,7 +10,7 @@ import {
   type UserListResult,
   type UserSummary,
 } from '@pkg/schema';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 import { insertAuditEvent } from '../audit/audit-service.js';
 import { UserNotFoundError } from './user-errors.js';
@@ -52,26 +52,30 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
 }
 
 export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
-  const rows = await db
-    .select({
-      email: user.email,
-      emailVerified: user.emailVerified,
-      id: user.id,
-      name: user.name,
-      role: user.role,
-    })
-    .from(user)
-    .orderBy(asc(user.email));
-  const departmentsByUserId = await listDepartmentsByUserIds({
-    db,
-    userIds: rows.map((row) => row.id),
+  const rows = await db.query.user.findMany({
+    columns: {
+      email: true,
+      emailVerified: true,
+      id: true,
+      name: true,
+      role: true,
+    },
+    orderBy: [asc(user.email)],
+    with: {
+      departments: {
+        columns: {
+          department: true,
+        },
+        orderBy: [asc(userDepartment.department)],
+      },
+    },
   });
 
   return {
     users: rows.map((row) =>
       mapUser({
         ...row,
-        departments: departmentsByUserId.get(row.id) ?? [],
+        departments: row.departments.map((department) => department.department),
       }),
     ),
   };
@@ -234,31 +238,6 @@ export async function canAssignUserRole({
 
     return !(adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === userId));
   });
-}
-
-async function listDepartmentsByUserIds({ db, userIds }: { db: Db; userIds: readonly AuthId[] }) {
-  const departmentsByUserId = new Map<AuthId, Department[]>();
-
-  if (userIds.length === 0) {
-    return departmentsByUserId;
-  }
-
-  const rows = await db
-    .select({
-      department: userDepartment.department,
-      userId: userDepartment.userId,
-    })
-    .from(userDepartment)
-    .where(inArray(userDepartment.userId, [...userIds]))
-    .orderBy(asc(userDepartment.userId), asc(userDepartment.department));
-
-  for (const row of rows) {
-    const departments = departmentsByUserId.get(row.userId) ?? [];
-    departments.push(row.department);
-    departmentsByUserId.set(row.userId, departments);
-  }
-
-  return departmentsByUserId;
 }
 
 async function setUserDepartmentsInTransaction({

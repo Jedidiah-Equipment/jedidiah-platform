@@ -22,6 +22,7 @@ export type ProductFormValues = z.infer<typeof ProductFormValues>;
 
 const ProductFormFields = z.object({
   basePrice: Price,
+  currencyCode: z.literal('ZAR'),
   description: z.string(),
   leadTimeDays: ProductLeadTimeDays,
   modelCode: ProductModelCode,
@@ -63,6 +64,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
   const defaultValues: ProductFormValues = {
     assemblies: getInitialAssemblies(initialProduct),
     basePrice: initialProduct?.basePrice ?? NaN,
+    currencyCode: initialProduct?.currencyCode ?? 'ZAR',
     description: initialProduct?.description ?? '',
     leadTimeDays: initialProduct?.leadTimeDays ?? NaN,
     modelCode: initialProduct?.modelCode ?? '',
@@ -95,7 +97,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
           </form.AppField>
           <form.AppField name="basePrice">
             {(field) => (
-              <field.CurrencyField autoComplete="off" currencyCode="ZAR" label="Base price" placeholder="1234.56" />
+              <field.CurrencyField
+                autoComplete="off"
+                currencyCode={defaultValues.currencyCode}
+                label="Base price"
+                placeholder="R120,000"
+              />
             )}
           </form.AppField>
           <form.AppField name="leadTimeDays">
@@ -110,7 +117,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
           </EditFormFullWidth>
           <EditFormFullWidth>
             <form.Field name="assemblies" mode="array">
-              {(assembliesField) => <ProductAssembliesEditor assembliesField={assembliesField} />}
+              {(assembliesField) => (
+                <ProductAssembliesEditor assembliesField={assembliesField} currencyCode={defaultValues.currencyCode} />
+              )}
             </form.Field>
           </EditFormFullWidth>
         </EditFormGrid>

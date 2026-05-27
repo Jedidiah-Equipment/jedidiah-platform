@@ -1,7 +1,5 @@
 # core (@pkg/core)
 
-Follow `../../.sandcastle/CODING_STANDARDS.md`.
-
 ## Copy These
 
 - Product service: `src/products/product-service.ts`

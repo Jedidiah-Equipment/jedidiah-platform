@@ -52,17 +52,15 @@ type QuoteAuditRecord = Pick<
   | 'quotedBasePrice'
   | 'quotedCurrencyCode'
   | 'salesPersonId'
-  | 'sentAt'
   | 'status'
   | 'validUntil'
 >;
 type QuoteListRow = {
   quote: QuoteRow;
   customerCompanyName: string;
-  productBasePrice: number | null;
-  productCurrencyCode: string | null;
-  productModelCode: string | null;
-  productName: string | null;
+  productCurrencyCode: string;
+  productModelCode: string;
+  productName: string;
   salesPersonEmail: string | null;
   salesPersonName: string | null;
 };
@@ -74,7 +72,7 @@ type QuoteLinkedJobRow = {
 type QuoteDetailRow = QuoteRow & {
   customer: Pick<typeof customers.$inferSelect, 'companyName'>;
   jobs: Pick<typeof jobs.$inferSelect, 'code' | 'id'>[];
-  product: Pick<typeof products.$inferSelect, 'basePrice' | 'currencyCode' | 'modelCode' | 'name'> | null;
+  product: Pick<typeof products.$inferSelect, 'currencyCode' | 'modelCode' | 'name'>;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
 };
 
@@ -93,7 +91,6 @@ export function mapQuote(row: QuoteRow): Quote {
     quotedBasePrice: row.quotedBasePrice,
     quotedCurrencyCode: row.quotedCurrencyCode,
     salesPersonId: row.salesPersonId,
-    sentAt: row.sentAt?.toISOString() ?? null,
     status: row.status,
     updatedAt: row.updatedAt.toISOString(),
     validUntil: row.validUntil,
@@ -111,16 +108,9 @@ export async function createQuote({
 }): Promise<QuoteDetail> {
   return db.transaction(async (tx) => {
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
-    if (input.productId) {
-      const product = await readProductForQuote({ productId: input.productId, tx });
-      assertValidDiscount({ basePrice: product.basePrice, discount: input.discount });
-    } else {
-      assertDraftWithoutProductHasNoDiscount(input.discount);
-    }
-
-    if (input.salesPersonId) {
-      await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
-    }
+    const product = await readProductForQuote({ productId: input.productId, tx });
+    assertValidDiscount({ basePrice: product.basePrice, discount: input.discount });
+    await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
     const [row] = await tx
       .insert(quotes)
@@ -132,6 +122,8 @@ export async function createQuote({
         plannedDeliveryDate: input.plannedDeliveryDate,
         preferredDeliveryDate: input.preferredDeliveryDate,
         productId: input.productId,
+        quotedBasePrice: product.basePrice,
+        quotedCurrencyCode: product.currencyCode,
         salesPersonId: input.salesPersonId,
         status: input.status,
         validUntil: input.validUntil,
@@ -169,7 +161,6 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
       .select({
         quote: quotes,
         customerCompanyName: customers.companyName,
-        productBasePrice: products.basePrice,
         productCurrencyCode: products.currencyCode,
         productModelCode: products.modelCode,
         productName: products.name,
@@ -178,7 +169,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
       })
       .from(quotes)
       .innerJoin(customers, eq(quotes.customerId, customers.id))
-      .leftJoin(products, eq(quotes.productId, products.id))
+      .innerJoin(products, eq(quotes.productId, products.id))
       .leftJoin(user, eq(quotes.salesPersonId, user.id))
       .where(where)
       .orderBy(orderBy, asc(quotes.id))
@@ -192,7 +183,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .leftJoin(products, eq(quotes.productId, products.id))
+    .innerJoin(products, eq(quotes.productId, products.id))
     .where(where);
 
   const rows = await rowsQuery;
@@ -227,7 +218,6 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       },
       product: {
         columns: {
-          basePrice: true,
           currencyCode: true,
           modelCode: true,
           name: true,
@@ -286,16 +276,9 @@ export async function updateQuote({
     }
 
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
-    if (input.productId) {
-      const product = await readProductForQuote({ productId: input.productId, tx });
-      assertValidDiscount({ basePrice: product.basePrice, discount: input.discount });
-    } else {
-      assertDraftWithoutProductHasNoDiscount(input.discount);
-    }
+    assertValidDiscount({ basePrice: before.quotedBasePrice, discount: input.discount });
 
-    if (input.salesPersonId) {
-      await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
-    }
+    await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
     const after = {
       ...before,
@@ -305,7 +288,6 @@ export async function updateQuote({
       paymentTerms: input.paymentTerms,
       plannedDeliveryDate: input.plannedDeliveryDate,
       preferredDeliveryDate: input.preferredDeliveryDate,
-      productId: input.productId,
       salesPersonId: input.salesPersonId,
       status: input.status,
       validUntil: input.validUntil,
@@ -329,7 +311,6 @@ export async function updateQuote({
         paymentTerms: input.paymentTerms,
         plannedDeliveryDate: input.plannedDeliveryDate,
         preferredDeliveryDate: input.preferredDeliveryDate,
-        productId: input.productId,
         salesPersonId: input.salesPersonId,
         status: input.status,
         updatedAt: new Date(),
@@ -360,8 +341,6 @@ export async function updateQuote({
 }
 
 function mapQuoteSummary(row: QuoteListRow, linkedJobs: readonly QuoteLinkedJobRow[]): QuoteSummary {
-  const quotedBasePrice = row.quote.quotedBasePrice ?? row.productBasePrice;
-
   return {
     ...mapQuote(row.quote),
     customerCompanyName: row.customerCompanyName,
@@ -369,18 +348,16 @@ function mapQuoteSummary(row: QuoteListRow, linkedJobs: readonly QuoteLinkedJobR
       jobCode: JobCode.parse(job.jobCode),
       jobId: job.jobId,
     })),
-    productCurrencyCode: row.productCurrencyCode === null ? null : ProductCurrencyCode.parse(row.productCurrencyCode),
+    productCurrencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
     productModelCode: row.productModelCode,
     productName: row.productName,
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,
-    total: quotedBasePrice === null ? null : computeQuoteTotal({ discount: row.quote.discount, quotedBasePrice }),
+    total: computeQuoteTotal({ discount: row.quote.discount, quotedBasePrice: row.quote.quotedBasePrice }),
   };
 }
 
 function mapQuoteDetail(row: QuoteDetailRow): QuoteDetail {
-  const quotedBasePrice = row.quotedBasePrice ?? row.product?.basePrice ?? null;
-
   return {
     ...mapQuote(row),
     customerCompanyName: row.customer.companyName,
@@ -388,12 +365,12 @@ function mapQuoteDetail(row: QuoteDetailRow): QuoteDetail {
       jobCode: JobCode.parse(job.code),
       jobId: job.id,
     })),
-    productCurrencyCode: row.product?.currencyCode ? ProductCurrencyCode.parse(row.product.currencyCode) : null,
-    productModelCode: row.product?.modelCode ?? null,
-    productName: row.product?.name ?? null,
+    productCurrencyCode: ProductCurrencyCode.parse(row.product.currencyCode),
+    productModelCode: row.product.modelCode,
+    productName: row.product.name,
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
-    total: quotedBasePrice === null ? null : computeQuoteTotal({ discount: row.discount, quotedBasePrice }),
+    total: computeQuoteTotal({ discount: row.discount, quotedBasePrice: row.quotedBasePrice }),
   };
 }
 
@@ -528,12 +505,6 @@ function assertValidDiscount({ basePrice, discount }: { basePrice: number; disco
   }
 }
 
-function assertDraftWithoutProductHasNoDiscount(discount: number): void {
-  if (discount !== 0) {
-    throw new QuoteDiscountInvalidError('Quote discount requires a product.');
-  }
-}
-
 function mapQuoteAuditRecord(quote: QuoteAuditRecord): QuoteAuditRecord {
   return {
     code: quote.code,
@@ -547,7 +518,6 @@ function mapQuoteAuditRecord(quote: QuoteAuditRecord): QuoteAuditRecord {
     quotedBasePrice: quote.quotedBasePrice,
     quotedCurrencyCode: quote.quotedCurrencyCode,
     salesPersonId: quote.salesPersonId,
-    sentAt: quote.sentAt,
     status: quote.status,
     validUntil: quote.validUntil,
   };
@@ -593,7 +563,7 @@ function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
 }
 
 function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
-  const total = sql`coalesce(${quotes.quotedBasePrice}, ${products.basePrice}) - ${quotes.discount}`;
+  const total = sql`${quotes.quotedBasePrice} - ${quotes.discount}`;
   const columns = {
     code: sql`${quotes.code}`,
     createdAt: sql`${quotes.createdAt}`,

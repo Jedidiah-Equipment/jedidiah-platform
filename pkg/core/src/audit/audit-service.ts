@@ -121,6 +121,8 @@ export const quoteAuditDescriptor: AuditEntityDescriptor = {
     discount: 'discount',
     notes: 'notes',
     paymentTerms: 'payment terms',
+    plannedDeliveryDate: 'planned delivery date',
+    preferredDeliveryDate: 'preferred delivery date',
     productId: 'product',
     quotedBasePrice: 'quoted base price',
     quotedCurrencyCode: 'quoted currency',

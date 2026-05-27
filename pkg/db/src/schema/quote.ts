@@ -33,6 +33,8 @@ export const quotes = pgTable(
     status: text('status').notNull().default('draft').$type<QuoteStatus>(),
     discount: numeric('discount', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
     validUntil: date('valid_until', { mode: 'string' }),
+    preferredDeliveryDate: date('preferred_delivery_date', { mode: 'string' }),
+    plannedDeliveryDate: date('planned_delivery_date', { mode: 'string' }),
     notes: text('notes'),
     paymentTerms: text('payment_terms'),
     quotedBasePrice: numeric('quoted_base_price', { mode: 'number', precision: 12, scale: 2 }),

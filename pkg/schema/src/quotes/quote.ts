@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
-import { DateIso } from '../common/date.js';
+import { DateIso, DateOnlyIso } from '../common/date.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
@@ -46,6 +46,8 @@ export const Quote = z.object({
   status: QuoteStatus.default('draft'),
   discount: Price,
   validUntil: DateIso.nullable(),
+  preferredDeliveryDate: DateOnlyIso.nullable(),
+  plannedDeliveryDate: DateOnlyIso.nullable(),
   notes: QuoteNotes,
   paymentTerms: QuotePaymentTerms,
   quotedBasePrice: Price.nullable(),
@@ -101,6 +103,8 @@ export const QuoteCreateInput = z.object({
   salesPersonId: AuthId.nullable().default(null),
   discount: z.coerce.number().pipe(Price).default(0),
   validUntil: DateIso.nullable().default(null),
+  preferredDeliveryDate: DateOnlyIso.nullable().default(null),
+  plannedDeliveryDate: DateOnlyIso.nullable().default(null),
   notes: QuoteNotesInput,
   paymentTerms: QuotePaymentTermsInput,
 });

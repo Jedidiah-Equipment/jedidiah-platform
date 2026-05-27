@@ -366,7 +366,7 @@ async function createActorUser(db: Db): Promise<void> {
 async function createParts(db: Db): Promise<{ bucket: string; hose: string; rockBucket: string }> {
   const supplierId = '00000000-0000-4000-8000-000000000301';
 
-  await db.insert(supplier).values({ id: supplierId, name: 'Assembly Supplier' }).onConflictDoNothing();
+  await db.insert(supplier).values({ companyName: 'Assembly Supplier', id: supplierId }).onConflictDoNothing();
   await db
     .insert(parts)
     .values([

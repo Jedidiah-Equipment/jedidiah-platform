@@ -1,11 +1,11 @@
 export class DuplicateSupplierNameError extends Error {
   readonly code = 'supplier.duplicate_name';
-  readonly metadata: { name: string };
+  readonly metadata: { companyName: string };
 
-  constructor(name: string) {
-    super(`Supplier name already exists: ${name}`);
+  constructor(companyName: string) {
+    super(`Supplier name already exists: ${companyName}`);
     this.name = 'DuplicateSupplierNameError';
-    this.metadata = { name };
+    this.metadata = { companyName };
   }
 }
 

@@ -9,7 +9,7 @@ import {
 import { SupplierCreateInput, SupplierListInput, SupplierUpdateInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
+import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const suppliersRouter = router({
@@ -39,20 +39,20 @@ async function mapSupplierErrors<T>(action: () => Promise<T>): Promise<T> {
 }
 
 function mapSupplierCoreError(error: SupplierCoreError): CoreErrorMapping<SupplierCoreError['code']> {
-  switch (error.code) {
-    case 'supplier.duplicate_name':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: 'A supplier with this name already exists.',
-      };
-    case 'supplier.not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Supplier not found.',
-      };
-    default:
-      return assertNever(error);
-  }
+  return supplierErrorMappings[error.code];
 }
+
+const supplierErrorMappings = {
+  'supplier.duplicate_name': {
+    appCode: 'supplier.duplicate_name',
+    code: 'CONFLICT',
+    message: 'A supplier with this name already exists.',
+  },
+  'supplier.not_found': {
+    appCode: 'supplier.not_found',
+    code: 'NOT_FOUND',
+    message: 'Supplier not found.',
+  },
+} satisfies {
+  [TCode in SupplierCoreError['code']]: CoreErrorMapping<TCode>;
+};

@@ -17,7 +17,7 @@
     ]
   },
   "deploy": {
-    "startCommand": "pnpm --filter @pkg/seed db:reset:remote",
+    "startCommand": "pnpm --filter @pkg/seed db:reset:remote -- --users-only",
     "restartPolicyType": "NEVER"
   },
   "environments": {

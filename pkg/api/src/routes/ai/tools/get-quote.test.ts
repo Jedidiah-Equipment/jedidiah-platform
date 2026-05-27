@@ -68,6 +68,7 @@ async function createQuote(caller: AppRouterCaller, productId: string) {
     },
     discount: 100,
     notes: null,
+    paymentTerms: '30% deposit, balance on delivery',
     productId,
     salesPersonId: 'test-user-id',
     validUntil: '2026-06-30',

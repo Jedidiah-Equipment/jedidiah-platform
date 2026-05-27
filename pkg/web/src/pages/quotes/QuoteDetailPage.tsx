@@ -167,6 +167,12 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
               <p className="whitespace-pre-wrap text-muted-foreground">{quote.notes}</p>
             </div>
           ) : null}
+          {quote.paymentTerms ? (
+            <div className="rounded-md border p-3 text-sm">
+              <div className="mb-1 font-medium">Payment Terms</div>
+              <p className="whitespace-pre-wrap text-muted-foreground">{quote.paymentTerms}</p>
+            </div>
+          ) : null}
         </>
       ) : null}
       {quoteQuery.isLoading ? <Skeleton className="h-40" /> : null}

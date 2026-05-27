@@ -25,6 +25,17 @@ export const QuoteNotesInput = z
   .nullable()
   .default(null);
 
+export type QuotePaymentTerms = z.infer<typeof QuotePaymentTerms>;
+export const QuotePaymentTerms = z.string().trim().min(1).nullable();
+
+export type QuotePaymentTermsInput = z.infer<typeof QuotePaymentTermsInput>;
+export const QuotePaymentTermsInput = z
+  .string()
+  .trim()
+  .transform((value) => (value === '' ? null : value))
+  .nullable()
+  .default(null);
+
 export type Quote = z.infer<typeof Quote>;
 export const Quote = z.object({
   id: UUID,
@@ -36,6 +47,7 @@ export const Quote = z.object({
   discount: Price,
   validUntil: DateIso.nullable(),
   notes: QuoteNotes,
+  paymentTerms: QuotePaymentTerms,
   quotedBasePrice: Price.nullable(),
   quotedCurrencyCode: ProductCurrencyCode.nullable(),
   sentAt: DateIso.nullable(),
@@ -90,6 +102,7 @@ export const QuoteCreateInput = z.object({
   discount: z.coerce.number().pipe(Price).default(0),
   validUntil: DateIso.nullable().default(null),
   notes: QuoteNotesInput,
+  paymentTerms: QuotePaymentTermsInput,
 });
 
 export type QuoteUpdateInput = z.infer<typeof QuoteUpdateInput>;

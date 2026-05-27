@@ -34,6 +34,7 @@ export const quotes = pgTable(
     discount: numeric('discount', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
     validUntil: date('valid_until', { mode: 'string' }),
     notes: text('notes'),
+    paymentTerms: text('payment_terms'),
     quotedBasePrice: numeric('quoted_base_price', { mode: 'number', precision: 12, scale: 2 }),
     quotedCurrencyCode: text('quoted_currency_code'),
     sentAt: timestamp('sent_at', { mode: 'date', withTimezone: true }),

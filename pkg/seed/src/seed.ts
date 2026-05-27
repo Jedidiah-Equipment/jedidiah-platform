@@ -71,15 +71,47 @@ const seedCustomers = [
 ] as const satisfies readonly Pick<CustomerCreateInput, 'companyName' | 'contactPerson' | 'email'>[];
 
 const seedSuppliers = [
-  'Atlas Hydraulics',
-  'Berg Steel Works',
-  'Cape Bearing Supply',
-  'Drakensberg Hose & Fittings',
-  'East Rand Diesel Components',
-  'ForgeLine Fabrication',
-  'Kopano Electrical Wholesalers',
-  'Ndlovu Paint Systems',
-] as const satisfies readonly SupplierCreateInput['name'][];
+  {
+    companyName: 'Atlas Hydraulics',
+    contactPerson: 'Marius Botha',
+    email: 'orders@atlas-hydraulics.example',
+  },
+  {
+    companyName: 'Berg Steel Works',
+    contactPerson: 'Lindiwe Mokoena',
+    email: 'sales@berg-steel.example',
+  },
+  {
+    companyName: 'Cape Bearing Supply',
+    contactPerson: 'Daniel Jacobs',
+    email: 'procurement@cape-bearing.example',
+  },
+  {
+    companyName: 'Drakensberg Hose & Fittings',
+    contactPerson: 'Priya Naidoo',
+    email: 'quotes@drakensberg-hose.example',
+  },
+  {
+    companyName: 'East Rand Diesel Components',
+    contactPerson: 'Andre van Zyl',
+    email: 'parts@east-rand-diesel.example',
+  },
+  {
+    companyName: 'ForgeLine Fabrication',
+    contactPerson: 'Thabo Ndlovu',
+    email: 'workshop@forgeline.example',
+  },
+  {
+    companyName: 'Kopano Electrical Wholesalers',
+    contactPerson: 'Naledi Dlamini',
+    email: 'orders@kopano-electrical.example',
+  },
+  {
+    companyName: 'Ndlovu Paint Systems',
+    contactPerson: 'Sipho Khumalo',
+    email: 'sales@ndlovu-paint.example',
+  },
+] as const satisfies readonly Pick<SupplierCreateInput, 'companyName' | 'contactPerson' | 'email'>[];
 
 type SeedSupplierPlan = {
   initial: SupplierCreateInput;
@@ -94,6 +126,10 @@ type SeedPartTemplate = Omit<PartCreateInput, 'supplierId'> & {
 type SeedPartPlan = {
   initial: PartCreateInput;
   update?: PartCreateInput;
+};
+
+export type SeedDatabaseOptions = {
+  usersOnly?: boolean;
 };
 
 const seedPartTemplates: readonly SeedPartTemplate[] = [
@@ -198,16 +234,22 @@ export function createSeedCustomerInputs(): CustomerCreateInput[] {
 }
 
 export function createSeedSupplierPlans(): SeedSupplierPlan[] {
-  return seedSuppliers.map((name, index) => {
+  return seedSuppliers.map((supplier, index) => {
     const plan: SeedSupplierPlan = {
       initial: {
-        name,
+        address: null,
+        companyName: supplier.companyName,
+        contactPerson: supplier.contactPerson,
+        email: supplier.email,
+        notes: null,
+        phone: null,
       },
     };
 
     if (index % 4 === 1) {
       plan.update = {
-        name: `${name} Pty Ltd`,
+        ...plan.initial,
+        companyName: `${supplier.companyName} Pty Ltd`,
       };
     }
 
@@ -242,7 +284,7 @@ export function createSeedPartPlans(suppliers: readonly Supplier[]): SeedPartPla
   });
 }
 
-export async function seedDatabase(database?: Db): Promise<void> {
+export async function seedDatabase(database?: Db, options: SeedDatabaseOptions = {}): Promise<void> {
   // This seeder is intentionally not idempotent; use pnpm db:reset before running it.
   const activeDb = database ?? db;
   const now = new Date();
@@ -319,6 +361,12 @@ export async function seedDatabase(database?: Db): Promise<void> {
     });
 
   console.info(`[db:seed] Upserted ${demoUsers.length} credential account(s)`);
+
+  if (options.usersOnly) {
+    console.info(`[db:seed] Seed complete: ${demoUsers.length} user(s)`);
+    return;
+  }
+
   console.info(`[db:seed] Creating ${seedCustomerInputs.length} customer scenario(s) through core services`);
 
   const seededCustomers = await seedCustomersWithCore({
@@ -446,7 +494,7 @@ async function seedPartsWithCore({
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   try {
-    await seedDatabase();
+    await seedDatabase(undefined, { usersOnly: process.argv.includes('--users-only') });
   } finally {
     await closeDatabaseConnection();
   }

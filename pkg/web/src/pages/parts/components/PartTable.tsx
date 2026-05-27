@@ -107,7 +107,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, showEditAction
 
       {
         accessorKey: 'supplierName',
-        cell: ({ row }) => row.original.supplier.name,
+        cell: ({ row }) => row.original.supplier.companyName,
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Supplier',

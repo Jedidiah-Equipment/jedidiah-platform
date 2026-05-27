@@ -32,7 +32,7 @@ async function resetRemoteDatabase(): Promise<void> {
     migrationsFolder: fileURLToPath(new URL('../../db/migrations', import.meta.url)),
   });
 
-  await seedDatabase(db);
+  await seedDatabase(db, { usersOnly: process.argv.includes('--users-only') });
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

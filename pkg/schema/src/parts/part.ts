@@ -43,7 +43,7 @@ export const Part = z.object({
   finish: PartFinish,
   id: UUID,
   name: PartName,
-  supplier: Supplier.pick({ id: true, name: true }),
+  supplier: Supplier.pick({ companyName: true, id: true }),
   supplierCode: PartSupplierCode,
   supplierId: UUID,
 });

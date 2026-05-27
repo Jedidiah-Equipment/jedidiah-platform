@@ -4,22 +4,61 @@ import { z } from 'zod';
 import { Supplier, SupplierCreateInput } from './supplier.js';
 
 describe('SupplierCreateInput', () => {
-  it('normalizes supplier names', () => {
+  it('normalizes supplier values', () => {
     expect(
       SupplierCreateInput.parse({
-        name: '  Acme Supplies  ',
+        address: '  12 Main Road  ',
+        companyName: '  Acme Supplies  ',
+        contactPerson: '  Jane Buyer  ',
+        email: '  SALES@ACME.EXAMPLE  ',
+        notes: '  Prefers email  ',
+        phone: '  +27 11 555 0100  ',
       }),
     ).toEqual({
-      name: 'Acme Supplies',
+      address: '12 Main Road',
+      companyName: 'Acme Supplies',
+      contactPerson: 'Jane Buyer',
+      email: 'sales@acme.example',
+      notes: 'Prefers email',
+      phone: '+27 11 555 0100',
     });
   });
 
-  it('requires supplier names', () => {
+  it('stores blank optional fields as null', () => {
+    expect(
+      SupplierCreateInput.parse({
+        address: ' ',
+        companyName: 'Acme Supplies',
+        contactPerson: '',
+        email: '',
+        notes: ' ',
+        phone: '',
+      }),
+    ).toEqual({
+      address: null,
+      companyName: 'Acme Supplies',
+      contactPerson: null,
+      email: null,
+      notes: null,
+      phone: null,
+    });
+  });
+
+  it('requires supplier company names', () => {
     expect(() =>
       SupplierCreateInput.parse({
-        name: '  ',
+        companyName: '  ',
       }),
     ).toThrow();
+  });
+
+  it('requires valid supplier emails', () => {
+    expect(() =>
+      SupplierCreateInput.parse({
+        companyName: 'Acme Supplies',
+        email: 'not-an-email',
+      }),
+    ).toThrow('Enter a valid email address');
   });
 });
 

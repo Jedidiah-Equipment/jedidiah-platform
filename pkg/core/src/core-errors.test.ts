@@ -23,6 +23,7 @@ import {
   QuoteNotFoundError,
   QuoteTransitionDeniedError,
 } from './quotes/quote-errors.js';
+import { DuplicateSupplierNameError, isSupplierCoreError, SupplierNotFoundError } from './suppliers/supplier-errors.js';
 import { isUserCoreError, UserNotFoundError } from './users/user-errors.js';
 
 describe('core error codes and guards', () => {
@@ -50,6 +51,13 @@ describe('core error codes and guards', () => {
     expect(new UserNotFoundError('user-id').code).toBe('user.not_found');
     expect(isCustomerCoreError(new CustomerNotFoundError('customer-id'))).toBe(true);
     expect(isUserCoreError(new UserNotFoundError('user-id'))).toBe(true);
+  });
+
+  it('identifies supplier core errors', () => {
+    expect(new DuplicateSupplierNameError('Acme Supplies').code).toBe('supplier.duplicate_name');
+    expect(new SupplierNotFoundError('supplier-id').code).toBe('supplier.not_found');
+    expect(isSupplierCoreError(new SupplierNotFoundError('supplier-id'))).toBe(true);
+    expect(isSupplierCoreError(new Error('supplier.not_found'))).toBe(false);
   });
 
   it('identifies quote core errors', () => {

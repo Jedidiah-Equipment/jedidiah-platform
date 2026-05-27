@@ -42,13 +42,13 @@ export const PartForm: React.FC<PartFormProps> = ({ initialPart, isPending, onSu
   const suppliersQuery = useQuery(
     trpc.suppliers.list.queryOptions({
       pageSize: 0,
-      sortBy: 'name',
+      sortBy: 'companyName',
       sortDirection: 'asc',
     }),
   );
   const supplierOptions =
     suppliersQuery.data?.items.map((supplier) => ({
-      label: supplier.name,
+      label: supplier.companyName,
       value: supplier.id,
     })) ?? [];
   const categoriesQuery = useQuery(trpc.parts.categories.queryOptions());

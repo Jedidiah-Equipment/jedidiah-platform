@@ -55,6 +55,8 @@ type QuoteAuditRecord = Pick<
   | 'discount'
   | 'notes'
   | 'paymentTerms'
+  | 'plannedDeliveryDate'
+  | 'preferredDeliveryDate'
   | 'productId'
   | 'quotedBasePrice'
   | 'quotedCurrencyCode'
@@ -94,6 +96,8 @@ export function mapQuote(row: QuoteRow): Quote {
     id: row.id,
     notes: row.notes,
     paymentTerms: row.paymentTerms,
+    plannedDeliveryDate: row.plannedDeliveryDate,
+    preferredDeliveryDate: row.preferredDeliveryDate,
     productId: row.productId,
     quotedBasePrice: row.quotedBasePrice,
     quotedCurrencyCode: row.quotedCurrencyCode,
@@ -134,6 +138,8 @@ export async function createQuote({
         discount: input.discount,
         notes: input.notes,
         paymentTerms: input.paymentTerms,
+        plannedDeliveryDate: input.plannedDeliveryDate,
+        preferredDeliveryDate: input.preferredDeliveryDate,
         productId: input.productId,
         salesPersonId: input.salesPersonId,
         validUntil: input.validUntil,
@@ -309,6 +315,8 @@ export async function updateQuote({
       discount: input.discount,
       notes: input.notes,
       paymentTerms: input.paymentTerms,
+      plannedDeliveryDate: input.plannedDeliveryDate,
+      preferredDeliveryDate: input.preferredDeliveryDate,
       productId: input.productId,
       salesPersonId: input.salesPersonId,
       validUntil: input.validUntil,
@@ -330,6 +338,8 @@ export async function updateQuote({
         discount: input.discount,
         notes: input.notes,
         paymentTerms: input.paymentTerms,
+        plannedDeliveryDate: input.plannedDeliveryDate,
+        preferredDeliveryDate: input.preferredDeliveryDate,
         productId: input.productId,
         salesPersonId: input.salesPersonId,
         updatedAt: new Date(),
@@ -667,6 +677,8 @@ function mapQuoteAuditRecord(quote: QuoteAuditRecord): QuoteAuditRecord {
     discount: quote.discount,
     notes: quote.notes,
     paymentTerms: quote.paymentTerms,
+    plannedDeliveryDate: quote.plannedDeliveryDate,
+    preferredDeliveryDate: quote.preferredDeliveryDate,
     productId: quote.productId,
     quotedBasePrice: quote.quotedBasePrice,
     quotedCurrencyCode: quote.quotedCurrencyCode,

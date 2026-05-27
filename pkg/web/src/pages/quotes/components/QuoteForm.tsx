@@ -25,6 +25,8 @@ const QuoteFormValues = z
     inlineCompanyName: z.string(),
     notes: z.string(),
     paymentTerms: z.string(),
+    plannedDeliveryDate: z.union([z.literal(''), z.iso.date()]),
+    preferredDeliveryDate: z.union([z.literal(''), z.iso.date()]),
     productId: z.string(),
     salesPersonId: z.string(),
     validUntil: z.union([z.literal(''), z.iso.date()]),
@@ -107,6 +109,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
     inlineCompanyName: '',
     notes: initialQuote?.notes ?? '',
     paymentTerms: initialQuote?.paymentTerms ?? '',
+    plannedDeliveryDate: initialQuote?.plannedDeliveryDate ?? '',
+    preferredDeliveryDate: initialQuote?.preferredDeliveryDate ?? '',
     productId: initialQuote?.productId ?? '',
     salesPersonId: initialQuote?.salesPersonId ?? '',
     validUntil: initialQuote?.validUntil ?? '',
@@ -132,6 +136,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
           discount: value.discount,
           notes: value.notes,
           paymentTerms: value.paymentTerms,
+          plannedDeliveryDate: value.plannedDeliveryDate || null,
+          preferredDeliveryDate: value.preferredDeliveryDate || null,
           productId: value.productId || null,
           salesPersonId: value.salesPersonId || null,
           validUntil: value.validUntil || null,
@@ -285,6 +291,14 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
           </form.AppField>
           <form.AppField name="validUntil">
             {(field) => <field.DatePickerField clearable disabled={isFrozen} label="Valid until" />}
+          </form.AppField>
+          <form.AppField name="preferredDeliveryDate">
+            {(field) => <field.DatePickerField clearable disabled={isFrozen} label="Preferred delivery date" />}
+          </form.AppField>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <form.AppField name="plannedDeliveryDate">
+            {(field) => <field.DatePickerField clearable disabled={isFrozen} label="Planned delivery date" />}
           </form.AppField>
           <form.Subscribe
             selector={(state) => {

@@ -30,6 +30,10 @@ describe('getQuoteTool', () => {
     ]);
 
     expect(toolResult).toEqual(trpcResult);
+    expect(toolResult).toMatchObject({
+      plannedDeliveryDate: '2026-07-15',
+      preferredDeliveryDate: '2026-07-10',
+    });
   });
 
   test('surfaces the core not-found message for missing quotes', async ({ context }) => {
@@ -69,6 +73,8 @@ async function createQuote(caller: AppRouterCaller, productId: string) {
     discount: 100,
     notes: null,
     paymentTerms: '30% deposit, balance on delivery',
+    plannedDeliveryDate: '2026-07-15',
+    preferredDeliveryDate: '2026-07-10',
     productId,
     salesPersonId: 'test-user-id',
     validUntil: '2026-06-30',

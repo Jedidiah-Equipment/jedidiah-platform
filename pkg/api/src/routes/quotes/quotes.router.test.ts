@@ -26,6 +26,8 @@ describe('quotes.create', () => {
       discount: 100,
       notes: 'Demo quote',
       paymentTerms: '30% deposit, balance on delivery',
+      plannedDeliveryDate: '2026-07-15',
+      preferredDeliveryDate: '2026-07-10',
       productId: context.product.id,
       salesPersonId: 'test-user-id',
       validUntil: '2026-06-30',
@@ -38,11 +40,17 @@ describe('quotes.create', () => {
       code: 'QUO-00001',
       customerCompanyName: 'Acme Mining',
       paymentTerms: '30% deposit, balance on delivery',
+      plannedDeliveryDate: '2026-07-15',
+      preferredDeliveryDate: '2026-07-10',
       productId: context.product.id,
       status: 'draft',
       total: context.product.basePrice - 100,
     });
     expect(quoteRows).toHaveLength(1);
+    expect(quoteRows[0]).toMatchObject({
+      plannedDeliveryDate: '2026-07-15',
+      preferredDeliveryDate: '2026-07-10',
+    });
     expect(events.map((event) => event.entityType)).toEqual(['customer', 'quote']);
   });
 
@@ -121,6 +129,8 @@ describe('quotes.update', () => {
       discount: 125,
       notes: 'Updated draft terms',
       paymentTerms: '50% deposit before fabrication',
+      plannedDeliveryDate: '2026-08-05',
+      preferredDeliveryDate: '2026-08-12',
       validUntil: '2026-07-31',
     });
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
@@ -130,6 +140,8 @@ describe('quotes.update', () => {
       discount: 125,
       notes: 'Updated draft terms',
       paymentTerms: '50% deposit before fabrication',
+      plannedDeliveryDate: '2026-08-05',
+      preferredDeliveryDate: '2026-08-12',
       status: 'draft',
       total: context.product.basePrice - 125,
       validUntil: '2026-07-31',
@@ -138,6 +150,14 @@ describe('quotes.update', () => {
       paymentTerms: {
         from: null,
         to: '50% deposit before fabrication',
+      },
+      plannedDeliveryDate: {
+        from: null,
+        to: '2026-08-05',
+      },
+      preferredDeliveryDate: {
+        from: null,
+        to: '2026-08-12',
       },
     });
   });
@@ -191,6 +211,8 @@ describe('quotes.list', () => {
           code: finalQuote.code,
           customerCompanyName: 'Acme Mining',
           paymentTerms: 'Paid before dispatch',
+          plannedDeliveryDate: '2026-07-05',
+          preferredDeliveryDate: '2026-07-01',
           linkedJobs: [
             {
               jobCode: job.code,
@@ -517,6 +539,8 @@ async function createNamedQuote(
     discount,
     notes: null,
     paymentTerms,
+    plannedDeliveryDate: '2026-07-05',
+    preferredDeliveryDate: '2026-07-01',
     productId,
     salesPersonId: 'test-user-id',
     validUntil: '2026-06-30',
@@ -533,6 +557,8 @@ function toUpdateInput(quote: QuoteDetail) {
     discount: quote.discount,
     notes: quote.notes,
     paymentTerms: quote.paymentTerms,
+    plannedDeliveryDate: quote.plannedDeliveryDate,
+    preferredDeliveryDate: quote.preferredDeliveryDate,
     productId: quote.productId,
     salesPersonId: quote.salesPersonId ?? 'test-user-id',
     validUntil: quote.validUntil,

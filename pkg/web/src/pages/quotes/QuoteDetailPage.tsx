@@ -144,6 +144,14 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
             />
             <QuoteFact label="Salesperson" value={quote.salesPersonName ?? 'Unassigned'} />
             <QuoteFact label="Valid until" value={<DateDisplay date={quote.validUntil} emptyValue="Not set" />} />
+            <QuoteFact
+              label="Preferred delivery date"
+              value={<DateDisplay date={quote.preferredDeliveryDate} emptyValue="Not set" />}
+            />
+            <QuoteFact
+              label="Planned delivery date"
+              value={<DateDisplay date={quote.plannedDeliveryDate} emptyValue="Not set" />}
+            />
             <QuoteFact label="Sent" value={<DateDisplay date={quote.sentAt} emptyValue="Not sent" format="medium" />} />
             <QuoteFact
               label="Total"

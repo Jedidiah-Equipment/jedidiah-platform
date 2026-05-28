@@ -23,7 +23,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, or, type SQL, sql } from 'drizzle-orm';
 
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, type JobStageRow, mapJob, mapJobStage } from './job-mappers.js';
@@ -55,10 +55,8 @@ export async function listJobs({
       createdAt: true,
       id: true,
       code: true,
-      dueDate: true,
       productId: true,
       quoteId: true,
-      status: true,
       updatedAt: true,
     },
     where,
@@ -112,12 +110,6 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     conditions.push(eq(jobs.id, input.filters.jobId));
   }
 
-  const statuses = input.filters.statuses ?? [];
-
-  if (statuses.length > 0) {
-    conditions.push(inArray(jobs.status, statuses));
-  }
-
   if (input.filters.createdAtStart) {
     conditions.push(gte(jobs.createdAt, new Date(input.filters.createdAtStart)));
   }
@@ -151,11 +143,9 @@ export async function getJob({
     columns: {
       createdAt: true,
       code: true,
-      dueDate: true,
       id: true,
       productId: true,
       quoteId: true,
-      status: true,
       updatedAt: true,
     },
     where: eq(jobs.id, id),
@@ -198,16 +188,7 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
   const columns = {
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
-    dueDate: sql`${jobs.dueDate}`,
     id: sql`${jobs.id}`,
-    status: sql`case ${jobs.status}
-      when 'pending' then 1
-      when 'active' then 2
-      when 'paused' then 3
-      when 'complete' then 4
-      when 'cancelled' then 5
-      else 6
-    end`,
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];

@@ -1,5 +1,5 @@
 import * as core from '@pkg/core';
-import { type Db, products, sql } from '@pkg/db';
+import { type Db, products } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import { type JobListInput, Product, type UserAccessSummary } from '@pkg/schema';
 import pino from 'pino';
@@ -28,7 +28,7 @@ describe('listJobsTool', () => {
     const supervisorCaller = createCaller(context.db, supervisorAccess);
     const created = await supervisorCaller.jobs.create({ productId: context.product.id });
     const input: JobListInput = {
-      filters: { statuses: [] },
+      filters: {},
       page: 1,
       pageSize: 10,
       search: created.code,
@@ -42,38 +42,6 @@ describe('listJobsTool', () => {
     ]);
 
     expect(toolResult).toEqual(trpcResult);
-  });
-
-  test('supports stored Job Status filters described to the assistant', async ({ context }) => {
-    const supervisorAccess = createUserAccessSummary({
-      role: 'job-supervisor',
-      userId: 'test-user-id',
-    });
-    const supervisorCaller = createCaller(context.db, supervisorAccess);
-    const activeJob = await supervisorCaller.jobs.create({ productId: context.product.id });
-    const pausedJob = await supervisorCaller.jobs.create({ productId: context.product.id });
-    await context.db.execute(sql`
-      update job
-      set status = 'active'
-      where id = ${activeJob.id}
-    `);
-    await context.db.execute(sql`
-      update job
-      set status = 'paused'
-      where id = ${pausedJob.id}
-    `);
-    const input: JobListInput = {
-      filters: { statuses: ['active'] },
-      page: 1,
-      pageSize: 10,
-      search: '',
-      sortBy: 'code',
-      sortDirection: 'asc',
-    };
-
-    const result = await listJobsTool.handler(input, createAiContext(context.db, supervisorAccess));
-
-    expect(result.items.map((job) => job.id)).toEqual([activeJob.id]);
   });
 
   test('treats null tool args as the default job list input', async ({ context }) => {

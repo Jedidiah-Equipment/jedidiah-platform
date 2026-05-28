@@ -16,7 +16,6 @@ describe('mapJobSummary', () => {
       ],
     });
 
-    expect(summary.status).toBe('pending');
     expect(summary.stages).toHaveLength(5);
     expect(summary.stages.map((stage) => stage.stage)).toEqual([
       'procurement',
@@ -34,7 +33,6 @@ function jobRow() {
   return {
     code: 1,
     createdAt: now,
-    dueDate: null,
     id: '00000000-0000-4000-8000-000000000001',
     product: {
       modelCode: 'MODEL-001',
@@ -43,7 +41,6 @@ function jobRow() {
     productId: '00000000-0000-4000-8000-000000000002',
     quote: null,
     quoteId: null,
-    status: 'pending' as const,
     updatedAt: now,
   };
 }

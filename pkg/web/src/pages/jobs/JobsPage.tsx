@@ -8,7 +8,6 @@ import type React from 'react';
 import { useMemo } from 'react';
 import { ButtonLink } from '@/components/button/ButtonLink.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
-import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
@@ -74,8 +73,7 @@ const JobTable: React.FC = () => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const accessQuery = useAccess();
-  const canOpenQuotes =
-    hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
+  const canSeeQuotes = hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
 
   const tableController = useServerSideTableController({
     store: useJobTableStore,
@@ -128,10 +126,10 @@ const JobTable: React.FC = () => {
       },
     ];
 
-    if (canOpenQuotes) {
+    if (canSeeQuotes) {
       baseColumns.push({
         accessorKey: 'quoteCode',
-        cell: ({ row }) => <JobQuoteCode quoteCode={row.original.quoteCode} quoteId={row.original.quoteId} />,
+        cell: ({ row }) => <JobQuoteCode quoteCode={row.original.quoteCode} />,
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Quote',
@@ -190,7 +188,7 @@ const JobTable: React.FC = () => {
     );
 
     return baseColumns;
-  }, [canOpenQuotes, navigate]);
+  }, [canSeeQuotes, navigate]);
 
   const table = useReactTable({
     columns,
@@ -229,18 +227,9 @@ const JobTable: React.FC = () => {
 
 const JobQuoteCode: React.FC<{
   quoteCode: JobSummary['quoteCode'];
-  quoteId: JobSummary['quoteId'];
-}> = ({ quoteCode, quoteId }) => {
+}> = ({ quoteCode }) => {
   if (!quoteCode) {
     return <span className="text-muted-foreground">Direct job</span>;
-  }
-
-  if (quoteId) {
-    return (
-      <PrimaryLink params={{ id: quoteId }} to="/quotes/$id">
-        {quoteCode}
-      </PrimaryLink>
-    );
   }
 
   return <span className="font-medium">{quoteCode}</span>;

@@ -8,11 +8,19 @@ type EditPageLayoutProps = {
   back: React.ReactNode;
   badge?: React.ReactNode;
   children: React.ReactNode;
+  contentClassName?: string;
   description: string;
   title: string;
 };
 
-export const EditPageLayout: React.FC<EditPageLayoutProps> = ({ back, badge, children, description, title }) => (
+export const EditPageLayout: React.FC<EditPageLayoutProps> = ({
+  back,
+  badge,
+  children,
+  contentClassName,
+  description,
+  title,
+}) => (
   <div className="flex flex-1 flex-col gap-4 p-4 pt-3">
     <div>{back}</div>
     <Card>
@@ -25,7 +33,7 @@ export const EditPageLayout: React.FC<EditPageLayoutProps> = ({ back, badge, chi
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Separator />
-        <div className="mx-auto w-full max-w-5xl">{children}</div>
+        <div className={cn('mx-auto w-full max-w-5xl', contentClassName)}>{children}</div>
       </CardContent>
     </Card>
   </div>

@@ -3,7 +3,7 @@ import './load-db-env.js';
 import { closeDatabaseConnection, db } from '@pkg/db';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import { seedDatabase } from './seed.js';
+import { seedDemoUsers } from './seed-users.js';
 
 const stagingResetConfirmation = 'staging';
 
@@ -32,7 +32,7 @@ async function resetRemoteDatabase(): Promise<void> {
     migrationsFolder: fileURLToPath(new URL('../../db/migrations', import.meta.url)),
   });
 
-  await seedDatabase(db, { usersOnly: process.argv.includes('--users-only') });
+  await seedDemoUsers(db);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

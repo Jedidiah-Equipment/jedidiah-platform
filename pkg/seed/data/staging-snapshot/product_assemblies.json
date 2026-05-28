@@ -1,0 +1,47 @@
+[
+  {
+    "createdAt": "2026-05-27T10:43:55.710Z",
+    "id": "c5ce7e9a-acb1-44c9-9f8c-c2bf9dd03ea3",
+    "kind": "standard",
+    "name": "Ceat 560-60 R22.5 Floatation Tyres",
+    "price": null,
+    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
+    "updatedAt": "2026-05-27T14:09:27.581Z"
+  },
+  {
+    "createdAt": "2026-05-27T10:35:03.013Z",
+    "id": "52d73129-374b-4bdc-9750-d7176e937693",
+    "kind": "standard",
+    "name": "Rear brake indicator lights",
+    "price": null,
+    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
+    "updatedAt": "2026-05-27T14:09:27.589Z"
+  },
+  {
+    "createdAt": "2026-05-27T10:41:17.722Z",
+    "id": "c7252c06-a34d-4b82-ac0d-d5ecd0340d7b",
+    "kind": "optional",
+    "name": "2 Side working lights",
+    "price": 5000,
+    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
+    "updatedAt": "2026-05-27T14:09:27.598Z"
+  },
+  {
+    "createdAt": "2026-05-27T10:43:55.710Z",
+    "id": "70148dc1-8f3e-4f47-b465-9a4a69cfff90",
+    "kind": "optional",
+    "name": "Bkt Tyres",
+    "price": 15000,
+    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
+    "updatedAt": "2026-05-27T14:09:27.609Z"
+  },
+  {
+    "createdAt": "2026-05-27T10:41:17.722Z",
+    "id": "d2ab0f61-029a-4e40-8a99-9722897a4f81",
+    "kind": "optional",
+    "name": "Secondary hydraulic brake cable",
+    "price": 4000,
+    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
+    "updatedAt": "2026-05-27T14:09:27.617Z"
+  }
+]

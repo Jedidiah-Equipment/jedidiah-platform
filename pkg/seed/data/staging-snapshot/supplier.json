@@ -1,0 +1,145 @@
+[
+  {
+    "id": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "companyName": "Bolt & Nut",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T08:57:29.572Z",
+    "updatedAt": "2026-05-27T08:57:29.572Z"
+  },
+  {
+    "id": "c2911f5d-5a1d-41a5-824d-0ad11eb8da31",
+    "companyName": "Jedidiah Fabrication",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T08:59:24.341Z",
+    "updatedAt": "2026-05-27T08:59:24.341Z"
+  },
+  {
+    "id": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "companyName": "Sv Distributors",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T08:59:55.074Z",
+    "updatedAt": "2026-05-27T08:59:55.074Z"
+  },
+  {
+    "id": "491d475e-86d3-4288-b897-5d32068f7747",
+    "companyName": "Mascor",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T08:59:55.074Z",
+    "updatedAt": "2026-05-27T08:59:55.074Z"
+  },
+  {
+    "id": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "companyName": "Sa Sealing",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T09:00:16.341Z",
+    "updatedAt": "2026-05-27T09:00:16.341Z"
+  },
+  {
+    "id": "0fb377d1-013b-4215-bbc7-947e218169f3",
+    "companyName": "Spring Rite",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T09:05:22.028Z",
+    "updatedAt": "2026-05-27T09:05:22.028Z"
+  },
+  {
+    "id": "c03399b4-e421-4be9-b415-f496c1f7291f",
+    "companyName": "Geary Springs",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T09:05:22.028Z",
+    "updatedAt": "2026-05-27T09:05:22.028Z"
+  },
+  {
+    "id": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "companyName": "Night Wolves",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T09:57:42.955Z",
+    "updatedAt": "2026-05-27T09:57:42.955Z"
+  },
+  {
+    "id": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "companyName": "Jas Trailers",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T09:58:12.105Z",
+    "updatedAt": "2026-05-27T09:58:12.105Z"
+  },
+  {
+    "id": "d056683b-d65b-4ab9-8085-f67b82e14453",
+    "companyName": "Trail-Link",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T09:58:12.105Z",
+    "updatedAt": "2026-05-27T09:58:12.105Z"
+  },
+  {
+    "id": "77363c9a-9d78-4915-9059-09ff2c31e138",
+    "companyName": "Burquip",
+    "email": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "createdAt": "2026-05-27T09:58:12.105Z",
+    "updatedAt": "2026-05-27T09:58:12.105Z"
+  },
+  {
+    "id": "27e6ca5e-0ff4-4a15-8ba2-c76b6c5940d6",
+    "companyName": "Afgri",
+    "email": "afgri@afgri.co.za",
+    "address": null,
+    "contactPerson": null,
+    "phone": "+27 11 063 2347",
+    "notes": null,
+    "createdAt": "2026-05-27T09:00:16.341Z",
+    "updatedAt": "2026-05-27T14:30:18.093Z"
+  },
+  {
+    "id": "09ac3409-35d0-4792-8567-5fe2abade24b",
+    "companyName": "Bok Implemente",
+    "email": "info@boki.co.za",
+    "address": "Bok Implemente (Pty) Ltd\nPlaas Finaal, Bethlehem, Vrystaat\nPosbus 2773, Bethlehem, 9700",
+    "contactPerson": null,
+    "phone": "073 178 3491",
+    "notes": null,
+    "createdAt": "2026-05-27T08:59:55.074Z",
+    "updatedAt": "2026-05-27T14:31:47.699Z"
+  }
+]

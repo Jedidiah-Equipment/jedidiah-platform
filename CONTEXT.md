@@ -28,7 +28,7 @@ A manually stored field on the Job: `pending | active | paused | complete | canc
 Current Stage state is intentionally minimal (`pending | in-progress | complete`) and defaults to `pending` until the next workflow model replaces it. Do not infer progress from lower-level production resources unless a new workflow contract introduces them.
 
 **Quote**:
-A sales offer associated with one Customer for one Product, owned by one Salesperson, with an editable cosmetic Status. Customer, Product, Salesperson, and Status are required at creation. Optional fields cover commercial detail (discount, Payment Terms, valid_until), Optional Assemblies, delivery expectations (Preferred and Planned Delivery Dates), and internal Notes. The Product's `base_price` and currency are snapshot onto the Quote at creation and never change thereafter; the Product reference itself is also immutable post-creation. A Quote may source any number of Jobs; creating a Job never consumes or converts the Quote.
+A sales offer associated with one Customer for one Product, owned by one Salesperson, with an editable cosmetic Status. Customer, Product, Salesperson, and Status are required at creation. Optional fields cover commercial detail (discount, Payment Terms, valid_until), selected Optional Assemblies, delivery expectations (Preferred and Planned Delivery Dates), and internal Notes. The Product's `base_price` and currency are snapshot onto the Quote at creation and never change thereafter; the Product reference itself is also immutable post-creation. A Quote may source any number of Jobs; creating a Job never consumes or converts the Quote.
 
 **Quote Status**:
 A cosmetic label on a Quote (`draft | sent | accepted | rejected`). Freely editable, with no transition rules and no side effects. Used for display, filtering, and sorting only.
@@ -60,11 +60,18 @@ An Assembly that is included in every build of the Product by default. Its cost 
 **Optional Assembly**:
 An Assembly that is selected (or not) at quote time. Carries a `price` representing the *upgrade delta* added to the Product's `base_price` when selected. When selected, an Optional Assembly may override zero or more Standard Assemblies, removing their Parts from the effective bill of materials and replacing them with its own. Optionals with no overrides are purely additive.
 
+**Quote Selected Assembly**:
+An Optional Assembly selected on a Quote. The Quote stores a snapshot of the selected Optional Assembly's name and price, plus a nullable reference back to the Product Assembly when it still exists. The snapshot remains on the Quote until explicitly removed, even if the Product Assembly is later deleted or changed. Existing selected snapshots are preserved unchanged on quote edits; newly added catalog Optional Assemblies snapshot their current name and price when saved. Selected assemblies are always editable, regardless of Quote Status.
+
 **Effective Bill of Materials**:
-For a Quote with a selected set of Optional Assemblies, the effective BOM is (Standard Assemblies not overridden by any selected Optional) ∪ (selected Optional Assemblies). Conflict prevention — disallowing the selection of two Optionals that both override the same Standard — is the Quote's responsibility.
+For a Quote with a selected set of currently available Optional Assemblies, the effective BOM is (Standard Assemblies not overridden by any selected Optional) ∪ (selected Optional Assemblies). Deleted or otherwise stale Quote Selected Assemblies remain commercial quote selections, but do not contribute override relationships because there is no current catalog relationship to trust. Selecting two Optional Assemblies that both override the same Standard Assembly is allowed for now.
+
+**Quote Total**:
+A client-side projection, not a persisted or server-returned aggregate. Quote totals are computed from the Quote pricing facts: snapshotted Product base price, selected Optional Assembly snapshot prices, discount, delivery inclusion, and delivery price. The server stores and returns those inputs, but does not store a selected-option aggregate total or expose a quote `total` field.
 
 **Create Job from Quote**:
 A `job-supervisor` or `admin` can create a Job from any Quote. The Job keeps an optional `quote_id` reference. Quote Status does not gate this action (see ADR 0006 and the to-be-revisited note on ADR 0018).
+Quote Selected Assemblies do not yet snapshot into Jobs. Base Assembly snapshotting when the first Job is created from a Quote is a separate future slice.
 
 **Direct Job Creation**:
 Creating a Job without a Quote. The form asks for Product and optional Job Due Date.
@@ -82,6 +89,7 @@ _Avoid_: Avatar, Logo, Photo, Image.
 - A **Job** references exactly one **Product**.
 - A **Job** may reference one **Quote**.
 - A **Quote** references one **Customer**, one **Product**, and one **Salesperson** at creation.
+- A **Quote** may have zero or more **Quote Selected Assemblies**.
 - A **Supplier** currently stands alone as a procurement directory record.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
 

@@ -7,7 +7,7 @@ import { Price } from '../common/price.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
-import { ProductCurrencyCode } from '../products/product.js';
+import { Assembly, ProductCurrencyCode } from '../products/product.js';
 
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected']);
@@ -64,6 +64,29 @@ export const QuoteLinkedJob = z.object({
   jobId: UUID,
 });
 
+export type QuoteSelectedAssembly = z.infer<typeof QuoteSelectedAssembly>;
+export const QuoteSelectedAssembly = z.object({
+  id: UUID,
+  quoteId: UUID,
+  productAssemblyId: UUID.nullable(),
+  quotedName: z.string().trim().min(1),
+  quotedPrice: Price,
+  createdAt: DateIso,
+  updatedAt: DateIso,
+});
+
+export type QuoteSelectedAssemblyInput = z.infer<typeof QuoteSelectedAssemblyInput>;
+export const QuoteSelectedAssemblyInput = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('existing'),
+    id: UUID,
+  }),
+  z.object({
+    type: z.literal('catalog'),
+    productAssemblyId: UUID,
+  }),
+]);
+
 export type QuoteSummary = z.infer<typeof QuoteSummary>;
 export const QuoteSummary = Quote.extend({
   customerCompanyName: z.string().trim().min(1),
@@ -73,11 +96,13 @@ export const QuoteSummary = Quote.extend({
   productName: z.string().trim().min(1),
   salesPersonEmail: z.email().nullable(),
   salesPersonName: z.string().trim().min(1).nullable(),
-  total: Price,
+  selectedAssemblies: z.array(QuoteSelectedAssembly),
 });
 
 export type QuoteDetail = z.infer<typeof QuoteDetail>;
-export const QuoteDetail = QuoteSummary;
+export const QuoteDetail = QuoteSummary.extend({
+  productAssemblies: z.array(Assembly),
+});
 
 export type QuoteCustomerInput = z.infer<typeof QuoteCustomerInput>;
 export const QuoteCustomerInput = z.discriminatedUnion('type', [
@@ -111,6 +136,7 @@ export const QuoteCreateInput = z.object({
   plannedDeliveryDate: DateOnlyIso.nullable().default(null),
   notes: QuoteNotesInput,
   paymentTerms: QuotePaymentTermsInput,
+  selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
 });
 
 export type QuoteUpdateInput = z.infer<typeof QuoteUpdateInput>;
@@ -122,11 +148,21 @@ export const QuoteUpdateInput = QuoteCreateInput.omit({ productId: true })
   .strict();
 
 export type QuoteSortBy = z.infer<typeof QuoteSortBy>;
-export const QuoteSortBy = z.enum(['code', 'createdAt', 'customerCompanyName', 'productName', 'status', 'total']);
+export const QuoteSortBy = z.enum([
+  'code',
+  'createdAt',
+  'customerCompanyName',
+  'productName',
+  'salesPersonName',
+  'status',
+]);
 
 export type QuoteListFilters = z.infer<typeof QuoteListFilters>;
 export const QuoteListFilters = z
   .object({
+    customerId: UUID.optional(),
+    productId: UUID.optional(),
+    salesPersonId: AuthId.optional(),
     statuses: z.array(QuoteStatus),
   })
   .default({

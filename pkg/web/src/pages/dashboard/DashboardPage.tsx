@@ -13,7 +13,7 @@ type DashboardPageProps = Record<string, never>;
 export const DashboardPage: React.FC<DashboardPageProps> = () => {
   const { data: session, isPending } = authClient.useSession();
   const accessQuery = useAccess();
-  const userLabel = session?.user.name || session?.user.email || 'Signed in';
+  const userLabel = session?.user.name || 'Signed in';
   const permissions = accessQuery.data?.permissions ?? [];
 
   return (

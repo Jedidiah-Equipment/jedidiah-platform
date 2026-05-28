@@ -125,6 +125,17 @@
       "problemMatcher": []
     },
     {
+      "label": "Database Migrate",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["db:migrate"],
+      "icon": {
+        "id": "database",
+        "color": "terminal.ansiYellow"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Database Reset",
       "type": "shell",
       "command": "pnpm",

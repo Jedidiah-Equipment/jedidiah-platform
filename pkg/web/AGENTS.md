@@ -19,6 +19,10 @@
   `Intl.DateTimeFormat`, `toLocaleDateString`, or `toLocaleString` formatting in components.
 - Displayed currency values must use `src/utils/number.ts` `formatCurrency`; do not add one-off
   `Intl.NumberFormat` currency-style formatting in components.
+- Shared option-loading hooks belong in `src/hooks/options`. Keep permission-specific endpoints in
+  separate hooks with explicit names, for example `useCustomerOptions` for app-level customer reads
+  and `useCustomerForQuoteOptions` for quote-scoped customer reads. Do not hide endpoint differences
+  behind a generic `source` prop.
 - For TanStack Form descendants that need form context, use `useTypedAppFormContext` from
   `src/components/form/use-app-form.ts`. Prefer form value schemas from `@pkg/schema` when their
   input/output types match the browser form state. When a form needs a browser-specific value shape,

@@ -1,5 +1,4 @@
 import type { AssemblyInput, Part } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
 import { ChevronDownIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import React, { useMemo } from 'react';
 
@@ -29,7 +28,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
-import { useTRPC } from '@/lib/trpc.js';
+import { usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { formatCurrency } from '@/utils/number.js';
 import type { ProductFormValues } from './ProductForm.js';
@@ -64,22 +63,12 @@ function useProductForm() {
 }
 
 export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = ({ assembliesField, currencyCode }) => {
-  const trpc = useTRPC();
   const [expandedAssemblyIds, setExpandedAssemblyIds] = React.useState<Set<string>>(new Set());
 
-  const partsQuery = useQuery(
-    trpc.parts.list.queryOptions({
-      columnFilters: {},
-      page: 1,
-      pageSize: 0,
-      sortBy: 'category',
-      sortDirection: 'asc',
-    }),
-  );
-  const categoriesQuery = useQuery(trpc.parts.categories.queryOptions());
-
-  const parts = partsQuery.data?.items ?? [];
-  const categories = categoriesQuery.data?.categories ?? [];
+  const partOptions = usePartOptions({ pageSize: 0, sortBy: 'category', sortDirection: 'asc' });
+  const categoryOptions = usePartCategoryOptions();
+  const parts = partOptions.items;
+  const categories = categoryOptions.items;
   const indexedAssemblies = assembliesField.state.value.map((assembly, index) => ({ assembly, index }));
   const standardAssemblies = getSortedAssemblies(indexedAssemblies, 'standard');
   const optionalAssemblies = getSortedAssemblies(indexedAssemblies, 'optional');

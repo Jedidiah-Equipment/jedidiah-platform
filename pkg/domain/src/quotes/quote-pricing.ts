@@ -25,13 +25,17 @@ export function computeQuoteTotal({
   deliveryPrice = 0,
   discount,
   quotedBasePrice,
+  selectedAssemblyPrices = [],
 }: {
   deliveryIncluded?: boolean;
   deliveryPrice?: number;
   discount: number;
   quotedBasePrice: number;
+  selectedAssemblyPrices?: readonly number[];
 }): number {
-  return Math.max(0, quotedBasePrice - discount) + (deliveryIncluded ? deliveryPrice : 0);
+  const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
+
+  return Math.max(0, quotedBasePrice + selectedAssemblyTotal - discount) + (deliveryIncluded ? deliveryPrice : 0);
 }
 
 function deny(reason: string): QuotePricingResult {

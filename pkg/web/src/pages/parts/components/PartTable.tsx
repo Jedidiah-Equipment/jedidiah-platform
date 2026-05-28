@@ -12,6 +12,7 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { Button } from '@/components/ui/button.js';
+import { usePartCategoryOptions } from '@/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -55,7 +56,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
       placeholderData: keepPreviousData,
     }),
   );
-  const categoriesQuery = useQuery(trpc.parts.categories.queryOptions());
+  const categoryOptions = usePartCategoryOptions();
 
   const { items: parts, total, isLoading } = usePagedQueryResult(partsQuery);
 
@@ -66,15 +67,6 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
     sortOptions: partSortOptions,
     total,
   });
-
-  const categoryFilterOptions = useMemo(
-    () =>
-      categoriesQuery.data?.categories.map((category) => ({
-        label: category,
-        value: category,
-      })) ?? [],
-    [categoriesQuery.data?.categories],
-  );
 
   const columns = useMemo<ColumnDef<Part>[]>(() => {
     const tableColumns: ColumnDef<Part>[] = [
@@ -118,7 +110,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
         enableSorting: true,
         header: 'Category',
         meta: {
-          filterOptions: categoryFilterOptions,
+          filterOptions: categoryOptions.selectOptions,
           filterVariant: 'select',
         },
       },
@@ -157,7 +149,7 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
     }
 
     return tableColumns;
-  }, [categoryFilterOptions, onEditPart, showEditActions]);
+  }, [categoryOptions.selectOptions, onEditPart, showEditActions]);
 
   const table = useReactTable({
     columns,

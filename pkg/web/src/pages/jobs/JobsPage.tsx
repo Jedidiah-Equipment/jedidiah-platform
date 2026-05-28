@@ -3,10 +3,9 @@ import { type JobListInput, JobSortBy, type JobSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { ArrowRightIcon, PlusIcon } from 'lucide-react';
+import { ArrowRightIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
-import { ButtonLink } from '@/components/button/ButtonLink.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
@@ -42,22 +41,8 @@ const jobSortOptions: SortOptions<JobListInput> = {
 };
 
 export const JobsPage: React.FC = () => {
-  const accessQuery = useAccess();
-  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
-
   return (
-    <ListPageLayout
-      action={
-        canCreateJob ? (
-          <ButtonLink to="/jobs/new">
-            <PlusIcon data-icon="inline-start" />
-            New job
-          </ButtonLink>
-        ) : undefined
-      }
-      description="Production"
-      title="Jobs"
-    >
+    <ListPageLayout description="Production" title="Jobs">
       <JobTable />
     </ListPageLayout>
   );

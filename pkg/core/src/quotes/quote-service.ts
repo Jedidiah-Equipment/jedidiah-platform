@@ -12,7 +12,7 @@ import {
   user,
   withPagination,
 } from '@pkg/db';
-import { parseJobCodeSearch, validateDiscount } from '@pkg/domain';
+import { assertQuoteEditable, parseJobCodeSearch, validateDiscount } from '@pkg/domain';
 import {
   type Assembly,
   type AuthId,
@@ -40,7 +40,12 @@ import {
   quoteAuditDescriptor,
 } from '../audit/audit-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
-import { QuoteDiscountInvalidError, QuoteInvalidReferenceError, QuoteNotFoundError } from './quote-errors.js';
+import {
+  QuoteDiscountInvalidError,
+  QuoteInvalidReferenceError,
+  QuoteLockedError,
+  QuoteNotFoundError,
+} from './quote-errors.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
 type ProductRow = typeof products.$inferSelect;
@@ -347,6 +352,15 @@ export async function updateQuote({
 
     if (!changes) {
       return getQuote({ db: tx, id: before.id });
+    }
+
+    const editable = assertQuoteEditable({
+      changedFields: Object.keys(changes),
+      hasJob: await quoteHasJob({ quoteId: before.id, tx }),
+    });
+
+    if (!editable.allowed) {
+      throw new QuoteLockedError(editable.reason);
     }
 
     const [row] = await tx
@@ -827,6 +841,18 @@ function toQuoteSelectedAssemblyAuditRecord(selectedAssemblies: readonly QuoteSe
         left.quotedName.localeCompare(right.quotedName) ||
         (left.productAssemblyId ?? '').localeCompare(right.productAssemblyId ?? ''),
     );
+}
+
+async function quoteHasJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {
+  const [job] = await tx
+    .select({
+      id: jobs.id,
+    })
+    .from(jobs)
+    .where(eq(jobs.quoteId, quoteId))
+    .limit(1);
+
+  return Boolean(job);
 }
 
 function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {

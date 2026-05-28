@@ -39,8 +39,13 @@ function jobRow() {
       name: 'Test Product',
     },
     productId: '00000000-0000-4000-8000-000000000002',
-    quote: null,
-    quoteId: null,
+    quote: {
+      code: 1,
+      customer: {
+        companyName: 'Test Customer',
+      },
+    },
+    quoteId: '00000000-0000-4000-8000-000000000003',
     updatedAt: now,
   };
 }

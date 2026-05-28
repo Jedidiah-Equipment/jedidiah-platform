@@ -105,7 +105,7 @@ const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => (
     <div className="grid grid-cols-2 gap-2 text-sm">
       <JobPreviewFact label="Customer" value={job.customerCompanyName ?? 'Standalone'} />
       <JobPreviewFact label="Product" value={`${job.productName} (${job.productModelCode})`} />
-      <JobPreviewFact label="Quote" value={job.quoteCode ?? 'None'} />
+      <JobPreviewFact label="Quote" value={job.quoteCode} />
     </div>
     <div className="flex flex-col gap-1.5">
       <div className="text-xs font-medium text-muted-foreground">Departments</div>

@@ -68,7 +68,7 @@ const QuoteFormValues = z
       });
     }
 
-    if (value.productId !== '' && !UUID.safeParse(value.productId).success) {
+    if (!UUID.safeParse(value.productId).success) {
       context.addIssue({
         code: 'custom',
         message: 'Select a product',
@@ -76,23 +76,7 @@ const QuoteFormValues = z
       });
     }
 
-    if (value.productId === '') {
-      context.addIssue({
-        code: 'custom',
-        message: 'Select a product',
-        path: ['productId'],
-      });
-    }
-
-    if (value.salesPersonId !== '' && !AuthId.safeParse(value.salesPersonId).success) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Select a salesperson',
-        path: ['salesPersonId'],
-      });
-    }
-
-    if (value.salesPersonId === '') {
+    if (!AuthId.safeParse(value.salesPersonId).success) {
       context.addIssue({
         code: 'custom',
         message: 'Select a salesperson',
@@ -667,6 +651,13 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
   );
 };
 
+type SelectedAssemblySnapshot = {
+  id: UUID;
+  productAssemblyId: UUID | null;
+  quotedName: string;
+  quotedPrice: number;
+};
+
 function resolveSelectedAssemblySnapshots({
   catalogAssemblies,
   formSelections,
@@ -675,9 +666,9 @@ function resolveSelectedAssemblySnapshots({
   catalogAssemblies: Assembly[];
   formSelections: QuoteFormValues['selectedAssemblies'];
   initialSelections: QuoteSelectedAssembly[];
-}): QuoteSelectedAssembly[] {
+}): SelectedAssemblySnapshot[] {
   return formSelections
-    .map((selection) => {
+    .map((selection): SelectedAssemblySnapshot | null => {
       if (selection.type === 'existing') {
         return initialSelections.find((item) => item.id === selection.id) ?? null;
       }
@@ -691,16 +682,13 @@ function resolveSelectedAssemblySnapshots({
       }
 
       return {
-        createdAt: new Date(0).toISOString(),
         id: selection.productAssemblyId,
         productAssemblyId: assembly.id,
-        quoteId: '',
         quotedName: assembly.name,
         quotedPrice: assembly.price,
-        updatedAt: new Date(0).toISOString(),
       };
     })
-    .filter((selection): selection is QuoteSelectedAssembly => Boolean(selection));
+    .filter((selection): selection is SelectedAssemblySnapshot => Boolean(selection));
 }
 
 function getOverriddenStandardAssemblyIds(catalogAssemblies: Assembly[], selectedCatalogAssemblyIds: Set<string>) {

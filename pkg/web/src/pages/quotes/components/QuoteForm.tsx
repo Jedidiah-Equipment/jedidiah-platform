@@ -112,6 +112,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
   const trpc = useTRPC();
 
   const isEditing = Boolean(initialQuote);
+  const isLocked = Boolean(initialQuote?.linkedJobs.length);
 
   const [selectedProduct, setSelectedProduct] = useState<QuoteProductChoice | null>(null);
   const currentUserQuery = useQuery(trpc.auth.me.queryOptions());
@@ -244,7 +245,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                         <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
                         <QuoteCustomerCombobox
                           allowCreate={!isEditing}
-                          disabled={false}
+                          disabled={isLocked}
                           fallbackCustomer={fallbackCustomer}
                           inlineValue={inlineCompanyName}
                           mode={customerMode}
@@ -285,7 +286,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                   <Field data-invalid={isInvalid}>
                     <FieldLabel htmlFor={field.name}>Product</FieldLabel>
                     <QuoteProductCombobox
-                      disabled={isEditing}
+                      disabled={isLocked}
                       onSelected={(product) => {
                         const productId = product?.id ?? '';
 
@@ -307,6 +308,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               {(field) => (
                 <field.SelectField
                   label="Salesperson"
+                  disabled={isLocked}
                   options={salespeopleOptions.selectOptions}
                   placeholder="Select salesperson"
                 />
@@ -325,7 +327,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               {(field) => (
                 <field.CurrencyField
                   {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
-                  disabled={!selectedProduct}
+                  disabled={isLocked || !selectedProduct}
                   label="Discount"
                 />
               )}
@@ -334,6 +336,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               {(field) => (
                 <field.SelectField
                   label="Status"
+                  disabled={isLocked}
                   options={QuoteStatus.options.map((status) => ({
                     label: quoteStatusLabels[status],
                     value: status,
@@ -355,6 +358,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                       <Checkbox
                         aria-invalid={isInvalid}
                         checked={field.state.value}
+                        disabled={isLocked}
                         id={field.name}
                         name={field.name}
                         onBlur={field.handleBlur}
@@ -382,7 +386,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                     {(field) => (
                       <field.CurrencyField
                         {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
-                        disabled={!selectedProduct}
+                        disabled={isLocked || !selectedProduct}
                         label="Delivery price"
                       />
                     )}
@@ -408,7 +412,10 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               const discount = state.values.discount;
               const deliveryIncluded = state.values.deliveryIncluded;
               const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
-              const quotedBasePrice = initialQuote?.quotedBasePrice ?? selectedProduct.basePrice;
+              const quotedBasePrice =
+                initialQuote?.productId === selectedProduct.id
+                  ? initialQuote.quotedBasePrice
+                  : selectedProduct.basePrice;
               const selectedAssemblies = resolveSelectedAssemblySnapshots({
                 catalogAssemblies: selectedProduct.assemblies,
                 formSelections: state.values.selectedAssemblies,
@@ -493,6 +500,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 currencyCode={selectedProduct.currencyCode}
                 initialSelections={initialQuote?.selectedAssemblies ?? []}
                 onChange={field.handleChange}
+                readOnly={isLocked}
                 value={field.state.value}
               />
             ) : null
@@ -518,6 +526,7 @@ type QuoteAssembliesSelectorProps = {
   currencyCode: string;
   initialSelections: QuoteSelectedAssembly[];
   onChange: (value: QuoteFormValues['selectedAssemblies']) => void;
+  readOnly: boolean;
   value: QuoteFormValues['selectedAssemblies'];
 };
 
@@ -526,6 +535,7 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
   currencyCode,
   initialSelections,
   onChange,
+  readOnly,
   value,
 }) => {
   const standardAssemblies = catalogAssemblies.filter((assembly) => assembly.kind === 'standard');
@@ -611,6 +621,7 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
                     <span className="flex min-w-0 items-center gap-2">
                       <Checkbox
                         checked={isSelected}
+                        disabled={readOnly}
                         onCheckedChange={(checked) => setCatalogSelected(assembly.id, checked === true)}
                       />
                       <span className="truncate">{assembly.name}</span>
@@ -632,17 +643,19 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="text-muted-foreground">{formatCurrency(selection.quotedPrice, currencyCode)}</span>
-                    <Button
-                      aria-label={`Remove ${selection.quotedName}`}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
-                      onClick={() =>
-                        onChange(value.filter((item) => item.type !== 'existing' || item.id !== selection.id))
-                      }
-                    >
-                      <XIcon />
-                    </Button>
+                    {readOnly ? null : (
+                      <Button
+                        aria-label={`Remove ${selection.quotedName}`}
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                        onClick={() =>
+                          onChange(value.filter((item) => item.type !== 'existing' || item.id !== selection.id))
+                        }
+                      >
+                        <XIcon />
+                      </Button>
+                    )}
                   </span>
                 </div>
               ))}

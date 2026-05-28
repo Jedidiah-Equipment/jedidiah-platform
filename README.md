@@ -157,8 +157,10 @@ Better Auth admin plugin, server procedures, and the web access hooks. Server-si
 
 Email/password auth is enabled. Email verification and password reset emails are mocked locally by
 recording/logging the generated email payloads unless `EMAIL_PROVIDER=resend` is configured.
-Seed users use `123` for local sign-in. The seeder creates deterministic demo users, products,
-customers, quotes, jobs, departments, and audit history.
+Seed users use `stoneybrook` for local sign-in. Demo user identity lives in `@pkg/domain`
+(`pkg/domain/src/demo.ts`). Local `pnpm db:seed` imports the deterministic snapshot data from
+`pkg/seed/data/staging-snapshot`; remote database reset recreates only the canonical demo users
+after migrations.
 
 ## Job workflow notes
 

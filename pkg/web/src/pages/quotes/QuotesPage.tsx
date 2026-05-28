@@ -1,4 +1,4 @@
-import { hasPermission } from '@pkg/domain';
+import { computeQuoteTotal, hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -14,6 +14,7 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { useCustomerForQuoteOptions, useProductForQuoteOptions, useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -31,6 +32,7 @@ export const useQuoteTableStore = createPersistedDataTableStore({
     ],
   },
   persistName: 'quotes-table',
+  persistVersion: 3,
 });
 
 const quoteSortOptions: SortOptions<QuoteListInput> = {
@@ -70,6 +72,9 @@ const QuoteTable: React.FC = () => {
   // const canCreateJob = hasPermission(accessQuery.data, 'job:create');
   const canCreateJob = false as boolean; // disabled for now
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
+  const customerOptions = useCustomerForQuoteOptions({ pageSize: 0 });
+  const productOptions = useProductForQuoteOptions({ pageSize: 0 });
+  const salespersonOptions = useSalesPersonOptions();
 
   const tableController = useServerSideTableController({
     store: useQuoteTableStore,
@@ -111,9 +116,24 @@ const QuoteTable: React.FC = () => {
       {
         accessorKey: 'customerCompanyName',
         cell: ({ row }) => row.original.customerCompanyName,
-        enableColumnFilter: false,
+        enableColumnFilter: true,
         enableSorting: true,
         header: 'Customer',
+        meta: {
+          filterOptions: customerOptions.selectOptions,
+          filterVariant: 'select',
+        },
+      },
+      {
+        accessorKey: 'salesPersonName',
+        cell: ({ row }) => <SalesPersonCell quote={row.original} />,
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Salesperson',
+        meta: {
+          filterOptions: salespersonOptions.selectOptions,
+          filterVariant: 'select',
+        },
       },
       {
         accessorKey: 'productName',
@@ -123,17 +143,21 @@ const QuoteTable: React.FC = () => {
             <span className="ml-2 text-muted-foreground">{row.original.productModelCode}</span>
           </>
         ),
-        enableColumnFilter: false,
+        enableColumnFilter: true,
         enableSorting: true,
         header: 'Product',
+        meta: {
+          filterOptions: productOptions.selectOptions,
+          filterVariant: 'select',
+        },
       },
       {
-        accessorKey: 'total',
+        id: 'total',
         cell: ({ row }) => {
-          return formatCurrency(row.original.total, row.original.quotedCurrencyCode);
+          return formatCurrency(getQuoteTotal(row.original), row.original.quotedCurrencyCode);
         },
         enableColumnFilter: false,
-        enableSorting: true,
+        enableSorting: false,
         header: 'Total',
       },
       {
@@ -202,7 +226,13 @@ const QuoteTable: React.FC = () => {
           ]
         : []),
     ],
-    [canOpenJobs, canUpdateQuote],
+    [
+      canOpenJobs,
+      canUpdateQuote,
+      customerOptions.selectOptions,
+      productOptions.selectOptions,
+      salespersonOptions.selectOptions,
+    ],
   );
 
   const table = useReactTable({
@@ -251,7 +281,37 @@ function getStatusFilterValues(columnFilters: ColumnFiltersState) {
 function getQuoteListInputExtras(columnFilters: ColumnFiltersState) {
   return {
     filters: {
+      customerId: getIdFilterValue(columnFilters, 'customerCompanyName'),
+      productId: getIdFilterValue(columnFilters, 'productName'),
+      salesPersonId: getIdFilterValue(columnFilters, 'salesPersonName'),
       statuses: getStatusFilterValues(columnFilters),
     },
   } satisfies Pick<QuoteListInput, 'filters'>;
+}
+
+function getIdFilterValue(
+  columnFilters: ColumnFiltersState,
+  id: 'customerCompanyName' | 'productName' | 'salesPersonName',
+) {
+  const value = columnFilters.find((filter) => filter.id === id)?.value;
+
+  return typeof value === 'string' && value ? value : undefined;
+}
+
+function SalesPersonCell({ quote }: { quote: QuoteSummary }) {
+  if (!quote.salesPersonName) {
+    return <span className="text-muted-foreground">Not assigned</span>;
+  }
+
+  return <span className="truncate">{quote.salesPersonName}</span>;
+}
+
+function getQuoteTotal(quote: QuoteSummary): number {
+  return computeQuoteTotal({
+    deliveryIncluded: quote.deliveryIncluded,
+    deliveryPrice: quote.deliveryPrice,
+    discount: quote.discount,
+    quotedBasePrice: quote.quotedBasePrice,
+    selectedAssemblyPrices: quote.selectedAssemblies.map((assembly) => assembly.quotedPrice),
+  });
 }

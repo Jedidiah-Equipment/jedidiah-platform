@@ -1,4 +1,15 @@
-import { auditEvents, type Db, jobStages, jobs, products, quotes, user } from '@pkg/db';
+import {
+  auditEvents,
+  type Db,
+  jobStages,
+  jobs,
+  productAssemblies,
+  products,
+  quoteSelectedAssemblies,
+  quotes,
+  sql,
+  user,
+} from '@pkg/db';
 import { type QuoteDetail, QuoteUpdateInput } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -51,8 +62,8 @@ describe('quotes.create', () => {
       quotedBasePrice: context.product.basePrice,
       quotedCurrencyCode: context.product.currencyCode,
       status: 'draft',
-      total: context.product.basePrice - 100 + 350,
     });
+    expect(created).not.toHaveProperty('total');
     expect(quoteRows).toHaveLength(1);
     expect(quoteRows[0]).toMatchObject({
       deliveryIncluded: true,
@@ -142,6 +153,98 @@ describe('quotes.create', () => {
       },
     });
   });
+
+  test('snapshots selected optional assemblies and preserves stale selections', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const standardAssembly = await createProductAssembly(context.db, {
+      kind: 'standard',
+      name: 'Standard bucket',
+      productId: context.product.id,
+    });
+    const optionalAssembly = await createProductAssembly(context.db, {
+      kind: 'optional',
+      name: 'Wear liner upgrade',
+      price: 325,
+      productId: context.product.id,
+    });
+
+    const created = await caller.quotes.create({
+      customer: {
+        type: 'inline',
+        companyName: 'Assembly Customer',
+      },
+      discount: 25,
+      notes: null,
+      paymentTerms: null,
+      productId: context.product.id,
+      salesPersonId: 'test-user-id',
+      status: 'draft',
+      validUntil: '2026-06-30',
+    });
+
+    expect(created).toMatchObject({
+      productAssemblies: expect.arrayContaining([
+        expect.objectContaining({
+          id: standardAssembly.id,
+          kind: 'standard',
+        }),
+        expect.objectContaining({
+          id: optionalAssembly.id,
+          kind: 'optional',
+          price: 325,
+        }),
+      ]),
+      selectedAssemblies: [],
+    });
+
+    const withAssembly = await caller.quotes.update({
+      ...toUpdateInput(created),
+      selectedAssemblies: [{ type: 'catalog', productAssemblyId: optionalAssembly.id }],
+    });
+    const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
+    const updateEvent = events.findLast((event) => event.entityType === 'quote' && event.action === 'updated');
+    const selectedAssembliesChange = (
+      updateEvent?.changes as Record<string, { from: unknown; to: unknown }> | undefined
+    )?.selectedAssemblies;
+
+    expect(withAssembly).toMatchObject({
+      selectedAssemblies: [
+        expect.objectContaining({
+          productAssemblyId: optionalAssembly.id,
+          quotedName: 'Wear liner upgrade',
+          quotedPrice: 325,
+        }),
+      ],
+    });
+    expect(selectedAssembliesChange?.from).toBe('[]');
+    expect(JSON.parse(String(selectedAssembliesChange?.to))).toEqual([
+      {
+        productAssemblyId: optionalAssembly.id,
+        quotedName: 'Wear liner upgrade',
+        quotedPrice: 325,
+      },
+    ]);
+
+    await context.db.delete(productAssemblies).where(sql`${productAssemblies.id} = ${optionalAssembly.id}`);
+
+    const stale = await caller.quotes.get({ id: withAssembly.id });
+
+    expect(stale.selectedAssemblies).toEqual([
+      expect.objectContaining({
+        productAssemblyId: null,
+        quotedName: 'Wear liner upgrade',
+        quotedPrice: 325,
+      }),
+    ]);
+
+    const updated = await caller.quotes.update({
+      ...toUpdateInput(stale),
+      selectedAssemblies: [],
+    });
+
+    expect(updated.selectedAssemblies).toEqual([]);
+    await expect(context.db.select().from(quoteSelectedAssemblies)).resolves.toEqual([]);
+  });
 });
 
 describe('quotes.update', () => {
@@ -172,9 +275,9 @@ describe('quotes.update', () => {
       plannedDeliveryDate: '2026-08-05',
       preferredDeliveryDate: '2026-08-12',
       status: 'draft',
-      total: context.product.basePrice - 125,
       validUntil: '2026-07-31',
     });
+    expect(updated).not.toHaveProperty('total');
     expect(updateEvent?.changes).toMatchObject({
       deliveryIncluded: {
         from: true,
@@ -234,7 +337,6 @@ describe('quotes.update', () => {
     ).resolves.toMatchObject({
       discount: 500,
       quotedBasePrice: context.product.basePrice,
-      total: context.product.basePrice - 500,
     });
 
     await expect(
@@ -257,6 +359,11 @@ describe('quotes.list', () => {
       modelCode: 'CRUSH-77',
       name: 'Crusher Bucket',
     });
+    await createSalesUser(context.db, {
+      email: 'another-sales@example.com',
+      id: 'another-sales-id',
+      name: 'Another Sales',
+    });
     const createdQuote = await createNamedQuote(salesCaller, {
       customerCompanyName: 'Acme Mining',
       discount: 150,
@@ -272,6 +379,7 @@ describe('quotes.list', () => {
       deliveryPrice: 75,
       discount: 25,
       productId: crusherProduct.id,
+      salesPersonId: 'another-sales-id',
     });
     const job = await supervisorCaller.jobs.create({
       productId: context.product.id,
@@ -354,7 +462,7 @@ describe('quotes.list', () => {
         page: 1,
         pageSize: 10,
         search: 'Crusher',
-        sortBy: 'total',
+        sortBy: 'createdAt',
         sortDirection: 'desc',
       }),
     ).resolves.toMatchObject({
@@ -363,13 +471,60 @@ describe('quotes.list', () => {
         {
           code: draftQuote.code,
           productName: 'Crusher Bucket',
-          total: crusherProduct.basePrice - 25 + 75,
+        },
+      ],
+    });
+
+    await expect(
+      salesCaller.quotes.list({
+        filters: {
+          customerId: finalQuote.customerId,
+          statuses: [],
+        },
+        page: 1,
+        pageSize: 10,
+        search: '',
+        sortBy: 'customerCompanyName',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        {
+          code: finalQuote.code,
+          customerCompanyName: 'Acme Mining',
+        },
+      ],
+    });
+
+    await expect(
+      salesCaller.quotes.list({
+        filters: {
+          productId: crusherProduct.id,
+          salesPersonId: 'another-sales-id',
+          statuses: [],
+        },
+        page: 1,
+        pageSize: 10,
+        search: '',
+        sortBy: 'salesPersonName',
+        sortDirection: 'asc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        {
+          code: draftQuote.code,
+          productName: 'Crusher Bucket',
+          salesPersonName: 'Another Sales',
         },
       ],
     });
   });
 
-  test('keeps list totals based on the frozen quote snapshot when product prices change', async ({ context }) => {
+  test('keeps list pricing facts based on the frozen quote snapshot when product prices change', async ({
+    context,
+  }) => {
     const caller = context.createCaller(mockSession('sales'));
     const created = await createReadyQuote(caller, context.product.id);
 
@@ -382,15 +537,15 @@ describe('quotes.list', () => {
       page: 1,
       pageSize: 10,
       search: created.code,
-      sortBy: 'total',
+      sortBy: 'createdAt',
       sortDirection: 'asc',
     });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({
       quotedBasePrice: context.product.basePrice,
-      total: context.product.basePrice - created.discount + created.deliveryPrice,
     });
+    expect(result.items[0]).not.toHaveProperty('total');
   });
 });
 
@@ -573,12 +728,14 @@ async function createNamedQuote(
     discount,
     paymentTerms = null,
     productId,
+    salesPersonId = 'test-user-id',
   }: {
     customerCompanyName: string;
     deliveryPrice?: number;
     discount: number;
     paymentTerms?: string | null;
     productId: string;
+    salesPersonId?: string;
   },
 ) {
   return caller.quotes.create({
@@ -594,7 +751,7 @@ async function createNamedQuote(
     plannedDeliveryDate: '2026-07-05',
     preferredDeliveryDate: '2026-07-01',
     productId,
-    salesPersonId: 'test-user-id',
+    salesPersonId,
     status: 'draft',
     validUntil: '2026-06-30',
   });
@@ -615,20 +772,43 @@ function toUpdateInput(quote: QuoteDetail) {
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
     salesPersonId: quote.salesPersonId,
+    selectedAssemblies: quote.selectedAssemblies.map((selection) => ({
+      type: 'existing' as const,
+      id: selection.id,
+    })),
     status: quote.status,
     validUntil: quote.validUntil,
   };
 }
 
 async function createActorUser(db: Db) {
+  await createSalesUser(db, {
+    email: 'test@example.com',
+    id: 'test-user-id',
+    name: 'Test User',
+  });
+}
+
+async function createSalesUser(
+  db: Db,
+  {
+    email,
+    id,
+    name,
+  }: {
+    email: string;
+    id: string;
+    name: string;
+  },
+) {
   const now = new Date();
 
   await db.insert(user).values({
     createdAt: now,
-    email: 'test@example.com',
+    email,
     emailVerified: true,
-    id: 'test-user-id',
-    name: 'Test User',
+    id,
+    name,
     role: 'sales',
     updatedAt: now,
   });
@@ -652,4 +832,14 @@ async function createProduct(db: Db, overrides: Partial<typeof products.$inferIn
   }
 
   return product;
+}
+
+async function createProductAssembly(db: Db, values: typeof productAssemblies.$inferInsert) {
+  const [assembly] = await db.insert(productAssemblies).values(values).returning();
+
+  if (!assembly) {
+    throw new Error('Product assembly insert did not return a row');
+  }
+
+  return assembly;
 }

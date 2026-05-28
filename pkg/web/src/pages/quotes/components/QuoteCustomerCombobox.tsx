@@ -1,6 +1,5 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import type { Customer, UUID } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
@@ -13,8 +12,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox.js';
-import { useTRPC } from '@/lib/trpc.js';
-import { mergeSelectedOption } from './EntityCombobox.js';
+import { useCustomerForQuoteOptions } from '@/hooks/options/index.js';
 
 export type QuoteCustomerOption = Pick<Customer, 'companyName' | 'email' | 'id'>;
 export type QuoteCustomerSelection =
@@ -61,40 +59,21 @@ export const QuoteCustomerCombobox: React.FC<QuoteCustomerComboboxProps> = ({
   onSelected,
   value,
 }) => {
-  const trpc = useTRPC();
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 250);
-  const customersQuery = useQuery(
-    trpc.quotes.customers.queryOptions({
-      columnFilters: {},
-      page: 1,
-      pageSize: 20,
-      search: debouncedSearch,
-      sortBy: 'companyName',
-      sortDirection: 'asc',
-    }),
-  );
-  const selectedCustomerQuery = useQuery({
-    ...trpc.quotes.customers.queryOptions({
-      columnFilters: {
-        id: value,
-      },
-      page: 1,
-      pageSize: 1,
-      search: '',
-      sortBy: 'companyName',
-      sortDirection: 'asc',
-    }),
-    enabled: Boolean(value),
+  const customers = useCustomerForQuoteOptions({
+    fallbackCustomer,
+    pageSize: 20,
+    search: debouncedSearch,
+    value,
   });
-  const selectedCustomer = selectedCustomerQuery.data?.items.find((customer) => customer.id === value);
   const customerOptions = useMemo(
     () =>
-      mergeSelectedOption(customersQuery.data?.items ?? [], selectedCustomer ?? fallbackCustomer).map((customer) => ({
+      customers.itemsWithSelected.map((customer) => ({
         ...customer,
         type: 'existing' as const,
       })),
-    [customersQuery.data?.items, fallbackCustomer, selectedCustomer],
+    [customers.itemsWithSelected],
   );
   const trimmedSearch = search.trim();
   const trimmedInlineValue = inlineValue.trim();
@@ -166,11 +145,7 @@ export const QuoteCustomerCombobox: React.FC<QuoteCustomerComboboxProps> = ({
         className="w-full"
         disabled={disabled}
         id="customer-id"
-        placeholder={
-          customersQuery.isFetching || selectedCustomerQuery.isFetching
-            ? 'Searching customers...'
-            : 'Search or create customer'
-        }
+        placeholder={customers.isFetching ? 'Searching customers...' : 'Search or create customer'}
         showClear
       />
       <ComboboxContent>

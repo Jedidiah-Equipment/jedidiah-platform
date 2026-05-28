@@ -40,18 +40,19 @@ export const useUserTableStore = createPersistedDataTableStore({
   initialState: {
     sorting: [
       {
-        id: 'email',
+        id: 'name',
         desc: false,
       },
     ],
   },
   persistName: 'users-table',
+  persistVersion: 2,
 });
 
 const userSortOptions: SortOptions<UserTableSortInput> = {
   allowedSortIds: UserSortBy.options,
   defaultSort: {
-    id: 'email',
+    id: 'name',
   },
 };
 
@@ -95,13 +96,6 @@ export const UserTable: React.FC<UserTableProps> = ({
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Full Name',
-      },
-      {
-        accessorKey: 'email',
-        cell: ({ row }) => <span className="text-muted-foreground">{row.original.email}</span>,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Email',
       },
       {
         accessorKey: 'role',
@@ -225,7 +219,6 @@ function userGlobalFilter(row: { original: UserSummary }, _columnId: string, fil
 
   return [
     row.original.name,
-    row.original.email,
     row.original.role,
     roleLabels[row.original.role],
     ...row.original.departments.map((department) => departmentLabels[department]),

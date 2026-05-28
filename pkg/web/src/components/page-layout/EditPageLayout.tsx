@@ -25,9 +25,11 @@ export const EditPageLayout: React.FC<EditPageLayoutProps> = ({
     <div>{back}</div>
     <Card>
       <CardHeader>
-        <CardDescription>{description}</CardDescription>
-        <div className="flex flex-wrap items-center gap-2">
-          <CardTitle>{title}</CardTitle>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <CardDescription>{description}</CardDescription>
+            <CardTitle>{title}</CardTitle>
+          </div>
           {badge}
         </div>
       </CardHeader>

@@ -130,7 +130,6 @@ export const LoginPage: React.FC = () => {
                     <TableRow key={demoUser.id}>
                       <TableCell className="min-w-52">
                         <div className="font-medium">{demoUser.name}</div>
-                        <div className="text-muted-foreground text-sm">{demoUser.email}</div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{roleLabels[demoUser.role]}</Badge>

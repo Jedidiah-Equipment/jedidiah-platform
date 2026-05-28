@@ -55,7 +55,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
               currencyCode: value.currencyCode,
               description: value.description,
               id: productQuery.data.id,
-              leadTimeDays: value.leadTimeDays,
+              buildTimeDays: value.buildTimeDays,
               modelCode: value.modelCode,
               name: value.name,
             })

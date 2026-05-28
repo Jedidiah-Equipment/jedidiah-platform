@@ -4,7 +4,7 @@ import {
   AssemblyPart,
   Price,
   type Product,
-  ProductLeadTimeDays,
+  ProductBuildTimeDays,
   ProductModelCode,
   ProductName,
   refineProductAssemblies,
@@ -24,7 +24,7 @@ const ProductFormFields = z.object({
   basePrice: Price,
   currencyCode: z.literal('ZAR'),
   description: z.string(),
-  leadTimeDays: ProductLeadTimeDays,
+  buildTimeDays: ProductBuildTimeDays,
   modelCode: ProductModelCode,
   name: ProductName,
 });
@@ -66,7 +66,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
     basePrice: initialProduct?.basePrice ?? NaN,
     currencyCode: initialProduct?.currencyCode ?? 'ZAR',
     description: initialProduct?.description ?? '',
-    leadTimeDays: initialProduct?.leadTimeDays ?? NaN,
+    buildTimeDays: initialProduct?.buildTimeDays ?? NaN,
     modelCode: initialProduct?.modelCode ?? '',
     name: initialProduct?.name ?? '',
   };
@@ -105,9 +105,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
               />
             )}
           </form.AppField>
-          <form.AppField name="leadTimeDays">
+          <form.AppField name="buildTimeDays">
             {(field) => (
-              <field.NumberField autoComplete="off" inputMode="numeric" label="Lead time (days)" placeholder="14" />
+              <field.NumberField autoComplete="off" inputMode="numeric" label="Build time (days)" placeholder="14" />
             )}
           </form.AppField>
           <EditFormFullWidth>

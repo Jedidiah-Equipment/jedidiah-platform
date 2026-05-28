@@ -1,7 +1,8 @@
 import { formatDate } from '@/utils/date.js';
 import { formatCurrency } from '@/utils/number.js';
 
-export type AuditChangeMap = Record<string, { from?: unknown; to?: unknown }>;
+export type AuditChange = { from?: unknown; to?: unknown };
+export type AuditChangeMap = Record<string, AuditChange>;
 
 export type AuditChangeDisplay = {
   field: string;
@@ -120,7 +121,7 @@ export function formatAuditChangesJson(changes: AuditChangeMap): string {
   return JSON.stringify(changes, null, 2);
 }
 
-function formatAuditChangePreview(field: string, change: { from?: unknown; to?: unknown }): string {
+function formatAuditChangePreview(field: string, change: AuditChange): string {
   const label = getAuditFieldLabel(field);
   const from = formatAuditChangeValue(field, change.from);
   const to = formatAuditChangeValue(field, change.to);

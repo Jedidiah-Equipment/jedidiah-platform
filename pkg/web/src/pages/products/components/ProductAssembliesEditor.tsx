@@ -31,7 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { formatCurrency } from '@/utils/number.js';
-import type { ProductFormValues } from './ProductForm.js';
+import { emptyProductFormValues } from './ProductForm.js';
 
 const ALL_CATEGORIES = '__all__';
 const assemblyPartKeys = new WeakMap<AssemblyInput['parts'][number], string>();
@@ -47,18 +47,8 @@ type IndexedAssembly = {
 };
 
 function useProductForm() {
-  const defaultValues: ProductFormValues = {
-    assemblies: [],
-    basePrice: NaN,
-    description: '',
-    currencyCode: 'ZAR',
-    buildTimeDays: NaN,
-    modelCode: '',
-    name: '',
-  };
-
   return useTypedAppFormContext({
-    defaultValues,
+    defaultValues: emptyProductFormValues,
   });
 }
 
@@ -386,30 +376,26 @@ type OverrideSummaryProps = {
 
 const OverrideSummary: React.FC<OverrideSummaryProps> = ({ selectedIds, standardAssemblies }) => {
   const FormField = useProductForm().Field;
+  const summary = getOverrideSelectionSummary(selectedIds, standardAssemblies);
 
-  if (standardAssemblies.length === 0) {
-    return 'No Assemblies';
+  switch (summary.kind) {
+    case 'no-assemblies':
+      return 'No Assemblies';
+    case 'none':
+      return 'None';
+    case 'multiple':
+      return `${summary.count} assemblies selected`;
+    case 'single':
+      if (!summary.assembly) {
+        return '1 assembly selected';
+      }
+
+      return (
+        <FormField name={`assemblies[${summary.assembly.index}].name`}>
+          {(field: FieldApi<string>) => field.state.value || 'Unnamed standard'}
+        </FormField>
+      );
   }
-
-  if (selectedIds.length === 0) {
-    return 'None';
-  }
-
-  if (selectedIds.length > 1) {
-    return `${selectedIds.length} assemblies selected`;
-  }
-
-  const selectedAssembly = standardAssemblies.find(({ assembly }) => assembly.id === selectedIds[0]);
-
-  if (!selectedAssembly) {
-    return '1 assembly selected';
-  }
-
-  return (
-    <FormField name={`assemblies[${selectedAssembly.index}].name`}>
-      {(field: FieldApi<string>) => field.state.value || 'Unnamed standard'}
-    </FormField>
-  );
 };
 
 type OverrideCheckboxItemProps = {
@@ -653,21 +639,46 @@ function formatUpgradeAmount(value: number, currencyCode: string): string {
 }
 
 function formatOverrideSummary(selectedIds: string[], standardAssemblies: IndexedAssembly[]): string {
+  const summary = getOverrideSelectionSummary(selectedIds, standardAssemblies);
+
+  switch (summary.kind) {
+    case 'no-assemblies':
+      return 'no assemblies';
+    case 'none':
+      return 'none';
+    case 'multiple':
+      return `${summary.count} assemblies`;
+    case 'single':
+      return summary.assembly?.assembly.name || '1 assembly';
+  }
+}
+
+type OverrideSelectionSummary =
+  | { kind: 'no-assemblies' }
+  | { kind: 'none' }
+  | { kind: 'multiple'; count: number }
+  | { kind: 'single'; assembly: IndexedAssembly | null };
+
+function getOverrideSelectionSummary(
+  selectedIds: string[],
+  standardAssemblies: IndexedAssembly[],
+): OverrideSelectionSummary {
   if (standardAssemblies.length === 0) {
-    return 'no assemblies';
+    return { kind: 'no-assemblies' };
   }
 
   if (selectedIds.length === 0) {
-    return 'none';
+    return { kind: 'none' };
   }
 
   if (selectedIds.length > 1) {
-    return `${selectedIds.length} assemblies`;
+    return { kind: 'multiple', count: selectedIds.length };
   }
 
-  const selectedAssembly = standardAssemblies.find(({ assembly }) => assembly.id === selectedIds[0]);
-
-  return selectedAssembly?.assembly.name || '1 assembly';
+  return {
+    kind: 'single',
+    assembly: standardAssemblies.find(({ assembly }) => assembly.id === selectedIds[0]) ?? null,
+  };
 }
 
 function hasFieldErrorsForPrefix(

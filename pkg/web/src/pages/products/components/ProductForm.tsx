@@ -51,6 +51,16 @@ const ProductFormValues = ProductFormFields.extend({
     .superRefine(refineProductAssemblies),
 });
 
+export const emptyProductFormValues: ProductFormValues = {
+  assemblies: [],
+  basePrice: NaN,
+  currencyCode: 'ZAR',
+  description: '',
+  buildTimeDays: NaN,
+  modelCode: '',
+  name: '',
+};
+
 type ProductAssemblyInputValue = z.infer<typeof AssemblyInput>;
 
 type ProductFormProps = {

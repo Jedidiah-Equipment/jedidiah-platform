@@ -114,6 +114,7 @@ export const quoteAuditDescriptor: AuditEntityDescriptor = {
   noun: 'quote',
   primaryLabelField: 'code',
   primaryLabelFormatter: formatQuoteAuditLabel,
+  // Quote update lock enforcement uses these fields to detect locked-field changes.
   fields: {
     customerId: 'customer',
     deliveryIncluded: 'delivery included',

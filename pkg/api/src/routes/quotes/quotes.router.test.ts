@@ -1,5 +1,6 @@
 import {
   auditEvents,
+  customers,
   type Db,
   jobStages,
   jobs,
@@ -10,7 +11,7 @@ import {
   sql,
   user,
 } from '@pkg/db';
-import { type QuoteDetail, QuoteUpdateInput } from '@pkg/schema';
+import type { QuoteDetail } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
@@ -298,28 +299,40 @@ describe('quotes.update', () => {
     });
   });
 
-  test('rejects productId edits at the input boundary', async ({ context }) => {
+  test('updates the product and quote snapshot before a quote has a job', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
     const alternateProduct = await createProduct(context.db, {
-      modelCode: 'ALT-IMMUTABLE-001',
-      name: 'Alternate Immutable Product',
+      basePrice: 2500,
+      modelCode: 'ALT-EDITABLE-001',
+      name: 'Alternate Editable Product',
+    });
+    const optionalAssembly = await createProductAssembly(context.db, {
+      kind: 'optional',
+      name: 'Old product upgrade',
+      price: 125,
+      productId: context.product.id,
     });
     const created = await createReadyQuote(caller, context.product.id);
-
-    expect(
-      QuoteUpdateInput.safeParse({
-        ...toUpdateInput(created),
-        productId: alternateProduct.id,
-      }).success,
-    ).toBe(false);
+    const withAssembly = await caller.quotes.update({
+      ...toUpdateInput(created),
+      selectedAssemblies: [{ type: 'catalog', productAssemblyId: optionalAssembly.id }],
+    });
 
     await expect(
       caller.quotes.update({
-        ...toUpdateInput(created),
+        ...toUpdateInput(withAssembly),
+        discount: 500,
         productId: alternateProduct.id,
-      } as never),
-    ).rejects.toMatchObject({
-      code: 'BAD_REQUEST',
+      }),
+    ).resolves.toMatchObject({
+      discount: 500,
+      productId: alternateProduct.id,
+      productCurrencyCode: 'ZAR',
+      productModelCode: 'ALT-EDITABLE-001',
+      productName: 'Alternate Editable Product',
+      quotedBasePrice: 2500,
+      quotedCurrencyCode: 'ZAR',
+      selectedAssemblies: [],
     });
   });
 
@@ -575,6 +588,137 @@ describe('jobs.create with quote links', () => {
     });
   });
 
+  test('rejects every frozen quote field after a job exists', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const alternateProduct = await createProduct(context.db, {
+      modelCode: 'LOCK-ALT-001',
+      name: 'Locked Alternate Product',
+    });
+    const alternateCustomer = await createCustomer(context.db, 'Locked Alternate Customer');
+    const alternateSalesPersonId = 'locked-sales-id';
+    await createSalesUser(context.db, {
+      email: 'locked-sales@example.com',
+      id: alternateSalesPersonId,
+      name: 'Locked Sales',
+    });
+    const optionalAssembly = await createProductAssembly(context.db, {
+      kind: 'optional',
+      name: 'Locked optional upgrade',
+      price: 125,
+      productId: context.product.id,
+    });
+    const frozenChanges = [
+      {
+        field: 'customerId',
+        input: (quote: QuoteDetail) => ({
+          ...toUpdateInput(quote),
+          customer: {
+            type: 'existing' as const,
+            customerId: alternateCustomer.id,
+          },
+        }),
+      },
+      {
+        field: 'deliveryIncluded',
+        input: (quote: QuoteDetail) => ({
+          ...toUpdateInput(quote),
+          deliveryIncluded: false,
+        }),
+      },
+      {
+        field: 'deliveryPrice',
+        input: (quote: QuoteDetail) => ({
+          ...toUpdateInput(quote),
+          deliveryPrice: quote.deliveryPrice + 25,
+        }),
+      },
+      {
+        field: 'discount',
+        input: (quote: QuoteDetail) => ({
+          ...toUpdateInput(quote),
+          discount: quote.discount + 25,
+        }),
+      },
+      {
+        field: 'productId',
+        input: (quote: QuoteDetail) => ({
+          ...toUpdateInput(quote),
+          productId: alternateProduct.id,
+        }),
+      },
+      {
+        field: 'salesPersonId',
+        input: (quote: QuoteDetail) => ({
+          ...toUpdateInput(quote),
+          salesPersonId: alternateSalesPersonId,
+        }),
+      },
+      {
+        field: 'selectedAssemblies',
+        input: (quote: QuoteDetail) => ({
+          ...toUpdateInput(quote),
+          selectedAssemblies: [{ type: 'catalog' as const, productAssemblyId: optionalAssembly.id }],
+        }),
+      },
+      {
+        field: 'status',
+        input: (quote: QuoteDetail) => ({
+          ...toUpdateInput(quote),
+          status: 'sent' as const,
+        }),
+      },
+    ];
+
+    for (const { field, input } of frozenChanges) {
+      const created = await createReadyQuote(salesCaller, context.product.id);
+      const accepted = await salesCaller.quotes.update({
+        ...toUpdateInput(created),
+        deliveryIncluded: true,
+        deliveryPrice: 100,
+        status: 'accepted',
+      });
+      await supervisorCaller.jobs.create({
+        quoteId: accepted.id,
+      });
+
+      await expect(salesCaller.quotes.update(input(accepted))).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+        message: `Quote is locked because it already has a Job; ${field} cannot be changed.`,
+      });
+    }
+  });
+
+  test('allows logistics and free-text quote fields after a job exists', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const created = await createReadyQuote(salesCaller, context.product.id);
+    const accepted = await salesCaller.quotes.update({
+      ...toUpdateInput(created),
+      status: 'accepted',
+    });
+    await supervisorCaller.jobs.create({
+      quoteId: accepted.id,
+    });
+
+    await expect(
+      salesCaller.quotes.update({
+        ...toUpdateInput(accepted),
+        notes: 'Post-sale logistics note',
+        paymentTerms: 'Balance before delivery',
+        plannedDeliveryDate: '2026-08-15',
+        preferredDeliveryDate: '2026-08-10',
+        validUntil: '2026-07-31T00:00:00.000Z',
+      }),
+    ).resolves.toMatchObject({
+      notes: 'Post-sale logistics note',
+      paymentTerms: 'Balance before delivery',
+      plannedDeliveryDate: '2026-08-15',
+      preferredDeliveryDate: '2026-08-10',
+      validUntil: '2026-07-31',
+    });
+  });
+
   test('rejects a second job from the same quote', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
@@ -712,6 +856,7 @@ function toUpdateInput(quote: QuoteDetail) {
     paymentTerms: quote.paymentTerms,
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
+    productId: quote.productId,
     salesPersonId: quote.salesPersonId,
     selectedAssemblies: quote.selectedAssemblies.map((selection) => ({
       type: 'existing' as const,
@@ -728,6 +873,16 @@ async function createActorUser(db: Db) {
     id: 'test-user-id',
     name: 'Test User',
   });
+}
+
+async function createCustomer(db: Db, companyName: string) {
+  const [customer] = await db.insert(customers).values({ companyName, email: null }).returning();
+
+  if (!customer) {
+    throw new Error('Customer insert did not return a row');
+  }
+
+  return customer;
 }
 
 async function createSalesUser(

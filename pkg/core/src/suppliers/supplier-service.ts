@@ -155,8 +155,7 @@ export async function updateSupplier({
         throw new SupplierNotFoundError(input.id);
       }
 
-      const after = {
-        ...before,
+      const patch = {
         address: input.address,
         companyName: input.companyName,
         contactPerson: input.contactPerson,
@@ -164,6 +163,7 @@ export async function updateSupplier({
         notes: input.notes,
         phone: input.phone,
       };
+      const after = { ...before, ...patch };
       const changes = createAuditChanges(before, after, supplierAuditDescriptor.fields);
 
       if (!changes) {
@@ -172,15 +172,7 @@ export async function updateSupplier({
 
       const [row] = await tx
         .update(supplier)
-        .set({
-          address: input.address,
-          companyName: input.companyName,
-          contactPerson: input.contactPerson,
-          email: input.email,
-          notes: input.notes,
-          phone: input.phone,
-          updatedAt: new Date(),
-        })
+        .set({ ...patch, updatedAt: new Date() })
         .where(eq(supplier.id, input.id))
         .returning();
 

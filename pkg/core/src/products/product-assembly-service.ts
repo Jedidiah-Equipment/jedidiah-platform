@@ -20,7 +20,7 @@ import {
 
 type AssemblyRow = typeof productAssemblies.$inferSelect;
 type AssemblyDb = DatabaseTransaction | Db;
-type AssemblyListRow = AssemblyRow & {
+export type AssemblyListRow = AssemblyRow & {
   assemblyParts: (typeof assemblyParts.$inferSelect & {
     part: Pick<typeof parts.$inferSelect, 'category' | 'code'>;
   })[];
@@ -122,7 +122,7 @@ export async function listAssemblies({ tx, productId }: { tx: AssemblyDb; produc
   return rows.map(mapAssembly);
 }
 
-function mapAssembly(row: AssemblyListRow): Assembly {
+export function mapAssembly(row: AssemblyListRow): Assembly {
   const assemblyPartsForRow = row.assemblyParts
     .map((part) => ({
       category: part.part.category,

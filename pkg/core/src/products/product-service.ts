@@ -1,13 +1,10 @@
 import {
-  type assemblyOverrides,
-  type assemblyParts,
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   type Db,
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
-  type parts,
   productAssemblies,
   products,
 } from '@pkg/db';
@@ -26,17 +23,11 @@ import { and, eq, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
-import { listAssemblies, syncAssemblies } from './product-assembly-service.js';
+import { type AssemblyListRow, listAssemblies, mapAssembly, syncAssemblies } from './product-assembly-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
 
 type ProductRow = typeof products.$inferSelect;
-type ProductAssemblyListRow = typeof productAssemblies.$inferSelect & {
-  assemblyParts: (typeof assemblyParts.$inferSelect & {
-    part: Pick<typeof parts.$inferSelect, 'category' | 'code'>;
-  })[];
-  optionalOverrides: (typeof assemblyOverrides.$inferSelect)[];
-};
-type ProductListRow = ProductRow & { assemblies: ProductAssemblyListRow[] };
+type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
 type ProductCatalogAuditRecord = ProductRow & { assemblies: string };
 
 export function mapProduct(row: ProductRow & { assemblies?: Assembly[] }): Product {
@@ -127,43 +118,8 @@ export async function listProducts({
 function mapProductListRow(row: ProductListRow): Product {
   return mapProduct({
     ...row,
-    assemblies: row.assemblies.map(mapProductListAssembly),
+    assemblies: row.assemblies.map(mapAssembly),
   });
-}
-
-function mapProductListAssembly(row: ProductAssemblyListRow): Assembly {
-  const mappedParts = row.assemblyParts
-    .map((part) => ({
-      category: part.part.category,
-      code: part.part.code,
-      partId: part.partId,
-      quantity: part.quantity,
-    }))
-    .toSorted((left, right) => left.category.localeCompare(right.category) || left.code.localeCompare(right.code))
-    .map((part) => ({
-      partId: part.partId,
-      quantity: part.quantity,
-    }));
-
-  if (row.kind === 'standard') {
-    return {
-      id: row.id,
-      kind: 'standard',
-      name: row.name,
-      parts: mappedParts,
-      productId: row.productId,
-    };
-  }
-
-  return {
-    id: row.id,
-    kind: 'optional',
-    name: row.name,
-    overrideStandardAssemblyIds: row.optionalOverrides.map((override) => override.standardAssemblyId),
-    parts: mappedParts,
-    price: row.price ?? 0,
-    productId: row.productId,
-  };
 }
 
 function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
@@ -296,9 +252,7 @@ export async function updateProduct({
 
       const beforeAssemblies = await listAssemblies({ tx, productId: input.id });
       const desiredAssemblies = input.assemblies ?? beforeAssemblies;
-      const after = {
-        ...before,
-        assemblies: desiredAssemblies,
+      const patch = {
         basePrice: input.basePrice,
         currencyCode: input.currencyCode,
         description: input.description,
@@ -306,12 +260,12 @@ export async function updateProduct({
         modelCode: input.modelCode,
         name: input.name,
       };
-      const productChanges = createAuditChanges(
+      const after = { ...before, ...patch, assemblies: desiredAssemblies };
+      const changes = createAuditChanges(
         toProductCatalogAuditRecord({ ...before, assemblies: beforeAssemblies }),
         toProductCatalogAuditRecord(after),
-        getProductCatalogAuditFields(),
+        productAuditDescriptor.fields,
       );
-      const changes = productChanges;
 
       if (!changes) {
         return mapProduct({ ...before, assemblies: beforeAssemblies });
@@ -319,15 +273,7 @@ export async function updateProduct({
 
       const [row] = await tx
         .update(products)
-        .set({
-          basePrice: input.basePrice,
-          currencyCode: input.currencyCode,
-          description: input.description,
-          buildTimeDays: input.buildTimeDays,
-          modelCode: input.modelCode,
-          name: input.name,
-          updatedAt: new Date(),
-        })
+        .set({ ...patch, updatedAt: new Date() })
         .where(eq(products.id, input.id))
         .returning();
 
@@ -362,10 +308,6 @@ export async function updateProduct({
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
   }
-}
-
-function getProductCatalogAuditFields(): Record<string, string> {
-  return productAuditDescriptor.fields;
 }
 
 function toProductCatalogAuditRecord(

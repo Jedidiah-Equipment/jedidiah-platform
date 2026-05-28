@@ -148,8 +148,7 @@ export async function updateCustomer({
       throw new CustomerNotFoundError(input.id);
     }
 
-    const after = {
-      ...before,
+    const patch = {
       address: input.address,
       companyName: input.companyName,
       contactPerson: input.contactPerson,
@@ -157,6 +156,7 @@ export async function updateCustomer({
       notes: input.notes,
       phone: input.phone,
     };
+    const after = { ...before, ...patch };
     const changes = createAuditChanges(before, after, customerAuditDescriptor.fields);
 
     if (!changes) {
@@ -165,15 +165,7 @@ export async function updateCustomer({
 
     const [row] = await tx
       .update(customers)
-      .set({
-        address: input.address,
-        companyName: input.companyName,
-        contactPerson: input.contactPerson,
-        email: input.email,
-        notes: input.notes,
-        phone: input.phone,
-        updatedAt: new Date(),
-      })
+      .set({ ...patch, updatedAt: new Date() })
       .where(eq(customers.id, input.id))
       .returning();
 

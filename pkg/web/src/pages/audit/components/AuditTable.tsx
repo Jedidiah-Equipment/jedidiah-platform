@@ -19,15 +19,15 @@ import { useUserOptions } from '@/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
+import { type AuditChangeMap, formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
 
 type DateRangeFilterValue = {
   end?: string;
   start?: string;
 };
 
-type AuditTableEvent = Omit<AuditEvent, 'changes'> & {
-  changes: Record<string, { from?: unknown; to?: unknown }> | null;
+type AuditEventRow = Omit<AuditEvent, 'changes'> & {
+  changes: AuditChangeMap | null;
 };
 
 const auditEntityTypeLabels = {
@@ -97,7 +97,7 @@ export const AuditTable: React.FC = () => {
       placeholderData: keepPreviousData,
     }),
   );
-  const { items: auditEvents, total, isLoading } = usePagedQueryResult<AuditTableEvent>(auditQuery);
+  const { items: auditEvents, total, isLoading } = usePagedQueryResult<AuditEventRow>(auditQuery);
 
   const tableState = useConstrainedTableState({
     pagination: tableController.pagination,
@@ -107,7 +107,7 @@ export const AuditTable: React.FC = () => {
     total,
   });
 
-  const columns = useMemo<ColumnDef<AuditTableEvent>[]>(
+  const columns = useMemo<ColumnDef<AuditEventRow>[]>(
     () => [
       {
         accessorKey: 'occurredAt',
@@ -182,7 +182,7 @@ export const AuditTable: React.FC = () => {
     [userOptions.selectOptions],
   );
 
-  const table = useReactTable<AuditTableEvent>({
+  const table = useReactTable<AuditEventRow>({
     columns,
     data: auditEvents,
     enableSortingRemoval: false,
@@ -233,7 +233,7 @@ function getAuditListInputExtras(columnFilters: ColumnFiltersState) {
 }
 
 type ActorCellProps = {
-  event: AuditTableEvent;
+  event: AuditEventRow;
 };
 
 const ActorCell: React.FC<ActorCellProps> = ({ event }) => {
@@ -264,7 +264,7 @@ const AuditActionBadge: React.FC<AuditActionBadgeProps> = ({ action }) => (
 );
 
 type ChangesCellProps = {
-  changes: AuditTableEvent['changes'];
+  changes: AuditEventRow['changes'];
 };
 
 const ChangesCell: React.FC<ChangesCellProps> = ({ changes }) => {
@@ -319,7 +319,7 @@ const AuditChangePreviewText: React.FC<AuditChangePreviewTextProps> = ({ display
 };
 
 type AuditChangesDetailsProps = {
-  changes: NonNullable<AuditTableEvent['changes']>;
+  changes: NonNullable<AuditEventRow['changes']>;
   displays: ReturnType<typeof getAuditChangeDisplays>;
 };
 

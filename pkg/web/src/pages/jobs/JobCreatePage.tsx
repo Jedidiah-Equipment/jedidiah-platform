@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { BackButton } from '@/components/button/BackButton.js';
-import { DatePicker } from '@/components/common/DatePicker.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { ReadOnlyField } from '@/components/form/ReadOnlyField.js';
 import { Button } from '@/components/ui/button.js';
@@ -27,7 +26,6 @@ export const JobCreatePage: React.FC<JobCreatePageProps> = ({ quoteId }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
-  const [dueDate, setDueDate] = useState('');
   const [productId, setProductId] = useState<UUID | ''>('');
 
   const quoteQuery = useQuery({
@@ -80,8 +78,8 @@ export const JobCreatePage: React.FC<JobCreatePageProps> = ({ quoteId }) => {
             <div
               className={
                 quote
-                  ? 'grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(14rem,1fr)_minmax(12rem,16rem)]'
-                  : 'grid min-w-0 gap-3 md:grid-cols-[minmax(14rem,1fr)_minmax(12rem,16rem)]'
+                  ? 'grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(14rem,1fr)]'
+                  : 'grid min-w-0 gap-3 md:grid-cols-[minmax(14rem,1fr)]'
               }
             >
               {quote ? (
@@ -103,11 +101,6 @@ export const JobCreatePage: React.FC<JobCreatePageProps> = ({ quoteId }) => {
                   value={productId}
                 />
               </FieldBlock>
-              {selectedProduct ? (
-                <FieldBlock label="Job Due Date">
-                  <DatePicker clearable onChange={setDueDate} value={dueDate} />
-                </FieldBlock>
-              ) : null}
             </div>
           ) : null}
         </CardContent>
@@ -130,7 +123,6 @@ export const JobCreatePage: React.FC<JobCreatePageProps> = ({ quoteId }) => {
             disabled={!canSubmit}
             onClick={() =>
               createJobMutation.mutate({
-                dueDate: dueDate || null,
                 productId: productId as UUID,
                 quoteId: quote?.id ?? null,
               })

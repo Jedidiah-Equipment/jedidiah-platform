@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { DateIso, DateOnlyIso } from '../common/date.js';
+import { DateIso } from '../common/date.js';
 import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { SortDirection } from '../common/sort.js';
@@ -16,9 +16,6 @@ export const JobStageName = z.enum(JOB_STAGES);
 
 export type JobWorkState = z.infer<typeof JobWorkState>;
 export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
-
-export type JobStatus = z.infer<typeof JobStatus>;
-export const JobStatus = z.enum(['pending', 'active', 'paused', 'complete', 'cancelled']);
 
 export type ScheduleWindow = z.infer<typeof ScheduleWindow>;
 export const ScheduleWindow = z.object({
@@ -74,9 +71,6 @@ const AssemblyJobStageSummary = AssemblyJobStage.extend({
   department: z.literal('assembly'),
 });
 
-export type JobDateEditField = z.infer<typeof JobDateEditField>;
-export const JobDateEditField = z.enum(['due_date']);
-
 export type JobStageSummary = z.infer<typeof JobStageSummary>;
 export const JobStageSummary = z.discriminatedUnion('stage', [
   ProcurementJobStageSummary,
@@ -111,12 +105,10 @@ export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
   code: JobCode,
-  dueDate: DateOnlyIso.nullable(),
   productId: UUID,
   quoteId: UUID.nullable(),
   createdAt: DateIso,
   updatedAt: DateIso,
-  status: JobStatus,
 });
 
 export type JobSummary = z.infer<typeof JobSummary>;
@@ -129,18 +121,15 @@ export const JobSummary = Job.extend({
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
-export const JobSortBy = z.enum(['code', 'createdAt', 'dueDate', 'id', 'status']);
+export const JobSortBy = z.enum(['code', 'createdAt', 'id']);
 
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
     createdAtStart: DateIso.optional(),
     jobId: UUID.optional(),
-    statuses: z.array(JobStatus).default([]),
   })
-  .default({
-    statuses: [],
-  });
+  .default({});
 
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
@@ -154,7 +143,6 @@ export const JobCreateStageInput = z.object({
 
 export type JobCreateInput = z.infer<typeof JobCreateInput>;
 export const JobCreateInput = z.object({
-  dueDate: DateOnlyIso.nullable().optional(),
   productId: UUID,
   quoteId: UUID.nullable().optional(),
   stages: z.array(JobCreateStageInput).optional(),
@@ -172,16 +160,4 @@ export type JobListResult = z.infer<typeof JobListResult>;
 export const JobListResult = createPagedQueryResult(JobSummary).extend({
   sortBy: JobSortBy,
   sortDirection: SortDirection,
-});
-
-export type JobSetStatusInput = z.infer<typeof JobSetStatusInput>;
-export const JobSetStatusInput = z.object({
-  id: UUID,
-  status: JobStatus,
-});
-
-export type JobDueDateEditInput = z.infer<typeof JobDueDateEditInput>;
-export const JobDueDateEditInput = z.object({
-  jobId: UUID,
-  dueDate: DateOnlyIso.nullable(),
 });

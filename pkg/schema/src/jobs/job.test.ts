@@ -17,18 +17,12 @@ describe('JOB_STAGES', () => {
 
 describe('JobListFilters', () => {
   it('defaults to no job list filters', () => {
-    expect(JobListFilters.parse(undefined)).toEqual({ statuses: [] });
-  });
-
-  it('accepts stored Job Status filters', () => {
-    expect(JobListFilters.parse({ statuses: ['active', 'paused'] })).toEqual({ statuses: ['active', 'paused'] });
-    expect(() => JobListFilters.parse({ statuses: ['in-progress'] })).toThrow();
+    expect(JobListFilters.parse(undefined)).toEqual({});
   });
 
   it('allows other filters without status filters', () => {
     expect(JobListFilters.parse({ jobId: '00000000-0000-4000-8000-000000000001' })).toEqual({
       jobId: '00000000-0000-4000-8000-000000000001',
-      statuses: [],
     });
   });
 });

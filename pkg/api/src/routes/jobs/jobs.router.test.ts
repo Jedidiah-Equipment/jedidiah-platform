@@ -20,14 +20,9 @@ describe('jobs.create', () => {
     const caller = context.createCaller(mockSession('job-supervisor'));
 
     const job = await caller.jobs.create({
-      dueDate: '2026-08-10',
       productId: context.product.id,
     });
 
-    expect(job).toMatchObject({
-      dueDate: '2026-08-10',
-      status: 'pending',
-    });
     expect(job.stages.map((stage) => stage.stage)).toEqual([
       'procurement',
       'supply',
@@ -35,27 +30,6 @@ describe('jobs.create', () => {
       'paint',
       'assembly',
     ]);
-  });
-});
-
-describe('jobs.list', () => {
-  test('filters by stored job status', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
-    const activeJob = await caller.jobs.create({ productId: context.product.id });
-    const pendingJob = await caller.jobs.create({ productId: context.product.id });
-    await caller.jobs.setStatus({ id: activeJob.id, status: 'active' });
-
-    const activeJobs = await caller.jobs.list({
-      filters: { statuses: ['active'] },
-      page: 1,
-      pageSize: 20,
-      search: '',
-      sortBy: 'code',
-      sortDirection: 'asc',
-    });
-
-    expect(activeJobs.items.map((job) => job.id)).toContain(activeJob.id);
-    expect(activeJobs.items.map((job) => job.id)).not.toContain(pendingJob.id);
   });
 });
 

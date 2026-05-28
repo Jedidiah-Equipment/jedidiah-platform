@@ -2,7 +2,7 @@ import { AuthId, CustomerCompanyName, Price, QuoteCreateInput, type QuoteDetail,
 import { useQuery } from '@tanstack/react-query';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 
 import { getFieldErrors } from '@/components/form/field-errors.js';
@@ -58,6 +58,14 @@ const QuoteFormValues = z
       });
     }
 
+    if (value.productId === '') {
+      context.addIssue({
+        code: 'custom',
+        message: 'Select a product',
+        path: ['productId'],
+      });
+    }
+
     if (value.salesPersonId !== '' && !AuthId.safeParse(value.salesPersonId).success) {
       context.addIssue({
         code: 'custom',
@@ -66,11 +74,11 @@ const QuoteFormValues = z
       });
     }
 
-    if (value.productId === '' && value.discount !== 0) {
+    if (value.salesPersonId === '') {
       context.addIssue({
         code: 'custom',
-        message: 'Select a product before adding a discount',
-        path: ['discount'],
+        message: 'Select a salesperson',
+        path: ['salesPersonId'],
       });
     }
   });
@@ -86,6 +94,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
   const trpc = useTRPC();
   const isEditing = Boolean(initialQuote);
   const [selectedProduct, setSelectedProduct] = useState<QuoteProductChoice | null>(null);
+  const currentUserQuery = useQuery(trpc.auth.me.queryOptions());
   const salespeopleQuery = useQuery(trpc.quotes.salespeople.queryOptions());
   const fallbackCustomer = useMemo(
     () =>
@@ -140,14 +149,30 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
           paymentTerms: value.paymentTerms,
           plannedDeliveryDate: value.plannedDeliveryDate || null,
           preferredDeliveryDate: value.preferredDeliveryDate || null,
-          productId: value.productId || null,
-          salesPersonId: value.salesPersonId || null,
+          productId: value.productId,
+          salesPersonId: value.salesPersonId,
           status: value.status,
           validUntil: value.validUntil || null,
         }),
       );
     },
   });
+
+  useEffect(() => {
+    if (isEditing || form.state.values.salesPersonId) {
+      return;
+    }
+
+    const currentUser = currentUserQuery.data;
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'sales') {
+      return;
+    }
+
+    form.reset({
+      ...form.state.values,
+      salesPersonId: currentUser.id,
+    });
+  }, [currentUserQuery.data, form, isEditing]);
   const onProductSelected = useCallback((product: QuoteProductChoice | null) => {
     setSelectedProduct((current) => {
       if (
@@ -259,7 +284,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 <Field data-invalid={isInvalid}>
                   <FieldLabel htmlFor={field.name}>Product</FieldLabel>
                   <QuoteProductCombobox
-                    disabled={false}
+                    disabled={isEditing}
                     onSelected={(product) => {
                       const productId = product?.id ?? '';
 

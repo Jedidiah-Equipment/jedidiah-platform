@@ -103,6 +103,7 @@ async function createQuote(caller: AppRouterCaller, productId: string) {
     preferredDeliveryDate: '2026-07-10',
     productId,
     salesPersonId: 'test-user-id',
+    status: 'draft',
     validUntil: '2026-06-30',
   });
 }

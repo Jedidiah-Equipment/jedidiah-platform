@@ -1,5 +1,5 @@
 import { auditEvents, type Db, jobStages, jobs, products, quotes, user } from '@pkg/db';
-import type { QuoteDetail } from '@pkg/schema';
+import { type QuoteDetail, QuoteUpdateInput } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
@@ -30,6 +30,7 @@ describe('quotes.create', () => {
       preferredDeliveryDate: '2026-07-10',
       productId: context.product.id,
       salesPersonId: 'test-user-id',
+      status: 'draft',
       validUntil: '2026-06-30',
     });
 
@@ -43,6 +44,8 @@ describe('quotes.create', () => {
       plannedDeliveryDate: '2026-07-15',
       preferredDeliveryDate: '2026-07-10',
       productId: context.product.id,
+      quotedBasePrice: context.product.basePrice,
+      quotedCurrencyCode: context.product.currencyCode,
       status: 'draft',
       total: context.product.basePrice - 100,
     });
@@ -54,30 +57,7 @@ describe('quotes.create', () => {
     expect(events.map((event) => event.entityType)).toEqual(['customer', 'quote']);
   });
 
-  test('creates a customer-only draft quote', async ({ context }) => {
-    const caller = context.createCaller(mockSession('sales'));
-
-    const created = await caller.quotes.create({
-      customer: {
-        type: 'inline',
-        companyName: 'Acme Mining',
-      },
-      notes: null,
-      paymentTerms: ' ',
-    });
-
-    expect(created).toMatchObject({
-      customerCompanyName: 'Acme Mining',
-      paymentTerms: null,
-      productId: null,
-      productName: null,
-      salesPersonId: null,
-      status: 'draft',
-      total: null,
-    });
-  });
-
-  test('rejects a discount when the draft quote has no product', async ({ context }) => {
+  test('rejects create input missing product, salesperson, and status at the input boundary', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
     await expect(
@@ -86,13 +66,11 @@ describe('quotes.create', () => {
           type: 'inline',
           companyName: 'Acme Mining',
         },
-        discount: 100,
         notes: null,
         paymentTerms: null,
-      }),
+      } as never),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
-      message: 'Quote discount is invalid.',
     });
   });
 
@@ -110,6 +88,7 @@ describe('quotes.create', () => {
         paymentTerms: null,
         productId: context.product.id,
         salesPersonId: 'missing-user-id',
+        status: 'draft',
         validUntil: '2026-06-30',
       }),
     ).rejects.toMatchObject({
@@ -199,6 +178,59 @@ describe('quotes.update', () => {
         from: null,
         to: '2026-08-12',
       },
+    });
+  });
+
+  test('rejects productId edits at the input boundary', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const alternateProduct = await createProduct(context.db, {
+      modelCode: 'ALT-IMMUTABLE-001',
+      name: 'Alternate Immutable Product',
+    });
+    const created = await createReadyQuote(caller, context.product.id);
+
+    expect(
+      QuoteUpdateInput.safeParse({
+        ...toUpdateInput(created),
+        productId: alternateProduct.id,
+      }).success,
+    ).toBe(false);
+
+    await expect(
+      caller.quotes.update({
+        ...toUpdateInput(created),
+        productId: alternateProduct.id,
+      } as never),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+  });
+
+  test('validates updated discounts against the frozen quote snapshot', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const created = await createReadyQuote(caller, context.product.id);
+
+    await context.db.update(products).set({ basePrice: 100 });
+
+    await expect(
+      caller.quotes.update({
+        ...toUpdateInput(created),
+        discount: 500,
+      }),
+    ).resolves.toMatchObject({
+      discount: 500,
+      quotedBasePrice: context.product.basePrice,
+      total: context.product.basePrice - 500,
+    });
+
+    await expect(
+      caller.quotes.update({
+        ...toUpdateInput(created),
+        discount: context.product.basePrice + 1,
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Quote discount is invalid.',
     });
   });
 });
@@ -322,7 +354,7 @@ describe('quotes.list', () => {
     });
   });
 
-  test('floors stale draft totals when current product price drops below discount', async ({ context }) => {
+  test('keeps list totals based on the frozen quote snapshot when product prices change', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
     const created = await createReadyQuote(caller, context.product.id);
 
@@ -340,7 +372,10 @@ describe('quotes.list', () => {
     });
 
     expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.total).toBe(0);
+    expect(result.items[0]).toMatchObject({
+      quotedBasePrice: context.product.basePrice,
+      total: context.product.basePrice - created.discount,
+    });
   });
 });
 
@@ -425,21 +460,13 @@ describe('jobs.create with quote links', () => {
     });
   });
 
-  test('creates jobs linked to sent and product-less quotes when a Job product is selected', async ({ context }) => {
+  test('creates jobs linked to sent quotes when a Job product is selected', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const readyQuote = await createReadyQuote(salesCaller, context.product.id);
     const sentQuote = await salesCaller.quotes.update({
       ...toUpdateInput(readyQuote),
       status: 'sent',
-    });
-    const productLessQuote = await salesCaller.quotes.create({
-      customer: {
-        type: 'inline',
-        companyName: 'Customer Only Quote',
-      },
-      notes: null,
-      paymentTerms: null,
     });
 
     await expect(
@@ -450,15 +477,6 @@ describe('jobs.create with quote links', () => {
     ).resolves.toMatchObject({
       productId: context.product.id,
       quoteId: sentQuote.id,
-    });
-    await expect(
-      supervisorCaller.jobs.create({
-        productId: context.product.id,
-        quoteId: productLessQuote.id,
-      }),
-    ).resolves.toMatchObject({
-      productId: context.product.id,
-      quoteId: productLessQuote.id,
     });
   });
 
@@ -527,6 +545,7 @@ async function createReadyQuote(caller: AppRouterCaller, productId: string) {
     paymentTerms: null,
     productId,
     salesPersonId: 'test-user-id',
+    status: 'draft',
     validUntil: '2026-06-30',
   });
 }
@@ -557,6 +576,7 @@ async function createNamedQuote(
     preferredDeliveryDate: '2026-07-01',
     productId,
     salesPersonId: 'test-user-id',
+    status: 'draft',
     validUntil: '2026-06-30',
   });
 }
@@ -573,8 +593,7 @@ function toUpdateInput(quote: QuoteDetail) {
     paymentTerms: quote.paymentTerms,
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
-    productId: quote.productId,
-    salesPersonId: quote.salesPersonId ?? 'test-user-id',
+    salesPersonId: quote.salesPersonId,
     status: quote.status,
     validUntil: quote.validUntil,
   };

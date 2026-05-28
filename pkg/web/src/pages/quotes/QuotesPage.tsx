@@ -120,10 +120,8 @@ const QuoteTable: React.FC = () => {
         accessorKey: 'productName',
         cell: ({ row }) => (
           <>
-            {row.original.productName ?? <span className="text-muted-foreground">Not set</span>}
-            {row.original.productModelCode ? (
-              <span className="ml-2 text-muted-foreground">{row.original.productModelCode}</span>
-            ) : null}
+            {row.original.productName}
+            <span className="ml-2 text-muted-foreground">{row.original.productModelCode}</span>
           </>
         ),
         enableColumnFilter: false,
@@ -133,10 +131,7 @@ const QuoteTable: React.FC = () => {
       {
         accessorKey: 'total',
         cell: ({ row }) => {
-          const currencyCode = row.original.quotedCurrencyCode ?? row.original.productCurrencyCode;
-          return row.original.total === null || currencyCode === null
-            ? 'Not set'
-            : formatCurrency(row.original.total, currencyCode);
+          return formatCurrency(row.original.total, row.original.quotedCurrencyCode);
         },
         enableColumnFilter: false,
         enableSorting: true,

@@ -9,7 +9,6 @@ import {
   type Supplier,
   UUID,
 } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { z } from 'zod';
@@ -17,7 +16,7 @@ import { z } from 'zod';
 import { useAppForm } from '@/components/form/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { useTRPC } from '@/lib/trpc.js';
+import { usePartCategoryOptions, useSupplierOptions } from '@/hooks/options/index.js';
 
 type PartFormValues = z.infer<typeof PartFormValues>;
 const PartFormValues = z.object({
@@ -40,26 +39,9 @@ type PartFormProps = {
 };
 
 export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, isPending, onSubmit, submitLabel }) => {
-  const trpc = useTRPC();
-  const suppliersQuery = useQuery(
-    trpc.suppliers.list.queryOptions(
-      {
-        pageSize: 0,
-        sortBy: 'companyName',
-        sortDirection: 'asc',
-      },
-      {
-        enabled: !fixedSupplier,
-      },
-    ),
-  );
-  const supplierOptions =
-    suppliersQuery.data?.items.map((supplier) => ({
-      label: supplier.companyName,
-      value: supplier.id,
-    })) ?? [];
-  const isSupplierSelectPending = !fixedSupplier && suppliersQuery.isPending;
-  const categoriesQuery = useQuery(trpc.parts.categories.queryOptions());
+  const supplierOptions = useSupplierOptions({ enabled: !fixedSupplier, pageSize: 0 });
+  const isSupplierSelectPending = !fixedSupplier && supplierOptions.isPending;
+  const categoryOptions = usePartCategoryOptions();
 
   const form = useAppForm({
     defaultValues: {
@@ -101,7 +83,7 @@ export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, 
               <field.SelectField
                 disabled={isSupplierSelectPending}
                 label="Supplier"
-                options={supplierOptions}
+                options={supplierOptions.selectOptions}
                 placeholder={isSupplierSelectPending ? 'Loading suppliers...' : 'Select supplier'}
               />
             )}
@@ -113,11 +95,11 @@ export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, 
         <form.AppField name="category">
           {(field) => (
             <field.CreatableComboboxField
-              disabled={categoriesQuery.isPending}
+              disabled={categoryOptions.isPending}
               emptyMessage="No categories found."
               label="Category"
-              options={categoriesQuery.data?.categories ?? []}
-              placeholder={categoriesQuery.isPending ? 'Loading categories...' : 'Select or create category'}
+              options={categoryOptions.items}
+              placeholder={categoryOptions.isPending ? 'Loading categories...' : 'Select or create category'}
             />
           )}
         </form.AppField>

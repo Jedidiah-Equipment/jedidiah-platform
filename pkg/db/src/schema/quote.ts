@@ -17,7 +17,7 @@ import {
 import { user } from './auth.js';
 import { customers } from './customer.js';
 import { jobs } from './job.js';
-import { products } from './product.js';
+import { productAssemblies, products } from './product.js';
 
 export const quoteCodeSequence = pgSequence('quote_code_seq');
 
@@ -57,6 +57,26 @@ export const quotes = pgTable(
   ],
 );
 
+export const quoteSelectedAssemblies = pgTable(
+  'quote_selected_assemblies',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    quoteId: uuid('quote_id')
+      .notNull()
+      .references(() => quotes.id, { onDelete: 'cascade' }),
+    productAssemblyId: uuid('product_assembly_id').references(() => productAssemblies.id, { onDelete: 'set null' }),
+    quotedName: text('quoted_name').notNull(),
+    quotedPrice: numeric('quoted_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check('quote_selected_assemblies_name_nonempty', sql`length(trim(${table.quotedName})) > 0`),
+    check('quote_selected_assemblies_price_nonnegative', sql`${table.quotedPrice} >= 0`),
+    uniqueIndex('quote_selected_assemblies_quote_product_assembly_unique').on(table.quoteId, table.productAssemblyId),
+  ],
+);
+
 export const quotesRelations = relations(quotes, ({ many, one }) => ({
   customer: one(customers, {
     fields: [quotes.customerId],
@@ -70,5 +90,17 @@ export const quotesRelations = relations(quotes, ({ many, one }) => ({
   salesPerson: one(user, {
     fields: [quotes.salesPersonId],
     references: [user.id],
+  }),
+  selectedAssemblies: many(quoteSelectedAssemblies),
+}));
+
+export const quoteSelectedAssembliesRelations = relations(quoteSelectedAssemblies, ({ one }) => ({
+  productAssembly: one(productAssemblies, {
+    fields: [quoteSelectedAssemblies.productAssemblyId],
+    references: [productAssemblies.id],
+  }),
+  quote: one(quotes, {
+    fields: [quoteSelectedAssemblies.quoteId],
+    references: [quotes.id],
   }),
 }));

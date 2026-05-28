@@ -34,6 +34,16 @@ describe('computeQuoteTotal', () => {
     ).toBe(1400);
   });
 
+  it('adds selected optional assembly snapshot prices', () => {
+    expect(
+      computeQuoteTotal({
+        discount: 200,
+        quotedBasePrice: 1250,
+        selectedAssemblyPrices: [300, 150],
+      }),
+    ).toBe(1500);
+  });
+
   it('ignores delivery price when delivery is excluded', () => {
     expect(
       computeQuoteTotal({ deliveryIncluded: false, deliveryPrice: 350, quotedBasePrice: 1250, discount: 200 }),

@@ -129,6 +129,7 @@ export const quoteAuditDescriptor: AuditEntityDescriptor = {
     quotedBasePrice: 'quoted base price',
     quotedCurrencyCode: 'quoted currency',
     salesPersonId: 'salesperson',
+    selectedAssemblies: 'selected assemblies',
     status: 'status',
     validUntil: 'valid until',
   },

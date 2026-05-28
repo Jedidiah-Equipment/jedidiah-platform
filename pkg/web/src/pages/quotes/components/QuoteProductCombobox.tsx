@@ -1,13 +1,12 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import type { Product, UUID } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
+import type { UUID } from '@pkg/schema';
 import type React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { useTRPC } from '@/lib/trpc.js';
-import { EntityCombobox, mergeSelectedOption } from './EntityCombobox.js';
+import { type ProductOption, useProductForQuoteOptions } from '@/hooks/options/index.js';
+import { EntityCombobox } from './EntityCombobox.js';
 
-export type QuoteProductChoice = Pick<Product, 'basePrice' | 'currencyCode' | 'id' | 'modelCode' | 'name'>;
+export type QuoteProductChoice = ProductOption;
 
 const getProductLabel = (product: QuoteProductChoice) => product.name;
 
@@ -31,39 +30,15 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
   onSelected,
   value,
 }) => {
-  const trpc = useTRPC();
   const onSelectedRef = useRef(onSelected);
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 250);
-  const productsQuery = useQuery(
-    trpc.quotes.products.queryOptions({
-      columnFilters: {},
-      page: 1,
-      pageSize: 20,
-      search: debouncedSearch,
-      sortBy: 'name',
-      sortDirection: 'asc',
-    }),
-  );
-  const selectedProductQuery = useQuery({
-    ...trpc.quotes.products.queryOptions({
-      columnFilters: {
-        id: value,
-      },
-      page: 1,
-      pageSize: 1,
-      search: '',
-      sortBy: 'name',
-      sortDirection: 'asc',
-    }),
-    enabled: Boolean(value),
+  const products = useProductForQuoteOptions({
+    pageSize: 20,
+    search: debouncedSearch,
+    value,
   });
-  const selectedProduct = selectedProductQuery.data?.items.find((product) => product.id === value) ?? null;
-  const options = useMemo(
-    () => mergeSelectedOption(productsQuery.data?.items ?? [], selectedProduct),
-    [productsQuery.data?.items, selectedProduct],
-  );
-  const valueProduct = options.find((product) => product.id === value) ?? null;
+  const valueProduct = products.itemsWithSelected.find((product) => product.id === value) ?? null;
 
   useEffect(() => {
     onSelectedRef.current = onSelected;
@@ -87,14 +62,14 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
       emptyMessage="No products found"
       inputId="product-id"
       inputValue={search}
-      isFetching={productsQuery.isFetching || selectedProductQuery.isFetching}
+      isFetching={products.isFetching}
       itemToLabel={getProductLabel}
       onInputValueChange={setSearch}
       onSelected={(product) => {
         onSelected(product);
         setSearch('');
       }}
-      options={options}
+      options={products.itemsWithSelected}
       placeholder="Search products"
       renderItem={renderProductComboboxItem}
       searchPlaceholder="Searching products..."

@@ -1,6 +1,18 @@
-import { AuthId, CustomerCompanyName, Price, QuoteCreateInput, type QuoteDetail, QuoteStatus, UUID } from '@pkg/schema';
+import { computeQuoteTotal } from '@pkg/domain';
+import {
+  type Assembly,
+  AuthId,
+  CustomerCompanyName,
+  Price,
+  QuoteCreateInput,
+  type QuoteDetail,
+  type QuoteSelectedAssembly,
+  QuoteSelectedAssemblyInput,
+  QuoteStatus,
+  UUID,
+} from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2Icon } from 'lucide-react';
+import { Loader2Icon, XIcon } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
@@ -10,7 +22,9 @@ import { useAppForm } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.js';
+import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 import { formatCurrency, formatPercent } from '@/utils/number.js';
 import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
 import { type QuoteProductChoice, QuoteProductCombobox } from './QuoteProductCombobox.js';
@@ -33,6 +47,7 @@ const QuoteFormValues = z
     preferredDeliveryDate: z.union([z.literal(''), z.iso.date()]),
     productId: z.string(),
     salesPersonId: z.string(),
+    selectedAssemblies: z.array(QuoteSelectedAssemblyInput),
     status: QuoteStatus,
     validUntil: z.union([z.literal(''), z.iso.date()]),
   })
@@ -100,7 +115,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
 
   const [selectedProduct, setSelectedProduct] = useState<QuoteProductChoice | null>(null);
   const currentUserQuery = useQuery(trpc.auth.me.queryOptions());
-  const salespeopleQuery = useQuery(trpc.quotes.salespeople.queryOptions());
+  const salespeopleOptions = useSalesPersonOptions();
 
   const fallbackCustomer = useMemo(
     () =>
@@ -113,12 +128,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
         : null,
     [initialQuote],
   );
-
-  const salespersonOptions =
-    salespeopleQuery.data?.users.map((person) => ({
-      label: `${person.name} · ${person.email}`,
-      value: person.id,
-    })) ?? [];
 
   const defaultValues: QuoteFormValues = {
     customerId: initialQuote?.customerId ?? '',
@@ -133,6 +142,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
     preferredDeliveryDate: initialQuote?.preferredDeliveryDate ?? '',
     productId: initialQuote?.productId ?? '',
     salesPersonId: initialQuote?.salesPersonId ?? '',
+    selectedAssemblies:
+      initialQuote?.selectedAssemblies.map((selection) => ({ type: 'existing', id: selection.id })) ?? [],
     status: initialQuote?.status ?? 'draft',
     validUntil: initialQuote?.validUntil ?? '',
   };
@@ -164,6 +175,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
           preferredDeliveryDate: value.preferredDeliveryDate || null,
           productId: value.productId,
           salesPersonId: value.salesPersonId,
+          selectedAssemblies: value.selectedAssemblies,
           status: value.status,
           validUntil: value.validUntil || null,
         }),
@@ -279,6 +291,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
 
                         if (field.state.value !== productId) {
                           field.handleChange(productId);
+                          form.setFieldValue('selectedAssemblies', []);
                         }
 
                         onProductSelected(product);
@@ -292,7 +305,11 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             </form.Field>
             <form.AppField name="salesPersonId">
               {(field) => (
-                <field.SelectField label="Salesperson" options={salespersonOptions} placeholder="Select salesperson" />
+                <field.SelectField
+                  label="Salesperson"
+                  options={salespeopleOptions.selectOptions}
+                  placeholder="Select salesperson"
+                />
               )}
             </form.AppField>
             <form.AppField name="preferredDeliveryDate">
@@ -391,15 +408,33 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               const discount = state.values.discount;
               const deliveryIncluded = state.values.deliveryIncluded;
               const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
+              const quotedBasePrice = initialQuote?.quotedBasePrice ?? selectedProduct.basePrice;
+              const selectedAssemblies = resolveSelectedAssemblySnapshots({
+                catalogAssemblies: selectedProduct.assemblies,
+                formSelections: state.values.selectedAssemblies,
+                initialSelections: initialQuote?.selectedAssemblies ?? [],
+              });
+              const selectedAssemblyTotal = selectedAssemblies.reduce(
+                (total, assembly) => total + assembly.quotedPrice,
+                0,
+              );
 
               return {
                 deliveryIncluded,
                 deliveryPrice,
                 discount,
-                discountPercent: selectedProduct.basePrice > 0 ? (discount / selectedProduct.basePrice) * 100 : 0,
-                productPrice: selectedProduct.basePrice,
+                discountPercent: quotedBasePrice > 0 ? (discount / quotedBasePrice) * 100 : 0,
+                productPrice: quotedBasePrice,
                 currencyCode: selectedProduct.currencyCode,
-                total: Math.max(0, selectedProduct.basePrice - discount) + deliveryPrice,
+                selectedAssemblies,
+                selectedAssemblyTotal,
+                total: computeQuoteTotal({
+                  deliveryIncluded,
+                  deliveryPrice,
+                  discount,
+                  quotedBasePrice,
+                  selectedAssemblyPrices: selectedAssemblies.map((assembly) => assembly.quotedPrice),
+                }),
               };
             }}
           >
@@ -417,6 +452,25 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                       : '-'
                   }
                 />
+                {summary && summary.selectedAssemblyTotal > 0 ? (
+                  <div className="grid gap-1">
+                    <QuoteSummaryRow
+                      label="Optional assemblies"
+                      value={formatCurrency(summary.selectedAssemblyTotal, summary.currencyCode)}
+                    />
+                    <div className="grid gap-1 pl-3">
+                      {summary.selectedAssemblies.map((assembly) => (
+                        <QuoteSummaryRow
+                          className="text-xs"
+                          key={`${assembly.id}:${assembly.productAssemblyId ?? 'stale'}`}
+                          label={assembly.quotedName}
+                          value={formatCurrency(assembly.quotedPrice, summary.currencyCode)}
+                          valueClassName="text-muted-foreground"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {summary?.deliveryIncluded ? (
                   <QuoteSummaryRow
                     label="Delivery"
@@ -431,6 +485,19 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             )}
           </form.Subscribe>
         </div>
+        <form.Field name="selectedAssemblies">
+          {(field) =>
+            selectedProduct ? (
+              <QuoteAssembliesSelector
+                catalogAssemblies={selectedProduct.assemblies}
+                currencyCode={selectedProduct.currencyCode}
+                initialSelections={initialQuote?.selectedAssemblies ?? []}
+                onChange={field.handleChange}
+                value={field.state.value}
+              />
+            ) : null
+          }
+        </form.Field>
       </FieldGroup>
       <div className="flex justify-end">
         <form.Subscribe selector={(state) => state.isSubmitting}>
@@ -446,16 +513,211 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
   );
 };
 
-type QuoteSummaryRowProps = {
-  label: string;
-  value: string;
+type QuoteAssembliesSelectorProps = {
+  catalogAssemblies: Assembly[];
+  currencyCode: string;
+  initialSelections: QuoteSelectedAssembly[];
+  onChange: (value: QuoteFormValues['selectedAssemblies']) => void;
+  value: QuoteFormValues['selectedAssemblies'];
 };
 
-const QuoteSummaryRow: React.FC<QuoteSummaryRowProps> = ({ label, value }) => {
+const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
+  catalogAssemblies,
+  currencyCode,
+  initialSelections,
+  onChange,
+  value,
+}) => {
+  const standardAssemblies = catalogAssemblies.filter((assembly) => assembly.kind === 'standard');
+  const optionalAssemblies = catalogAssemblies.filter((assembly) => assembly.kind === 'optional');
+  const selectedSnapshots = resolveSelectedAssemblySnapshots({
+    catalogAssemblies,
+    formSelections: value,
+    initialSelections,
+  });
+  const selectedCatalogAssemblyIds = new Set(
+    selectedSnapshots
+      .map((selection) => selection.productAssemblyId)
+      .filter((productAssemblyId): productAssemblyId is string => Boolean(productAssemblyId)),
+  );
+  const overriddenStandardAssemblyIds = getOverriddenStandardAssemblyIds(catalogAssemblies, selectedCatalogAssemblyIds);
+  const staleSelections = selectedSnapshots.filter((selection) => !selection.productAssemblyId);
+
+  const setCatalogSelected = (assemblyId: string, selected: boolean) => {
+    if (selected) {
+      onChange([...value, { type: 'catalog', productAssemblyId: assemblyId }]);
+      return;
+    }
+
+    onChange(
+      value.filter((selection) => {
+        if (selection.type === 'catalog') {
+          return selection.productAssemblyId !== assemblyId;
+        }
+
+        const initialSelection = initialSelections.find((item) => item.id === selection.id);
+        return initialSelection?.productAssemblyId !== assemblyId;
+      }),
+    );
+  };
+
   return (
-    <div className="flex items-center justify-between gap-3 text-muted-foreground">
-      <span>{label}</span>
-      <span className="text-foreground">{value}</span>
+    <div className="grid gap-3 rounded-md border p-3">
+      <div className="grid gap-1">
+        <h3 className="font-medium text-sm">Assemblies</h3>
+        <p className="text-muted-foreground text-sm">
+          Standard assemblies are included. Optional assemblies add to the quote.
+        </p>
+      </div>
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="grid auto-rows-min gap-2">
+          <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-normal">Standard</h4>
+          {standardAssemblies.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No standard assemblies.</p>
+          ) : (
+            <div className="grid gap-2">
+              {standardAssemblies.map((assembly) => {
+                const isOverridden = overriddenStandardAssemblyIds.has(assembly.id);
+
+                return (
+                  <div
+                    className="flex h-12 items-center justify-between gap-3 rounded-md border px-3 text-sm"
+                    key={assembly.id}
+                  >
+                    <span className={`min-w-0 truncate ${isOverridden ? 'text-muted-foreground line-through' : ''}`}>
+                      {assembly.name}
+                    </span>
+                    {isOverridden ? <span className="text-muted-foreground text-xs">Overridden</span> : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="grid auto-rows-min gap-2">
+          <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-normal">Optional</h4>
+          {optionalAssemblies.length === 0 && staleSelections.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No optional assemblies.</p>
+          ) : (
+            <div className="grid gap-2">
+              {optionalAssemblies.map((assembly) => {
+                const isSelected = selectedCatalogAssemblyIds.has(assembly.id);
+
+                return (
+                  <div
+                    className="flex h-12 items-center justify-between gap-3 rounded-md border px-3 text-sm"
+                    key={assembly.id}
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => setCatalogSelected(assembly.id, checked === true)}
+                      />
+                      <span className="truncate">{assembly.name}</span>
+                    </span>
+                    <span className="shrink-0 text-muted-foreground">
+                      {formatCurrency(assembly.price, currencyCode)}
+                    </span>
+                  </div>
+                );
+              })}
+              {staleSelections.map((selection) => (
+                <div
+                  className="flex h-12 items-center justify-between gap-3 rounded-md border border-dashed px-3 text-sm"
+                  key={selection.id}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate">{selection.quotedName}</span>
+                    <span className="block text-muted-foreground text-xs">Unavailable</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-muted-foreground">{formatCurrency(selection.quotedPrice, currencyCode)}</span>
+                    <Button
+                      aria-label={`Remove ${selection.quotedName}`}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                      onClick={() =>
+                        onChange(value.filter((item) => item.type !== 'existing' || item.id !== selection.id))
+                      }
+                    >
+                      <XIcon />
+                    </Button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function resolveSelectedAssemblySnapshots({
+  catalogAssemblies,
+  formSelections,
+  initialSelections,
+}: {
+  catalogAssemblies: Assembly[];
+  formSelections: QuoteFormValues['selectedAssemblies'];
+  initialSelections: QuoteSelectedAssembly[];
+}): QuoteSelectedAssembly[] {
+  return formSelections
+    .map((selection) => {
+      if (selection.type === 'existing') {
+        return initialSelections.find((item) => item.id === selection.id) ?? null;
+      }
+
+      const assembly = catalogAssemblies.find(
+        (item) => item.id === selection.productAssemblyId && item.kind === 'optional',
+      );
+
+      if (!assembly || assembly.kind !== 'optional') {
+        return null;
+      }
+
+      return {
+        createdAt: new Date(0).toISOString(),
+        id: selection.productAssemblyId,
+        productAssemblyId: assembly.id,
+        quoteId: '',
+        quotedName: assembly.name,
+        quotedPrice: assembly.price,
+        updatedAt: new Date(0).toISOString(),
+      };
+    })
+    .filter((selection): selection is QuoteSelectedAssembly => Boolean(selection));
+}
+
+function getOverriddenStandardAssemblyIds(catalogAssemblies: Assembly[], selectedCatalogAssemblyIds: Set<string>) {
+  const overriddenIds = new Set<string>();
+
+  for (const assembly of catalogAssemblies) {
+    if (assembly.kind !== 'optional' || !selectedCatalogAssemblyIds.has(assembly.id)) {
+      continue;
+    }
+
+    for (const standardAssemblyId of assembly.overrideStandardAssemblyIds) {
+      overriddenIds.add(standardAssemblyId);
+    }
+  }
+
+  return overriddenIds;
+}
+
+type QuoteSummaryRowProps = {
+  className?: string;
+  label: string;
+  value: string;
+  valueClassName?: string;
+};
+
+const QuoteSummaryRow: React.FC<QuoteSummaryRowProps> = ({ className, label, value, valueClassName }) => {
+  return (
+    <div className={cn('flex items-center justify-between gap-3 text-muted-foreground', className)}>
+      <span className="min-w-0 truncate">{label}</span>
+      <span className={cn('shrink-0 text-foreground', valueClassName)}>{value}</span>
     </div>
   );
 };

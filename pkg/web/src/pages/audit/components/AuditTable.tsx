@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
+import { useUserOptions } from '@/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -89,16 +90,7 @@ export const AuditTable: React.FC = () => {
     getListInputExtras: getAuditListInputExtras,
   });
 
-  const usersQuery = useQuery(trpc.users.list.queryOptions());
-
-  const actorFilterOptions = useMemo(
-    () =>
-      usersQuery.data?.users.map((user) => ({
-        label: user.name === user.email ? user.email : `${user.name} (${user.email})`,
-        value: user.id,
-      })) ?? [],
-    [usersQuery.data?.users],
-  );
+  const userOptions = useUserOptions();
 
   const auditQuery = useQuery(
     trpc.audit.list.queryOptions(tableController.listInput, {
@@ -135,7 +127,7 @@ export const AuditTable: React.FC = () => {
         enableSorting: false,
         header: 'Actor',
         meta: {
-          filterOptions: actorFilterOptions,
+          filterOptions: userOptions.selectOptions,
           filterVariant: 'multi-select',
           headerClassName: 'w-64 min-w-64',
         },
@@ -187,7 +179,7 @@ export const AuditTable: React.FC = () => {
         },
       },
     ],
-    [actorFilterOptions],
+    [userOptions.selectOptions],
   );
 
   const table = useReactTable<AuditTableEvent>({

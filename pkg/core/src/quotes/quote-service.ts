@@ -5,13 +5,16 @@ import {
   type Db,
   getSortOrder,
   jobs,
+  productAssemblies,
   products,
+  quoteSelectedAssemblies,
   quotes,
   user,
   withPagination,
 } from '@pkg/db';
-import { computeQuoteTotal, parseJobCodeSearch, validateDiscount } from '@pkg/domain';
+import { parseJobCodeSearch, validateDiscount } from '@pkg/domain';
 import {
+  type Assembly,
   type AuthId,
   JobCode,
   ProductCurrencyCode,
@@ -20,6 +23,7 @@ import {
   type QuoteDetail,
   type QuoteListInput,
   type QuoteListResult,
+  QuoteSelectedAssembly,
   type QuoteSortBy,
   type QuoteSummary,
   type QuoteUpdateInput,
@@ -35,6 +39,7 @@ import {
   insertAuditEvent,
   quoteAuditDescriptor,
 } from '../audit/audit-service.js';
+import { listAssemblies } from '../products/product-assembly-service.js';
 import { QuoteDiscountInvalidError, QuoteInvalidReferenceError, QuoteNotFoundError } from './quote-errors.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
@@ -56,7 +61,10 @@ type QuoteAuditRecord = Pick<
   | 'salesPersonId'
   | 'status'
   | 'validUntil'
->;
+> & {
+  selectedAssemblies: string;
+};
+type QuoteSelectedAssemblyRow = typeof quoteSelectedAssemblies.$inferSelect;
 type QuoteListRow = {
   quote: QuoteRow;
   customerCompanyName: string;
@@ -76,6 +84,7 @@ type QuoteDetailRow = QuoteRow & {
   jobs: Pick<typeof jobs.$inferSelect, 'code' | 'id'>[];
   product: Pick<typeof products.$inferSelect, 'currencyCode' | 'modelCode' | 'name'>;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
+  selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
 
 export function mapQuote(row: QuoteRow): Quote {
@@ -140,12 +149,19 @@ export async function createQuote({
       throw new Error('Quote insert did not return a row');
     }
 
+    const selectedAssemblies = await syncQuoteSelectedAssemblies({
+      input,
+      productId: row.productId,
+      quoteId: row.id,
+      tx,
+    });
+
     await insertAuditEvent({
       db: tx,
       input: {
         action: 'created',
         actorUserId,
-        after: mapQuoteAuditRecord(row),
+        after: mapQuoteAuditRecord(row, selectedAssemblies),
         before: null,
         changes: null,
         entityId: row.id,
@@ -193,13 +209,23 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     .where(where);
 
   const rows = await rowsQuery;
+  const selectedAssembliesByQuoteId = await getSelectedAssembliesByQuoteId({
+    db,
+    quoteIds: rows.map((row) => row.quote.id),
+  });
   const linkedJobsByQuoteId = await getLinkedJobsByQuoteId({
     db,
     quoteIds: rows.map((row) => row.quote.id),
   });
 
   return {
-    items: rows.map((row) => mapQuoteSummary(row, linkedJobsByQuoteId.get(row.quote.id) ?? [])),
+    items: rows.map((row) =>
+      mapQuoteSummary(
+        row,
+        linkedJobsByQuoteId.get(row.quote.id) ?? [],
+        selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+      ),
+    ),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
     total: Number(totalRow?.count ?? 0),
@@ -235,6 +261,9 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
           name: true,
         },
       },
+      selectedAssemblies: {
+        orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
+      },
     },
   });
 
@@ -242,7 +271,9 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
     throw new QuoteNotFoundError(id);
   }
 
-  return mapQuoteDetail(row);
+  const assemblies = await listAssemblies({ tx: db, productId: row.productId });
+
+  return mapQuoteDetail(row, assemblies);
 }
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {
@@ -281,6 +312,7 @@ export async function updateQuote({
       throw new QuoteNotFoundError(input.id);
     }
 
+    const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId: before.id, tx });
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
     assertValidDiscount({ basePrice: before.quotedBasePrice, discount: input.discount });
 
@@ -300,9 +332,16 @@ export async function updateQuote({
       status: input.status,
       validUntil: input.validUntil,
     };
+    const desiredSelectedAssemblies = await previewQuoteSelectedAssemblies({
+      currentRows: beforeSelectedAssemblies,
+      input,
+      productId: before.productId,
+      quoteId: before.id,
+      tx,
+    });
     const changes = createAuditChanges(
-      mapQuoteAuditRecord(before),
-      mapQuoteAuditRecord(after),
+      mapQuoteAuditRecord(before, beforeSelectedAssemblies),
+      mapQuoteAuditRecord(after, desiredSelectedAssemblies),
       quoteAuditDescriptor.fields,
     );
 
@@ -333,13 +372,21 @@ export async function updateQuote({
       throw new QuoteNotFoundError(input.id);
     }
 
+    const selectedAssemblies = await syncQuoteSelectedAssemblies({
+      currentRows: beforeSelectedAssemblies,
+      input,
+      productId: row.productId,
+      quoteId: row.id,
+      tx,
+    });
+
     await insertAuditEvent({
       db: tx,
       input: {
         action: 'updated',
         actorUserId,
-        after: mapQuoteAuditRecord(row),
-        before: mapQuoteAuditRecord(before),
+        after: mapQuoteAuditRecord(row, selectedAssemblies),
+        before: mapQuoteAuditRecord(before, beforeSelectedAssemblies),
         changes,
         entityId: row.id,
         entityType: quoteAuditDescriptor.entityType,
@@ -350,7 +397,11 @@ export async function updateQuote({
   });
 }
 
-function mapQuoteSummary(row: QuoteListRow, linkedJobs: readonly QuoteLinkedJobRow[]): QuoteSummary {
+function mapQuoteSummary(
+  row: QuoteListRow,
+  linkedJobs: readonly QuoteLinkedJobRow[],
+  selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
+): QuoteSummary {
   return {
     ...mapQuote(row.quote),
     customerCompanyName: row.customerCompanyName,
@@ -363,16 +414,11 @@ function mapQuoteSummary(row: QuoteListRow, linkedJobs: readonly QuoteLinkedJobR
     productName: row.productName,
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,
-    total: computeQuoteTotal({
-      deliveryIncluded: row.quote.deliveryIncluded,
-      deliveryPrice: row.quote.deliveryPrice,
-      discount: row.quote.discount,
-      quotedBasePrice: row.quote.quotedBasePrice,
-    }),
+    selectedAssemblies: selectedAssemblies.map(mapQuoteSelectedAssembly),
   };
 }
 
-function mapQuoteDetail(row: QuoteDetailRow): QuoteDetail {
+function mapQuoteDetail(row: QuoteDetailRow, productAssembliesForQuote: Assembly[]): QuoteDetail {
   return {
     ...mapQuote(row),
     customerCompanyName: row.customer.companyName,
@@ -383,15 +429,23 @@ function mapQuoteDetail(row: QuoteDetailRow): QuoteDetail {
     productCurrencyCode: ProductCurrencyCode.parse(row.product.currencyCode),
     productModelCode: row.product.modelCode,
     productName: row.product.name,
+    productAssemblies: productAssembliesForQuote,
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
-    total: computeQuoteTotal({
-      deliveryIncluded: row.deliveryIncluded,
-      deliveryPrice: row.deliveryPrice,
-      discount: row.discount,
-      quotedBasePrice: row.quotedBasePrice,
-    }),
+    selectedAssemblies: row.selectedAssemblies.map(mapQuoteSelectedAssembly),
   };
+}
+
+function mapQuoteSelectedAssembly(row: QuoteSelectedAssemblyRow): QuoteSelectedAssembly {
+  return QuoteSelectedAssembly.parse({
+    createdAt: row.createdAt.toISOString(),
+    id: row.id,
+    productAssemblyId: row.productAssemblyId,
+    quoteId: row.quoteId,
+    quotedName: row.quotedName,
+    quotedPrice: row.quotedPrice,
+    updatedAt: row.updatedAt.toISOString(),
+  });
 }
 
 async function getLinkedJobsByQuoteId({
@@ -425,6 +479,218 @@ async function getLinkedJobsByQuoteId({
   }
 
   return byQuoteId;
+}
+
+async function getSelectedAssembliesByQuoteId({
+  db,
+  quoteIds,
+}: {
+  db: Db | DatabaseTransaction;
+  quoteIds: readonly UUID[];
+}): Promise<Map<UUID, QuoteSelectedAssemblyRow[]>> {
+  if (quoteIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select()
+    .from(quoteSelectedAssemblies)
+    .where(inArray(quoteSelectedAssemblies.quoteId, quoteIds))
+    .orderBy(asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id));
+  const byQuoteId = new Map<UUID, QuoteSelectedAssemblyRow[]>();
+
+  for (const row of rows) {
+    const group = byQuoteId.get(row.quoteId) ?? [];
+    group.push(row);
+    byQuoteId.set(row.quoteId, group);
+  }
+
+  return byQuoteId;
+}
+
+async function listQuoteSelectedAssemblies({
+  quoteId,
+  tx,
+}: {
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<QuoteSelectedAssemblyRow[]> {
+  return tx
+    .select()
+    .from(quoteSelectedAssemblies)
+    .where(eq(quoteSelectedAssemblies.quoteId, quoteId))
+    .orderBy(asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id));
+}
+
+async function previewQuoteSelectedAssemblies({
+  currentRows,
+  input,
+  productId,
+  quoteId,
+  tx,
+}: {
+  currentRows: QuoteSelectedAssemblyRow[];
+  input: Pick<QuoteCreateInput, 'selectedAssemblies'>;
+  productId: UUID;
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<QuoteSelectedAssemblyRow[]> {
+  const existingIds = input.selectedAssemblies
+    .filter((selection) => selection.type === 'existing')
+    .map((selection) => selection.id);
+  const catalogIds = input.selectedAssemblies
+    .filter((selection) => selection.type === 'catalog')
+    .map((selection) => selection.productAssemblyId);
+  const keptRows = getKeptSelectedAssemblyRows({ currentRows, existingIds, quoteId });
+  const newRows = await buildNewSelectedAssemblyRows({ catalogIds, productId, quoteId, tx });
+
+  assertUniqueCatalogSelections([...keptRows, ...newRows]);
+
+  return [...keptRows, ...newRows];
+}
+
+async function syncQuoteSelectedAssemblies({
+  currentRows,
+  input,
+  productId,
+  quoteId,
+  tx,
+}: {
+  currentRows?: QuoteSelectedAssemblyRow[];
+  input: Pick<QuoteCreateInput, 'selectedAssemblies'>;
+  productId: UUID;
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<QuoteSelectedAssemblyRow[]> {
+  const existingRows = currentRows ?? [];
+  const existingIds = input.selectedAssemblies
+    .filter((selection) => selection.type === 'existing')
+    .map((selection) => selection.id);
+  const catalogIds = input.selectedAssemblies
+    .filter((selection) => selection.type === 'catalog')
+    .map((selection) => selection.productAssemblyId);
+  const keptRows = getKeptSelectedAssemblyRows({ currentRows: existingRows, existingIds, quoteId });
+  const newRows = await buildNewSelectedAssemblyRows({ catalogIds, productId, quoteId, tx });
+
+  assertUniqueCatalogSelections([...keptRows, ...newRows]);
+
+  const keepIds = new Set(keptRows.map((row) => row.id));
+  const removeIds = existingRows.map((row) => row.id).filter((id) => !keepIds.has(id));
+
+  if (removeIds.length > 0) {
+    await tx.delete(quoteSelectedAssemblies).where(inArray(quoteSelectedAssemblies.id, removeIds));
+  }
+
+  if (newRows.length > 0) {
+    await tx.insert(quoteSelectedAssemblies).values(
+      newRows.map((row) => ({
+        productAssemblyId: row.productAssemblyId,
+        quoteId: row.quoteId,
+        quotedName: row.quotedName,
+        quotedPrice: row.quotedPrice,
+      })),
+    );
+  }
+
+  return listQuoteSelectedAssemblies({ quoteId, tx });
+}
+
+function getKeptSelectedAssemblyRows({
+  currentRows,
+  existingIds,
+  quoteId,
+}: {
+  currentRows: QuoteSelectedAssemblyRow[];
+  existingIds: UUID[];
+  quoteId: UUID;
+}): QuoteSelectedAssemblyRow[] {
+  assertUniqueIds(existingIds, 'Quote selected assembly can only be preserved once.');
+
+  if (existingIds.length === 0) {
+    return [];
+  }
+
+  const currentById = new Map(currentRows.map((row) => [row.id, row]));
+
+  return existingIds.map((id) => {
+    const row = currentById.get(id);
+
+    if (!row || row.quoteId !== quoteId) {
+      throw new QuoteInvalidReferenceError('Selected quote assembly was not found on this quote.');
+    }
+
+    return row;
+  });
+}
+
+async function buildNewSelectedAssemblyRows({
+  catalogIds,
+  productId,
+  quoteId,
+  tx,
+}: {
+  catalogIds: UUID[];
+  productId: UUID;
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<QuoteSelectedAssemblyRow[]> {
+  assertUniqueIds(catalogIds, 'Catalog optional assembly can only be selected once per quote.');
+
+  if (catalogIds.length === 0) {
+    return [];
+  }
+
+  const rows = await tx.select().from(productAssemblies).where(inArray(productAssemblies.id, catalogIds));
+  const rowsById = new Map(rows.map((row) => [row.id, row]));
+  const now = new Date();
+
+  return catalogIds.map((id) => {
+    const row = rowsById.get(id);
+
+    if (!row || row.productId !== productId || row.kind !== 'optional' || row.price === null) {
+      throw new QuoteInvalidReferenceError(
+        'Selected quote assembly must be an optional assembly on the quote product.',
+      );
+    }
+
+    return {
+      createdAt: now,
+      id,
+      productAssemblyId: row.id,
+      quoteId,
+      quotedName: row.name,
+      quotedPrice: row.price,
+      updatedAt: now,
+    };
+  });
+}
+
+function assertUniqueCatalogSelections(rows: QuoteSelectedAssemblyRow[]): void {
+  const seen = new Set<string>();
+
+  for (const row of rows) {
+    if (!row.productAssemblyId) {
+      continue;
+    }
+
+    if (seen.has(row.productAssemblyId)) {
+      throw new QuoteInvalidReferenceError('Catalog optional assembly can only be selected once per quote.');
+    }
+
+    seen.add(row.productAssemblyId);
+  }
+}
+
+function assertUniqueIds(ids: readonly UUID[], message: string): void {
+  const seen = new Set<string>();
+
+  for (const id of ids) {
+    if (seen.has(id)) {
+      throw new QuoteInvalidReferenceError(message);
+    }
+
+    seen.add(id);
+  }
 }
 
 async function resolveQuoteCustomer({
@@ -525,7 +791,10 @@ function assertValidDiscount({ basePrice, discount }: { basePrice: number; disco
   }
 }
 
-function mapQuoteAuditRecord(quote: QuoteAuditRecord): QuoteAuditRecord {
+function mapQuoteAuditRecord(
+  quote: Omit<QuoteAuditRecord, 'selectedAssemblies'>,
+  selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
+): QuoteAuditRecord {
   return {
     code: quote.code,
     customerId: quote.customerId,
@@ -540,9 +809,24 @@ function mapQuoteAuditRecord(quote: QuoteAuditRecord): QuoteAuditRecord {
     quotedBasePrice: quote.quotedBasePrice,
     quotedCurrencyCode: quote.quotedCurrencyCode,
     salesPersonId: quote.salesPersonId,
+    selectedAssemblies: JSON.stringify(toQuoteSelectedAssemblyAuditRecord(selectedAssemblies)),
     status: quote.status,
     validUntil: quote.validUntil,
   };
+}
+
+function toQuoteSelectedAssemblyAuditRecord(selectedAssemblies: readonly QuoteSelectedAssemblyRow[]) {
+  return selectedAssemblies
+    .map((selection) => ({
+      productAssemblyId: selection.productAssemblyId,
+      quotedName: selection.quotedName,
+      quotedPrice: selection.quotedPrice,
+    }))
+    .toSorted(
+      (left, right) =>
+        left.quotedName.localeCompare(right.quotedName) ||
+        (left.productAssemblyId ?? '').localeCompare(right.productAssemblyId ?? ''),
+    );
 }
 
 function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
@@ -550,6 +834,18 @@ function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
 
   if (input.filters.statuses.length > 0) {
     conditions.push(inArray(quotes.status, input.filters.statuses));
+  }
+
+  if (input.filters.customerId) {
+    conditions.push(eq(quotes.customerId, input.filters.customerId));
+  }
+
+  if (input.filters.productId) {
+    conditions.push(eq(quotes.productId, input.filters.productId));
+  }
+
+  if (input.filters.salesPersonId) {
+    conditions.push(eq(quotes.salesPersonId, input.filters.salesPersonId));
   }
 
   if (input.search) {
@@ -585,14 +881,13 @@ function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
 }
 
 function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
-  const total = sql`greatest(0, ${quotes.quotedBasePrice} - ${quotes.discount}) + case when ${quotes.deliveryIncluded} then ${quotes.deliveryPrice} else 0 end`;
   const columns = {
     code: sql`${quotes.code}`,
     createdAt: sql`${quotes.createdAt}`,
     customerCompanyName: sql`${customers.companyName}`,
     productName: sql`${products.name}`,
+    salesPersonName: sql`${user.name}`,
     status: sql`${quotes.status}`,
-    total,
   } as const satisfies Record<QuoteSortBy, SQL>;
 
   return columns[sortBy];

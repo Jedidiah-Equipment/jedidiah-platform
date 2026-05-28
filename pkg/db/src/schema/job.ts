@@ -1,17 +1,6 @@
-import type { JobStageName, JobStatus } from '@pkg/schema';
+import type { JobStageName } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import {
-  check,
-  date,
-  index,
-  integer,
-  pgSequence,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from 'drizzle-orm/pg-core';
+import { index, integer, pgSequence, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { products } from './product.js';
 import { quotes } from './quote.js';
@@ -27,16 +16,10 @@ export const jobs = pgTable(
       .notNull()
       .references(() => products.id, { onDelete: 'restrict' }),
     quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'restrict' }),
-    dueDate: date('due_date', { mode: 'string' }),
-    status: text('status').notNull().default('pending').$type<JobStatus>(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [
-    check('job_status_check', sql`${table.status} in ('pending', 'active', 'paused', 'complete', 'cancelled')`),
-    uniqueIndex('job_code_unique').on(table.code),
-    index('job_quote_id_idx').on(table.quoteId),
-  ],
+  (table) => [uniqueIndex('job_code_unique').on(table.code), index('job_quote_id_idx').on(table.quoteId)],
 );
 
 export const jobStages = pgTable(

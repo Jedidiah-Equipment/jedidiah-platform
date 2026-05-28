@@ -78,6 +78,13 @@
       "when": 1779965839778,
       "tag": "0010_fearless_lake",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1779979558440,
+      "tag": "0011_lush_master_chief",
+      "breakpoints": true
     }
   ]
 }

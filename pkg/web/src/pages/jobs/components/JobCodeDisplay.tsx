@@ -3,14 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
-import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { JobStageChips } from './JobStageChips.js';
-import { JobStatusBadge } from './JobStatusBadge.js';
 
 type JobCodeDisplayProps = {
   canOpenJob: boolean;
@@ -63,7 +61,6 @@ const JobCodeHoverCard: React.FC<{
       ({
         filters: {
           jobId,
-          statuses: [],
         },
         page: 1,
         pageSize: 1,
@@ -89,7 +86,6 @@ const JobCodeHoverCard: React.FC<{
             <div className="min-w-0">
               <div className="truncate font-medium">{jobCode}</div>
             </div>
-            {job ? <JobStatusBadge className="shrink-0" status={job.status} /> : null}
             {jobQuery.isFetching ? <Skeleton className="h-7 w-20 shrink-0 rounded-full" /> : null}
           </div>
           <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job preview." />
@@ -107,7 +103,6 @@ const JobCodeHoverCard: React.FC<{
 const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => (
   <div className="flex flex-col gap-3">
     <div className="grid grid-cols-2 gap-2 text-sm">
-      <JobPreviewFact label="Due date" value={<DateDisplay date={job.dueDate} emptyValue="No date" />} />
       <JobPreviewFact label="Customer" value={job.customerCompanyName ?? 'Standalone'} />
       <JobPreviewFact label="Product" value={`${job.productName} (${job.productModelCode})`} />
       <JobPreviewFact label="Quote" value={job.quoteCode ?? 'None'} />

@@ -1,4 +1,4 @@
-import { type Db, products } from '@pkg/db';
+import { customers, type Db, products, quotes } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import { Product, type UserAccessSummary } from '@pkg/schema';
 import pino from 'pino';
@@ -14,8 +14,9 @@ import { createAppRouterCaller } from '@/trpc/router.js';
 const test = createTester(async ({ db }) => {
   await createActorUser(db, 'job-supervisor');
   const product = await createProduct(db);
+  const quote = await createAcceptedQuote(db, product.id);
 
-  return { db, product };
+  return { db, product, quote };
 });
 
 describe('getJobTool', () => {
@@ -31,7 +32,7 @@ describe('getJobTool', () => {
     });
     const supervisorCaller = createCaller(context.db, supervisorAccess);
     const paintCaller = createCaller(context.db, paintAccess);
-    const created = await supervisorCaller.jobs.create({ productId: context.product.id });
+    const created = await supervisorCaller.jobs.create({ quoteId: context.quote.id });
 
     const [toolResult, trpcResult] = await Promise.all([
       getJobTool.handler({ id: created.id }, createAiContext(context.db, paintAccess)),
@@ -82,6 +83,36 @@ function createCaller(db: Db, access: UserAccessSummary) {
     log: pino({ level: 'silent' }),
     session: mockSession(access.role),
   });
+}
+
+async function createAcceptedQuote(db: Db, productId: Product['id']) {
+  const [customer] = await db
+    .insert(customers)
+    .values({
+      companyName: 'Job Tool Customer',
+      email: null,
+    })
+    .returning({ id: customers.id });
+  if (!customer) {
+    throw new Error('Customer insert did not return a row');
+  }
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      productId,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      status: 'accepted',
+    })
+    .returning({ id: quotes.id });
+  if (!quote) {
+    throw new Error('Quote insert did not return a row');
+  }
+
+  return quote;
 }
 
 async function createProduct(db: Db): Promise<Product> {

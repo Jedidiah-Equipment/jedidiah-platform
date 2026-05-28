@@ -1,4 +1,4 @@
-import { type Db, products } from '@pkg/db';
+import { customers, type Db, products, quotes } from '@pkg/db';
 import type { Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -9,9 +9,11 @@ import { mockSession } from '@/test/test-utils.js';
 const test = createTester(async ({ db }) => {
   await createActorUser(db, 'job-supervisor');
   const product = await createProduct(db);
+  const quote = await createAcceptedQuote(db, product.id);
 
   return {
     product,
+    quote,
   };
 });
 
@@ -20,9 +22,13 @@ describe('jobs.create', () => {
     const caller = context.createCaller(mockSession('job-supervisor'));
 
     const job = await caller.jobs.create({
-      productId: context.product.id,
+      quoteId: context.quote.id,
     });
 
+    expect(job).toMatchObject({
+      productId: context.product.id,
+      quoteId: context.quote.id,
+    });
     expect(job.stages.map((stage) => stage.stage)).toEqual([
       'procurement',
       'supply',
@@ -51,4 +57,35 @@ async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
   }
 
   return product;
+}
+
+async function createAcceptedQuote(db: Db, productId: Product['id']) {
+  const [customer] = await db
+    .insert(customers)
+    .values({
+      companyName: 'Job Test Customer',
+      email: null,
+    })
+    .returning({ id: customers.id });
+  if (!customer) {
+    throw new Error('Customer insert did not return a row');
+  }
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      productId,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      status: 'accepted',
+    })
+    .returning({ id: quotes.id });
+
+  if (!quote) {
+    throw new Error('Quote insert did not return a row');
+  }
+
+  return quote;
 }

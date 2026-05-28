@@ -4,8 +4,11 @@ import {
   type DatabaseTransaction,
   type Db,
   getPaginationQueryOptions,
+  jobCfoAssemblies,
+  jobCfoParts,
   jobStages,
   jobs,
+  parts,
   type products,
   type quotes,
 } from '@pkg/db';
@@ -35,7 +38,7 @@ type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'> & {
 };
 type JobWithProductRow = JobRow & {
   product: ProductRow;
-  quote: QuoteRow | null;
+  quote: QuoteRow;
   stages: JobStageRow[];
 };
 
@@ -180,8 +183,60 @@ export async function getJob({
 
   return {
     ...mapJobSummary(row),
+    cfo: await listJobCfo({ db, jobId: row.id }),
     stages: mapJobDetailStages({ access, stageRows: row.stages }),
   };
+}
+
+async function listJobCfo({ db, jobId }: { db: Db | DatabaseTransaction; jobId: UUID }): Promise<JobDetail['cfo']> {
+  const rows = await db
+    .select({
+      assemblyId: jobCfoAssemblies.id,
+      assemblyName: jobCfoAssemblies.assemblyName,
+      kind: jobCfoAssemblies.kind,
+      partCode: parts.code,
+      partId: jobCfoParts.partId,
+      partName: parts.name,
+      quantity: jobCfoParts.quantity,
+    })
+    .from(jobCfoAssemblies)
+    .leftJoin(jobCfoParts, eq(jobCfoParts.cfoAssemblyId, jobCfoAssemblies.id))
+    .leftJoin(parts, eq(parts.id, jobCfoParts.partId))
+    .where(eq(jobCfoAssemblies.jobId, jobId))
+    .orderBy(
+      sql`case ${jobCfoAssemblies.kind} when 'standard' then 0 else 1 end`,
+      asc(jobCfoAssemblies.assemblyName),
+      asc(parts.code),
+      asc(jobCfoParts.partId),
+    );
+
+  const assemblies: JobDetail['cfo'] = [];
+  const assemblyIndexesById = new Map<UUID, number>();
+
+  for (const row of rows) {
+    let assemblyIndex = assemblyIndexesById.get(row.assemblyId);
+
+    if (assemblyIndex === undefined) {
+      assemblyIndex = assemblies.length;
+      assemblyIndexesById.set(row.assemblyId, assemblyIndex);
+      assemblies.push({
+        assemblyName: row.assemblyName,
+        kind: row.kind,
+        parts: [],
+      });
+    }
+
+    if (row.partId && row.partCode && row.partName && row.quantity !== null) {
+      assemblies[assemblyIndex]?.parts.push({
+        partCode: row.partCode,
+        partId: row.partId,
+        partName: row.partName,
+        quantity: row.quantity,
+      });
+    }
+  }
+
+  return assemblies;
 }
 
 export function getJobSortColumn(sortBy: JobSortBy): SQL {
@@ -206,7 +261,7 @@ export function mapJobSummary(row: JobWithProductRow): JobSummary {
     customerCompanyName: row.quote?.customer.companyName ?? null,
     productModelCode: row.product.modelCode,
     productName: row.product.name,
-    quoteCode: row.quote ? QuoteCode.parse(row.quote.code) : null,
+    quoteCode: QuoteCode.parse(row.quote.code),
     stages: row.stages.map(mapJobStageSummary),
   };
 }

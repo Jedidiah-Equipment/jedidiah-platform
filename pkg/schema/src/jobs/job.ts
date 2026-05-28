@@ -106,7 +106,7 @@ export const Job = z.object({
   id: UUID,
   code: JobCode,
   productId: UUID,
-  quoteId: UUID.nullable(),
+  quoteId: UUID,
   createdAt: DateIso,
   updatedAt: DateIso,
 });
@@ -133,20 +133,29 @@ export const JobListFilters = z
 
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
+  cfo: z.array(
+    z.object({
+      assemblyName: z.string().trim().min(1),
+      kind: z.enum(['standard', 'optional']),
+      parts: z.array(
+        z.object({
+          partCode: z.string().trim().min(1),
+          partId: UUID,
+          partName: z.string().trim().min(1),
+          quantity: z.int().min(1),
+        }),
+      ),
+    }),
+  ),
   stages: z.array(JobStageRollup).length(5),
 });
 
-export type JobCreateStageInput = z.infer<typeof JobCreateStageInput>;
-export const JobCreateStageInput = z.object({
-  stage: JobStageName,
-});
-
 export type JobCreateInput = z.infer<typeof JobCreateInput>;
-export const JobCreateInput = z.object({
-  productId: UUID,
-  quoteId: UUID.nullable().optional(),
-  stages: z.array(JobCreateStageInput).optional(),
-});
+export const JobCreateInput = z
+  .object({
+    quoteId: UUID,
+  })
+  .strict();
 
 export type JobListInput = z.infer<typeof JobListInput>;
 export const JobListInput = PagedQueryInput.extend({

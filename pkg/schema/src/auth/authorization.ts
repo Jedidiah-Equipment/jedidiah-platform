@@ -1,16 +1,11 @@
 import { z } from 'zod';
-
+import { Department } from '../common/departments.js';
 import { AuthId } from './auth-id.js';
 
 export const APP_ROLES = ['admin', 'product-editor', 'job-supervisor', 'job-department-manager', 'sales'] as const;
 
 export type AppRole = z.infer<typeof AppRole>;
 export const AppRole = z.enum(APP_ROLES);
-
-export const DEPARTMENTS = ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const;
-
-export type Department = z.infer<typeof Department>;
-export const Department = z.enum(DEPARTMENTS);
 
 export const APP_PERMISSIONS = [
   'audit:read',

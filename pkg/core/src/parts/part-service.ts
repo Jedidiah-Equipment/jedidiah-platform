@@ -242,8 +242,7 @@ export async function updatePart({
         throw new PartNotFoundError(input.id);
       }
 
-      const after = {
-        ...before,
+      const patch = {
         category: input.category,
         code: input.code,
         description: input.description,
@@ -253,26 +252,14 @@ export async function updatePart({
         supplierCode: input.supplierCode,
         supplierId: input.supplierId,
       };
+      const after = { ...before, ...patch };
       const changes = createAuditChanges(before, after, partAuditDescriptor.fields);
 
       if (!changes) {
         return getPart({ db: tx, id: before.id });
       }
 
-      const [row] = await tx
-        .update(parts)
-        .set({
-          category: input.category,
-          code: input.code,
-          description: input.description,
-          drawingCode: input.drawingCode,
-          finish: input.finish,
-          name: input.name,
-          supplierCode: input.supplierCode,
-          supplierId: input.supplierId,
-        })
-        .where(eq(parts.id, input.id))
-        .returning();
+      const [row] = await tx.update(parts).set(patch).where(eq(parts.id, input.id)).returning();
 
       if (!row) {
         throw new PartNotFoundError(input.id);

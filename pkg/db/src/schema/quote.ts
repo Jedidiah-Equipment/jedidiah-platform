@@ -28,8 +28,12 @@ export const quotes = pgTable(
     customerId: uuid('customer_id')
       .notNull()
       .references(() => customers.id, { onDelete: 'restrict' }),
-    productId: uuid('product_id').references(() => products.id, { onDelete: 'restrict' }),
-    salesPersonId: text('sales_person_id').references(() => user.id, { onDelete: 'set null' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'restrict' }),
+    salesPersonId: text('sales_person_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'restrict' }),
     status: text('status').notNull().default('draft').$type<QuoteStatus>(),
     discount: numeric('discount', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
     validUntil: date('valid_until', { mode: 'string' }),
@@ -37,18 +41,14 @@ export const quotes = pgTable(
     plannedDeliveryDate: date('planned_delivery_date', { mode: 'string' }),
     notes: text('notes'),
     paymentTerms: text('payment_terms'),
-    quotedBasePrice: numeric('quoted_base_price', { mode: 'number', precision: 12, scale: 2 }),
-    quotedCurrencyCode: text('quoted_currency_code'),
-    sentAt: timestamp('sent_at', { mode: 'date', withTimezone: true }),
+    quotedBasePrice: numeric('quoted_base_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
+    quotedCurrencyCode: text('quoted_currency_code').notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     check('quote_discount_nonnegative', sql`${table.discount} >= 0`),
-    check(
-      'quote_discount_not_above_snapshot',
-      sql`${table.quotedBasePrice} is null or ${table.discount} <= ${table.quotedBasePrice}`,
-    ),
+    check('quote_discount_not_above_snapshot', sql`${table.discount} <= ${table.quotedBasePrice}`),
     uniqueIndex('quote_code_unique').on(table.code),
   ],
 );

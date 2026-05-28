@@ -43,7 +43,6 @@ const auditFieldLabels: Record<string, string> = {
   quotedBasePrice: 'Quoted base price',
   quotedCurrencyCode: 'Quoted currency',
   salesPersonId: 'Salesperson',
-  sentAt: 'Sent at',
   startedAt: 'Started at',
   status: 'Status',
   validUntil: 'Valid until',
@@ -59,7 +58,6 @@ const dateFields = new Set([
   'plannedStart',
   'plannedDeliveryDate',
   'preferredDeliveryDate',
-  'sentAt',
   'startedAt',
   'validUntil',
 ]);

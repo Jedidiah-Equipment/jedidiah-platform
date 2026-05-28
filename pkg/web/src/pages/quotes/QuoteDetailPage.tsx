@@ -27,7 +27,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
   const quote = quoteQuery.data;
 
-  const currencyCode = quote?.quotedCurrencyCode ?? quote?.productCurrencyCode ?? undefined;
+  const currencyCode = quote?.quotedCurrencyCode ?? undefined;
 
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
@@ -59,10 +59,7 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
           </div>
           <div className="grid gap-3 text-sm md:grid-cols-3">
             <QuoteFact label="Status" value={quoteStatusLabels[quote.status]} />
-            <QuoteFact
-              label="Product"
-              value={quote.productName ? `${quote.productName} (${quote.productModelCode})` : 'Not set'}
-            />
+            <QuoteFact label="Product" value={`${quote.productName} (${quote.productModelCode})`} />
             <QuoteFact label="Salesperson" value={quote.salesPersonName ?? 'Unassigned'} />
             <QuoteFact label="Valid until" value={<DateDisplay date={quote.validUntil} emptyValue="Not set" />} />
             <QuoteFact
@@ -73,18 +70,9 @@ export const QuoteDetailPage: React.FC<QuoteDetailPageProps> = ({ quoteId }) => 
               label="Planned delivery date"
               value={<DateDisplay date={quote.plannedDeliveryDate} emptyValue="Not set" />}
             />
-            <QuoteFact label="Sent" value={<DateDisplay date={quote.sentAt} emptyValue="Not sent" format="medium" />} />
-            <QuoteFact
-              label="Total"
-              value={quote.total === null ? 'Not set' : formatCurrency(quote.total, currencyCode)}
-            />
+            <QuoteFact label="Total" value={formatCurrency(quote.total, currencyCode)} />
             <QuoteFact label="Discount" value={formatCurrency(quote.discount, currencyCode)} />
-            <QuoteFact
-              label="Quoted base price"
-              value={
-                quote.quotedBasePrice === null ? 'Not snapshotted' : formatCurrency(quote.quotedBasePrice, currencyCode)
-              }
-            />
+            <QuoteFact label="Quoted base price" value={formatCurrency(quote.quotedBasePrice, currencyCode)} />
             <QuoteFact
               label="Jobs"
               value={<QuoteLinkedJobs canOpenJobs={canOpenJobs} linkedJobs={quote.linkedJobs} />}

@@ -771,7 +771,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "job_cfo_part_pkey": {
+          "name": "job_cfo_part_pkey",
+          "columns": [
+            "cfo_assembly_id",
+            "part_id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {

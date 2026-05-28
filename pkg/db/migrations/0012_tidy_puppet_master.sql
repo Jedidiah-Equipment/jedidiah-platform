@@ -13,6 +13,7 @@ CREATE TABLE "job_cfo_part" (
 	"cfo_assembly_id" uuid NOT NULL,
 	"part_id" uuid NOT NULL,
 	"quantity" integer NOT NULL,
+	CONSTRAINT "job_cfo_part_pkey" PRIMARY KEY("cfo_assembly_id","part_id"),
 	CONSTRAINT "job_cfo_part_quantity_positive" CHECK ("job_cfo_part"."quantity" > 0)
 );
 --> statement-breakpoint

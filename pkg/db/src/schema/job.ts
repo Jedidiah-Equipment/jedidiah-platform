@@ -1,6 +1,16 @@
 import type { JobStageName } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, integer, pgSequence, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  check,
+  integer,
+  pgSequence,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 import { parts } from './part.js';
 import { products } from './product.js';
@@ -52,7 +62,10 @@ export const jobCfoParts = pgTable(
       .references(() => parts.id, { onDelete: 'restrict' }),
     quantity: integer('quantity').notNull(),
   },
-  (table) => [check('job_cfo_part_quantity_positive', sql`${table.quantity} > 0`)],
+  (table) => [
+    primaryKey({ columns: [table.cfoAssemblyId, table.partId], name: 'job_cfo_part_pkey' }),
+    check('job_cfo_part_quantity_positive', sql`${table.quantity} > 0`),
+  ],
 );
 
 export const jobStages = pgTable(

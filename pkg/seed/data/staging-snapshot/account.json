@@ -1,0 +1,17 @@
+[
+  {
+    "id": "seed-admin-user-credential-account",
+    "userId": "seed-admin-user",
+    "accountId": "seed-admin-user",
+    "providerId": "credential",
+    "accessToken": null,
+    "refreshToken": null,
+    "accessTokenExpiresAt": null,
+    "refreshTokenExpiresAt": null,
+    "scope": null,
+    "idToken": null,
+    "password": "d39153e7187a566e2b35e5d1a6a2fd3a:ef3f5ecd04b38450c9fe75af45c551fd91e15f069e8b61a9b23cacdae1a7b1e87a5004d221fd36b736ef929787b7cbfa61d4a1afaecadac78ced5dda44974f29",
+    "createdAt": "2026-05-27T07:04:54.917Z",
+    "updatedAt": "2026-05-27T07:04:54.917Z"
+  }
+]

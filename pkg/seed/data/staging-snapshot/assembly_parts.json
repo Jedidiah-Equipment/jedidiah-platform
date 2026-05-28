@@ -1,0 +1,27 @@
+[
+  {
+    "assemblyId": "52d73129-374b-4bdc-9750-d7176e937693",
+    "partId": "dbc142dc-7e70-47a8-830d-060af18962f7",
+    "quantity": 6
+  },
+  {
+    "assemblyId": "52d73129-374b-4bdc-9750-d7176e937693",
+    "partId": "a6c3eb64-2ec4-4b3f-b1a1-2f631d463fe7",
+    "quantity": 1
+  },
+  {
+    "assemblyId": "52d73129-374b-4bdc-9750-d7176e937693",
+    "partId": "224732ab-2f1f-4fce-9810-799f4dd36f0c",
+    "quantity": 1
+  },
+  {
+    "assemblyId": "52d73129-374b-4bdc-9750-d7176e937693",
+    "partId": "5486646d-29b9-4803-8b70-72ca1d8e4171",
+    "quantity": 4
+  },
+  {
+    "assemblyId": "c7252c06-a34d-4b82-ac0d-d5ecd0340d7b",
+    "partId": "1b0d767a-9772-497c-a11f-3c75819f1fd5",
+    "quantity": 2
+  }
+]

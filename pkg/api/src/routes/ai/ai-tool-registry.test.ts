@@ -47,9 +47,6 @@ describe('AI result projections', () => {
           customerId: '00000000-0000-4000-8000-000000000005',
           id: '00000000-0000-4000-8000-000000000003',
           code: 'QUO-00003',
-          paymentTerms: '30% deposit, balance on delivery',
-          plannedDeliveryDate: '2026-07-15',
-          preferredDeliveryDate: '2026-07-10',
           linkedJobs: [
             {
               jobCode: 'JOB-00004',
@@ -60,9 +57,16 @@ describe('AI result projections', () => {
               jobId: '00000000-0000-4000-8000-000000000007',
             },
           ],
+          paymentTerms: '30% deposit, balance on delivery',
+          plannedDeliveryDate: '2026-07-15',
           productId: '00000000-0000-4000-8000-000000000006',
           productModelCode: 'JED-SS-003',
           productName: 'Vertex Skid Steer 003',
+          preferredDeliveryDate: '2026-07-10',
+          quotedBasePrice: 100000,
+          quotedCurrencyCode: 'ZAR',
+          salesPersonId: 'test-user-id',
+          sentAt: '2026-07-01T00:00:00.000Z',
         },
       ],
       total: 1,
@@ -72,10 +76,29 @@ describe('AI result projections', () => {
       ...result,
       items: [
         {
-          ...result.items[0],
+          customerCompanyName: 'Apex Quarry Services',
+          customerId: '00000000-0000-4000-8000-000000000005',
+          id: '00000000-0000-4000-8000-000000000003',
+          code: 'QUO-00003',
+          linkedJobs: [
+            {
+              jobCode: 'JOB-00004',
+              jobId: '00000000-0000-4000-8000-000000000004',
+            },
+            {
+              jobCode: 'JOB-00005',
+              jobId: '00000000-0000-4000-8000-000000000007',
+            },
+          ],
           paymentTerms: '30% deposit, balance on delivery',
           plannedDeliveryDate: '2026-07-15',
+          productId: '00000000-0000-4000-8000-000000000006',
+          productModelCode: 'JED-SS-003',
+          productName: 'Vertex Skid Steer 003',
           preferredDeliveryDate: '2026-07-10',
+          quotedBasePrice: 100000,
+          quotedCurrencyCode: 'ZAR',
+          salesPersonId: 'test-user-id',
           links: [
             {
               entity: 'Quote',
@@ -103,6 +126,57 @@ describe('AI result projections', () => {
               label: 'JOB-00005',
             },
           ],
+        },
+      ],
+    });
+    expect(projectAiToolResult('listQuotes', result)).not.toHaveProperty('items.0.sentAt');
+  });
+
+  test('adds Quote metadata to detail results without legacy sentAt', () => {
+    const quote = {
+      customerCompanyName: 'Apex Quarry Services',
+      customerId: '00000000-0000-4000-8000-000000000005',
+      id: '00000000-0000-4000-8000-000000000003',
+      code: 'QUO-00003',
+      paymentTerms: '30% deposit, balance on delivery',
+      plannedDeliveryDate: '2026-07-15',
+      productId: '00000000-0000-4000-8000-000000000006',
+      productName: 'Vertex Skid Steer 003',
+      preferredDeliveryDate: '2026-07-10',
+      quotedBasePrice: 100000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      sentAt: '2026-07-01T00:00:00.000Z',
+    };
+
+    expect(projectAiToolResult('getQuote', quote)).toEqual({
+      customerCompanyName: 'Apex Quarry Services',
+      customerId: '00000000-0000-4000-8000-000000000005',
+      id: '00000000-0000-4000-8000-000000000003',
+      code: 'QUO-00003',
+      paymentTerms: '30% deposit, balance on delivery',
+      plannedDeliveryDate: '2026-07-15',
+      productId: '00000000-0000-4000-8000-000000000006',
+      productName: 'Vertex Skid Steer 003',
+      preferredDeliveryDate: '2026-07-10',
+      quotedBasePrice: 100000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      links: [
+        {
+          entity: 'Quote',
+          href: '/quotes/00000000-0000-4000-8000-000000000003',
+          label: 'QUO-00003',
+        },
+        {
+          entity: 'Customer',
+          href: '/customers/00000000-0000-4000-8000-000000000005/edit',
+          label: 'Apex Quarry Services',
+        },
+        {
+          entity: 'Product',
+          href: '/products/00000000-0000-4000-8000-000000000006/edit',
+          label: 'Vertex Skid Steer 003',
         },
       ],
     });

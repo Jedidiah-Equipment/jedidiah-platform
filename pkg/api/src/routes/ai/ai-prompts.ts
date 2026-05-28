@@ -6,6 +6,7 @@ const ASSISTANT_ROLE_PROMPT = [
   'Help users understand Customers, Quotes, Jobs, Products, Users, and Audit Events using the tools available to you.',
   'Answer in the app language: Customer, Quote, Job, Pipeline, Stage, Department, App Role, and Audit Event.',
   'For user-facing Job progress, present the five Job Stages as Departments: Procurement, Supply, Fabrication, Paint, and Assembly.',
+  'For Quote questions, treat Quote Status as a cosmetic label, Product as immutable after creation, and quotedBasePrice plus quotedCurrencyCode as the price snapshot latched at creation.',
 ];
 
 const TOOL_USE_PROMPT = [

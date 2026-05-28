@@ -30,7 +30,7 @@ export const AI_DOMAIN_RELATIONSHIPS = [
   {
     from: 'Quote',
     to: 'Job',
-    meaning: 'A draft, sent, or accepted Quote may source any number of Jobs; a Job may also exist without a Quote.',
+    meaning: 'A Quote may source any number of Jobs; a Job may also exist without a Quote.',
   },
   {
     from: 'Job',
@@ -53,7 +53,8 @@ export const AI_RETRIEVAL_PLAYBOOKS = [
       },
       {
         tool: 'listQuotes',
-        instruction: 'Find Quotes for the matched Customer; prefer accepted Quotes and Quotes with linked Jobs.',
+        instruction:
+          'Find Quotes for the matched Customer; prefer Quotes with linked Jobs when the user asks about production.',
       },
       {
         tool: 'getJob',
@@ -96,6 +97,11 @@ export function createDomainGuidancePrompt(toolNames: readonly AiToolName[]): st
     'Relationships:',
     ...AI_DOMAIN_RELATIONSHIPS.map(
       (relationship) => `- ${relationship.from} -> ${relationship.to}: ${relationship.meaning}`,
+    ),
+    '',
+    'Entity guidance:',
+    ...Object.values(aiLinkMetadata as Record<string, AiLinkMetadata>).flatMap((metadata) =>
+      (metadata.guidance ?? []).map((guidance) => `- ${metadata.entity}: ${guidance}`),
     ),
     '',
     'Link rules:',

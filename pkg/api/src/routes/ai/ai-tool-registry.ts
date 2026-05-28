@@ -147,8 +147,13 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
       resultIdentifiers: [
         'Quote Code',
         'Quote Status',
+        'Payment Terms',
         'Preferred delivery date',
         'Planned delivery date',
+        'Product UUID',
+        'salesPersonId User ID',
+        'quotedBasePrice',
+        'quotedCurrencyCode',
         'Customer company name',
         'linked Job Codes',
         'linked Job UUIDs',
@@ -161,7 +166,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     tool: getQuoteTool,
     descriptor: {
       purpose: 'Get one Quote by UUID.',
-      useWhen: ['A Quote id is already known and the user needs Quote lifecycle or linked Job details.'],
+      useWhen: ['A Quote id is already known and the user needs Quote commercial details or linked Job details.'],
       doNotUseWhen: [
         'Searching by Quote Code, Customer, Product, linked Job Codes, or partial id; use listQuotes first.',
       ],
@@ -169,9 +174,14 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
       resultIdentifiers: [
         'Quote Code',
         'Quote Status',
-        'Customer company name',
+        'Payment Terms',
         'Preferred delivery date',
         'Planned delivery date',
+        'Product UUID',
+        'salesPersonId User ID',
+        'quotedBasePrice',
+        'quotedCurrencyCode',
+        'Customer company name',
         'linked Job Codes',
       ],
       linkTarget: aiLinkMetadata.Quote,
@@ -378,8 +388,9 @@ function projectQuote(value: unknown): unknown {
     return value;
   }
 
+  const { sentAt: _sentAt, ...projectedValue } = value;
   const label = typeof value.code === 'string' ? value.code : null;
-  return addLinks(value, [
+  return addLinks(projectedValue, [
     label ? createAiLink('Quote', label, value.id) : null,
     createLink('Customer', value.customerCompanyName, value.customerId),
     createLink('Product', value.productName, value.productId),

@@ -4,6 +4,7 @@ export type AiLinkMetadata = {
   entity: AiLinkEntity;
   href: string;
   label: string;
+  guidance?: readonly string[];
 };
 
 export type AiLink = {
@@ -31,6 +32,13 @@ export const aiLinkMetadata = {
   Quote: {
     entity: 'Quote',
     href: '/quotes/{id}',
+    guidance: [
+      'Quote Status is a cosmetic label with no transition rules, side effects, or creation gates; it is freely editable and used for display, filtering, and sorting.',
+      'Quote Product is required at creation and immutable post-creation; productId is non-nullable.',
+      'Quote Salesperson is required at creation; salesPersonId is non-nullable.',
+      'Quote price snapshot fields quotedBasePrice and quotedCurrencyCode are latched from Product at creation.',
+      'Quote commercial fields include Payment Terms, Preferred Delivery Date, and Planned Delivery Date.',
+    ],
     label: 'code',
   },
 } as const satisfies Record<AiLinkEntity, AiLinkMetadata>;

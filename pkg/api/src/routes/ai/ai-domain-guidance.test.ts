@@ -17,8 +17,13 @@ describe('AI domain guidance', () => {
 
     expect(prompt).toContain('Customer -> Quote');
     expect(prompt).toContain('Quote -> Job');
+    expect(prompt).toContain('A Quote may source any number of Jobs');
     expect(prompt).toContain('Job -> Department');
     expect(prompt).toContain('users experience and label them as Departments');
+    expect(prompt).toContain('Quote Status is a cosmetic label with no transition rules');
+    expect(prompt).toContain('Product is required at creation and immutable post-creation');
+    expect(prompt).toContain('price snapshot fields quotedBasePrice and quotedCurrencyCode are latched');
+    expect(prompt).toContain('Payment Terms, Preferred Delivery Date, and Planned Delivery Date');
     expect(prompt).toContain('Intent customer_job_progress');
     expect(prompt).toContain('listQuoteCustomers');
     expect(prompt).toContain('listQuotes');
@@ -26,6 +31,8 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('If multiple active or paused Jobs exist, ask the user to choose');
     expect(prompt).toContain('Render Markdown links only from link metadata');
     expect(prompt).toContain('Do not show UUIDs in prose');
+    expect(prompt).not.toContain('Quote lifecycle');
+    expect(prompt).not.toContain('prefer accepted Quotes');
   });
 
   test('renders Customer to Quote to Job guidance when an alternative customer lookup is available', () => {

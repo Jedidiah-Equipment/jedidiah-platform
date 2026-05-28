@@ -62,7 +62,7 @@ async function createProduct(caller: AppRouterCaller, name: string): Promise<Pro
   return caller.products.create({
     basePrice: 1_000,
     description: null,
-    leadTimeDays: 14,
+    buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
   });

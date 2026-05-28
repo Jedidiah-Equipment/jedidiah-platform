@@ -114,7 +114,7 @@ async function createProduct(db: Db) {
     .values({
       basePrice: 1_000,
       currencyCode: 'ZAR',
-      leadTimeDays: 14,
+      buildTimeDays: 14,
       modelCode: 'QUOTE-LIST-001',
       name: 'Quote List Product',
     })

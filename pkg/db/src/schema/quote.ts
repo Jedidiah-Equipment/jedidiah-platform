@@ -1,6 +1,7 @@
 import type { QuoteStatus } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   date,
   integer,
@@ -36,6 +37,8 @@ export const quotes = pgTable(
       .references(() => user.id, { onDelete: 'restrict' }),
     status: text('status').notNull().default('draft').$type<QuoteStatus>(),
     discount: numeric('discount', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
+    deliveryIncluded: boolean('delivery_included').notNull().default(true),
+    deliveryPrice: numeric('delivery_price', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
     validUntil: date('valid_until', { mode: 'string' }),
     preferredDeliveryDate: date('preferred_delivery_date', { mode: 'string' }),
     plannedDeliveryDate: date('planned_delivery_date', { mode: 'string' }),
@@ -49,6 +52,7 @@ export const quotes = pgTable(
   (table) => [
     check('quote_discount_nonnegative', sql`${table.discount} >= 0`),
     check('quote_discount_not_above_snapshot', sql`${table.discount} <= ${table.quotedBasePrice}`),
+    check('quote_delivery_price_nonnegative', sql`${table.deliveryPrice} >= 0`),
     uniqueIndex('quote_code_unique').on(table.code),
   ],
 );

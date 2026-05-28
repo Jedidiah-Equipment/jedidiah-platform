@@ -31,7 +31,6 @@ import { Route as AuthedJobsIndexRouteImport } from './../routes/_authed.jobs.in
 import { Route as AuthedCustomersIndexRouteImport } from './../routes/_authed.customers.index'
 import { Route as AuthedSuppliersNewRouteImport } from './../routes/_authed.suppliers.new'
 import { Route as AuthedQuotesNewRouteImport } from './../routes/_authed.quotes.new'
-import { Route as AuthedQuotesIdRouteImport } from './../routes/_authed.quotes.$id'
 import { Route as AuthedProductsNewRouteImport } from './../routes/_authed.products.new'
 import { Route as AuthedJobsNewRouteImport } from './../routes/_authed.jobs.new'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
@@ -150,11 +149,6 @@ const AuthedQuotesNewRoute = AuthedQuotesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AuthedQuotesRoute,
 } as any)
-const AuthedQuotesIdRoute = AuthedQuotesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthedQuotesRoute,
-} as any)
 const AuthedProductsNewRoute = AuthedProductsNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -215,7 +209,6 @@ export interface FileRoutesByFullPath {
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/new': typeof AuthedJobsNewRoute
   '/products/new': typeof AuthedProductsNewRoute
-  '/quotes/$id': typeof AuthedQuotesIdRoute
   '/quotes/new': typeof AuthedQuotesNewRoute
   '/suppliers/new': typeof AuthedSuppliersNewRoute
   '/customers/': typeof AuthedCustomersIndexRoute
@@ -242,7 +235,6 @@ export interface FileRoutesByTo {
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/new': typeof AuthedJobsNewRoute
   '/products/new': typeof AuthedProductsNewRoute
-  '/quotes/$id': typeof AuthedQuotesIdRoute
   '/quotes/new': typeof AuthedQuotesNewRoute
   '/suppliers/new': typeof AuthedSuppliersNewRoute
   '/customers': typeof AuthedCustomersIndexRoute
@@ -276,7 +268,6 @@ export interface FileRoutesById {
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
   '/_authed/jobs/new': typeof AuthedJobsNewRoute
   '/_authed/products/new': typeof AuthedProductsNewRoute
-  '/_authed/quotes/$id': typeof AuthedQuotesIdRoute
   '/_authed/quotes/new': typeof AuthedQuotesNewRoute
   '/_authed/suppliers/new': typeof AuthedSuppliersNewRoute
   '/_authed/customers/': typeof AuthedCustomersIndexRoute
@@ -310,7 +301,6 @@ export interface FileRouteTypes {
     | '/jobs/$id'
     | '/jobs/new'
     | '/products/new'
-    | '/quotes/$id'
     | '/quotes/new'
     | '/suppliers/new'
     | '/customers/'
@@ -337,7 +327,6 @@ export interface FileRouteTypes {
     | '/jobs/$id'
     | '/jobs/new'
     | '/products/new'
-    | '/quotes/$id'
     | '/quotes/new'
     | '/suppliers/new'
     | '/customers'
@@ -370,7 +359,6 @@ export interface FileRouteTypes {
     | '/_authed/jobs/$id'
     | '/_authed/jobs/new'
     | '/_authed/products/new'
-    | '/_authed/quotes/$id'
     | '/_authed/quotes/new'
     | '/_authed/suppliers/new'
     | '/_authed/customers/'
@@ -549,13 +537,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedQuotesNewRouteImport
       parentRoute: typeof AuthedQuotesRoute
     }
-    '/_authed/quotes/$id': {
-      id: '/_authed/quotes/$id'
-      path: '/$id'
-      fullPath: '/quotes/$id'
-      preLoaderRoute: typeof AuthedQuotesIdRouteImport
-      parentRoute: typeof AuthedQuotesRoute
-    }
     '/_authed/products/new': {
       id: '/_authed/products/new'
       path: '/new'
@@ -664,14 +645,12 @@ const AuthedProductsRouteWithChildren = AuthedProductsRoute._addFileChildren(
 )
 
 interface AuthedQuotesRouteChildren {
-  AuthedQuotesIdRoute: typeof AuthedQuotesIdRoute
   AuthedQuotesNewRoute: typeof AuthedQuotesNewRoute
   AuthedQuotesIndexRoute: typeof AuthedQuotesIndexRoute
   AuthedQuotesIdEditRoute: typeof AuthedQuotesIdEditRoute
 }
 
 const AuthedQuotesRouteChildren: AuthedQuotesRouteChildren = {
-  AuthedQuotesIdRoute: AuthedQuotesIdRoute,
   AuthedQuotesNewRoute: AuthedQuotesNewRoute,
   AuthedQuotesIndexRoute: AuthedQuotesIndexRoute,
   AuthedQuotesIdEditRoute: AuthedQuotesIdEditRoute,

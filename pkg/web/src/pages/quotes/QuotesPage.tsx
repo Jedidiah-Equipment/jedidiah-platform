@@ -1,9 +1,8 @@
 import { hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { ArrowRightIcon, BriefcaseBusinessIcon, PlusIcon } from 'lucide-react';
+import { BriefcaseBusinessIcon, EditIcon, PencilIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { ButtonLink } from '@/components/button/ButtonLink.js';
@@ -15,7 +14,6 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
-import { Button } from '@/components/ui/button.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -67,10 +65,11 @@ export const QuotesPage: React.FC = () => {
 
 const QuoteTable: React.FC = () => {
   const trpc = useTRPC();
-  const navigate = useNavigate();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
-  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  // const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const canCreateJob = false as boolean; // disabled for now
+  const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
 
   const tableController = useServerSideTableController({
     store: useQuoteTableStore,
@@ -162,41 +161,48 @@ const QuoteTable: React.FC = () => {
         enableSorting: false,
         header: 'Job',
       },
-      {
-        id: 'actions',
-        cell: ({ row }) => (
-          <div className="flex justify-end gap-1">
-            {canCreateJob ? (
-              <ButtonLink
-                aria-label={`Create job from quote ${row.original.code}`}
-                search={{ quoteId: row.original.id }}
-                size="icon-sm"
-                to="/jobs/new"
-                variant="outline"
-              >
-                <BriefcaseBusinessIcon />
-              </ButtonLink>
-            ) : null}
-            <Button
-              aria-label={`Open quote ${row.original.code}`}
-              onClick={() => navigate({ params: { id: row.original.id }, to: '/quotes/$id' })}
-              size="icon-sm"
-              variant="outline"
-            >
-              <ArrowRightIcon />
-            </Button>
-          </div>
-        ),
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: () => <span className="sr-only">Actions</span>,
-        meta: {
-          cellClassName: 'text-right',
-          headerClassName: 'w-20 text-right',
-        },
-      },
+      ...(canCreateJob || canUpdateQuote
+        ? [
+            {
+              id: 'actions',
+              cell: ({ row }) => (
+                <div className="flex justify-end gap-1">
+                  {canCreateJob ? (
+                    <ButtonLink
+                      aria-label={`Create job from quote ${row.original.code}`}
+                      search={{ quoteId: row.original.id }}
+                      size="icon-sm"
+                      to="/jobs/new"
+                      variant="outline"
+                    >
+                      <BriefcaseBusinessIcon />
+                    </ButtonLink>
+                  ) : null}
+                  {canUpdateQuote ? (
+                    <ButtonLink
+                      aria-label={`Edit quote ${row.original.code}`}
+                      params={{ id: row.original.id }}
+                      size="icon-sm"
+                      to="/quotes/$id/edit"
+                      variant="outline"
+                    >
+                      <PencilIcon />
+                    </ButtonLink>
+                  ) : null}
+                </div>
+              ),
+              enableColumnFilter: false,
+              enableSorting: false,
+              header: () => <span className="sr-only">Actions</span>,
+              meta: {
+                cellClassName: 'text-right',
+                headerClassName: 'w-20 text-right',
+              },
+            } satisfies ColumnDef<QuoteSummary>,
+          ]
+        : []),
     ],
-    [canCreateJob, canOpenJobs, navigate],
+    [canOpenJobs, canUpdateQuote],
   );
 
   const table = useReactTable({

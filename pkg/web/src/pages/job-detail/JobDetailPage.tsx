@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { BackButton } from '@/components/button/BackButton.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { useAppForm } from '@/components/form/index.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Button } from '@/components/ui/button.js';
@@ -55,8 +54,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   );
   const isTransitionPending = editDueDateMutation.isPending || setStatusMutation.isPending;
   const canUpdateJob = hasPermission(accessQuery.data, 'job:update');
-  const canOpenQuotes =
-    hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
+  const canSeeQuotes = hasPermission(accessQuery.data, 'quote:read') || hasPermission(accessQuery.data, 'quote:update');
   return (
     <DetailPageLayout
       back={<BackButton to="/jobs">Jobs</BackButton>}
@@ -100,10 +98,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
                 )
               }
             />
-            <JobFact
-              label="Quote"
-              value={<JobQuoteLink canOpenQuote={canOpenQuotes} quoteCode={job.quoteCode} quoteId={job.quoteId} />}
-            />
+            <JobFact label="Quote" value={<JobQuoteCode canSeeQuote={canSeeQuotes} quoteCode={job.quoteCode} />} />
           </div>
           <div className="grid gap-3 lg:grid-cols-5">
             {job.stages.map((stage) => (
@@ -212,21 +207,16 @@ const JobDueDateEditor: React.FC<{
   );
 };
 
-const JobQuoteLink: React.FC<{
-  canOpenQuote: boolean;
+const JobQuoteCode: React.FC<{
+  canSeeQuote: boolean;
   quoteCode: JobDetail['quoteCode'];
-  quoteId: JobDetail['quoteId'];
-}> = ({ canOpenQuote, quoteCode, quoteId }) => {
+}> = ({ canSeeQuote, quoteCode }) => {
   if (!quoteCode) {
     return <span>Direct job</span>;
   }
 
-  if (canOpenQuote && quoteId) {
-    return (
-      <PrimaryLink params={{ id: quoteId }} to="/quotes/$id">
-        {quoteCode}
-      </PrimaryLink>
-    );
+  if (!canSeeQuote) {
+    return <span className="text-muted-foreground">Quote linked</span>;
   }
 
   return <span>{quoteCode}</span>;

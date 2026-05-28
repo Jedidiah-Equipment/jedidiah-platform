@@ -118,6 +118,8 @@ export const quoteAuditDescriptor: AuditEntityDescriptor = {
   primaryLabelFormatter: formatQuoteAuditLabel,
   fields: {
     customerId: 'customer',
+    deliveryIncluded: 'delivery included',
+    deliveryPrice: 'delivery price',
     discount: 'discount',
     notes: 'notes',
     paymentTerms: 'payment terms',

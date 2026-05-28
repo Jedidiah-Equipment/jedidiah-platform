@@ -63,13 +63,7 @@ export const JobCreatePage: React.FC<JobCreatePageProps> = ({ quoteId }) => {
 
   const canSubmit = Boolean(selectedProduct) && !createJobMutation.isPending;
   const title = quote ? `Create job from ${quote.code}` : 'Create job';
-  const backTarget = quote ? (
-    <BackButton params={{ id: quote.id }} to="/quotes/$id">
-      Quote
-    </BackButton>
-  ) : (
-    <BackButton to="/jobs">Jobs</BackButton>
-  );
+  const backTarget = quote ? <BackButton to="/quotes">Quotes</BackButton> : <BackButton to="/jobs">Jobs</BackButton>;
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4 p-4 pt-0">
@@ -122,7 +116,7 @@ export const JobCreatePage: React.FC<JobCreatePageProps> = ({ quoteId }) => {
             disabled={createJobMutation.isPending}
             onClick={() => {
               if (quote) {
-                return void navigate({ params: { id: quote.id }, to: '/quotes/$id' });
+                return void navigate({ to: '/quotes' });
               }
 
               return void navigate({ to: '/jobs' });

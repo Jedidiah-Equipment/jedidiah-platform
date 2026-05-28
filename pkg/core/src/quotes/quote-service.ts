@@ -43,6 +43,8 @@ type QuoteAuditRecord = Pick<
   QuoteRow,
   | 'code'
   | 'customerId'
+  | 'deliveryIncluded'
+  | 'deliveryPrice'
   | 'discount'
   | 'notes'
   | 'paymentTerms'
@@ -81,6 +83,8 @@ export function mapQuote(row: QuoteRow): Quote {
     code: row.code,
     createdAt: row.createdAt.toISOString(),
     customerId: row.customerId,
+    deliveryIncluded: row.deliveryIncluded,
+    deliveryPrice: row.deliveryPrice,
     discount: row.discount,
     id: row.id,
     notes: row.notes,
@@ -116,6 +120,8 @@ export async function createQuote({
       .insert(quotes)
       .values({
         customerId,
+        deliveryIncluded: input.deliveryIncluded,
+        deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
         discount: input.discount,
         notes: input.notes,
         paymentTerms: input.paymentTerms,
@@ -283,6 +289,8 @@ export async function updateQuote({
     const after = {
       ...before,
       customerId,
+      deliveryIncluded: input.deliveryIncluded,
+      deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
       discount: input.discount,
       notes: input.notes,
       paymentTerms: input.paymentTerms,
@@ -306,6 +314,8 @@ export async function updateQuote({
       .update(quotes)
       .set({
         customerId,
+        deliveryIncluded: after.deliveryIncluded,
+        deliveryPrice: after.deliveryPrice,
         discount: input.discount,
         notes: input.notes,
         paymentTerms: input.paymentTerms,
@@ -353,7 +363,12 @@ function mapQuoteSummary(row: QuoteListRow, linkedJobs: readonly QuoteLinkedJobR
     productName: row.productName,
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,
-    total: computeQuoteTotal({ discount: row.quote.discount, quotedBasePrice: row.quote.quotedBasePrice }),
+    total: computeQuoteTotal({
+      deliveryIncluded: row.quote.deliveryIncluded,
+      deliveryPrice: row.quote.deliveryPrice,
+      discount: row.quote.discount,
+      quotedBasePrice: row.quote.quotedBasePrice,
+    }),
   };
 }
 
@@ -370,7 +385,12 @@ function mapQuoteDetail(row: QuoteDetailRow): QuoteDetail {
     productName: row.product.name,
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
-    total: computeQuoteTotal({ discount: row.discount, quotedBasePrice: row.quotedBasePrice }),
+    total: computeQuoteTotal({
+      deliveryIncluded: row.deliveryIncluded,
+      deliveryPrice: row.deliveryPrice,
+      discount: row.discount,
+      quotedBasePrice: row.quotedBasePrice,
+    }),
   };
 }
 
@@ -509,6 +529,8 @@ function mapQuoteAuditRecord(quote: QuoteAuditRecord): QuoteAuditRecord {
   return {
     code: quote.code,
     customerId: quote.customerId,
+    deliveryIncluded: quote.deliveryIncluded,
+    deliveryPrice: quote.deliveryPrice,
     discount: quote.discount,
     notes: quote.notes,
     paymentTerms: quote.paymentTerms,
@@ -563,7 +585,7 @@ function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
 }
 
 function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
-  const total = sql`${quotes.quotedBasePrice} - ${quotes.discount}`;
+  const total = sql`greatest(0, ${quotes.quotedBasePrice} - ${quotes.discount}) + case when ${quotes.deliveryIncluded} then ${quotes.deliveryPrice} else 0 end`;
   const columns = {
     code: sql`${quotes.code}`,
     createdAt: sql`${quotes.createdAt}`,

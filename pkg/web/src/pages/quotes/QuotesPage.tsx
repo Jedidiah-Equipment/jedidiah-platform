@@ -2,7 +2,7 @@ import { computeQuoteTotal, hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { BriefcaseBusinessIcon, PencilIcon, PlusIcon } from 'lucide-react';
+import { PencilIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { ButtonLink } from '@/components/button/ButtonLink.js';
@@ -19,6 +19,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatCurrency } from '@/utils/number.js';
+import { GenerateJobFromQuoteDialog } from './components/GenerateJobFromQuoteDialog.js';
 import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 
@@ -69,8 +70,7 @@ const QuoteTable: React.FC = () => {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
-  // const canCreateJob = hasPermission(accessQuery.data, 'job:create');
-  const canCreateJob = false as boolean; // disabled for now
+  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const customerOptions = useCustomerForQuoteOptions({ pageSize: 0 });
   const productOptions = useProductForQuoteOptions({ pageSize: 0 });
@@ -191,17 +191,7 @@ const QuoteTable: React.FC = () => {
               id: 'actions',
               cell: ({ row }) => (
                 <div className="flex justify-end gap-1">
-                  {canCreateJob ? (
-                    <ButtonLink
-                      aria-label={`Create job from quote ${row.original.code}`}
-                      search={{ quoteId: row.original.id }}
-                      size="icon-sm"
-                      to="/jobs/new"
-                      variant="outline"
-                    >
-                      <BriefcaseBusinessIcon />
-                    </ButtonLink>
-                  ) : null}
+                  {canCreateJob ? <GenerateJobFromQuoteDialog quote={row.original} size="icon-sm" /> : null}
                   {canUpdateQuote ? (
                     <ButtonLink
                       aria-label={`Edit quote ${row.original.code}`}
@@ -228,6 +218,7 @@ const QuoteTable: React.FC = () => {
     ],
     [
       canOpenJobs,
+      canCreateJob,
       canUpdateQuote,
       customerOptions.selectOptions,
       productOptions.selectOptions,

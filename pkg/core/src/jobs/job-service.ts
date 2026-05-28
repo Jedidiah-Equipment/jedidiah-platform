@@ -1,7 +1,19 @@
-import { type DatabaseTransaction, type Db, jobStages, jobs, quotes } from '@pkg/db';
-import { JOB_STAGE_PIPELINE } from '@pkg/domain';
+import {
+  assemblyOverrides,
+  assemblyParts,
+  type DatabaseTransaction,
+  type Db,
+  jobCfoAssemblies,
+  jobCfoParts,
+  jobStages,
+  jobs,
+  productAssemblies,
+  quoteSelectedAssemblies,
+  quotes,
+} from '@pkg/db';
+import { buildCfo, type CfoCatalogAssembly, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import type { AuthId, JobCreateInput, JobDetail, UserAccessSummary, UUID } from '@pkg/schema';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { JobCreateFromQuoteDeniedError } from './job-errors.js';
@@ -20,23 +32,22 @@ export async function createJob({
   actorUserId: AuthId;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
-    const quoteId = input.quoteId ?? null;
-
-    if (quoteId) {
-      await validateJobQuoteForCreate({ quoteId, tx });
-    }
+    const quote = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
+    const cfo = await buildJobCfoForQuote({ productId: quote.productId, quoteId: quote.id, tx });
 
     const [job] = await tx
       .insert(jobs)
       .values({
-        productId: input.productId,
-        quoteId,
+        productId: quote.productId,
+        quoteId: quote.id,
       })
       .returning();
 
     if (!job) {
       throw new Error('Job insert did not return a row');
     }
+
+    await insertJobCfo({ cfo, jobId: job.id, tx });
 
     const stageRows = await tx
       .insert(jobStages)
@@ -63,14 +74,162 @@ export async function createJob({
   });
 }
 
-async function validateJobQuoteForCreate({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<void> {
+async function validateJobQuoteForCreate({
+  quoteId,
+  tx,
+}: {
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<typeof quotes.$inferSelect> {
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
     throw new JobCreateFromQuoteDeniedError('Quote not found.');
   }
 
-  return;
+  if (quote.status !== 'accepted') {
+    throw new JobCreateFromQuoteDeniedError('Only accepted quotes can start a Job.');
+  }
+
+  const [existingJob] = await tx
+    .select({
+      id: jobs.id,
+    })
+    .from(jobs)
+    .where(eq(jobs.quoteId, quoteId))
+    .limit(1);
+
+  if (existingJob) {
+    throw new JobCreateFromQuoteDeniedError('Quote already has a Job.');
+  }
+
+  return quote;
+}
+
+async function buildJobCfoForQuote({
+  productId,
+  quoteId,
+  tx,
+}: {
+  productId: UUID;
+  quoteId: UUID;
+  tx: DatabaseTransaction;
+}) {
+  const [assemblyRows, partRows, overrideRows, selectedRows] = await Promise.all([
+    tx
+      .select({
+        id: productAssemblies.id,
+        kind: productAssemblies.kind,
+        name: productAssemblies.name,
+      })
+      .from(productAssemblies)
+      .where(eq(productAssemblies.productId, productId))
+      .orderBy(asc(productAssemblies.createdAt), asc(productAssemblies.id)),
+    tx
+      .select({
+        assemblyId: assemblyParts.assemblyId,
+        partId: assemblyParts.partId,
+        quantity: assemblyParts.quantity,
+      })
+      .from(assemblyParts)
+      .innerJoin(productAssemblies, eq(assemblyParts.assemblyId, productAssemblies.id))
+      .where(eq(productAssemblies.productId, productId))
+      .orderBy(asc(productAssemblies.createdAt), asc(productAssemblies.id), asc(assemblyParts.partId)),
+    tx
+      .select({
+        optionalAssemblyId: assemblyOverrides.optionalAssemblyId,
+        standardAssemblyId: assemblyOverrides.standardAssemblyId,
+      })
+      .from(assemblyOverrides)
+      .where(eq(assemblyOverrides.productId, productId)),
+    tx
+      .select({
+        assemblyName: quoteSelectedAssemblies.quotedName,
+        productAssemblyId: quoteSelectedAssemblies.productAssemblyId,
+      })
+      .from(quoteSelectedAssemblies)
+      .where(eq(quoteSelectedAssemblies.quoteId, quoteId))
+      .orderBy(asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)),
+  ]);
+
+  const partsByAssemblyId = new Map<UUID, CfoCatalogAssembly['parts']>();
+  for (const partRow of partRows) {
+    const parts = partsByAssemblyId.get(partRow.assemblyId) ?? [];
+    partsByAssemblyId.set(partRow.assemblyId, [
+      ...parts,
+      {
+        partId: partRow.partId,
+        quantity: partRow.quantity,
+      },
+    ]);
+  }
+
+  const standardAssemblies: CfoCatalogAssembly[] = [];
+  const optionalAssemblies: CfoCatalogAssembly[] = [];
+
+  for (const assemblyRow of assemblyRows) {
+    const assembly = {
+      id: assemblyRow.id,
+      name: assemblyRow.name,
+      parts: partsByAssemblyId.get(assemblyRow.id) ?? [],
+    };
+
+    if (assemblyRow.kind === 'standard') {
+      standardAssemblies.push(assembly);
+    } else {
+      optionalAssemblies.push(assembly);
+    }
+  }
+
+  const result = buildCfo({
+    optionalAssemblies,
+    overrides: overrideRows,
+    selectedAssemblies: selectedRows,
+    standardAssemblies,
+  });
+
+  if (!result.ok) {
+    throw new JobCreateFromQuoteDeniedError(
+      `Selected optional assembly is stale: ${result.staleAssemblyNames.join(', ')}.`,
+    );
+  }
+
+  return result.cfo;
+}
+
+async function insertJobCfo({
+  cfo,
+  jobId,
+  tx,
+}: {
+  cfo: Awaited<ReturnType<typeof buildJobCfoForQuote>>;
+  jobId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  for (const assembly of cfo) {
+    const [cfoAssembly] = await tx
+      .insert(jobCfoAssemblies)
+      .values({
+        assemblyName: assembly.assemblyName,
+        jobId,
+        kind: assembly.kind,
+      })
+      .returning({ id: jobCfoAssemblies.id });
+
+    if (!cfoAssembly) {
+      throw new Error('Job CFO assembly insert did not return a row');
+    }
+
+    if (assembly.parts.length > 0) {
+      await tx.insert(jobCfoParts).values(
+        assembly.parts.map((part) => ({
+          cfoAssemblyId: cfoAssembly.id,
+          partId: part.partId,
+          quantity: part.quantity,
+        })),
+      );
+    }
+  }
 }
 
 function buildJobStageInsertValues({ jobId }: { jobId: UUID }) {

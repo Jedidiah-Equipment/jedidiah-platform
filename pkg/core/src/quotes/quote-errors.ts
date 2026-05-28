@@ -27,12 +27,26 @@ export class QuoteInvalidReferenceError extends Error {
   }
 }
 
-export type QuoteCoreError = QuoteDiscountInvalidError | QuoteInvalidReferenceError | QuoteNotFoundError;
+export class QuoteLockedError extends Error {
+  readonly code = 'quote.locked';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteLockedError';
+  }
+}
+
+export type QuoteCoreError =
+  | QuoteDiscountInvalidError
+  | QuoteInvalidReferenceError
+  | QuoteLockedError
+  | QuoteNotFoundError;
 
 export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
     error instanceof QuoteDiscountInvalidError ||
     error instanceof QuoteInvalidReferenceError ||
+    error instanceof QuoteLockedError ||
     error instanceof QuoteNotFoundError
   );
 }

@@ -1,7 +1,15 @@
 import { hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { Link, linkOptions } from '@tanstack/react-router';
-import { Building2Icon, ClipboardListIcon, GaugeIcon, HandshakeIcon, type LucideIcon, PackageIcon } from 'lucide-react';
+import {
+  Building2Icon,
+  ClipboardListIcon,
+  FileTextIcon,
+  GaugeIcon,
+  HandshakeIcon,
+  type LucideIcon,
+  PackageIcon,
+} from 'lucide-react';
 import type React from 'react';
 
 import {
@@ -26,12 +34,12 @@ const mainNavItems = [
     link: linkOptions({ to: '/dashboard' }),
     icon: GaugeIcon,
   },
-  // {
-  //   title: 'Quotes',
-  //   permission: 'quote:read',
-  //   link: linkOptions({ to: '/quotes' }),
-  //   icon: FileTextIcon,
-  // },
+  {
+    title: 'Quotes',
+    permission: 'quote:read',
+    link: linkOptions({ to: '/quotes' }),
+    icon: FileTextIcon,
+  },
   // {
   //   title: 'Jobs',
   //   permission: 'job:read',

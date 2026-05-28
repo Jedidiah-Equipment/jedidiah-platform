@@ -28,7 +28,21 @@ describe('computeQuoteTotal', () => {
     expect(computeQuoteTotal({ quotedBasePrice: 1250, discount: 200 })).toBe(1050);
   });
 
+  it('adds delivery price when delivery is included', () => {
+    expect(
+      computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 350, quotedBasePrice: 1250, discount: 200 }),
+    ).toBe(1400);
+  });
+
+  it('ignores delivery price when delivery is excluded', () => {
+    expect(
+      computeQuoteTotal({ deliveryIncluded: false, deliveryPrice: 350, quotedBasePrice: 1250, discount: 200 }),
+    ).toBe(1050);
+  });
+
   it('floors stale draft totals at zero when product pricing drops below the discount', () => {
-    expect(computeQuoteTotal({ quotedBasePrice: 100, discount: 125 })).toBe(0);
+    expect(computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 50, quotedBasePrice: 100, discount: 125 })).toBe(
+      50,
+    );
   });
 });

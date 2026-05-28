@@ -23,6 +23,8 @@ describe('quotes.create', () => {
         type: 'inline',
         companyName: 'Acme Mining',
       },
+      deliveryIncluded: true,
+      deliveryPrice: 350,
       discount: 100,
       notes: 'Demo quote',
       paymentTerms: '30% deposit, balance on delivery',
@@ -40,6 +42,8 @@ describe('quotes.create', () => {
     expect(created).toMatchObject({
       code: 'QUO-00001',
       customerCompanyName: 'Acme Mining',
+      deliveryIncluded: true,
+      deliveryPrice: 350,
       paymentTerms: '30% deposit, balance on delivery',
       plannedDeliveryDate: '2026-07-15',
       preferredDeliveryDate: '2026-07-10',
@@ -47,10 +51,12 @@ describe('quotes.create', () => {
       quotedBasePrice: context.product.basePrice,
       quotedCurrencyCode: context.product.currencyCode,
       status: 'draft',
-      total: context.product.basePrice - 100,
+      total: context.product.basePrice - 100 + 350,
     });
     expect(quoteRows).toHaveLength(1);
     expect(quoteRows[0]).toMatchObject({
+      deliveryIncluded: true,
+      deliveryPrice: 350,
       plannedDeliveryDate: '2026-07-15',
       preferredDeliveryDate: '2026-07-10',
     });
@@ -145,6 +151,8 @@ describe('quotes.update', () => {
 
     const updated = await caller.quotes.update({
       ...toUpdateInput(created),
+      deliveryIncluded: false,
+      deliveryPrice: 777,
       discount: 125,
       notes: 'Updated draft terms',
       paymentTerms: '50% deposit before fabrication',
@@ -156,6 +164,8 @@ describe('quotes.update', () => {
     const updateEvent = events.findLast((event) => event.entityType === 'quote' && event.action === 'updated');
 
     expect(updated).toMatchObject({
+      deliveryIncluded: false,
+      deliveryPrice: 0,
       discount: 125,
       notes: 'Updated draft terms',
       paymentTerms: '50% deposit before fabrication',
@@ -166,6 +176,10 @@ describe('quotes.update', () => {
       validUntil: '2026-07-31',
     });
     expect(updateEvent?.changes).toMatchObject({
+      deliveryIncluded: {
+        from: true,
+        to: false,
+      },
       paymentTerms: {
         from: null,
         to: '50% deposit before fabrication',
@@ -255,6 +269,7 @@ describe('quotes.list', () => {
     });
     const draftQuote = await createNamedQuote(salesCaller, {
       customerCompanyName: 'Beta Civil',
+      deliveryPrice: 75,
       discount: 25,
       productId: crusherProduct.id,
     });
@@ -348,7 +363,7 @@ describe('quotes.list', () => {
         {
           code: draftQuote.code,
           productName: 'Crusher Bucket',
-          total: crusherProduct.basePrice - 25,
+          total: crusherProduct.basePrice - 25 + 75,
         },
       ],
     });
@@ -374,7 +389,7 @@ describe('quotes.list', () => {
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({
       quotedBasePrice: context.product.basePrice,
-      total: context.product.basePrice - created.discount,
+      total: context.product.basePrice - created.discount + created.deliveryPrice,
     });
   });
 });
@@ -554,11 +569,13 @@ async function createNamedQuote(
   caller: AppRouterCaller,
   {
     customerCompanyName,
+    deliveryPrice = 0,
     discount,
     paymentTerms = null,
     productId,
   }: {
     customerCompanyName: string;
+    deliveryPrice?: number;
     discount: number;
     paymentTerms?: string | null;
     productId: string;
@@ -569,6 +586,8 @@ async function createNamedQuote(
       type: 'inline',
       companyName: customerCompanyName,
     },
+    deliveryIncluded: true,
+    deliveryPrice,
     discount,
     notes: null,
     paymentTerms,
@@ -588,6 +607,8 @@ function toUpdateInput(quote: QuoteDetail) {
       type: 'existing' as const,
       customerId: quote.customerId,
     },
+    deliveryIncluded: quote.deliveryIncluded,
+    deliveryPrice: quote.deliveryPrice,
     discount: quote.discount,
     notes: quote.notes,
     paymentTerms: quote.paymentTerms,

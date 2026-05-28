@@ -30,20 +30,20 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
   const quote = quoteQuery.data;
   const createMutation = useMutation(
     trpc.quotes.create.mutationOptions({
-      onSuccess: async (created) => {
+      onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() });
         toast.success('Quote created');
-        await navigate({ params: { id: created.id }, to: '/quotes/$id' });
+        await navigate({ to: '/quotes' });
       },
       onError: (error) => showMutationError(error, 'Unable to create quote.'),
     }),
   );
   const updateMutation = useMutation(
     trpc.quotes.update.mutationOptions({
-      onSuccess: async (updated) => {
+      onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() });
         toast.success('Quote updated');
-        await navigate({ params: { id: updated.id }, to: '/quotes/$id' });
+        await navigate({ to: '/quotes' });
       },
       onError: (error) => showMutationError(error, 'Unable to update quote.'),
     }),
@@ -70,16 +70,9 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
 
   return (
     <EditPageLayout
-      back={
-        quoteId ? (
-          <BackButton params={{ id: quoteId }} to="/quotes/$id">
-            Quote
-          </BackButton>
-        ) : (
-          <BackButton to="/quotes">Quotes</BackButton>
-        )
-      }
+      back={<BackButton to="/quotes">Quotes</BackButton>}
       badge={quote ? <QuoteStatusBadge status={quote.status} /> : undefined}
+      contentClassName="max-w-7xl"
       description={isEditing ? 'Edit Quote' : 'New Quote'}
       title={isEditing ? (quote?.code ?? 'Loading quote...') : 'Create a new quote'}
     >

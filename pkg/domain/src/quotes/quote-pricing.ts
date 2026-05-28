@@ -21,13 +21,17 @@ export function validateDiscount({ basePrice, discount }: { basePrice: number; d
 }
 
 export function computeQuoteTotal({
+  deliveryIncluded = false,
+  deliveryPrice = 0,
   discount,
   quotedBasePrice,
 }: {
+  deliveryIncluded?: boolean;
+  deliveryPrice?: number;
   discount: number;
   quotedBasePrice: number;
 }): number {
-  return Math.max(0, quotedBasePrice - discount);
+  return Math.max(0, quotedBasePrice - discount) + (deliveryIncluded ? deliveryPrice : 0);
 }
 
 function deny(reason: string): QuotePricingResult {

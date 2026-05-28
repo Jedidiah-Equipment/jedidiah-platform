@@ -140,12 +140,10 @@ export const QuoteCreateInput = z.object({
 });
 
 export type QuoteUpdateInput = z.infer<typeof QuoteUpdateInput>;
-export const QuoteUpdateInput = QuoteCreateInput.omit({ productId: true })
-  .extend({
-    customer: QuoteExistingCustomerInput,
-    id: UUID,
-  })
-  .strict();
+export const QuoteUpdateInput = QuoteCreateInput.extend({
+  customer: QuoteExistingCustomerInput,
+  id: UUID,
+}).strict();
 
 export type QuoteSortBy = z.infer<typeof QuoteSortBy>;
 export const QuoteSortBy = z.enum([

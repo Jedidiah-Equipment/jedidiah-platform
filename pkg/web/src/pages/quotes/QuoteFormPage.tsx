@@ -63,10 +63,8 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
       throw new Error('Edited quotes must use an existing customer.');
     }
 
-    const { productId: _productId, ...updateValue } = value;
-
     return updateMutation.mutateAsync({
-      ...updateValue,
+      ...value,
       customer: value.customer,
       id: quoteId,
     });

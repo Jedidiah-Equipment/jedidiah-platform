@@ -1,14 +1,9 @@
-export const LOCKED_QUOTE_FIELDS = new Set([
-  'customerId',
-  'deliveryIncluded',
-  'deliveryPrice',
-  'discount',
-  'productId',
-  'quotedBasePrice',
-  'quotedCurrencyCode',
-  'salesPersonId',
-  'selectedAssemblies',
-  'status',
+export const EDITABLE_LOCKED_QUOTE_FIELDS = new Set([
+  'notes',
+  'paymentTerms',
+  'plannedDeliveryDate',
+  'preferredDeliveryDate',
+  'validUntil',
 ]);
 
 export type QuoteEditableResult =
@@ -17,7 +12,6 @@ export type QuoteEditableResult =
     }
   | {
       allowed: false;
-      field: string;
       reason: string;
     };
 
@@ -33,10 +27,9 @@ export function assertQuoteEditable({
   }
 
   for (const field of changedFields) {
-    if (LOCKED_QUOTE_FIELDS.has(field)) {
+    if (!EDITABLE_LOCKED_QUOTE_FIELDS.has(field)) {
       return {
         allowed: false,
-        field,
         reason: `Quote is locked because it already has a Job; ${field} cannot be changed.`,
       };
     }

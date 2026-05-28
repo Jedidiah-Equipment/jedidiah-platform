@@ -18,16 +18,12 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const job = jobQuery.data;
   return (
-    <DetailPageLayout
-      back={<BackButton to="/jobs">Jobs</BackButton>}
-      description={job?.quoteCode ?? undefined}
-      title={job?.code}
-    >
+    <DetailPageLayout back={<BackButton to="/jobs">Jobs</BackButton>} description={job?.quoteCode} title={job?.code}>
       <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
       {job ? (
         <>
           <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <JobFact label="Quote code" value={job.quoteCode ?? 'Quote linked'} />
+            <JobFact label="Quote code" value={job.quoteCode} />
             <JobFact label="Job code" value={<span className="font-medium">{job.code}</span>} />
             <JobFact label="Customer name" value={job.customerCompanyName ?? 'Customer unavailable'} />
             <JobFact label="Product name" value={job.productName} />

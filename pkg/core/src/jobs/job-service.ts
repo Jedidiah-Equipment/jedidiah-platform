@@ -35,7 +35,13 @@ export async function createJob({
     const quote = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
     const cfo = await buildJobCfoForQuote({ productId: quote.productId, quoteId: quote.id, tx });
 
-    const [job] = await insertJobFromQuote({ productId: quote.productId, quoteId: quote.id, tx });
+    const [job] = await tx
+      .insert(jobs)
+      .values({
+        productId: quote.productId,
+        quoteId: quote.id,
+      })
+      .returning();
 
     if (!job) {
       throw new Error('Job insert did not return a row');
@@ -66,43 +72,6 @@ export async function createJob({
 
     return getJob({ access, db: tx, id: job.id });
   });
-}
-
-async function insertJobFromQuote({
-  productId,
-  quoteId,
-  tx,
-}: {
-  productId: UUID;
-  quoteId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<(typeof jobs.$inferSelect)[]> {
-  try {
-    return await tx
-      .insert(jobs)
-      .values({
-        productId,
-        quoteId,
-      })
-      .returning();
-  } catch (error) {
-    if (isJobQuoteUniqueViolation(error)) {
-      throw new JobCreateFromQuoteDeniedError('Quote already has a Job.');
-    }
-
-    throw error;
-  }
-}
-
-function isJobQuoteUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505' &&
-    'constraint_name' in error &&
-    error.constraint_name === 'job_quote_id_unique'
-  );
 }
 
 async function validateJobQuoteForCreate({

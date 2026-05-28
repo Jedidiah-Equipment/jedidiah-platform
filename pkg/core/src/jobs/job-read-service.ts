@@ -258,7 +258,7 @@ export function mapJobSummary(row: JobWithProductRow): JobSummary {
 
   return {
     ...mappedJob,
-    customerCompanyName: row.quote?.customer.companyName ?? null,
+    customerCompanyName: row.quote.customer.companyName,
     productModelCode: row.product.modelCode,
     productName: row.product.name,
     quoteCode: QuoteCode.parse(row.quote.code),

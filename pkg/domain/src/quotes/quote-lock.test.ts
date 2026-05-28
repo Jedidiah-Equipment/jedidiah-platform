@@ -20,8 +20,19 @@ describe('assertQuoteEditable', () => {
       }),
     ).toEqual({
       allowed: false,
-      field: 'discount',
       reason: 'Quote is locked because it already has a Job; discount cannot be changed.',
+    });
+  });
+
+  it('rejects unknown changed fields after a quote has a job', () => {
+    expect(
+      assertQuoteEditable({
+        changedFields: ['futureCommercialField'],
+        hasJob: true,
+      }),
+    ).toEqual({
+      allowed: false,
+      reason: 'Quote is locked because it already has a Job; futureCommercialField cannot be changed.',
     });
   });
 

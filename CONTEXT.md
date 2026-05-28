@@ -72,6 +72,10 @@ Creating a Job without a Quote. The form asks for Product and optional Job Due D
 **Audit Event**:
 Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_stage`, `product`, `quote`, `supplier`, and `user`. Product Assemblies, their Parts lists, and override links are part of the `product` aggregate and audited under the `product` entity — there is no separate `product_assembly` audit entity type.
 
+**Thumbnail**:
+An optional, square, display-only image attached to a User, Customer, Supplier, or Product for quick visual recognition. It is distinct from any future full-size image or document-style media.
+_Avoid_: Avatar, Logo, Photo, Image.
+
 ## Relationships
 
 - A **Job** has exactly five **Stages**, one per Department in Pipeline order.

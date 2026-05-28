@@ -25,11 +25,14 @@ export const ProductDescriptionInput = z
 export type ProductBasePrice = z.infer<typeof ProductBasePrice>;
 export const ProductBasePrice = z.coerce.number().pipe(Price);
 
-export type ProductLeadTimeDays = z.infer<typeof ProductLeadTimeDays>;
-export const ProductLeadTimeDays = z.number().int('Lead time must be a whole number').min(0, 'Must be zero or greater');
+export type ProductBuildTimeDays = z.infer<typeof ProductBuildTimeDays>;
+export const ProductBuildTimeDays = z
+  .number()
+  .int('Build time must be a whole number')
+  .min(0, 'Must be zero or greater');
 
-export type ProductLeadTimeDaysInput = z.infer<typeof ProductLeadTimeDaysInput>;
-export const ProductLeadTimeDaysInput = z.coerce.number().pipe(ProductLeadTimeDays);
+export type ProductBuildTimeDaysInput = z.infer<typeof ProductBuildTimeDaysInput>;
+export const ProductBuildTimeDaysInput = z.coerce.number().pipe(ProductBuildTimeDays);
 
 export type ProductCurrencyCode = z.infer<typeof ProductCurrencyCode>;
 export const ProductCurrencyCode = z.literal('ZAR').default('ZAR');
@@ -195,7 +198,7 @@ export const Product = z.object({
   description: ProductDescription,
   modelCode: ProductModelCode,
   basePrice: ProductBasePrice,
-  leadTimeDays: ProductLeadTimeDays,
+  buildTimeDays: ProductBuildTimeDays,
   currencyCode: ProductCurrencyCode,
   assemblies: z.array(Assembly).default([]),
   createdAt: DateIso,
@@ -222,7 +225,7 @@ export const ProductCreateInput = z
     modelCode: ProductModelCode,
     basePrice: ProductBasePrice,
     assemblies: ProductAssembliesInput,
-    leadTimeDays: ProductLeadTimeDaysInput,
+    buildTimeDays: ProductBuildTimeDaysInput,
     currencyCode: ProductCurrencyCode,
   })
   .strict();
@@ -235,7 +238,7 @@ export const ProductUpdateInput = z
     basePrice: ProductBasePrice,
     currencyCode: ProductCurrencyCode,
     description: ProductDescriptionInput,
-    leadTimeDays: ProductLeadTimeDaysInput,
+    buildTimeDays: ProductBuildTimeDaysInput,
     modelCode: ProductModelCode,
     name: ProductName,
   })

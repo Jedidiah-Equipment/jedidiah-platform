@@ -64,6 +64,13 @@
       "when": 1779960341380,
       "tag": "0008_yielding_lily_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779961530203,
+      "tag": "0009_handy_thunderbolt",
+      "breakpoints": true
     }
   ]
 }

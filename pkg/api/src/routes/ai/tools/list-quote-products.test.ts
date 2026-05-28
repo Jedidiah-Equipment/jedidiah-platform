@@ -100,7 +100,7 @@ async function createProduct(
   return caller.products.create({
     basePrice: 1_000,
     description: null,
-    leadTimeDays: 14,
+    buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
     ...overrides,

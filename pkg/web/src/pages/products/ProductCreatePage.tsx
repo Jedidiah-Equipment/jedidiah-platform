@@ -43,7 +43,7 @@ export const ProductCreatePage: React.FC = () => {
             basePrice: value.basePrice,
             currencyCode: value.currencyCode,
             description: value.description,
-            leadTimeDays: value.leadTimeDays,
+            buildTimeDays: value.buildTimeDays,
             modelCode: value.modelCode,
             name: value.name,
           })

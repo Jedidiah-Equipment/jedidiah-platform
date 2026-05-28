@@ -27,7 +27,7 @@ const auditFieldLabels: Record<string, string> = {
   discount: 'Discount',
   dueDate: 'Due date',
   email: 'Email',
-  leadTimeDays: 'Lead time (days)',
+  buildTimeDays: 'Build time (days)',
   member: 'Department membership',
   modelCode: 'Model code',
   name: 'Name',

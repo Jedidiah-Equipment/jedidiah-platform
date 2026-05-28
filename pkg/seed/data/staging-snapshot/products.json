@@ -5,7 +5,7 @@
     "currencyCode": "ZAR",
     "description": null,
     "id": "2827e9bb-743f-43c7-b38a-92ca421889d1",
-    "leadTimeDays": 21,
+    "buildTimeDays": 21,
     "modelCode": "SG1836",
     "name": "Silage Grain 18 36",
     "updatedAt": "2026-05-27T14:09:27.569Z"
@@ -16,7 +16,7 @@
     "currencyCode": "ZAR",
     "description": null,
     "id": "d6a2dc4e-345f-4ff4-bc0f-b3dbab310935",
-    "leadTimeDays": 15,
+    "buildTimeDays": 15,
     "modelCode": "LR7F",
     "name": "Land Roller 7m Folding",
     "updatedAt": "2026-05-27T14:34:25.969Z"

@@ -2,7 +2,7 @@ import { hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { BriefcaseBusinessIcon, EditIcon, PencilIcon, PlusIcon } from 'lucide-react';
+import { BriefcaseBusinessIcon, PencilIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { ButtonLink } from '@/components/button/ButtonLink.js';

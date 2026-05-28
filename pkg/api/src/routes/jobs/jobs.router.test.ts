@@ -66,7 +66,7 @@ async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
       basePrice: 1_000,
       currencyCode: 'ZAR',
       description: null,
-      leadTimeDays: 14,
+      buildTimeDays: 14,
       modelCode: 'JOB-TEST',
       name: 'Job Test Product',
     })

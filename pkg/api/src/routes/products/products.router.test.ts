@@ -19,7 +19,7 @@ async function createProduct(
   return caller.products.create({
     basePrice: 1_000,
     description: null,
-    leadTimeDays: 14,
+    buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
     ...overrides,
@@ -43,21 +43,21 @@ describe('products.create', () => {
       basePrice: 1_000,
       currencyCode: 'ZAR',
       description: null,
-      leadTimeDays: 14,
+      buildTimeDays: 14,
       modelCode: 'WHEEL-LOADER',
       name: 'Wheel Loader',
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
   });
-  test('rejects negative lead time days', async ({ context }) => {
+  test('rejects negative build time days', async ({ context }) => {
     const caller = context.createCaller();
 
     await expect(
       caller.products.create({
         basePrice: 1_000,
         description: null,
-        leadTimeDays: -1,
+        buildTimeDays: -1,
         modelCode: 'NEGATIVE-LEAD-TIME',
         name: 'Negative Lead Time',
       }),
@@ -108,13 +108,13 @@ describe('products.create', () => {
 });
 
 describe('products.read', () => {
-  test('returns lead time days on get and list', async ({ context }) => {
+  test('returns build time days on get and list', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Wheel Loader Read', { leadTimeDays: 21 });
+    const created = await createProduct(caller, 'Wheel Loader Read', { buildTimeDays: 21 });
 
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
       id: created.id,
-      leadTimeDays: 21,
+      buildTimeDays: 21,
     });
 
     const list = await caller.products.list({
@@ -122,7 +122,7 @@ describe('products.read', () => {
       pageSize: 10,
     });
 
-    expect(list.items).toContainEqual(expect.objectContaining({ id: created.id, leadTimeDays: 21 }));
+    expect(list.items).toContainEqual(expect.objectContaining({ id: created.id, buildTimeDays: 21 }));
   });
 
   test('returns assemblies on get and list', async ({ context }) => {
@@ -179,7 +179,7 @@ describe('products.update', () => {
       basePrice: 2_000,
       currencyCode: 'ZAR',
       description: 'Updated',
-      leadTimeDays: 30,
+      buildTimeDays: 30,
       modelCode: 'WHEEL-LOADER-UPDATED',
       name: 'Wheel Loader Updated',
     });
@@ -187,7 +187,7 @@ describe('products.update', () => {
     expect(updated).toMatchObject({
       basePrice: 2_000,
       description: 'Updated',
-      leadTimeDays: 30,
+      buildTimeDays: 30,
       modelCode: 'WHEEL-LOADER-UPDATED',
       name: 'Wheel Loader Updated',
     });
@@ -196,7 +196,7 @@ describe('products.update', () => {
     expect(events).toContainEqual(
       expect.objectContaining({
         changes: expect.objectContaining({
-          leadTimeDays: {
+          buildTimeDays: {
             from: 14,
             to: 30,
           },
@@ -233,7 +233,7 @@ describe('products.update', () => {
       basePrice: created.basePrice,
       currencyCode: 'ZAR',
       description: created.description,
-      leadTimeDays: created.leadTimeDays,
+      buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: created.name,
     });
@@ -275,7 +275,7 @@ describe('products.update', () => {
       basePrice: 2_000,
       currencyCode: 'ZAR',
       description: created.description,
-      leadTimeDays: created.leadTimeDays,
+      buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: 'Wheel Loader Preserve Assemblies Updated',
     });
@@ -340,7 +340,7 @@ describe('products.update', () => {
         basePrice: target.basePrice,
         currencyCode: 'ZAR',
         description: target.description,
-        leadTimeDays: target.leadTimeDays,
+        buildTimeDays: target.buildTimeDays,
         modelCode: target.modelCode,
         name: target.name,
       }),

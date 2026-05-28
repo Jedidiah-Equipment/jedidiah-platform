@@ -53,7 +53,7 @@ function useProductForm() {
     basePrice: NaN,
     description: '',
     currencyCode: 'ZAR',
-    leadTimeDays: NaN,
+    buildTimeDays: NaN,
     modelCode: '',
     name: '',
   };

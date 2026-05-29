@@ -57,6 +57,7 @@ export function mapPart(row: PartWithSupplierRow): Part {
     supplier: row.supplier,
     supplierCode: row.supplierCode,
     supplierId: row.supplierId,
+    unitOfMeasure: row.unitOfMeasure,
   });
 }
 
@@ -251,6 +252,7 @@ export async function updatePart({
         name: input.name,
         supplierCode: input.supplierCode,
         supplierId: input.supplierId,
+        unitOfMeasure: input.unitOfMeasure,
       };
       const after = { ...before, ...patch };
       const changes = createAuditChanges(before, after, partAuditDescriptor.fields);
@@ -349,6 +351,7 @@ export async function bulkImportParts({
           name: row.name,
           supplierCode: row.supplierCode,
           supplierId: importedSupplier.id,
+          unitOfMeasure: 'quantity' as const,
         };
         const existingPart = partByCode ?? partBySupplierCode;
 

@@ -283,6 +283,7 @@ function partInput(supplierId: string, code: string, name: string): typeof parts
     name,
     supplierCode: code,
     supplierId,
+    unitOfMeasure: 'quantity',
   };
 }
 

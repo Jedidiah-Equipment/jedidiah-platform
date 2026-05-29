@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { Part, PartBulkImportInput, PartBulkImportResult, PartCreateInput, PartListInput } from './part.js';
+import {
+  PART_UNIT_OF_MEASURE_LABELS,
+  Part,
+  PartBulkImportInput,
+  PartBulkImportResult,
+  PartCreateInput,
+  PartListInput,
+  PartUnitOfMeasure,
+} from './part.js';
 
 describe('PartCreateInput', () => {
   it('normalizes part fields', () => {
@@ -15,6 +23,7 @@ describe('PartCreateInput', () => {
         name: '  Bearing  ',
         supplierCode: '  SUP-100  ',
         supplierId: '00000000-0000-4000-8000-000000000001',
+        unitOfMeasure: 'mm',
       }),
     ).toEqual({
       category: 'Bearings',
@@ -25,6 +34,7 @@ describe('PartCreateInput', () => {
       name: 'Bearing',
       supplierCode: 'SUP-100',
       supplierId: '00000000-0000-4000-8000-000000000001',
+      unitOfMeasure: 'mm',
     });
   });
 
@@ -38,8 +48,19 @@ describe('PartCreateInput', () => {
         name: ' ',
         supplierCode: ' ',
         supplierId: '00000000-0000-4000-8000-000000000001',
+        unitOfMeasure: 'quantity',
       }),
     ).toThrow();
+  });
+});
+
+describe('PartUnitOfMeasure', () => {
+  it('accepts quantity and millimetres with shared labels', () => {
+    expect(PartUnitOfMeasure.options).toEqual(['quantity', 'mm']);
+    expect(PART_UNIT_OF_MEASURE_LABELS).toEqual({
+      mm: 'Millimetres',
+      quantity: 'Quantity',
+    });
   });
 });
 

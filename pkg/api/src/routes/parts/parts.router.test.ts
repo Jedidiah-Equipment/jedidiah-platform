@@ -29,6 +29,7 @@ async function createPart(
     name: 'Bearing',
     supplierCode: 'SUP-100',
     supplierId,
+    unitOfMeasure: 'quantity',
     ...overrides,
   });
 }
@@ -49,6 +50,7 @@ describe('parts.create', () => {
         name: 'Bearing',
         supplierCode: 'SUP-100',
         supplierId: '00000000-0000-4000-8000-000000000001',
+        unitOfMeasure: 'quantity',
       }),
     ).rejects.toMatchObject({
       code: 'UNAUTHORIZED',
@@ -68,6 +70,7 @@ describe('parts.create', () => {
         name: 'Bearing',
         supplierCode: 'SUP-100',
         supplierId: supplier.id,
+        unitOfMeasure: 'quantity',
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -92,6 +95,7 @@ describe('parts.create', () => {
       },
       supplierCode: 'SUP-100',
       supplierId: supplier.id,
+      unitOfMeasure: 'quantity',
     });
 
     const events = await listAuditEvents(context.db);
@@ -361,6 +365,7 @@ describe('parts.update', () => {
       drawingCode: 'DR-100',
       finish: 'Painted',
       name: 'Bearing Assembly',
+      unitOfMeasure: 'mm',
     });
 
     expect(updated).toMatchObject({
@@ -368,6 +373,7 @@ describe('parts.update', () => {
       finish: 'Painted',
       id: created.id,
       name: 'Bearing Assembly',
+      unitOfMeasure: 'mm',
     });
 
     const events = await listAuditEvents(context.db);
@@ -387,6 +393,10 @@ describe('parts.update', () => {
         name: {
           from: 'Bearing',
           to: 'Bearing Assembly',
+        },
+        unitOfMeasure: {
+          from: 'quantity',
+          to: 'mm',
         },
       },
       entityId: created.id,
@@ -409,6 +419,7 @@ describe('parts.update', () => {
         name: 'Bearing',
         supplierCode: 'SUP-100',
         supplierId: supplier.id,
+        unitOfMeasure: 'quantity',
       }),
     ).rejects.toMatchObject({
       code: 'NOT_FOUND',

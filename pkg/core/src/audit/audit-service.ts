@@ -55,6 +55,7 @@ export const partAuditDescriptor: AuditEntityDescriptor = {
     name: 'name',
     supplierCode: 'supplier code',
     supplierId: 'supplier',
+    unitOfMeasure: 'unit of measure',
   },
 };
 

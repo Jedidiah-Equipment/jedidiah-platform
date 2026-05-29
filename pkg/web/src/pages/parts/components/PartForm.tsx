@@ -1,36 +1,12 @@
-import {
-  type Part,
-  PartCategory,
-  PartCode,
-  PartDescription,
-  PartDrawingCode,
-  PartFinish,
-  PartName,
-  PartSupplierCode,
-  type Supplier,
-  UUID,
-} from '@pkg/schema';
+import type { Part, Supplier } from '@pkg/schema';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
-import { z } from 'zod';
 
-import { emptyStringOr, requiredSelection } from '@/components/form/form-schema.js';
 import { useAppForm } from '@/components/form/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { usePartCategoryOptions, useSupplierOptions } from '@/hooks/options/index.js';
-
-type PartFormValues = z.infer<typeof PartFormValues>;
-const PartFormValues = z.object({
-  category: PartCategory,
-  code: PartCode,
-  description: PartDescription,
-  drawingCode: emptyStringOr(PartDrawingCode),
-  finish: PartFinish,
-  name: PartName,
-  supplierCode: PartSupplierCode,
-  supplierId: requiredSelection(UUID, 'Select a supplier'),
-});
+import { PartFormValues, partUnitOfMeasureOptions, toPartFormValues } from './types.js';
 
 type PartFormProps = {
   fixedSupplier?: Pick<Supplier, 'companyName' | 'id'>;
@@ -46,16 +22,7 @@ export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, 
   const categoryOptions = usePartCategoryOptions();
 
   const form = useAppForm({
-    defaultValues: {
-      category: initialPart?.category ?? '',
-      code: initialPart?.code ?? '',
-      description: initialPart?.description ?? '',
-      drawingCode: initialPart?.drawingCode ?? '',
-      finish: initialPart?.finish ?? '',
-      name: initialPart?.name ?? '',
-      supplierCode: initialPart?.supplierCode ?? '',
-      supplierId: fixedSupplier?.id ?? initialPart?.supplierId ?? '',
-    },
+    defaultValues: toPartFormValues({ fixedSupplierId: fixedSupplier?.id, initialPart }),
     validators: {
       onSubmit: PartFormValues,
     },
@@ -93,6 +60,9 @@ export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, 
         )}
         <form.AppField name="supplierCode">
           {(field) => <field.TextField autoComplete="off" label="Supplier code" />}
+        </form.AppField>
+        <form.AppField name="unitOfMeasure">
+          {(field) => <field.SelectField label="Unit" options={partUnitOfMeasureOptions} placeholder="Select unit" />}
         </form.AppField>
         <form.AppField name="category">
           {(field) => (

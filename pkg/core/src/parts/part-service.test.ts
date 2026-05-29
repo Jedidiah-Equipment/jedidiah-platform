@@ -53,6 +53,7 @@ describe('bulkImportParts', () => {
     expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies', 'Beta Supplies']);
     expect(importedParts.items.map((part) => part.code)).toEqual(['P-100', 'P-200']);
+    expect(importedParts.items.map((part) => part.unitOfMeasure)).toEqual(['quantity', 'quantity']);
     expect(events).toMatchObject([
       {
         action: 'created',

@@ -414,6 +414,32 @@ These should start as warnings, not hard blockers, until the business has used t
 - Which artifact storage should host released manufacturing files?
 - Should a Job snapshot CAD exports at Job creation, production release, or first download?
 
+## SolidWorks PDM Notes
+
+SolidWorks PDM is not part of the first implementation because Jedidiah does not currently use it. The active plan remains a file-based export bundle from SolidWorks into Jedidah Ops.
+
+PDM would become useful later if Jedidiah wants stronger control over release state, design history, and repeatable export tasks.
+
+What PDM could add:
+
+- A controlled vault for `.SLDASM`, `.SLDPRT`, `.SLDDRW`, `.DXF`, and any later export formats.
+- Check-in/check-out so designers do not overwrite each other's files.
+- File history with versions and, if the business adopts them, formal revisions.
+- Workflow states such as `Work in Progress`, `For Review`, and `Released`.
+- A clean release gate: only files in a `Released` state can be imported or snapshotted into Jedidah Ops.
+- Data card variables mapped to SolidWorks custom properties such as `JED_PRODUCT_MODEL_CODE`, `JED_ASSEMBLY_CODE`, and `JED_PART_CODE`.
+- Administrator-defined tasks for repeatable conversion, print, and validation work.
+
+If PDM is adopted later, the integration boundary should not change much. Jedidah Ops should still import a manifest, store file hashes, copy released artifacts into app-owned storage, reconcile catalogue changes, and snapshot the exact exports used by a Job. PDM would mainly replace the manual file-share/export-folder discipline with a proper vault and workflow source.
+
+Future PDM rule:
+
+```text
+Only Released PDM files can become released CAD exports in Jedidah Ops.
+```
+
+PDM should remain a future reliability upgrade, not a prerequisite for the first CAD sync slice.
+
 ## Future Reference
 
 Ideas not needed for the first slice:

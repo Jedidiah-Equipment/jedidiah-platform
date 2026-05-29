@@ -5,6 +5,7 @@ import { partUnitOfMeasureOptions, toPartFormValues } from './types.js';
 describe('part form types', () => {
   it('defaults new parts to quantity units', () => {
     expect(toPartFormValues({ fixedSupplierId: '00000000-0000-4000-8000-000000000001' })).toMatchObject({
+      isInternallyFabricated: false,
       supplierId: '00000000-0000-4000-8000-000000000001',
       unitOfMeasure: 'quantity',
     });
@@ -20,6 +21,7 @@ describe('part form types', () => {
           drawingCode: null,
           finish: 'Rubber',
           id: '00000000-0000-4000-8000-000000000002',
+          isInternallyFabricated: true,
           name: 'Hydraulic hose',
           supplier: {
             companyName: 'Acme Supplies',
@@ -31,6 +33,7 @@ describe('part form types', () => {
         },
       }),
     ).toMatchObject({
+      isInternallyFabricated: true,
       supplierId: '00000000-0000-4000-8000-000000000001',
       unitOfMeasure: 'mm',
     });

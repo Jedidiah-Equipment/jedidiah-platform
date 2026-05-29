@@ -52,6 +52,7 @@ export const partAuditDescriptor: AuditEntityDescriptor = {
     description: 'description',
     drawingCode: 'drawing code',
     finish: 'finish',
+    isInternallyFabricated: 'internally fabricated',
     name: 'name',
     supplierCode: 'supplier code',
     supplierId: 'supplier',

@@ -199,6 +199,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
                         <TableHead>Name</TableHead>
                         <TableHead>Supplier</TableHead>
                         <TableHead>Unit</TableHead>
+                        <TableHead>Internal</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -209,6 +210,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
                           <TableCell>{row.name}</TableCell>
                           <TableCell>{row.supplierName}</TableCell>
                           <TableCell>{PART_UNIT_OF_MEASURE_LABELS[row.unitOfMeasure]}</TableCell>
+                          <TableCell>{row.isInternallyFabricated ? 'Yes' : 'No'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

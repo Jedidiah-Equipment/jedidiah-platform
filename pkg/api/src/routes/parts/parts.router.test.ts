@@ -26,6 +26,7 @@ async function createPart(
     description: 'Main bearing',
     drawingCode: null,
     finish: 'Zinc',
+    isInternallyFabricated: false,
     name: 'Bearing',
     supplierCode: 'SUP-100',
     supplierId,
@@ -47,6 +48,7 @@ describe('parts.create', () => {
         description: 'Main bearing',
         drawingCode: null,
         finish: 'Zinc',
+        isInternallyFabricated: false,
         name: 'Bearing',
         supplierCode: 'SUP-100',
         supplierId: '00000000-0000-4000-8000-000000000001',
@@ -67,6 +69,7 @@ describe('parts.create', () => {
         description: 'Main bearing',
         drawingCode: null,
         finish: 'Zinc',
+        isInternallyFabricated: false,
         name: 'Bearing',
         supplierCode: 'SUP-100',
         supplierId: supplier.id,
@@ -89,6 +92,7 @@ describe('parts.create', () => {
       code: 'P-100',
       drawingCode: null,
       name: 'Bearing',
+      isInternallyFabricated: false,
       supplier: {
         companyName: 'Acme Supplies',
         id: supplier.id,
@@ -180,6 +184,7 @@ describe('parts.bulkImport', () => {
         rows: [
           bulkImportRow({
             description: 'Updated main bearing',
+            isInternallyFabricated: true,
             unitOfMeasure: 'mm',
           }),
         ],
@@ -194,6 +199,7 @@ describe('parts.bulkImport', () => {
 
     expect(parts.items[0]).toMatchObject({
       description: 'Updated main bearing',
+      isInternallyFabricated: true,
       unitOfMeasure: 'mm',
     });
   });
@@ -286,6 +292,7 @@ describe('parts.list and parts.categories', () => {
       category: 'Fasteners',
       code: 'P-200',
       drawingCode: 'DR-200',
+      isInternallyFabricated: true,
       name: 'Bolt',
       supplierCode: 'BT-200',
       unitOfMeasure: 'mm',
@@ -316,6 +323,7 @@ describe('parts.list and parts.categories', () => {
       supplierId: acme.id,
     });
     const lengthParts = await caller.parts.list({ columnFilters: { unitOfMeasure: 'mm' } });
+    const internallyFabricatedParts = await caller.parts.list({ columnFilters: { isInternallyFabricated: true } });
     const categories = await caller.parts.categories();
 
     expect(partNames(list.items)).toEqual(['Bearing']);
@@ -323,6 +331,7 @@ describe('parts.list and parts.categories', () => {
     expect(drawingSearch.items.map((part) => part.code)).toEqual(['P-200']);
     expect(supplierParts.items.map((part) => part.code)).toEqual(['P-300', 'P-100']);
     expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
+    expect(internallyFabricatedParts.items.map((part) => part.code)).toEqual(['P-200']);
     expect(categories.categories).toEqual(['Bearings', 'Fasteners']);
   });
 
@@ -375,6 +384,7 @@ describe('parts.update', () => {
       ...created,
       drawingCode: 'DR-100',
       finish: 'Painted',
+      isInternallyFabricated: true,
       name: 'Bearing Assembly',
       unitOfMeasure: 'mm',
     });
@@ -383,6 +393,7 @@ describe('parts.update', () => {
       drawingCode: 'DR-100',
       finish: 'Painted',
       id: created.id,
+      isInternallyFabricated: true,
       name: 'Bearing Assembly',
       unitOfMeasure: 'mm',
     });
@@ -400,6 +411,10 @@ describe('parts.update', () => {
         finish: {
           from: 'Zinc',
           to: 'Painted',
+        },
+        isInternallyFabricated: {
+          from: false,
+          to: true,
         },
         name: {
           from: 'Bearing',
@@ -426,6 +441,7 @@ describe('parts.update', () => {
         description: 'Main bearing',
         drawingCode: null,
         finish: 'Zinc',
+        isInternallyFabricated: false,
         id: '00000000-0000-4000-8000-000000000001',
         name: 'Bearing',
         supplierCode: 'SUP-100',
@@ -474,6 +490,7 @@ function bulkImportRow(overrides: Partial<BulkImportRowInput> = {}): BulkImportR
     description: 'Main bearing',
     drawingCode: null,
     finish: 'Zinc',
+    isInternallyFabricated: false,
     lineNumber: 2,
     name: 'Bearing',
     supplierCode: 'SUP-100',

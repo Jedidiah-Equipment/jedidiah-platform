@@ -1,6 +1,6 @@
 import type { PartUnitOfMeasure } from '@pkg/schema';
 import { relations } from 'drizzle-orm';
-import { index, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { supplier } from './supplier.js';
 
@@ -13,6 +13,7 @@ export const parts = pgTable(
     drawingCode: text('drawing_code'),
     finish: text('finish').notNull(),
     id: uuid('id').defaultRandom().primaryKey(),
+    isInternallyFabricated: boolean('is_internally_fabricated').notNull().default(false),
     name: text('name').notNull(),
     supplierCode: text('supplier_code').notNull(),
     supplierId: uuid('supplier_id')

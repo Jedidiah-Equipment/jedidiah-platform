@@ -22,6 +22,7 @@ describe('PartCreateInput', () => {
         description: '  Main bearing  ',
         drawingCode: '  ',
         finish: '  Zinc  ',
+        isInternallyFabricated: true,
         name: '  Bearing  ',
         supplierCode: '  SUP-100  ',
         supplierId: '00000000-0000-4000-8000-000000000001',
@@ -33,10 +34,29 @@ describe('PartCreateInput', () => {
       description: 'Main bearing',
       drawingCode: null,
       finish: 'Zinc',
+      isInternallyFabricated: true,
       name: 'Bearing',
       supplierCode: 'SUP-100',
       supplierId: '00000000-0000-4000-8000-000000000001',
       unitOfMeasure: 'mm',
+    });
+  });
+
+  it('defaults internal fabrication to false when omitted', () => {
+    expect(
+      PartCreateInput.parse({
+        category: 'Bearings',
+        code: 'P-100',
+        description: 'Main bearing',
+        drawingCode: null,
+        finish: 'Zinc',
+        name: 'Bearing',
+        supplierCode: 'SUP-100',
+        supplierId: '00000000-0000-4000-8000-000000000001',
+        unitOfMeasure: 'quantity',
+      }),
+    ).toMatchObject({
+      isInternallyFabricated: false,
     });
   });
 
@@ -88,6 +108,11 @@ describe('PartListInput', () => {
     expect(PartSortBy.options).not.toContain('unitOfMeasure');
     expect(() => PartColumnFilters.parse({ unitOfMeasure: 'metres' })).toThrow();
   });
+
+  it('accepts internal fabrication column filters without adding sorting', () => {
+    expect(PartColumnFilters.parse({ isInternallyFabricated: true })).toEqual({ isInternallyFabricated: true });
+    expect(PartSortBy.options).not.toContain('isInternallyFabricated');
+  });
 });
 
 describe('PartBulkImportInput', () => {
@@ -101,6 +126,7 @@ describe('PartBulkImportInput', () => {
             description: '  Main bearing  ',
             drawingCode: '  ',
             finish: '  Zinc  ',
+            isInternallyFabricated: true,
             lineNumber: 4,
             name: '  Bearing  ',
             supplierCode: '  SUP-100  ',
@@ -117,6 +143,7 @@ describe('PartBulkImportInput', () => {
           description: 'Main bearing',
           drawingCode: null,
           finish: 'Zinc',
+          isInternallyFabricated: true,
           lineNumber: 4,
           name: 'Bearing',
           supplierCode: 'SUP-100',
@@ -136,6 +163,7 @@ describe('PartBulkImportInput', () => {
             code: 'P-100',
             description: 'Main bearing',
             finish: 'Zinc',
+            isInternallyFabricated: false,
             lineNumber: 4,
             name: 'Bearing',
             supplierCode: 'SUP-100',

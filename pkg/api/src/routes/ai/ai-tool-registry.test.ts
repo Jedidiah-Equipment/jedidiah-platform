@@ -224,6 +224,7 @@ describe('AI result projections', () => {
         {
           code: 'HOSE-001',
           id: 'part-id',
+          isInternallyFabricated: true,
           name: 'Hydraulic hose',
           unitOfMeasure: 'mm',
         },

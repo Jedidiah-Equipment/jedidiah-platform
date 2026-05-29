@@ -29,6 +29,7 @@ import {
   getOverriddenStandardAssemblyIds,
   QuoteFormValues,
   resolveSelectedAssemblySnapshots,
+  type SelectedAssemblySnapshot,
   toQuoteCreateInput,
   toQuoteFormValues,
   toQuoteUpdateInput,
@@ -457,11 +458,13 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
     formSelections: value,
     initialSelections,
   });
-  const selectedCatalogAssemblyIds = new Set(
-    selectedSnapshots
-      .map((selection) => selection.productAssemblyId)
-      .filter((productAssemblyId): productAssemblyId is string => Boolean(productAssemblyId)),
-  );
+  const selectedSnapshotByCatalogId = new Map<string, SelectedAssemblySnapshot>();
+  for (const snapshot of selectedSnapshots) {
+    if (snapshot.productAssemblyId) {
+      selectedSnapshotByCatalogId.set(snapshot.productAssemblyId, snapshot);
+    }
+  }
+  const selectedCatalogAssemblyIds = new Set(selectedSnapshotByCatalogId.keys());
   const overriddenStandardAssemblyIds = getOverriddenStandardAssemblyIds(catalogAssemblies, selectedCatalogAssemblyIds);
   const staleSelections = selectedSnapshots.filter((selection) => !selection.productAssemblyId);
 
@@ -523,7 +526,12 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
           ) : (
             <div className="grid gap-2">
               {optionalAssemblies.map((assembly) => {
-                const isSelected = selectedCatalogAssemblyIds.has(assembly.id);
+                const snapshot = selectedSnapshotByCatalogId.get(assembly.id);
+                const isSelected = Boolean(snapshot);
+                // Selected options display their locked snapshot name/price so they don't shift
+                // when the catalog assembly is later renamed or repriced.
+                const displayName = snapshot?.quotedName ?? assembly.name;
+                const displayPrice = snapshot?.quotedPrice ?? assembly.price;
 
                 return (
                   <div
@@ -536,11 +544,9 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
                         disabled={readOnly}
                         onCheckedChange={(checked) => setCatalogSelected(assembly.id, checked === true)}
                       />
-                      <span className="truncate">{assembly.name}</span>
+                      <span className="truncate">{displayName}</span>
                     </span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {formatCurrency(assembly.price, currencyCode)}
-                    </span>
+                    <span className="shrink-0 text-muted-foreground">{formatCurrency(displayPrice, currencyCode)}</span>
                   </div>
                 );
               })}

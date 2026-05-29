@@ -29,7 +29,7 @@ async function createPart(
     name: 'Bearing',
     supplierCode: 'SUP-100',
     supplierId,
-    unitOfMeasure: 'quantity',
+    unitOfMeasure: 'quantity' as const,
     ...overrides,
   });
 }
@@ -180,6 +180,7 @@ describe('parts.bulkImport', () => {
         rows: [
           bulkImportRow({
             description: 'Updated main bearing',
+            unitOfMeasure: 'mm',
           }),
         ],
       }),
@@ -187,6 +188,13 @@ describe('parts.bulkImport', () => {
       errors: [],
       importedCount: 0,
       updatedCount: 1,
+    });
+
+    const parts = await caller.parts.list({});
+
+    expect(parts.items[0]).toMatchObject({
+      description: 'Updated main bearing',
+      unitOfMeasure: 'mm',
     });
   });
 
@@ -454,7 +462,9 @@ function createEmail(companyName: string): string {
     .replace(/^-|-$/g, '')}@example.com`;
 }
 
-function bulkImportRow(overrides: Partial<Parameters<AppRouterCaller['parts']['bulkImport']>[0]['rows'][number]> = {}) {
+type BulkImportRowInput = Parameters<AppRouterCaller['parts']['bulkImport']>[0]['rows'][number];
+
+function bulkImportRow(overrides: Partial<BulkImportRowInput> = {}): BulkImportRowInput {
   return {
     category: 'Bearings',
     code: 'P-100',
@@ -465,6 +475,7 @@ function bulkImportRow(overrides: Partial<Parameters<AppRouterCaller['parts']['b
     name: 'Bearing',
     supplierCode: 'SUP-100',
     supplierName: 'Acme Supplies',
+    unitOfMeasure: 'quantity',
     ...overrides,
   };
 }

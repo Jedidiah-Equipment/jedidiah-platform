@@ -97,6 +97,7 @@ describe('PartBulkImportInput', () => {
             name: '  Bearing  ',
             supplierCode: '  SUP-100  ',
             supplierName: '  Acme Supplies  ',
+            unitOfMeasure: 'mm',
           },
         ],
       }),
@@ -112,6 +113,7 @@ describe('PartBulkImportInput', () => {
           name: 'Bearing',
           supplierCode: 'SUP-100',
           supplierName: 'Acme Supplies',
+          unitOfMeasure: 'mm',
         },
       ],
     });
@@ -130,6 +132,7 @@ describe('PartBulkImportInput', () => {
             name: 'Bearing',
             supplierCode: 'SUP-100',
             supplierName: 'Acme Supplies',
+            unitOfMeasure: 'quantity',
           },
         ],
         supplierId: '00000000-0000-4000-8000-000000000001',

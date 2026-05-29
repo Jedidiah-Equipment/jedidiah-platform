@@ -351,7 +351,7 @@ export async function bulkImportParts({
           name: row.name,
           supplierCode: row.supplierCode,
           supplierId: importedSupplier.id,
-          unitOfMeasure: 'quantity' as const,
+          unitOfMeasure: row.unitOfMeasure,
         };
         const existingPart = partByCode ?? partBySupplierCode;
 

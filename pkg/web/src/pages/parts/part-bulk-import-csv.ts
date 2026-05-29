@@ -1,4 +1,9 @@
-import { PartBulkImportRow, type PartBulkImportRow as PartBulkImportRowValue } from '@pkg/schema';
+import {
+  PartBulkImportRow,
+  type PartBulkImportRow as PartBulkImportRowValue,
+  PartUnitOfMeasure,
+  type PartUnitOfMeasure as PartUnitOfMeasureValue,
+} from '@pkg/schema';
 import Papa from 'papaparse';
 
 export const PART_BULK_IMPORT_COLUMNS = [
@@ -10,6 +15,7 @@ export const PART_BULK_IMPORT_COLUMNS = [
   'Finish',
   'Catagory',
   'Name',
+  'Unit',
 ] as const;
 
 type PartBulkImportColumnKey =
@@ -20,7 +26,8 @@ type PartBulkImportColumnKey =
   | 'finish'
   | 'name'
   | 'supplierCode'
-  | 'supplierName';
+  | 'supplierName'
+  | 'unitOfMeasure';
 
 type ColumnDefinition = {
   key: PartBulkImportColumnKey;
@@ -46,6 +53,7 @@ const columnDefinitions: readonly ColumnDefinition[] = [
   { key: 'finish', label: 'Finish', normalizedHeaders: ['finish'] },
   { key: 'category', label: 'Catagory', normalizedHeaders: ['catagory', 'category'] },
   { key: 'name', label: 'Name', normalizedHeaders: ['name'] },
+  { key: 'unitOfMeasure', label: 'Unit', normalizedHeaders: ['unit', 'unitofmeasure', 'unitofmeasurement'] },
 ];
 
 const columnLabelsByKey = new Map<PartBulkImportColumnKey, string>(
@@ -54,6 +62,12 @@ const columnLabelsByKey = new Map<PartBulkImportColumnKey, string>(
 
 const preservedTechnicalTokens = new Set(['CSK', 'HT', 'SHCS', 'SQ', 'SS', 'UNC', 'UNF', 'X']);
 const formattedFieldKeys = new Set<PartBulkImportColumnKey>(['category', 'finish', 'name', 'supplierName']);
+const unitOfMeasureValues = new Set<string>(PartUnitOfMeasure.options);
+const unitOfMeasureLabels = new Map<string, PartUnitOfMeasureValue>([
+  ['millimetres', 'mm'],
+  ['millimeters', 'mm'],
+  ['quantity', 'quantity'],
+]);
 
 export function parsePartBulkImportCsv(
   csvText: string,
@@ -123,7 +137,9 @@ export function parsePartBulkImportCsv(
       for (const issue of result.error.issues) {
         const key = issue.path[0];
         const label = typeof key === 'string' ? columnLabelsByKey.get(key as PartBulkImportColumnKey) : undefined;
-        errors.push(`Row ${rowNumber}: ${label ?? 'Value'} - ${issue.message}`);
+        const message =
+          key === 'unitOfMeasure' ? `Unit must be one of ${PartUnitOfMeasure.options.join(', ')}.` : issue.message;
+        errors.push(`Row ${rowNumber}: ${label ?? 'Value'} - ${message}`);
       }
       return;
     }
@@ -179,6 +195,7 @@ function buildRowInput(
     name: getFormattedCell(row, indexes, 'name'),
     supplierCode: getCell(row, indexes, 'supplierCode'),
     supplierName: getFormattedCell(row, indexes, 'supplierName'),
+    unitOfMeasure: getUnitOfMeasureCell(row, indexes),
   };
 }
 
@@ -200,6 +217,24 @@ function getFormattedCell(
   const value = getCell(row, indexes, key);
 
   return formattedFieldKeys.has(key) ? formatPartImportDisplayValue(value) : value;
+}
+
+function getUnitOfMeasureCell(
+  row: readonly string[],
+  indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
+): PartUnitOfMeasureValue | string {
+  const value = getCell(row, indexes, 'unitOfMeasure').trim();
+  const normalizedValue = value.toLowerCase();
+
+  if (unitOfMeasureValues.has(normalizedValue)) {
+    return normalizedValue as PartUnitOfMeasureValue;
+  }
+
+  return unitOfMeasureLabels.get(normalizeUnitOfMeasureLabel(value)) ?? value;
+}
+
+function normalizeUnitOfMeasureLabel(value: string): string {
+  return value.trim().toLowerCase().replaceAll(/\s+/g, '');
 }
 
 function formatPartImportDisplayValue(value: string): string {

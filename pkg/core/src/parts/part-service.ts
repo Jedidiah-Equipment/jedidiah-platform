@@ -162,6 +162,10 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
     );
   }
 
+  if (input.columnFilters.unitOfMeasure) {
+    conditions.push(eq(parts.unitOfMeasure, input.columnFilters.unitOfMeasure));
+  }
+
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 

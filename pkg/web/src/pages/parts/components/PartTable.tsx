@@ -1,4 +1,11 @@
-import { PART_UNIT_OF_MEASURE_LABELS, type Part, type PartListInput, PartSortBy, type UUID } from '@pkg/schema';
+import {
+  PART_UNIT_OF_MEASURE_LABELS,
+  type Part,
+  type PartListInput,
+  PartSortBy,
+  PartUnitOfMeasure,
+  type UUID,
+} from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { PencilIcon } from 'lucide-react';
@@ -107,9 +114,16 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
       {
         accessorKey: 'unitOfMeasure',
         cell: ({ row }) => PART_UNIT_OF_MEASURE_LABELS[row.original.unitOfMeasure],
-        enableColumnFilter: false,
+        enableColumnFilter: true,
         enableSorting: false,
         header: 'Unit',
+        meta: {
+          filterOptions: PartUnitOfMeasure.options.map((unitOfMeasure) => ({
+            label: PART_UNIT_OF_MEASURE_LABELS[unitOfMeasure],
+            value: unitOfMeasure,
+          })),
+          filterVariant: 'select',
+        },
       },
       {
         accessorKey: 'category',
@@ -201,6 +215,7 @@ function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId: U
       code: getColumnFilterValue(columnFilters, 'code'),
       name: getColumnFilterValue(columnFilters, 'name'),
       supplierCode: getColumnFilterValue(columnFilters, 'supplierCode'),
+      unitOfMeasure: getUnitOfMeasureFilterValue(columnFilters),
     },
     supplierId,
   } satisfies Pick<PartListInput, 'category' | 'columnFilters' | 'supplierId'>;
@@ -213,4 +228,13 @@ function getColumnFilterValue(
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;
+}
+
+function getUnitOfMeasureFilterValue(
+  columnFilters: ColumnFiltersState,
+): PartListInput['columnFilters']['unitOfMeasure'] {
+  const value = columnFilters.find((filter) => filter.id === 'unitOfMeasure')?.value;
+  const parsed = PartUnitOfMeasure.safeParse(value);
+
+  return parsed.success ? parsed.data : undefined;
 }

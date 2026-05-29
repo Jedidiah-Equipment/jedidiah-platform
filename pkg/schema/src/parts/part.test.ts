@@ -6,8 +6,10 @@ import {
   Part,
   PartBulkImportInput,
   PartBulkImportResult,
+  PartColumnFilters,
   PartCreateInput,
   PartListInput,
+  PartSortBy,
   PartUnitOfMeasure,
 } from './part.js';
 
@@ -79,6 +81,12 @@ describe('PartListInput', () => {
     expect(PartListInput.parse({ supplierId: '00000000-0000-4000-8000-000000000001' })).toMatchObject({
       supplierId: '00000000-0000-4000-8000-000000000001',
     });
+  });
+
+  it('accepts unit of measure column filters without adding unit sorting', () => {
+    expect(PartColumnFilters.parse({ unitOfMeasure: 'mm' })).toEqual({ unitOfMeasure: 'mm' });
+    expect(PartSortBy.options).not.toContain('unitOfMeasure');
+    expect(() => PartColumnFilters.parse({ unitOfMeasure: 'metres' })).toThrow();
   });
 });
 

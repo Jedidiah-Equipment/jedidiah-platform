@@ -5,6 +5,7 @@ import {
   type QuoteDetail,
   type QuoteSelectedAssembly,
   QuoteStatus,
+  type QuoteUpdateInput,
 } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2Icon, XIcon } from 'lucide-react';
@@ -30,12 +31,13 @@ import {
   resolveSelectedAssemblySnapshots,
   toQuoteCreateInput,
   toQuoteFormValues,
+  toQuoteUpdateInput,
 } from './types.js';
 
 type QuoteFormProps = {
   initialQuote?: QuoteDetail | undefined;
   isPending: boolean;
-  onSubmit: (value: QuoteCreateInput) => Promise<unknown>;
+  onSubmit: (value: QuoteCreateInput | QuoteUpdateInput) => Promise<unknown>;
   submitLabel: string;
 };
 
@@ -45,7 +47,18 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
   const isEditing = Boolean(initialQuote);
   const isLocked = Boolean(initialQuote?.linkedJobs.length);
 
-  const [selectedProduct, setSelectedProduct] = useState<QuoteProductChoice | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<QuoteProductChoice | null>(() =>
+    initialQuote
+      ? {
+          assemblies: initialQuote.productAssemblies,
+          basePrice: initialQuote.quotedBasePrice,
+          currencyCode: initialQuote.productCurrencyCode,
+          id: initialQuote.productId,
+          modelCode: initialQuote.productModelCode,
+          name: initialQuote.productName,
+        }
+      : null,
+  );
   const currentUserQuery = useQuery(trpc.auth.me.queryOptions());
   const salespeopleOptions = useSalesPersonOptions();
 
@@ -67,7 +80,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
       onSubmit: QuoteFormValues,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit(toQuoteCreateInput(value));
+      await onSubmit(initialQuote ? toQuoteUpdateInput({ id: initialQuote.id, value }) : toQuoteCreateInput(value));
     },
   });
 
@@ -115,82 +128,93 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
       <FieldGroup>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <div className="grid gap-3 md:grid-cols-2">
-            <form.Field name="customerId">
-              {(field) => {
-                const fieldErrors = getFieldErrors(field.state.meta.errors);
-                const isInvalid = fieldErrors.length > 0;
+            {initialQuote ? (
+              <ReadOnlyQuoteField label="Customer" value={initialQuote.customerCompanyName} />
+            ) : (
+              <form.Field name="customerId">
+                {(field) => {
+                  const fieldErrors = getFieldErrors(field.state.meta.errors);
+                  const isInvalid = fieldErrors.length > 0;
 
-                return (
-                  <form.Subscribe
-                    selector={(state) => ({
-                      customerMode: state.values.customerMode,
-                      inlineCompanyName: state.values.inlineCompanyName,
-                    })}
-                  >
-                    {({ customerMode, inlineCompanyName }) => (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
-                        <QuoteCustomerCombobox
-                          allowCreate={!isEditing}
-                          disabled={isLocked}
-                          fallbackCustomer={fallbackCustomer}
-                          inlineValue={inlineCompanyName}
-                          mode={customerMode}
-                          onSelected={(selection) => {
-                            if (!selection) {
+                  return (
+                    <form.Subscribe
+                      selector={(state) => ({
+                        customerMode: state.values.customerMode,
+                        inlineCompanyName: state.values.inlineCompanyName,
+                      })}
+                    >
+                      {({ customerMode, inlineCompanyName }) => (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
+                          <QuoteCustomerCombobox
+                            allowCreate
+                            disabled={false}
+                            fallbackCustomer={fallbackCustomer}
+                            inlineValue={inlineCompanyName}
+                            mode={customerMode}
+                            onSelected={(selection) => {
+                              if (!selection) {
+                                form.setFieldValue('customerMode', 'existing');
+                                form.setFieldValue('inlineCompanyName', '');
+                                field.handleChange('');
+                                return;
+                              }
+
+                              if (selection.type === 'inline') {
+                                form.setFieldValue('customerMode', 'inline');
+                                form.setFieldValue('inlineCompanyName', selection.companyName);
+                                field.handleChange('');
+                                return;
+                              }
+
                               form.setFieldValue('customerMode', 'existing');
                               form.setFieldValue('inlineCompanyName', '');
-                              field.handleChange('');
-                              return;
-                            }
+                              field.handleChange(selection.customer.id);
+                            }}
+                            value={field.state.value}
+                          />
+                          <FieldError errors={fieldErrors} />
+                        </Field>
+                      )}
+                    </form.Subscribe>
+                  );
+                }}
+              </form.Field>
+            )}
+            {initialQuote ? (
+              <ReadOnlyQuoteField
+                label="Product"
+                value={`${initialQuote.productName} (${initialQuote.productModelCode})`}
+              />
+            ) : (
+              <form.Field name="productId">
+                {(field) => {
+                  const fieldErrors = getFieldErrors(field.state.meta.errors);
+                  const isInvalid = fieldErrors.length > 0;
 
-                            if (selection.type === 'inline') {
-                              form.setFieldValue('customerMode', 'inline');
-                              form.setFieldValue('inlineCompanyName', selection.companyName);
-                              field.handleChange('');
-                              return;
-                            }
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Product</FieldLabel>
+                      <QuoteProductCombobox
+                        disabled={false}
+                        onSelected={(product) => {
+                          const productId = product?.id ?? '';
 
-                            form.setFieldValue('customerMode', 'existing');
-                            form.setFieldValue('inlineCompanyName', '');
-                            field.handleChange(selection.customer.id);
-                          }}
-                          value={field.state.value}
-                        />
-                        <FieldError errors={fieldErrors} />
-                      </Field>
-                    )}
-                  </form.Subscribe>
-                );
-              }}
-            </form.Field>
-            <form.Field name="productId">
-              {(field) => {
-                const fieldErrors = getFieldErrors(field.state.meta.errors);
-                const isInvalid = fieldErrors.length > 0;
+                          if (field.state.value !== productId) {
+                            field.handleChange(productId);
+                            form.setFieldValue('selectedAssemblies', []);
+                          }
 
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>Product</FieldLabel>
-                    <QuoteProductCombobox
-                      disabled={isLocked}
-                      onSelected={(product) => {
-                        const productId = product?.id ?? '';
-
-                        if (field.state.value !== productId) {
-                          field.handleChange(productId);
-                          form.setFieldValue('selectedAssemblies', []);
-                        }
-
-                        onProductSelected(product);
-                      }}
-                      value={field.state.value}
-                    />
-                    <FieldError errors={fieldErrors} />
-                  </Field>
-                );
-              }}
-            </form.Field>
+                          onProductSelected(product);
+                        }}
+                        value={field.state.value}
+                      />
+                      <FieldError errors={fieldErrors} />
+                    </Field>
+                  );
+                }}
+              </form.Field>
+            )}
             <form.AppField name="salesPersonId">
               {(field) => (
                 <field.SelectField
@@ -554,6 +578,15 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
     </div>
   );
 };
+
+const ReadOnlyQuoteField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <Field>
+    <FieldLabel>{label}</FieldLabel>
+    <div className="flex min-h-9 items-center rounded-md border bg-muted/30 px-3 text-sm">
+      <span className="min-w-0 truncate">{value}</span>
+    </div>
+  </Field>
+);
 
 type QuoteSummaryRowProps = {
   className?: string;

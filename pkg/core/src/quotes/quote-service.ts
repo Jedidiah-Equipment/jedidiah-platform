@@ -322,25 +322,13 @@ export async function updateQuote({
     }
 
     const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId: before.id, tx });
-    const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
-    const product =
-      input.productId === before.productId ? null : await readProductForQuote({ productId: input.productId, tx });
-    const productChanged = Boolean(product);
-    const quotedBasePrice = product?.basePrice ?? before.quotedBasePrice;
-    const quotedCurrencyCode = product?.currencyCode ?? before.quotedCurrencyCode;
-    const selectedAssemblyInput = productChanged
-      ? {
-          ...input,
-          selectedAssemblies: input.selectedAssemblies.filter((selection) => selection.type === 'catalog'),
-        }
-      : input;
 
-    assertValidDiscount({ basePrice: quotedBasePrice, discount: input.discount });
+    assertValidDiscount({ basePrice: before.quotedBasePrice, discount: input.discount });
 
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
     const patch = {
-      customerId,
+      customerId: before.customerId,
       deliveryIncluded: input.deliveryIncluded,
       deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
       discount: input.discount,
@@ -348,9 +336,9 @@ export async function updateQuote({
       paymentTerms: input.paymentTerms,
       plannedDeliveryDate: input.plannedDeliveryDate,
       preferredDeliveryDate: input.preferredDeliveryDate,
-      productId: input.productId,
-      quotedBasePrice,
-      quotedCurrencyCode,
+      productId: before.productId,
+      quotedBasePrice: before.quotedBasePrice,
+      quotedCurrencyCode: before.quotedCurrencyCode,
       salesPersonId: input.salesPersonId,
       status: input.status,
       validUntil: input.validUntil,
@@ -358,8 +346,8 @@ export async function updateQuote({
     const after = { ...before, ...patch };
     const resolved = await resolveQuoteSelectedAssemblies({
       currentRows: beforeSelectedAssemblies,
-      input: selectedAssemblyInput,
-      productId: input.productId,
+      input,
+      productId: before.productId,
       quoteId: before.id,
       tx,
     });

@@ -1,55 +1,27 @@
-import { type Supplier, SupplierCompanyName, SupplierEmail } from '@pkg/schema';
+import type { Supplier, SupplierCreateInput } from '@pkg/schema';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
-import { z } from 'zod';
 
 import { useAppForm } from '@/components/form/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
-
-type SupplierFormValues = z.infer<typeof SupplierFormValues>;
-const SupplierFormValues = z.object({
-  address: z.string(),
-  companyName: SupplierCompanyName,
-  contactPerson: z.string(),
-  email: z
-    .string()
-    .trim()
-    .refine((value) => value === '' || SupplierEmail.safeParse(value).success, 'Enter a valid email address'),
-  notes: z.string(),
-  phone: z.string(),
-});
-
-type SupplierFormSubmitValues = Omit<SupplierFormValues, 'email'> & {
-  email: string | null;
-};
+import { SupplierFormValues, toSupplierCreateInput, toSupplierFormValues } from './types.js';
 
 type SupplierFormProps = {
   initialSupplier?: Supplier;
   isPending: boolean;
-  onSubmit: (value: SupplierFormSubmitValues) => Promise<unknown>;
+  onSubmit: (value: SupplierCreateInput) => Promise<unknown>;
   submitLabel: string;
 };
 
 export const SupplierForm: React.FC<SupplierFormProps> = ({ initialSupplier, isPending, onSubmit, submitLabel }) => {
-  const defaultValues: SupplierFormValues = {
-    address: initialSupplier?.address ?? '',
-    companyName: initialSupplier?.companyName ?? '',
-    contactPerson: initialSupplier?.contactPerson ?? '',
-    email: initialSupplier?.email ?? '',
-    notes: initialSupplier?.notes ?? '',
-    phone: initialSupplier?.phone ?? '',
-  };
   const form = useAppForm({
-    defaultValues,
+    defaultValues: toSupplierFormValues(initialSupplier),
     validators: {
       onSubmit: SupplierFormValues,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit({
-        ...value,
-        email: value.email.trim() === '' ? null : value.email.trim().toLowerCase(),
-      });
+      await onSubmit(toSupplierCreateInput(value));
     },
   });
 

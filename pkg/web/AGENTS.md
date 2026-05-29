@@ -24,10 +24,26 @@
   and `useCustomerForQuoteOptions` for quote-scoped customer reads. Do not hide endpoint differences
   behind a generic `source` prop.
 - For TanStack Form descendants that need form context, use `useTypedAppFormContext` from
-  `src/components/form/use-app-form.ts`. Prefer form value schemas from `@pkg/schema` when their
-  input/output types match the browser form state. When a form needs a browser-specific value shape,
-  define that form schema alongside the form component, and keep shared validation rules in
-  `@pkg/schema` as reusable helpers instead of duplicating them in web.
+  `src/components/form/use-app-form.ts`.
 - Prefer `src/components/ui/scroll-area.tsx` `ScrollArea` for page and panel scrolling instead of
   native `overflow-y-auto`.
 - Do not test via the browser unless asked.
+
+## Form validation
+
+`@pkg/schema` owns every field constraint. A form-value schema may define the browser-specific
+*shape* (empty strings for null, UI-only flags like `customerMode`, custom messages), but a
+per-field *rule* must reference a schema export — no bare `z.string()` where a domain scalar
+exists, no inline `.min`/`.email`/`.regex`. When a controlled input needs a different
+representation than the API contract, derive it with the helpers in
+`src/components/form/form-schema.ts`:
+
+- `emptyStringOr(QuoteNotes)` — nullable field; `''` stands in for absent.
+- `requiredSelection(UUID, 'Select a product')` — combobox/select that must resolve to a scalar.
+
+Reserve `superRefine` for genuinely cross-field rules (a check conditional on another field).
+
+Keep the form-value schema and its schema↔form mappers in a `types.ts` beside the component,
+with their own unit tests; the component imports them. See `src/pages/quotes/components/` —
+`types.ts` (`QuoteFormValues`, `toQuoteFormValues`, `toQuoteCreateInput`), `types.test.ts`, and
+`QuoteForm.tsx`.

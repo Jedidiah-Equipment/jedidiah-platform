@@ -1,67 +1,11 @@
-import {
-  type AssemblyInput,
-  AssemblyName,
-  AssemblyPart,
-  Price,
-  type Product,
-  ProductBuildTimeDays,
-  ProductModelCode,
-  ProductName,
-  refineProductAssemblies,
-  UUID,
-} from '@pkg/schema';
+import type { Product } from '@pkg/schema';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
-import { z } from 'zod';
 import { useAppForm } from '@/components/form/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
-
-export type ProductFormValues = z.infer<typeof ProductFormValues>;
-
-const ProductFormFields = z.object({
-  basePrice: Price,
-  currencyCode: z.literal('ZAR'),
-  description: z.string(),
-  buildTimeDays: ProductBuildTimeDays,
-  modelCode: ProductModelCode,
-  name: ProductName,
-});
-
-const StandardAssemblyFormInput = z.object({
-  id: UUID.optional(),
-  kind: z.literal('standard'),
-  name: AssemblyName,
-  parts: z.array(AssemblyPart),
-});
-
-const OptionalAssemblyFormInput = z.object({
-  id: UUID.optional(),
-  kind: z.literal('optional'),
-  name: AssemblyName,
-  overrideStandardAssemblyIds: z.array(UUID),
-  parts: z.array(AssemblyPart),
-  price: Price,
-});
-
-const ProductFormValues = ProductFormFields.extend({
-  assemblies: z
-    .array(z.discriminatedUnion('kind', [StandardAssemblyFormInput, OptionalAssemblyFormInput]))
-    .superRefine(refineProductAssemblies),
-});
-
-export const emptyProductFormValues: ProductFormValues = {
-  assemblies: [],
-  basePrice: NaN,
-  currencyCode: 'ZAR',
-  description: '',
-  buildTimeDays: NaN,
-  modelCode: '',
-  name: '',
-};
-
-type ProductAssemblyInputValue = z.infer<typeof AssemblyInput>;
+import { ProductFormValues, toProductFormValues } from './types.js';
 
 type ProductFormProps = {
   initialProduct?: Product;
@@ -71,15 +15,7 @@ type ProductFormProps = {
 };
 
 export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPending, submitLabel, onSubmit }) => {
-  const defaultValues: ProductFormValues = {
-    assemblies: getInitialAssemblies(initialProduct),
-    basePrice: initialProduct?.basePrice ?? NaN,
-    currencyCode: initialProduct?.currencyCode ?? 'ZAR',
-    description: initialProduct?.description ?? '',
-    buildTimeDays: initialProduct?.buildTimeDays ?? NaN,
-    modelCode: initialProduct?.modelCode ?? '',
-    name: initialProduct?.name ?? '',
-  };
+  const defaultValues = toProductFormValues(initialProduct);
 
   const form = useAppForm({
     defaultValues,
@@ -147,23 +83,3 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
     </form.AppForm>
   );
 };
-
-function getInitialAssemblies(initialProduct: Product | undefined): ProductAssemblyInputValue[] {
-  return (initialProduct?.assemblies ?? []).map((assembly) =>
-    assembly.kind === 'standard'
-      ? {
-          id: assembly.id,
-          kind: assembly.kind,
-          name: assembly.name,
-          parts: assembly.parts,
-        }
-      : {
-          id: assembly.id,
-          kind: assembly.kind,
-          name: assembly.name,
-          overrideStandardAssemblyIds: assembly.overrideStandardAssemblyIds,
-          parts: assembly.parts,
-          price: assembly.price,
-        },
-  );
-}

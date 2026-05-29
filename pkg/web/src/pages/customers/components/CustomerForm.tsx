@@ -1,55 +1,27 @@
-import { type Customer, CustomerCompanyName, CustomerEmail } from '@pkg/schema';
+import type { Customer, CustomerCreateInput } from '@pkg/schema';
 import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
-import { z } from 'zod';
 
 import { useAppForm } from '@/components/form/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
-
-type CustomerFormValues = z.infer<typeof CustomerFormValues>;
-const CustomerFormValues = z.object({
-  address: z.string(),
-  companyName: CustomerCompanyName,
-  contactPerson: z.string(),
-  email: z
-    .string()
-    .trim()
-    .refine((value) => value === '' || CustomerEmail.safeParse(value).success, 'Enter a valid email address'),
-  notes: z.string(),
-  phone: z.string(),
-});
-
-type CustomerFormSubmitValues = Omit<CustomerFormValues, 'email'> & {
-  email: string | null;
-};
+import { CustomerFormValues, toCustomerCreateInput, toCustomerFormValues } from './types.js';
 
 type CustomerFormProps = {
   initialCustomer?: Customer;
   isPending: boolean;
-  onSubmit: (value: CustomerFormSubmitValues) => Promise<unknown>;
+  onSubmit: (value: CustomerCreateInput) => Promise<unknown>;
   submitLabel: string;
 };
 
 export const CustomerForm: React.FC<CustomerFormProps> = ({ initialCustomer, isPending, onSubmit, submitLabel }) => {
-  const defaultValues: CustomerFormValues = {
-    address: initialCustomer?.address ?? '',
-    companyName: initialCustomer?.companyName ?? '',
-    contactPerson: initialCustomer?.contactPerson ?? '',
-    email: initialCustomer?.email ?? '',
-    notes: initialCustomer?.notes ?? '',
-    phone: initialCustomer?.phone ?? '',
-  };
   const form = useAppForm({
-    defaultValues,
+    defaultValues: toCustomerFormValues(initialCustomer),
     validators: {
       onSubmit: CustomerFormValues,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit({
-        ...value,
-        email: value.email.trim() === '' ? null : value.email.trim().toLowerCase(),
-      });
+      await onSubmit(toCustomerCreateInput(value));
     },
   });
 

@@ -1,8 +1,13 @@
 import { format } from 'date-fns';
 import { z } from 'zod';
 
-const DateIsoString = z.union([z.iso.date(), z.iso.datetime({ offset: true })]);
-const DateOnlyIsoString = z.iso.date();
+// String-format rules (no Date coercion), suitable for validating values that are always
+// strings — e.g. browser form fields. The branded scalars below are built from these.
+export type DateIsoString = z.infer<typeof DateIsoString>;
+export const DateIsoString = z.union([z.iso.date(), z.iso.datetime({ offset: true })]);
+
+export type DateOnlyIsoString = z.infer<typeof DateOnlyIsoString>;
+export const DateOnlyIsoString = z.iso.date();
 
 export type DateIso = z.infer<typeof DateIso>;
 export const DateIso = z

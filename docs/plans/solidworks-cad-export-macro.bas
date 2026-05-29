@@ -210,7 +210,7 @@ Private Sub AddPartOccurrence(ByVal partModel As Object, ByVal component As Obje
         partFilesByKey.Add key, FileNameOnly(component.GetPathName)
         partHashesByKey.Add key, Sha256File(component.GetPathName)
         partConfigsByKey.Add key, configName
-        partExportsByKey.Add key, BuildPartExportsJson(partModel, component.GetPathName)
+        partExportsByKey.Add key, BuildPartExportsJson(partModel, component.GetPathName, configName)
     End If
 
     partQuantities(key) = CLng(partQuantities(key)) + 1
@@ -291,7 +291,7 @@ Private Function BuildPartJson(ByVal key As String) As String
     BuildPartJson = json
 End Function
 
-Private Function BuildExportsJson(ByVal sourcePath As String) As String
+Private Function BuildExportsJson(ByVal sourcePath As String, Optional ByVal configName As String = "") As String
     If sourcePath = "" Then
         BuildExportsJson = "[]"
         Exit Function
@@ -302,6 +302,9 @@ Private Function BuildExportsJson(ByVal sourcePath As String) As String
 
     Dim baseName As String
     baseName = BaseNameWithoutExtension(sourcePath)
+
+    Dim exportBaseName As String
+    exportBaseName = ConfiguredBaseName(sourcePath, configName)
 
     Dim extensions As Variant
     extensions = RelatedExtensionsForSource(sourcePath)
@@ -320,13 +323,15 @@ Private Function BuildExportsJson(ByVal sourcePath As String) As String
         Dim candidate As String
         If LCase$(fso.GetExtensionName(sourcePath)) = LCase$(ext) Then
             candidate = sourcePath
+        ElseIf configName <> "" And LCase$(ext) = "dxf" Then
+            candidate = fso.BuildPath(folderPath, exportBaseName & "." & ext)
         Else
             candidate = fso.BuildPath(folderPath, baseName & "." & ext)
         End If
 
         If fso.FileExists(candidate) Then
             Dim destName As String
-            destName = UniqueExportFileName(baseName & "." & ext)
+            destName = UniqueExportFileName(exportBaseName & "." & ext)
 
             Dim destPath As String
             destPath = fso.BuildPath(filesFolder, destName)
@@ -349,15 +354,15 @@ Private Function BuildExportsJson(ByVal sourcePath As String) As String
     BuildExportsJson = json
 End Function
 
-Private Function BuildPartExportsJson(ByVal partModel As Object, ByVal sourcePath As String) As String
+Private Function BuildPartExportsJson(ByVal partModel As Object, ByVal sourcePath As String, ByVal configName As String) As String
     If sourcePath <> "" Then
-        TryGeneratePartDxf partModel, sourcePath
+        TryGeneratePartDxf partModel, sourcePath, configName
     End If
 
-    BuildPartExportsJson = BuildExportsJson(sourcePath)
+    BuildPartExportsJson = BuildExportsJson(sourcePath, configName)
 End Function
 
-Private Function TryGeneratePartDxf(ByVal partModel As Object, ByVal sourcePath As String) As Boolean
+Private Function TryGeneratePartDxf(ByVal partModel As Object, ByVal sourcePath As String, ByVal configName As String) As Boolean
     On Error GoTo Failed
 
     If partModel Is Nothing Then
@@ -374,11 +379,22 @@ Private Function TryGeneratePartDxf(ByVal partModel As Object, ByVal sourcePath 
     folderPath = fso.GetParentFolderName(sourcePath)
 
     Dim dxfPath As String
-    dxfPath = fso.BuildPath(folderPath, BaseNameWithoutExtension(sourcePath) & ".dxf")
+    dxfPath = fso.BuildPath(folderPath, ConfiguredBaseName(sourcePath, configName) & ".dxf")
 
     If fso.FileExists(dxfPath) Then
         TryGeneratePartDxf = True
         Exit Function
+    End If
+
+    Dim previousConfig As String
+    previousConfig = ActiveConfigName(partModel)
+
+    If configName <> "" And previousConfig <> configName Then
+        If Not partModel.ShowConfiguration2(configName) Then
+            TryGeneratePartDxf = False
+            Exit Function
+        End If
+        partModel.EditRebuild3
     End If
 
     Dim partDoc As Object
@@ -399,10 +415,49 @@ Private Function TryGeneratePartDxf(ByVal partModel As Object, ByVal sourcePath 
         EXPORT_SHEET_METAL_GEOMETRY_ONLY, _
         views _
     )
+
+    If configName <> "" And previousConfig <> "" And previousConfig <> configName Then
+        partModel.ShowConfiguration2 previousConfig
+        partModel.EditRebuild3
+    End If
+
     Exit Function
 
 Failed:
+    If Not partModel Is Nothing Then
+        If configName <> "" And previousConfig <> "" And previousConfig <> configName Then
+            partModel.ShowConfiguration2 previousConfig
+            partModel.EditRebuild3
+        End If
+    End If
     TryGeneratePartDxf = False
+End Function
+
+Private Function ConfiguredBaseName(ByVal sourcePath As String, ByVal configName As String) As String
+    Dim baseName As String
+    baseName = BaseNameWithoutExtension(sourcePath)
+
+    If configName = "" Then
+        ConfiguredBaseName = baseName
+    Else
+        ConfiguredBaseName = baseName & "__" & SafeFileName(configName)
+    End If
+End Function
+
+Private Function SafeFileName(ByVal value As String) As String
+    Dim safe As String
+    safe = value
+    safe = Replace(safe, "\", "_")
+    safe = Replace(safe, "/", "_")
+    safe = Replace(safe, ":", "_")
+    safe = Replace(safe, "*", "_")
+    safe = Replace(safe, "?", "_")
+    safe = Replace(safe, """", "_")
+    safe = Replace(safe, "<", "_")
+    safe = Replace(safe, ">", "_")
+    safe = Replace(safe, "|", "_")
+    safe = Replace(safe, " ", "_")
+    SafeFileName = safe
 End Function
 
 Private Function UniqueExportFileName(ByVal fileName As String) As String

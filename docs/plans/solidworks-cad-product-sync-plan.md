@@ -145,8 +145,9 @@ Current macro behavior and limitations:
 
 - It copies `.SLDASM`, `.SLDPRT`, and `.SLDDRW` files into the bundle.
 - It attempts to generate `.DXF` files from sheet-metal Parts using SolidWorks flat-pattern export.
+- It activates each referenced Part configuration before generating a DXF and suffixes export filenames with the configuration name.
 - It gathers existing `.DXF` files if they are already present next to the Part.
-- It does not overwrite an existing same-basename `.DXF`; existing CNC exports win until the CNC settings are finalized.
+- It does not overwrite an existing generated `.DXF`; existing CNC exports win until the CNC settings are finalized.
 - It looks for same-basename exports next to the source model.
 - It supports these extensions initially: `.sldasm`, `.sldprt`, `.slddrw`, `.dxf`.
 - It uses SHA-256 hashes as the file-change signal.

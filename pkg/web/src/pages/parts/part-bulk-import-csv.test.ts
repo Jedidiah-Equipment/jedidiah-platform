@@ -6,8 +6,8 @@ describe('parsePartBulkImportCsv', () => {
   it('parses CSV with the expected header', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name',
-        ' P-100, DR-100, Main bearing, BOLT & NUT, SUP-100, BLACK, PLAIN NUT, M30 PLAIN NUT ',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
+        ' P-100, DR-100, Main bearing, BOLT & NUT, SUP-100, BLACK, PLAIN NUT, M30 PLAIN NUT, mm ',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -25,13 +25,14 @@ describe('parsePartBulkImportCsv', () => {
           name: 'M30 Plain Nut',
           supplierCode: 'SUP-100',
           supplierName: 'Bolt & Nut',
+          unitOfMeasure: 'mm',
         },
       ],
     });
   });
 
   it('parses CSV without a header by column position', () => {
-    const result = parsePartBulkImportCsv('P-100,,Main bearing,Acme Supplies,SUP-100,GALV,Bearings,Bearing', {
+    const result = parsePartBulkImportCsv('P-100,,Main bearing,Acme Supplies,SUP-100,GALV,Bearings,Bearing,quantity', {
       hasHeader: false,
     });
 
@@ -48,9 +49,23 @@ describe('parsePartBulkImportCsv', () => {
           name: 'Bearing',
           supplierCode: 'SUP-100',
           supplierName: 'Acme Supplies',
+          unitOfMeasure: 'quantity',
         },
       ],
     });
+  });
+
+  it('maps unit labels to enum values', () => {
+    const result = parsePartBulkImportCsv(
+      [
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
+        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,Millimetres',
+      ].join('\n'),
+      { hasHeader: true },
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(result.rows[0]?.unitOfMeasure).toBe('mm');
   });
 
   it('reports missing required headers', () => {
@@ -63,8 +78,8 @@ describe('parsePartBulkImportCsv', () => {
   it('blocks rows when the CSV parser reports file-level errors', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name',
-        'P-100,,"Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
+        'P-100,,"Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -76,9 +91,9 @@ describe('parsePartBulkImportCsv', () => {
   it('keeps valid rows while reporting row-numbered validation errors', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name',
-        ',,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing',
-        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
+        ',,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,quantity',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -94,24 +109,42 @@ describe('parsePartBulkImportCsv', () => {
         name: 'Bearing',
         supplierCode: 'SUP-101',
         supplierName: 'Acme Supplies',
+        unitOfMeasure: 'quantity',
       },
     ]);
     expect(result.errors).toContain('Row 2: Code - Part code is required');
+  });
+
+  it('reports row-numbered errors for missing and unknown units', () => {
+    const result = parsePartBulkImportCsv(
+      [
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
+        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,metres',
+      ].join('\n'),
+      { hasHeader: true },
+    );
+
+    expect(result.rows).toEqual([]);
+    expect(result.errors).toEqual([
+      'Row 2: Unit - Unit must be one of quantity, mm.',
+      'Row 3: Unit - Unit must be one of quantity, mm.',
+    ]);
   });
 
   it('reports invalid column counts without a header', () => {
     const result = parsePartBulkImportCsv('P-100,Main bearing', { hasHeader: false });
 
     expect(result.rows).toEqual([]);
-    expect(result.errors).toContain('Row 1: Expected 8 columns, found 2.');
+    expect(result.errors).toContain('Row 1: Expected 9 columns, found 2.');
   });
 
   it('preserves technical tokens when formatting imported display values', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name',
-        'P-100,NC,Description,BOLT & NUT,SUP-100,BLACK,SS LOCK NUT,M10 X 120 HT SHCS BOLT',
-        'P-101,NC,Description,BOLT & NUT,SUP-101,GALV,HT UNC BOLT,1/2 X 2 HT UNC BOLT',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
+        'P-100,NC,Description,BOLT & NUT,SUP-100,BLACK,SS LOCK NUT,M10 X 120 HT SHCS BOLT,quantity',
+        'P-101,NC,Description,BOLT & NUT,SUP-101,GALV,HT UNC BOLT,1/2 X 2 HT UNC BOLT,mm',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -129,6 +162,7 @@ describe('parsePartBulkImportCsv', () => {
           name: 'M10 X 120 HT SHCS Bolt',
           supplierCode: 'SUP-100',
           supplierName: 'Bolt & Nut',
+          unitOfMeasure: 'quantity',
         },
         {
           category: 'HT UNC Bolt',
@@ -140,6 +174,7 @@ describe('parsePartBulkImportCsv', () => {
           name: '1/2 X 2 HT UNC Bolt',
           supplierCode: 'SUP-101',
           supplierName: 'Bolt & Nut',
+          unitOfMeasure: 'mm',
         },
       ],
     });
@@ -148,8 +183,8 @@ describe('parsePartBulkImportCsv', () => {
   it('does not split joined words while formatting imported display values', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name',
-        'P-100,NC,Description,BOLT & NUT,SUP-100,STAINLESS,FLATWASHER,M10 SPRINGWASHER',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
+        'P-100,NC,Description,BOLT & NUT,SUP-100,STAINLESS,FLATWASHER,M10 SPRINGWASHER,quantity',
       ].join('\n'),
       { hasHeader: true },
     );

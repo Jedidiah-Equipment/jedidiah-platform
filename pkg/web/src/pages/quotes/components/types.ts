@@ -12,6 +12,7 @@ import {
   type QuoteSelectedAssembly,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
+  QuoteUpdateInput,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -103,6 +104,23 @@ export function toQuoteCreateInput(value: QuoteFormValues): QuoteCreateInput {
     plannedDeliveryDate: value.plannedDeliveryDate || null,
     preferredDeliveryDate: value.preferredDeliveryDate || null,
     productId: value.productId,
+    salesPersonId: value.salesPersonId,
+    selectedAssemblies: value.selectedAssemblies,
+    status: value.status,
+    validUntil: value.validUntil || null,
+  });
+}
+
+export function toQuoteUpdateInput({ id, value }: { id: UUID; value: QuoteFormValues }): QuoteUpdateInput {
+  return QuoteUpdateInput.parse({
+    id,
+    deliveryIncluded: value.deliveryIncluded,
+    deliveryPrice: value.deliveryIncluded ? value.deliveryPrice : 0,
+    discount: value.discount,
+    notes: value.notes,
+    paymentTerms: value.paymentTerms,
+    plannedDeliveryDate: value.plannedDeliveryDate || null,
+    preferredDeliveryDate: value.preferredDeliveryDate || null,
     salesPersonId: value.salesPersonId,
     selectedAssemblies: value.selectedAssemblies,
     status: value.status,

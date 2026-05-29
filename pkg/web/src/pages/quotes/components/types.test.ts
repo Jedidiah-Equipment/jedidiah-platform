@@ -1,4 +1,4 @@
-import { type Assembly, QuoteDetail, type QuoteSelectedAssembly } from '@pkg/schema';
+import { type Assembly, QuoteDetail, type QuoteSelectedAssembly, QuoteUpdateInput } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -6,6 +6,7 @@ import {
   resolveSelectedAssemblySnapshots,
   toQuoteCreateInput,
   toQuoteFormValues,
+  toQuoteUpdateInput,
 } from './types.js';
 
 const QUOTE_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -164,6 +165,56 @@ describe('toQuoteCreateInput', () => {
     expect(input.notes).toBe('Some notes');
     expect(input.validUntil).toBe('2026-01-01');
     expect(input.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
+  });
+});
+
+describe('toQuoteUpdateInput', () => {
+  it('omits customer and product identity from edit submissions', () => {
+    const input = toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues() });
+
+    expect(input).toMatchObject({
+      id: QUOTE_ID,
+      salesPersonId: 'auth-user-1',
+      status: 'sent',
+      discount: 100,
+    });
+    expect(input).not.toHaveProperty('customer');
+    expect(input).not.toHaveProperty('customerId');
+    expect(input).not.toHaveProperty('productId');
+  });
+
+  it('coalesces empty edit dates to null and gates delivery price', () => {
+    const input = toQuoteUpdateInput({
+      id: QUOTE_ID,
+      value: buildFormValues({
+        deliveryIncluded: false,
+        deliveryPrice: 99,
+        plannedDeliveryDate: '',
+        preferredDeliveryDate: '',
+        validUntil: '',
+      }),
+    });
+
+    expect(input.deliveryIncluded).toBe(false);
+    expect(input.deliveryPrice).toBe(0);
+    expect(input.plannedDeliveryDate).toBeNull();
+    expect(input.preferredDeliveryDate).toBeNull();
+    expect(input.validUntil).toBeNull();
+  });
+
+  it('rejects customer and product keys at the schema boundary', () => {
+    expect(() =>
+      QuoteUpdateInput.parse({
+        ...toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues() }),
+        customer: { type: 'existing', customerId: CUSTOMER_ID },
+      }),
+    ).toThrow();
+    expect(() =>
+      QuoteUpdateInput.parse({
+        ...toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues() }),
+        productId: PRODUCT_ID,
+      }),
+    ).toThrow();
   });
 });
 

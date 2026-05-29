@@ -106,12 +106,6 @@ export const QuoteCustomerInput = z.discriminatedUnion('type', [
   }),
 ]);
 
-export type QuoteExistingCustomerInput = z.infer<typeof QuoteExistingCustomerInput>;
-export const QuoteExistingCustomerInput = z.object({
-  type: z.literal('existing'),
-  customerId: UUID,
-});
-
 export type QuoteCreateInput = z.infer<typeof QuoteCreateInput>;
 export const QuoteCreateInput = z.object({
   customer: QuoteCustomerInput,
@@ -130,10 +124,22 @@ export const QuoteCreateInput = z.object({
 });
 
 export type QuoteUpdateInput = z.infer<typeof QuoteUpdateInput>;
-export const QuoteUpdateInput = QuoteCreateInput.extend({
-  customer: QuoteExistingCustomerInput,
-  id: UUID,
-}).strict();
+export const QuoteUpdateInput = z
+  .object({
+    id: UUID,
+    salesPersonId: AuthId,
+    status: QuoteStatus,
+    discount: z.coerce.number().pipe(Price).default(0),
+    deliveryIncluded: z.boolean().default(true),
+    deliveryPrice: z.coerce.number().pipe(Price).default(0),
+    validUntil: DateIso.nullable().default(null),
+    preferredDeliveryDate: DateOnlyIso.nullable().default(null),
+    plannedDeliveryDate: DateOnlyIso.nullable().default(null),
+    notes: QuoteNotesInput,
+    paymentTerms: QuotePaymentTermsInput,
+    selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
+  })
+  .strict();
 
 export type QuoteSortBy = z.infer<typeof QuoteSortBy>;
 export const QuoteSortBy = z.enum([

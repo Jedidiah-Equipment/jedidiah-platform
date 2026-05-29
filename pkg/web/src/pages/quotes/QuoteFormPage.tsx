@@ -1,4 +1,4 @@
-import type { QuoteCreateInput, UUID } from '@pkg/schema';
+import type { QuoteCreateInput, QuoteUpdateInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -49,20 +49,16 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
   );
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const onSubmit = (value: QuoteCreateInput) => {
+  const onSubmit = (value: QuoteCreateInput | QuoteUpdateInput) => {
     if (!isEditing) {
-      return createMutation.mutateAsync(value);
+      return createMutation.mutateAsync(value as QuoteCreateInput);
     }
 
-    if (!quoteId || value.customer.type !== 'existing') {
-      throw new Error('Edited quotes must use an existing customer.');
+    if (!quoteId) {
+      throw new Error('Edited quotes must have an id.');
     }
 
-    return updateMutation.mutateAsync({
-      ...value,
-      customer: value.customer,
-      id: quoteId,
-    });
+    return updateMutation.mutateAsync(value as QuoteUpdateInput);
   };
 
   return (

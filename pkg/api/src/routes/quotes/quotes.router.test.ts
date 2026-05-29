@@ -249,8 +249,14 @@ describe('quotes.create', () => {
 });
 
 describe('quotes.update', () => {
-  test('updates a draft quote with an existing customer', async ({ context }) => {
+  test('updates editable draft fields without changing the quote identity', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
+    const alternateSalesPersonId = 'draft-edit-sales-id';
+    await createSalesUser(context.db, {
+      email: 'draft-edit-sales@example.com',
+      id: alternateSalesPersonId,
+      name: 'Draft Edit Sales',
+    });
     const created = await createReadyQuote(caller, context.product.id);
 
     const updated = await caller.quotes.update({
@@ -262,6 +268,8 @@ describe('quotes.update', () => {
       paymentTerms: '50% deposit before fabrication',
       plannedDeliveryDate: '2026-08-05',
       preferredDeliveryDate: '2026-08-12',
+      salesPersonId: alternateSalesPersonId,
+      status: 'sent',
       validUntil: '2026-07-31',
     });
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
@@ -275,7 +283,10 @@ describe('quotes.update', () => {
       paymentTerms: '50% deposit before fabrication',
       plannedDeliveryDate: '2026-08-05',
       preferredDeliveryDate: '2026-08-12',
-      status: 'draft',
+      productId: created.productId,
+      quotedBasePrice: created.quotedBasePrice,
+      salesPersonId: alternateSalesPersonId,
+      status: 'sent',
       validUntil: '2026-07-31',
     });
     expect(updated).not.toHaveProperty('total');
@@ -299,40 +310,38 @@ describe('quotes.update', () => {
     });
   });
 
-  test('updates the product and quote snapshot before a quote has a job', async ({ context }) => {
+  test('rejects customer and product changes at the update input boundary', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
     const alternateProduct = await createProduct(context.db, {
-      basePrice: 2500,
-      modelCode: 'ALT-EDITABLE-001',
-      name: 'Alternate Editable Product',
+      modelCode: 'ALT-LOCKED-001',
+      name: 'Alternate Locked Product',
     });
-    const optionalAssembly = await createProductAssembly(context.db, {
-      kind: 'optional',
-      name: 'Old product upgrade',
-      price: 125,
-      productId: context.product.id,
-    });
+    const alternateCustomer = await createCustomer(context.db, 'Alternate Locked Customer');
     const created = await createReadyQuote(caller, context.product.id);
-    const withAssembly = await caller.quotes.update({
-      ...toUpdateInput(created),
-      selectedAssemblies: [{ type: 'catalog', productAssemblyId: optionalAssembly.id }],
-    });
 
     await expect(
       caller.quotes.update({
-        ...toUpdateInput(withAssembly),
-        discount: 500,
+        ...toUpdateInput(created),
         productId: alternateProduct.id,
-      }),
-    ).resolves.toMatchObject({
-      discount: 500,
-      productId: alternateProduct.id,
-      productCurrencyCode: 'ZAR',
-      productModelCode: 'ALT-EDITABLE-001',
-      productName: 'Alternate Editable Product',
-      quotedBasePrice: 2500,
-      quotedCurrencyCode: 'ZAR',
-      selectedAssemblies: [],
+      } as never),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+    await expect(
+      caller.quotes.update({
+        ...toUpdateInput(created),
+        customer: {
+          type: 'existing',
+          customerId: alternateCustomer.id,
+        },
+      } as never),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+    await expect(caller.quotes.get({ id: created.id })).resolves.toMatchObject({
+      customerId: created.customerId,
+      productId: created.productId,
+      quotedBasePrice: created.quotedBasePrice,
     });
   });
 
@@ -591,11 +600,6 @@ describe('jobs.create with quote links', () => {
   test('rejects every frozen quote field after a job exists', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const alternateProduct = await createProduct(context.db, {
-      modelCode: 'LOCK-ALT-001',
-      name: 'Locked Alternate Product',
-    });
-    const alternateCustomer = await createCustomer(context.db, 'Locked Alternate Customer');
     const alternateSalesPersonId = 'locked-sales-id';
     await createSalesUser(context.db, {
       email: 'locked-sales@example.com',
@@ -609,16 +613,6 @@ describe('jobs.create with quote links', () => {
       productId: context.product.id,
     });
     const frozenChanges = [
-      {
-        field: 'customerId',
-        input: (quote: QuoteDetail) => ({
-          ...toUpdateInput(quote),
-          customer: {
-            type: 'existing' as const,
-            customerId: alternateCustomer.id,
-          },
-        }),
-      },
       {
         field: 'deliveryIncluded',
         input: (quote: QuoteDetail) => ({
@@ -638,13 +632,6 @@ describe('jobs.create with quote links', () => {
         input: (quote: QuoteDetail) => ({
           ...toUpdateInput(quote),
           discount: quote.discount + 25,
-        }),
-      },
-      {
-        field: 'productId',
-        input: (quote: QuoteDetail) => ({
-          ...toUpdateInput(quote),
-          productId: alternateProduct.id,
         }),
       },
       {
@@ -845,10 +832,6 @@ async function createNamedQuote(
 function toUpdateInput(quote: QuoteDetail) {
   return {
     id: quote.id,
-    customer: {
-      type: 'existing' as const,
-      customerId: quote.customerId,
-    },
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
     discount: quote.discount,
@@ -856,7 +839,6 @@ function toUpdateInput(quote: QuoteDetail) {
     paymentTerms: quote.paymentTerms,
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
-    productId: quote.productId,
     salesPersonId: quote.salesPersonId,
     selectedAssemblies: quote.selectedAssemblies.map((selection) => ({
       type: 'existing' as const,

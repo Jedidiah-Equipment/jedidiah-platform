@@ -85,11 +85,13 @@ describe('aiTools', () => {
   test('declares a required permission for each tool', () => {
     expect(aiTools.getCustomer.requiredPermission).toBe('customer:read');
     expect(aiTools.getJob.requiredPermission).toBe('job:read');
+    expect(aiTools.getPart.requiredPermission).toBe('part:read');
     expect(aiTools.getProduct.requiredPermission).toBe('product:read');
     expect(aiTools.getQuote.requiredPermission).toBe('quote:read');
     expect(aiTools.listAuditEvents.requiredPermission).toBe('audit:read');
     expect(aiTools.listCustomers.requiredPermission).toBe('customer:read');
     expect(aiTools.listJobs.requiredPermission).toBe('job:read');
+    expect(aiTools.listParts.requiredPermission).toBe('part:read');
     expect(aiTools.listProducts.requiredPermission).toBe('product:read');
     expect(aiTools.listQuoteCustomers.requiredPermission).toBe('quote:read');
     expect(aiTools.listQuoteProducts.requiredPermission).toBe('quote:read');
@@ -107,6 +109,17 @@ describe('aiTools', () => {
     );
 
     expect(getAuthorizedToolNames(tools)).toEqual(['listProducts', 'getProduct']);
+  });
+
+  test('returns part tools for part readers', () => {
+    const tools = getAuthorizedTools({
+      departments: [],
+      permissions: ['part:read'],
+      role: 'sales',
+      userId: 'test-user-id',
+    });
+
+    expect(getAuthorizedToolNames(tools)).toEqual(['listParts', 'getPart']);
   });
 
   test('returns quote tools for sales users', () => {
@@ -170,6 +183,8 @@ describe('aiTools', () => {
     expect(getAuthorizedToolNames(tools)).toEqual([
       'listProducts',
       'getProduct',
+      'listParts',
+      'getPart',
       'listCustomers',
       'getCustomer',
       'listJobs',

@@ -17,10 +17,14 @@ describe('AI domain guidance', () => {
 
     expect(prompt).toContain('Customer -> Quote');
     expect(prompt).toContain('Quote -> Job');
-    expect(prompt).toContain('A Quote may source any number of Jobs');
+    expect(prompt).toContain('A Quote sources at most one Job');
     expect(prompt).toContain('Job -> Department');
     expect(prompt).toContain('users experience and label them as Departments');
-    expect(prompt).toContain('Quote Status is a cosmetic label with no transition rules');
+    expect(prompt).toContain('Assembly -> Part');
+    expect(prompt).toContain('bill-of-materials quantities must be read with the Part unit');
+    expect(prompt).toContain('Part.unitOfMeasure is either quantity');
+    expect(prompt).toContain('only accepted Quotes can create a Job');
+    expect(prompt).toContain('A Quote sources at most one Job');
     expect(prompt).toContain('Product is required at creation and immutable post-creation');
     expect(prompt).toContain('price snapshot fields quotedBasePrice and quotedCurrencyCode are latched');
     expect(prompt).toContain('Payment Terms, Preferred Delivery Date, and Planned Delivery Date');

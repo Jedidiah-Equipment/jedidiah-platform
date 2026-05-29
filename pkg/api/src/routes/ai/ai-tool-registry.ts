@@ -4,11 +4,13 @@ import type { AiContext } from './ai-context.js';
 import { type AiLink, type AiLinkMetadata, aiLinkMetadata, createAiLink } from './ai-link-metadata.js';
 import { getCustomerTool } from './tools/get-customer.js';
 import { getJobTool } from './tools/get-job.js';
+import { getPartTool } from './tools/get-part.js';
 import { getProductTool } from './tools/get-product.js';
 import { getQuoteTool } from './tools/get-quote.js';
 import { listAuditEventsTool } from './tools/list-audit-events.js';
 import { listCustomersTool } from './tools/list-customers.js';
 import { listJobsTool } from './tools/list-jobs.js';
+import { listPartsTool } from './tools/list-parts.js';
 import { listProductsTool } from './tools/list-products.js';
 import { listQuoteCustomersTool } from './tools/list-quote-customers.js';
 import { listQuoteProductsTool } from './tools/list-quote-products.js';
@@ -78,6 +80,36 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: projectProduct,
   },
   {
+    tool: listPartsTool,
+    descriptor: {
+      purpose: 'List Parts visible to Part readers.',
+      useWhen: ['Searching by Part code, name, category, supplier, unit of measure, UUID, or partial text.'],
+      doNotUseWhen: ['A Part id is already known and the user needs one Part record; use getPart instead.'],
+      searchableIdentifiers: [
+        'Part UUID',
+        'Part code',
+        'Part name',
+        'Part category',
+        'supplier name',
+        'supplier code',
+        'unitOfMeasure',
+      ],
+      resultIdentifiers: ['Part code', 'Part name', 'Supplier company name', 'unitOfMeasure'],
+    },
+    projectResult: identityProjection,
+  },
+  {
+    tool: getPartTool,
+    descriptor: {
+      purpose: 'Get one Part by UUID, including its Supplier and unitOfMeasure.',
+      useWhen: ['A Part id is already known and the user needs the Part unit, Supplier, or details.'],
+      doNotUseWhen: ['Searching by Part code, name, category, supplier, or partial id; use listParts first.'],
+      searchableIdentifiers: ['Part UUID'],
+      resultIdentifiers: ['Part code', 'Part name', 'Supplier company name', 'unitOfMeasure'],
+    },
+    projectResult: identityProjection,
+  },
+  {
     tool: listCustomersTool,
     descriptor: {
       purpose: 'List Customers visible to Customer readers.',
@@ -122,7 +154,14 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
       useWhen: ['A Job id is already known and the user needs production progress or workflow history.'],
       doNotUseWhen: ['Searching by Job Code, numeric code, or partial id; use listJobs first.'],
       searchableIdentifiers: ['Job UUID'],
-      resultIdentifiers: ['Job Code', 'Job Status', 'Due Date', 'Stage summaries', 'Workflow events'],
+      resultIdentifiers: [
+        'Job Code',
+        'Job Status',
+        'Due Date',
+        'Stage summaries',
+        'Workflow events',
+        'CFO Part quantities with unitOfMeasure',
+      ],
       linkTarget: aiLinkMetadata.Job,
     },
     projectResult: projectJob,

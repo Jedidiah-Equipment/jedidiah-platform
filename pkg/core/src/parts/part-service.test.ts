@@ -24,6 +24,7 @@ function importRow(overrides: Partial<PartBulkImportRow> = {}): PartBulkImportRo
     name: 'Bearing',
     supplierCode: 'SUP-100',
     supplierName: 'Acme Supplies',
+    unitOfMeasure: 'quantity',
     ...overrides,
   };
 }
@@ -41,6 +42,7 @@ describe('bulkImportParts', () => {
             name: 'Bolt',
             supplierCode: 'BET-200',
             supplierName: 'Beta Supplies',
+            unitOfMeasure: 'mm',
           }),
         ],
       },
@@ -53,7 +55,7 @@ describe('bulkImportParts', () => {
     expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies', 'Beta Supplies']);
     expect(importedParts.items.map((part) => part.code)).toEqual(['P-100', 'P-200']);
-    expect(importedParts.items.map((part) => part.unitOfMeasure)).toEqual(['quantity', 'quantity']);
+    expect(importedParts.items.map((part) => part.unitOfMeasure)).toEqual(['quantity', 'mm']);
     expect(events).toMatchObject([
       {
         action: 'created',
@@ -134,6 +136,7 @@ describe('bulkImportParts', () => {
             description: 'Updated main bearing',
             finish: 'Painted',
             name: 'Bearing Assembly',
+            unitOfMeasure: 'mm',
           }),
         ],
       },
@@ -146,6 +149,7 @@ describe('bulkImportParts', () => {
       description: 'Updated main bearing',
       finish: 'Painted',
       name: 'Bearing Assembly',
+      unitOfMeasure: 'mm',
     });
     expect(events.at(-1)).toMatchObject({
       action: 'updated',
@@ -162,6 +166,10 @@ describe('bulkImportParts', () => {
         name: {
           from: 'Bearing',
           to: 'Bearing Assembly',
+        },
+        unitOfMeasure: {
+          from: 'quantity',
+          to: 'mm',
         },
       },
       entityType: 'part',

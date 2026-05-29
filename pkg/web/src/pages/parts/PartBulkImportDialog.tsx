@@ -1,4 +1,4 @@
-import type { Supplier } from '@pkg/schema';
+import { PART_UNIT_OF_MEASURE_LABELS, type Supplier } from '@pkg/schema';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2Icon, UploadIcon } from 'lucide-react';
 import type React from 'react';
@@ -19,6 +19,7 @@ import {
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import {
@@ -116,6 +117,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
 
   const canImport = file !== null && parseResult.rows.length > 0 && !importMutation.isPending;
   const displayedErrors = result ? [...parseResult.errors, ...result.errors] : parseResult.errors;
+  const previewRows = parseResult.rows.slice(0, 10);
 
   return (
     <>
@@ -184,6 +186,40 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
                   {parseResult.errors.length > 0 ? ' Rows with issues will be skipped.' : null}
                 </AlertDescription>
               </Alert>
+            ) : null}
+            {previewRows.length > 0 && !result ? (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Preview</div>
+                <ScrollArea className="max-h-56 rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Line</TableHead>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Supplier</TableHead>
+                        <TableHead>Unit</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewRows.map((row) => (
+                        <TableRow key={`${row.lineNumber}-${row.code}`}>
+                          <TableCell>{row.lineNumber}</TableCell>
+                          <TableCell>{row.code}</TableCell>
+                          <TableCell>{row.name}</TableCell>
+                          <TableCell>{row.supplierName}</TableCell>
+                          <TableCell>{PART_UNIT_OF_MEASURE_LABELS[row.unitOfMeasure]}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+                {parseResult.rows.length > previewRows.length ? (
+                  <div className="text-xs text-muted-foreground">
+                    Showing first {previewRows.length} of {parseResult.rows.length} rows.
+                  </div>
+                ) : null}
+              </div>
             ) : null}
             {result ? (
               <Alert>

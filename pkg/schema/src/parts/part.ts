@@ -96,6 +96,7 @@ export const PartBulkImportRow = z.object({
   name: PartName,
   supplierCode: PartSupplierCode,
   supplierName: SupplierCompanyName,
+  unitOfMeasure: PartUnitOfMeasure,
 });
 
 export type PartBulkImportInput = z.infer<typeof PartBulkImportInput>;

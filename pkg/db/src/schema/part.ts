@@ -1,3 +1,4 @@
+import type { PartUnitOfMeasure } from '@pkg/schema';
 import { relations } from 'drizzle-orm';
 import { index, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
@@ -17,6 +18,7 @@ export const parts = pgTable(
     supplierId: uuid('supplier_id')
       .notNull()
       .references(() => supplier.id, { onDelete: 'restrict' }),
+    unitOfMeasure: text('unit_of_measure').notNull().$type<PartUnitOfMeasure>(),
   },
   (table) => [
     index('parts_category_idx').on(table.category),

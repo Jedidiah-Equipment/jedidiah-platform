@@ -29,6 +29,14 @@ export const PartFinish = requiredTrimmedText('Finish is required');
 export type PartCategory = z.infer<typeof PartCategory>;
 export const PartCategory = requiredTrimmedText('Category is required');
 
+export type PartUnitOfMeasure = z.infer<typeof PartUnitOfMeasure>;
+export const PartUnitOfMeasure = z.enum(['quantity', 'mm']);
+
+export const PART_UNIT_OF_MEASURE_LABELS = {
+  mm: 'Millimetres',
+  quantity: 'Quantity',
+} as const satisfies Record<PartUnitOfMeasure, string>;
+
 export type Part = z.infer<typeof Part>;
 export const Part = z.object({
   category: PartCategory,
@@ -41,6 +49,7 @@ export const Part = z.object({
   supplier: Supplier.pick({ companyName: true, id: true }),
   supplierCode: PartSupplierCode,
   supplierId: UUID,
+  unitOfMeasure: PartUnitOfMeasure,
 });
 
 export type PartSortBy = z.infer<typeof PartSortBy>;
@@ -68,6 +77,7 @@ export const PartCreateInput = z.object({
   name: PartName,
   supplierCode: PartSupplierCode,
   supplierId: UUID,
+  unitOfMeasure: PartUnitOfMeasure,
 });
 
 export type PartUpdateInput = z.infer<typeof PartUpdateInput>;

@@ -8,7 +8,8 @@
     "id": "8a6029de-44a3-4df4-9614-172ff938cab6",
     "name": "M6 X 12 HT Set",
     "supplierCode": "M6 X 12 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -19,7 +20,8 @@
     "id": "04dacd1e-f8b2-48a9-a894-464f897b4739",
     "name": "M6 X 60 HT Bolt",
     "supplierCode": "M6 X 60 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -30,7 +32,8 @@
     "id": "a57b6f57-57a0-4fda-bce8-d780ddd2d197",
     "name": "M6 X 70 HT Bolt",
     "supplierCode": "M6 X 70 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -41,7 +44,8 @@
     "id": "d512e175-22d2-4ada-bb83-a32135a8975b",
     "name": "M6 X 80 HT Bolt",
     "supplierCode": "M6 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -52,7 +56,8 @@
     "id": "10ad68e2-22f3-4035-a277-abdafa0727e2",
     "name": "M6 X 100 HT Bolt",
     "supplierCode": "M6 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -63,7 +68,8 @@
     "id": "dca6e6e4-5cf4-4030-933e-006154f3ca83",
     "name": "M8 X 25 HT Set",
     "supplierCode": "M8 X 25 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -74,7 +80,8 @@
     "id": "639ff63b-6403-4a16-9cf1-ac53e7e711ee",
     "name": "M8 X 80 HT Bolt",
     "supplierCode": "M8 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -85,7 +92,8 @@
     "id": "6c465008-dc7a-400d-bb90-998d9480515b",
     "name": "M8 X 100 HT Bolt",
     "supplierCode": "M8 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Easy Grease",
@@ -96,7 +104,8 @@
     "id": "844ba56c-bcc5-49ac-b3e6-ea574b74d7e4",
     "name": "Tipping Cylinder Left V2 Sg1836 Easy Grease",
     "supplierCode": "NC",
-    "supplierId": "c2911f5d-5a1d-41a5-824d-0ad11eb8da31"
+    "supplierId": "c2911f5d-5a1d-41a5-824d-0ad11eb8da31",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -107,7 +116,8 @@
     "id": "64795be9-9aa4-4687-ac74-d4ba07752f50",
     "name": "6202-2Rs-C3",
     "supplierCode": "6202-2RS-C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -118,7 +128,8 @@
     "id": "e4db4a3f-fc8c-45bc-b81f-ba9948624c2b",
     "name": "Lm 67048/10",
     "supplierCode": "LM 67048/10",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -129,7 +140,8 @@
     "id": "1019f0cc-2f7f-4be0-95bc-4371137af30b",
     "name": "Lm 11910/49",
     "supplierCode": "LM 11910/49",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -140,7 +152,8 @@
     "id": "39d7c2f0-5cd0-42ad-bbd1-0c1372b33cc8",
     "name": "M10 X 75 HT Bolt",
     "supplierCode": "M10 X 75 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -151,7 +164,8 @@
     "id": "87e06943-4eb1-4cc0-97e2-38a7eb1ef5e0",
     "name": "M10 X 90 HT Bolt",
     "supplierCode": "M10 X 90 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -162,7 +176,8 @@
     "id": "bf236a54-4c44-4b7e-afe3-510c3a9cba0a",
     "name": "32007 X",
     "supplierCode": "32007 X",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -173,7 +188,8 @@
     "id": "ce2cf4c7-3540-45c3-93f1-bdc7de32d704",
     "name": "M10 X 140 HT Bolt",
     "supplierCode": "M10 X 140 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -184,7 +200,8 @@
     "id": "32b5e70b-67ef-49ad-bf0d-05c2b4737e99",
     "name": "Ra012Rr L/C",
     "supplierCode": "RA012RR L/C",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -195,7 +212,8 @@
     "id": "c339ff4f-7be1-4447-8679-53cc4782272a",
     "name": "M10 X 180 HT Bolt",
     "supplierCode": "M10 X 180 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -206,7 +224,8 @@
     "id": "eb0a3feb-c8ae-4c71-b3d9-7b4de9dbb8df",
     "name": "32212",
     "supplierCode": "32212",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -217,7 +236,8 @@
     "id": "6d8b9e12-e1b3-417b-a39c-01de7827e666",
     "name": "25580/20",
     "supplierCode": "25580/20",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -228,7 +248,8 @@
     "id": "4e8e8fc5-908c-43a0-91a4-110c11d00b07",
     "name": "M12 X 40 HT Set",
     "supplierCode": "M12 X 40 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -239,7 +260,8 @@
     "id": "2a2f1502-56c7-472a-b24e-a4a7b38bb47a",
     "name": "M12 X 50 HT Bolt",
     "supplierCode": "M12 X 50 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -250,7 +272,8 @@
     "id": "b01c5af1-d492-4c6f-8ff2-f3c18ab0e3ce",
     "name": "32015 X",
     "supplierCode": "32015 X",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -261,7 +284,8 @@
     "id": "bff1cb91-15f7-4a75-8895-18ddd4f86e53",
     "name": "M12 X 80 HT Bolt",
     "supplierCode": "M12 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -272,7 +296,8 @@
     "id": "2f6428ef-c591-4254-a67a-4549a8bf858e",
     "name": "33110",
     "supplierCode": "33110",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -283,7 +308,8 @@
     "id": "a75a7701-c7ee-4a01-85c4-8d0aff125509",
     "name": "6210-2Rs-C3",
     "supplierCode": "6210-2RS-C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -294,7 +320,8 @@
     "id": "17afd01e-f9ef-456c-aedc-32c55bdd3524",
     "name": "M12 X 130 HT Bolt",
     "supplierCode": "M12 X 130 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -305,7 +332,8 @@
     "id": "fe633910-3e97-41ac-8327-f6b35b84922b",
     "name": "Y33215",
     "supplierCode": "Y33215",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -316,7 +344,8 @@
     "id": "d25983e5-d8d1-4e51-8998-726f51d679f5",
     "name": "M12 X 160 HT Bolt",
     "supplierCode": "M12 X 160 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -327,7 +356,8 @@
     "id": "fd0964c7-cc5c-4c3a-b473-2f9d5ed5348e",
     "name": "M12 X 180 HT Bolt",
     "supplierCode": "M12 X 180 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -338,7 +368,8 @@
     "id": "ead5281b-20f4-45a4-b414-c749afd10d80",
     "name": "M12 X 230 HT Bolt",
     "supplierCode": "M12 X 230 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -349,7 +380,8 @@
     "id": "459ecc59-6a43-49b1-9219-2ce7e54134c5",
     "name": "M14 X 20 HT Set",
     "supplierCode": "M14 X 20 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Timken Bearing",
@@ -360,7 +392,8 @@
     "id": "e5838b78-bd70-4bc1-af42-e19b6c29bae3",
     "name": "Hm 218210",
     "supplierCode": "HM 218210",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -371,7 +404,8 @@
     "id": "40e90bb8-3d7f-4927-a4ed-2ead2d38aefc",
     "name": "M14 X 30 HT Set",
     "supplierCode": "M14 X 30 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -382,7 +416,8 @@
     "id": "92dc43d5-73fa-4b02-a9ba-99cdea8990d8",
     "name": "M14 X 40  HT Set",
     "supplierCode": "M14 X 40  HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Ntn Bearing",
@@ -393,7 +428,8 @@
     "id": "d7f305b1-6353-418c-a0b1-865c02d68c92",
     "name": "6208Znrc3",
     "supplierCode": "6208ZNRC3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Ntn Bearing",
@@ -404,7 +440,8 @@
     "id": "52c7989d-31c0-4fcc-b994-8d34c475b08b",
     "name": "6205C4",
     "supplierCode": "6205C4",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Ntn Bearing",
@@ -415,7 +452,8 @@
     "id": "ae6ee244-2f18-4929-b78c-9291c56e5178",
     "name": "2720/2788",
     "supplierCode": "2720/2788",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -426,7 +464,8 @@
     "id": "7dec4050-e764-45b3-b95f-2bccf4f32a5a",
     "name": "M14 X 70 HT Bolt",
     "supplierCode": "M14 X 70 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Ntn Bearing",
@@ -437,7 +476,8 @@
     "id": "d0a433db-c69c-4b79-a8b4-c20ee811a56a",
     "name": "4T-3579/3525",
     "supplierCode": "4T-3579/3525",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Bearing",
@@ -448,7 +488,8 @@
     "id": "451bdcd0-2b7a-4703-830d-f4ef98b8c79f",
     "name": "Ucfl 206 Challenge 30Mm",
     "supplierCode": "UCFL 206 CHALLENGE 30MM",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -459,7 +500,8 @@
     "id": "09e39741-6e65-4b08-9f99-74c87f632072",
     "name": "M14 X 120 HT Bolt",
     "supplierCode": "M14 X 120 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -470,7 +512,8 @@
     "id": "3dc83dfd-f787-4471-8fd5-8a9629f3fc3f",
     "name": "M14 X 140 HT Bolt",
     "supplierCode": "M14 X 140 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -481,7 +524,8 @@
     "id": "70b902cd-e561-4587-85ac-5e8978e5cd98",
     "name": "M14 X 150 HT Bolt",
     "supplierCode": "M14 X 150 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -492,7 +536,8 @@
     "id": "7d4f3a5e-66f8-401f-b054-cfc5e1649886",
     "name": "30205",
     "supplierCode": "30205",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -503,7 +548,8 @@
     "id": "939a9634-61a4-4cdc-a28e-98ec5738f9b0",
     "name": "32206",
     "supplierCode": "32206",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -514,7 +560,8 @@
     "id": "a5878c61-1d58-458a-a182-a6c06f77488e",
     "name": "32210",
     "supplierCode": "32210",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -525,7 +572,8 @@
     "id": "99aa7047-9e5e-4c61-9abb-c5685b2d975f",
     "name": "M14 X 160 HT Bolt",
     "supplierCode": "M14 X 160 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Bearing",
@@ -536,7 +584,8 @@
     "id": "93593c54-a54f-499b-83b2-57dc0480b87c",
     "name": "Ucf 210 Brg Challenge 50Mm",
     "supplierCode": "UCF 210 BRG CHALLENGE 50MM",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Bearing",
@@ -547,7 +596,8 @@
     "id": "21c369c1-68b1-4493-8e70-ea49b035d278",
     "name": "Ucf 205 Brg Challenge 20Mm",
     "supplierCode": "UCF 205 BRG CHALLENGE 20MM",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -558,7 +608,8 @@
     "id": "a9cebc88-d172-4d1a-b0c1-659ae29de3dd",
     "name": "M16 X 30 HT Set",
     "supplierCode": "M16 X 30 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -569,7 +620,8 @@
     "id": "b830559d-6adb-4085-b925-d2f046bc228f",
     "name": "M16 X 35 HT Set",
     "supplierCode": "M16 X 35 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -580,7 +632,8 @@
     "id": "ca849a1e-0840-4033-9d02-a2fad2e70f5d",
     "name": "M16 X 40 HT Bolt",
     "supplierCode": "M16 X 40 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Bearing",
@@ -591,7 +644,8 @@
     "id": "758a40bd-b364-45cf-98a6-c707dad14823",
     "name": "Ucf 207 Brg Challenge",
     "supplierCode": "UCF 207 BRG CHALLENGE",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -602,7 +656,8 @@
     "id": "f2a738bc-d5be-43c4-a076-5b6698549d92",
     "name": "M16 X 65 HT Bolt",
     "supplierCode": "M16 X 65 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -613,7 +668,8 @@
     "id": "4bcdbb54-d65f-46f3-90e7-347455e13564",
     "name": "M16 X 75 HT Bolt",
     "supplierCode": "M16 X 75 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Bearing",
@@ -624,7 +680,8 @@
     "id": "da845b2b-bf0b-4bb1-ac9c-7038a95b2c10",
     "name": "Ucp 207 Brg Challenge",
     "supplierCode": "UCP 207 BRG CHALLENGE",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Bearing",
@@ -635,7 +692,8 @@
     "id": "5e9669dc-5a29-4860-853e-8435d972fd01",
     "name": "Ucp 206 Brg Challenge",
     "supplierCode": "UCP 206 BRG CHALLENGE",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Bearing",
@@ -646,7 +704,8 @@
     "id": "7af2c60e-f893-4e44-995d-f28692fc5994",
     "name": "Ucf 212 Brg Challenge",
     "supplierCode": "UCF 212 BRG CHALLENGE",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Skf Bearing",
@@ -657,7 +716,8 @@
     "id": "4a189464-4bf9-4361-aa79-64e378012e1d",
     "name": "Ucfl 206 Brg Skf 30M",
     "supplierCode": "UCFL 206 BRG SKF 30M",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Skf Bearing",
@@ -668,7 +728,8 @@
     "id": "c6d9b827-a02a-4db1-b4a1-718ebf212d3d",
     "name": "Ucfl 208 Brg Skf",
     "supplierCode": "UCFL 208 BRG SKF",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -679,7 +740,8 @@
     "id": "c57898c2-7af2-4e39-9ae1-9000a54ce576",
     "name": "M16 X 160 HT Bolt",
     "supplierCode": "M16 X 160 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Skf Bearing",
@@ -690,7 +752,8 @@
     "id": "416f3fc8-39b6-4299-84ad-1e2a039f976a",
     "name": "Ucf 209 Brg Skf",
     "supplierCode": "UCF 209 BRG SKF",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Skf Bearing",
@@ -701,7 +764,8 @@
     "id": "644786ee-0efd-4eff-aebd-2a29b184ad89",
     "name": "Ucf 210 Brg Skf",
     "supplierCode": "UCF 210 BRG SKF",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -712,7 +776,8 @@
     "id": "4ed29dc7-3ba1-4b62-b0bd-fd8ee9c310aa",
     "name": "M16 X 260 HT Bolt",
     "supplierCode": "M16 X 260 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -723,7 +788,8 @@
     "id": "8d36f334-6284-41c8-bc50-8368eab73d1d",
     "name": "M16 X 300 HT Bolt",
     "supplierCode": "M16 X 300 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -734,7 +800,8 @@
     "id": "a22b9390-425a-463f-8cfc-40881fcbf08d",
     "name": "M16 X 360 HT Bolt",
     "supplierCode": "M16 X 360 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -745,7 +812,8 @@
     "id": "bebb5e0f-096d-43a2-9a6c-3c01258dc057",
     "name": "M18 X 40 HT Set",
     "supplierCode": "M18 X 40 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -756,7 +824,8 @@
     "id": "738c59ed-2b96-4439-8c7d-d2631ad99709",
     "name": "M18 X 50 HT Set",
     "supplierCode": "M18 X 50 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -767,7 +836,8 @@
     "id": "36bfa391-a9ca-4f5f-824f-2b6ca33d0d5a",
     "name": "M18 X 60 HT Bolt",
     "supplierCode": "M18 X 60 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -778,7 +848,8 @@
     "id": "7fdbabd9-6e7e-49a8-a257-bd159e26ed16",
     "name": "M18 X 75 HT Bolt",
     "supplierCode": "M18 X 75 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Skf Bearing",
@@ -789,7 +860,8 @@
     "id": "a4142c50-ae79-4e63-a9d0-b37bb7a177d8",
     "name": "Ucf 212 Brg Skf",
     "supplierCode": "UCF 212 BRG SKF",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -800,7 +872,8 @@
     "id": "e3ccb6fb-9ec3-4950-8746-d1f9fbc0f8e4",
     "name": "M18 X 90 HT Bolt",
     "supplierCode": "M18 X 90 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -811,7 +884,8 @@
     "id": "32f30328-63fb-4964-a8a6-4442cb1913b1",
     "name": "M18 X 100 HT Bolt",
     "supplierCode": "M18 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -822,7 +896,8 @@
     "id": "72a0d7b3-8fc7-4276-ac3e-8fcc736df8c6",
     "name": "M18 X 120 HT Bolt",
     "supplierCode": "M18 X 120 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -833,7 +908,8 @@
     "id": "d95f2595-78a6-44af-8cab-b79bc7c3860a",
     "name": "M18 X 150 HT Bolt",
     "supplierCode": "M18 X 150 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -844,7 +920,8 @@
     "id": "96d57103-544a-4678-b5bf-fac3f72d1607",
     "name": "M18 X 160 HT Bolt",
     "supplierCode": "M18 X 160 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -855,7 +932,8 @@
     "id": "3ac4eb0b-115d-4ce4-be7e-a014ba1198fb",
     "name": "M18 X 200 HT Bolt",
     "supplierCode": "M18 X 200 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Skf Bearing",
@@ -866,7 +944,8 @@
     "id": "cb663718-d54f-4d60-84f3-3d6e22db2429",
     "name": "Skf Agri Hub Ba 0004",
     "supplierCode": "SKF AGRI HUB BA 0004",
-    "supplierId": "09ac3409-35d0-4792-8567-5fe2abade24b"
+    "supplierId": "09ac3409-35d0-4792-8567-5fe2abade24b",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Skf Bearing",
@@ -877,7 +956,8 @@
     "id": "7b58a0cb-a917-4f77-8b25-aafe98d836b1",
     "name": "Vista Agri Hub Baa 0004 Hd",
     "supplierCode": "VISTA AGRI HUB BAA 0004 HD",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -888,7 +968,8 @@
     "id": "79aec177-3ce9-4913-b498-acc1b5be4ec3",
     "name": "M20 X 60 HT Bolt",
     "supplierCode": "M20 X 60 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Skf Explorer",
@@ -899,7 +980,8 @@
     "id": "e2c768bc-bd19-4b97-903d-428ffb5654bd",
     "name": "6205-2Rsh/C3",
     "supplierCode": "6205-2RSH/C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Skf Explorer",
@@ -910,7 +992,8 @@
     "id": "a319eb76-4502-459e-8c44-82c6af72601b",
     "name": "3206A-2Rsitn9/C3Mt33",
     "supplierCode": "3206A-2RSITN9/C3MT33",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nsk Bearing",
@@ -921,7 +1004,8 @@
     "id": "aaa0ab2b-332e-4e40-b7a9-415029c1d4bc",
     "name": "6206Du",
     "supplierCode": "6206DU",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nsk Bearing",
@@ -932,7 +1016,8 @@
     "id": "53738d70-d87f-433e-96d4-5935d0285406",
     "name": "Hr30207J",
     "supplierCode": "HR30207J",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nsk Bearing",
@@ -943,7 +1028,8 @@
     "id": "555210c7-9694-4936-a4ca-b22c44dc166f",
     "name": "6208N",
     "supplierCode": "6208N",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nsk Bearing",
@@ -954,7 +1040,8 @@
     "id": "10a979d6-9ae3-40aa-baef-7a4e2dcd85b2",
     "name": "6208Fdu",
     "supplierCode": "6208FDU",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nsk Bearing",
@@ -965,7 +1052,8 @@
     "id": "52d5f4d5-537f-427c-aeee-29a8bbc7a87d",
     "name": "3578R/3525R",
     "supplierCode": "3578R/3525R",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nsk Bearing",
@@ -976,7 +1064,8 @@
     "id": "69da2461-54c5-464e-9f2a-d426fd80bdf3",
     "name": "21311Eae4C3",
     "supplierCode": "21311EAE4C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -987,7 +1076,8 @@
     "id": "d6c66161-7325-4086-8779-2c7d31a50840",
     "name": "M20 X 200 HT Bolt",
     "supplierCode": "M20 X 200 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nsk Bearing",
@@ -998,7 +1088,8 @@
     "id": "851efeba-3c1d-4e50-b20e-14097eb1cc06",
     "name": "Nj311Ewc3",
     "supplierCode": "NJ311EWC3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1009,7 +1100,8 @@
     "id": "5d7309e3-2342-45b5-a1af-5483e528c5f9",
     "name": "M22 X 50 HT Set",
     "supplierCode": "M22 X 50 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1020,7 +1112,8 @@
     "id": "a2f48dc1-33ee-404d-a9fd-bba7ccfa0914",
     "name": "M22 X 60 HT Set",
     "supplierCode": "M22 X 60 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1031,7 +1124,8 @@
     "id": "23f0cafa-cc2a-4875-a77e-74fd8ba8f341",
     "name": "M22 X 80 HT Bolt",
     "supplierCode": "M22 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1042,7 +1136,8 @@
     "id": "a3a5c99e-4409-4b5f-9e4c-496c590439f2",
     "name": "M22 X 90 HT Bolt",
     "supplierCode": "M22 X 90 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1053,7 +1148,8 @@
     "id": "984985eb-8df7-4448-babb-bfd65797c30d",
     "name": "M22 X 100 HT Bolt",
     "supplierCode": "M22 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1064,7 +1160,8 @@
     "id": "a05b9399-494e-4792-b24c-d5bec2407093",
     "name": "M22 X 120 HT Bolt",
     "supplierCode": "M22 X 120 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1075,7 +1172,8 @@
     "id": "416c3738-0634-4b1b-9934-511d21dae13f",
     "name": "M22 X 140 HT Bolt",
     "supplierCode": "M22 X 140 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1086,7 +1184,8 @@
     "id": "632ae3d8-c943-4114-833d-a21d4e069712",
     "name": "M22 X 160 HT Bolt",
     "supplierCode": "M22 X 160 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nrb Bearing",
@@ -1097,7 +1196,8 @@
     "id": "b04dabc3-d121-46b7-bf06-90877e49d604",
     "name": "30306",
     "supplierCode": "30306",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1108,7 +1208,8 @@
     "id": "135ebb02-49e1-45a6-b83e-922c2fb98606",
     "name": "M22 X 240 HT Bolt",
     "supplierCode": "M22 X 240 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nrb Bearing",
@@ -1119,7 +1220,8 @@
     "id": "194f6906-fca8-4c79-945c-c447bc388a16",
     "name": "H2311",
     "supplierCode": "H2311",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1130,7 +1232,8 @@
     "id": "fc0cccf4-2663-4691-b3df-cc6a039f1790",
     "name": "M22 X 350 HT Bolt",
     "supplierCode": "M22 X 350 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1141,7 +1244,8 @@
     "id": "f8d265ff-7e13-426a-ab0a-f281641fb19f",
     "name": "M24 X 80 HT Set",
     "supplierCode": "M24 X 80 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1152,7 +1256,8 @@
     "id": "072638db-0c61-42c4-973f-81f157112992",
     "name": "M24 X 100 HT Bolt",
     "supplierCode": "M24 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1163,7 +1268,8 @@
     "id": "bf5c2b0c-203e-4a59-be31-ef4bf043e2b8",
     "name": "M24  X 120 HT Bolt",
     "supplierCode": "M24  X 120 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nrb Bearing",
@@ -1174,7 +1280,8 @@
     "id": "4dcc645d-77ee-45ea-b85e-fd4e4aaca1f0",
     "name": "3207",
     "supplierCode": "3207",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1185,7 +1292,8 @@
     "id": "6209161c-83c5-494f-aeef-910b92fef5eb",
     "name": "M24 X 160 HT Bolt",
     "supplierCode": "M24 X 160 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nrb Bearing",
@@ -1196,7 +1304,8 @@
     "id": "254a0742-62e3-417d-a30b-b015b8090481",
     "name": "613233",
     "supplierCode": "613233",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1207,7 +1316,8 @@
     "id": "debcbf2d-528b-4081-9e92-1b5a208071b5",
     "name": "M24 X 300 HT Bolt",
     "supplierCode": "M24 X 300 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1218,7 +1328,8 @@
     "id": "fdf9160d-45a8-479d-809e-69eef28f347c",
     "name": "M30 X 60 HT Set",
     "supplierCode": "M30 X 60 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1229,7 +1340,8 @@
     "id": "ae979fa0-c247-4bd2-ba56-ae5fb8d8c2b9",
     "name": "M30 X 80 HT Set",
     "supplierCode": "M30 X 80 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1240,7 +1352,8 @@
     "id": "1435151e-48c7-4522-b8f1-a7b23c8434e3",
     "name": "M30 X 100 HT Bolt",
     "supplierCode": "M30 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nrb Bearing",
@@ -1251,7 +1364,8 @@
     "id": "6b245d11-9d62-46b4-a561-2c792ba52cbc",
     "name": "Gw208Ppb6",
     "supplierCode": "GW208PPB6",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1262,7 +1376,8 @@
     "id": "d2cd78c3-35cd-452d-8dfb-9bf5a48eb988",
     "name": "M30 X 200 HT Bolt",
     "supplierCode": "M30 X 200 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nrb Bearing",
@@ -1273,7 +1388,8 @@
     "id": "0805b257-4b11-48c7-8274-3a6e682a01a8",
     "name": "Gw209Ppb2",
     "supplierCode": "GW209PPB2",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1284,7 +1400,8 @@
     "id": "885bfe1f-245b-4fb7-8ed1-5dcb65caef7c",
     "name": "29748/29710",
     "supplierCode": "29748/29710",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1295,7 +1412,8 @@
     "id": "3f4f4403-3776-4001-b11c-c88bb8c8f8b7",
     "name": "M30 X 260 HT Bolt",
     "supplierCode": "M30 X 260 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1306,7 +1424,8 @@
     "id": "edd7b786-b465-4216-ad5a-e5cd4b79194f",
     "name": "29749/29710",
     "supplierCode": "29749/29710",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1317,7 +1436,8 @@
     "id": "e45ebc50-ecb0-4c0c-9700-e425bfdc1936",
     "name": "M36 X 90 HT Set",
     "supplierCode": "M36 X 90 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1328,7 +1448,8 @@
     "id": "1573a411-fd13-4936-aecf-d5b15a239d6f",
     "name": "M36 X 300 HT Bolt",
     "supplierCode": "M36 X 300 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1339,7 +1460,8 @@
     "id": "310b2a10-6f0e-44fd-a1ff-ce9ab9c2302a",
     "name": "3/8 X 4 HT UNC Bolt",
     "supplierCode": "3/8 X 4 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1350,7 +1472,8 @@
     "id": "adc729e9-5ea5-448d-af21-e221a0ac8a8f",
     "name": "3/8 X 5 HT UNC Bolt",
     "supplierCode": "3/8 X 5 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1361,7 +1484,8 @@
     "id": "ff75ffaf-ae36-47ff-8202-ef841a665202",
     "name": "7/16 X 2 HT UNC Bolt",
     "supplierCode": "7/16 X 2 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1372,7 +1496,8 @@
     "id": "212d346c-02fc-4259-81ec-560841b07126",
     "name": "1/2 X 1-1/2 HT UNC Bolt",
     "supplierCode": "1/2 X 1-1/2 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1383,7 +1508,8 @@
     "id": "1e09b481-684b-4c60-89ee-7e6bbd757b19",
     "name": "30204",
     "supplierCode": "30204",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1394,7 +1520,8 @@
     "id": "953d5fb5-9d93-411d-8d70-b4b6c35d62a6",
     "name": "30207",
     "supplierCode": "30207",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNF Bolt",
@@ -1405,7 +1532,8 @@
     "id": "ee9f41d3-a205-4492-8728-39df74c9ae55",
     "name": "1/2 X 2-1/2 HT UNF Bolt",
     "supplierCode": "1/2 X 2-1/2 HT UNF BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1416,7 +1544,8 @@
     "id": "aa1841d2-5b7a-4a3b-a3d1-d676caf05d26",
     "name": "1/2 X 3 HT UNC Bolt",
     "supplierCode": "1/2 X 3 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1427,7 +1556,8 @@
     "id": "a5729d19-c78e-4903-b864-6a65600bddbc",
     "name": "9/16 X 3 HT UNC Bolt",
     "supplierCode": "9/16 X 3 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1438,7 +1568,8 @@
     "id": "550f9768-0ca0-4e92-8a0e-f840e462f5e1",
     "name": "5/8 X 3-1/2 HT UNC Bolt",
     "supplierCode": "5/8 X 3-1/2 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Set",
@@ -1449,7 +1580,8 @@
     "id": "724fbb87-7d72-4a90-870e-4e6ecde91e28",
     "name": "3/4 X 2-1/2 HT UNC Set",
     "supplierCode": "3/4 X 2-1/2 HT UNC SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1460,7 +1592,8 @@
     "id": "684b36b2-70aa-4122-bb86-a1a49666c19b",
     "name": "30210",
     "supplierCode": "30210",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1471,7 +1604,8 @@
     "id": "d1d96dce-263a-4f0d-8554-aeb44d7c79c1",
     "name": "30303",
     "supplierCode": "30303",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1482,7 +1616,8 @@
     "id": "88926d74-b29d-436d-ad8b-d2a87cc01d26",
     "name": "32004",
     "supplierCode": "32004",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1493,7 +1628,8 @@
     "id": "049001f4-8bab-4163-b04a-148897e1d4d7",
     "name": "32006",
     "supplierCode": "32006",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1504,7 +1640,8 @@
     "id": "9821ef56-7faf-41c3-833d-68dccb9e2b71",
     "name": "32009",
     "supplierCode": "32009",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1515,7 +1652,8 @@
     "id": "ecbdf1ca-4602-484e-9b31-f5636a4d2d76",
     "name": "3/4 X 6-1/2 HT UNC Bolt",
     "supplierCode": "3/4 X 6-1/2 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1526,7 +1664,8 @@
     "id": "8105450f-b9d7-4746-b109-4b741694f67d",
     "name": "3/4 X 7 HT UNC Bolt",
     "supplierCode": "3/4 X 7 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1537,7 +1676,8 @@
     "id": "67ce0c2c-2e10-4dcb-83d9-6f31e510ffaf",
     "name": "32010",
     "supplierCode": "32010",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1548,7 +1688,8 @@
     "id": "d230dee9-b0f7-4bf5-a817-e493c324f027",
     "name": "32203",
     "supplierCode": "32203",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1559,7 +1700,8 @@
     "id": "5c6c7619-03a9-40fd-b50f-aa61316b2094",
     "name": "1 X 5 HT UNC Bolt",
     "supplierCode": "1 X 5 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1570,7 +1712,8 @@
     "id": "75a3cb8e-124c-405c-9afd-e92b3a7f697c",
     "name": "1 X 6 HT UNC Bolt",
     "supplierCode": "1 X 6 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -1581,7 +1724,8 @@
     "id": "83807ae4-04d5-4425-9f98-a929c5c5bb20",
     "name": "1 X 10 HT UNC Bolt",
     "supplierCode": "1 X 10 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1592,7 +1736,8 @@
     "id": "3ac26edd-a7ec-4811-acde-1489255c58c0",
     "name": "M6 X 16 HT Set",
     "supplierCode": "M6 X 16 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1603,7 +1748,8 @@
     "id": "3b0c9eb7-23ec-4850-a7e2-da9ddafab56b",
     "name": "M6 X 20 HT Set",
     "supplierCode": "M6 X 20 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1614,7 +1760,8 @@
     "id": "f576f698-227e-41f0-91ff-6fd8e3e34644",
     "name": "M6 X 25 HT Set",
     "supplierCode": "M6 X 25 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1625,7 +1772,8 @@
     "id": "5fd190f1-1185-430a-b34f-ef22f216177a",
     "name": "M6 X 35 HT Set",
     "supplierCode": "M6 X 35 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1636,7 +1784,8 @@
     "id": "55d3ca0c-0ff8-4b6f-bbd3-90c2db4a3321",
     "name": "M6 X 40 HT Set",
     "supplierCode": "M6 X 40 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1647,7 +1796,8 @@
     "id": "96c7994a-eb8c-4a60-802d-95458239fb98",
     "name": "M6 X 45 HT Set",
     "supplierCode": "M6 X 45 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1658,7 +1808,8 @@
     "id": "bd1f0bbe-2a7a-4741-8e11-7376543cf091",
     "name": "M6 X 50 HT Bolt",
     "supplierCode": "M6 X 50 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1669,7 +1820,8 @@
     "id": "6ddd41f9-f69c-436f-affe-e276b3a9deed",
     "name": "M6 X 55 HT Bolt",
     "supplierCode": "M6 X 55 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1680,7 +1832,8 @@
     "id": "9bcd96c8-1fdc-423f-8e37-4b1219406e1c",
     "name": "M6 X 60 HT Set",
     "supplierCode": "M6 X 60 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1691,7 +1844,8 @@
     "id": "5625b429-3540-46db-9146-3d2afa47f35d",
     "name": "M6 X 65 HT Bolt",
     "supplierCode": "M6 X 65 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1702,7 +1856,8 @@
     "id": "48d0bef6-1dac-416d-88cc-d161279a044a",
     "name": "M6 X 80 HT Set",
     "supplierCode": "M6 X 80 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1713,7 +1868,8 @@
     "id": "aeafd8d8-5193-45ce-b17f-85d066f1c221",
     "name": "M8 X 16 HT Set",
     "supplierCode": "M8 X 16 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1724,7 +1880,8 @@
     "id": "7c5cffa6-2fe0-483d-b9fc-c4a6e85b5c80",
     "name": "M8 X 20 HT Set",
     "supplierCode": "M8 X 20 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1735,7 +1892,8 @@
     "id": "1cc3cd25-189f-441d-a76a-fef946bbaaf9",
     "name": "M8 X 30 HT Set",
     "supplierCode": "M8 X 30 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1746,7 +1904,8 @@
     "id": "f16dc428-3c42-4a67-9f8b-df96bc357b67",
     "name": "M8 X 35 HT Set",
     "supplierCode": "M8 X 35 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1757,7 +1916,8 @@
     "id": "e6ecc175-7153-4945-85db-c96418893169",
     "name": "M8 X 40 HT Set",
     "supplierCode": "M8 X 40 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1768,7 +1928,8 @@
     "id": "e3b7cc63-bce3-4b20-9494-284351d060d3",
     "name": "M8 X 50 HT Bolt",
     "supplierCode": "M8 X 50 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1779,7 +1940,8 @@
     "id": "138f632c-affb-43af-8224-79a4b2bd6d07",
     "name": "32204",
     "supplierCode": "32204",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1790,7 +1952,8 @@
     "id": "f6f2a7ae-bafc-4272-96f8-ca68eeebe935",
     "name": "32205",
     "supplierCode": "32205",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -1801,7 +1964,8 @@
     "id": "fb0b88c1-20dc-42e8-a537-81d3fb853d05",
     "name": "32208",
     "supplierCode": "32208",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1812,7 +1976,8 @@
     "id": "51dfb625-5c32-4af3-bb56-107d0c32a926",
     "name": "M8 X 60 HT Bolt",
     "supplierCode": "M8 X 60 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1823,7 +1988,8 @@
     "id": "131e4c8b-70c8-4e3f-b69e-ccd45a17b4e7",
     "name": "M8 X 70 HT Bolt",
     "supplierCode": "M8 X 70 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1834,7 +2000,8 @@
     "id": "0e944692-e8c8-4da6-8754-bbd16c45f4d7",
     "name": "M10 X 20 HT Set",
     "supplierCode": "M10 X 20 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1845,7 +2012,8 @@
     "id": "a0b7965a-6172-4bd9-92ff-e3ec71d2476d",
     "name": "M10 X 25 HT Set",
     "supplierCode": "M10 X 25 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1856,7 +2024,8 @@
     "id": "6b4e829c-cafe-4222-b6fe-949fbbbc6e8d",
     "name": "M10 X 30 HT Set",
     "supplierCode": "M10 X 30 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1867,7 +2036,8 @@
     "id": "703994e1-c70d-4028-b673-037a28abb93d",
     "name": "M10 X 40 HT Set",
     "supplierCode": "M10 X 40 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1878,7 +2048,8 @@
     "id": "6fb6b492-f979-47cb-a95a-8881da593424",
     "name": "M10 X 50 HT Bolt",
     "supplierCode": "M10 X 50 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1889,7 +2060,8 @@
     "id": "fd8a78d7-26e5-49de-978e-762eeff03f35",
     "name": "M10 X 60 HT Bolt",
     "supplierCode": "M10 X 60 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1900,7 +2072,8 @@
     "id": "af65bb07-a846-48c6-9ab1-63e20a912920",
     "name": "M10 X 70 HT Set",
     "supplierCode": "M10 X 70 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1911,7 +2084,8 @@
     "id": "396893da-1bf0-4e08-9d28-ee498fda0673",
     "name": "M10 X 80 HT Bolt",
     "supplierCode": "M10 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1922,7 +2096,8 @@
     "id": "846134ee-17bc-4c59-b5aa-21ca1aa3f121",
     "name": "M10 X 90 HT Set",
     "supplierCode": "M10 X 90 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1933,7 +2108,8 @@
     "id": "5d499c4e-2b8c-469c-a463-ed405544fcb7",
     "name": "M10 X 100 HT Bolt",
     "supplierCode": "M10 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1944,7 +2120,8 @@
     "id": "9f3cba00-64e4-4113-8136-a0d062245476",
     "name": "M10 X 120 HT Bolt",
     "supplierCode": "M10 X 120 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -1955,7 +2132,8 @@
     "id": "e9966d72-c5c4-4e27-9709-c7c8d81edd08",
     "name": "M10 X 160 HT Bolt",
     "supplierCode": "M10 X 160 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1966,7 +2144,8 @@
     "id": "ccda1fb6-f677-4552-9d66-4638bdc0e1e7",
     "name": "M12 X 20 HT Set",
     "supplierCode": "M12 X 20 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1977,7 +2156,8 @@
     "id": "b76a59d7-f132-4feb-af5d-a21aad018b02",
     "name": "M12 X 25 HT Set",
     "supplierCode": "M12 X 25 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1988,7 +2168,8 @@
     "id": "1116c1ef-e1dc-4092-8b51-5a4d72da19f0",
     "name": "M12 X 30 HT Set",
     "supplierCode": "M12 X 30 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -1999,7 +2180,8 @@
     "id": "32934fcf-7f59-41d1-9c03-78f1c3f22e22",
     "name": "M12 X 35 HT Set",
     "supplierCode": "M12 X 35 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2010,7 +2192,8 @@
     "id": "bd55f964-f525-4fdb-83c5-6c171b0f21f9",
     "name": "M12 X 40 HT Bolt",
     "supplierCode": "M12 X 40 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2021,7 +2204,8 @@
     "id": "68d46879-dd39-4988-88ea-79f4f65787ff",
     "name": "M12 X 45 HT Set",
     "supplierCode": "M12 X 45 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2032,7 +2216,8 @@
     "id": "8b654e3a-0ed1-4f46-a952-83f8e51f7d74",
     "name": "M12 X 50 HT Set",
     "supplierCode": "M12 X 50 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2043,7 +2228,8 @@
     "id": "ffe1d566-4f8c-4b14-b2f2-6e6c265d463c",
     "name": "M12 X 60 HT Bolt",
     "supplierCode": "M12 X 60 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2054,7 +2240,8 @@
     "id": "fcf9a573-f954-4ad9-b1d0-ba6739890bfd",
     "name": "M12 X 70 HT Bolt",
     "supplierCode": "M12 X 70 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2065,7 +2252,8 @@
     "id": "3e851d13-9359-4d48-a1f0-816fad3e5259",
     "name": "M12 X 75 HT Bolt",
     "supplierCode": "M12 X 75 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2076,7 +2264,8 @@
     "id": "d1ae7595-a4ae-48d2-b03a-92e6ecb35a79",
     "name": "M12 X 80 HT Set",
     "supplierCode": "M12 X 80 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2087,7 +2276,8 @@
     "id": "f3347555-4319-4987-9b7b-07e5ecb7514c",
     "name": "M12 X 90 HT Bolt",
     "supplierCode": "M12 X 90 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2098,7 +2288,8 @@
     "id": "007c4517-0364-40ed-8737-cb345de992fd",
     "name": "M12 X 100 HT Bolt",
     "supplierCode": "M12 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2109,7 +2300,8 @@
     "id": "682ff548-b22b-4cd4-9e9b-509449f4cca6",
     "name": "M12 X 110 HT Bolt",
     "supplierCode": "M12 X 110 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2120,7 +2312,8 @@
     "id": "fabeb625-d01e-4602-8463-14924671f01e",
     "name": "M12 X 120 HT Bolt",
     "supplierCode": "M12 X 120 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2131,7 +2324,8 @@
     "id": "aea6f3fa-7028-4233-b4de-d0f4a0703fff",
     "name": "M12 X 140 HT Bolt",
     "supplierCode": "M12 X 140 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2142,7 +2336,8 @@
     "id": "497c5339-16ae-4c65-829c-1253147a6106",
     "name": "M14 X 25 HT Set",
     "supplierCode": "M14 X 25 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2153,7 +2348,8 @@
     "id": "ff87ded4-abc5-49e3-9638-ef54430cdbd5",
     "name": "M14 X 40 HT Set",
     "supplierCode": "M14 X 40 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2164,7 +2360,8 @@
     "id": "04f10fb9-dab9-43ed-a1c8-4792fd19fa37",
     "name": "M14 X 45 HT Set",
     "supplierCode": "M14 X 45 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2175,7 +2372,8 @@
     "id": "9a14e7fc-5283-4c37-8914-84d832556347",
     "name": "M14 X 50 HT Bolt",
     "supplierCode": "M14 X 50 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2186,7 +2384,8 @@
     "id": "961606d4-443e-4938-89df-c4a31e4d99fa",
     "name": "M14 X 60 HT Bolt",
     "supplierCode": "M14 X 60 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2197,7 +2396,8 @@
     "id": "5cf2c51b-ff7c-4c38-9d99-f3337952f423",
     "name": "M14 X 80 HT Bolt",
     "supplierCode": "M14 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2208,7 +2408,8 @@
     "id": "fe4f3f0d-87df-4f01-84f4-8248c0e14cd4",
     "name": "M14 X 90 HT Bolt",
     "supplierCode": "M14 X 90 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2219,7 +2420,8 @@
     "id": "2b6812a9-9d96-46d3-8fde-c8449c584370",
     "name": "M14 X 100 HT Bolt",
     "supplierCode": "M14 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2230,7 +2432,8 @@
     "id": "caa406de-31f1-4604-bf00-f5f47c1f20bb",
     "name": "M14 X 110 HT Bolt",
     "supplierCode": "M14 X 110 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2241,7 +2444,8 @@
     "id": "2ef1b6d5-6352-4757-9fd5-bd2b984e82f6",
     "name": "M14 X 130 HT Bolt",
     "supplierCode": "M14 X 130 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2252,7 +2456,8 @@
     "id": "f85ef607-9ebc-45c1-b39e-3ff1cc5737a1",
     "name": "M14 X 180 HT Bolt",
     "supplierCode": "M14 X 180 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2263,7 +2468,8 @@
     "id": "21d7e995-0982-408a-b2a0-9bdc6dd8aedf",
     "name": "M16 X 25 HT Set",
     "supplierCode": "M16 X 25 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2274,7 +2480,8 @@
     "id": "3e8d7790-75c3-4960-87c8-beb1bec1e2a5",
     "name": "M16 X 40 HT Set",
     "supplierCode": "M16 X 40 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2285,7 +2492,8 @@
     "id": "eb3db7d6-6117-47b8-8bb4-a1bea3a8fe7e",
     "name": "M16 X 45 HT Set",
     "supplierCode": "M16 X 45 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2296,7 +2504,8 @@
     "id": "51c6791f-3200-4258-8488-8a07c9cf63ab",
     "name": "M16 X 50 HT Set",
     "supplierCode": "M16 X 50 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2307,7 +2516,8 @@
     "id": "173894db-9dae-47b2-a441-4c7367de2496",
     "name": "M16 X 60 HT Bolt",
     "supplierCode": "M16 X 60 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2318,7 +2528,8 @@
     "id": "5688f012-0b5d-4a8e-b559-d627d173e25e",
     "name": "M16 X 65 HT Set",
     "supplierCode": "M16 X 65 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2329,7 +2540,8 @@
     "id": "81cc561f-30e1-4482-baa7-7d32c5293f2c",
     "name": "M16 X 80 HT Bolt",
     "supplierCode": "M16 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2340,7 +2552,8 @@
     "id": "c898aaac-118d-4609-a52f-46cbc9a45ca5",
     "name": "M16 X 90 HT Bolt",
     "supplierCode": "M16 X 90 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2351,7 +2564,8 @@
     "id": "274eb2f4-81df-40e4-bb89-70fd742f816d",
     "name": "M16 X 100 HT Bolt",
     "supplierCode": "M16 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2362,7 +2576,8 @@
     "id": "53ad3991-ff27-4d0c-b357-fd0d0eb19423",
     "name": "M16 X 110 HT Bolt",
     "supplierCode": "M16 X 110 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2373,7 +2588,8 @@
     "id": "52f7318a-96c5-4adc-8142-495d7d4bee39",
     "name": "M16 X 120 HT Bolt",
     "supplierCode": "M16 X 120 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2384,7 +2600,8 @@
     "id": "138278e0-a00d-4bd2-be75-1741bf65b14d",
     "name": "M16 X 130 HT Bolt",
     "supplierCode": "M16 X 130 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2395,7 +2612,8 @@
     "id": "c99a15ca-7313-4c3a-b28e-e0a7a8200e47",
     "name": "M16 X 140 HT Bolt",
     "supplierCode": "M16 X 140 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2406,7 +2624,8 @@
     "id": "52890d7b-ea1c-4e01-bc62-c7dd8446f10f",
     "name": "M16 X 180 HT Bolt",
     "supplierCode": "M16 X 180 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2417,7 +2636,8 @@
     "id": "554972c9-8d07-4aa4-9525-94f18bce6bfa",
     "name": "M16 X 200 HT Bolt",
     "supplierCode": "M16 X 200 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2428,7 +2648,8 @@
     "id": "f7ac01c3-2547-4ccd-8904-1c3aaa71e44c",
     "name": "M16 X 220 HT Bolt",
     "supplierCode": "M16 X 220 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2439,7 +2660,8 @@
     "id": "a964601e-17cd-4636-8122-13b47f5499c3",
     "name": "M16 X 230 HT Bolt",
     "supplierCode": "M16 X 230 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2450,7 +2672,8 @@
     "id": "cec87a4a-b340-4f7e-a7c3-be6489adf65a",
     "name": "M16 X 240 HT Bolt",
     "supplierCode": "M16 X 240 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2461,7 +2684,8 @@
     "id": "ea0019a7-7d92-4d0b-80ab-4f5e6b425105",
     "name": "M16 X 250 HT Bolt",
     "supplierCode": "M16 X 250 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2472,7 +2696,8 @@
     "id": "5bd4d440-c322-4312-a5c4-47ed9ed9bbf9",
     "name": "M16 X 295 HT Bolt",
     "supplierCode": "M16 X 295 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2483,7 +2708,8 @@
     "id": "3c071c48-88bf-4f63-b9d8-d78ce458f8a3",
     "name": "M18 X 60 HT Set",
     "supplierCode": "M18 X 60 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2494,7 +2720,8 @@
     "id": "b4dc97a7-bcbf-449a-8f66-b4e5cbf22271",
     "name": "M18 X 80 HT Bolt",
     "supplierCode": "M18 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2505,7 +2732,8 @@
     "id": "65be4660-1e90-4365-b202-7c0816f6137e",
     "name": "M20 X 35 HT Set",
     "supplierCode": "M20 X 35 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2516,7 +2744,8 @@
     "id": "e56381f1-22c7-4f0d-8ea6-dc3feabbb523",
     "name": "M20 X 40 HT Set",
     "supplierCode": "M20 X 40 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2527,7 +2756,8 @@
     "id": "f0086909-b559-4669-b401-6ed4fd6f4604",
     "name": "M20 X 50 HT Set",
     "supplierCode": "M20 X 50 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2538,7 +2768,8 @@
     "id": "96581141-8b2b-4d2f-b334-78a1db3cb978",
     "name": "M20 X 60 HT Set",
     "supplierCode": "M20 X 60 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2549,7 +2780,8 @@
     "id": "73e3dbbc-5c5d-4ec0-b87e-bdbfc54dc123",
     "name": "M20 X 70 HT Set",
     "supplierCode": "M20 X 70 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2560,7 +2792,8 @@
     "id": "1e3a16b2-f9d4-4018-b4e5-83589976cbe3",
     "name": "M20 X 80 HT Bolt",
     "supplierCode": "M20 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2571,7 +2804,8 @@
     "id": "cb2076ce-0bcb-4440-8bdb-8fe841397a01",
     "name": "M20 X 100 HT Bolt",
     "supplierCode": "M20 X 100 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2582,7 +2816,8 @@
     "id": "1a344c5e-1c23-46b0-9e98-0d7595f312d2",
     "name": "M20 X 110 HT Bolt",
     "supplierCode": "M20 X 110 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2593,7 +2828,8 @@
     "id": "cdd328f0-ce8b-4fc1-bc3e-4e05faf58255",
     "name": "M20 X 120 HT Bolt",
     "supplierCode": "M20 X 120 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2604,7 +2840,8 @@
     "id": "60e23c64-6996-4979-b29d-478133257e2e",
     "name": "M20 X 130 HT Bolt",
     "supplierCode": "M20 X 130 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2615,7 +2852,8 @@
     "id": "7390e5be-8bf1-4c8b-a52b-d1ca76a0fa0a",
     "name": "M20 X 140 HT Bolt",
     "supplierCode": "M20 X 140 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2626,7 +2864,8 @@
     "id": "6bc72bde-c66f-422a-a0bb-f8827d23fd6f",
     "name": "M20 X 150 HT Bolt",
     "supplierCode": "M20 X 150 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2637,7 +2876,8 @@
     "id": "cc7ff3e1-bac0-4495-a5cc-7eec696e577c",
     "name": "M20 X 160 HT Bolt",
     "supplierCode": "M20 X 160 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2648,7 +2888,8 @@
     "id": "d235196b-11d6-4d15-be21-be0cc4ad8563",
     "name": "M20 X 180 HT Bolt",
     "supplierCode": "M20 X 180 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2659,7 +2900,8 @@
     "id": "a1db5326-605f-42a6-86de-8562c201a68b",
     "name": "M20 X 230 HT Bolt",
     "supplierCode": "M20 X 230 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2670,7 +2912,8 @@
     "id": "ce092bdb-2df8-4c7c-8613-07dcd3130635",
     "name": "M20 X 240 HT Bolt",
     "supplierCode": "M20 X 240 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2681,7 +2924,8 @@
     "id": "0461bb71-b7f2-4748-8681-6d0035f9ac68",
     "name": "M20 X 250 HT Bolt",
     "supplierCode": "M20 X 250 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2692,7 +2936,8 @@
     "id": "9398d5d6-47fd-474e-b6c0-115f2aceefee",
     "name": "M20 X 260 HT Bolt",
     "supplierCode": "M20 X 260 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2703,7 +2948,8 @@
     "id": "9f97d852-b571-44d0-bdd1-959c3aa603c2",
     "name": "M20 X 280 HT Bolt",
     "supplierCode": "M20 X 280 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2714,7 +2960,8 @@
     "id": "d6020195-c8f5-4d8f-b659-498ec89e3cbc",
     "name": "M20 X 300 HT Bolt",
     "supplierCode": "M20 X 300 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2725,7 +2972,8 @@
     "id": "ccb35dd5-7f0d-4f33-8a52-f7d25165e39a",
     "name": "M22 X 130 HT Bolt",
     "supplierCode": "M22 X 130 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2736,7 +2984,8 @@
     "id": "ffd8c521-22dc-45b9-bc9e-3a059379b17c",
     "name": "M22 X 180 HT Bolt",
     "supplierCode": "M22 X 180 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2747,7 +2996,8 @@
     "id": "d568b3de-cc74-47e7-aa8f-7a7540d82707",
     "name": "M22 X 260 HT Bolt",
     "supplierCode": "M22 X 260 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2758,7 +3008,8 @@
     "id": "a33693a6-86db-48c7-8b48-6f3dab7dffaf",
     "name": "M22 X 300 HT Bolt",
     "supplierCode": "M22 X 300 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -2769,7 +3020,8 @@
     "id": "6d310aa1-3956-4b52-a974-b34e8ea54441",
     "name": "M24 X 60 HT Set",
     "supplierCode": "M24 X 60 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2780,7 +3032,8 @@
     "id": "cf3f027c-cea2-4059-9d9f-079799f4fb23",
     "name": "M24 X 80 HT Bolt",
     "supplierCode": "M24 X 80 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2791,7 +3044,8 @@
     "id": "ed9fec77-5940-4e73-b9dc-1ee3d97b31aa",
     "name": "M24 X 90 HT Bolt",
     "supplierCode": "M24 X 90 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2802,7 +3056,8 @@
     "id": "448920bd-d791-48bb-9396-470e8b57536a",
     "name": "M24 X 120 HT Bolt",
     "supplierCode": "M24 X 120 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2813,7 +3068,8 @@
     "id": "17b14b09-82e5-4ea3-adb3-357929d040a5",
     "name": "M24 X 130 HT Bolt",
     "supplierCode": "M24 X 130 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2824,7 +3080,8 @@
     "id": "d6606137-3122-4f46-8623-b04655fa6011",
     "name": "M24 X 140 HT Bolt",
     "supplierCode": "M24 X 140 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2835,7 +3092,8 @@
     "id": "7c83f09f-54cd-4424-a88c-a4df1d02ebcd",
     "name": "M24 X 180 HT Bolt",
     "supplierCode": "M24 X 180 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2846,7 +3104,8 @@
     "id": "5390d450-8491-4565-8937-3173c8dde63d",
     "name": "M24 X 250 HT Bolt",
     "supplierCode": "M24 X 250 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2857,7 +3116,8 @@
     "id": "1bf74813-e1c8-4470-8072-037260eff9d5",
     "name": "M30 X 160 HT Bolt",
     "supplierCode": "M30 X 160 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2868,7 +3128,8 @@
     "id": "8d84f94d-7083-4bbf-a16d-b27b9119307d",
     "name": "M30 X 220 HT Bolt",
     "supplierCode": "M30 X 220 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2879,7 +3140,8 @@
     "id": "81609082-2074-4ada-8872-16661a61a23a",
     "name": "M30 X 250 HT Bolt",
     "supplierCode": "M30 X 250 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Bolt",
@@ -2890,7 +3152,8 @@
     "id": "219812c5-b555-43da-9383-c0cf1713c1fd",
     "name": "M30 X 280 HT Bolt",
     "supplierCode": "M30 X 280 HT BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -2901,7 +3164,8 @@
     "id": "fddd9309-cfc1-4bb4-8740-a733db32f3e9",
     "name": "1/2 X 2 HT UNC Bolt",
     "supplierCode": "1/2 X 2 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -2912,7 +3176,8 @@
     "id": "b8bf0713-05de-4bbe-b1fe-f3f228e29f55",
     "name": "1/2 X 2-1/2 HT UNC Bolt",
     "supplierCode": "1/2 X 2-1/2 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -2923,7 +3188,8 @@
     "id": "f42bae0e-80b8-4370-954b-4ef079db101e",
     "name": "1/2 X 3-1/2 HT UNC Bolt",
     "supplierCode": "1/2 X 3-1/2 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -2934,7 +3200,8 @@
     "id": "2c6c20bc-766f-4e07-bdf9-0f17fdbbdb78",
     "name": "1/2 X 4 HT UNC Bolt",
     "supplierCode": "1/2 X 4 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -2945,7 +3212,8 @@
     "id": "6e90999f-8d73-4d11-b74e-a083649a5234",
     "name": "1/2 X 5 HT UNC Bolt",
     "supplierCode": "1/2 X 5 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -2956,7 +3224,8 @@
     "id": "812ed464-f5b6-43ad-9b05-f31e13a8c5fc",
     "name": "3/4 X 3 HT UNC Bolt",
     "supplierCode": "3/4 X 3 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNF Bolt",
@@ -2967,7 +3236,8 @@
     "id": "640b2c94-fa23-49bc-ad1b-3e377fbfc069",
     "name": "3/4 X 3-1/2 HT UNF Bolt",
     "supplierCode": "3/4 X 3-1/2 HT UNF BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -2978,7 +3248,8 @@
     "id": "71d7cd29-fb4c-4636-b332-68b481c277d0",
     "name": "3/4 X 3-1/2 HT UNC Bolt",
     "supplierCode": "3/4 X 3-1/2 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -2989,7 +3260,8 @@
     "id": "b2b38f48-977d-47df-93f9-fced3b5f65bd",
     "name": "3/4 X 4 HT UNC Bolt",
     "supplierCode": "3/4 X 4 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -3000,7 +3272,8 @@
     "id": "c280163a-a563-439c-a865-6e5703c9a73f",
     "name": "3/4 X 4-1/2 HT UNC Bolt",
     "supplierCode": "3/4 X 4-1/2 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -3011,7 +3284,8 @@
     "id": "47eddde5-c990-441b-af68-bd3bcda0cceb",
     "name": "3/4 X 5 HT UNC Bolt",
     "supplierCode": "3/4 X 5 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -3022,7 +3296,8 @@
     "id": "40fa0553-d992-4aad-81bc-5b7833ac16d6",
     "name": "3/4 X 6 HT UNC Bolt",
     "supplierCode": "3/4 X 6 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -3033,7 +3308,8 @@
     "id": "0417a413-d312-406a-8c46-52bf90d8225c",
     "name": "3/4 X 9 HT UNC Bolt",
     "supplierCode": "3/4 X 9 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -3044,7 +3320,8 @@
     "id": "c3bd6c0b-3f0a-4ca8-8fc8-5a856b81425e",
     "name": "3/4 X 10 HT UNC Bolt",
     "supplierCode": "3/4 X 10 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT UNC Bolt",
@@ -3055,7 +3332,8 @@
     "id": "2b1dbfa6-0d70-4834-a1e1-321d1575484f",
     "name": "1 X 4 HT UNC Bolt",
     "supplierCode": "1 X 4 HT UNC BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3066,7 +3344,8 @@
     "id": "23ee11ce-b647-473a-826b-000013254f30",
     "name": "M6 Locknut",
     "supplierCode": "M6 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3077,7 +3356,8 @@
     "id": "2a953e1e-3a39-417c-978e-15c3cd24e0aa",
     "name": "M8 Locknut",
     "supplierCode": "M8 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3088,7 +3368,8 @@
     "id": "ccb7870a-bf35-4867-9d62-4ab7dd670888",
     "name": "M10 Locknut",
     "supplierCode": "M10 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3099,7 +3380,8 @@
     "id": "018840f2-8e11-4fe0-bc76-b835f503485c",
     "name": "M12 Locknut",
     "supplierCode": "M12 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3110,7 +3392,8 @@
     "id": "7f1d697f-8bdc-4dc8-bbaf-e591c15d8d38",
     "name": "M14 Locknut",
     "supplierCode": "M14 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3121,7 +3404,8 @@
     "id": "6d95f22a-cb32-4246-a686-73a857d881a3",
     "name": "M16 Locknut",
     "supplierCode": "M16 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3132,7 +3416,8 @@
     "id": "eb37bae5-ba35-4ba4-960c-63470e7b3a75",
     "name": "M18 Locknut",
     "supplierCode": "M18 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3143,7 +3428,8 @@
     "id": "09e0dc5a-8c9c-428e-97d0-a26dcc58c282",
     "name": "M20 Locknut",
     "supplierCode": "M20 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3154,7 +3440,8 @@
     "id": "3257f6ba-bc70-46d2-8702-4ef05f985272",
     "name": "M22 Locknut",
     "supplierCode": "M22 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3165,7 +3452,8 @@
     "id": "268b2672-1a33-409a-a273-f1d76436b5f5",
     "name": "M24 Locknut",
     "supplierCode": "M24 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3176,7 +3464,8 @@
     "id": "4133f91a-f8cb-453f-a0d6-d8bba92f49f8",
     "name": "M30 Locknut",
     "supplierCode": "M30 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3187,7 +3476,8 @@
     "id": "60112562-eea4-4774-8865-5d8bd3aa5908",
     "name": "M36 Locknut",
     "supplierCode": "M36 LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3198,7 +3488,8 @@
     "id": "9166ad78-5a75-45e4-911d-08b01995c8cf",
     "name": "1/2\" UNC Locknut",
     "supplierCode": "1/2\" UNC LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3209,7 +3500,8 @@
     "id": "cd55165a-8717-43e1-8a49-3b4ab4abb4ed",
     "name": "1/2\" UNF Locknut",
     "supplierCode": "1/2\" UNF LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3220,7 +3512,8 @@
     "id": "62540301-4887-49e5-9835-c1cea664359f",
     "name": "5/8\" UNC Locknut",
     "supplierCode": "5/8\" UNC LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3231,7 +3524,8 @@
     "id": "e5ab87ac-f397-4a81-b25c-fe53f71e9833",
     "name": "5/8\" UNF Locknut",
     "supplierCode": "5/8\" UNF LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3242,7 +3536,8 @@
     "id": "e6cbe613-6691-4632-b4e8-052c01a64bc4",
     "name": "3/4\" UNC Locknut",
     "supplierCode": "3/4\" UNC LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3253,7 +3548,8 @@
     "id": "5a369403-bb8b-4e17-8168-38b752493f96",
     "name": "3/4\" UNF Locknut",
     "supplierCode": "3/4\" UNF LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3264,7 +3560,8 @@
     "id": "09fae822-960e-410a-a227-0b278e2d482f",
     "name": "1\" UNC Locknut",
     "supplierCode": "1\" UNC LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Locknut",
@@ -3275,7 +3572,8 @@
     "id": "f5c047ad-df77-4c17-92bc-179dce146be1",
     "name": "1\" UNF Locknut",
     "supplierCode": "1\" UNF LOCKNUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3286,7 +3584,8 @@
     "id": "6a14f68c-70f8-4859-9bcd-26f2f7d9692a",
     "name": "M6 Plain Nut",
     "supplierCode": "M6 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3297,7 +3596,8 @@
     "id": "e111b1dc-366f-4ca4-b7ae-f82bfa7f6ef3",
     "name": "M8 Plain Nut",
     "supplierCode": "M8 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3308,7 +3608,8 @@
     "id": "943b1826-3a7a-4428-bfa5-ccea1e2d92b6",
     "name": "M10 Plain Nut",
     "supplierCode": "M10 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3319,7 +3620,8 @@
     "id": "445f2aca-83e2-4e7c-b7d4-2c6698b89b64",
     "name": "M12 Plain Nut",
     "supplierCode": "M12 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3330,7 +3632,8 @@
     "id": "4f943519-0715-4a8d-9914-dc8024bcd2fd",
     "name": "M14 Plain Nut",
     "supplierCode": "M14 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3341,7 +3644,8 @@
     "id": "8cb118a4-2b14-4a9d-b978-29dda3da843f",
     "name": "M16 Plain Nut",
     "supplierCode": "M16 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3352,7 +3656,8 @@
     "id": "246b8bda-6080-4f48-9f2e-78ec000fcffa",
     "name": "M18 Plain Nut",
     "supplierCode": "M18 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3363,7 +3668,8 @@
     "id": "b65adb72-0d49-497e-8e32-f9273e3fcf13",
     "name": "M20 Plain Nut",
     "supplierCode": "M20 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3374,7 +3680,8 @@
     "id": "516ed2c7-5dce-4629-8cc2-61e960efe672",
     "name": "M22 Plain Nut",
     "supplierCode": "M22 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3385,7 +3692,8 @@
     "id": "cf01047f-6928-4a9c-9cba-cc1e40487d54",
     "name": "M24 Plain Nut",
     "supplierCode": "M24 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3396,7 +3704,8 @@
     "id": "f19bd6bb-e879-450c-90e8-15d932a6b332",
     "name": "M30 Plain Nut",
     "supplierCode": "M30 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plain Nut",
@@ -3407,7 +3716,8 @@
     "id": "1ca652b5-c8cc-4f71-a879-f2745fcf0be0",
     "name": "M36 Plain Nut",
     "supplierCode": "M36 PLAIN NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3418,7 +3728,8 @@
     "id": "48c24e2b-1d98-4f14-89d4-148a965fb9af",
     "name": "M6 Flatwasher",
     "supplierCode": "M6 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3429,7 +3740,8 @@
     "id": "bd713738-87a1-463b-b9a3-7e9a1f33ec2b",
     "name": "M8 Flatwasher",
     "supplierCode": "M8 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3440,7 +3752,8 @@
     "id": "3be74f24-558b-45cf-9b56-3ecbc2ab50db",
     "name": "M10 Flatwasher",
     "supplierCode": "M10 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3451,7 +3764,8 @@
     "id": "f2dfa11c-4095-42c9-ae30-bc2d08731cee",
     "name": "M12 Flatwasher",
     "supplierCode": "M12 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3462,7 +3776,8 @@
     "id": "fd2f27bb-1991-4f2e-9d49-82ed42662e99",
     "name": "M14 Flatwasher",
     "supplierCode": "M14 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3473,7 +3788,8 @@
     "id": "9b9d6e31-e686-42fa-b504-46742d48bfcb",
     "name": "M16 Flatwasher",
     "supplierCode": "M16 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3484,7 +3800,8 @@
     "id": "d487c6b8-8eb1-4028-90aa-ec7dfcfff0c1",
     "name": "M18 Flatwasher",
     "supplierCode": "M18 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3495,7 +3812,8 @@
     "id": "30d5896b-ae95-42fe-80f7-24da47ae66ef",
     "name": "M20 Flatwasher",
     "supplierCode": "M20 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3506,7 +3824,8 @@
     "id": "fb75b97c-d113-4d9b-a69d-4a09017cd2ea",
     "name": "M22 Flatwasher",
     "supplierCode": "M22 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3517,7 +3836,8 @@
     "id": "06ccd98f-a863-4752-95be-0f0bb47e6caa",
     "name": "M24 Flatwasher",
     "supplierCode": "M24 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3528,7 +3848,8 @@
     "id": "adc33840-f288-462a-9d5e-6de828440dfb",
     "name": "M30 Flatwasher",
     "supplierCode": "M30 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flatwasher",
@@ -3539,7 +3860,8 @@
     "id": "faf854d1-4277-43f5-b3b5-50921aa979fa",
     "name": "M36 Flatwasher",
     "supplierCode": "M36 FLATWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3550,7 +3872,8 @@
     "id": "92cee68e-6aab-4219-a5e2-fcc655fa6e0d",
     "name": "M6 Springwasher",
     "supplierCode": "M6 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3561,7 +3884,8 @@
     "id": "641a4486-8579-4dae-91d0-ec143aae58c1",
     "name": "M8 Springwasher",
     "supplierCode": "M8 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3572,7 +3896,8 @@
     "id": "4594703f-e38a-425d-8fbf-bd8350ea5b7c",
     "name": "M10 Springwasher",
     "supplierCode": "M10 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3583,7 +3908,8 @@
     "id": "f6dd6f5a-ae65-43d0-be72-fd5de96d4aad",
     "name": "M12 Springwasher",
     "supplierCode": "M12 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3594,7 +3920,8 @@
     "id": "6c868194-d4bd-492e-a11c-d5b7ca59a0ba",
     "name": "M14 Springwasher",
     "supplierCode": "M14 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3605,7 +3932,8 @@
     "id": "b2d5c366-9001-4c8c-b979-625f3c9e7750",
     "name": "M16 Springwasher",
     "supplierCode": "M16 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3616,7 +3944,8 @@
     "id": "de85a3af-8f60-4a2c-a19e-126a6feff7bc",
     "name": "M18 Springwasher",
     "supplierCode": "M18 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3627,7 +3956,8 @@
     "id": "9cad7312-2d55-4a07-8956-a4953d03be99",
     "name": "M20 Springwasher",
     "supplierCode": "M20 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3638,7 +3968,8 @@
     "id": "840522c1-5cf8-45bb-b2d8-4d6fec424dee",
     "name": "M22 Springwasher",
     "supplierCode": "M22 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3649,7 +3980,8 @@
     "id": "76e0b18f-9dff-49e5-9cb0-536188293c7e",
     "name": "M24 Springwasher",
     "supplierCode": "M24 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3660,7 +3992,8 @@
     "id": "e90e7969-78a9-4fd1-a43b-b2606ae86ad7",
     "name": "M30 Springwasher",
     "supplierCode": "M30 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Springwasher",
@@ -3671,7 +4004,8 @@
     "id": "c030306e-3d30-499b-9d36-b13f8e8ed5a7",
     "name": "M36 Springwasher",
     "supplierCode": "M36 SPRINGWASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Washer",
@@ -3682,7 +4016,8 @@
     "id": "37dfc4df-911d-4ad0-8465-7379c16b816e",
     "name": "1/2\" Washer",
     "supplierCode": "1/2\" WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Washer",
@@ -3693,7 +4028,8 @@
     "id": "e681e21a-e46f-45ff-bdc7-d2c547385148",
     "name": "5/8\" Washer",
     "supplierCode": "5/8\" WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Washer",
@@ -3704,7 +4040,8 @@
     "id": "f619ea26-586e-4129-87c9-0453cb5a44c3",
     "name": "3/4\" Washer",
     "supplierCode": "3/4\" WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Washer",
@@ -3715,7 +4052,8 @@
     "id": "99adc32b-3ffd-4b07-9a92-680e0810e242",
     "name": "1\" Washer",
     "supplierCode": "1\" WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Stud",
@@ -3726,7 +4064,8 @@
     "id": "029e3eec-ce16-4ebf-8207-558b4392c32b",
     "name": "M14 X 45 (F) Wheel Stud",
     "supplierCode": "M14 X 45 (F) WHEEL STUD",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Stud",
@@ -3737,7 +4076,8 @@
     "id": "f9fb3928-a2fe-475f-a51a-db616fe857d8",
     "name": "M16 X 55 (F) Wheel Stud",
     "supplierCode": "M16 X 55 (F) WHEEL STUD",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Stud",
@@ -3748,7 +4088,8 @@
     "id": "ae140a24-f3a7-445f-86c5-32b2b4116dc5",
     "name": "M20 X 65 (C) Wheel Stud",
     "supplierCode": "M20 X 65 (C) WHEEL STUD",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Stud",
@@ -3759,7 +4100,8 @@
     "id": "07820a6b-832c-453c-a30b-8e4e221346ec",
     "name": "M20 X 70 (F) Wheel Stud",
     "supplierCode": "M20 X 70 (F) WHEEL STUD",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Stud",
@@ -3770,7 +4112,8 @@
     "id": "fa45ea08-9cf9-489a-aaf3-9dfb6bc77825",
     "name": "M20 X 85 (F) Wheel Stud",
     "supplierCode": "M20 X 85 (F) WHEEL STUD",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Stud",
@@ -3781,7 +4124,8 @@
     "id": "8f1c5922-3bd5-4ea0-b107-e457e0dcd6c6",
     "name": "M22 X 72 (C) Wheel Stud",
     "supplierCode": "M22 X 72 (C) WHEEL STUD",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Stud",
@@ -3792,7 +4136,8 @@
     "id": "acbcccfb-0150-4a1f-9f72-713dfa03acf3",
     "name": "M22 X 92 (F) Wheel Stud",
     "supplierCode": "M22 X 92 (F) WHEEL STUD",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Stud",
@@ -3803,7 +4148,8 @@
     "id": "49877e65-2c25-4bb5-b63c-46545c1882b6",
     "name": "M22 X 100 (F) Wheel Stud",
     "supplierCode": "M22 X 100 (F) WHEEL STUD",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Nut",
@@ -3814,7 +4160,8 @@
     "id": "ae912aa7-7945-44bc-be4e-8cbf89e55033",
     "name": "M14 (F) Wheel Nut",
     "supplierCode": "M14 (F) WHEEL NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Nut",
@@ -3825,7 +4172,8 @@
     "id": "50c22e51-dbd6-42ea-9b0b-56aee5c4a20e",
     "name": "M20 (C) Wheel Nut",
     "supplierCode": "M20 (C) WHEEL NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Nut",
@@ -3836,7 +4184,8 @@
     "id": "4c2cb41b-c38e-4e1e-8f87-097cba29eb30",
     "name": "M20 (F) Wheel Nut",
     "supplierCode": "M20 (F) WHEEL NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Nut",
@@ -3847,7 +4196,8 @@
     "id": "30c6a8a5-ca22-43ea-8ad4-2ebdfaabfda9",
     "name": "M22 (F) Wheel Nut",
     "supplierCode": "M22 (F) WHEEL NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wheel Nut",
@@ -3858,7 +4208,8 @@
     "id": "fa27de42-6f72-4998-8c38-ee272ae7cee0",
     "name": "M22 (C) Wheel Nut",
     "supplierCode": "M22 (C) WHEEL NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cup SQ Set",
@@ -3869,7 +4220,8 @@
     "id": "d65228c4-ed85-48de-a2fb-ff71ae02e440",
     "name": "M6 X 25 HT Cup SQ Set",
     "supplierCode": "M6 X 25 HT CUP SQ SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "CSK Set",
@@ -3880,7 +4232,8 @@
     "id": "a9b431d5-48ad-47bc-af9a-687308331538",
     "name": "M6 X 25 HT CSK Set",
     "supplierCode": "M6 X 25 HT CSK SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "CSK Set",
@@ -3891,7 +4244,8 @@
     "id": "75401c35-10bb-4d41-b007-ed6d9cc77461",
     "name": "M8 X 25 HT CSK Set",
     "supplierCode": "M8 X 25 HT CSK SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "CSK Set",
@@ -3902,7 +4256,8 @@
     "id": "ee9e2a0d-2b37-499e-992f-ebb7f1cd1256",
     "name": "M8 X 40 HT CSK Set",
     "supplierCode": "M8 X 40 HT CSK SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "CSK Set",
@@ -3913,7 +4268,8 @@
     "id": "2e57345a-a522-4ab4-9b52-eba04327e718",
     "name": "M10 X 25 HT CSK Set",
     "supplierCode": "M10 X 25 HT CSK SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "CSK Set",
@@ -3924,7 +4280,8 @@
     "id": "6020ba04-5957-4084-9680-c4a8bcecb28c",
     "name": "M10 X 30 HT CSK Set",
     "supplierCode": "M10 X 30 HT CSK SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "CSK Set",
@@ -3935,7 +4292,8 @@
     "id": "d348a004-ff11-4eb8-9b8c-8b6c382364e3",
     "name": "M12 X 40 HT CSK Set",
     "supplierCode": "M12 X 40 HT CSK SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "CSK Bolt",
@@ -3946,7 +4304,8 @@
     "id": "a0bc1195-cb8d-4a5e-a675-27192714038f",
     "name": "M12 X 50 HT CSK Bolt",
     "supplierCode": "M12 X 50 HT CSK BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "CSK Bolt",
@@ -3957,7 +4316,8 @@
     "id": "23f4efa4-876e-4cf3-9b5b-6f679323b60e",
     "name": "M16 X 90 HT CSK Bolt",
     "supplierCode": "M16 X 90 HT CSK BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plough Bolt",
@@ -3968,7 +4328,8 @@
     "id": "cb8c7789-de51-4124-bd25-d3b4c55494f4",
     "name": "M16 X 80 Plough Bolt",
     "supplierCode": "M16 X 80 PLOUGH BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Plough Bolt",
@@ -3979,7 +4340,8 @@
     "id": "4e10f002-f388-415b-aae1-cff2a70c4036",
     "name": "M19 X 50 Plough Bolt",
     "supplierCode": "M19 X 50 PLOUGH BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Lock Nut",
@@ -3990,7 +4352,8 @@
     "id": "764b3604-1685-4b6a-b066-f4599ca340ce",
     "name": "M22 X 1.5 Lock Nut",
     "supplierCode": "M22 X 1.5 LOCK NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Castle Nut",
@@ -4001,7 +4364,8 @@
     "id": "60beb1af-fb26-43e8-a7ca-c49dc6ef767f",
     "name": "M30 Castle Nut",
     "supplierCode": "M30 CASTLE NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "HT Set",
@@ -4012,7 +4376,8 @@
     "id": "1bd54231-703f-4a71-9c74-c56eb33c683f",
     "name": "M12 X 1.25 X 20 HT Set",
     "supplierCode": "M12 X 1.25 X 20 HT SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Bolt",
@@ -4023,7 +4388,8 @@
     "id": "7451c34d-5599-470b-b549-f6b065f504b3",
     "name": "M20 X 80 HT 10.9 Bolt",
     "supplierCode": "M20 X 80 HT 10.9 BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Bolt",
@@ -4034,7 +4400,8 @@
     "id": "f2fddcaa-3ef5-4f0a-936c-5c6987f442eb",
     "name": "M20 X 120 HT 10.9 Bolt",
     "supplierCode": "M20 X 120 HT 10.9 BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Bolt",
@@ -4045,7 +4412,8 @@
     "id": "b2094f9f-c330-42f5-a575-fa02277092ac",
     "name": "M20 X 130 HT 10.9 Bolt",
     "supplierCode": "M20 X 130 HT 10.9 BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flange Nut",
@@ -4056,7 +4424,8 @@
     "id": "9c76d270-06b9-4750-9e8f-d124b98e62c3",
     "name": "M8 Flange Nut",
     "supplierCode": "M8 FLANGE NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flange Nut",
@@ -4067,7 +4436,8 @@
     "id": "4d7f9c3e-6891-4235-abc3-d4463ecd54bb",
     "name": "M10 Flange Nut",
     "supplierCode": "M10 FLANGE NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flange Nut",
@@ -4078,7 +4448,8 @@
     "id": "62732040-4a84-4573-94ef-6b291c695b0e",
     "name": "M12 Flange Nut",
     "supplierCode": "M12 FLANGE NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Flange Nut",
@@ -4089,7 +4460,8 @@
     "id": "861dbbe4-bd79-4535-931f-90feb06d2f58",
     "name": "M14 Flange Nut",
     "supplierCode": "M14 FLANGE NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4100,7 +4472,8 @@
     "id": "3ae09f39-e7a3-4106-9345-502d1486a2e1",
     "name": "M6 X 16 HT SHCS Set",
     "supplierCode": "M6 X 16 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4111,7 +4484,8 @@
     "id": "2057416a-de67-4449-ad17-84f3af3f64fd",
     "name": "M6 X 20 HT SHCS Set",
     "supplierCode": "M6 X 20 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4122,7 +4496,8 @@
     "id": "04544c03-cc4d-4f4f-9097-9ede7ce0a885",
     "name": "M8 X 20 HT SHCS Set",
     "supplierCode": "M8 X 20 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4133,7 +4508,8 @@
     "id": "8dd6ad2f-5a03-411f-a2da-674d471d7c81",
     "name": "M8 X 25 HT SHCS Set",
     "supplierCode": "M8 X 25 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4144,7 +4520,8 @@
     "id": "2645d519-d1ac-4b11-90a5-5e7739972299",
     "name": "M8 X 30 HT SHCS Set",
     "supplierCode": "M8 X 30 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4155,7 +4532,8 @@
     "id": "c8276764-8a4e-43ce-aff4-9694537cf372",
     "name": "M10 X 25 HT SHCS Set",
     "supplierCode": "M10 X 25 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4166,7 +4544,8 @@
     "id": "3c92640f-9564-42c1-9e92-785fe75f7a11",
     "name": "M10 X 30 HT SHCS Set",
     "supplierCode": "M10 X 30 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4177,7 +4556,8 @@
     "id": "b5cdc797-fe71-47dd-bea8-7fe7ec462ef6",
     "name": "M10 X 60 HT SHCS Bolt",
     "supplierCode": "M10 X 60 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4188,7 +4568,8 @@
     "id": "9fdb4d24-d39e-40ca-a5d1-a69f1484d5a1",
     "name": "M10 X 120 HT SHCS Bolt",
     "supplierCode": "M10 X 120 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4199,7 +4580,8 @@
     "id": "8095913c-7deb-40c8-8de9-33f30c0ccda4",
     "name": "M12 X 30 HT SHCS Set",
     "supplierCode": "M12 X 30 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4210,7 +4592,8 @@
     "id": "78354540-c06f-4cce-85f1-2baf2e3bb3ca",
     "name": "M12 X 35 HT SHCS Set",
     "supplierCode": "M12 X 35 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4221,7 +4604,8 @@
     "id": "0582d57e-9e36-4b3f-81a7-50527c50bb9c",
     "name": "M12 X 40 HT SHCS Set",
     "supplierCode": "M12 X 40 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4232,7 +4616,8 @@
     "id": "522ae23c-1154-49b7-91d6-2983e7737bab",
     "name": "M12 X 50 HT SHCS Set",
     "supplierCode": "M12 X 50 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4243,7 +4628,8 @@
     "id": "4738fcd3-1ca9-4aa9-8f81-ff5a010a4e29",
     "name": "M12 X 60 HT SHCS Set",
     "supplierCode": "M12 X 60 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4254,7 +4640,8 @@
     "id": "faab72e5-ec0d-43f8-9319-41209818657c",
     "name": "M14 X 40 HT SHCS Set",
     "supplierCode": "M14 X 40 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4265,7 +4652,8 @@
     "id": "f2a5e0be-10ea-493d-8e87-1ab74558195e",
     "name": "M14 X 60 HT SHCS Bolt",
     "supplierCode": "M14 X 60 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4276,7 +4664,8 @@
     "id": "83df811c-3c8c-416b-885d-2c9fccef19e2",
     "name": "M14 X 80 HT SHCS Bolt",
     "supplierCode": "M14 X 80 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4287,7 +4676,8 @@
     "id": "f9915981-c256-4e25-a135-78c3f94b0726",
     "name": "M14 X 100 HT SHCS Bolt",
     "supplierCode": "M14 X 100 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4298,7 +4688,8 @@
     "id": "5424edfb-8ffd-4431-a12d-d1d2f0f34439",
     "name": "M16 X 55 HT SHCS Bolt",
     "supplierCode": "M16 X 55 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4309,7 +4700,8 @@
     "id": "562468ac-3729-42f6-ac92-ddb0df9f6046",
     "name": "M16 X 150 HT SHCS Bolt",
     "supplierCode": "M16 X 150 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4320,7 +4712,8 @@
     "id": "0b158816-617b-4a02-abc4-6bc55017b704",
     "name": "M18 X 150 HT SHCS Bolt",
     "supplierCode": "M18 X 150 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4331,7 +4724,8 @@
     "id": "d67ed20b-310d-420a-9e3d-dd98f3865a18",
     "name": "M20 X 65 HT SHCS Set",
     "supplierCode": "M20 X 65 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4342,7 +4736,8 @@
     "id": "741b0d16-d38d-4bc8-b61b-c0cc6f6cd7b0",
     "name": "M20 X 70 HT SHCS Bolt",
     "supplierCode": "M20 X 70 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Set",
@@ -4353,7 +4748,8 @@
     "id": "2f908051-edf0-4db0-89f5-737a6229203d",
     "name": "M20 X 90 HT SHCS Set",
     "supplierCode": "M20 X 90 HT SHCS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4364,7 +4760,8 @@
     "id": "9e15c948-7c41-426e-883c-75b90a1606f2",
     "name": "M20 X 80 HT SHCS Bolt",
     "supplierCode": "M20 X 80 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4375,7 +4772,8 @@
     "id": "a22eae92-2dad-4576-ad94-50f1744a2d4c",
     "name": "M20 X 140 HT SHCS Bolt",
     "supplierCode": "M20 X 140 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4386,7 +4784,8 @@
     "id": "0fa4e55b-161a-4e5c-83dd-8e450a730059",
     "name": "M20 X 160 HT SHCS Bolt",
     "supplierCode": "M20 X 160 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SHCS Bolt",
@@ -4397,7 +4796,8 @@
     "id": "f35369d5-8270-4a8b-8cb3-3c9689a0a936",
     "name": "M20 X 220 HT SHCS Bolt",
     "supplierCode": "M20 X 220 HT SHCS BOLT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4408,7 +4808,8 @@
     "id": "222bcb85-daff-418a-841d-df0b6de519ac",
     "name": "M16 X 16 HT SS Set",
     "supplierCode": "M16 X 16 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4419,7 +4820,8 @@
     "id": "c9a54c9f-8ff3-46ea-9eda-310ea3f642e8",
     "name": "M6 X 25 HT SS Set",
     "supplierCode": "M6 X 25 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4430,7 +4832,8 @@
     "id": "a822bec3-f050-4a41-a57a-af116f920846",
     "name": "M8 X 16 HT SS Set",
     "supplierCode": "M8 X 16 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4441,7 +4844,8 @@
     "id": "197c7453-2e36-43dd-9ad9-0a59bc7ab08d",
     "name": "M8 X 20 HT SS Set",
     "supplierCode": "M8 X 20 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4452,7 +4856,8 @@
     "id": "bb1ec9be-04ec-4004-94f8-ca35437badd3",
     "name": "M8 X 25 HT SS Set",
     "supplierCode": "M8 X 25 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4463,7 +4868,8 @@
     "id": "bdc6070f-ebcf-4e58-b315-e91b61539020",
     "name": "M8 X 30 HT SS Set",
     "supplierCode": "M8 X 30 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4474,7 +4880,8 @@
     "id": "a83e5655-6dc9-45fb-85ff-2607f8854320",
     "name": "M10 X 16 HT SS Set",
     "supplierCode": "M10 X 16 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4485,7 +4892,8 @@
     "id": "5ced44a8-acd8-4aef-aada-fafd13f16981",
     "name": "M10 X 20 HT SS Set",
     "supplierCode": "M10 X 20 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4496,7 +4904,8 @@
     "id": "8ab64a45-21e3-477e-a40b-969aecab3c4c",
     "name": "M10 X 25 HT SS Set",
     "supplierCode": "M10 X 25 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4507,7 +4916,8 @@
     "id": "84e0392e-a378-44f3-b848-886f2a57fc6a",
     "name": "M10 X 30 HT SS Set",
     "supplierCode": "M10 X 30 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Set",
@@ -4518,7 +4928,8 @@
     "id": "29fa7bc6-3897-4637-ab37-024901f299e4",
     "name": "M16 X 110 HT SS Set",
     "supplierCode": "M16 X 110 HT SS SET",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Lock Nut",
@@ -4529,7 +4940,8 @@
     "id": "8f141b54-60b2-4154-b6a8-619074864a91",
     "name": "M8 SS Lock Nut",
     "supplierCode": "M8 SS LOCK NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "SS Lock Nut",
@@ -4540,7 +4952,8 @@
     "id": "22ed6b03-3298-4030-8081-02febd201c4c",
     "name": "M10 SS Lock Nut",
     "supplierCode": "M10 SS LOCK NUT",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4551,7 +4964,8 @@
     "id": "107895b7-555f-44fd-8ef1-1423a0676f98",
     "name": "6 X 10 Copper Washer",
     "supplierCode": "6 X 10 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4562,7 +4976,8 @@
     "id": "5dea6583-15a6-4aaf-90a3-92b0b99951b1",
     "name": "8 X 12 Copper Washer",
     "supplierCode": "8 X 12 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4573,7 +4988,8 @@
     "id": "d0ccf424-b5c6-4a57-99a7-3741e43b23af",
     "name": "8 X 14 Copper Washer",
     "supplierCode": "8 X 14 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4584,7 +5000,8 @@
     "id": "da87834f-1329-4930-9a81-b6860a91b77b",
     "name": "10 X 14 Copper Washer",
     "supplierCode": "10 X 14 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4595,7 +5012,8 @@
     "id": "0ce8021b-4a12-45bd-baf1-e3c502bfb4b7",
     "name": "10 X 16 Copper Washer",
     "supplierCode": "10 X 16 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4606,7 +5024,8 @@
     "id": "7ec1e339-0447-452a-af60-d43768d69f76",
     "name": "12 X 16 Copper Washer",
     "supplierCode": "12 X 16 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4617,7 +5036,8 @@
     "id": "24be6495-df07-4ec5-80db-842c3044b333",
     "name": "12 X 18 Copper Washer",
     "supplierCode": "12 X 18 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4628,7 +5048,8 @@
     "id": "bfecb6d4-01b6-4043-b364-0ec4fadadba3",
     "name": "14 X 18 Copper Washer",
     "supplierCode": "14 X 18 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4639,7 +5060,8 @@
     "id": "1a13a82f-448b-4099-b5aa-a5cb22713348",
     "name": "14 X 20 Copper Washer",
     "supplierCode": "14 X 20 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4650,7 +5072,8 @@
     "id": "3f4dc737-c84f-45b6-893b-08292c21cfbd",
     "name": "16 X 22 Copper Washer",
     "supplierCode": "16 X 22 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4661,7 +5084,8 @@
     "id": "6818539d-5b21-4bc5-abd4-7626fd7147a6",
     "name": "18 X 24 Copper Washer",
     "supplierCode": "18 X 24 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4672,7 +5096,8 @@
     "id": "a2aa8468-90c5-4933-8951-ce05bc71b540",
     "name": "20 X 26 Copper Washer",
     "supplierCode": "20 X 26 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4683,7 +5108,8 @@
     "id": "4aa7ea6a-7b30-4f87-aa85-b564e732efee",
     "name": "22 X 27 Copper Washer",
     "supplierCode": "22 X 27 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4694,7 +5120,8 @@
     "id": "e4a8e5c1-8a98-4f44-93f0-7db264119604",
     "name": "24 X 30 Copper Washer",
     "supplierCode": "24 X 30 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4705,7 +5132,8 @@
     "id": "68e7a872-264c-49f7-94cd-70355afee1ae",
     "name": "26 X 32 Copper Washer",
     "supplierCode": "26 X 32 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4716,7 +5144,8 @@
     "id": "86708d6b-f479-4d7f-9e31-6b428f0b8faa",
     "name": "28 X 34 Copper Washer",
     "supplierCode": "28 X 34 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4727,7 +5156,8 @@
     "id": "acaf6e4f-a9a3-4897-a6f4-f9ce13c0692e",
     "name": "30 X 36 Copper Washer",
     "supplierCode": "30 X 36 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Copper Washer",
@@ -4738,7 +5168,8 @@
     "id": "a81b0998-7e32-45a4-bd6e-9f2b9f701744",
     "name": "36 X 38 Copper Washer",
     "supplierCode": "36 X 38 COPPER WASHER",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cap Screw",
@@ -4749,7 +5180,8 @@
     "id": "cb930db5-b48b-4bdf-a09c-68803a04e46c",
     "name": "M14X35 HT Bolt - Galv",
     "supplierCode": "M14X35 HT BOLT - GALV",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cap Screw",
@@ -4760,7 +5192,8 @@
     "id": "b3394d1f-48d2-4be0-bf40-ea76f3ca551f",
     "name": "M20 X 80 Allen Cap Screw",
     "supplierCode": "M20 X 80 ALLEN CAP SCREW",
-    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d"
+    "supplierId": "6517eabf-56c0-415b-b0fe-2a60e27b386d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -4771,7 +5204,8 @@
     "id": "1e21e21a-b6a1-484b-9a31-0ccd23adafe7",
     "name": "32216",
     "supplierCode": "32216",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -4782,7 +5216,8 @@
     "id": "bc61dbca-3706-42ab-bb0f-c30b65cb720d",
     "name": "44643L/44610",
     "supplierCode": "44643L/44610",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -4793,7 +5228,8 @@
     "id": "aac39d07-c129-432c-9fc8-86e03fc812b9",
     "name": "45449/45410",
     "supplierCode": "45449/45410",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -4804,7 +5240,8 @@
     "id": "2cf989a3-d9d1-4f81-bb7f-29b0098de8c8",
     "name": "501349/501310",
     "supplierCode": "501349/501310",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -4815,7 +5252,8 @@
     "id": "e45b708d-d563-4888-b75f-6136fc16823e",
     "name": "6006-2Rs C3",
     "supplierCode": "6006-2RS C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -4826,7 +5264,8 @@
     "id": "7f53d492-39cb-4091-a9a8-29df1e9425ad",
     "name": "6007-2Rs C3",
     "supplierCode": "6007-2RS C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -4837,7 +5276,8 @@
     "id": "faa8ff94-36be-4a21-b341-584ef4792205",
     "name": "84548/84510",
     "supplierCode": "84548/84510",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Taper Roller",
@@ -4848,7 +5288,8 @@
     "id": "6539a884-8265-4797-b362-ebd629387b99",
     "name": "86649/86610",
     "supplierCode": "86649/86610",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Ball Bearing",
@@ -4859,7 +5300,8 @@
     "id": "cd91b25b-53c3-4de6-ac35-c44b355f1629",
     "name": "6008-2Rs C3",
     "supplierCode": "6008-2RS C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Ball Bearing",
@@ -4870,7 +5312,8 @@
     "id": "9772d9bf-2a18-4624-b7cd-fa2e71ff2265",
     "name": "6009-2Rs C3",
     "supplierCode": "6009-2RS C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Ball Bearing",
@@ -4881,7 +5324,8 @@
     "id": "1a8ac592-61a1-4eae-954d-224ff10d2fb7",
     "name": "6010-2Rs C3",
     "supplierCode": "6010-2RS C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Challenge Ball Bearing",
@@ -4892,7 +5336,8 @@
     "id": "cdd141da-d2d6-4f60-834f-80be32072cf6",
     "name": "6210-2Rs C3",
     "supplierCode": "6210-2RS C3",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "3/4 Bore Bearing",
@@ -4903,7 +5348,8 @@
     "id": "81f1b883-9071-45fd-b55f-376f18a3ae0e",
     "name": "120-070",
     "supplierCode": "120-070",
-    "supplierId": "491d475e-86d3-4288-b897-5d32068f7747"
+    "supplierId": "491d475e-86d3-4288-b897-5d32068f7747",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -4914,7 +5360,8 @@
     "id": "27b9d466-c65a-4d1a-9034-2536b6f90819",
     "name": "18 X 30 X 7 Oil Seal",
     "supplierCode": "18 X 30 X 7 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -4925,7 +5372,8 @@
     "id": "11ca5dda-7516-4d4c-a29e-4edd4051b8ef",
     "name": "25 X 46 X 7 Oil Seal",
     "supplierCode": "25 X 46 X 7 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -4936,7 +5384,8 @@
     "id": "ad16e06e-d495-4b97-b765-032bd4789374",
     "name": "25 X 47 X 7 Oil Seal",
     "supplierCode": "25 X 47 X 7 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -4947,7 +5396,8 @@
     "id": "72b62769-a15f-4403-b2da-f6e17706da6a",
     "name": "25 X 47 X 10 Oil Seal",
     "supplierCode": "25 X 47 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -4958,7 +5408,8 @@
     "id": "07c8cdd5-c259-4ace-8527-c13ee6dcc8d3",
     "name": "25 X 50 X 10  Oil Seal",
     "supplierCode": "25 X 50 X 10  OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -4969,7 +5420,8 @@
     "id": "434b5d4e-cc23-4b61-9c3e-5ea7da757d0b",
     "name": "30 X 62 X 7 Oil Seal",
     "supplierCode": "30 X 62 X 7 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -4980,7 +5432,8 @@
     "id": "578d0e40-fa14-4fec-8f21-11a361b6b4f0",
     "name": "35 X 55 X 10 Oil Seal",
     "supplierCode": "35 X 55 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -4991,7 +5444,8 @@
     "id": "45b6727d-5d6f-4784-8e22-4e7c5b98d0a4",
     "name": "40 X 60 X 10 Oil Seal",
     "supplierCode": "40 X 60 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5002,7 +5456,8 @@
     "id": "b455d264-220d-48f4-b382-2479d34b937a",
     "name": "40 X 72 X 10 Oil Seal",
     "supplierCode": "40 X 72 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5013,7 +5468,8 @@
     "id": "f9bc7f37-ca82-4240-b649-4706e67d00c4",
     "name": "41.27X63.5X7.95 Oil Seal",
     "supplierCode": "41.27X63.5X7.95 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5024,7 +5480,8 @@
     "id": "0689ae0a-4177-4704-b136-5996051aa71c",
     "name": "42 X 62 X 10 Oil Seal",
     "supplierCode": "42 X 62 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5035,7 +5492,8 @@
     "id": "7f717bd6-1d0d-431a-bc5e-82478fd484ec",
     "name": "45 X 58 X 7 Oil Seal",
     "supplierCode": "45 X 58 X 7 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5046,7 +5504,8 @@
     "id": "7cd547ac-a27e-481f-b02f-25d3b1e4e19a",
     "name": "45 X 62 X 7 Oil Seal",
     "supplierCode": "45 X 62 X 7 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5057,7 +5516,8 @@
     "id": "edf53020-06ac-4359-beb4-aa44d9dbb5fc",
     "name": "45 X 62 X 10 Oil Seal",
     "supplierCode": "45 X 62 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5068,7 +5528,8 @@
     "id": "cfe25f9e-c8ca-4a77-8c48-fc6012262edd",
     "name": "48 X 62 X 10 Oil Seal",
     "supplierCode": "48 X 62 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5079,7 +5540,8 @@
     "id": "a548949d-26f0-4771-8ec5-23a3ede33af0",
     "name": "50 X 75 X 10 Oil Seal",
     "supplierCode": "50 X 75 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5090,7 +5552,8 @@
     "id": "4b594a9d-9792-4a8b-ae69-9496bb9c8504",
     "name": "50 X 80 X 8 Oil Seal",
     "supplierCode": "50 X 80 X 8 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5101,7 +5564,8 @@
     "id": "fb6fcaae-d2ce-41b5-b551-305cf239c59e",
     "name": "50 X 80 X 10 Oil Seal",
     "supplierCode": "50 X 80 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5112,7 +5576,8 @@
     "id": "0764c34c-5be2-41a5-900f-5513ae316b6f",
     "name": "55 X 68 X 8 Oil Seal",
     "supplierCode": "55 X 68 X 8 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5123,7 +5588,8 @@
     "id": "b8f3894f-5eb1-40b1-9337-42331ece6d1b",
     "name": "60 X 75 X 8 Oil Seal",
     "supplierCode": "60 X 75 X 8 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5134,7 +5600,8 @@
     "id": "31d81859-fa97-48ef-a476-7c797a8435c8",
     "name": "60 X 90 X 10 Oil Seal",
     "supplierCode": "60 X 90 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5145,7 +5612,8 @@
     "id": "f693d582-8765-46ff-80b5-043e5d03c560",
     "name": "60 X 95 X 10 Oil Seal",
     "supplierCode": "60 X 95 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5156,7 +5624,8 @@
     "id": "566bc1d9-9498-48f1-85c8-896160c1924b",
     "name": "65 X 75 X 7 Oil Seal",
     "supplierCode": "65 X 75 X 7 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5167,7 +5636,8 @@
     "id": "d83de574-d310-45cd-9d30-5bc9f0266652",
     "name": "70 X 100 X 10 Oil Seal",
     "supplierCode": "70 X 100 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5178,7 +5648,8 @@
     "id": "f2c41b42-ae22-4bbe-a1e1-968d066492d2",
     "name": "75 X 95 X 10 Oil Seal",
     "supplierCode": "75 X 95 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5189,7 +5660,8 @@
     "id": "509f217e-36c3-4ef7-aef5-b45442fc6818",
     "name": "75 X 100 X 10 Oil Seal",
     "supplierCode": "75 X 100 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5200,7 +5672,8 @@
     "id": "a2da2679-d3d8-4a5c-a7ba-47fabd4fa5e7",
     "name": "80 X 100 X 10 Oil Seal",
     "supplierCode": "80 X 100 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5211,7 +5684,8 @@
     "id": "22c25447-d466-4771-9dfa-88dba6b02086",
     "name": "80 X 115 X 10 Oil Seal",
     "supplierCode": "80 X 115 X 10 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5222,7 +5696,8 @@
     "id": "9e120b61-da66-47f6-a936-9775b7448c8b",
     "name": "80 X 115 X 13 Oil Seal",
     "supplierCode": "80 X 115 X 13 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5233,7 +5708,8 @@
     "id": "4bc02a47-1958-4099-975a-a0f303ce1cb6",
     "name": "85 X 130 X 12 Oil Seal",
     "supplierCode": "85 X 130 X 12 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Oil Seal",
@@ -5244,7 +5720,8 @@
     "id": "643a9c54-1d0a-4b5f-aeab-27905ad7c339",
     "name": "112 X 187 X 25 Oil Seal",
     "supplierCode": "112 X 187 X 25 OIL SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Mascor Seal",
@@ -5255,7 +5732,8 @@
     "id": "a355e757-0f21-4a52-b3a9-47e536e4b29e",
     "name": "32167 Mascor Seal",
     "supplierCode": "32167 OIL SEAL",
-    "supplierId": "27e6ca5e-0ff4-4a15-8ba2-c76b6c5940d6"
+    "supplierId": "27e6ca5e-0ff4-4a15-8ba2-c76b6c5940d6",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wiper Seal",
@@ -5266,7 +5744,8 @@
     "id": "5e33c763-a203-40e4-8f68-f9b7392c6e89",
     "name": "25X33X5/7 Wiper Seal",
     "supplierCode": "25X33X5/7 WIPER SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Pressure Seal",
@@ -5277,7 +5756,8 @@
     "id": "9321a0a9-beab-44f2-8446-d125a7dca017",
     "name": "25X33X8 Pressure Seal",
     "supplierCode": "25X33X8 PRESSURE SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wiper Seal",
@@ -5288,7 +5768,8 @@
     "id": "f22f47f8-bd7e-4948-a101-d07d5ce4257b",
     "name": "45X55X5/7 Wiper Seal",
     "supplierCode": "45X55X5/7 WIPER SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Pressure Seal",
@@ -5299,7 +5780,8 @@
     "id": "b548ffc2-90bf-4ad1-8087-3871902bb702",
     "name": "45X55X8 Pressure Seal",
     "supplierCode": "45X55X8 PRESSURE SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wear Band",
@@ -5310,7 +5792,8 @@
     "id": "fde555c7-9866-4602-ac4e-ee81a85462bc",
     "name": "45X50X24.5 Wear Band",
     "supplierCode": "45X50X24.5 WEAR BAND",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wiper Seal",
@@ -5321,7 +5804,8 @@
     "id": "48ee1ffa-b6f2-4d88-8041-8308105d5ac7",
     "name": "60X70X5/7 Wiper Seal",
     "supplierCode": "60X70X5/7 WIPER SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Pressure Seal",
@@ -5332,7 +5816,8 @@
     "id": "e4f7fca1-ab05-4dec-b987-af1ce88eb98e",
     "name": "60X70X13 Pressure Seal",
     "supplierCode": "60X70X13 PRESSURE SEAL",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Wear Band",
@@ -5343,7 +5828,8 @@
     "id": "0c3932c5-8fff-4522-9929-224f795affa8",
     "name": "60X65X24.5 Wear Band",
     "supplierCode": "60X65X24.5 WEAR BAND",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Seal Kit",
@@ -5354,7 +5840,8 @@
     "id": "7011485b-3a4d-4ea4-b7d4-0c3f329dd831",
     "name": "Sg 1225-04 A Seal Kit",
     "supplierCode": "SG 1225-04 A SEAL KIT",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Seal Kit",
@@ -5365,7 +5852,8 @@
     "id": "f65e69e7-e287-4219-becb-4e30fdb829db",
     "name": "Sg 1836-11 A Seal Kit",
     "supplierCode": "SG 1836-11 A SEAL KIT",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Seal Kit",
@@ -5376,7 +5864,8 @@
     "id": "e3013d1d-139a-40cf-bda5-260747ac660b",
     "name": "St 300 1P23-11 B Seal Kit",
     "supplierCode": "ST 300 1P23-11 B SEAL KIT",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5387,7 +5876,8 @@
     "id": "0abed6d9-c4c8-46c8-b52a-83ae68a4c711",
     "name": "U-Seal - 40X50X7",
     "supplierCode": "U-SEAL - 40X50X7",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5398,7 +5888,8 @@
     "id": "aebf178a-6094-4a74-8f83-34aa77121c61",
     "name": "Soft Wiper - 40X48X5/7",
     "supplierCode": "SOFT WIPER - 40X48X5/7",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5409,7 +5900,8 @@
     "id": "d9059e1a-b464-4f23-898a-0cd56f3a1ee8",
     "name": "O-Ring & Back Up - 3.53X60",
     "supplierCode": "O-RING & BACK UP - 3.53X60",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5420,7 +5912,8 @@
     "id": "fa5039f1-5f50-4126-922a-b9d33876824d",
     "name": "Piston Comp - 54.5X70X6",
     "supplierCode": "PISTON COMP - 54.5X70X6",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5431,7 +5924,8 @@
     "id": "3817ca45-7ae4-44d5-a074-2156a7c2fa25",
     "name": "Wear Band - 65X70X9.5",
     "supplierCode": "WEAR BAND - 65X70X9.5",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5442,7 +5936,8 @@
     "id": "e27f5166-f974-44cb-b2fb-cca3037cd970",
     "name": "Wear Band - 64X70X9.5",
     "supplierCode": "WEAR BAND - 64X70X9.5",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5453,7 +5948,8 @@
     "id": "1becdf33-9804-4a13-9955-40e1d1c2419a",
     "name": "O-Ring - 3.53X27",
     "supplierCode": "O-RING - 3.53X27",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5464,7 +5960,8 @@
     "id": "3cbe543b-d746-44ca-ba01-56754b716d5f",
     "name": "U-Seal - 60X70X10",
     "supplierCode": "U-SEAL - 60X70X10",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5475,7 +5972,8 @@
     "id": "954a1e16-1589-4a7e-8a1f-e7d865f44b35",
     "name": "Soft Wiper 60X68X5/7",
     "supplierCode": "SOFT WIPER 60X68X5/7",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5486,7 +5984,8 @@
     "id": "adda9883-fc32-48fe-a98c-88d725ea16df",
     "name": "O-Ring 3.53X32.93",
     "supplierCode": "O-RING 3.53X32.93",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5497,7 +5996,8 @@
     "id": "8d1e987a-4661-4707-b096-354e4f60f6da",
     "name": "O-Ring 2.62X101.28",
     "supplierCode": "O-RING 2.62X101.28",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Parts",
@@ -5508,7 +6008,8 @@
     "id": "3919f457-b27a-4297-8b66-777c4889534e",
     "name": "O-Ring 5.34 88.27",
     "supplierCode": "O-RING 5.34 88.27",
-    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252"
+    "supplierId": "36de3c48-363a-48ff-b9e2-646f5ce27252",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Tension Springs",
@@ -5519,7 +6020,8 @@
     "id": "8caf49e2-fdeb-4187-8041-a5e1fb9763ee",
     "name": "Tension Spring 200",
     "supplierCode": "TENSION SPRING 200",
-    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3"
+    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Tension Springs",
@@ -5530,7 +6032,8 @@
     "id": "dc18d4f2-e375-4cc5-93fe-731a94de40d9",
     "name": "Tension Spring 230",
     "supplierCode": "TENSION SPRING 230",
-    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3"
+    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Tension Springs",
@@ -5541,7 +6044,8 @@
     "id": "8dce6371-241f-430b-a565-f54c29d5c373",
     "name": "Tension Spring 338",
     "supplierCode": "TENSION SPRING 338",
-    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3"
+    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Tension Springs",
@@ -5552,7 +6056,8 @@
     "id": "237969c4-896c-4bab-976f-7b345d35c685",
     "name": "Tension Spring 180 Brake Spring",
     "supplierCode": "TENSION SPRING 180 BRAKE SPRING",
-    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3"
+    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Compression Spring",
@@ -5563,7 +6068,8 @@
     "id": "623fb95f-90a8-4570-a2ee-9f42df22cfdc",
     "name": "Compression Spring 240",
     "supplierCode": "COMPRESSION SPRING 240",
-    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3"
+    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Drawbar Spring",
@@ -5574,7 +6080,8 @@
     "id": "3341f48b-cfc6-46df-a78d-7fd8ec72089d",
     "name": "5 Blade Drawbar Spring",
     "supplierCode": "5 BLD DRB",
-    "supplierId": "c03399b4-e421-4be9-b415-f496c1f7291f"
+    "supplierId": "c03399b4-e421-4be9-b415-f496c1f7291f",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Drawbar Spring",
@@ -5585,7 +6092,8 @@
     "id": "19191a94-0910-4fb5-8c35-6decc7f8350a",
     "name": "6 Blade Drawbar Spring",
     "supplierCode": "6 BLD DRB",
-    "supplierId": "c03399b4-e421-4be9-b415-f496c1f7291f"
+    "supplierId": "c03399b4-e421-4be9-b415-f496c1f7291f",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Cylinder Spring",
@@ -5596,7 +6104,8 @@
     "id": "afef3db6-b8c1-45a2-aaa5-2874f6126350",
     "name": "Brake Cylinder Spring",
     "supplierCode": "BRAKE CYLINDER SPRING",
-    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3"
+    "supplierId": "0fb377d1-013b-4215-bbc7-947e218169f3",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Splitpin",
@@ -5607,7 +6116,8 @@
     "id": "ff5ae361-6192-441c-81f7-46ddf5feca4e",
     "name": "2X40",
     "supplierCode": "SPZ20040",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Splitpin",
@@ -5618,7 +6128,8 @@
     "id": "1ba6fcc1-e48c-4dac-b371-8aa2db07c5e1",
     "name": "2.5X40",
     "supplierCode": "SPZ25040",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Splitpin",
@@ -5629,7 +6140,8 @@
     "id": "4776d57a-39bc-44bd-a396-92d1c4ad163b",
     "name": "3.2X32",
     "supplierCode": "SPZ32032",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Splitpin",
@@ -5640,7 +6152,8 @@
     "id": "7d68d91b-0576-4ba5-8572-eccc68efeb1d",
     "name": "3.2X40",
     "supplierCode": "SPZ32040",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Splitpin",
@@ -5651,7 +6164,8 @@
     "id": "a40eda50-68ce-4fd4-a79a-04566fce170e",
     "name": "4X40",
     "supplierCode": "SPZ40040",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Splitpin",
@@ -5662,7 +6176,8 @@
     "id": "c0718b98-8be0-45b6-b13d-5ab8c736b4a4",
     "name": "5X50",
     "supplierCode": "SPZ5050",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Splitpin",
@@ -5673,7 +6188,8 @@
     "id": "29190738-f368-4480-a0ae-520b5f219e38",
     "name": "10X80",
     "supplierCode": "SP04030",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5684,7 +6200,8 @@
     "id": "09201ce9-3b15-44bf-be62-0eefdba507b6",
     "name": "4X30",
     "supplierCode": "SPO4045",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5695,7 +6212,8 @@
     "id": "50f1e719-6d06-488f-abb3-3603bc92d230",
     "name": "4X50",
     "supplierCode": "SP05016",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5706,7 +6224,8 @@
     "id": "7207d649-6a7e-4566-b9d0-32fac33f2fec",
     "name": "5X16",
     "supplierCode": "SP05030",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5717,7 +6236,8 @@
     "id": "c8706efa-15c7-4339-ab75-7663e1451cae",
     "name": "5X40",
     "supplierCode": "SP05050",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5728,7 +6248,8 @@
     "id": "44ceb46e-a176-4425-b389-0e1784437367",
     "name": "5X50",
     "supplierCode": "SP05055",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5739,7 +6260,8 @@
     "id": "067fd4b9-07a2-4db7-a66e-3b7011b42c39",
     "name": "5X60",
     "supplierCode": "SP06020",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5750,7 +6272,8 @@
     "id": "38f7d01a-27f4-40c9-a644-dded21e8a476",
     "name": "6X20",
     "supplierCode": "SPO6030",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5761,7 +6284,8 @@
     "id": "9f62855b-9b16-4844-b991-86de3e0c3a14",
     "name": "6X40",
     "supplierCode": "SP06040",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5772,7 +6296,8 @@
     "id": "1ae99f37-4ba7-4563-905b-b2f4216a8d90",
     "name": "6X45",
     "supplierCode": "SP06050",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5783,7 +6308,8 @@
     "id": "5ae5fab2-f916-41b7-8cd0-35a6a50baf63",
     "name": "6X50",
     "supplierCode": "SP06060",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5794,7 +6320,8 @@
     "id": "e3948a9b-09d3-4893-b5e1-d99271b22efe",
     "name": "6X55",
     "supplierCode": "SP08030",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5805,7 +6332,8 @@
     "id": "99f564fc-7be1-4151-b023-08f55e07bc44",
     "name": "8X35",
     "supplierCode": "SP08040",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5816,7 +6344,8 @@
     "id": "791988c7-9d03-4f27-9d5f-7d885a14bcfe",
     "name": "8X60",
     "supplierCode": "SPO1020",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5827,7 +6356,8 @@
     "id": "3047b9ef-b498-4e15-897e-0c1c3493228e",
     "name": "10X20",
     "supplierCode": "SPO1030",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5838,7 +6368,8 @@
     "id": "d5d0d8a0-674b-4a2f-ae67-3b466cd239e2",
     "name": "10X30",
     "supplierCode": "SP010036",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5849,7 +6380,8 @@
     "id": "4aea93f0-f58e-44f5-990e-94e0d32e6c88",
     "name": "10X35",
     "supplierCode": "SP010040",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5860,7 +6392,8 @@
     "id": "e39f8717-0e68-43c6-a58f-600ce0874a67",
     "name": "10X40",
     "supplierCode": "SP012120",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5871,7 +6404,8 @@
     "id": "29cff1d7-8f4e-4a02-a721-b4df92f0ea83",
     "name": "12X30",
     "supplierCode": "SP01240",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5882,7 +6416,8 @@
     "id": "3ca0ab95-3638-41f0-a392-614709ee4c43",
     "name": "12X40",
     "supplierCode": "SP01260",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Sellock Pin",
@@ -5893,7 +6428,8 @@
     "id": "3a9af087-7c38-457a-94f1-33e36dbf60d9",
     "name": "12X60",
     "supplierCode": "SP01270",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Linch Pin",
@@ -5904,7 +6440,8 @@
     "id": "28418460-f35f-43e1-87e0-8e0746aaba97",
     "name": "10Mm",
     "supplierCode": "NC",
-    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae"
+    "supplierId": "7935fb1e-c7b6-422f-9449-7588ea1abfae",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "R - Clip",
@@ -5915,7 +6452,8 @@
     "id": "c3e95690-98cf-4d92-b02b-5ee98510f410",
     "name": "2Mm",
     "supplierCode": "RC020",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "R - Clip",
@@ -5926,7 +6464,8 @@
     "id": "c853cee6-8401-49bc-b2b5-b961edf51659",
     "name": "3Mm",
     "supplierCode": "RC030",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "R - Clip",
@@ -5937,7 +6476,8 @@
     "id": "c9deaf3c-a282-4999-ad63-834c5123ad45",
     "name": "4Mm",
     "supplierCode": "RC040",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "R - Clip",
@@ -5948,7 +6488,8 @@
     "id": "1ae03d36-5f1e-41e3-830b-0ad042472b34",
     "name": "5Mm",
     "supplierCode": "RC050",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "R - Clip",
@@ -5959,7 +6500,8 @@
     "id": "bf38e6ea-860f-4a21-9b77-ad2eadb54cde",
     "name": "6Mm",
     "supplierCode": "RC060",
-    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c"
+    "supplierId": "2972fbb4-0a52-4d3b-8572-c2ae7267ed5c",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Light",
@@ -5970,7 +6512,8 @@
     "id": "dbc142dc-7e70-47a8-830d-060af18962f7",
     "name": "Amber Marker Light",
     "supplierCode": "TL-L15VY-1",
-    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d"
+    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Light",
@@ -5981,7 +6524,8 @@
     "id": "a6c3eb64-2ec4-4b3f-b1a1-2f631d463fe7",
     "name": "Number Plate Light",
     "supplierCode": "TL31LED",
-    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d"
+    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Light",
@@ -5992,7 +6536,8 @@
     "id": "224732ab-2f1f-4fce-9810-799f4dd36f0c",
     "name": "Flasher Light",
     "supplierCode": "TL-H04VY",
-    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d"
+    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Light",
@@ -6003,7 +6548,8 @@
     "id": "4648fd0e-e521-469b-bc51-692348bfc6c6",
     "name": "Led Rec Tail Light",
     "supplierCode": "TL-L176VRY",
-    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d"
+    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Light",
@@ -6014,7 +6560,8 @@
     "id": "352bc1a9-f49c-4a5d-89e4-b13acfb50535",
     "name": "Led Rec Tail Light",
     "supplierCode": "TL-LS313C",
-    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d"
+    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Light",
@@ -6025,7 +6572,8 @@
     "id": "5486646d-29b9-4803-8b70-72ca1d8e4171",
     "name": "4\" Led Combo Tl23Led",
     "supplierCode": "TL23LED",
-    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d"
+    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Reflector",
@@ -6036,7 +6584,8 @@
     "id": "18ba24dc-61cf-4994-9a0e-cd0f1e6e4901",
     "name": "Chevron Sticker 190X1700",
     "supplierCode": "SANS 1329-4 SABS",
-    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d"
+    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Nut Indicator",
@@ -6047,7 +6596,8 @@
     "id": "a83cf8a2-2fbc-47cf-bd46-6ad453c1b58d",
     "name": "W/Nut Indicator 32 Arrow Yellow",
     "supplierCode": "NC",
-    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d"
+    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Electrical Part",
@@ -6058,7 +6608,8 @@
     "id": "90e80088-c911-4763-9db2-8047cae07c38",
     "name": "7 Pin Male Plug",
     "supplierCode": "500-102",
-    "supplierId": "d056683b-d65b-4ab9-8085-f67b82e14453"
+    "supplierId": "d056683b-d65b-4ab9-8085-f67b82e14453",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Electrical Part",
@@ -6069,7 +6620,8 @@
     "id": "3d905094-ec95-4865-81ef-6ee8bdd8ce7c",
     "name": "7 Hole Female Plug",
     "supplierCode": "600-102",
-    "supplierId": "d056683b-d65b-4ab9-8085-f67b82e14453"
+    "supplierId": "d056683b-d65b-4ab9-8085-f67b82e14453",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Electrical Part",
@@ -6080,7 +6632,8 @@
     "id": "2221ec8a-e041-496e-b9ee-a7764fe4ae3d",
     "name": "Q-Ejb001 Junction Box",
     "supplierCode": "Q-EJB001",
-    "supplierId": "77363c9a-9d78-4915-9059-09ff2c31e138"
+    "supplierId": "77363c9a-9d78-4915-9059-09ff2c31e138",
+    "unitOfMeasure": "quantity"
   },
   {
     "category": "Light",
@@ -6091,6 +6644,7 @@
     "id": "1b0d767a-9772-497c-a11f-3c75819f1fd5",
     "name": "5\" Spot Light - Sides",
     "supplierCode": "TL-L197VW-80",
-    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d"
+    "supplierId": "8c9985e4-67b2-4df1-9079-14e04b22d00d",
+    "unitOfMeasure": "quantity"
   }
 ]

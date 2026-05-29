@@ -1,21 +1,12 @@
-import type { UUID } from '@pkg/schema';
+import type { Assembly, UUID } from '@pkg/schema';
+
+import { resolveEffectiveBom } from '../quotes/effective-bom.js';
 
 export type CfoAssemblyKind = 'standard' | 'optional';
 
 export type CfoAssemblyPart = {
   partId: UUID;
   quantity: number;
-};
-
-export type CfoCatalogAssembly = {
-  id: UUID;
-  name: string;
-  parts: readonly CfoAssemblyPart[];
-};
-
-export type CfoAssemblyOverride = {
-  optionalAssemblyId: UUID;
-  standardAssemblyId: UUID;
 };
 
 export type CfoSelectedAssembly = {
@@ -39,65 +30,42 @@ export type BuildCfoResult =
       staleAssemblyNames: string[];
     };
 
+/**
+ * Projects a Quote's Effective Bill of Materials into a parts-level CFO. The override-and-staleness
+ * rule lives in {@link resolveEffectiveBom}; this is the Create-Job-from-Quote projection of its
+ * result: any stale selection denies Job creation (naming the offending assemblies), otherwise the
+ * CFO is the surviving Standard Assemblies plus the selected Optional Assemblies, each carrying Parts.
+ */
 export function buildCfo({
-  optionalAssemblies,
-  overrides,
+  catalogAssemblies,
   selectedAssemblies,
-  standardAssemblies,
 }: {
-  standardAssemblies: readonly CfoCatalogAssembly[];
-  optionalAssemblies: readonly CfoCatalogAssembly[];
-  overrides: readonly CfoAssemblyOverride[];
+  catalogAssemblies: readonly Assembly[];
   selectedAssemblies: readonly CfoSelectedAssembly[];
 }): BuildCfoResult {
-  const optionalAssembliesById = new Map(optionalAssemblies.map((assembly) => [assembly.id, assembly]));
-  const staleAssemblyNames: string[] = [];
-  const selectedOptionalAssemblies: { assemblyName: string; catalogAssembly: CfoCatalogAssembly }[] = [];
+  const { overriddenStandardAssemblyIds, selectedOptionalAssemblies, staleSelections } = resolveEffectiveBom({
+    catalogAssemblies,
+    selectedAssemblies,
+  });
 
-  for (const selectedAssembly of selectedAssemblies) {
-    const optionalAssembly =
-      selectedAssembly.productAssemblyId === null
-        ? undefined
-        : optionalAssembliesById.get(selectedAssembly.productAssemblyId);
-
-    if (!optionalAssembly) {
-      staleAssemblyNames.push(selectedAssembly.assemblyName);
-      continue;
-    }
-
-    selectedOptionalAssemblies.push({
-      assemblyName: selectedAssembly.assemblyName,
-      catalogAssembly: optionalAssembly,
-    });
+  if (staleSelections.length > 0) {
+    return { ok: false, staleAssemblyNames: staleSelections.map((selection) => selection.assemblyName) };
   }
-
-  if (staleAssemblyNames.length > 0) {
-    return { ok: false, staleAssemblyNames };
-  }
-
-  const selectedOptionalAssemblyIds = new Set(
-    selectedOptionalAssemblies.map((assembly) => assembly.catalogAssembly.id),
-  );
-  const overriddenStandardAssemblyIds = new Set(
-    overrides
-      .filter((override) => selectedOptionalAssemblyIds.has(override.optionalAssemblyId))
-      .map((override) => override.standardAssemblyId),
-  );
 
   return {
     ok: true,
     cfo: [
-      ...standardAssemblies
-        .filter((assembly) => !overriddenStandardAssemblyIds.has(assembly.id))
+      ...catalogAssemblies
+        .filter((assembly) => assembly.kind === 'standard' && !overriddenStandardAssemblyIds.has(assembly.id))
         .map((assembly): CfoEntry => toCfoEntry(assembly, 'standard')),
       ...selectedOptionalAssemblies.map(
-        (assembly): CfoEntry => toCfoEntry(assembly.catalogAssembly, 'optional', assembly.assemblyName),
+        ({ assembly, selection }): CfoEntry => toCfoEntry(assembly, 'optional', selection.assemblyName),
       ),
     ],
   };
 }
 
-function toCfoEntry(assembly: CfoCatalogAssembly, kind: CfoAssemblyKind, assemblyName = assembly.name): CfoEntry {
+function toCfoEntry(assembly: Assembly, kind: CfoAssemblyKind, assemblyName = assembly.name): CfoEntry {
   return {
     assemblyName,
     kind,

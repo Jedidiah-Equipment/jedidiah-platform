@@ -31,7 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { formatCurrency } from '@/utils/number.js';
-import { emptyProductFormValues } from './ProductForm.js';
+import { emptyProductFormValues } from './types.js';
 
 const ALL_CATEGORIES = '__all__';
 const assemblyPartKeys = new WeakMap<AssemblyInput['parts'][number], string>();

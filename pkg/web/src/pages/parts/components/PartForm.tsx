@@ -3,6 +3,7 @@ import {
   PartCategory,
   PartCode,
   PartDescription,
+  PartDrawingCode,
   PartFinish,
   PartName,
   PartSupplierCode,
@@ -13,6 +14,7 @@ import { Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { z } from 'zod';
 
+import { emptyStringOr, requiredSelection } from '@/components/form/form-schema.js';
 import { useAppForm } from '@/components/form/index.js';
 import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { Button } from '@/components/ui/button.js';
@@ -23,11 +25,11 @@ const PartFormValues = z.object({
   category: PartCategory,
   code: PartCode,
   description: PartDescription,
-  drawingCode: z.string().trim(),
+  drawingCode: emptyStringOr(PartDrawingCode),
   finish: PartFinish,
   name: PartName,
   supplierCode: PartSupplierCode,
-  supplierId: UUID,
+  supplierId: requiredSelection(UUID, 'Select a supplier'),
 });
 
 type PartFormProps = {

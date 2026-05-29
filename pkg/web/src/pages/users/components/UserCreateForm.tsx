@@ -23,7 +23,7 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({ canAssignDepartm
   const defaultValues: UserCreateFormValues = {
     departments: [],
     email: '',
-    emailVerified: false,
+    emailVerified: true,
     name: '',
     password: '',
     role: 'sales',

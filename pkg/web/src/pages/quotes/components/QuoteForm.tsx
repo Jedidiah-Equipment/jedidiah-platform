@@ -1,4 +1,4 @@
-import { computeQuoteTotal } from '@pkg/domain';
+import { computeQuoteTotal, resolveEffectiveBom } from '@pkg/domain';
 import {
   type Assembly,
   type QuoteCreateInput,
@@ -26,7 +26,6 @@ import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
 import { type QuoteProductChoice, QuoteProductCombobox } from './QuoteProductCombobox.js';
 import { quoteStatusLabels } from './QuoteStatusBadge.js';
 import {
-  getOverriddenStandardAssemblyIds,
   QuoteFormValues,
   resolveSelectedAssemblySnapshots,
   type SelectedAssemblySnapshot,
@@ -328,11 +327,19 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 initialQuote?.productId === selectedProduct.id
                   ? initialQuote.quotedBasePrice
                   : selectedProduct.basePrice;
-              const selectedAssemblies = resolveSelectedAssemblySnapshots({
+              const selectedSnapshots = resolveSelectedAssemblySnapshots({
                 catalogAssemblies: selectedProduct.assemblies,
                 formSelections: state.values.selectedAssemblies,
                 initialSelections: initialQuote?.selectedAssemblies ?? [],
               });
+              // Stale selections (reference gone from the catalog) are excluded from the on-screen
+              // Quote Total so the figure reflects only assemblies that can still be produced.
+              const { staleSelections } = resolveEffectiveBom({
+                catalogAssemblies: selectedProduct.assemblies,
+                selectedAssemblies: selectedSnapshots,
+              });
+              const staleSnapshots = new Set(staleSelections);
+              const selectedAssemblies = selectedSnapshots.filter((snapshot) => !staleSnapshots.has(snapshot));
               const selectedAssemblyTotal = selectedAssemblies.reduce(
                 (total, assembly) => total + assembly.quotedPrice,
                 0,
@@ -458,15 +465,17 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
     formSelections: value,
     initialSelections,
   });
+  const { overriddenStandardAssemblyIds, staleSelections } = resolveEffectiveBom({
+    catalogAssemblies,
+    selectedAssemblies: selectedSnapshots,
+  });
+  const staleSnapshots = new Set(staleSelections);
   const selectedSnapshotByCatalogId = new Map<string, SelectedAssemblySnapshot>();
   for (const snapshot of selectedSnapshots) {
-    if (snapshot.productAssemblyId) {
+    if (snapshot.productAssemblyId && !staleSnapshots.has(snapshot)) {
       selectedSnapshotByCatalogId.set(snapshot.productAssemblyId, snapshot);
     }
   }
-  const selectedCatalogAssemblyIds = new Set(selectedSnapshotByCatalogId.keys());
-  const overriddenStandardAssemblyIds = getOverriddenStandardAssemblyIds(catalogAssemblies, selectedCatalogAssemblyIds);
-  const staleSelections = selectedSnapshots.filter((selection) => !selection.productAssemblyId);
 
   const setCatalogSelected = (assemblyId: string, selected: boolean) => {
     if (selected) {

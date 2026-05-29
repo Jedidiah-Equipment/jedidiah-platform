@@ -1,21 +1,19 @@
 import {
-  assemblyOverrides,
-  assemblyParts,
   type DatabaseTransaction,
   type Db,
   jobCfoAssemblies,
   jobCfoParts,
   jobStages,
   jobs,
-  productAssemblies,
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
-import { buildCfo, type CfoCatalogAssembly, JOB_STAGE_PIPELINE } from '@pkg/domain';
+import { buildCfo, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import type { AuthId, JobCreateInput, JobDetail, UserAccessSummary, UUID } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
+import { listAssemblies } from '../products/product-assembly-service.js';
 import { JobCreateFromQuoteDeniedError } from './job-errors.js';
 import { mapJobAuditRecord } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
@@ -115,33 +113,8 @@ async function buildJobCfoForQuote({
   quoteId: UUID;
   tx: DatabaseTransaction;
 }) {
-  const [assemblyRows, partRows, overrideRows, selectedRows] = await Promise.all([
-    tx
-      .select({
-        id: productAssemblies.id,
-        kind: productAssemblies.kind,
-        name: productAssemblies.name,
-      })
-      .from(productAssemblies)
-      .where(eq(productAssemblies.productId, productId))
-      .orderBy(asc(productAssemblies.createdAt), asc(productAssemblies.id)),
-    tx
-      .select({
-        assemblyId: assemblyParts.assemblyId,
-        partId: assemblyParts.partId,
-        quantity: assemblyParts.quantity,
-      })
-      .from(assemblyParts)
-      .innerJoin(productAssemblies, eq(assemblyParts.assemblyId, productAssemblies.id))
-      .where(eq(productAssemblies.productId, productId))
-      .orderBy(asc(productAssemblies.createdAt), asc(productAssemblies.id), asc(assemblyParts.partId)),
-    tx
-      .select({
-        optionalAssemblyId: assemblyOverrides.optionalAssemblyId,
-        standardAssemblyId: assemblyOverrides.standardAssemblyId,
-      })
-      .from(assemblyOverrides)
-      .where(eq(assemblyOverrides.productId, productId)),
+  const [catalogAssemblies, selectedRows] = await Promise.all([
+    listAssemblies({ productId, tx }),
     tx
       .select({
         assemblyName: quoteSelectedAssemblies.quotedName,
@@ -152,40 +125,9 @@ async function buildJobCfoForQuote({
       .orderBy(asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)),
   ]);
 
-  const partsByAssemblyId = new Map<UUID, CfoCatalogAssembly['parts']>();
-  for (const partRow of partRows) {
-    const parts = partsByAssemblyId.get(partRow.assemblyId) ?? [];
-    partsByAssemblyId.set(partRow.assemblyId, [
-      ...parts,
-      {
-        partId: partRow.partId,
-        quantity: partRow.quantity,
-      },
-    ]);
-  }
-
-  const standardAssemblies: CfoCatalogAssembly[] = [];
-  const optionalAssemblies: CfoCatalogAssembly[] = [];
-
-  for (const assemblyRow of assemblyRows) {
-    const assembly = {
-      id: assemblyRow.id,
-      name: assemblyRow.name,
-      parts: partsByAssemblyId.get(assemblyRow.id) ?? [],
-    };
-
-    if (assemblyRow.kind === 'standard') {
-      standardAssemblies.push(assembly);
-    } else {
-      optionalAssemblies.push(assembly);
-    }
-  }
-
   const result = buildCfo({
-    optionalAssemblies,
-    overrides: overrideRows,
+    catalogAssemblies,
     selectedAssemblies: selectedRows,
-    standardAssemblies,
   });
 
   if (!result.ok) {

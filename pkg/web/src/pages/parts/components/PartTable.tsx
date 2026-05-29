@@ -1,4 +1,4 @@
-import { type Part, type PartListInput, PartSortBy, type UUID } from '@pkg/schema';
+import { PART_UNIT_OF_MEASURE_LABELS, type Part, type PartListInput, PartSortBy, type UUID } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { PencilIcon } from 'lucide-react';
@@ -103,6 +103,13 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Finish',
+      },
+      {
+        accessorKey: 'unitOfMeasure',
+        cell: ({ row }) => PART_UNIT_OF_MEASURE_LABELS[row.original.unitOfMeasure],
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Unit',
       },
       {
         accessorKey: 'category',

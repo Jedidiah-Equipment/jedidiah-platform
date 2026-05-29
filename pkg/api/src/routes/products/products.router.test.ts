@@ -432,6 +432,7 @@ async function createParts(db: Db): Promise<{ bucket: string; hose: string; rock
         name: 'Standard bucket',
         supplierCode: 'BKT-STD',
         supplierId,
+        unitOfMeasure: 'quantity',
       },
       {
         id: '00000000-0000-4000-8000-000000000303',
@@ -442,6 +443,7 @@ async function createParts(db: Db): Promise<{ bucket: string; hose: string; rock
         name: 'Hydraulic hose',
         supplierCode: 'HSE-001',
         supplierId,
+        unitOfMeasure: 'mm',
       },
       {
         id: '00000000-0000-4000-8000-000000000304',
@@ -452,6 +454,7 @@ async function createParts(db: Db): Promise<{ bucket: string; hose: string; rock
         name: 'Rock bucket',
         supplierCode: 'BKT-ROCK',
         supplierId,
+        unitOfMeasure: 'quantity',
       },
     ])
     .onConflictDoNothing();

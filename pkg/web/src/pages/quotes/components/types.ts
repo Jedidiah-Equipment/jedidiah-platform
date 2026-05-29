@@ -171,22 +171,3 @@ export function resolveSelectedAssemblySnapshots({
     })
     .filter((selection): selection is SelectedAssemblySnapshot => Boolean(selection));
 }
-
-export function getOverriddenStandardAssemblyIds(
-  catalogAssemblies: Assembly[],
-  selectedCatalogAssemblyIds: Set<string>,
-) {
-  const overriddenIds = new Set<string>();
-
-  for (const assembly of catalogAssemblies) {
-    if (assembly.kind !== 'optional' || !selectedCatalogAssemblyIds.has(assembly.id)) {
-      continue;
-    }
-
-    for (const standardAssemblyId of assembly.overrideStandardAssemblyIds) {
-      overriddenIds.add(standardAssemblyId);
-    }
-  }
-
-  return overriddenIds;
-}

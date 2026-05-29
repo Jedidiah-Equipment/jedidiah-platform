@@ -1,21 +1,15 @@
 import { computeQuoteTotal } from '@pkg/domain';
 import {
   type Assembly,
-  AuthId,
-  CustomerCompanyName,
-  Price,
-  QuoteCreateInput,
+  type QuoteCreateInput,
   type QuoteDetail,
   type QuoteSelectedAssembly,
-  QuoteSelectedAssemblyInput,
   QuoteStatus,
-  UUID,
 } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2Icon, XIcon } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { z } from 'zod';
 
 import { getFieldErrors } from '@/components/form/field-errors.js';
 import { useAppForm } from '@/components/form/index.js';
@@ -29,61 +23,13 @@ import { formatCurrency, formatPercent } from '@/utils/number.js';
 import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
 import { type QuoteProductChoice, QuoteProductCombobox } from './QuoteProductCombobox.js';
 import { quoteStatusLabels } from './QuoteStatusBadge.js';
-
-const CustomerMode = z.enum(['existing', 'inline']);
-
-type QuoteFormValues = z.infer<typeof QuoteFormValues>;
-const QuoteFormValues = z
-  .object({
-    customerId: z.string(),
-    customerMode: CustomerMode,
-    deliveryIncluded: z.boolean(),
-    deliveryPrice: Price,
-    discount: Price,
-    inlineCompanyName: z.string(),
-    notes: z.string(),
-    paymentTerms: z.string(),
-    plannedDeliveryDate: z.union([z.literal(''), z.iso.date()]),
-    preferredDeliveryDate: z.union([z.literal(''), z.iso.date()]),
-    productId: z.string(),
-    salesPersonId: z.string(),
-    selectedAssemblies: z.array(QuoteSelectedAssemblyInput),
-    status: QuoteStatus,
-    validUntil: z.union([z.literal(''), z.iso.date()]),
-  })
-  .superRefine((value, context) => {
-    if (value.customerMode === 'existing' && !UUID.safeParse(value.customerId).success) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Select a customer',
-        path: ['customerId'],
-      });
-    }
-
-    if (value.customerMode === 'inline' && !CustomerCompanyName.safeParse(value.inlineCompanyName).success) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Company name is required',
-        path: ['inlineCompanyName'],
-      });
-    }
-
-    if (!UUID.safeParse(value.productId).success) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Select a product',
-        path: ['productId'],
-      });
-    }
-
-    if (!AuthId.safeParse(value.salesPersonId).success) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Select a salesperson',
-        path: ['salesPersonId'],
-      });
-    }
-  });
+import {
+  getOverriddenStandardAssemblyIds,
+  QuoteFormValues,
+  resolveSelectedAssemblySnapshots,
+  toQuoteCreateInput,
+  toQuoteFormValues,
+} from './types.js';
 
 type QuoteFormProps = {
   initialQuote?: QuoteDetail | undefined;
@@ -114,57 +60,13 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
     [initialQuote],
   );
 
-  const defaultValues: QuoteFormValues = {
-    customerId: initialQuote?.customerId ?? '',
-    customerMode: 'existing',
-    deliveryIncluded: initialQuote?.deliveryIncluded ?? true,
-    deliveryPrice: initialQuote?.deliveryPrice ?? 0,
-    discount: initialQuote?.discount ?? 0,
-    inlineCompanyName: '',
-    notes: initialQuote?.notes ?? '',
-    paymentTerms: initialQuote?.paymentTerms ?? '',
-    plannedDeliveryDate: initialQuote?.plannedDeliveryDate ?? '',
-    preferredDeliveryDate: initialQuote?.preferredDeliveryDate ?? '',
-    productId: initialQuote?.productId ?? '',
-    salesPersonId: initialQuote?.salesPersonId ?? '',
-    selectedAssemblies:
-      initialQuote?.selectedAssemblies.map((selection) => ({ type: 'existing', id: selection.id })) ?? [],
-    status: initialQuote?.status ?? 'draft',
-    validUntil: initialQuote?.validUntil ?? '',
-  };
-
   const form = useAppForm({
-    defaultValues,
+    defaultValues: toQuoteFormValues(initialQuote),
     validators: {
       onSubmit: QuoteFormValues,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit(
-        QuoteCreateInput.parse({
-          customer:
-            value.customerMode === 'existing'
-              ? {
-                  type: 'existing',
-                  customerId: value.customerId,
-                }
-              : {
-                  type: 'inline',
-                  companyName: value.inlineCompanyName,
-                },
-          deliveryIncluded: value.deliveryIncluded,
-          deliveryPrice: value.deliveryIncluded ? value.deliveryPrice : 0,
-          discount: value.discount,
-          notes: value.notes,
-          paymentTerms: value.paymentTerms,
-          plannedDeliveryDate: value.plannedDeliveryDate || null,
-          preferredDeliveryDate: value.preferredDeliveryDate || null,
-          productId: value.productId,
-          salesPersonId: value.salesPersonId,
-          selectedAssemblies: value.selectedAssemblies,
-          status: value.status,
-          validUntil: value.validUntil || null,
-        }),
-      );
+      await onSubmit(toQuoteCreateInput(value));
     },
   });
 
@@ -650,62 +552,6 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
     </div>
   );
 };
-
-type SelectedAssemblySnapshot = {
-  id: UUID;
-  productAssemblyId: UUID | null;
-  quotedName: string;
-  quotedPrice: number;
-};
-
-function resolveSelectedAssemblySnapshots({
-  catalogAssemblies,
-  formSelections,
-  initialSelections,
-}: {
-  catalogAssemblies: Assembly[];
-  formSelections: QuoteFormValues['selectedAssemblies'];
-  initialSelections: QuoteSelectedAssembly[];
-}): SelectedAssemblySnapshot[] {
-  return formSelections
-    .map((selection): SelectedAssemblySnapshot | null => {
-      if (selection.type === 'existing') {
-        return initialSelections.find((item) => item.id === selection.id) ?? null;
-      }
-
-      const assembly = catalogAssemblies.find(
-        (item) => item.id === selection.productAssemblyId && item.kind === 'optional',
-      );
-
-      if (!assembly || assembly.kind !== 'optional') {
-        return null;
-      }
-
-      return {
-        id: selection.productAssemblyId,
-        productAssemblyId: assembly.id,
-        quotedName: assembly.name,
-        quotedPrice: assembly.price,
-      };
-    })
-    .filter((selection): selection is SelectedAssemblySnapshot => Boolean(selection));
-}
-
-function getOverriddenStandardAssemblyIds(catalogAssemblies: Assembly[], selectedCatalogAssemblyIds: Set<string>) {
-  const overriddenIds = new Set<string>();
-
-  for (const assembly of catalogAssemblies) {
-    if (assembly.kind !== 'optional' || !selectedCatalogAssemblyIds.has(assembly.id)) {
-      continue;
-    }
-
-    for (const standardAssemblyId of assembly.overrideStandardAssemblyIds) {
-      overriddenIds.add(standardAssemblyId);
-    }
-  }
-
-  return overriddenIds;
-}
 
 type QuoteSummaryRowProps = {
   className?: string;

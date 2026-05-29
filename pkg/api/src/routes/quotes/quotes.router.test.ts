@@ -92,6 +92,29 @@ describe('quotes.create', () => {
     });
   });
 
+  test('creates a cancelled quote as a normal status', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    const created = await caller.quotes.create({
+      customer: {
+        type: 'inline',
+        companyName: 'Cancelled Customer',
+      },
+      discount: 0,
+      notes: null,
+      paymentTerms: null,
+      productId: context.product.id,
+      salesPersonId: 'test-user-id',
+      status: 'cancelled',
+      validUntil: null,
+    });
+
+    expect(created).toMatchObject({
+      customerCompanyName: 'Cancelled Customer',
+      status: 'cancelled',
+    });
+  });
+
   test('rejects an unknown salesperson id as bad input', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
@@ -134,14 +157,14 @@ describe('quotes.create', () => {
     const updated = await caller.quotes.update({
       ...toUpdateInput(created),
       notes: 'Editable after sent',
-      status: 'rejected',
+      status: 'cancelled',
     });
     const events = await context.db.select().from(auditEvents).orderBy(auditEvents.occurredAt);
     const updateEvent = events.findLast((event) => event.entityType === 'quote' && event.action === 'updated');
 
     expect(updated).toMatchObject({
       notes: 'Editable after sent',
-      status: 'rejected',
+      status: 'cancelled',
     });
     expect(updateEvent?.changes).toMatchObject({
       notes: {
@@ -150,7 +173,7 @@ describe('quotes.create', () => {
       },
       status: {
         from: 'sent',
-        to: 'rejected',
+        to: 'cancelled',
       },
     });
   });
@@ -403,6 +426,15 @@ describe('quotes.list', () => {
       productId: crusherProduct.id,
       salesPersonId: 'another-sales-id',
     });
+    const createdCancelledQuote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Cancelled Works',
+      discount: 0,
+      productId: context.product.id,
+    });
+    const cancelledQuote = await salesCaller.quotes.update({
+      ...toUpdateInput(createdCancelledQuote),
+      status: 'cancelled',
+    });
     const job = await supervisorCaller.jobs.create({
       quoteId: finalQuote.id,
     });
@@ -480,6 +512,28 @@ describe('quotes.list', () => {
         {
           code: draftQuote.code,
           productName: 'Crusher Bucket',
+        },
+      ],
+    });
+
+    await expect(
+      salesCaller.quotes.list({
+        filters: {
+          statuses: ['cancelled'],
+        },
+        page: 1,
+        pageSize: 10,
+        search: 'Cancelled',
+        sortBy: 'createdAt',
+        sortDirection: 'desc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        {
+          code: cancelledQuote.code,
+          customerCompanyName: 'Cancelled Works',
+          status: 'cancelled',
         },
       ],
     });
@@ -733,14 +787,14 @@ describe('jobs.create with quote links', () => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
     const created = await createReadyQuote(salesCaller, context.product.id);
-    const sent = await salesCaller.quotes.update({
+    const cancelled = await salesCaller.quotes.update({
       ...toUpdateInput(created),
-      status: 'sent',
+      status: 'cancelled',
     });
 
     await expect(
       supervisorCaller.jobs.create({
-        quoteId: sent.id,
+        quoteId: cancelled.id,
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',

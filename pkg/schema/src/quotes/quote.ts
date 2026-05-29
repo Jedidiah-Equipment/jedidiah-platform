@@ -10,7 +10,7 @@ import { UUID } from '../common/uuid.js';
 import { Assembly, ProductCurrencyCode } from '../products/product.js';
 
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
-export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected']);
+export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
 
 export { formatQuoteCode, QuoteCode } from '../common/public-code.js';
 

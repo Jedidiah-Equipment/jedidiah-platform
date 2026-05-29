@@ -33,7 +33,8 @@ export const aiLinkMetadata = {
     entity: 'Quote',
     href: '/quotes/{id}',
     guidance: [
-      'Quote Status is a cosmetic label with no transition rules, side effects, or creation gates; it is freely editable and used for display, filtering, and sorting.',
+      'Quote Status is editable until the Quote sources a Job; only accepted Quotes can create a Job.',
+      'A Quote sources at most one Job, and a Locked Quote never reopens after its Job exists.',
       'Quote Product is required at creation and immutable post-creation; productId is non-nullable.',
       'Quote Salesperson is required at creation; salesPersonId is non-nullable.',
       'Quote price snapshot fields quotedBasePrice and quotedCurrencyCode are latched from Product at creation.',

@@ -30,13 +30,24 @@ export const AI_DOMAIN_RELATIONSHIPS = [
   {
     from: 'Quote',
     to: 'Job',
-    meaning: 'A Quote may source any number of Jobs; a Job may also exist without a Quote.',
+    meaning: 'A Quote sources at most one Job; every Job is created from exactly one accepted Quote.',
   },
   {
     from: 'Job',
     to: 'Department',
     meaning:
       'Every Job has five fixed Pipeline Stages, but users experience and label them as Departments: Procurement, Supply, Fabrication, Paint, Assembly.',
+  },
+  {
+    from: 'Assembly',
+    to: 'Part',
+    meaning:
+      'Assemblies specify Part quantities; the Part owns the unit of measure, so bill-of-materials quantities must be read with the Part unit.',
+  },
+  {
+    from: 'Part',
+    to: 'Unit of Measure',
+    meaning: 'Part.unitOfMeasure is either quantity for counted parts or mm for millimetre-measured parts.',
   },
 ] satisfies readonly AiDomainRelationship[];
 

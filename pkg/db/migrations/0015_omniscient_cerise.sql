@@ -1,0 +1,1 @@
+ALTER TABLE "parts" ADD COLUMN "is_internally_fabricated" boolean DEFAULT false NOT NULL;

@@ -16,6 +16,7 @@ export const PART_BULK_IMPORT_COLUMNS = [
   'Catagory',
   'Name',
   'Unit',
+  'Internally Fabricated',
 ] as const;
 
 type PartBulkImportColumnKey =
@@ -24,6 +25,7 @@ type PartBulkImportColumnKey =
   | 'description'
   | 'drawingCode'
   | 'finish'
+  | 'isInternallyFabricated'
   | 'name'
   | 'supplierCode'
   | 'supplierName'
@@ -54,6 +56,11 @@ const columnDefinitions: readonly ColumnDefinition[] = [
   { key: 'category', label: 'Catagory', normalizedHeaders: ['catagory', 'category'] },
   { key: 'name', label: 'Name', normalizedHeaders: ['name'] },
   { key: 'unitOfMeasure', label: 'Unit', normalizedHeaders: ['unit', 'unitofmeasure', 'unitofmeasurement'] },
+  {
+    key: 'isInternallyFabricated',
+    label: 'Internally Fabricated',
+    normalizedHeaders: ['internallyfabricated', 'internalfabrication', 'internal'],
+  },
 ];
 
 const columnLabelsByKey = new Map<PartBulkImportColumnKey, string>(
@@ -67,6 +74,16 @@ const unitOfMeasureLabels = new Map<string, PartUnitOfMeasureValue>([
   ['millimetres', 'mm'],
   ['millimeters', 'mm'],
   ['quantity', 'quantity'],
+]);
+const booleanLabels = new Map<string, boolean>([
+  ['0', false],
+  ['1', true],
+  ['false', false],
+  ['n', false],
+  ['no', false],
+  ['true', true],
+  ['y', true],
+  ['yes', true],
 ]);
 
 export function parsePartBulkImportCsv(
@@ -138,7 +155,11 @@ export function parsePartBulkImportCsv(
         const key = issue.path[0];
         const label = typeof key === 'string' ? columnLabelsByKey.get(key as PartBulkImportColumnKey) : undefined;
         const message =
-          key === 'unitOfMeasure' ? `Unit must be one of ${PartUnitOfMeasure.options.join(', ')}.` : issue.message;
+          key === 'unitOfMeasure'
+            ? `Unit must be one of ${PartUnitOfMeasure.options.join(', ')}.`
+            : key === 'isInternallyFabricated'
+              ? 'Internally Fabricated must be one of true, false, yes, no, y, n, 1, or 0.'
+              : issue.message;
         errors.push(`Row ${rowNumber}: ${label ?? 'Value'} - ${message}`);
       }
       return;
@@ -185,13 +206,14 @@ function getHeaderColumnIndexes(headers: readonly string[]): {
 function buildRowInput(
   row: readonly string[],
   indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
-): Record<PartBulkImportColumnKey, string | null> {
+): Record<PartBulkImportColumnKey, string | boolean | null> {
   return {
     category: getFormattedCell(row, indexes, 'category'),
     code: getCell(row, indexes, 'code'),
     description: getCell(row, indexes, 'description'),
     drawingCode: getCell(row, indexes, 'drawingCode'),
     finish: getFormattedCell(row, indexes, 'finish'),
+    isInternallyFabricated: getBooleanCell(row, indexes, 'isInternallyFabricated'),
     name: getFormattedCell(row, indexes, 'name'),
     supplierCode: getCell(row, indexes, 'supplierCode'),
     supplierName: getFormattedCell(row, indexes, 'supplierName'),
@@ -217,6 +239,16 @@ function getFormattedCell(
   const value = getCell(row, indexes, key);
 
   return formattedFieldKeys.has(key) ? formatPartImportDisplayValue(value) : value;
+}
+
+function getBooleanCell(
+  row: readonly string[],
+  indexes: ReadonlyMap<PartBulkImportColumnKey, number>,
+  key: PartBulkImportColumnKey,
+): boolean | string {
+  const value = getCell(row, indexes, key).trim();
+
+  return booleanLabels.get(value.toLowerCase()) ?? value;
 }
 
 function getUnitOfMeasureCell(

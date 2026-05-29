@@ -75,6 +75,7 @@ async function createPart(
     description: 'Hydraulic hose',
     drawingCode: null,
     finish: 'Rubber',
+    isInternallyFabricated: false,
     name: 'Hydraulic hose',
     supplierCode: 'SUP-PART-001',
     supplierId: supplier.id,

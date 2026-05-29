@@ -64,6 +64,9 @@ export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, 
         <form.AppField name="unitOfMeasure">
           {(field) => <field.SelectField label="Unit" options={partUnitOfMeasureOptions} placeholder="Select unit" />}
         </form.AppField>
+        <form.AppField name="isInternallyFabricated">
+          {(field) => <field.CheckboxField label="Internally fabricated" />}
+        </form.AppField>
         <form.AppField name="category">
           {(field) => (
             <field.CreatableComboboxField

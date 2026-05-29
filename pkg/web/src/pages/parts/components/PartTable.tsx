@@ -126,6 +126,20 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
         },
       },
       {
+        accessorKey: 'isInternallyFabricated',
+        cell: ({ row }) => (row.original.isInternallyFabricated ? 'Yes' : 'No'),
+        enableColumnFilter: true,
+        enableSorting: false,
+        header: 'Internal',
+        meta: {
+          filterOptions: [
+            { label: 'Yes', value: 'true' },
+            { label: 'No', value: 'false' },
+          ],
+          filterVariant: 'select',
+        },
+      },
+      {
         accessorKey: 'category',
         enableColumnFilter: true,
         enableSorting: true,
@@ -213,6 +227,7 @@ function getPartListInputExtras(columnFilters: ColumnFiltersState, supplierId: U
     category: getColumnFilterValue(columnFilters, 'category'),
     columnFilters: {
       code: getColumnFilterValue(columnFilters, 'code'),
+      isInternallyFabricated: getInternallyFabricatedFilterValue(columnFilters),
       name: getColumnFilterValue(columnFilters, 'name'),
       supplierCode: getColumnFilterValue(columnFilters, 'supplierCode'),
       unitOfMeasure: getUnitOfMeasureFilterValue(columnFilters),
@@ -228,6 +243,17 @@ function getColumnFilterValue(
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;
+}
+
+function getInternallyFabricatedFilterValue(
+  columnFilters: ColumnFiltersState,
+): PartListInput['columnFilters']['isInternallyFabricated'] {
+  const value = columnFilters.find((filter) => filter.id === 'isInternallyFabricated')?.value;
+
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+
+  return undefined;
 }
 
 function getUnitOfMeasureFilterValue(

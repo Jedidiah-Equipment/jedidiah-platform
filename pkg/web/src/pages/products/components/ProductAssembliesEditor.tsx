@@ -31,6 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { formatCurrency } from '@/utils/number.js';
+import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 import { emptyProductFormValues } from './types.js';
 
 const ALL_CATEGORIES = '__all__';
@@ -456,7 +457,7 @@ const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({ categories, ind
             <TableHeader>
               <TableRow>
                 <TableHead>Part</TableHead>
-                <TableHead className="w-28">Quantity</TableHead>
+                <TableHead className="w-36">Quantity</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -501,6 +502,7 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
   const selectedPart = partOptions.find((option) => option.id === part.partId);
   const [category, setCategory] = React.useState(selectedPart?.category ?? ALL_CATEGORIES);
   const visibleParts = partOptions.filter((option) => category === ALL_CATEGORIES || option.category === category);
+  const quantityUnitDisplay = getPartQuantityUnitDisplay(selectedPart?.unitOfMeasure);
 
   return (
     <TableRow>
@@ -572,13 +574,21 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
 
             return (
               <Field data-invalid={isInvalid}>
-                <Input
-                  aria-invalid={isInvalid}
-                  inputMode="numeric"
-                  value={Number.isFinite(field.state.value) ? String(field.state.value) : ''}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(Number(event.target.value))}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    aria-invalid={isInvalid}
+                    className="w-24"
+                    inputMode="numeric"
+                    value={Number.isFinite(field.state.value) ? String(field.state.value) : ''}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(Number(event.target.value))}
+                  />
+                  {quantityUnitDisplay.suffix ? (
+                    <span className="min-w-6 text-muted-foreground text-sm" title={quantityUnitDisplay.label}>
+                      {quantityUnitDisplay.suffix}
+                    </span>
+                  ) : null}
+                </div>
                 <FieldError errors={errors} />
               </Field>
             );

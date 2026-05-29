@@ -1,3 +1,4 @@
+import { hasPermission } from '@pkg/domain';
 import type { QuoteSummary } from '@pkg/schema';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -17,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -29,8 +31,10 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
   const trpc = useTRPC();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
+  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
   const canGenerate = quote.status === 'accepted' && quote.linkedJobs.length === 0;
   const createJobMutation = useMutation(
     trpc.jobs.create.mutationOptions({
@@ -47,7 +51,7 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
     }),
   );
 
-  if (!canGenerate) {
+  if (!canCreateJob || !canGenerate) {
     return null;
   }
 

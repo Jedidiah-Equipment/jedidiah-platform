@@ -121,7 +121,7 @@ Private Sub InitCollections()
 End Sub
 
 Private Sub TraverseTopLevelAssembly(ByVal assemblyModel As Object)
-    EnsureAssembly "UNASSIGNED", "Unassigned", assemblyModel.GetPathName, Sha256File(assemblyModel.GetPathName), "[]"
+    EnsureAssembly "UNASSIGNED", "Unassigned", "", "", "[]"
 
     Dim asm As Object
     Set asm = assemblyModel

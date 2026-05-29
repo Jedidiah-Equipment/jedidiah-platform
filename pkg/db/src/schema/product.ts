@@ -25,6 +25,7 @@ export const products = pgTable(
     buildTimeDays: integer('build_time_days').notNull(),
     modelCode: text('model_code').notNull(),
     name: text('name').notNull(),
+    thumbnailDataUrl: text('thumbnail_data_url'),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

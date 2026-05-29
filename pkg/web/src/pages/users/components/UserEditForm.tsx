@@ -18,6 +18,7 @@ export const UserEditFormValues = UserSummary.pick({
   emailVerified: true,
   name: true,
   role: true,
+  thumbnailDataUrl: true,
 });
 
 type UserEditFormProps = {
@@ -52,6 +53,7 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
       emailVerified: initialUser.emailVerified,
       name: initialUser.name,
       role: initialUser.role,
+      thumbnailDataUrl: initialUser.thumbnailDataUrl,
     } satisfies UserEditFormValues,
     validators: {
       onSubmit: UserEditFormValues,
@@ -78,6 +80,15 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
               <>
                 <form.AppField name="name">
                   {(field) => <field.TextField autoComplete="name" disabled={isPending} label="Full Name" />}
+                </form.AppField>
+                <form.AppField name="thumbnailDataUrl">
+                  {(field) => (
+                    <field.ThumbnailField
+                      disabled={isPending}
+                      fallbackLabel={form.state.values.name || form.state.values.email}
+                      label="Thumbnail"
+                    />
+                  )}
                 </form.AppField>
                 <form.AppField name="email">
                   {(field) => <field.TextField autoComplete="email" disabled={isPending} label="Email" type="email" />}

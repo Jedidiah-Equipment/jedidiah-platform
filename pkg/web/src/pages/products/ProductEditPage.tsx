@@ -58,6 +58,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
               buildTimeDays: value.buildTimeDays,
               modelCode: value.modelCode,
               name: value.name,
+              thumbnailDataUrl: value.thumbnailDataUrl,
             })
           }
           submitLabel="Save product"

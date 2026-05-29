@@ -8,6 +8,7 @@ import {
   nullableTrimmedTextInput,
   requiredTrimmedText,
 } from '../common/text.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 
 export type CustomerCompanyName = z.infer<typeof CustomerCompanyName>;
@@ -34,6 +35,7 @@ export const Customer = z.object({
   contactPerson: CustomerOptionalText,
   phone: CustomerOptionalText,
   notes: CustomerOptionalText,
+  thumbnailDataUrl: NullableThumbnailDataUrl,
   createdAt: DateIso,
   updatedAt: DateIso,
 });
@@ -58,6 +60,7 @@ export const CustomerCreateInput = z.object({
   contactPerson: CustomerOptionalTextInput,
   phone: CustomerOptionalTextInput,
   notes: CustomerOptionalTextInput,
+  thumbnailDataUrl: NullableThumbnailDataUrl.default(null),
 });
 
 export type CustomerUpdateInput = z.infer<typeof CustomerUpdateInput>;

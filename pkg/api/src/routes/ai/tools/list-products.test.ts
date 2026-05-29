@@ -67,6 +67,7 @@ describe('listProductsTool', () => {
     const editorCaller = context.createCaller(mockSession('product-editor'));
     await createProduct(adminCaller, 'Compact Loader', {
       modelCode: 'CL-100',
+      thumbnailDataUrl: 'data:image/webp;base64,aaaa',
     });
     await createProduct(adminCaller, 'Excavator Bucket', {
       modelCode: 'EX-200',

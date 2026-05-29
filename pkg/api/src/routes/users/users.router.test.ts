@@ -13,6 +13,8 @@ import { createAppRouterCaller } from '@/trpc/router.js';
 
 const test = createTester(({ db }) => ({ db }));
 
+const THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';
+
 describe('users.list', () => {
   test('rejects unauthenticated user lists', async ({ context }) => {
     await expect(context.createAnonCaller().users.list()).rejects.toMatchObject({
@@ -39,8 +41,28 @@ describe('users.list', () => {
         id: 'viewer-user-id',
         name: 'Viewer User',
         role: 'sales',
+        thumbnailDataUrl: null,
       },
     ]);
+  });
+
+  test('maps user image storage to thumbnailDataUrl in list responses', async ({ context }) => {
+    await createUser(context.db, {
+      email: 'thumbnail@example.com',
+      id: 'thumbnail-user-id',
+      image: THUMBNAIL_DATA_URL,
+      name: 'Thumbnail User',
+      role: 'sales',
+    });
+
+    await expect(context.createCaller().users.list()).resolves.toMatchObject({
+      users: [
+        {
+          id: 'thumbnail-user-id',
+          thumbnailDataUrl: THUMBNAIL_DATA_URL,
+        },
+      ],
+    });
   });
 
   test('rejects unknown stored roles in list responses', async ({ context }) => {
@@ -215,6 +237,46 @@ describe('users.list', () => {
   });
 });
 
+describe('users.updateThumbnail', () => {
+  test('updates and removes user thumbnails with audit changes', async ({ context }) => {
+    await createUser(context.db, {
+      email: 'admin@example.com',
+      id: 'test-user-id',
+      name: 'Test User',
+      role: 'admin',
+    });
+    await createUser(context.db, {
+      email: 'thumbnail-target@example.com',
+      id: 'thumbnail-target-user-id',
+      image: THUMBNAIL_DATA_URL,
+      name: 'Thumbnail Target',
+      role: 'sales',
+    });
+
+    const updated = await context.createCaller().users.updateThumbnail({
+      thumbnailDataUrl: null,
+      userId: 'thumbnail-target-user-id',
+    });
+
+    expect(updated.thumbnailDataUrl).toBeNull();
+
+    const events = await context.db.select().from(auditEvents);
+    expect(events).toMatchObject([
+      {
+        action: 'updated',
+        changes: {
+          thumbnailDataUrl: {
+            from: THUMBNAIL_DATA_URL,
+            to: null,
+          },
+        },
+        entityId: 'thumbnail-target-user-id',
+        entityType: 'user',
+      },
+    ]);
+  });
+});
+
 describe('users.sendVerificationEmail', () => {
   beforeEach(() => {
     clearMockEmailMessages();
@@ -280,6 +342,7 @@ async function createUser(
     email: string;
     emailVerified?: boolean;
     id: string;
+    image?: string | null;
     name: string;
     role: AppRole | string;
   },
@@ -292,6 +355,7 @@ async function createUser(
       email: input.email,
       emailVerified: input.emailVerified ?? true,
       id: input.id,
+      image: input.image ?? null,
       name: input.name,
       role: input.role,
       createdAt: now,

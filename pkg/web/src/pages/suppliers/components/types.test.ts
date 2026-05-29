@@ -14,6 +14,7 @@ function buildSupplier(overrides: Record<string, unknown> = {}): Supplier {
     contactPerson: 'Sam',
     phone: '0456',
     notes: 'Preferred',
+    thumbnailDataUrl: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -29,6 +30,7 @@ describe('toSupplierFormValues', () => {
       email: '',
       notes: '',
       phone: '',
+      thumbnailDataUrl: null,
     });
   });
 
@@ -44,6 +46,7 @@ describe('toSupplierFormValues', () => {
       email: '',
       notes: '',
       phone: '',
+      thumbnailDataUrl: null,
     });
   });
 });
@@ -57,6 +60,7 @@ describe('toSupplierCreateInput', () => {
       email: 'Orders@Bolt.TEST',
       notes: '',
       phone: '',
+      thumbnailDataUrl: null,
     });
 
     expect(input).toEqual({
@@ -66,6 +70,7 @@ describe('toSupplierCreateInput', () => {
       email: 'orders@bolt.test',
       notes: null,
       phone: null,
+      thumbnailDataUrl: null,
     });
   });
 });

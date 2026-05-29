@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Department } from '../common/departments.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { AuthId } from './auth-id.js';
 
 export const APP_ROLES = ['admin', 'product-editor', 'job-supervisor', 'job-department-manager', 'sales'] as const;
@@ -54,6 +55,7 @@ export const UserSummary = z.object({
   name: z.string().trim().min(1),
   email: z.email(),
   role: AppRole,
+  thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
 export type UserSortBy = z.infer<typeof UserSortBy>;

@@ -11,6 +11,8 @@ const test = createTester(async ({ db }) => {
   return { db };
 });
 
+const THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';
+
 async function createProduct(
   caller: AppRouterCaller,
   name: string,
@@ -167,6 +169,25 @@ describe('products.read', () => {
       }),
     );
   });
+
+  test('returns product thumbnails on get and list', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Thumbnail Product', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
+
+    await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
+      id: created.id,
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
+    });
+
+    await expect(caller.products.list({ search: 'Thumbnail' })).resolves.toMatchObject({
+      items: [
+        expect.objectContaining({
+          id: created.id,
+          thumbnailDataUrl: THUMBNAIL_DATA_URL,
+        }),
+      ],
+    });
+  });
 });
 
 describe('products.update', () => {
@@ -203,6 +224,38 @@ describe('products.update', () => {
         }),
       }),
     );
+  });
+
+  test('updates and removes product thumbnails with audit changes', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createProduct(caller, 'Thumbnail Audit Product', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
+
+    const updated = await caller.products.update({
+      assemblies: created.assemblies,
+      basePrice: created.basePrice,
+      currencyCode: created.currencyCode,
+      description: created.description,
+      buildTimeDays: created.buildTimeDays,
+      id: created.id,
+      modelCode: created.modelCode,
+      name: created.name,
+      thumbnailDataUrl: null,
+    });
+
+    expect(updated.thumbnailDataUrl).toBeNull();
+
+    const events = await context.db.select().from(auditEvents);
+    expect(events.at(-1)).toMatchObject({
+      action: 'updated',
+      changes: {
+        thumbnailDataUrl: {
+          from: THUMBNAIL_DATA_URL,
+          to: null,
+        },
+      },
+      entityId: created.id,
+      entityType: 'product',
+    });
   });
 
   test('updates assembly composition and records product audit changes', async ({ context }) => {

@@ -34,6 +34,7 @@ export function mapSupplier(row: SupplierRow): Supplier {
     id: row.id,
     notes: row.notes,
     phone: row.phone,
+    thumbnailDataUrl: row.thumbnailDataUrl,
     updatedAt: row.updatedAt.toISOString(),
   });
 }
@@ -162,6 +163,7 @@ export async function updateSupplier({
         email: input.email,
         notes: input.notes,
         phone: input.phone,
+        thumbnailDataUrl: input.thumbnailDataUrl,
       };
       const after = { ...before, ...patch };
       const changes = createAuditChanges(before, after, supplierAuditDescriptor.fields);

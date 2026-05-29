@@ -21,6 +21,7 @@ describe('SupplierCreateInput', () => {
       email: 'sales@acme.example',
       notes: 'Prefers email',
       phone: '+27 11 555 0100',
+      thumbnailDataUrl: null,
     });
   });
 
@@ -41,6 +42,7 @@ describe('SupplierCreateInput', () => {
       email: null,
       notes: null,
       phone: null,
+      thumbnailDataUrl: null,
     });
   });
 

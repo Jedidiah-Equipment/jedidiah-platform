@@ -21,6 +21,7 @@ describe('ProductCreateInput', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      thumbnailDataUrl: null,
     });
   });
 
@@ -123,6 +124,7 @@ describe('ProductUpdateInput', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      thumbnailDataUrl: null,
     });
   });
 });

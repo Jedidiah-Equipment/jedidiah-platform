@@ -80,6 +80,7 @@ describe('UserSummary', () => {
         id: 'user_123',
         name: 'User Example',
         role: 'sales',
+        thumbnailDataUrl: null,
       }).departments,
     ).toEqual(['supply']);
   });
@@ -94,6 +95,7 @@ describe('UserAccount', () => {
         id: 'user_123',
         name: 'User Example',
         role: 'sales',
+        thumbnailDataUrl: null,
       }),
     ).toEqual({
       email: 'user@example.com',
@@ -101,6 +103,7 @@ describe('UserAccount', () => {
       id: 'user_123',
       name: 'User Example',
       role: 'sales',
+      thumbnailDataUrl: null,
     });
   });
 });

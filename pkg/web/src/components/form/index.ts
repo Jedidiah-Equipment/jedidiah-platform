@@ -8,5 +8,6 @@ export { ReadOnlyField, type ReadOnlyFieldProps } from './ReadOnlyField.js';
 export { SelectField, type SelectFieldProps } from './SelectField.js';
 export { TextareaField, type TextareaFieldProps } from './TextareaField.js';
 export { TextField, type TextFieldProps } from './TextField.js';
+export { ThumbnailField, type ThumbnailFieldProps } from './ThumbnailField.js';
 export type { ArrayFieldApi, FieldApi, FormFieldComponent } from './types.js';
 export { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } from './use-app-form.js';

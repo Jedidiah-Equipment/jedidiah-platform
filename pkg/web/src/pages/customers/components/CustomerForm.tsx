@@ -34,6 +34,13 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialCustomer, isP
       }}
     >
       <EditFormGrid>
+        <EditFormFullWidth>
+          <form.AppField name="thumbnailDataUrl">
+            {(field) => (
+              <field.ThumbnailField fallbackLabel={form.state.values.companyName || 'Customer'} label="Thumbnail" />
+            )}
+          </form.AppField>
+        </EditFormFullWidth>
         <form.AppField name="companyName">
           {(field) => <field.TextField autoComplete="organization" label="Company name" />}
         </form.AppField>

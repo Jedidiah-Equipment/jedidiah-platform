@@ -3,7 +3,7 @@ import { Building2Icon, ChevronsUpDownIcon, LogOutIcon, ShieldIcon } from 'lucid
 import type React from 'react';
 
 import { DepartmentIcon } from '@/components/departments/index.js';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar.js';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ type AppNavUserProps = {
     name: string;
     email: string;
     initials: string;
+    thumbnailDataUrl?: string | null;
   };
   onSignOut: () => void | Promise<void>;
 };
@@ -40,6 +41,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
         <DropdownMenu>
           <DropdownMenuTrigger render={<SidebarMenuButton className="aria-expanded:bg-muted" size="lg" />}>
             <Avatar>
+              {user.thumbnailDataUrl ? <AvatarImage alt="" src={user.thumbnailDataUrl} /> : null}
               <AvatarFallback>{user.initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
@@ -58,6 +60,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar>
+                    {user.thumbnailDataUrl ? <AvatarImage alt="" src={user.thumbnailDataUrl} /> : null}
                     <AvatarFallback>{user.initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">

@@ -14,6 +14,7 @@ function buildCustomer(overrides: Record<string, unknown> = {}): Customer {
     contactPerson: 'Jane',
     phone: '0123',
     notes: 'VIP',
+    thumbnailDataUrl: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -29,6 +30,7 @@ describe('toCustomerFormValues', () => {
       email: '',
       notes: '',
       phone: '',
+      thumbnailDataUrl: null,
     });
   });
 
@@ -44,6 +46,7 @@ describe('toCustomerFormValues', () => {
       email: '',
       notes: '',
       phone: '',
+      thumbnailDataUrl: null,
     });
   });
 });
@@ -57,6 +60,7 @@ describe('toCustomerCreateInput', () => {
       email: 'Sales@Acme.TEST',
       notes: '',
       phone: '',
+      thumbnailDataUrl: null,
     });
 
     expect(input).toEqual({
@@ -66,6 +70,7 @@ describe('toCustomerCreateInput', () => {
       email: 'sales@acme.test',
       notes: null,
       phone: null,
+      thumbnailDataUrl: null,
     });
   });
 
@@ -77,6 +82,7 @@ describe('toCustomerCreateInput', () => {
       email: 'jane@acme.test',
       notes: 'VIP',
       phone: '0123',
+      thumbnailDataUrl: null,
     });
 
     expect(input.address).toBe('1 Main Street');

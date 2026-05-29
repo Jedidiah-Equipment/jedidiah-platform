@@ -25,6 +25,7 @@ describe('listUsersTool', () => {
     await createUser(context.db, {
       email: 'viewer@example.com',
       id: 'viewer-user-id',
+      image: 'data:image/webp;base64,aaaa',
       name: 'Viewer User',
       role: 'sales',
     });
@@ -77,6 +78,7 @@ async function createUser(
     email: string;
     emailVerified?: boolean;
     id: string;
+    image?: string | null;
     name: string;
     role: AppRole | string;
   },
@@ -88,6 +90,7 @@ async function createUser(
     email: input.email,
     emailVerified: input.emailVerified ?? true,
     id: input.id,
+    image: input.image ?? null,
     name: input.name,
     role: input.role,
     updatedAt: now,

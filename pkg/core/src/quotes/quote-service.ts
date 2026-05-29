@@ -299,6 +299,7 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
         id: row.id,
         name: row.name,
         role: row.role,
+        thumbnailDataUrl: row.image,
       }),
     ),
   };

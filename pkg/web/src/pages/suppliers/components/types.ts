@@ -1,4 +1,5 @@
 import {
+  NullableThumbnailDataUrl,
   type Supplier,
   SupplierCompanyName,
   SupplierCreateInput,
@@ -17,6 +18,7 @@ export const SupplierFormValues = z.object({
   email: emptyStringOr(SupplierEmail),
   notes: emptyStringOr(SupplierOptionalText),
   phone: emptyStringOr(SupplierOptionalText),
+  thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
 /** Schema → form. Nullable schema fields collapse to `''` for controlled inputs. */
@@ -28,6 +30,7 @@ export function toSupplierFormValues(initialSupplier?: Supplier): SupplierFormVa
     email: initialSupplier?.email ?? '',
     notes: initialSupplier?.notes ?? '',
     phone: initialSupplier?.phone ?? '',
+    thumbnailDataUrl: initialSupplier?.thumbnailDataUrl ?? null,
   };
 }
 

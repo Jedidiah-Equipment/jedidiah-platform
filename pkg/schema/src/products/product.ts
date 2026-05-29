@@ -3,6 +3,7 @@ import { DateIso } from '../common/date.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 
 export type ProductName = z.infer<typeof ProductName>;
@@ -196,6 +197,7 @@ export const Product = z.object({
   buildTimeDays: ProductBuildTimeDays,
   currencyCode: ProductCurrencyCode,
   assemblies: z.array(Assembly).default([]),
+  thumbnailDataUrl: NullableThumbnailDataUrl,
   createdAt: DateIso,
   updatedAt: DateIso,
 });
@@ -222,6 +224,7 @@ export const ProductCreateInput = z
     assemblies: ProductAssembliesInput,
     buildTimeDays: ProductBuildTimeDaysInput,
     currencyCode: ProductCurrencyCode,
+    thumbnailDataUrl: NullableThumbnailDataUrl.default(null),
   })
   .strict();
 
@@ -236,6 +239,7 @@ export const ProductUpdateInput = z
     buildTimeDays: ProductBuildTimeDaysInput,
     modelCode: ProductModelCode,
     name: ProductName,
+    thumbnailDataUrl: NullableThumbnailDataUrl.default(null),
   })
   .strict();
 

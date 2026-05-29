@@ -20,6 +20,7 @@ import {
 } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPageCount, type SortOptions } from '@/components/data-table/table-state.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 
@@ -92,7 +93,13 @@ export const UserTable: React.FC<UserTableProps> = ({
     const tableColumns: ColumnDef<UserSummary>[] = [
       {
         accessorKey: 'name',
-        cell: ({ row }) => <UserNameCell isCurrentUser={currentUserId === row.original.id} name={row.original.name} />,
+        cell: ({ row }) => (
+          <UserNameCell
+            isCurrentUser={currentUserId === row.original.id}
+            name={row.original.name}
+            thumbnailDataUrl={row.original.thumbnailDataUrl}
+          />
+        ),
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Full Name',
@@ -201,10 +208,12 @@ export const UserTable: React.FC<UserTableProps> = ({
 type UserNameCellProps = {
   isCurrentUser: boolean;
   name: string;
+  thumbnailDataUrl?: string | null;
 };
 
-const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, name }) => (
+const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, name, thumbnailDataUrl }) => (
   <div className="flex items-center gap-2 font-medium">
+    <EntityThumbnail label={name} size="sm" thumbnailDataUrl={thumbnailDataUrl} />
     <span>{name}</span>
     {isCurrentUser ? <Badge variant="outline">You</Badge> : null}
   </div>

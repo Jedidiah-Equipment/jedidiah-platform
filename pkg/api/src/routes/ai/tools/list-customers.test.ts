@@ -17,7 +17,10 @@ const test = createTester(async ({ db }) => {
 describe('listCustomersTool', () => {
   test('returns the same customer list result shape as customers.list', async ({ context }) => {
     const caller = context.createCaller();
-    await createCustomer(caller, 'Acme Mining', { email: 'sales@acme.example' });
+    await createCustomer(caller, 'Acme Mining', {
+      email: 'sales@acme.example',
+      thumbnailDataUrl: 'data:image/webp;base64,aaaa',
+    });
     await createCustomer(caller, 'Beta Quarries', { email: 'orders@beta.example' });
 
     const input: CustomerListInput = {

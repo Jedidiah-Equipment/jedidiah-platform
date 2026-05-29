@@ -17,7 +17,7 @@ import {
   user,
 } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import { QuoteUpdateInput } from '@pkg/schema';
+import { type PartUnitOfMeasure, QuoteUpdateInput } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { updateQuote } from '../quotes/quote-service.js';
@@ -73,7 +73,8 @@ describe('createJob', () => {
             expect.objectContaining({
               partCode: 'PART-CHASSIS',
               partName: 'Chassis Plate',
-              quantity: 2,
+              quantity: 6000,
+              unitOfMeasure: 'mm',
             }),
           ]),
         }),
@@ -85,6 +86,7 @@ describe('createJob', () => {
               partCode: 'PART-HEAVY-AXLE',
               partName: 'Heavy Axle',
               quantity: 1,
+              unitOfMeasure: 'quantity',
             }),
           ]),
         }),
@@ -203,7 +205,7 @@ async function createCatalog(db: Db) {
   const createdParts = await db
     .insert(parts)
     .values([
-      partInput(createdSupplier.id, 'PART-CHASSIS', 'Chassis Plate'),
+      partInput(createdSupplier.id, 'PART-CHASSIS', 'Chassis Plate', 'mm'),
       partInput(createdSupplier.id, 'PART-AXLE', 'Standard Axle'),
       partInput(createdSupplier.id, 'PART-HEAVY-AXLE', 'Heavy Axle'),
     ])
@@ -252,7 +254,7 @@ async function createCatalog(db: Db) {
     {
       assemblyId: chassis.id,
       partId: chassisPart.id,
-      quantity: 2,
+      quantity: 6000,
     },
     {
       assemblyId: axle.id,
@@ -274,7 +276,12 @@ async function createCatalog(db: Db) {
   return { heavyAxle, product };
 }
 
-function partInput(supplierId: string, code: string, name: string): typeof parts.$inferInsert {
+function partInput(
+  supplierId: string,
+  code: string,
+  name: string,
+  unitOfMeasure: PartUnitOfMeasure = 'quantity',
+): typeof parts.$inferInsert {
   return {
     category: 'Fabrication',
     code,
@@ -283,7 +290,7 @@ function partInput(supplierId: string, code: string, name: string): typeof parts
     name,
     supplierCode: code,
     supplierId,
-    unitOfMeasure: 'quantity',
+    unitOfMeasure,
   };
 }
 

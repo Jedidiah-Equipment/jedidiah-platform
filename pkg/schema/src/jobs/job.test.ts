@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { JOB_STAGES, JobCode, JobListFilters, JobWorkState } from './job.js';
+import { JOB_STAGES, JobCode, JobDetail, JobListFilters, JobWorkState } from './job.js';
 
 describe('JobCode', () => {
   it('formats DB integers as branded job codes', () => {
@@ -24,6 +24,42 @@ describe('JobListFilters', () => {
     expect(JobListFilters.parse({ jobId: '00000000-0000-4000-8000-000000000001' })).toEqual({
       jobId: '00000000-0000-4000-8000-000000000001',
     });
+  });
+});
+
+describe('JobDetail', () => {
+  it('carries part units in the CFO projection', () => {
+    expect(
+      JobDetail.shape.cfo.parse([
+        {
+          assemblyName: 'Hydraulics',
+          kind: 'standard',
+          parts: [
+            {
+              partCode: 'HOSE-001',
+              partId: '00000000-0000-4000-8000-000000000001',
+              partName: 'Hydraulic Hose',
+              quantity: 6000,
+              unitOfMeasure: 'mm',
+            },
+          ],
+        },
+      ]),
+    ).toEqual([
+      {
+        assemblyName: 'Hydraulics',
+        kind: 'standard',
+        parts: [
+          {
+            partCode: 'HOSE-001',
+            partId: '00000000-0000-4000-8000-000000000001',
+            partName: 'Hydraulic Hose',
+            quantity: 6000,
+            unitOfMeasure: 'mm',
+          },
+        ],
+      },
+    ]);
   });
 });
 

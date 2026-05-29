@@ -7,6 +7,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 import { JobFact } from './components/JobFact.js';
 
 type JobDetailPageProps = {
@@ -66,7 +67,9 @@ const JobCfoDump: React.FC<{
                       <div className="truncate font-medium">{part.partName}</div>
                       <div className="truncate text-muted-foreground">{part.partCode}</div>
                     </div>
-                    <div className="text-right tabular-nums">{part.quantity}</div>
+                    <div className="text-right tabular-nums">
+                      {formatPartQuantity(part.quantity, part.unitOfMeasure)}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -5,6 +5,7 @@ import { DEPARTMENTS, Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { UUID } from '../common/uuid.js';
+import { PartUnitOfMeasure } from '../parts/part.js';
 
 export { formatJobCode, JobCode } from '../common/public-code.js';
 
@@ -143,6 +144,7 @@ export const JobDetail = JobSummary.extend({
           partId: UUID,
           partName: z.string().trim().min(1),
           quantity: z.int().min(1),
+          unitOfMeasure: PartUnitOfMeasure,
         }),
       ),
     }),

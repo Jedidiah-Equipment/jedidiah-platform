@@ -198,6 +198,7 @@ async function listJobCfo({ db, jobId }: { db: Db | DatabaseTransaction; jobId: 
       partId: jobCfoParts.partId,
       partName: parts.name,
       quantity: jobCfoParts.quantity,
+      unitOfMeasure: parts.unitOfMeasure,
     })
     .from(jobCfoAssemblies)
     .leftJoin(jobCfoParts, eq(jobCfoParts.cfoAssemblyId, jobCfoAssemblies.id))
@@ -226,12 +227,13 @@ async function listJobCfo({ db, jobId }: { db: Db | DatabaseTransaction; jobId: 
       });
     }
 
-    if (row.partId && row.partCode && row.partName && row.quantity !== null) {
+    if (row.partId && row.partCode && row.partName && row.quantity !== null && row.unitOfMeasure) {
       assemblies[assemblyIndex]?.parts.push({
         partCode: row.partCode,
         partId: row.partId,
         partName: row.partName,
         quantity: row.quantity,
+        unitOfMeasure: row.unitOfMeasure,
       });
     }
   }

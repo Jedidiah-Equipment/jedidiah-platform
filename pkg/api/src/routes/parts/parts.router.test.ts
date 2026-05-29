@@ -288,6 +288,7 @@ describe('parts.list and parts.categories', () => {
       drawingCode: 'DR-200',
       name: 'Bolt',
       supplierCode: 'BT-200',
+      unitOfMeasure: 'mm',
     });
     await createPart(caller, acme.id, {
       category: 'Bearings',
@@ -314,12 +315,14 @@ describe('parts.list and parts.categories', () => {
       sortDirection: 'desc',
       supplierId: acme.id,
     });
+    const lengthParts = await caller.parts.list({ columnFilters: { unitOfMeasure: 'mm' } });
     const categories = await caller.parts.categories();
 
     expect(partNames(list.items)).toEqual(['Bearing']);
     expect(supplierSearch.items.map((part) => part.code)).toEqual(['P-200']);
     expect(drawingSearch.items.map((part) => part.code)).toEqual(['P-200']);
     expect(supplierParts.items.map((part) => part.code)).toEqual(['P-300', 'P-100']);
+    expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
     expect(categories.categories).toEqual(['Bearings', 'Fasteners']);
   });
 

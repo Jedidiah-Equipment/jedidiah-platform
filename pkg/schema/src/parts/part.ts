@@ -64,6 +64,7 @@ export const PartColumnFilters = z
     name: z.string().trim().optional(),
     supplierCode: z.string().trim().optional(),
     supplierName: z.string().trim().optional(),
+    unitOfMeasure: PartUnitOfMeasure.optional(),
   })
   .default({});
 

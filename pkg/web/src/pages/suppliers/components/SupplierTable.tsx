@@ -12,6 +12,7 @@ import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-que
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -69,7 +70,16 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({ onEditSupplier, sh
     const tableColumns: ColumnDef<Supplier>[] = [
       {
         accessorKey: 'companyName',
-        cell: ({ row }) => <span className="font-medium">{row.original.companyName}</span>,
+        cell: ({ row }) => (
+          <span className="flex items-center gap-2 font-medium">
+            <EntityThumbnail
+              label={row.original.companyName}
+              size="sm"
+              thumbnailDataUrl={row.original.thumbnailDataUrl}
+            />
+            {row.original.companyName}
+          </span>
+        ),
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Company',

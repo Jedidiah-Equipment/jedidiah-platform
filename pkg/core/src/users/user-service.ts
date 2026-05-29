@@ -5,6 +5,7 @@ import {
   type AuditChanges,
   AuthId,
   Department,
+  NullableThumbnailDataUrl,
   type UserAccessSummary,
   UserAccount,
   type UserListResult,
@@ -12,10 +13,10 @@ import {
 } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 
-import { insertAuditEvent } from '../audit/audit-service.js';
+import { createAuditChanges, insertAuditEvent, userAuditDescriptor } from '../audit/audit-service.js';
 import { UserNotFoundError } from './user-errors.js';
 
-type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'name'> & {
+type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'image' | 'name'> & {
   departments: readonly Department[];
   role?: unknown;
 };
@@ -28,6 +29,7 @@ export function mapUser(row: UserRow): UserSummary {
     id: AuthId.parse(row.id),
     name: row.name,
     role: AppRole.parse(row.role),
+    thumbnailDataUrl: NullableThumbnailDataUrl.parse(row.image),
   };
 }
 
@@ -37,8 +39,10 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
       email: user.email,
       emailVerified: user.emailVerified,
       id: user.id,
+      image: user.image,
       name: user.name,
       role: user.role,
+      thumbnailDataUrl: user.image,
     })
     .from(user)
     .where(eq(user.id, userId))
@@ -57,6 +61,7 @@ export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
       email: true,
       emailVerified: true,
       id: true,
+      image: true,
       name: true,
       role: true,
     },
@@ -158,6 +163,59 @@ export async function setUserDepartments({
     }
 
     return after;
+  });
+}
+
+export async function updateUserThumbnail({
+  actorUserId,
+  db,
+  thumbnailDataUrl,
+  userId,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  thumbnailDataUrl: NullableThumbnailDataUrl;
+  userId: AuthId;
+}): Promise<UserAccount> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(user).where(eq(user.id, userId)).for('update');
+
+    if (!before) {
+      throw new UserNotFoundError(userId);
+    }
+
+    const after = { ...before, thumbnailDataUrl };
+    const beforeAuditRecord = { ...before, thumbnailDataUrl: before.image };
+    const changes = createAuditChanges(beforeAuditRecord, after, userAuditDescriptor.fields);
+
+    if (!changes) {
+      return UserAccount.parse(mapUser({ ...before, departments: [] }));
+    }
+
+    const [row] = await tx
+      .update(user)
+      .set({ image: thumbnailDataUrl, updatedAt: new Date() })
+      .where(eq(user.id, userId))
+      .returning();
+
+    if (!row) {
+      throw new UserNotFoundError(userId);
+    }
+
+    await insertAuditEvent({
+      db: tx,
+      input: {
+        action: 'updated',
+        actorUserId,
+        after: { ...row, thumbnailDataUrl: row.image },
+        before: beforeAuditRecord,
+        changes,
+        entityId: row.id,
+        entityType: userAuditDescriptor.entityType,
+      },
+    });
+
+    return UserAccount.parse(mapUser({ ...row, departments: [] }));
   });
 }
 

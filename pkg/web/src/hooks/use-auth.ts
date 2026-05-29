@@ -43,6 +43,7 @@ export function useAuth() {
       name: userName,
       email: userEmail,
       initials: getInitials(userName, userEmail),
+      thumbnailDataUrl: session?.user.image ?? null,
     },
   };
 }

@@ -29,6 +29,7 @@ function serializeAuthUser(user: AuthSession['user']) {
   return {
     ...user,
     createdAt: user.createdAt.toISOString(),
+    thumbnailDataUrl: user.image ?? null,
     updatedAt: user.updatedAt.toISOString(),
   };
 }

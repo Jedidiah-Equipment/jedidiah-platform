@@ -1,5 +1,12 @@
-import { getUserById, isUserCoreError, listUsers, setUserDepartments, type UserCoreError } from '@pkg/core';
-import { AuthId, Department } from '@pkg/schema';
+import {
+  getUserById,
+  isUserCoreError,
+  listUsers,
+  setUserDepartments,
+  type UserCoreError,
+  updateUserThumbnail,
+} from '@pkg/core';
+import { AuthId, Department, NullableThumbnailDataUrl } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
@@ -13,6 +20,11 @@ const config = getApiConfig();
 
 const UserDepartmentInput = z.object({
   departments: z.array(Department),
+  userId: AuthId,
+});
+
+const UserThumbnailInput = z.object({
+  thumbnailDataUrl: NullableThumbnailDataUrl,
   userId: AuthId,
 });
 
@@ -30,6 +42,18 @@ export const usersRouter = router({
         }),
       );
     }),
+  updateThumbnail: authorizedProcedure('user:update')
+    .input(UserThumbnailInput)
+    .mutation(({ ctx, input }) =>
+      mapUserErrors(() =>
+        updateUserThumbnail({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          thumbnailDataUrl: input.thumbnailDataUrl,
+          userId: input.userId,
+        }),
+      ),
+    ),
   sendVerificationEmail: authorizedProcedure('user:update')
     .input(z.object({ userId: AuthId }))
     .mutation(async ({ ctx, input }) => {

@@ -11,6 +11,8 @@ const test = createTester(async ({ db }) => {
   return { db };
 });
 
+const THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';
+
 async function createCustomer(
   caller: AppRouterCaller,
   companyName: string,
@@ -76,6 +78,7 @@ describe('customers.create', () => {
       contactPerson: 'Jane Buyer',
       notes: 'Prefers email',
       phone: '+27 11 555 0100',
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
     });
 
     expect(created).toMatchObject({
@@ -85,6 +88,7 @@ describe('customers.create', () => {
       email: 'acme-mining@example.com',
       notes: 'Prefers email',
       phone: '+27 11 555 0100',
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
@@ -237,6 +241,25 @@ describe('customers.get', () => {
     });
   });
 
+  test('returns customer thumbnails from get and list', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createCustomer(caller, 'Thumbnail Customer', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
+
+    await expect(caller.customers.get({ id: created.id })).resolves.toMatchObject({
+      id: created.id,
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
+    });
+
+    await expect(caller.customers.list({ search: 'Thumbnail' })).resolves.toMatchObject({
+      items: [
+        {
+          id: created.id,
+          thumbnailDataUrl: THUMBNAIL_DATA_URL,
+        },
+      ],
+    });
+  });
+
   test('returns not found for missing customers', async ({ context }) => {
     await expect(
       context.createCaller().customers.get({ id: '00000000-0000-4000-8000-000000000001' }),
@@ -363,6 +386,31 @@ describe('customers.update', () => {
       contactPerson: null,
       notes: null,
       phone: null,
+    });
+  });
+
+  test('updates and removes customer thumbnails with audit changes', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createCustomer(caller, 'Thumbnail Audit Customer', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
+
+    const updated = await caller.customers.update({
+      ...created,
+      thumbnailDataUrl: null,
+    });
+
+    expect(updated.thumbnailDataUrl).toBeNull();
+
+    const events = await listAuditEvents(context.db);
+    expect(events.at(-1)).toMatchObject({
+      action: 'updated',
+      changes: {
+        thumbnailDataUrl: {
+          from: THUMBNAIL_DATA_URL,
+          to: null,
+        },
+      },
+      entityId: created.id,
+      entityType: 'customer',
     });
   });
 

@@ -21,6 +21,7 @@ describe('CustomerCreateInput', () => {
       email: 'sales@acme.example',
       notes: 'Prefers email',
       phone: '+27 11 555 0100',
+      thumbnailDataUrl: null,
     });
   });
 

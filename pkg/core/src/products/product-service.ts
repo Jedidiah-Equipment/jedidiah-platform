@@ -41,6 +41,7 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[] }): Produ
     buildTimeDays: row.buildTimeDays,
     modelCode: row.modelCode,
     name: row.name,
+    thumbnailDataUrl: row.thumbnailDataUrl,
     updatedAt: row.updatedAt.toISOString(),
   });
 }
@@ -67,6 +68,7 @@ export async function listProducts({
       buildTimeDays: true,
       modelCode: true,
       name: true,
+      thumbnailDataUrl: true,
       updatedAt: true,
     },
     where,
@@ -259,6 +261,7 @@ export async function updateProduct({
         buildTimeDays: input.buildTimeDays,
         modelCode: input.modelCode,
         name: input.name,
+        thumbnailDataUrl: input.thumbnailDataUrl,
       };
       const after = { ...before, ...patch, assemblies: desiredAssemblies };
       const changes = createAuditChanges(

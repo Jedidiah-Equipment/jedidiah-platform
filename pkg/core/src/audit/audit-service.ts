@@ -38,6 +38,7 @@ export const productAuditDescriptor: AuditEntityDescriptor = {
     buildTimeDays: 'build time days',
     modelCode: 'model code',
     name: 'name',
+    thumbnailDataUrl: 'thumbnail',
   },
 };
 
@@ -68,6 +69,7 @@ export const customerAuditDescriptor: AuditEntityDescriptor = {
     email: 'email',
     notes: 'notes',
     phone: 'phone',
+    thumbnailDataUrl: 'thumbnail',
   },
 };
 
@@ -78,6 +80,7 @@ export const userAuditDescriptor: AuditEntityDescriptor = {
   fields: {
     department: 'department',
     member: 'department membership',
+    thumbnailDataUrl: 'thumbnail',
   },
 };
 
@@ -145,6 +148,7 @@ export const supplierAuditDescriptor: AuditEntityDescriptor = {
     email: 'email',
     notes: 'notes',
     phone: 'phone',
+    thumbnailDataUrl: 'thumbnail',
   },
 };
 

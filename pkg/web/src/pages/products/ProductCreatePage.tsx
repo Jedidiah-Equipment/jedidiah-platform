@@ -46,6 +46,7 @@ export const ProductCreatePage: React.FC = () => {
             buildTimeDays: value.buildTimeDays,
             modelCode: value.modelCode,
             name: value.name,
+            thumbnailDataUrl: value.thumbnailDataUrl,
           })
         }
         submitLabel="Create product"

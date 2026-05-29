@@ -1,6 +1,7 @@
 import {
   AssemblyName,
   AssemblyPart,
+  NullableThumbnailDataUrl,
   Price,
   type Product,
   ProductBuildTimeDays,
@@ -46,6 +47,7 @@ const ProductFormFields = z.object({
   buildTimeDays: ProductBuildTimeDays,
   modelCode: ProductModelCode,
   name: ProductName,
+  thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
 export type ProductFormValues = z.infer<typeof ProductFormValues>;
@@ -61,6 +63,7 @@ export const emptyProductFormValues: ProductFormValues = {
   buildTimeDays: NaN,
   modelCode: '',
   name: '',
+  thumbnailDataUrl: null,
 };
 
 /** Schema → form. `basePrice`/`buildTimeDays` use `NaN` so a missing number reads as empty. */
@@ -73,6 +76,7 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     buildTimeDays: initialProduct?.buildTimeDays ?? NaN,
     modelCode: initialProduct?.modelCode ?? '',
     name: initialProduct?.name ?? '',
+    thumbnailDataUrl: initialProduct?.thumbnailDataUrl ?? null,
   };
 }
 

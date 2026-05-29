@@ -9,7 +9,7 @@ import { SubmitFooter } from './UserFormFooter.js';
 import { RoleField } from './UserRoleField.js';
 
 export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
-export const UserCreateFormValues = UserSummary.omit({ id: true }).extend({
+export const UserCreateFormValues = UserSummary.omit({ id: true, thumbnailDataUrl: true }).extend({
   password: UserPassword,
 });
 

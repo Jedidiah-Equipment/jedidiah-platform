@@ -34,6 +34,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const canSetRole = hasPermission(access, 'user:set-role');
   const canSetPassword = hasPermission(access, 'user:set-password');
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
+  const updateThumbnailMutation = useMutation(trpc.users.updateThumbnail.mutationOptions());
 
   useEffect(() => {
     setBaselineUser(user);
@@ -54,6 +55,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
         value.email !== baselineUser.email ||
         value.emailVerified !== baselineUser.emailVerified ||
         value.name !== baselineUser.name;
+      const thumbnailChanged = value.thumbnailDataUrl !== baselineUser.thumbnailDataUrl;
 
       if (canUpdateProfile && profileChanged) {
         await unwrapAuthResult(
@@ -66,6 +68,14 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             userId: baselineUser.id,
           }),
         );
+        didUpdate = true;
+      }
+
+      if (canUpdateProfile && thumbnailChanged) {
+        await updateThumbnailMutation.mutateAsync({
+          thumbnailDataUrl: value.thumbnailDataUrl,
+          userId: baselineUser.id,
+        });
         didUpdate = true;
       }
 

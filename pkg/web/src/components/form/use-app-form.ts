@@ -9,6 +9,7 @@ import { PasswordField } from './PasswordField.js';
 import { SelectField } from './SelectField.js';
 import { TextareaField } from './TextareaField.js';
 import { TextField } from './TextField.js';
+import { ThumbnailField } from './ThumbnailField.js';
 
 export const { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } = createFormHook({
   fieldComponents: {
@@ -21,6 +22,7 @@ export const { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } = 
     SelectField,
     TextareaField,
     TextField,
+    ThumbnailField,
   },
   formComponents: {},
   fieldContext,

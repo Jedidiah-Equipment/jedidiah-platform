@@ -34,6 +34,13 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({ initialSupplier, isP
       }}
     >
       <EditFormGrid>
+        <EditFormFullWidth>
+          <form.AppField name="thumbnailDataUrl">
+            {(field) => (
+              <field.ThumbnailField fallbackLabel={form.state.values.companyName || 'Supplier'} label="Thumbnail" />
+            )}
+          </form.AppField>
+        </EditFormFullWidth>
         <form.AppField name="companyName">
           {(field) => <field.TextField autoComplete="organization" label="Company name" />}
         </form.AppField>

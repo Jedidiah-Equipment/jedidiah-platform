@@ -37,6 +37,16 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
         }}
       >
         <EditFormGrid>
+          <EditFormFullWidth>
+            <form.AppField name="thumbnailDataUrl">
+              {(field) => (
+                <field.ThumbnailField
+                  fallbackLabel={form.state.values.modelCode || form.state.values.name || 'Product'}
+                  label="Thumbnail"
+                />
+              )}
+            </form.AppField>
+          </EditFormFullWidth>
           <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
           <form.AppField name="modelCode">
             {(field) => <field.TextField autoComplete="off" label="Model code" />}

@@ -32,6 +32,7 @@ export function mapCustomer(row: CustomerRow): Customer {
     id: row.id,
     notes: row.notes,
     phone: row.phone,
+    thumbnailDataUrl: row.thumbnailDataUrl,
     updatedAt: row.updatedAt.toISOString(),
   });
 }
@@ -155,6 +156,7 @@ export async function updateCustomer({
       email: input.email,
       notes: input.notes,
       phone: input.phone,
+      thumbnailDataUrl: input.thumbnailDataUrl,
     };
     const after = { ...before, ...patch };
     const changes = createAuditChanges(before, after, customerAuditDescriptor.fields);

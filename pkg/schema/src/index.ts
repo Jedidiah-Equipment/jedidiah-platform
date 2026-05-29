@@ -11,6 +11,7 @@ export * from './common/pagination.js';
 export * from './common/price.js';
 export * from './common/sort.js';
 export * from './common/text.js';
+export * from './common/thumbnail.js';
 export * from './common/uuid.js';
 export * from './customers/customer.js';
 export * from './domain/client-config.js';

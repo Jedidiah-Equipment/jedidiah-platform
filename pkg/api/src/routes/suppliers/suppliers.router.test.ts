@@ -11,6 +11,8 @@ const test = createTester(async ({ db }) => {
   return { db };
 });
 
+const THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';
+
 async function createSupplier(
   caller: AppRouterCaller,
   companyName: string,
@@ -247,6 +249,25 @@ describe('suppliers.get', () => {
     });
   });
 
+  test('returns supplier thumbnails from get and list', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createSupplier(caller, 'Thumbnail Supplier', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
+
+    await expect(caller.suppliers.get({ id: created.id })).resolves.toMatchObject({
+      id: created.id,
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
+    });
+
+    await expect(caller.suppliers.list({ search: 'Thumbnail' })).resolves.toMatchObject({
+      items: [
+        {
+          id: created.id,
+          thumbnailDataUrl: THUMBNAIL_DATA_URL,
+        },
+      ],
+    });
+  });
+
   test('returns not found for missing suppliers', async ({ context }) => {
     await expect(
       context.createCaller().suppliers.get({ id: '00000000-0000-4000-8000-000000000001' }),
@@ -373,6 +394,31 @@ describe('suppliers.update', () => {
       contactPerson: null,
       notes: null,
       phone: null,
+    });
+  });
+
+  test('updates and removes supplier thumbnails with audit changes', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createSupplier(caller, 'Thumbnail Audit Supplier', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
+
+    const updated = await caller.suppliers.update({
+      ...created,
+      thumbnailDataUrl: null,
+    });
+
+    expect(updated.thumbnailDataUrl).toBeNull();
+
+    const events = await listAuditEvents(context.db);
+    expect(events.at(-1)).toMatchObject({
+      action: 'updated',
+      changes: {
+        thumbnailDataUrl: {
+          from: THUMBNAIL_DATA_URL,
+          to: null,
+        },
+      },
+      entityId: created.id,
+      entityType: 'supplier',
     });
   });
 

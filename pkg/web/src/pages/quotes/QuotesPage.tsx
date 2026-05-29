@@ -298,11 +298,17 @@ function SalesPersonCell({ quote }: { quote: QuoteSummary }) {
 }
 
 function getQuoteTotal(quote: QuoteSummary): number {
+  // A stale selection is excluded from the total, matching the edit form's Effective Bill of
+  // Materials. The list has no product catalog to resolve against, but the selection FK is
+  // `on delete set null`, so a deleted catalog Optional Assembly leaves a null reference — which
+  // is the complete stale set for persisted selections.
+  const liveSelectedAssemblies = quote.selectedAssemblies.filter((assembly) => assembly.productAssemblyId !== null);
+
   return computeQuoteTotal({
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
     discount: quote.discount,
     quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices: quote.selectedAssemblies.map((assembly) => assembly.quotedPrice),
+    selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
   });
 }

@@ -31,6 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { formatCurrency } from '@/utils/number.js';
+import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 import { emptyProductFormValues } from './types.js';
 
 const ALL_CATEGORIES = '__all__';
@@ -456,7 +457,7 @@ const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({ categories, ind
             <TableHeader>
               <TableRow>
                 <TableHead>Part</TableHead>
-                <TableHead className="w-28">Quantity</TableHead>
+                <TableHead className="w-36">Quantity</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -571,16 +572,14 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
             const isInvalid = errors.length > 0;
 
             return (
-              <Field data-invalid={isInvalid}>
-                <Input
-                  aria-invalid={isInvalid}
-                  inputMode="numeric"
-                  value={Number.isFinite(field.state.value) ? String(field.state.value) : ''}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(Number(event.target.value))}
-                />
-                <FieldError errors={errors} />
-              </Field>
+              <PartQuantityField
+                errors={errors}
+                field={field}
+                isInvalid={isInvalid}
+                parentIndex={parentIndex}
+                partIndex={partIndex}
+                partOptions={partOptions}
+              />
             );
           }}
         </FormField>
@@ -591,6 +590,56 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
         </Button>
       </TableCell>
     </TableRow>
+  );
+};
+
+type PartQuantityFieldProps = {
+  errors: ReturnType<typeof getFieldErrors>;
+  field: FieldApi<number>;
+  isInvalid: boolean;
+  parentIndex: number;
+  partIndex: number;
+  partOptions: Part[];
+};
+
+const PartQuantityField: React.FC<PartQuantityFieldProps> = ({
+  errors,
+  field,
+  isInvalid,
+  parentIndex,
+  partIndex,
+  partOptions,
+}) => {
+  const productForm = useProductForm();
+
+  return (
+    <productForm.Subscribe selector={(state) => state.values.assemblies[parentIndex]?.parts[partIndex]?.partId}>
+      {(partId) => {
+        const selectedPart = partOptions.find((option) => option.id === partId);
+        const quantityUnitDisplay = getPartQuantityUnitDisplay(selectedPart?.unitOfMeasure);
+
+        return (
+          <Field data-invalid={isInvalid}>
+            <div className="flex items-center gap-2">
+              <Input
+                aria-invalid={isInvalid}
+                className="w-24"
+                inputMode="numeric"
+                value={Number.isFinite(field.state.value) ? String(field.state.value) : ''}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(Number(event.target.value))}
+              />
+              {quantityUnitDisplay.suffix ? (
+                <span className="min-w-6 text-muted-foreground text-sm" title={quantityUnitDisplay.label}>
+                  {quantityUnitDisplay.suffix}
+                </span>
+              ) : null}
+            </div>
+            <FieldError errors={errors} />
+          </Field>
+        );
+      }}
+    </productForm.Subscribe>
   );
 };
 

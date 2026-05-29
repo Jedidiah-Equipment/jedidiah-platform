@@ -6,8 +6,8 @@ describe('parsePartBulkImportCsv', () => {
   it('parses CSV with the expected header', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
-        ' P-100, DR-100, Main bearing, BOLT & NUT, SUP-100, BLACK, PLAIN NUT, M30 PLAIN NUT, mm ',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
+        ' P-100, DR-100, Main bearing, BOLT & NUT, SUP-100, BLACK, PLAIN NUT, M30 PLAIN NUT, mm, yes ',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -21,6 +21,7 @@ describe('parsePartBulkImportCsv', () => {
           description: 'Main bearing',
           drawingCode: 'DR-100',
           finish: 'Black',
+          isInternallyFabricated: true,
           lineNumber: 2,
           name: 'M30 Plain Nut',
           supplierCode: 'SUP-100',
@@ -32,9 +33,12 @@ describe('parsePartBulkImportCsv', () => {
   });
 
   it('parses CSV without a header by column position', () => {
-    const result = parsePartBulkImportCsv('P-100,,Main bearing,Acme Supplies,SUP-100,GALV,Bearings,Bearing,quantity', {
-      hasHeader: false,
-    });
+    const result = parsePartBulkImportCsv(
+      'P-100,,Main bearing,Acme Supplies,SUP-100,GALV,Bearings,Bearing,quantity,false',
+      {
+        hasHeader: false,
+      },
+    );
 
     expect(result).toEqual({
       errors: [],
@@ -45,6 +49,7 @@ describe('parsePartBulkImportCsv', () => {
           description: 'Main bearing',
           drawingCode: null,
           finish: 'Galv',
+          isInternallyFabricated: false,
           lineNumber: 1,
           name: 'Bearing',
           supplierCode: 'SUP-100',
@@ -58,14 +63,28 @@ describe('parsePartBulkImportCsv', () => {
   it('maps unit labels to enum values', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
-        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,Millimetres',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
+        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,Millimetres,no',
       ].join('\n'),
       { hasHeader: true },
     );
 
     expect(result.errors).toEqual([]);
     expect(result.rows[0]?.unitOfMeasure).toBe('mm');
+  });
+
+  it('maps internal fabrication labels to boolean values', () => {
+    const result = parsePartBulkImportCsv(
+      [
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
+        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity,1',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,quantity,n',
+      ].join('\n'),
+      { hasHeader: true },
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(result.rows.map((row) => row.isInternallyFabricated)).toEqual([true, false]);
   });
 
   it('reports missing required headers', () => {
@@ -78,8 +97,8 @@ describe('parsePartBulkImportCsv', () => {
   it('blocks rows when the CSV parser reports file-level errors', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
-        'P-100,,"Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
+        'P-100,,"Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity,true',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -91,9 +110,9 @@ describe('parsePartBulkImportCsv', () => {
   it('keeps valid rows while reporting row-numbered validation errors', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
-        ',,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity',
-        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,quantity',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
+        ',,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity,true',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,quantity,false',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -105,6 +124,7 @@ describe('parsePartBulkImportCsv', () => {
         description: 'Second bearing',
         drawingCode: null,
         finish: 'Zinc',
+        isInternallyFabricated: false,
         lineNumber: 3,
         name: 'Bearing',
         supplierCode: 'SUP-101',
@@ -118,9 +138,9 @@ describe('parsePartBulkImportCsv', () => {
   it('reports row-numbered errors for missing and unknown units', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
-        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,',
-        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,metres',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
+        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,,true',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,metres,false',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -132,19 +152,36 @@ describe('parsePartBulkImportCsv', () => {
     ]);
   });
 
+  it('reports row-numbered errors for missing and unknown internal fabrication values', () => {
+    const result = parsePartBulkImportCsv(
+      [
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
+        'P-100,,Main bearing,Acme Supplies,SUP-100,Zinc,Bearings,Bearing,quantity,',
+        'P-101,,Second bearing,Acme Supplies,SUP-101,Zinc,Bearings,Bearing,quantity,maybe',
+      ].join('\n'),
+      { hasHeader: true },
+    );
+
+    expect(result.rows).toEqual([]);
+    expect(result.errors).toEqual([
+      'Row 2: Internally Fabricated - Internally Fabricated must be one of true, false, yes, no, y, n, 1, or 0.',
+      'Row 3: Internally Fabricated - Internally Fabricated must be one of true, false, yes, no, y, n, 1, or 0.',
+    ]);
+  });
+
   it('reports invalid column counts without a header', () => {
     const result = parsePartBulkImportCsv('P-100,Main bearing', { hasHeader: false });
 
     expect(result.rows).toEqual([]);
-    expect(result.errors).toContain('Row 1: Expected 9 columns, found 2.');
+    expect(result.errors).toContain('Row 1: Expected 10 columns, found 2.');
   });
 
   it('preserves technical tokens when formatting imported display values', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
-        'P-100,NC,Description,BOLT & NUT,SUP-100,BLACK,SS LOCK NUT,M10 X 120 HT SHCS BOLT,quantity',
-        'P-101,NC,Description,BOLT & NUT,SUP-101,GALV,HT UNC BOLT,1/2 X 2 HT UNC BOLT,mm',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
+        'P-100,NC,Description,BOLT & NUT,SUP-100,BLACK,SS LOCK NUT,M10 X 120 HT SHCS BOLT,quantity,yes',
+        'P-101,NC,Description,BOLT & NUT,SUP-101,GALV,HT UNC BOLT,1/2 X 2 HT UNC BOLT,mm,no',
       ].join('\n'),
       { hasHeader: true },
     );
@@ -158,6 +195,7 @@ describe('parsePartBulkImportCsv', () => {
           description: 'Description',
           drawingCode: 'NC',
           finish: 'Black',
+          isInternallyFabricated: true,
           lineNumber: 2,
           name: 'M10 X 120 HT SHCS Bolt',
           supplierCode: 'SUP-100',
@@ -170,6 +208,7 @@ describe('parsePartBulkImportCsv', () => {
           description: 'Description',
           drawingCode: 'NC',
           finish: 'Galv',
+          isInternallyFabricated: false,
           lineNumber: 3,
           name: '1/2 X 2 HT UNC Bolt',
           supplierCode: 'SUP-101',
@@ -183,8 +222,8 @@ describe('parsePartBulkImportCsv', () => {
   it('does not split joined words while formatting imported display values', () => {
     const result = parsePartBulkImportCsv(
       [
-        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit',
-        'P-100,NC,Description,BOLT & NUT,SUP-100,STAINLESS,FLATWASHER,M10 SPRINGWASHER,quantity',
+        'Code,Drawing code,Description,Supplier,Supplier Code,Finish,Catagory ,Name,Unit,Internally Fabricated',
+        'P-100,NC,Description,BOLT & NUT,SUP-100,STAINLESS,FLATWASHER,M10 SPRINGWASHER,quantity,false',
       ].join('\n'),
       { hasHeader: true },
     );

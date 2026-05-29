@@ -53,6 +53,7 @@ export function mapPart(row: PartWithSupplierRow): Part {
     drawingCode: row.drawingCode,
     finish: row.finish,
     id: row.id,
+    isInternallyFabricated: row.isInternallyFabricated,
     name: row.name,
     supplier: row.supplier,
     supplierCode: row.supplierCode,
@@ -146,6 +147,10 @@ function buildPartListWhere(input: PartListInput): SQL | undefined {
 
   if (input.columnFilters.id) {
     conditions.push(createEscapedContainsSearchCondition(sql`${parts.id}::text`, input.columnFilters.id));
+  }
+
+  if (input.columnFilters.isInternallyFabricated !== undefined) {
+    conditions.push(eq(parts.isInternallyFabricated, input.columnFilters.isInternallyFabricated));
   }
 
   if (input.columnFilters.name) {
@@ -253,6 +258,7 @@ export async function updatePart({
         description: input.description,
         drawingCode: input.drawingCode,
         finish: input.finish,
+        isInternallyFabricated: input.isInternallyFabricated,
         name: input.name,
         supplierCode: input.supplierCode,
         supplierId: input.supplierId,
@@ -352,6 +358,7 @@ export async function bulkImportParts({
           description: row.description,
           drawingCode: row.drawingCode,
           finish: row.finish,
+          isInternallyFabricated: row.isInternallyFabricated,
           name: row.name,
           supplierCode: row.supplierCode,
           supplierId: importedSupplier.id,

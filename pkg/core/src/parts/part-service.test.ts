@@ -20,6 +20,7 @@ function importRow(overrides: Partial<PartBulkImportRow> = {}): PartBulkImportRo
     description: 'Main bearing',
     drawingCode: null,
     finish: 'Zinc',
+    isInternallyFabricated: false,
     lineNumber: 2,
     name: 'Bearing',
     supplierCode: 'SUP-100',
@@ -39,6 +40,7 @@ describe('listParts', () => {
           importRow(),
           importRow({
             code: 'P-200',
+            isInternallyFabricated: true,
             name: 'Linear rail',
             supplierCode: 'SUP-200',
             unitOfMeasure: 'mm',
@@ -55,9 +57,14 @@ describe('listParts', () => {
       db: context.db,
       input: PartListInput.parse({ columnFilters: { unitOfMeasure: 'quantity' }, pageSize: 0 }),
     });
+    const internallyFabricatedParts = await listParts({
+      db: context.db,
+      input: PartListInput.parse({ columnFilters: { isInternallyFabricated: true }, pageSize: 0 }),
+    });
 
     expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
     expect(countedParts.items.map((part) => part.code)).toEqual(['P-100']);
+    expect(internallyFabricatedParts.items.map((part) => part.code)).toEqual(['P-200']);
   });
 });
 
@@ -71,6 +78,7 @@ describe('bulkImportParts', () => {
           importRow(),
           importRow({
             code: 'P-200',
+            isInternallyFabricated: true,
             name: 'Bolt',
             supplierCode: 'BET-200',
             supplierName: 'Beta Supplies',
@@ -87,6 +95,7 @@ describe('bulkImportParts', () => {
     expect(result).toEqual({ errors: [], importedCount: 2, updatedCount: 0 });
     expect(suppliers.map((row) => row.companyName)).toEqual(['Acme Supplies', 'Beta Supplies']);
     expect(importedParts.items.map((part) => part.code)).toEqual(['P-100', 'P-200']);
+    expect(importedParts.items.map((part) => part.isInternallyFabricated)).toEqual([false, true]);
     expect(importedParts.items.map((part) => part.unitOfMeasure)).toEqual(['quantity', 'mm']);
     expect(events).toMatchObject([
       {
@@ -167,6 +176,7 @@ describe('bulkImportParts', () => {
           importRow({
             description: 'Updated main bearing',
             finish: 'Painted',
+            isInternallyFabricated: true,
             name: 'Bearing Assembly',
             unitOfMeasure: 'mm',
           }),
@@ -180,6 +190,7 @@ describe('bulkImportParts', () => {
     expect(importedParts.items[0]).toMatchObject({
       description: 'Updated main bearing',
       finish: 'Painted',
+      isInternallyFabricated: true,
       name: 'Bearing Assembly',
       unitOfMeasure: 'mm',
     });
@@ -194,6 +205,10 @@ describe('bulkImportParts', () => {
         finish: {
           from: 'Zinc',
           to: 'Painted',
+        },
+        isInternallyFabricated: {
+          from: false,
+          to: true,
         },
         name: {
           from: 'Bearing',

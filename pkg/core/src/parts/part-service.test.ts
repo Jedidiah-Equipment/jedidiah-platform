@@ -29,6 +29,38 @@ function importRow(overrides: Partial<PartBulkImportRow> = {}): PartBulkImportRo
   };
 }
 
+describe('listParts', () => {
+  test('filters parts by unit of measure', async ({ context }) => {
+    await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow(),
+          importRow({
+            code: 'P-200',
+            name: 'Linear rail',
+            supplierCode: 'SUP-200',
+            unitOfMeasure: 'mm',
+          }),
+        ],
+      },
+    });
+
+    const lengthParts = await listParts({
+      db: context.db,
+      input: PartListInput.parse({ columnFilters: { unitOfMeasure: 'mm' }, pageSize: 0 }),
+    });
+    const countedParts = await listParts({
+      db: context.db,
+      input: PartListInput.parse({ columnFilters: { unitOfMeasure: 'quantity' }, pageSize: 0 }),
+    });
+
+    expect(lengthParts.items.map((part) => part.code)).toEqual(['P-200']);
+    expect(countedParts.items.map((part) => part.code)).toEqual(['P-100']);
+  });
+});
+
 describe('bulkImportParts', () => {
   test('creates missing suppliers and parts with audit events', async ({ context }) => {
     const result = await bulkImportParts({

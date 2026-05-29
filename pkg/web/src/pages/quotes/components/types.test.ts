@@ -166,6 +166,12 @@ describe('toQuoteCreateInput', () => {
     expect(input.validUntil).toBe('2026-01-01');
     expect(input.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
   });
+
+  it('preserves cancelled status in create submissions', () => {
+    const input = toQuoteCreateInput(buildFormValues({ status: 'cancelled' }));
+
+    expect(input.status).toBe('cancelled');
+  });
 });
 
 describe('toQuoteUpdateInput', () => {
@@ -200,6 +206,12 @@ describe('toQuoteUpdateInput', () => {
     expect(input.plannedDeliveryDate).toBeNull();
     expect(input.preferredDeliveryDate).toBeNull();
     expect(input.validUntil).toBeNull();
+  });
+
+  it('preserves cancelled status in edit submissions', () => {
+    const input = toQuoteUpdateInput({ id: QUOTE_ID, value: buildFormValues({ status: 'cancelled' }) });
+
+    expect(input.status).toBe('cancelled');
   });
 
   it('rejects customer and product keys at the schema boundary', () => {

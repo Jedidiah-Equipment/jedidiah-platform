@@ -1,26 +1,21 @@
 import { z } from 'zod';
 import { DateIso } from '../common/date.js';
-import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
+import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
-import { SortDirection } from '../common/sort.js';
+import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 
 export type ProductName = z.infer<typeof ProductName>;
-export const ProductName = z.string().trim().min(1, 'Product name is required');
+export const ProductName = requiredTrimmedText('Product name is required');
 
 export type ProductModelCode = z.infer<typeof ProductModelCode>;
-export const ProductModelCode = z.string().trim().min(1, 'Model code is required');
+export const ProductModelCode = requiredTrimmedText('Model code is required');
 
 export type ProductDescription = z.infer<typeof ProductDescription>;
-export const ProductDescription = z.string().trim().min(1).nullable();
+export const ProductDescription = nullableTrimmedText();
 
 export type ProductDescriptionInput = z.infer<typeof ProductDescriptionInput>;
-export const ProductDescriptionInput = z
-  .string()
-  .trim()
-  .transform((value) => (value === '' ? null : value))
-  .nullable()
-  .default(null);
+export const ProductDescriptionInput = nullableTrimmedTextInput();
 
 export type ProductBasePrice = z.infer<typeof ProductBasePrice>;
 export const ProductBasePrice = z.coerce.number().pipe(Price);
@@ -41,7 +36,7 @@ export type AssemblyKind = z.infer<typeof AssemblyKind>;
 export const AssemblyKind = z.enum(['standard', 'optional']);
 
 export type AssemblyName = z.infer<typeof AssemblyName>;
-export const AssemblyName = z.string().trim().min(1, 'Assembly name is required');
+export const AssemblyName = requiredTrimmedText('Assembly name is required');
 
 export type AssemblyPartQuantity = z.infer<typeof AssemblyPartQuantity>;
 export const AssemblyPartQuantity = z
@@ -245,15 +240,12 @@ export const ProductUpdateInput = z
   .strict();
 
 export type ProductListInput = z.infer<typeof ProductListInput>;
-export const ProductListInput = PagedQueryInput.extend({
-  search: z.string().trim().default(''),
-  columnFilters: ProductColumnFilters,
+export const ProductListInput = createSearchedSortedPagedQueryInput({
+  shape: {
+    columnFilters: ProductColumnFilters,
+  },
   sortBy: ProductSortBy.default('name'),
-  sortDirection: SortDirection.default('asc'),
 });
 
 export type ProductListResult = z.infer<typeof ProductListResult>;
-export const ProductListResult = createPagedQueryResult(Product).extend({
-  sortBy: ProductSortBy,
-  sortDirection: SortDirection,
-});
+export const ProductListResult = createSortedPagedQueryResult(Product, ProductSortBy);

@@ -1,9 +1,4 @@
-import {
-  type DatabaseTransaction,
-  type Db,
-  productAssemblies,
-  quoteSelectedAssemblies,
-} from '@pkg/db';
+import { type DatabaseTransaction, type Db, productAssemblies, quoteSelectedAssemblies } from '@pkg/db';
 import { type QuoteCreateInput, QuoteSelectedAssembly, type UUID } from '@pkg/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 

@@ -1,18 +1,18 @@
 import { z } from 'zod';
 
 import { DateIso } from '../common/date.js';
-import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
+import { DEPARTMENTS, Department } from '../common/departments.js';
+import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
-import { SortDirection } from '../common/sort.js';
 import { UUID } from '../common/uuid.js';
 
 export { formatJobCode, JobCode } from '../common/public-code.js';
 
 // Unordered list of job stages. Use JOB_STAGE_PIPELINE for ordered list.
-export const JOB_STAGES = ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const;
+export const JOB_STAGES = DEPARTMENTS;
 
 export type JobStageName = z.infer<typeof JobStageName>;
-export const JobStageName = z.enum(JOB_STAGES);
+export const JobStageName = Department;
 
 export type JobWorkState = z.infer<typeof JobWorkState>;
 export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
@@ -158,15 +158,12 @@ export const JobCreateInput = z
   .strict();
 
 export type JobListInput = z.infer<typeof JobListInput>;
-export const JobListInput = PagedQueryInput.extend({
-  filters: JobListFilters,
-  search: z.string().trim().default(''),
+export const JobListInput = createSearchedSortedPagedQueryInput({
+  shape: {
+    filters: JobListFilters,
+  },
   sortBy: JobSortBy.default('createdAt'),
-  sortDirection: SortDirection.default('asc'),
 });
 
 export type JobListResult = z.infer<typeof JobListResult>;
-export const JobListResult = createPagedQueryResult(JobSummary).extend({
-  sortBy: JobSortBy,
-  sortDirection: SortDirection,
-});
+export const JobListResult = createSortedPagedQueryResult(JobSummary, JobSortBy);

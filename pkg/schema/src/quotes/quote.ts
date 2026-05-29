@@ -2,10 +2,10 @@ import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
-import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
+import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
-import { SortDirection } from '../common/sort.js';
+import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import { Assembly, ProductCurrencyCode } from '../products/product.js';
 
@@ -15,26 +15,16 @@ export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected']);
 export { formatQuoteCode, QuoteCode } from '../common/public-code.js';
 
 export type QuoteNotes = z.infer<typeof QuoteNotes>;
-export const QuoteNotes = z.string().trim().min(1).nullable();
+export const QuoteNotes = nullableTrimmedText();
 
 export type QuoteNotesInput = z.infer<typeof QuoteNotesInput>;
-export const QuoteNotesInput = z
-  .string()
-  .trim()
-  .transform((value) => (value === '' ? null : value))
-  .nullable()
-  .default(null);
+export const QuoteNotesInput = nullableTrimmedTextInput();
 
 export type QuotePaymentTerms = z.infer<typeof QuotePaymentTerms>;
-export const QuotePaymentTerms = z.string().trim().min(1).nullable();
+export const QuotePaymentTerms = nullableTrimmedText();
 
 export type QuotePaymentTermsInput = z.infer<typeof QuotePaymentTermsInput>;
-export const QuotePaymentTermsInput = z
-  .string()
-  .trim()
-  .transform((value) => (value === '' ? null : value))
-  .nullable()
-  .default(null);
+export const QuotePaymentTermsInput = nullableTrimmedTextInput();
 
 export type Quote = z.infer<typeof Quote>;
 export const Quote = z.object({
@@ -112,7 +102,7 @@ export const QuoteCustomerInput = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('inline'),
-    companyName: z.string().trim().min(1, 'Company name is required'),
+    companyName: requiredTrimmedText('Company name is required'),
   }),
 ]);
 
@@ -168,15 +158,13 @@ export const QuoteListFilters = z
   });
 
 export type QuoteListInput = z.infer<typeof QuoteListInput>;
-export const QuoteListInput = PagedQueryInput.extend({
-  filters: QuoteListFilters,
-  search: z.string().trim().default(''),
+export const QuoteListInput = createSearchedSortedPagedQueryInput({
+  defaultSortDirection: 'desc',
+  shape: {
+    filters: QuoteListFilters,
+  },
   sortBy: QuoteSortBy.default('createdAt'),
-  sortDirection: SortDirection.default('desc'),
 });
 
 export type QuoteListResult = z.infer<typeof QuoteListResult>;
-export const QuoteListResult = createPagedQueryResult(QuoteSummary).extend({
-  sortBy: QuoteSortBy,
-  sortDirection: SortDirection,
-});
+export const QuoteListResult = createSortedPagedQueryResult(QuoteSummary, QuoteSortBy);

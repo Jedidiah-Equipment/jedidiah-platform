@@ -334,10 +334,6 @@ async function createQuote(
 
 function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
   return {
-    customer: {
-      customerId: quote.customerId,
-      type: 'existing' as const,
-    },
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
     discount: quote.discount,
@@ -346,7 +342,6 @@ function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
     paymentTerms: quote.paymentTerms,
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
-    productId: quote.productId,
     salesPersonId: quote.salesPersonId,
     selectedAssemblies: [],
     status: quote.status,

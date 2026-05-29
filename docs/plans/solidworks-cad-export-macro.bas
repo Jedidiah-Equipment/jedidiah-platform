@@ -648,11 +648,22 @@ Private Function JsonEscape(ByVal value As String) As String
     escaped = Replace(escaped, vbCrLf, "\n")
     escaped = Replace(escaped, vbCr, "\n")
     escaped = Replace(escaped, vbLf, "\n")
+    escaped = Replace(escaped, Chr$(9), "\t")
+    escaped = Replace(escaped, Chr$(8), "\b")
+    escaped = Replace(escaped, Chr$(12), "\f")
+
+    Dim c As Long
+    For c = 0 To 31
+        If c <> 8 And c <> 9 And c <> 10 And c <> 12 And c <> 13 Then
+            escaped = Replace(escaped, Chr$(c), "\u" & Right$("0000" & Hex$(c), 4))
+        End If
+    Next c
+
     JsonEscape = escaped
 End Function
 
 Private Function IsoTimestamp(ByVal value As Date) As String
-    IsoTimestamp = Format$(value, "yyyy-mm-dd") & "T" & Format$(value, "hh:nn:ss") & ".000Z"
+    IsoTimestamp = Format$(value, "yyyy-mm-dd") & "T" & Format$(value, "hh:nn:ss") & ".000"
 End Function
 
 Private Function FileNameOnly(ByVal path As String) As String
@@ -672,5 +683,8 @@ Private Function BaseNameWithoutExtension(ByVal path As String) As String
 End Function
 
 Private Function Quote(ByVal value As String) As String
-    Quote = Chr$(34) & Replace(value, Chr$(34), "") & Chr$(34)
+    Dim escaped As String
+    escaped = Replace(value, Chr$(34), "")
+    escaped = Replace(escaped, "%", "%%")
+    Quote = Chr$(34) & escaped & Chr$(34)
 End Function

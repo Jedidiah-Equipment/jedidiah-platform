@@ -2,6 +2,7 @@ import { hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { Link, linkOptions } from '@tanstack/react-router';
 import {
+  BriefcaseBusinessIcon,
   Building2Icon,
   ClipboardListIcon,
   FileTextIcon,
@@ -9,6 +10,7 @@ import {
   HandshakeIcon,
   type LucideIcon,
   PackageIcon,
+  UsersIcon,
 } from 'lucide-react';
 import type React from 'react';
 
@@ -40,12 +42,12 @@ const mainNavItems = [
     link: linkOptions({ to: '/quotes' }),
     icon: FileTextIcon,
   },
-  // {
-  //   title: 'Jobs',
-  //   permission: 'job:read',
-  //   link: linkOptions({ to: '/jobs' }),
-  //   icon: BriefcaseBusinessIcon,
-  // },
+  {
+    title: 'Jobs',
+    permission: 'job:read',
+    link: linkOptions({ to: '/jobs' }),
+    icon: BriefcaseBusinessIcon,
+  },
   {
     title: 'Customers',
     permission: 'customer:read',
@@ -69,12 +71,12 @@ const mainNavItems = [
   //   link: linkOptions({ to: '/assistant' }),
   //   icon: BotIcon,
   // },
-  // {
-  //   title: 'Users',
-  //   permission: 'user:list',
-  //   link: linkOptions({ to: '/users' }),
-  //   icon: UsersIcon,
-  // },
+  {
+    title: 'Users',
+    permission: 'user:list',
+    link: linkOptions({ to: '/users' }),
+    icon: UsersIcon,
+  },
   {
     title: 'Audit',
     permission: 'audit:read',

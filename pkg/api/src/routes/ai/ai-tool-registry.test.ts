@@ -219,9 +219,57 @@ describe('AI result projections', () => {
       items: [{ email: 'planner@example.com', id: 'user-id', name: 'Planner User' }],
       total: 1,
     };
+    const partResult = {
+      items: [
+        {
+          code: 'HOSE-001',
+          id: 'part-id',
+          name: 'Hydraulic hose',
+          unitOfMeasure: 'mm',
+        },
+      ],
+      total: 1,
+    };
 
     expect(projectAiToolResult('listUsers', result)).toBe(result);
     expect(projectAiToolResult('listQuoteSalespeople', result)).toBe(result);
     expect(projectAiToolResult('listAuditEvents', result)).toBe(result);
+    expect(projectAiToolResult('listParts', partResult)).toBe(partResult);
+    expect(projectAiToolResult('getPart', partResult.items[0])).toBe(partResult.items[0]);
+  });
+
+  test('keeps CFO part units in Job detail projections', () => {
+    const job = {
+      id: '00000000-0000-4000-8000-000000000001',
+      code: 'JOB-00001',
+      cfo: [
+        {
+          assemblyName: 'Hydraulics',
+          kind: 'standard',
+          parts: [
+            {
+              partCode: 'HOSE-001',
+              partId: '00000000-0000-4000-8000-000000000010',
+              partName: 'Hydraulic hose',
+              quantity: 6000,
+              unitOfMeasure: 'mm',
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(projectAiToolResult('getJob', job)).toMatchObject({
+      cfo: [
+        {
+          parts: [
+            {
+              quantity: 6000,
+              unitOfMeasure: 'mm',
+            },
+          ],
+        },
+      ],
+    });
   });
 });

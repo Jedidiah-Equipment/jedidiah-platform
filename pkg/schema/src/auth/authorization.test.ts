@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest';
-
-import {
-  AppPermission,
-  AppRole,
-  Department,
-  UserAccessSummary,
-  UserAccount,
-  UserPassword,
-  UserSummary,
-} from './authorization.js';
+import { Department } from '../common/departments.js';
+import { AppPermission, AppRole, UserAccessSummary, UserAccount, UserPassword, UserSummary } from './authorization.js';
 
 describe('Department', () => {
   it('accepts supported job departments', () => {

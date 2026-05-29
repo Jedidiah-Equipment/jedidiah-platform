@@ -2,8 +2,7 @@ import { z } from 'zod';
 
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso } from '../common/date.js';
-import { createPagedQueryResult, PagedQueryInput } from '../common/pagination.js';
-import { SortDirection } from '../common/sort.js';
+import { createSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { UUID } from '../common/uuid.js';
 
 export type AuditAction = z.infer<typeof AuditAction>;
@@ -54,14 +53,13 @@ export const AuditFilters = z
   });
 
 export type AuditListInput = z.infer<typeof AuditListInput>;
-export const AuditListInput = PagedQueryInput.extend({
-  filters: AuditFilters,
+export const AuditListInput = createSortedPagedQueryInput({
+  defaultSortDirection: 'desc',
+  shape: {
+    filters: AuditFilters,
+  },
   sortBy: AuditSortBy.default('occurredAt'),
-  sortDirection: SortDirection.default('desc'),
 });
 
 export type AuditListResult = z.infer<typeof AuditListResult>;
-export const AuditListResult = createPagedQueryResult(AuditEvent).extend({
-  sortBy: AuditSortBy,
-  sortDirection: SortDirection,
-});
+export const AuditListResult = createSortedPagedQueryResult(AuditEvent, AuditSortBy);

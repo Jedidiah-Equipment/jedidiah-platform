@@ -1,4 +1,3 @@
-import { hasPermission } from '@pkg/domain';
 import type { QuoteCreateInput, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -9,10 +8,8 @@ import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { GenerateJobFromQuoteDialog } from './components/GenerateJobFromQuoteDialog.js';
 import { QuoteForm } from './components/QuoteForm.js';
 import { QuoteStatusBadge } from './components/QuoteStatusBadge.js';
 
@@ -25,8 +22,6 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const showMutationError = useApiMutationErrorToast();
-  const accessQuery = useAccess();
-  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
   const isEditing = Boolean(quoteId);
   const quoteQuery = useQuery({
     ...trpc.quotes.get.queryOptions({ id: quoteId ?? '' }),
@@ -79,11 +74,6 @@ export const QuoteFormPage: React.FC<QuoteFormPageProps> = ({ quoteId }) => {
       title={isEditing ? (quote?.code ?? 'Loading quote...') : 'Create a new quote'}
     >
       <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
-      {quote && canCreateJob ? (
-        <div className="flex justify-end">
-          <GenerateJobFromQuoteDialog quote={quote} />
-        </div>
-      ) : null}
       {isEditing && quoteQuery.isPending ? <QuoteFormSkeleton /> : null}
       {!isEditing || quote ? (
         <QuoteForm

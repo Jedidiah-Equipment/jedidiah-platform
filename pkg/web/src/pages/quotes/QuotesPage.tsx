@@ -191,7 +191,7 @@ const QuoteTable: React.FC = () => {
               id: 'actions',
               cell: ({ row }) => (
                 <div className="flex justify-end gap-1">
-                  {canCreateJob ? <GenerateJobFromQuoteDialog quote={row.original} size="icon-sm" /> : null}
+                  <GenerateJobFromQuoteDialog quote={row.original} size="icon-sm" />
                   {canUpdateQuote ? (
                     <ButtonLink
                       aria-label={`Edit quote ${row.original.code}`}

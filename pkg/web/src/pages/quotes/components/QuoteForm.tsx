@@ -20,6 +20,7 @@ import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { formatCurrency, formatPercent } from '@/utils/number.js';
+import { GenerateJobFromQuoteDialog } from './GenerateJobFromQuoteDialog.js';
 import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
 import { type QuoteProductChoice, QuoteProductCombobox } from './QuoteProductCombobox.js';
 import { quoteStatusLabels } from './QuoteStatusBadge.js';
@@ -393,7 +394,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
           }
         </form.Field>
       </FieldGroup>
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {initialQuote ? <GenerateJobFromQuoteDialog quote={initialQuote} /> : null}
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button disabled={isSubmitting || isPending} type="submit">

@@ -42,6 +42,19 @@ export const productAuditDescriptor: AuditEntityDescriptor = {
   },
 };
 
+export const documentAuditDescriptor: AuditEntityDescriptor = {
+  entityType: 'document',
+  noun: 'document',
+  primaryLabelField: 'filename',
+  fields: {
+    byteSize: 'byte size',
+    contentType: 'content type',
+    filename: 'filename',
+    productId: 'product',
+    storageKey: 'storage key',
+  },
+};
+
 export const partAuditDescriptor: AuditEntityDescriptor = {
   entityType: 'part',
   noun: 'part',
@@ -167,6 +180,7 @@ function formatQuoteAuditLabel(value: unknown): string {
 
 const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
   customer: customerAuditDescriptor,
+  document: documentAuditDescriptor,
   job: jobAuditDescriptor,
   job_stage: jobStageAuditDescriptor,
   part: partAuditDescriptor,

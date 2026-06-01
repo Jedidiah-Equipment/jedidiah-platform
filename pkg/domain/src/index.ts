@@ -1,6 +1,7 @@
 export * from './auth/authorization.js';
 export * from './demo.js';
 export * from './departments.js';
+export * from './documents/document-policy.js';
 export * from './environment.js';
 export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';

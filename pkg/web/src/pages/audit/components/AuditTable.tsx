@@ -32,6 +32,7 @@ type AuditEventRow = Omit<AuditEvent, 'changes'> & {
 
 const auditEntityTypeLabels = {
   customer: 'Customer',
+  document: 'Document',
   job: 'Job',
   job_stage: 'Job stage',
   part: 'Part',

@@ -3,18 +3,21 @@ import {
   type customers,
   type DatabaseTransaction,
   type Db,
+  documents,
   getPaginationQueryOptions,
   jobCfoAssemblies,
   jobCfoParts,
   jobStages,
   jobs,
   parts,
-  type products,
+  products,
   type quotes,
+  user,
 } from '@pkg/db';
 import { canViewStage, parseJobCodeSearch } from '@pkg/domain';
 import {
   type JobDetail,
+  JobDocumentSnapshot,
   type JobListInput,
   type JobListResult,
   type JobSortBy,
@@ -27,7 +30,6 @@ import {
   type UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gte, or, type SQL, sql } from 'drizzle-orm';
-
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, type JobStageRow, mapJob, mapJobStage } from './job-mappers.js';
 
@@ -40,6 +42,11 @@ type JobWithProductRow = JobRow & {
   product: ProductRow;
   quote: QuoteRow;
   stages: JobStageRow[];
+};
+type JobDocumentSnapshotRow = typeof documents.$inferSelect & {
+  sourceProductName: string | null;
+  uploaderEmail: string | null;
+  uploaderName: string | null;
 };
 
 export async function listJobs({
@@ -193,8 +200,60 @@ export async function getJob({
   return {
     ...mapJobSummary(row),
     cfo: await listJobCfo({ db, jobId: row.id }),
+    documents: await listJobDocuments({ db, jobId: row.id }),
     stages: mapJobDetailStages({ access, stageRows: row.stages }),
   };
+}
+
+async function listJobDocuments({
+  db,
+  jobId,
+}: {
+  db: Db | DatabaseTransaction;
+  jobId: UUID;
+}): Promise<JobDetail['documents']> {
+  const rows = await db
+    .select({
+      byteSize: documents.byteSize,
+      contentType: documents.contentType,
+      createdAt: documents.createdAt,
+      filename: documents.filename,
+      id: documents.id,
+      jobId: documents.jobId,
+      ownerType: documents.ownerType,
+      productId: documents.productId,
+      sourceProductId: documents.sourceProductId,
+      sourceProductName: products.name,
+      storageKey: documents.storageKey,
+      uploaderEmail: user.email,
+      uploaderName: user.name,
+      uploaderUserId: documents.uploaderUserId,
+    })
+    .from(documents)
+    .leftJoin(products, eq(documents.sourceProductId, products.id))
+    .leftJoin(user, eq(documents.uploaderUserId, user.id))
+    .where(eq(documents.jobId, jobId))
+    .orderBy(asc(documents.filename));
+
+  return rows.map(mapJobDocumentSnapshot);
+}
+
+function mapJobDocumentSnapshot(row: JobDocumentSnapshotRow): JobDetail['documents'][number] {
+  return JobDocumentSnapshot.parse({
+    byteSize: row.byteSize,
+    contentType: row.contentType,
+    createdAt: row.createdAt.toISOString(),
+    filename: row.filename,
+    id: row.id,
+    jobId: row.jobId,
+    ownerType: row.ownerType,
+    productId: row.productId,
+    sourceProductId: row.sourceProductId,
+    sourceProductName: row.sourceProductName,
+    uploaderEmail: row.uploaderEmail,
+    uploaderName: row.uploaderName,
+    uploaderUserId: row.uploaderUserId,
+  });
 }
 
 async function listJobCfo({ db, jobId }: { db: Db | DatabaseTransaction; jobId: UUID }): Promise<JobDetail['cfo']> {

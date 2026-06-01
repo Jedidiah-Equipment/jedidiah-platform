@@ -6,7 +6,7 @@ import { requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 
 export type DocumentOwnerType = z.infer<typeof DocumentOwnerType>;
-export const DocumentOwnerType = z.enum(['product']);
+export const DocumentOwnerType = z.enum(['product', 'job']);
 
 export type DocumentFilename = z.infer<typeof DocumentFilename>;
 export const DocumentFilename = requiredTrimmedText('Filename is required');
@@ -21,7 +21,9 @@ export type DocumentMetadata = z.infer<typeof DocumentMetadata>;
 export const DocumentMetadata = z.object({
   id: UUID,
   ownerType: DocumentOwnerType,
+  jobId: UUID.nullable(),
   productId: UUID.nullable(),
+  sourceProductId: UUID.nullable(),
   filename: DocumentFilename,
   contentType: DocumentContentType,
   byteSize: DocumentByteSize,
@@ -29,6 +31,15 @@ export const DocumentMetadata = z.object({
   uploaderName: z.string().trim().min(1).nullable(),
   uploaderEmail: z.email().nullable(),
   createdAt: DateIso,
+});
+
+export type JobDocumentSnapshot = z.infer<typeof JobDocumentSnapshot>;
+export const JobDocumentSnapshot = DocumentMetadata.extend({
+  ownerType: z.literal('job'),
+  jobId: UUID,
+  productId: z.null(),
+  sourceProductId: UUID,
+  sourceProductName: z.string().trim().min(1),
 });
 
 export type DocumentListByProductInput = z.infer<typeof DocumentListByProductInput>;

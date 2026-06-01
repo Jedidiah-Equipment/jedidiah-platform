@@ -1,6 +1,7 @@
 import {
   type DatabaseTransaction,
   type Db,
+  documents,
   jobCfoAssemblies,
   jobCfoParts,
   jobStages,
@@ -69,6 +70,11 @@ export async function createJob({
     }
 
     await insertJobCfo({ cfo, jobId: job.id, tx });
+    await snapshotProductDocumentsForJob({
+      jobId: job.id,
+      productId: quote.productId,
+      tx,
+    });
 
     const stageRows = await tx
       .insert(jobStages)
@@ -259,6 +265,45 @@ async function insertJobCfo({
       );
     }
   }
+}
+
+async function snapshotProductDocumentsForJob({
+  jobId,
+  productId,
+  tx,
+}: {
+  jobId: UUID;
+  productId: UUID;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  const productDocuments = await tx
+    .select({
+      byteSize: documents.byteSize,
+      contentType: documents.contentType,
+      filename: documents.filename,
+      storageKey: documents.storageKey,
+      uploaderUserId: documents.uploaderUserId,
+    })
+    .from(documents)
+    .where(eq(documents.productId, productId))
+    .orderBy(asc(documents.filename), asc(documents.id));
+
+  if (productDocuments.length === 0) {
+    return;
+  }
+
+  await tx.insert(documents).values(
+    productDocuments.map((document) => ({
+      byteSize: document.byteSize,
+      contentType: document.contentType,
+      filename: document.filename,
+      jobId,
+      ownerType: 'job' as const,
+      sourceProductId: productId,
+      storageKey: document.storageKey,
+      uploaderUserId: document.uploaderUserId,
+    })),
+  );
 }
 
 function buildJobStageInsertValues({ jobId }: { jobId: UUID }) {

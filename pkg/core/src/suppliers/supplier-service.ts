@@ -19,7 +19,12 @@ import type {
 import { Supplier as SupplierSchema } from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
-import { createAuditChanges, insertAuditEvent, supplierAuditDescriptor } from '../audit/audit-service.js';
+import {
+  createAuditChanges,
+  createAuditSnapshotChanges,
+  insertAuditEvent,
+  supplierAuditDescriptor,
+} from '../audit/audit-service.js';
 import { DuplicateSupplierNameError, SupplierNotFoundError } from './supplier-errors.js';
 
 type SupplierRow = typeof supplier.$inferSelect;
@@ -126,7 +131,7 @@ export async function createSupplier({
           actorUserId,
           after: row,
           before: null,
-          changes: null,
+          changes: createAuditSnapshotChanges(row, supplierAuditDescriptor.fields, 'created'),
           entityId: row.id,
           entityType: supplierAuditDescriptor.entityType,
         },

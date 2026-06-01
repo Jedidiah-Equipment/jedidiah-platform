@@ -214,6 +214,22 @@ export function createAuditChanges<TRecord extends AuditRecord>(
   return Object.keys(changes).length > 0 ? changes : null;
 }
 
+export function createAuditSnapshotChanges<TRecord extends AuditRecord>(
+  record: TRecord,
+  fields: Record<string, string>,
+  action: Extract<AuditAction, 'created' | 'deleted'>,
+): AuditChanges {
+  const changes: AuditChanges = {};
+
+  for (const field of Object.keys(fields)) {
+    const value = toAuditValue(record[field]);
+
+    changes[field] = action === 'created' ? { from: null, to: value } : { from: value, to: null };
+  }
+
+  return changes;
+}
+
 export function createAuditSummary(input: CreateAuditSummaryInput): string {
   const descriptor = getAuditEntityDescriptor(input.entityType);
 

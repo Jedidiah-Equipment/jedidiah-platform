@@ -22,7 +22,12 @@ import { Product, ProductCurrencyCode } from '@pkg/schema';
 import { and, eq, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
-import { createAuditChanges, insertAuditEvent, productAuditDescriptor } from '../audit/audit-service.js';
+import {
+  createAuditChanges,
+  createAuditSnapshotChanges,
+  insertAuditEvent,
+  productAuditDescriptor,
+} from '../audit/audit-service.js';
 import { type AssemblyListRow, listAssemblies, mapAssembly, syncAssemblies } from './product-assembly-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
 
@@ -222,7 +227,11 @@ export async function createProduct({
           actorUserId,
           after: toProductCatalogAuditRecord(after),
           before: null,
-          changes: null,
+          changes: createAuditSnapshotChanges(
+            toProductCatalogAuditRecord(after),
+            productAuditDescriptor.fields,
+            'created',
+          ),
           entityId: row.id,
           entityType: productAuditDescriptor.entityType,
         },

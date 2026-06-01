@@ -65,6 +65,47 @@ describe('audit change display helpers', () => {
     expect(getAuditFieldLabel('internalReferenceCode')).toBe('Internal reference code');
   });
 
+  it('formats create and delete snapshot values with document labels', () => {
+    expect(
+      getAuditChangeDisplays({
+        filename: {
+          from: null,
+          to: 'Part Book.pdf',
+        },
+        storageKey: {
+          from: 'documents/product/product-id/part-book.pdf',
+          to: null,
+        },
+        byteSize: {
+          from: null,
+          to: 2048,
+        },
+      }),
+    ).toEqual([
+      {
+        field: 'Filename',
+        from: 'None',
+        key: 'filename',
+        preview: 'Filename: None -> Part Book.pdf',
+        to: 'Part Book.pdf',
+      },
+      {
+        field: 'Storage key',
+        from: 'documents/product/product-id/part-book.pdf',
+        key: 'storageKey',
+        preview: 'Storage key changed',
+        to: 'None',
+      },
+      {
+        field: 'Byte size',
+        from: 'None',
+        key: 'byteSize',
+        preview: 'Byte size: None -> 2048',
+        to: '2048',
+      },
+    ]);
+  });
+
   it('formats dates, empty values, booleans, and objects safely', () => {
     expect(formatAuditChangeValue('validUntil', '2026-05-20T08:30:00.000Z')).toContain('May');
     expect(formatAuditChangeValue('name', '')).toBe('Empty');

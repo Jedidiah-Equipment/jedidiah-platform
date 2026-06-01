@@ -99,7 +99,16 @@ describe('customers.create', () => {
       {
         action: 'created',
         actorUserId: session.user.id,
-        changes: null,
+        changes: {
+          companyName: {
+            from: null,
+            to: 'Acme Mining',
+          },
+          email: {
+            from: null,
+            to: 'acme-mining@example.com',
+          },
+        },
         entityId: created.id,
         entityType: 'customer',
         summary: 'Created customer "Acme Mining"',
@@ -328,7 +337,12 @@ describe('customers.update', () => {
     expect(events).toMatchObject([
       {
         action: 'created',
-        changes: null,
+        changes: {
+          companyName: {
+            from: null,
+            to: 'Acme Mining',
+          },
+        },
       },
       {
         action: 'updated',

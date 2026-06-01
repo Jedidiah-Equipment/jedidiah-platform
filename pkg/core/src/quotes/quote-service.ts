@@ -33,6 +33,7 @@ import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   createAuditChanges,
+  createAuditSnapshotChanges,
   customerAuditDescriptor,
   insertAuditEvent,
   quoteAuditDescriptor,
@@ -174,7 +175,11 @@ export async function createQuote({
         actorUserId,
         after: mapQuoteAuditRecord(row, selectedAssemblies),
         before: null,
-        changes: null,
+        changes: createAuditSnapshotChanges(
+          mapQuoteAuditRecord(row, selectedAssemblies),
+          quoteAuditDescriptor.fields,
+          'created',
+        ),
         entityId: row.id,
         entityType: quoteAuditDescriptor.entityType,
       },
@@ -504,7 +509,7 @@ async function resolveQuoteCustomer({
       actorUserId,
       after: customer,
       before: null,
-      changes: null,
+      changes: createAuditSnapshotChanges(customer, customerAuditDescriptor.fields, 'created'),
       entityId: customer.id,
       entityType: customerAuditDescriptor.entityType,
     },

@@ -24,7 +24,7 @@ import {
 } from '@pkg/schema';
 import { asc, eq, sql } from 'drizzle-orm';
 
-import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
+import { createAuditSnapshotChanges, insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { JobCreateFromQuoteDeniedError } from './job-errors.js';
 import { mapJobAuditRecord } from './job-mappers.js';
@@ -85,7 +85,7 @@ export async function createJob({
         actorUserId,
         after: mapJobAuditRecord(job),
         before: null,
-        changes: null,
+        changes: createAuditSnapshotChanges(mapJobAuditRecord(job), jobAuditDescriptor.fields, 'created'),
         entityId: job.id,
         entityType: jobAuditDescriptor.entityType,
       },

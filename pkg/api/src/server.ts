@@ -1,4 +1,7 @@
 import fastifyCors from '@fastify/cors';
+import fastifyMultipart from '@fastify/multipart';
+import type { StorageAdapter } from '@pkg/core';
+import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 
@@ -8,6 +11,8 @@ import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
 import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
+import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
+import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContext } from './trpc/context.js';
 import { shouldLogTRPCError } from './trpc/errors.js';
 import { appRouter } from './trpc/router.js';
@@ -15,6 +20,7 @@ import { appRouter } from './trpc/router.js';
 export async function buildServer(
   config: ApiConfig = getApiConfig(),
   observability: Observability = createObservability(config),
+  storage: StorageAdapter = createDocumentStorageAdapter(config),
 ) {
   log.root.info({ config }, 'Building server');
 
@@ -31,7 +37,13 @@ export async function buildServer(
   });
 
   await registerAuthHandler(app);
+  await app.register(fastifyMultipart, {
+    limits: {
+      fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
+    },
+  });
   await registerAiStreamRoute(app);
+  await registerDocumentHttpRoutes(app, storage);
   await registerHealthRoutes(app, config);
 
   const trpcOptions = {

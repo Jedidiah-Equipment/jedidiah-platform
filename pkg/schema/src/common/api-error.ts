@@ -1,4 +1,14 @@
-export const APP_CODE_PREFIXES = ['auth', 'customer', 'job', 'part', 'product', 'quote', 'supplier', 'user'] as const;
+export const APP_CODE_PREFIXES = [
+  'auth',
+  'customer',
+  'document',
+  'job',
+  'part',
+  'product',
+  'quote',
+  'supplier',
+  'user',
+] as const;
 
 export type AppCodePrefix = (typeof APP_CODE_PREFIXES)[number];
 

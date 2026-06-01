@@ -4,6 +4,7 @@ import { DateIso } from '../common/date.js';
 import { DEPARTMENTS, Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
+import { requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
 
@@ -17,6 +18,36 @@ export const JobStageName = Department;
 
 export type JobWorkState = z.infer<typeof JobWorkState>;
 export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
+
+export type ProductSerialPrefix = z.infer<typeof ProductSerialPrefix>;
+export const ProductSerialPrefix = requiredTrimmedText('Product serial prefix is required');
+
+export type ProductSerialYear = z.infer<typeof ProductSerialYear>;
+export const ProductSerialYear = z.int().min(0).max(99);
+
+export type ProductSerialSequence = z.infer<typeof ProductSerialSequence>;
+export const ProductSerialSequence = z.int().positive().refine(Number.isSafeInteger);
+
+const ProductSerialNumberString = requiredTrimmedText(
+  'Product serial number is required',
+).brand<'ProductSerialNumber'>();
+
+export type ProductSerialNumber = z.infer<typeof ProductSerialNumber>;
+export const ProductSerialNumber = ProductSerialNumberString;
+
+export function formatProductSerialNumber({
+  prefix,
+  sequence,
+  year,
+}: {
+  prefix: ProductSerialPrefix;
+  sequence: ProductSerialSequence;
+  year: ProductSerialYear;
+}): ProductSerialNumber {
+  return ProductSerialNumber.parse(
+    `${prefix}${year.toString().padStart(2, '0')}${sequence.toString().padStart(4, '0')}`,
+  );
+}
 
 export type ScheduleWindow = z.infer<typeof ScheduleWindow>;
 export const ScheduleWindow = z.object({
@@ -107,6 +138,10 @@ export const Job = z.object({
   id: UUID,
   code: JobCode,
   productId: UUID,
+  productSerialNumber: ProductSerialNumber,
+  productSerialPrefix: ProductSerialPrefix,
+  productSerialSequence: ProductSerialSequence,
+  productSerialYear: ProductSerialYear,
   quoteId: UUID,
   createdAt: DateIso,
   updatedAt: DateIso,

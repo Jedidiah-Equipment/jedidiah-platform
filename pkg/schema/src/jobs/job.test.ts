@@ -1,11 +1,43 @@
 import { describe, expect, it } from 'vitest';
 
-import { JOB_STAGES, JobCode, JobDetail, JobListFilters, JobWorkState } from './job.js';
+import { formatProductSerialNumber, JOB_STAGES, Job, JobCode, JobDetail, JobListFilters, JobWorkState } from './job.js';
 
 describe('JobCode', () => {
   it('formats DB integers as branded job codes', () => {
     expect(JobCode.parse(1)).toBe('JOB-00001');
     expect(JobCode.parse(100_000)).toBe('JOB-100000');
+  });
+});
+
+describe('formatProductSerialNumber', () => {
+  it('combines product model code, two-digit year, and padded product sequence', () => {
+    expect(formatProductSerialNumber({ prefix: 'SG1836', sequence: 9, year: 26 })).toBe('SG1836260009');
+    expect(formatProductSerialNumber({ prefix: 'SG1836', sequence: 10_000, year: 27 })).toBe('SG18362710000');
+  });
+});
+
+describe('Job', () => {
+  it('carries the frozen product serial facts', () => {
+    expect(
+      Job.parse({
+        code: 1,
+        createdAt: '2026-06-01T00:00:00.000Z',
+        id: '00000000-0000-4000-8000-000000000001',
+        productId: '00000000-0000-4000-8000-000000000002',
+        productSerialNumber: 'SG1836260009',
+        productSerialPrefix: 'SG1836',
+        productSerialSequence: 9,
+        productSerialYear: 26,
+        quoteId: '00000000-0000-4000-8000-000000000003',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      }),
+    ).toMatchObject({
+      code: 'JOB-00001',
+      productSerialNumber: 'SG1836260009',
+      productSerialPrefix: 'SG1836',
+      productSerialSequence: 9,
+      productSerialYear: 26,
+    });
   });
 });
 

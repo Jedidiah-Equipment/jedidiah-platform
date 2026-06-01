@@ -92,6 +92,13 @@ const JobTable: React.FC = () => {
         header: 'Job code',
       },
       {
+        accessorKey: 'productSerialNumber',
+        cell: ({ row }) => <span className="font-medium">{row.original.productSerialNumber}</span>,
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Product serial',
+      },
+      {
         accessorKey: 'productName',
         cell: ({ row }) => (
           <>

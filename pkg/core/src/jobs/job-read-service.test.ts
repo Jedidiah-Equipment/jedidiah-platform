@@ -24,6 +24,7 @@ describe('mapJobSummary', () => {
       'paint',
       'assembly',
     ]);
+    expect(summary.productSerialNumber).toBe('MODEL-001260001');
   });
 });
 
@@ -39,6 +40,10 @@ function jobRow() {
       name: 'Test Product',
     },
     productId: '00000000-0000-4000-8000-000000000002',
+    productSerialNumber: 'MODEL-001260001',
+    productSerialPrefix: 'MODEL-001',
+    productSerialSequence: 1,
+    productSerialYear: 26,
     quote: {
       code: 1,
       customer: {

@@ -4,6 +4,7 @@ import {
   auditEvents,
   customers,
   type Db,
+  documents,
   jobCfoAssemblies,
   jobCfoParts,
   jobStages,
@@ -21,12 +22,14 @@ import { createUserAccessSummary } from '@pkg/domain';
 import { type PartUnitOfMeasure, QuoteUpdateInput } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
+import { deleteDocument } from '../documents/document-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
 import { createJob } from './job-service.js';
 
 const actorUserId = 'test-user-id';
 const jobAccess = createUserAccessSummary({ role: 'job-supervisor', userId: actorUserId });
+const adminAccess = createUserAccessSummary({ role: 'admin', userId: actorUserId });
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
@@ -123,6 +126,124 @@ describe('createJob', () => {
         }),
       }),
     ).rejects.toThrow('Quote is locked because it already has a Job; discount cannot be changed.');
+  });
+
+  test('snapshots product documents onto the job as frozen rows with product provenance', async ({ context }) => {
+    const sourceDocuments = await createProductDocuments(context.db, context.catalog.product.id, [
+      {
+        filename: 'Part Book.pdf',
+        storageKey: 'documents/product/source/part-book.pdf',
+      },
+      {
+        filename: 'SOP.pdf',
+        storageKey: 'documents/product/source/sop.pdf',
+      },
+    ]);
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    const job = await createJob({
+      access: jobAccess,
+      actorUserId,
+      db: context.db,
+      input: { quoteId: quote.id },
+    });
+
+    const snapshotRows = await context.db.select().from(documents).where(eq(documents.jobId, job.id));
+
+    expect(snapshotRows).toHaveLength(2);
+    expect(snapshotRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filename: 'Part Book.pdf',
+          jobId: job.id,
+          ownerType: 'job',
+          productId: null,
+          sourceProductId: context.catalog.product.id,
+          storageKey: sourceDocuments[0]?.storageKey,
+        }),
+        expect.objectContaining({
+          filename: 'SOP.pdf',
+          jobId: job.id,
+          ownerType: 'job',
+          productId: null,
+          sourceProductId: context.catalog.product.id,
+          storageKey: sourceDocuments[1]?.storageKey,
+        }),
+      ]),
+    );
+    expect(job.documents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filename: 'Part Book.pdf',
+          ownerType: 'job',
+          sourceProductId: context.catalog.product.id,
+          sourceProductName: 'CFO Test Product',
+        }),
+        expect.objectContaining({
+          filename: 'SOP.pdf',
+          ownerType: 'job',
+          sourceProductId: context.catalog.product.id,
+          sourceProductName: 'CFO Test Product',
+        }),
+      ]),
+    );
+  });
+
+  test('keeps the job document snapshot when product documents are later deleted or replaced', async ({ context }) => {
+    const [sourceDocument] = await createProductDocuments(context.db, context.catalog.product.id, [
+      {
+        filename: 'Part Book.pdf',
+        storageKey: 'documents/product/source/part-book.pdf',
+      },
+    ]);
+    if (!sourceDocument) throw new Error('Document insert did not return a row');
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+    const job = await createJob({
+      access: jobAccess,
+      actorUserId,
+      db: context.db,
+      input: { quoteId: quote.id },
+    });
+
+    await deleteDocument({
+      access: adminAccess,
+      actorUserId,
+      db: context.db,
+      id: sourceDocument.id,
+    });
+    await createProductDocuments(context.db, context.catalog.product.id, [
+      {
+        filename: 'Part Book.pdf',
+        storageKey: 'documents/product/source/replacement-part-book.pdf',
+      },
+    ]);
+
+    const snapshotRows = await context.db.select().from(documents).where(eq(documents.jobId, job.id));
+    const liveProductRows = await context.db
+      .select()
+      .from(documents)
+      .where(eq(documents.productId, context.catalog.product.id));
+
+    expect(snapshotRows).toEqual([
+      expect.objectContaining({
+        filename: 'Part Book.pdf',
+        ownerType: 'job',
+        storageKey: 'documents/product/source/part-book.pdf',
+      }),
+    ]);
+    expect(liveProductRows).toEqual([
+      expect.objectContaining({
+        filename: 'Part Book.pdf',
+        ownerType: 'product',
+        storageKey: 'documents/product/source/replacement-part-book.pdf',
+      }),
+    ]);
   });
 
   test('rejects a quote that has not been accepted', async ({ context }) => {
@@ -368,6 +489,23 @@ async function createProduct(db: Db, { modelCode, name }: { modelCode: string; n
   if (!product) throw new Error('Product insert did not return a row');
 
   return product;
+}
+
+async function createProductDocuments(db: Db, productId: string, inputs: { filename: string; storageKey: string }[]) {
+  return db
+    .insert(documents)
+    .values(
+      inputs.map((input) => ({
+        byteSize: 8,
+        contentType: 'application/pdf',
+        filename: input.filename,
+        ownerType: 'product' as const,
+        productId,
+        storageKey: input.storageKey,
+        uploaderUserId: actorUserId,
+      })),
+    )
+    .returning();
 }
 
 function partInput(

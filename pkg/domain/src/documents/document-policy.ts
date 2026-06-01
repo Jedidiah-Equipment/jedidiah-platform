@@ -27,6 +27,15 @@ export type DocumentPolicyValidationResult =
     };
 
 export const documentPolicies = {
+  job: {
+    allowedContentTypes: [
+      DOCUMENT_PDF_CONTENT_TYPE,
+      DOCUMENT_PNG_CONTENT_TYPE,
+      DOCUMENT_JPEG_CONTENT_TYPE,
+      DOCUMENT_WEBP_CONTENT_TYPE,
+    ],
+    maxBytes: PRODUCT_DOCUMENT_MAX_BYTES,
+  },
   product: {
     allowedContentTypes: [
       DOCUMENT_PDF_CONTENT_TYPE,

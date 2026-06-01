@@ -1,4 +1,4 @@
-import { auditEvents, documents, products, user } from '@pkg/db';
+import { auditEvents, customers, documents, jobs, products, quotes, user } from '@pkg/db';
 import { createUserAccessSummary, PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
 import type { UserAccessSummary, UUID } from '@pkg/schema';
 import { describe, expect } from 'vitest';
@@ -254,7 +254,6 @@ describe('listProductDocuments and readDocument', () => {
     ).resolves.toEqual([expect.objectContaining({ id: first.id, filename: 'A.pdf' })]);
 
     const read = await readDocument({
-      access: context.access,
       db: context.db,
       id: first.id,
       storage: context.storage,
@@ -276,7 +275,6 @@ describe('listProductDocuments and readDocument', () => {
     stored.contentType = 'application/octet-stream';
 
     const read = await readDocument({
-      access: context.access,
       db: context.db,
       id: document.id,
       storage: context.storage,
@@ -287,7 +285,6 @@ describe('listProductDocuments and readDocument', () => {
   });
 
   test('denies read without product read access', async ({ context }) => {
-    const document = await uploadPdf(context, { filename: 'A.pdf', productId: context.productId });
     const access = createUserAccessSummary({ role: 'sales', userId: ACTOR_USER_ID });
 
     await expect(
@@ -297,15 +294,45 @@ describe('listProductDocuments and readDocument', () => {
         productId: context.productId,
       }),
     ).rejects.toBeInstanceOf(DocumentForbiddenError);
+  });
 
-    await expect(
-      readDocument({
-        access,
-        db: context.db,
-        id: document.id,
-        storage: context.storage,
-      }),
-    ).rejects.toBeInstanceOf(DocumentForbiddenError);
+  test('reads job-owned snapshot document bytes', async ({ context }) => {
+    const job = await createJobOwner(context.db, context.productId);
+    await context.storage.put({
+      body: pdfBytes(),
+      byteSize: pdfBytes().byteLength,
+      contentType: 'application/pdf',
+      key: 'documents/product/source/job-part-book.pdf',
+    });
+    const [snapshot] = await context.db
+      .insert(documents)
+      .values({
+        byteSize: pdfBytes().byteLength,
+        contentType: 'application/pdf',
+        filename: 'Job Part Book.pdf',
+        jobId: job.id,
+        ownerType: 'job',
+        sourceProductId: context.productId,
+        storageKey: 'documents/product/source/job-part-book.pdf',
+        uploaderUserId: ACTOR_USER_ID,
+      })
+      .returning();
+    if (!snapshot) throw new Error('Document insert did not return a row');
+
+    const read = await readDocument({
+      db: context.db,
+      id: snapshot.id,
+      storage: context.storage,
+    });
+
+    expect(read.document).toMatchObject({
+      filename: 'Job Part Book.pdf',
+      jobId: job.id,
+      ownerType: 'job',
+      productId: null,
+      sourceProductId: context.productId,
+    });
+    await expect(readAll(read.object.body)).resolves.toEqual(pdfBytes());
   });
 });
 
@@ -413,6 +440,45 @@ function uploadPdf(
     },
     storage: context.storage,
   });
+}
+
+async function createJobOwner(db: Parameters<typeof readDocument>[0]['db'], productId: UUID) {
+  const [customer] = await db
+    .insert(customers)
+    .values({
+      companyName: 'Document Job Customer',
+      email: null,
+    })
+    .returning();
+  if (!customer) throw new Error('Customer insert did not return a row');
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      productId,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: ACTOR_USER_ID,
+      status: 'accepted',
+    })
+    .returning();
+  if (!quote) throw new Error('Quote insert did not return a row');
+
+  const [job] = await db
+    .insert(jobs)
+    .values({
+      productId,
+      productSerialNumber: 'DOC-TEST260001',
+      productSerialPrefix: 'DOC-TEST',
+      productSerialSequence: 1,
+      productSerialYear: 26,
+      quoteId: quote.id,
+    })
+    .returning();
+  if (!job) throw new Error('Job insert did not return a row');
+
+  return job;
 }
 
 function pdfBytes(): Uint8Array {

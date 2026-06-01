@@ -39,7 +39,6 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import {
-  deleteProductDocument,
   downloadProductDocument,
   PRODUCT_DOCUMENT_ACCEPT,
   uploadProductDocument,
@@ -172,8 +171,8 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         id: 'actions',
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
-            <DownloadButton document={row.original} />
-            {canDeleteDocuments ? <DeleteDocumentButton document={row.original} /> : null}
+            <DownloadButton document={row.original} productId={productId} />
+            {canDeleteDocuments ? <DeleteDocumentButton document={row.original} productId={productId} /> : null}
           </div>
         ),
         enableColumnFilter: false,
@@ -185,7 +184,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         },
       },
     ],
-    [canDeleteDocuments],
+    [canDeleteDocuments, productId],
   );
   const tableState = useConstrainedTableState({
     pagination,
@@ -299,22 +298,23 @@ function DocumentUploadForm({
   );
 }
 
-function DeleteDocumentButton({ document }: { document: DocumentMetadata }) {
+function DeleteDocumentButton({ document, productId }: { document: DocumentMetadata; productId: UUID }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteProductDocument(document),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: trpc.documents.pathKey() });
-      toast.success('Document deleted');
-      setIsOpen(false);
-    },
-    onError: (error) => {
-      showMutationError(error, 'Unable to delete document.');
-    },
-  });
+  const deleteMutation = useMutation(
+    trpc.documents.deleteByProduct.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: trpc.documents.pathKey() });
+        toast.success('Document deleted');
+        setIsOpen(false);
+      },
+      onError: (error) => {
+        showMutationError(error, 'Unable to delete document.');
+      },
+    }),
+  );
 
   return (
     <Dialog onOpenChange={setIsOpen} open={isOpen}>
@@ -334,7 +334,7 @@ function DeleteDocumentButton({ document }: { document: DocumentMetadata }) {
           </DialogClose>
           <Button
             disabled={deleteMutation.isPending}
-            onClick={() => void deleteMutation.mutateAsync()}
+            onClick={() => void deleteMutation.mutateAsync({ documentId: document.id, productId })}
             type="button"
             variant="destructive"
           >
@@ -347,10 +347,10 @@ function DeleteDocumentButton({ document }: { document: DocumentMetadata }) {
   );
 }
 
-function DownloadButton({ document }: { document: DocumentMetadata }) {
+function DownloadButton({ document, productId }: { document: DocumentMetadata; productId: UUID }) {
   const showMutationError = useApiMutationErrorToast();
   const downloadMutation = useMutation({
-    mutationFn: () => downloadProductDocument(document),
+    mutationFn: () => downloadProductDocument(productId, document),
     onError: (error) => {
       showMutationError(error, 'Unable to download document.');
     },

@@ -11,15 +11,6 @@ export class DuplicateDocumentFilenameError extends Error {
   }
 }
 
-export class DocumentForbiddenError extends Error {
-  readonly code = 'document.forbidden';
-
-  constructor(message = 'You do not have permission to access this document.') {
-    super(message);
-    this.name = 'DocumentForbiddenError';
-  }
-}
-
 export class DocumentNotFoundError extends Error {
   readonly code = 'document.not_found';
   readonly metadata: { id: string };
@@ -28,17 +19,6 @@ export class DocumentNotFoundError extends Error {
     super(`Document not found: ${id}`);
     this.name = 'DocumentNotFoundError';
     this.metadata = { id };
-  }
-}
-
-export class DocumentOwnerNotFoundError extends Error {
-  readonly code = 'document.owner_not_found';
-  readonly metadata: { ownerId: string; ownerType: 'product' };
-
-  constructor(input: { ownerId: string; ownerType: 'product' }) {
-    super(`Document owner not found: ${input.ownerType}:${input.ownerId}`);
-    this.name = 'DocumentOwnerNotFoundError';
-    this.metadata = input;
   }
 }
 
@@ -62,18 +42,14 @@ export class DocumentStorageConflictError extends Error {
 }
 
 export type DocumentCoreError =
-  | DocumentForbiddenError
   | DocumentNotFoundError
-  | DocumentOwnerNotFoundError
   | DocumentPolicyViolationError
   | DocumentStorageConflictError
   | DuplicateDocumentFilenameError;
 
 export function isDocumentCoreError(error: unknown): error is DocumentCoreError {
   return (
-    error instanceof DocumentForbiddenError ||
     error instanceof DocumentNotFoundError ||
-    error instanceof DocumentOwnerNotFoundError ||
     error instanceof DocumentPolicyViolationError ||
     error instanceof DocumentStorageConflictError ||
     error instanceof DuplicateDocumentFilenameError

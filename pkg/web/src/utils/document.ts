@@ -23,7 +23,7 @@ export async function uploadProductDocument(productId: UUID, file: File): Promis
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/documents/products/${productId}`, {
+  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/products/${productId}/documents`, {
     body: formData,
     credentials: 'include',
     method: 'POST',
@@ -36,13 +36,36 @@ export async function uploadProductDocument(productId: UUID, file: File): Promis
   return DocumentMetadata.parse(await response.json());
 }
 
-export async function downloadProductDocument(document: DocumentMetadata): Promise<void> {
-  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/documents/${document.id}/download`, {
+export async function downloadProductDocument(productId: UUID, document: DocumentMetadata): Promise<void> {
+  const response = await fetch(
+    `${getClientConfig().apiBaseUrl}/api/products/${productId}/documents/${document.id}/download`,
+    {
+      credentials: 'include',
+    },
+  );
+
+  await downloadDocumentResponse({ document, fallback: 'Unable to download document.', response });
+}
+
+export async function downloadJobDocument(jobId: UUID, document: DocumentMetadata): Promise<void> {
+  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/jobs/${jobId}/documents/${document.id}/download`, {
     credentials: 'include',
   });
 
+  await downloadDocumentResponse({ document, fallback: 'Unable to download document.', response });
+}
+
+async function downloadDocumentResponse({
+  document,
+  fallback,
+  response,
+}: {
+  document: DocumentMetadata;
+  fallback: string;
+  response: Response;
+}): Promise<void> {
   if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, 'Unable to download document.'));
+    throw new Error(await readApiErrorMessage(response, fallback));
   }
 
   const blob = await response.blob();
@@ -52,17 +75,6 @@ export async function downloadProductDocument(document: DocumentMetadata): Promi
   link.download = document.filename;
   link.click();
   URL.revokeObjectURL(url);
-}
-
-export async function deleteProductDocument(document: DocumentMetadata): Promise<void> {
-  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/documents/${document.id}`, {
-    credentials: 'include',
-    method: 'DELETE',
-  });
-
-  if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, 'Unable to delete document.'));
-  }
 }
 
 export async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {

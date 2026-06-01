@@ -26,6 +26,7 @@ import {
 import { asc, eq, sql } from 'drizzle-orm';
 
 import { createAuditSnapshotChanges, insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
+import { documentBaseSelect } from '../documents/document-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { JobCreateFromQuoteDeniedError } from './job-errors.js';
 import { mapJobAuditRecord } from './job-mappers.js';
@@ -70,7 +71,7 @@ export async function createJob({
     }
 
     await insertJobCfo({ cfo, jobId: job.id, tx });
-    await snapshotProductDocumentsForJob({
+    await snapshotJobDocuments({
       jobId: job.id,
       productId: quote.productId,
       tx,
@@ -267,7 +268,7 @@ async function insertJobCfo({
   }
 }
 
-async function snapshotProductDocumentsForJob({
+export async function snapshotJobDocuments({
   jobId,
   productId,
   tx,
@@ -277,13 +278,7 @@ async function snapshotProductDocumentsForJob({
   tx: DatabaseTransaction;
 }): Promise<void> {
   const productDocuments = await tx
-    .select({
-      byteSize: documents.byteSize,
-      contentType: documents.contentType,
-      filename: documents.filename,
-      storageKey: documents.storageKey,
-      uploaderUserId: documents.uploaderUserId,
-    })
+    .select(documentBaseSelect)
     .from(documents)
     .where(eq(documents.productId, productId))
     .orderBy(asc(documents.filename), asc(documents.id));

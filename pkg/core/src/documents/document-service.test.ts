@@ -1,16 +1,18 @@
 import { auditEvents, customers, documents, jobs, products, quotes, user } from '@pkg/db';
-import { createUserAccessSummary, PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
-import type { UserAccessSummary, UUID } from '@pkg/schema';
+import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
+import type { UUID } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
+import { readJobDocument } from '../jobs/job-read-service.js';
+import {
+  createProductDocument,
+  deleteProductDocument,
+  getProductDocuments,
+  readProductDocument,
+} from '../products/product-service.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
-import {
-  DocumentForbiddenError,
-  DocumentPolicyViolationError,
-  DuplicateDocumentFilenameError,
-} from './document-errors.js';
-import { deleteDocument, listProductDocuments, readDocument, uploadProductDocument } from './document-service.js';
+import { DocumentPolicyViolationError, DuplicateDocumentFilenameError } from './document-errors.js';
 
 const ACTOR_USER_ID = 'test-user-id';
 
@@ -54,19 +56,17 @@ const test = createTester(async ({ db }) => {
   }
 
   return {
-    access: createUserAccessSummary({ role: 'admin', userId: ACTOR_USER_ID }),
     otherProductId: otherProduct.id,
     productId: product.id,
     storage: new InMemoryStorageAdapter(),
   };
 });
 
-describe('uploadProductDocument', () => {
+describe('createProductDocument', () => {
   test('stores bytes, inserts a document row, and audits the storage key', async ({ context }) => {
     const bytes = pdfBytes();
 
-    const document = await uploadProductDocument({
-      access: context.access,
+    const document = await createProductDocument({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
       input: {
@@ -133,8 +133,7 @@ describe('uploadProductDocument', () => {
   });
 
   test('stores the server-verified content type instead of the declared upload type', async ({ context }) => {
-    const document = await uploadProductDocument({
-      access: context.access,
+    const document = await createProductDocument({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
       input: {
@@ -156,8 +155,7 @@ describe('uploadProductDocument', () => {
   });
 
   test('stores server-verified image content types', async ({ context }) => {
-    const document = await uploadProductDocument({
-      access: context.access,
+    const document = await createProductDocument({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
       input: {
@@ -196,8 +194,7 @@ describe('uploadProductDocument', () => {
 
   test('rejects oversized and wrong-type uploads before insert', async ({ context }) => {
     await expect(
-      uploadProductDocument({
-        access: context.access,
+      createProductDocument({
         actorUserId: ACTOR_USER_ID,
         db: context.db,
         input: {
@@ -211,8 +208,7 @@ describe('uploadProductDocument', () => {
     ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
 
     await expect(
-      uploadProductDocument({
-        access: context.access,
+      createProductDocument({
         actorUserId: ACTOR_USER_ID,
         db: context.db,
         input: {
@@ -228,34 +224,24 @@ describe('uploadProductDocument', () => {
     await expect(context.db.select().from(documents)).resolves.toEqual([]);
     expect(context.storage.objects.size).toBe(0);
   });
-
-  test('denies upload without product update access', async ({ context }) => {
-    await expect(
-      uploadPdf(context, {
-        access: createUserAccessSummary({ role: 'sales', userId: ACTOR_USER_ID }),
-        filename: 'Part Book.pdf',
-        productId: context.productId,
-      }),
-    ).rejects.toBeInstanceOf(DocumentForbiddenError);
-  });
 });
 
-describe('listProductDocuments and readDocument', () => {
+describe('getProductDocuments and readProductDocument', () => {
   test('lists by owner and reads stored bytes', async ({ context }) => {
     const first = await uploadPdf(context, { filename: 'A.pdf', productId: context.productId });
     await uploadPdf(context, { filename: 'B.pdf', productId: context.otherProductId });
 
     await expect(
-      listProductDocuments({
-        access: context.access,
+      getProductDocuments({
         db: context.db,
         productId: context.productId,
       }),
     ).resolves.toEqual([expect.objectContaining({ id: first.id, filename: 'A.pdf' })]);
 
-    const read = await readDocument({
+    const read = await readProductDocument({
       db: context.db,
-      id: first.id,
+      documentId: first.id,
+      productId: context.productId,
       storage: context.storage,
     });
 
@@ -274,26 +260,15 @@ describe('listProductDocuments and readDocument', () => {
 
     stored.contentType = 'application/octet-stream';
 
-    const read = await readDocument({
+    const read = await readProductDocument({
       db: context.db,
-      id: document.id,
+      documentId: document.id,
+      productId: context.productId,
       storage: context.storage,
     });
 
     expect(read.document.contentType).toBe('application/pdf');
     expect(read.object.contentType).toBe('application/octet-stream');
-  });
-
-  test('denies read without product read access', async ({ context }) => {
-    const access = createUserAccessSummary({ role: 'sales', userId: ACTOR_USER_ID });
-
-    await expect(
-      listProductDocuments({
-        access,
-        db: context.db,
-        productId: context.productId,
-      }),
-    ).rejects.toBeInstanceOf(DocumentForbiddenError);
   });
 
   test('reads job-owned snapshot document bytes', async ({ context }) => {
@@ -319,9 +294,10 @@ describe('listProductDocuments and readDocument', () => {
       .returning();
     if (!snapshot) throw new Error('Document insert did not return a row');
 
-    const read = await readDocument({
+    const read = await readJobDocument({
       db: context.db,
-      id: snapshot.id,
+      documentId: snapshot.id,
+      jobId: job.id,
       storage: context.storage,
     });
 
@@ -336,16 +312,16 @@ describe('listProductDocuments and readDocument', () => {
   });
 });
 
-describe('deleteDocument', () => {
+describe('deleteProductDocument', () => {
   test('removes the document row, keeps the stored object, and writes a delete audit event', async ({ context }) => {
     const document = await uploadPdf(context, { filename: 'Delete Me.pdf', productId: context.productId });
     const [row] = await context.db.select().from(documents);
 
-    await deleteDocument({
-      access: context.access,
+    await deleteProductDocument({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
-      id: document.id,
+      documentId: document.id,
+      productId: context.productId,
     });
 
     await expect(context.db.select().from(documents)).resolves.toEqual([]);
@@ -390,11 +366,11 @@ describe('deleteDocument', () => {
   test('allows re-uploading the same filename after delete', async ({ context }) => {
     const document = await uploadPdf(context, { filename: 'Part Book.pdf', productId: context.productId });
 
-    await deleteDocument({
-      access: context.access,
+    await deleteProductDocument({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
-      id: document.id,
+      documentId: document.id,
+      productId: context.productId,
     });
 
     await expect(
@@ -405,31 +381,16 @@ describe('deleteDocument', () => {
     });
     expect(context.storage.objects.size).toBe(2);
   });
-
-  test('denies delete without product update access', async ({ context }) => {
-    const document = await uploadPdf(context, { filename: 'A.pdf', productId: context.productId });
-
-    await expect(
-      deleteDocument({
-        access: createUserAccessSummary({ role: 'sales', userId: ACTOR_USER_ID }),
-        actorUserId: ACTOR_USER_ID,
-        db: context.db,
-        id: document.id,
-      }),
-    ).rejects.toBeInstanceOf(DocumentForbiddenError);
-  });
 });
 
 function uploadPdf(
   context: {
-    access: UserAccessSummary;
-    db: Parameters<typeof uploadProductDocument>[0]['db'];
+    db: Parameters<typeof createProductDocument>[0]['db'];
     storage: InMemoryStorageAdapter;
   },
-  input: { access?: UserAccessSummary; filename: string; productId: UUID },
+  input: { filename: string; productId: UUID },
 ) {
-  return uploadProductDocument({
-    access: input.access ?? context.access,
+  return createProductDocument({
     actorUserId: ACTOR_USER_ID,
     db: context.db,
     input: {
@@ -442,7 +403,7 @@ function uploadPdf(
   });
 }
 
-async function createJobOwner(db: Parameters<typeof readDocument>[0]['db'], productId: UUID) {
+async function createJobOwner(db: Parameters<typeof readJobDocument>[0]['db'], productId: UUID) {
   const [customer] = await db
     .insert(customers)
     .values({

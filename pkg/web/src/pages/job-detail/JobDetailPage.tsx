@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
-import { downloadProductDocument } from '@/utils/document.js';
+import { downloadJobDocument } from '@/utils/document.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 import { JobFact } from './components/JobFact.js';
 
@@ -37,7 +37,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
             <JobFact label="Product name" value={job.productName} />
           </div>
           <JobCfoDump cfo={job.cfo} />
-          <JobDocumentsSnapshot documents={job.documents} />
+          <JobDocuments documents={job.documents} jobId={job.id} />
         </>
       ) : null}
       {jobQuery.isLoading ? <Skeleton className="h-48" /> : null}
@@ -45,9 +45,10 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   );
 };
 
-const JobDocumentsSnapshot: React.FC<{
+const JobDocuments: React.FC<{
   documents: JobDetail['documents'];
-}> = ({ documents }) => {
+  jobId: UUID;
+}> = ({ documents, jobId }) => {
   if (documents.length === 0) {
     return (
       <section className="grid gap-2">
@@ -77,7 +78,7 @@ const JobDocumentsSnapshot: React.FC<{
               <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
               <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>
               <div className="flex justify-end">
-                <DownloadButton document={document} />
+                <DownloadButton document={document} jobId={jobId} />
               </div>
             </div>
           ))}
@@ -87,10 +88,10 @@ const JobDocumentsSnapshot: React.FC<{
   );
 };
 
-function DownloadButton({ document }: { document: DocumentMetadata }) {
+function DownloadButton({ document, jobId }: { document: DocumentMetadata; jobId: UUID }) {
   const showMutationError = useApiMutationErrorToast();
   const downloadMutation = useMutation({
-    mutationFn: () => downloadProductDocument(document),
+    mutationFn: () => downloadJobDocument(jobId, document),
     onError: (error) => {
       showMutationError(error, 'Unable to download document.');
     },

@@ -6,7 +6,7 @@ import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } fro
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
-import { JobDocumentSnapshot } from '../documents/document.js';
+import { JobDocument } from '../documents/document.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
 
 export { formatJobCode, JobCode } from '../common/public-code.js';
@@ -186,7 +186,7 @@ export const JobDetail = JobSummary.extend({
       ),
     }),
   ),
-  documents: z.array(JobDocumentSnapshot),
+  documents: z.array(JobDocument),
   stages: z.array(JobStageRollup).length(5),
 });
 

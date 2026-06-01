@@ -1,16 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
-import { type DatabaseTransaction, type Db, documents, getUniqueViolationConstraint, products, user } from '@pkg/db';
-import { hasPermission, sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
-import type { AuthId, DocumentMetadata, UserAccessSummary, UUID } from '@pkg/schema';
+import { type DatabaseTransaction, type Db, documents, getUniqueViolationConstraint } from '@pkg/db';
+import { sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
+import type { AuthId, DocumentMetadata, UUID } from '@pkg/schema';
 import { DocumentMetadata as DocumentMetadataSchema } from '@pkg/schema';
-import { asc, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 import { createAuditSnapshotChanges, documentAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
 import {
-  DocumentForbiddenError,
   DocumentNotFoundError,
-  DocumentOwnerNotFoundError,
   DocumentPolicyViolationError,
   DocumentStorageConflictError,
   DuplicateDocumentFilenameError,
@@ -20,13 +18,27 @@ import { type StorageAdapter, StorageKeyAlreadyExistsError, type StoredObject } 
 const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
 
 type DocumentRow = typeof documents.$inferSelect;
-type DocumentDb = Db | DatabaseTransaction;
-type DocumentWithUploaderRow = DocumentRow & {
+export type DocumentDb = Db | DatabaseTransaction;
+export type DocumentBaseRow = Pick<
+  DocumentRow,
+  | 'byteSize'
+  | 'contentType'
+  | 'createdAt'
+  | 'filename'
+  | 'id'
+  | 'jobId'
+  | 'ownerType'
+  | 'productId'
+  | 'sourceProductId'
+  | 'storageKey'
+  | 'uploaderUserId'
+>;
+export type DocumentMetadataRow = DocumentBaseRow & {
   uploaderEmail: string | null;
   uploaderName: string | null;
 };
 
-export type UploadProductDocumentInput = {
+export type ProductDocumentCreateInput = {
   bytes: Uint8Array;
   contentType: string;
   filename: string;
@@ -38,22 +50,31 @@ export type ReadDocumentResult = {
   object: StoredObject;
 };
 
-export async function uploadProductDocument({
-  access,
+export const documentBaseSelect = {
+  byteSize: documents.byteSize,
+  contentType: documents.contentType,
+  createdAt: documents.createdAt,
+  filename: documents.filename,
+  id: documents.id,
+  jobId: documents.jobId,
+  ownerType: documents.ownerType,
+  productId: documents.productId,
+  sourceProductId: documents.sourceProductId,
+  storageKey: documents.storageKey,
+  uploaderUserId: documents.uploaderUserId,
+};
+
+export async function createProductDocumentRecord({
   actorUserId,
   db,
   input,
   storage,
 }: {
-  access: UserAccessSummary;
   actorUserId: AuthId;
   db: Db;
-  input: UploadProductDocumentInput;
+  input: ProductDocumentCreateInput;
   storage: StorageAdapter;
-}): Promise<DocumentMetadata> {
-  assertCanUploadProductDocument(access);
-  await assertProductExists({ db, productId: input.productId });
-
+}): Promise<DocumentBaseRow> {
   const byteSize = input.bytes.byteLength;
   const verifiedContentType = sniffDocumentContentType(input.bytes);
 
@@ -127,7 +148,7 @@ export async function uploadProductDocument({
         },
       });
 
-      return getDocumentMetadata({ db: tx, id: row.id });
+      return row;
     });
   } catch (error) {
     const mappedError = mapDocumentUniqueViolation(error, {
@@ -145,77 +166,20 @@ export async function uploadProductDocument({
   }
 }
 
-export async function listProductDocuments({
-  access,
-  db,
-  productId,
-}: {
-  access: UserAccessSummary;
-  db: Db;
-  productId: UUID;
-}): Promise<DocumentMetadata[]> {
-  assertCanReadProductDocument(access);
-  await assertProductExists({ db, productId });
-
-  const rows = await selectDocumentMetadata(db)
-    .where(eq(documents.productId, productId))
-    .orderBy(asc(documents.filename));
-
-  return rows.map(mapDocumentMetadata);
-}
-
-export async function readDocument({
-  db,
-  id,
-  storage,
-}: {
-  db: Db;
-  id: UUID;
-  storage: StorageAdapter;
-}): Promise<ReadDocumentResult> {
-  const row = await db.query.documents.findFirst({
-    where: eq(documents.id, id),
-  });
-
-  if (!row) {
-    throw new DocumentNotFoundError(id);
-  }
-
-  const document = await getDocumentMetadata({ db, id });
-  const object = await storage.get(row.storageKey);
-
-  return {
-    document,
-    object,
-  };
-}
-
-export async function deleteDocument({
-  access,
+export async function deleteDocumentRecord({
   actorUserId,
   db,
-  id,
+  document,
 }: {
-  access: UserAccessSummary;
   actorUserId: AuthId;
   db: Db;
-  id: UUID;
+  document: DocumentBaseRow;
 }): Promise<void> {
-  assertCanDeleteProductDocument(access);
-
   await db.transaction(async (tx) => {
-    const row = await tx.query.documents.findFirst({
-      where: eq(documents.id, id),
-    });
-
-    if (!row) {
-      throw new DocumentNotFoundError(id);
-    }
-
-    const [deleted] = await tx.delete(documents).where(eq(documents.id, id)).returning({ id: documents.id });
+    const [deleted] = await tx.delete(documents).where(eq(documents.id, document.id)).returning({ id: documents.id });
 
     if (!deleted) {
-      throw new DocumentNotFoundError(id);
+      throw new DocumentNotFoundError(document.id);
     }
 
     await insertAuditEvent({
@@ -224,80 +188,20 @@ export async function deleteDocument({
         action: 'deleted',
         actorUserId,
         after: null,
-        before: toDocumentAuditRecord(row),
-        changes: createAuditSnapshotChanges(toDocumentAuditRecord(row), documentAuditDescriptor.fields, 'deleted'),
-        entityId: row.id,
+        before: toDocumentAuditRecord(document),
+        changes: createAuditSnapshotChanges(toDocumentAuditRecord(document), documentAuditDescriptor.fields, 'deleted'),
+        entityId: document.id,
         entityType: documentAuditDescriptor.entityType,
       },
     });
   });
 }
 
-function assertCanUploadProductDocument(access: UserAccessSummary): void {
-  if (!hasPermission(access, 'product:update')) {
-    throw new DocumentForbiddenError('You do not have permission to upload Product documents.');
-  }
+export function selectDocumentBase(db: DocumentDb) {
+  return db.select(documentBaseSelect).from(documents).$dynamic();
 }
 
-function assertCanReadProductDocument(access: UserAccessSummary): void {
-  if (!hasPermission(access, 'product:read')) {
-    throw new DocumentForbiddenError('You do not have permission to read Product documents.');
-  }
-}
-
-function assertCanDeleteProductDocument(access: UserAccessSummary): void {
-  if (!hasPermission(access, 'product:update')) {
-    throw new DocumentForbiddenError('You do not have permission to delete Product documents.');
-  }
-}
-
-async function assertProductExists({ db, productId }: { db: Db; productId: UUID }): Promise<void> {
-  const [product] = await db
-    .select({
-      id: products.id,
-    })
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
-
-  if (!product) {
-    throw new DocumentOwnerNotFoundError({ ownerId: productId, ownerType: 'product' });
-  }
-}
-
-async function getDocumentMetadata({ db, id }: { db: DocumentDb; id: UUID }): Promise<DocumentMetadata> {
-  const [row] = await selectDocumentMetadata(db).where(eq(documents.id, id)).limit(1);
-
-  if (!row) {
-    throw new DocumentNotFoundError(id);
-  }
-
-  return mapDocumentMetadata(row);
-}
-
-function selectDocumentMetadata(db: DocumentDb) {
-  return db
-    .select({
-      byteSize: documents.byteSize,
-      contentType: documents.contentType,
-      createdAt: documents.createdAt,
-      filename: documents.filename,
-      id: documents.id,
-      jobId: documents.jobId,
-      ownerType: documents.ownerType,
-      productId: documents.productId,
-      sourceProductId: documents.sourceProductId,
-      storageKey: documents.storageKey,
-      uploaderEmail: user.email,
-      uploaderName: user.name,
-      uploaderUserId: documents.uploaderUserId,
-    })
-    .from(documents)
-    .leftJoin(user, eq(documents.uploaderUserId, user.id))
-    .$dynamic();
-}
-
-function mapDocumentMetadata(row: DocumentWithUploaderRow): DocumentMetadata {
+export function mapDocumentMetadata(row: DocumentMetadataRow): DocumentMetadata {
   return DocumentMetadataSchema.parse({
     byteSize: row.byteSize,
     contentType: row.contentType,
@@ -327,7 +231,7 @@ function sanitizeStorageKeySuffix(filename: string): string {
   return sanitized || 'document.pdf';
 }
 
-function toDocumentAuditRecord(row: DocumentRow) {
+function toDocumentAuditRecord(row: DocumentBaseRow) {
   return {
     byteSize: row.byteSize,
     contentType: row.contentType,

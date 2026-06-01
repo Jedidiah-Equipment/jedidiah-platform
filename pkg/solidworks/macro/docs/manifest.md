@@ -70,12 +70,15 @@ The manifest does not reference files inside Pack and Go archives. If a Pack and
 - `exportedAt`: Local export timestamp written by the macro.
 - `solidWorksVersion`: SolidWorks revision number when available.
 - `product.modelCode`: Value of `JED_PRODUCT_MODEL_CODE` on the active top-level assembly.
+- `product.name`: Display name for the Product. V1 uses the source assembly basename.
 - `product.source`: Source `.SLDASM` metadata for the top-level Product assembly.
 - `product.exports`: Product-level exported files. Empty in v1.
 - `product.assemblies[].code`: Value of `JED_ASSEMBLY_CODE` on the referenced sub-assembly.
+- `product.assemblies[].name`: Display name for the Product Assembly. V1 uses the source assembly basename.
 - `product.assemblies[].source`: Source `.SLDASM` metadata for the Product Assembly.
 - `product.assemblies[].exports`: Assembly-level exported files. Empty in v1.
 - `product.assemblies[].parts[].partCode`: Value of `JED_PART_CODE` on the referenced Part.
+- `product.assemblies[].parts[].name`: Display name for the Part. V1 uses the source Part basename.
 - `product.assemblies[].parts[].quantity`: Occurrence count for that Part/configuration under the coded Product Assembly.
 - `product.assemblies[].parts[].source`: Source `.SLDPRT` metadata for the Part.
 - `exports[].fileName`: Generated export filename.

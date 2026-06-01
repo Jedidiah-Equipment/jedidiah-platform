@@ -40,3 +40,8 @@ export type DocumentDownloadInput = z.infer<typeof DocumentDownloadInput>;
 export const DocumentDownloadInput = z.object({
   id: UUID,
 });
+
+export type DocumentDeleteInput = z.infer<typeof DocumentDeleteInput>;
+export const DocumentDeleteInput = z.object({
+  id: UUID,
+});

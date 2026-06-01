@@ -27,6 +27,9 @@ describe('jobs.create', () => {
 
     expect(job).toMatchObject({
       productId: context.product.id,
+      productSerialNumber: expect.stringMatching(/^JOB-TEST\d{6}$/),
+      productSerialPrefix: 'JOB-TEST',
+      productSerialSequence: 1,
       quoteId: context.quote.id,
     });
     expect(job.stages.map((stage) => stage.stage)).toEqual([
@@ -35,6 +38,34 @@ describe('jobs.create', () => {
       'fabrication',
       'paint',
       'assembly',
+    ]);
+  });
+
+  test('returns the product serial number from get and list, and can search by it', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+
+    await expect(caller.jobs.get({ id: job.id })).resolves.toMatchObject({
+      id: job.id,
+      productSerialNumber: job.productSerialNumber,
+    });
+
+    const result = await caller.jobs.list({
+      filters: {},
+      page: 1,
+      pageSize: 10,
+      search: job.productSerialNumber,
+      sortBy: 'createdAt',
+      sortDirection: 'asc',
+    });
+
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        id: job.id,
+        productSerialNumber: job.productSerialNumber,
+      }),
     ]);
   });
 });

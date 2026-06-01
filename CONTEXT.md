@@ -5,8 +5,11 @@ Domain language for Jedidah Ops. The core unit is a **Job**: one physical produc
 ## Language
 
 **Job**:
-The realized build of an accepted Quote — the confirmed order behind it. A Job is always sourced from exactly one Quote; there is no way to create a Job without one. Creating a Job locks the Quote's commercial facts and snapshots its bill of materials (see Create Job from Quote and CFO).
+The realized build of an accepted Quote — the confirmed order behind it. A Job is always sourced from exactly one Quote; there is no way to create a Job without one. Creating a Job locks the Quote's commercial facts, assigns the physical Product Serial Number for the unit being built, and snapshots its bill of materials (see Create Job from Quote and CFO).
 _Avoid_: Order, Work Order, Build, Ticket.
+
+**Product Serial Number**:
+The physical unit serial assigned to one Job at creation, formatted as `{productModelCode}{twoDigitYear}{sequence}` (for example `SG1836260009`). The prefix is the Product model code as stored when the Job is created; the year is the Africa/Johannesburg business calendar year; and the sequence is a per-Product running count that continues across years. This is not the Job code: the Job code (`JOB-xxxxx`) remains the app-facing operational identifier, while the Product Serial Number identifies the real product unit.
 
 **Pipeline**:
 The fixed manufacturing sequence: Procurement -> Supply -> Fabrication -> Paint -> Assembly. The sequence is for visual ordering and shared language only; it is not a server-side work gate.
@@ -71,7 +74,7 @@ For a Quote with a selected set of currently available Optional Assemblies, the 
 A client-side projection, not a persisted or server-returned aggregate. Quote totals are computed from the Quote pricing facts: snapshotted Product base price, selected Optional Assembly snapshot prices, discount, delivery inclusion, and delivery price. The server stores and returns those inputs, but does not store a selected-option aggregate total or expose a quote `total` field.
 
 **Create Job from Quote**:
-The single way a Job comes into existence. A `job-supervisor` or `admin` triggers it from an `accepted` Quote that has no Job yet ("Generate CFO & Start Job"). The action: snapshots the Quote's Effective Bill of Materials into the Job's CFO, materializes the five Stages, and turns the Quote into a Locked Quote. A Quote sources at most one Job. Creation is **blocked** if any selected Optional Assembly is stale (its catalog Assembly was deleted), because the CFO cannot resolve that assembly's Parts — the error names the offending assembly. There is no other Job-creation path (Direct Job Creation is retired) and no product-picking step; everything is inherited from the Quote.
+The single way a Job comes into existence. A `job-supervisor` or `admin` triggers it from an `accepted` Quote that has no Job yet ("Generate CFO & Start Job"). The action: assigns the Product Serial Number, snapshots the Quote's Effective Bill of Materials into the Job's CFO, materializes the five Stages, and turns the Quote into a Locked Quote. A Quote sources at most one Job. Creation is **blocked** if any selected Optional Assembly is stale (its catalog Assembly was deleted), because the CFO cannot resolve that assembly's Parts — the error names the offending assembly. There is no other Job-creation path (Direct Job Creation is retired) and no product-picking step; everything is inherited from the Quote.
 
 **Audit Event**:
 Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_stage`, `product`, `quote`, `supplier`, and `user`. Product Assemblies, their Parts lists, and override links are part of the `product` aggregate and audited under the `product` entity — there is no separate `product_assembly` audit entity type.

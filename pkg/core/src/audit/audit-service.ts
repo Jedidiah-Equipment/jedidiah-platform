@@ -93,6 +93,7 @@ export const jobAuditDescriptor: AuditEntityDescriptor = {
   primaryLabelFormatter: formatJobAuditLabel,
   fields: {
     productId: 'product',
+    productSerialNumber: 'product serial number',
     quoteId: 'quote',
   },
 };

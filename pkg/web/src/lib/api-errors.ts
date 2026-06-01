@@ -26,6 +26,14 @@ export function getApiErrorAppCode(error: unknown): AppCode | undefined {
   return typeof error.data?.appCode === 'string' ? (error.data.appCode as AppCode) : undefined;
 }
 
+export function shouldReportApiMutationError(error: unknown): boolean {
+  if (!isApiErrorShape(error)) return true;
+  if (getApiErrorAppCode(error)) return false;
+  if (error.data?.code === 'BAD_REQUEST') return false;
+
+  return true;
+}
+
 function isApiErrorShape(error: unknown): error is ApiErrorShape {
   return typeof error === 'object' && error !== null;
 }

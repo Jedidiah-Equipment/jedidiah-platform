@@ -41,6 +41,7 @@ import { formatDate } from '@/utils/date.js';
 import {
   deleteProductDocument,
   downloadProductDocument,
+  PRODUCT_DOCUMENT_ACCEPT,
   uploadProductDocument,
   validateSelectedFile,
 } from '@/utils/document.js';
@@ -274,7 +275,7 @@ function DocumentUploadForm({
     >
       <Input
         ref={fileInputRef}
-        accept="application/pdf"
+        accept={PRODUCT_DOCUMENT_ACCEPT}
         className="max-w-72"
         disabled={isPending}
         type="file"

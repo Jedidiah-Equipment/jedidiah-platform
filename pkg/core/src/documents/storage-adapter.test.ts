@@ -44,6 +44,22 @@ describe('InMemoryStorageAdapter', () => {
       }),
     ).rejects.toBeInstanceOf(StorageKeyAlreadyExistsError);
   });
+
+  it('deletes stored objects by key', async () => {
+    const storage = new InMemoryStorageAdapter();
+    const body = new Uint8Array([1]);
+
+    await storage.put({
+      body,
+      byteSize: body.byteLength,
+      contentType: 'application/pdf',
+      key: 'documents/product/one.pdf',
+    });
+
+    await storage.deleteObject('documents/product/one.pdf');
+
+    await expect(storage.get('documents/product/one.pdf')).rejects.toThrow('Storage object not found');
+  });
 });
 
 async function readAll(body: AsyncIterable<Uint8Array>): Promise<Uint8Array> {

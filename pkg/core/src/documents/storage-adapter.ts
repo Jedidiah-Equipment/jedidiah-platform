@@ -12,6 +12,7 @@ export type StoragePutInput = {
 };
 
 export type StorageAdapter = {
+  deleteObject: (key: string) => Promise<void>;
   get: (key: string) => Promise<StoredObject>;
   put: (input: StoragePutInput) => Promise<void>;
 };

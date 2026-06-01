@@ -121,6 +121,7 @@ describe('uploadProductDocument', () => {
     await expect(
       uploadPdf(context, { filename: 'part book.PDF', productId: context.productId }),
     ).rejects.toBeInstanceOf(DuplicateDocumentFilenameError);
+    expect(context.storage.objects.size).toBe(1);
 
     await expect(
       uploadPdf(context, { filename: 'part book.PDF', productId: context.otherProductId }),

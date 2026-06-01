@@ -1,9 +1,17 @@
 import { Readable } from 'node:stream';
 
-import { getUserAccessSummary, readDocument, type StorageAdapter, uploadProductDocument } from '@pkg/core';
+import {
+  getUserAccessSummary,
+  isDocumentCoreError,
+  readDocument,
+  type StorageAdapter,
+  uploadProductDocument,
+} from '@pkg/core';
 import { db } from '@pkg/db';
+import { validateDocumentPolicy } from '@pkg/domain';
 import { DocumentDownloadInput, DocumentListByProductInput } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 
 import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../../auth/session.js';
 import { mapDocumentCoreError } from './documents.router.js';
@@ -18,15 +26,15 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
 
-    const params = DocumentListByProductInput.parse(request.params);
-    const file = await request.file();
-
-    if (!file) {
-      reply.status(400).send({ message: 'Choose a document to upload.' });
-      return;
-    }
-
     try {
+      const params = DocumentListByProductInput.parse(request.params);
+      const file = await request.file();
+
+      if (!file) {
+        reply.status(400).send({ message: 'Choose a document to upload.' });
+        return;
+      }
+
       const bytes = await file.toBuffer();
       const document = await mapHttpDocumentErrors(() =>
         uploadProductDocument({
@@ -53,9 +61,8 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
 
-    const params = DocumentDownloadInput.parse(request.params);
-
     try {
+      const params = DocumentDownloadInput.parse(request.params);
       const result = await mapHttpDocumentErrors(() =>
         readDocument({
           access: auth.access,
@@ -96,8 +103,8 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
   try {
     return await action();
   } catch (error) {
-    if (error instanceof Error && 'code' in error) {
-      const mapped = mapDocumentCoreError(error as Parameters<typeof mapDocumentCoreError>[0]);
+    if (isDocumentCoreError(error)) {
+      const mapped = mapDocumentCoreError(error);
       throw Object.assign(new Error(mapped.message), {
         appCode: mapped.appCode,
         statusCode: trpcCodeToHttpStatus(mapped.code),
@@ -109,6 +116,27 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
 }
 
 function sendHttpError(reply: FastifyReply, error: unknown): void {
+  if (isMultipartFileTooLargeError(reply, error)) {
+    const result = validateDocumentPolicy({
+      byteSize: Number.MAX_SAFE_INTEGER,
+      contentType: 'application/pdf',
+      ownerType: 'product',
+    });
+
+    reply.status(400).send({
+      data: {
+        appCode: result.ok ? undefined : result.code,
+      },
+      message: result.ok ? 'Document is too large.' : result.message,
+    });
+    return;
+  }
+
+  if (error instanceof z.ZodError) {
+    reply.status(400).send({ message: 'Invalid document request.' });
+    return;
+  }
+
   if (typeof error === 'object' && error !== null && 'statusCode' in error && typeof error.statusCode === 'number') {
     reply.status(error.statusCode).send({
       data: {
@@ -133,6 +161,11 @@ function trpcCodeToHttpStatus(code: string): number {
 
 function createContentDisposition(filename: string): string {
   const fallback = filename.replace(/["\\\r\n]/g, '_');
+  const encoded = encodeURIComponent(filename).replace(/'/g, '%27');
 
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
+function isMultipartFileTooLargeError(reply: FastifyReply, error: unknown): boolean {
+  return error instanceof reply.server.multipartErrors.RequestFileTooLargeError;
 }

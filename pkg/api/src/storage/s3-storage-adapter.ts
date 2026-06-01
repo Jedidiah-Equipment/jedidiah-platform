@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   type StorageAdapter,
   StorageKeyAlreadyExistsError,
@@ -23,6 +23,15 @@ export class S3StorageAdapter implements StorageAdapter {
   constructor(options: S3StorageAdapterOptions) {
     this.bucket = options.bucket;
     this.client = options.client;
+  }
+
+  async deleteObject(key: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      }),
+    );
   }
 
   async put(input: StoragePutInput): Promise<void> {

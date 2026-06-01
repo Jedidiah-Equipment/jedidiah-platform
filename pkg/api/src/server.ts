@@ -1,6 +1,7 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter } from '@pkg/core';
+import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyBaseLogger } from 'fastify';
 
@@ -36,7 +37,11 @@ export async function buildServer(
   });
 
   await registerAuthHandler(app);
-  await app.register(fastifyMultipart);
+  await app.register(fastifyMultipart, {
+    limits: {
+      fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
+    },
+  });
   await registerAiStreamRoute(app);
   await registerDocumentHttpRoutes(app, storage);
   await registerHealthRoutes(app, config);

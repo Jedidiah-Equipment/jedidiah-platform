@@ -17,6 +17,8 @@ import {
 } from './document-errors.js';
 import { type StorageAdapter, StorageKeyAlreadyExistsError, type StoredObject } from './storage-adapter.js';
 
+const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
+
 type DocumentRow = typeof documents.$inferSelect;
 type DocumentDb = Db | DatabaseTransaction;
 type DocumentWithUploaderRow = DocumentRow & {
@@ -123,10 +125,18 @@ export async function uploadProductDocument({
       return getDocumentMetadata({ db: tx, id: row.id });
     });
   } catch (error) {
-    throw mapDocumentUniqueViolation(error, {
+    const mappedError = mapDocumentUniqueViolation(error, {
       filename: input.filename,
       productId: input.productId,
     });
+
+    try {
+      await storage.deleteObject(storageKey);
+    } catch (cleanupError) {
+      throw new AggregateError([mappedError, cleanupError], 'Failed to save document and clean up uploaded object');
+    }
+
+    throw mappedError;
   }
 }
 
@@ -276,13 +286,30 @@ function toDocumentAuditRecord(row: DocumentRow) {
 function mapDocumentUniqueViolation(error: unknown, input: { filename: string; productId: UUID }): Error {
   const constraint = getUniqueViolationConstraint(error);
 
-  if (constraint?.includes('documents_product_id_filename_ci_unique')) {
-    return new DuplicateDocumentFilenameError(input);
-  }
-
-  if (constraint !== null) {
+  if (constraint?.includes(PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX) || isProductDocumentFilenameUniqueDetail(error)) {
     return new DuplicateDocumentFilenameError(input);
   }
 
   return error instanceof Error ? error : new Error(String(error));
+}
+
+function isProductDocumentFilenameUniqueDetail(error: unknown): boolean {
+  const text = collectErrorText(error).join('\n');
+
+  return text.includes('documents') && text.includes('product_id') && text.includes('lower(filename)');
+}
+
+function collectErrorText(error: unknown): string[] {
+  if (typeof error !== 'object' || error === null) {
+    return [];
+  }
+
+  const ownText = ['message', 'detail'].flatMap((property) => {
+    const value = property in error ? error[property as keyof typeof error] : null;
+
+    return typeof value === 'string' ? [value] : [];
+  });
+  const causeText = 'cause' in error ? collectErrorText(error.cause) : [];
+
+  return [...ownText, ...causeText];
 }

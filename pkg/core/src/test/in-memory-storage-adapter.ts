@@ -9,6 +9,10 @@ import {
 export class InMemoryStorageAdapter implements StorageAdapter {
   readonly objects = new Map<string, { body: Uint8Array; byteSize: number; contentType: string }>();
 
+  async deleteObject(key: string): Promise<void> {
+    this.objects.delete(key);
+  }
+
   async put(input: StoragePutInput): Promise<void> {
     if (this.objects.has(input.key)) {
       throw new StorageKeyAlreadyExistsError(input.key);

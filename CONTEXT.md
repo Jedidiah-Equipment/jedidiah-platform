@@ -91,7 +91,7 @@ An uploaded file owned by exactly one entity (a Product to start — e.g. a Part
 _Avoid_: File, Attachment, Media, Asset.
 
 **Job Document Snapshot**:
-The Product's Documents as frozen onto a Job at the moment the Job is created. Created alongside the CFO during Create Job from Quote, it copies the Product's current Documents onto the Job as new Documents pointing at the same stored files. Like the CFO it is a **frozen build record**: read-only forever, and unaffected by later edits or deletions of the Product's Documents. Because stored files are never deleted, a later change to a Product Document never strands the Job's copy. (Job-specific document uploads are a possible future extension and are not part of this snapshot.)
+The Product's Documents frozen onto a Job at the moment the Job is created. Created alongside the CFO during Create Job from Quote, it copies the Job's Product's current Documents onto the Job as new Documents pointing at the same stored files. Each snapshotted Document remembers its **source** (the Product it came from) so the Job page can attribute it; the source's display name is read from the live Product (the same intentional drift the CFO accepts). Like the CFO it is a **frozen build record**: read-only forever, and unaffected by later edits or deletions of the Product's Documents. Because stored files are never deleted, a later change to a Product Document never strands the Job's copy. (Snapshotting Part Documents — grouped per Part — is a planned future extension, out of scope for now and additive when it lands; likewise Job-specific document uploads are not part of this snapshot.)
 
 ## Relationships
 

@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 
 import {
+  deleteDocument,
   getUserAccessSummary,
   isDocumentCoreError,
   readDocument,
@@ -9,7 +10,7 @@ import {
 } from '@pkg/core';
 import { db } from '@pkg/db';
 import { validateDocumentPolicy } from '@pkg/domain';
-import { DocumentDownloadInput, DocumentListByProductInput } from '@pkg/schema';
+import { DocumentDeleteInput, DocumentDownloadInput, DocumentListByProductInput } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
@@ -76,6 +77,27 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       reply.send(Readable.from(result.object.body));
+    } catch (error) {
+      sendHttpError(reply, error);
+    }
+  });
+
+  app.delete('/api/documents/:id', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      const params = DocumentDeleteInput.parse(request.params);
+      await mapHttpDocumentErrors(() =>
+        deleteDocument({
+          access: auth.access,
+          actorUserId: auth.session.user.id,
+          db,
+          id: params.id,
+        }),
+      );
+
+      reply.status(204).send();
     } catch (error) {
       sendHttpError(reply, error);
     }

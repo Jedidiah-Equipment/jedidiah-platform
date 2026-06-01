@@ -111,12 +111,7 @@ export async function uploadProductDocument({
           actorUserId,
           after: toDocumentAuditRecord(row),
           before: null,
-          changes: {
-            storageKey: {
-              from: null,
-              to: storageKey,
-            },
-          },
+          changes: null,
           entityId: row.id,
           entityType: documentAuditDescriptor.entityType,
         },
@@ -189,6 +184,49 @@ export async function readDocument({
   };
 }
 
+export async function deleteDocument({
+  access,
+  actorUserId,
+  db,
+  id,
+}: {
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  db: Db;
+  id: UUID;
+}): Promise<void> {
+  assertCanDeleteProductDocument(access);
+
+  await db.transaction(async (tx) => {
+    const row = await tx.query.documents.findFirst({
+      where: eq(documents.id, id),
+    });
+
+    if (!row) {
+      throw new DocumentNotFoundError(id);
+    }
+
+    const [deleted] = await tx.delete(documents).where(eq(documents.id, id)).returning({ id: documents.id });
+
+    if (!deleted) {
+      throw new DocumentNotFoundError(id);
+    }
+
+    await insertAuditEvent({
+      db: tx,
+      input: {
+        action: 'deleted',
+        actorUserId,
+        after: null,
+        before: toDocumentAuditRecord(row),
+        changes: null,
+        entityId: row.id,
+        entityType: documentAuditDescriptor.entityType,
+      },
+    });
+  });
+}
+
 function assertCanUploadProductDocument(access: UserAccessSummary): void {
   if (!hasPermission(access, 'product:update')) {
     throw new DocumentForbiddenError('You do not have permission to upload Product documents.');
@@ -198,6 +236,12 @@ function assertCanUploadProductDocument(access: UserAccessSummary): void {
 function assertCanReadProductDocument(access: UserAccessSummary): void {
   if (!hasPermission(access, 'product:read')) {
     throw new DocumentForbiddenError('You do not have permission to read Product documents.');
+  }
+}
+
+function assertCanDeleteProductDocument(access: UserAccessSummary): void {
+  if (!hasPermission(access, 'product:update')) {
+    throw new DocumentForbiddenError('You do not have permission to delete Product documents.');
   }
 }
 
@@ -277,9 +321,13 @@ function toDocumentAuditRecord(row: DocumentRow) {
   return {
     byteSize: row.byteSize,
     contentType: row.contentType,
+    createdAt: row.createdAt.toISOString(),
     filename: row.filename,
+    id: row.id,
+    ownerType: row.ownerType,
     productId: row.productId,
     storageKey: row.storageKey,
+    uploaderUserId: row.uploaderUserId,
   };
 }
 

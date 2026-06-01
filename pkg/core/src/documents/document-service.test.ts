@@ -10,7 +10,7 @@ import {
   DocumentPolicyViolationError,
   DuplicateDocumentFilenameError,
 } from './document-errors.js';
-import { listProductDocuments, readDocument, uploadProductDocument } from './document-service.js';
+import { deleteDocument, listProductDocuments, readDocument, uploadProductDocument } from './document-service.js';
 
 const ACTOR_USER_ID = 'test-user-id';
 
@@ -106,12 +106,7 @@ describe('uploadProductDocument', () => {
       actorUserId: ACTOR_USER_ID,
       entityId: document.id,
       entityType: 'document',
-      changes: {
-        storageKey: {
-          from: null,
-          to: row?.storageKey,
-        },
-      },
+      changes: null,
     });
   });
 
@@ -218,6 +213,69 @@ describe('listProductDocuments and readDocument', () => {
         db: context.db,
         id: document.id,
         storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(DocumentForbiddenError);
+  });
+});
+
+describe('deleteDocument', () => {
+  test('removes the document row, keeps the stored object, and writes a delete audit event', async ({ context }) => {
+    const document = await uploadPdf(context, { filename: 'Delete Me.pdf', productId: context.productId });
+    const [row] = await context.db.select().from(documents);
+
+    await deleteDocument({
+      access: context.access,
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      id: document.id,
+    });
+
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    await expect(context.storage.get(row?.storageKey ?? '')).resolves.toMatchObject({
+      byteSize: pdfBytes().byteLength,
+      contentType: 'application/pdf',
+    });
+
+    const events = await context.db.select().from(auditEvents);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        action: 'deleted',
+        actorUserId: ACTOR_USER_ID,
+        entityId: document.id,
+        entityType: 'document',
+        changes: null,
+      }),
+    );
+  });
+
+  test('allows re-uploading the same filename after delete', async ({ context }) => {
+    const document = await uploadPdf(context, { filename: 'Part Book.pdf', productId: context.productId });
+
+    await deleteDocument({
+      access: context.access,
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      id: document.id,
+    });
+
+    await expect(
+      uploadPdf(context, { filename: 'part book.PDF', productId: context.productId }),
+    ).resolves.toMatchObject({
+      filename: 'part book.PDF',
+      productId: context.productId,
+    });
+    expect(context.storage.objects.size).toBe(2);
+  });
+
+  test('denies delete without product update access', async ({ context }) => {
+    const document = await uploadPdf(context, { filename: 'A.pdf', productId: context.productId });
+
+    await expect(
+      deleteDocument({
+        access: createUserAccessSummary({ role: 'sales', userId: ACTOR_USER_ID }),
+        actorUserId: ACTOR_USER_ID,
+        db: context.db,
+        id: document.id,
       }),
     ).rejects.toBeInstanceOf(DocumentForbiddenError);
   });

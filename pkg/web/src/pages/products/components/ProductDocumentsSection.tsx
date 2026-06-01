@@ -1,4 +1,4 @@
-import { formatBytes, PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
+import { formatBytes, hasPermission, PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
 import type { DocumentMetadata, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -9,7 +9,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { DownloadIcon, FileTextIcon, Loader2Icon, UploadIcon } from 'lucide-react';
+import { DownloadIcon, FileTextIcon, Loader2Icon, Trash2Icon, UploadIcon } from 'lucide-react';
 import { type RefObject, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
@@ -22,12 +22,28 @@ import {
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPageCount, type SortOptions } from '@/components/data-table/table-state.js';
 import { Button } from '@/components/ui/button.js';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
-import { downloadProductDocument, uploadProductDocument, validateSelectedFile } from '@/utils/document.js';
+import {
+  deleteProductDocument,
+  downloadProductDocument,
+  uploadProductDocument,
+  validateSelectedFile,
+} from '@/utils/document.js';
 
 type ProductDocumentsSectionProps = {
   productId: UUID;
@@ -60,8 +76,10 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
+  const accessQuery = useAccess();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const canDeleteDocuments = hasPermission(accessQuery.data, 'product:update');
   const {
     columnFilters,
     globalFilter,
@@ -152,8 +170,9 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
       {
         id: 'actions',
         cell: ({ row }) => (
-          <div className="text-right">
+          <div className="flex justify-end gap-1">
             <DownloadButton document={row.original} />
+            {canDeleteDocuments ? <DeleteDocumentButton document={row.original} /> : null}
           </div>
         ),
         enableColumnFilter: false,
@@ -161,11 +180,11 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         header: () => <span className="sr-only">Actions</span>,
         meta: {
           cellClassName: 'text-right',
-          headerClassName: 'w-16 text-right',
+          headerClassName: 'w-20 text-right',
         },
       },
     ],
-    [],
+    [canDeleteDocuments],
   );
   const tableState = useConstrainedTableState({
     pagination,
@@ -276,6 +295,54 @@ function DocumentUploadForm({
         Upload
       </Button>
     </form>
+  );
+}
+
+function DeleteDocumentButton({ document }: { document: DocumentMetadata }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const showMutationError = useApiMutationErrorToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProductDocument(document),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: trpc.documents.pathKey() });
+      toast.success('Document deleted');
+      setIsOpen(false);
+    },
+    onError: (error) => {
+      showMutationError(error, 'Unable to delete document.');
+    },
+  });
+
+  return (
+    <Dialog onOpenChange={setIsOpen} open={isOpen}>
+      <DialogTrigger
+        render={<Button aria-label={`Delete ${document.filename}`} size="icon-sm" type="button" variant="ghost" />}
+      >
+        <Trash2Icon />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete document</DialogTitle>
+          <DialogDescription>Delete {document.filename} from this Product's Documents list.</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose render={<Button disabled={deleteMutation.isPending} type="button" variant="outline" />}>
+            Cancel
+          </DialogClose>
+          <Button
+            disabled={deleteMutation.isPending}
+            onClick={() => void deleteMutation.mutateAsync()}
+            type="button"
+            variant="destructive"
+          >
+            {deleteMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

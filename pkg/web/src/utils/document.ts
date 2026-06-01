@@ -56,6 +56,17 @@ export async function downloadProductDocument(document: DocumentMetadata): Promi
   URL.revokeObjectURL(url);
 }
 
+export async function deleteProductDocument(document: DocumentMetadata): Promise<void> {
+  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/documents/${document.id}`, {
+    credentials: 'include',
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, 'Unable to delete document.'));
+  }
+}
+
 export async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
     const body = (await response.json()) as { message?: unknown };

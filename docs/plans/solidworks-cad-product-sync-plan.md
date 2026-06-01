@@ -73,7 +73,7 @@ The manifest is the index. The `files/` directory contains the actual manufactur
 
 The first bundle can be generated manually or by a simple SolidWorks macro/add-in. Do not make SolidWorks PDM a dependency for the first implementation.
 
-A starter SolidWorks VBA macro lives next to this plan: `docs/plans/solidworks-cad-export-macro.bas`. It reads the `JED_*` custom properties, attempts to generate CNC DXF files for sheet-metal Parts, gathers required same-basename department files from source folders, copies them into a `files/` folder, hashes them, and writes `manifest.json`.
+The active v1 macro package lives at `pkg/solidworks/macro`. It runs from the active top-level Product assembly, requires the `JED_PRODUCT_MODEL_CODE`, `JED_ASSEMBLY_CODE`, and `JED_PART_CODE` custom-property convention, exports DXFs only for coded referenced Parts, and writes the durable Product -> Assembly -> Part manifest shape. Product and Assembly `exports` arrays are present but empty in v1 so later file support can extend the manifest instead of changing its structure. The macro does not gather drawings, source Part files, existing DXFs, or Pack and Go archives. The older assembly-oriented starter macro next to this plan remains planning reference material, not the v1 implementation package.
 
 ### Step 2a: Required department files
 
@@ -96,18 +96,18 @@ The data model and manifest should still support any number of export files per 
 
 Do not hard-code one file per Part. Store `exportFormat` and `exportPurpose` as data.
 
-### Step 2b: Import and run the starter macro
+### Step 2b: Import and run the v1 macro
 
-The starter macro is stored as a reviewable `.bas` text file, not a binary SolidWorks `.swp` macro.
+The active v1 macro is stored as a reviewable `.bas` text file, not a binary SolidWorks `.swp` macro.
 
 Import it into SolidWorks:
 
 1. Open SolidWorks.
 2. Go to `Tools > Macro > New`.
-3. Save a new macro file, for example `JedidahCadExport.swp`.
+3. Save a new macro file, for example `JedidiahCadExport.swp`.
 4. The VBA editor opens.
 5. In the VBA editor, right-click the macro project and choose `Import File`.
-6. Select `docs/plans/solidworks-cad-export-macro.bas`.
+6. Select `pkg/solidworks/macro/macro/JedidiahPartDxfExport.bas`.
 7. Save the macro project.
 
 Prepare the SolidWorks files:
@@ -116,42 +116,35 @@ Prepare the SolidWorks files:
 2. Set `JED_PRODUCT_MODEL_CODE` on the top-level `.SLDASM`.
 3. Set `JED_ASSEMBLY_CODE` on sub-assembly `.SLDASM` files that should map to Product Assemblies.
 4. Set `JED_PART_CODE` on each `.SLDPRT` that should map to a Jedidah Ops Part.
-5. Ensure any existing SolidWorks drawing files are saved next to the source model with the same basename, for example:
 
-```text
-P-1001.SLDPRT
-P-1001.SLDDRW
-```
-
-The macro attempts to create `P-1001.dxf` for sheet-metal Parts. If the Part is not sheet metal, or the export settings need manual input, no DXF may be created.
+The macro attempts to create one `.dxf` for each coded sheet-metal Part referenced under a coded Product Assembly. If a Part is not sheet metal, or the export settings need manual input, no DXF may be created for that Part.
 
 Run it:
 
-1. With the top-level assembly open, go to `Tools > Macro > Run`.
+1. With the top-level Product assembly open, go to `Tools > Macro > Run`.
 2. Select the saved macro.
 3. Choose an output folder when prompted.
 4. The macro creates a folder like:
 
 ```text
-cad-export-20260529-144500/
+cad-export-20260601-143000/
   manifest.json
   files/
     P-1001.dxf
-    P-1001.SLDDRW
-    P-1001.SLDPRT
+    P-1002__LH.dxf
 ```
 
 Current macro behavior and limitations:
 
-- It copies `.SLDASM`, `.SLDPRT`, and `.SLDDRW` files into the bundle.
-- It attempts to generate `.DXF` files from sheet-metal Parts using SolidWorks flat-pattern export.
+- It runs from the active top-level Product assembly.
+- It requires `JED_PRODUCT_MODEL_CODE` on the Product assembly.
+- It uses `JED_ASSEMBLY_CODE` to group Parts under Product Assemblies.
+- It exports `.DXF` files only for referenced Parts with `JED_PART_CODE`.
 - It activates each referenced Part configuration before generating a DXF and suffixes export filenames with the configuration name.
-- It gathers existing `.DXF` files if they are already present next to the Part.
-- It does not overwrite an existing generated `.DXF`; existing CNC exports win until the CNC settings are finalized.
-- It looks for same-basename exports next to the source model.
-- It supports these extensions initially: `.sldasm`, `.sldprt`, `.slddrw`, `.dxf`.
+- It writes Product and Assembly `exports` arrays in the manifest, but leaves them empty in v1.
+- It does not copy `.SLDASM`, `.SLDPRT`, `.SLDDRW`, existing `.DXF`, or Pack and Go archive files into the bundle.
 - It uses SHA-256 hashes as the file-change signal.
-- It does not create `.SLDDRW` drawing documents. Drawings should already exist.
+- It does not create `.SLDDRW` drawing documents.
 - It should be tested against real Jedidiah SolidWorks assemblies before the app import contract is finalized.
 
 ### Step 3: Define the manifest contract

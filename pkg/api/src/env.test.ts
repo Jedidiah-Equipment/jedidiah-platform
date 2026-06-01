@@ -9,6 +9,12 @@ const baseEnv = {
   API_BASE_URL: 'http://localhost:7002',
   AUTH_SECRET: 'a'.repeat(32),
   AUTH_TRUSTED_ORIGINS: 'http://localhost:3000',
+  DOCUMENT_STORAGE_ACCESS_KEY_ID: 'minioadmin',
+  DOCUMENT_STORAGE_BUCKET: 'jedidiah-documents',
+  DOCUMENT_STORAGE_ENDPOINT: 'http://localhost:9000',
+  DOCUMENT_STORAGE_FORCE_PATH_STYLE: 'true',
+  DOCUMENT_STORAGE_REGION: 'us-east-1',
+  DOCUMENT_STORAGE_SECRET_ACCESS_KEY: 'minioadmin',
   OPENAI_API_KEY: 'sk-test',
 };
 
@@ -31,5 +37,11 @@ describe('API config PostHog validation', () => {
       APP_ENV: 'staging',
       POSTHOG_ENABLED: false,
     });
+  });
+
+  it('requires document storage settings', () => {
+    const { DOCUMENT_STORAGE_BUCKET: _bucket, ...env } = baseEnv;
+
+    expect(() => ApiConfig.parse(env)).toThrow();
   });
 });

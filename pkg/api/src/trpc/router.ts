@@ -3,6 +3,7 @@ import type { BuiltRouter } from '@trpc/server/unstable-core-do-not-import';
 import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
 import { customersRouter } from '../routes/customers/customers.router.js';
+import { documentsRouter } from '../routes/documents/documents.router.js';
 import { jobsRouter } from '../routes/jobs/jobs.router.js';
 import { partsRouter } from '../routes/parts/parts.router.js';
 import { productsRouter } from '../routes/products/products.router.js';
@@ -17,6 +18,7 @@ type AppRouterRecord = {
   audit: (typeof auditRouter)['_def']['record'];
   auth: (typeof authRouter)['_def']['record'];
   customers: (typeof customersRouter)['_def']['record'];
+  documents: (typeof documentsRouter)['_def']['record'];
   jobs: (typeof jobsRouter)['_def']['record'];
   parts: (typeof partsRouter)['_def']['record'];
   products: (typeof productsRouter)['_def']['record'];
@@ -33,6 +35,7 @@ function createAppRouter(): AppRouter {
     audit: auditRouter,
     auth: authRouter,
     customers: customersRouter,
+    documents: documentsRouter,
     jobs: jobsRouter,
     parts: partsRouter,
     products: productsRouter,

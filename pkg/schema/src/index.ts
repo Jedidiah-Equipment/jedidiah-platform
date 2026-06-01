@@ -14,6 +14,7 @@ export * from './common/text.js';
 export * from './common/thumbnail.js';
 export * from './common/uuid.js';
 export * from './customers/customer.js';
+export * from './documents/document.js';
 export * from './domain/client-config.js';
 export * from './domain/env-boolean.js';
 export * from './domain/environment.js';

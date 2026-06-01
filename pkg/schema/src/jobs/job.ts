@@ -138,6 +138,7 @@ export const Job = z.object({
   id: UUID,
   code: JobCode,
   productId: UUID,
+  // productSerialNumber is the full frozen serial; prefix, sequence, and year store its component parts.
   productSerialNumber: ProductSerialNumber,
   productSerialPrefix: ProductSerialPrefix,
   productSerialSequence: ProductSerialSequence,

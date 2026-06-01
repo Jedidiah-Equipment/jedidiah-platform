@@ -73,7 +73,7 @@ The manifest is the index. The `files/` directory contains the actual manufactur
 
 The first bundle can be generated manually or by a simple SolidWorks macro/add-in. Do not make SolidWorks PDM a dependency for the first implementation.
 
-A starter SolidWorks VBA macro lives next to this plan: `docs/plans/solidworks-cad-export-macro.bas`. It reads the `JED_*` custom properties, attempts to generate CNC DXF files for sheet-metal Parts, gathers required same-basename department files from source folders, copies them into a `files/` folder, hashes them, and writes `manifest.json`.
+The active v1 macro package lives at `pkg/solidworks/macro`. It runs from the active top-level Product assembly, requires the `JED_PRODUCT_MODEL_CODE`, `JED_ASSEMBLY_CODE`, and `JED_PART_CODE` custom-property convention, exports DXFs only for coded referenced Parts, and writes the durable Product -> Assembly -> Part manifest shape. Product and Assembly `exports` arrays are present but empty in v1 so later file support can extend the manifest instead of changing its structure. The macro does not gather drawings, source Part files, existing DXFs, or Pack and Go archives. The older assembly-oriented starter macro next to this plan remains planning reference material, not the v1 implementation package.
 
 ### Step 2a: Required department files
 

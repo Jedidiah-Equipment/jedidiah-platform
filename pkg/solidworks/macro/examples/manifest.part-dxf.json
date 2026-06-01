@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "sourceSystem": "solidworks",
+  "exportKind": "cad-export",
+  "exportedAt": "2026-06-01T14:30:00.000",
+  "solidWorksVersion": "34.0.0",
+  "product": {
+    "modelCode": "TRAILER-750",
+    "name": "TRAILER-750",
+    "source": {
+      "fileName": "TRAILER-750.SLDASM",
+      "filePath": "C:\\SolidWorks\\Products\\TRAILER-750.SLDASM",
+      "configuration": "Default"
+    },
+    "exports": [],
+    "assemblies": [
+      {
+        "code": "CHASSIS",
+        "name": "CHASSIS",
+        "source": {
+          "fileName": "CHASSIS.SLDASM",
+          "filePath": "C:\\SolidWorks\\Products\\CHASSIS.SLDASM",
+          "configuration": "Default"
+        },
+        "exports": [],
+        "parts": [
+          {
+            "partCode": "P-1001",
+            "name": "P-1001",
+            "quantity": 2,
+            "source": {
+              "fileName": "P-1001.SLDPRT",
+              "filePath": "C:\\SolidWorks\\Parts\\P-1001.SLDPRT",
+              "configuration": "Default"
+            },
+            "exports": [
+              {
+                "fileName": "P-1001.dxf",
+                "relativePath": "files/P-1001.dxf",
+                "format": "dxf",
+                "purpose": "cnc-part",
+                "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ]
+          },
+          {
+            "partCode": "P-1002",
+            "name": "P-1002",
+            "quantity": 1,
+            "source": {
+              "fileName": "P-1002.SLDPRT",
+              "filePath": "C:\\SolidWorks\\Parts\\P-1002.SLDPRT",
+              "configuration": "LH"
+            },
+            "exports": [
+              {
+                "fileName": "P-1002__LH.dxf",
+                "relativePath": "files/P-1002__LH.dxf",
+                "format": "dxf",
+                "purpose": "cnc-part",
+                "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "warnings": ["Skipped BRACKET.SLDPRT [Default]: missing JED_PART_CODE."]
+}

@@ -22,14 +22,13 @@ import { createUserAccessSummary } from '@pkg/domain';
 import { type PartUnitOfMeasure, QuoteUpdateInput } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-import { deleteDocument } from '../documents/document-service.js';
+import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
 import { createJob } from './job-service.js';
 
 const actorUserId = 'test-user-id';
 const jobAccess = createUserAccessSummary({ role: 'job-supervisor', userId: actorUserId });
-const adminAccess = createUserAccessSummary({ role: 'admin', userId: actorUserId });
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
@@ -211,11 +210,11 @@ describe('createJob', () => {
       input: { quoteId: quote.id },
     });
 
-    await deleteDocument({
-      access: adminAccess,
+    await deleteProductDocument({
       actorUserId,
       db: context.db,
-      id: sourceDocument.id,
+      documentId: sourceDocument.id,
+      productId: context.catalog.product.id,
     });
     await createProductDocuments(context.db, context.catalog.product.id, [
       {

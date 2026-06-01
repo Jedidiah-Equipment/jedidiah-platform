@@ -2,15 +2,18 @@ import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   type Db,
+  documents,
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
   productAssemblies,
   products,
+  user,
 } from '@pkg/db';
 import type {
   Assembly,
   AuthId,
+  DocumentMetadata,
   Logger,
   ProductCreateInput,
   ProductListInput,
@@ -19,7 +22,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { Product, ProductCurrencyCode } from '@pkg/schema';
-import { and, eq, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import {
@@ -28,6 +31,17 @@ import {
   insertAuditEvent,
   productAuditDescriptor,
 } from '../audit/audit-service.js';
+import { DocumentNotFoundError } from '../documents/document-errors.js';
+import {
+  createProductDocumentRecord,
+  type DocumentMetadataRow,
+  deleteDocumentRecord,
+  documentBaseSelect,
+  mapDocumentMetadata,
+  type ProductDocumentCreateInput,
+  type ReadDocumentResult,
+} from '../documents/document-service.js';
+import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { type AssemblyListRow, listAssemblies, mapAssembly, syncAssemblies } from './product-assembly-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
 
@@ -195,6 +209,114 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
   return mapProductListRow(row);
 }
 
+export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<DocumentMetadata[]> {
+  await assertProductExists({ db, productId });
+
+  const rows = await selectProductDocumentMetadata(db)
+    .where(eq(documents.productId, productId))
+    .orderBy(asc(documents.filename));
+
+  return rows.map(mapDocumentMetadata);
+}
+
+export async function createProductDocument({
+  actorUserId,
+  db,
+  input,
+  storage,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: ProductDocumentCreateInput;
+  storage: StorageAdapter;
+}): Promise<DocumentMetadata> {
+  await assertProductExists({ db, productId: input.productId });
+  const row = await createProductDocumentRecord({ actorUserId, db, input, storage });
+
+  return getProductDocumentMetadata({ db, documentId: row.id, productId: input.productId });
+}
+
+export async function readProductDocument({
+  db,
+  documentId,
+  productId,
+  storage,
+}: {
+  db: Db;
+  documentId: UUID;
+  productId: UUID;
+  storage: StorageAdapter;
+}): Promise<ReadDocumentResult> {
+  await assertProductExists({ db, productId });
+  const document = await getProductDocumentMetadataRow({ db, documentId, productId });
+
+  return {
+    document: mapDocumentMetadata(document),
+    object: await storage.get(document.storageKey),
+  };
+}
+
+export async function deleteProductDocument({
+  actorUserId,
+  db,
+  documentId,
+  productId,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  documentId: UUID;
+  productId: UUID;
+}): Promise<void> {
+  await assertProductExists({ db, productId });
+  const document = await getProductDocumentMetadataRow({ db, documentId, productId });
+
+  await deleteDocumentRecord({ actorUserId, db, document });
+}
+
+function selectProductDocumentMetadata(db: Db) {
+  return db
+    .select({
+      ...documentBaseSelect,
+      uploaderEmail: user.email,
+      uploaderName: user.name,
+    })
+    .from(documents)
+    .leftJoin(user, eq(documents.uploaderUserId, user.id))
+    .$dynamic();
+}
+
+async function getProductDocumentMetadata({
+  db,
+  documentId,
+  productId,
+}: {
+  db: Db;
+  documentId: UUID;
+  productId: UUID;
+}): Promise<DocumentMetadata> {
+  return mapDocumentMetadata(await getProductDocumentMetadataRow({ db, documentId, productId }));
+}
+
+async function getProductDocumentMetadataRow({
+  db,
+  documentId,
+  productId,
+}: {
+  db: Db;
+  documentId: UUID;
+  productId: UUID;
+}): Promise<DocumentMetadataRow> {
+  const [row] = await selectProductDocumentMetadata(db)
+    .where(and(eq(documents.productId, productId), eq(documents.id, documentId)))
+    .limit(1);
+
+  if (!row) {
+    throw new DocumentNotFoundError(documentId);
+  }
+
+  return row;
+}
+
 export async function createProduct({
   db,
   input,
@@ -319,6 +441,20 @@ export async function updateProduct({
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
+  }
+}
+
+async function assertProductExists({ db, productId }: { db: Db; productId: UUID }): Promise<void> {
+  const [product] = await db
+    .select({
+      id: products.id,
+    })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1);
+
+  if (!product) {
+    throw new ProductNotFoundError(productId);
   }
 }
 

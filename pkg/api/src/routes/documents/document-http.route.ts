@@ -157,7 +157,7 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
     }
 
     if (isProductCoreError(error)) {
-      throw Object.assign(new Error('Product not found.'), {
+      throw Object.assign(new Error(error.code === 'product.not_found' ? 'Product not found.' : error.message), {
         appCode: error.code,
         statusCode: error.code === 'product.not_found' ? 404 : 400,
       });

@@ -104,7 +104,7 @@ Import it into SolidWorks:
 
 1. Open SolidWorks.
 2. Go to `Tools > Macro > New`.
-3. Save a new macro file, for example `JedidahCadExport.swp`.
+3. Save a new macro file, for example `JedidiahCadExport.swp`.
 4. The VBA editor opens.
 5. In the VBA editor, right-click the macro project and choose `Import File`.
 6. Select `pkg/solidworks/macro/macro/JedidiahPartDxfExport.bas`.

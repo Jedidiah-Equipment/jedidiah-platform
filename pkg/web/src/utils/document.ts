@@ -1,20 +1,18 @@
-import { validateDocumentPolicy } from '@pkg/domain';
+import { formatBytes, getDocumentPolicy } from '@pkg/domain';
 import { DocumentMetadata, type UUID } from '@pkg/schema';
 import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';
 
+export const PRODUCT_DOCUMENT_ACCEPT = getDocumentPolicy('product').allowedContentTypes.join(',');
+
 export function validateSelectedFile(file: File | null): File | null {
   if (!file) return null;
 
-  const result = validateDocumentPolicy({
-    byteSize: file.size,
-    contentType: file.type,
-    ownerType: 'product',
-  });
+  const policy = getDocumentPolicy('product');
 
-  if (!result.ok) {
-    toast.error(result.message);
+  if (file.size > policy.maxBytes) {
+    toast.error(`Document must be ${formatBytes(policy.maxBytes)} or smaller.`);
     return null;
   }
 

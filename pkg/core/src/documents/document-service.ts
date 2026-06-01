@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { type DatabaseTransaction, type Db, documents, getUniqueViolationConstraint, products, user } from '@pkg/db';
-import { hasPermission, validateDocumentPolicy } from '@pkg/domain';
+import { hasPermission, sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
 import type { AuthId, DocumentMetadata, UserAccessSummary, UUID } from '@pkg/schema';
 import { DocumentMetadata as DocumentMetadataSchema } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
@@ -55,9 +55,19 @@ export async function uploadProductDocument({
   await assertProductExists({ db, productId: input.productId });
 
   const byteSize = input.bytes.byteLength;
+  const verifiedContentType = sniffDocumentContentType(input.bytes);
+
+  if (!verifiedContentType) {
+    throw new DocumentPolicyViolationError({
+      code: 'document.content_type_not_allowed',
+      message:
+        'Uploaded file content does not match an allowed document type. Only PDF, PNG, JPEG, or WebP documents can be uploaded.',
+    });
+  }
+
   const policyResult = validateDocumentPolicy({
     byteSize,
-    contentType: input.contentType,
+    contentType: verifiedContentType,
     ownerType: 'product',
   });
 
@@ -74,7 +84,7 @@ export async function uploadProductDocument({
     await storage.put({
       body: input.bytes,
       byteSize,
-      contentType: input.contentType,
+      contentType: verifiedContentType,
       key: storageKey,
     });
   } catch (error) {
@@ -91,7 +101,7 @@ export async function uploadProductDocument({
         .insert(documents)
         .values({
           byteSize,
-          contentType: input.contentType,
+          contentType: verifiedContentType,
           filename: input.filename,
           ownerType: 'product',
           productId: input.productId,

@@ -165,19 +165,14 @@ export async function listProductDocuments({
 }
 
 export async function readDocument({
-  access,
   db,
   id,
   storage,
 }: {
-  access: UserAccessSummary;
   db: Db;
   id: UUID;
   storage: StorageAdapter;
 }): Promise<ReadDocumentResult> {
-  assertCanReadProductDocument(access);
-
-  const document = await getDocumentMetadata({ db, id });
   const row = await db.query.documents.findFirst({
     where: eq(documents.id, id),
   });
@@ -186,6 +181,7 @@ export async function readDocument({
     throw new DocumentNotFoundError(id);
   }
 
+  const document = await getDocumentMetadata({ db, id });
   const object = await storage.get(row.storageKey);
 
   return {
@@ -287,8 +283,10 @@ function selectDocumentMetadata(db: DocumentDb) {
       createdAt: documents.createdAt,
       filename: documents.filename,
       id: documents.id,
+      jobId: documents.jobId,
       ownerType: documents.ownerType,
       productId: documents.productId,
+      sourceProductId: documents.sourceProductId,
       storageKey: documents.storageKey,
       uploaderEmail: user.email,
       uploaderName: user.name,
@@ -306,8 +304,10 @@ function mapDocumentMetadata(row: DocumentWithUploaderRow): DocumentMetadata {
     createdAt: row.createdAt.toISOString(),
     filename: row.filename,
     id: row.id,
+    jobId: row.jobId,
     ownerType: row.ownerType,
     productId: row.productId,
+    sourceProductId: row.sourceProductId,
     uploaderEmail: row.uploaderEmail,
     uploaderName: row.uploaderName,
     uploaderUserId: row.uploaderUserId,
@@ -334,8 +334,10 @@ function toDocumentAuditRecord(row: DocumentRow) {
     createdAt: row.createdAt.toISOString(),
     filename: row.filename,
     id: row.id,
+    jobId: row.jobId,
     ownerType: row.ownerType,
     productId: row.productId,
+    sourceProductId: row.sourceProductId,
     storageKey: row.storageKey,
     uploaderUserId: row.uploaderUserId,
   };

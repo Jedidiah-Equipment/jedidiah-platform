@@ -1,12 +1,18 @@
-import type { JobDetail, UUID } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
+import { formatBytes } from '@pkg/domain';
+import type { DocumentMetadata, JobDetail, UUID } from '@pkg/schema';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { DownloadIcon, FileTextIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
 
 import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
+import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { formatDate } from '@/utils/date.js';
+import { downloadProductDocument } from '@/utils/document.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 import { JobFact } from './components/JobFact.js';
 
@@ -31,12 +37,78 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
             <JobFact label="Product name" value={job.productName} />
           </div>
           <JobCfoDump cfo={job.cfo} />
+          <JobDocumentsSnapshot documents={job.documents} />
         </>
       ) : null}
       {jobQuery.isLoading ? <Skeleton className="h-48" /> : null}
     </DetailPageLayout>
   );
 };
+
+const JobDocumentsSnapshot: React.FC<{
+  documents: JobDetail['documents'];
+}> = ({ documents }) => {
+  if (documents.length === 0) {
+    return (
+      <section className="grid gap-2">
+        <h2 className="font-heading text-base font-medium">Documents</h2>
+        <p className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">No documents captured.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="grid gap-3">
+      <h2 className="font-heading text-base font-medium">Documents</h2>
+      <div className="overflow-hidden rounded-lg border">
+        <div className="divide-y">
+          {documents.map((document) => (
+            <div
+              className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[minmax(0,1fr)_11rem_10rem_2.5rem] md:items-center"
+              key={document.id}
+            >
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2 font-medium">
+                  <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{document.filename}</span>
+                </div>
+                <div className="truncate text-muted-foreground">From {document.sourceProductName}</div>
+              </div>
+              <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
+              <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>
+              <div className="flex justify-end">
+                <DownloadButton document={document} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+function DownloadButton({ document }: { document: DocumentMetadata }) {
+  const showMutationError = useApiMutationErrorToast();
+  const downloadMutation = useMutation({
+    mutationFn: () => downloadProductDocument(document),
+    onError: (error) => {
+      showMutationError(error, 'Unable to download document.');
+    },
+  });
+
+  return (
+    <Button
+      aria-label={`Download ${document.filename}`}
+      disabled={downloadMutation.isPending}
+      size="icon-sm"
+      type="button"
+      variant="ghost"
+      onClick={() => void downloadMutation.mutateAsync()}
+    >
+      {downloadMutation.isPending ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
+    </Button>
+  );
+}
 
 const JobCfoDump: React.FC<{
   cfo: JobDetail['cfo'];

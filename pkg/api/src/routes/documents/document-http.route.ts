@@ -8,8 +8,8 @@ import {
   type StorageAdapter,
   uploadProductDocument,
 } from '@pkg/core';
-import { db } from '@pkg/db';
-import { validateDocumentPolicy } from '@pkg/domain';
+import { db, documents, sql } from '@pkg/db';
+import { hasPermission, validateDocumentPolicy } from '@pkg/domain';
 import { DocumentDeleteInput, DocumentDownloadInput, DocumentListByProductInput } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -64,9 +64,9 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
 
     try {
       const params = DocumentDownloadInput.parse(request.params);
+      await assertCanDownloadDocument({ access: auth.access, documentId: params.id });
       const result = await mapHttpDocumentErrors(() =>
         readDocument({
-          access: auth.access,
           db,
           id: params.id,
           storage,
@@ -88,6 +88,7 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
 
     try {
       const params = DocumentDeleteInput.parse(request.params);
+      await assertCanDeleteDocument({ access: auth.access, documentId: params.id });
       await mapHttpDocumentErrors(() =>
         deleteDocument({
           access: auth.access,
@@ -119,6 +120,66 @@ async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): P
   });
 
   return { access, session };
+}
+
+async function assertCanDownloadDocument({
+  access,
+  documentId,
+}: {
+  access: RouteAuthContext['access'];
+  documentId: string;
+}): Promise<void> {
+  const row = await db.query.documents.findFirst({
+    columns: {
+      ownerType: true,
+    },
+    where: sql`${documents.id} = ${documentId}`,
+  });
+
+  if (!row) {
+    return;
+  }
+
+  if (row.ownerType === 'product' && hasPermission(access, 'product:read')) {
+    return;
+  }
+
+  if (row.ownerType === 'job' && hasPermission(access, 'job:read')) {
+    return;
+  }
+
+  throw Object.assign(new Error('You do not have permission to download this document.'), {
+    appCode: 'document.forbidden',
+    statusCode: 403,
+  });
+}
+
+async function assertCanDeleteDocument({
+  access,
+  documentId,
+}: {
+  access: RouteAuthContext['access'];
+  documentId: string;
+}): Promise<void> {
+  const row = await db.query.documents.findFirst({
+    columns: {
+      ownerType: true,
+    },
+    where: sql`${documents.id} = ${documentId}`,
+  });
+
+  if (!row) {
+    return;
+  }
+
+  if (row.ownerType === 'product' && hasPermission(access, 'product:update')) {
+    return;
+  }
+
+  throw Object.assign(new Error('You do not have permission to delete this document.'), {
+    appCode: 'document.forbidden',
+    statusCode: 403,
+  });
 }
 
 async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {

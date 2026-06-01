@@ -74,7 +74,7 @@ For a Quote with a selected set of currently available Optional Assemblies, the 
 A client-side projection, not a persisted or server-returned aggregate. Quote totals are computed from the Quote pricing facts: snapshotted Product base price, selected Optional Assembly snapshot prices, discount, delivery inclusion, and delivery price. The server stores and returns those inputs, but does not store a selected-option aggregate total or expose a quote `total` field.
 
 **Create Job from Quote**:
-The single way a Job comes into existence. A `job-supervisor` or `admin` triggers it from an `accepted` Quote that has no Job yet ("Generate CFO & Start Job"). The action: assigns the Product Serial Number, snapshots the Quote's Effective Bill of Materials into the Job's CFO, materializes the five Stages, and turns the Quote into a Locked Quote. A Quote sources at most one Job. Creation is **blocked** if any selected Optional Assembly is stale (its catalog Assembly was deleted), because the CFO cannot resolve that assembly's Parts — the error names the offending assembly. There is no other Job-creation path (Direct Job Creation is retired) and no product-picking step; everything is inherited from the Quote.
+The single way a Job comes into existence. A `job-supervisor` or `admin` triggers it from an `accepted` Quote that has no Job yet ("Generate CFO & Start Job"). The action: assigns the Product Serial Number, snapshots the Quote's Effective Bill of Materials into the Job's CFO, snapshots the Product's Documents onto the Job (see Job Document Snapshot), materializes the five Stages, and turns the Quote into a Locked Quote. A Quote sources at most one Job. Creation is **blocked** if any selected Optional Assembly is stale (its catalog Assembly was deleted), because the CFO cannot resolve that assembly's Parts — the error names the offending assembly. There is no other Job-creation path (Direct Job Creation is retired) and no product-picking step; everything is inherited from the Quote.
 
 **Audit Event**:
 Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_stage`, `product`, `quote`, `supplier`, and `user`. Product Assemblies, their Parts lists, and override links are part of the `product` aggregate and audited under the `product` entity — there is no separate `product_assembly` audit entity type.
@@ -83,8 +83,15 @@ Field-level forensic log for boundary-visible changes. Current entity types incl
 A deterministic seeded auth user for local/staging sign-in and demo-account display. The canonical roster and shared password live in `pkg/domain/src/demo.ts`; database seeding code consumes that roster rather than duplicating demo-user facts.
 
 **Thumbnail**:
-An optional, square, display-only image attached to a User, Customer, Supplier, or Product for quick visual recognition. It is distinct from any future full-size image or document-style media.
+An optional, square, display-only image attached to a User, Customer, Supplier, or Product for quick visual recognition. It is distinct from a Document.
 _Avoid_: Avatar, Logo, Photo, Image.
+
+**Document**:
+An uploaded file owned by exactly one entity (a Product to start — e.g. a Part Book or an SOP; Parts and other entities to follow). Documents are downloadable from the surfaces of their owner. A Product's Documents appear on the Product's own surfaces; the Job page surfaces the Job's frozen copies (the Job Document Snapshot), not the Product's live Documents. A Document has exactly one owner; there is no org-wide or owner-less ("global") Document. A Document is **immutable once uploaded** — there is no in-place edit or replace. Its lifecycle is create and hard delete; to "replace" a Document a user deletes the existing one and uploads again. Filenames are **unique per owner** (case-insensitive); uploading a duplicate filename for the same owner is rejected. Deleting a Document removes its row, but the underlying stored file is **never deleted from storage** and remains forensically recoverable through Audit history. A single stored file may be referenced by more than one Document (see Job Document Snapshot). Distinct from a Thumbnail (small, inline, display-only image).
+_Avoid_: File, Attachment, Media, Asset.
+
+**Job Document Snapshot**:
+The Product's Documents as frozen onto a Job at the moment the Job is created. Created alongside the CFO during Create Job from Quote, it copies the Product's current Documents onto the Job as new Documents pointing at the same stored files. Like the CFO it is a **frozen build record**: read-only forever, and unaffected by later edits or deletions of the Product's Documents. Because stored files are never deleted, a later change to a Product Document never strands the Job's copy. (Job-specific document uploads are a possible future extension and are not part of this snapshot.)
 
 ## Relationships
 
@@ -95,6 +102,8 @@ _Avoid_: Avatar, Logo, Photo, Image.
 - A **Quote** may have zero or more **Quote Selected Assemblies**.
 - A **Supplier** currently stands alone as a procurement directory record.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
+- A **Document** has exactly one owning entity (a **Product** to start). A **Product** has zero or more **Documents**.
+- Creating a **Job** snapshots its **Product**'s **Documents** onto the Job as a frozen **Job Document Snapshot** (see Create Job from Quote).
 
 ## Access
 

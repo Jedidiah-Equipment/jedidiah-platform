@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { createAuditChanges, createAuditSummary, jobAuditDescriptor, productAuditDescriptor } from './audit-service.js';
+import {
+  createAuditChanges,
+  createAuditSnapshotChanges,
+  createAuditSummary,
+  jobAuditDescriptor,
+  productAuditDescriptor,
+} from './audit-service.js';
 
 describe('createAuditChanges', () => {
   it('returns changed audited fields only', () => {
@@ -26,6 +32,57 @@ describe('createAuditChanges', () => {
         productAuditDescriptor.fields,
       ),
     ).toBeNull();
+  });
+});
+
+describe('createAuditSnapshotChanges', () => {
+  it('maps every audited field from null to value for created records', () => {
+    expect(
+      createAuditSnapshotChanges(
+        { id: 'product-id', name: 'Wheel Loader', description: null, ignored: 'value' },
+        productAuditDescriptor.fields,
+        'created',
+      ),
+    ).toMatchObject({
+      description: {
+        from: null,
+        to: null,
+      },
+      name: {
+        from: null,
+        to: 'Wheel Loader',
+      },
+    });
+  });
+
+  it('maps every audited field from value to null for deleted records', () => {
+    expect(
+      createAuditSnapshotChanges(
+        { id: 'product-id', name: 'Wheel Loader', description: 'Heavy loader', ignored: 'value' },
+        productAuditDescriptor.fields,
+        'deleted',
+      ),
+    ).toMatchObject({
+      description: {
+        from: 'Heavy loader',
+        to: null,
+      },
+      name: {
+        from: 'Wheel Loader',
+        to: null,
+      },
+    });
+  });
+
+  it('normalizes missing fields to null', () => {
+    expect(
+      createAuditSnapshotChanges({ name: 'Wheel Loader' }, productAuditDescriptor.fields, 'created'),
+    ).toMatchObject({
+      modelCode: {
+        from: null,
+        to: null,
+      },
+    });
   });
 });
 

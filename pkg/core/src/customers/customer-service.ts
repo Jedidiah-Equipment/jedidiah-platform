@@ -17,7 +17,12 @@ import type {
 import { Customer } from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
-import { createAuditChanges, customerAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
+import {
+  createAuditChanges,
+  createAuditSnapshotChanges,
+  customerAuditDescriptor,
+  insertAuditEvent,
+} from '../audit/audit-service.js';
 import { CustomerNotFoundError } from './customer-errors.js';
 
 type CustomerRow = typeof customers.$inferSelect;
@@ -123,7 +128,7 @@ export async function createCustomer({
         actorUserId,
         after: row,
         before: null,
-        changes: null,
+        changes: createAuditSnapshotChanges(row, customerAuditDescriptor.fields, 'created'),
         entityId: row.id,
         entityType: customerAuditDescriptor.entityType,
       },

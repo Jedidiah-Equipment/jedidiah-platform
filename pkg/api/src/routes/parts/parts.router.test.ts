@@ -107,7 +107,20 @@ describe('parts.create', () => {
     expect(events.at(-1)).toMatchObject({
       action: 'created',
       actorUserId: session.user.id,
-      changes: null,
+      changes: {
+        code: {
+          from: null,
+          to: 'P-100',
+        },
+        name: {
+          from: null,
+          to: 'Bearing',
+        },
+        supplierId: {
+          from: null,
+          to: supplier.id,
+        },
+      },
       entityId: created.id,
       entityType: 'part',
       summary: 'Created part "Bearing"',

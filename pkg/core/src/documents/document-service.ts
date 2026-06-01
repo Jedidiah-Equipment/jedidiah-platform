@@ -6,7 +6,7 @@ import type { AuthId, DocumentMetadata, UserAccessSummary, UUID } from '@pkg/sch
 import { DocumentMetadata as DocumentMetadataSchema } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 
-import { documentAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
+import { createAuditSnapshotChanges, documentAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
 import {
   DocumentForbiddenError,
   DocumentNotFoundError,
@@ -111,7 +111,7 @@ export async function uploadProductDocument({
           actorUserId,
           after: toDocumentAuditRecord(row),
           before: null,
-          changes: null,
+          changes: createAuditSnapshotChanges(toDocumentAuditRecord(row), documentAuditDescriptor.fields, 'created'),
           entityId: row.id,
           entityType: documentAuditDescriptor.entityType,
         },
@@ -219,7 +219,7 @@ export async function deleteDocument({
         actorUserId,
         after: null,
         before: toDocumentAuditRecord(row),
-        changes: null,
+        changes: createAuditSnapshotChanges(toDocumentAuditRecord(row), documentAuditDescriptor.fields, 'deleted'),
         entityId: row.id,
         entityType: documentAuditDescriptor.entityType,
       },

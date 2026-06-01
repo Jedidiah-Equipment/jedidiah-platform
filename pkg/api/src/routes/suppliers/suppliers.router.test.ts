@@ -97,7 +97,16 @@ describe('suppliers.create', () => {
       {
         action: 'created',
         actorUserId: session.user.id,
-        changes: null,
+        changes: {
+          companyName: {
+            from: null,
+            to: 'Acme Supplies',
+          },
+          email: {
+            from: null,
+            to: 'acme-supplies@example.com',
+          },
+        },
         entityId: created.id,
         entityType: 'supplier',
         summary: 'Created supplier "Acme Supplies"',
@@ -336,7 +345,12 @@ describe('suppliers.update', () => {
     expect(events).toMatchObject([
       {
         action: 'created',
-        changes: null,
+        changes: {
+          companyName: {
+            from: null,
+            to: 'Acme Supplies',
+          },
+        },
       },
       {
         action: 'updated',

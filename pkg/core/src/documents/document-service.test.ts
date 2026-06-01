@@ -106,7 +106,28 @@ describe('uploadProductDocument', () => {
       actorUserId: ACTOR_USER_ID,
       entityId: document.id,
       entityType: 'document',
-      changes: null,
+      changes: {
+        byteSize: {
+          from: null,
+          to: bytes.byteLength,
+        },
+        contentType: {
+          from: null,
+          to: 'application/pdf',
+        },
+        filename: {
+          from: null,
+          to: 'Part Book.pdf',
+        },
+        productId: {
+          from: null,
+          to: context.productId,
+        },
+        storageKey: {
+          from: null,
+          to: row?.storageKey,
+        },
+      },
     });
   });
 
@@ -243,7 +264,28 @@ describe('deleteDocument', () => {
         actorUserId: ACTOR_USER_ID,
         entityId: document.id,
         entityType: 'document',
-        changes: null,
+        changes: {
+          byteSize: {
+            from: pdfBytes().byteLength,
+            to: null,
+          },
+          contentType: {
+            from: 'application/pdf',
+            to: null,
+          },
+          filename: {
+            from: 'Delete Me.pdf',
+            to: null,
+          },
+          productId: {
+            from: context.productId,
+            to: null,
+          },
+          storageKey: {
+            from: row?.storageKey,
+            to: null,
+          },
+        },
       }),
     );
   });

@@ -17,7 +17,7 @@ import {
 import { canViewStage, parseJobCodeSearch } from '@pkg/domain';
 import {
   type JobDetail,
-  JobDocumentSnapshot,
+  JobDocument,
   type JobListInput,
   type JobListResult,
   type JobSortBy,
@@ -30,6 +30,14 @@ import {
   type UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gte, or, type SQL, sql } from 'drizzle-orm';
+import { DocumentNotFoundError } from '../documents/document-errors.js';
+import {
+  type DocumentMetadataRow,
+  documentBaseSelect,
+  mapDocumentMetadata,
+  type ReadDocumentResult,
+} from '../documents/document-service.js';
+import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, type JobStageRow, mapJob, mapJobStage } from './job-mappers.js';
 
@@ -43,10 +51,8 @@ type JobWithProductRow = JobRow & {
   quote: QuoteRow;
   stages: JobStageRow[];
 };
-type JobDocumentSnapshotRow = typeof documents.$inferSelect & {
+type JobDocumentRow = DocumentMetadataRow & {
   sourceProductName: string | null;
-  uploaderEmail: string | null;
-  uploaderName: string | null;
 };
 
 export async function listJobs({
@@ -200,46 +206,81 @@ export async function getJob({
   return {
     ...mapJobSummary(row),
     cfo: await listJobCfo({ db, jobId: row.id }),
-    documents: await listJobDocuments({ db, jobId: row.id }),
+    documents: await getJobDocuments({ db, jobId: row.id }),
     stages: mapJobDetailStages({ access, stageRows: row.stages }),
   };
 }
 
-async function listJobDocuments({
+export async function getJobDocuments({
   db,
   jobId,
 }: {
   db: Db | DatabaseTransaction;
   jobId: UUID;
 }): Promise<JobDetail['documents']> {
-  const rows = await db
+  await assertJobExists({ db, jobId });
+
+  const rows = await selectJobDocuments(db).where(eq(documents.jobId, jobId)).orderBy(asc(documents.filename));
+
+  return rows.map(mapJobDocument);
+}
+
+export async function readJobDocument({
+  db,
+  documentId,
+  jobId,
+  storage,
+}: {
+  db: Db;
+  documentId: UUID;
+  jobId: UUID;
+  storage: StorageAdapter;
+}): Promise<ReadDocumentResult> {
+  await assertJobExists({ db, jobId });
+  const document = await getJobDocumentMetadataRow({ db, documentId, jobId });
+
+  return {
+    document: mapDocumentMetadata(document),
+    object: await storage.get(document.storageKey),
+  };
+}
+
+function selectJobDocuments(db: Db | DatabaseTransaction) {
+  return db
     .select({
-      byteSize: documents.byteSize,
-      contentType: documents.contentType,
-      createdAt: documents.createdAt,
-      filename: documents.filename,
-      id: documents.id,
-      jobId: documents.jobId,
-      ownerType: documents.ownerType,
-      productId: documents.productId,
-      sourceProductId: documents.sourceProductId,
+      ...documentBaseSelect,
       sourceProductName: products.name,
-      storageKey: documents.storageKey,
       uploaderEmail: user.email,
       uploaderName: user.name,
-      uploaderUserId: documents.uploaderUserId,
     })
     .from(documents)
     .leftJoin(products, eq(documents.sourceProductId, products.id))
     .leftJoin(user, eq(documents.uploaderUserId, user.id))
-    .where(eq(documents.jobId, jobId))
-    .orderBy(asc(documents.filename));
-
-  return rows.map(mapJobDocumentSnapshot);
+    .$dynamic();
 }
 
-function mapJobDocumentSnapshot(row: JobDocumentSnapshotRow): JobDetail['documents'][number] {
-  return JobDocumentSnapshot.parse({
+async function getJobDocumentMetadataRow({
+  db,
+  documentId,
+  jobId,
+}: {
+  db: Db;
+  documentId: UUID;
+  jobId: UUID;
+}): Promise<DocumentMetadataRow> {
+  const [row] = await selectJobDocuments(db)
+    .where(and(eq(documents.jobId, jobId), eq(documents.id, documentId)))
+    .limit(1);
+
+  if (!row) {
+    throw new DocumentNotFoundError(documentId);
+  }
+
+  return row;
+}
+
+function mapJobDocument(row: JobDocumentRow): JobDetail['documents'][number] {
+  return JobDocument.parse({
     byteSize: row.byteSize,
     contentType: row.contentType,
     createdAt: row.createdAt.toISOString(),
@@ -254,6 +295,19 @@ function mapJobDocumentSnapshot(row: JobDocumentSnapshotRow): JobDetail['documen
     uploaderName: row.uploaderName,
     uploaderUserId: row.uploaderUserId,
   });
+}
+
+async function assertJobExists({ db, jobId }: { db: Db | DatabaseTransaction; jobId: UUID }): Promise<void> {
+  const row = await db.query.jobs.findFirst({
+    columns: {
+      id: true,
+    },
+    where: eq(jobs.id, jobId),
+  });
+
+  if (!row) {
+    throw new JobNotFoundError(jobId);
+  }
 }
 
 async function listJobCfo({ db, jobId }: { db: Db | DatabaseTransaction; jobId: UUID }): Promise<JobDetail['cfo']> {

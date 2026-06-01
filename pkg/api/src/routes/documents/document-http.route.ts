@@ -1,21 +1,28 @@
 import { Readable } from 'node:stream';
 
 import {
-  deleteDocument,
+  createProductDocument,
   getUserAccessSummary,
   isDocumentCoreError,
-  readDocument,
+  isJobCoreError,
+  isProductCoreError,
+  readJobDocument,
+  readProductDocument,
   type StorageAdapter,
-  uploadProductDocument,
 } from '@pkg/core';
-import { db, documents, sql } from '@pkg/db';
+import { db } from '@pkg/db';
 import { hasPermission, validateDocumentPolicy } from '@pkg/domain';
-import { DocumentDeleteInput, DocumentDownloadInput, DocumentListByProductInput } from '@pkg/schema';
+import { type AppPermission, DocumentListByProductInput, ProductDocumentInput, UUID } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../../auth/session.js';
 import { mapDocumentCoreError } from './documents.router.js';
+
+const JobDocumentRouteInput = z.object({
+  documentId: UUID,
+  jobId: UUID,
+});
 
 type RouteAuthContext = {
   access: Awaited<ReturnType<typeof getUserAccessSummary>>;
@@ -23,11 +30,12 @@ type RouteAuthContext = {
 };
 
 export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: StorageAdapter): Promise<void> {
-  app.post('/api/documents/products/:productId', async (request, reply) => {
+  app.post('/api/products/:productId/documents', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
 
     try {
+      requirePermission(auth, 'product:update', 'You do not have permission to upload Product documents.');
       const params = DocumentListByProductInput.parse(request.params);
       const file = await request.file();
 
@@ -38,8 +46,7 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
 
       const bytes = await file.toBuffer();
       const document = await mapHttpDocumentErrors(() =>
-        uploadProductDocument({
-          access: auth.access,
+        createProductDocument({
           actorUserId: auth.session.user.id,
           db,
           input: {
@@ -58,17 +65,18 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     }
   });
 
-  app.get('/api/documents/:id/download', async (request, reply) => {
+  app.get('/api/products/:productId/documents/:documentId/download', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
 
     try {
-      const params = DocumentDownloadInput.parse(request.params);
-      await assertCanDownloadDocument({ access: auth.access, documentId: params.id });
+      requirePermission(auth, 'product:read', 'You do not have permission to download this document.');
+      const params = ProductDocumentInput.parse(request.params);
       const result = await mapHttpDocumentErrors(() =>
-        readDocument({
+        readProductDocument({
           db,
-          id: params.id,
+          documentId: params.documentId,
+          productId: params.productId,
           storage,
         }),
       );
@@ -76,29 +84,32 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
-      reply.send(Readable.from(result.object.body));
+      reply.send(createDocumentBodyStream(result.object.body));
     } catch (error) {
       sendHttpError(reply, error);
     }
   });
 
-  app.delete('/api/documents/:id', async (request, reply) => {
+  app.get('/api/jobs/:jobId/documents/:documentId/download', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
 
     try {
-      const params = DocumentDeleteInput.parse(request.params);
-      await assertCanDeleteDocument({ access: auth.access, documentId: params.id });
-      await mapHttpDocumentErrors(() =>
-        deleteDocument({
-          access: auth.access,
-          actorUserId: auth.session.user.id,
+      requirePermission(auth, 'job:read', 'You do not have permission to download this document.');
+      const params = JobDocumentRouteInput.parse(request.params);
+      const result = await mapHttpDocumentErrors(() =>
+        readJobDocument({
           db,
-          id: params.id,
+          documentId: params.documentId,
+          jobId: params.jobId,
+          storage,
         }),
       );
 
-      reply.status(204).send();
+      reply.header('Content-Type', result.document.contentType);
+      reply.header('Content-Length', result.document.byteSize);
+      reply.header('Content-Disposition', createContentDisposition(result.document.filename));
+      reply.send(createDocumentBodyStream(result.object.body));
     } catch (error) {
       sendHttpError(reply, error);
     }
@@ -122,61 +133,12 @@ async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): P
   return { access, session };
 }
 
-async function assertCanDownloadDocument({
-  access,
-  documentId,
-}: {
-  access: RouteAuthContext['access'];
-  documentId: string;
-}): Promise<void> {
-  const row = await db.query.documents.findFirst({
-    columns: {
-      ownerType: true,
-    },
-    where: sql`${documents.id} = ${documentId}`,
-  });
-
-  if (!row) {
+function requirePermission(auth: RouteAuthContext, permission: AppPermission, message: string): void {
+  if (hasPermission(auth.access, permission)) {
     return;
   }
 
-  if (row.ownerType === 'product' && hasPermission(access, 'product:read')) {
-    return;
-  }
-
-  if (row.ownerType === 'job' && hasPermission(access, 'job:read')) {
-    return;
-  }
-
-  throw Object.assign(new Error('You do not have permission to download this document.'), {
-    appCode: 'document.forbidden',
-    statusCode: 403,
-  });
-}
-
-async function assertCanDeleteDocument({
-  access,
-  documentId,
-}: {
-  access: RouteAuthContext['access'];
-  documentId: string;
-}): Promise<void> {
-  const row = await db.query.documents.findFirst({
-    columns: {
-      ownerType: true,
-    },
-    where: sql`${documents.id} = ${documentId}`,
-  });
-
-  if (!row) {
-    return;
-  }
-
-  if (row.ownerType === 'product' && hasPermission(access, 'product:update')) {
-    return;
-  }
-
-  throw Object.assign(new Error('You do not have permission to delete this document.'), {
+  throw Object.assign(new Error(message), {
     appCode: 'document.forbidden',
     statusCode: 403,
   });
@@ -191,6 +153,20 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
       throw Object.assign(new Error(mapped.message), {
         appCode: mapped.appCode,
         statusCode: trpcCodeToHttpStatus(mapped.code),
+      });
+    }
+
+    if (isProductCoreError(error)) {
+      throw Object.assign(new Error(error.code === 'product.not_found' ? 'Product not found.' : error.message), {
+        appCode: error.code,
+        statusCode: error.code === 'product.not_found' ? 404 : 400,
+      });
+    }
+
+    if (isJobCoreError(error)) {
+      throw Object.assign(new Error(error.code === 'job.not_found' ? 'Job not found.' : error.message), {
+        appCode: error.code,
+        statusCode: error.code === 'job.not_found' ? 404 : 403,
       });
     }
 
@@ -247,6 +223,10 @@ function createContentDisposition(filename: string): string {
   const encoded = encodeURIComponent(filename).replace(/'/g, '%27');
 
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
+function createDocumentBodyStream(body: AsyncIterable<Uint8Array>): Readable {
+  return Readable.from(body, { objectMode: false });
 }
 
 function isMultipartFileTooLargeError(reply: FastifyReply, error: unknown): boolean {

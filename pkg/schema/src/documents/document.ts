@@ -33,8 +33,8 @@ export const DocumentMetadata = z.object({
   createdAt: DateIso,
 });
 
-export type JobDocumentSnapshot = z.infer<typeof JobDocumentSnapshot>;
-export const JobDocumentSnapshot = DocumentMetadata.extend({
+export type JobDocument = z.infer<typeof JobDocument>;
+export const JobDocument = DocumentMetadata.extend({
   ownerType: z.literal('job'),
   jobId: UUID,
   productId: z.null(),
@@ -47,12 +47,8 @@ export const DocumentListByProductInput = z.object({
   productId: UUID,
 });
 
-export type DocumentDownloadInput = z.infer<typeof DocumentDownloadInput>;
-export const DocumentDownloadInput = z.object({
-  id: UUID,
-});
-
-export type DocumentDeleteInput = z.infer<typeof DocumentDeleteInput>;
-export const DocumentDeleteInput = z.object({
-  id: UUID,
+export type ProductDocumentInput = z.infer<typeof ProductDocumentInput>;
+export const ProductDocumentInput = z.object({
+  documentId: UUID,
+  productId: UUID,
 });

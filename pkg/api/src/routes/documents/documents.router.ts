@@ -1,5 +1,12 @@
-import { type DocumentCoreError, isDocumentCoreError, listProductDocuments } from '@pkg/core';
-import { DocumentListByProductInput } from '@pkg/schema';
+import {
+  type DocumentCoreError,
+  deleteProductDocument,
+  getProductDocuments,
+  isDocumentCoreError,
+  isProductCoreError,
+  type ProductCoreError,
+} from '@pkg/core';
+import { DocumentListByProductInput, ProductDocumentInput } from '@pkg/schema';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
@@ -8,12 +15,28 @@ export const documentsRouter = router({
   listByProduct: authorizedProcedure('product:read')
     .input(DocumentListByProductInput)
     .query(({ ctx, input }) =>
-      mapDocumentErrors(() => listProductDocuments({ access: ctx.access, db: ctx.db, productId: input.productId })),
+      mapDocumentErrors(() => getProductDocuments({ db: ctx.db, productId: input.productId })),
+    ),
+  deleteByProduct: authorizedProcedure('product:update')
+    .input(ProductDocumentInput)
+    .mutation(({ ctx, input }) =>
+      mapDocumentErrors(() =>
+        deleteProductDocument({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          documentId: input.documentId,
+          productId: input.productId,
+        }),
+      ),
     ),
 });
 
 export async function mapDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isDocumentCoreError, mapDocumentCoreError);
+  return mapKnownCoreError(
+    () => mapKnownCoreError(action, isProductCoreError, mapDocumentProductCoreError),
+    isDocumentCoreError,
+    mapDocumentCoreError,
+  );
 }
 
 export function mapDocumentCoreError(error: DocumentCoreError): CoreErrorMapping<DocumentCoreError['code']> {
@@ -32,25 +55,29 @@ export function mapDocumentCoreError(error: DocumentCoreError): CoreErrorMapping
         code: 'CONFLICT',
         message: 'A document with this filename already exists for this Product.',
       };
-    case 'document.forbidden':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
     case 'document.not_found':
       return {
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Document not found.',
       };
-    case 'document.owner_not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Product not found.',
-      };
     default:
       return assertNever(error);
   }
+}
+
+function mapDocumentProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductCoreError['code']> {
+  if (error.code === 'product.not_found') {
+    return {
+      appCode: error.code,
+      code: 'NOT_FOUND',
+      message: 'Product not found.',
+    };
+  }
+
+  return {
+    appCode: error.code,
+    code: 'BAD_REQUEST',
+    message: error.message,
+  };
 }

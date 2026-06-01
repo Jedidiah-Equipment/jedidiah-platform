@@ -90,6 +90,7 @@ describe('uploadProductDocument', () => {
 
     const [row] = await context.db.select().from(documents);
     expect(row).toMatchObject({
+      contentType: 'application/pdf',
       filename: 'Part Book.pdf',
       productId: context.productId,
       uploaderUserId: ACTOR_USER_ID,
@@ -128,6 +129,52 @@ describe('uploadProductDocument', () => {
           to: row?.storageKey,
         },
       },
+    });
+  });
+
+  test('stores the server-verified content type instead of the declared upload type', async ({ context }) => {
+    const document = await uploadProductDocument({
+      access: context.access,
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      input: {
+        bytes: pdfBytes(),
+        contentType: 'application/octet-stream',
+        filename: 'Odd Browser Mime.pdf',
+        productId: context.productId,
+      },
+      storage: context.storage,
+    });
+
+    expect(document.contentType).toBe('application/pdf');
+
+    const [row] = await context.db.select().from(documents);
+    expect(row?.contentType).toBe('application/pdf');
+    await expect(context.storage.get(row?.storageKey ?? '')).resolves.toMatchObject({
+      contentType: 'application/pdf',
+    });
+  });
+
+  test('stores server-verified image content types', async ({ context }) => {
+    const document = await uploadProductDocument({
+      access: context.access,
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      input: {
+        bytes: pngBytes(),
+        contentType: 'application/octet-stream',
+        filename: 'Machine Diagram.png',
+        productId: context.productId,
+      },
+      storage: context.storage,
+    });
+
+    expect(document.contentType).toBe('image/png');
+
+    const [row] = await context.db.select().from(documents);
+    expect(row?.contentType).toBe('image/png');
+    await expect(context.storage.get(row?.storageKey ?? '')).resolves.toMatchObject({
+      contentType: 'image/png',
     });
   });
 
@@ -170,8 +217,8 @@ describe('uploadProductDocument', () => {
         db: context.db,
         input: {
           bytes: new Uint8Array([1, 2, 3]),
-          contentType: 'text/plain',
-          filename: 'Notes.txt',
+          contentType: 'application/pdf',
+          filename: 'Renamed.pdf',
           productId: context.productId,
         },
         storage: context.storage,
@@ -179,6 +226,7 @@ describe('uploadProductDocument', () => {
     ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
 
     await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    expect(context.storage.objects.size).toBe(0);
   });
 
   test('denies upload without product update access', async ({ context }) => {
@@ -212,8 +260,30 @@ describe('listProductDocuments and readDocument', () => {
       storage: context.storage,
     });
 
-    expect(read.document).toMatchObject({ id: first.id, filename: 'A.pdf' });
+    expect(read.document).toMatchObject({ contentType: 'application/pdf', id: first.id, filename: 'A.pdf' });
     await expect(readAll(read.object.body)).resolves.toEqual(pdfBytes());
+  });
+
+  test('serves the persisted verified content type when storage metadata differs', async ({ context }) => {
+    const document = await uploadPdf(context, { filename: 'A.pdf', productId: context.productId });
+    const [row] = await context.db.select().from(documents);
+    const stored = context.storage.objects.get(row?.storageKey ?? '');
+
+    if (!stored) {
+      throw new Error('Expected uploaded object to exist');
+    }
+
+    stored.contentType = 'application/octet-stream';
+
+    const read = await readDocument({
+      access: context.access,
+      db: context.db,
+      id: document.id,
+      storage: context.storage,
+    });
+
+    expect(read.document.contentType).toBe('application/pdf');
+    expect(read.object.contentType).toBe('application/octet-stream');
   });
 
   test('denies read without product read access', async ({ context }) => {
@@ -346,7 +416,11 @@ function uploadPdf(
 }
 
 function pdfBytes(): Uint8Array {
-  return new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+  return new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]);
+}
+
+function pngBytes(): Uint8Array {
+  return new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 }
 
 async function readAll(body: AsyncIterable<Uint8Array>): Promise<Uint8Array> {

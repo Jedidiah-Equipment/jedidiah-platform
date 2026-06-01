@@ -5,12 +5,24 @@ import {
   jobCfoParts,
   jobStages,
   jobs,
+  productSerialSequences,
+  products,
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
 import { buildCfo, JOB_STAGE_PIPELINE } from '@pkg/domain';
-import type { AuthId, JobCreateInput, JobDetail, UserAccessSummary, UUID } from '@pkg/schema';
-import { asc, eq } from 'drizzle-orm';
+import {
+  type AuthId,
+  formatProductSerialNumber,
+  type JobCreateInput,
+  type JobDetail,
+  ProductSerialPrefix,
+  ProductSerialSequence,
+  ProductSerialYear,
+  type UserAccessSummary,
+  type UUID,
+} from '@pkg/schema';
+import { asc, eq, sql } from 'drizzle-orm';
 
 import { insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
@@ -23,20 +35,31 @@ export async function createJob({
   db,
   input,
   actorUserId,
+  currentDate,
 }: {
   access: UserAccessSummary;
   db: Db;
   input: JobCreateInput;
   actorUserId: AuthId;
+  currentDate?: Date;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const quote = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
     const cfo = await buildJobCfoForQuote({ productId: quote.productId, quoteId: quote.id, tx });
+    const productSerial = await createProductSerial({
+      productId: quote.productId,
+      tx,
+      currentDate: currentDate ?? new Date(),
+    });
 
     const [job] = await tx
       .insert(jobs)
       .values({
         productId: quote.productId,
+        productSerialNumber: productSerial.number,
+        productSerialPrefix: productSerial.prefix,
+        productSerialSequence: productSerial.sequence,
+        productSerialYear: productSerial.year,
         quoteId: quote.id,
       })
       .returning();
@@ -70,6 +93,70 @@ export async function createJob({
 
     return getJob({ access, db: tx, id: job.id });
   });
+}
+
+async function createProductSerial({
+  productId,
+  tx,
+  currentDate,
+}: {
+  productId: UUID;
+  tx: DatabaseTransaction;
+  currentDate: Date;
+}) {
+  const [product] = await tx
+    .select({
+      modelCode: products.modelCode,
+    })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1);
+
+  if (!product) {
+    throw new JobCreateFromQuoteDeniedError('Product not found.');
+  }
+
+  const [sequenceRow] = await tx
+    .insert(productSerialSequences)
+    .values({
+      lastSequence: 1,
+      productId,
+      updatedAt: currentDate,
+    })
+    .onConflictDoUpdate({
+      target: productSerialSequences.productId,
+      set: {
+        lastSequence: sql`${productSerialSequences.lastSequence} + 1`,
+        updatedAt: currentDate,
+      },
+    })
+    .returning({
+      lastSequence: productSerialSequences.lastSequence,
+    });
+
+  if (!sequenceRow) {
+    throw new Error('Product serial sequence upsert did not return a row');
+  }
+
+  const prefix = ProductSerialPrefix.parse(product.modelCode);
+  const year = ProductSerialYear.parse(getJohannesburgTwoDigitYear(currentDate));
+  const sequence = ProductSerialSequence.parse(sequenceRow.lastSequence);
+
+  return {
+    number: formatProductSerialNumber({ prefix, sequence, year }),
+    prefix,
+    sequence,
+    year,
+  };
+}
+
+function getJohannesburgTwoDigitYear(date: Date): number {
+  const year = new Intl.DateTimeFormat('en-ZA', {
+    timeZone: 'Africa/Johannesburg',
+    year: '2-digit',
+  }).format(date);
+
+  return Number.parseInt(year, 10);
 }
 
 async function validateJobQuoteForCreate({

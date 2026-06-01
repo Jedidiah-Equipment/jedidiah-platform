@@ -18,6 +18,18 @@ import { quotes } from './quote.js';
 
 export const jobCodeSequence = pgSequence('job_code_seq');
 
+export const productSerialSequences = pgTable(
+  'product_serial_sequence',
+  {
+    productId: uuid('product_id')
+      .primaryKey()
+      .references(() => products.id, { onDelete: 'restrict' }),
+    lastSequence: integer('last_sequence').notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [check('product_serial_sequence_last_sequence_positive', sql`${table.lastSequence} > 0`)],
+);
+
 export const jobs = pgTable(
   'job',
   {
@@ -29,10 +41,22 @@ export const jobs = pgTable(
     quoteId: uuid('quote_id')
       .notNull()
       .references(() => quotes.id, { onDelete: 'restrict' }),
+    productSerialPrefix: text('product_serial_prefix').notNull(),
+    productSerialYear: integer('product_serial_year').notNull(),
+    productSerialSequence: integer('product_serial_sequence').notNull(),
+    productSerialNumber: text('product_serial_number').notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [uniqueIndex('job_code_unique').on(table.code), uniqueIndex('job_quote_id_unique').on(table.quoteId)],
+  (table) => [
+    check('job_product_serial_prefix_nonempty', sql`length(trim(${table.productSerialPrefix})) > 0`),
+    check('job_product_serial_year_range', sql`${table.productSerialYear} >= 0 AND ${table.productSerialYear} <= 99`),
+    check('job_product_serial_sequence_positive', sql`${table.productSerialSequence} > 0`),
+    check('job_product_serial_number_nonempty', sql`length(trim(${table.productSerialNumber})) > 0`),
+    uniqueIndex('job_code_unique').on(table.code),
+    uniqueIndex('job_product_serial_number_unique').on(table.productSerialNumber),
+    uniqueIndex('job_quote_id_unique').on(table.quoteId),
+  ],
 );
 
 export const jobCfoAssemblies = pgTable(

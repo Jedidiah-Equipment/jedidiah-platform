@@ -10,6 +10,7 @@ import {
   jobs,
   parts,
   productAssemblies,
+  productSerialSequences,
   products,
   quoteSelectedAssemblies,
   quotes,
@@ -48,6 +49,7 @@ describe('createJob', () => {
     const job = await createJob({
       access: jobAccess,
       actorUserId,
+      currentDate: new Date('2026-06-01T10:00:00.000+02:00'),
       db: context.db,
       input: { quoteId: quote.id },
     });
@@ -62,6 +64,10 @@ describe('createJob', () => {
 
     expect(job).toMatchObject({
       productId: context.catalog.product.id,
+      productSerialNumber: 'CFO-001260001',
+      productSerialPrefix: 'CFO-001',
+      productSerialSequence: 1,
+      productSerialYear: 26,
       quoteId: quote.id,
     });
     expect(job.cfo).toEqual(
@@ -176,6 +182,84 @@ describe('createJob', () => {
       }),
     ).rejects.toThrow('Selected optional assembly is stale: Heavy Axle Upgrade.');
   });
+
+  test('allocates product serial sequences per product', async ({ context }) => {
+    const firstQuote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+    const secondQuote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+    const otherProduct = await createProduct(context.db, {
+      modelCode: 'ALT-001',
+      name: 'Alternate Product',
+    });
+    const otherProductQuote = await createQuote(context.db, {
+      productId: otherProduct.id,
+      status: 'accepted',
+    });
+
+    const firstJob = await createJob({
+      access: jobAccess,
+      actorUserId,
+      currentDate: new Date('2026-06-01T10:00:00.000+02:00'),
+      db: context.db,
+      input: { quoteId: firstQuote.id },
+    });
+    const secondJob = await createJob({
+      access: jobAccess,
+      actorUserId,
+      currentDate: new Date('2026-06-02T10:00:00.000+02:00'),
+      db: context.db,
+      input: { quoteId: secondQuote.id },
+    });
+    const otherProductJob = await createJob({
+      access: jobAccess,
+      actorUserId,
+      currentDate: new Date('2026-06-03T10:00:00.000+02:00'),
+      db: context.db,
+      input: { quoteId: otherProductQuote.id },
+    });
+
+    expect(firstJob.productSerialNumber).toBe('CFO-001260001');
+    expect(secondJob.productSerialNumber).toBe('CFO-001260002');
+    expect(otherProductJob.productSerialNumber).toBe('ALT-001260001');
+  });
+
+  test('continues product serial sequences across years', async ({ context }) => {
+    await context.db.insert(productSerialSequences).values({
+      lastSequence: 8,
+      productId: context.catalog.product.id,
+    });
+    const firstQuote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+    const secondQuote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    const firstJob = await createJob({
+      access: jobAccess,
+      actorUserId,
+      currentDate: new Date('2026-12-31T23:30:00.000+02:00'),
+      db: context.db,
+      input: { quoteId: firstQuote.id },
+    });
+    const secondJob = await createJob({
+      access: jobAccess,
+      actorUserId,
+      currentDate: new Date('2027-01-01T00:30:00.000+02:00'),
+      db: context.db,
+      input: { quoteId: secondQuote.id },
+    });
+
+    expect(firstJob.productSerialNumber).toBe('CFO-001260009');
+    expect(secondJob.productSerialNumber).toBe('CFO-001270010');
+  });
 });
 
 async function createActorUser(db: Db) {
@@ -211,18 +295,10 @@ async function createCatalog(db: Db) {
     ])
     .returning();
 
-  const [product] = await db
-    .insert(products)
-    .values({
-      basePrice: 1_000,
-      buildTimeDays: 14,
-      currencyCode: 'ZAR',
-      description: null,
-      modelCode: 'CFO-001',
-      name: 'CFO Test Product',
-    })
-    .returning();
-  if (!product) throw new Error('Product insert did not return a row');
+  const product = await createProduct(db, {
+    modelCode: 'CFO-001',
+    name: 'CFO Test Product',
+  });
 
   const [chassis, axle, heavyAxle] = await db
     .insert(productAssemblies)
@@ -274,6 +350,24 @@ async function createCatalog(db: Db) {
   });
 
   return { heavyAxle, product };
+}
+
+async function createProduct(db: Db, { modelCode, name }: { modelCode: string; name: string }) {
+  const [product] = await db
+    .insert(products)
+    .values({
+      basePrice: 1_000,
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      description: null,
+      modelCode,
+      name,
+    })
+    .returning();
+
+  if (!product) throw new Error('Product insert did not return a row');
+
+  return product;
 }
 
 function partInput(

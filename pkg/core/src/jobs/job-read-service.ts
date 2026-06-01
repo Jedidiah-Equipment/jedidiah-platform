@@ -59,6 +59,10 @@ export async function listJobs({
       id: true,
       code: true,
       productId: true,
+      productSerialNumber: true,
+      productSerialPrefix: true,
+      productSerialSequence: true,
+      productSerialYear: true,
       quoteId: true,
       updatedAt: true,
     },
@@ -122,6 +126,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
     const searchWhere = or(
       createEscapedContainsSearchCondition(sql`${jobs.id}::text`, input.search),
       createEscapedContainsSearchCondition(sql`${jobs.code}::text`, input.search),
+      createEscapedContainsSearchCondition(sql`${jobs.productSerialNumber}`, input.search),
       codeSearch === undefined ? undefined : eq(jobs.code, codeSearch),
     );
 
@@ -148,6 +153,10 @@ export async function getJob({
       code: true,
       id: true,
       productId: true,
+      productSerialNumber: true,
+      productSerialPrefix: true,
+      productSerialSequence: true,
+      productSerialYear: true,
       quoteId: true,
       updatedAt: true,
     },

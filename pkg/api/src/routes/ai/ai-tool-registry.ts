@@ -142,12 +142,25 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     tool: listJobsTool,
     descriptor: {
       purpose: 'List Jobs visible to Job readers.',
-      useWhen: ['Searching by Job Code, numeric code, Job UUID, partial UUID, or Job Status.'],
+      useWhen: ['Searching by Job Code, product serial number, numeric code, Job UUID, partial UUID, or Job Status.'],
       doNotUseWhen: [
         'The user needs Stage detail or workflow history for one Job; call getJob after identifying the Job id.',
       ],
-      searchableIdentifiers: ['Job UUID', 'Job Code such as JOB-00001', 'numeric Job Code', 'Job Status'],
-      resultIdentifiers: ['Job Code', 'Job Status', 'Due Date', 'Stage summaries', 'Quote Code'],
+      searchableIdentifiers: [
+        'Job UUID',
+        'Job Code such as JOB-00001',
+        'Product serial number such as SG1836260009',
+        'numeric Job Code',
+        'Job Status',
+      ],
+      resultIdentifiers: [
+        'Job Code',
+        'Product serial number',
+        'Job Status',
+        'Due Date',
+        'Stage summaries',
+        'Quote Code',
+      ],
       linkTarget: aiLinkMetadata.Job,
     },
     projectResult: (result) => projectPagedItems(result, projectJob),
@@ -157,7 +170,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     descriptor: {
       purpose: 'Get one Job by UUID, including Stage summaries, visible Stage details, and workflow events.',
       useWhen: ['A Job id is already known and the user needs production progress or workflow history.'],
-      doNotUseWhen: ['Searching by Job Code, numeric code, or partial id; use listJobs first.'],
+      doNotUseWhen: ['Searching by Job Code, product serial number, numeric code, or partial id; use listJobs first.'],
       searchableIdentifiers: ['Job UUID'],
       resultIdentifiers: [
         'Job Code',

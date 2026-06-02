@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { type DatabaseTransaction, type Db, documents, getUniqueViolationConstraint } from '@pkg/db';
 import { sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
-import type { AuthId, DocumentSummary, UUID } from '@pkg/schema';
+import type { AuthId, DocumentSummary, ProductDocumentMetadata, UUID } from '@pkg/schema';
 import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
@@ -27,6 +27,7 @@ export type DocumentBaseRow = Pick<
   | 'filename'
   | 'id'
   | 'jobId'
+  | 'metadata'
   | 'ownerType'
   | 'productId'
   | 'sourceProductId'
@@ -42,7 +43,12 @@ export type ProductDocumentCreateInput = {
   bytes: Uint8Array;
   contentType: string;
   filename: string;
+  metadata: unknown;
   productId: UUID;
+};
+
+type ProductDocumentRecordInput = Omit<ProductDocumentCreateInput, 'metadata'> & {
+  metadata: ProductDocumentMetadata;
 };
 
 export type ReadDocumentResult = {
@@ -57,6 +63,7 @@ export const documentBaseSelect = {
   filename: documents.filename,
   id: documents.id,
   jobId: documents.jobId,
+  metadata: documents.metadata,
   ownerType: documents.ownerType,
   productId: documents.productId,
   sourceProductId: documents.sourceProductId,
@@ -72,7 +79,7 @@ export async function createProductDocumentRecord({
 }: {
   actorUserId: AuthId;
   db: Db;
-  input: ProductDocumentCreateInput;
+  input: ProductDocumentRecordInput;
   storage: StorageAdapter;
 }): Promise<DocumentBaseRow> {
   const byteSize = input.bytes.byteLength;
@@ -124,6 +131,7 @@ export async function createProductDocumentRecord({
           byteSize,
           contentType: verifiedContentType,
           filename: input.filename,
+          metadata: input.metadata,
           ownerType: 'product',
           productId: input.productId,
           storageKey,
@@ -209,6 +217,7 @@ export function mapDocumentSummary(row: DocumentSummaryRow): DocumentSummary {
     filename: row.filename,
     id: row.id,
     jobId: row.jobId,
+    metadata: row.metadata,
     ownerType: row.ownerType,
     productId: row.productId,
     sourceProductId: row.sourceProductId,
@@ -239,6 +248,7 @@ function toDocumentAuditRecord(row: DocumentBaseRow) {
     filename: row.filename,
     id: row.id,
     jobId: row.jobId,
+    metadata: row.metadata,
     ownerType: row.ownerType,
     productId: row.productId,
     sourceProductId: row.sourceProductId,

@@ -293,6 +293,7 @@ export async function snapshotJobDocuments({
       contentType: document.contentType,
       filename: document.filename,
       jobId,
+      metadata: document.metadata,
       ownerType: 'job' as const,
       sourceProductId: productId,
       storageKey: document.storageKey,

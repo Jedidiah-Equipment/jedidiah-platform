@@ -1,4 +1,6 @@
 import type { DocumentOwnerType } from '@pkg/schema';
+import { ProductDocumentMetadata } from '@pkg/schema';
+import type { ZodType } from 'zod';
 
 export const DOCUMENT_PDF_CONTENT_TYPE = 'application/pdf';
 export const DOCUMENT_PNG_CONTENT_TYPE = 'image/png';
@@ -14,9 +16,13 @@ const WEBP_FORMAT_BYTES = new Uint8Array([0x57, 0x45, 0x42, 0x50]);
 export type DocumentPolicy = {
   allowedContentTypes: readonly string[];
   maxBytes: number;
+  metadataSchema: ZodType;
 };
 
-export type DocumentPolicyViolationCode = 'document.content_type_not_allowed' | 'document.file_too_large';
+export type DocumentPolicyViolationCode =
+  | 'document.content_type_not_allowed'
+  | 'document.file_too_large'
+  | 'document.metadata_invalid';
 
 export type DocumentPolicyValidationResult =
   | { ok: true }
@@ -35,6 +41,7 @@ export const documentPolicies = {
       DOCUMENT_WEBP_CONTENT_TYPE,
     ],
     maxBytes: PRODUCT_DOCUMENT_MAX_BYTES,
+    metadataSchema: ProductDocumentMetadata,
   },
   product: {
     allowedContentTypes: [
@@ -44,6 +51,7 @@ export const documentPolicies = {
       DOCUMENT_WEBP_CONTENT_TYPE,
     ],
     maxBytes: PRODUCT_DOCUMENT_MAX_BYTES,
+    metadataSchema: ProductDocumentMetadata,
   },
 } as const satisfies Record<DocumentOwnerType, DocumentPolicy>;
 
@@ -71,6 +79,23 @@ export function validateDocumentPolicy(input: {
       ok: false,
       code: 'document.file_too_large',
       message: `Document must be ${formatBytes(policy.maxBytes)} or smaller.`,
+    };
+  }
+
+  return { ok: true };
+}
+
+export function validateDocumentMetadata(input: {
+  metadata: unknown;
+  ownerType: DocumentOwnerType;
+}): DocumentPolicyValidationResult {
+  const policy = getDocumentPolicy(input.ownerType);
+
+  if (!policy.metadataSchema.safeParse(input.metadata).success) {
+    return {
+      ok: false,
+      code: 'document.metadata_invalid',
+      message: 'Choose a valid document type.',
     };
   }
 

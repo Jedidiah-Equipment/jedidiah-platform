@@ -10,6 +10,7 @@ import {
   products,
   user,
 } from '@pkg/db';
+import { validateDocumentMetadata } from '@pkg/domain';
 import type {
   Assembly,
   AuthId,
@@ -21,7 +22,7 @@ import type {
   ProductUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { Product, ProductCurrencyCode } from '@pkg/schema';
+import { Product, ProductCurrencyCode, ProductDocumentMetadata } from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
@@ -31,7 +32,7 @@ import {
   insertAuditEvent,
   productAuditDescriptor,
 } from '../audit/audit-service.js';
-import { DocumentNotFoundError } from '../documents/document-errors.js';
+import { DocumentNotFoundError, DocumentPolicyViolationError } from '../documents/document-errors.js';
 import {
   createProductDocumentRecord,
   type DocumentSummaryRow,
@@ -233,9 +234,20 @@ export async function createProductDocument({
   storage: StorageAdapter;
 }): Promise<DocumentSummary> {
   await assertProductExists({ db, productId: input.productId });
-  const row = await createProductDocumentRecord({ actorUserId, db, input, storage });
+  const metadata = parseProductDocumentMetadata(input.metadata);
+  const row = await createProductDocumentRecord({ actorUserId, db, input: { ...input, metadata }, storage });
 
   return getProductDocumentSummary({ db, documentId: row.id, productId: input.productId });
+}
+
+function parseProductDocumentMetadata(metadata: unknown): ProductDocumentMetadata {
+  const result = validateDocumentMetadata({ metadata, ownerType: 'product' });
+
+  if (!result.ok) {
+    throw new DocumentPolicyViolationError(result);
+  }
+
+  return ProductDocumentMetadata.parse(metadata);
 }
 
 export async function readProductDocument({

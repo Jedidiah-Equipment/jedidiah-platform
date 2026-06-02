@@ -21,7 +21,7 @@ When a Job is created from a Quote, the Product's current Documents are frozen o
 ## Consequences
 
 - Immutable file metadata (size, content type) is duplicated across rows that share a key. Accepted — objects are immutable, so the copies can never diverge.
-- The snapshot captures **all** of the Product's Documents; the document `type` (`sop | part_book | brochure`) is a display label only and does **not** select a subset — every Document is copied regardless of type. Each snapshot row carries its source Document's `metadata` copied verbatim and frozen, and the Job page groups by that frozen copy (see ADR 0031). (This supersedes the original "Documents are free-form, with no typed kind" stance: a per-owner-type `metadata` schema now exists, but it is descriptive and never narrows what gets snapshotted.)
+- The snapshot captures **all** of the Product's Documents; the document `type` (`sop | part_book | brochure`) does **not** select a subset for Job snapshots — every Document is copied regardless of type. Each snapshot row carries its source Document's `metadata` copied verbatim and frozen, and the Job page groups by that frozen copy (see ADR 0031). (This supersedes the original "Documents are free-form, with no typed kind" stance: a per-owner-type `metadata` schema now exists, but it never narrows what gets snapshotted for a Job. Later Quote Document generation may use `type` to identify Product brochures without changing this Job snapshot rule.)
 - Job-specific document uploads (a Job owning Documents not copied from a Product) are a clean future extension — the single-table, single-owner model already supports them — and are deliberately out of scope here.
 
 ## Future: Part documents (out of scope)

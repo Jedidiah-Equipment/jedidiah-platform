@@ -6,7 +6,7 @@ Once a Quote sources its Job, it becomes a Locked Quote: a defined set of commer
 
 Frozen on a Locked Quote: **Product, Customer, Salesperson, selected Optional Assemblies, base price, discountAmount, depositPercent, status, deliveryIncluded, deliveryPrice.**
 
-Still editable on a Locked Quote: **`valid_until`, `preferred_delivery_date`, `planned_delivery_date`, `notes`, `payment_terms`.**
+Still editable on a Locked Quote: **`valid_until`, `preferred_delivery_date`, `planned_delivery_date`, `notes`, `document_notes`.**
 
 The frozen set is everything that defines the confirmed deal — what is built, for whom, by whom, at what price, and the acceptance fact (status). The editable set is post-sale logistics and free text, which legitimately keep moving after an order is confirmed.
 

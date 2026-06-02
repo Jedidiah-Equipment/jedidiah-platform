@@ -73,6 +73,7 @@ describe('createProductDocument', () => {
         bytes,
         contentType: 'application/pdf',
         filename: 'Part Book.pdf',
+        metadata: { type: 'part_book' },
         productId: context.productId,
       },
       storage: context.storage,
@@ -82,6 +83,7 @@ describe('createProductDocument', () => {
       byteSize: bytes.byteLength,
       contentType: 'application/pdf',
       filename: 'Part Book.pdf',
+      metadata: { type: 'part_book' },
       productId: context.productId,
       uploaderEmail: 'test@example.com',
       uploaderName: 'Test User',
@@ -120,6 +122,10 @@ describe('createProductDocument', () => {
           from: null,
           to: 'Part Book.pdf',
         },
+        metadata: {
+          from: null,
+          to: { type: 'part_book' },
+        },
         productId: {
           from: null,
           to: context.productId,
@@ -140,6 +146,7 @@ describe('createProductDocument', () => {
         bytes: pdfBytes(),
         contentType: 'application/octet-stream',
         filename: 'Odd Browser Mime.pdf',
+        metadata: { type: 'part_book' },
         productId: context.productId,
       },
       storage: context.storage,
@@ -162,6 +169,7 @@ describe('createProductDocument', () => {
         bytes: pngBytes(),
         contentType: 'application/octet-stream',
         filename: 'Machine Diagram.png',
+        metadata: { type: 'brochure' },
         productId: context.productId,
       },
       storage: context.storage,
@@ -201,6 +209,7 @@ describe('createProductDocument', () => {
           bytes: new Uint8Array(PRODUCT_DOCUMENT_MAX_BYTES + 1),
           contentType: 'application/pdf',
           filename: 'Too Large.pdf',
+          metadata: { type: 'part_book' },
           productId: context.productId,
         },
         storage: context.storage,
@@ -215,6 +224,42 @@ describe('createProductDocument', () => {
           bytes: new Uint8Array([1, 2, 3]),
           contentType: 'application/pdf',
           filename: 'Renamed.pdf',
+          metadata: { type: 'part_book' },
+          productId: context.productId,
+        },
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    expect(context.storage.objects.size).toBe(0);
+  });
+
+  test('rejects invalid or missing metadata before storing anything', async ({ context }) => {
+    await expect(
+      createProductDocument({
+        actorUserId: ACTOR_USER_ID,
+        db: context.db,
+        input: {
+          bytes: pdfBytes(),
+          contentType: 'application/pdf',
+          filename: 'Unknown Type.pdf',
+          metadata: { type: 'manual' },
+          productId: context.productId,
+        },
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+
+    await expect(
+      createProductDocument({
+        actorUserId: ACTOR_USER_ID,
+        db: context.db,
+        input: {
+          bytes: pdfBytes(),
+          contentType: 'application/pdf',
+          filename: 'Missing Type.pdf',
+          metadata: {},
           productId: context.productId,
         },
         storage: context.storage,
@@ -228,7 +273,7 @@ describe('createProductDocument', () => {
 
 describe('getProductDocuments and readProductDocument', () => {
   test('lists by owner and reads stored bytes', async ({ context }) => {
-    const first = await uploadPdf(context, { filename: 'A.pdf', productId: context.productId });
+    const first = await uploadPdf(context, { filename: 'A.pdf', productId: context.productId, type: 'sop' });
     await uploadPdf(context, { filename: 'B.pdf', productId: context.otherProductId });
 
     await expect(
@@ -236,7 +281,7 @@ describe('getProductDocuments and readProductDocument', () => {
         db: context.db,
         productId: context.productId,
       }),
-    ).resolves.toEqual([expect.objectContaining({ id: first.id, filename: 'A.pdf' })]);
+    ).resolves.toEqual([expect.objectContaining({ id: first.id, filename: 'A.pdf', metadata: { type: 'sop' } })]);
 
     const read = await readProductDocument({
       db: context.db,
@@ -286,6 +331,7 @@ describe('getProductDocuments and readProductDocument', () => {
         contentType: 'application/pdf',
         filename: 'Job Part Book.pdf',
         jobId: job.id,
+        metadata: { type: 'part_book' },
         ownerType: 'job',
         sourceProductId: context.productId,
         storageKey: 'documents/product/source/job-part-book.pdf',
@@ -350,6 +396,10 @@ describe('deleteProductDocument', () => {
             from: 'Delete Me.pdf',
             to: null,
           },
+          metadata: {
+            from: { type: 'part_book' },
+            to: null,
+          },
           productId: {
             from: context.productId,
             to: null,
@@ -388,7 +438,7 @@ function uploadPdf(
     db: Parameters<typeof createProductDocument>[0]['db'];
     storage: InMemoryStorageAdapter;
   },
-  input: { filename: string; productId: UUID },
+  input: { filename: string; productId: UUID; type?: 'sop' | 'part_book' | 'brochure' },
 ) {
   return createProductDocument({
     actorUserId: ACTOR_USER_ID,
@@ -397,6 +447,7 @@ function uploadPdf(
       bytes: pdfBytes(),
       contentType: 'application/pdf',
       filename: input.filename,
+      metadata: { type: input.type ?? 'part_book' },
       productId: input.productId,
     },
     storage: context.storage,

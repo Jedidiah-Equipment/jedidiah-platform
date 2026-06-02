@@ -113,6 +113,60 @@ describe('document HTTP routes', () => {
     expect(storage.gets).toEqual([`documents/product/${context.product.id}/job-part-book.pdf`]);
   });
 
+  test('uploads a product document with its type and returns the persisted metadata', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/products/${context.product.id}/documents`,
+      ...buildMultipartUpload({ bytes: pdfBytes(), filename: 'Standard Procedure.pdf', type: 'sop' }),
+    });
+
+    expect(response.statusCode, response.body).toBe(201);
+    expect(response.json()).toMatchObject({
+      filename: 'Standard Procedure.pdf',
+      metadata: { type: 'sop' },
+      ownerType: 'product',
+      productId: context.product.id,
+    });
+
+    const [row] = await context.db.select().from(documents);
+    expect(row?.metadata).toEqual({ type: 'sop' });
+  });
+
+  test('rejects a product document upload with a missing type and stores nothing', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/products/${context.product.id}/documents`,
+      ...buildMultipartUpload({ bytes: pdfBytes(), filename: 'No Type.pdf' }),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ data: { appCode: 'document.metadata_invalid' } });
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  });
+
+  test('rejects a product document upload with an unknown type', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/products/${context.product.id}/documents`,
+      ...buildMultipartUpload({ bytes: pdfBytes(), filename: 'Bad Type.pdf', type: 'manual' }),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ data: { appCode: 'document.metadata_invalid' } });
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  });
+
   test('authorizes product document writes before reading multipart content', async ({ context }) => {
     routeTestState.session = mockSession('sales');
     const app = await createDocumentApp(new MemoryStorage());
@@ -217,6 +271,7 @@ async function createProductDocumentRow({
       byteSize: pdfBytes().byteLength,
       contentType: 'application/pdf',
       filename: 'Part Book.pdf',
+      metadata: { type: 'part_book' },
       ownerType: 'product',
       productId,
       storageKey,
@@ -256,6 +311,7 @@ async function createJobDocumentRow({
       contentType: 'application/pdf',
       filename: 'Job Part Book.pdf',
       jobId,
+      metadata: { type: 'part_book' },
       ownerType: 'job',
       sourceProductId: productId,
       storageKey,
@@ -311,6 +367,30 @@ async function createJobOwner(db: Db, productId: UUID) {
 
 function pdfBytes(): Uint8Array {
   return Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0x0a, 0x25, 0x00, 0xff, 0x10]);
+}
+
+function buildMultipartUpload(input: { bytes: Uint8Array; filename: string; type?: string }): {
+  headers: Record<string, string>;
+  payload: Buffer;
+} {
+  const boundary = `----jedidiahtest${Math.random().toString(16).slice(2)}`;
+  const chunks: Buffer[] = [];
+  const pushText = (text: string) => chunks.push(Buffer.from(text, 'utf8'));
+
+  if (input.type !== undefined) {
+    pushText(`--${boundary}\r\nContent-Disposition: form-data; name="type"\r\n\r\n${input.type}\r\n`);
+  }
+
+  pushText(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${input.filename}"\r\nContent-Type: application/pdf\r\n\r\n`,
+  );
+  chunks.push(Buffer.from(input.bytes));
+  pushText(`\r\n--${boundary}--\r\n`);
+
+  return {
+    headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+    payload: Buffer.concat(chunks),
+  };
 }
 
 class MemoryStorage implements StorageAdapter {

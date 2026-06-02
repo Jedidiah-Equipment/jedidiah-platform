@@ -1,6 +1,6 @@
-import type { DocumentOwnerType } from '@pkg/schema';
+import type { DocumentOwnerType, ProductDocumentMetadata } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { jobs } from './job.js';
@@ -15,6 +15,7 @@ export const documents = pgTable(
     filename: text('filename').notNull(),
     id: uuid('id').defaultRandom().primaryKey(),
     jobId: uuid('job_id').references(() => jobs.id, { onDelete: 'cascade' }),
+    metadata: jsonb('metadata').notNull().$type<ProductDocumentMetadata>(),
     ownerType: text('owner_type').notNull().$type<DocumentOwnerType>(),
     productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }),
     sourceProductId: uuid('source_product_id').references(() => products.id, { onDelete: 'restrict' }),

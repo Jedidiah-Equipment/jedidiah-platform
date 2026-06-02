@@ -53,6 +53,7 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
             bytes,
             contentType: file.mimetype,
             filename: file.filename,
+            metadata: { type: readMultipartTextField(file.fields.type) },
             productId: params.productId,
           },
           storage,
@@ -114,6 +115,12 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       sendHttpError(reply, error);
     }
   });
+}
+
+const MultipartTextField = z.object({ type: z.literal('field'), value: z.string() }).transform((field) => field.value);
+
+function readMultipartTextField(field: unknown): string | undefined {
+  return MultipartTextField.safeParse(Array.isArray(field) ? field[0] : field).data;
 }
 
 async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): Promise<RouteAuthContext | null> {

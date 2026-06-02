@@ -15,6 +15,7 @@ const documentSummary = DocumentSummary.parse({
   filename: 'Part Book.pdf',
   id: '11111111-1111-1111-8111-111111111111',
   jobId: null,
+  metadata: { type: 'part_book' },
   ownerType: 'product',
   productId: '22222222-2222-2222-8222-222222222222',
   sourceProductId: null,

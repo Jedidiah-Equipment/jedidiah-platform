@@ -498,6 +498,7 @@ async function createProductDocuments(db: Db, productId: string, inputs: { filen
         byteSize: 8,
         contentType: 'application/pdf',
         filename: input.filename,
+        metadata: { type: 'part_book' as const },
         ownerType: 'product' as const,
         productId,
         storageKey: input.storageKey,

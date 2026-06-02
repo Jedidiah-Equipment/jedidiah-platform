@@ -19,6 +19,7 @@ describe('mapCustomer', () => {
         phone: '+27 11 555 0100',
         thumbnailDataUrl: null,
         updatedAt,
+        vatNumber: 'VAT-123456',
       }),
     ).toEqual({
       address: '12 Main Road',
@@ -31,6 +32,7 @@ describe('mapCustomer', () => {
       phone: '+27 11 555 0100',
       thumbnailDataUrl: null,
       updatedAt: updatedAt.toISOString(),
+      vatNumber: 'VAT-123456',
     });
   });
 });

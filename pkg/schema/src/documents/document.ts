@@ -20,12 +20,6 @@ export const DocumentByteSize = z.int().min(0);
 export type ProductDocumentType = z.infer<typeof ProductDocumentType>;
 export const ProductDocumentType = z.enum(['sop', 'part_book', 'brochure']);
 
-export const PRODUCT_DOCUMENT_TYPE_LABELS = {
-  brochure: 'Brochure',
-  part_book: 'Part Book',
-  sop: 'SOP',
-} as const satisfies Record<ProductDocumentType, string>;
-
 export type ProductDocumentMetadata = z.infer<typeof ProductDocumentMetadata>;
 export const ProductDocumentMetadata = z.object({
   type: ProductDocumentType,

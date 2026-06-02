@@ -1,5 +1,5 @@
-import { formatBytes, hasPermission } from '@pkg/domain';
-import { type DocumentSummary, PRODUCT_DOCUMENT_TYPE_LABELS, ProductDocumentType, type UUID } from '@pkg/schema';
+import { formatBytes, hasPermission, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
+import { type DocumentSummary, ProductDocumentType, type UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type ColumnDef,

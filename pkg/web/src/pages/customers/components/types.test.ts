@@ -15,6 +15,7 @@ function buildCustomer(overrides: Record<string, unknown> = {}): Customer {
     phone: '0123',
     notes: 'VIP',
     thumbnailDataUrl: null,
+    vatNumber: 'VAT-123456',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -31,12 +32,13 @@ describe('toCustomerFormValues', () => {
       notes: '',
       phone: '',
       thumbnailDataUrl: null,
+      vatNumber: '',
     });
   });
 
   it('collapses null fields to empty strings', () => {
     const values = toCustomerFormValues(
-      buildCustomer({ email: null, address: null, contactPerson: null, phone: null, notes: null }),
+      buildCustomer({ email: null, address: null, contactPerson: null, phone: null, notes: null, vatNumber: null }),
     );
 
     expect(values).toEqual({
@@ -47,6 +49,7 @@ describe('toCustomerFormValues', () => {
       notes: '',
       phone: '',
       thumbnailDataUrl: null,
+      vatNumber: '',
     });
   });
 });
@@ -61,6 +64,7 @@ describe('toCustomerCreateInput', () => {
       notes: '',
       phone: '',
       thumbnailDataUrl: null,
+      vatNumber: '',
     });
 
     expect(input).toEqual({
@@ -71,6 +75,7 @@ describe('toCustomerCreateInput', () => {
       notes: null,
       phone: null,
       thumbnailDataUrl: null,
+      vatNumber: null,
     });
   });
 
@@ -83,9 +88,11 @@ describe('toCustomerCreateInput', () => {
       notes: 'VIP',
       phone: '0123',
       thumbnailDataUrl: null,
+      vatNumber: 'VAT-123456',
     });
 
     expect(input.address).toBe('1 Main Street');
     expect(input.contactPerson).toBe('Jane');
+    expect(input.vatNumber).toBe('VAT-123456');
   });
 });

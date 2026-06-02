@@ -86,6 +86,7 @@ export const customerAuditDescriptor: AuditEntityDescriptor = {
     notes: 'notes',
     phone: 'phone',
     thumbnailDataUrl: 'thumbnail',
+    vatNumber: 'VAT number',
   },
 };
 

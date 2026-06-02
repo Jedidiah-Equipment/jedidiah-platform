@@ -13,6 +13,7 @@ describe('CustomerCreateInput', () => {
         email: '  SALES@ACME.EXAMPLE  ',
         notes: '  Prefers email  ',
         phone: '  +27 11 555 0100  ',
+        vatNumber: '  VAT-123456  ',
       }),
     ).toEqual({
       address: '12 Main Road\nJohannesburg',
@@ -22,6 +23,7 @@ describe('CustomerCreateInput', () => {
       notes: 'Prefers email',
       phone: '+27 11 555 0100',
       thumbnailDataUrl: null,
+      vatNumber: 'VAT-123456',
     });
   });
 
@@ -34,12 +36,14 @@ describe('CustomerCreateInput', () => {
         email: 'sales@acme.example',
         notes: '  ',
         phone: '',
+        vatNumber: ' ',
       }),
     ).toMatchObject({
       address: null,
       contactPerson: null,
       notes: null,
       phone: null,
+      vatNumber: null,
     });
   });
 

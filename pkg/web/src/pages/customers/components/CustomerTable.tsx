@@ -90,6 +90,13 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
         header: 'Email',
       },
       {
+        accessorKey: 'vatNumber',
+        cell: ({ row }) => row.original.vatNumber ?? <span className="text-muted-foreground">None</span>,
+        enableColumnFilter: true,
+        enableSorting: false,
+        header: 'VAT number',
+      },
+      {
         accessorKey: 'contactPerson',
         cell: ({ row }) => row.original.contactPerson ?? <span className="text-muted-foreground">None</span>,
         enableColumnFilter: false,
@@ -188,13 +195,14 @@ function getCustomerListInputExtras(columnFilters: ColumnFiltersState) {
       companyName: getColumnFilterValue(columnFilters, 'companyName'),
       email: getColumnFilterValue(columnFilters, 'email'),
       id: getColumnFilterValue(columnFilters, 'id'),
+      vatNumber: getColumnFilterValue(columnFilters, 'vatNumber'),
     },
   } satisfies Pick<CustomerListInput, 'columnFilters'>;
 }
 
 function getColumnFilterValue(
   columnFilters: ColumnFiltersState,
-  id: 'companyName' | 'email' | 'id',
+  id: 'companyName' | 'email' | 'id' | 'vatNumber',
 ): string | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 

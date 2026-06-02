@@ -26,11 +26,18 @@ export const CustomerOptionalText = nullableTrimmedText();
 export type CustomerOptionalTextInput = z.infer<typeof CustomerOptionalTextInput>;
 export const CustomerOptionalTextInput = nullableTrimmedTextInput();
 
+export type CustomerVatNumber = z.infer<typeof CustomerVatNumber>;
+export const CustomerVatNumber = nullableTrimmedText();
+
+export type CustomerVatNumberInput = z.infer<typeof CustomerVatNumberInput>;
+export const CustomerVatNumberInput = nullableTrimmedTextInput();
+
 export type Customer = z.infer<typeof Customer>;
 export const Customer = z.object({
   id: UUID,
   companyName: CustomerCompanyName,
   email: CustomerEmail.nullable(),
+  vatNumber: CustomerVatNumber,
   address: CustomerOptionalText,
   contactPerson: CustomerOptionalText,
   phone: CustomerOptionalText,
@@ -49,6 +56,7 @@ export const CustomerColumnFilters = z
     companyName: z.string().trim().optional(),
     email: z.string().trim().optional(),
     id: z.string().trim().optional(),
+    vatNumber: z.string().trim().optional(),
   })
   .default({});
 
@@ -56,6 +64,7 @@ export type CustomerCreateInput = z.infer<typeof CustomerCreateInput>;
 export const CustomerCreateInput = z.object({
   companyName: CustomerCompanyName,
   email: CustomerEmailInput,
+  vatNumber: CustomerVatNumberInput,
   address: CustomerOptionalTextInput,
   contactPerson: CustomerOptionalTextInput,
   phone: CustomerOptionalTextInput,

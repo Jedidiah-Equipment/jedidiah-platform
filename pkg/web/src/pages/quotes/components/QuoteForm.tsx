@@ -234,12 +234,21 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             <form.AppField name="validUntil">
               {(field) => <field.DatePickerField clearable label="Valid until" />}
             </form.AppField>
-            <form.AppField name="discount">
+            <form.AppField name="discountAmount">
               {(field) => (
                 <field.CurrencyField
                   {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
                   disabled={isLocked || !selectedProduct}
                   label="Discount"
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="depositAmount">
+              {(field) => (
+                <field.CurrencyField
+                  {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
+                  disabled={isLocked || !selectedProduct}
+                  label="Deposit amount"
                 />
               )}
             </form.AppField>
@@ -320,7 +329,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 return null;
               }
 
-              const discount = state.values.discount;
+              const discountAmount = state.values.discountAmount;
               const deliveryIncluded = state.values.deliveryIncluded;
               const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
               const quotedBasePrice =
@@ -348,8 +357,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               return {
                 deliveryIncluded,
                 deliveryPrice,
-                discount,
-                discountPercent: quotedBasePrice > 0 ? (discount / quotedBasePrice) * 100 : 0,
+                discountAmount,
+                discountPercent: quotedBasePrice > 0 ? (discountAmount / quotedBasePrice) * 100 : 0,
                 productPrice: quotedBasePrice,
                 currencyCode: selectedProduct.currencyCode,
                 selectedAssemblies,
@@ -357,7 +366,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 total: computeQuoteTotal({
                   deliveryIncluded,
                   deliveryPrice,
-                  discount,
+                  discountAmount,
                   quotedBasePrice,
                   selectedAssemblyPrices: selectedAssemblies.map((assembly) => assembly.quotedPrice),
                 }),
@@ -374,7 +383,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                   label="Less discount"
                   value={
                     summary
-                      ? `${formatCurrency(summary.discount, summary.currencyCode)} (${formatPercent(summary.discountPercent)}%)`
+                      ? `${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)}%)`
                       : '-'
                   }
                 />

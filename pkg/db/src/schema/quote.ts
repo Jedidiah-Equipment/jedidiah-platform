@@ -36,7 +36,8 @@ export const quotes = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'restrict' }),
     status: text('status').notNull().default('draft').$type<QuoteStatus>(),
-    discount: numeric('discount', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
+    discountAmount: numeric('discount_amount', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
+    depositAmount: numeric('deposit_amount', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
     deliveryIncluded: boolean('delivery_included').notNull().default(true),
     deliveryPrice: numeric('delivery_price', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
     validUntil: date('valid_until', { mode: 'string' }),
@@ -50,8 +51,9 @@ export const quotes = pgTable(
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    check('quote_discount_nonnegative', sql`${table.discount} >= 0`),
-    check('quote_discount_not_above_snapshot', sql`${table.discount} <= ${table.quotedBasePrice}`),
+    check('quote_discount_amount_nonnegative', sql`${table.discountAmount} >= 0`),
+    check('quote_discount_amount_not_above_snapshot', sql`${table.discountAmount} <= ${table.quotedBasePrice}`),
+    check('quote_deposit_amount_nonnegative', sql`${table.depositAmount} >= 0`),
     check('quote_delivery_price_nonnegative', sql`${table.deliveryPrice} >= 0`),
     uniqueIndex('quote_code_unique').on(table.code),
   ],

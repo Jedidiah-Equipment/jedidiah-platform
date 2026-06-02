@@ -31,7 +31,7 @@ describe('getQuoteTool', () => {
 
     expect(toolResult).toEqual(trpcResult);
     expect(toolResult).toMatchObject({
-      depositAmount: 200,
+      depositPercent: 30,
       plannedDeliveryDate: '2026-07-15',
       preferredDeliveryDate: '2026-07-10',
     });
@@ -71,7 +71,7 @@ async function createQuote(caller: AppRouterCaller, productId: string) {
       type: 'inline',
       companyName: 'Ready Customer',
     },
-    depositAmount: 200,
+    depositPercent: 30,
     discountAmount: 100,
     notes: null,
     paymentTerms: '30% deposit, balance on delivery',

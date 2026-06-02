@@ -573,7 +573,7 @@ async function createQuote(
 
 function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
   return {
-    depositAmount: quote.depositAmount,
+    depositPercent: quote.depositPercent,
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
     discountAmount: quote.discountAmount,

@@ -15,18 +15,27 @@ const baseCreateInput = {
 };
 
 describe('QuoteCreateInput', () => {
-  it('defaults discount and deposit amounts to zero', () => {
+  it('defaults discount and deposit percents to zero', () => {
     expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({
-      depositAmount: 0,
+      depositPercent: 0,
       discountAmount: 0,
     });
   });
 
-  it('rejects a negative deposit amount', () => {
+  it('rejects a negative deposit percent', () => {
     expect(() =>
       QuoteCreateInput.parse({
         ...baseCreateInput,
-        depositAmount: -1,
+        depositPercent: -1,
+      }),
+    ).toThrow();
+  });
+
+  it('rejects a deposit percent above 100', () => {
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        depositPercent: 101,
       }),
     ).toThrow();
   });

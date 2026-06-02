@@ -37,7 +37,7 @@ describe('quotes.create', () => {
       },
       deliveryIncluded: true,
       deliveryPrice: 350,
-      depositAmount: 400,
+      depositPercent: 30,
       discountAmount: 100,
       notes: 'Demo quote',
       paymentTerms: '30% deposit, balance on delivery',
@@ -55,7 +55,7 @@ describe('quotes.create', () => {
     expect(created).toMatchObject({
       code: 'QUO-00001',
       customerCompanyName: 'Acme Mining',
-      depositAmount: 400,
+      depositPercent: 30,
       deliveryIncluded: true,
       deliveryPrice: 350,
       paymentTerms: '30% deposit, balance on delivery',
@@ -69,7 +69,7 @@ describe('quotes.create', () => {
     expect(created).not.toHaveProperty('total');
     expect(quoteRows).toHaveLength(1);
     expect(quoteRows[0]).toMatchObject({
-      depositAmount: 400,
+      depositPercent: 30,
       deliveryIncluded: true,
       deliveryPrice: 350,
       plannedDeliveryDate: '2026-07-15',
@@ -113,13 +113,13 @@ describe('quotes.create', () => {
 
     expect(created).toMatchObject({
       customerCompanyName: 'Cancelled Customer',
-      depositAmount: 0,
+      depositPercent: 0,
       discountAmount: 0,
       status: 'cancelled',
     });
   });
 
-  test('rejects a negative deposit amount at the input boundary', async ({ context }) => {
+  test('rejects a negative deposit percent at the input boundary', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
     await expect(
@@ -128,7 +128,29 @@ describe('quotes.create', () => {
           type: 'inline',
           companyName: 'Acme Mining',
         },
-        depositAmount: -1,
+        depositPercent: -1,
+        notes: null,
+        paymentTerms: null,
+        productId: context.product.id,
+        salesPersonId: 'test-user-id',
+        status: 'draft',
+        validUntil: null,
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+  });
+
+  test('rejects a deposit percent above 100 at the input boundary', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await expect(
+      caller.quotes.create({
+        customer: {
+          type: 'inline',
+          companyName: 'Acme Mining',
+        },
+        depositPercent: 101,
         notes: null,
         paymentTerms: null,
         productId: context.product.id,
@@ -310,7 +332,7 @@ describe('quotes.update', () => {
 
     const updated = await caller.quotes.update({
       ...toUpdateInput(created),
-      depositAmount: 275,
+      depositPercent: 50,
       deliveryIncluded: false,
       deliveryPrice: 777,
       discountAmount: 125,
@@ -328,7 +350,7 @@ describe('quotes.update', () => {
     expect(updated).toMatchObject({
       deliveryIncluded: false,
       deliveryPrice: 0,
-      depositAmount: 275,
+      depositPercent: 50,
       discountAmount: 125,
       notes: 'Updated draft terms',
       paymentTerms: '50% deposit before fabrication',
@@ -346,9 +368,9 @@ describe('quotes.update', () => {
         from: true,
         to: false,
       },
-      depositAmount: {
+      depositPercent: {
         from: 0,
-        to: 275,
+        to: 50,
       },
       paymentTerms: {
         from: null,
@@ -454,7 +476,7 @@ describe('quotes.list', () => {
     const draftQuote = await createNamedQuote(salesCaller, {
       customerCompanyName: 'Beta Civil',
       deliveryPrice: 75,
-      depositAmount: 300,
+      depositPercent: 25,
       discountAmount: 25,
       productId: crusherProduct.id,
       salesPersonId: 'another-sales-id',
@@ -544,7 +566,7 @@ describe('quotes.list', () => {
       items: [
         {
           code: draftQuote.code,
-          depositAmount: 300,
+          depositPercent: 25,
           productName: 'Crusher Bucket',
         },
       ],
@@ -716,10 +738,10 @@ describe('jobs.create with quote links', () => {
         }),
       },
       {
-        field: 'depositAmount',
+        field: 'depositPercent',
         input: (quote: QuoteDetail) => ({
           ...toUpdateInput(quote),
-          depositAmount: quote.depositAmount + 25,
+          depositPercent: quote.depositPercent + 25,
         }),
       },
       {
@@ -891,7 +913,7 @@ async function createNamedQuote(
   caller: AppRouterCaller,
   {
     customerCompanyName,
-    depositAmount = 0,
+    depositPercent = 0,
     deliveryPrice = 0,
     discountAmount,
     paymentTerms = null,
@@ -899,7 +921,7 @@ async function createNamedQuote(
     salesPersonId = 'test-user-id',
   }: {
     customerCompanyName: string;
-    depositAmount?: number;
+    depositPercent?: number;
     deliveryPrice?: number;
     discountAmount: number;
     paymentTerms?: string | null;
@@ -914,7 +936,7 @@ async function createNamedQuote(
     },
     deliveryIncluded: true,
     deliveryPrice,
-    depositAmount,
+    depositPercent,
     discountAmount,
     notes: null,
     paymentTerms,
@@ -930,7 +952,7 @@ async function createNamedQuote(
 function toUpdateInput(quote: QuoteDetail) {
   return {
     id: quote.id,
-    depositAmount: quote.depositAmount,
+    depositPercent: quote.depositPercent,
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
     discountAmount: quote.discountAmount,

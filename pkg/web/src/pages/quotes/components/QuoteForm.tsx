@@ -317,12 +317,15 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                     />
                   )}
                 </form.AppField>
-                <form.AppField name="depositAmount">
+                <form.AppField name="depositPercent">
                   {(field) => (
-                    <field.CurrencyField
-                      {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
+                    <field.NumberField
                       disabled={isLocked || !selectedProduct}
-                      label="Deposit amount"
+                      emptyValue={0}
+                      label="Deposit percent"
+                      max={100}
+                      min={0}
+                      step="0.01"
                     />
                   )}
                 </form.AppField>

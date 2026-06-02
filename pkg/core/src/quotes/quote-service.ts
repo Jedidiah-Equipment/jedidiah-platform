@@ -60,7 +60,7 @@ type QuoteAuditRecord = Pick<
   QuoteRow,
   | 'code'
   | 'customerId'
-  | 'depositAmount'
+  | 'depositPercent'
   | 'deliveryIncluded'
   | 'deliveryPrice'
   | 'discountAmount'
@@ -104,7 +104,7 @@ export function mapQuote(row: QuoteRow): Quote {
     code: row.code,
     createdAt: row.createdAt.toISOString(),
     customerId: row.customerId,
-    depositAmount: row.depositAmount,
+    depositPercent: row.depositPercent,
     deliveryIncluded: row.deliveryIncluded,
     deliveryPrice: row.deliveryPrice,
     discountAmount: row.discountAmount,
@@ -142,7 +142,7 @@ export async function createQuote({
       .insert(quotes)
       .values({
         customerId,
-        depositAmount: input.depositAmount,
+        depositPercent: input.depositPercent,
         deliveryIncluded: input.deliveryIncluded,
         deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
         discountAmount: input.discountAmount,
@@ -337,7 +337,7 @@ export async function updateQuote({
 
     const patch = {
       customerId: before.customerId,
-      depositAmount: input.depositAmount,
+      depositPercent: input.depositPercent,
       deliveryIncluded: input.deliveryIncluded,
       deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
       discountAmount: input.discountAmount,
@@ -585,7 +585,7 @@ function mapQuoteAuditRecord(
   return {
     code: quote.code,
     customerId: quote.customerId,
-    depositAmount: quote.depositAmount,
+    depositPercent: quote.depositPercent,
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
     discountAmount: quote.discountAmount,

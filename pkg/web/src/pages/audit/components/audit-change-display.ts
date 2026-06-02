@@ -1,5 +1,5 @@
 import { formatDate } from '@/utils/date.js';
-import { formatCurrency } from '@/utils/number.js';
+import { formatCurrency, formatPercent } from '@/utils/number.js';
 
 export type AuditChange = { from?: unknown; to?: unknown };
 export type AuditChangeMap = Record<string, AuditChange>;
@@ -25,7 +25,7 @@ const auditFieldLabels: Record<string, string> = {
   contentType: 'Content type',
   currencyCode: 'Currency',
   customerId: 'Customer',
-  depositAmount: 'Deposit amount',
+  depositPercent: 'Deposit percent',
   department: 'Department',
   description: 'Description',
   discountAmount: 'Discount amount',
@@ -55,7 +55,7 @@ const auditFieldLabels: Record<string, string> = {
   validUntil: 'Valid until',
 };
 
-const currencyFields = new Set(['basePrice', 'depositAmount', 'discountAmount', 'price', 'quotedBasePrice']);
+const currencyFields = new Set(['basePrice', 'discountAmount', 'price', 'quotedBasePrice']);
 const dateFields = new Set([
   'actualEnd',
   'actualStart',
@@ -67,6 +67,7 @@ const dateFields = new Set([
   'startedAt',
   'validUntil',
 ]);
+const percentFields = new Set(['depositPercent']);
 
 export function getAuditChangeDisplays(changes: AuditChangeMap | null): AuditChangeDisplay[] {
   if (!changes) {
@@ -103,6 +104,10 @@ export function formatAuditChangeValue(field: string, value: unknown): string {
 
   if (currencyFields.has(field) && typeof value === 'number') {
     return formatCurrency(value);
+  }
+
+  if (percentFields.has(field) && typeof value === 'number') {
+    return `${formatPercent(value)}%`;
   }
 
   if (dateFields.has(field) && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {

@@ -1,5 +1,5 @@
 import { formatBytes, hasPermission } from '@pkg/domain';
-import type { DocumentSummary, UUID } from '@pkg/schema';
+import { type DocumentSummary, PRODUCT_DOCUMENT_TYPE_LABELS, ProductDocumentType, type UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type ColumnDef,
@@ -34,6 +34,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
@@ -41,17 +42,24 @@ import { useTRPC } from '@/lib/trpc.js';
 import { formatDate } from '@/utils/date.js';
 import {
   downloadProductDocument,
+  getReadyProductDocumentUpload,
   PRODUCT_DOCUMENT_ACCEPT,
+  type ReadyProductDocumentUpload,
   uploadProductDocument,
   validateSelectedFile,
 } from '@/utils/document.js';
+
+const PRODUCT_DOCUMENT_TYPE_OPTIONS = ProductDocumentType.options.map((type) => ({
+  label: PRODUCT_DOCUMENT_TYPE_LABELS[type],
+  value: type,
+}));
 
 type ProductDocumentsSectionProps = {
   productId: UUID;
 };
 
 type DocumentTableSortInput = {
-  sortBy: 'byteSize' | 'createdAt' | 'filename' | 'uploaderName';
+  sortBy: 'byteSize' | 'createdAt' | 'filename' | 'type' | 'uploaderName';
 };
 
 export const useProductDocumentsTableStore = createPersistedDataTableStore({
@@ -67,7 +75,7 @@ export const useProductDocumentsTableStore = createPersistedDataTableStore({
 });
 
 const documentSortOptions: SortOptions<DocumentTableSortInput> = {
-  allowedSortIds: ['byteSize', 'createdAt', 'filename', 'uploaderName'],
+  allowedSortIds: ['byteSize', 'createdAt', 'filename', 'type', 'uploaderName'],
   defaultSort: {
     id: 'filename',
   },
@@ -84,6 +92,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedType, setSelectedType] = useState<ProductDocumentType | null>(null);
   const [previewDocument, setPreviewDocument] = useState<DocumentSummary | null>(null);
 
   const {
@@ -113,9 +122,10 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   const documentsQuery = useQuery(trpc.documents.listByProduct.queryOptions({ productId }));
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => uploadProductDocument(productId, file),
+    mutationFn: (upload: ReadyProductDocumentUpload) => uploadProductDocument(productId, upload),
     onSuccess: async () => {
       setSelectedFile(null);
+      setSelectedType(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -141,6 +151,23 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Filename',
+      },
+      {
+        accessorFn: (document) => document.metadata.type,
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">{PRODUCT_DOCUMENT_TYPE_LABELS[row.original.metadata.type]}</span>
+        ),
+        enableColumnFilter: true,
+        enableSorting: true,
+        filterFn: 'equals',
+        header: 'Type',
+        id: 'type',
+        meta: {
+          filterOptions: PRODUCT_DOCUMENT_TYPE_OPTIONS,
+          filterVariant: 'select',
+          headerClassName: 'w-40',
+        },
+        sortingFn: documentTypeSorting,
       },
       {
         accessorKey: 'byteSize',
@@ -242,10 +269,13 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
             isPending={uploadMutation.isPending}
             onFileChange={setSelectedFile}
             onSubmit={() => {
-              if (!selectedFile) return;
-              void uploadMutation.mutateAsync(selectedFile);
+              const upload = getReadyProductDocumentUpload({ file: selectedFile, type: selectedType });
+              if (!upload) return;
+              void uploadMutation.mutateAsync(upload);
             }}
+            onTypeChange={setSelectedType}
             selectedFile={selectedFile}
+            selectedType={selectedType}
           />
         }
         table={table}
@@ -270,7 +300,9 @@ type DocumentUploadFormProps = {
   fileInputRef: RefObject<HTMLInputElement | null>;
   isPending: boolean;
   selectedFile: File | null;
+  selectedType: ProductDocumentType | null;
   onFileChange: (file: File | null) => void;
+  onTypeChange: (type: ProductDocumentType | null) => void;
   onSubmit: () => void;
 };
 
@@ -279,8 +311,12 @@ function DocumentUploadForm({
   isPending,
   onFileChange,
   onSubmit,
+  onTypeChange,
   selectedFile,
+  selectedType,
 }: DocumentUploadFormProps) {
+  const canUpload = getReadyProductDocumentUpload({ file: selectedFile, type: selectedType }) !== null;
+
   return (
     <form
       className="flex flex-col gap-2 sm:flex-row sm:items-center"
@@ -303,7 +339,25 @@ function DocumentUploadForm({
           }
         }}
       />
-      <Button disabled={!selectedFile || isPending} type="submit">
+      <Select
+        disabled={isPending}
+        onValueChange={(value) => onTypeChange(value ? ProductDocumentType.parse(value) : null)}
+        value={selectedType ?? ''}
+      >
+        <SelectTrigger aria-label="Document type" className="sm:w-40">
+          <SelectValue placeholder="Select type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {PRODUCT_DOCUMENT_TYPE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+      <Button disabled={!canUpload || isPending} type="submit">
         {isPending ? (
           <Loader2Icon data-icon="inline-start" className="animate-spin" />
         ) : (
@@ -416,12 +470,19 @@ function documentGlobalFilter(row: { original: DocumentSummary }, _columnId: str
 
   return [
     row.original.filename,
+    PRODUCT_DOCUMENT_TYPE_LABELS[row.original.metadata.type],
     row.original.contentType,
     row.original.uploaderName ?? '',
     row.original.uploaderEmail ?? '',
     formatBytes(row.original.byteSize),
     formatDate(row.original.createdAt, 'medium'),
   ].some((value) => value.toLowerCase().includes(search));
+}
+
+function documentTypeSorting(left: { original: DocumentSummary }, right: { original: DocumentSummary }): number {
+  return PRODUCT_DOCUMENT_TYPE_LABELS[left.original.metadata.type].localeCompare(
+    PRODUCT_DOCUMENT_TYPE_LABELS[right.original.metadata.type],
+  );
 }
 
 function documentUploaderSorting(left: { original: DocumentSummary }, right: { original: DocumentSummary }): number {

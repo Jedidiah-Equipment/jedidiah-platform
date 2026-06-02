@@ -6,7 +6,18 @@ import {
   downloadDocument,
   fetchDocumentPreviewBlob,
   getDocumentPreviewKind,
+  getReadyProductDocumentUpload,
+  uploadProductDocument,
 } from './document.js';
+
+const APP_CONFIG = {
+  __APP_CONFIG__: {
+    appBaseUrl: 'http://localhost:7001',
+    appEnv: 'development',
+    apiBaseUrl: 'http://localhost:7002',
+    authBaseUrl: 'http://localhost:7002/api/auth',
+  },
+};
 
 const documentSummary = DocumentSummary.parse({
   byteSize: 128,
@@ -65,6 +76,34 @@ describe('document utilities', () => {
 
   it('returns null for unsupported preview content types', () => {
     expect(getDocumentPreviewKind({ contentType: 'text/plain' })).toBeNull();
+  });
+
+  it('treats an upload as incomplete until both a file and a type are chosen', () => {
+    const file = new File(['%PDF-1.7'], 'Part Book.pdf', { type: 'application/pdf' });
+
+    expect(getReadyProductDocumentUpload({ file: null, type: null })).toBeNull();
+    expect(getReadyProductDocumentUpload({ file, type: null })).toBeNull();
+    expect(getReadyProductDocumentUpload({ file: null, type: 'part_book' })).toBeNull();
+    expect(getReadyProductDocumentUpload({ file, type: 'part_book' })).toEqual({ file, type: 'part_book' });
+  });
+
+  it('sends the selected type alongside the file when uploading', async () => {
+    const file = new File(['%PDF-1.7'], 'Standard Procedure.pdf', { type: 'application/pdf' });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(documentSummary), { status: 201 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('window', APP_CONFIG);
+
+    await uploadProductDocument('22222222-2222-2222-8222-222222222222' as UUID, { file, type: 'sop' });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('http://localhost:7002/api/products/22222222-2222-2222-8222-222222222222/documents');
+    expect(init.method).toBe('POST');
+    const body = init.body as FormData;
+    expect(body.get('type')).toBe('sop');
+    expect(body.get('file')).toBeInstanceOf(File);
+    expect((body.get('file') as File).name).toBe('Standard Procedure.pdf');
   });
 
   it('passes the abort signal to preview fetch requests', async () => {

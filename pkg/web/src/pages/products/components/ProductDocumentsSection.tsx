@@ -1,4 +1,4 @@
-import { formatBytes, hasPermission, PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
+import { formatBytes, hasPermission } from '@pkg/domain';
 import type { DocumentMetadata, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -77,11 +77,15 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
+
   const accessQuery = useAccess();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewDocument, setPreviewDocument] = useState<DocumentMetadata | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const canDeleteDocuments = hasPermission(accessQuery.data, 'product:update');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<DocumentMetadata | null>(null);
+
   const {
     columnFilters,
     globalFilter,
@@ -107,6 +111,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   );
 
   const documentsQuery = useQuery(trpc.documents.listByProduct.queryOptions({ productId }));
+
   const uploadMutation = useMutation({
     mutationFn: (file: File) => uploadProductDocument(productId, file),
     onSuccess: async () => {
@@ -189,12 +194,14 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
     ],
     [canDeleteDocuments, productId],
   );
+
   const tableState = useConstrainedTableState({
     pagination,
     sorting,
     sortOptions: documentSortOptions,
     total: documents.length,
   });
+
   const table = useReactTable({
     autoResetPageIndex: false,
     columns,
@@ -216,6 +223,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
       sorting: tableState.sorting,
     },
   });
+
   const total = table.getFilteredRowModel().rows.length;
   const pageCount = getPageCount(total, pagination.pageSize);
 
@@ -223,10 +231,6 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
 
   return (
     <section>
-      <div className="mb-4">
-        <h2 className="text-base font-semibold">Documents</h2>
-        <p className="text-sm text-muted-foreground">PDFs up to {formatBytes(PRODUCT_DOCUMENT_MAX_BYTES)}</p>
-      </div>
       <DataTable
         emptyMessage="No documents found."
         errorMessage={getApiQueryErrorMessage(documentsQuery.error, 'Unable to load documents.')}

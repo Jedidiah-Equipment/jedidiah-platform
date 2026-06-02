@@ -19,7 +19,7 @@ import {
   user,
 } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import { type PartUnitOfMeasure, QuoteUpdateInput } from '@pkg/schema';
+import { type PartUnitOfMeasure, type ProductDocumentType, QuoteUpdateInput } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { deleteProductDocument } from '../products/product-service.js';
@@ -132,10 +132,12 @@ describe('createJob', () => {
       {
         filename: 'Part Book.pdf',
         storageKey: 'documents/product/source/part-book.pdf',
+        type: 'part_book',
       },
       {
         filename: 'SOP.pdf',
         storageKey: 'documents/product/source/sop.pdf',
+        type: 'sop',
       },
     ]);
     const quote = await createQuote(context.db, {
@@ -158,6 +160,7 @@ describe('createJob', () => {
         expect.objectContaining({
           filename: 'Part Book.pdf',
           jobId: job.id,
+          metadata: { type: 'part_book' },
           ownerType: 'job',
           productId: null,
           sourceProductId: context.catalog.product.id,
@@ -166,6 +169,7 @@ describe('createJob', () => {
         expect.objectContaining({
           filename: 'SOP.pdf',
           jobId: job.id,
+          metadata: { type: 'sop' },
           ownerType: 'job',
           productId: null,
           sourceProductId: context.catalog.product.id,
@@ -177,12 +181,14 @@ describe('createJob', () => {
       expect.arrayContaining([
         expect.objectContaining({
           filename: 'Part Book.pdf',
+          metadata: { type: 'part_book' },
           ownerType: 'job',
           sourceProductId: context.catalog.product.id,
           sourceProductName: 'CFO Test Product',
         }),
         expect.objectContaining({
           filename: 'SOP.pdf',
+          metadata: { type: 'sop' },
           ownerType: 'job',
           sourceProductId: context.catalog.product.id,
           sourceProductName: 'CFO Test Product',
@@ -191,11 +197,12 @@ describe('createJob', () => {
     );
   });
 
-  test('keeps the job document snapshot when product documents are later deleted or replaced', async ({ context }) => {
+  test('keeps the job document snapshot frozen when a product document is re-classified', async ({ context }) => {
     const [sourceDocument] = await createProductDocuments(context.db, context.catalog.product.id, [
       {
         filename: 'Part Book.pdf',
         storageKey: 'documents/product/source/part-book.pdf',
+        type: 'part_book',
       },
     ]);
     if (!sourceDocument) throw new Error('Document insert did not return a row');
@@ -210,6 +217,7 @@ describe('createJob', () => {
       input: { quoteId: quote.id },
     });
 
+    // Re-classify the Product Document: delete + re-upload the same filename with a different type.
     await deleteProductDocument({
       actorUserId,
       db: context.db,
@@ -220,6 +228,7 @@ describe('createJob', () => {
       {
         filename: 'Part Book.pdf',
         storageKey: 'documents/product/source/replacement-part-book.pdf',
+        type: 'brochure',
       },
     ]);
 
@@ -232,6 +241,7 @@ describe('createJob', () => {
     expect(snapshotRows).toEqual([
       expect.objectContaining({
         filename: 'Part Book.pdf',
+        metadata: { type: 'part_book' },
         ownerType: 'job',
         storageKey: 'documents/product/source/part-book.pdf',
       }),
@@ -239,6 +249,7 @@ describe('createJob', () => {
     expect(liveProductRows).toEqual([
       expect.objectContaining({
         filename: 'Part Book.pdf',
+        metadata: { type: 'brochure' },
         ownerType: 'product',
         storageKey: 'documents/product/source/replacement-part-book.pdf',
       }),
@@ -490,7 +501,11 @@ async function createProduct(db: Db, { modelCode, name }: { modelCode: string; n
   return product;
 }
 
-async function createProductDocuments(db: Db, productId: string, inputs: { filename: string; storageKey: string }[]) {
+async function createProductDocuments(
+  db: Db,
+  productId: string,
+  inputs: { filename: string; storageKey: string; type?: ProductDocumentType }[],
+) {
   return db
     .insert(documents)
     .values(
@@ -498,7 +513,7 @@ async function createProductDocuments(db: Db, productId: string, inputs: { filen
         byteSize: 8,
         contentType: 'application/pdf',
         filename: input.filename,
-        metadata: { type: 'part_book' as const },
+        metadata: { type: input.type ?? 'part_book' },
         ownerType: 'product' as const,
         productId,
         storageKey: input.storageKey,

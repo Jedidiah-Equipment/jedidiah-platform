@@ -17,6 +17,7 @@ import { formatDate } from '@/utils/date.js';
 import { downloadJobDocument } from '@/utils/document.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 import { JobFact } from './components/JobFact.js';
+import { groupDocumentsByType } from './group-documents-by-type.js';
 
 type JobDetailPageProps = {
   jobId: UUID;
@@ -62,31 +63,43 @@ const JobDocuments: React.FC<{
     );
   }
 
+  const documentGroups = groupDocumentsByType(documents);
+
   return (
     <section className="grid gap-3">
       <h2 className="font-heading text-base font-medium">Documents</h2>
-      <div className="overflow-hidden rounded-lg border">
-        <div className="divide-y">
-          {documents.map((document) => (
-            <div
-              className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[minmax(0,1fr)_11rem_10rem_5rem] md:items-center"
-              key={document.id}
-            >
-              <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-2 font-medium">
-                  <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{document.filename}</span>
-                </div>
-              </div>
-              <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
-              <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>
-              <div className="flex justify-end gap-1">
-                <PreviewButton document={document} onPreviewDocument={setPreviewDocument} />
-                <DownloadButton document={document} jobId={jobId} />
-              </div>
+      <div className="grid gap-3">
+        {documentGroups.map((group) => (
+          <div className="overflow-hidden rounded-lg border" key={group.type}>
+            <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-3 py-2">
+              <h3 className="font-medium">{group.label}</h3>
+              <span className="text-xs font-medium text-muted-foreground">
+                {group.documents.length} {group.documents.length === 1 ? 'document' : 'documents'}
+              </span>
             </div>
-          ))}
-        </div>
+            <div className="divide-y">
+              {group.documents.map((document) => (
+                <div
+                  className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[minmax(0,1fr)_11rem_10rem_5rem] md:items-center"
+                  key={document.id}
+                >
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2 font-medium">
+                      <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{document.filename}</span>
+                    </div>
+                  </div>
+                  <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
+                  <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>
+                  <div className="flex justify-end gap-1">
+                    <PreviewButton document={document} onPreviewDocument={setPreviewDocument} />
+                    <DownloadButton document={document} jobId={jobId} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
       <DocumentPreviewSheet
         document={previewDocument}

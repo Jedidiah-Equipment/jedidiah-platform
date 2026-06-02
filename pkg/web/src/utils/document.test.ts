@@ -1,4 +1,4 @@
-import { DocumentMetadata, type UUID } from '@pkg/schema';
+import { DocumentSummary, type UUID } from '@pkg/schema';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -8,7 +8,7 @@ import {
   getDocumentPreviewKind,
 } from './document.js';
 
-const documentMetadata = DocumentMetadata.parse({
+const documentSummary = DocumentSummary.parse({
   byteSize: 128,
   contentType: 'application/pdf',
   createdAt: '2026-06-02T10:00:00.000Z',
@@ -32,7 +32,7 @@ describe('document utilities', () => {
   it('builds the product-scoped document download path', () => {
     expect(
       createDocumentDownloadPath({
-        document: documentMetadata,
+        document: documentSummary,
         owner: {
           id: '22222222-2222-2222-8222-222222222222' as UUID,
           type: 'product',
@@ -46,7 +46,7 @@ describe('document utilities', () => {
   it('builds the job-scoped document download path', () => {
     expect(
       createDocumentDownloadPath({
-        document: documentMetadata,
+        document: documentSummary,
         owner: {
           id: '33333333-3333-3333-8333-333333333333' as UUID,
           type: 'job',
@@ -81,7 +81,7 @@ describe('document utilities', () => {
     });
 
     await fetchDocumentPreviewBlob({
-      document: documentMetadata,
+      document: documentSummary,
       owner: {
         id: '22222222-2222-2222-8222-222222222222' as UUID,
         type: 'product',
@@ -123,7 +123,7 @@ describe('document utilities', () => {
     });
 
     await downloadDocument({
-      document: documentMetadata,
+      document: documentSummary,
       owner: {
         id: '22222222-2222-2222-8222-222222222222' as UUID,
         type: 'product',

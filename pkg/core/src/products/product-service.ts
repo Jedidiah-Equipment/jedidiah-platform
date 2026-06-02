@@ -13,7 +13,7 @@ import {
 import type {
   Assembly,
   AuthId,
-  DocumentMetadata,
+  DocumentSummary,
   Logger,
   ProductCreateInput,
   ProductListInput,
@@ -34,10 +34,10 @@ import {
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   createProductDocumentRecord,
-  type DocumentMetadataRow,
+  type DocumentSummaryRow,
   deleteDocumentRecord,
   documentBaseSelect,
-  mapDocumentMetadata,
+  mapDocumentSummary,
   type ProductDocumentCreateInput,
   type ReadDocumentResult,
 } from '../documents/document-service.js';
@@ -209,14 +209,14 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
   return mapProductListRow(row);
 }
 
-export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<DocumentMetadata[]> {
+export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<DocumentSummary[]> {
   await assertProductExists({ db, productId });
 
-  const rows = await selectProductDocumentMetadata(db)
+  const rows = await selectProductDocumentSummary(db)
     .where(eq(documents.productId, productId))
     .orderBy(asc(documents.filename));
 
-  return rows.map(mapDocumentMetadata);
+  return rows.map(mapDocumentSummary);
 }
 
 export async function createProductDocument({
@@ -229,11 +229,11 @@ export async function createProductDocument({
   db: Db;
   input: ProductDocumentCreateInput;
   storage: StorageAdapter;
-}): Promise<DocumentMetadata> {
+}): Promise<DocumentSummary> {
   await assertProductExists({ db, productId: input.productId });
   const row = await createProductDocumentRecord({ actorUserId, db, input, storage });
 
-  return getProductDocumentMetadata({ db, documentId: row.id, productId: input.productId });
+  return getProductDocumentSummary({ db, documentId: row.id, productId: input.productId });
 }
 
 export async function readProductDocument({
@@ -248,10 +248,10 @@ export async function readProductDocument({
   storage: StorageAdapter;
 }): Promise<ReadDocumentResult> {
   await assertProductExists({ db, productId });
-  const document = await getProductDocumentMetadataRow({ db, documentId, productId });
+  const document = await getProductDocumentSummaryRow({ db, documentId, productId });
 
   return {
-    document: mapDocumentMetadata(document),
+    document: mapDocumentSummary(document),
     object: await storage.get(document.storageKey),
   };
 }
@@ -268,12 +268,12 @@ export async function deleteProductDocument({
   productId: UUID;
 }): Promise<void> {
   await assertProductExists({ db, productId });
-  const document = await getProductDocumentMetadataRow({ db, documentId, productId });
+  const document = await getProductDocumentSummaryRow({ db, documentId, productId });
 
   await deleteDocumentRecord({ actorUserId, db, document });
 }
 
-function selectProductDocumentMetadata(db: Db) {
+function selectProductDocumentSummary(db: Db) {
   return db
     .select({
       ...documentBaseSelect,
@@ -285,7 +285,7 @@ function selectProductDocumentMetadata(db: Db) {
     .$dynamic();
 }
 
-async function getProductDocumentMetadata({
+async function getProductDocumentSummary({
   db,
   documentId,
   productId,
@@ -293,11 +293,11 @@ async function getProductDocumentMetadata({
   db: Db;
   documentId: UUID;
   productId: UUID;
-}): Promise<DocumentMetadata> {
-  return mapDocumentMetadata(await getProductDocumentMetadataRow({ db, documentId, productId }));
+}): Promise<DocumentSummary> {
+  return mapDocumentSummary(await getProductDocumentSummaryRow({ db, documentId, productId }));
 }
 
-async function getProductDocumentMetadataRow({
+async function getProductDocumentSummaryRow({
   db,
   documentId,
   productId,
@@ -305,8 +305,8 @@ async function getProductDocumentMetadataRow({
   db: Db;
   documentId: UUID;
   productId: UUID;
-}): Promise<DocumentMetadataRow> {
-  const [row] = await selectProductDocumentMetadata(db)
+}): Promise<DocumentSummaryRow> {
+  const [row] = await selectProductDocumentSummary(db)
     .where(and(eq(documents.productId, productId), eq(documents.id, documentId)))
     .limit(1);
 

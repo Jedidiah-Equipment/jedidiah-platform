@@ -32,9 +32,9 @@ import {
 import { and, asc, desc, eq, gte, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
-  type DocumentMetadataRow,
+  type DocumentSummaryRow,
   documentBaseSelect,
-  mapDocumentMetadata,
+  mapDocumentSummary,
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
@@ -51,7 +51,7 @@ type JobWithProductRow = JobRow & {
   quote: QuoteRow;
   stages: JobStageRow[];
 };
-type JobDocumentRow = DocumentMetadataRow & {
+type JobDocumentRow = DocumentSummaryRow & {
   sourceProductName: string | null;
 };
 
@@ -237,10 +237,10 @@ export async function readJobDocument({
   storage: StorageAdapter;
 }): Promise<ReadDocumentResult> {
   await assertJobExists({ db, jobId });
-  const document = await getJobDocumentMetadataRow({ db, documentId, jobId });
+  const document = await getJobDocumentSummaryRow({ db, documentId, jobId });
 
   return {
-    document: mapDocumentMetadata(document),
+    document: mapDocumentSummary(document),
     object: await storage.get(document.storageKey),
   };
 }
@@ -259,7 +259,7 @@ function selectJobDocuments(db: Db | DatabaseTransaction) {
     .$dynamic();
 }
 
-async function getJobDocumentMetadataRow({
+async function getJobDocumentSummaryRow({
   db,
   documentId,
   jobId,
@@ -267,7 +267,7 @@ async function getJobDocumentMetadataRow({
   db: Db;
   documentId: UUID;
   jobId: UUID;
-}): Promise<DocumentMetadataRow> {
+}): Promise<DocumentSummaryRow> {
   const [row] = await selectJobDocuments(db)
     .where(and(eq(documents.jobId, jobId), eq(documents.id, documentId)))
     .limit(1);

@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { type DatabaseTransaction, type Db, documents, getUniqueViolationConstraint } from '@pkg/db';
 import { sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
-import type { AuthId, DocumentMetadata, UUID } from '@pkg/schema';
-import { DocumentMetadata as DocumentMetadataSchema } from '@pkg/schema';
+import type { AuthId, DocumentSummary, UUID } from '@pkg/schema';
+import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
 import { createAuditSnapshotChanges, documentAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
@@ -33,7 +33,7 @@ export type DocumentBaseRow = Pick<
   | 'storageKey'
   | 'uploaderUserId'
 >;
-export type DocumentMetadataRow = DocumentBaseRow & {
+export type DocumentSummaryRow = DocumentBaseRow & {
   uploaderEmail: string | null;
   uploaderName: string | null;
 };
@@ -46,7 +46,7 @@ export type ProductDocumentCreateInput = {
 };
 
 export type ReadDocumentResult = {
-  document: DocumentMetadata;
+  document: DocumentSummary;
   object: StoredObject;
 };
 
@@ -201,8 +201,8 @@ export function selectDocumentBase(db: DocumentDb) {
   return db.select(documentBaseSelect).from(documents).$dynamic();
 }
 
-export function mapDocumentMetadata(row: DocumentMetadataRow): DocumentMetadata {
-  return DocumentMetadataSchema.parse({
+export function mapDocumentSummary(row: DocumentSummaryRow): DocumentSummary {
+  return DocumentSummarySchema.parse({
     byteSize: row.byteSize,
     contentType: row.contentType,
     createdAt: row.createdAt.toISOString(),

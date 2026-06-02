@@ -17,8 +17,8 @@ export const DocumentContentType = requiredTrimmedText('Content type is required
 export type DocumentByteSize = z.infer<typeof DocumentByteSize>;
 export const DocumentByteSize = z.int().min(0);
 
-export type DocumentMetadata = z.infer<typeof DocumentMetadata>;
-export const DocumentMetadata = z.object({
+export type DocumentSummary = z.infer<typeof DocumentSummary>;
+export const DocumentSummary = z.object({
   id: UUID,
   ownerType: DocumentOwnerType,
   jobId: UUID.nullable(),
@@ -34,7 +34,7 @@ export const DocumentMetadata = z.object({
 });
 
 export type JobDocument = z.infer<typeof JobDocument>;
-export const JobDocument = DocumentMetadata.extend({
+export const JobDocument = DocumentSummary.extend({
   ownerType: z.literal('job'),
   jobId: UUID,
   productId: z.null(),

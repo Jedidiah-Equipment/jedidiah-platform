@@ -1,5 +1,5 @@
 import { formatBytes, getDocumentPolicy } from '@pkg/domain';
-import { DocumentMetadata, type UUID } from '@pkg/schema';
+import { DocumentSummary, type UUID } from '@pkg/schema';
 import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';
@@ -26,7 +26,7 @@ export function validateSelectedFile(file: File | null): File | null {
   return file;
 }
 
-export async function uploadProductDocument(productId: UUID, file: File): Promise<DocumentMetadata> {
+export async function uploadProductDocument(productId: UUID, file: File): Promise<DocumentSummary> {
   const formData = new FormData();
   formData.append('file', file);
 
@@ -40,14 +40,14 @@ export async function uploadProductDocument(productId: UUID, file: File): Promis
     throw new Error(await readApiErrorMessage(response, 'Unable to upload document.'));
   }
 
-  return DocumentMetadata.parse(await response.json());
+  return DocumentSummary.parse(await response.json());
 }
 
-export async function downloadProductDocument(productId: UUID, document: DocumentMetadata): Promise<void> {
+export async function downloadProductDocument(productId: UUID, document: DocumentSummary): Promise<void> {
   await downloadDocument({ document, owner: { id: productId, type: 'product' } });
 }
 
-export async function downloadJobDocument(jobId: UUID, document: DocumentMetadata): Promise<void> {
+export async function downloadJobDocument(jobId: UUID, document: DocumentSummary): Promise<void> {
   await downloadDocument({ document, owner: { id: jobId, type: 'job' } });
 }
 
@@ -55,7 +55,7 @@ export async function downloadDocument({
   document,
   owner,
 }: {
-  document: DocumentMetadata;
+  document: DocumentSummary;
   owner: DocumentPreviewOwner;
 }): Promise<void> {
   const response = await fetch(getDocumentDownloadUrl({ document, owner }), {
@@ -70,7 +70,7 @@ export async function fetchDocumentPreviewBlob({
   owner,
   signal,
 }: {
-  document: DocumentMetadata;
+  document: DocumentSummary;
   owner: DocumentPreviewOwner;
   signal?: AbortSignal;
 }): Promise<Blob> {
@@ -91,7 +91,7 @@ export function getDocumentDownloadUrl({
   document,
   owner,
 }: {
-  document: DocumentMetadata;
+  document: DocumentSummary;
   owner: DocumentPreviewOwner;
 }): string {
   return `${getClientConfig().apiBaseUrl}${createDocumentDownloadPath({ document, owner })}`;
@@ -101,7 +101,7 @@ export function createDocumentDownloadPath({
   document,
   owner,
 }: {
-  document: DocumentMetadata;
+  document: DocumentSummary;
   owner: DocumentPreviewOwner;
 }): string {
   const encodedOwnerId = encodeURIComponent(owner.id);
@@ -114,7 +114,7 @@ export function createDocumentDownloadPath({
   return `/api/jobs/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
 }
 
-export function getDocumentPreviewKind(document: Pick<DocumentMetadata, 'contentType'>): DocumentPreviewKind | null {
+export function getDocumentPreviewKind(document: Pick<DocumentSummary, 'contentType'>): DocumentPreviewKind | null {
   const contentType = document.contentType.toLowerCase();
 
   if (contentType === 'application/pdf') {
@@ -133,7 +133,7 @@ async function downloadDocumentResponse({
   fallback,
   response,
 }: {
-  document: DocumentMetadata;
+  document: DocumentSummary;
   fallback: string;
   response: Response;
 }): Promise<void> {

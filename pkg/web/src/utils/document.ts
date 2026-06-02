@@ -6,6 +6,13 @@ import { getClientConfig } from '@/lib/app-config.js';
 
 export const PRODUCT_DOCUMENT_ACCEPT = getDocumentPolicy('product').allowedContentTypes.join(',');
 
+export type DocumentPreviewOwner = {
+  id: UUID;
+  type: 'job' | 'product';
+};
+
+export type DocumentPreviewKind = 'image' | 'pdf';
+
 export function validateSelectedFile(file: File | null): File | null {
   if (!file) return null;
 
@@ -37,22 +44,84 @@ export async function uploadProductDocument(productId: UUID, file: File): Promis
 }
 
 export async function downloadProductDocument(productId: UUID, document: DocumentMetadata): Promise<void> {
-  const response = await fetch(
-    `${getClientConfig().apiBaseUrl}/api/products/${productId}/documents/${document.id}/download`,
-    {
-      credentials: 'include',
-    },
-  );
-
-  await downloadDocumentResponse({ document, fallback: 'Unable to download document.', response });
+  await downloadDocument({ document, owner: { id: productId, type: 'product' } });
 }
 
 export async function downloadJobDocument(jobId: UUID, document: DocumentMetadata): Promise<void> {
-  const response = await fetch(`${getClientConfig().apiBaseUrl}/api/jobs/${jobId}/documents/${document.id}/download`, {
+  await downloadDocument({ document, owner: { id: jobId, type: 'job' } });
+}
+
+export async function downloadDocument({
+  document,
+  owner,
+}: {
+  document: DocumentMetadata;
+  owner: DocumentPreviewOwner;
+}): Promise<void> {
+  const response = await fetch(getDocumentDownloadUrl({ document, owner }), {
     credentials: 'include',
   });
 
   await downloadDocumentResponse({ document, fallback: 'Unable to download document.', response });
+}
+
+export async function fetchDocumentPreviewBlob({
+  document,
+  owner,
+}: {
+  document: DocumentMetadata;
+  owner: DocumentPreviewOwner;
+}): Promise<Blob> {
+  const response = await fetch(getDocumentDownloadUrl({ document, owner }), {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, 'Unable to preview document.'));
+  }
+
+  return response.blob();
+}
+
+export function getDocumentDownloadUrl({
+  document,
+  owner,
+}: {
+  document: DocumentMetadata;
+  owner: DocumentPreviewOwner;
+}): string {
+  return `${getClientConfig().apiBaseUrl}${createDocumentDownloadPath({ document, owner })}`;
+}
+
+export function createDocumentDownloadPath({
+  document,
+  owner,
+}: {
+  document: DocumentMetadata;
+  owner: DocumentPreviewOwner;
+}): string {
+  const encodedOwnerId = encodeURIComponent(owner.id);
+  const encodedDocumentId = encodeURIComponent(document.id);
+
+  if (owner.type === 'product') {
+    return `/api/products/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
+  }
+
+  return `/api/jobs/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
+}
+
+export function getDocumentPreviewKind(document: Pick<DocumentMetadata, 'contentType'>): DocumentPreviewKind | null {
+  const contentType = document.contentType.toLowerCase();
+
+  if (contentType === 'application/pdf') {
+    return 'pdf';
+  }
+
+  if (['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
+    return 'image';
+  }
+
+  return null;
 }
 
 async function downloadDocumentResponse({

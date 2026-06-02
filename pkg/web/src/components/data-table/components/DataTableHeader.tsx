@@ -173,12 +173,13 @@ function DataTableTextFilter<TData>({ column, debounceMs, label }: DataTableFilt
 function DataTableSelectFilter<TData>({ column, label }: Pick<DataTableFilterControlProps<TData>, 'column' | 'label'>) {
   const options = column.columnDef.meta?.filterOptions ?? [];
   const filterValue = typeof column.getFilterValue() === 'string' ? column.getFilterValue() : '';
+  const selectedOption = options.find((option) => option.value === filterValue);
 
   return (
     <div className="flex items-center gap-2">
       <Select onValueChange={(value) => column.setFilterValue(value || undefined)} value={filterValue}>
         <SelectTrigger aria-label={`Filter ${label}`} className="h-7 min-w-0 flex-1" size="sm">
-          <SelectValue placeholder="All" />
+          <SelectValue placeholder="All">{selectedOption?.label ?? null}</SelectValue>
         </SelectTrigger>
         <SelectContent align="end">
           <SelectGroup>

@@ -1,6 +1,12 @@
-import type { DocumentOwnerType } from '@pkg/schema';
+import type { DocumentOwnerType, ProductDocumentType } from '@pkg/schema';
 import { ProductDocumentMetadata } from '@pkg/schema';
 import type { ZodType } from 'zod';
+
+export const PRODUCT_DOCUMENT_TYPE_LABELS = {
+  brochure: 'Brochure',
+  part_book: 'Part Book',
+  sop: 'SOP',
+} as const satisfies Record<ProductDocumentType, string>;
 
 export const DOCUMENT_PDF_CONTENT_TYPE = 'application/pdf';
 export const DOCUMENT_PNG_CONTENT_TYPE = 'image/png';

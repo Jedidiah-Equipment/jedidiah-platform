@@ -156,7 +156,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         accessorFn: getProductDocumentType,
         cell: ({ row }) => (
           <span className="text-muted-foreground">
-            {PRODUCT_DOCUMENT_TYPE_LABELS[getProductDocumentType(row.original)]}
+            {getProductDocumentTypeLabel(getProductDocumentType(row.original))}
           </span>
         ),
         enableColumnFilter: true,
@@ -473,7 +473,7 @@ function documentGlobalFilter(row: { original: DocumentSummary }, _columnId: str
 
   return [
     row.original.filename,
-    PRODUCT_DOCUMENT_TYPE_LABELS[getProductDocumentType(row.original)],
+    getProductDocumentTypeLabel(getProductDocumentType(row.original)),
     row.original.contentType,
     row.original.uploaderName ?? '',
     row.original.uploaderEmail ?? '',
@@ -483,8 +483,8 @@ function documentGlobalFilter(row: { original: DocumentSummary }, _columnId: str
 }
 
 function documentTypeSorting(left: { original: DocumentSummary }, right: { original: DocumentSummary }): number {
-  return PRODUCT_DOCUMENT_TYPE_LABELS[getProductDocumentType(left.original)].localeCompare(
-    PRODUCT_DOCUMENT_TYPE_LABELS[getProductDocumentType(right.original)],
+  return getProductDocumentTypeLabel(getProductDocumentType(left.original)).localeCompare(
+    getProductDocumentTypeLabel(getProductDocumentType(right.original)),
   );
 }
 
@@ -500,6 +500,12 @@ function normalizeFilterValue(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
-function getProductDocumentType(document: DocumentSummary): ProductDocumentType {
-  return ProductDocumentType.parse('type' in document.metadata ? document.metadata.type : undefined);
+function getProductDocumentType(document: DocumentSummary): ProductDocumentType | null {
+  const result = ProductDocumentType.safeParse('type' in document.metadata ? document.metadata.type : undefined);
+
+  return result.success ? result.data : null;
+}
+
+function getProductDocumentTypeLabel(type: ProductDocumentType | null): string {
+  return type ? PRODUCT_DOCUMENT_TYPE_LABELS[type] : 'Unknown';
 }

@@ -22,6 +22,8 @@ export function groupDocumentsByType(documents: DocumentSummary[]): ProductDocum
     .filter((group) => group.documents.length > 0);
 }
 
-function getProductDocumentType(document: DocumentSummary): ProductDocumentType {
-  return ProductDocumentType.parse('type' in document.metadata ? document.metadata.type : undefined);
+function getProductDocumentType(document: DocumentSummary): ProductDocumentType | null {
+  const result = ProductDocumentType.safeParse('type' in document.metadata ? document.metadata.type : undefined);
+
+  return result.success ? result.data : null;
 }

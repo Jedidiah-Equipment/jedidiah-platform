@@ -25,6 +25,27 @@ describe('groupDocumentsByType', () => {
 
     expect(groups).toEqual([{ type: 'part_book', label: 'Part Book', documents: [frozenSnapshot] }]);
   });
+
+  it('omits documents without Product document type metadata', () => {
+    const quoteDocument = DocumentSummary.parse({
+      byteSize: 128,
+      contentType: 'application/pdf',
+      createdAt: '2026-06-02T10:00:00.000Z',
+      filename: 'Quote.pdf',
+      id: '11111111-1111-1111-8111-000000000099',
+      jobId: null,
+      metadata: { revision: 1 },
+      ownerType: 'quote',
+      productId: null,
+      quoteId: '44444444-4444-4444-8444-444444444444',
+      sourceProductId: null,
+      uploaderEmail: 'test@example.com',
+      uploaderName: 'Test User',
+      uploaderUserId: 'test-user-id',
+    });
+
+    expect(groupDocumentsByType([quoteDocument])).toEqual([]);
+  });
 });
 
 function jobDocument(filename: string, type: ProductDocumentType): DocumentSummary {

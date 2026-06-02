@@ -29,17 +29,24 @@ The frozen bill of materials for a Job, snapshotted from the Quote's Effective B
 _Avoid_: BOM dump, build order, parts list.
 
 **Quote**:
-A sales offer associated with one Customer for one Product, owned by one Salesperson, with an editable Status. Customer, Product, Salesperson, and Status are required at creation. Optional fields cover commercial detail (discount amount, deposit percent, Payment Terms, valid_until, delivery_included, delivery_price), selected Optional Assemblies, delivery expectations (Preferred and Planned Delivery Dates), and internal Notes. The Product's `base_price` and currency are snapshot onto the Quote at creation and never change thereafter; the Product reference itself is also immutable post-creation. A Quote sources at most one Job: while it has none it stays editable, and creating its Job turns it into a Locked Quote (see Create Job from Quote and Locked Quote).
+A sales offer associated with one Customer for one Product, owned by one Salesperson, with an editable Status. Customer, Product, Salesperson, and Status are required at creation. Optional fields cover commercial detail (discount amount, deposit percent, Document Notes, valid_until, delivery_included, delivery_price), selected Optional Assemblies, delivery expectations (Preferred and Planned Delivery Dates), and internal Notes. The Product's `base_price` and currency are snapshot onto the Quote at creation and never change thereafter; the Product reference itself is also immutable post-creation. A Quote sources at most one Job: while it has none it stays editable, and creating its Job turns it into a Locked Quote (see Create Job from Quote and Locked Quote).
 
 **Quote Status**:
 A label on a Quote (`draft | sent | accepted | rejected | cancelled`). Freely editable with no transition rules *until* the Quote sources a Job: a Job can only be created from an `accepted` Quote, and once a Job exists the status (along with the rest of the Locked Quote fields) is frozen. Used for display, filtering, and sorting, and as the eligibility gate for Job creation.
 
-**Locked Quote**:
-A Quote that has sourced its Job. Because a Quote sources at most one Job, this is binary: zero Jobs means an open, editable Quote; one Job means a Locked Quote. On a Locked Quote these fields are frozen forever: Product, Customer, Salesperson, selected Optional Assemblies, base price, discount amount, deposit percent, status, delivery inclusion, and delivery price. These remain editable: `valid_until`, Preferred/Planned Delivery Dates, Notes, and Payment Terms (post-sale logistics and free text). The lock is irreversible — Jobs are not deleted, so a Locked Quote never reopens.
+**Customer**:
+The company receiving a Quote or buying a Job. Customer-facing quote details come from the Customer's company name, VAT number, postal address, contact person, phone, and email when present.
+_Avoid_: Client, buyer, account, contract person.
 
-**Payment Terms**:
-Customer-facing free text on a Quote describing how and when the customer pays (e.g. "30% deposit, balance on delivery"). Shown on the Quote document.
-_Avoid_ putting internal context here — use Notes for that.
+**Locked Quote**:
+A Quote that has sourced its Job. Because a Quote sources at most one Job, this is binary: zero Jobs means an open, editable Quote; one Job means a Locked Quote. On a Locked Quote these fields are frozen forever: Product, Customer, Salesperson, selected Optional Assemblies, base price, discount amount, deposit percent, status, delivery inclusion, and delivery price. These remain editable: `valid_until`, Preferred/Planned Delivery Dates, internal Notes, and Document Notes (post-sale logistics and free text). The lock is irreversible — Jobs are not deleted, so a Locked Quote never reopens.
+
+**Document Notes**:
+Customer-facing free text on a Quote shown in the bottom-left notes area of the Quote Document. It may include payment terms, transport notes, lead time, or other customer-visible quote notes.
+_Avoid_: Payment Terms, internal Notes.
+
+**Deposit Percent**:
+The numeric percentage of the Quote Total required as a customer deposit. On a Quote Document it is rendered as the Payment Terms line (e.g. "20% deposit required") and does not change the Quote Total.
 
 **Preferred Delivery Date**:
 The date the customer would like delivery. Optional, captured by the salesperson from the customer's ask. No enforced relationship to Planned Delivery Date — Planned may be earlier, later, or equal.
@@ -65,13 +72,19 @@ An Assembly that is included in every build of the Product by default. Its cost 
 An Assembly that is selected (or not) at quote time. Carries a `price` representing the *upgrade delta* added to the Product's `base_price` when selected. When selected, an Optional Assembly may override zero or more Standard Assemblies, removing their Parts from the effective bill of materials and replacing them with its own. Optionals with no overrides are purely additive.
 
 **Quote Selected Assembly**:
-An Optional Assembly selected on a Quote. The Quote stores a snapshot of the selected Optional Assembly's name and price, plus a nullable reference back to the Product Assembly when it still exists. The snapshot remains on the Quote until explicitly removed, even if the Product Assembly is later deleted or changed. Existing selected snapshots are preserved unchanged on quote edits; newly added catalog Optional Assemblies snapshot their current name and price when saved. Selected assemblies are editable until the Quote becomes a Locked Quote (i.e. until it sources a Job), after which they are frozen.
+An Optional Assembly selected on a Quote. The Quote stores a snapshot of the selected Optional Assembly's name and price, plus a nullable reference back to the Product Assembly when it still exists. The snapshot remains on the Quote until explicitly removed, even if the Product Assembly is later deleted or changed. Existing selected snapshots are preserved unchanged on quote edits; newly added catalog Optional Assemblies snapshot their current name and price when saved. Stale selected snapshots remain visible as unavailable notes on customer-facing Quote Documents but are excluded from priced line items and the Quote Total. Selected assemblies are editable until the Quote becomes a Locked Quote (i.e. until it sources a Job), after which they are frozen.
 
 **Effective Bill of Materials**:
 For a Quote with a selected set of currently available Optional Assemblies, the effective BOM is (Standard Assemblies not overridden by any selected Optional) ∪ (selected Optional Assemblies). Deleted or otherwise stale Quote Selected Assemblies remain commercial quote selections, but do not contribute override relationships because there is no current catalog relationship to trust. Selecting two Optional Assemblies that both override the same Standard Assembly is allowed for now.
 
 **Quote Total**:
 A client-side projection, not a persisted or server-returned aggregate. Quote totals are computed from the Quote pricing facts: snapshotted Product base price, selected Optional Assembly snapshot prices, discount amount, delivery inclusion, and delivery price. The server stores and returns those inputs, but does not store a selected-option aggregate total or expose a quote `total` field. Deposit percent is stored on the Quote but does not affect this total.
+
+**VAT Percent**:
+The domain-owned value-added tax percentage used by customer-facing Quote Documents. Quote Documents display VAT separately from the Quote Total, which remains the VAT-exclusive subtotal projection.
+
+**Quote Document**:
+A generated customer-facing PDF packet of a Quote, owned by that Quote. A Quote may have multiple Quote Documents as the customer asks for changes; each is named as a revision, carries its revision in metadata, and the newest created Quote Document is treated as the latest one. It can be generated from a `draft`, `sent`, or `accepted` Quote, including a Locked Quote, but not from a `rejected` or `cancelled` Quote. It is a point-in-time record of the Quote offer, using the current live Customer details and the Quote Product's latest PDF brochure at generation time, where latest means the newest created Product Document classified as a brochure and stored as a PDF.
 
 **Create Job from Quote**:
 The single way a Job comes into existence. A `job-supervisor` or `admin` triggers it from an `accepted` Quote that has no Job yet ("Generate CFO & Start Job"). The action: assigns the Product Serial Number, snapshots the Quote's Effective Bill of Materials into the Job's CFO, snapshots the Product's Documents onto the Job (see Job Document Snapshot), materializes the five Stages, and turns the Quote into a Locked Quote. A Quote sources at most one Job. Creation is **blocked** if any selected Optional Assembly is stale (its catalog Assembly was deleted), because the CFO cannot resolve that assembly's Parts — the error names the offending assembly. There is no other Job-creation path (Direct Job Creation is retired) and no product-picking step; everything is inherited from the Quote.
@@ -87,7 +100,7 @@ An optional, square, display-only image attached to a User, Customer, Supplier, 
 _Avoid_: Avatar, Logo, Photo, Image.
 
 **Document**:
-An uploaded file owned by exactly one entity (a Product to start — e.g. a Part Book or an SOP; Parts and other entities to follow). Documents are downloadable from the surfaces of their owner. A Product's Documents appear on the Product's own surfaces; the Job page surfaces the Job's frozen copies (the Job Document Snapshot), not the Product's live Documents. A Document has exactly one owner; there is no org-wide or owner-less ("global") Document. A Document is **immutable once uploaded** — there is no in-place edit or replace. Its lifecycle is create and hard delete; to "replace" a Document a user deletes the existing one and uploads again. Filenames are **unique per owner** (case-insensitive); uploading a duplicate filename for the same owner is rejected. Each Document also carries **metadata** — a small set of descriptive attributes whose required shape is defined **per owner type** (different owners demand different fields). A Product's Documents must declare a **type** (one of `sop`, `part_book`, or `brochure`), used to group them for display; the type is a label only and drives no behaviour, permissions, or snapshot selection. Metadata is set once at upload and, being part of the Document, is equally **immutable** — correcting a wrong value means delete and re-upload, never an in-place edit. Deleting a Document removes its row, but the underlying stored file is **never deleted from storage** and remains forensically recoverable through Audit history. A single stored file may be referenced by more than one Document (see Job Document Snapshot). Distinct from a Thumbnail (small, inline, display-only image).
+A stored file owned by exactly one entity (a Product, Job, or Quote; Parts and other entities to follow). Documents are downloadable from the surfaces of their owner. A Product's Documents appear on the Product's own surfaces; the Job page surfaces the Job's frozen copies (the Job Document Snapshot), not the Product's live Documents. A Document has exactly one owner; there is no org-wide or owner-less ("global") Document. A Document is **immutable once created** — there is no in-place edit or replace. Its lifecycle is create and hard delete; to "replace" a Document a user deletes the existing one and creates it again. Filenames are **unique per owner** (case-insensitive); creating a duplicate filename for the same owner is rejected. Each Document also carries **metadata** — a small set of descriptive attributes whose required shape is defined **per owner type** (different owners demand different fields). A Product's Documents must declare a **type** (one of `sop`, `part_book`, or `brochure`), used to group them for display and to identify Product brochures for Quote Document generation; otherwise the type drives no permissions or snapshot selection. Metadata is set once at creation and, being part of the Document, is equally **immutable** — correcting a wrong value means delete and create again, never an in-place edit. Deleting a Document removes its row, but the underlying stored file is **never deleted from storage** and remains forensically recoverable through Audit history. A single stored file may be referenced by more than one Document (see Job Document Snapshot). Distinct from a Thumbnail (small, inline, display-only image).
 _Avoid_: File, Attachment, Media, Asset.
 
 **Job Document Snapshot**:
@@ -100,9 +113,10 @@ The Product's Documents frozen onto a Job at the moment the Job is created. Crea
 - A **Job** references exactly one **Quote**; a **Quote** sources at most one **Job**.
 - A **Quote** references one **Customer**, one **Product**, and one **Salesperson** at creation.
 - A **Quote** may have zero or more **Quote Selected Assemblies**.
+- A **Quote** may own **Quote Documents**.
 - A **Supplier** currently stands alone as a procurement directory record.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
-- A **Document** has exactly one owning entity (a **Product** to start). A **Product** has zero or more **Documents**.
+- A **Document** has exactly one owning entity. A **Product** has zero or more **Documents**.
 - Creating a **Job** snapshots its **Product**'s **Documents** onto the Job as a frozen **Job Document Snapshot** (see Create Job from Quote).
 
 ## Access

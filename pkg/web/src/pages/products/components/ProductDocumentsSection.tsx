@@ -1,5 +1,5 @@
 import { formatBytes, hasPermission, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
-import { type DocumentSummary, ProductDocumentType, type UUID } from '@pkg/schema';
+import { type ProductDocument, ProductDocumentType, type UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type ColumnDef,
@@ -93,7 +93,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedType, setSelectedType] = useState<ProductDocumentType | null>(null);
-  const [previewDocument, setPreviewDocument] = useState<DocumentSummary | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<ProductDocument | null>(null);
 
   const {
     columnFilters,
@@ -138,7 +138,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   });
 
   const documents = documentsQuery.data ?? [];
-  const columns = useMemo<ColumnDef<DocumentSummary>[]>(
+  const columns = useMemo<ColumnDef<ProductDocument>[]>(
     () => [
       {
         accessorKey: 'filename',
@@ -153,11 +153,9 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         header: 'Filename',
       },
       {
-        accessorFn: getProductDocumentType,
+        accessorFn: (document) => document.metadata.type,
         cell: ({ row }) => (
-          <span className="text-muted-foreground">
-            {getProductDocumentTypeLabel(getProductDocumentType(row.original))}
-          </span>
+          <span className="text-muted-foreground">{PRODUCT_DOCUMENT_TYPE_LABELS[row.original.metadata.type]}</span>
         ),
         enableColumnFilter: true,
         enableSorting: true,
@@ -372,7 +370,7 @@ function DocumentUploadForm({
   );
 }
 
-function DeleteDocumentButton({ document, productId }: { document: DocumentSummary; productId: UUID }) {
+function DeleteDocumentButton({ document, productId }: { document: ProductDocument; productId: UUID }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
@@ -425,8 +423,8 @@ function PreviewButton({
   document,
   onPreviewDocument,
 }: {
-  document: DocumentSummary;
-  onPreviewDocument: (document: DocumentSummary) => void;
+  document: ProductDocument;
+  onPreviewDocument: (document: ProductDocument) => void;
 }) {
   return (
     <Button
@@ -441,7 +439,7 @@ function PreviewButton({
   );
 }
 
-function DownloadButton({ document, productId }: { document: DocumentSummary; productId: UUID }) {
+function DownloadButton({ document, productId }: { document: ProductDocument; productId: UUID }) {
   const showMutationError = useApiMutationErrorToast();
   const downloadMutation = useMutation({
     mutationFn: () => downloadProductDocument(productId, document),
@@ -464,7 +462,7 @@ function DownloadButton({ document, productId }: { document: DocumentSummary; pr
   );
 }
 
-function documentGlobalFilter(row: { original: DocumentSummary }, _columnId: string, filterValue: unknown) {
+function documentGlobalFilter(row: { original: ProductDocument }, _columnId: string, filterValue: unknown) {
   const search = normalizeFilterValue(filterValue);
 
   if (!search) {
@@ -473,7 +471,7 @@ function documentGlobalFilter(row: { original: DocumentSummary }, _columnId: str
 
   return [
     row.original.filename,
-    getProductDocumentTypeLabel(getProductDocumentType(row.original)),
+    PRODUCT_DOCUMENT_TYPE_LABELS[row.original.metadata.type],
     row.original.contentType,
     row.original.uploaderName ?? '',
     row.original.uploaderEmail ?? '',
@@ -482,30 +480,20 @@ function documentGlobalFilter(row: { original: DocumentSummary }, _columnId: str
   ].some((value) => value.toLowerCase().includes(search));
 }
 
-function documentTypeSorting(left: { original: DocumentSummary }, right: { original: DocumentSummary }): number {
-  return getProductDocumentTypeLabel(getProductDocumentType(left.original)).localeCompare(
-    getProductDocumentTypeLabel(getProductDocumentType(right.original)),
+function documentTypeSorting(left: { original: ProductDocument }, right: { original: ProductDocument }): number {
+  return PRODUCT_DOCUMENT_TYPE_LABELS[left.original.metadata.type].localeCompare(
+    PRODUCT_DOCUMENT_TYPE_LABELS[right.original.metadata.type],
   );
 }
 
-function documentUploaderSorting(left: { original: DocumentSummary }, right: { original: DocumentSummary }): number {
+function documentUploaderSorting(left: { original: ProductDocument }, right: { original: ProductDocument }): number {
   return getDocumentUploader(left.original).localeCompare(getDocumentUploader(right.original));
 }
 
-function getDocumentUploader(document: DocumentSummary): string {
+function getDocumentUploader(document: ProductDocument): string {
   return document.uploaderName ?? document.uploaderEmail ?? '';
 }
 
 function normalizeFilterValue(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
-}
-
-function getProductDocumentType(document: DocumentSummary): ProductDocumentType | null {
-  const result = ProductDocumentType.safeParse('type' in document.metadata ? document.metadata.type : undefined);
-
-  return result.success ? result.data : null;
-}
-
-function getProductDocumentTypeLabel(type: ProductDocumentType | null): string {
-  return type ? PRODUCT_DOCUMENT_TYPE_LABELS[type] : 'Unknown';
 }

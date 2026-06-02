@@ -16,15 +16,20 @@ import { validateDocumentMetadata } from '@pkg/domain';
 import type {
   Assembly,
   AuthId,
-  DocumentSummary,
   Logger,
   ProductCreateInput,
+  ProductDocument,
   ProductListInput,
   ProductListResult,
   ProductUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { Product, ProductCurrencyCode, ProductDocumentMetadata } from '@pkg/schema';
+import {
+  Product,
+  ProductCurrencyCode,
+  ProductDocumentMetadata,
+  ProductDocument as ProductDocumentSchema,
+} from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
@@ -228,14 +233,14 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
   return mapProductListRow(row);
 }
 
-export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<DocumentSummary[]> {
+export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<ProductDocument[]> {
   await assertProductExists({ db, productId });
 
   const rows = await selectProductDocumentSummary(db)
     .where(eq(documents.productId, productId))
     .orderBy(asc(documents.filename));
 
-  return rows.map(mapDocumentSummary);
+  return rows.map(mapProductDocumentSummary);
 }
 
 export async function createProductDocument({
@@ -248,7 +253,7 @@ export async function createProductDocument({
   db: Db;
   input: ProductDocumentCreateInput;
   storage: StorageAdapter;
-}): Promise<DocumentSummary> {
+}): Promise<ProductDocument> {
   await assertProductExists({ db, productId: input.productId });
   const metadata = parseProductDocumentMetadata(input.metadata);
   const row = await createDocumentRecord({
@@ -335,6 +340,10 @@ function selectProductDocumentSummary(db: Db) {
     .$dynamic();
 }
 
+function mapProductDocumentSummary(row: DocumentSummaryRow): ProductDocument {
+  return ProductDocumentSchema.parse(mapDocumentSummary(row));
+}
+
 async function getProductDocumentSummary({
   db,
   documentId,
@@ -343,8 +352,8 @@ async function getProductDocumentSummary({
   db: Db;
   documentId: UUID;
   productId: UUID;
-}): Promise<DocumentSummary> {
-  return mapDocumentSummary(await getProductDocumentSummaryRow({ db, documentId, productId }));
+}): Promise<ProductDocument> {
+  return mapProductDocumentSummary(await getProductDocumentSummaryRow({ db, documentId, productId }));
 }
 
 async function getProductDocumentSummaryRow({

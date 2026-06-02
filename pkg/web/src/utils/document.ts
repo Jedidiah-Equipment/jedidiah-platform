@@ -1,5 +1,5 @@
 import { formatBytes, getDocumentPolicy } from '@pkg/domain';
-import { DocumentSummary, type ProductDocumentType, type UUID } from '@pkg/schema';
+import { type DocumentSummary, ProductDocument, type ProductDocumentType, type UUID } from '@pkg/schema';
 import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';
@@ -47,7 +47,7 @@ export function getReadyProductDocumentUpload(draft: ProductDocumentUploadDraft)
 export async function uploadProductDocument(
   productId: UUID,
   upload: ReadyProductDocumentUpload,
-): Promise<DocumentSummary> {
+): Promise<ProductDocument> {
   const formData = new FormData();
   formData.append('type', upload.type);
   formData.append('file', upload.file);
@@ -62,7 +62,7 @@ export async function uploadProductDocument(
     throw new Error(await readApiErrorMessage(response, 'Unable to upload document.'));
   }
 
-  return DocumentSummary.parse(await response.json());
+  return ProductDocument.parse(await response.json());
 }
 
 export async function downloadProductDocument(productId: UUID, document: DocumentSummary): Promise<void> {

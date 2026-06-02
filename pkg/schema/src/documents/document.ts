@@ -61,6 +61,16 @@ export const JobDocument = DocumentSummary.extend({
   sourceProductName: z.string().trim().min(1),
 });
 
+export type ProductDocument = z.infer<typeof ProductDocument>;
+export const ProductDocument = DocumentSummary.extend({
+  ownerType: z.literal('product'),
+  jobId: z.null(),
+  productId: UUID,
+  quoteId: z.null(),
+  sourceProductId: z.null(),
+  metadata: ProductDocumentMetadata,
+});
+
 export type QuoteDocument = z.infer<typeof QuoteDocument>;
 export const QuoteDocument = DocumentSummary.extend({
   ownerType: z.literal('quote'),

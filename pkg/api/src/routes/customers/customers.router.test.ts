@@ -79,6 +79,7 @@ describe('customers.create', () => {
       notes: 'Prefers email',
       phone: '+27 11 555 0100',
       thumbnailDataUrl: THUMBNAIL_DATA_URL,
+      vatNumber: 'VAT-123456',
     });
 
     expect(created).toMatchObject({
@@ -89,6 +90,7 @@ describe('customers.create', () => {
       notes: 'Prefers email',
       phone: '+27 11 555 0100',
       thumbnailDataUrl: THUMBNAIL_DATA_URL,
+      vatNumber: 'VAT-123456',
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
@@ -107,6 +109,10 @@ describe('customers.create', () => {
           email: {
             from: null,
             to: 'acme-mining@example.com',
+          },
+          vatNumber: {
+            from: null,
+            to: 'VAT-123456',
           },
         },
         entityId: created.id,
@@ -167,25 +173,27 @@ describe('customers.list', () => {
     expect(result.total).toBe(3);
   });
 
-  test('searches customer company names, emails, and IDs globally', async ({ context }) => {
+  test('searches customer company names, emails, VAT numbers, and IDs globally', async ({ context }) => {
     const caller = context.createCaller();
-    const acme = await createCustomer(caller, 'Acme Mining', { email: 'sales@acme.example' });
+    const acme = await createCustomer(caller, 'Acme Mining', { email: 'sales@acme.example', vatNumber: 'VAT-ACME' });
     const beta = await createCustomer(caller, 'Beta Quarries', { email: 'procurement@beta.example' });
     await createCustomer(caller, 'Cargo Works', { email: 'hello@cargo.example' });
 
     const nameResult = await caller.customers.list({ search: 'acme' });
     const emailResult = await caller.customers.list({ search: 'procurement' });
+    const vatResult = await caller.customers.list({ search: 'VAT-ACME' });
     const idResult = await caller.customers.list({ search: beta.id.slice(0, 8) });
 
     expect(nameResult.items.map((customer) => customer.id)).toEqual([acme.id]);
     expect(emailResult.items.map((customer) => customer.id)).toEqual([beta.id]);
+    expect(vatResult.items.map((customer) => customer.id)).toEqual([acme.id]);
     expect(idResult.items.map((customer) => customer.id)).toEqual([beta.id]);
   });
 
   test('filters and sorts customer lists by columns', async ({ context }) => {
     const caller = context.createCaller();
-    await createCustomer(caller, 'Acme Mining', { email: 'sales@acme.example' });
-    await createCustomer(caller, 'Beta Mining', { email: 'orders@beta.example' });
+    await createCustomer(caller, 'Acme Mining', { email: 'sales@acme.example', vatNumber: 'VAT-MINING-1' });
+    await createCustomer(caller, 'Beta Mining', { email: 'orders@beta.example', vatNumber: 'VAT-MINING-2' });
     await createCustomer(caller, 'Cargo Works', { email: 'hello@cargo.example' });
 
     const result = await caller.customers.list({
@@ -193,6 +201,7 @@ describe('customers.list', () => {
       pageSize: 10,
       columnFilters: {
         companyName: 'mining',
+        vatNumber: 'VAT-MINING',
       },
       search: '',
       sortBy: 'email',
@@ -231,32 +240,39 @@ describe('customers.list', () => {
     const companyWildcardResult = await caller.customers.list({ columnFilters: { companyName: '%' } });
     const emailWildcardResult = await caller.customers.list({ columnFilters: { email: '_' } });
     const idWildcardResult = await caller.customers.list({ columnFilters: { id: '%' } });
+    const vatWildcardResult = await caller.customers.list({ columnFilters: { vatNumber: '_' } });
 
     expect(globalWildcardResult.items).toHaveLength(0);
     expect(companyWildcardResult.items).toHaveLength(0);
     expect(emailWildcardResult.items).toHaveLength(0);
     expect(idWildcardResult.items).toHaveLength(0);
+    expect(vatWildcardResult.items).toHaveLength(0);
   });
 });
 
 describe('customers.get', () => {
   test('gets customers by id', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createCustomer(caller, 'Acme Mining');
+    const created = await createCustomer(caller, 'Acme Mining', { vatNumber: 'VAT-GET-1' });
 
     await expect(caller.customers.get({ id: created.id })).resolves.toMatchObject({
       companyName: 'Acme Mining',
       id: created.id,
+      vatNumber: 'VAT-GET-1',
     });
   });
 
-  test('returns customer thumbnails from get and list', async ({ context }) => {
+  test('returns customer thumbnails and VAT numbers from get and list', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createCustomer(caller, 'Thumbnail Customer', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
+    const created = await createCustomer(caller, 'Thumbnail Customer', {
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
+      vatNumber: 'VAT-LIST-1',
+    });
 
     await expect(caller.customers.get({ id: created.id })).resolves.toMatchObject({
       id: created.id,
       thumbnailDataUrl: THUMBNAIL_DATA_URL,
+      vatNumber: 'VAT-LIST-1',
     });
 
     await expect(caller.customers.list({ search: 'Thumbnail' })).resolves.toMatchObject({
@@ -264,6 +280,7 @@ describe('customers.get', () => {
         {
           id: created.id,
           thumbnailDataUrl: THUMBNAIL_DATA_URL,
+          vatNumber: 'VAT-LIST-1',
         },
       ],
     });
@@ -320,6 +337,7 @@ describe('customers.update', () => {
       id: created.id,
       notes: null,
       phone: '+27 11 555 0100',
+      vatNumber: 'VAT-654321',
     });
 
     expect(updated).toMatchObject({
@@ -329,6 +347,7 @@ describe('customers.update', () => {
       email: 'sales@acme.example',
       id: created.id,
       phone: '+27 11 555 0100',
+      vatNumber: 'VAT-654321',
     });
     expect(new Date(updated.updatedAt).getTime()).toBeGreaterThanOrEqual(new Date(created.updatedAt).getTime());
 
@@ -368,6 +387,10 @@ describe('customers.update', () => {
             from: null,
             to: '+27 11 555 0100',
           },
+          vatNumber: {
+            from: null,
+            to: 'VAT-654321',
+          },
         },
         entityId: created.id,
         entityType: 'customer',
@@ -383,6 +406,7 @@ describe('customers.update', () => {
       contactPerson: 'Known person',
       notes: 'Known notes',
       phone: 'Known phone',
+      vatNumber: 'Known VAT',
     });
 
     const updated = await caller.customers.update({
@@ -393,6 +417,7 @@ describe('customers.update', () => {
       id: created.id,
       notes: ' ',
       phone: '',
+      vatNumber: '',
     });
 
     expect(updated).toMatchObject({
@@ -400,6 +425,7 @@ describe('customers.update', () => {
       contactPerson: null,
       notes: null,
       phone: null,
+      vatNumber: null,
     });
   });
 

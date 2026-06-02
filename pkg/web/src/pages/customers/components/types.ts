@@ -4,6 +4,7 @@ import {
   CustomerCreateInput,
   CustomerEmail,
   CustomerOptionalText,
+  CustomerVatNumber,
   NullableThumbnailDataUrl,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -19,6 +20,7 @@ export const CustomerFormValues = z.object({
   notes: emptyStringOr(CustomerOptionalText),
   phone: emptyStringOr(CustomerOptionalText),
   thumbnailDataUrl: NullableThumbnailDataUrl,
+  vatNumber: emptyStringOr(CustomerVatNumber),
 });
 
 /** Schema → form. Nullable schema fields collapse to `''` for controlled inputs. */
@@ -31,6 +33,7 @@ export function toCustomerFormValues(initialCustomer?: Customer): CustomerFormVa
     notes: initialCustomer?.notes ?? '',
     phone: initialCustomer?.phone ?? '',
     thumbnailDataUrl: initialCustomer?.thumbnailDataUrl ?? null,
+    vatNumber: initialCustomer?.vatNumber ?? '',
   };
 }
 

@@ -39,6 +39,7 @@ export function mapCustomer(row: CustomerRow): Customer {
     phone: row.phone,
     thumbnailDataUrl: row.thumbnailDataUrl,
     updatedAt: row.updatedAt.toISOString(),
+    vatNumber: row.vatNumber,
   });
 }
 
@@ -69,6 +70,7 @@ function buildCustomerListWhere(input: CustomerListInput): SQL | undefined {
       sql`${customers.companyName}`,
       sql`${customers.email}`,
       sql`${customers.id}::text`,
+      sql`${customers.vatNumber}`,
     ]);
 
     if (globalSearchWhere) {
@@ -88,6 +90,10 @@ function buildCustomerListWhere(input: CustomerListInput): SQL | undefined {
 
   if (input.columnFilters.id) {
     conditions.push(createEscapedContainsSearchCondition(sql`${customers.id}::text`, input.columnFilters.id));
+  }
+
+  if (input.columnFilters.vatNumber) {
+    conditions.push(createEscapedContainsSearchCondition(sql`${customers.vatNumber}`, input.columnFilters.vatNumber));
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;
@@ -162,6 +168,7 @@ export async function updateCustomer({
       notes: input.notes,
       phone: input.phone,
       thumbnailDataUrl: input.thumbnailDataUrl,
+      vatNumber: input.vatNumber,
     };
     const after = { ...before, ...patch };
     const changes = createAuditChanges(before, after, customerAuditDescriptor.fields);

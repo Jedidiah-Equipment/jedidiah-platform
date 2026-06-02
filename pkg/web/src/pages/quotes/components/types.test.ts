@@ -23,7 +23,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     productId: PRODUCT_ID,
     salesPersonId: 'auth-user-1',
     status: 'sent',
-    depositAmount: 250,
+    depositPercent: 30,
     discountAmount: 100,
     deliveryIncluded: true,
     deliveryPrice: 50,
@@ -63,7 +63,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
   return {
     customerId: CUSTOMER_ID,
     customerMode: 'existing',
-    depositAmount: 250,
+    depositPercent: 30,
     deliveryIncluded: true,
     deliveryPrice: 50,
     discountAmount: 100,
@@ -86,7 +86,7 @@ describe('toQuoteFormValues', () => {
     expect(toQuoteFormValues()).toEqual({
       customerId: '',
       customerMode: 'existing',
-      depositAmount: 0,
+      depositPercent: 0,
       deliveryIncluded: true,
       deliveryPrice: 0,
       discountAmount: 0,
@@ -110,7 +110,7 @@ describe('toQuoteFormValues', () => {
     expect(values.customerId).toBe(CUSTOMER_ID);
     expect(values.inlineCompanyName).toBe('');
     expect(values.notes).toBe('Some notes');
-    expect(values.depositAmount).toBe(250);
+    expect(values.depositPercent).toBe(30);
     expect(values.validUntil).toBe('2026-01-01');
     expect(values.status).toBe('sent');
     expect(values.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
@@ -166,7 +166,7 @@ describe('toQuoteCreateInput', () => {
     const input = toQuoteCreateInput(toQuoteFormValues(buildQuoteDetail()));
 
     expect(input.customer).toEqual({ type: 'existing', customerId: CUSTOMER_ID });
-    expect(input.depositAmount).toBe(250);
+    expect(input.depositPercent).toBe(30);
     expect(input.notes).toBe('Some notes');
     expect(input.validUntil).toBe('2026-01-01');
     expect(input.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
@@ -185,7 +185,7 @@ describe('toQuoteUpdateInput', () => {
 
     expect(input).toMatchObject({
       id: QUOTE_ID,
-      depositAmount: 250,
+      depositPercent: 30,
       salesPersonId: 'auth-user-1',
       status: 'sent',
       discountAmount: 100,

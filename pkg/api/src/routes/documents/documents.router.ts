@@ -65,9 +65,7 @@ export function mapDocumentCoreError(error: DocumentCoreError): CoreErrorMapping
       return {
         appCode: error.code,
         code: 'CONFLICT',
-        message: `A document with this filename already exists for this ${
-          error.metadata.ownerType === 'quote' ? 'Quote' : 'Product'
-        }.`,
+        message: `A document with this filename already exists for this ${error.metadata.ownerType}.`,
       };
     case 'document.not_found':
       return {

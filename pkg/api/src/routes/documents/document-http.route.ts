@@ -6,13 +6,21 @@ import {
   isDocumentCoreError,
   isJobCoreError,
   isProductCoreError,
+  isQuoteCoreError,
   readJobDocument,
   readProductDocument,
+  readQuoteDocument,
   type StorageAdapter,
 } from '@pkg/core';
 import { db } from '@pkg/db';
 import { hasPermission, validateDocumentPolicy } from '@pkg/domain';
-import { type AppPermission, DocumentListByProductInput, ProductDocumentInput, UUID } from '@pkg/schema';
+import {
+  type AppPermission,
+  DocumentListByProductInput,
+  ProductDocumentInput,
+  QuoteDocumentInput,
+  UUID,
+} from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
@@ -115,6 +123,31 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       sendHttpError(reply, error);
     }
   });
+
+  app.get('/api/quotes/:quoteId/documents/:documentId/download', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      requirePermission(auth, 'quote:read', 'You do not have permission to download this document.');
+      const params = QuoteDocumentInput.parse(request.params);
+      const result = await mapHttpDocumentErrors(() =>
+        readQuoteDocument({
+          db,
+          documentId: params.documentId,
+          quoteId: params.quoteId,
+          storage,
+        }),
+      );
+
+      reply.header('Content-Type', result.document.contentType);
+      reply.header('Content-Length', result.document.byteSize);
+      reply.header('Content-Disposition', createContentDisposition(result.document.filename));
+      return reply.send(createDocumentBodyStream(result.object.body));
+    } catch (error) {
+      sendHttpError(reply, error);
+    }
+  });
 }
 
 const MultipartTextField = z.object({ type: z.literal('field'), value: z.string() }).transform((field) => field.value);
@@ -174,6 +207,13 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
       throw Object.assign(new Error(error.code === 'job.not_found' ? 'Job not found.' : error.message), {
         appCode: error.code,
         statusCode: error.code === 'job.not_found' ? 404 : 403,
+      });
+    }
+
+    if (isQuoteCoreError(error)) {
+      throw Object.assign(new Error(error.code === 'quote.not_found' ? 'Quote not found.' : error.message), {
+        appCode: error.code,
+        statusCode: error.code === 'quote.not_found' ? 404 : 400,
       });
     }
 

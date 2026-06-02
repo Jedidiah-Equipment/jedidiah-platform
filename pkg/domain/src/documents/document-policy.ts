@@ -1,5 +1,5 @@
 import type { DocumentOwnerType, ProductDocumentType } from '@pkg/schema';
-import { ProductDocumentMetadata } from '@pkg/schema';
+import { ProductDocumentMetadata, QuoteDocumentMetadata } from '@pkg/schema';
 import type { ZodType } from 'zod';
 
 export const PRODUCT_DOCUMENT_TYPE_LABELS = {
@@ -59,6 +59,11 @@ export const documentPolicies = {
     maxBytes: PRODUCT_DOCUMENT_MAX_BYTES,
     metadataSchema: ProductDocumentMetadata,
   },
+  quote: {
+    allowedContentTypes: [DOCUMENT_PDF_CONTENT_TYPE],
+    maxBytes: PRODUCT_DOCUMENT_MAX_BYTES,
+    metadataSchema: QuoteDocumentMetadata,
+  },
 } as const satisfies Record<DocumentOwnerType, DocumentPolicy>;
 
 export function getDocumentPolicy(ownerType: DocumentOwnerType): DocumentPolicy {
@@ -76,7 +81,10 @@ export function validateDocumentPolicy(input: {
     return {
       ok: false,
       code: 'document.content_type_not_allowed',
-      message: 'Only PDF, PNG, JPEG, or WebP documents can be uploaded.',
+      message:
+        policy.allowedContentTypes.length === 1 && policy.allowedContentTypes[0] === DOCUMENT_PDF_CONTENT_TYPE
+          ? 'Only PDF documents can be uploaded.'
+          : 'Only PDF, PNG, JPEG, or WebP documents can be uploaded.',
     };
   }
 

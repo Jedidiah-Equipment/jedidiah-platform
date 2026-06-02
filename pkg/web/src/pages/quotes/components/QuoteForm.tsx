@@ -1,25 +1,29 @@
-import { computeQuoteTotal, resolveEffectiveBom } from '@pkg/domain';
+import { computeQuoteTotal, formatBytes, resolveEffectiveBom } from '@pkg/domain';
 import {
   type Assembly,
   type QuoteCreateInput,
   type QuoteDetail,
+  type QuoteDocument,
   type QuoteSelectedAssembly,
   QuoteStatus,
   type QuoteUpdateInput,
 } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
-import { Loader2Icon, XIcon } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { DownloadIcon, EyeIcon, FileTextIcon, Loader2Icon, XIcon } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
+import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { getFieldErrors } from '@/components/form/field-errors.js';
 import { useAppForm } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
+import { formatDate } from '@/utils/date.js';
+import { downloadQuoteDocument } from '@/utils/document.js';
 import { formatCurrency, formatPercent } from '@/utils/number.js';
 import { GenerateJobFromQuoteDialog } from './GenerateJobFromQuoteDialog.js';
 import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
@@ -341,6 +345,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               </div>
             </QuoteFormSection>
 
+            {initialQuote ? <QuoteDocumentsSection quoteId={initialQuote.id} /> : null}
+
             <QuoteFormSection
               description="Standard assemblies are included. Optional assemblies add to the quote."
               title="Assemblies"
@@ -483,6 +489,99 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
     </form>
   );
 };
+
+function QuoteDocumentsSection({ quoteId }: { quoteId: QuoteDetail['id'] }) {
+  const trpc = useTRPC();
+  const documentsQuery = useQuery(trpc.documents.listByQuote.queryOptions({ quoteId }));
+  const [previewDocument, setPreviewDocument] = useState<QuoteDocument | null>(null);
+  const documents = documentsQuery.data ?? [];
+
+  return (
+    <QuoteFormSection title="Quote Documents">
+      <div className="overflow-hidden rounded-lg border">
+        {documents.length > 0 ? (
+          <div className="divide-y">
+            {documents.map((document) => (
+              <div
+                className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_5rem] md:items-center"
+                key={document.id}
+              >
+                <div className="flex min-w-0 items-center gap-2 font-medium">
+                  <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{document.filename}</span>
+                </div>
+                <div className="text-muted-foreground">Rev {document.metadata.revision}</div>
+                <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
+                <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>
+                <div className="flex justify-end gap-1">
+                  <PreviewQuoteDocumentButton document={document} onPreviewDocument={setPreviewDocument} />
+                  <DownloadQuoteDocumentButton document={document} quoteId={quoteId} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="bg-muted/30 p-3 text-muted-foreground text-sm">
+            {documentsQuery.isLoading ? 'Loading documents...' : 'No Quote Documents captured.'}
+          </p>
+        )}
+      </div>
+      <DocumentPreviewSheet
+        document={previewDocument}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewDocument(null);
+          }
+        }}
+        open={Boolean(previewDocument)}
+        owner={{ id: quoteId, type: 'quote' }}
+      />
+    </QuoteFormSection>
+  );
+}
+
+function PreviewQuoteDocumentButton({
+  document,
+  onPreviewDocument,
+}: {
+  document: QuoteDocument;
+  onPreviewDocument: (document: QuoteDocument) => void;
+}) {
+  return (
+    <Button
+      aria-label={`Preview ${document.filename}`}
+      size="icon-sm"
+      type="button"
+      variant="ghost"
+      onClick={() => onPreviewDocument(document)}
+    >
+      <EyeIcon />
+    </Button>
+  );
+}
+
+function DownloadQuoteDocumentButton({ document, quoteId }: { document: QuoteDocument; quoteId: QuoteDetail['id'] }) {
+  const showMutationError = useApiMutationErrorToast();
+  const downloadMutation = useMutation({
+    mutationFn: () => downloadQuoteDocument(quoteId, document),
+    onError: (error) => {
+      showMutationError(error, 'Unable to download document.');
+    },
+  });
+
+  return (
+    <Button
+      aria-label={`Download ${document.filename}`}
+      disabled={downloadMutation.isPending}
+      size="icon-sm"
+      type="button"
+      variant="ghost"
+      onClick={() => void downloadMutation.mutateAsync()}
+    >
+      {downloadMutation.isPending ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
+    </Button>
+  );
+}
 
 type QuoteAssembliesSelectorProps = {
   catalogAssemblies: Assembly[];

@@ -47,6 +47,27 @@ describe('validateDocumentPolicy', () => {
     });
   });
 
+  it('allows only PDF content for quote documents', () => {
+    expect(
+      validateDocumentPolicy({
+        byteSize: 100,
+        contentType: DOCUMENT_PDF_CONTENT_TYPE,
+        ownerType: 'quote',
+      }),
+    ).toEqual({ ok: true });
+
+    expect(
+      validateDocumentPolicy({
+        byteSize: 100,
+        contentType: DOCUMENT_PNG_CONTENT_TYPE,
+        ownerType: 'quote',
+      }),
+    ).toMatchObject({
+      ok: false,
+      code: 'document.content_type_not_allowed',
+    });
+  });
+
   it('rejects product documents over the size cap', () => {
     expect(
       validateDocumentPolicy({
@@ -81,6 +102,18 @@ describe('validateDocumentMetadata', () => {
 
   it('rejects product metadata with an unknown type', () => {
     expect(validateDocumentMetadata({ metadata: { type: 'manual' }, ownerType: 'product' })).toMatchObject({
+      ok: false,
+      code: 'document.metadata_invalid',
+    });
+  });
+
+  it('validates quote revision metadata', () => {
+    expect(validateDocumentMetadata({ metadata: { revision: 1 }, ownerType: 'quote' })).toEqual({ ok: true });
+    expect(validateDocumentMetadata({ metadata: { revision: 0 }, ownerType: 'quote' })).toMatchObject({
+      ok: false,
+      code: 'document.metadata_invalid',
+    });
+    expect(validateDocumentMetadata({ metadata: { type: 'part_book' }, ownerType: 'quote' })).toMatchObject({
       ok: false,
       code: 'document.metadata_invalid',
     });

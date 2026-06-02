@@ -51,8 +51,12 @@ export const documentAuditDescriptor: AuditEntityDescriptor = {
     byteSize: 'byte size',
     contentType: 'content type',
     filename: 'filename',
+    jobId: 'job',
     metadata: 'metadata',
+    ownerType: 'owner type',
     productId: 'product',
+    quoteId: 'quote',
+    sourceProductId: 'source product',
     storageKey: 'storage key',
   },
 };

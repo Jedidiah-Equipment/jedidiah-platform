@@ -1,6 +1,6 @@
 export const EDITABLE_LOCKED_QUOTE_FIELDS = new Set([
   'notes',
-  'paymentTerms',
+  'documentNotes',
   'plannedDeliveryDate',
   'preferredDeliveryDate',
   'validUntil',

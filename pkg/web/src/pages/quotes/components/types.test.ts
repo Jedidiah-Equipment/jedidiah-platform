@@ -31,7 +31,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     preferredDeliveryDate: '2026-02-01',
     plannedDeliveryDate: '2026-03-01',
     notes: 'Some notes',
-    paymentTerms: '30 days',
+    documentNotes: '30 days',
     quotedBasePrice: 1000,
     quotedCurrencyCode: 'ZAR',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -69,7 +69,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
     discountAmount: 100,
     inlineCompanyName: '',
     notes: 'Some notes',
-    paymentTerms: '30 days',
+    documentNotes: '30 days',
     plannedDeliveryDate: '2026-03-01',
     preferredDeliveryDate: '2026-02-01',
     productId: PRODUCT_ID,
@@ -92,7 +92,7 @@ describe('toQuoteFormValues', () => {
       discountAmount: 0,
       inlineCompanyName: '',
       notes: '',
-      paymentTerms: '',
+      documentNotes: '',
       plannedDeliveryDate: '',
       preferredDeliveryDate: '',
       productId: '',
@@ -120,7 +120,7 @@ describe('toQuoteFormValues', () => {
     const values = toQuoteFormValues(
       buildQuoteDetail({
         notes: null,
-        paymentTerms: null,
+        documentNotes: null,
         validUntil: null,
         preferredDeliveryDate: null,
         plannedDeliveryDate: null,
@@ -128,7 +128,7 @@ describe('toQuoteFormValues', () => {
     );
 
     expect(values.notes).toBe('');
-    expect(values.paymentTerms).toBe('');
+    expect(values.documentNotes).toBe('');
     expect(values.validUntil).toBe('');
     expect(values.preferredDeliveryDate).toBe('');
     expect(values.plannedDeliveryDate).toBe('');

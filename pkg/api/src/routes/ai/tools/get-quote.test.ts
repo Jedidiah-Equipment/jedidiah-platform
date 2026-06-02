@@ -74,7 +74,7 @@ async function createQuote(caller: AppRouterCaller, productId: string) {
     depositPercent: 30,
     discountAmount: 100,
     notes: null,
-    paymentTerms: '30% deposit, balance on delivery',
+    documentNotes: '30% deposit, balance on delivery',
     plannedDeliveryDate: '2026-07-15',
     preferredDeliveryDate: '2026-07-10',
     productId,

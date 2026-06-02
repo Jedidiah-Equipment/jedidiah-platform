@@ -44,7 +44,7 @@ export const quotes = pgTable(
     preferredDeliveryDate: date('preferred_delivery_date', { mode: 'string' }),
     plannedDeliveryDate: date('planned_delivery_date', { mode: 'string' }),
     notes: text('notes'),
-    paymentTerms: text('payment_terms'),
+    documentNotes: text('document_notes'),
     quotedBasePrice: numeric('quoted_base_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
     quotedCurrencyCode: text('quoted_currency_code').notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),

@@ -121,10 +121,10 @@ describe('createJob', () => {
         db: context.db,
         input: QuoteUpdateInput.parse({
           ...quoteUpdateInput(quote),
-          discount: 25,
+          discountAmount: 25,
         }),
       }),
-    ).rejects.toThrow('Quote is locked because it already has a Job; discount cannot be changed.');
+    ).rejects.toThrow('Quote is locked because it already has a Job; discountAmount cannot be changed.');
   });
 
   test('snapshots product documents onto the job as frozen rows with product provenance', async ({ context }) => {
@@ -573,9 +573,10 @@ async function createQuote(
 
 function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
   return {
+    depositAmount: quote.depositAmount,
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
-    discount: quote.discount,
+    discountAmount: quote.discountAmount,
     id: quote.id,
     notes: quote.notes,
     paymentTerms: quote.paymentTerms,

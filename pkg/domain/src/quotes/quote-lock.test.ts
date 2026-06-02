@@ -11,9 +11,10 @@ const editableLockedQuoteFields = [
 ];
 const frozenLockedQuoteFields = [
   'customerId',
+  'depositAmount',
   'deliveryIncluded',
   'deliveryPrice',
-  'discount',
+  'discountAmount',
   'productId',
   'quotedBasePrice',
   'salesPersonId',

@@ -25,9 +25,10 @@ const auditFieldLabels: Record<string, string> = {
   contentType: 'Content type',
   currencyCode: 'Currency',
   customerId: 'Customer',
+  depositAmount: 'Deposit amount',
   department: 'Department',
   description: 'Description',
-  discount: 'Discount',
+  discountAmount: 'Discount amount',
   email: 'Email',
   filename: 'Filename',
   buildTimeDays: 'Build time (days)',
@@ -54,7 +55,7 @@ const auditFieldLabels: Record<string, string> = {
   validUntil: 'Valid until',
 };
 
-const currencyFields = new Set(['basePrice', 'discount', 'price', 'quotedBasePrice']);
+const currencyFields = new Set(['basePrice', 'depositAmount', 'discountAmount', 'price', 'quotedBasePrice']);
 const dateFields = new Set([
   'actualEnd',
   'actualStart',

@@ -43,6 +43,7 @@ describe('listQuotesTool', () => {
 
     expect(toolResult).toEqual(trpcResult);
     expect(toolResult.items[0]).toMatchObject({
+      depositAmount: 200,
       plannedDeliveryDate: '2026-07-15',
       preferredDeliveryDate: '2026-07-10',
     });
@@ -96,7 +97,8 @@ async function createQuote(caller: AppRouterCaller, productId: string) {
       type: 'inline',
       companyName: 'Ready Customer',
     },
-    discount: 100,
+    depositAmount: 200,
+    discountAmount: 100,
     notes: null,
     paymentTerms: '30% deposit, balance on delivery',
     plannedDeliveryDate: '2026-07-15',

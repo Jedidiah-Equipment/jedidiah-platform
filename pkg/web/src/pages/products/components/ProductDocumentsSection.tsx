@@ -316,6 +316,7 @@ function DocumentUploadForm({
   selectedType,
 }: DocumentUploadFormProps) {
   const canUpload = getReadyProductDocumentUpload({ file: selectedFile, type: selectedType }) !== null;
+  const selectedTypeOption = PRODUCT_DOCUMENT_TYPE_OPTIONS.find((option) => option.value === selectedType);
 
   return (
     <form
@@ -345,7 +346,7 @@ function DocumentUploadForm({
         value={selectedType ?? ''}
       >
         <SelectTrigger aria-label="Document type" className="sm:w-40">
-          <SelectValue placeholder="Select type" />
+          <SelectValue placeholder="Select type">{selectedTypeOption?.label ?? null}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>

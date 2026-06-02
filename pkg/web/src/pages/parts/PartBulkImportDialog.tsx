@@ -190,7 +190,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
             {previewRows.length > 0 && !result ? (
               <div className="space-y-2">
                 <div className="text-sm font-medium">Preview</div>
-                <ScrollArea className="max-h-56 rounded-md border">
+                <ScrollArea className="h-56 rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>

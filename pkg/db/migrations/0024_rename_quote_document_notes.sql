@@ -1,0 +1,1 @@
+ALTER TABLE "quote" RENAME COLUMN "payment_terms" TO "document_notes";

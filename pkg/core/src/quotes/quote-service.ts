@@ -65,7 +65,7 @@ type QuoteAuditRecord = Pick<
   | 'deliveryPrice'
   | 'discountAmount'
   | 'notes'
-  | 'paymentTerms'
+  | 'documentNotes'
   | 'plannedDeliveryDate'
   | 'preferredDeliveryDate'
   | 'productId'
@@ -110,7 +110,7 @@ export function mapQuote(row: QuoteRow): Quote {
     discountAmount: row.discountAmount,
     id: row.id,
     notes: row.notes,
-    paymentTerms: row.paymentTerms,
+    documentNotes: row.documentNotes,
     plannedDeliveryDate: row.plannedDeliveryDate,
     preferredDeliveryDate: row.preferredDeliveryDate,
     productId: row.productId,
@@ -147,7 +147,7 @@ export async function createQuote({
         deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
         discountAmount: input.discountAmount,
         notes: input.notes,
-        paymentTerms: input.paymentTerms,
+        documentNotes: input.documentNotes,
         plannedDeliveryDate: input.plannedDeliveryDate,
         preferredDeliveryDate: input.preferredDeliveryDate,
         productId: input.productId,
@@ -342,7 +342,7 @@ export async function updateQuote({
       deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
       discountAmount: input.discountAmount,
       notes: input.notes,
-      paymentTerms: input.paymentTerms,
+      documentNotes: input.documentNotes,
       plannedDeliveryDate: input.plannedDeliveryDate,
       preferredDeliveryDate: input.preferredDeliveryDate,
       productId: before.productId,
@@ -590,7 +590,7 @@ function mapQuoteAuditRecord(
     deliveryPrice: quote.deliveryPrice,
     discountAmount: quote.discountAmount,
     notes: quote.notes,
-    paymentTerms: quote.paymentTerms,
+    documentNotes: quote.documentNotes,
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
     productId: quote.productId,

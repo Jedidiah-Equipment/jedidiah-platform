@@ -20,11 +20,11 @@ export const QuoteNotes = nullableTrimmedText();
 export type QuoteNotesInput = z.infer<typeof QuoteNotesInput>;
 export const QuoteNotesInput = nullableTrimmedTextInput();
 
-export type QuotePaymentTerms = z.infer<typeof QuotePaymentTerms>;
-export const QuotePaymentTerms = nullableTrimmedText();
+export type QuoteDocumentNotes = z.infer<typeof QuoteDocumentNotes>;
+export const QuoteDocumentNotes = nullableTrimmedText();
 
-export type QuotePaymentTermsInput = z.infer<typeof QuotePaymentTermsInput>;
-export const QuotePaymentTermsInput = nullableTrimmedTextInput();
+export type QuoteDocumentNotesInput = z.infer<typeof QuoteDocumentNotesInput>;
+export const QuoteDocumentNotesInput = nullableTrimmedTextInput();
 
 export type QuoteDepositPercent = z.infer<typeof QuoteDepositPercent>;
 export const QuoteDepositPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');
@@ -45,7 +45,7 @@ export const Quote = z.object({
   preferredDeliveryDate: DateOnlyIso.nullable(),
   plannedDeliveryDate: DateOnlyIso.nullable(),
   notes: QuoteNotes,
-  paymentTerms: QuotePaymentTerms,
+  documentNotes: QuoteDocumentNotes,
   quotedBasePrice: Price,
   quotedCurrencyCode: ProductCurrencyCode,
   createdAt: DateIso,
@@ -124,7 +124,7 @@ export const QuoteCreateInput = z.object({
   preferredDeliveryDate: DateOnlyIso.nullable().default(null),
   plannedDeliveryDate: DateOnlyIso.nullable().default(null),
   notes: QuoteNotesInput,
-  paymentTerms: QuotePaymentTermsInput,
+  documentNotes: QuoteDocumentNotesInput,
   selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
 });
 
@@ -142,7 +142,7 @@ export const QuoteUpdateInput = z
     preferredDeliveryDate: DateOnlyIso.nullable().default(null),
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
-    paymentTerms: QuotePaymentTermsInput,
+    documentNotes: QuoteDocumentNotesInput,
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
   .strict();

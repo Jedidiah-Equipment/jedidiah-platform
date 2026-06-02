@@ -38,7 +38,7 @@ export const aiLinkMetadata = {
       'Quote Product is required at creation and immutable post-creation; productId is non-nullable.',
       'Quote Salesperson is required at creation; salesPersonId is non-nullable.',
       'Quote price snapshot fields quotedBasePrice and quotedCurrencyCode are latched from Product at creation.',
-      'Quote commercial fields include Payment Terms, Preferred Delivery Date, and Planned Delivery Date.',
+      'Quote commercial fields include Document Notes, Preferred Delivery Date, and Planned Delivery Date.',
     ],
     label: 'code',
   },

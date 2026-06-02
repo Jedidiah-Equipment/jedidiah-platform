@@ -9,7 +9,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { DownloadIcon, FileTextIcon, Loader2Icon, Trash2Icon, UploadIcon } from 'lucide-react';
+import { DownloadIcon, EyeIcon, FileTextIcon, Loader2Icon, Trash2Icon, UploadIcon } from 'lucide-react';
 import { type RefObject, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
@@ -21,6 +21,7 @@ import {
 } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import { getPageCount, type SortOptions } from '@/components/data-table/table-state.js';
+import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -78,6 +79,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewDocument, setPreviewDocument] = useState<DocumentMetadata | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const canDeleteDocuments = hasPermission(accessQuery.data, 'product:update');
   const {
@@ -171,6 +173,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         id: 'actions',
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
+            <PreviewButton document={row.original} onPreviewDocument={setPreviewDocument} />
             <DownloadButton document={row.original} productId={productId} />
             {canDeleteDocuments ? <DeleteDocumentButton document={row.original} productId={productId} /> : null}
           </div>
@@ -180,7 +183,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         header: () => <span className="sr-only">Actions</span>,
         meta: {
           cellClassName: 'text-right',
-          headerClassName: 'w-20 text-right',
+          headerClassName: 'w-28 text-right',
         },
       },
     ],
@@ -244,6 +247,16 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         table={table}
         total={total}
         totalLabel={(value) => `${value} ${value === 1 ? 'document' : 'documents'}`}
+      />
+      <DocumentPreviewSheet
+        document={previewDocument}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewDocument(null);
+          }
+        }}
+        open={Boolean(previewDocument)}
+        owner={{ id: productId, type: 'product' }}
       />
     </section>
   );
@@ -344,6 +357,26 @@ function DeleteDocumentButton({ document, productId }: { document: DocumentMetad
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PreviewButton({
+  document,
+  onPreviewDocument,
+}: {
+  document: DocumentMetadata;
+  onPreviewDocument: (document: DocumentMetadata) => void;
+}) {
+  return (
+    <Button
+      aria-label={`Preview ${document.filename}`}
+      size="icon-sm"
+      type="button"
+      variant="ghost"
+      onClick={() => onPreviewDocument(document)}
+    >
+      <EyeIcon />
+    </Button>
   );
 }
 

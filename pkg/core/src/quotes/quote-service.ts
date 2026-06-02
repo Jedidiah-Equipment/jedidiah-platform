@@ -19,6 +19,7 @@ import { assertQuoteEditable, parseJobCodeSearch, validateDiscount, validateDocu
 import {
   type Assembly,
   type AuthId,
+  formatQuoteCode,
   JobCode,
   ProductCurrencyCode,
   Quote,
@@ -417,7 +418,7 @@ export async function generateQuoteDocument({
   const existingDocuments = await getQuoteDocuments({ db, quoteId: input.quoteId });
   const revision =
     existingDocuments.reduce((highest, document) => Math.max(highest, document.metadata.revision), 0) + 1;
-  const filename = `Q-${quote.code}-rev-${revision}.pdf`;
+  const filename = `${formatQuoteCode(quote.code)}-rev-${revision}.pdf`;
   const html = await renderQuoteDocumentHtml({ db, input, quote });
   const bytes = await pdfRenderer({ filename, html });
 
@@ -661,12 +662,6 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
           phone: true,
           vatNumber: true,
         },
-      },
-      jobs: {
-        columns: {
-          code: true,
-        },
-        orderBy: [asc(jobs.code), asc(jobs.id)],
       },
       product: {
         columns: {

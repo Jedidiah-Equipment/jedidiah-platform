@@ -1,6 +1,12 @@
-import type { customers, Db, jobs, products, quotes, user } from '@pkg/db';
-import { computeQuoteTotal, QUOTE_DOCUMENT_VAT_PERCENT, resolveEffectiveBom } from '@pkg/domain';
-import { formatJobCode, type QuoteDocumentGenerationInput } from '@pkg/schema';
+import type { customers, Db, products, quotes, user } from '@pkg/db';
+import {
+  computeQuoteTotal,
+  JEDIDIAH_BRAND_YELLOW,
+  JEDIDIAH_BRAND_YELLOW_ON_LIGHT,
+  QUOTE_DOCUMENT_VAT_PERCENT,
+  resolveEffectiveBom,
+} from '@pkg/domain';
+import { formatQuoteCode, type QuoteDocumentGenerationInput } from '@pkg/schema';
 
 import { listAssemblies } from '../products/product-assembly-service.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
@@ -10,7 +16,6 @@ export type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
     typeof customers.$inferSelect,
     'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'vatNumber'
   >;
-  jobs: Pick<typeof jobs.$inferSelect, 'code'>[];
   product: Pick<typeof products.$inferSelect, 'buildTimeDays' | 'currencyCode' | 'modelCode' | 'name'>;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
   selectedAssemblies: QuoteSelectedAssemblyRow[];
@@ -84,12 +89,11 @@ export async function renderQuoteDocumentHtml({
 
   return renderQuoteDocumentTemplate({
     customer: quote.customer,
-    issueDate: quote.updatedAt,
-    jobCode: quote.jobs[0] ? formatJobCode(quote.jobs[0].code) : '',
+    issueDate: quote.createdAt,
     leadTime: input.leadTime,
     lineItems,
     paymentTerms: `${formatPercentValue(quote.depositPercent)} deposit`,
-    quoteCode: `Q-${quote.code}`,
+    quoteCode: formatQuoteCode(quote.code),
     salesPerson: quote.salesPerson,
     staleSelectionNotes,
     subtotal,
@@ -111,7 +115,6 @@ type QuoteDocumentLineItem = {
 function renderQuoteDocumentTemplate({
   customer,
   issueDate,
-  jobCode,
   leadTime,
   lineItems,
   paymentTerms,
@@ -125,7 +128,6 @@ function renderQuoteDocumentTemplate({
 }: {
   customer: QuoteDocumentGenerationRow['customer'];
   issueDate: Date;
-  jobCode: string;
   leadTime: string;
   lineItems: QuoteDocumentLineItem[];
   paymentTerms: string;
@@ -142,22 +144,30 @@ function renderQuoteDocumentTemplate({
   const adjustmentItems = lineItems.filter((item) => item.kind === 'charge' || item.kind === 'discount');
   const customerLine =
     [customer.companyName, customer.contactPerson].flatMap((value) => toDisplayLines(value))[0] ?? '';
+  const customerDetailRows = renderDetailRows([
+    { label: 'Company', value: customer.companyName },
+    { label: 'Contact', value: customer.contactPerson },
+    { label: 'Email', value: customer.email },
+    { label: 'Phone', value: customer.phone },
+    { label: 'VAT No.', value: customer.vatNumber },
+    { label: 'Address', value: toDisplayLines(customer.address).join(', '), wide: true },
+  ]);
   const salespersonLine = [salesPerson?.name, salesPerson?.email].flatMap((value) => toDisplayLines(value)).join(' / ');
   const staleSelectionHtml = staleSelectionNotes
-    .map((note) => `<div class="stale-note">${escapeHtml(note)}</div>`)
+    .map((note) => `<div class="notice-line">${escapeHtml(note)}</div>`)
     .join('');
+  const itemCount = lineItems.length;
   const optionalRowsHtml =
     optionalItems.length > 0
       ? `<tr class="section-row">
-              <td></td>
-              <td><strong>OPTIONAL EXTRAS</strong></td>
-              <td class="price-cell"></td>
-              <td class="price-cell"></td>
+              <td class="qty-col"></td>
+              <td>OPTIONAL EXTRAS</td>
+              <td class="price-col"></td>
+              <td class="subtotal-col"></td>
             </tr>
             ${optionalItems.map((item) => renderQuoteDocumentLineItemRow(item)).join('')}`
       : '';
   const adjustmentRowsHtml = adjustmentItems.map((item) => renderQuoteDocumentLineItemRow(item)).join('');
-
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -165,7 +175,7 @@ function renderQuoteDocumentTemplate({
     <title>${escapeHtml(quoteCode)}</title>
     <style>
       @page {
-        margin: 8mm;
+        margin: 10mm;
         size: A4;
       }
 
@@ -174,149 +184,271 @@ function renderQuoteDocumentTemplate({
       }
 
       body {
-        color: #111;
+        background: #fff;
+        color: #171717;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 11.5px;
-        font-weight: 500;
-        line-height: 1.25;
+        font-size: 10.5px;
+        line-height: 1.35;
         margin: 0;
       }
 
       .sheet {
-        min-height: 281mm;
+        display: flex;
+        flex-direction: column;
+        min-height: 277mm;
         position: relative;
       }
 
-      .top {
-        height: 82mm;
+      .top-bar {
+        align-items: stretch;
+        display: grid;
+        grid-template-columns: 1fr 63mm;
+        min-height: 41mm;
+      }
+
+      .brand-panel {
+        background: #151515;
+        border-radius: 3mm 0 0 3mm;
+        color: #fff;
+        padding: 5mm 6mm;
         position: relative;
+      }
+
+      .brand-panel:after {
+        background: ${JEDIDIAH_BRAND_YELLOW};
+        bottom: 0;
+        content: '';
+        height: 1.4mm;
+        left: 0;
+        position: absolute;
+        right: 0;
+      }
+
+      .logo-frame {
+        height: 15.6mm;
+        margin: 0 0 3mm 0;
+        overflow: hidden;
+        width: 56mm;
       }
 
       .logo {
         display: block;
         height: auto;
-        margin: 6mm 0 2mm 2mm;
-        width: 58mm;
+        margin: -0.35mm 0 0 -0.35mm;
+        width: 57mm;
       }
 
       .tagline {
-        font-size: 11px;
+        color: ${JEDIDIAH_BRAND_YELLOW};
+        font-size: 10px;
         font-style: italic;
         font-weight: 800;
-        margin: 0 0 2mm 0;
         text-transform: uppercase;
       }
 
-      .business-lines {
-        color: #3b3b3b;
-        font-size: 12.5px;
-        line-height: 1.35;
+      .brand-contact {
+        color: #d7d7d7;
+        display: grid;
+        font-size: 9.3px;
+        gap: 0.8mm;
+        margin-top: 3mm;
       }
 
-      .business-address {
-        color: #111;
-        margin-top: 7mm;
+      .document-panel {
+        background: ${JEDIDIAH_BRAND_YELLOW};
+        border-radius: 0 3mm 3mm 0;
+        color: #141414;
+        padding: 5mm;
+        text-align: right;
       }
 
-      .banking {
-        background: #fff;
-        border: 1.5px solid #000;
-        font-size: 10.5px;
+      .document-panel h1 {
+        font-size: 24px;
         font-weight: 800;
-        left: 56mm;
-        line-height: 1.35;
-        padding: 1.5mm;
-        position: absolute;
-        top: 42mm;
-        width: 36mm;
-      }
-
-      .title {
-        font-family: Georgia, 'Times New Roman', serif;
-        font-size: 18px;
-        font-weight: 800;
-        left: 92mm;
         line-height: 1;
-        position: absolute;
-        right: 0;
-        text-align: center;
-        top: 5mm;
+        margin: 0 0 3mm;
         text-transform: uppercase;
       }
 
-      .invoice-box {
-        border: 1.5px solid #000;
+      .document-panel .doc-code {
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .document-panel .meta {
+        display: grid;
+        font-size: 9.4px;
+        gap: 0.8mm;
+        margin-top: 4mm;
+      }
+
+      .document-panel .label {
+        display: block;
+        font-size: 7.5px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .info-grid {
+        display: grid;
+        gap: 3.5mm;
+        grid-template-columns: 1fr 58mm;
+        margin-top: 5mm;
+      }
+
+      .info-panel {
+        border-radius: 2.5mm;
+        box-shadow: inset 0 0 0 0.35mm #171717;
+        min-height: 39mm;
+        padding: 3.5mm;
+      }
+
+      .info-panel.dark {
+        background: #171717;
+        color: #fff;
+      }
+
+      .eyebrow {
+        color: #696969;
+        font-size: 7.8px;
+        font-weight: 800;
+        margin-bottom: 2.3mm;
+        text-transform: uppercase;
+      }
+
+      .dark .eyebrow {
+        color: ${JEDIDIAH_BRAND_YELLOW};
+      }
+
+      .panel-title {
+        font-size: 13px;
+        font-weight: 800;
+        margin-bottom: 1.8mm;
+      }
+
+      .muted-line {
+        color: #555;
+        margin-top: 0.8mm;
+      }
+
+      .dark .muted-line {
+        color: #d9d9d9;
+      }
+
+      .detail-row {
+        border-bottom: 0.25mm solid #e4e4e4;
+        display: grid;
+        gap: 1mm;
+        grid-template-columns: 25mm 1fr;
+        min-height: 5.3mm;
+        padding: 1.1mm 0;
+      }
+
+      .detail-row span {
+        color: #333;
+        font-size: 8px;
+        font-weight: 800;
+      }
+
+      .detail-row strong {
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
+      .detail-row:last-child {
+        border-bottom: 0;
+      }
+
+      .detail-row.wide {
+        gap: 0.8mm;
+        grid-template-columns: 1fr;
+      }
+
+      .quote-strip {
+        align-items: center;
+        background: #f7f7f7;
+        border-left: 1.6mm solid ${JEDIDIAH_BRAND_YELLOW};
+        border-radius: 2mm;
+        display: grid;
+        gap: 4mm;
+        grid-template-columns: 1fr 25mm 35mm;
+        margin-top: 4mm;
+        padding: 3.4mm 4mm;
+      }
+
+      .quote-strip .primary {
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.15;
+        text-transform: uppercase;
+      }
+
+      .quote-strip .caption {
+        color: #6a6a6a;
+        display: block;
+        font-size: 7.5px;
+        font-weight: 800;
+        margin-bottom: 0.7mm;
+        text-transform: uppercase;
+      }
+
+      .quote-strip .value {
         font-size: 10.5px;
         font-weight: 800;
-        height: 57mm;
-        left: 92mm;
-        padding: 1mm;
-        position: absolute;
-        right: 0;
-        top: 13mm;
       }
 
-      .invoice-box div {
-        margin-bottom: 4.4mm;
-      }
-
-      .invoice-box .intro {
-        margin-bottom: 2.4mm;
-      }
-
-      .customer-strip {
-        border-collapse: collapse;
-        bottom: 0;
-        left: 56mm;
-        position: absolute;
-        right: 0;
-        width: calc(100% - 56mm);
-      }
-
-      .customer-strip td {
-        border: 1.5px solid #000;
-        font-size: 11px;
-        height: 5.6mm;
-        padding: 0.7mm 1mm;
-        vertical-align: middle;
-      }
-
-      .customer-strip .label {
-        color: #3b3b3b;
-        font-weight: 800;
-        text-transform: uppercase;
-        width: 50mm;
-      }
-
-      .customer-strip .number-cell {
-        font-size: 12px;
-        font-weight: 800;
-        width: 31mm;
+      .document-table-frame {
+        border: 0.35mm solid #171717;
+        margin-top: 4.5mm;
+        position: relative;
       }
 
       .document-table {
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
+        position: relative;
         table-layout: fixed;
         width: 100%;
+        z-index: 1;
+      }
+
+      .document-table-right-stroke {
+        background: #171717;
+        bottom: 0;
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 0.35mm;
+        z-index: 3;
       }
 
       .document-table th,
       .document-table td {
-        border: 1.5px solid #000;
-        padding: 0.8mm 1mm;
+        border-bottom: 0.25mm solid #dedede;
+        border-right: 0.25mm solid #dedede;
+        padding: 2.2mm 2.6mm;
         vertical-align: top;
       }
 
       .document-table th {
-        font-size: 11px;
-        font-weight: 700;
+        background: #171717;
+        border-bottom: 0.35mm solid #171717;
+        border-right-color: #4a4a4a;
+        color: #fff;
+        font-size: 8.5px;
+        font-weight: 800;
         line-height: 1;
-        text-align: left;
+        text-transform: uppercase;
+      }
+
+      .document-table th:last-child,
+      .document-table td:last-child {
+        border-right: 0;
       }
 
       .qty-col {
         text-align: center;
-        width: 12mm;
+        width: 12.5mm;
       }
 
       .description-col {
@@ -325,182 +457,258 @@ function renderQuoteDocumentTemplate({
 
       .price-col {
         text-align: right;
-        width: 27mm;
+        width: 29mm;
       }
 
       .subtotal-col {
         text-align: right;
-        width: 30mm;
+        width: 32mm;
+      }
+
+      .document-table tbody tr:last-child td {
+        border-bottom: 0;
       }
 
       .price-cell {
-        background: #ffff55;
+        background: ${JEDIDIAH_BRAND_YELLOW_ON_LIGHT};
         font-weight: 800;
         text-align: right;
         white-space: nowrap;
       }
 
       .description {
-        font-size: 11.5px;
-        line-height: 1.45;
+        font-size: 10.8px;
+        line-height: 1.42;
         white-space: pre-line;
       }
 
       .section-row td {
-        border-bottom: 0;
-        border-top: 0;
-        padding-top: 8mm;
+        background: #f7f7f7;
+        color: #333;
+        font-size: 8.5px;
+        font-weight: 800;
+        letter-spacing: 0;
+        padding: 2mm 2.6mm;
+        text-transform: uppercase;
       }
 
-      .section-row strong {
-        color: #3a3a3a;
-        display: block;
-        font-size: 11px;
-        margin-left: 8mm;
+      .item-row:nth-child(even) td:not(.price-cell) {
+        background: #fcfcfc;
       }
 
       .item-row td {
-        border-bottom: 0;
-        border-top: 0;
+        font-size: 10.5px;
+      }
+
+      .product-row .description {
         font-size: 11.5px;
-        height: 5mm;
+        font-weight: 800;
       }
 
-      .product-row td {
-        border-bottom: 0;
-        height: 22mm;
+      .notice-row td {
+        background: #fff8e5;
+        color: #5f4300;
+        font-size: 8.8px;
       }
 
-      .fill-row td {
-        border-top: 0;
-        height: 132mm;
+      .notice-line + .notice-line {
+        margin-top: 1mm;
       }
 
-      .dash-stack {
-        align-items: end;
+      .bottom-grid {
+        align-items: start;
         display: grid;
+        gap: 4mm;
+        grid-template-columns: 1fr 60mm;
+        margin-top: auto;
+        padding-top: 5mm;
+      }
+
+      .terms {
+        border-top: 0.5mm solid #171717;
+        display: grid;
+        gap: 1.7mm;
+        padding-top: 3mm;
+      }
+
+      .terms-row {
+        display: grid;
+        grid-template-columns: 28mm 1fr;
+      }
+
+      .terms-row span {
         font-weight: 800;
-        gap: 5.1mm;
-        justify-items: end;
-        line-height: 1;
+        text-transform: uppercase;
       }
 
-      .summary-row td {
-        font-size: 11.5px;
-        height: 5.5mm;
-        padding: 0.6mm 1mm;
-        vertical-align: middle;
+      .summary-box {
+        border-radius: 2mm;
+        overflow: hidden;
+        position: relative;
       }
 
-      .summary-row .label-cell {
+      .summary-box:after {
+        border: 0.35mm solid #171717;
+        border-radius: 2mm;
+        content: '';
+        inset: 0;
+        pointer-events: none;
+        position: absolute;
+        z-index: 2;
+      }
+
+      .summary-right-stroke {
+        background: #171717;
+        border-radius: 0 2mm 2mm 0;
+        bottom: 0;
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 0.35mm;
+        z-index: 3;
+      }
+
+      .summary-row {
+        display: grid;
+        grid-template-columns: 1fr 30mm;
+        position: relative;
+        z-index: 1;
+      }
+
+      .summary-row div {
+        border-bottom: 0.25mm solid #dedede;
+        padding: 2.4mm 3mm;
+      }
+
+      .summary-row .amount {
+        background: ${JEDIDIAH_BRAND_YELLOW_ON_LIGHT};
         font-weight: 800;
+        text-align: right;
       }
 
-      .summary-row .summary-label {
+      .summary-row.total div {
+        background: #171717;
+        border-bottom: 0;
+        color: #fff;
         font-size: 12px;
-      }
-
-      .summary-row.total-row .summary-label,
-      .summary-row.total-row .price-cell {
         font-weight: 800;
       }
 
-      .stale-note {
-        color: #555;
-        font-size: 9.5px;
+      .summary-row.total .amount {
+        color: ${JEDIDIAH_BRAND_YELLOW};
+        font-size: 14px;
+      }
+
+      .footer-note {
+        border-top: 0.25mm solid #e2e2e2;
+        color: #777;
+        font-size: 8px;
+        margin-top: 4mm;
+        padding-top: 2mm;
       }
     </style>
   </head>
   <body>
     <main class="sheet">
-      <section class="top">
-        <img alt="Jedidiah Equipment" class="logo" src="${JEDIDIAH_LOGO_DATA_URI}">
-        <div class="tagline">Built for high productivity &amp; reliability</div>
-        <div class="business-lines">
-          <div>Jedidiah Equipment</div>
-          <div>Email: jed@jedidiahequipment.co.za</div>
-          <div>Cell: +27 (0) 082 419 4464</div>
-          <div class="business-address">
-            <div>STONEYBROOK FARM</div>
-            <div>KOKSTAD</div>
-            <div>4700</div>
-            <div>C/K 2019/513612/07</div>
-            <div>Vat No. 4420294821</div>
+      <section class="top-bar">
+        <div class="brand-panel">
+          <div class="logo-frame">
+            <img alt="Jedidiah Equipment" class="logo" src="${JEDIDIAH_LOGO_DATA_URI}">
+          </div>
+          <div class="tagline">Built for high productivity &amp; reliability</div>
+          <div class="brand-contact">
+            <div>Jedidiah Equipment</div>
+            <div>Stoneybrook Farm, Kokstad, 4700</div>
+            <div>Email: jed@jedidiahequipment.co.za | Cell: +27 (0) 082 419 4464</div>
+            <div>C/K 2019/513612/07 | VAT No. 4420294821</div>
           </div>
         </div>
-        <div class="banking">
-          <div>BANKING DETAILS:</div>
-          <div>FNB</div>
-          <div>Acc no: 62835496599</div>
-          <div>Branch: 220-122</div>
+        <div class="document-panel">
+          <h1>Quotation</h1>
+          <div class="doc-code">${escapeHtml(quoteCode)}</div>
+          <div class="meta">
+            <div><span class="label">Quote date</span>${formatDateOnly(issueDate)}</div>
+            <div><span class="label">Prepared by</span>${escapeHtml(salesPerson?.name ?? 'Jedidiah Equipment')}</div>
+          </div>
         </div>
-        <div class="title">QUOTATION / PROFORMA</div>
-        <div class="invoice-box">
-          <div class="intro">Please fill in the below details for invoice purposes:</div>
-          <div>Company Name:</div>
-          <div>Vat No:</div>
-          <div>Postal Address:</div>
-          <div>Contact Number:</div>
-          <div>Email Address:</div>
-        </div>
-        <table class="customer-strip">
-          <tbody>
-            <tr>
-              <td class="label">CUSTOMER:</td>
-              <td>${escapeHtml(customerLine)}</td>
-              <td class="number-cell">${escapeHtml(jobCode)}</td>
-            </tr>
-            <tr>
-              <td class="label">DATE:</td>
-              <td>${formatDateOnly(issueDate)}</td>
-              <td class="number-cell">${escapeHtml(quoteCode)}</td>
-            </tr>
-          </tbody>
-        </table>
       </section>
 
-      <table class="document-table">
-        <thead>
-          <tr>
-            <th class="qty-col">Qty</th>
-            <th class="description-col">Description</th>
-            <th class="price-col">Unit price</th>
-            <th class="subtotal-col">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${baseItem ? renderQuoteDocumentLineItemRow(baseItem, 'product-row') : ''}
-          ${optionalRowsHtml}
-          ${adjustmentRowsHtml}
-          ${staleSelectionHtml ? `<tr class="item-row"><td></td><td>${staleSelectionHtml}</td><td class="price-cell"></td><td class="price-cell"></td></tr>` : ''}
-          <tr class="fill-row">
-            <td></td>
-            <td></td>
-            <td class="price-cell"></td>
-            <td class="price-cell"><div class="dash-stack">${Array.from({ length: 18 }, () => '<div>-</div>').join('')}</div></td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr class="summary-row">
-            <td></td>
-            <td class="label-cell">Payment Terms: ${escapeHtml(paymentTerms)}</td>
-            <td class="summary-label">Subtotal</td>
-            <td class="price-cell">${formatPlainMoney(subtotal)}</td>
-          </tr>
-          <tr class="summary-row">
-            <td></td>
-            <td class="label-cell">Transport: ${escapeHtml(transport)}</td>
-            <td class="summary-label">VAT</td>
-            <td class="price-cell">${formatPlainMoney(vatAmount)}</td>
-          </tr>
-          <tr class="summary-row total-row">
-            <td></td>
-            <td class="label-cell">Lead Time: ${escapeHtml(leadTime)}</td>
-            <td class="summary-label">Total</td>
-            <td class="price-cell">${formatPlainMoney(total)}</td>
-          </tr>
-        </tfoot>
-      </table>
+      <section class="info-grid">
+        <div class="info-panel">
+          <div class="eyebrow">Customer details</div>
+          <div class="panel-title">${escapeHtml(customerLine)}</div>
+          ${customerDetailRows}
+        </div>
+        <div class="info-panel dark">
+          <div class="eyebrow">Banking details</div>
+          <div class="panel-title">FNB</div>
+          <div class="muted-line">Acc no: 62835496599</div>
+          <div class="muted-line">Branch: 220-122</div>
+          <div class="muted-line">Reference: ${escapeHtml(quoteCode)}</div>
+        </div>
+      </section>
+
+      <section class="quote-strip">
+        <div>
+          <span class="caption">Primary equipment</span>
+          <div class="primary">${baseItem ? escapeHtml(baseItem.descriptionLines[0]?.toUpperCase() ?? '') : ''}</div>
+        </div>
+        <div>
+          <span class="caption">Items</span>
+          <div class="value">${itemCount}</div>
+        </div>
+        <div>
+          <span class="caption">Lead time</span>
+          <div class="value">${escapeHtml(leadTime)}</div>
+        </div>
+      </section>
+
+      <div class="document-table-frame">
+        <table class="document-table">
+          <thead>
+            <tr>
+              <th class="qty-col">Qty</th>
+              <th class="description-col">Description</th>
+              <th class="price-col">Unit price</th>
+              <th class="subtotal-col">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${baseItem ? renderQuoteDocumentLineItemRow(baseItem, 'product-row') : ''}
+            ${optionalRowsHtml}
+            ${adjustmentRowsHtml}
+            ${
+              staleSelectionHtml
+                ? `<tr class="notice-row">
+                    <td class="qty-col"></td>
+                    <td>${staleSelectionHtml}</td>
+                    <td class="price-col"></td>
+                    <td class="subtotal-col"></td>
+                  </tr>`
+                : ''
+            }
+          </tbody>
+        </table>
+        <div class="document-table-right-stroke"></div>
+      </div>
+
+      <section class="bottom-grid">
+        <div class="terms">
+          <div class="terms-row"><span>Payment Terms:</span><strong>${escapeHtml(paymentTerms)}</strong></div>
+          <div class="terms-row"><span>Transport:</span><strong>${escapeHtml(transport)}</strong></div>
+          <div class="terms-row"><span>Lead Time:</span><strong>${escapeHtml(leadTime)}</strong></div>
+        </div>
+        <div class="summary-box">
+          <div class="summary-row"><div>Subtotal</div><div class="amount">${formatPlainMoney(subtotal)}</div></div>
+          <div class="summary-row"><div>VAT</div><div class="amount">${formatPlainMoney(vatAmount)}</div></div>
+          <div class="summary-row total"><div>Total</div><div class="amount">${formatPlainMoney(total)}</div></div>
+          <div class="summary-right-stroke"></div>
+        </div>
+      </section>
+
+      <div class="footer-note">
+        Please confirm customer details before order processing. This quotation remains subject to final written acceptance.
+      </div>
       ${salespersonLine ? `<!-- Salesperson: ${escapeHtml(salespersonLine)} -->` : ''}
     </main>
   </body>
@@ -517,6 +725,18 @@ function renderQuoteDocumentLineItemRow(item: QuoteDocumentLineItem, className =
             <td class="price-cell">${amount}</td>
             <td class="price-cell">${amount}</td>
           </tr>`;
+}
+
+function renderDetailRows(rows: Array<{ label: string; value: string | null | undefined; wide?: boolean }>): string {
+  return rows
+    .filter(({ value }) => Boolean(value?.trim()))
+    .map(({ label, value, wide }) => {
+      return `<div class="detail-row${wide ? ' wide' : ''}">
+              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(value?.trim() ?? '')}</strong>
+            </div>`;
+    })
+    .join('');
 }
 
 const JEDIDIAH_LOGO_DATA_URI =

@@ -10,7 +10,7 @@ import {
   user,
 } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
-import type { UUID } from '@pkg/schema';
+import { formatQuoteCode, type UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -456,24 +456,33 @@ describe('generateQuoteDocument', () => {
     });
     const rendered = renderedInputs[0];
     if (!rendered) throw new Error('Expected PDF renderer to receive HTML');
+    const quoteCode = formatQuoteCode(context.quoteCode);
 
     expect(document).toMatchObject({
       contentType: 'application/pdf',
-      filename: `Q-${context.quoteCode}-rev-2.pdf`,
+      filename: `${quoteCode}-rev-2.pdf`,
       metadata: { revision: 2 },
       ownerType: 'quote',
       quoteId: context.quoteId,
     });
-    expect(rendered.filename).toBe(`Q-${context.quoteCode}-rev-2.pdf`);
-    expect(rendered.html).toContain('QUOTATION / PROFORMA');
+    expect(rendered.filename).toBe(`${quoteCode}-rev-2.pdf`);
+    expect(rendered.html).toContain('<h1>Quotation</h1>');
+    expect(rendered.html).toContain('Customer details');
+    expect(rendered.html).not.toContain('Quote details');
+    expect(rendered.html).toContain('summary-box');
+    expect(rendered.html).not.toContain('Total incl. VAT');
     expect(rendered.html).toContain('data:image/jpeg;base64,');
     expect(rendered.html).toContain('Document Quote Customer');
-    expect(rendered.html).toContain('Q-1');
+    expect(rendered.html).toContain(quoteCode);
+    expect(rendered.html).not.toContain('Status');
+    expect(rendered.html).toContain('Prepared by');
     expect(rendered.html).toContain('OPTIONAL EXTRAS');
     expect(rendered.html).toContain('CANVAS CANOPY');
     expect(rendered.html).toContain('Deleted Light Bar unavailable');
-    expect(rendered.html).toContain('Payment Terms: 0% deposit');
-    expect(rendered.html).toContain('Lead Time: 14 working days');
+    expect(rendered.html).toContain('Payment Terms:');
+    expect(rendered.html).toContain('0% deposit');
+    expect(rendered.html).toContain('Lead Time:');
+    expect(rendered.html).toContain('14 working days');
     expect(rendered.html).toContain('VAT');
     expect(rendered.html).toContain('1 437.50');
 

@@ -690,7 +690,7 @@ describe('quotes.generateDocument', () => {
       }),
     ).resolves.toMatchObject({
       contentType: 'application/pdf',
-      filename: `Q-${String(created.code).replace(/^QUO-0*/, '')}-rev-1.pdf`,
+      filename: `${created.code}-rev-1.pdf`,
       metadata: { revision: 1 },
       ownerType: 'quote',
       quoteId: created.id,

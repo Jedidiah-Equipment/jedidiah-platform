@@ -19,13 +19,14 @@ import { assertQuoteEditable, parseJobCodeSearch, validateDiscount, validateDocu
 import {
   type Assembly,
   type AuthId,
-  type DocumentSummary,
   JobCode,
   ProductCurrencyCode,
   Quote,
   type QuoteCreateInput,
   type QuoteDetail,
+  type QuoteDocument,
   QuoteDocumentMetadata,
+  QuoteDocument as QuoteDocumentSchema,
   type QuoteListInput,
   type QuoteListResult,
   type QuoteSortBy,
@@ -342,14 +343,14 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
   };
 }
 
-export async function getQuoteDocuments({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<DocumentSummary[]> {
+export async function getQuoteDocuments({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<QuoteDocument[]> {
   await assertQuoteExists({ db, quoteId });
 
   const rows = await selectQuoteDocumentSummary(db)
     .where(eq(documents.quoteId, quoteId))
     .orderBy(sql`${documents.createdAt} desc`, sql`${documents.id} desc`);
 
-  return rows.map(mapDocumentSummary);
+  return rows.map(mapQuoteDocumentSummary);
 }
 
 export async function createQuoteDocument({
@@ -362,7 +363,7 @@ export async function createQuoteDocument({
   db: Db;
   input: QuoteDocumentCreateInput;
   storage: StorageAdapter;
-}): Promise<DocumentSummary> {
+}): Promise<QuoteDocument> {
   await assertQuoteExists({ db, quoteId: input.quoteId });
   const metadata = parseQuoteDocumentMetadata(input.metadata);
   const row = await createDocumentRecord({
@@ -574,8 +575,12 @@ async function getQuoteDocumentSummary({
   db: Db;
   documentId: UUID;
   quoteId: UUID;
-}): Promise<DocumentSummary> {
-  return mapDocumentSummary(await getQuoteDocumentSummaryRow({ db, documentId, quoteId }));
+}): Promise<QuoteDocument> {
+  return mapQuoteDocumentSummary(await getQuoteDocumentSummaryRow({ db, documentId, quoteId }));
+}
+
+function mapQuoteDocumentSummary(row: DocumentSummaryRow): QuoteDocument {
+  return QuoteDocumentSchema.parse(mapDocumentSummary(row));
 }
 
 async function getQuoteDocumentSummaryRow({

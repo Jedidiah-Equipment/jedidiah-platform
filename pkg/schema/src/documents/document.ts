@@ -59,6 +59,7 @@ export const JobDocument = DocumentSummary.extend({
   quoteId: z.null(),
   sourceProductId: UUID,
   sourceProductName: z.string().trim().min(1),
+  metadata: ProductDocumentMetadata,
 });
 
 export type ProductDocument = z.infer<typeof ProductDocument>;

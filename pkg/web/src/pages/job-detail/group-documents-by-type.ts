@@ -1,10 +1,10 @@
 import { PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
-import { type DocumentSummary, ProductDocumentType } from '@pkg/schema';
+import { type JobDocument, ProductDocumentType } from '@pkg/schema';
 
 export type ProductDocumentTypeGroup = {
   type: ProductDocumentType;
   label: string;
-  documents: DocumentSummary[];
+  documents: JobDocument[];
 };
 
 /**
@@ -12,18 +12,12 @@ export type ProductDocumentTypeGroup = {
  * groups. Job-owned documents carry a frozen copy of the source Product's metadata, so grouping a
  * Job's snapshot reads that frozen type — the same presentation the Product surface uses.
  */
-export function groupDocumentsByType(documents: DocumentSummary[]): ProductDocumentTypeGroup[] {
+export function groupDocumentsByType(documents: JobDocument[]): ProductDocumentTypeGroup[] {
   return ProductDocumentType.options
     .map((type) => ({
       type,
       label: PRODUCT_DOCUMENT_TYPE_LABELS[type],
-      documents: documents.filter((document) => getProductDocumentType(document) === type),
+      documents: documents.filter((document) => document.metadata.type === type),
     }))
     .filter((group) => group.documents.length > 0);
-}
-
-function getProductDocumentType(document: DocumentSummary): ProductDocumentType | null {
-  const result = ProductDocumentType.safeParse('type' in document.metadata ? document.metadata.type : undefined);
-
-  return result.success ? result.data : null;
 }

@@ -1,9 +1,9 @@
 import { computeQuoteTotal, formatBytes, resolveEffectiveBom } from '@pkg/domain';
 import {
   type Assembly,
-  type DocumentSummary,
   type QuoteCreateInput,
   type QuoteDetail,
+  type QuoteDocument,
   type QuoteSelectedAssembly,
   QuoteStatus,
   type QuoteUpdateInput,
@@ -493,7 +493,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
 function QuoteDocumentsSection({ quoteId }: { quoteId: QuoteDetail['id'] }) {
   const trpc = useTRPC();
   const documentsQuery = useQuery(trpc.documents.listByQuote.queryOptions({ quoteId }));
-  const [previewDocument, setPreviewDocument] = useState<DocumentSummary | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<QuoteDocument | null>(null);
   const documents = documentsQuery.data ?? [];
 
   return (
@@ -510,7 +510,7 @@ function QuoteDocumentsSection({ quoteId }: { quoteId: QuoteDetail['id'] }) {
                   <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{document.filename}</span>
                 </div>
-                <div className="text-muted-foreground">Rev {getQuoteDocumentRevision(document)}</div>
+                <div className="text-muted-foreground">Rev {document.metadata.revision}</div>
                 <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
                 <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>
                 <div className="flex justify-end gap-1">
@@ -544,8 +544,8 @@ function PreviewQuoteDocumentButton({
   document,
   onPreviewDocument,
 }: {
-  document: DocumentSummary;
-  onPreviewDocument: (document: DocumentSummary) => void;
+  document: QuoteDocument;
+  onPreviewDocument: (document: QuoteDocument) => void;
 }) {
   return (
     <Button
@@ -560,7 +560,7 @@ function PreviewQuoteDocumentButton({
   );
 }
 
-function DownloadQuoteDocumentButton({ document, quoteId }: { document: DocumentSummary; quoteId: QuoteDetail['id'] }) {
+function DownloadQuoteDocumentButton({ document, quoteId }: { document: QuoteDocument; quoteId: QuoteDetail['id'] }) {
   const showMutationError = useApiMutationErrorToast();
   const downloadMutation = useMutation({
     mutationFn: () => downloadQuoteDocument(quoteId, document),
@@ -581,10 +581,6 @@ function DownloadQuoteDocumentButton({ document, quoteId }: { document: Document
       {downloadMutation.isPending ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
     </Button>
   );
-}
-
-function getQuoteDocumentRevision(document: DocumentSummary): number {
-  return 'revision' in document.metadata ? document.metadata.revision : 1;
 }
 
 type QuoteAssembliesSelectorProps = {

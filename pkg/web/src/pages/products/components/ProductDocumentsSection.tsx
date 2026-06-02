@@ -1,5 +1,5 @@
 import { formatBytes, hasPermission } from '@pkg/domain';
-import type { DocumentMetadata, UUID } from '@pkg/schema';
+import type { DocumentSummary, UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type ColumnDef,
@@ -84,7 +84,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewDocument, setPreviewDocument] = useState<DocumentMetadata | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<DocumentSummary | null>(null);
 
   const {
     columnFilters,
@@ -128,7 +128,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   });
 
   const documents = documentsQuery.data ?? [];
-  const columns = useMemo<ColumnDef<DocumentMetadata>[]>(
+  const columns = useMemo<ColumnDef<DocumentSummary>[]>(
     () => [
       {
         accessorKey: 'filename',
@@ -315,7 +315,7 @@ function DocumentUploadForm({
   );
 }
 
-function DeleteDocumentButton({ document, productId }: { document: DocumentMetadata; productId: UUID }) {
+function DeleteDocumentButton({ document, productId }: { document: DocumentSummary; productId: UUID }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showMutationError = useApiMutationErrorToast();
@@ -368,8 +368,8 @@ function PreviewButton({
   document,
   onPreviewDocument,
 }: {
-  document: DocumentMetadata;
-  onPreviewDocument: (document: DocumentMetadata) => void;
+  document: DocumentSummary;
+  onPreviewDocument: (document: DocumentSummary) => void;
 }) {
   return (
     <Button
@@ -384,7 +384,7 @@ function PreviewButton({
   );
 }
 
-function DownloadButton({ document, productId }: { document: DocumentMetadata; productId: UUID }) {
+function DownloadButton({ document, productId }: { document: DocumentSummary; productId: UUID }) {
   const showMutationError = useApiMutationErrorToast();
   const downloadMutation = useMutation({
     mutationFn: () => downloadProductDocument(productId, document),
@@ -407,7 +407,7 @@ function DownloadButton({ document, productId }: { document: DocumentMetadata; p
   );
 }
 
-function documentGlobalFilter(row: { original: DocumentMetadata }, _columnId: string, filterValue: unknown) {
+function documentGlobalFilter(row: { original: DocumentSummary }, _columnId: string, filterValue: unknown) {
   const search = normalizeFilterValue(filterValue);
 
   if (!search) {
@@ -424,11 +424,11 @@ function documentGlobalFilter(row: { original: DocumentMetadata }, _columnId: st
   ].some((value) => value.toLowerCase().includes(search));
 }
 
-function documentUploaderSorting(left: { original: DocumentMetadata }, right: { original: DocumentMetadata }): number {
+function documentUploaderSorting(left: { original: DocumentSummary }, right: { original: DocumentSummary }): number {
   return getDocumentUploader(left.original).localeCompare(getDocumentUploader(right.original));
 }
 
-function getDocumentUploader(document: DocumentMetadata): string {
+function getDocumentUploader(document: DocumentSummary): string {
   return document.uploaderName ?? document.uploaderEmail ?? '';
 }
 

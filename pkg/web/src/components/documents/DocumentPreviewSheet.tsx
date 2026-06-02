@@ -1,5 +1,5 @@
 import { formatBytes } from '@pkg/domain';
-import type { DocumentMetadata } from '@pkg/schema';
+import type { DocumentSummary } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { DownloadIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -18,7 +18,7 @@ import {
 } from '@/utils/document.js';
 
 type DocumentPreviewSheetProps = {
-  document: DocumentMetadata | null;
+  document: DocumentSummary | null;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   owner: DocumentPreviewOwner;
@@ -116,7 +116,7 @@ function DocumentPreviewContent({
   previewUrl,
   queryError,
 }: {
-  document: DocumentMetadata | null;
+  document: DocumentSummary | null;
   isLoading: boolean;
   previewKind: ReturnType<typeof getDocumentPreviewKind>;
   previewUrl: string | null;

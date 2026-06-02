@@ -1,11 +1,13 @@
 import { formatBytes } from '@pkg/domain';
 import type { DocumentMetadata, JobDetail, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { DownloadIcon, FileTextIcon, Loader2Icon } from 'lucide-react';
+import { DownloadIcon, EyeIcon, FileTextIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
+import { useState } from 'react';
 
 import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
@@ -49,6 +51,8 @@ const JobDocuments: React.FC<{
   documents: JobDetail['documents'];
   jobId: UUID;
 }> = ({ documents, jobId }) => {
+  const [previewDocument, setPreviewDocument] = useState<DocumentMetadata | null>(null);
+
   if (documents.length === 0) {
     return (
       <section className="grid gap-2">
@@ -65,7 +69,7 @@ const JobDocuments: React.FC<{
         <div className="divide-y">
           {documents.map((document) => (
             <div
-              className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[minmax(0,1fr)_11rem_10rem_2.5rem] md:items-center"
+              className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[minmax(0,1fr)_11rem_10rem_5rem] md:items-center"
               key={document.id}
             >
               <div className="min-w-0">
@@ -77,16 +81,47 @@ const JobDocuments: React.FC<{
               </div>
               <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
               <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-1">
+                <PreviewButton document={document} onPreviewDocument={setPreviewDocument} />
                 <DownloadButton document={document} jobId={jobId} />
               </div>
             </div>
           ))}
         </div>
       </div>
+      <DocumentPreviewSheet
+        document={previewDocument}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewDocument(null);
+          }
+        }}
+        open={Boolean(previewDocument)}
+        owner={{ id: jobId, type: 'job' }}
+      />
     </section>
   );
 };
+
+function PreviewButton({
+  document,
+  onPreviewDocument,
+}: {
+  document: DocumentMetadata;
+  onPreviewDocument: (document: DocumentMetadata) => void;
+}) {
+  return (
+    <Button
+      aria-label={`Preview ${document.filename}`}
+      size="icon-sm"
+      type="button"
+      variant="ghost"
+      onClick={() => onPreviewDocument(document)}
+    >
+      <EyeIcon />
+    </Button>
+  );
+}
 
 function DownloadButton({ document, jobId }: { document: DocumentMetadata; jobId: UUID }) {
   const showMutationError = useApiMutationErrorToast();

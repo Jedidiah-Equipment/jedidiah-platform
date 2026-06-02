@@ -113,6 +113,26 @@ describe('document HTTP routes', () => {
     expect(storage.gets).toEqual([`documents/product/${context.product.id}/job-part-book.pdf`]);
   });
 
+  test('downloads quote documents through the owner-scoped Quote route', async ({ context }) => {
+    routeTestState.session = mockSession('sales');
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const quote = await createQuoteOwner(context.db, context.product.id);
+    const document = await createQuoteDocumentRow({
+      db: context.db,
+      quoteId: quote.id,
+      storage,
+    });
+
+    const response = await app.inject(`/api/quotes/${quote.id}/documents/${document.id}/download`);
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.headers['content-type']).toBe('application/pdf');
+    expect(response.headers['content-length']).toBe(String(pdfBytes().byteLength));
+    expect(response.rawPayload).toEqual(Buffer.from(pdfBytes()));
+    expect(storage.gets).toEqual([`documents/quote/${quote.id}/quote.pdf`]);
+  });
+
   test('uploads a product document with its type and returns the persisted metadata', async ({ context }) => {
     const storage = new MemoryStorage();
     const app = await createDocumentApp(storage);
@@ -324,6 +344,61 @@ async function createJobDocumentRow({
   }
 
   return document;
+}
+
+async function createQuoteDocumentRow({ db, quoteId, storage }: { db: Db; quoteId: UUID; storage: MemoryStorage }) {
+  const storageKey = `documents/quote/${quoteId}/quote.pdf`;
+  await storage.put({
+    body: pdfBytes(),
+    byteSize: pdfBytes().byteLength,
+    contentType: 'application/pdf',
+    key: storageKey,
+  });
+  const [document] = await db
+    .insert(documents)
+    .values({
+      byteSize: pdfBytes().byteLength,
+      contentType: 'application/pdf',
+      filename: 'Quote.pdf',
+      metadata: { revision: 1 },
+      ownerType: 'quote',
+      quoteId,
+      storageKey,
+      uploaderUserId: 'test-user-id',
+    })
+    .returning({ id: documents.id });
+
+  if (!document) {
+    throw new Error('Document insert did not return a row');
+  }
+
+  return document;
+}
+
+async function createQuoteOwner(db: Db, productId: UUID) {
+  const [customer] = await db
+    .insert(customers)
+    .values({
+      companyName: 'Document HTTP Quote Customer',
+      email: null,
+    })
+    .returning({ id: customers.id });
+  if (!customer) throw new Error('Customer insert did not return a row');
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      productId,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: 'test-user-id',
+      status: 'sent',
+    })
+    .returning({ id: quotes.id });
+  if (!quote) throw new Error('Quote insert did not return a row');
+
+  return quote;
 }
 
 async function createJobOwner(db: Db, productId: UUID) {

@@ -176,6 +176,13 @@
       "when": 1780411792484,
       "tag": "0024_rename_quote_document_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1780412820434,
+      "tag": "0025_add_quote_document_ownership",
+      "breakpoints": true
     }
   ]
 }

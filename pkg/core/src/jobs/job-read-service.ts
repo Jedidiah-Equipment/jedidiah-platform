@@ -292,6 +292,7 @@ function mapJobDocument(row: JobDocumentRow): JobDetail['documents'][number] {
     metadata: row.metadata,
     ownerType: row.ownerType,
     productId: row.productId,
+    quoteId: row.quoteId,
     sourceProductId: row.sourceProductId,
     sourceProductName: row.sourceProductName,
     uploaderEmail: row.uploaderEmail,

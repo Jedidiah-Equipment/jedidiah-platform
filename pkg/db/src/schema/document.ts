@@ -1,10 +1,11 @@
-import type { DocumentOwnerType, ProductDocumentMetadata } from '@pkg/schema';
+import type { DocumentMetadata, DocumentOwnerType } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { jobs } from './job.js';
 import { products } from './product.js';
+import { quotes } from './quote.js';
 
 export const documents = pgTable(
   'documents',
@@ -15,9 +16,10 @@ export const documents = pgTable(
     filename: text('filename').notNull(),
     id: uuid('id').defaultRandom().primaryKey(),
     jobId: uuid('job_id').references(() => jobs.id, { onDelete: 'cascade' }),
-    metadata: jsonb('metadata').notNull().$type<ProductDocumentMetadata>(),
+    metadata: jsonb('metadata').notNull().$type<DocumentMetadata>(),
     ownerType: text('owner_type').notNull().$type<DocumentOwnerType>(),
     productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }),
+    quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'cascade' }),
     sourceProductId: uuid('source_product_id').references(() => products.id, { onDelete: 'restrict' }),
     storageKey: text('storage_key').notNull(),
     uploaderUserId: text('uploader_user_id')
@@ -30,16 +32,22 @@ export const documents = pgTable(
     check('documents_filename_nonempty', sql`length(trim(${table.filename})) > 0`),
     check(
       'documents_exactly_one_owner',
-      sql`(${table.ownerType} = 'product' AND ${table.productId} IS NOT NULL AND ${table.jobId} IS NULL) OR (${table.ownerType} = 'job' AND ${table.jobId} IS NOT NULL AND ${table.productId} IS NULL)`,
+      sql`(${table.ownerType} = 'product' AND ${table.productId} IS NOT NULL AND ${table.jobId} IS NULL AND ${table.quoteId} IS NULL) OR (${table.ownerType} = 'job' AND ${table.jobId} IS NOT NULL AND ${table.productId} IS NULL AND ${table.quoteId} IS NULL) OR (${table.ownerType} = 'quote' AND ${table.quoteId} IS NOT NULL AND ${table.productId} IS NULL AND ${table.jobId} IS NULL)`,
     ),
     check(
       'documents_product_rows_have_no_source',
       sql`${table.ownerType} <> 'product' OR ${table.sourceProductId} IS NULL`,
     ),
+    check(
+      'documents_quote_rows_have_no_source',
+      sql`${table.ownerType} <> 'quote' OR ${table.sourceProductId} IS NULL`,
+    ),
     index('documents_job_id_created_at_idx').on(table.jobId, table.createdAt),
     index('documents_product_id_created_at_idx').on(table.productId, table.createdAt),
+    index('documents_quote_id_created_at_idx').on(table.quoteId, table.createdAt),
     uniqueIndex('documents_job_id_filename_ci_unique').on(table.jobId, sql`lower(${table.filename})`),
     uniqueIndex('documents_product_id_filename_ci_unique').on(table.productId, sql`lower(${table.filename})`),
+    uniqueIndex('documents_quote_id_filename_ci_unique').on(table.quoteId, sql`lower(${table.filename})`),
   ],
 );
 
@@ -52,6 +60,10 @@ export const documentsRelations = relations(documents, ({ one }) => ({
     fields: [documents.productId],
     relationName: 'documentProductOwner',
     references: [products.id],
+  }),
+  quote: one(quotes, {
+    fields: [documents.quoteId],
+    references: [quotes.id],
   }),
   sourceProduct: one(products, {
     fields: [documents.sourceProductId],

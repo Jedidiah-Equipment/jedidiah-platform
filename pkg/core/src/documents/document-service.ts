@@ -25,6 +25,7 @@ export type DocumentBaseRow = Pick<
   | 'metadata'
   | 'ownerType'
   | 'productId'
+  | 'quoteId'
   | 'sourceProductId'
   | 'storageKey'
   | 'uploaderUserId'
@@ -41,6 +42,7 @@ export type DocumentRecordCreateInput = {
   metadata: DocumentRow['metadata'];
   ownerType: DocumentOwnerType;
   productId?: UUID | null;
+  quoteId?: UUID | null;
   sourceProductId?: UUID | null;
   storageKey: string;
 };
@@ -60,6 +62,7 @@ export const documentBaseSelect = {
   metadata: documents.metadata,
   ownerType: documents.ownerType,
   productId: documents.productId,
+  quoteId: documents.quoteId,
   sourceProductId: documents.sourceProductId,
   storageKey: documents.storageKey,
   uploaderUserId: documents.uploaderUserId,
@@ -126,6 +129,7 @@ export async function createDocumentRecord({
           metadata: input.metadata,
           ownerType: input.ownerType,
           productId: input.productId,
+          quoteId: input.quoteId,
           sourceProductId: input.sourceProductId,
           storageKey: input.storageKey,
           uploaderUserId: actorUserId,
@@ -210,6 +214,7 @@ export function mapDocumentSummary(row: DocumentSummaryRow): DocumentSummary {
     metadata: row.metadata,
     ownerType: row.ownerType,
     productId: row.productId,
+    quoteId: row.quoteId,
     sourceProductId: row.sourceProductId,
     uploaderEmail: row.uploaderEmail,
     uploaderName: row.uploaderName,
@@ -252,6 +257,7 @@ function toDocumentAuditRecord(row: DocumentBaseRow) {
     metadata: row.metadata,
     ownerType: row.ownerType,
     productId: row.productId,
+    quoteId: row.quoteId,
     sourceProductId: row.sourceProductId,
     storageKey: row.storageKey,
     uploaderUserId: row.uploaderUserId,

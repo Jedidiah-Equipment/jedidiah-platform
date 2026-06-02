@@ -29,6 +29,7 @@ const documentSummary = DocumentSummary.parse({
   metadata: { type: 'part_book' },
   ownerType: 'product',
   productId: '22222222-2222-2222-8222-222222222222',
+  quoteId: null,
   sourceProductId: null,
   uploaderEmail: 'test@example.com',
   uploaderName: 'Test User',
@@ -65,6 +66,18 @@ describe('document utilities', () => {
         },
       }),
     ).toBe('/api/jobs/33333333-3333-3333-8333-333333333333/documents/11111111-1111-1111-8111-111111111111/download');
+  });
+
+  it('builds the quote-scoped document download path', () => {
+    expect(
+      createDocumentDownloadPath({
+        document: documentSummary,
+        owner: {
+          id: '44444444-4444-4444-8444-444444444444' as UUID,
+          type: 'quote',
+        },
+      }),
+    ).toBe('/api/quotes/44444444-4444-4444-8444-444444444444/documents/11111111-1111-1111-8111-111111111111/download');
   });
 
   it('classifies supported preview content types', () => {

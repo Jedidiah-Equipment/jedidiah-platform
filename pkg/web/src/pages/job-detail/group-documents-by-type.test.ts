@@ -1,4 +1,4 @@
-import { DocumentSummary, type ProductDocumentType } from '@pkg/schema';
+import { JobDocument, type ProductDocumentType } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { groupDocumentsByType } from './group-documents-by-type.js';
@@ -27,8 +27,8 @@ describe('groupDocumentsByType', () => {
   });
 });
 
-function jobDocument(filename: string, type: ProductDocumentType): DocumentSummary {
-  return DocumentSummary.parse({
+function jobDocument(filename: string, type: ProductDocumentType): JobDocument {
+  return JobDocument.parse({
     byteSize: 128,
     contentType: 'application/pdf',
     createdAt: '2026-06-02T10:00:00.000Z',
@@ -38,7 +38,9 @@ function jobDocument(filename: string, type: ProductDocumentType): DocumentSumma
     metadata: { type },
     ownerType: 'job',
     productId: null,
+    quoteId: null,
     sourceProductId: '22222222-2222-2222-8222-222222222222',
+    sourceProductName: 'Source Product',
     uploaderEmail: 'test@example.com',
     uploaderName: 'Test User',
     uploaderUserId: 'test-user-id',

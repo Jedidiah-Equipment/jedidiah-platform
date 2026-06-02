@@ -1,5 +1,5 @@
 import { formatBytes, getDocumentPolicy } from '@pkg/domain';
-import { DocumentSummary, type ProductDocumentType, type UUID } from '@pkg/schema';
+import { type DocumentSummary, ProductDocument, type ProductDocumentType, type UUID } from '@pkg/schema';
 import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';
@@ -8,7 +8,7 @@ export const PRODUCT_DOCUMENT_ACCEPT = getDocumentPolicy('product').allowedConte
 
 export type DocumentPreviewOwner = {
   id: UUID;
-  type: 'job' | 'product';
+  type: 'job' | 'product' | 'quote';
 };
 
 export type DocumentPreviewKind = 'image' | 'pdf';
@@ -47,7 +47,7 @@ export function getReadyProductDocumentUpload(draft: ProductDocumentUploadDraft)
 export async function uploadProductDocument(
   productId: UUID,
   upload: ReadyProductDocumentUpload,
-): Promise<DocumentSummary> {
+): Promise<ProductDocument> {
   const formData = new FormData();
   formData.append('type', upload.type);
   formData.append('file', upload.file);
@@ -62,7 +62,7 @@ export async function uploadProductDocument(
     throw new Error(await readApiErrorMessage(response, 'Unable to upload document.'));
   }
 
-  return DocumentSummary.parse(await response.json());
+  return ProductDocument.parse(await response.json());
 }
 
 export async function downloadProductDocument(productId: UUID, document: DocumentSummary): Promise<void> {
@@ -71,6 +71,10 @@ export async function downloadProductDocument(productId: UUID, document: Documen
 
 export async function downloadJobDocument(jobId: UUID, document: DocumentSummary): Promise<void> {
   await downloadDocument({ document, owner: { id: jobId, type: 'job' } });
+}
+
+export async function downloadQuoteDocument(quoteId: UUID, document: DocumentSummary): Promise<void> {
+  await downloadDocument({ document, owner: { id: quoteId, type: 'quote' } });
 }
 
 export async function downloadDocument({
@@ -133,7 +137,11 @@ export function createDocumentDownloadPath({
     return `/api/products/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
   }
 
-  return `/api/jobs/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
+  if (owner.type === 'job') {
+    return `/api/jobs/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
+  }
+
+  return `/api/quotes/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
 }
 
 export function getDocumentPreviewKind(document: Pick<DocumentSummary, 'contentType'>): DocumentPreviewKind | null {

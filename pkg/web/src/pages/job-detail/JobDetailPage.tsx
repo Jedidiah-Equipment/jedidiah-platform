@@ -1,5 +1,5 @@
 import { formatBytes } from '@pkg/domain';
-import type { DocumentSummary, JobDetail, UUID } from '@pkg/schema';
+import type { JobDetail, JobDocument, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { DownloadIcon, EyeIcon, FileTextIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
@@ -52,7 +52,7 @@ const JobDocuments: React.FC<{
   documents: JobDetail['documents'];
   jobId: UUID;
 }> = ({ documents, jobId }) => {
-  const [previewDocument, setPreviewDocument] = useState<DocumentSummary | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<JobDocument | null>(null);
 
   if (documents.length === 0) {
     return (
@@ -119,8 +119,8 @@ function PreviewButton({
   document,
   onPreviewDocument,
 }: {
-  document: DocumentSummary;
-  onPreviewDocument: (document: DocumentSummary) => void;
+  document: JobDocument;
+  onPreviewDocument: (document: JobDocument) => void;
 }) {
   return (
     <Button
@@ -135,7 +135,7 @@ function PreviewButton({
   );
 }
 
-function DownloadButton({ document, jobId }: { document: DocumentSummary; jobId: UUID }) {
+function DownloadButton({ document, jobId }: { document: JobDocument; jobId: UUID }) {
   const showMutationError = useApiMutationErrorToast();
   const downloadMutation = useMutation({
     mutationFn: () => downloadJobDocument(jobId, document),

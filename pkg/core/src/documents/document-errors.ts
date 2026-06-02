@@ -2,10 +2,10 @@ import type { DocumentPolicyViolationCode } from '@pkg/domain';
 
 export class DuplicateDocumentFilenameError extends Error {
   readonly code = 'document.duplicate_filename';
-  readonly metadata: { filename: string; productId: string };
+  readonly metadata: { filename: string; ownerId: string; ownerType: 'product' | 'quote' };
 
-  constructor(input: { filename: string; productId: string }) {
-    super(`Document filename already exists for product: ${input.filename}`);
+  constructor(input: { filename: string; ownerId: string; ownerType: 'product' | 'quote' }) {
+    super(`Document filename already exists for ${input.ownerType}: ${input.filename}`);
     this.name = 'DuplicateDocumentFilenameError';
     this.metadata = input;
   }

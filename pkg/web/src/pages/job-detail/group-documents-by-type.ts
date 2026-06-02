@@ -17,7 +17,11 @@ export function groupDocumentsByType(documents: DocumentSummary[]): ProductDocum
     .map((type) => ({
       type,
       label: PRODUCT_DOCUMENT_TYPE_LABELS[type],
-      documents: documents.filter((document) => document.metadata.type === type),
+      documents: documents.filter((document) => getProductDocumentType(document) === type),
     }))
     .filter((group) => group.documents.length > 0);
+}
+
+function getProductDocumentType(document: DocumentSummary): ProductDocumentType {
+  return ProductDocumentType.parse('type' in document.metadata ? document.metadata.type : undefined);
 }

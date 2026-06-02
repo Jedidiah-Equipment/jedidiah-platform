@@ -153,9 +153,11 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
         header: 'Filename',
       },
       {
-        accessorFn: (document) => document.metadata.type,
+        accessorFn: getProductDocumentType,
         cell: ({ row }) => (
-          <span className="text-muted-foreground">{PRODUCT_DOCUMENT_TYPE_LABELS[row.original.metadata.type]}</span>
+          <span className="text-muted-foreground">
+            {PRODUCT_DOCUMENT_TYPE_LABELS[getProductDocumentType(row.original)]}
+          </span>
         ),
         enableColumnFilter: true,
         enableSorting: true,
@@ -471,7 +473,7 @@ function documentGlobalFilter(row: { original: DocumentSummary }, _columnId: str
 
   return [
     row.original.filename,
-    PRODUCT_DOCUMENT_TYPE_LABELS[row.original.metadata.type],
+    PRODUCT_DOCUMENT_TYPE_LABELS[getProductDocumentType(row.original)],
     row.original.contentType,
     row.original.uploaderName ?? '',
     row.original.uploaderEmail ?? '',
@@ -481,8 +483,8 @@ function documentGlobalFilter(row: { original: DocumentSummary }, _columnId: str
 }
 
 function documentTypeSorting(left: { original: DocumentSummary }, right: { original: DocumentSummary }): number {
-  return PRODUCT_DOCUMENT_TYPE_LABELS[left.original.metadata.type].localeCompare(
-    PRODUCT_DOCUMENT_TYPE_LABELS[right.original.metadata.type],
+  return PRODUCT_DOCUMENT_TYPE_LABELS[getProductDocumentType(left.original)].localeCompare(
+    PRODUCT_DOCUMENT_TYPE_LABELS[getProductDocumentType(right.original)],
   );
 }
 
@@ -496,4 +498,8 @@ function getDocumentUploader(document: DocumentSummary): string {
 
 function normalizeFilterValue(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function getProductDocumentType(document: DocumentSummary): ProductDocumentType {
+  return ProductDocumentType.parse('type' in document.metadata ? document.metadata.type : undefined);
 }

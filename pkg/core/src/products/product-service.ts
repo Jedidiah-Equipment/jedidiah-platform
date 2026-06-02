@@ -588,7 +588,11 @@ function mapProductDocumentUniqueViolation(error: unknown, input: { filename: st
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint?.includes(PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX) || isProductDocumentFilenameUniqueDetail(error)) {
-    return new DuplicateDocumentFilenameError(input);
+    return new DuplicateDocumentFilenameError({
+      filename: input.filename,
+      ownerId: input.productId,
+      ownerType: 'product',
+    });
   }
 
   return error instanceof Error ? error : new Error(String(error));

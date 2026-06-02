@@ -1,0 +1,7 @@
+ALTER TABLE "documents" DROP CONSTRAINT "documents_exactly_one_owner";--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN "quote_id" uuid;--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_quote_id_quote_id_fk" FOREIGN KEY ("quote_id") REFERENCES "public"."quote"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "documents_quote_id_created_at_idx" ON "documents" USING btree ("quote_id","created_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "documents_quote_id_filename_ci_unique" ON "documents" USING btree ("quote_id",lower("filename"));--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_quote_rows_have_no_source" CHECK ("documents"."owner_type" <> 'quote' OR "documents"."source_product_id" IS NULL);--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_exactly_one_owner" CHECK (("documents"."owner_type" = 'product' AND "documents"."product_id" IS NOT NULL AND "documents"."job_id" IS NULL AND "documents"."quote_id" IS NULL) OR ("documents"."owner_type" = 'job' AND "documents"."job_id" IS NOT NULL AND "documents"."product_id" IS NULL AND "documents"."quote_id" IS NULL) OR ("documents"."owner_type" = 'quote' AND "documents"."quote_id" IS NOT NULL AND "documents"."product_id" IS NULL AND "documents"."job_id" IS NULL));

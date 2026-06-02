@@ -38,6 +38,7 @@ function jobDocument(filename: string, type: ProductDocumentType): DocumentSumma
     metadata: { type },
     ownerType: 'job',
     productId: null,
+    quoteId: null,
     sourceProductId: '22222222-2222-2222-8222-222222222222',
     uploaderEmail: 'test@example.com',
     uploaderName: 'Test User',

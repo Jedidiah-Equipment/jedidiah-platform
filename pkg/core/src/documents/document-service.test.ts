@@ -1,6 +1,7 @@
 import { auditEvents, customers, documents, jobs, products, quotes, user } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
+import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { readJobDocument } from '../jobs/job-read-service.js';
@@ -10,6 +11,7 @@ import {
   getProductDocuments,
   readProductDocument,
 } from '../products/product-service.js';
+import { createQuoteDocument, getQuoteDocuments, readQuoteDocument } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { DocumentPolicyViolationError, DuplicateDocumentFilenameError } from './document-errors.js';
@@ -55,9 +57,32 @@ const test = createTester(async ({ db }) => {
     throw new Error('Product insert did not return a row');
   }
 
+  const [customer] = await db
+    .insert(customers)
+    .values({
+      companyName: 'Document Quote Customer',
+      email: null,
+    })
+    .returning({ id: customers.id });
+  if (!customer) throw new Error('Customer insert did not return a row');
+
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId: customer.id,
+      productId: product.id,
+      quotedBasePrice: 1_000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId: ACTOR_USER_ID,
+      status: 'sent',
+    })
+    .returning({ id: quotes.id });
+  if (!quote) throw new Error('Quote insert did not return a row');
+
   return {
     otherProductId: otherProduct.id,
     productId: product.id,
+    quoteId: quote.id,
     storage: new InMemoryStorageAdapter(),
   };
 });
@@ -271,6 +296,99 @@ describe('createProductDocument', () => {
   });
 });
 
+describe('createQuoteDocument', () => {
+  test('stores PDF bytes with revision metadata and audits the Quote owner', async ({ context }) => {
+    const document = await createQuoteDocument({
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      input: {
+        bytes: pdfBytes(),
+        filename: 'Quote QUO-0001.pdf',
+        metadata: { revision: 1 },
+        quoteId: context.quoteId,
+      },
+      storage: context.storage,
+    });
+
+    expect(document).toMatchObject({
+      contentType: 'application/pdf',
+      filename: 'Quote QUO-0001.pdf',
+      metadata: { revision: 1 },
+      ownerType: 'quote',
+      quoteId: context.quoteId,
+    });
+
+    const [row] = await context.db.select().from(documents);
+    expect(row).toMatchObject({
+      filename: 'Quote QUO-0001.pdf',
+      metadata: { revision: 1 },
+      ownerType: 'quote',
+      quoteId: context.quoteId,
+    });
+    expect(row?.storageKey).toMatch(new RegExp(`^documents/quote/${context.quoteId}/`));
+
+    const [event] = await context.db.select().from(auditEvents);
+    expect(event).toMatchObject({
+      action: 'created',
+      actorUserId: ACTOR_USER_ID,
+      entityId: document.id,
+      entityType: 'document',
+      changes: {
+        metadata: {
+          from: null,
+          to: { revision: 1 },
+        },
+        quoteId: {
+          from: null,
+          to: context.quoteId,
+        },
+      },
+    });
+  });
+
+  test('validates quote PDF content and revision metadata before storing anything', async ({ context }) => {
+    await expect(
+      createQuoteDocument({
+        actorUserId: ACTOR_USER_ID,
+        db: context.db,
+        input: {
+          bytes: pngBytes(),
+          filename: 'Quote Image.png',
+          metadata: { revision: 1 },
+          quoteId: context.quoteId,
+        },
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+
+    await expect(
+      createQuoteDocument({
+        actorUserId: ACTOR_USER_ID,
+        db: context.db,
+        input: {
+          bytes: pdfBytes(),
+          filename: 'Quote Missing Revision.pdf',
+          metadata: {},
+          quoteId: context.quoteId,
+        },
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    expect(context.storage.objects.size).toBe(0);
+  });
+
+  test('rejects duplicate filenames case-insensitively per quote', async ({ context }) => {
+    await uploadQuotePdf(context, { filename: 'Quote.pdf', quoteId: context.quoteId, revision: 1 });
+
+    await expect(
+      uploadQuotePdf(context, { filename: 'quote.PDF', quoteId: context.quoteId, revision: 2 }),
+    ).rejects.toBeInstanceOf(DuplicateDocumentFilenameError);
+    expect(context.storage.objects.size).toBe(1);
+  });
+});
+
 describe('getProductDocuments and readProductDocument', () => {
   test('lists by owner and reads stored bytes', async ({ context }) => {
     const first = await uploadPdf(context, { filename: 'A.pdf', productId: context.productId, type: 'sop' });
@@ -356,6 +474,46 @@ describe('getProductDocuments and readProductDocument', () => {
     });
     await expect(readAll(read.object.body)).resolves.toEqual(pdfBytes());
   });
+
+  test('lists quote-owned documents newest first and reads stored bytes', async ({ context }) => {
+    const older = await uploadQuotePdf(context, {
+      filename: 'Quote Revision 1.pdf',
+      quoteId: context.quoteId,
+      revision: 1,
+    });
+    const newer = await uploadQuotePdf(context, {
+      filename: 'Quote Revision 2.pdf',
+      quoteId: context.quoteId,
+      revision: 2,
+    });
+    await context.db
+      .update(documents)
+      .set({ createdAt: new Date('2026-01-01T00:00:00.000Z') })
+      .where(eq(documents.id, older.id));
+    await context.db
+      .update(documents)
+      .set({ createdAt: new Date('2026-01-02T00:00:00.000Z') })
+      .where(eq(documents.id, newer.id));
+
+    await expect(getQuoteDocuments({ db: context.db, quoteId: context.quoteId })).resolves.toEqual([
+      expect.objectContaining({ id: newer.id, metadata: { revision: 2 } }),
+      expect.objectContaining({ id: older.id, metadata: { revision: 1 } }),
+    ]);
+
+    const read = await readQuoteDocument({
+      db: context.db,
+      documentId: newer.id,
+      quoteId: context.quoteId,
+      storage: context.storage,
+    });
+
+    expect(read.document).toMatchObject({
+      filename: 'Quote Revision 2.pdf',
+      ownerType: 'quote',
+      quoteId: context.quoteId,
+    });
+    await expect(readAll(read.object.body)).resolves.toEqual(pdfBytes());
+  });
 });
 
 describe('deleteProductDocument', () => {
@@ -383,7 +541,7 @@ describe('deleteProductDocument', () => {
         actorUserId: ACTOR_USER_ID,
         entityId: document.id,
         entityType: 'document',
-        changes: {
+        changes: expect.objectContaining({
           byteSize: {
             from: pdfBytes().byteLength,
             to: null,
@@ -408,7 +566,7 @@ describe('deleteProductDocument', () => {
             from: row?.storageKey,
             to: null,
           },
-        },
+        }),
       }),
     );
   });
@@ -449,6 +607,26 @@ function uploadPdf(
       filename: input.filename,
       metadata: { type: input.type ?? 'part_book' },
       productId: input.productId,
+    },
+    storage: context.storage,
+  });
+}
+
+function uploadQuotePdf(
+  context: {
+    db: Parameters<typeof createQuoteDocument>[0]['db'];
+    storage: InMemoryStorageAdapter;
+  },
+  input: { filename: string; quoteId: UUID; revision: number },
+) {
+  return createQuoteDocument({
+    actorUserId: ACTOR_USER_ID,
+    db: context.db,
+    input: {
+      bytes: pdfBytes(),
+      filename: input.filename,
+      metadata: { revision: input.revision },
+      quoteId: input.quoteId,
     },
     storage: context.storage,
   });

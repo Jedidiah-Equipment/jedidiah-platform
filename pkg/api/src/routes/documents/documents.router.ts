@@ -2,11 +2,14 @@ import {
   type DocumentCoreError,
   deleteProductDocument,
   getProductDocuments,
+  getQuoteDocuments,
   isDocumentCoreError,
   isProductCoreError,
+  isQuoteCoreError,
   type ProductCoreError,
+  type QuoteCoreError,
 } from '@pkg/core';
-import { DocumentListByProductInput, ProductDocumentInput } from '@pkg/schema';
+import { DocumentListByProductInput, DocumentListByQuoteInput, ProductDocumentInput } from '@pkg/schema';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
@@ -17,6 +20,9 @@ export const documentsRouter = router({
     .query(({ ctx, input }) =>
       mapDocumentErrors(() => getProductDocuments({ db: ctx.db, productId: input.productId })),
     ),
+  listByQuote: authorizedProcedure('quote:read')
+    .input(DocumentListByQuoteInput)
+    .query(({ ctx, input }) => mapDocumentErrors(() => getQuoteDocuments({ db: ctx.db, quoteId: input.quoteId }))),
   deleteByProduct: authorizedProcedure('product:update')
     .input(ProductDocumentInput)
     .mutation(({ ctx, input }) =>
@@ -33,7 +39,12 @@ export const documentsRouter = router({
 
 export async function mapDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(
-    () => mapKnownCoreError(action, isProductCoreError, mapDocumentProductCoreError),
+    () =>
+      mapKnownCoreError(
+        () => mapKnownCoreError(action, isProductCoreError, mapDocumentProductCoreError),
+        isQuoteCoreError,
+        mapDocumentQuoteCoreError,
+      ),
     isDocumentCoreError,
     mapDocumentCoreError,
   );
@@ -54,7 +65,9 @@ export function mapDocumentCoreError(error: DocumentCoreError): CoreErrorMapping
       return {
         appCode: error.code,
         code: 'CONFLICT',
-        message: 'A document with this filename already exists for this Product.',
+        message: `A document with this filename already exists for this ${
+          error.metadata.ownerType === 'quote' ? 'Quote' : 'Product'
+        }.`,
       };
     case 'document.not_found':
       return {
@@ -73,6 +86,22 @@ function mapDocumentProductCoreError(error: ProductCoreError): CoreErrorMapping<
       appCode: error.code,
       code: 'NOT_FOUND',
       message: 'Product not found.',
+    };
+  }
+
+  return {
+    appCode: error.code,
+    code: 'BAD_REQUEST',
+    message: error.message,
+  };
+}
+
+function mapDocumentQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {
+  if (error.code === 'quote.not_found') {
+    return {
+      appCode: error.code,
+      code: 'NOT_FOUND',
+      message: 'Quote not found.',
     };
   }
 

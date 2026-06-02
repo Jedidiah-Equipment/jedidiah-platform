@@ -8,7 +8,7 @@ export const PRODUCT_DOCUMENT_ACCEPT = getDocumentPolicy('product').allowedConte
 
 export type DocumentPreviewOwner = {
   id: UUID;
-  type: 'job' | 'product';
+  type: 'job' | 'product' | 'quote';
 };
 
 export type DocumentPreviewKind = 'image' | 'pdf';
@@ -73,6 +73,10 @@ export async function downloadJobDocument(jobId: UUID, document: DocumentSummary
   await downloadDocument({ document, owner: { id: jobId, type: 'job' } });
 }
 
+export async function downloadQuoteDocument(quoteId: UUID, document: DocumentSummary): Promise<void> {
+  await downloadDocument({ document, owner: { id: quoteId, type: 'quote' } });
+}
+
 export async function downloadDocument({
   document,
   owner,
@@ -133,7 +137,11 @@ export function createDocumentDownloadPath({
     return `/api/products/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
   }
 
-  return `/api/jobs/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
+  if (owner.type === 'job') {
+    return `/api/jobs/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
+  }
+
+  return `/api/quotes/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
 }
 
 export function getDocumentPreviewKind(document: Pick<DocumentSummary, 'contentType'>): DocumentPreviewKind | null {

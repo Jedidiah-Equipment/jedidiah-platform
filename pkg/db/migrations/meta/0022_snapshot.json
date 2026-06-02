@@ -1,5 +1,5 @@
 {
-  "id": "f3a0e9da-6c43-4a69-b894-3101806724ae",
+  "id": "66866be8-306c-44e2-aae2-2988c46265c6",
   "prevId": "8aabe20a-ce8a-4012-9eec-e05575080c77",
   "version": "7",
   "dialect": "postgresql",
@@ -611,6 +611,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "vat_number": {
+          "name": "vat_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "address": {
           "name": "address",
           "type": "text",
@@ -705,12 +711,6 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
         },
         "owner_type": {
           "name": "owner_type",

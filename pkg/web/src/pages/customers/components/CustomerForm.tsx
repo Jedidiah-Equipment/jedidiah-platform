@@ -47,6 +47,9 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialCustomer, isP
         <form.AppField name="email">
           {(field) => <field.TextField autoComplete="email" label="Email" type="email" />}
         </form.AppField>
+        <form.AppField name="vatNumber">
+          {(field) => <field.TextField autoComplete="off" label="VAT number" />}
+        </form.AppField>
         <form.AppField name="contactPerson">
           {(field) => <field.TextField autoComplete="name" label="Contact person" />}
         </form.AppField>

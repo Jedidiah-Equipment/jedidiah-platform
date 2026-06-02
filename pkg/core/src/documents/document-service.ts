@@ -1,8 +1,6 @@
-import { randomUUID } from 'node:crypto';
-
-import { type DatabaseTransaction, type Db, documents, getUniqueViolationConstraint } from '@pkg/db';
+import { type DatabaseTransaction, type Db, documents } from '@pkg/db';
 import { sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
-import type { AuthId, DocumentSummary, ProductDocumentMetadata, UUID } from '@pkg/schema';
+import type { AuthId, DocumentOwnerType, DocumentSummary, UUID } from '@pkg/schema';
 import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
@@ -11,11 +9,8 @@ import {
   DocumentNotFoundError,
   DocumentPolicyViolationError,
   DocumentStorageConflictError,
-  DuplicateDocumentFilenameError,
 } from './document-errors.js';
 import { type StorageAdapter, StorageKeyAlreadyExistsError, type StoredObject } from './storage-adapter.js';
-
-const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
 
 type DocumentRow = typeof documents.$inferSelect;
 export type DocumentDb = Db | DatabaseTransaction;
@@ -39,16 +34,15 @@ export type DocumentSummaryRow = DocumentBaseRow & {
   uploaderName: string | null;
 };
 
-export type ProductDocumentCreateInput = {
+export type DocumentRecordCreateInput = {
   bytes: Uint8Array;
-  contentType: string;
   filename: string;
-  metadata: unknown;
-  productId: UUID;
-};
-
-type ProductDocumentRecordInput = Omit<ProductDocumentCreateInput, 'metadata'> & {
-  metadata: ProductDocumentMetadata;
+  jobId?: UUID | null;
+  metadata: DocumentRow['metadata'];
+  ownerType: DocumentOwnerType;
+  productId?: UUID | null;
+  sourceProductId?: UUID | null;
+  storageKey: string;
 };
 
 export type ReadDocumentResult = {
@@ -71,15 +65,17 @@ export const documentBaseSelect = {
   uploaderUserId: documents.uploaderUserId,
 };
 
-export async function createProductDocumentRecord({
+export async function createDocumentRecord({
   actorUserId,
   db,
   input,
+  mapInsertError,
   storage,
 }: {
   actorUserId: AuthId;
   db: Db;
-  input: ProductDocumentRecordInput;
+  input: DocumentRecordCreateInput;
+  mapInsertError?: (error: unknown) => Error;
   storage: StorageAdapter;
 }): Promise<DocumentBaseRow> {
   const byteSize = input.bytes.byteLength;
@@ -96,24 +92,19 @@ export async function createProductDocumentRecord({
   const policyResult = validateDocumentPolicy({
     byteSize,
     contentType: verifiedContentType,
-    ownerType: 'product',
+    ownerType: input.ownerType,
   });
 
   if (!policyResult.ok) {
     throw new DocumentPolicyViolationError(policyResult);
   }
 
-  const storageKey = createProductDocumentStorageKey({
-    filename: input.filename,
-    productId: input.productId,
-  });
-
   try {
     await storage.put({
       body: input.bytes,
       byteSize,
       contentType: verifiedContentType,
-      key: storageKey,
+      key: input.storageKey,
     });
   } catch (error) {
     if (error instanceof StorageKeyAlreadyExistsError) {
@@ -131,10 +122,12 @@ export async function createProductDocumentRecord({
           byteSize,
           contentType: verifiedContentType,
           filename: input.filename,
+          jobId: input.jobId,
           metadata: input.metadata,
-          ownerType: 'product',
+          ownerType: input.ownerType,
           productId: input.productId,
-          storageKey,
+          sourceProductId: input.sourceProductId,
+          storageKey: input.storageKey,
           uploaderUserId: actorUserId,
         })
         .returning();
@@ -159,13 +152,10 @@ export async function createProductDocumentRecord({
       return row;
     });
   } catch (error) {
-    const mappedError = mapDocumentUniqueViolation(error, {
-      filename: input.filename,
-      productId: input.productId,
-    });
+    const mappedError = mapInsertError ? mapInsertError(error) : toError(error);
 
     try {
-      await storage.deleteObject(storageKey);
+      await storage.deleteObject(input.storageKey);
     } catch (cleanupError) {
       throw new AggregateError([mappedError, cleanupError], 'Failed to save document and clean up uploaded object');
     }
@@ -227,17 +217,28 @@ export function mapDocumentSummary(row: DocumentSummaryRow): DocumentSummary {
   });
 }
 
-function createProductDocumentStorageKey(input: { filename: string; productId: UUID }): string {
-  return `documents/product/${input.productId}/${randomUUID()}-${sanitizeStorageKeySuffix(input.filename)}`;
-}
-
-function sanitizeStorageKeySuffix(filename: string): string {
+export function sanitizeDocumentStorageKeySuffix(filename: string): string {
   const sanitized = filename
     .trim()
     .replace(/[^A-Za-z0-9._-]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
   return sanitized || 'document.pdf';
+}
+
+export function collectDocumentErrorText(error: unknown): string[] {
+  if (typeof error !== 'object' || error === null) {
+    return [];
+  }
+
+  const ownText = ['message', 'detail'].flatMap((property) => {
+    const value = property in error ? error[property as keyof typeof error] : null;
+
+    return typeof value === 'string' ? [value] : [];
+  });
+  const causeText = 'cause' in error ? collectDocumentErrorText(error.cause) : [];
+
+  return [...ownText, ...causeText];
 }
 
 function toDocumentAuditRecord(row: DocumentBaseRow) {
@@ -257,33 +258,6 @@ function toDocumentAuditRecord(row: DocumentBaseRow) {
   };
 }
 
-function mapDocumentUniqueViolation(error: unknown, input: { filename: string; productId: UUID }): Error {
-  const constraint = getUniqueViolationConstraint(error);
-
-  if (constraint?.includes(PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX) || isProductDocumentFilenameUniqueDetail(error)) {
-    return new DuplicateDocumentFilenameError(input);
-  }
-
+function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
-}
-
-function isProductDocumentFilenameUniqueDetail(error: unknown): boolean {
-  const text = collectErrorText(error).join('\n');
-
-  return text.includes('documents') && text.includes('product_id') && text.includes('lower(filename)');
-}
-
-function collectErrorText(error: unknown): string[] {
-  if (typeof error !== 'object' || error === null) {
-    return [];
-  }
-
-  const ownText = ['message', 'detail'].flatMap((property) => {
-    const value = property in error ? error[property as keyof typeof error] : null;
-
-    return typeof value === 'string' ? [value] : [];
-  });
-  const causeText = 'cause' in error ? collectErrorText(error.cause) : [];
-
-  return [...ownText, ...causeText];
 }

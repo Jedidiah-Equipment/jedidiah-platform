@@ -53,7 +53,7 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
             bytes,
             contentType: file.mimetype,
             filename: file.filename,
-            metadata: { type: readDocumentTypeField(file.fields.type) },
+            metadata: { type: readMultipartTextField(file.fields.type) },
             productId: params.productId,
           },
           storage,
@@ -117,21 +117,10 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
   });
 }
 
-function readDocumentTypeField(field: unknown): string | undefined {
-  const value = Array.isArray(field) ? field[0] : field;
+const MultipartTextField = z.object({ type: z.literal('field'), value: z.string() }).transform((field) => field.value);
 
-  if (
-    typeof value === 'object' &&
-    value !== null &&
-    'type' in value &&
-    value.type === 'field' &&
-    'value' in value &&
-    typeof value.value === 'string'
-  ) {
-    return value.value;
-  }
-
-  return undefined;
+function readMultipartTextField(field: unknown): string | undefined {
+  return MultipartTextField.safeParse(Array.isArray(field) ? field[0] : field).data;
 }
 
 async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): Promise<RouteAuthContext | null> {

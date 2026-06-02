@@ -1,12 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
 import { type DatabaseTransaction, type Db, documents, getUniqueViolationConstraint } from '@pkg/db';
-import { sniffDocumentContentType, validateDocumentMetadata, validateDocumentPolicy } from '@pkg/domain';
-import type { AuthId, DocumentSummary, UUID } from '@pkg/schema';
-import {
-  DocumentSummary as DocumentSummarySchema,
-  ProductDocumentMetadata as ProductDocumentMetadataSchema,
-} from '@pkg/schema';
+import { sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
+import type { AuthId, DocumentSummary, ProductDocumentMetadata, UUID } from '@pkg/schema';
+import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
 import { createAuditSnapshotChanges, documentAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
@@ -50,6 +47,10 @@ export type ProductDocumentCreateInput = {
   productId: UUID;
 };
 
+type ProductDocumentRecordInput = Omit<ProductDocumentCreateInput, 'metadata'> & {
+  metadata: ProductDocumentMetadata;
+};
+
 export type ReadDocumentResult = {
   document: DocumentSummary;
   object: StoredObject;
@@ -78,7 +79,7 @@ export async function createProductDocumentRecord({
 }: {
   actorUserId: AuthId;
   db: Db;
-  input: ProductDocumentCreateInput;
+  input: ProductDocumentRecordInput;
   storage: StorageAdapter;
 }): Promise<DocumentBaseRow> {
   const byteSize = input.bytes.byteLength;
@@ -101,14 +102,6 @@ export async function createProductDocumentRecord({
   if (!policyResult.ok) {
     throw new DocumentPolicyViolationError(policyResult);
   }
-
-  const metadataResult = validateDocumentMetadata({ metadata: input.metadata, ownerType: 'product' });
-
-  if (!metadataResult.ok) {
-    throw new DocumentPolicyViolationError(metadataResult);
-  }
-
-  const metadata = ProductDocumentMetadataSchema.parse(input.metadata);
 
   const storageKey = createProductDocumentStorageKey({
     filename: input.filename,
@@ -138,7 +131,7 @@ export async function createProductDocumentRecord({
           byteSize,
           contentType: verifiedContentType,
           filename: input.filename,
-          metadata,
+          metadata: input.metadata,
           ownerType: 'product',
           productId: input.productId,
           storageKey,

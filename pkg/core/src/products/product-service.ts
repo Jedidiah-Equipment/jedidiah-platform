@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
@@ -32,23 +34,37 @@ import {
   insertAuditEvent,
   productAuditDescriptor,
 } from '../audit/audit-service.js';
-import { DocumentNotFoundError, DocumentPolicyViolationError } from '../documents/document-errors.js';
 import {
-  createProductDocumentRecord,
+  DocumentNotFoundError,
+  DocumentPolicyViolationError,
+  DuplicateDocumentFilenameError,
+} from '../documents/document-errors.js';
+import {
+  collectDocumentErrorText,
+  createDocumentRecord,
   type DocumentSummaryRow,
   deleteDocumentRecord,
   documentBaseSelect,
   mapDocumentSummary,
-  type ProductDocumentCreateInput,
   type ReadDocumentResult,
+  sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { type AssemblyListRow, listAssemblies, mapAssembly, syncAssemblies } from './product-assembly-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
 
+const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
+
 type ProductRow = typeof products.$inferSelect;
 type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
 type ProductCatalogAuditRecord = ProductRow & { assemblies: string };
+export type ProductDocumentCreateInput = {
+  bytes: Uint8Array;
+  contentType: string;
+  filename: string;
+  metadata: unknown;
+  productId: UUID;
+};
 
 export function mapProduct(row: ProductRow & { assemblies?: Assembly[] }): Product {
   return Product.parse({
@@ -235,7 +251,27 @@ export async function createProductDocument({
 }): Promise<DocumentSummary> {
   await assertProductExists({ db, productId: input.productId });
   const metadata = parseProductDocumentMetadata(input.metadata);
-  const row = await createProductDocumentRecord({ actorUserId, db, input: { ...input, metadata }, storage });
+  const row = await createDocumentRecord({
+    actorUserId,
+    db,
+    input: {
+      bytes: input.bytes,
+      filename: input.filename,
+      metadata,
+      ownerType: 'product',
+      productId: input.productId,
+      storageKey: createProductDocumentStorageKey({
+        filename: input.filename,
+        productId: input.productId,
+      }),
+    },
+    mapInsertError: (error) =>
+      mapProductDocumentUniqueViolation(error, {
+        filename: input.filename,
+        productId: input.productId,
+      }),
+    storage,
+  });
 
   return getProductDocumentSummary({ db, documentId: row.id, productId: input.productId });
 }
@@ -542,4 +578,24 @@ function mapProductUniqueViolation(error: unknown, input: Pick<ProductCreateInpu
   }
 
   return error instanceof Error ? error : new Error(String(error));
+}
+
+function createProductDocumentStorageKey(input: { filename: string; productId: UUID }): string {
+  return `documents/product/${input.productId}/${randomUUID()}-${sanitizeDocumentStorageKeySuffix(input.filename)}`;
+}
+
+function mapProductDocumentUniqueViolation(error: unknown, input: { filename: string; productId: UUID }): Error {
+  const constraint = getUniqueViolationConstraint(error);
+
+  if (constraint?.includes(PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX) || isProductDocumentFilenameUniqueDetail(error)) {
+    return new DuplicateDocumentFilenameError(input);
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function isProductDocumentFilenameUniqueDetail(error: unknown): boolean {
+  const text = collectDocumentErrorText(error).join('\n');
+
+  return text.includes('documents') && text.includes('product_id') && text.includes('lower(filename)');
 }

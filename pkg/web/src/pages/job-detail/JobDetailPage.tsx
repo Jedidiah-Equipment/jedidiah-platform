@@ -77,7 +77,6 @@ const JobDocuments: React.FC<{
                   <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{document.filename}</span>
                 </div>
-                <div className="truncate text-muted-foreground">From {document.sourceProductName}</div>
               </div>
               <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
               <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>

@@ -125,203 +125,240 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
         void form.handleSubmit();
       }}
     >
-      <FieldGroup>
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-          <div className="grid gap-3 md:grid-cols-2">
-            {initialQuote ? (
-              <ReadOnlyQuoteField label="Customer" value={initialQuote.customerCompanyName} />
-            ) : (
-              <form.Field name="customerId">
-                {(field) => {
-                  const fieldErrors = getFieldErrors(field.state.meta.errors);
-                  const isInvalid = fieldErrors.length > 0;
+      <FieldGroup className="gap-6">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="grid gap-6">
+            <QuoteFormSection title="Customer and product">
+              <div className="grid gap-3 md:grid-cols-2">
+                {initialQuote ? (
+                  <ReadOnlyQuoteField label="Customer" value={initialQuote.customerCompanyName} />
+                ) : (
+                  <form.Field name="customerId">
+                    {(field) => {
+                      const fieldErrors = getFieldErrors(field.state.meta.errors);
+                      const isInvalid = fieldErrors.length > 0;
 
-                  return (
-                    <form.Subscribe
-                      selector={(state) => ({
-                        customerMode: state.values.customerMode,
-                        inlineCompanyName: state.values.inlineCompanyName,
-                      })}
-                    >
-                      {({ customerMode, inlineCompanyName }) => (
+                      return (
+                        <form.Subscribe
+                          selector={(state) => ({
+                            customerMode: state.values.customerMode,
+                            inlineCompanyName: state.values.inlineCompanyName,
+                          })}
+                        >
+                          {({ customerMode, inlineCompanyName }) => (
+                            <Field data-invalid={isInvalid}>
+                              <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
+                              <QuoteCustomerCombobox
+                                allowCreate
+                                disabled={false}
+                                fallbackCustomer={fallbackCustomer}
+                                inlineValue={inlineCompanyName}
+                                mode={customerMode}
+                                onSelected={(selection) => {
+                                  if (!selection) {
+                                    form.setFieldValue('customerMode', 'existing');
+                                    form.setFieldValue('inlineCompanyName', '');
+                                    field.handleChange('');
+                                    return;
+                                  }
+
+                                  if (selection.type === 'inline') {
+                                    form.setFieldValue('customerMode', 'inline');
+                                    form.setFieldValue('inlineCompanyName', selection.companyName);
+                                    field.handleChange('');
+                                    return;
+                                  }
+
+                                  form.setFieldValue('customerMode', 'existing');
+                                  form.setFieldValue('inlineCompanyName', '');
+                                  field.handleChange(selection.customer.id);
+                                }}
+                                value={field.state.value}
+                              />
+                              <FieldError errors={fieldErrors} />
+                            </Field>
+                          )}
+                        </form.Subscribe>
+                      );
+                    }}
+                  </form.Field>
+                )}
+                {initialQuote ? (
+                  <ReadOnlyQuoteField
+                    label="Product"
+                    value={`${initialQuote.productName} (${initialQuote.productModelCode})`}
+                  />
+                ) : (
+                  <form.Field name="productId">
+                    {(field) => {
+                      const fieldErrors = getFieldErrors(field.state.meta.errors);
+                      const isInvalid = fieldErrors.length > 0;
+
+                      return (
                         <Field data-invalid={isInvalid}>
-                          <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
-                          <QuoteCustomerCombobox
-                            allowCreate
+                          <FieldLabel htmlFor={field.name}>Product</FieldLabel>
+                          <QuoteProductCombobox
                             disabled={false}
-                            fallbackCustomer={fallbackCustomer}
-                            inlineValue={inlineCompanyName}
-                            mode={customerMode}
-                            onSelected={(selection) => {
-                              if (!selection) {
-                                form.setFieldValue('customerMode', 'existing');
-                                form.setFieldValue('inlineCompanyName', '');
-                                field.handleChange('');
-                                return;
+                            onSelected={(product) => {
+                              const productId = product?.id ?? '';
+
+                              if (field.state.value !== productId) {
+                                field.handleChange(productId);
+                                form.setFieldValue('selectedAssemblies', []);
                               }
 
-                              if (selection.type === 'inline') {
-                                form.setFieldValue('customerMode', 'inline');
-                                form.setFieldValue('inlineCompanyName', selection.companyName);
-                                field.handleChange('');
-                                return;
-                              }
-
-                              form.setFieldValue('customerMode', 'existing');
-                              form.setFieldValue('inlineCompanyName', '');
-                              field.handleChange(selection.customer.id);
+                              onProductSelected(product);
                             }}
                             value={field.state.value}
                           />
                           <FieldError errors={fieldErrors} />
                         </Field>
-                      )}
-                    </form.Subscribe>
-                  );
-                }}
+                      );
+                    }}
+                  </form.Field>
+                )}
+                <form.AppField name="salesPersonId">
+                  {(field) => (
+                    <field.SelectField
+                      label="Salesperson"
+                      disabled={isLocked}
+                      options={salespeopleOptions.selectOptions}
+                      placeholder="Select salesperson"
+                    />
+                  )}
+                </form.AppField>
+                <form.AppField name="status">
+                  {(field) => (
+                    <field.SelectField
+                      label="Status"
+                      disabled={isLocked}
+                      options={QuoteStatus.options.map((status) => ({
+                        label: quoteStatusLabels[status],
+                        value: status,
+                      }))}
+                    />
+                  )}
+                </form.AppField>
+              </div>
+            </QuoteFormSection>
+
+            <QuoteFormSection title="Dates and delivery">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <form.AppField name="preferredDeliveryDate">
+                  {(field) => <field.DatePickerField clearable label="Preferred delivery date" />}
+                </form.AppField>
+                <form.AppField name="plannedDeliveryDate">
+                  {(field) => <field.DatePickerField clearable label="Planned delivery date" />}
+                </form.AppField>
+                <form.AppField name="validUntil">
+                  {(field) => <field.DatePickerField clearable label="Valid until" />}
+                </form.AppField>
+                <form.Field name="deliveryIncluded">
+                  {(field) => {
+                    const fieldErrors = getFieldErrors(field.state.meta.errors);
+                    const isInvalid = fieldErrors.length > 0;
+
+                    return (
+                      <Field className="justify-end" data-invalid={isInvalid}>
+                        <FieldLabel aria-hidden className="invisible">
+                          Delivery
+                        </FieldLabel>
+                        <div className="flex min-h-9 items-center gap-2">
+                          <Checkbox
+                            aria-invalid={isInvalid}
+                            checked={field.state.value}
+                            disabled={isLocked}
+                            id={field.name}
+                            name={field.name}
+                            onBlur={field.handleBlur}
+                            onCheckedChange={(checked) => {
+                              const isChecked = checked === true;
+
+                              field.handleChange(isChecked);
+
+                              if (!isChecked) {
+                                form.setFieldValue('deliveryPrice', 0);
+                              }
+                            }}
+                          />
+                          <FieldLabel htmlFor={field.name}>Delivery included</FieldLabel>
+                        </div>
+                        <FieldError errors={fieldErrors} />
+                      </Field>
+                    );
+                  }}
+                </form.Field>
+                <form.Subscribe selector={(state) => state.values.deliveryIncluded}>
+                  {(deliveryIncluded) =>
+                    deliveryIncluded ? (
+                      <form.AppField name="deliveryPrice">
+                        {(field) => (
+                          <field.CurrencyField
+                            {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
+                            disabled={isLocked || !selectedProduct}
+                            label="Delivery price"
+                          />
+                        )}
+                      </form.AppField>
+                    ) : null
+                  }
+                </form.Subscribe>
+              </div>
+            </QuoteFormSection>
+
+            <QuoteFormSection title="Pricing">
+              <div className="grid gap-3 md:grid-cols-2">
+                <form.AppField name="discountAmount">
+                  {(field) => (
+                    <field.CurrencyField
+                      {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
+                      disabled={isLocked || !selectedProduct}
+                      label="Discount amount"
+                    />
+                  )}
+                </form.AppField>
+                <form.AppField name="depositAmount">
+                  {(field) => (
+                    <field.CurrencyField
+                      {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
+                      disabled={isLocked || !selectedProduct}
+                      label="Deposit amount"
+                    />
+                  )}
+                </form.AppField>
+              </div>
+            </QuoteFormSection>
+
+            <QuoteFormSection title="Terms and notes">
+              <div className="grid gap-3">
+                <form.AppField name="paymentTerms">
+                  {(field) => <field.TextareaField label="Payment Terms" rows={4} />}
+                </form.AppField>
+                <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={4} />}</form.AppField>
+              </div>
+            </QuoteFormSection>
+
+            <QuoteFormSection
+              description="Standard assemblies are included. Optional assemblies add to the quote."
+              title="Assemblies"
+            >
+              <form.Field name="selectedAssemblies">
+                {(field) =>
+                  selectedProduct ? (
+                    <QuoteAssembliesSelector
+                      catalogAssemblies={selectedProduct.assemblies}
+                      currencyCode={selectedProduct.currencyCode}
+                      initialSelections={initialQuote?.selectedAssemblies ?? []}
+                      onChange={field.handleChange}
+                      readOnly={isLocked}
+                      value={field.state.value}
+                    />
+                  ) : (
+                    <p className="text-muted-foreground text-sm">Select a product to see assemblies.</p>
+                  )
+                }
               </form.Field>
-            )}
-            {initialQuote ? (
-              <ReadOnlyQuoteField
-                label="Product"
-                value={`${initialQuote.productName} (${initialQuote.productModelCode})`}
-              />
-            ) : (
-              <form.Field name="productId">
-                {(field) => {
-                  const fieldErrors = getFieldErrors(field.state.meta.errors);
-                  const isInvalid = fieldErrors.length > 0;
-
-                  return (
-                    <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>Product</FieldLabel>
-                      <QuoteProductCombobox
-                        disabled={false}
-                        onSelected={(product) => {
-                          const productId = product?.id ?? '';
-
-                          if (field.state.value !== productId) {
-                            field.handleChange(productId);
-                            form.setFieldValue('selectedAssemblies', []);
-                          }
-
-                          onProductSelected(product);
-                        }}
-                        value={field.state.value}
-                      />
-                      <FieldError errors={fieldErrors} />
-                    </Field>
-                  );
-                }}
-              </form.Field>
-            )}
-            <form.AppField name="salesPersonId">
-              {(field) => (
-                <field.SelectField
-                  label="Salesperson"
-                  disabled={isLocked}
-                  options={salespeopleOptions.selectOptions}
-                  placeholder="Select salesperson"
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="preferredDeliveryDate">
-              {(field) => <field.DatePickerField clearable label="Preferred delivery date" />}
-            </form.AppField>
-            <form.AppField name="plannedDeliveryDate">
-              {(field) => <field.DatePickerField clearable label="Planned delivery date" />}
-            </form.AppField>
-            <form.AppField name="validUntil">
-              {(field) => <field.DatePickerField clearable label="Valid until" />}
-            </form.AppField>
-            <form.AppField name="discountAmount">
-              {(field) => (
-                <field.CurrencyField
-                  {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
-                  disabled={isLocked || !selectedProduct}
-                  label="Discount"
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="depositAmount">
-              {(field) => (
-                <field.CurrencyField
-                  {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
-                  disabled={isLocked || !selectedProduct}
-                  label="Deposit amount"
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="status">
-              {(field) => (
-                <field.SelectField
-                  label="Status"
-                  disabled={isLocked}
-                  options={QuoteStatus.options.map((status) => ({
-                    label: quoteStatusLabels[status],
-                    value: status,
-                  }))}
-                />
-              )}
-            </form.AppField>
-            <form.Field name="deliveryIncluded">
-              {(field) => {
-                const fieldErrors = getFieldErrors(field.state.meta.errors);
-                const isInvalid = fieldErrors.length > 0;
-
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel aria-hidden className="invisible">
-                      Delivery
-                    </FieldLabel>
-                    <div className="flex min-h-8 items-center gap-2">
-                      <Checkbox
-                        aria-invalid={isInvalid}
-                        checked={field.state.value}
-                        disabled={isLocked}
-                        id={field.name}
-                        name={field.name}
-                        onBlur={field.handleBlur}
-                        onCheckedChange={(checked) => {
-                          const isChecked = checked === true;
-
-                          field.handleChange(isChecked);
-
-                          if (!isChecked) {
-                            form.setFieldValue('deliveryPrice', 0);
-                          }
-                        }}
-                      />
-                      <FieldLabel htmlFor={field.name}>Delivery included</FieldLabel>
-                    </div>
-                    <FieldError errors={fieldErrors} />
-                  </Field>
-                );
-              }}
-            </form.Field>
-            <form.Subscribe selector={(state) => state.values.deliveryIncluded}>
-              {(deliveryIncluded) =>
-                deliveryIncluded ? (
-                  <form.AppField name="deliveryPrice">
-                    {(field) => (
-                      <field.CurrencyField
-                        {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
-                        disabled={isLocked || !selectedProduct}
-                        label="Delivery price"
-                      />
-                    )}
-                  </form.AppField>
-                ) : null
-              }
-            </form.Subscribe>
-            <div className="md:col-span-2">
-              <form.AppField name="paymentTerms">
-                {(field) => <field.TextareaField label="Payment Terms" rows={4} />}
-              </form.AppField>
-            </div>
-            <div className="md:col-span-2">
-              <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={4} />}</form.AppField>
-            </div>
+            </QuoteFormSection>
           </div>
           <form.Subscribe
             selector={(state) => {
@@ -374,68 +411,62 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             }}
           >
             {(summary) => (
-              <div className="grid h-fit gap-2 rounded-md border p-3 text-sm">
-                <QuoteSummaryRow
-                  label="Product price"
-                  value={summary ? formatCurrency(summary.productPrice, summary.currencyCode) : '-'}
-                />
-                <QuoteSummaryRow
-                  label="Less discount"
-                  value={
-                    summary
-                      ? `${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)}%)`
-                      : '-'
-                  }
-                />
-                {summary && summary.selectedAssemblyTotal > 0 ? (
-                  <div className="grid gap-1">
-                    <QuoteSummaryRow
-                      label="Optional assemblies"
-                      value={formatCurrency(summary.selectedAssemblyTotal, summary.currencyCode)}
-                    />
-                    <div className="grid gap-1 pl-3">
-                      {summary.selectedAssemblies.map((assembly) => (
-                        <QuoteSummaryRow
-                          className="text-xs"
-                          key={`${assembly.id}:${assembly.productAssemblyId ?? 'stale'}`}
-                          label={assembly.quotedName}
-                          value={formatCurrency(assembly.quotedPrice, summary.currencyCode)}
-                          valueClassName="text-muted-foreground"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                {summary?.deliveryIncluded ? (
-                  <QuoteSummaryRow
-                    label="Delivery"
-                    value={formatCurrency(summary.deliveryPrice, summary.currencyCode)}
-                  />
-                ) : null}
-                <div className="flex items-center justify-between gap-3 border-t pt-2 font-medium">
-                  <span>Total</span>
-                  <span>{summary ? formatCurrency(summary.total, summary.currencyCode) : 'Select a product'}</span>
+              <aside className="order-first grid h-fit gap-4 border-b pb-5 text-sm xl:sticky xl:top-4 xl:order-0 xl:border-b-0 xl:border-l xl:pb-0 xl:pl-5">
+                <div className="grid gap-1">
+                  <h3 className="font-medium text-sm">Quote total</h3>
+                  <p className="font-medium text-2xl tabular-nums">
+                    {summary ? formatCurrency(summary.total, summary.currencyCode) : 'Select a product'}
+                  </p>
                 </div>
-              </div>
+                <div className="grid gap-2">
+                  <QuoteSummaryRow
+                    label="Product price"
+                    value={summary ? formatCurrency(summary.productPrice, summary.currencyCode) : '-'}
+                  />
+                  <QuoteSummaryRow
+                    label="Less discount"
+                    value={
+                      summary
+                        ? `${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)}%)`
+                        : '-'
+                    }
+                  />
+                  {summary && summary.selectedAssemblyTotal > 0 ? (
+                    <div className="grid gap-1">
+                      <QuoteSummaryRow
+                        label="Optional assemblies"
+                        value={formatCurrency(summary.selectedAssemblyTotal, summary.currencyCode)}
+                      />
+                      <div className="grid gap-1 border-l pl-3">
+                        {summary.selectedAssemblies.map((assembly) => (
+                          <QuoteSummaryRow
+                            className="text-xs"
+                            key={`${assembly.id}:${assembly.productAssemblyId ?? 'stale'}`}
+                            label={assembly.quotedName}
+                            value={formatCurrency(assembly.quotedPrice, summary.currencyCode)}
+                            valueClassName="text-muted-foreground"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {summary?.deliveryIncluded ? (
+                    <QuoteSummaryRow
+                      label="Delivery"
+                      value={formatCurrency(summary.deliveryPrice, summary.currencyCode)}
+                    />
+                  ) : null}
+                  <div className="flex items-center justify-between gap-3 border-t pt-2 font-medium">
+                    <span>Total</span>
+                    <span>{summary ? formatCurrency(summary.total, summary.currencyCode) : '-'}</span>
+                  </div>
+                </div>
+              </aside>
             )}
           </form.Subscribe>
         </div>
-        <form.Field name="selectedAssemblies">
-          {(field) =>
-            selectedProduct ? (
-              <QuoteAssembliesSelector
-                catalogAssemblies={selectedProduct.assemblies}
-                currencyCode={selectedProduct.currencyCode}
-                initialSelections={initialQuote?.selectedAssemblies ?? []}
-                onChange={field.handleChange}
-                readOnly={isLocked}
-                value={field.state.value}
-              />
-            ) : null
-          }
-        </form.Field>
       </FieldGroup>
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 border-t pt-5">
         {initialQuote ? <GenerateJobFromQuoteDialog quote={initialQuote} /> : null}
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
@@ -505,13 +536,7 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
   };
 
   return (
-    <div className="grid gap-3 rounded-md border p-3">
-      <div className="grid gap-1">
-        <h3 className="font-medium text-sm">Assemblies</h3>
-        <p className="text-muted-foreground text-sm">
-          Standard assemblies are included. Optional assemblies add to the quote.
-        </p>
-      </div>
+    <div className="grid gap-4">
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <div className="grid auto-rows-min gap-2">
           <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-normal">Standard</h4>
@@ -524,7 +549,7 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
 
                 return (
                   <div
-                    className="flex h-12 items-center justify-between gap-3 rounded-md border px-3 text-sm"
+                    className="flex h-12 items-center justify-between gap-3 rounded-md border bg-muted/20 px-3 text-sm"
                     key={assembly.id}
                   >
                     <span className={`min-w-0 truncate ${isOverridden ? 'text-muted-foreground line-through' : ''}`}>
@@ -553,7 +578,10 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
 
                 return (
                   <div
-                    className="flex h-12 items-center justify-between gap-3 rounded-md border px-3 text-sm"
+                    className={cn(
+                      'flex h-12 items-center justify-between gap-3 rounded-md border px-3 text-sm',
+                      isSelected ? 'border-primary/50 bg-primary/5' : 'bg-muted/10',
+                    )}
                     key={assembly.id}
                   >
                     <span className="flex min-w-0 items-center gap-2">
@@ -610,6 +638,25 @@ const ReadOnlyQuoteField: React.FC<{ label: string; value: string }> = ({ label,
       <span className="min-w-0 truncate">{value}</span>
     </div>
   </Field>
+);
+
+type QuoteFormSectionProps = {
+  children: React.ReactNode;
+  description?: string;
+  title: string;
+};
+
+const QuoteFormSection: React.FC<QuoteFormSectionProps> = ({ children, description, title }) => (
+  <section className="grid gap-4 border-t pt-6 first:border-t-0 first:pt-0">
+    <div className="grid gap-1.5">
+      <h3 className="flex items-center gap-2 font-heading font-medium text-base leading-tight">
+        <span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-primary" />
+        <span>{title}</span>
+      </h3>
+      {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
+    </div>
+    {children}
+  </section>
 );
 
 type QuoteSummaryRowProps = {

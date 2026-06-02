@@ -66,6 +66,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
               <field.NumberField autoComplete="off" inputMode="numeric" label="Build time (days)" placeholder="14" />
             )}
           </form.AppField>
+          <form.AppField name="requiresVinNumber">
+            {(field) => <field.CheckboxField label="Requires VIN number" />}
+          </form.AppField>
           <EditFormFullWidth>
             <form.AppField name="description">
               {(field) => <field.TextareaField label="Description" rows={4} />}

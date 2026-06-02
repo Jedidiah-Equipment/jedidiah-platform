@@ -17,6 +17,7 @@ describe('mapProduct', () => {
         buildTimeDays: 14,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
+        requiresVinNumber: true,
         thumbnailDataUrl: null,
         updatedAt,
       }),
@@ -30,6 +31,7 @@ describe('mapProduct', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      requiresVinNumber: true,
       thumbnailDataUrl: null,
       updatedAt: updatedAt.toISOString(),
     });

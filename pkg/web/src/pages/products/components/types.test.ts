@@ -16,6 +16,7 @@ function buildProduct(overrides: Record<string, unknown> = {}): Product {
     basePrice: 1000,
     buildTimeDays: 14,
     currencyCode: 'ZAR',
+    requiresVinNumber: false,
     assemblies: [
       { id: STANDARD_ID, productId: PRODUCT_ID, kind: 'standard', name: 'Base', parts: [] },
       {
@@ -42,6 +43,7 @@ describe('toProductFormValues', () => {
     expect(values.modelCode).toBe('');
     expect(values.description).toBe('');
     expect(values.currencyCode).toBe('ZAR');
+    expect(values.requiresVinNumber).toBe(false);
     expect(values.assemblies).toEqual([]);
     expect(Number.isNaN(values.basePrice)).toBe(true);
     expect(Number.isNaN(values.buildTimeDays)).toBe(true);
@@ -53,7 +55,12 @@ describe('toProductFormValues', () => {
     expect(values.name).toBe('Widget');
     expect(values.basePrice).toBe(1000);
     expect(values.buildTimeDays).toBe(14);
+    expect(values.requiresVinNumber).toBe(false);
     expect(values.assemblies).toHaveLength(2);
+  });
+
+  it('maps an existing product VIN requirement into form state', () => {
+    expect(toProductFormValues(buildProduct({ requiresVinNumber: true })).requiresVinNumber).toBe(true);
   });
 
   it('collapses a null description to an empty string', () => {

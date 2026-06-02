@@ -30,6 +30,7 @@ describe('Job', () => {
         productSerialYear: 26,
         quoteId: '00000000-0000-4000-8000-000000000003',
         updatedAt: '2026-06-01T00:00:00.000Z',
+        vinNumber: null,
       }),
     ).toMatchObject({
       code: 'JOB-00001',
@@ -37,6 +38,7 @@ describe('Job', () => {
       productSerialPrefix: 'SG1836',
       productSerialSequence: 9,
       productSerialYear: 26,
+      vinNumber: null,
     });
   });
 });

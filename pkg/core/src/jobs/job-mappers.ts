@@ -17,6 +17,7 @@ export function mapJob(row: JobRow): Job {
     productSerialYear: row.productSerialYear,
     quoteId: row.quoteId,
     updatedAt: row.updatedAt.toISOString(),
+    vinNumber: row.vinNumber,
   });
 }
 

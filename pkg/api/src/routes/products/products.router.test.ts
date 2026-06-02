@@ -48,6 +48,7 @@ describe('products.create', () => {
       buildTimeDays: 14,
       modelCode: 'WHEEL-LOADER',
       name: 'Wheel Loader',
+      requiresVinNumber: false,
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
@@ -110,13 +111,14 @@ describe('products.create', () => {
 });
 
 describe('products.read', () => {
-  test('returns build time days on get and list', async ({ context }) => {
+  test('returns build time days and VIN requirement on get and list', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Wheel Loader Read', { buildTimeDays: 21 });
+    const created = await createProduct(caller, 'Wheel Loader Read', { buildTimeDays: 21, requiresVinNumber: true });
 
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
       id: created.id,
       buildTimeDays: 21,
+      requiresVinNumber: true,
     });
 
     const list = await caller.products.list({
@@ -124,7 +126,9 @@ describe('products.read', () => {
       pageSize: 10,
     });
 
-    expect(list.items).toContainEqual(expect.objectContaining({ id: created.id, buildTimeDays: 21 }));
+    expect(list.items).toContainEqual(
+      expect.objectContaining({ id: created.id, buildTimeDays: 21, requiresVinNumber: true }),
+    );
   });
 
   test('returns assemblies on get and list', async ({ context }) => {
@@ -203,6 +207,7 @@ describe('products.update', () => {
       buildTimeDays: 30,
       modelCode: 'WHEEL-LOADER-UPDATED',
       name: 'Wheel Loader Updated',
+      requiresVinNumber: true,
     });
 
     expect(updated).toMatchObject({
@@ -211,6 +216,7 @@ describe('products.update', () => {
       buildTimeDays: 30,
       modelCode: 'WHEEL-LOADER-UPDATED',
       name: 'Wheel Loader Updated',
+      requiresVinNumber: true,
     });
     const events = await context.db.select().from(auditEvents);
     expect(events).not.toHaveLength(0);
@@ -220,6 +226,10 @@ describe('products.update', () => {
           buildTimeDays: {
             from: 14,
             to: 30,
+          },
+          requiresVinNumber: {
+            from: false,
+            to: true,
           },
         }),
       }),
@@ -239,6 +249,7 @@ describe('products.update', () => {
       id: created.id,
       modelCode: created.modelCode,
       name: created.name,
+      requiresVinNumber: created.requiresVinNumber,
       thumbnailDataUrl: null,
     });
 
@@ -289,6 +300,7 @@ describe('products.update', () => {
       buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: created.name,
+      requiresVinNumber: created.requiresVinNumber,
     });
 
     expect(updated.assemblies).toContainEqual(
@@ -331,6 +343,7 @@ describe('products.update', () => {
       buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: 'Wheel Loader Preserve Assemblies Updated',
+      requiresVinNumber: created.requiresVinNumber,
     });
 
     expect(updated.assemblies).toEqual(created.assemblies);
@@ -396,6 +409,7 @@ describe('products.update', () => {
         buildTimeDays: target.buildTimeDays,
         modelCode: target.modelCode,
         name: target.name,
+        requiresVinNumber: target.requiresVinNumber,
       }),
     ).rejects.toThrow('Assemblies must belong to the product being updated.');
   });

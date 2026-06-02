@@ -43,6 +43,7 @@ export function mapDocumentCoreError(error: DocumentCoreError): CoreErrorMapping
   switch (error.code) {
     case 'document.content_type_not_allowed':
     case 'document.file_too_large':
+    case 'document.metadata_invalid':
     case 'document.storage_key_conflict':
       return {
         appCode: error.code,

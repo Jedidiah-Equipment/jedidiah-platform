@@ -53,6 +53,7 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
             bytes,
             contentType: file.mimetype,
             filename: file.filename,
+            metadata: { type: readDocumentTypeField(file.fields.type) },
             productId: params.productId,
           },
           storage,
@@ -114,6 +115,23 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       sendHttpError(reply, error);
     }
   });
+}
+
+function readDocumentTypeField(field: unknown): string | undefined {
+  const value = Array.isArray(field) ? field[0] : field;
+
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'type' in value &&
+    value.type === 'field' &&
+    'value' in value &&
+    typeof value.value === 'string'
+  ) {
+    return value.value;
+  }
+
+  return undefined;
 }
 
 async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): Promise<RouteAuthContext | null> {

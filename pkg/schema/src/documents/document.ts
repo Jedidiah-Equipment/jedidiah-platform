@@ -17,6 +17,14 @@ export const DocumentContentType = requiredTrimmedText('Content type is required
 export type DocumentByteSize = z.infer<typeof DocumentByteSize>;
 export const DocumentByteSize = z.int().min(0);
 
+export type ProductDocumentType = z.infer<typeof ProductDocumentType>;
+export const ProductDocumentType = z.enum(['sop', 'part_book', 'brochure']);
+
+export type ProductDocumentMetadata = z.infer<typeof ProductDocumentMetadata>;
+export const ProductDocumentMetadata = z.object({
+  type: ProductDocumentType,
+});
+
 export type DocumentSummary = z.infer<typeof DocumentSummary>;
 export const DocumentSummary = z.object({
   id: UUID,
@@ -27,6 +35,7 @@ export const DocumentSummary = z.object({
   filename: DocumentFilename,
   contentType: DocumentContentType,
   byteSize: DocumentByteSize,
+  metadata: ProductDocumentMetadata,
   uploaderUserId: AuthId,
   uploaderName: z.string().trim().min(1).nullable(),
   uploaderEmail: z.email().nullable(),

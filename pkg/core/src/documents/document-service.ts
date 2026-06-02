@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import { type DatabaseTransaction, type Db, documents, getUniqueViolationConstraint } from '@pkg/db';
-import { sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
+import { sniffDocumentContentType, validateDocumentMetadata, validateDocumentPolicy } from '@pkg/domain';
 import type { AuthId, DocumentSummary, UUID } from '@pkg/schema';
-import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema';
+import {
+  DocumentSummary as DocumentSummarySchema,
+  ProductDocumentMetadata as ProductDocumentMetadataSchema,
+} from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
 import { createAuditSnapshotChanges, documentAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
@@ -27,6 +30,7 @@ export type DocumentBaseRow = Pick<
   | 'filename'
   | 'id'
   | 'jobId'
+  | 'metadata'
   | 'ownerType'
   | 'productId'
   | 'sourceProductId'
@@ -42,6 +46,7 @@ export type ProductDocumentCreateInput = {
   bytes: Uint8Array;
   contentType: string;
   filename: string;
+  metadata: unknown;
   productId: UUID;
 };
 
@@ -57,6 +62,7 @@ export const documentBaseSelect = {
   filename: documents.filename,
   id: documents.id,
   jobId: documents.jobId,
+  metadata: documents.metadata,
   ownerType: documents.ownerType,
   productId: documents.productId,
   sourceProductId: documents.sourceProductId,
@@ -96,6 +102,14 @@ export async function createProductDocumentRecord({
     throw new DocumentPolicyViolationError(policyResult);
   }
 
+  const metadataResult = validateDocumentMetadata({ metadata: input.metadata, ownerType: 'product' });
+
+  if (!metadataResult.ok) {
+    throw new DocumentPolicyViolationError(metadataResult);
+  }
+
+  const metadata = ProductDocumentMetadataSchema.parse(input.metadata);
+
   const storageKey = createProductDocumentStorageKey({
     filename: input.filename,
     productId: input.productId,
@@ -124,6 +138,7 @@ export async function createProductDocumentRecord({
           byteSize,
           contentType: verifiedContentType,
           filename: input.filename,
+          metadata,
           ownerType: 'product',
           productId: input.productId,
           storageKey,
@@ -209,6 +224,7 @@ export function mapDocumentSummary(row: DocumentSummaryRow): DocumentSummary {
     filename: row.filename,
     id: row.id,
     jobId: row.jobId,
+    metadata: row.metadata,
     ownerType: row.ownerType,
     productId: row.productId,
     sourceProductId: row.sourceProductId,
@@ -239,6 +255,7 @@ function toDocumentAuditRecord(row: DocumentBaseRow) {
     filename: row.filename,
     id: row.id,
     jobId: row.jobId,
+    metadata: row.metadata,
     ownerType: row.ownerType,
     productId: row.productId,
     sourceProductId: row.sourceProductId,

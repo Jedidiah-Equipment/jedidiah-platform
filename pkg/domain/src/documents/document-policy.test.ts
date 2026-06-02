@@ -7,6 +7,7 @@ import {
   DOCUMENT_WEBP_CONTENT_TYPE,
   PRODUCT_DOCUMENT_MAX_BYTES,
   sniffDocumentContentType,
+  validateDocumentMetadata,
   validateDocumentPolicy,
 } from './document-policy.js';
 
@@ -56,6 +57,32 @@ describe('validateDocumentPolicy', () => {
     ).toMatchObject({
       ok: false,
       code: 'document.file_too_large',
+    });
+  });
+});
+
+describe('validateDocumentMetadata', () => {
+  it('accepts each valid product document type', () => {
+    for (const type of ['sop', 'part_book', 'brochure'] as const) {
+      expect(validateDocumentMetadata({ metadata: { type }, ownerType: 'product' })).toEqual({ ok: true });
+    }
+  });
+
+  it('rejects product metadata with a missing type', () => {
+    expect(validateDocumentMetadata({ metadata: {}, ownerType: 'product' })).toMatchObject({
+      ok: false,
+      code: 'document.metadata_invalid',
+    });
+    expect(validateDocumentMetadata({ metadata: { type: undefined }, ownerType: 'product' })).toMatchObject({
+      ok: false,
+      code: 'document.metadata_invalid',
+    });
+  });
+
+  it('rejects product metadata with an unknown type', () => {
+    expect(validateDocumentMetadata({ metadata: { type: 'manual' }, ownerType: 'product' })).toMatchObject({
+      ok: false,
+      code: 'document.metadata_invalid',
     });
   });
 });

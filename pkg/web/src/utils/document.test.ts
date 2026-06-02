@@ -1,7 +1,12 @@
 import { DocumentMetadata, type UUID } from '@pkg/schema';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createDocumentDownloadPath, fetchDocumentPreviewBlob, getDocumentPreviewKind } from './document.js';
+import {
+  createDocumentDownloadPath,
+  downloadDocument,
+  fetchDocumentPreviewBlob,
+  getDocumentPreviewKind,
+} from './document.js';
 
 const documentMetadata = DocumentMetadata.parse({
   byteSize: 128,
@@ -19,6 +24,7 @@ const documentMetadata = DocumentMetadata.parse({
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -90,5 +96,46 @@ describe('document utilities', () => {
         signal,
       },
     );
+  });
+
+  it('keeps the object URL alive until after the download click is queued', async () => {
+    vi.useFakeTimers();
+    const click = vi.fn();
+    const fetchMock = vi.fn(async () => new Response(new Blob(['%PDF-1.7'], { type: 'application/pdf' })));
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:document-download');
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('window', {
+      __APP_CONFIG__: {
+        appBaseUrl: 'http://localhost:7001',
+        appEnv: 'development',
+        apiBaseUrl: 'http://localhost:7002',
+        authBaseUrl: 'http://localhost:7002/api/auth',
+      },
+      document: {
+        createElement: vi.fn(() => ({
+          click,
+          download: '',
+          href: '',
+        })),
+      },
+    });
+
+    await downloadDocument({
+      document: documentMetadata,
+      owner: {
+        id: '22222222-2222-2222-8222-222222222222' as UUID,
+        type: 'product',
+      },
+    });
+
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect(click).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:document-download');
   });
 });

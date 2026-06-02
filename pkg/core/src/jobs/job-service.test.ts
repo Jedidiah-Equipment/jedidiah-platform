@@ -595,7 +595,7 @@ function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
     discountAmount: quote.discountAmount,
     id: quote.id,
     notes: quote.notes,
-    paymentTerms: quote.paymentTerms,
+    documentNotes: quote.documentNotes,
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
     salesPersonId: quote.salesPersonId,

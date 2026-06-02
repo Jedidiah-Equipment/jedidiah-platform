@@ -4,7 +4,7 @@ import { assertQuoteEditable } from './quote-lock.js';
 
 const editableLockedQuoteFields = [
   'notes',
-  'paymentTerms',
+  'documentNotes',
   'plannedDeliveryDate',
   'preferredDeliveryDate',
   'validUntil',

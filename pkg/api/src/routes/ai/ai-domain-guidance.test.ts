@@ -27,7 +27,7 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('A Quote sources at most one Job');
     expect(prompt).toContain('Product is required at creation and immutable post-creation');
     expect(prompt).toContain('price snapshot fields quotedBasePrice and quotedCurrencyCode are latched');
-    expect(prompt).toContain('Payment Terms, Preferred Delivery Date, and Planned Delivery Date');
+    expect(prompt).toContain('Document Notes, Preferred Delivery Date, and Planned Delivery Date');
     expect(prompt).toContain('Intent customer_job_progress');
     expect(prompt).toContain('listQuoteCustomers');
     expect(prompt).toContain('listQuotes');

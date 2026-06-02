@@ -204,7 +204,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
       resultIdentifiers: [
         'Quote Code',
         'Quote Status',
-        'Payment Terms',
+        'Document Notes',
         'Preferred delivery date',
         'Planned delivery date',
         'Product UUID',
@@ -231,7 +231,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
       resultIdentifiers: [
         'Quote Code',
         'Quote Status',
-        'Payment Terms',
+        'Document Notes',
         'Preferred delivery date',
         'Planned delivery date',
         'Product UUID',

@@ -40,7 +40,7 @@ describe('quotes.create', () => {
       depositPercent: 30,
       discountAmount: 100,
       notes: 'Demo quote',
-      paymentTerms: '30% deposit, balance on delivery',
+      documentNotes: '30% deposit, balance on delivery',
       plannedDeliveryDate: '2026-07-15',
       preferredDeliveryDate: '2026-07-10',
       productId: context.product.id,
@@ -58,7 +58,7 @@ describe('quotes.create', () => {
       depositPercent: 30,
       deliveryIncluded: true,
       deliveryPrice: 350,
-      paymentTerms: '30% deposit, balance on delivery',
+      documentNotes: '30% deposit, balance on delivery',
       plannedDeliveryDate: '2026-07-15',
       preferredDeliveryDate: '2026-07-10',
       productId: context.product.id,
@@ -88,7 +88,7 @@ describe('quotes.create', () => {
           companyName: 'Acme Mining',
         },
         notes: null,
-        paymentTerms: null,
+        documentNotes: null,
       } as never),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
@@ -104,7 +104,7 @@ describe('quotes.create', () => {
         companyName: 'Cancelled Customer',
       },
       notes: null,
-      paymentTerms: null,
+      documentNotes: null,
       productId: context.product.id,
       salesPersonId: 'test-user-id',
       status: 'cancelled',
@@ -130,7 +130,7 @@ describe('quotes.create', () => {
         },
         depositPercent: -1,
         notes: null,
-        paymentTerms: null,
+        documentNotes: null,
         productId: context.product.id,
         salesPersonId: 'test-user-id',
         status: 'draft',
@@ -152,7 +152,7 @@ describe('quotes.create', () => {
         },
         depositPercent: 101,
         notes: null,
-        paymentTerms: null,
+        documentNotes: null,
         productId: context.product.id,
         salesPersonId: 'test-user-id',
         status: 'draft',
@@ -174,7 +174,7 @@ describe('quotes.create', () => {
         },
         discountAmount: 100,
         notes: 'Demo quote',
-        paymentTerms: null,
+        documentNotes: null,
         productId: context.product.id,
         salesPersonId: 'missing-user-id',
         status: 'draft',
@@ -195,7 +195,7 @@ describe('quotes.create', () => {
       },
       discountAmount: 50,
       notes: null,
-      paymentTerms: null,
+      documentNotes: null,
       productId: context.product.id,
       salesPersonId: 'test-user-id',
       status: 'sent',
@@ -247,7 +247,7 @@ describe('quotes.create', () => {
       },
       discountAmount: 25,
       notes: null,
-      paymentTerms: null,
+      documentNotes: null,
       productId: context.product.id,
       salesPersonId: 'test-user-id',
       status: 'draft',
@@ -337,7 +337,7 @@ describe('quotes.update', () => {
       deliveryPrice: 777,
       discountAmount: 125,
       notes: 'Updated draft terms',
-      paymentTerms: '50% deposit before fabrication',
+      documentNotes: '50% deposit before fabrication',
       plannedDeliveryDate: '2026-08-05',
       preferredDeliveryDate: '2026-08-12',
       salesPersonId: alternateSalesPersonId,
@@ -353,7 +353,7 @@ describe('quotes.update', () => {
       depositPercent: 50,
       discountAmount: 125,
       notes: 'Updated draft terms',
-      paymentTerms: '50% deposit before fabrication',
+      documentNotes: '50% deposit before fabrication',
       plannedDeliveryDate: '2026-08-05',
       preferredDeliveryDate: '2026-08-12',
       productId: created.productId,
@@ -372,7 +372,7 @@ describe('quotes.update', () => {
         from: 0,
         to: 50,
       },
-      paymentTerms: {
+      documentNotes: {
         from: null,
         to: '50% deposit before fabrication',
       },
@@ -466,7 +466,7 @@ describe('quotes.list', () => {
     const createdQuote = await createNamedQuote(salesCaller, {
       customerCompanyName: 'Acme Mining',
       discountAmount: 150,
-      paymentTerms: 'Paid before dispatch',
+      documentNotes: 'Paid before dispatch',
       productId: context.product.id,
     });
     const finalQuote = await salesCaller.quotes.update({
@@ -511,7 +511,7 @@ describe('quotes.list', () => {
         {
           code: finalQuote.code,
           customerCompanyName: 'Acme Mining',
-          paymentTerms: 'Paid before dispatch',
+          documentNotes: 'Paid before dispatch',
           plannedDeliveryDate: '2026-07-05',
           preferredDeliveryDate: '2026-07-01',
           linkedJobs: [
@@ -809,14 +809,14 @@ describe('jobs.create with quote links', () => {
       salesCaller.quotes.update({
         ...toUpdateInput(accepted),
         notes: 'Post-sale logistics note',
-        paymentTerms: 'Balance before delivery',
+        documentNotes: 'Balance before delivery',
         plannedDeliveryDate: '2026-08-15',
         preferredDeliveryDate: '2026-08-10',
         validUntil: '2026-07-31T00:00:00.000Z',
       }),
     ).resolves.toMatchObject({
       notes: 'Post-sale logistics note',
-      paymentTerms: 'Balance before delivery',
+      documentNotes: 'Balance before delivery',
       plannedDeliveryDate: '2026-08-15',
       preferredDeliveryDate: '2026-08-10',
       validUntil: '2026-07-31',
@@ -901,7 +901,7 @@ async function createReadyQuote(caller: AppRouterCaller, productId: string) {
     },
     discountAmount: 250,
     notes: null,
-    paymentTerms: null,
+    documentNotes: null,
     productId,
     salesPersonId: 'test-user-id',
     status: 'draft',
@@ -916,7 +916,7 @@ async function createNamedQuote(
     depositPercent = 0,
     deliveryPrice = 0,
     discountAmount,
-    paymentTerms = null,
+    documentNotes = null,
     productId,
     salesPersonId = 'test-user-id',
   }: {
@@ -924,7 +924,7 @@ async function createNamedQuote(
     depositPercent?: number;
     deliveryPrice?: number;
     discountAmount: number;
-    paymentTerms?: string | null;
+    documentNotes?: string | null;
     productId: string;
     salesPersonId?: string;
   },
@@ -939,7 +939,7 @@ async function createNamedQuote(
     depositPercent,
     discountAmount,
     notes: null,
-    paymentTerms,
+    documentNotes,
     plannedDeliveryDate: '2026-07-05',
     preferredDeliveryDate: '2026-07-01',
     productId,
@@ -957,7 +957,7 @@ function toUpdateInput(quote: QuoteDetail) {
     deliveryPrice: quote.deliveryPrice,
     discountAmount: quote.discountAmount,
     notes: quote.notes,
-    paymentTerms: quote.paymentTerms,
+    documentNotes: quote.documentNotes,
     plannedDeliveryDate: quote.plannedDeliveryDate,
     preferredDeliveryDate: quote.preferredDeliveryDate,
     salesPersonId: quote.salesPersonId,

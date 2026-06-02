@@ -334,8 +334,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
 
             <QuoteFormSection title="Terms and notes">
               <div className="grid gap-3">
-                <form.AppField name="paymentTerms">
-                  {(field) => <field.TextareaField label="Payment Terms" rows={4} />}
+                <form.AppField name="documentNotes">
+                  {(field) => <field.TextareaField label="Document Notes" rows={4} />}
                 </form.AppField>
                 <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={4} />}</form.AppField>
               </div>

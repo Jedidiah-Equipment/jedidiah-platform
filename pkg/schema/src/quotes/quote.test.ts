@@ -8,7 +8,7 @@ const baseCreateInput = {
     companyName: 'Acme Mining',
   },
   notes: null,
-  paymentTerms: null,
+  documentNotes: null,
   productId: '550e8400-e29b-41d4-a716-446655440000',
   salesPersonId: 'auth-user-1',
   status: 'draft' as const,

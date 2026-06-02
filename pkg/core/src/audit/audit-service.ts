@@ -136,9 +136,10 @@ export const quoteAuditDescriptor: AuditEntityDescriptor = {
   // Quote update lock enforcement uses these fields to detect locked-field changes.
   fields: {
     customerId: 'customer',
+    depositAmount: 'deposit amount',
     deliveryIncluded: 'delivery included',
     deliveryPrice: 'delivery price',
-    discount: 'discount',
+    discountAmount: 'discount amount',
     notes: 'notes',
     paymentTerms: 'payment terms',
     plannedDeliveryDate: 'planned delivery date',

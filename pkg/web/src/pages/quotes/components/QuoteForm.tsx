@@ -1,4 +1,4 @@
-import { computeQuoteTotal, formatBytes, resolveEffectiveBom } from '@pkg/domain';
+import { computeQuoteTotal, formatBytes, hasPermission, resolveEffectiveBom } from '@pkg/domain';
 import {
   type Assembly,
   type QuoteCreateInput,
@@ -8,17 +8,30 @@ import {
   QuoteStatus,
   type QuoteUpdateInput,
 } from '@pkg/schema';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { DownloadIcon, EyeIcon, FileTextIcon, Loader2Icon, XIcon } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DownloadIcon, EyeIcon, FilePlus2Icon, FileTextIcon, Loader2Icon, XIcon } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { getFieldErrors } from '@/components/form/field-errors.js';
 import { useAppForm } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog.js';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.js';
+import { Input } from '@/components/ui/input.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -30,6 +43,7 @@ import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
 import { type QuoteProductChoice, QuoteProductCombobox } from './QuoteProductCombobox.js';
 import { quoteStatusLabels } from './QuoteStatusBadge.js';
 import {
+  getDefaultQuoteDocumentLeadTime,
   QuoteFormValues,
   resolveSelectedAssemblySnapshots,
   type SelectedAssemblySnapshot,
@@ -476,6 +490,11 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
         </div>
       </FieldGroup>
       <div className="flex justify-end gap-2 border-t pt-5">
+        {initialQuote ? (
+          <form.Subscribe selector={(state) => state.isDirty}>
+            {(isDirty) => <GenerateQuoteDocumentDialog isDirty={isDirty} quote={initialQuote} />}
+          </form.Subscribe>
+        ) : null}
         {initialQuote ? <GenerateJobFromQuoteDialog quote={initialQuote} /> : null}
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
@@ -489,6 +508,90 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
     </form>
   );
 };
+
+function GenerateQuoteDocumentDialog({ isDirty, quote }: { isDirty: boolean; quote: QuoteDetail }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const accessQuery = useAccess();
+  const showMutationError = useApiMutationErrorToast();
+  const defaultLeadTime = getDefaultQuoteDocumentLeadTime(quote);
+  const [isOpen, setIsOpen] = useState(false);
+  const [leadTime, setLeadTime] = useState(defaultLeadTime);
+  const canGenerateStatus = quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
+  const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
+  const canGenerate = canUpdateQuote && canGenerateStatus;
+  const trimmedLeadTime = leadTime.trim();
+  const generateMutation = useMutation(
+    trpc.quotes.generateDocument.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: trpc.documents.pathKey() });
+        toast.success('Quote Document generated');
+        setIsOpen(false);
+      },
+      onError: (error) => showMutationError(error, 'Unable to generate Quote Document.'),
+    }),
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setLeadTime(defaultLeadTime);
+    }
+  }, [defaultLeadTime, isOpen]);
+
+  if (!canGenerate) {
+    return null;
+  }
+
+  return (
+    <Dialog onOpenChange={setIsOpen} open={isOpen}>
+      <DialogTrigger
+        render={
+          <Button aria-label={`Generate Quote Document for quote ${quote.code}`} type="button" variant="outline" />
+        }
+      >
+        <FilePlus2Icon data-icon="inline-start" />
+        Generate Quote Document
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Generate Quote Document</DialogTitle>
+          <DialogDescription>
+            {isDirty
+              ? 'Save this Quote before generating a Quote Document.'
+              : 'Create a saved PDF revision from the current saved Quote.'}
+          </DialogDescription>
+        </DialogHeader>
+        <Field>
+          <FieldLabel htmlFor="quote-document-lead-time">Lead Time</FieldLabel>
+          <Input
+            disabled={generateMutation.isPending || isDirty}
+            id="quote-document-lead-time"
+            onChange={(event) => setLeadTime(event.target.value)}
+            value={leadTime}
+          />
+        </Field>
+        <DialogFooter>
+          <DialogClose render={<Button disabled={generateMutation.isPending} type="button" variant="outline" />}>
+            Cancel
+          </DialogClose>
+          <Button
+            disabled={generateMutation.isPending || isDirty || trimmedLeadTime.length === 0}
+            onClick={() =>
+              generateMutation.mutate({
+                leadTime: trimmedLeadTime,
+                quoteId: quote.id,
+              })
+            }
+            type="button"
+          >
+            {generateMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+            Generate
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function QuoteDocumentsSection({ quoteId }: { quoteId: QuoteDetail['id'] }) {
   const trpc = useTRPC();

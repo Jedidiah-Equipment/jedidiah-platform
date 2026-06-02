@@ -25,6 +25,7 @@ import {
   type QuoteCreateInput,
   type QuoteDetail,
   type QuoteDocument,
+  type QuoteDocumentGenerationInput,
   QuoteDocumentMetadata,
   QuoteDocument as QuoteDocumentSchema,
   type QuoteListInput,
@@ -61,8 +62,10 @@ import {
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
+import { type QuoteDocumentGenerationRow, renderQuoteDocumentHtml } from './quote-document-renderer.js';
 import {
   QuoteDiscountInvalidError,
+  QuoteDocumentGenerationNotAllowedError,
   QuoteInvalidReferenceError,
   QuoteLockedError,
   QuoteNotFoundError,
@@ -104,6 +107,7 @@ type QuoteAuditRecord = Pick<
 type QuoteListRow = {
   quote: QuoteRow;
   customerCompanyName: string;
+  productBuildTimeDays: number;
   productCurrencyCode: string;
   productModelCode: string;
   productName: string;
@@ -118,7 +122,7 @@ type QuoteLinkedJobRow = {
 type QuoteDetailRow = QuoteRow & {
   customer: Pick<typeof customers.$inferSelect, 'companyName'>;
   jobs: Pick<typeof jobs.$inferSelect, 'code' | 'id'>[];
-  product: Pick<typeof products.$inferSelect, 'currencyCode' | 'modelCode' | 'name'>;
+  product: Pick<typeof products.$inferSelect, 'buildTimeDays' | 'currencyCode' | 'modelCode' | 'name'>;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
   selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
@@ -128,6 +132,7 @@ export type QuoteDocumentCreateInput = {
   metadata: unknown;
   quoteId: UUID;
 };
+export type QuoteDocumentPdfRenderer = (input: { filename: string; html: string }) => Promise<Uint8Array>;
 
 export function mapQuote(row: QuoteRow): Quote {
   return Quote.parse({
@@ -232,6 +237,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
       .select({
         quote: quotes,
         customerCompanyName: customers.companyName,
+        productBuildTimeDays: products.buildTimeDays,
         productCurrencyCode: products.currencyCode,
         productModelCode: products.modelCode,
         productName: products.name,
@@ -296,6 +302,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       },
       product: {
         columns: {
+          buildTimeDays: true,
           currencyCode: true,
           modelCode: true,
           name: true,
@@ -389,6 +396,42 @@ export async function createQuoteDocument({
   });
 
   return getQuoteDocumentSummary({ db, documentId: row.id, quoteId: input.quoteId });
+}
+
+export async function generateQuoteDocument({
+  actorUserId,
+  db,
+  input,
+  pdfRenderer,
+  storage,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: QuoteDocumentGenerationInput;
+  pdfRenderer: QuoteDocumentPdfRenderer;
+  storage: StorageAdapter;
+}): Promise<QuoteDocument> {
+  const quote = await getQuoteDocumentGenerationRow({ db, quoteId: input.quoteId });
+  assertQuoteDocumentGenerationAllowed(quote);
+
+  const existingDocuments = await getQuoteDocuments({ db, quoteId: input.quoteId });
+  const revision =
+    existingDocuments.reduce((highest, document) => Math.max(highest, document.metadata.revision), 0) + 1;
+  const filename = `Q-${quote.code}-rev-${revision}.pdf`;
+  const html = await renderQuoteDocumentHtml({ db, input, quote });
+  const bytes = await pdfRenderer({ filename, html });
+
+  return createQuoteDocument({
+    actorUserId,
+    db,
+    input: {
+      bytes,
+      filename,
+      metadata: { revision },
+      quoteId: input.quoteId,
+    },
+    storage,
+  });
 }
 
 export async function readQuoteDocument({
@@ -518,6 +561,7 @@ function mapQuoteSummary(
       jobCode: JobCode.parse(job.jobCode),
       jobId: job.jobId,
     })),
+    productBuildTimeDays: row.productBuildTimeDays,
     productCurrencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
     productModelCode: row.productModelCode,
     productName: row.productName,
@@ -536,6 +580,7 @@ function mapQuoteDetail(row: QuoteDetailRow, productAssembliesForQuote: Assembly
       jobId: job.id,
     })),
     productCurrencyCode: ProductCurrencyCode.parse(row.product.currencyCode),
+    productBuildTimeDays: row.product.buildTimeDays,
     productModelCode: row.product.modelCode,
     productName: row.product.name,
     productAssemblies: productAssembliesForQuote,
@@ -601,6 +646,61 @@ async function getQuoteDocumentSummaryRow({
   }
 
   return row;
+}
+
+async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId: UUID }) {
+  const row = await db.query.quotes.findFirst({
+    where: eq(quotes.id, quoteId),
+    with: {
+      customer: {
+        columns: {
+          address: true,
+          companyName: true,
+          contactPerson: true,
+          email: true,
+          phone: true,
+          vatNumber: true,
+        },
+      },
+      jobs: {
+        columns: {
+          code: true,
+        },
+        orderBy: [asc(jobs.code), asc(jobs.id)],
+      },
+      product: {
+        columns: {
+          buildTimeDays: true,
+          currencyCode: true,
+          modelCode: true,
+          name: true,
+        },
+      },
+      salesPerson: {
+        columns: {
+          email: true,
+          name: true,
+        },
+      },
+      selectedAssemblies: {
+        orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
+      },
+    },
+  });
+
+  if (!row) {
+    throw new QuoteNotFoundError(quoteId);
+  }
+
+  return row satisfies QuoteDocumentGenerationRow;
+}
+
+function assertQuoteDocumentGenerationAllowed(quote: Pick<QuoteRow, 'status'>): void {
+  if (quote.status === 'rejected' || quote.status === 'cancelled') {
+    throw new QuoteDocumentGenerationNotAllowedError(
+      'Quote Documents can only be generated for draft, sent, or accepted Quotes.',
+    );
+  }
 }
 
 async function getLinkedJobsByQuoteId({

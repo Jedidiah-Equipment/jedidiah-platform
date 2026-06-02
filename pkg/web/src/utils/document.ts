@@ -147,7 +147,7 @@ async function downloadDocumentResponse({
   link.href = url;
   link.download = document.filename;
   link.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {

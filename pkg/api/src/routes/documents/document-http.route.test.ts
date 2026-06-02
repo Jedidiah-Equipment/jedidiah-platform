@@ -87,6 +87,8 @@ describe('document HTTP routes', () => {
 
     expect(response.statusCode, response.body).toBe(200);
     expect(response.headers['content-type']).toBe('application/pdf');
+    expect(response.headers['content-length']).toBe(String(pdfBytes().byteLength));
+    expect(response.rawPayload).toEqual(Buffer.from(pdfBytes()));
     expect(storage.gets).toEqual([`documents/product/${context.product.id}/part-book.pdf`]);
   });
 
@@ -106,6 +108,8 @@ describe('document HTTP routes', () => {
 
     expect(response.statusCode, response.body).toBe(200);
     expect(response.headers['content-type']).toBe('application/pdf');
+    expect(response.headers['content-length']).toBe(String(pdfBytes().byteLength));
+    expect(response.rawPayload).toEqual(Buffer.from(pdfBytes()));
     expect(storage.gets).toEqual([`documents/product/${context.product.id}/job-part-book.pdf`]);
   });
 
@@ -306,7 +310,7 @@ async function createJobOwner(db: Db, productId: UUID) {
 }
 
 function pdfBytes(): Uint8Array {
-  return Buffer.from('%PDF-1.7');
+  return Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0x0a, 0x25, 0x00, 0xff, 0x10]);
 }
 
 class MemoryStorage implements StorageAdapter {

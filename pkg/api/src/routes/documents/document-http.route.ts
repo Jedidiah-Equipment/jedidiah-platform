@@ -84,7 +84,7 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
-      reply.send(createDocumentBodyStream(result.object.body));
+      return reply.send(createDocumentBodyStream(result.object.body));
     } catch (error) {
       sendHttpError(reply, error);
     }
@@ -109,7 +109,7 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
-      reply.send(createDocumentBodyStream(result.object.body));
+      return reply.send(createDocumentBodyStream(result.object.body));
     } catch (error) {
       sendHttpError(reply, error);
     }

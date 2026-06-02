@@ -33,6 +33,9 @@ export const ProductBuildTimeDaysInput = z.coerce.number().pipe(ProductBuildTime
 export type ProductCurrencyCode = z.infer<typeof ProductCurrencyCode>;
 export const ProductCurrencyCode = z.literal('ZAR').default('ZAR');
 
+export type ProductRequiresVinNumber = z.infer<typeof ProductRequiresVinNumber>;
+export const ProductRequiresVinNumber = z.boolean();
+
 export type AssemblyKind = z.infer<typeof AssemblyKind>;
 export const AssemblyKind = z.enum(['standard', 'optional']);
 
@@ -196,6 +199,7 @@ export const Product = z.object({
   basePrice: ProductBasePrice,
   buildTimeDays: ProductBuildTimeDays,
   currencyCode: ProductCurrencyCode,
+  requiresVinNumber: ProductRequiresVinNumber,
   assemblies: z.array(Assembly).default([]),
   thumbnailDataUrl: NullableThumbnailDataUrl,
   createdAt: DateIso,
@@ -224,6 +228,7 @@ export const ProductCreateInput = z
     assemblies: ProductAssembliesInput,
     buildTimeDays: ProductBuildTimeDaysInput,
     currencyCode: ProductCurrencyCode,
+    requiresVinNumber: ProductRequiresVinNumber.default(false),
     thumbnailDataUrl: NullableThumbnailDataUrl.default(null),
   })
   .strict();
@@ -239,6 +244,7 @@ export const ProductUpdateInput = z
     buildTimeDays: ProductBuildTimeDaysInput,
     modelCode: ProductModelCode,
     name: ProductName,
+    requiresVinNumber: ProductRequiresVinNumber,
     thumbnailDataUrl: NullableThumbnailDataUrl.default(null),
   })
   .strict();

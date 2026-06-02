@@ -38,6 +38,7 @@ export const productAuditDescriptor: AuditEntityDescriptor = {
     buildTimeDays: 'build time days',
     modelCode: 'model code',
     name: 'name',
+    requiresVinNumber: 'requires VIN number',
     thumbnailDataUrl: 'thumbnail',
   },
 };

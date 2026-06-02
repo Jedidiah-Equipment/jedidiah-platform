@@ -45,6 +45,7 @@ export const jobs = pgTable(
     productSerialYear: integer('product_serial_year').notNull(),
     productSerialSequence: integer('product_serial_sequence').notNull(),
     productSerialNumber: text('product_serial_number').notNull(),
+    vinNumber: text('vin_number'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },

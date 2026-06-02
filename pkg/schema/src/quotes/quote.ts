@@ -26,6 +26,9 @@ export const QuotePaymentTerms = nullableTrimmedText();
 export type QuotePaymentTermsInput = z.infer<typeof QuotePaymentTermsInput>;
 export const QuotePaymentTermsInput = nullableTrimmedTextInput();
 
+export type QuoteDepositPercent = z.infer<typeof QuoteDepositPercent>;
+export const QuoteDepositPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');
+
 export type Quote = z.infer<typeof Quote>;
 export const Quote = z.object({
   id: UUID,
@@ -35,7 +38,7 @@ export const Quote = z.object({
   salesPersonId: AuthId,
   status: QuoteStatus,
   discountAmount: Price,
-  depositAmount: Price,
+  depositPercent: QuoteDepositPercent,
   deliveryIncluded: z.boolean(),
   deliveryPrice: Price,
   validUntil: DateIso.nullable(),
@@ -114,7 +117,7 @@ export const QuoteCreateInput = z.object({
   salesPersonId: AuthId,
   status: QuoteStatus,
   discountAmount: z.coerce.number().pipe(Price).default(0),
-  depositAmount: z.coerce.number().pipe(Price).default(0),
+  depositPercent: z.coerce.number().pipe(QuoteDepositPercent).default(0),
   deliveryIncluded: z.boolean().default(true),
   deliveryPrice: z.coerce.number().pipe(Price).default(0),
   validUntil: DateIso.nullable().default(null),
@@ -132,7 +135,7 @@ export const QuoteUpdateInput = z
     salesPersonId: AuthId,
     status: QuoteStatus,
     discountAmount: z.coerce.number().pipe(Price).default(0),
-    depositAmount: z.coerce.number().pipe(Price).default(0),
+    depositPercent: z.coerce.number().pipe(QuoteDepositPercent).default(0),
     deliveryIncluded: z.boolean().default(true),
     deliveryPrice: z.coerce.number().pipe(Price).default(0),
     validUntil: DateIso.nullable().default(null),

@@ -4,7 +4,7 @@ Once a Quote sources its Job, it becomes a Locked Quote: a defined set of commer
 
 ## Decision
 
-Frozen on a Locked Quote: **Product, Customer, Salesperson, selected Optional Assemblies, base price, discountAmount, depositAmount, status, deliveryIncluded, deliveryPrice.**
+Frozen on a Locked Quote: **Product, Customer, Salesperson, selected Optional Assemblies, base price, discountAmount, depositPercent, status, deliveryIncluded, deliveryPrice.**
 
 Still editable on a Locked Quote: **`valid_until`, `preferred_delivery_date`, `planned_delivery_date`, `notes`, `payment_terms`.**
 

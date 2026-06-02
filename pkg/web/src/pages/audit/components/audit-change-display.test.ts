@@ -113,6 +113,25 @@ describe('audit change display helpers', () => {
     expect(formatAuditChangeValue('metadata', { source: 'seed' })).toBe('{"source":"seed"}');
   });
 
+  it('formats deposit percent as a percentage', () => {
+    expect(
+      getAuditChangeDisplays({
+        depositPercent: {
+          from: 0,
+          to: 30,
+        },
+      }),
+    ).toEqual([
+      {
+        field: 'Deposit percent',
+        from: '0.0%',
+        key: 'depositPercent',
+        preview: 'Deposit percent: 0.0% -> 30.0%',
+        to: '30.0%',
+      },
+    ]);
+  });
+
   it('collapses long text and object values in row previews', () => {
     expect(
       getAuditChangeDisplays({

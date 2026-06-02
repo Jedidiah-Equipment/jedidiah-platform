@@ -141,6 +141,13 @@
       "when": 1780378125419,
       "tag": "0019_breezy_human_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780392998771,
+      "tag": "0020_replace_quote_deposit_percent",
+      "breakpoints": true
     }
   ]
 }

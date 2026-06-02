@@ -1,5 +1,5 @@
 import { formatBytes, getDocumentPolicy } from '@pkg/domain';
-import { DocumentSummary, type UUID } from '@pkg/schema';
+import { DocumentSummary, type ProductDocumentType, type UUID } from '@pkg/schema';
 import { toast } from 'sonner';
 
 import { getClientConfig } from '@/lib/app-config.js';
@@ -26,9 +26,31 @@ export function validateSelectedFile(file: File | null): File | null {
   return file;
 }
 
-export async function uploadProductDocument(productId: UUID, file: File): Promise<DocumentSummary> {
+export type ProductDocumentUploadDraft = {
+  file: File | null;
+  type: ProductDocumentType | null;
+};
+
+export type ReadyProductDocumentUpload = {
+  file: File;
+  type: ProductDocumentType;
+};
+
+export function getReadyProductDocumentUpload(draft: ProductDocumentUploadDraft): ReadyProductDocumentUpload | null {
+  if (!draft.file || !draft.type) {
+    return null;
+  }
+
+  return { file: draft.file, type: draft.type };
+}
+
+export async function uploadProductDocument(
+  productId: UUID,
+  upload: ReadyProductDocumentUpload,
+): Promise<DocumentSummary> {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('type', upload.type);
+  formData.append('file', upload.file);
 
   const response = await fetch(`${getClientConfig().apiBaseUrl}/api/products/${productId}/documents`, {
     body: formData,

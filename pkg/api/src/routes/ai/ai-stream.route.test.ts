@@ -234,6 +234,7 @@ describe('POST /ai/chat-stream', () => {
       modelCode: 'AF-25',
       name: 'Apex Forklift',
       options: [],
+      requiresVinNumber: false,
       thumbnailDataUrl: null,
       updatedAt: '2026-05-13T10:13:20.631Z',
     });

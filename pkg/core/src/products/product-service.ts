@@ -60,6 +60,7 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[] }): Produ
     buildTimeDays: row.buildTimeDays,
     modelCode: row.modelCode,
     name: row.name,
+    requiresVinNumber: row.requiresVinNumber,
     thumbnailDataUrl: row.thumbnailDataUrl,
     updatedAt: row.updatedAt.toISOString(),
   });
@@ -87,6 +88,7 @@ export async function listProducts({
       buildTimeDays: true,
       modelCode: true,
       name: true,
+      requiresVinNumber: true,
       thumbnailDataUrl: true,
       updatedAt: true,
     },
@@ -392,6 +394,7 @@ export async function updateProduct({
         buildTimeDays: input.buildTimeDays,
         modelCode: input.modelCode,
         name: input.name,
+        requiresVinNumber: input.requiresVinNumber,
         thumbnailDataUrl: input.thumbnailDataUrl,
       };
       const after = { ...before, ...patch, assemblies: desiredAssemblies };

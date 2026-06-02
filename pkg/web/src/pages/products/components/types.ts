@@ -8,6 +8,7 @@ import {
   ProductDescription,
   ProductModelCode,
   ProductName,
+  ProductRequiresVinNumber,
   refineProductAssemblies,
   UUID,
 } from '@pkg/schema';
@@ -47,6 +48,7 @@ const ProductFormFields = z.object({
   buildTimeDays: ProductBuildTimeDays,
   modelCode: ProductModelCode,
   name: ProductName,
+  requiresVinNumber: ProductRequiresVinNumber,
   thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
@@ -63,6 +65,7 @@ export const emptyProductFormValues: ProductFormValues = {
   buildTimeDays: NaN,
   modelCode: '',
   name: '',
+  requiresVinNumber: false,
   thumbnailDataUrl: null,
 };
 
@@ -76,6 +79,7 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     buildTimeDays: initialProduct?.buildTimeDays ?? NaN,
     modelCode: initialProduct?.modelCode ?? '',
     name: initialProduct?.name ?? '',
+    requiresVinNumber: initialProduct?.requiresVinNumber ?? false,
     thumbnailDataUrl: initialProduct?.thumbnailDataUrl ?? null,
   };
 }

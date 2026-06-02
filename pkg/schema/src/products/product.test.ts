@@ -21,6 +21,7 @@ describe('ProductCreateInput', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      requiresVinNumber: false,
       thumbnailDataUrl: null,
     });
   });
@@ -115,6 +116,7 @@ describe('ProductUpdateInput', () => {
         buildTimeDays: '14',
         modelCode: 'WL-100',
         name: 'Wheel Loader',
+        requiresVinNumber: true,
       }),
     ).toEqual({
       id: '00000000-0000-4000-8000-000000000102',
@@ -124,6 +126,7 @@ describe('ProductUpdateInput', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      requiresVinNumber: true,
       thumbnailDataUrl: null,
     });
   });

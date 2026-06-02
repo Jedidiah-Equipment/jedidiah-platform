@@ -4,7 +4,7 @@ import { DateIso } from '../common/date.js';
 import { DEPARTMENTS, Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
-import { requiredTrimmedText } from '../common/text.js';
+import { nullableTrimmedText, requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import { JobDocument } from '../documents/document.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
@@ -35,6 +35,9 @@ const ProductSerialNumberString = requiredTrimmedText(
 
 export type ProductSerialNumber = z.infer<typeof ProductSerialNumber>;
 export const ProductSerialNumber = ProductSerialNumberString;
+
+export type JobVinNumber = z.infer<typeof JobVinNumber>;
+export const JobVinNumber = nullableTrimmedText();
 
 export function formatProductSerialNumber({
   prefix,
@@ -145,6 +148,7 @@ export const Job = z.object({
   productSerialSequence: ProductSerialSequence,
   productSerialYear: ProductSerialYear,
   quoteId: UUID,
+  vinNumber: JobVinNumber,
   createdAt: DateIso,
   updatedAt: DateIso,
 });

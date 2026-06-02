@@ -31,6 +31,7 @@ describe('jobs.create', () => {
       productSerialPrefix: 'JOB-TEST',
       productSerialSequence: 1,
       quoteId: context.quote.id,
+      vinNumber: null,
     });
     expect(job.stages.map((stage) => stage.stage)).toEqual([
       'procurement',
@@ -50,6 +51,7 @@ describe('jobs.create', () => {
     await expect(caller.jobs.get({ id: job.id })).resolves.toMatchObject({
       id: job.id,
       productSerialNumber: job.productSerialNumber,
+      vinNumber: null,
     });
 
     const result = await caller.jobs.list({
@@ -65,6 +67,7 @@ describe('jobs.create', () => {
       expect.objectContaining({
         id: job.id,
         productSerialNumber: job.productSerialNumber,
+        vinNumber: null,
       }),
     ]);
   });

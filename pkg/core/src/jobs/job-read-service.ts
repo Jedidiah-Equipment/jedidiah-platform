@@ -78,6 +78,7 @@ export async function listJobs({
       productSerialYear: true,
       quoteId: true,
       updatedAt: true,
+      vinNumber: true,
     },
     where,
     orderBy: [orderBy, asc(jobs.id)],
@@ -172,6 +173,7 @@ export async function getJob({
       productSerialYear: true,
       quoteId: true,
       updatedAt: true,
+      vinNumber: true,
     },
     where: eq(jobs.id, id),
     with: {

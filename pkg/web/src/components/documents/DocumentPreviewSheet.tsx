@@ -30,12 +30,12 @@ export function DocumentPreviewSheet({ document, onOpenChange, open, owner }: Do
   const previewKind = document ? getDocumentPreviewKind(document) : null;
   const previewQuery = useQuery({
     enabled: open && Boolean(document) && Boolean(previewKind),
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       if (!document) {
         throw new Error('Choose a document to preview.');
       }
 
-      return fetchDocumentPreviewBlob({ document, owner });
+      return fetchDocumentPreviewBlob({ document, owner, signal });
     },
     queryKey: ['document-preview', owner.type, owner.id, document?.id],
     staleTime: Infinity,

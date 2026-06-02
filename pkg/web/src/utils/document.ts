@@ -68,13 +68,17 @@ export async function downloadDocument({
 export async function fetchDocumentPreviewBlob({
   document,
   owner,
+  signal,
 }: {
   document: DocumentMetadata;
   owner: DocumentPreviewOwner;
+  signal?: AbortSignal;
 }): Promise<Blob> {
-  const response = await fetch(getDocumentDownloadUrl({ document, owner }), {
+  const requestInit: RequestInit = {
     credentials: 'include',
-  });
+    ...(signal ? { signal } : {}),
+  };
+  const response = await fetch(getDocumentDownloadUrl({ document, owner }), requestInit);
 
   if (!response.ok) {
     throw new Error(await readApiErrorMessage(response, 'Unable to preview document.'));

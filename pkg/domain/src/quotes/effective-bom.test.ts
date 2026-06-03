@@ -83,6 +83,39 @@ describe('resolveEffectiveBom', () => {
     expect(result.overriddenStandardAssemblyIds.size).toBe(0);
   });
 
+  it('orders resolved optionals by catalog display order, not selection order', () => {
+    // Selected in reverse catalog order; resolved order must follow the catalog array.
+    const result = resolveEffectiveBom({
+      catalogAssemblies,
+      selectedAssemblies: [{ productAssemblyId: LADDER_RACK_ID }, { productAssemblyId: HEAVY_AXLE_ID }],
+    });
+
+    expect(result.selectedOptionalAssemblies.map(({ assembly }) => assembly.id)).toEqual([
+      HEAVY_AXLE_ID,
+      LADDER_RACK_ID,
+    ]);
+  });
+
+  it('keeps stale selections last in their incoming order', () => {
+    const firstStale = { productAssemblyId: ABSENT_ID };
+    const secondStale = { productAssemblyId: null };
+    const result = resolveEffectiveBom({
+      catalogAssemblies,
+      selectedAssemblies: [
+        { productAssemblyId: LADDER_RACK_ID },
+        firstStale,
+        { productAssemblyId: HEAVY_AXLE_ID },
+        secondStale,
+      ],
+    });
+
+    expect(result.selectedOptionalAssemblies.map(({ assembly }) => assembly.id)).toEqual([
+      HEAVY_AXLE_ID,
+      LADDER_RACK_ID,
+    ]);
+    expect(result.staleSelections).toEqual([firstStale, secondStale]);
+  });
+
   it('resolves live selections and isolates stale ones in one pass', () => {
     const live = { productAssemblyId: HEAVY_AXLE_ID };
     const stale = { productAssemblyId: ABSENT_ID };

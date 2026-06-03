@@ -69,6 +69,7 @@ export const jobCfoAssemblies = pgTable(
       .references(() => jobs.id, { onDelete: 'cascade' }),
     assemblyName: text('assembly_name').notNull(),
     kind: text('kind', { enum: ['standard', 'optional'] }).notNull(),
+    sequence: integer('sequence').notNull(),
   },
   (table) => [
     check('job_cfo_assembly_name_nonempty', sql`length(trim(${table.assemblyName})) > 0`),

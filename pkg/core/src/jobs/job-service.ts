@@ -11,7 +11,7 @@ import {
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
-import { buildCfo, JOB_STAGE_PIPELINE } from '@pkg/domain';
+import { buildCfo, type CfoEntry, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import {
   type AuthId,
   formatProductSerialNumber,
@@ -242,6 +242,10 @@ async function insertJobCfo({
   jobId: UUID;
   tx: DatabaseTransaction;
 }): Promise<void> {
+  // Freeze the build order: standards in catalog display order, then selected optionals in the
+  // order resolveEffectiveBom produces. Densely sequenced per kind so the CFO read reproduces it.
+  const sequenceByKind: Record<CfoEntry['kind'], number> = { optional: 0, standard: 0 };
+
   for (const assembly of cfo) {
     const [cfoAssembly] = await tx
       .insert(jobCfoAssemblies)
@@ -249,6 +253,7 @@ async function insertJobCfo({
         assemblyName: assembly.assemblyName,
         jobId,
         kind: assembly.kind,
+        sequence: sequenceByKind[assembly.kind]++,
       })
       .returning({ id: jobCfoAssemblies.id });
 

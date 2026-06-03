@@ -1,3 +1,4 @@
+import { formatCurrency } from '@pkg/domain';
 import { type Product, type ProductListInput, ProductSortBy } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -15,7 +16,6 @@ import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatCurrency } from '@/utils/number.js';
 
 type ProductTableProps = {
   onEditProduct: ((product: Product) => void) | undefined;

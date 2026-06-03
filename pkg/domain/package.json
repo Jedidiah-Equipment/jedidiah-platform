@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pkg/schema": "workspace:*"
+    "@pkg/schema": "workspace:*",
+    "date-fns": "^4.3.0"
   }
 }

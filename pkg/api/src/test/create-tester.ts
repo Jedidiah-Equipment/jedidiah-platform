@@ -57,7 +57,6 @@ export function createTester<T extends object = Record<string, never>>(
                 access: null,
                 db: databaseClient.db,
                 log: testLog,
-                quoteDocumentPdfRenderer: fakeQuoteDocumentPdfRenderer,
                 session: null,
                 storage: new MemoryStorage(),
               }),
@@ -69,7 +68,6 @@ export function createTester<T extends object = Record<string, never>>(
                 }),
                 db: databaseClient.db,
                 log: testLog,
-                quoteDocumentPdfRenderer: fakeQuoteDocumentPdfRenderer,
                 session,
                 storage: new MemoryStorage(),
               });
@@ -100,10 +98,6 @@ export function createTester<T extends object = Record<string, never>>(
       }
     },
   });
-}
-
-async function fakeQuoteDocumentPdfRenderer(): Promise<Uint8Array> {
-  return new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]);
 }
 
 class MemoryStorage implements StorageAdapter {

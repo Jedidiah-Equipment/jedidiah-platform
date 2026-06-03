@@ -1,5 +1,4 @@
-import { formatDate } from '@/utils/date.js';
-import { formatCurrency, formatPercent } from '@/utils/number.js';
+import { formatCurrency, formatDate, formatPercent } from '@pkg/domain';
 
 export type AuditChange = { from?: unknown; to?: unknown };
 export type AuditChangeMap = Record<string, AuditChange>;
@@ -110,7 +109,7 @@ export function formatAuditChangeValue(field: string, value: unknown): string {
   }
 
   if (percentFields.has(field) && typeof value === 'number') {
-    return `${formatPercent(value)}%`;
+    return formatPercent(value);
   }
 
   if (dateFields.has(field) && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {

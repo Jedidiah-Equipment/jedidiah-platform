@@ -1,3 +1,4 @@
+import { type DateFormat, formatDate, parseDate, secondsToAgeString } from '@pkg/domain';
 import {
   differenceInSeconds,
   formatDate as formatDateFns,
@@ -8,10 +9,8 @@ import {
   subWeeks,
 } from 'date-fns';
 import type React from 'react';
-
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { cn } from '@/lib/utils.js';
-import { type DateFormat, formatDate, parseDate, secondsToAgeString } from '@/utils/date.js';
 
 type DateDisplayParts = {
   label: string;

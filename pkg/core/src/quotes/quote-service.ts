@@ -26,8 +26,10 @@ import {
   type QuoteCreateInput,
   type QuoteDetail,
   type QuoteDocument,
+  type QuoteDocumentCreateInput,
   type QuoteDocumentGenerationInput,
   QuoteDocumentMetadata,
+  type QuoteDocumentPdfRenderer,
   QuoteDocument as QuoteDocumentSchema,
   type QuoteListInput,
   type QuoteListResult,
@@ -63,7 +65,7 @@ import {
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
-import { type QuoteDocumentGenerationRow, renderQuoteDocumentHtml } from './quote-document-renderer.js';
+import { getQuoteDocumentModel, type QuoteDocumentGenerationRow } from './quote-document.js';
 import {
   QuoteDiscountInvalidError,
   QuoteDocumentGenerationNotAllowedError,
@@ -105,6 +107,7 @@ type QuoteAuditRecord = Pick<
 > & {
   selectedAssemblies: string;
 };
+
 type QuoteListRow = {
   quote: QuoteRow;
   customerCompanyName: string;
@@ -115,11 +118,13 @@ type QuoteListRow = {
   salesPersonEmail: string | null;
   salesPersonName: string | null;
 };
+
 type QuoteLinkedJobRow = {
   jobCode: number;
   jobId: string;
   quoteId: string | null;
 };
+
 type QuoteDetailRow = QuoteRow & {
   customer: Pick<typeof customers.$inferSelect, 'companyName'>;
   jobs: Pick<typeof jobs.$inferSelect, 'code' | 'id'>[];
@@ -127,13 +132,8 @@ type QuoteDetailRow = QuoteRow & {
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
   selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
-export type QuoteDocumentCreateInput = {
-  bytes: Uint8Array;
-  filename: string;
-  metadata: unknown;
-  quoteId: UUID;
-};
-export type QuoteDocumentPdfRenderer = (input: { filename: string; html: string }) => Promise<Uint8Array>;
+
+export type { QuoteDocumentCreateInput, QuoteDocumentPdfRenderer };
 
 export function mapQuote(row: QuoteRow): Quote {
   return Quote.parse({
@@ -419,8 +419,8 @@ export async function generateQuoteDocument({
   const revision =
     existingDocuments.reduce((highest, document) => Math.max(highest, document.metadata.revision), 0) + 1;
   const filename = `${formatQuoteCode(quote.code)}-rev-${revision}.pdf`;
-  const html = await renderQuoteDocumentHtml({ db, input, quote });
-  const bytes = await pdfRenderer({ filename, html });
+  const document = await getQuoteDocumentModel({ db, input, quote });
+  const bytes = await pdfRenderer({ document, filename });
 
   return createQuoteDocument({
     actorUserId,

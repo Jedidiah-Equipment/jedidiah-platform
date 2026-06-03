@@ -1,5 +1,4 @@
 import { differenceInSeconds, formatDate as formatDateDfns, fromUnixTime, parseISO } from 'date-fns';
-import { z } from 'zod';
 
 export type DateFormat = 'short' | 'medium' | 'long' | 'duration' | 'duration-short' | (string & NonNullable<unknown>);
 
@@ -9,7 +8,7 @@ export const parseDate = (date?: Date | string | number | null): Date | null => 
   }
 
   if (typeof date === 'string') {
-    if (z.coerce.number().safeParse(date).success) {
+    if (isIntegerString(date)) {
       return fromUnixTime(Number.parseInt(date, 10));
     }
 
@@ -30,15 +29,11 @@ export const formatDate = (date?: Date | string | number | null, format: DateFor
     return emptyValue ?? '';
   }
 
-  // can do this to show the date in the original timezone
-  // parsedDate = addMinutes(parsedDate, parsedDate.getTimezoneOffset());
-
   if (format === 'short') {
     return formatDateDfns(parsedDate, 'PP');
   }
 
   if (format === 'medium') {
-    // only show the year if its not the same year as now
     if (new Date().getFullYear() === parsedDate.getFullYear()) {
       return formatDateDfns(parsedDate, 'LLL do, HH:mm:ss');
     }
@@ -117,3 +112,7 @@ export const secondsToAgeString = (seconds: number, short = false) => {
 
   return str || '1s';
 };
+
+function isIntegerString(value: string): boolean {
+  return /^-?\d+$/.test(value.trim());
+}

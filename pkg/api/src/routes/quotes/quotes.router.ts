@@ -22,6 +22,7 @@ import {
 import { z } from 'zod';
 
 import { log } from '@/logger.js';
+import { renderQuoteDocumentPdf } from '@/quote-documents/quote-document-pdf-renderer.js';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
@@ -65,7 +66,7 @@ export const quotesRouter = router({
           actorUserId: ctx.session.user.id,
           db: ctx.db,
           input,
-          pdfRenderer: ctx.quoteDocumentPdfRenderer,
+          pdfRenderer: renderQuoteDocumentPdf,
           storage: ctx.storage,
         }),
       ),

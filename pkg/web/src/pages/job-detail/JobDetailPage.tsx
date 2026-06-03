@@ -1,4 +1,4 @@
-import { formatBytes } from '@pkg/domain';
+import { formatBytes, formatDate } from '@pkg/domain';
 import type { JobDetail, JobDocument, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { DownloadIcon, EyeIcon, FileTextIcon, Loader2Icon } from 'lucide-react';
@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatDate } from '@/utils/date.js';
 import { downloadJobDocument } from '@/utils/document.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 import { JobFact } from './components/JobFact.js';

@@ -332,7 +332,7 @@ async function listJobCfo({ db, jobId }: { db: Db | DatabaseTransaction; jobId: 
     .where(eq(jobCfoAssemblies.jobId, jobId))
     .orderBy(
       sql`case ${jobCfoAssemblies.kind} when 'standard' then 0 else 1 end`,
-      asc(jobCfoAssemblies.assemblyName),
+      asc(jobCfoAssemblies.sequence),
       asc(parts.code),
       asc(jobCfoParts.partId),
     );

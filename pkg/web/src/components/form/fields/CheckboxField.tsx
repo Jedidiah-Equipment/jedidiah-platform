@@ -13,9 +13,10 @@ type CheckboxFieldInputProps = Omit<
 export type CheckboxFieldProps = {
   description?: React.ReactNode;
   label: React.ReactNode;
+  onValueCommit?: () => void;
 } & CheckboxFieldInputProps;
 
-export function CheckboxField({ description, label, ...inputProps }: CheckboxFieldProps) {
+export function CheckboxField({ description, label, onValueCommit, ...inputProps }: CheckboxFieldProps) {
   const field = useFieldContext<boolean>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
@@ -28,7 +29,10 @@ export function CheckboxField({ description, label, ...inputProps }: CheckboxFie
         id={field.name}
         name={field.name}
         onBlur={field.handleBlur}
-        onCheckedChange={(checked) => field.handleChange(checked === true)}
+        onCheckedChange={(checked) => {
+          field.handleChange(checked === true);
+          onValueCommit?.();
+        }}
         {...inputProps}
       />
       <FieldContent>

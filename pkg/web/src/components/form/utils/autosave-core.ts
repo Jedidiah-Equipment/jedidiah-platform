@@ -1,3 +1,5 @@
+import { stableSerialize } from './stable-serialize.js';
+
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'invalid' | 'error';
 
 export type AutosaveSnapshot<TValues> = {
@@ -156,8 +158,4 @@ export function createAutosaveController<TValues>({
       });
     },
   };
-}
-
-function stableSerialize(value: unknown): string {
-  return JSON.stringify(value, Object.keys(value as Record<string, unknown>).sort());
 }

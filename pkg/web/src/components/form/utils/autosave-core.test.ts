@@ -6,6 +6,16 @@ type TestValues = {
   name: string;
 };
 
+type NestedValues = {
+  assemblies: {
+    name: string;
+    parts: {
+      partId: string;
+      quantity: number;
+    }[];
+  }[];
+};
+
 describe('createAutosaveController', () => {
   it('flushes changed valid values and does not resave unchanged values', async () => {
     let values: TestValues = { name: 'Acme' };
@@ -46,6 +56,38 @@ describe('createAutosaveController', () => {
 
     expect(controller.getState().hasUnsavedChanges).toBe(false);
     expect(controller.hasPendingChanges()).toBe(true);
+  });
+
+  it('detects and saves changes nested below top-level fields', async () => {
+    let values: NestedValues = {
+      assemblies: [
+        {
+          name: 'Base',
+          parts: [{ partId: 'part-1', quantity: 1 }],
+        },
+      ],
+    };
+    const save = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const controller = createAutosaveController({
+      getValues: () => values,
+      isValid: () => true,
+      save,
+    });
+
+    values = {
+      assemblies: [
+        {
+          name: 'Base',
+          parts: [{ partId: 'part-1', quantity: 2 }],
+        },
+      ],
+    };
+    controller.markChanged();
+
+    expect(controller.hasPendingChanges()).toBe(true);
+    await expect(controller.flush()).resolves.toBe(true);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledWith(values);
   });
 
   it('blocks navigation when pending values are invalid', async () => {

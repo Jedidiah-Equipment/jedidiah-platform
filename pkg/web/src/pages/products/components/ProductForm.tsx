@@ -1,41 +1,37 @@
-import type { Product } from '@pkg/schema';
-import { Loader2Icon } from 'lucide-react';
+import type { Product, ProductUpdateInput } from '@pkg/schema';
 import type React from 'react';
-import { useAppForm } from '@/components/form/index.js';
-import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
-import { Button } from '@/components/ui/button.js';
+import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
+import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
-import { ProductFormValues, toProductFormValues } from './types.js';
+import { ProductFormValues, toProductFormValues, toProductUpdateInput } from './types.js';
 
 type ProductFormProps = {
-  initialProduct?: Product;
-  isPending: boolean;
-  submitLabel: string;
-  onSubmit: (value: ProductFormValues) => Promise<unknown>;
+  onSave: (value: ProductUpdateInput) => Promise<unknown>;
+  product: Product;
 };
 
-export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPending, submitLabel, onSubmit }) => {
-  const defaultValues = toProductFormValues(initialProduct);
+export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => {
+  const defaultValues = toProductFormValues(product);
 
-  const form = useAppForm({
+  const { autosave, form, formProps } = useAutosaveForm({
     defaultValues,
-    validators: {
-      onSubmit: ProductFormValues,
-    },
-    onSubmit: async ({ value }) => {
-      await onSubmit(value);
-    },
+    failureMessage: 'Unable to update product.',
+    save: onSave,
+    toInput: (value) => toProductUpdateInput(product.id, value),
+    validator: ProductFormValues,
   });
+
+  const saveCommittedField = () => {
+    autosave.markChanged();
+    queueMicrotask(() => {
+      void autosave.flush();
+    });
+  };
 
   return (
     <form.AppForm>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          void form.handleSubmit();
-        }}
-      >
+      <form {...formProps} className="flex flex-col gap-4">
+        <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
         <EditFormGrid>
           <EditFormFullWidth>
             <form.AppField name="thumbnailDataUrl">
@@ -43,6 +39,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
                 <field.ThumbnailField
                   fallbackLabel={form.state.values.modelCode || form.state.values.name || 'Product'}
                   label="Thumbnail"
+                  onValueCommit={saveCommittedField}
                 />
               )}
             </form.AppField>
@@ -67,7 +64,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
             )}
           </form.AppField>
           <form.AppField name="requiresVinNumber">
-            {(field) => <field.CheckboxField label="Requires VIN number" />}
+            {(field) => <field.CheckboxField label="Requires VIN number" onValueCommit={saveCommittedField} />}
           </form.AppField>
           <EditFormFullWidth>
             <form.AppField name="description">
@@ -77,21 +74,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialProduct, isPend
           <EditFormFullWidth>
             <form.Field name="assemblies" mode="array">
               {(assembliesField) => (
-                <ProductAssembliesEditor assembliesField={assembliesField} currencyCode={defaultValues.currencyCode} />
+                <ProductAssembliesEditor
+                  assembliesField={assembliesField}
+                  currencyCode={defaultValues.currencyCode}
+                  onStructuralChange={saveCommittedField}
+                />
               )}
             </form.Field>
           </EditFormFullWidth>
         </EditFormGrid>
-        <EditFormActions className="mt-4">
-          <form.Subscribe selector={(state) => state.isSubmitting}>
-            {(isSubmitting) => (
-              <Button disabled={isSubmitting || isPending} type="submit">
-                {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-                {submitLabel}
-              </Button>
-            )}
-          </form.Subscribe>
-        </EditFormActions>
       </form>
     </form.AppForm>
   );

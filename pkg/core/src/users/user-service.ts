@@ -5,6 +5,7 @@ import {
   type AuditChanges,
   AuthId,
   Department,
+  NullablePhoneNumber,
   NullableThumbnailDataUrl,
   type UserAccessSummary,
   UserAccount,
@@ -16,7 +17,7 @@ import { asc, eq } from 'drizzle-orm';
 import { createAuditChanges, insertAuditEvent, userAuditDescriptor } from '../audit/audit-service.js';
 import { UserNotFoundError } from './user-errors.js';
 
-type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'image' | 'name'> & {
+type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'image' | 'name' | 'phoneNumber'> & {
   departments: readonly Department[];
   role?: unknown;
 };
@@ -28,6 +29,7 @@ export function mapUser(row: UserRow): UserSummary {
     emailVerified: row.emailVerified,
     id: AuthId.parse(row.id),
     name: row.name,
+    phoneNumber: NullablePhoneNumber.parse(row.phoneNumber),
     role: AppRole.parse(row.role),
     thumbnailDataUrl: NullableThumbnailDataUrl.parse(row.image),
   };
@@ -41,6 +43,7 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
       id: user.id,
       image: user.image,
       name: user.name,
+      phoneNumber: user.phoneNumber,
       role: user.role,
       thumbnailDataUrl: user.image,
     })
@@ -63,6 +66,7 @@ export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
       id: true,
       image: true,
       name: true,
+      phoneNumber: true,
       role: true,
     },
     orderBy: [asc(user.email)],

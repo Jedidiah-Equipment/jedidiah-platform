@@ -54,7 +54,8 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       const profileChanged =
         value.email !== baselineUser.email ||
         value.emailVerified !== baselineUser.emailVerified ||
-        value.name !== baselineUser.name;
+        value.name !== baselineUser.name ||
+        value.phoneNumber !== baselineUser.phoneNumber;
       const thumbnailChanged = value.thumbnailDataUrl !== baselineUser.thumbnailDataUrl;
 
       if (canUpdateProfile && profileChanged) {
@@ -64,6 +65,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
               email: value.email,
               emailVerified: value.emailVerified,
               name: value.name,
+              phoneNumber: value.phoneNumber,
             },
             userId: baselineUser.id,
           }),

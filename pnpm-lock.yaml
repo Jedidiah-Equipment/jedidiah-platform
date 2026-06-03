@@ -210,8 +210,6 @@ importers:
         specifier: ^4.22.3
         version: 4.22.3
 
-  pkg/solidworks/macro: {}
-
   pkg/web:
     dependencies:
       '@assistant-ui/react':

@@ -6,6 +6,7 @@ import { emailSender } from '../email/index.js';
 import { getApiConfig } from '../env.js';
 import { ac, authRoles, defaultAuthRole } from './access-control.js';
 import { adminUserSafetyPlugin } from './admin-user-safety.js';
+import { userPhoneValidationPlugin } from './user-phone-validation.js';
 
 const config = getApiConfig();
 
@@ -26,6 +27,11 @@ export function createAuth(database: Db) {
       provider: 'pg',
       schema,
     }),
+    user: {
+      additionalFields: {
+        phoneNumber: { type: 'string', required: false, input: true },
+      },
+    },
     plugins: [
       adminPlugin({
         ac,
@@ -34,6 +40,7 @@ export function createAuth(database: Db) {
         roles: authRoles,
       }),
       adminUserSafetyPlugin(database),
+      userPhoneValidationPlugin(),
     ],
     emailAndPassword: {
       enabled: true,

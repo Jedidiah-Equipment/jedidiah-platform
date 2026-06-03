@@ -6,6 +6,7 @@ import { DatePickerField } from './DatePickerField.js';
 import { fieldContext, formContext } from './form-context.js';
 import { NumberField } from './NumberField.js';
 import { PasswordField } from './PasswordField.js';
+import { PhoneNumberField } from './PhoneNumberField.js';
 import { SelectField } from './SelectField.js';
 import { TextareaField } from './TextareaField.js';
 import { TextField } from './TextField.js';
@@ -19,6 +20,7 @@ export const { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } = 
     DatePickerField,
     NumberField,
     PasswordField,
+    PhoneNumberField,
     SelectField,
     TextareaField,
     TextField,

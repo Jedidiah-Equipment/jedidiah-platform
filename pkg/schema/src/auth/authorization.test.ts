@@ -79,6 +79,7 @@ describe('UserSummary', () => {
         emailVerified: true,
         id: 'user_123',
         name: 'User Example',
+        phoneNumber: null,
         role: 'sales',
         thumbnailDataUrl: null,
       }).departments,
@@ -94,6 +95,7 @@ describe('UserAccount', () => {
         emailVerified: true,
         id: 'user_123',
         name: 'User Example',
+        phoneNumber: null,
         role: 'sales',
         thumbnailDataUrl: null,
       }),
@@ -102,6 +104,7 @@ describe('UserAccount', () => {
       emailVerified: true,
       id: 'user_123',
       name: 'User Example',
+      phoneNumber: null,
       role: 'sales',
       thumbnailDataUrl: null,
     });

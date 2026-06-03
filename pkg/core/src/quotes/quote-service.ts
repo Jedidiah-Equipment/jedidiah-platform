@@ -344,6 +344,7 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
         emailVerified: row.emailVerified,
         id: row.id,
         name: row.name,
+        phoneNumber: row.phoneNumber,
         role: row.role,
         thumbnailDataUrl: row.image,
       }),

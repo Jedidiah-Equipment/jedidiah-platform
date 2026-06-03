@@ -28,7 +28,7 @@ export const UserCreateDialog: React.FC = () => {
     mutationFn: async (value: UserCreateFormValues) => {
       const result = unwrapAuthResult<{ user: { id: string } }>(
         await authClient.admin.createUser({
-          data: { emailVerified: value.emailVerified },
+          data: { emailVerified: value.emailVerified, phoneNumber: value.phoneNumber },
           email: value.email,
           name: value.name,
           password: value.password,

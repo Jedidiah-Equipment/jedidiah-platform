@@ -17,6 +17,7 @@ export const UserEditFormValues = UserSummary.pick({
   email: true,
   emailVerified: true,
   name: true,
+  phoneNumber: true,
   role: true,
   thumbnailDataUrl: true,
 });
@@ -52,6 +53,7 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
       email: initialUser.email,
       emailVerified: initialUser.emailVerified,
       name: initialUser.name,
+      phoneNumber: initialUser.phoneNumber,
       role: initialUser.role,
       thumbnailDataUrl: initialUser.thumbnailDataUrl,
     } satisfies UserEditFormValues,
@@ -92,6 +94,9 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                 </form.AppField>
                 <form.AppField name="email">
                   {(field) => <field.TextField autoComplete="email" disabled={isPending} label="Email" type="email" />}
+                </form.AppField>
+                <form.AppField name="phoneNumber">
+                  {(field) => <field.PhoneNumberField disabled={isPending} label="Phone number" />}
                 </form.AppField>
                 <form.AppField name="emailVerified">
                   {(field) => <field.CheckboxField disabled={isPending} label="Email verified" />}

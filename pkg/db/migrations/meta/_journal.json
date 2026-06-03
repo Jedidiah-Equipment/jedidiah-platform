@@ -183,6 +183,13 @@
       "when": 1780412820434,
       "tag": "0025_add_quote_document_ownership",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1780474996029,
+      "tag": "0026_next_magik",
+      "breakpoints": true
     }
   ]
 }

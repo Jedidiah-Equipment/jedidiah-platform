@@ -1,43 +1,43 @@
-import type { Supplier, SupplierCreateInput } from '@pkg/schema';
-import { Loader2Icon } from 'lucide-react';
+import type { Supplier, SupplierUpdateInput } from '@pkg/schema';
 import type React from 'react';
 
-import { useAppForm } from '@/components/form/index.js';
-import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
-import { Button } from '@/components/ui/button.js';
-import { SupplierFormValues, toSupplierCreateInput, toSupplierFormValues } from './types.js';
+import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
+import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
+import { SupplierFormValues, toSupplierFormValues, toSupplierUpdateInput } from './types.js';
 
 type SupplierFormProps = {
-  initialSupplier?: Supplier;
-  isPending: boolean;
-  onSubmit: (value: SupplierCreateInput) => Promise<unknown>;
-  submitLabel: string;
+  onSave: (value: SupplierUpdateInput) => Promise<unknown>;
+  supplier: Supplier;
 };
 
-export const SupplierForm: React.FC<SupplierFormProps> = ({ initialSupplier, isPending, onSubmit, submitLabel }) => {
-  const form = useAppForm({
-    defaultValues: toSupplierFormValues(initialSupplier),
-    validators: {
-      onSubmit: SupplierFormValues,
-    },
-    onSubmit: async ({ value }) => {
-      await onSubmit(toSupplierCreateInput(value));
-    },
+export const SupplierForm: React.FC<SupplierFormProps> = ({ onSave, supplier }) => {
+  const { autosave, form, formProps } = useAutosaveForm({
+    defaultValues: toSupplierFormValues(supplier),
+    failureMessage: 'Unable to update supplier.',
+    save: onSave,
+    toInput: (value) => toSupplierUpdateInput(supplier.id, value),
+    validator: SupplierFormValues,
   });
 
+  const saveCommittedField = () => {
+    autosave.markChanged();
+    queueMicrotask(() => {
+      void autosave.flush();
+    });
+  };
+
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void form.handleSubmit();
-      }}
-    >
+    <form {...formProps} className="flex flex-col gap-4">
+      <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
       <EditFormGrid>
         <EditFormFullWidth>
           <form.AppField name="thumbnailDataUrl">
             {(field) => (
-              <field.ThumbnailField fallbackLabel={form.state.values.companyName || 'Supplier'} label="Thumbnail" />
+              <field.ThumbnailField
+                fallbackLabel={form.state.values.companyName || 'Supplier'}
+                label="Thumbnail"
+                onValueCommit={saveCommittedField}
+              />
             )}
           </form.AppField>
         </EditFormFullWidth>
@@ -60,16 +60,6 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({ initialSupplier, isP
           <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={4} />}</form.AppField>
         </EditFormFullWidth>
       </EditFormGrid>
-      <EditFormActions className="mt-4">
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button disabled={isSubmitting || isPending} type="submit">
-              {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-              {submitLabel}
-            </Button>
-          )}
-        </form.Subscribe>
-      </EditFormActions>
     </form>
   );
 };

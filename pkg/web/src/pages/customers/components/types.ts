@@ -9,7 +9,7 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { emptyStringOr } from '@/components/form/form-schema.js';
+import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 export type CustomerFormValues = z.infer<typeof CustomerFormValues>;
 export const CustomerFormValues = z.object({

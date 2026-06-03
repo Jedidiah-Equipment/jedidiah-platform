@@ -1,7 +1,12 @@
 import type { Supplier } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { toSupplierCreateInput, toSupplierFormValues } from './types.js';
+import {
+  toSupplierCreateInput,
+  toSupplierFormValues,
+  toSupplierMinimalCreateInput,
+  toSupplierUpdateInput,
+} from './types.js';
 
 const SUPPLIER_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -70,6 +75,49 @@ describe('toSupplierCreateInput', () => {
       email: 'orders@bolt.test',
       notes: null,
       phone: null,
+      thumbnailDataUrl: null,
+    });
+  });
+});
+
+describe('toSupplierMinimalCreateInput', () => {
+  it('creates the modal payload with schema defaults for non-required fields', () => {
+    const input = toSupplierMinimalCreateInput({
+      companyName: 'Bolt Co',
+    });
+
+    expect(input).toEqual({
+      address: null,
+      companyName: 'Bolt Co',
+      contactPerson: null,
+      email: null,
+      notes: null,
+      phone: null,
+      thumbnailDataUrl: null,
+    });
+  });
+});
+
+describe('toSupplierUpdateInput', () => {
+  it('builds the whole-entity update payload', () => {
+    const input = toSupplierUpdateInput(SUPPLIER_ID, {
+      address: '2 Side Road',
+      companyName: 'Bolt Co',
+      contactPerson: 'Sam',
+      email: 'Orders@Bolt.TEST',
+      notes: 'Preferred',
+      phone: '0456',
+      thumbnailDataUrl: null,
+    });
+
+    expect(input).toEqual({
+      address: '2 Side Road',
+      companyName: 'Bolt Co',
+      contactPerson: 'Sam',
+      email: 'orders@bolt.test',
+      id: SUPPLIER_ID,
+      notes: 'Preferred',
+      phone: '0456',
       thumbnailDataUrl: null,
     });
   });

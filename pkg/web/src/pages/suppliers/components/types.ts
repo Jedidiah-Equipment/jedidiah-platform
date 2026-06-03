@@ -5,10 +5,12 @@ import {
   SupplierCreateInput,
   SupplierEmail,
   SupplierOptionalText,
+  SupplierUpdateInput,
+  type UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { emptyStringOr } from '@/components/form/form-schema.js';
+import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 export type SupplierFormValues = z.infer<typeof SupplierFormValues>;
 export const SupplierFormValues = z.object({
@@ -19,6 +21,11 @@ export const SupplierFormValues = z.object({
   notes: emptyStringOr(SupplierOptionalText),
   phone: emptyStringOr(SupplierOptionalText),
   thumbnailDataUrl: NullableThumbnailDataUrl,
+});
+
+export type SupplierCreateFormValues = z.infer<typeof SupplierCreateFormValues>;
+export const SupplierCreateFormValues = z.object({
+  companyName: SupplierCompanyName,
 });
 
 /** Schema → form. Nullable schema fields collapse to `''` for controlled inputs. */
@@ -40,4 +47,15 @@ export function toSupplierFormValues(initialSupplier?: Supplier): SupplierFormVa
  */
 export function toSupplierCreateInput(value: SupplierFormValues): SupplierCreateInput {
   return SupplierCreateInput.parse(value);
+}
+
+export function toSupplierMinimalCreateInput(value: SupplierCreateFormValues): SupplierCreateInput {
+  return SupplierCreateInput.parse(value);
+}
+
+export function toSupplierUpdateInput(id: UUID, value: SupplierFormValues): SupplierUpdateInput {
+  return SupplierUpdateInput.parse({
+    ...toSupplierCreateInput(value),
+    id,
+  });
 }

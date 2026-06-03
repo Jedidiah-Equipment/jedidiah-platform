@@ -1,6 +1,44 @@
-import { differenceInSeconds, formatDate as formatDateDfns, fromUnixTime, parseISO } from 'date-fns';
+import { differenceInSeconds, formatDate as formatDateDfns, fromUnixTime, isValid, parse, parseISO } from 'date-fns';
 
 export type DateFormat = 'short' | 'medium' | 'long' | 'duration' | 'duration-short' | (string & NonNullable<unknown>);
+
+const commonDateInputFormats = [
+  // Internal parse-only formats for typed form input; display formatting still uses formatDate.
+  'yyyy-MM-dd',
+  'PP',
+  'PPP',
+  'MMMM d, yyyy',
+  'MMM d, yyyy',
+  'MMMM d yyyy',
+  'MMM d yyyy',
+  'd MMMM yyyy',
+  'd MMM yyyy',
+  'M/d/yy',
+  'MM/dd/yy',
+  'M/d/yyyy',
+  'MM/dd/yyyy',
+  'yyyy/M/d',
+  'yyyy/MM/dd',
+  'M-d-yy',
+  'MM-dd-yy',
+  'M-d-yyyy',
+  'MM-dd-yyyy',
+  'yyyy-M-d',
+  'M.d.yy',
+  'MM.dd.yy',
+  'M.d.yyyy',
+  'MM.dd.yyyy',
+  'yyyy.M.d',
+  'yyyy.MM.dd',
+  'd/M/yy',
+  'dd/MM/yy',
+  'd/M/yyyy',
+  'dd/MM/yyyy',
+  'd-M-yy',
+  'dd-MM-yy',
+  'd-M-yyyy',
+  'dd-MM-yyyy',
+];
 
 export const parseDate = (date?: Date | string | number | null): Date | null => {
   if (date instanceof Date) {
@@ -20,6 +58,18 @@ export const parseDate = (date?: Date | string | number | null): Date | null => 
   }
 
   return null;
+};
+
+export const parseCommonDateInput = (value: string): Date | null => {
+  const trimmedValue = value.trim();
+  if (trimmedValue === '') return null;
+
+  return (
+    commonDateInputFormats
+      .filter((dateFormat) => canParseDateInputFormat(dateFormat, trimmedValue))
+      .map((dateFormat) => parse(trimmedValue, dateFormat, new Date()))
+      .find((parsedDate) => isValid(parsedDate) && hasFourDigitYear(parsedDate)) ?? null
+  );
 };
 
 export const formatDate = (date?: Date | string | number | null, format: DateFormat = 'short', emptyValue?: string) => {
@@ -115,4 +165,16 @@ export const secondsToAgeString = (seconds: number, short = false) => {
 
 function isIntegerString(value: string): boolean {
   return /^-?\d+$/.test(value.trim());
+}
+
+function canParseDateInputFormat(dateFormat: string, value: string): boolean {
+  if (!dateFormat.includes('yyyy')) return true;
+
+  return /\d{4}/.test(value);
+}
+
+function hasFourDigitYear(date: Date): boolean {
+  const year = date.getFullYear();
+
+  return year >= 1000 && year <= 9999;
 }

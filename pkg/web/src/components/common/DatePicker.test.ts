@@ -55,7 +55,13 @@ describe('parseDatePickerInputValue', () => {
     expect(parseDatePickerInputValue('2026-05-22')).toBe('2026-05-22');
   });
 
+  it('accepts common typed dates through the shared parser', () => {
+    expect(parseDatePickerInputValue('22 May 2026')).toBe('2026-05-22');
+    expect(parseDatePickerInputValue('18/06/2026')).toBe('2026-06-18');
+  });
+
   it('rejects invalid typed dates', () => {
     expect(parseDatePickerInputValue('May 35, 2026')).toBeNull();
+    expect(parseDatePickerInputValue('Jun 12, 20')).toBeNull();
   });
 });

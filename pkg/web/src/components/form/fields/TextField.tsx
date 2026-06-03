@@ -2,8 +2,8 @@ import type * as React from 'react';
 
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
-import { getFieldErrors } from './field-errors.js';
-import { useFieldContext } from './form-context.js';
+import { useFieldContext } from '../hooks/form-context.js';
+import { getFieldErrors } from '../utils/field-errors.js';
 
 type TextFieldInputProps = Omit<
   React.ComponentProps<typeof Input>,

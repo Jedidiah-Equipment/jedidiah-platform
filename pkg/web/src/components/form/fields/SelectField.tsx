@@ -2,8 +2,8 @@ import type * as React from 'react';
 
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { getFieldErrors } from './field-errors.js';
-import { useFieldContext } from './form-context.js';
+import { useFieldContext } from '../hooks/form-context.js';
+import { getFieldErrors } from '../utils/field-errors.js';
 
 type SelectFieldOption = {
   label: React.ReactNode;

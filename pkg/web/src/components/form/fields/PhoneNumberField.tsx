@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
-import { getFieldErrors } from './field-errors.js';
-import { useFieldContext } from './form-context.js';
+import { useFieldContext } from '../hooks/form-context.js';
+import { getFieldErrors } from '../utils/field-errors.js';
 
 // Country code is hardcoded to South Africa for now and shown in the right addon.
 const COUNTRY_CODE = '+27';

@@ -1,4 +1,4 @@
-import { formatBytes, hasPermission, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
+import { formatBytes, formatDate, hasPermission, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import { type ProductDocument, ProductDocumentType, type UUID } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -39,7 +39,6 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatDate } from '@/utils/date.js';
 import {
   downloadProductDocument,
   getReadyProductDocumentUpload,

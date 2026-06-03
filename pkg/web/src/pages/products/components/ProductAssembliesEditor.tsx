@@ -1,7 +1,7 @@
+import { formatCurrency } from '@pkg/domain';
 import type { AssemblyInput, Part } from '@pkg/schema';
 import { ChevronDownIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import React, { useMemo } from 'react';
-
 import { getFieldErrors } from '@/components/form/field-errors.js';
 import { fieldContext } from '@/components/form/form-context.js';
 import { CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
@@ -30,7 +30,6 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
-import { formatCurrency } from '@/utils/number.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 import { emptyProductFormValues } from './types.js';
 

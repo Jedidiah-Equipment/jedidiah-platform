@@ -1,4 +1,4 @@
-import { computeQuoteTotal, hasPermission } from '@pkg/domain';
+import { computeQuoteTotal, formatCurrency, hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -18,7 +18,6 @@ import { useCustomerForQuoteOptions, useProductForQuoteOptions, useSalesPersonOp
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { formatCurrency } from '@/utils/number.js';
 import { GenerateJobFromQuoteDialog } from './components/GenerateJobFromQuoteDialog.js';
 import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';

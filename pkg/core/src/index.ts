@@ -11,6 +11,7 @@ export * from './parts/part-service.js';
 export * from './products/product-assembly-service.js';
 export * from './products/product-errors.js';
 export * from './products/product-service.js';
+export * from './quotes/quote-document.js';
 export * from './quotes/quote-errors.js';
 export * from './quotes/quote-service.js';
 export * from './suppliers/supplier-errors.js';

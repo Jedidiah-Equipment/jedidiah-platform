@@ -7,6 +7,7 @@ import {
   isJobCoreError,
   isProductCoreError,
   isQuoteCoreError,
+  previewQuoteDocument,
   readJobDocument,
   readProductDocument,
   readQuoteDocument,
@@ -25,6 +26,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../../auth/session.js';
+import { renderQuoteDocumentPdf } from '../../quote-documents/quote-document-pdf-renderer.js';
 import { mapDocumentCoreError } from './documents.router.js';
 
 const JobDocumentRouteInput = z.object({
@@ -144,6 +146,35 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(createDocumentBodyStream(result.object.body));
+    } catch (error) {
+      sendHttpError(reply, error);
+    }
+  });
+
+  app.get('/api/quotes/:quoteId/document-preview.pdf', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      requirePermission(auth, 'quote:read', 'You do not have permission to preview this Quote document.');
+      const params = z.object({ quoteId: UUID }).parse(request.params);
+      const query = z.object({ leadTime: z.string().trim().min(1).default('21 working days') }).parse(request.query);
+      const result = await mapHttpDocumentErrors(() =>
+        previewQuoteDocument({
+          db,
+          input: {
+            leadTime: query.leadTime,
+            quoteId: params.quoteId,
+          },
+          pdfRenderer: renderQuoteDocumentPdf,
+        }),
+      );
+
+      reply.header('Cache-Control', 'no-store');
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Length', result.bytes.byteLength);
+      reply.header('Content-Disposition', `inline; filename="${result.filename}"`);
+      return reply.send(Buffer.from(result.bytes));
     } catch (error) {
       sendHttpError(reply, error);
     }

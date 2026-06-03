@@ -1,8 +1,7 @@
+import { formatCurrency, formatNumber } from '@pkg/domain';
 import * as React from 'react';
-
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
-import { formatCurrency } from '@/utils/number.js';
 import { getFieldErrors } from './field-errors.js';
 import { useFieldContext } from './form-context.js';
 
@@ -47,8 +46,10 @@ export function CurrencyField({ currencyCode = 'ZAR', label, ...inputProps }: Cu
           }}
           onChange={(event) => {
             const text = formatCurrencyInputText(event.target.value);
+            const nextValue = parseCurrencyInputText(text);
             setDisplayValue(text);
-            field.handleChange(parseCurrencyInputText(text));
+            previousFieldValue.current = nextValue;
+            field.handleChange(nextValue);
           }}
           type="text"
           value={displayValue}
@@ -72,14 +73,16 @@ export function formatCurrencyInputText(text: string): string {
   if (normalizedText === '') return '';
 
   const [integerText = '', decimalText] = normalizedText.split('.');
+  const isNegative = integerText.trim().startsWith('-');
   const integerDigits = integerText.replace(/\D/g, '');
   if (integerDigits === '' && decimalText === undefined) return '';
 
   const formattedInteger = integerDigits === '' ? '0' : formatCurrencyIntegerText(integerDigits);
+  const signedInteger = isNegative ? `-${formattedInteger}` : formattedInteger;
 
-  if (decimalText === undefined) return formattedInteger;
+  if (decimalText === undefined) return signedInteger;
 
-  return `${formattedInteger}.${decimalText.replace(/\D/g, '').slice(0, 2)}`;
+  return `${signedInteger}.${decimalText.replace(/\D/g, '').slice(0, 2)}`;
 }
 
 function parseCurrencyInputText(text: string): number {
@@ -88,11 +91,16 @@ function parseCurrencyInputText(text: string): number {
 }
 
 function formatCurrencyIntegerText(integerDigits: string): string {
-  return Number(integerDigits).toLocaleString('en-US');
+  return formatNumber(Number(integerDigits));
 }
 
 function normalizeCurrencyInputText(text: string): string {
-  const compactText = text.replace(/[\s\u00a0]/g, '').trim();
+  const compactText = text
+    .replace(/[\s\u00a0]/g, '')
+    .replace(/[^\d.,+-]/g, '')
+    .trim();
+  if (compactText === '') return '';
+
   if (!compactText.includes('.')) {
     const lastCommaIndex = compactText.lastIndexOf(',');
     const commaTailLength = lastCommaIndex === -1 ? 0 : compactText.length - lastCommaIndex - 1;

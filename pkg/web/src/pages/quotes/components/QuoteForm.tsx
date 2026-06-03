@@ -142,22 +142,16 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <form.AppField name="preferredDeliveryDate">
                   {(field) => (
-                    <field.DatePickerField
-                      clearable
-                      label="Preferred delivery date"
-                      onValueCommit={saveCommittedField}
-                    />
+                    <field.DatePickerField label="Preferred delivery date" onValueCommit={saveCommittedField} />
                   )}
                 </form.AppField>
                 <form.AppField name="plannedDeliveryDate">
                   {(field) => (
-                    <field.DatePickerField clearable label="Planned delivery date" onValueCommit={saveCommittedField} />
+                    <field.DatePickerField label="Planned delivery date" onValueCommit={saveCommittedField} />
                   )}
                 </form.AppField>
                 <form.AppField name="validUntil">
-                  {(field) => (
-                    <field.DatePickerField clearable label="Valid until" onValueCommit={saveCommittedField} />
-                  )}
+                  {(field) => <field.DatePickerField label="Valid until" onValueCommit={saveCommittedField} />}
                 </form.AppField>
                 <form.Field name="deliveryIncluded">
                   {(field) => {

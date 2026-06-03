@@ -6,7 +6,6 @@ import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
 
 export type DatePickerFieldProps = {
-  clearable?: boolean;
   description?: React.ReactNode;
   disabled?: boolean;
   label: React.ReactNode;
@@ -17,7 +16,6 @@ export type DatePickerFieldProps = {
 };
 
 export function DatePickerField({
-  clearable = false,
   description,
   disabled = false,
   label,
@@ -35,7 +33,6 @@ export function DatePickerField({
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
       <DatePicker
         aria-invalid={isInvalid}
-        clearable={clearable}
         disabled={disabled}
         id={field.name}
         {...(maxValue ? { maxValue } : {})}

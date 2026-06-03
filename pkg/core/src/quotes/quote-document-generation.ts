@@ -12,6 +12,7 @@ import {
   formatQuoteCode,
   type QuoteDocumentGenerationInput,
   type QuoteDocumentGenerationResult,
+  type QuoteDocumentGenerationWarning,
   type QuoteDocumentLineItem,
   type QuoteDocumentModel,
   type QuoteDocumentPdfRenderer,
@@ -61,24 +62,17 @@ export async function generateQuoteDocument({
   const document = await getQuoteDocumentModel({ db, input, quote });
   const renderedQuoteBytes = await pdfRenderer({ document, filename });
   const brochure = await getLatestProductPdfBrochure({ db, productId: quote.productId });
-  const bytes = brochure
-    ? await mergePdfBytes([renderedQuoteBytes, await readStoredObjectBytes(storage, brochure.storageKey)])
-    : renderedQuoteBytes;
-  const warnings = brochure
-    ? []
-    : [
-        {
-          code: 'quote_document.product_brochure_missing' as const,
-          message:
-            'No PDF brochure is attached to this Quote Product, so the Quote Document was generated without one.',
-        },
-      ];
+  const packet = await buildQuoteDocumentPacket({
+    brochure,
+    renderedQuoteBytes,
+    storage,
+  });
 
   const quoteDocument = await createQuoteDocument({
     actorUserId,
     db,
     input: {
-      bytes,
+      bytes: packet.bytes,
       filename,
       metadata: { revision },
       quoteId: input.quoteId,
@@ -88,8 +82,48 @@ export async function generateQuoteDocument({
 
   return {
     document: quoteDocument,
-    warnings,
+    warnings: packet.warnings,
   };
+}
+
+async function buildQuoteDocumentPacket({
+  brochure,
+  renderedQuoteBytes,
+  storage,
+}: {
+  brochure: Pick<DocumentBaseRow, 'storageKey'> | null;
+  renderedQuoteBytes: Uint8Array;
+  storage: StorageAdapter;
+}): Promise<{ bytes: Uint8Array; warnings: QuoteDocumentGenerationWarning[] }> {
+  if (!brochure) {
+    return {
+      bytes: renderedQuoteBytes,
+      warnings: [
+        {
+          code: 'quote_document.product_brochure_missing',
+          message:
+            'No PDF brochure is attached to this Quote Product, so the Quote Document was generated without one.',
+        },
+      ],
+    };
+  }
+
+  try {
+    return {
+      bytes: await mergePdfBytes([renderedQuoteBytes, await readStoredObjectBytes(storage, brochure.storageKey)]),
+      warnings: [],
+    };
+  } catch {
+    return {
+      bytes: renderedQuoteBytes,
+      warnings: [
+        {
+          code: 'quote_document.product_brochure_unavailable',
+          message: 'The latest PDF brochure could not be appended, so the Quote Document was generated without one.',
+        },
+      ],
+    };
+  }
 }
 
 export async function getQuoteDocumentModel({

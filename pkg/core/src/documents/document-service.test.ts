@@ -621,6 +621,44 @@ describe('generateQuoteDocument', () => {
     expect(pageSizes).toEqual([{ height: 300, width: 200 }]);
   });
 
+  test('generates a quote-only PDF with a warning when the latest Product PDF brochure is unreadable', async ({
+    context,
+  }) => {
+    await uploadPdf(context, {
+      bytes: pdfBytes(),
+      filename: 'Malformed Brochure.pdf',
+      productId: context.productId,
+      type: 'brochure',
+    });
+
+    const result = await generateQuoteDocument({
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      input: {
+        leadTime: '14 working days',
+        quoteId: context.quoteId,
+      },
+      pdfRenderer: async () => realPdfBytes([[200, 300]]),
+      storage: context.storage,
+    });
+
+    const read = await readQuoteDocument({
+      db: context.db,
+      documentId: result.document.id,
+      quoteId: context.quoteId,
+      storage: context.storage,
+    });
+    const pageSizes = await getPdfPageSizes(await readAll(read.object.body));
+
+    expect(result.warnings).toEqual([
+      {
+        code: 'quote_document.product_brochure_unavailable',
+        message: 'The latest PDF brochure could not be appended, so the Quote Document was generated without one.',
+      },
+    ]);
+    expect(pageSizes).toEqual([{ height: 300, width: 200 }]);
+  });
+
   test('keeps older Quote Document packets frozen when customer details and brochures change', async ({ context }) => {
     const firstBrochure = await uploadPdf(context, {
       bytes: await realPdfBytes([[300, 300]]),
@@ -1022,10 +1060,20 @@ function pngBytes(): Uint8Array {
 
 async function readAll(body: AsyncIterable<Uint8Array>): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
+  let byteLength = 0;
 
   for await (const chunk of body) {
     chunks.push(chunk);
+    byteLength += chunk.byteLength;
   }
 
-  return new Uint8Array(chunks.flatMap((chunk) => [...chunk]));
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return bytes;
 }

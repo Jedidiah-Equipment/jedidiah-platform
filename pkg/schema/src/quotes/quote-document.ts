@@ -47,7 +47,7 @@ export type QuoteDocumentCreateInput = {
 };
 
 export type QuoteDocumentGenerationWarning = {
-  code: 'quote_document.product_brochure_missing';
+  code: 'quote_document.product_brochure_missing' | 'quote_document.product_brochure_unavailable';
   message: string;
 };
 

@@ -40,10 +40,25 @@ describe('users.list', () => {
         emailVerified: true,
         id: 'viewer-user-id',
         name: 'Viewer User',
+        phoneNumber: null,
         role: 'sales',
         thumbnailDataUrl: null,
       },
     ]);
+  });
+
+  test('returns stored phone numbers in list responses', async ({ context }) => {
+    await createUser(context.db, {
+      email: 'caller@example.com',
+      id: 'phone-user-id',
+      name: 'Phone User',
+      phoneNumber: '+27821234567',
+      role: 'sales',
+    });
+
+    await expect(context.createCaller().users.list()).resolves.toMatchObject({
+      users: [{ id: 'phone-user-id', phoneNumber: '+27821234567' }],
+    });
   });
 
   test('maps user image storage to thumbnailDataUrl in list responses', async ({ context }) => {
@@ -351,6 +366,7 @@ async function createUser(
     id: string;
     image?: string | null;
     name: string;
+    phoneNumber?: string | null;
     role: AppRole | string;
   },
 ) {
@@ -364,6 +380,7 @@ async function createUser(
       id: input.id,
       image: input.image ?? null,
       name: input.name,
+      phoneNumber: input.phoneNumber ?? null,
       role: input.role,
       createdAt: now,
       updatedAt: now,

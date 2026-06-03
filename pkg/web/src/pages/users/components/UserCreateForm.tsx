@@ -26,6 +26,7 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({ canAssignDepartm
     emailVerified: true,
     name: '',
     password: '',
+    phoneNumber: null,
     role: 'sales',
   };
   const form = useAppForm({
@@ -53,6 +54,7 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({ canAssignDepartm
         <form.AppField name="email">
           {(field) => <field.TextField autoComplete="email" label="Email" type="email" />}
         </form.AppField>
+        <form.AppField name="phoneNumber">{(field) => <field.PhoneNumberField label="Phone number" />}</form.AppField>
         <form.AppField name="role">
           {(field) => (
             <RoleField

@@ -102,6 +102,7 @@ export const userAuditDescriptor: AuditEntityDescriptor = {
   fields: {
     department: 'department',
     member: 'department membership',
+    phoneNumber: 'phone number',
     thumbnailDataUrl: 'thumbnail',
   },
 };

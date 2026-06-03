@@ -121,6 +121,47 @@ describe('admin user safety policy', () => {
   });
 });
 
+describe('user phone number validation', () => {
+  test('rejects invalid phone numbers when creating a user', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await expect(
+      context.auth.api.createUser({
+        body: {
+          email: 'invalid-phone@example.com',
+          name: 'Invalid Phone',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+          role: 'sales',
+          data: { phoneNumber: '0821234567' },
+        },
+        headers,
+      }),
+    ).rejects.toThrow();
+  });
+
+  test('persists valid South African phone numbers', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await context.auth.api.createUser({
+      body: {
+        email: 'valid-phone@example.com',
+        name: 'Valid Phone',
+        password: DEFAULT_DEMO_USER_PASSWORD,
+        role: 'sales',
+        data: { phoneNumber: '+27821234567' },
+      },
+      headers,
+    });
+
+    const [created] = await context.db
+      .select({ phoneNumber: user.phoneNumber })
+      .from(user)
+      .where(sql`${user.email} = 'valid-phone@example.com'`);
+
+    expect(created?.phoneNumber).toBe('+27821234567');
+  });
+});
+
 async function createSignedInAdmin(context: AuthPolicyContext, session = mockSession('admin')): Promise<Headers> {
   await createUser(context.db, {
     email: session.user.email,

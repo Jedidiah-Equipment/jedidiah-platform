@@ -213,7 +213,15 @@ describe('users.list', () => {
       access,
       db: context.db,
       log: pino({ level: 'silent' }),
+      quoteDocumentPdfRenderer: async () => new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]),
       session,
+      storage: {
+        deleteObject: async () => undefined,
+        get: async () => {
+          throw new Error('Storage object not found');
+        },
+        put: async () => undefined,
+      },
     });
 
     await expect(caller.auth.access()).resolves.toMatchObject({

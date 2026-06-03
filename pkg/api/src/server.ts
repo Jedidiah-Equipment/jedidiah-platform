@@ -10,10 +10,11 @@ import { type ApiConfig, getApiConfig } from './env.js';
 import { registerHealthRoutes } from './health.js';
 import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
+import { renderQuoteDocumentPdf } from './quote-documents/quote-document-pdf-renderer.js';
 import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
 import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
-import { createContext } from './trpc/context.js';
+import { createContextFactory } from './trpc/context.js';
 import { shouldLogTRPCError } from './trpc/errors.js';
 import { appRouter } from './trpc/router.js';
 
@@ -48,7 +49,10 @@ export async function buildServer(
 
   const trpcOptions = {
     router: appRouter,
-    createContext,
+    createContext: createContextFactory({
+      quoteDocumentPdfRenderer: renderQuoteDocumentPdf,
+      storage,
+    }),
     onError({ error, path, type }) {
       if (!shouldLogTRPCError(error)) return;
 

@@ -133,6 +133,10 @@ export function toQuoteUpdateInput({ id, value }: { id: UUID; value: QuoteFormVa
   });
 }
 
+export function getDefaultQuoteDocumentLeadTime(quote: Pick<QuoteDetail, 'productBuildTimeDays'>): string {
+  return `${quote.productBuildTimeDays} working days`;
+}
+
 export type SelectedAssemblySnapshot = {
   id: UUID;
   productAssemblyId: UUID | null;

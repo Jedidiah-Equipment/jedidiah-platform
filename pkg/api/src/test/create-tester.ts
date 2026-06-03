@@ -1,3 +1,4 @@
+import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
 import {
   createDatabaseClient,
   createEphemeralTestDatabase,
@@ -56,7 +57,9 @@ export function createTester<T extends object = Record<string, never>>(
                 access: null,
                 db: databaseClient.db,
                 log: testLog,
+                quoteDocumentPdfRenderer: fakeQuoteDocumentPdfRenderer,
                 session: null,
+                storage: new MemoryStorage(),
               }),
             createCaller: (session = mockSession()) => {
               return createAppRouterCaller({
@@ -66,7 +69,9 @@ export function createTester<T extends object = Record<string, never>>(
                 }),
                 db: databaseClient.db,
                 log: testLog,
+                quoteDocumentPdfRenderer: fakeQuoteDocumentPdfRenderer,
                 session,
+                storage: new MemoryStorage(),
               });
             },
           };
@@ -95,4 +100,38 @@ export function createTester<T extends object = Record<string, never>>(
       }
     },
   });
+}
+
+async function fakeQuoteDocumentPdfRenderer(): Promise<Uint8Array> {
+  return new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]);
+}
+
+class MemoryStorage implements StorageAdapter {
+  private readonly objects = new Map<string, StoragePutInput>();
+
+  async deleteObject(key: string): Promise<void> {
+    this.objects.delete(key);
+  }
+
+  async get(key: string): Promise<StoredObject> {
+    const object = this.objects.get(key);
+
+    if (!object) {
+      throw new Error('Storage object not found');
+    }
+
+    return {
+      body: toAsyncIterable(object.body),
+      byteSize: object.byteSize,
+      contentType: object.contentType,
+    };
+  }
+
+  async put(input: StoragePutInput): Promise<void> {
+    this.objects.set(input.key, input);
+  }
+}
+
+async function* toAsyncIterable(bytes: Uint8Array): AsyncIterable<Uint8Array> {
+  yield bytes;
 }

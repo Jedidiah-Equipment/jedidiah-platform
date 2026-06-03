@@ -26,6 +26,9 @@ export const QuoteDocumentNotes = nullableTrimmedText();
 export type QuoteDocumentNotesInput = z.infer<typeof QuoteDocumentNotesInput>;
 export const QuoteDocumentNotesInput = nullableTrimmedTextInput();
 
+export type QuoteDocumentLeadTime = z.infer<typeof QuoteDocumentLeadTime>;
+export const QuoteDocumentLeadTime = requiredTrimmedText('Lead time is required');
+
 export type QuoteDepositPercent = z.infer<typeof QuoteDepositPercent>;
 export const QuoteDepositPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');
 
@@ -88,6 +91,7 @@ export const QuoteSummary = Quote.extend({
   productCurrencyCode: ProductCurrencyCode,
   productModelCode: z.string().trim().min(1),
   productName: z.string().trim().min(1),
+  productBuildTimeDays: z.number().int().min(0),
   salesPersonEmail: z.email().nullable(),
   salesPersonName: z.string().trim().min(1).nullable(),
   selectedAssemblies: z.array(QuoteSelectedAssembly),
@@ -146,6 +150,12 @@ export const QuoteUpdateInput = z
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
   .strict();
+
+export type QuoteDocumentGenerationInput = z.infer<typeof QuoteDocumentGenerationInput>;
+export const QuoteDocumentGenerationInput = z.object({
+  quoteId: UUID,
+  leadTime: QuoteDocumentLeadTime,
+});
 
 export type QuoteSortBy = z.infer<typeof QuoteSortBy>;
 export const QuoteSortBy = z.enum([

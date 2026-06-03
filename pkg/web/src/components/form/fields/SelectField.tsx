@@ -13,11 +13,12 @@ type SelectFieldOption = {
 export type SelectFieldProps = {
   disabled?: boolean;
   label: React.ReactNode;
+  onValueCommit?: () => void;
   options: readonly SelectFieldOption[];
   placeholder?: string;
 };
 
-export function SelectField({ disabled = false, label, options, placeholder }: SelectFieldProps) {
+export function SelectField({ disabled = false, label, onValueCommit, options, placeholder }: SelectFieldProps) {
   const field = useFieldContext<string>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
@@ -26,7 +27,14 @@ export function SelectField({ disabled = false, label, options, placeholder }: S
   return (
     <Field data-invalid={isInvalid}>
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
-      <Select disabled={disabled} onValueChange={(value) => field.handleChange(value ?? '')} value={field.state.value}>
+      <Select
+        disabled={disabled}
+        onValueChange={(value) => {
+          field.handleChange(value ?? '');
+          onValueCommit?.();
+        }}
+        value={field.state.value}
+      >
         <SelectTrigger id={field.name} className="w-full">
           <SelectValue placeholder={placeholder}>{selectedOption?.label ?? null}</SelectValue>
         </SelectTrigger>

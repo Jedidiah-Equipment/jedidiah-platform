@@ -22,96 +22,82 @@ import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-s
 
 export const CustomerMode = z.enum(['existing', 'inline']);
 
-export type QuoteFormValues = z.infer<typeof QuoteFormValues>;
-export const QuoteFormValues = z
+export type QuoteCreateFormValues = z.infer<typeof QuoteCreateFormValues>;
+export const QuoteCreateFormValues = z
   .object({
     customerId: z.string(),
     customerMode: CustomerMode,
+    inlineCompanyName: z.string(),
+    productId: requiredSelection(UUID, 'Select a product'),
+    salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
+    status: QuoteStatus,
+  })
+  .superRefine(refineQuoteCustomerSelection);
+
+export type QuoteFormValues = z.infer<typeof QuoteFormValues>;
+export const QuoteFormValues = z
+  .object({
     depositPercent: QuoteDepositPercent,
     deliveryIncluded: z.boolean(),
     deliveryPrice: Price,
     discountAmount: Price,
-    inlineCompanyName: z.string(),
     notes: emptyStringOr(QuoteNotes),
     documentNotes: emptyStringOr(QuoteDocumentNotes),
     plannedDeliveryDate: emptyStringOr(DateOnlyIsoString),
     preferredDeliveryDate: emptyStringOr(DateOnlyIsoString),
-    productId: requiredSelection(UUID, 'Select a product'),
     salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput),
     status: QuoteStatus,
     validUntil: emptyStringOr(DateIsoString),
   })
-  .superRefine((value, context) => {
-    if (value.customerMode === 'existing' && !UUID.safeParse(value.customerId).success) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Select a customer',
-        path: ['customerId'],
-      });
-    }
+  .strict();
 
-    if (value.customerMode === 'inline' && !CustomerCompanyName.safeParse(value.inlineCompanyName).success) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Company name is required',
-        path: ['inlineCompanyName'],
-      });
-    }
-  });
+export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
+  customerId: '',
+  customerMode: 'existing',
+  inlineCompanyName: '',
+  productId: '',
+  salesPersonId: '',
+  status: 'draft',
+};
 
 /**
- * Schema → form. Builds the browser form state from an existing quote (edit mode) or the
- * blank defaults (create mode). Nullable schema fields collapse to `''` for controlled inputs.
+ * Schema → form. Builds the browser form state from an existing quote. Nullable schema fields
+ * collapse to `''` for controlled inputs.
  */
-export function toQuoteFormValues(initialQuote?: QuoteDetail): QuoteFormValues {
+export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
   return {
-    customerId: initialQuote?.customerId ?? '',
-    customerMode: 'existing',
-    depositPercent: initialQuote?.depositPercent ?? 0,
-    deliveryIncluded: initialQuote?.deliveryIncluded ?? true,
-    deliveryPrice: initialQuote?.deliveryPrice ?? 0,
-    discountAmount: initialQuote?.discountAmount ?? 0,
-    inlineCompanyName: '',
-    notes: initialQuote?.notes ?? '',
-    documentNotes: initialQuote?.documentNotes ?? '',
-    plannedDeliveryDate: initialQuote?.plannedDeliveryDate ?? '',
-    preferredDeliveryDate: initialQuote?.preferredDeliveryDate ?? '',
-    productId: initialQuote?.productId ?? '',
-    salesPersonId: initialQuote?.salesPersonId ?? '',
-    selectedAssemblies:
-      initialQuote?.selectedAssemblies.map(
-        (selection): QuoteSelectedAssemblyInput => ({ type: 'existing', id: selection.id }),
-      ) ?? [],
-    status: initialQuote?.status ?? 'draft',
-    validUntil: initialQuote?.validUntil ?? '',
+    depositPercent: initialQuote.depositPercent,
+    deliveryIncluded: initialQuote.deliveryIncluded,
+    deliveryPrice: initialQuote.deliveryPrice,
+    discountAmount: initialQuote.discountAmount,
+    notes: initialQuote.notes ?? '',
+    documentNotes: initialQuote.documentNotes ?? '',
+    plannedDeliveryDate: initialQuote.plannedDeliveryDate ?? '',
+    preferredDeliveryDate: initialQuote.preferredDeliveryDate ?? '',
+    salesPersonId: initialQuote.salesPersonId,
+    selectedAssemblies: initialQuote.selectedAssemblies.map(
+      (selection): QuoteSelectedAssemblyInput => ({ type: 'existing', id: selection.id }),
+    ),
+    status: initialQuote.status,
+    validUntil: initialQuote.validUntil ?? '',
   };
 }
 
 /**
  * Form → schema. Assembles the API request from form state: the customer discriminated union
- * from the mode flags, delivery price gated on `deliveryIncluded`, and `''` dates back to `null`.
- * Parsing through `QuoteCreateInput` enforces the schema contract on the result.
+ * from the mode flags. Parsing through `QuoteCreateInput` applies the schema defaults for every
+ * full-edit field that is intentionally absent from the create modal.
  */
-export function toQuoteCreateInput(value: QuoteFormValues): QuoteCreateInput {
+export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInput {
   return QuoteCreateInput.parse({
     customer:
       value.customerMode === 'existing'
         ? { type: 'existing', customerId: value.customerId }
         : { type: 'inline', companyName: value.inlineCompanyName },
-    deliveryIncluded: value.deliveryIncluded,
-    deliveryPrice: value.deliveryIncluded ? value.deliveryPrice : 0,
-    depositPercent: value.depositPercent,
-    discountAmount: value.discountAmount,
-    notes: value.notes,
-    documentNotes: value.documentNotes,
-    plannedDeliveryDate: value.plannedDeliveryDate || null,
-    preferredDeliveryDate: value.preferredDeliveryDate || null,
     productId: value.productId,
     salesPersonId: value.salesPersonId,
-    selectedAssemblies: value.selectedAssemblies,
     status: value.status,
-    validUntil: value.validUntil || null,
   });
 }
 
@@ -131,6 +117,27 @@ export function toQuoteUpdateInput({ id, value }: { id: UUID; value: QuoteFormVa
     status: value.status,
     validUntil: value.validUntil || null,
   });
+}
+
+function refineQuoteCustomerSelection(
+  value: Pick<QuoteCreateFormValues, 'customerId' | 'customerMode' | 'inlineCompanyName'>,
+  context: z.RefinementCtx,
+) {
+  if (value.customerMode === 'existing' && !UUID.safeParse(value.customerId).success) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Select a customer',
+      path: ['customerId'],
+    });
+  }
+
+  if (value.customerMode === 'inline' && !CustomerCompanyName.safeParse(value.inlineCompanyName).success) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Company name is required',
+      path: ['inlineCompanyName'],
+    });
+  }
 }
 
 export function getDefaultQuoteDocumentLeadTime(quote: Pick<QuoteDetail, 'productBuildTimeDays'>): string {

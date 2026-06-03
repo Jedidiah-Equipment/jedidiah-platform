@@ -12,18 +12,28 @@ import {
   type QuoteCreateInput,
   type QuoteDetail,
   type QuoteDocument,
+  type QuoteDocumentGenerationWarning,
   type QuoteSelectedAssembly,
   QuoteStatus,
   type QuoteUpdateInput,
 } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { DownloadIcon, EyeIcon, FilePlus2Icon, FileTextIcon, Loader2Icon, XIcon } from 'lucide-react';
+import {
+  DownloadIcon,
+  EyeIcon,
+  FilePlus2Icon,
+  FileTextIcon,
+  Loader2Icon,
+  TriangleAlertIcon,
+  XIcon,
+} from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { getFieldErrors } from '@/components/form/field-errors.js';
 import { useAppForm } from '@/components/form/index.js';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import {
@@ -85,6 +95,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
   );
   const currentUserQuery = useQuery(trpc.auth.me.queryOptions());
   const salespeopleOptions = useSalesPersonOptions();
+  const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
 
   const fallbackCustomer = useMemo(
     () =>
@@ -366,7 +377,9 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               </div>
             </QuoteFormSection>
 
-            {initialQuote ? <QuoteDocumentsSection quoteId={initialQuote.id} /> : null}
+            {initialQuote ? (
+              <QuoteDocumentsSection generationWarnings={generationWarnings} quoteId={initialQuote.id} />
+            ) : null}
 
             <QuoteFormSection
               description="Standard assemblies are included. Optional assemblies add to the quote."
@@ -499,7 +512,13 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
       <div className="flex justify-end gap-2 border-t pt-5">
         {initialQuote ? (
           <form.Subscribe selector={(state) => state.isDirty}>
-            {(isDirty) => <GenerateQuoteDocumentDialog isDirty={isDirty} quote={initialQuote} />}
+            {(isDirty) => (
+              <GenerateQuoteDocumentDialog
+                isDirty={isDirty}
+                onGenerated={(warnings) => setGenerationWarnings(warnings)}
+                quote={initialQuote}
+              />
+            )}
           </form.Subscribe>
         ) : null}
         {initialQuote ? <GenerateJobFromQuoteDialog quote={initialQuote} /> : null}
@@ -516,7 +535,15 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
   );
 };
 
-function GenerateQuoteDocumentDialog({ isDirty, quote }: { isDirty: boolean; quote: QuoteDetail }) {
+function GenerateQuoteDocumentDialog({
+  isDirty,
+  onGenerated,
+  quote,
+}: {
+  isDirty: boolean;
+  onGenerated: (warnings: QuoteDocumentGenerationWarning[]) => void;
+  quote: QuoteDetail;
+}) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const accessQuery = useAccess();
@@ -532,6 +559,7 @@ function GenerateQuoteDocumentDialog({ isDirty, quote }: { isDirty: boolean; quo
     trpc.quotes.generateDocument.mutationOptions({
       onSuccess: async (result) => {
         await queryClient.invalidateQueries({ queryKey: trpc.documents.pathKey() });
+        onGenerated(result.warnings);
         toast.success('Quote Document generated');
         for (const warning of result.warnings) {
           toast.warning(warning.message);
@@ -603,7 +631,13 @@ function GenerateQuoteDocumentDialog({ isDirty, quote }: { isDirty: boolean; quo
   );
 }
 
-function QuoteDocumentsSection({ quoteId }: { quoteId: QuoteDetail['id'] }) {
+function QuoteDocumentsSection({
+  generationWarnings,
+  quoteId,
+}: {
+  generationWarnings: QuoteDocumentGenerationWarning[];
+  quoteId: QuoteDetail['id'];
+}) {
   const trpc = useTRPC();
   const documentsQuery = useQuery(trpc.documents.listByQuote.queryOptions({ quoteId }));
   const [previewDocument, setPreviewDocument] = useState<QuoteDocument | null>(null);
@@ -611,12 +645,25 @@ function QuoteDocumentsSection({ quoteId }: { quoteId: QuoteDetail['id'] }) {
 
   return (
     <QuoteFormSection title="Quote Documents">
+      {generationWarnings.length > 0 ? (
+        <Alert>
+          <TriangleAlertIcon />
+          <AlertTitle>Quote Document generated with warnings</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc pl-4">
+              {generationWarnings.map((warning) => (
+                <li key={warning.code}>{warning.message}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <div className="overflow-hidden rounded-lg border">
         {documents.length > 0 ? (
           <div className="divide-y">
             {documents.map((document) => (
               <div
-                className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_5rem] md:items-center"
+                className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_11rem] md:items-center"
                 key={document.id}
               >
                 <div className="flex min-w-0 items-center gap-2 font-medium">
@@ -626,7 +673,7 @@ function QuoteDocumentsSection({ quoteId }: { quoteId: QuoteDetail['id'] }) {
                 <div className="text-muted-foreground">Rev {document.metadata.revision}</div>
                 <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
                 <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>
-                <div className="flex justify-end gap-1">
+                <div className="flex justify-end gap-2">
                   <PreviewQuoteDocumentButton document={document} onPreviewDocument={setPreviewDocument} />
                   <DownloadQuoteDocumentButton document={document} quoteId={quoteId} />
                 </div>
@@ -662,13 +709,14 @@ function PreviewQuoteDocumentButton({
 }) {
   return (
     <Button
-      aria-label={`Preview ${document.filename}`}
-      size="icon-sm"
+      aria-label={`View ${document.filename}`}
+      size="sm"
       type="button"
       variant="ghost"
       onClick={() => onPreviewDocument(document)}
     >
-      <EyeIcon />
+      <EyeIcon data-icon="inline-start" />
+      View
     </Button>
   );
 }
@@ -686,12 +734,17 @@ function DownloadQuoteDocumentButton({ document, quoteId }: { document: QuoteDoc
     <Button
       aria-label={`Download ${document.filename}`}
       disabled={downloadMutation.isPending}
-      size="icon-sm"
+      size="sm"
       type="button"
       variant="ghost"
       onClick={() => void downloadMutation.mutateAsync()}
     >
-      {downloadMutation.isPending ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
+      {downloadMutation.isPending ? (
+        <Loader2Icon data-icon="inline-start" className="animate-spin" />
+      ) : (
+        <DownloadIcon data-icon="inline-start" />
+      )}
+      Download
     </Button>
   );
 }

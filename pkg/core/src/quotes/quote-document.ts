@@ -1,119 +1,201 @@
-import type { customers, Db, products, quotes, user } from '@pkg/db';
+import { randomUUID } from 'node:crypto';
+
+import { type Db, documents, getUniqueViolationConstraint, quotes, user } from '@pkg/db';
+import { validateDocumentMetadata } from '@pkg/domain';
 import {
-  computeQuoteTotal,
-  formatCurrency,
-  formatPercent,
-  QUOTE_DOCUMENT_VAT_PERCENT,
-  resolveEffectiveBom,
-} from '@pkg/domain';
-import {
-  formatQuoteCode,
-  type QuoteDocumentGenerationInput,
+  type AuthId,
+  type QuoteDocument,
+  type QuoteDocumentCreateInput,
   type QuoteDocumentLineItem,
+  QuoteDocumentMetadata,
   type QuoteDocumentModel,
+  type QuoteDocumentPdfRenderer,
+  QuoteDocument as QuoteDocumentSchema,
+  type UUID,
 } from '@pkg/schema';
+import { and, eq, sql } from 'drizzle-orm';
 
-import { listAssemblies } from '../products/product-assembly-service.js';
-import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
+import {
+  DocumentNotFoundError,
+  DocumentPolicyViolationError,
+  DuplicateDocumentFilenameError,
+} from '../documents/document-errors.js';
+import {
+  collectDocumentErrorText,
+  createDocumentRecord,
+  type DocumentSummaryRow,
+  documentBaseSelect,
+  mapDocumentSummary,
+  type ReadDocumentResult,
+  sanitizeDocumentStorageKeySuffix,
+} from '../documents/document-service.js';
+import type { StorageAdapter } from '../documents/storage-adapter.js';
+import { QuoteNotFoundError } from './quote-errors.js';
 
-export type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
-  customer: Pick<
-    typeof customers.$inferSelect,
-    'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'vatNumber'
-  >;
-  product: Pick<typeof products.$inferSelect, 'buildTimeDays' | 'currencyCode' | 'modelCode' | 'name'>;
-  salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
-  selectedAssemblies: QuoteSelectedAssemblyRow[];
-};
+const QUOTE_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_quote_id_filename_ci_unique';
 
-export type { QuoteDocumentLineItem, QuoteDocumentModel };
+export type { QuoteDocumentCreateInput, QuoteDocumentLineItem, QuoteDocumentModel, QuoteDocumentPdfRenderer };
 
-export async function getQuoteDocumentModel({
+export async function getQuoteDocuments({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<QuoteDocument[]> {
+  await assertQuoteExists({ db, quoteId });
+
+  const rows = await selectQuoteDocumentSummary(db)
+    .where(eq(documents.quoteId, quoteId))
+    .orderBy(sql`${documents.createdAt} desc`, sql`${documents.id} desc`);
+
+  return rows.map(mapQuoteDocumentSummary);
+}
+
+export async function createQuoteDocument({
+  actorUserId,
   db,
   input,
-  quote,
+  storage,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: QuoteDocumentCreateInput;
+  storage: StorageAdapter;
+}): Promise<QuoteDocument> {
+  await assertQuoteExists({ db, quoteId: input.quoteId });
+  const metadata = parseQuoteDocumentMetadata(input.metadata);
+  const row = await createDocumentRecord({
+    actorUserId,
+    db,
+    input: {
+      bytes: input.bytes,
+      filename: input.filename,
+      metadata,
+      ownerType: 'quote',
+      quoteId: input.quoteId,
+      storageKey: createQuoteDocumentStorageKey({
+        filename: input.filename,
+        quoteId: input.quoteId,
+      }),
+    },
+    mapInsertError: (error) =>
+      mapQuoteDocumentUniqueViolation(error, {
+        filename: input.filename,
+        quoteId: input.quoteId,
+      }),
+    storage,
+  });
+
+  return getQuoteDocumentSummary({ db, documentId: row.id, quoteId: input.quoteId });
+}
+
+export async function readQuoteDocument({
+  db,
+  documentId,
+  quoteId,
+  storage,
 }: {
   db: Db;
-  input: QuoteDocumentGenerationInput;
-  quote: QuoteDocumentGenerationRow;
-}): Promise<QuoteDocumentModel> {
-  const productAssemblies = await listAssemblies({ productId: quote.productId, tx: db });
-  const effectiveBom = resolveEffectiveBom({
-    catalogAssemblies: productAssemblies,
-    selectedAssemblies: quote.selectedAssemblies,
-  });
-  const selectedOptionalAssemblies = effectiveBom.selectedOptionalAssemblies.map(({ selection }) => ({
-    amount: selection.quotedPrice,
-    label: selection.quotedName,
-  }));
-  const lineItems: QuoteDocumentLineItem[] = [
-    {
-      amount: quote.quotedBasePrice,
-      descriptionLines: [`${quote.product.modelCode} ${quote.product.name}`.trim()],
-      kind: 'base',
-      quantity: 1,
-    },
-    ...selectedOptionalAssemblies.map((item) => ({
-      amount: item.amount,
-      descriptionLines: [item.label],
-      kind: 'optional' as const,
-      quantity: 1,
-    })),
-    ...(quote.deliveryIncluded && quote.deliveryPrice > 0
-      ? [
-          {
-            amount: quote.deliveryPrice,
-            descriptionLines: ['Delivery'],
-            kind: 'charge' as const,
-            quantity: 1,
-          },
-        ]
-      : []),
-    ...(quote.discountAmount > 0
-      ? [
-          {
-            amount: -quote.discountAmount,
-            descriptionLines: ['Discount'],
-            kind: 'discount' as const,
-            quantity: 1,
-          },
-        ]
-      : []),
-  ];
-  const subtotal = computeQuoteTotal({
-    deliveryIncluded: quote.deliveryIncluded,
-    deliveryPrice: quote.deliveryPrice,
-    discountAmount: quote.discountAmount,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices: selectedOptionalAssemblies.map((item) => item.amount),
-  });
-  const vatAmount = (subtotal * QUOTE_DOCUMENT_VAT_PERCENT) / 100;
+  documentId: UUID;
+  quoteId: UUID;
+  storage: StorageAdapter;
+}): Promise<ReadDocumentResult> {
+  await assertQuoteExists({ db, quoteId });
+  const document = await getQuoteDocumentSummaryRow({ db, documentId, quoteId });
 
   return {
-    customer: quote.customer,
-    issueDate: quote.createdAt,
-    leadTime: input.leadTime,
-    lineItems,
-    notes: toDisplayLines(quote.documentNotes),
-    paymentTerms: `${formatPercent(quote.depositPercent)} deposit`,
-    quoteCode: formatQuoteCode(quote.code),
-    salesPerson: quote.salesPerson,
-    staleSelectionNotes: effectiveBom.staleSelections.map((selection) => `${selection.quotedName} unavailable`),
-    subtotal,
-    total: subtotal + vatAmount,
-    transport: quote.deliveryIncluded
-      ? `Included${quote.deliveryPrice > 0 ? ` (${formatCurrency(quote.deliveryPrice, quote.product.currencyCode)})` : ''}`
-      : 'Excluded',
-    vatAmount,
-    currencyCode: quote.product.currencyCode,
+    document: mapDocumentSummary(document),
+    object: await storage.get(document.storageKey),
   };
 }
 
-function toDisplayLines(value: string | null | undefined): string[] {
-  return value
-    ? value
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-    : [];
+function parseQuoteDocumentMetadata(metadata: unknown): QuoteDocumentMetadata {
+  const result = validateDocumentMetadata({ metadata, ownerType: 'quote' });
+
+  if (!result.ok) {
+    throw new DocumentPolicyViolationError(result);
+  }
+
+  return QuoteDocumentMetadata.parse(metadata);
+}
+
+function selectQuoteDocumentSummary(db: Db) {
+  return db
+    .select({
+      ...documentBaseSelect,
+      uploaderEmail: user.email,
+      uploaderName: user.name,
+    })
+    .from(documents)
+    .leftJoin(user, eq(documents.uploaderUserId, user.id))
+    .$dynamic();
+}
+
+async function getQuoteDocumentSummary({
+  db,
+  documentId,
+  quoteId,
+}: {
+  db: Db;
+  documentId: UUID;
+  quoteId: UUID;
+}): Promise<QuoteDocument> {
+  return mapQuoteDocumentSummary(await getQuoteDocumentSummaryRow({ db, documentId, quoteId }));
+}
+
+function mapQuoteDocumentSummary(row: DocumentSummaryRow): QuoteDocument {
+  return QuoteDocumentSchema.parse(mapDocumentSummary(row));
+}
+
+async function getQuoteDocumentSummaryRow({
+  db,
+  documentId,
+  quoteId,
+}: {
+  db: Db;
+  documentId: UUID;
+  quoteId: UUID;
+}): Promise<DocumentSummaryRow> {
+  const [row] = await selectQuoteDocumentSummary(db)
+    .where(and(eq(documents.quoteId, quoteId), eq(documents.id, documentId)))
+    .limit(1);
+
+  if (!row) {
+    throw new DocumentNotFoundError(documentId);
+  }
+
+  return row;
+}
+
+async function assertQuoteExists({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<void> {
+  const [quote] = await db
+    .select({
+      id: quotes.id,
+    })
+    .from(quotes)
+    .where(eq(quotes.id, quoteId))
+    .limit(1);
+
+  if (!quote) {
+    throw new QuoteNotFoundError(quoteId);
+  }
+}
+
+function createQuoteDocumentStorageKey(input: { filename: string; quoteId: UUID }): string {
+  return `documents/quote/${input.quoteId}/${randomUUID()}-${sanitizeDocumentStorageKeySuffix(input.filename)}`;
+}
+
+function mapQuoteDocumentUniqueViolation(error: unknown, input: { filename: string; quoteId: UUID }): Error {
+  const constraint = getUniqueViolationConstraint(error);
+
+  if (constraint?.includes(QUOTE_DOCUMENT_FILENAME_UNIQUE_INDEX) || isQuoteDocumentFilenameUniqueDetail(error)) {
+    return new DuplicateDocumentFilenameError({
+      filename: input.filename,
+      ownerId: input.quoteId,
+      ownerType: 'quote',
+    });
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function isQuoteDocumentFilenameUniqueDetail(error: unknown): boolean {
+  const text = collectDocumentErrorText(error).join('\n');
+
+  return text.includes('documents') && text.includes('quote_id') && text.includes('lower(filename)');
 }

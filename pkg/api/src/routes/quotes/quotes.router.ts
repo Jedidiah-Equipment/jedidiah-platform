@@ -10,6 +10,7 @@ import {
   type QuoteCoreError,
   updateQuote,
 } from '@pkg/core';
+import { renderQuoteDocumentPdf } from '@pkg/pdf';
 import {
   CustomerListInput,
   ProductListInput,
@@ -22,7 +23,6 @@ import {
 import { z } from 'zod';
 
 import { log } from '@/logger.js';
-import { renderQuoteDocumentPdf } from '@/quote-documents/quote-document-pdf-renderer.js';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';

@@ -1,4 +1,5 @@
 import type { UUID } from '../common/uuid.js';
+import type { QuoteDocument } from '../documents/document.js';
 
 export type QuoteDocumentLineItem = {
   amount: number;
@@ -43,6 +44,16 @@ export type QuoteDocumentCreateInput = {
   filename: string;
   metadata: unknown;
   quoteId: UUID;
+};
+
+export type QuoteDocumentGenerationWarning = {
+  code: 'quote_document.product_brochure_missing' | 'quote_document.product_brochure_unavailable';
+  message: string;
+};
+
+export type QuoteDocumentGenerationResult = {
+  document: QuoteDocument;
+  warnings: QuoteDocumentGenerationWarning[];
 };
 
 export type QuoteDocumentPdfRenderer = (input: {

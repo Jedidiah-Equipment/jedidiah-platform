@@ -1,13 +1,9 @@
-import { randomUUID } from 'node:crypto';
-
 import {
   createGlobalSearchCondition,
   customers,
   type DatabaseTransaction,
   type Db,
-  documents,
   getSortOrder,
-  getUniqueViolationConstraint,
   jobs,
   products,
   quoteSelectedAssemblies,
@@ -15,22 +11,15 @@ import {
   user,
   withPagination,
 } from '@pkg/db';
-import { assertQuoteEditable, parseJobCodeSearch, validateDiscount, validateDocumentMetadata } from '@pkg/domain';
+import { assertQuoteEditable, parseJobCodeSearch, validateDiscount } from '@pkg/domain';
 import {
   type Assembly,
   type AuthId,
-  formatQuoteCode,
   JobCode,
   ProductCurrencyCode,
   Quote,
   type QuoteCreateInput,
   type QuoteDetail,
-  type QuoteDocument,
-  type QuoteDocumentCreateInput,
-  type QuoteDocumentGenerationInput,
-  QuoteDocumentMetadata,
-  type QuoteDocumentPdfRenderer,
-  QuoteDocument as QuoteDocumentSchema,
   type QuoteListInput,
   type QuoteListResult,
   type QuoteSortBy,
@@ -49,26 +38,9 @@ import {
   insertAuditEvent,
   quoteAuditDescriptor,
 } from '../audit/audit-service.js';
-import {
-  DocumentNotFoundError,
-  DocumentPolicyViolationError,
-  DuplicateDocumentFilenameError,
-} from '../documents/document-errors.js';
-import {
-  collectDocumentErrorText,
-  createDocumentRecord,
-  type DocumentSummaryRow,
-  documentBaseSelect,
-  mapDocumentSummary,
-  type ReadDocumentResult,
-  sanitizeDocumentStorageKeySuffix,
-} from '../documents/document-service.js';
-import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
-import { getQuoteDocumentModel, type QuoteDocumentGenerationRow } from './quote-document.js';
 import {
   QuoteDiscountInvalidError,
-  QuoteDocumentGenerationNotAllowedError,
   QuoteInvalidReferenceError,
   QuoteLockedError,
   QuoteNotFoundError,
@@ -81,8 +53,6 @@ import {
   type QuoteSelectedAssemblyRow,
   resolveQuoteSelectedAssemblies,
 } from './quote-selected-assemblies.js';
-
-const QUOTE_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_quote_id_filename_ci_unique';
 
 type QuoteRow = typeof quotes.$inferSelect;
 type ProductRow = typeof products.$inferSelect;
@@ -132,8 +102,6 @@ type QuoteDetailRow = QuoteRow & {
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
   selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
-
-export type { QuoteDocumentCreateInput, QuoteDocumentPdfRenderer };
 
 export function mapQuote(row: QuoteRow): Quote {
   return Quote.parse({
@@ -352,110 +320,6 @@ export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserList
   };
 }
 
-export async function getQuoteDocuments({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<QuoteDocument[]> {
-  await assertQuoteExists({ db, quoteId });
-
-  const rows = await selectQuoteDocumentSummary(db)
-    .where(eq(documents.quoteId, quoteId))
-    .orderBy(sql`${documents.createdAt} desc`, sql`${documents.id} desc`);
-
-  return rows.map(mapQuoteDocumentSummary);
-}
-
-export async function createQuoteDocument({
-  actorUserId,
-  db,
-  input,
-  storage,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: QuoteDocumentCreateInput;
-  storage: StorageAdapter;
-}): Promise<QuoteDocument> {
-  await assertQuoteExists({ db, quoteId: input.quoteId });
-  const metadata = parseQuoteDocumentMetadata(input.metadata);
-  const row = await createDocumentRecord({
-    actorUserId,
-    db,
-    input: {
-      bytes: input.bytes,
-      filename: input.filename,
-      metadata,
-      ownerType: 'quote',
-      quoteId: input.quoteId,
-      storageKey: createQuoteDocumentStorageKey({
-        filename: input.filename,
-        quoteId: input.quoteId,
-      }),
-    },
-    mapInsertError: (error) =>
-      mapQuoteDocumentUniqueViolation(error, {
-        filename: input.filename,
-        quoteId: input.quoteId,
-      }),
-    storage,
-  });
-
-  return getQuoteDocumentSummary({ db, documentId: row.id, quoteId: input.quoteId });
-}
-
-export async function generateQuoteDocument({
-  actorUserId,
-  db,
-  input,
-  pdfRenderer,
-  storage,
-}: {
-  actorUserId: AuthId;
-  db: Db;
-  input: QuoteDocumentGenerationInput;
-  pdfRenderer: QuoteDocumentPdfRenderer;
-  storage: StorageAdapter;
-}): Promise<QuoteDocument> {
-  const quote = await getQuoteDocumentGenerationRow({ db, quoteId: input.quoteId });
-  assertQuoteDocumentGenerationAllowed(quote);
-
-  const existingDocuments = await getQuoteDocuments({ db, quoteId: input.quoteId });
-  const revision =
-    existingDocuments.reduce((highest, document) => Math.max(highest, document.metadata.revision), 0) + 1;
-  const filename = `${formatQuoteCode(quote.code)}-rev-${revision}.pdf`;
-  const document = await getQuoteDocumentModel({ db, input, quote });
-  const bytes = await pdfRenderer({ document, filename });
-
-  return createQuoteDocument({
-    actorUserId,
-    db,
-    input: {
-      bytes,
-      filename,
-      metadata: { revision },
-      quoteId: input.quoteId,
-    },
-    storage,
-  });
-}
-
-export async function readQuoteDocument({
-  db,
-  documentId,
-  quoteId,
-  storage,
-}: {
-  db: Db;
-  documentId: UUID;
-  quoteId: UUID;
-  storage: StorageAdapter;
-}): Promise<ReadDocumentResult> {
-  await assertQuoteExists({ db, quoteId });
-  const document = await getQuoteDocumentSummaryRow({ db, documentId, quoteId });
-
-  return {
-    document: mapDocumentSummary(document),
-    object: await storage.get(document.storageKey),
-  };
-}
-
 export async function updateQuote({
   actorUserId,
   db,
@@ -592,113 +456,6 @@ function mapQuoteDetail(row: QuoteDetailRow, productAssembliesForQuote: Assembly
   };
 }
 
-function parseQuoteDocumentMetadata(metadata: unknown): QuoteDocumentMetadata {
-  const result = validateDocumentMetadata({ metadata, ownerType: 'quote' });
-
-  if (!result.ok) {
-    throw new DocumentPolicyViolationError(result);
-  }
-
-  return QuoteDocumentMetadata.parse(metadata);
-}
-
-function selectQuoteDocumentSummary(db: Db) {
-  return db
-    .select({
-      ...documentBaseSelect,
-      uploaderEmail: user.email,
-      uploaderName: user.name,
-    })
-    .from(documents)
-    .leftJoin(user, eq(documents.uploaderUserId, user.id))
-    .$dynamic();
-}
-
-async function getQuoteDocumentSummary({
-  db,
-  documentId,
-  quoteId,
-}: {
-  db: Db;
-  documentId: UUID;
-  quoteId: UUID;
-}): Promise<QuoteDocument> {
-  return mapQuoteDocumentSummary(await getQuoteDocumentSummaryRow({ db, documentId, quoteId }));
-}
-
-function mapQuoteDocumentSummary(row: DocumentSummaryRow): QuoteDocument {
-  return QuoteDocumentSchema.parse(mapDocumentSummary(row));
-}
-
-async function getQuoteDocumentSummaryRow({
-  db,
-  documentId,
-  quoteId,
-}: {
-  db: Db;
-  documentId: UUID;
-  quoteId: UUID;
-}): Promise<DocumentSummaryRow> {
-  const [row] = await selectQuoteDocumentSummary(db)
-    .where(and(eq(documents.quoteId, quoteId), eq(documents.id, documentId)))
-    .limit(1);
-
-  if (!row) {
-    throw new DocumentNotFoundError(documentId);
-  }
-
-  return row;
-}
-
-async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId: UUID }) {
-  const row = await db.query.quotes.findFirst({
-    where: eq(quotes.id, quoteId),
-    with: {
-      customer: {
-        columns: {
-          address: true,
-          companyName: true,
-          contactPerson: true,
-          email: true,
-          phone: true,
-          vatNumber: true,
-        },
-      },
-      product: {
-        columns: {
-          buildTimeDays: true,
-          currencyCode: true,
-          modelCode: true,
-          name: true,
-        },
-      },
-      salesPerson: {
-        columns: {
-          email: true,
-          name: true,
-        },
-      },
-      selectedAssemblies: {
-        orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
-      },
-    },
-  });
-
-  if (!row) {
-    throw new QuoteNotFoundError(quoteId);
-  }
-
-  return row satisfies QuoteDocumentGenerationRow;
-}
-
-function assertQuoteDocumentGenerationAllowed(quote: Pick<QuoteRow, 'status'>): void {
-  if (quote.status === 'rejected' || quote.status === 'cancelled') {
-    throw new QuoteDocumentGenerationNotAllowedError(
-      'Quote Documents can only be generated for draft, sent, or accepted Quotes.',
-    );
-  }
-}
-
 async function getLinkedJobsByQuoteId({
   db,
   quoteIds,
@@ -784,20 +541,6 @@ async function assertQuoteCustomer({ customerId, tx }: { customerId: UUID; tx: D
 
   if (!customer) {
     throw new QuoteInvalidReferenceError('Quote customer was not found.');
-  }
-}
-
-async function assertQuoteExists({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<void> {
-  const [quote] = await db
-    .select({
-      id: quotes.id,
-    })
-    .from(quotes)
-    .where(eq(quotes.id, quoteId))
-    .limit(1);
-
-  if (!quote) {
-    throw new QuoteNotFoundError(quoteId);
   }
 }
 
@@ -969,28 +712,4 @@ function parseQuoteCodeSearch(search: string): number | undefined {
   const code = Number.parseInt(normalized, 10);
 
   return Number.isSafeInteger(code) && code > 0 ? code : undefined;
-}
-
-function createQuoteDocumentStorageKey(input: { filename: string; quoteId: UUID }): string {
-  return `documents/quote/${input.quoteId}/${randomUUID()}-${sanitizeDocumentStorageKeySuffix(input.filename)}`;
-}
-
-function mapQuoteDocumentUniqueViolation(error: unknown, input: { filename: string; quoteId: UUID }): Error {
-  const constraint = getUniqueViolationConstraint(error);
-
-  if (constraint?.includes(QUOTE_DOCUMENT_FILENAME_UNIQUE_INDEX) || isQuoteDocumentFilenameUniqueDetail(error)) {
-    return new DuplicateDocumentFilenameError({
-      filename: input.filename,
-      ownerId: input.quoteId,
-      ownerType: 'quote',
-    });
-  }
-
-  return error instanceof Error ? error : new Error(String(error));
-}
-
-function isQuoteDocumentFilenameUniqueDetail(error: unknown): boolean {
-  const text = collectDocumentErrorText(error).join('\n');
-
-  return text.includes('documents') && text.includes('quote_id') && text.includes('lower(filename)');
 }

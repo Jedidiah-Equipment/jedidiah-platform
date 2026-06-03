@@ -52,6 +52,27 @@ export type ReadDocumentResult = {
   object: StoredObject;
 };
 
+export async function readStoredObjectBytes(storage: StorageAdapter, storageKey: string): Promise<Uint8Array> {
+  const object = await storage.get(storageKey);
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+
+  for await (const chunk of object.body) {
+    chunks.push(chunk);
+    byteLength += chunk.byteLength;
+  }
+
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return bytes;
+}
+
 export const documentBaseSelect = {
   byteSize: documents.byteSize,
   contentType: documents.contentType,

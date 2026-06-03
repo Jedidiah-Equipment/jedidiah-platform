@@ -1,43 +1,43 @@
-import type { Customer, CustomerCreateInput } from '@pkg/schema';
-import { Loader2Icon } from 'lucide-react';
+import type { Customer, CustomerUpdateInput } from '@pkg/schema';
 import type React from 'react';
 
-import { useAppForm } from '@/components/form/index.js';
-import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
-import { Button } from '@/components/ui/button.js';
-import { CustomerFormValues, toCustomerCreateInput, toCustomerFormValues } from './types.js';
+import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
+import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
+import { CustomerFormValues, toCustomerFormValues, toCustomerUpdateInput } from './types.js';
 
 type CustomerFormProps = {
-  initialCustomer?: Customer;
-  isPending: boolean;
-  onSubmit: (value: CustomerCreateInput) => Promise<unknown>;
-  submitLabel: string;
+  customer: Customer;
+  onSave: (value: CustomerUpdateInput) => Promise<unknown>;
 };
 
-export const CustomerForm: React.FC<CustomerFormProps> = ({ initialCustomer, isPending, onSubmit, submitLabel }) => {
-  const form = useAppForm({
-    defaultValues: toCustomerFormValues(initialCustomer),
-    validators: {
-      onSubmit: CustomerFormValues,
-    },
-    onSubmit: async ({ value }) => {
-      await onSubmit(toCustomerCreateInput(value));
-    },
+export const CustomerForm: React.FC<CustomerFormProps> = ({ customer, onSave }) => {
+  const { autosave, form, formProps } = useAutosaveForm({
+    defaultValues: toCustomerFormValues(customer),
+    failureMessage: 'Unable to update customer.',
+    save: onSave,
+    toInput: (value) => toCustomerUpdateInput(customer.id, value),
+    validator: CustomerFormValues,
   });
 
+  const saveCommittedField = () => {
+    autosave.markChanged();
+    queueMicrotask(() => {
+      void autosave.flush();
+    });
+  };
+
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void form.handleSubmit();
-      }}
-    >
+    <form {...formProps} className="flex flex-col gap-4">
+      <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
       <EditFormGrid>
         <EditFormFullWidth>
           <form.AppField name="thumbnailDataUrl">
             {(field) => (
-              <field.ThumbnailField fallbackLabel={form.state.values.companyName || 'Customer'} label="Thumbnail" />
+              <field.ThumbnailField
+                fallbackLabel={form.state.values.companyName || 'Customer'}
+                label="Thumbnail"
+                onValueCommit={saveCommittedField}
+              />
             )}
           </form.AppField>
         </EditFormFullWidth>
@@ -63,16 +63,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialCustomer, isP
           <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={4} />}</form.AppField>
         </EditFormFullWidth>
       </EditFormGrid>
-      <EditFormActions className="mt-4">
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button disabled={isSubmitting || isPending} type="submit">
-              {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-              {submitLabel}
-            </Button>
-          )}
-        </form.Subscribe>
-      </EditFormActions>
     </form>
   );
 };

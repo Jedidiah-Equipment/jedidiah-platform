@@ -4,7 +4,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { PencilIcon, PlusIcon } from 'lucide-react';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ButtonLink } from '@/components/button/ButtonLink.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -14,6 +14,7 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { Button } from '@/components/ui/button.js';
 import { useCustomerForQuoteOptions, useProductForQuoteOptions, useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
@@ -21,6 +22,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { GenerateJobFromQuoteDialog } from './components/GenerateJobFromQuoteDialog.js';
 import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
+import { QuoteCreateDialog } from './QuoteCreateDialog.js';
 
 export const useQuoteTableStore = createPersistedDataTableStore({
   initialState: {
@@ -49,19 +51,24 @@ const quoteStatusFilterOptions = QuoteStatus.options.map((status) => ({
 }));
 
 export const QuotesPage: React.FC = () => {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
   return (
-    <ListPageLayout
-      action={
-        <ButtonLink to="/quotes/new">
-          <PlusIcon data-icon="inline-start" />
-          New quote
-        </ButtonLink>
-      }
-      description="Sales"
-      title="Quotes"
-    >
-      <QuoteTable />
-    </ListPageLayout>
+    <>
+      <ListPageLayout
+        action={
+          <Button onClick={() => setIsCreateOpen(true)} type="button">
+            <PlusIcon data-icon="inline-start" />
+            New quote
+          </Button>
+        }
+        description="Sales"
+        title="Quotes"
+      >
+        <QuoteTable />
+      </ListPageLayout>
+      <QuoteCreateDialog onOpenChange={setIsCreateOpen} open={isCreateOpen} />
+    </>
   );
 };
 

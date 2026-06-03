@@ -1,7 +1,7 @@
 import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 
-import { QuoteFormPage } from '@/pages/quotes/QuoteFormPage.js';
+import { QuoteEditPage } from '@/pages/quotes/QuoteEditPage.js';
 
 export const Route = createFileRoute('/_authed/quotes/$id_/edit')({
   params: {
@@ -18,5 +18,5 @@ export const Route = createFileRoute('/_authed/quotes/$id_/edit')({
 function QuoteEditRoute() {
   const { id } = Route.useParams();
 
-  return <QuoteFormPage quoteId={id} />;
+  return <QuoteEditPage quoteId={id} />;
 }

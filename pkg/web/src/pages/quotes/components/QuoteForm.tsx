@@ -344,6 +344,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 <form.AppField name="depositPercent">
                   {(field) => (
                     <field.NumberField
+                      decimals={2}
                       disabled={isLocked || !selectedProduct}
                       emptyValue={0}
                       label="Deposit percent"

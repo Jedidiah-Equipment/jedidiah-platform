@@ -11,7 +11,7 @@ type TextareaFieldInputProps = Omit<
 >;
 
 export type TextareaFieldProps = {
-  label: React.ReactNode;
+  label?: React.ReactNode;
 } & TextareaFieldInputProps;
 
 export function TextareaField({ label, ...inputProps }: TextareaFieldProps) {
@@ -21,7 +21,7 @@ export function TextareaField({ label, ...inputProps }: TextareaFieldProps) {
 
   return (
     <Field data-invalid={isInvalid}>
-      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      {label ? <FieldLabel htmlFor={field.name}>{label}</FieldLabel> : null}
       <Textarea
         aria-invalid={isInvalid}
         id={field.name}

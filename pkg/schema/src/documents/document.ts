@@ -103,3 +103,9 @@ export const QuoteDocumentInput = z.object({
   documentId: UUID,
   quoteId: UUID,
 });
+
+export type QuoteProductBrochureInput = z.infer<typeof QuoteProductBrochureInput>;
+export const QuoteProductBrochureInput = z.object({
+  documentId: UUID,
+  quoteId: UUID,
+});

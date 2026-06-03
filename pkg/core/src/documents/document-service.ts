@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, documents } from '@pkg/db';
-import { sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
+import { getDocumentPolicy, sniffDocumentContentType, validateDocumentPolicy } from '@pkg/domain';
 import type { AuthId, DocumentOwnerType, DocumentSummary, UUID } from '@pkg/schema';
 import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
@@ -106,10 +106,10 @@ export async function createDocumentRecord({
   const verifiedContentType = sniffDocumentContentType(input.bytes);
 
   if (!verifiedContentType) {
+    const policy = getDocumentPolicy(input.ownerType);
     throw new DocumentPolicyViolationError({
       code: 'document.content_type_not_allowed',
-      message:
-        'Uploaded file content does not match an allowed document type. Only PDF, PNG, JPEG, or WebP documents can be uploaded.',
+      message: `Uploaded file content does not match an allowed document type: ${policy.allowedContentTypes.join(', ')}.`,
     });
   }
 

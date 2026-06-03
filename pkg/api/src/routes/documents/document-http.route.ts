@@ -10,6 +10,7 @@ import {
   readJobDocument,
   readProductDocument,
   readQuoteDocument,
+  readQuoteProductBrochure,
   type StorageAdapter,
 } from '@pkg/core';
 import { db } from '@pkg/db';
@@ -19,6 +20,7 @@ import {
   DocumentListByProductInput,
   ProductDocumentInput,
   QuoteDocumentInput,
+  QuoteProductBrochureInput,
   UUID,
 } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -133,6 +135,31 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       const params = QuoteDocumentInput.parse(request.params);
       const result = await mapHttpDocumentErrors(() =>
         readQuoteDocument({
+          db,
+          documentId: params.documentId,
+          quoteId: params.quoteId,
+          storage,
+        }),
+      );
+
+      reply.header('Content-Type', result.document.contentType);
+      reply.header('Content-Length', result.document.byteSize);
+      reply.header('Content-Disposition', createContentDisposition(result.document.filename));
+      return reply.send(createDocumentBodyStream(result.object.body));
+    } catch (error) {
+      sendHttpError(reply, error);
+    }
+  });
+
+  app.get('/api/quotes/:quoteId/product-brochure/:documentId/download', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      requirePermission(auth, 'quote:read', 'You do not have permission to download this document.');
+      const params = QuoteProductBrochureInput.parse(request.params);
+      const result = await mapHttpDocumentErrors(() =>
+        readQuoteProductBrochure({
           db,
           documentId: params.documentId,
           quoteId: params.quoteId,

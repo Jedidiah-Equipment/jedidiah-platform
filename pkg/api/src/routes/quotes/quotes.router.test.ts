@@ -2,6 +2,7 @@ import {
   auditEvents,
   customers,
   type Db,
+  documents,
   jobStages,
   jobs,
   productAssemblies,
@@ -668,6 +669,55 @@ describe('quotes.list', () => {
   });
 });
 
+describe('quotes.getProductBrochure', () => {
+  test('returns the latest Product brochure through quote read access', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const productEditorCaller = context.createCaller(mockSession('product-editor'));
+    const created = await createReadyQuote(salesCaller, context.product.id);
+    const older = await createProductDocument(context.db, {
+      filename: 'Old Brochure.pdf',
+      productId: context.product.id,
+      type: 'brochure',
+    });
+    const newer = await createProductDocument(context.db, {
+      filename: 'New Brochure.pdf',
+      productId: context.product.id,
+      type: 'brochure',
+    });
+    await createProductDocument(context.db, {
+      filename: 'Newest Part Book.pdf',
+      productId: context.product.id,
+      type: 'part_book',
+    });
+    await context.db
+      .update(documents)
+      .set({ createdAt: new Date('2026-01-01T00:00:00.000Z') })
+      .where(sql`${documents.id} = ${older.id}`);
+    await context.db
+      .update(documents)
+      .set({ createdAt: new Date('2026-01-02T00:00:00.000Z') })
+      .where(sql`${documents.id} = ${newer.id}`);
+
+    await expect(productEditorCaller.quotes.getProductBrochure({ quoteId: created.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(salesCaller.quotes.getProductBrochure({ quoteId: created.id })).resolves.toMatchObject({
+      filename: 'New Brochure.pdf',
+      id: newer.id,
+      metadata: { type: 'brochure' },
+      ownerType: 'product',
+      productId: context.product.id,
+    });
+  });
+
+  test('returns null when the Quote Product has no brochure', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const created = await createReadyQuote(salesCaller, context.product.id);
+
+    await expect(salesCaller.quotes.getProductBrochure({ quoteId: created.id })).resolves.toBeNull();
+  });
+});
+
 describe('quotes.generateDocument', () => {
   test('requires quote update access and returns the created Quote Document', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
@@ -1089,6 +1139,36 @@ async function createProduct(db: Db, overrides: Partial<typeof products.$inferIn
   }
 
   return product;
+}
+
+async function createProductDocument(
+  db: Db,
+  input: {
+    contentType?: string;
+    filename: string;
+    productId: string;
+    type: 'brochure' | 'part_book' | 'sop';
+  },
+) {
+  const [document] = await db
+    .insert(documents)
+    .values({
+      byteSize: 8,
+      contentType: input.contentType ?? 'application/pdf',
+      filename: input.filename,
+      metadata: { type: input.type },
+      ownerType: 'product',
+      productId: input.productId,
+      storageKey: `documents/product/${input.productId}/${input.filename}`,
+      uploaderUserId: 'test-user-id',
+    })
+    .returning({ id: documents.id });
+
+  if (!document) {
+    throw new Error('Document insert did not return a row');
+  }
+
+  return document;
 }
 
 async function createProductAssembly(db: Db, values: typeof productAssemblies.$inferInsert) {

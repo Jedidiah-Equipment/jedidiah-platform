@@ -22,7 +22,7 @@ describe('validateDocumentPolicy', () => {
     ).toEqual({ ok: true });
   });
 
-  it('allows product image documents', () => {
+  it('rejects product image documents', () => {
     for (const contentType of [DOCUMENT_PNG_CONTENT_TYPE, DOCUMENT_JPEG_CONTENT_TYPE, DOCUMENT_WEBP_CONTENT_TYPE]) {
       expect(
         validateDocumentPolicy({
@@ -30,7 +30,10 @@ describe('validateDocumentPolicy', () => {
           contentType,
           ownerType: 'product',
         }),
-      ).toEqual({ ok: true });
+      ).toMatchObject({
+        ok: false,
+        code: 'document.content_type_not_allowed',
+      });
     }
   });
 

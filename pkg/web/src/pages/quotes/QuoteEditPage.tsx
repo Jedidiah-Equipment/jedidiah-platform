@@ -7,7 +7,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { QuoteForm } from './components/QuoteForm.js';
+import { QuoteForm } from './components/form/QuoteForm.js';
 import { QuoteStatusBadge } from './components/QuoteStatusBadge.js';
 
 type QuoteEditPageProps = {
@@ -37,7 +37,6 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
       contentClassName="max-w-7xl"
       description="Edit Quote"
       title={quote?.code ?? 'Loading quote...'}
-      variant="plain"
     >
       <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
       {quoteQuery.isPending ? <QuoteFormSkeleton /> : null}

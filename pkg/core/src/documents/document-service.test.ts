@@ -438,8 +438,14 @@ describe('generateQuoteDocument', () => {
     context,
   }) => {
     await uploadQuotePdf(context, { filename: 'Q-1-rev-1.pdf', quoteId: context.quoteId, revision: 1 });
+    await context.db
+      .update(quotes)
+      .set({ documentNotes: 'Confirm customer details before order processing.' })
+      .where(eq(quotes.id, context.quoteId));
     const beforeEvents = await context.db.select().from(auditEvents);
-    const renderedInputs: Array<{ filename: string; html: string }> = [];
+    const renderedInputs: Array<
+      Parameters<typeof generateQuoteDocument>[0]['pdfRenderer'] extends (input: infer Input) => unknown ? Input : never
+    > = [];
 
     const document = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
@@ -455,8 +461,10 @@ describe('generateQuoteDocument', () => {
       storage: context.storage,
     });
     const rendered = renderedInputs[0];
-    if (!rendered) throw new Error('Expected PDF renderer to receive HTML');
+    if (!rendered) throw new Error('Expected PDF renderer to receive document model');
     const quoteCode = formatQuoteCode(context.quoteCode);
+    const baseItem = rendered.document.lineItems.find((item) => item.kind === 'base');
+    const optionalItem = rendered.document.lineItems.find((item) => item.kind === 'optional');
 
     expect(document).toMatchObject({
       contentType: 'application/pdf',
@@ -466,25 +474,34 @@ describe('generateQuoteDocument', () => {
       quoteId: context.quoteId,
     });
     expect(rendered.filename).toBe(`${quoteCode}-rev-2.pdf`);
-    expect(rendered.html).toContain('<h1>Quotation</h1>');
-    expect(rendered.html).toContain('Customer details');
-    expect(rendered.html).not.toContain('Quote details');
-    expect(rendered.html).toContain('summary-box');
-    expect(rendered.html).not.toContain('Total incl. VAT');
-    expect(rendered.html).toContain('data:image/jpeg;base64,');
-    expect(rendered.html).toContain('Document Quote Customer');
-    expect(rendered.html).toContain(quoteCode);
-    expect(rendered.html).not.toContain('Status');
-    expect(rendered.html).toContain('Prepared by');
-    expect(rendered.html).toContain('OPTIONAL EXTRAS');
-    expect(rendered.html).toContain('CANVAS CANOPY');
-    expect(rendered.html).toContain('Deleted Light Bar unavailable');
-    expect(rendered.html).toContain('Payment Terms:');
-    expect(rendered.html).toContain('0% deposit');
-    expect(rendered.html).toContain('Lead Time:');
-    expect(rendered.html).toContain('14 working days');
-    expect(rendered.html).toContain('VAT');
-    expect(rendered.html).toContain('1 437.50');
+    expect(rendered.document.quoteCode).toBe(quoteCode);
+    expect(rendered.document.customer).toMatchObject({
+      companyName: 'Document Quote Customer',
+      email: 'documents@example.com',
+      phone: '012 345 6789',
+      vatNumber: 'VAT-DOC-123',
+    });
+    expect(rendered.document.salesPerson).toMatchObject({ name: 'Test User' });
+    expect(baseItem).toMatchObject({
+      amount: 1_000,
+      descriptionLines: ['DOC-TEST Document Test Product'],
+      kind: 'base',
+      quantity: 1,
+    });
+    expect(optionalItem).toMatchObject({
+      amount: 250,
+      descriptionLines: ['Canvas Canopy'],
+      kind: 'optional',
+      quantity: 1,
+    });
+    expect(rendered.document.staleSelectionNotes).toEqual(['Deleted Light Bar unavailable']);
+    expect(rendered.document.notes).toEqual(['Confirm customer details before order processing.']);
+    expect(rendered.document.paymentTerms).toBe('0% deposit');
+    expect(rendered.document.transport).toBe('Included');
+    expect(rendered.document.leadTime).toBe('14 working days');
+    expect(rendered.document.subtotal).toBe(1_250);
+    expect(rendered.document.vatAmount).toBe(187.5);
+    expect(rendered.document.total).toBe(1_437.5);
 
     const events = await context.db.select().from(auditEvents);
     expect(events.slice(beforeEvents.length).map((event) => event.entityType)).toEqual(['document']);

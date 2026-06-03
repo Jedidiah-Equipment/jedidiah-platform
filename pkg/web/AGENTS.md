@@ -15,9 +15,9 @@
 
 - Browser access checks are UX only; the server is the authorization boundary.
 - Login is email/password only unless asked otherwise.
-- Displayed dates must use `src/utils/date.ts` `formatDate`; do not add one-off
+- Displayed dates must use `@pkg/domain` `formatDate`; do not add one-off
   `Intl.DateTimeFormat`, `toLocaleDateString`, or `toLocaleString` formatting in components.
-- Displayed currency values must use `src/utils/number.ts` `formatCurrency`; do not add one-off
+- Displayed currency values must use `@pkg/domain` `formatCurrency`; do not add one-off
   `Intl.NumberFormat` currency-style formatting in components.
 - Shared option-loading hooks belong in `src/hooks/options`. Keep permission-specific endpoints in
   separate hooks with explicit names, for example `useCustomerOptions` for app-level customer reads

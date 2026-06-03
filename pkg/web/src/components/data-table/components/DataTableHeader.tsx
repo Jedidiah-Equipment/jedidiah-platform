@@ -1,4 +1,5 @@
 import { useDebouncedValue } from '@mantine/hooks';
+import { formatDate } from '@pkg/domain';
 import { type Column, flexRender, type Header } from '@tanstack/react-table';
 import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, CalendarIcon, FunnelIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -20,7 +21,6 @@ import { Input } from '@/components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
-import { formatDate } from '@/utils/date.js';
 import { getColumnLabel } from '../utils.js';
 
 type DataTableHeaderProps<TData> = {

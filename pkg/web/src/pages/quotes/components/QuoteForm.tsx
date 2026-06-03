@@ -1,4 +1,12 @@
-import { computeQuoteTotal, formatBytes, hasPermission, resolveEffectiveBom } from '@pkg/domain';
+import {
+  computeQuoteTotal,
+  formatBytes,
+  formatCurrency,
+  formatDate,
+  formatPercent,
+  hasPermission,
+  resolveEffectiveBom,
+} from '@pkg/domain';
 import {
   type Assembly,
   type QuoteCreateInput,
@@ -35,9 +43,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { formatDate } from '@/utils/date.js';
 import { downloadQuoteDocument } from '@/utils/document.js';
-import { formatCurrency, formatPercent } from '@/utils/number.js';
 import { GenerateJobFromQuoteDialog } from './GenerateJobFromQuoteDialog.js';
 import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
 import { type QuoteProductChoice, QuoteProductCombobox } from './QuoteProductCombobox.js';
@@ -338,6 +344,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 <form.AppField name="depositPercent">
                   {(field) => (
                     <field.NumberField
+                      decimals={2}
                       disabled={isLocked || !selectedProduct}
                       emptyValue={0}
                       label="Deposit percent"
@@ -450,7 +457,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                     label="Less discount"
                     value={
                       summary
-                        ? `${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)}%)`
+                        ? `${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)})`
                         : '-'
                     }
                   />

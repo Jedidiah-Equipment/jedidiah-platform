@@ -1,17 +1,24 @@
-import { getUserAccessSummary, type QuoteDocumentPdfRenderer, type StorageAdapter } from '@pkg/core';
+import { getUserAccessSummary, type StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 
-import { getSessionFromHeaders, parseBetterAuthRole } from '../auth/session.js';
+import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../auth/session.js';
 
 export type ContextDependencies = {
-  quoteDocumentPdfRenderer: QuoteDocumentPdfRenderer;
+  storage: StorageAdapter;
+};
+
+export type Context = {
+  access: UserAccessSummary | null;
+  db: typeof db;
+  log: CreateFastifyContextOptions['req']['log'];
+  session: AppSession | null;
   storage: StorageAdapter;
 };
 
 export function createContextFactory(dependencies: ContextDependencies) {
-  return async function createContext({ req }: CreateFastifyContextOptions) {
+  return async function createContext({ req }: CreateFastifyContextOptions): Promise<Context> {
     const session = await getSessionFromHeaders(req.headers);
     const access: UserAccessSummary | null = session
       ? await getUserAccessSummary({
@@ -25,7 +32,6 @@ export function createContextFactory(dependencies: ContextDependencies) {
       access,
       db,
       log: req.log,
-      quoteDocumentPdfRenderer: dependencies.quoteDocumentPdfRenderer,
       session,
       storage: dependencies.storage,
     };
@@ -33,9 +39,6 @@ export function createContextFactory(dependencies: ContextDependencies) {
 }
 
 export const createContext = createContextFactory({
-  quoteDocumentPdfRenderer: async () => {
-    throw new Error('Quote Document PDF renderer is not configured.');
-  },
   storage: {
     deleteObject: async () => undefined,
     get: async () => {
@@ -44,5 +47,3 @@ export const createContext = createContextFactory({
     put: async () => undefined,
   },
 });
-
-export type Context = Awaited<ReturnType<typeof createContext>>;

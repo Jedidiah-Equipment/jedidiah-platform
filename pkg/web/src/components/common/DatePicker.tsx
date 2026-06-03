@@ -1,12 +1,11 @@
+import { formatDate } from '@pkg/domain';
 import { endOfDay, format, isAfter, isBefore, isValid, parse, startOfDay } from 'date-fns';
 import { CalendarIcon, XIcon } from 'lucide-react';
 import * as React from 'react';
-
 import { Button } from '@/components/ui/button.js';
 import { Calendar } from '@/components/ui/calendar.js';
 import { Input } from '@/components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
-import { formatDate } from '@/utils/date.js';
 
 const dateOnlyFormat = 'yyyy-MM-dd';
 

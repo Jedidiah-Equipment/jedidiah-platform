@@ -8,7 +8,8 @@ describe('formatNumberFieldValue', () => {
 
   it('formats finite numeric values as plain input text', () => {
     expect(formatNumberFieldValue(0)).toBe('0');
-    expect(formatNumberFieldValue(12.5)).toBe('12.5');
+    expect(formatNumberFieldValue(1000000)).toBe('1 000 000');
+    expect(formatNumberFieldValue(12.5, 2)).toBe('12.50');
   });
 });
 
@@ -25,6 +26,13 @@ describe('parseNumberFieldValue', () => {
   it('parses numeric input text', () => {
     expect(parseNumberFieldValue('12')).toBe(12);
     expect(parseNumberFieldValue('12.5')).toBe(12.5);
+  });
+
+  it('parses grouped numeric input text', () => {
+    expect(parseNumberFieldValue('1 000 000')).toBe(1000000);
+    expect(parseNumberFieldValue('1\u00a0000\u00a0000')).toBe(1000000);
+    expect(parseNumberFieldValue('1,000,000')).toBe(1000000);
+    expect(parseNumberFieldValue('1000,5')).toBe(1000.5);
   });
 });
 

@@ -4,12 +4,13 @@
     "rootDir": "src",
     "outDir": "dist",
     "composite": true,
+    "jsx": "react-jsx",
     "paths": {
       "@/*": ["./src/*"]
     },
     "types": ["node", "vitest"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "references": [
     { "path": "../../pkg/schema" },
     { "path": "../../pkg/domain" },

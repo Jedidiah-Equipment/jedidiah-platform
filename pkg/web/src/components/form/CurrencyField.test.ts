@@ -6,8 +6,9 @@ describe('formatCurrencyInputText', () => {
     expect(formatCurrencyInputText('1')).toBe('1');
     expect(formatCurrencyInputText('10')).toBe('10');
     expect(formatCurrencyInputText('100')).toBe('100');
-    expect(formatCurrencyInputText('1000')).toBe('1,000');
-    expect(formatCurrencyInputText('10000')).toBe('10,000');
+    expect(formatCurrencyInputText('1000')).toBe('1 000');
+    expect(formatCurrencyInputText('10000')).toBe('10 000');
+    expect(formatCurrencyInputText('1000000')).toBe('1 000 000');
   });
 
   it('preserves user-entered decimal places without padding and caps them at two digits', () => {
@@ -15,8 +16,14 @@ describe('formatCurrencyInputText', () => {
     expect(formatCurrencyInputText('1.2')).toBe('1.2');
     expect(formatCurrencyInputText('1.23')).toBe('1.23');
     expect(formatCurrencyInputText('1.234')).toBe('1.23');
-    expect(formatCurrencyInputText('1000.5')).toBe('1,000.5');
-    expect(formatCurrencyInputText('1 000,5')).toBe('1,000.5');
+    expect(formatCurrencyInputText('1000.5')).toBe('1 000.5');
+    expect(formatCurrencyInputText('1 000,5')).toBe('1 000.5');
+  });
+
+  it('accepts pasted currency and historical grouping formats', () => {
+    expect(formatCurrencyInputText('1 000 000')).toBe('1 000 000');
+    expect(formatCurrencyInputText('1,000,000.00')).toBe('1 000 000.00');
+    expect(formatCurrencyInputText('R 1 000 000.00')).toBe('1 000 000.00');
   });
 
   it('does not turn non-numeric text into zero', () => {

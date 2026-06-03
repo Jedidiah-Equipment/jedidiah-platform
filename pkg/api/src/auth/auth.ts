@@ -26,6 +26,11 @@ export function createAuth(database: Db) {
       provider: 'pg',
       schema,
     }),
+    user: {
+      additionalFields: {
+        phoneNumber: { type: 'string', required: false, input: true },
+      },
+    },
     plugins: [
       adminPlugin({
         ac,

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Department } from '../common/departments.js';
+import { NullablePhoneNumber } from '../common/phone-number.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { AuthId } from './auth-id.js';
 
@@ -54,6 +55,7 @@ export const UserSummary = z.object({
   id: AuthId,
   name: z.string().trim().min(1),
   email: z.email(),
+  phoneNumber: NullablePhoneNumber,
   role: AppRole,
   thumbnailDataUrl: NullableThumbnailDataUrl,
 });

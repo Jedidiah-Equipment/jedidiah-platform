@@ -30,7 +30,7 @@ import {
   ProductDocumentMetadata,
   ProductDocument as ProductDocumentSchema,
 } from '@pkg/schema';
-import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import {
@@ -243,6 +243,19 @@ export async function getProductDocuments({ db, productId }: { db: Db; productId
   return rows.map(mapProductDocumentSummary);
 }
 
+export async function getProductBrochure({
+  db,
+  productId,
+}: {
+  db: Db;
+  productId: UUID;
+}): Promise<ProductDocument | null> {
+  await assertProductExists({ db, productId });
+  const row = await getProductBrochureSummaryRow({ db, productId });
+
+  return row ? mapProductDocumentSummary(row) : null;
+}
+
 export async function createProductDocument({
   actorUserId,
   db,
@@ -311,6 +324,30 @@ export async function readProductDocument({
   };
 }
 
+export async function readProductBrochure({
+  db,
+  documentId,
+  productId,
+  storage,
+}: {
+  db: Db;
+  documentId: UUID;
+  productId: UUID;
+  storage: StorageAdapter;
+}): Promise<ReadDocumentResult> {
+  await assertProductExists({ db, productId });
+  const document = await getProductBrochureSummaryRow({ db, documentId, productId });
+
+  if (!document) {
+    throw new DocumentNotFoundError(documentId);
+  }
+
+  return {
+    document: mapProductDocumentSummary(document),
+    object: await storage.get(document.storageKey),
+  };
+}
+
 export async function deleteProductDocument({
   actorUserId,
   db,
@@ -374,6 +411,29 @@ async function getProductDocumentSummaryRow({
   }
 
   return row;
+}
+
+async function getProductBrochureSummaryRow({
+  db,
+  documentId,
+  productId,
+}: {
+  db: Db;
+  documentId?: UUID;
+  productId: UUID;
+}): Promise<DocumentSummaryRow | null> {
+  const filters = [eq(documents.productId, productId), sql`${documents.metadata}->>'type' = 'brochure'`];
+
+  if (documentId) {
+    filters.push(eq(documents.id, documentId));
+  }
+
+  const [row] = await selectProductDocumentSummary(db)
+    .where(and(...filters))
+    .orderBy(desc(documents.createdAt), desc(documents.id))
+    .limit(1);
+
+  return row ?? null;
 }
 
 export async function createProduct({

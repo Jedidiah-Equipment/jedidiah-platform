@@ -228,27 +228,24 @@ describe('createProductDocument', () => {
     });
   });
 
-  test('stores server-verified image content types', async ({ context }) => {
-    const document = await createProductDocument({
-      actorUserId: ACTOR_USER_ID,
-      db: context.db,
-      input: {
-        bytes: pngBytes(),
-        contentType: 'application/octet-stream',
-        filename: 'Machine Diagram.png',
-        metadata: { type: 'brochure' },
-        productId: context.productId,
-      },
-      storage: context.storage,
-    });
+  test('rejects product images before storing anything', async ({ context }) => {
+    await expect(
+      createProductDocument({
+        actorUserId: ACTOR_USER_ID,
+        db: context.db,
+        input: {
+          bytes: pngBytes(),
+          contentType: 'application/pdf',
+          filename: 'Machine Diagram.png',
+          metadata: { type: 'part_book' },
+          productId: context.productId,
+        },
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
 
-    expect(document.contentType).toBe('image/png');
-
-    const [row] = await context.db.select().from(documents);
-    expect(row?.contentType).toBe('image/png');
-    await expect(context.storage.get(row?.storageKey ?? '')).resolves.toMatchObject({
-      contentType: 'image/png',
-    });
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    expect(context.storage.objects.size).toBe(0);
   });
 
   test('rejects duplicate filenames case-insensitively per product', async ({ context }) => {
@@ -522,17 +519,10 @@ describe('generateQuoteDocument', () => {
     });
   });
 
-  test('appends the latest Product PDF brochure after all rendered quote pages', async ({ context }) => {
+  test('appends the latest Product brochure after all rendered quote pages', async ({ context }) => {
     const olderBrochure = await uploadPdf(context, {
       bytes: await realPdfBytes([[320, 320]]),
       filename: 'Older Brochure.pdf',
-      productId: context.productId,
-      type: 'brochure',
-    });
-    const imageBrochure = await uploadPdf(context, {
-      bytes: pngBytes(),
-      contentType: 'image/png',
-      filename: 'Image Brochure.png',
       productId: context.productId,
       type: 'brochure',
     });
@@ -550,7 +540,6 @@ describe('generateQuoteDocument', () => {
     });
     await setDocumentCreatedAt(context.db, olderBrochure.id, new Date('2026-01-01T00:00:00.000Z'));
     await setDocumentCreatedAt(context.db, latestPdfBrochure.id, new Date('2026-01-03T00:00:00.000Z'));
-    await setDocumentCreatedAt(context.db, imageBrochure.id, new Date('2026-01-04T00:00:00.000Z'));
     await setDocumentCreatedAt(context.db, latestPartBook.id, new Date('2026-01-05T00:00:00.000Z'));
 
     const result = await generateQuoteDocument({
@@ -584,15 +573,7 @@ describe('generateQuoteDocument', () => {
     ]);
   });
 
-  test('generates a quote-only PDF with a warning when no Product PDF brochure exists', async ({ context }) => {
-    await uploadPdf(context, {
-      bytes: pngBytes(),
-      contentType: 'image/png',
-      filename: 'Image Brochure.png',
-      productId: context.productId,
-      type: 'brochure',
-    });
-
+  test('generates a quote-only PDF with a warning when no Product brochure exists', async ({ context }) => {
     const result = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
       db: context.db,

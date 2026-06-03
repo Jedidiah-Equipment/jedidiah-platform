@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
     borderTopWidth: pdfBorder.hairlineWidth,
     color: '#777777',
     fontSize: 8,
-    marginTop: 16,
+    marginTop: 8,
     paddingTop: 8,
   },
 });

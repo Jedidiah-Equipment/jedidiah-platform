@@ -64,7 +64,7 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
   const [editingPart, setEditingPart] = useState<Part | null>(null);
 
   return (
-    <Tabs className="w-full" defaultValue="supplier">
+    <Tabs className="w-full" defaultValue="supplier" size="sm">
       <TabsList variant="default">
         <TabsTrigger value="supplier">Details</TabsTrigger>
         {canReadPart ? <TabsTrigger value="parts">Parts</TabsTrigger> : null}

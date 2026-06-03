@@ -57,7 +57,7 @@ type ProductEditTabsProps = {
 
 const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, product }) => {
   return (
-    <Tabs className="w-full" defaultValue="details">
+    <Tabs className="w-full" defaultValue="details" size="sm">
       <TabsList variant="default">
         <TabsTrigger value="details">Details</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>

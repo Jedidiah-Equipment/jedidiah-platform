@@ -96,9 +96,15 @@ type QuoteLinkedJobRow = {
 };
 
 type QuoteDetailRow = QuoteRow & {
-  customer: Pick<typeof customers.$inferSelect, 'companyName'>;
+  customer: Pick<
+    typeof customers.$inferSelect,
+    'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'thumbnailDataUrl' | 'vatNumber'
+  >;
   jobs: Pick<typeof jobs.$inferSelect, 'code' | 'id'>[];
-  product: Pick<typeof products.$inferSelect, 'buildTimeDays' | 'currencyCode' | 'modelCode' | 'name'>;
+  product: Pick<
+    typeof products.$inferSelect,
+    'buildTimeDays' | 'currencyCode' | 'description' | 'modelCode' | 'name' | 'requiresVinNumber' | 'thumbnailDataUrl'
+  >;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
   selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
@@ -259,7 +265,13 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
     with: {
       customer: {
         columns: {
+          address: true,
           companyName: true,
+          contactPerson: true,
+          email: true,
+          phone: true,
+          thumbnailDataUrl: true,
+          vatNumber: true,
         },
       },
       jobs: {
@@ -273,8 +285,11 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
         columns: {
           buildTimeDays: true,
           currencyCode: true,
+          description: true,
           modelCode: true,
           name: true,
+          requiresVinNumber: true,
+          thumbnailDataUrl: true,
         },
       },
       salesPerson: {
@@ -440,16 +455,25 @@ function mapQuoteSummary(
 function mapQuoteDetail(row: QuoteDetailRow, productAssembliesForQuote: Assembly[]): QuoteDetail {
   return {
     ...mapQuote(row),
+    customerAddress: row.customer.address,
     customerCompanyName: row.customer.companyName,
+    customerContactPerson: row.customer.contactPerson,
+    customerEmail: row.customer.email,
+    customerPhone: row.customer.phone,
+    customerThumbnailDataUrl: row.customer.thumbnailDataUrl,
+    customerVatNumber: row.customer.vatNumber,
     linkedJobs: row.jobs.map((job) => ({
       jobCode: JobCode.parse(job.code),
       jobId: job.id,
     })),
     productCurrencyCode: ProductCurrencyCode.parse(row.product.currencyCode),
     productBuildTimeDays: row.product.buildTimeDays,
+    productDescription: row.product.description,
     productModelCode: row.product.modelCode,
     productName: row.product.name,
     productAssemblies: productAssembliesForQuote,
+    productRequiresVinNumber: row.product.requiresVinNumber,
+    productThumbnailDataUrl: row.product.thumbnailDataUrl,
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
     selectedAssemblies: row.selectedAssemblies.map(mapQuoteSelectedAssembly),

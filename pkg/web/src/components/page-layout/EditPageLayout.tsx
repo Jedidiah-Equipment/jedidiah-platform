@@ -11,6 +11,7 @@ type EditPageLayoutProps = {
   contentClassName?: string;
   description: string;
   title: string;
+  variant?: 'card' | 'plain';
 };
 
 export const EditPageLayout: React.FC<EditPageLayoutProps> = ({
@@ -20,11 +21,28 @@ export const EditPageLayout: React.FC<EditPageLayoutProps> = ({
   contentClassName,
   description,
   title,
+  variant = 'card',
 }) => (
   <div className="flex flex-1 flex-col gap-4 p-4 pt-3">
     <div>{back}</div>
-    <Card>
-      <CardHeader>
+    {variant === 'card' ? (
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-col gap-1">
+              <CardDescription>{description}</CardDescription>
+              <CardTitle>{title}</CardTitle>
+            </div>
+            {badge}
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Separator />
+          <div className={cn('mx-auto w-full max-w-5xl', contentClassName)}>{children}</div>
+        </CardContent>
+      </Card>
+    ) : (
+      <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-1">
             <CardDescription>{description}</CardDescription>
@@ -32,12 +50,10 @@ export const EditPageLayout: React.FC<EditPageLayoutProps> = ({
           </div>
           {badge}
         </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
         <Separator />
         <div className={cn('mx-auto w-full max-w-5xl', contentClassName)}>{children}</div>
-      </CardContent>
-    </Card>
+      </div>
+    )}
   </div>
 );
 

@@ -133,6 +133,26 @@ describe('document HTTP routes', () => {
     expect(storage.gets).toEqual([`documents/quote/${quote.id}/quote.pdf`]);
   });
 
+  test('downloads quote Product brochures through quote read access', async ({ context }) => {
+    routeTestState.session = mockSession('sales');
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const quote = await createQuoteOwner(context.db, context.product.id);
+    const document = await createProductBrochureRow({
+      db: context.db,
+      productId: context.product.id,
+      storage,
+    });
+
+    const response = await app.inject(`/api/quotes/${quote.id}/product-brochure/${document.id}/download`);
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.headers['content-type']).toBe('application/pdf');
+    expect(response.headers['content-length']).toBe(String(pdfBytes().byteLength));
+    expect(response.rawPayload).toEqual(Buffer.from(pdfBytes()));
+    expect(storage.gets).toEqual([`documents/product/${context.product.id}/brochure.pdf`]);
+  });
+
   test('uploads a product document with its type and returns the persisted metadata', async ({ context }) => {
     const storage = new MemoryStorage();
     const app = await createDocumentApp(storage);
@@ -167,6 +187,25 @@ describe('document HTTP routes', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ data: { appCode: 'document.metadata_invalid' } });
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+    expect(storage.objects.size).toBe(0);
+  });
+
+  test('rejects a product image upload and stores nothing', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/products/${context.product.id}/documents`,
+      ...buildMultipartUpload({ bytes: pngBytes(), filename: 'Machine Diagram.png', type: 'part_book' }),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      data: { appCode: 'document.content_type_not_allowed' },
+      message: 'Only PDF documents can be uploaded.',
+    });
     await expect(context.db.select().from(documents)).resolves.toEqual([]);
     expect(storage.objects.size).toBe(0);
   });
@@ -292,6 +331,43 @@ async function createProductDocumentRow({
       contentType: 'application/pdf',
       filename: 'Part Book.pdf',
       metadata: { type: 'part_book' },
+      ownerType: 'product',
+      productId,
+      storageKey,
+      uploaderUserId: 'test-user-id',
+    })
+    .returning({ id: documents.id });
+
+  if (!document) {
+    throw new Error('Document insert did not return a row');
+  }
+
+  return document;
+}
+
+async function createProductBrochureRow({
+  db,
+  productId,
+  storage,
+}: {
+  db: Db;
+  productId: UUID;
+  storage: MemoryStorage;
+}) {
+  const storageKey = `documents/product/${productId}/brochure.pdf`;
+  await storage.put({
+    body: pdfBytes(),
+    byteSize: pdfBytes().byteLength,
+    contentType: 'application/pdf',
+    key: storageKey,
+  });
+  const [document] = await db
+    .insert(documents)
+    .values({
+      byteSize: pdfBytes().byteLength,
+      contentType: 'application/pdf',
+      filename: 'Brochure.pdf',
+      metadata: { type: 'brochure' },
       ownerType: 'product',
       productId,
       storageKey,
@@ -442,6 +518,10 @@ async function createJobOwner(db: Db, productId: UUID) {
 
 function pdfBytes(): Uint8Array {
   return Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0x0a, 0x25, 0x00, 0xff, 0x10]);
+}
+
+function pngBytes(): Uint8Array {
+  return Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 }
 
 function buildMultipartUpload(input: { bytes: Uint8Array; filename: string; type?: string }): {

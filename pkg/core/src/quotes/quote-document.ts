@@ -4,6 +4,7 @@ import { type Db, documents, getUniqueViolationConstraint, quotes, user } from '
 import { validateDocumentMetadata } from '@pkg/domain';
 import {
   type AuthId,
+  type ProductDocument,
   type QuoteDocument,
   type QuoteDocumentCreateInput,
   type QuoteDocumentLineItem,
@@ -30,6 +31,7 @@ import {
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
+import { getProductBrochure, readProductBrochure } from '../products/product-service.js';
 import { QuoteNotFoundError } from './quote-errors.js';
 
 const QUOTE_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_quote_id_filename_ci_unique';
@@ -44,6 +46,18 @@ export async function getQuoteDocuments({ db, quoteId }: { db: Db; quoteId: UUID
     .orderBy(sql`${documents.createdAt} desc`, sql`${documents.id} desc`);
 
   return rows.map(mapQuoteDocumentSummary);
+}
+
+export async function getQuoteProductBrochure({
+  db,
+  quoteId,
+}: {
+  db: Db;
+  quoteId: UUID;
+}): Promise<ProductDocument | null> {
+  const productId = await getQuoteProductId({ db, quoteId });
+
+  return getProductBrochure({ db, productId });
 }
 
 export async function createQuoteDocument({
@@ -102,6 +116,22 @@ export async function readQuoteDocument({
     document: mapDocumentSummary(document),
     object: await storage.get(document.storageKey),
   };
+}
+
+export async function readQuoteProductBrochure({
+  db,
+  documentId,
+  quoteId,
+  storage,
+}: {
+  db: Db;
+  documentId: UUID;
+  quoteId: UUID;
+  storage: StorageAdapter;
+}): Promise<ReadDocumentResult> {
+  const productId = await getQuoteProductId({ db, quoteId });
+
+  return readProductBrochure({ db, documentId, productId, storage });
 }
 
 function parseQuoteDocumentMetadata(metadata: unknown): QuoteDocumentMetadata {
@@ -163,9 +193,13 @@ async function getQuoteDocumentSummaryRow({
 }
 
 async function assertQuoteExists({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<void> {
+  await getQuoteProductId({ db, quoteId });
+}
+
+async function getQuoteProductId({ db, quoteId }: { db: Db; quoteId: UUID }): Promise<UUID> {
   const [quote] = await db
     .select({
-      id: quotes.id,
+      productId: quotes.productId,
     })
     .from(quotes)
     .where(eq(quotes.id, quoteId))
@@ -174,6 +208,8 @@ async function assertQuoteExists({ db, quoteId }: { db: Db; quoteId: UUID }): Pr
   if (!quote) {
     throw new QuoteNotFoundError(quoteId);
   }
+
+  return quote.productId;
 }
 
 function createQuoteDocumentStorageKey(input: { filename: string; quoteId: UUID }): string {

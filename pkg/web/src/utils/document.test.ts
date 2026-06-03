@@ -80,6 +80,20 @@ describe('document utilities', () => {
     ).toBe('/api/quotes/44444444-4444-4444-8444-444444444444/documents/11111111-1111-1111-8111-111111111111/download');
   });
 
+  it('builds the quote-scoped Product brochure download path', () => {
+    expect(
+      createDocumentDownloadPath({
+        document: documentSummary,
+        owner: {
+          id: '44444444-4444-4444-8444-444444444444' as UUID,
+          type: 'quote-product-brochure',
+        },
+      }),
+    ).toBe(
+      '/api/quotes/44444444-4444-4444-8444-444444444444/product-brochure/11111111-1111-1111-8111-111111111111/download',
+    );
+  });
+
   it('classifies supported preview content types', () => {
     expect(getDocumentPreviewKind({ contentType: 'application/pdf' })).toBe('pdf');
     expect(getDocumentPreviewKind({ contentType: 'image/png' })).toBe('image');

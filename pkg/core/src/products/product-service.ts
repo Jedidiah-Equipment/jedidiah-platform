@@ -8,7 +8,6 @@ import {
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
-  productAssemblies,
   products,
   user,
 } from '@pkg/db';
@@ -55,7 +54,13 @@ import {
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { type AssemblyListRow, listAssemblies, mapAssembly, syncAssemblies } from './product-assembly-service.js';
+import {
+  type AssemblyListRow,
+  listAssemblies,
+  mapAssembly,
+  productAssemblyOrderBy,
+  syncAssemblies,
+} from './product-assembly-service.js';
 import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
 
 const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
@@ -119,10 +124,7 @@ export async function listProducts({
     ...getPaginationQueryOptions(input),
     with: {
       assemblies: {
-        orderBy: [
-          sql`case when ${productAssemblies.kind} = 'standard' then 0 else 1 end`,
-          getSortOrder(productAssemblies.name, 'asc'),
-        ],
+        orderBy: productAssemblyOrderBy,
         with: {
           assemblyParts: {
             with: {
@@ -205,10 +207,7 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
     where: eq(products.id, id),
     with: {
       assemblies: {
-        orderBy: [
-          sql`case when ${productAssemblies.kind} = 'standard' then 0 else 1 end`,
-          getSortOrder(productAssemblies.name, 'asc'),
-        ],
+        orderBy: productAssemblyOrderBy,
         with: {
           assemblyParts: {
             with: {

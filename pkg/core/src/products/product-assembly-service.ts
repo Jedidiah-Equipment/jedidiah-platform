@@ -49,8 +49,11 @@ export async function syncAssemblies({
     await tx.delete(productAssemblies).where(inArray(productAssemblies.id, removedIds));
   }
 
+  const displayOrderByKind: Record<AssemblyInput['kind'], number> = { optional: 0, standard: 0 };
+
   for (const assembly of desired) {
     const rowValues = {
+      displayOrder: displayOrderByKind[assembly.kind]++,
       kind: assembly.kind,
       name: assembly.name,
       price: assembly.kind === 'optional' ? assembly.price : null,
@@ -100,10 +103,15 @@ export async function syncAssemblies({
   return listAssemblies({ tx, productId });
 }
 
+export const productAssemblyOrderBy = [
+  sql`case when ${productAssemblies.kind} = 'standard' then 0 else 1 end`,
+  asc(productAssemblies.displayOrder),
+];
+
 export async function listAssemblies({ tx, productId }: { tx: AssemblyDb; productId: UUID }): Promise<Assembly[]> {
   const rows = await tx.query.productAssemblies.findMany({
     where: eq(productAssemblies.productId, productId),
-    orderBy: [sql`case when ${productAssemblies.kind} = 'standard' then 0 else 1 end`, asc(productAssemblies.name)],
+    orderBy: productAssemblyOrderBy,
     with: {
       assemblyParts: {
         with: {

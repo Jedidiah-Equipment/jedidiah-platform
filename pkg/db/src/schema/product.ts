@@ -42,6 +42,7 @@ export const productAssemblies = pgTable(
   'product_assemblies',
   {
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    displayOrder: integer('display_order').notNull(),
     id: uuid('id').defaultRandom().primaryKey(),
     kind: text('kind', { enum: ['standard', 'optional'] }).notNull(),
     name: text('name').notNull(),

@@ -9,6 +9,7 @@
       "@pkg/core": ["./pkg/core/src/index.ts"],
       "@pkg/db": ["./pkg/db/src/index.ts"],
       "@pkg/domain": ["./pkg/domain/src/index.ts"],
+      "@pkg/pdf": ["./pkg/pdf/src/index.ts"],
       "@pkg/schema": ["./pkg/schema/src/index.ts"],
       "@pkg/seed": ["./pkg/seed/src/index.ts"]
     },

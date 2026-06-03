@@ -5,17 +5,8 @@
     "outDir": "dist",
     "composite": true,
     "jsx": "react-jsx",
-    "paths": {
-      "@/*": ["./src/*"]
-    },
     "types": ["node", "vitest"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "references": [
-    { "path": "../../pkg/schema" },
-    { "path": "../../pkg/domain" },
-    { "path": "../../pkg/db" },
-    { "path": "../../pkg/pdf" },
-    { "path": "../../pkg/core" }
-  ]
+  "references": [{ "path": "../domain" }, { "path": "../schema" }]
 }

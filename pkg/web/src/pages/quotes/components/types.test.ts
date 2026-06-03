@@ -2,6 +2,7 @@ import { type Assembly, QuoteDetail, type QuoteSelectedAssembly, QuoteUpdateInpu
 import { describe, expect, it } from 'vitest';
 
 import {
+  getDefaultQuoteDocumentLeadTime,
   type QuoteFormValues,
   resolveSelectedAssemblySnapshots,
   toQuoteCreateInput,
@@ -39,6 +40,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     customerCompanyName: 'Acme',
     linkedJobs: [],
     productCurrencyCode: 'ZAR',
+    productBuildTimeDays: 14,
     productModelCode: 'MOD-1',
     productName: 'Widget',
     salesPersonEmail: 'sales@example.com',
@@ -132,6 +134,12 @@ describe('toQuoteFormValues', () => {
     expect(values.validUntil).toBe('');
     expect(values.preferredDeliveryDate).toBe('');
     expect(values.plannedDeliveryDate).toBe('');
+  });
+});
+
+describe('getDefaultQuoteDocumentLeadTime', () => {
+  it('defaults from the Product build time on the saved Quote detail', () => {
+    expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ productBuildTimeDays: 21 }))).toBe('21 working days');
   });
 });
 

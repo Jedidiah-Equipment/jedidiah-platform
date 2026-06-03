@@ -1,6 +1,16 @@
-import { auditEvents, customers, documents, jobs, products, quotes, user } from '@pkg/db';
+import {
+  auditEvents,
+  customers,
+  documents,
+  jobs,
+  productAssemblies,
+  products,
+  quoteSelectedAssemblies,
+  quotes,
+  user,
+} from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
-import type { UUID } from '@pkg/schema';
+import { formatQuoteCode, type UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -11,7 +21,12 @@ import {
   getProductDocuments,
   readProductDocument,
 } from '../products/product-service.js';
-import { createQuoteDocument, getQuoteDocuments, readQuoteDocument } from '../quotes/quote-service.js';
+import {
+  createQuoteDocument,
+  generateQuoteDocument,
+  getQuoteDocuments,
+  readQuoteDocument,
+} from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { DocumentPolicyViolationError, DuplicateDocumentFilenameError } from './document-errors.js';
@@ -61,7 +76,9 @@ const test = createTester(async ({ db }) => {
     .insert(customers)
     .values({
       companyName: 'Document Quote Customer',
-      email: null,
+      email: 'documents@example.com',
+      phone: '012 345 6789',
+      vatNumber: 'VAT-DOC-123',
     })
     .returning({ id: customers.id });
   if (!customer) throw new Error('Customer insert did not return a row');
@@ -76,12 +93,39 @@ const test = createTester(async ({ db }) => {
       salesPersonId: ACTOR_USER_ID,
       status: 'sent',
     })
-    .returning({ id: quotes.id });
+    .returning({ code: quotes.code, id: quotes.id });
   if (!quote) throw new Error('Quote insert did not return a row');
+
+  const [optionalAssembly] = await db
+    .insert(productAssemblies)
+    .values({
+      kind: 'optional',
+      name: 'Canvas Canopy',
+      price: 250,
+      productId: product.id,
+    })
+    .returning({ id: productAssemblies.id });
+  if (!optionalAssembly) throw new Error('Product assembly insert did not return a row');
+
+  await db.insert(quoteSelectedAssemblies).values([
+    {
+      productAssemblyId: optionalAssembly.id,
+      quoteId: quote.id,
+      quotedName: 'Canvas Canopy',
+      quotedPrice: 250,
+    },
+    {
+      productAssemblyId: null,
+      quoteId: quote.id,
+      quotedName: 'Deleted Light Bar',
+      quotedPrice: 125,
+    },
+  ]);
 
   return {
     otherProductId: otherProduct.id,
     productId: product.id,
+    quoteCode: quote.code,
     quoteId: quote.id,
     storage: new InMemoryStorageAdapter(),
   };
@@ -386,6 +430,98 @@ describe('createQuoteDocument', () => {
       uploadQuotePdf(context, { filename: 'quote.PDF', quoteId: context.quoteId, revision: 2 }),
     ).rejects.toBeInstanceOf(DuplicateDocumentFilenameError);
     expect(context.storage.objects.size).toBe(1);
+  });
+});
+
+describe('generateQuoteDocument', () => {
+  test('renders saved quote data to the next Quote Document revision and audits only the document', async ({
+    context,
+  }) => {
+    await uploadQuotePdf(context, { filename: 'Q-1-rev-1.pdf', quoteId: context.quoteId, revision: 1 });
+    const beforeEvents = await context.db.select().from(auditEvents);
+    const renderedInputs: Array<{ filename: string; html: string }> = [];
+
+    const document = await generateQuoteDocument({
+      actorUserId: ACTOR_USER_ID,
+      db: context.db,
+      input: {
+        leadTime: '14 working days',
+        quoteId: context.quoteId,
+      },
+      pdfRenderer: async (input) => {
+        renderedInputs.push(input);
+        return pdfBytes();
+      },
+      storage: context.storage,
+    });
+    const rendered = renderedInputs[0];
+    if (!rendered) throw new Error('Expected PDF renderer to receive HTML');
+    const quoteCode = formatQuoteCode(context.quoteCode);
+
+    expect(document).toMatchObject({
+      contentType: 'application/pdf',
+      filename: `${quoteCode}-rev-2.pdf`,
+      metadata: { revision: 2 },
+      ownerType: 'quote',
+      quoteId: context.quoteId,
+    });
+    expect(rendered.filename).toBe(`${quoteCode}-rev-2.pdf`);
+    expect(rendered.html).toContain('<h1>Quotation</h1>');
+    expect(rendered.html).toContain('Customer details');
+    expect(rendered.html).not.toContain('Quote details');
+    expect(rendered.html).toContain('summary-box');
+    expect(rendered.html).not.toContain('Total incl. VAT');
+    expect(rendered.html).toContain('data:image/jpeg;base64,');
+    expect(rendered.html).toContain('Document Quote Customer');
+    expect(rendered.html).toContain(quoteCode);
+    expect(rendered.html).not.toContain('Status');
+    expect(rendered.html).toContain('Prepared by');
+    expect(rendered.html).toContain('OPTIONAL EXTRAS');
+    expect(rendered.html).toContain('CANVAS CANOPY');
+    expect(rendered.html).toContain('Deleted Light Bar unavailable');
+    expect(rendered.html).toContain('Payment Terms:');
+    expect(rendered.html).toContain('0% deposit');
+    expect(rendered.html).toContain('Lead Time:');
+    expect(rendered.html).toContain('14 working days');
+    expect(rendered.html).toContain('VAT');
+    expect(rendered.html).toContain('1 437.50');
+
+    const events = await context.db.select().from(auditEvents);
+    expect(events.slice(beforeEvents.length).map((event) => event.entityType)).toEqual(['document']);
+    await expect(
+      readQuoteDocument({
+        db: context.db,
+        documentId: document.id,
+        quoteId: context.quoteId,
+        storage: context.storage,
+      }),
+    ).resolves.toMatchObject({
+      document: expect.objectContaining({ id: document.id }),
+    });
+  });
+
+  test('blocks generation for rejected and cancelled Quotes', async ({ context }) => {
+    for (const status of ['rejected', 'cancelled'] as const) {
+      const [updated] = await context.db
+        .update(quotes)
+        .set({ status })
+        .where(eq(quotes.id, context.quoteId))
+        .returning({ id: quotes.id });
+      if (!updated) throw new Error('Quote update did not return a row');
+
+      await expect(
+        generateQuoteDocument({
+          actorUserId: ACTOR_USER_ID,
+          db: context.db,
+          input: {
+            leadTime: '14 working days',
+            quoteId: context.quoteId,
+          },
+          pdfRenderer: async () => pdfBytes(),
+          storage: context.storage,
+        }),
+      ).rejects.toThrow('Quote Documents can only be generated for draft, sent, or accepted Quotes.');
+    }
   });
 });
 

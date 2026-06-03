@@ -36,7 +36,17 @@ export class QuoteLockedError extends Error {
   }
 }
 
+export class QuoteDocumentGenerationNotAllowedError extends Error {
+  readonly code = 'quote.document_generation_not_allowed';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteDocumentGenerationNotAllowedError';
+  }
+}
+
 export type QuoteCoreError =
+  | QuoteDocumentGenerationNotAllowedError
   | QuoteDiscountInvalidError
   | QuoteInvalidReferenceError
   | QuoteLockedError
@@ -44,6 +54,7 @@ export type QuoteCoreError =
 
 export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
+    error instanceof QuoteDocumentGenerationNotAllowedError ||
     error instanceof QuoteDiscountInvalidError ||
     error instanceof QuoteInvalidReferenceError ||
     error instanceof QuoteLockedError ||

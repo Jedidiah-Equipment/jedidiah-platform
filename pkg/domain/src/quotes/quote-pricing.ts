@@ -8,6 +8,8 @@ export type QuotePricingResult =
       reason: string;
     };
 
+export const QUOTE_DOCUMENT_VAT_PERCENT = 15;
+
 export function validateDiscount({
   basePrice,
   discountAmount,

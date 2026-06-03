@@ -1,5 +1,6 @@
 import {
   createQuote,
+  generateQuoteDocument,
   getQuote,
   isQuoteCoreError,
   listCustomers,
@@ -13,6 +14,7 @@ import {
   CustomerListInput,
   ProductListInput,
   QuoteCreateInput,
+  QuoteDocumentGenerationInput,
   QuoteListInput,
   QuoteUpdateInput,
   UUID,
@@ -54,6 +56,20 @@ export const quotesRouter = router({
     .mutation(({ ctx, input }) =>
       mapQuoteErrors(() => updateQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
     ),
+
+  generateDocument: authorizedProcedure('quote:update')
+    .input(QuoteDocumentGenerationInput)
+    .mutation(({ ctx, input }) =>
+      mapQuoteErrors(() =>
+        generateQuoteDocument({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          input,
+          pdfRenderer: ctx.quoteDocumentPdfRenderer,
+          storage: ctx.storage,
+        }),
+      ),
+    ),
 });
 
 async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -81,6 +97,7 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
         message: 'Quote includes an invalid customer, product, or salesperson.',
       };
     case 'quote.locked':
+    case 'quote.document_generation_not_allowed':
       return {
         appCode: error.code,
         code: 'BAD_REQUEST',

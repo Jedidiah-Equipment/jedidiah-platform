@@ -668,6 +668,55 @@ describe('quotes.list', () => {
   });
 });
 
+describe('quotes.generateDocument', () => {
+  test('requires quote update access and returns the created Quote Document', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const productEditorCaller = context.createCaller(mockSession('product-editor'));
+    const created = await createReadyQuote(salesCaller, context.product.id);
+
+    await expect(
+      productEditorCaller.quotes.generateDocument({
+        leadTime: '14 working days',
+        quoteId: created.id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+
+    await expect(
+      salesCaller.quotes.generateDocument({
+        leadTime: '14 working days',
+        quoteId: created.id,
+      }),
+    ).resolves.toMatchObject({
+      contentType: 'application/pdf',
+      filename: `${created.code}-rev-1.pdf`,
+      metadata: { revision: 1 },
+      ownerType: 'quote',
+      quoteId: created.id,
+    });
+  });
+
+  test('maps blocked Quote statuses to a public bad request error', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const created = await createReadyQuote(salesCaller, context.product.id);
+    const cancelled = await salesCaller.quotes.update({
+      ...toUpdateInput(created),
+      status: 'cancelled',
+    });
+
+    await expect(
+      salesCaller.quotes.generateDocument({
+        leadTime: '14 working days',
+        quoteId: cancelled.id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Quote Documents can only be generated for draft, sent, or accepted Quotes.',
+    });
+  });
+});
+
 describe('jobs.create with quote links', () => {
   test('creates one job from one accepted quote with stages and locks frozen quote fields', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));

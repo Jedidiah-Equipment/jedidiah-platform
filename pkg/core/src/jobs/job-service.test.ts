@@ -25,6 +25,7 @@ import { describe, expect } from 'vitest';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
+import { getJob } from './job-read-service.js';
 import { createJob } from './job-service.js';
 
 const actorUserId = 'test-user-id';
@@ -125,6 +126,105 @@ describe('createJob', () => {
         }),
       }),
     ).rejects.toThrow('Quote is locked because it already has a Job; discountAmount cannot be changed.');
+  });
+
+  test('freezes CFO sequence by display order, ignoring name and selection order', async ({ context }) => {
+    const product = await createProduct(context.db, { modelCode: 'ORD-001', name: 'Ordering Product' });
+
+    // Display order deliberately contradicts alphabetical name order in both kind groups.
+    const [bStandard, aStandard, bOptional, aOptional] = await context.db
+      .insert(productAssemblies)
+      .values([
+        { displayOrder: 0, kind: 'standard', name: 'B Standard', productId: product.id },
+        { displayOrder: 1, kind: 'standard', name: 'A Standard', productId: product.id },
+        { displayOrder: 0, kind: 'optional', name: 'B Optional', price: 100, productId: product.id },
+        { displayOrder: 1, kind: 'optional', name: 'A Optional', price: 100, productId: product.id },
+      ])
+      .returning();
+    if (!bStandard || !aStandard || !bOptional || !aOptional) {
+      throw new Error('Assembly insert did not return every row');
+    }
+
+    const [customer] = await context.db
+      .insert(customers)
+      .values({ companyName: 'Ordering Customer', email: null })
+      .returning();
+    if (!customer) throw new Error('Customer insert did not return a row');
+
+    const [quote] = await context.db
+      .insert(quotes)
+      .values({
+        customerId: customer.id,
+        productId: product.id,
+        quotedBasePrice: 1_000,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: actorUserId,
+        status: 'accepted',
+      })
+      .returning();
+    if (!quote) throw new Error('Quote insert did not return a row');
+
+    // Select optionals in reverse display order, with createdAt also opposite, so only the
+    // display order can produce the expected CFO order.
+    await context.db.insert(quoteSelectedAssemblies).values([
+      {
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        productAssemblyId: aOptional.id,
+        quoteId: quote.id,
+        quotedName: 'A Optional',
+        quotedPrice: 100,
+      },
+      {
+        createdAt: new Date('2026-01-02T00:00:00.000Z'),
+        productAssemblyId: bOptional.id,
+        quoteId: quote.id,
+        quotedName: 'B Optional',
+        quotedPrice: 100,
+      },
+    ]);
+
+    const job = await createJob({
+      access: jobAccess,
+      actorUserId,
+      db: context.db,
+      input: { quoteId: quote.id },
+    });
+
+    expect(job.cfo.map((entry) => entry.assemblyName)).toEqual([
+      'B Standard',
+      'A Standard',
+      'B Optional',
+      'A Optional',
+    ]);
+
+    const cfoRows = await context.db
+      .select({
+        assemblyName: jobCfoAssemblies.assemblyName,
+        kind: jobCfoAssemblies.kind,
+        sequence: jobCfoAssemblies.sequence,
+      })
+      .from(jobCfoAssemblies)
+      .where(eq(jobCfoAssemblies.jobId, job.id));
+    expect(cfoRows).toEqual(
+      expect.arrayContaining([
+        { assemblyName: 'B Standard', kind: 'standard', sequence: 0 },
+        { assemblyName: 'A Standard', kind: 'standard', sequence: 1 },
+        { assemblyName: 'B Optional', kind: 'optional', sequence: 0 },
+        { assemblyName: 'A Optional', kind: 'optional', sequence: 1 },
+      ]),
+    );
+
+    // Reordering the source product afterward must not reshuffle the frozen CFO.
+    await context.db.update(productAssemblies).set({ displayOrder: 1 }).where(eq(productAssemblies.id, bOptional.id));
+    await context.db.update(productAssemblies).set({ displayOrder: 0 }).where(eq(productAssemblies.id, aOptional.id));
+
+    const reread = await getJob({ access: jobAccess, db: context.db, id: job.id });
+    expect(reread.cfo.map((entry) => entry.assemblyName)).toEqual([
+      'B Standard',
+      'A Standard',
+      'B Optional',
+      'A Optional',
+    ]);
   });
 
   test('snapshots product documents onto the job as frozen rows with product provenance', async ({ context }) => {

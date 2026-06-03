@@ -40,11 +40,14 @@ export function resolveEffectiveBom<TSelection extends EffectiveBomSelection>({
   selectedAssemblies: readonly TSelection[];
 }): EffectiveBom<TSelection> {
   const optionalAssembliesById = new Map<UUID, OptionalAssembly>();
-  for (const assembly of catalogAssemblies) {
+  const catalogIndexById = new Map<UUID, number>();
+  catalogAssemblies.forEach((assembly, index) => {
+    catalogIndexById.set(assembly.id, index);
+
     if (assembly.kind === 'optional') {
       optionalAssembliesById.set(assembly.id, assembly);
     }
-  }
+  });
 
   const selectedOptionalAssemblies: ResolvedOptionalAssembly<TSelection>[] = [];
   const staleSelections: TSelection[] = [];
@@ -60,6 +63,13 @@ export function resolveEffectiveBom<TSelection extends EffectiveBomSelection>({
 
     selectedOptionalAssemblies.push({ assembly, selection });
   }
+
+  // Resolved optionals follow the product's display order (their index in the display-ordered
+  // catalog array), not selection order. Stale selections carry no catalog position, so they keep
+  // their incoming `(createdAt, id)` order and stay in `staleSelections` — last by construction.
+  selectedOptionalAssemblies.sort(
+    (left, right) => (catalogIndexById.get(left.assembly.id) ?? 0) - (catalogIndexById.get(right.assembly.id) ?? 0),
+  );
 
   const overriddenStandardAssemblyIds = new Set<UUID>();
   for (const { assembly } of selectedOptionalAssemblies) {

@@ -6,8 +6,10 @@ import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } fro
 import { Price } from '../common/price.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
-import { Assembly, ProductCurrencyCode } from '../products/product.js';
+import { CustomerEmail, CustomerOptionalText, CustomerVatNumber } from '../customers/customer.js';
+import { Assembly, ProductCurrencyCode, ProductDescription, ProductRequiresVinNumber } from '../products/product.js';
 
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
@@ -99,7 +101,16 @@ export const QuoteSummary = Quote.extend({
 
 export type QuoteDetail = z.infer<typeof QuoteDetail>;
 export const QuoteDetail = QuoteSummary.extend({
+  customerAddress: CustomerOptionalText,
+  customerContactPerson: CustomerOptionalText,
+  customerEmail: CustomerEmail.nullable(),
+  customerPhone: CustomerOptionalText,
+  customerThumbnailDataUrl: NullableThumbnailDataUrl,
+  customerVatNumber: CustomerVatNumber,
   productAssemblies: z.array(Assembly),
+  productDescription: ProductDescription,
+  productRequiresVinNumber: ProductRequiresVinNumber,
+  productThumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
 export type QuoteCustomerInput = z.infer<typeof QuoteCustomerInput>;

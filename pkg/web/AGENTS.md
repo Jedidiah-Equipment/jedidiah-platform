@@ -3,11 +3,17 @@
 ## Copy These
 
 - Page composition: `src/pages/products/ProductsPage.tsx`
+- Create dialog shell: `src/components/form/CreateEntityDialog.tsx`
+- Create dialog example: `src/pages/suppliers/SupplierCreateDialog.tsx`
+- Autosave edit page example: `src/pages/suppliers/SupplierEditPage.tsx`
+- Autosave form example: `src/pages/suppliers/components/SupplierForm.tsx`
+- Autosave form utilities: `src/components/form/hooks/use-autosave-form.tsx`,
+  `src/components/form/AutosaveStatus.tsx`
 - Server-side table: `src/pages/products/components/ProductTable.tsx`
 - Client-side table: `src/pages/users/components/UserTable.tsx`
 - Shared table renderer: `src/components/data-table/DataTable.tsx`
 - Table state helpers: `src/components/data-table/store.ts`
-- Forms: `src/components/form/use-app-form.ts`
+- Form base: `src/components/form/use-app-form.ts`
 - Access helpers: `src/hooks/use-access.ts`, `src/lib/access.ts`
 - Route guard example: `src/routes/_authed.users.tsx`
 
@@ -29,6 +35,28 @@
   native `overflow-y-auto`.
 - Do not test via the browser unless asked.
 
+## Entity forms
+
+Follow ADR 0033 (`docs/adr/0033-create-in-modal-edit-on-autosave-page.md`) for top-level routed
+entities: Customer, Product, Supplier, and Quote. Creation happens in a `<CreateEntityDialog>` held
+by the list page, and editing happens on the entity edit route with `useAutosaveForm` and
+`<AutosaveStatus>`.
+
+The create dialog contains only the schema-required fields needed to create a valid entity. Do not
+add a routed `*CreatePage`/`new` route or reuse the full edit form for creation. After a successful
+create mutation, close the dialog, invalidate the relevant list query, toast once, and navigate to
+the new entity's edit page.
+
+The edit page owns the full form and has no Save button or edit-mode toggle. Text and number fields
+autosave on blur. Selects, checkboxes, date-pickers, and structural operations such as add/remove,
+reorder, or toggle save on change. Autosave submits the existing whole-entity update input only when
+the whole form is valid, flushes pending changes on leave, and uses the leave guard for failed or
+invalid unsaved changes. Surface invalid or failed autosaves through `<AutosaveStatus>` with retry;
+do not show success toasts or a positive saved indicator for autosaves.
+
+Nested child entities created inside a parent context are out of scope for this pattern. Part and
+Assembly create/edit flows stay as in-context modals unless a future ADR changes that.
+
 ## Form validation
 
 `@pkg/schema` owns every field constraint. A form-value schema may define the browser-specific
@@ -44,6 +72,6 @@ representation than the API contract, derive it with the helpers in
 Reserve `superRefine` for genuinely cross-field rules (a check conditional on another field).
 
 Keep the form-value schema and its schema↔form mappers in a `types.ts` beside the component,
-with their own unit tests; the component imports them. See `src/pages/quotes/components/` —
-`types.ts` (`QuoteFormValues`, `toQuoteFormValues`, `toQuoteCreateInput`), `types.test.ts`, and
-`QuoteForm.tsx`.
+with their own unit tests; the component imports them. See `src/pages/suppliers/components/` —
+`types.ts` (`SupplierFormValues`, `SupplierCreateFormValues`, `toSupplierFormValues`,
+`toSupplierMinimalCreateInput`, `toSupplierUpdateInput`), `types.test.ts`, and `SupplierForm.tsx`.

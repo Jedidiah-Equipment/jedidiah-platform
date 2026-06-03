@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getDefaultQuoteDocumentLeadTime,
+  QUOTE_CREATE_DEFAULT_VALUES,
+  QuoteCreateFormValues,
   type QuoteFormValues,
   resolveSelectedAssemblySnapshots,
   toQuoteCreateInput,
@@ -61,20 +63,28 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
   });
 }
 
-function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
+function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): QuoteCreateFormValues {
   return {
     customerId: CUSTOMER_ID,
     customerMode: 'existing',
+    inlineCompanyName: '',
+    productId: PRODUCT_ID,
+    salesPersonId: 'auth-user-1',
+    status: 'sent',
+    ...overrides,
+  };
+}
+
+function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
+  return {
     depositPercent: 30,
     deliveryIncluded: true,
     deliveryPrice: 50,
     discountAmount: 100,
-    inlineCompanyName: '',
     notes: 'Some notes',
     documentNotes: '30 days',
     plannedDeliveryDate: '2026-03-01',
     preferredDeliveryDate: '2026-02-01',
-    productId: PRODUCT_ID,
     salesPersonId: 'auth-user-1',
     selectedAssemblies: [],
     status: 'sent',
@@ -84,33 +94,9 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
 }
 
 describe('toQuoteFormValues', () => {
-  it('returns create-mode defaults when no quote is provided', () => {
-    expect(toQuoteFormValues()).toEqual({
-      customerId: '',
-      customerMode: 'existing',
-      depositPercent: 0,
-      deliveryIncluded: true,
-      deliveryPrice: 0,
-      discountAmount: 0,
-      inlineCompanyName: '',
-      notes: '',
-      documentNotes: '',
-      plannedDeliveryDate: '',
-      preferredDeliveryDate: '',
-      productId: '',
-      salesPersonId: '',
-      selectedAssemblies: [],
-      status: 'draft',
-      validUntil: '',
-    });
-  });
-
   it('maps an existing quote into form state', () => {
     const values = toQuoteFormValues(buildQuoteDetail());
 
-    expect(values.customerMode).toBe('existing');
-    expect(values.customerId).toBe(CUSTOMER_ID);
-    expect(values.inlineCompanyName).toBe('');
     expect(values.notes).toBe('Some notes');
     expect(values.depositPercent).toBe(30);
     expect(values.validUntil).toBe('2026-01-01');
@@ -137,6 +123,34 @@ describe('toQuoteFormValues', () => {
   });
 });
 
+describe('QuoteCreateFormValues', () => {
+  it('contains only the modal fields needed to create a quote shell', () => {
+    expect(QUOTE_CREATE_DEFAULT_VALUES).toEqual({
+      customerId: '',
+      customerMode: 'existing',
+      inlineCompanyName: '',
+      productId: '',
+      salesPersonId: '',
+      status: 'draft',
+    });
+  });
+
+  it('validates either an existing customer or an inline company name', () => {
+    expect(QuoteCreateFormValues.safeParse(buildCreateFormValues()).success).toBe(true);
+    expect(
+      QuoteCreateFormValues.safeParse(
+        buildCreateFormValues({ customerMode: 'inline', customerId: '', inlineCompanyName: 'New Co' }),
+      ).success,
+    ).toBe(true);
+    expect(QuoteCreateFormValues.safeParse(buildCreateFormValues({ customerId: '' })).success).toBe(false);
+    expect(
+      QuoteCreateFormValues.safeParse(
+        buildCreateFormValues({ customerMode: 'inline', customerId: '', inlineCompanyName: '' }),
+      ).success,
+    ).toBe(false);
+  });
+});
+
 describe('getDefaultQuoteDocumentLeadTime', () => {
   it('defaults from the Product build time on the saved Quote detail', () => {
     expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ productBuildTimeDays: 21 }))).toBe('21 working days');
@@ -144,44 +158,32 @@ describe('getDefaultQuoteDocumentLeadTime', () => {
 });
 
 describe('toQuoteCreateInput', () => {
-  it('builds the existing-customer union and coalesces empty dates to null', () => {
-    const input = toQuoteCreateInput(
-      buildFormValues({ validUntil: '', preferredDeliveryDate: '', plannedDeliveryDate: '' }),
-    );
+  it('builds the existing-customer union and lets schema defaults fill edit-only fields', () => {
+    const input = toQuoteCreateInput(buildCreateFormValues());
 
     expect(input.customer).toEqual({ type: 'existing', customerId: CUSTOMER_ID });
+    expect(input.discountAmount).toBe(0);
+    expect(input.depositPercent).toBe(0);
+    expect(input.deliveryIncluded).toBe(true);
+    expect(input.deliveryPrice).toBe(0);
     expect(input.validUntil).toBeNull();
     expect(input.preferredDeliveryDate).toBeNull();
     expect(input.plannedDeliveryDate).toBeNull();
+    expect(input.notes).toBeNull();
+    expect(input.documentNotes).toBeNull();
+    expect(input.selectedAssemblies).toEqual([]);
   });
 
   it('builds the inline-customer union from the company name', () => {
     const input = toQuoteCreateInput(
-      buildFormValues({ customerMode: 'inline', customerId: '', inlineCompanyName: 'New Co' }),
+      buildCreateFormValues({ customerMode: 'inline', customerId: '', inlineCompanyName: 'New Co' }),
     );
 
     expect(input.customer).toEqual({ type: 'inline', companyName: 'New Co' });
   });
 
-  it('zeroes the delivery price when delivery is not included', () => {
-    const input = toQuoteCreateInput(buildFormValues({ deliveryIncluded: false, deliveryPrice: 99 }));
-
-    expect(input.deliveryIncluded).toBe(false);
-    expect(input.deliveryPrice).toBe(0);
-  });
-
-  it('round-trips an existing quote through both mappers', () => {
-    const input = toQuoteCreateInput(toQuoteFormValues(buildQuoteDetail()));
-
-    expect(input.customer).toEqual({ type: 'existing', customerId: CUSTOMER_ID });
-    expect(input.depositPercent).toBe(30);
-    expect(input.notes).toBe('Some notes');
-    expect(input.validUntil).toBe('2026-01-01');
-    expect(input.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
-  });
-
   it('preserves cancelled status in create submissions', () => {
-    const input = toQuoteCreateInput(buildFormValues({ status: 'cancelled' }));
+    const input = toQuoteCreateInput(buildCreateFormValues({ status: 'cancelled' }));
 
     expect(input.status).toBe('cancelled');
   });

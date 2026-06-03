@@ -9,7 +9,6 @@ import {
 } from '@pkg/domain';
 import {
   type Assembly,
-  type QuoteCreateInput,
   type QuoteDetail,
   type QuoteDocument,
   type QuoteDocumentGenerationWarning,
@@ -28,10 +27,10 @@ import {
   XIcon,
 } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
-import { useAppForm } from '@/components/form/index.js';
+import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
@@ -55,208 +54,69 @@ import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { downloadQuoteDocument } from '@/utils/document.js';
 import { GenerateJobFromQuoteDialog } from './GenerateJobFromQuoteDialog.js';
-import { QuoteCustomerCombobox } from './QuoteCustomerCombobox.js';
-import { type QuoteProductChoice, QuoteProductCombobox } from './QuoteProductCombobox.js';
 import { quoteStatusLabels } from './QuoteStatusBadge.js';
 import {
   getDefaultQuoteDocumentLeadTime,
   QuoteFormValues,
   resolveSelectedAssemblySnapshots,
   type SelectedAssemblySnapshot,
-  toQuoteCreateInput,
   toQuoteFormValues,
   toQuoteUpdateInput,
 } from './types.js';
 
 type QuoteFormProps = {
-  initialQuote?: QuoteDetail | undefined;
-  isPending: boolean;
-  onSubmit: (value: QuoteCreateInput | QuoteUpdateInput) => Promise<unknown>;
-  submitLabel: string;
+  onSave: (value: QuoteUpdateInput) => Promise<unknown>;
+  quote: QuoteDetail;
 };
 
-export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, onSubmit, submitLabel }) => {
-  const trpc = useTRPC();
+export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
+  const isLocked = quote.linkedJobs.length > 0;
 
-  const isEditing = Boolean(initialQuote);
-  const isLocked = Boolean(initialQuote?.linkedJobs.length);
-
-  const [selectedProduct, setSelectedProduct] = useState<QuoteProductChoice | null>(() =>
-    initialQuote
-      ? {
-          assemblies: initialQuote.productAssemblies,
-          basePrice: initialQuote.quotedBasePrice,
-          currencyCode: initialQuote.productCurrencyCode,
-          id: initialQuote.productId,
-          modelCode: initialQuote.productModelCode,
-          name: initialQuote.productName,
-        }
-      : null,
+  const selectedProduct = useMemo(
+    () => ({
+      assemblies: quote.productAssemblies,
+      basePrice: quote.quotedBasePrice,
+      currencyCode: quote.productCurrencyCode,
+      id: quote.productId,
+      modelCode: quote.productModelCode,
+      name: quote.productName,
+    }),
+    [quote],
   );
-  const currentUserQuery = useQuery(trpc.auth.me.queryOptions());
   const salespeopleOptions = useSalesPersonOptions();
   const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
 
-  const fallbackCustomer = useMemo(
-    () =>
-      initialQuote
-        ? {
-            companyName: initialQuote.customerCompanyName,
-            email: null,
-            id: initialQuote.customerId,
-          }
-        : null,
-    [initialQuote],
-  );
-
-  const form = useAppForm({
-    defaultValues: toQuoteFormValues(initialQuote),
-    validators: {
-      onSubmit: QuoteFormValues,
-    },
-    onSubmit: async ({ value }) => {
-      await onSubmit(initialQuote ? toQuoteUpdateInput({ id: initialQuote.id, value }) : toQuoteCreateInput(value));
-    },
+  const { autosave, form, formProps } = useAutosaveForm({
+    defaultValues: toQuoteFormValues(quote),
+    failureMessage: 'Unable to update quote.',
+    save: onSave,
+    toInput: (value) => toQuoteUpdateInput({ id: quote.id, value }),
+    validator: QuoteFormValues,
   });
 
-  useEffect(() => {
-    if (isEditing || form.state.values.salesPersonId) {
-      return;
-    }
-
-    const currentUser = currentUserQuery.data;
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'sales') {
-      return;
-    }
-
-    form.reset({
-      ...form.state.values,
-      salesPersonId: currentUser.id,
+  const saveCommittedField = () => {
+    autosave.markChanged();
+    queueMicrotask(() => {
+      void autosave.flush();
     });
-  }, [currentUserQuery.data, form, isEditing]);
-
-  const onProductSelected = useCallback((product: QuoteProductChoice | null) => {
-    setSelectedProduct((current) => {
-      if (
-        current?.id === product?.id &&
-        current?.basePrice === product?.basePrice &&
-        current?.currencyCode === product?.currencyCode &&
-        current?.modelCode === product?.modelCode &&
-        current?.name === product?.name
-      ) {
-        return current;
-      }
-
-      return product;
-    });
-  }, []);
+  };
 
   return (
-    <form
-      className="grid gap-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void form.handleSubmit();
-      }}
-    >
+    <form {...formProps} className="grid gap-4">
+      <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
       <FieldGroup className="gap-6">
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="grid gap-6">
             <QuoteFormSection title="Customer and product">
               <div className="grid gap-3 md:grid-cols-2">
-                {initialQuote ? (
-                  <ReadOnlyQuoteField label="Customer" value={initialQuote.customerCompanyName} />
-                ) : (
-                  <form.Field name="customerId">
-                    {(field) => {
-                      const fieldErrors = getFieldErrors(field.state.meta.errors);
-                      const isInvalid = fieldErrors.length > 0;
-
-                      return (
-                        <form.Subscribe
-                          selector={(state) => ({
-                            customerMode: state.values.customerMode,
-                            inlineCompanyName: state.values.inlineCompanyName,
-                          })}
-                        >
-                          {({ customerMode, inlineCompanyName }) => (
-                            <Field data-invalid={isInvalid}>
-                              <FieldLabel htmlFor={field.name}>Customer</FieldLabel>
-                              <QuoteCustomerCombobox
-                                allowCreate
-                                disabled={false}
-                                fallbackCustomer={fallbackCustomer}
-                                inlineValue={inlineCompanyName}
-                                mode={customerMode}
-                                onSelected={(selection) => {
-                                  if (!selection) {
-                                    form.setFieldValue('customerMode', 'existing');
-                                    form.setFieldValue('inlineCompanyName', '');
-                                    field.handleChange('');
-                                    return;
-                                  }
-
-                                  if (selection.type === 'inline') {
-                                    form.setFieldValue('customerMode', 'inline');
-                                    form.setFieldValue('inlineCompanyName', selection.companyName);
-                                    field.handleChange('');
-                                    return;
-                                  }
-
-                                  form.setFieldValue('customerMode', 'existing');
-                                  form.setFieldValue('inlineCompanyName', '');
-                                  field.handleChange(selection.customer.id);
-                                }}
-                                value={field.state.value}
-                              />
-                              <FieldError errors={fieldErrors} />
-                            </Field>
-                          )}
-                        </form.Subscribe>
-                      );
-                    }}
-                  </form.Field>
-                )}
-                {initialQuote ? (
-                  <ReadOnlyQuoteField
-                    label="Product"
-                    value={`${initialQuote.productName} (${initialQuote.productModelCode})`}
-                  />
-                ) : (
-                  <form.Field name="productId">
-                    {(field) => {
-                      const fieldErrors = getFieldErrors(field.state.meta.errors);
-                      const isInvalid = fieldErrors.length > 0;
-
-                      return (
-                        <Field data-invalid={isInvalid}>
-                          <FieldLabel htmlFor={field.name}>Product</FieldLabel>
-                          <QuoteProductCombobox
-                            disabled={false}
-                            onSelected={(product) => {
-                              const productId = product?.id ?? '';
-
-                              if (field.state.value !== productId) {
-                                field.handleChange(productId);
-                                form.setFieldValue('selectedAssemblies', []);
-                              }
-
-                              onProductSelected(product);
-                            }}
-                            value={field.state.value}
-                          />
-                          <FieldError errors={fieldErrors} />
-                        </Field>
-                      );
-                    }}
-                  </form.Field>
-                )}
+                <ReadOnlyQuoteField label="Customer" value={quote.customerCompanyName} />
+                <ReadOnlyQuoteField label="Product" value={`${quote.productName} (${quote.productModelCode})`} />
                 <form.AppField name="salesPersonId">
                   {(field) => (
                     <field.SelectField
                       label="Salesperson"
                       disabled={isLocked}
+                      onValueCommit={saveCommittedField}
                       options={salespeopleOptions.selectOptions}
                       placeholder="Select salesperson"
                     />
@@ -267,6 +127,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                     <field.SelectField
                       label="Status"
                       disabled={isLocked}
+                      onValueCommit={saveCommittedField}
                       options={QuoteStatus.options.map((status) => ({
                         label: quoteStatusLabels[status],
                         value: status,
@@ -280,13 +141,23 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
             <QuoteFormSection title="Dates and delivery">
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <form.AppField name="preferredDeliveryDate">
-                  {(field) => <field.DatePickerField clearable label="Preferred delivery date" />}
+                  {(field) => (
+                    <field.DatePickerField
+                      clearable
+                      label="Preferred delivery date"
+                      onValueCommit={saveCommittedField}
+                    />
+                  )}
                 </form.AppField>
                 <form.AppField name="plannedDeliveryDate">
-                  {(field) => <field.DatePickerField clearable label="Planned delivery date" />}
+                  {(field) => (
+                    <field.DatePickerField clearable label="Planned delivery date" onValueCommit={saveCommittedField} />
+                  )}
                 </form.AppField>
                 <form.AppField name="validUntil">
-                  {(field) => <field.DatePickerField clearable label="Valid until" />}
+                  {(field) => (
+                    <field.DatePickerField clearable label="Valid until" onValueCommit={saveCommittedField} />
+                  )}
                 </form.AppField>
                 <form.Field name="deliveryIncluded">
                   {(field) => {
@@ -314,6 +185,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                               if (!isChecked) {
                                 form.setFieldValue('deliveryPrice', 0);
                               }
+
+                              saveCommittedField();
                             }}
                           />
                           <FieldLabel htmlFor={field.name}>Delivery included</FieldLabel>
@@ -329,8 +202,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                       <form.AppField name="deliveryPrice">
                         {(field) => (
                           <field.CurrencyField
-                            {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
-                            disabled={isLocked || !selectedProduct}
+                            currencyCode={selectedProduct.currencyCode}
+                            disabled={isLocked}
                             label="Delivery price"
                           />
                         )}
@@ -346,8 +219,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                 <form.AppField name="discountAmount">
                   {(field) => (
                     <field.CurrencyField
-                      {...(selectedProduct ? { currencyCode: selectedProduct.currencyCode } : {})}
-                      disabled={isLocked || !selectedProduct}
+                      currencyCode={selectedProduct.currencyCode}
+                      disabled={isLocked}
                       label="Discount amount"
                     />
                   )}
@@ -356,7 +229,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
                   {(field) => (
                     <field.NumberField
                       decimals={2}
-                      disabled={isLocked || !selectedProduct}
+                      disabled={isLocked}
                       emptyValue={0}
                       label="Deposit percent"
                       max={100}
@@ -377,49 +250,39 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
               </div>
             </QuoteFormSection>
 
-            {initialQuote ? (
-              <QuoteDocumentsSection generationWarnings={generationWarnings} quoteId={initialQuote.id} />
-            ) : null}
+            <QuoteDocumentsSection generationWarnings={generationWarnings} quoteId={quote.id} />
 
             <QuoteFormSection
               description="Standard assemblies are included. Optional assemblies add to the quote."
               title="Assemblies"
             >
               <form.Field name="selectedAssemblies">
-                {(field) =>
-                  selectedProduct ? (
-                    <QuoteAssembliesSelector
-                      catalogAssemblies={selectedProduct.assemblies}
-                      currencyCode={selectedProduct.currencyCode}
-                      initialSelections={initialQuote?.selectedAssemblies ?? []}
-                      onChange={field.handleChange}
-                      readOnly={isLocked}
-                      value={field.state.value}
-                    />
-                  ) : (
-                    <p className="text-muted-foreground text-sm">Select a product to see assemblies.</p>
-                  )
-                }
+                {(field) => (
+                  <QuoteAssembliesSelector
+                    catalogAssemblies={selectedProduct.assemblies}
+                    currencyCode={selectedProduct.currencyCode}
+                    initialSelections={quote.selectedAssemblies}
+                    onChange={(value) => {
+                      field.handleChange(value);
+                      saveCommittedField();
+                    }}
+                    readOnly={isLocked}
+                    value={field.state.value}
+                  />
+                )}
               </form.Field>
             </QuoteFormSection>
           </div>
           <form.Subscribe
             selector={(state) => {
-              if (!selectedProduct) {
-                return null;
-              }
-
               const discountAmount = state.values.discountAmount;
               const deliveryIncluded = state.values.deliveryIncluded;
               const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
-              const quotedBasePrice =
-                initialQuote?.productId === selectedProduct.id
-                  ? initialQuote.quotedBasePrice
-                  : selectedProduct.basePrice;
+              const quotedBasePrice = quote.quotedBasePrice;
               const selectedSnapshots = resolveSelectedAssemblySnapshots({
                 catalogAssemblies: selectedProduct.assemblies,
                 formSelections: state.values.selectedAssemblies,
-                initialSelections: initialQuote?.selectedAssemblies ?? [],
+                initialSelections: quote.selectedAssemblies,
               });
               // Stale selections (reference gone from the catalog) are excluded from the on-screen
               // Quote Total so the figure reflects only assemblies that can still be produced.
@@ -510,37 +373,23 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
         </div>
       </FieldGroup>
       <div className="flex justify-end gap-2 border-t pt-5">
-        {initialQuote ? (
-          <form.Subscribe selector={(state) => state.isDirty}>
-            {(isDirty) => (
-              <GenerateQuoteDocumentDialog
-                isDirty={isDirty}
-                onGenerated={(warnings) => setGenerationWarnings(warnings)}
-                quote={initialQuote}
-              />
-            )}
-          </form.Subscribe>
-        ) : null}
-        {initialQuote ? <GenerateJobFromQuoteDialog quote={initialQuote} /> : null}
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button disabled={isSubmitting || isPending} type="submit">
-              {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-              {submitLabel}
-            </Button>
-          )}
-        </form.Subscribe>
+        <GenerateQuoteDocumentDialog
+          hasUnsavedChanges={autosave.state.hasUnsavedChanges}
+          onGenerated={(warnings) => setGenerationWarnings(warnings)}
+          quote={quote}
+        />
+        <GenerateJobFromQuoteDialog quote={quote} />
       </div>
     </form>
   );
 };
 
 function GenerateQuoteDocumentDialog({
-  isDirty,
+  hasUnsavedChanges,
   onGenerated,
   quote,
 }: {
-  isDirty: boolean;
+  hasUnsavedChanges: boolean;
   onGenerated: (warnings: QuoteDocumentGenerationWarning[]) => void;
   quote: QuoteDetail;
 }) {
@@ -594,15 +443,15 @@ function GenerateQuoteDocumentDialog({
         <DialogHeader>
           <DialogTitle>Generate Quote Document</DialogTitle>
           <DialogDescription>
-            {isDirty
-              ? 'Save this Quote before generating a Quote Document.'
+            {hasUnsavedChanges
+              ? 'Wait for this Quote to finish saving before generating a Quote Document.'
               : 'Create a saved PDF revision from the current saved Quote.'}
           </DialogDescription>
         </DialogHeader>
         <Field>
           <FieldLabel htmlFor="quote-document-lead-time">Lead Time</FieldLabel>
           <Input
-            disabled={generateMutation.isPending || isDirty}
+            disabled={generateMutation.isPending || hasUnsavedChanges}
             id="quote-document-lead-time"
             onChange={(event) => setLeadTime(event.target.value)}
             value={leadTime}
@@ -613,7 +462,7 @@ function GenerateQuoteDocumentDialog({
             Cancel
           </DialogClose>
           <Button
-            disabled={generateMutation.isPending || isDirty || trimmedLeadTime.length === 0}
+            disabled={generateMutation.isPending || hasUnsavedChanges || trimmedLeadTime.length === 0}
             onClick={() =>
               generateMutation.mutate({
                 leadTime: trimmedLeadTime,

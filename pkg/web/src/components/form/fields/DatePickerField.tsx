@@ -12,6 +12,7 @@ export type DatePickerFieldProps = {
   label: React.ReactNode;
   maxValue?: string;
   minValue?: string;
+  onValueCommit?: () => void;
   placeholder?: string;
 };
 
@@ -22,6 +23,7 @@ export function DatePickerField({
   label,
   maxValue,
   minValue,
+  onValueCommit,
   placeholder,
 }: DatePickerFieldProps) {
   const field = useFieldContext<string>();
@@ -40,7 +42,10 @@ export function DatePickerField({
         {...(minValue ? { minValue } : {})}
         name={field.name}
         onBlur={field.handleBlur}
-        onChange={field.handleChange}
+        onChange={(value) => {
+          field.handleChange(value);
+          onValueCommit?.();
+        }}
         value={field.state.value}
         {...(placeholder ? { placeholder } : {})}
       />

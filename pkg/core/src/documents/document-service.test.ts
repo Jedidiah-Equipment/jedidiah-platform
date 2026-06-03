@@ -96,6 +96,7 @@ const test = createTester(async ({ db }) => {
   const [optionalAssembly] = await db
     .insert(productAssemblies)
     .values({
+      displayOrder: 0,
       kind: 'optional',
       name: 'Canvas Canopy',
       price: 250,

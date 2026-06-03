@@ -1171,8 +1171,14 @@ async function createProductDocument(
   return document;
 }
 
-async function createProductAssembly(db: Db, values: typeof productAssemblies.$inferInsert) {
-  const [assembly] = await db.insert(productAssemblies).values(values).returning();
+async function createProductAssembly(
+  db: Db,
+  values: Omit<typeof productAssemblies.$inferInsert, 'displayOrder'> & { displayOrder?: number },
+) {
+  const [assembly] = await db
+    .insert(productAssemblies)
+    .values({ displayOrder: 0, ...values })
+    .returning();
 
   if (!assembly) {
     throw new Error('Product assembly insert did not return a row');

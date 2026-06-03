@@ -39,6 +39,7 @@ const assemblyPartKeys = new WeakMap<AssemblyInput['parts'][number], string>();
 type ProductAssembliesEditorProps = {
   assembliesField: ArrayFieldApi<AssemblyInput>;
   currencyCode: string;
+  onStructuralChange: () => void;
 };
 
 type IndexedAssembly = {
@@ -52,7 +53,11 @@ function useProductForm() {
   });
 }
 
-export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = ({ assembliesField, currencyCode }) => {
+export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = ({
+  assembliesField,
+  currencyCode,
+  onStructuralChange,
+}) => {
   const [expandedAssemblyIds, setExpandedAssemblyIds] = React.useState<Set<string>>(new Set());
 
   const partOptions = usePartOptions({ pageSize: 0, sortBy: 'category', sortDirection: 'asc' });
@@ -67,6 +72,7 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
 
     assembliesField.pushValue(assembly);
     setExpandedAssemblyIds((current) => new Set(current).add(assembly.id ?? ''));
+    onStructuralChange();
   };
   const handleExpandedChange = (assemblyId: string | undefined, isExpanded: boolean) => {
     if (!assemblyId) {
@@ -95,7 +101,11 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
         kind="standard"
         onAdd={() => handleAddAssembly('standard')}
         onExpandedChange={handleExpandedChange}
-        onRemove={assembliesField.removeValue}
+        onRemove={(index) => {
+          assembliesField.removeValue(index);
+          onStructuralChange();
+        }}
+        onStructuralChange={onStructuralChange}
         parts={parts}
         standardAssemblies={standardAssemblies}
         title="Standard Assemblies"
@@ -108,7 +118,11 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
         kind="optional"
         onAdd={() => handleAddAssembly('optional')}
         onExpandedChange={handleExpandedChange}
-        onRemove={assembliesField.removeValue}
+        onRemove={(index) => {
+          assembliesField.removeValue(index);
+          onStructuralChange();
+        }}
+        onStructuralChange={onStructuralChange}
         parts={parts}
         standardAssemblies={standardAssemblies}
         title="Optional Assemblies"
@@ -130,6 +144,7 @@ type AssemblyGroupProps = {
   onAdd: () => void;
   onExpandedChange: (assemblyId: string | undefined, isExpanded: boolean) => void;
   onRemove: (index: number) => void;
+  onStructuralChange: () => void;
 };
 
 const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
@@ -144,6 +159,7 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
   onAdd,
   onExpandedChange,
   onRemove,
+  onStructuralChange,
 }) => (
   <section className="flex flex-col gap-3">
     <div className="flex items-center justify-between gap-3">
@@ -163,6 +179,7 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
           isExpanded={Boolean(assembly.id && expandedAssemblyIds.has(assembly.id))}
           onExpandedChange={(isExpanded) => onExpandedChange(assembly.id, isExpanded)}
           onRemove={() => onRemove(index)}
+          onStructuralChange={onStructuralChange}
           parts={parts}
           standardAssemblies={standardAssemblies}
           currencyCode={currencyCode}
@@ -187,6 +204,7 @@ type AssemblyRowProps = {
   standardAssemblies: IndexedAssembly[];
   onExpandedChange: (isExpanded: boolean) => void;
   onRemove: () => void;
+  onStructuralChange: () => void;
 };
 
 const AssemblyRow: React.FC<AssemblyRowProps> = ({
@@ -199,6 +217,7 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
   standardAssemblies,
   onExpandedChange,
   onRemove,
+  onStructuralChange,
 }) => {
   const productForm = useProductForm();
   const FormField = productForm.Field;
@@ -273,10 +292,19 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                     </FormField>
                   ) : null}
                   {assembly.kind === 'optional' ? (
-                    <OverridePicker index={index} standardAssemblies={standardAssemblies} />
+                    <OverridePicker
+                      index={index}
+                      onStructuralChange={onStructuralChange}
+                      standardAssemblies={standardAssemblies}
+                    />
                   ) : null}
                 </div>
-                <AssemblyPartsTable categories={categories} index={index} partOptions={partOptions} />
+                <AssemblyPartsTable
+                  categories={categories}
+                  index={index}
+                  onStructuralChange={onStructuralChange}
+                  partOptions={partOptions}
+                />
               </div>
             </CollapsibleContent>
           </div>
@@ -317,10 +345,11 @@ const AssemblySummary: React.FC<AssemblySummaryProps> = ({ assembly, currencyCod
 
 type OverridePickerProps = {
   index: number;
+  onStructuralChange: () => void;
   standardAssemblies: IndexedAssembly[];
 };
 
-const OverridePicker: React.FC<OverridePickerProps> = ({ index, standardAssemblies }) => {
+const OverridePicker: React.FC<OverridePickerProps> = ({ index, onStructuralChange, standardAssemblies }) => {
   const FormField = useProductForm().Field;
 
   return (
@@ -354,6 +383,7 @@ const OverridePicker: React.FC<OverridePickerProps> = ({ index, standardAssembli
                   {standardAssemblies.map((standardAssembly) => (
                     <OverrideCheckboxItem
                       key={standardAssembly.assembly.id ?? standardAssembly.index}
+                      onStructuralChange={onStructuralChange}
                       overrideField={field}
                       standardAssembly={standardAssembly}
                     />
@@ -399,11 +429,16 @@ const OverrideSummary: React.FC<OverrideSummaryProps> = ({ selectedIds, standard
 };
 
 type OverrideCheckboxItemProps = {
+  onStructuralChange: () => void;
   overrideField: FieldApi<string[]>;
   standardAssembly: IndexedAssembly;
 };
 
-const OverrideCheckboxItem: React.FC<OverrideCheckboxItemProps> = ({ overrideField, standardAssembly }) => {
+const OverrideCheckboxItem: React.FC<OverrideCheckboxItemProps> = ({
+  onStructuralChange,
+  overrideField,
+  standardAssembly,
+}) => {
   const FormField = useProductForm().Field;
   const standardId = standardAssembly.assembly.id;
 
@@ -417,6 +452,7 @@ const OverrideCheckboxItem: React.FC<OverrideCheckboxItemProps> = ({ overrideFie
         }
 
         overrideField.handleChange(toggleOverrideSelection(overrideField.state.value, standardId, checked));
+        onStructuralChange();
       }}
     >
       <FormField name={`assemblies[${standardAssembly.index}].name`}>
@@ -429,10 +465,16 @@ const OverrideCheckboxItem: React.FC<OverrideCheckboxItemProps> = ({ overrideFie
 type AssemblyPartsTableProps = {
   categories: string[];
   index: number;
+  onStructuralChange: () => void;
   partOptions: Part[];
 };
 
-const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({ categories, index, partOptions }) => {
+const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({
+  categories,
+  index,
+  onStructuralChange,
+  partOptions,
+}) => {
   const FormField = useProductForm().Field;
 
   return (
@@ -446,7 +488,10 @@ const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({ categories, ind
               size="sm"
               type="button"
               variant="outline"
-              onClick={() => partsField.pushValue({ partId: '', quantity: 1 })}
+              onClick={() => {
+                partsField.pushValue({ partId: '', quantity: 1 });
+                onStructuralChange();
+              }}
             >
               <PlusIcon />
               Add part
@@ -469,7 +514,11 @@ const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({ categories, ind
                   partIndex={partIndex}
                   partOptions={partOptions}
                   parentIndex={index}
-                  onRemove={() => partsField.removeValue(partIndex)}
+                  onRemove={() => {
+                    partsField.removeValue(partIndex);
+                    onStructuralChange();
+                  }}
+                  onStructuralChange={onStructuralChange}
                 />
               ))}
             </TableBody>
@@ -487,6 +536,7 @@ type AssemblyPartRowProps = {
   partIndex: number;
   partOptions: Part[];
   onRemove: () => void;
+  onStructuralChange: () => void;
 };
 
 const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
@@ -496,6 +546,7 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
   partIndex,
   partOptions,
   onRemove,
+  onStructuralChange,
 }) => {
   const FormField = useProductForm().Field;
   const selectedPart = partOptions.find((option) => option.id === part.partId);
@@ -537,7 +588,10 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
                     items={visiblePartOptions}
                     itemToStringLabel={formatPartLabel}
                     itemToStringValue={(option) => option.id}
-                    onValueChange={(value) => field.handleChange(value?.id ?? '')}
+                    onValueChange={(value) => {
+                      field.handleChange(value?.id ?? '');
+                      onStructuralChange();
+                    }}
                     value={selectedPart ?? null}
                   >
                     <ComboboxInput

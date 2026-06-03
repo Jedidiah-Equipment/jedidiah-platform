@@ -1,7 +1,13 @@
 import type { Product } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { toProductAssemblyInputs, toProductFormValues } from './types.js';
+import {
+  toProductAssemblyInputs,
+  toProductCreateInput,
+  toProductFormValues,
+  toProductMinimalCreateInput,
+  toProductUpdateInput,
+} from './types.js';
 
 const PRODUCT_ID = '550e8400-e29b-41d4-a716-446655440000';
 const STANDARD_ID = '550e8400-e29b-41d4-a716-446655440001';
@@ -85,5 +91,78 @@ describe('toProductAssemblyInputs', () => {
 
   it('returns an empty array when there is no product', () => {
     expect(toProductAssemblyInputs()).toEqual([]);
+  });
+});
+
+describe('toProductCreateInput', () => {
+  it('maps full form values through the create schema', () => {
+    expect(toProductCreateInput(toProductFormValues(buildProduct({ description: null })))).toEqual({
+      assemblies: [
+        { id: STANDARD_ID, kind: 'standard', name: 'Base', parts: [] },
+        {
+          id: OPTIONAL_ID,
+          kind: 'optional',
+          name: 'Extra',
+          overrideStandardAssemblyIds: [STANDARD_ID],
+          parts: [],
+          price: 250,
+        },
+      ],
+      basePrice: 1000,
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      description: null,
+      modelCode: 'MOD-1',
+      name: 'Widget',
+      requiresVinNumber: false,
+      thumbnailDataUrl: null,
+    });
+  });
+});
+
+describe('toProductMinimalCreateInput', () => {
+  it('creates a catalog shell with schema defaults for omitted edit-only fields', () => {
+    expect(
+      toProductMinimalCreateInput({
+        basePrice: 120_000,
+        buildTimeDays: 14,
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+      }),
+    ).toEqual({
+      assemblies: [],
+      basePrice: 120_000,
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      description: null,
+      modelCode: 'WL-100',
+      name: 'Wheel Loader',
+      requiresVinNumber: false,
+      thumbnailDataUrl: null,
+    });
+  });
+});
+
+describe('toProductUpdateInput', () => {
+  it('adds the product id to the full update payload', () => {
+    expect(toProductUpdateInput(PRODUCT_ID, toProductFormValues(buildProduct()))).toMatchObject({
+      id: PRODUCT_ID,
+      assemblies: [
+        { id: STANDARD_ID, kind: 'standard', name: 'Base', parts: [] },
+        {
+          id: OPTIONAL_ID,
+          kind: 'optional',
+          name: 'Extra',
+          overrideStandardAssemblyIds: [STANDARD_ID],
+          parts: [],
+          price: 250,
+        },
+      ],
+      basePrice: 1000,
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      modelCode: 'MOD-1',
+      name: 'Widget',
+    });
   });
 });

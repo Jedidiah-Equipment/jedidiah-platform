@@ -30,7 +30,6 @@ import { Route as AuthedProductsIndexRouteImport } from './../routes/_authed.pro
 import { Route as AuthedJobsIndexRouteImport } from './../routes/_authed.jobs.index'
 import { Route as AuthedCustomersIndexRouteImport } from './../routes/_authed.customers.index'
 import { Route as AuthedQuotesNewRouteImport } from './../routes/_authed.quotes.new'
-import { Route as AuthedProductsNewRouteImport } from './../routes/_authed.products.new'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
 import { Route as AuthedSuppliersIdEditRouteImport } from './../routes/_authed.suppliers.$id.edit'
 import { Route as AuthedQuotesIdEditRouteImport } from './../routes/_authed.quotes.$id_.edit'
@@ -141,11 +140,6 @@ const AuthedQuotesNewRoute = AuthedQuotesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AuthedQuotesRoute,
 } as any)
-const AuthedProductsNewRoute = AuthedProductsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => AuthedProductsRoute,
-} as any)
 const AuthedJobsIdRoute = AuthedJobsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -188,7 +182,6 @@ export interface FileRoutesByFullPath {
   '/suppliers': typeof AuthedSuppliersRouteWithChildren
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
-  '/products/new': typeof AuthedProductsNewRoute
   '/quotes/new': typeof AuthedQuotesNewRoute
   '/customers/': typeof AuthedCustomersIndexRoute
   '/jobs/': typeof AuthedJobsIndexRoute
@@ -211,7 +204,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthedDashboardRoute
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
-  '/products/new': typeof AuthedProductsNewRoute
   '/quotes/new': typeof AuthedQuotesNewRoute
   '/customers': typeof AuthedCustomersIndexRoute
   '/jobs': typeof AuthedJobsIndexRoute
@@ -241,7 +233,6 @@ export interface FileRoutesById {
   '/_authed/suppliers': typeof AuthedSuppliersRouteWithChildren
   '/_authed/users': typeof AuthedUsersRoute
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
-  '/_authed/products/new': typeof AuthedProductsNewRoute
   '/_authed/quotes/new': typeof AuthedQuotesNewRoute
   '/_authed/customers/': typeof AuthedCustomersIndexRoute
   '/_authed/jobs/': typeof AuthedJobsIndexRoute
@@ -271,7 +262,6 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/users'
     | '/jobs/$id'
-    | '/products/new'
     | '/quotes/new'
     | '/customers/'
     | '/jobs/'
@@ -294,7 +284,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/users'
     | '/jobs/$id'
-    | '/products/new'
     | '/quotes/new'
     | '/customers'
     | '/jobs'
@@ -323,7 +312,6 @@ export interface FileRouteTypes {
     | '/_authed/suppliers'
     | '/_authed/users'
     | '/_authed/jobs/$id'
-    | '/_authed/products/new'
     | '/_authed/quotes/new'
     | '/_authed/customers/'
     | '/_authed/jobs/'
@@ -494,13 +482,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedQuotesNewRouteImport
       parentRoute: typeof AuthedQuotesRoute
     }
-    '/_authed/products/new': {
-      id: '/_authed/products/new'
-      path: '/new'
-      fullPath: '/products/new'
-      preLoaderRoute: typeof AuthedProductsNewRouteImport
-      parentRoute: typeof AuthedProductsRoute
-    }
     '/_authed/jobs/$id': {
       id: '/_authed/jobs/$id'
       path: '/$id'
@@ -568,13 +549,11 @@ const AuthedJobsRouteWithChildren = AuthedJobsRoute._addFileChildren(
 )
 
 interface AuthedProductsRouteChildren {
-  AuthedProductsNewRoute: typeof AuthedProductsNewRoute
   AuthedProductsIndexRoute: typeof AuthedProductsIndexRoute
   AuthedProductsIdEditRoute: typeof AuthedProductsIdEditRoute
 }
 
 const AuthedProductsRouteChildren: AuthedProductsRouteChildren = {
-  AuthedProductsNewRoute: AuthedProductsNewRoute,
   AuthedProductsIndexRoute: AuthedProductsIndexRoute,
   AuthedProductsIdEditRoute: AuthedProductsIdEditRoute,
 }

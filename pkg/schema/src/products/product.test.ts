@@ -38,6 +38,17 @@ describe('ProductCreateInput', () => {
     ).toBeNull();
   });
 
+  it('defaults omitted assemblies to an empty catalog shell', () => {
+    expect(
+      ProductCreateInput.parse({
+        basePrice: 120_000,
+        buildTimeDays: 14,
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+      }).assemblies,
+    ).toEqual([]);
+  });
+
   it('requires a model code and nonnegative price', () => {
     expect(() =>
       ProductCreateInput.parse({

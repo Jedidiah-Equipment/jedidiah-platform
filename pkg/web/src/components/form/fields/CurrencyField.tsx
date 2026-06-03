@@ -2,8 +2,8 @@ import { formatCurrency, formatNumber } from '@pkg/domain';
 import * as React from 'react';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
-import { getFieldErrors } from './field-errors.js';
-import { useFieldContext } from './form-context.js';
+import { useFieldContext } from '../hooks/form-context.js';
+import { getFieldErrors } from '../utils/field-errors.js';
 
 type CurrencyFieldInputProps = Omit<
   React.ComponentProps<typeof InputGroupInput>,

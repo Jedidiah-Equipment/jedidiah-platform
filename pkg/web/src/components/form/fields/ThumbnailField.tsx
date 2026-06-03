@@ -7,8 +7,8 @@ import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
-import { getFieldErrors } from './field-errors.js';
-import { useFieldContext } from './form-context.js';
+import { useFieldContext } from '../hooks/form-context.js';
+import { getFieldErrors } from '../utils/field-errors.js';
 
 const THUMBNAIL_SIZE = 256;
 const THUMBNAIL_TYPE = 'image/webp';
@@ -19,9 +19,16 @@ export type ThumbnailFieldProps = {
   disabled?: boolean;
   fallbackLabel: string;
   label: React.ReactNode;
+  onValueCommit?: () => void;
 };
 
-export function ThumbnailField({ description, disabled = false, fallbackLabel, label }: ThumbnailFieldProps) {
+export function ThumbnailField({
+  description,
+  disabled = false,
+  fallbackLabel,
+  label,
+  onValueCommit,
+}: ThumbnailFieldProps) {
   const field = useFieldContext<string | null>();
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -40,6 +47,7 @@ export function ThumbnailField({ description, disabled = false, fallbackLabel, l
     setIsProcessing(true);
     try {
       field.handleChange(await createThumbnailDataUrl(file));
+      onValueCommit?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to process thumbnail.');
     } finally {
@@ -77,7 +85,10 @@ export function ThumbnailField({ description, disabled = false, fallbackLabel, l
           {field.state.value ? (
             <Button
               disabled={disabled || isProcessing}
-              onClick={() => field.handleChange(null)}
+              onClick={() => {
+                field.handleChange(null);
+                onValueCommit?.();
+              }}
               size="icon-sm"
               type="button"
               variant="outline"

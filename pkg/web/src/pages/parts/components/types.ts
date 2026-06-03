@@ -14,7 +14,7 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { emptyStringOr, requiredSelection } from '@/components/form/form-schema.js';
+import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 export type PartFormValues = z.infer<typeof PartFormValues>;
 export const PartFormValues = z.object({

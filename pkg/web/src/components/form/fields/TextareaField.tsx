@@ -2,8 +2,8 @@ import type * as React from 'react';
 
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Textarea } from '@/components/ui/textarea.js';
-import { getFieldErrors } from './field-errors.js';
-import { useFieldContext } from './form-context.js';
+import { useFieldContext } from '../hooks/form-context.js';
+import { getFieldErrors } from '../utils/field-errors.js';
 
 type TextareaFieldInputProps = Omit<
   React.ComponentProps<typeof Textarea>,

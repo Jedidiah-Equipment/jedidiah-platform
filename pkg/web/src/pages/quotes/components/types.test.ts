@@ -39,12 +39,21 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     quotedCurrencyCode: 'ZAR',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
+    customerAddress: '1 Mine Road',
     customerCompanyName: 'Acme',
+    customerContactPerson: 'Ada Sales',
+    customerEmail: 'buyer@example.com',
+    customerPhone: '+27110000000',
+    customerThumbnailDataUrl: null,
+    customerVatNumber: 'VAT-123',
     linkedJobs: [],
     productCurrencyCode: 'ZAR',
     productBuildTimeDays: 14,
+    productDescription: 'Useful widget',
     productModelCode: 'MOD-1',
     productName: 'Widget',
+    productRequiresVinNumber: false,
+    productThumbnailDataUrl: null,
     salesPersonEmail: 'sales@example.com',
     salesPersonName: 'Sales Person',
     selectedAssemblies: [
@@ -98,6 +107,7 @@ describe('toQuoteFormValues', () => {
     const values = toQuoteFormValues(buildQuoteDetail());
 
     expect(values.notes).toBe('Some notes');
+    expect(values.documentNotes).toBe('30 days');
     expect(values.depositPercent).toBe(30);
     expect(values.validUntil).toBe('2026-01-01');
     expect(values.status).toBe('sent');

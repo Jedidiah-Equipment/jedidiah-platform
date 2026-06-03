@@ -18,11 +18,19 @@ import {
 } from '@pkg/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  CheckIcon,
+  ClockIcon,
+  CopyIcon,
   DownloadIcon,
   EyeIcon,
   FilePlus2Icon,
   FileTextIcon,
   Loader2Icon,
+  MailIcon,
+  MapPinIcon,
+  PackageIcon,
+  PhoneIcon,
+  ReceiptTextIcon,
   TriangleAlertIcon,
   XIcon,
 } from 'lucide-react';
@@ -32,8 +40,11 @@ import { toast } from 'sonner';
 import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
+import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import {
   Dialog,
@@ -47,6 +58,9 @@ import {
 } from '@/components/ui/dialog.js';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
+import { Separator } from '@/components/ui/separator.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -106,169 +120,185 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
       <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
       <FieldGroup className="gap-6">
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="grid gap-6">
-            <QuoteFormSection title="Customer and product">
-              <div className="grid gap-3 md:grid-cols-2">
-                <ReadOnlyQuoteField label="Customer" value={quote.customerCompanyName} />
-                <ReadOnlyQuoteField label="Product" value={`${quote.productName} (${quote.productModelCode})`} />
-                <form.AppField name="salesPersonId">
-                  {(field) => (
-                    <field.SelectField
-                      label="Salesperson"
-                      disabled={isLocked}
-                      onValueCommit={saveCommittedField}
-                      options={salespeopleOptions.selectOptions}
-                      placeholder="Select salesperson"
-                    />
-                  )}
-                </form.AppField>
-                <form.AppField name="status">
-                  {(field) => (
-                    <field.SelectField
-                      label="Status"
-                      disabled={isLocked}
-                      onValueCommit={saveCommittedField}
-                      options={QuoteStatus.options.map((status) => ({
-                        label: quoteStatusLabels[status],
-                        value: status,
-                      }))}
-                    />
-                  )}
-                </form.AppField>
+          <Tabs className="min-w-0" defaultValue="details">
+            <TabsList variant="default">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+            </TabsList>
+            <TabsContent className="pt-4" value="details">
+              <div className="grid gap-6">
+                <QuoteFormSection title="Quote setup">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <form.AppField name="salesPersonId">
+                      {(field) => (
+                        <field.SelectField
+                          label="Salesperson"
+                          disabled={isLocked}
+                          onValueCommit={saveCommittedField}
+                          options={salespeopleOptions.selectOptions}
+                          placeholder="Select salesperson"
+                        />
+                      )}
+                    </form.AppField>
+                    <form.AppField name="status">
+                      {(field) => (
+                        <field.SelectField
+                          label="Status"
+                          disabled={isLocked}
+                          onValueCommit={saveCommittedField}
+                          options={QuoteStatus.options.map((status) => ({
+                            label: quoteStatusLabels[status],
+                            value: status,
+                          }))}
+                        />
+                      )}
+                    </form.AppField>
+                  </div>
+                </QuoteFormSection>
+
+                <QuoteFormSection title="Dates and delivery">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <form.AppField name="preferredDeliveryDate">
+                      {(field) => (
+                        <field.DatePickerField label="Preferred delivery date" onValueCommit={saveCommittedField} />
+                      )}
+                    </form.AppField>
+                    <form.AppField name="plannedDeliveryDate">
+                      {(field) => (
+                        <field.DatePickerField label="Planned delivery date" onValueCommit={saveCommittedField} />
+                      )}
+                    </form.AppField>
+                    <form.AppField name="validUntil">
+                      {(field) => <field.DatePickerField label="Valid until" onValueCommit={saveCommittedField} />}
+                    </form.AppField>
+                    <form.Field name="deliveryIncluded">
+                      {(field) => {
+                        const fieldErrors = getFieldErrors(field.state.meta.errors);
+                        const isInvalid = fieldErrors.length > 0;
+
+                        return (
+                          <Field className="justify-end" data-invalid={isInvalid}>
+                            <FieldLabel aria-hidden className="invisible">
+                              Delivery
+                            </FieldLabel>
+                            <div className="flex min-h-9 items-center gap-2">
+                              <Checkbox
+                                aria-invalid={isInvalid}
+                                checked={field.state.value}
+                                disabled={isLocked}
+                                id={field.name}
+                                name={field.name}
+                                onBlur={field.handleBlur}
+                                onCheckedChange={(checked) => {
+                                  const isChecked = checked === true;
+
+                                  field.handleChange(isChecked);
+
+                                  if (!isChecked) {
+                                    form.setFieldValue('deliveryPrice', 0);
+                                  }
+
+                                  saveCommittedField();
+                                }}
+                              />
+                              <FieldLabel htmlFor={field.name}>Delivery included</FieldLabel>
+                            </div>
+                            <FieldError errors={fieldErrors} />
+                          </Field>
+                        );
+                      }}
+                    </form.Field>
+                    <form.Subscribe selector={(state) => state.values.deliveryIncluded}>
+                      {(deliveryIncluded) =>
+                        deliveryIncluded ? (
+                          <form.AppField name="deliveryPrice">
+                            {(field) => (
+                              <field.CurrencyField
+                                currencyCode={selectedProduct.currencyCode}
+                                disabled={isLocked}
+                                label="Delivery price"
+                              />
+                            )}
+                          </form.AppField>
+                        ) : null
+                      }
+                    </form.Subscribe>
+                  </div>
+                </QuoteFormSection>
+
+                <QuoteFormSection title="Pricing">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <form.AppField name="discountAmount">
+                      {(field) => (
+                        <field.CurrencyField
+                          currencyCode={selectedProduct.currencyCode}
+                          disabled={isLocked}
+                          label="Discount amount"
+                        />
+                      )}
+                    </form.AppField>
+                    <form.AppField name="depositPercent">
+                      {(field) => (
+                        <field.NumberField
+                          decimals={2}
+                          disabled={isLocked}
+                          emptyValue={0}
+                          label="Deposit percent"
+                          max={100}
+                          min={0}
+                          step="0.01"
+                        />
+                      )}
+                    </form.AppField>
+                  </div>
+                </QuoteFormSection>
+
+                <QuoteFormSection title="Internal notes">
+                  <form.AppField name="notes">
+                    {(field) => <field.TextareaField label="Notes" rows={4} />}
+                  </form.AppField>
+                </QuoteFormSection>
+
+                <QuoteFormSection
+                  description="Standard assemblies are included. Optional assemblies add to the quote."
+                  title="Assemblies"
+                >
+                  <form.Field name="selectedAssemblies">
+                    {(field) => (
+                      <QuoteAssembliesSelector
+                        catalogAssemblies={selectedProduct.assemblies}
+                        currencyCode={selectedProduct.currencyCode}
+                        initialSelections={quote.selectedAssemblies}
+                        onChange={(value) => {
+                          field.handleChange(value);
+                          saveCommittedField();
+                        }}
+                        readOnly={isLocked}
+                        value={field.state.value}
+                      />
+                    )}
+                  </form.Field>
+                </QuoteFormSection>
               </div>
-            </QuoteFormSection>
-
-            <QuoteFormSection title="Dates and delivery">
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <form.AppField name="preferredDeliveryDate">
-                  {(field) => (
-                    <field.DatePickerField label="Preferred delivery date" onValueCommit={saveCommittedField} />
-                  )}
-                </form.AppField>
-                <form.AppField name="plannedDeliveryDate">
-                  {(field) => (
-                    <field.DatePickerField label="Planned delivery date" onValueCommit={saveCommittedField} />
-                  )}
-                </form.AppField>
-                <form.AppField name="validUntil">
-                  {(field) => <field.DatePickerField label="Valid until" onValueCommit={saveCommittedField} />}
-                </form.AppField>
-                <form.Field name="deliveryIncluded">
-                  {(field) => {
-                    const fieldErrors = getFieldErrors(field.state.meta.errors);
-                    const isInvalid = fieldErrors.length > 0;
-
-                    return (
-                      <Field className="justify-end" data-invalid={isInvalid}>
-                        <FieldLabel aria-hidden className="invisible">
-                          Delivery
-                        </FieldLabel>
-                        <div className="flex min-h-9 items-center gap-2">
-                          <Checkbox
-                            aria-invalid={isInvalid}
-                            checked={field.state.value}
-                            disabled={isLocked}
-                            id={field.name}
-                            name={field.name}
-                            onBlur={field.handleBlur}
-                            onCheckedChange={(checked) => {
-                              const isChecked = checked === true;
-
-                              field.handleChange(isChecked);
-
-                              if (!isChecked) {
-                                form.setFieldValue('deliveryPrice', 0);
-                              }
-
-                              saveCommittedField();
-                            }}
-                          />
-                          <FieldLabel htmlFor={field.name}>Delivery included</FieldLabel>
-                        </div>
-                        <FieldError errors={fieldErrors} />
-                      </Field>
-                    );
-                  }}
-                </form.Field>
-                <form.Subscribe selector={(state) => state.values.deliveryIncluded}>
-                  {(deliveryIncluded) =>
-                    deliveryIncluded ? (
-                      <form.AppField name="deliveryPrice">
-                        {(field) => (
-                          <field.CurrencyField
-                            currencyCode={selectedProduct.currencyCode}
-                            disabled={isLocked}
-                            label="Delivery price"
-                          />
-                        )}
-                      </form.AppField>
-                    ) : null
-                  }
-                </form.Subscribe>
-              </div>
-            </QuoteFormSection>
-
-            <QuoteFormSection title="Pricing">
-              <div className="grid gap-3 md:grid-cols-2">
-                <form.AppField name="discountAmount">
-                  {(field) => (
-                    <field.CurrencyField
-                      currencyCode={selectedProduct.currencyCode}
-                      disabled={isLocked}
-                      label="Discount amount"
-                    />
-                  )}
-                </form.AppField>
-                <form.AppField name="depositPercent">
-                  {(field) => (
-                    <field.NumberField
-                      decimals={2}
-                      disabled={isLocked}
-                      emptyValue={0}
-                      label="Deposit percent"
-                      max={100}
-                      min={0}
-                      step="0.01"
-                    />
-                  )}
-                </form.AppField>
-              </div>
-            </QuoteFormSection>
-
-            <QuoteFormSection title="Terms and notes">
-              <div className="grid gap-3">
+            </TabsContent>
+            <TabsContent className="pt-4" value="documents">
+              <QuoteFormSection title="Customer packet">
                 <form.AppField name="documentNotes">
                   {(field) => <field.TextareaField label="Document Notes" rows={4} />}
                 </form.AppField>
-                <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={4} />}</form.AppField>
+              </QuoteFormSection>
+              <div className="mt-6 grid gap-6">
+                <QuoteDocumentActions
+                  hasUnsavedChanges={autosave.state.hasUnsavedChanges}
+                  onGenerated={(warnings) => setGenerationWarnings(warnings)}
+                  quote={quote}
+                />
+                <QuoteDocumentsSection generationWarnings={generationWarnings} quoteId={quote.id} />
               </div>
-            </QuoteFormSection>
-
-            <QuoteDocumentsSection generationWarnings={generationWarnings} quoteId={quote.id} />
-
-            <QuoteFormSection
-              description="Standard assemblies are included. Optional assemblies add to the quote."
-              title="Assemblies"
-            >
-              <form.Field name="selectedAssemblies">
-                {(field) => (
-                  <QuoteAssembliesSelector
-                    catalogAssemblies={selectedProduct.assemblies}
-                    currencyCode={selectedProduct.currencyCode}
-                    initialSelections={quote.selectedAssemblies}
-                    onChange={(value) => {
-                      field.handleChange(value);
-                      saveCommittedField();
-                    }}
-                    readOnly={isLocked}
-                    value={field.state.value}
-                  />
-                )}
-              </form.Field>
-            </QuoteFormSection>
-          </div>
+            </TabsContent>
+          </Tabs>
           <form.Subscribe
-            selector={(state) => {
+            selector={(state): QuoteComputedSummary => {
               const discountAmount = state.values.discountAmount;
               const deliveryIncluded = state.values.deliveryIncluded;
               const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
@@ -310,73 +340,287 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
               };
             }}
           >
-            {(summary) => (
-              <aside className="order-first grid h-fit gap-4 border-b pb-5 text-sm xl:sticky xl:top-4 xl:order-0 xl:border-b-0 xl:border-l xl:pb-0 xl:pl-5">
-                <div className="grid gap-1">
-                  <h3 className="font-medium text-sm">Quote total</h3>
-                  <p className="font-medium text-2xl tabular-nums">
-                    {summary ? formatCurrency(summary.total, summary.currencyCode) : 'Select a product'}
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <QuoteSummaryRow
-                    label="Product price"
-                    value={summary ? formatCurrency(summary.productPrice, summary.currencyCode) : '-'}
-                  />
-                  <QuoteSummaryRow
-                    label="Less discount"
-                    value={
-                      summary
-                        ? `${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)})`
-                        : '-'
-                    }
-                  />
-                  {summary && summary.selectedAssemblyTotal > 0 ? (
-                    <div className="grid gap-1">
-                      <QuoteSummaryRow
-                        label="Optional assemblies"
-                        value={formatCurrency(summary.selectedAssemblyTotal, summary.currencyCode)}
-                      />
-                      <div className="grid gap-1 border-l pl-3">
-                        {summary.selectedAssemblies.map((assembly) => (
-                          <QuoteSummaryRow
-                            className="text-xs"
-                            key={`${assembly.id}:${assembly.productAssemblyId ?? 'stale'}`}
-                            label={assembly.quotedName}
-                            value={formatCurrency(assembly.quotedPrice, summary.currencyCode)}
-                            valueClassName="text-muted-foreground"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  {summary?.deliveryIncluded ? (
-                    <QuoteSummaryRow
-                      label="Delivery"
-                      value={formatCurrency(summary.deliveryPrice, summary.currencyCode)}
-                    />
-                  ) : null}
-                  <div className="flex items-center justify-between gap-3 border-t pt-2 font-medium">
-                    <span>Total</span>
-                    <span>{summary ? formatCurrency(summary.total, summary.currencyCode) : '-'}</span>
-                  </div>
-                </div>
-              </aside>
-            )}
+            {(summary) => <QuoteRightPanel quote={quote} summary={summary} />}
           </form.Subscribe>
         </div>
       </FieldGroup>
       <div className="flex justify-end gap-2 border-t pt-5">
-        <GenerateQuoteDocumentDialog
-          hasUnsavedChanges={autosave.state.hasUnsavedChanges}
-          onGenerated={(warnings) => setGenerationWarnings(warnings)}
-          quote={quote}
-        />
         <GenerateJobFromQuoteDialog quote={quote} />
       </div>
     </form>
   );
 };
+
+type QuoteComputedSummary = {
+  currencyCode: string;
+  deliveryIncluded: boolean;
+  deliveryPrice: number;
+  discountAmount: number;
+  discountPercent: number;
+  productPrice: number;
+  selectedAssemblies: SelectedAssemblySnapshot[];
+  selectedAssemblyTotal: number;
+  total: number;
+};
+
+function QuoteDocumentActions({
+  hasUnsavedChanges,
+  onGenerated,
+  quote,
+}: {
+  hasUnsavedChanges: boolean;
+  onGenerated: (warnings: QuoteDocumentGenerationWarning[]) => void;
+  quote: QuoteDetail;
+}) {
+  return (
+    <QuoteFormSection
+      description="Generate saved PDF revisions from the latest saved Quote data."
+      title="Document generation"
+    >
+      <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid gap-1 text-sm">
+          <span className="font-medium">Quote Document</span>
+          <span className="text-muted-foreground">
+            {hasUnsavedChanges
+              ? 'Waiting for autosave before a new document can be generated.'
+              : 'Ready to generate from saved Quote details.'}
+          </span>
+        </div>
+        <GenerateQuoteDocumentDialog hasUnsavedChanges={hasUnsavedChanges} onGenerated={onGenerated} quote={quote} />
+      </div>
+    </QuoteFormSection>
+  );
+}
+
+function QuoteRightPanel({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
+  return (
+    <aside className="order-first grid h-fit gap-4 border-b pb-5 text-sm xl:sticky xl:top-4 xl:order-0 xl:border-b-0 xl:border-l xl:pb-0 xl:pl-5">
+      <QuoteCustomerCard quote={quote} />
+      <QuoteProductCard quote={quote} />
+      <QuoteTotalCard summary={summary} />
+    </aside>
+  );
+}
+
+function QuoteCustomerCard({ quote }: { quote: QuoteDetail }) {
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardDescription>Customer</CardDescription>
+        <CardTitle className="min-w-0">
+          <span className="block truncate">{quote.customerCompanyName}</span>
+        </CardTitle>
+        <CardAction>
+          <EntityThumbnail
+            className="size-10"
+            label={quote.customerCompanyName}
+            size="lg"
+            thumbnailDataUrl={quote.customerThumbnailDataUrl}
+          />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <QuotePanelFact
+          icon={<ReceiptTextIcon />}
+          label="VAT"
+          value={quote.customerVatNumber ?? 'Not captured'}
+          muted={!quote.customerVatNumber}
+        />
+        <QuotePanelFact
+          icon={<MailIcon />}
+          label="Email"
+          value={
+            quote.customerEmail ? (
+              <span className="flex min-w-0 items-center gap-1">
+                <span className="min-w-0 truncate">{quote.customerEmail}</span>
+                <CopyValueButton label="Copy customer email" value={quote.customerEmail} />
+              </span>
+            ) : (
+              'Not captured'
+            )
+          }
+          muted={!quote.customerEmail}
+        />
+        <QuotePanelFact
+          icon={<PhoneIcon />}
+          label={quote.customerContactPerson ? quote.customerContactPerson : 'Phone'}
+          value={quote.customerPhone ?? 'Not captured'}
+          muted={!quote.customerPhone}
+        />
+        <QuotePanelFact
+          icon={<MapPinIcon />}
+          label="Address"
+          value={
+            quote.customerAddress ? (
+              <span className="block max-h-16 overflow-hidden whitespace-pre-line">{quote.customerAddress}</span>
+            ) : (
+              'Not captured'
+            )
+          }
+          muted={!quote.customerAddress}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
+  const standardCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'standard').length;
+  const optionalCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'optional').length;
+
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardDescription>Product</CardDescription>
+        <CardTitle className="min-w-0">
+          <span className="block truncate">{quote.productName}</span>
+        </CardTitle>
+        <CardAction>
+          <EntityThumbnail
+            className="size-10"
+            label={quote.productName}
+            size="lg"
+            thumbnailDataUrl={quote.productThumbnailDataUrl}
+          />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">{quote.productModelCode}</Badge>
+          <Badge variant={quote.productRequiresVinNumber ? 'secondary' : 'outline'}>
+            {quote.productRequiresVinNumber ? 'VIN required' : 'No VIN required'}
+          </Badge>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <QuoteMiniMetric
+            icon={<PackageIcon />}
+            label="Base price"
+            value={formatCurrency(quote.quotedBasePrice, quote.productCurrencyCode)}
+          />
+          <QuoteMiniMetric icon={<ClockIcon />} label="Build" value={`${quote.productBuildTimeDays} days`} />
+          <QuoteMiniMetric label="Standard" value={String(standardCount)} />
+          <QuoteMiniMetric label="Optional" value={String(optionalCount)} />
+        </div>
+        <Separator />
+        <p className={cn('max-h-20 overflow-hidden text-sm', quote.productDescription ? '' : 'text-muted-foreground')}>
+          {quote.productDescription ?? 'No product description captured.'}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuoteTotalCard({ summary }: { summary: QuoteComputedSummary }) {
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardDescription>Quote total</CardDescription>
+        <CardTitle className="text-2xl tabular-nums">{formatCurrency(summary.total, summary.currencyCode)}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-2">
+        <QuoteSummaryRow label="Product price" value={formatCurrency(summary.productPrice, summary.currencyCode)} />
+        <QuoteSummaryRow
+          label="Less discount"
+          value={`${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)})`}
+        />
+        {summary.selectedAssemblyTotal > 0 ? (
+          <div className="grid gap-1">
+            <QuoteSummaryRow
+              label="Optional assemblies"
+              value={formatCurrency(summary.selectedAssemblyTotal, summary.currencyCode)}
+            />
+            <div className="grid gap-1 border-l pl-3">
+              {summary.selectedAssemblies.map((assembly) => (
+                <QuoteSummaryRow
+                  className="text-xs"
+                  key={`${assembly.id}:${assembly.productAssemblyId ?? 'stale'}`}
+                  label={assembly.quotedName}
+                  value={formatCurrency(assembly.quotedPrice, summary.currencyCode)}
+                  valueClassName="text-muted-foreground"
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {summary.deliveryIncluded ? (
+          <QuoteSummaryRow label="Delivery" value={formatCurrency(summary.deliveryPrice, summary.currencyCode)} />
+        ) : null}
+        <div className="flex items-center justify-between gap-3 border-t pt-2 font-medium">
+          <span>Total</span>
+          <span>{formatCurrency(summary.total, summary.currencyCode)}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuotePanelFact({
+  icon,
+  label,
+  muted,
+  value,
+}: {
+  icon: React.ReactElement;
+  label: string;
+  muted?: boolean;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-2">
+      <span className="pt-0.5 text-muted-foreground [&>svg]:size-4">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-muted-foreground text-xs">{label}</span>
+        <span className={cn('block min-w-0', muted ? 'text-muted-foreground' : 'text-foreground')}>{value}</span>
+      </span>
+    </div>
+  );
+}
+
+function QuoteMiniMetric({ icon, label, value }: { icon?: React.ReactElement; label: string; value: string }) {
+  return (
+    <div className="grid min-h-14 gap-1 rounded-md border bg-muted/20 p-2">
+      <span className="flex items-center gap-1 text-muted-foreground text-xs">
+        {icon ? <span className="[&>svg]:size-3.5">{icon}</span> : null}
+        <span className="truncate">{label}</span>
+      </span>
+      <span className="truncate font-medium">{value}</span>
+    </div>
+  );
+}
+
+function CopyValueButton({ label, value }: { label: string; value: string }) {
+  const [isCopied, setIsCopied] = useState(false);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label={label}
+            className="shrink-0"
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              void navigator.clipboard
+                .writeText(value)
+                .then(() => {
+                  setIsCopied(true);
+                  setTimeout(() => setIsCopied(false), 2_000);
+                })
+                .catch(() => {
+                  toast.error('Unable to copy value.');
+                });
+            }}
+          />
+        }
+      >
+        {isCopied ? <CheckIcon /> : <CopyIcon />}
+      </TooltipTrigger>
+      <TooltipContent>{isCopied ? 'Copied' : label}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 function GenerateQuoteDocumentDialog({
   hasUnsavedChanges,
@@ -741,15 +985,6 @@ const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = ({
     </div>
   );
 };
-
-const ReadOnlyQuoteField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <Field>
-    <FieldLabel>{label}</FieldLabel>
-    <div className="flex min-h-9 items-center rounded-md border bg-muted/30 px-3 text-sm">
-      <span className="min-w-0 truncate">{value}</span>
-    </div>
-  </Field>
-);
 
 type QuoteFormSectionProps = {
   children: React.ReactNode;

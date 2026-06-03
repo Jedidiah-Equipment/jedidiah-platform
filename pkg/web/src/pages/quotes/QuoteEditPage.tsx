@@ -37,6 +37,7 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
       contentClassName="max-w-7xl"
       description="Edit Quote"
       title={quote?.code ?? 'Loading quote...'}
+      variant="plain"
     >
       <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
       {quoteQuery.isPending ? <QuoteFormSkeleton /> : null}

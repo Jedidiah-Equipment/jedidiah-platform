@@ -5,12 +5,15 @@ import {
   Price,
   type Product,
   ProductBuildTimeDays,
+  ProductCreateInput,
   ProductDescription,
   ProductModelCode,
   ProductName,
   ProductRequiresVinNumber,
+  ProductUpdateInput,
   refineProductAssemblies,
   UUID,
+  type UUID as UUIDType,
 } from '@pkg/schema';
 import { z } from 'zod';
 
@@ -55,6 +58,14 @@ const ProductFormFields = z.object({
 export type ProductFormValues = z.infer<typeof ProductFormValues>;
 export const ProductFormValues = ProductFormFields.extend({
   assemblies: z.array(ProductAssemblyFormInput).superRefine(refineProductAssemblies),
+});
+
+export type ProductCreateFormValues = z.infer<typeof ProductCreateFormValues>;
+export const ProductCreateFormValues = ProductFormFields.pick({
+  basePrice: true,
+  buildTimeDays: true,
+  modelCode: true,
+  name: true,
 });
 
 export const emptyProductFormValues: ProductFormValues = {
@@ -103,4 +114,19 @@ export function toProductAssemblyInputs(initialProduct?: Product): ProductAssemb
           price: assembly.price,
         },
   );
+}
+
+export function toProductCreateInput(value: ProductFormValues): ProductCreateInput {
+  return ProductCreateInput.parse(value);
+}
+
+export function toProductMinimalCreateInput(value: ProductCreateFormValues): ProductCreateInput {
+  return ProductCreateInput.parse(value);
+}
+
+export function toProductUpdateInput(id: UUIDType, value: ProductFormValues): ProductUpdateInput {
+  return ProductUpdateInput.parse({
+    ...toProductCreateInput(value),
+    id,
+  });
 }

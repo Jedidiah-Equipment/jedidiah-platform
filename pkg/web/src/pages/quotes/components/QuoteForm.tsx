@@ -530,9 +530,12 @@ function GenerateQuoteDocumentDialog({ isDirty, quote }: { isDirty: boolean; quo
   const trimmedLeadTime = leadTime.trim();
   const generateMutation = useMutation(
     trpc.quotes.generateDocument.mutationOptions({
-      onSuccess: async () => {
+      onSuccess: async (result) => {
         await queryClient.invalidateQueries({ queryKey: trpc.documents.pathKey() });
         toast.success('Quote Document generated');
+        for (const warning of result.warnings) {
+          toast.warning(warning.message);
+        }
         setIsOpen(false);
       },
       onError: (error) => showMutationError(error, 'Unable to generate Quote Document.'),

@@ -689,11 +689,20 @@ describe('quotes.generateDocument', () => {
         quoteId: created.id,
       }),
     ).resolves.toMatchObject({
-      contentType: 'application/pdf',
-      filename: `${created.code}-rev-1.pdf`,
-      metadata: { revision: 1 },
-      ownerType: 'quote',
-      quoteId: created.id,
+      document: {
+        contentType: 'application/pdf',
+        filename: `${created.code}-rev-1.pdf`,
+        metadata: { revision: 1 },
+        ownerType: 'quote',
+        quoteId: created.id,
+      },
+      warnings: [
+        {
+          code: 'quote_document.product_brochure_missing',
+          message:
+            'No PDF brochure is attached to this Quote Product, so the Quote Document was generated without one.',
+        },
+      ],
     });
   });
 

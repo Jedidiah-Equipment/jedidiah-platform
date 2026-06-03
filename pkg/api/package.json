@@ -25,19 +25,17 @@
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
+    "@pkg/pdf": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "@react-pdf/renderer": "^4.5.1",
     "@trpc/server": "^11.17.0",
     "dotenv": "^17.4.2",
     "openai": "^6.39.0",
     "pino": "^10.3.1",
     "posthog-node": "^5.35.1",
-    "react": "^19.2.6",
     "resend": "^6.12.3",
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
-    "@types/react": "^19.2.15",
     "pino-pretty": "^13.1.3",
     "tsc-alias": "^1.8.17",
     "vitest": "^4.1.7"

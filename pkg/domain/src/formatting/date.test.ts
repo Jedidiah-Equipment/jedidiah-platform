@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDate, parseDate, secondsToAgeString } from './date.js';
+import { formatDate, parseCommonDateInput, parseDate, secondsToAgeString } from './date.js';
 
 describe('parseDate', () => {
   it('returns Date values unchanged', () => {
@@ -21,6 +21,31 @@ describe('parseDate', () => {
   it('returns null for absent values', () => {
     expect(parseDate(null)).toBeNull();
     expect(parseDate(undefined)).toBeNull();
+  });
+});
+
+describe('parseCommonDateInput', () => {
+  it('parses common month-name date entry', () => {
+    expect(formatDate(parseCommonDateInput('May 22, 2026'), 'yyyy-MM-dd')).toBe('2026-05-22');
+    expect(formatDate(parseCommonDateInput('May 22 2026'), 'yyyy-MM-dd')).toBe('2026-05-22');
+    expect(formatDate(parseCommonDateInput('22 May 2026'), 'yyyy-MM-dd')).toBe('2026-05-22');
+    expect(formatDate(parseCommonDateInput('Jun 18, 2026'), 'yyyy-MM-dd')).toBe('2026-06-18');
+  });
+
+  it('parses common numeric date entry', () => {
+    expect(formatDate(parseCommonDateInput('2026-06-18'), 'yyyy-MM-dd')).toBe('2026-06-18');
+    expect(formatDate(parseCommonDateInput('6/18/2026'), 'yyyy-MM-dd')).toBe('2026-06-18');
+    expect(formatDate(parseCommonDateInput('6/18/26'), 'yyyy-MM-dd')).toBe('2026-06-18');
+    expect(formatDate(parseCommonDateInput('18/06/2026'), 'yyyy-MM-dd')).toBe('2026-06-18');
+    expect(formatDate(parseCommonDateInput('18-06-26'), 'yyyy-MM-dd')).toBe('2026-06-18');
+    expect(formatDate(parseCommonDateInput('06.18.2026'), 'yyyy-MM-dd')).toBe('2026-06-18');
+  });
+
+  it('rejects invalid date entry', () => {
+    expect(parseCommonDateInput('May 35, 2026')).toBeNull();
+    expect(parseCommonDateInput('Jun 12, 20')).toBeNull();
+    expect(parseCommonDateInput('18-06-202')).toBeNull();
+    expect(parseCommonDateInput('')).toBeNull();
   });
 });
 

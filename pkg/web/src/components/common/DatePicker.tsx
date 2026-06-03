@@ -1,8 +1,6 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, parseCommonDateInput } from '@pkg/domain';
 import { endOfDay, format, isAfter, isBefore, isValid, parse, startOfDay } from 'date-fns';
-import { CalendarIcon, XIcon } from 'lucide-react';
 import * as React from 'react';
-import { Button } from '@/components/ui/button.js';
 import { Calendar } from '@/components/ui/calendar.js';
 import { Input } from '@/components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
@@ -11,7 +9,6 @@ const dateOnlyFormat = 'yyyy-MM-dd';
 
 export type DatePickerProps = {
   'aria-invalid'?: boolean;
-  clearable?: boolean;
   disabled?: boolean;
   id?: string;
   maxValue?: string;
@@ -25,7 +22,6 @@ export type DatePickerProps = {
 
 export function DatePicker({
   'aria-invalid': ariaInvalid = false,
-  clearable = false,
   disabled = false,
   id,
   maxValue,
@@ -36,68 +32,82 @@ export function DatePicker({
   placeholder = 'Select date',
   value,
 }: DatePickerProps) {
-  const [open, setOpen] = React.useState(false);
-  const selectedDate = parseDatePickerValue(value);
-  const minDate = minValue ? parseDatePickerValue(minValue) : null;
-  const maxDate = maxValue ? parseDatePickerValue(maxValue) : null;
+  const [open, setOpenState] = React.useState(false);
+  const openRef = React.useRef(open);
+  const selectedDate = React.useMemo(() => parseDatePickerValue(value), [value]);
+  const minDate = React.useMemo(() => (minValue ? parseDatePickerValue(minValue) : null), [minValue]);
+  const maxDate = React.useMemo(() => (maxValue ? parseDatePickerValue(maxValue) : null), [maxValue]);
+  const [calendarMonth, setCalendarMonth] = React.useState(() => selectedDate ?? undefined);
   const [displayValue, setDisplayValue] = React.useState(() => formatDatePickerInputValue(value));
+  const setOpen = React.useCallback((nextOpen: boolean, eventDetails?: { reason: string }) => {
+    if (openRef.current && !nextOpen && eventDetails?.reason === 'trigger-press') return;
 
+    openRef.current = nextOpen;
+    setOpenState(nextOpen);
+  }, []);
   React.useEffect(() => {
     setDisplayValue(formatDatePickerInputValue(value));
   }, [value]);
 
+  React.useEffect(() => {
+    if (!selectedDate) return;
+
+    setCalendarMonth(selectedDate);
+  }, [selectedDate]);
+
   return (
-    <div className="flex gap-1.5">
-      <Input
-        aria-invalid={ariaInvalid}
-        disabled={disabled}
-        id={id}
-        name={name}
-        onBlur={(event) => {
-          const nextValue = parseDatePickerInputValue(event.target.value);
+    <Popover onOpenChange={setOpen} open={open}>
+      <PopoverTrigger
+        nativeButton={false}
+        render={
+          <div className="w-full">
+            <Input
+              aria-invalid={ariaInvalid}
+              disabled={disabled}
+              id={id}
+              name={name}
+              onBlur={(event) => {
+                const nextValue = parseDatePickerInputValue(event.target.value);
 
-          if (nextValue && isDatePickerValueAllowed(nextValue, { maxDate, minDate })) {
-            onChange(nextValue);
-            setDisplayValue(formatDatePickerInputValue(nextValue));
-          } else if (event.target.value.trim() === '') {
-            onChange('');
-            setDisplayValue('');
-          } else {
-            setDisplayValue(formatDatePickerInputValue(value));
-          }
+                if (nextValue && isDatePickerValueAllowed(nextValue, { maxDate, minDate })) {
+                  const nextDate = parseDatePickerValue(nextValue);
+                  onChange(nextValue);
+                  setDisplayValue(formatDatePickerInputValue(nextValue));
+                  setCalendarMonth(nextDate ?? undefined);
+                } else if (event.target.value.trim() === '') {
+                  onChange('');
+                  setDisplayValue('');
+                } else {
+                  setDisplayValue(formatDatePickerInputValue(value));
+                }
 
-          onBlur?.(event);
-        }}
-        onChange={(event) => setDisplayValue(event.target.value)}
-        placeholder={placeholder}
-        value={displayValue}
+                onBlur?.(event);
+              }}
+              onChange={(event) => setDisplayValue(event.target.value)}
+              onKeyDown={(event) => event.stopPropagation()}
+              placeholder={placeholder}
+              value={displayValue}
+            />
+          </div>
+        }
       />
-      <Popover onOpenChange={setOpen} open={open}>
-        <PopoverTrigger
-          render={<Button aria-label="Select date" disabled={disabled} size="icon" type="button" variant="outline" />}
-        >
-          <CalendarIcon />
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto p-0">
-          <Calendar
-            disabled={createDatePickerDisabledMatchers({ maxDate, minDate })}
-            mode="single"
-            selected={selectedDate ?? undefined}
-            onSelect={(date) => {
-              if (!date) return;
+      <PopoverContent align="start" className="w-auto p-0">
+        <Calendar
+          disabled={createDatePickerDisabledMatchers({ maxDate, minDate })}
+          mode="single"
+          selected={selectedDate ?? undefined}
+          onMonthChange={setCalendarMonth}
+          onSelect={(date) => {
+            if (!date) return;
 
-              onChange(formatDatePickerValue(date));
-              setOpen(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-      {clearable && value && !disabled ? (
-        <Button aria-label="Clear date" onClick={() => onChange('')} size="icon" type="button" variant="outline">
-          <XIcon />
-        </Button>
-      ) : null}
-    </div>
+            setCalendarMonth(date);
+            onChange(formatDatePickerValue(date));
+            setOpen(false);
+          }}
+          {...(calendarMonth ? { month: calendarMonth } : {})}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -126,12 +136,7 @@ export function formatDatePickerDisplayValue(date: Date): string {
 }
 
 export function parseDatePickerInputValue(value: string): string | null {
-  const trimmedValue = value.trim();
-  if (trimmedValue === '') return null;
-
-  const parsedDate = [parse(trimmedValue, 'PP', new Date()), parse(trimmedValue, dateOnlyFormat, new Date())].find(
-    (candidate) => isValid(candidate),
-  );
+  const parsedDate = parseCommonDateInput(value);
 
   if (!parsedDate) return null;
 

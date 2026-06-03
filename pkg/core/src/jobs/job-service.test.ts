@@ -435,16 +435,19 @@ async function createCatalog(db: Db) {
     .insert(productAssemblies)
     .values([
       {
+        displayOrder: 0,
         kind: 'standard',
         name: 'Standard Chassis',
         productId: product.id,
       },
       {
+        displayOrder: 1,
         kind: 'standard',
         name: 'Standard Axle',
         productId: product.id,
       },
       {
+        displayOrder: 0,
         kind: 'optional',
         name: 'Heavy Axle Upgrade',
         price: 250,

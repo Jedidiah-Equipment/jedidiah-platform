@@ -1,6 +1,9 @@
+import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { formatCurrency } from '@pkg/domain';
 import type { AssemblyInput, Part } from '@pkg/schema';
-import { ChevronDownIcon, PlusIcon, Trash2Icon } from 'lucide-react';
+import { ChevronDownIcon, GripVerticalIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import { CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
@@ -65,13 +68,29 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
   const parts = partOptions.items;
   const categories = categoryOptions.items;
   const indexedAssemblies = assembliesField.state.value.map((assembly, index) => ({ assembly, index }));
-  const standardAssemblies = getSortedAssemblies(indexedAssemblies, 'standard');
-  const optionalAssemblies = getSortedAssemblies(indexedAssemblies, 'optional');
+  const standardAssemblies = getAssembliesByKind(indexedAssemblies, 'standard');
+  const optionalAssemblies = getAssembliesByKind(indexedAssemblies, 'optional');
   const handleAddAssembly = (kind: AssemblyInput['kind']) => {
     const assembly = createAssembly(kind);
+    const firstOfKindIndex = indexedAssemblies.find((entry) => entry.assembly.kind === kind)?.index;
 
-    assembliesField.pushValue(assembly);
+    // New assemblies appear at the start of their kind group, so insert before the
+    // first same-kind item in the flat array (or append when the group is empty).
+    if (firstOfKindIndex === undefined) {
+      assembliesField.pushValue(assembly);
+    } else {
+      assembliesField.insertValue(firstOfKindIndex, assembly);
+    }
+
     setExpandedAssemblyIds((current) => new Set(current).add(assembly.id ?? ''));
+    onStructuralChange();
+  };
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) {
+      return;
+    }
+
+    assembliesField.moveValue(fromIndex, toIndex);
     onStructuralChange();
   };
   const handleExpandedChange = (assemblyId: string | undefined, isExpanded: boolean) => {
@@ -105,6 +124,7 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
           assembliesField.removeValue(index);
           onStructuralChange();
         }}
+        onReorder={handleReorder}
         onStructuralChange={onStructuralChange}
         parts={parts}
         standardAssemblies={standardAssemblies}
@@ -122,6 +142,7 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
           assembliesField.removeValue(index);
           onStructuralChange();
         }}
+        onReorder={handleReorder}
         onStructuralChange={onStructuralChange}
         parts={parts}
         standardAssemblies={standardAssemblies}
@@ -144,6 +165,7 @@ type AssemblyGroupProps = {
   onAdd: () => void;
   onExpandedChange: (assemblyId: string | undefined, isExpanded: boolean) => void;
   onRemove: (index: number) => void;
+  onReorder: (fromIndex: number, toIndex: number) => void;
   onStructuralChange: () => void;
 };
 
@@ -159,40 +181,76 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
   onAdd,
   onExpandedChange,
   onRemove,
+  onReorder,
   onStructuralChange,
-}) => (
-  <section className="flex flex-col gap-3">
-    <div className="flex items-center justify-between gap-3">
-      <h3 className="font-medium text-sm">{title}</h3>
-      <Button size="sm" type="button" variant="outline" onClick={onAdd}>
-        <PlusIcon />
-        Add
-      </Button>
-    </div>
-    <div className="flex flex-col gap-3">
-      {assemblies.map(({ assembly, index }) => (
-        <AssemblyRow
-          assembly={assembly}
-          categories={categories}
-          index={index}
-          key={assembly.id}
-          isExpanded={Boolean(assembly.id && expandedAssemblyIds.has(assembly.id))}
-          onExpandedChange={(isExpanded) => onExpandedChange(assembly.id, isExpanded)}
-          onRemove={() => onRemove(index)}
-          onStructuralChange={onStructuralChange}
-          parts={parts}
-          standardAssemblies={standardAssemblies}
-          currencyCode={currencyCode}
-        />
-      ))}
-    </div>
-    {assemblies.length === 0 ? (
-      <p className="text-muted-foreground text-sm">
-        No {kind === 'standard' ? 'standard' : 'optional'} assemblies added.
-      </p>
-    ) : null}
-  </section>
-);
+}) => {
+  // A small distance constraint keeps clicks on the Edit/Remove buttons and inputs from
+  // being interpreted as a drag.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sortableIds = assemblies.map(({ assembly }) => assembly.id ?? '');
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    // The sortable context only contains this kind group's ids, so the standard/optional
+    // boundary can never be crossed. Translate the within-group drag to flat-array indices.
+    const fromIndex = assemblies.find(({ assembly }) => assembly.id === active.id)?.index;
+    const toIndex = assemblies.find(({ assembly }) => assembly.id === over.id)?.index;
+
+    if (fromIndex === undefined || toIndex === undefined) {
+      return;
+    }
+
+    onReorder(fromIndex, toIndex);
+  };
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-medium text-sm">{title}</h3>
+        <Button size="sm" type="button" variant="outline" onClick={onAdd}>
+          <PlusIcon />
+          Add
+        </Button>
+      </div>
+      <DndContext
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis]}
+        sensors={sensors}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+          <div className="flex flex-col gap-3">
+            {assemblies.map(({ assembly, index }) => (
+              <AssemblyRow
+                assembly={assembly}
+                categories={categories}
+                index={index}
+                key={assembly.id}
+                isExpanded={Boolean(assembly.id && expandedAssemblyIds.has(assembly.id))}
+                onExpandedChange={(isExpanded) => onExpandedChange(assembly.id, isExpanded)}
+                onRemove={() => onRemove(index)}
+                onStructuralChange={onStructuralChange}
+                parts={parts}
+                standardAssemblies={standardAssemblies}
+                currencyCode={currencyCode}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+      {assemblies.length === 0 ? (
+        <p className="text-muted-foreground text-sm">
+          No {kind === 'standard' ? 'standard' : 'optional'} assemblies added.
+        </p>
+      ) : null}
+    </section>
+  );
+};
 
 type AssemblyRowProps = {
   assembly: AssemblyInput;
@@ -223,18 +281,47 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
   const FormField = productForm.Field;
   const partOptions = useMemo(() => parts.toSorted(compareParts), [parts]);
   const assemblyFieldPrefix = `assemblies[${index}]`;
+  const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
+    id: assembly.id ?? '',
+  });
+  const sortableStyle: React.CSSProperties = {
+    transform: transform ? `translate3d(0, ${transform.y}px, 0)` : undefined,
+    transition,
+  };
 
   return (
     <productForm.Subscribe selector={(state) => hasFieldErrorsForPrefix(state.fieldMeta, assemblyFieldPrefix)}>
       {(hasError) => (
         <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
-          <div aria-invalid={hasError} className={cn('rounded-lg border p-3', hasError && 'border-destructive')}>
+          <div
+            ref={setNodeRef}
+            style={sortableStyle}
+            aria-invalid={hasError}
+            className={cn(
+              'rounded-lg border p-3',
+              hasError && 'border-destructive',
+              isDragging && 'relative z-10 opacity-80 shadow-lg',
+            )}
+          >
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <AssemblySummary
-                assembly={assembly}
-                currencyCode={currencyCode}
-                standardAssemblies={standardAssemblies}
-              />
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Button
+                  aria-label="Reorder assembly"
+                  className="shrink-0 cursor-grab touch-none active:cursor-grabbing"
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                  {...attributes}
+                  {...listeners}
+                >
+                  <GripVerticalIcon />
+                </Button>
+                <AssemblySummary
+                  assembly={assembly}
+                  currencyCode={currencyCode}
+                  standardAssemblies={standardAssemblies}
+                />
+              </div>
               <div className="flex shrink-0 items-center gap-2">
                 <CollapsibleTrigger render={<Button size="sm" type="button" variant="outline" />}>
                   <ChevronDownIcon
@@ -696,10 +783,9 @@ const PartQuantityField: React.FC<PartQuantityFieldProps> = ({
   );
 };
 
-function getSortedAssemblies(assemblies: IndexedAssembly[], kind: AssemblyInput['kind']): IndexedAssembly[] {
-  return assemblies
-    .filter(({ assembly }) => assembly.kind === kind)
-    .toSorted((left, right) => left.assembly.name.localeCompare(right.assembly.name));
+function getAssembliesByKind(assemblies: IndexedAssembly[], kind: AssemblyInput['kind']): IndexedAssembly[] {
+  // Render in persisted array order; the server owns ordering via display_order.
+  return assemblies.filter(({ assembly }) => assembly.kind === kind);
 }
 
 function createAssembly(kind: AssemblyInput['kind']): AssemblyInput {

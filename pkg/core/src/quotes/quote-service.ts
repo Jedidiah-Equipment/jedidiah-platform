@@ -435,25 +435,6 @@ export async function generateQuoteDocument({
   });
 }
 
-export async function previewQuoteDocument({
-  db,
-  input,
-  pdfRenderer,
-}: {
-  db: Db;
-  input: QuoteDocumentGenerationInput;
-  pdfRenderer: QuoteDocumentPdfRenderer;
-}): Promise<{ bytes: Uint8Array; filename: string }> {
-  const quote = await getQuoteDocumentGenerationRow({ db, quoteId: input.quoteId });
-  assertQuoteDocumentGenerationAllowed(quote);
-
-  const filename = `${formatQuoteCode(quote.code)}-preview.pdf`;
-  const document = await getQuoteDocumentModel({ db, input, quote });
-  const bytes = await pdfRenderer({ document, filename });
-
-  return { bytes, filename };
-}
-
 export async function readQuoteDocument({
   db,
   documentId,

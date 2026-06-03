@@ -41,7 +41,6 @@ import { Input } from '@/components/ui/input.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
-import { getClientConfig } from '@/lib/app-config.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { downloadQuoteDocument } from '@/utils/document.js';
@@ -151,8 +150,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ initialQuote, isPending, o
       }}
     >
       <FieldGroup className="gap-6">
-        {initialQuote ? <QuoteDocumentDevPreview quote={initialQuote} /> : null}
-
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="grid gap-6">
             <QuoteFormSection title="Customer and product">
@@ -599,30 +596,6 @@ function GenerateQuoteDocumentDialog({ isDirty, quote }: { isDirty: boolean; quo
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function QuoteDocumentDevPreview({ quote }: { quote: QuoteDetail }) {
-  const [previewVersion, setPreviewVersion] = useState(() => Date.now());
-  const previewSrc = useMemo(() => {
-    const params = new URLSearchParams({
-      leadTime: getDefaultQuoteDocumentLeadTime(quote),
-      t: previewVersion.toString(),
-    });
-
-    return `${getClientConfig().apiBaseUrl}/api/quotes/${encodeURIComponent(quote.id)}/document-preview.pdf?${params}`;
-  }, [previewVersion, quote]);
-
-  return (
-    <section className="grid gap-3 rounded-lg border bg-muted/20 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="font-medium text-sm">Temporary Quote PDF Preview</div>
-        <Button onClick={() => setPreviewVersion(Date.now())} size="sm" type="button" variant="outline">
-          Refresh PDF
-        </Button>
-      </div>
-      <iframe className="h-[80vh] w-full rounded-md border bg-background" src={previewSrc} title="Quote PDF preview" />
-    </section>
   );
 }
 

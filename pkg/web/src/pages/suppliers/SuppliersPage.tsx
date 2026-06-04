@@ -41,7 +41,6 @@ export const SuppliersPage: React.FC = () => {
               ? (supplier) => navigate({ to: '/suppliers/$id/edit', params: { id: supplier.id } })
               : undefined
           }
-          showEditActions={canUpdateSupplier}
         />
       </ListPageLayout>
       {canUpdateSupplier ? (

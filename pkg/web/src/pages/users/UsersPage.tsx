@@ -35,7 +35,6 @@ export const UsersPage: React.FC = () => {
           errorMessage={getApiQueryErrorMessage(usersQuery.error, 'Unable to load users.')}
           isLoading={usersQuery.isPending}
           onEditUser={canManageUsers ? setEditingUser : undefined}
-          showEditActions={canManageUsers}
           users={usersQuery.data?.users ?? emptyUsers}
         />
       </ListPageLayout>

@@ -136,7 +136,9 @@ describe('bulkImportParts', () => {
     expect(events).toHaveLength(2);
   });
 
-  test('matches existing suppliers case-insensitively', async ({ context }) => {
+  test('matches existing suppliers case-insensitively without treating supplier code as identity', async ({
+    context,
+  }) => {
     await bulkImportParts({ actorUserId, db: context.db, input: { rows: [importRow()] } });
 
     const result = await bulkImportParts({
@@ -154,14 +156,10 @@ describe('bulkImportParts', () => {
     const suppliers = await context.db.select().from(supplier);
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
 
-    expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 1 });
+    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
     expect(suppliers).toHaveLength(1);
-    expect(importedParts.items[0]).toMatchObject({
-      code: 'P-101',
-      supplier: {
-        companyName: 'Acme Supplies',
-      },
-    });
+    expect(importedParts.items.map((part) => part.code).sort()).toEqual(['P-100', 'P-101']);
+    expect(importedParts.items.every((part) => part.supplier.companyName === 'Acme Supplies')).toBe(true);
   });
 
   test('updates changed rows when the part identity matches', async ({ context }) => {
@@ -224,7 +222,7 @@ describe('bulkImportParts', () => {
     });
   });
 
-  test('updates by supplier and supplier code when code changes', async ({ context }) => {
+  test('creates a distinct part when only supplier code matches', async ({ context }) => {
     await bulkImportParts({ actorUserId, db: context.db, input: { rows: [importRow()] } });
 
     const result = await bulkImportParts({
@@ -240,8 +238,46 @@ describe('bulkImportParts', () => {
     });
     const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
 
-    expect(result).toEqual({ errors: [], importedCount: 0, updatedCount: 1 });
-    expect(importedParts.items.map((part) => part.code)).toEqual(['P-101']);
+    expect(result).toEqual({ errors: [], importedCount: 1, updatedCount: 0 });
+    expect(importedParts.items.map((part) => part.code).sort()).toEqual(['P-100', 'P-101']);
+    expect(importedParts.items.every((part) => part.supplierCode === 'SUP-100')).toBe(true);
+  });
+
+  test('imports repeated supplier codes as distinct part codes', async ({ context }) => {
+    const result = await bulkImportParts({
+      actorUserId,
+      db: context.db,
+      input: {
+        rows: [
+          importRow({
+            code: 'FAB1-1',
+            lineNumber: 2,
+            name: 'GP408',
+            supplierCode: 'NC',
+            supplierName: 'Jedidiah Fabrication',
+          }),
+          importRow({
+            code: 'FAB1-2',
+            lineNumber: 3,
+            name: 'GP408',
+            supplierCode: 'NC',
+            supplierName: 'Jedidiah Fabrication',
+          }),
+          importRow({
+            code: 'FAB1-4',
+            lineNumber: 4,
+            name: 'GP408',
+            supplierCode: 'NC',
+            supplierName: 'Jedidiah Fabrication',
+          }),
+        ],
+      },
+    });
+    const importedParts = await listParts({ db: context.db, input: PartListInput.parse({ pageSize: 0 }) });
+
+    expect(result).toEqual({ errors: [], importedCount: 3, updatedCount: 0 });
+    expect(importedParts.items.map((part) => part.code).sort()).toEqual(['FAB1-1', 'FAB1-2', 'FAB1-4']);
+    expect(importedParts.items.every((part) => part.supplierCode === 'NC')).toBe(true);
   });
 
   test('skips conflicts and imports remaining rows', async ({ context }) => {

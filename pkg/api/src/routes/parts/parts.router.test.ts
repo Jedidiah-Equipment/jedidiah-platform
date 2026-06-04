@@ -127,7 +127,7 @@ describe('parts.create', () => {
     });
   });
 
-  test('returns conflicts for duplicate codes and duplicate supplier codes per supplier', async ({ context }) => {
+  test('returns conflicts for duplicate codes and allows repeated supplier codes per supplier', async ({ context }) => {
     const caller = context.createCaller();
     const supplier = await createSupplier(caller);
     const otherSupplier = await createSupplier(caller, 'Other Supplies');
@@ -146,9 +146,10 @@ describe('parts.create', () => {
       createPart(caller, supplier.id, {
         code: 'P-101',
       }),
-    ).rejects.toMatchObject({
-      code: 'CONFLICT',
-      message: 'A part with this supplier code already exists for this supplier.',
+    ).resolves.toMatchObject({
+      code: 'P-101',
+      supplierCode: 'SUP-100',
+      supplierId: supplier.id,
     });
   });
 
@@ -245,6 +246,49 @@ describe('parts.bulkImport', () => {
       importedCount: 1,
       updatedCount: 0,
     });
+  });
+
+  test('bulk imports repeated supplier codes as distinct part codes', async ({ context }) => {
+    const caller = context.createCaller();
+    const supplier = await createSupplier(caller, 'Jedidiah Fabrication');
+
+    await expect(
+      caller.parts.bulkImport({
+        rows: [
+          bulkImportRow({
+            code: 'FAB1-1',
+            lineNumber: 2,
+            name: 'GP408',
+            supplierCode: 'NC',
+            supplierName: 'Jedidiah Fabrication',
+          }),
+          bulkImportRow({
+            code: 'FAB1-2',
+            lineNumber: 3,
+            name: 'GP408',
+            supplierCode: 'NC',
+            supplierName: 'Jedidiah Fabrication',
+          }),
+          bulkImportRow({
+            code: 'FAB1-4',
+            lineNumber: 4,
+            name: 'GP408',
+            supplierCode: 'NC',
+            supplierName: 'Jedidiah Fabrication',
+          }),
+        ],
+        supplierId: supplier.id,
+      }),
+    ).resolves.toEqual({
+      errors: [],
+      importedCount: 3,
+      updatedCount: 0,
+    });
+
+    const importedParts = await caller.parts.list({ pageSize: 0, supplierId: supplier.id });
+
+    expect(importedParts.items.map((part) => part.code).sort()).toEqual(['FAB1-1', 'FAB1-2', 'FAB1-4']);
+    expect(importedParts.items.every((part) => part.supplierCode === 'NC')).toBe(true);
   });
 
   test('bulk imports parts scoped to one supplier and rejects mismatched supplier rows', async ({ context }) => {

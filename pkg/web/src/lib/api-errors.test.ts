@@ -33,7 +33,7 @@ describe('api error presentation', () => {
     expect(
       shouldReportApiMutationError({
         data: { appCode: 'part.bulk_import_conflict', code: 'CONFLICT' },
-        message: 'A CSV row matches an existing part code with a different supplier or supplier code.',
+        message: 'A CSV row matches an existing part code with a different supplier.',
       }),
     ).toBe(false);
     expect(shouldReportApiMutationError({ data: { code: 'BAD_REQUEST' }, message: 'Validation failed' })).toBe(false);

@@ -33,7 +33,6 @@ import {
 } from '../audit/audit-service.js';
 import {
   DuplicatePartCodeError,
-  DuplicatePartSupplierCodeError,
   PartBulkImportConflictError,
   PartNotFoundError,
   PartSupplierNotFoundError,
@@ -327,15 +326,7 @@ export async function bulkImportParts({
         const existingSupplier =
           scopedSupplier ?? (await findImportSupplier({ db: tx, companyName: row.supplierName }));
         const [partByCode] = await tx.select().from(parts).where(eq(parts.code, row.code)).for('update');
-        const [partBySupplierCode] = existingSupplier
-          ? await tx
-              .select()
-              .from(parts)
-              .where(and(eq(parts.supplierId, existingSupplier.id), eq(parts.supplierCode, row.supplierCode)))
-              .for('update')
-          : [];
-
-        if (partByCode && (!partBySupplierCode || partByCode.id !== partBySupplierCode.id)) {
+        if (partByCode && (!existingSupplier || partByCode.supplierId !== existingSupplier.id)) {
           errors.push(
             await formatBulkImportIdentityConflict({
               db: tx,
@@ -365,7 +356,7 @@ export async function bulkImportParts({
           supplierId: importedSupplier.id,
           unitOfMeasure: row.unitOfMeasure,
         };
-        const existingPart = partByCode ?? partBySupplierCode;
+        const existingPart = partByCode;
 
         if (!existingPart) {
           const [created] = await tx.insert(parts).values(partInput).returning();
@@ -556,22 +547,8 @@ function getPartSortColumn(sortBy: PartListInput['sortBy']) {
   return parts.name;
 }
 
-function mapPartUniqueViolation(
-  error: unknown,
-  input: Pick<PartCreateInput, 'code' | 'supplierCode' | 'supplierId'>,
-): Error {
+function mapPartUniqueViolation(error: unknown, input: Pick<PartCreateInput, 'code'>): Error {
   const constraint = getUniqueViolationConstraint(error);
-
-  if (
-    constraint?.includes('parts_supplier_id_supplier_code_unique') ||
-    constraint?.includes('supplier_id') ||
-    constraint?.includes('supplier_code')
-  ) {
-    return new DuplicatePartSupplierCodeError({
-      supplierCode: input.supplierCode,
-      supplierId: input.supplierId,
-    });
-  }
 
   if (constraint?.includes('parts_code_unique') || constraint?.includes('code')) {
     return new DuplicatePartCodeError(input.code);
@@ -589,7 +566,7 @@ function mapPartUniqueViolationForBulkImport(error: unknown, input: PartBulkImpo
   const conflictingRow =
     constraint?.includes('parts_code_unique') || constraint?.includes('code')
       ? input.rows.find((row) => row.code)
-      : input.rows.find((row) => row.supplierCode);
+      : undefined;
 
   if (constraint !== null && conflictingRow) {
     return new PartBulkImportConflictError({

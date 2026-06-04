@@ -23,8 +23,8 @@ export const parts = pgTable(
   },
   (table) => [
     index('parts_category_idx').on(table.category),
+    index('parts_supplier_id_idx').on(table.supplierId),
     uniqueIndex('parts_code_unique').on(table.code),
-    uniqueIndex('parts_supplier_id_supplier_code_unique').on(table.supplierId, table.supplierCode),
   ],
 );
 

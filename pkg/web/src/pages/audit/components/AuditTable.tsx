@@ -13,8 +13,9 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover.js';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useUserOptions } from '@/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -55,7 +56,7 @@ const auditActionColorClassNames = {
 } as const satisfies Record<AuditEvent['action'], string>;
 
 const auditChangesRawJsonClassName =
-  'max-h-44 overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-xs whitespace-pre-wrap text-muted-foreground';
+  'max-h-52 overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-xs whitespace-pre-wrap text-muted-foreground';
 
 const auditEntityTypeOptions = AuditEntityType.options.map((entityType) => ({
   label: auditEntityTypeLabels[entityType],
@@ -169,14 +170,14 @@ export const AuditTable: React.FC = () => {
         },
       },
       {
-        accessorKey: 'changes',
-        cell: ({ row }) => <ChangesCell changes={row.original.changes} />,
+        cell: ({ row }) => <AuditDetailsCell changes={row.original.changes} />,
         enableColumnFilter: false,
         enableSorting: false,
-        header: 'Changes',
+        header: '',
+        id: 'details',
         meta: {
-          cellClassName: 'max-w-[42rem]',
-          headerClassName: 'w-[42rem]',
+          cellClassName: 'text-right',
+          headerClassName: 'w-12 min-w-12',
         },
       },
     ],
@@ -268,55 +269,18 @@ type ChangesCellProps = {
   changes: AuditEventRow['changes'];
 };
 
-const ChangesCell: React.FC<ChangesCellProps> = ({ changes }) => {
+const AuditDetailsCell: React.FC<ChangesCellProps> = ({ changes }) => {
   if (!changes) {
-    return <span className="text-muted-foreground">None</span>;
+    return (
+      <Button aria-label="No audit changes recorded" disabled size="icon-xs" variant="ghost">
+        <IconEye />
+      </Button>
+    );
   }
 
   const displays = getAuditChangeDisplays(changes);
-  const previewDisplays = displays.slice(0, 2);
-  const hiddenCount = displays.length - previewDisplays.length;
 
-  return (
-    <div className="flex min-w-0 items-center gap-1.5">
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        {previewDisplays.map((display) => (
-          <span
-            className="max-w-72 shrink-0 truncate rounded-md border border-border/70 bg-muted/30 px-1.5 py-0.5 text-xs text-muted-foreground"
-            key={display.key}
-            title={`${display.field}: ${display.from} -> ${display.to}`}
-          >
-            <AuditChangePreviewText display={display} />
-          </span>
-        ))}
-        {hiddenCount > 0 ? (
-          <Badge className="shrink-0 text-muted-foreground" variant="outline">
-            +{hiddenCount}
-          </Badge>
-        ) : null}
-      </div>
-      <AuditChangesDetails changes={changes} displays={displays} />
-    </div>
-  );
-};
-
-type AuditChangePreviewTextProps = {
-  display: ReturnType<typeof getAuditChangeDisplays>[number];
-};
-
-const AuditChangePreviewText: React.FC<AuditChangePreviewTextProps> = ({ display }) => {
-  const [label, value] = display.preview.split(/:(.*)/s);
-
-  if (!value) {
-    return <span className="font-medium text-foreground">{display.preview}</span>;
-  }
-
-  return (
-    <>
-      <span className="font-medium text-foreground">{label}:</span>
-      {value}
-    </>
-  );
+  return <AuditChangesDetails changes={changes} displays={displays} />;
 };
 
 type AuditChangesDetailsProps = {
@@ -325,26 +289,31 @@ type AuditChangesDetailsProps = {
 };
 
 const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, displays }) => (
-  <Popover>
-    <PopoverTrigger render={<Button aria-label="View audit changes" size="icon-xs" variant="ghost" />}>
-      <IconEye />
-    </PopoverTrigger>
-    <PopoverContent align="end" className="w-[min(42rem,calc(100vw-2rem))] gap-3 p-3">
-      <PopoverHeader>
-        <PopoverTitle>Change details</PopoverTitle>
-      </PopoverHeader>
+  <Dialog>
+    <Tooltip>
+      <TooltipTrigger
+        render={<DialogTrigger render={<Button aria-label="View audit changes" size="icon-xs" variant="ghost" />} />}
+      >
+        <IconEye />
+      </TooltipTrigger>
+      <TooltipContent>View audit changes</TooltipContent>
+    </Tooltip>
+    <DialogContent className="max-h-[calc(100vh-2rem)] gap-3 overflow-hidden sm:max-w-[860px]">
+      <DialogHeader>
+        <DialogTitle>Change details</DialogTitle>
+      </DialogHeader>
 
-      <ScrollArea className="max-h-80">
-        <div className="min-w-136 space-y-3 pr-3">
+      <ScrollArea className="max-h-[calc(100vh-8rem)] min-h-0">
+        <div className="space-y-3 pr-3">
           <div className="overflow-hidden rounded-md border">
-            <div className="grid grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)] border-b bg-muted/40 text-xs font-medium text-muted-foreground">
+            <div className="grid grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)] border-b bg-muted/40 text-xs font-medium text-muted-foreground">
               <div className="px-2 py-1.5">Field</div>
               <div className="px-2 py-1.5">From</div>
               <div className="px-2 py-1.5">To</div>
             </div>
             {displays.map((display) => (
               <div
-                className="grid grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)] border-b text-xs last:border-b-0"
+                className="grid grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)] border-b text-xs last:border-b-0"
                 key={display.key}
               >
                 <div className="px-2 py-1.5 font-medium text-foreground">{display.field}</div>
@@ -360,8 +329,8 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, disp
           </div>
         </div>
       </ScrollArea>
-    </PopoverContent>
-  </Popover>
+    </DialogContent>
+  </Dialog>
 );
 
 function getMultiSelectFilterValue(columnFilters: ColumnFiltersState, id: 'actorUserId' | 'entityType'): string[] {

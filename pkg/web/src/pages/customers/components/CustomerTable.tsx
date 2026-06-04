@@ -1,7 +1,6 @@
 import { type Customer, type CustomerListInput, CustomerSortBy } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { PencilIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -12,7 +11,6 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
-import { Button } from '@/components/ui/button.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -128,30 +126,8 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
         enableSorting: true,
         header: 'ID',
       },
-      {
-        id: 'actions',
-        cell: ({ row }) => (
-          <div className="text-right">
-            <Button
-              aria-label={`Edit ${row.original.companyName}`}
-              onClick={() => onEditCustomer(row.original)}
-              size="icon-sm"
-              variant="outline"
-            >
-              <PencilIcon />
-            </Button>
-          </div>
-        ),
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: () => <span className="sr-only">Actions</span>,
-        meta: {
-          cellClassName: 'text-right',
-          headerClassName: 'w-20 text-right',
-        },
-      },
     ],
-    [onEditCustomer],
+    [],
   );
 
   const table = useReactTable({
@@ -180,8 +156,10 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
     <DataTable
       emptyMessage="No customers found."
       errorMessage={getApiQueryErrorMessage(customersQuery.error, 'Unable to load customers.')}
+      getRowAriaLabel={(customer) => `Edit ${customer.companyName}`}
       globalFilterPlaceholder="Search customers..."
       isLoading={isLoading}
+      onRowClick={onEditCustomer}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'customer' : 'customers'}`}

@@ -56,17 +56,11 @@ function mapPartCoreError(error: PartCoreError): CoreErrorMapping<PartCoreError[
         code: 'CONFLICT',
         message: 'A part with this code already exists.',
       };
-    case 'part.duplicate_supplier_code':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: 'A part with this supplier code already exists for this supplier.',
-      };
     case 'part.bulk_import_conflict':
       return {
         appCode: error.code,
         code: 'CONFLICT',
-        message: 'A CSV row matches an existing part code with a different supplier or supplier code.',
+        message: 'A CSV row matches an existing part code with a different supplier.',
       };
     case 'part.not_found':
       return {

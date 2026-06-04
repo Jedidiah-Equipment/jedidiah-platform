@@ -689,6 +689,21 @@ describe('quotes.summaryByStatus', () => {
   });
 });
 
+describe('quotes.createdByWeek', () => {
+  test('requires quote read access and returns the weekly series', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const productEditorCaller = context.createCaller(mockSession('product-editor'));
+
+    await expect(productEditorCaller.quotes.createdByWeek()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    const result = await salesCaller.quotes.createdByWeek();
+
+    expect(result.items).toHaveLength(12);
+    expect(result.items).toEqual(expect.arrayContaining([expect.objectContaining({ count: 0 })]));
+  });
+});
+
 describe('quotes.getProductBrochure', () => {
   test('returns the latest Product brochure through quote read access', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));

@@ -9,6 +9,7 @@ import {
   listQuoteSalespeople,
   listQuotes,
   type QuoteCoreError,
+  summarizeQuotesByStatus,
   updateQuote,
 } from '@pkg/core';
 import { renderQuoteDocumentPdf } from '@pkg/pdf';
@@ -42,6 +43,8 @@ export const quotesRouter = router({
     .query(({ ctx, input }) => mapQuoteErrors(() => getQuoteProductBrochure({ db: ctx.db, quoteId: input.quoteId }))),
 
   salespeople: authorizedProcedure('quote:read').query(({ ctx }) => listQuoteSalespeople({ db: ctx.db })),
+
+  summaryByStatus: authorizedProcedure('quote:read').query(({ ctx }) => summarizeQuotesByStatus({ db: ctx.db })),
 
   customers: authorizedProcedure('quote:read')
     .input(CustomerListInput)

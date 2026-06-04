@@ -202,3 +202,14 @@ export const QuoteListInput = createSearchedSortedPagedQueryInput({
 
 export type QuoteListResult = z.infer<typeof QuoteListResult>;
 export const QuoteListResult = createSortedPagedQueryResult(QuoteSummary, QuoteSortBy);
+
+export type QuoteStatusCount = z.infer<typeof QuoteStatusCount>;
+export const QuoteStatusCount = z.object({
+  status: QuoteStatus,
+  count: z.number().int().min(0),
+});
+
+export type QuoteStatusSummary = z.infer<typeof QuoteStatusSummary>;
+export const QuoteStatusSummary = z.object({
+  items: z.array(QuoteStatusCount),
+});

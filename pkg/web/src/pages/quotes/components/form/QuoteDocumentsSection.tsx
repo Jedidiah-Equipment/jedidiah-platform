@@ -1,7 +1,11 @@
 import { hasPermission } from '@pkg/domain';
 import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema';
+import {
+  IconFilePlus,
+  IconLoader2,
+  IconAlertTriangle,
+} from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { FilePlus2Icon, Loader2Icon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -66,7 +70,7 @@ export function QuoteDocumentsSection({
       </div>
       {generationWarnings.length > 0 ? (
         <Alert>
-          <TriangleAlertIcon />
+          <IconAlertTriangle />
           <AlertTitle>Quote Document generated with warnings</AlertTitle>
           <AlertDescription>
             <ul className="list-disc pl-4">
@@ -142,7 +146,7 @@ function GenerateQuoteDocumentDialog({
           <Button aria-label={`Generate Quote Document for quote ${quote.code}`} type="button" variant="outline" />
         }
       >
-        <FilePlus2Icon data-icon="inline-start" />
+        <IconFilePlus data-icon="inline-start" />
         Generate Quote Document
       </DialogTrigger>
       <DialogContent>
@@ -177,7 +181,7 @@ function GenerateQuoteDocumentDialog({
             }
             type="button"
           >
-            {generateMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+            {generateMutation.isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
             Generate
           </Button>
         </DialogFooter>

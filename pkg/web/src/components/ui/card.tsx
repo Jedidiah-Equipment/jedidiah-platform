@@ -43,11 +43,20 @@ function CardDescription({ className, ...props }: React.ComponentProps<'div'>) {
   return <div data-slot="card-description" className={cn('text-sm text-muted-foreground', className)} {...props} />;
 }
 
-function CardAction({ className, ...props }: React.ComponentProps<'div'>) {
+function CardAction({
+  className,
+  span = 'header',
+  ...props
+}: React.ComponentProps<'div'> & { span?: 'header' | 'title' }) {
   return (
     <div
       data-slot="card-action"
-      className={cn('col-start-2 row-span-2 row-start-1 self-start justify-self-end', className)}
+      className={cn(
+        'col-start-2 row-start-1 self-start justify-self-end',
+        // Use title span when the header content owns its own subtitle; the default spans title + description rows.
+        span === 'header' ? 'row-span-2' : 'row-span-1',
+        className,
+      )}
       {...props}
     />
   );

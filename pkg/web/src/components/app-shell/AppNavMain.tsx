@@ -1,17 +1,17 @@
 import { hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
-import { Link, linkOptions } from '@tanstack/react-router';
 import {
-  BriefcaseBusinessIcon,
-  Building2Icon,
-  ClipboardListIcon,
-  FileTextIcon,
-  GaugeIcon,
-  HandshakeIcon,
-  type LucideIcon,
-  PackageIcon,
-  UsersIcon,
-} from 'lucide-react';
+  IconBriefcase2,
+  IconBuilding,
+  IconClipboardList,
+  IconFileText,
+  IconGauge,
+  IconHeartHandshake,
+  IconPackage,
+  type TablerIcon,
+  IconUsers,
+} from '@tabler/icons-react';
+import { Link, linkOptions } from '@tanstack/react-router';
 import type React from 'react';
 
 import {
@@ -27,44 +27,44 @@ type MainNavItem = {
   title: string;
   permission?: AppPermission;
   link: ReturnType<typeof linkOptions>;
-  icon: LucideIcon;
+  icon: TablerIcon;
 };
 
 const mainNavItems = [
   {
     title: 'Dashboard',
     link: linkOptions({ to: '/dashboard' }),
-    icon: GaugeIcon,
+    icon: IconGauge,
   },
   {
     title: 'Quotes',
     permission: 'quote:read',
     link: linkOptions({ to: '/quotes' }),
-    icon: FileTextIcon,
+    icon: IconFileText,
   },
   {
     title: 'Jobs',
     permission: 'job:read',
     link: linkOptions({ to: '/jobs' }),
-    icon: BriefcaseBusinessIcon,
+    icon: IconBriefcase2,
   },
   {
     title: 'Customers',
     permission: 'customer:read',
     link: linkOptions({ to: '/customers' }),
-    icon: Building2Icon,
+    icon: IconBuilding,
   },
   {
     title: 'Suppliers',
     permission: 'supplier:read',
     link: linkOptions({ to: '/suppliers' }),
-    icon: HandshakeIcon,
+    icon: IconHeartHandshake,
   },
   {
     title: 'Products',
     permission: 'product:read',
     link: linkOptions({ to: '/products' }),
-    icon: PackageIcon,
+    icon: IconPackage,
   },
   // {
   //   title: 'Assistant',
@@ -75,13 +75,13 @@ const mainNavItems = [
     title: 'Users',
     permission: 'user:list',
     link: linkOptions({ to: '/users' }),
-    icon: UsersIcon,
+    icon: IconUsers,
   },
   {
     title: 'Audit',
     permission: 'audit:read',
     link: linkOptions({ to: '/audit' }),
-    icon: ClipboardListIcon,
+    icon: IconClipboardList,
   },
 ] as const satisfies readonly MainNavItem[];
 

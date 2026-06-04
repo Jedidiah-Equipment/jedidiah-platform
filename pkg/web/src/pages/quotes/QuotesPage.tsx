@@ -1,9 +1,9 @@
 import { computeQuoteTotal, formatCurrency, hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
+import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -58,7 +58,7 @@ export const QuotesPage: React.FC = () => {
       <ListPageLayout
         action={
           <Button onClick={() => setIsCreateOpen(true)} type="button">
-            <PlusIcon data-icon="inline-start" />
+            <IconPlus data-icon="inline-start" />
             New quote
           </Button>
         }

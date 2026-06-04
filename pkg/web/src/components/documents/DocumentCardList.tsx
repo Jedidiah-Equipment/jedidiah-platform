@@ -1,22 +1,23 @@
 import { formatBytes, formatDate } from '@pkg/domain';
 import type { DocumentSummary } from '@pkg/schema';
-import { useMutation } from '@tanstack/react-query';
 import {
-  DownloadIcon,
-  EyeIcon,
-  FileIcon,
-  FileImageIcon,
-  FileTextIcon,
-  Loader2Icon,
-  SearchIcon,
-  Trash2Icon,
-} from 'lucide-react';
+  IconDownload,
+  IconEye,
+  IconFileUnknown,
+  IconFileTypeJpg,
+  IconFileTypePdf,
+  IconFileTypePng,
+  IconPhoto,
+  IconLoader2,
+  IconSearch,
+  IconTrash,
+} from '@tabler/icons-react';
+import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import {
   Dialog,
   DialogClose,
@@ -112,7 +113,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           <InputGroup className="sm:max-w-80">
             <InputGroupAddon>
-              <SearchIcon />
+              <IconSearch />
             </InputGroupAddon>
             <InputGroupInput
               aria-label="Search documents"
@@ -226,21 +227,25 @@ function DocumentCard<TDocument extends DocumentSummary>({
   const fileKind = getDocumentFileKind(document);
 
   return (
-    <Card size="sm">
-      <CardHeader className="min-w-0">
+    <Card
+      className="gap-1 rounded-lg border-border/70 bg-card/80 transition-colors hover:border-foreground/20"
+      size="sm"
+    >
+      <CardHeader className="min-w-0 gap-1">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-            <fileKind.Icon className="size-4" />
+          <div
+            className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${fileKind.iconChromeClassName}`}
+            title={fileKind.label}
+          >
+            <fileKind.Icon aria-hidden className="size-6" />
+            <span className="sr-only">{fileKind.label}</span>
           </div>
-          <div className="min-w-0">
-            <CardTitle className="truncate">{document.filename}</CardTitle>
-            <CardDescription className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">{fileKind.label}</Badge>
-              <span>{document.contentType}</span>
-            </CardDescription>
+          <div className="min-w-0 space-y-0.5">
+            <CardTitle className="truncate leading-tight">{document.filename}</CardTitle>
+            <div className="truncate text-muted-foreground text-sm">{metadata}</div>
           </div>
         </div>
-        <CardAction>
+        <CardAction span="title">
           <div className="flex items-center gap-1">
             <Button
               aria-label={`Preview ${document.filename}`}
@@ -249,16 +254,15 @@ function DocumentCard<TDocument extends DocumentSummary>({
               variant="ghost"
               onClick={() => onPreviewDocument(document)}
             >
-              <EyeIcon />
+              <IconEye />
             </Button>
             <DownloadDocumentButton document={document} owner={owner} />
             {canDelete && onDelete ? <DeleteDocumentButton document={document} onDelete={onDelete} /> : null}
           </div>
         </CardAction>
       </CardHeader>
-      <CardContent>
-        <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <DocumentFact label="Metadata" value={metadata} />
+      <CardContent className="pt-0">
+        <dl className="flex flex-wrap items-center gap-x-6 gap-y-1">
           <DocumentFact label="Size" value={formatBytes(document.byteSize)} />
           <DocumentFact label="Uploader" value={getDocumentUploader(document)} />
           <DocumentFact label="Uploaded" value={formatDate(document.createdAt, 'medium')} />
@@ -286,7 +290,7 @@ function DownloadDocumentButton({ document, owner }: { document: DocumentSummary
       variant="ghost"
       onClick={() => void downloadMutation.mutateAsync()}
     >
-      {downloadMutation.isPending ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
+      {downloadMutation.isPending ? <IconLoader2 className="animate-spin" /> : <IconDownload />}
     </Button>
   );
 }
@@ -306,7 +310,7 @@ function DeleteDocumentButton<TDocument extends DocumentSummary>({
       <DialogTrigger
         render={<Button aria-label={`Delete ${document.filename}`} size="icon-sm" type="button" variant="ghost" />}
       >
-        <Trash2Icon />
+        <IconTrash />
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -329,7 +333,7 @@ function DeleteDocumentButton<TDocument extends DocumentSummary>({
             type="button"
             variant="destructive"
           >
-            {isDeleting ? <Loader2Icon className="animate-spin" data-icon="inline-start" /> : null}
+            {isDeleting ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
             Delete
           </Button>
         </DialogFooter>
@@ -340,9 +344,9 @@ function DeleteDocumentButton<TDocument extends DocumentSummary>({
 
 function DocumentFact({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="min-w-0">
-      <dt className="text-muted-foreground text-xs">{label}</dt>
-      <dd className="truncate font-medium">{value}</dd>
+    <div className="flex min-w-0 items-baseline gap-2">
+      <dt className="shrink-0 text-muted-foreground text-xs">{label}</dt>
+      <dd className="truncate text-xs">{value}</dd>
     </div>
   );
 }
@@ -365,20 +369,29 @@ function DocumentCardListSkeleton() {
 }
 
 function getDocumentFileKind(document: Pick<DocumentSummary, 'contentType'>): {
-  Icon: typeof FileIcon;
+  Icon: typeof IconFileUnknown;
+  iconChromeClassName: string;
   label: string;
 } {
   const contentType = document.contentType.toLowerCase();
 
   if (contentType === 'application/pdf') {
-    return { Icon: FileTextIcon, label: 'PDF' };
+    return { Icon: IconFileTypePdf, iconChromeClassName: 'bg-red-500/10 text-red-400', label: 'PDF' };
+  }
+
+  if (contentType === 'image/png') {
+    return { Icon: IconFileTypePng, iconChromeClassName: 'bg-blue-500/10 text-blue-400', label: 'PNG' };
+  }
+
+  if (contentType === 'image/jpeg') {
+    return { Icon: IconFileTypeJpg, iconChromeClassName: 'bg-blue-500/10 text-blue-400', label: 'JPEG' };
   }
 
   if (contentType.startsWith('image/')) {
-    return { Icon: FileImageIcon, label: 'Image' };
+    return { Icon: IconPhoto, iconChromeClassName: 'bg-blue-500/10 text-blue-400', label: 'Image' };
   }
 
-  return { Icon: FileIcon, label: 'File' };
+  return { Icon: IconFileUnknown, iconChromeClassName: 'bg-muted text-muted-foreground', label: 'File' };
 }
 
 function formatDocumentCount(total: number): string {

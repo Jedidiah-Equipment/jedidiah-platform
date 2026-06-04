@@ -1,6 +1,10 @@
 import { UserPassword } from '@pkg/schema';
+import {
+  IconAlertCircle,
+  IconKey,
+  IconLoader2,
+} from '@tabler/icons-react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { AlertCircleIcon, KeyRoundIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { z } from 'zod';
@@ -78,7 +82,7 @@ export const ResetPasswordPage: React.FC = () => {
 
               {error ? (
                 <Alert variant="destructive">
-                  <AlertCircleIcon />
+                  <IconAlertCircle />
                   <AlertTitle>Unable to reset password</AlertTitle>
                   <AlertDescription>
                     {error}{' '}
@@ -93,9 +97,9 @@ export const ResetPasswordPage: React.FC = () => {
                 {(isSubmitting) => (
                   <Button className="w-full" disabled={isSubmitting} size="lg" type="submit">
                     {isSubmitting ? (
-                      <Loader2Icon data-icon="inline-start" className="animate-spin" />
+                      <IconLoader2 data-icon="inline-start" className="animate-spin" />
                     ) : (
-                      <KeyRoundIcon data-icon="inline-start" />
+                      <IconKey data-icon="inline-start" />
                     )}
                     {isSubmitting ? 'Saving' : 'Set new password'}
                   </Button>

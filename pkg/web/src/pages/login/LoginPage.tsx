@@ -1,6 +1,10 @@
 import { demoUsers, departmentLabels, getRolePermissions, roleLabels } from '@pkg/domain';
+import {
+  IconAlertCircle,
+  IconLoader2,
+  IconLogin,
+} from '@tabler/icons-react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { AlertCircleIcon, Loader2Icon, LogInIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { AppBrand } from '@/components/common/AppBrand.js';
@@ -86,7 +90,7 @@ export const LoginPage: React.FC = () => {
 
                 {error ? (
                   <Alert variant="destructive">
-                    <AlertCircleIcon />
+                    <IconAlertCircle />
                     <AlertTitle>Unable to sign in</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
@@ -96,9 +100,9 @@ export const LoginPage: React.FC = () => {
                   {(isSubmitting) => (
                     <Button className="w-full" disabled={isSubmitting} size="lg" type="submit">
                       {isSubmitting ? (
-                        <Loader2Icon data-icon="inline-start" className="animate-spin" />
+                        <IconLoader2 data-icon="inline-start" className="animate-spin" />
                       ) : (
-                        <LogInIcon data-icon="inline-start" />
+                        <IconLogin data-icon="inline-start" />
                       )}
                       {isSubmitting ? 'Signing in' : 'Sign in'}
                     </Button>

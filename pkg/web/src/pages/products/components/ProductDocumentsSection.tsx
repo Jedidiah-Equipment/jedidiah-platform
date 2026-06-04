@@ -1,7 +1,7 @@
 import { hasPermission, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import { type ProductDocument, ProductDocumentType, type UUID } from '@pkg/schema';
+import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Loader2Icon, UploadIcon } from 'lucide-react';
 import { type RefObject, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -173,9 +173,9 @@ function DocumentUploadForm({
       </Select>
       <Button disabled={!canUpload || isPending} type="submit">
         {isPending ? (
-          <Loader2Icon data-icon="inline-start" className="animate-spin" />
+          <IconLoader2 data-icon="inline-start" className="animate-spin" />
         ) : (
-          <UploadIcon data-icon="inline-start" />
+          <IconUpload data-icon="inline-start" />
         )}
         Upload
       </Button>

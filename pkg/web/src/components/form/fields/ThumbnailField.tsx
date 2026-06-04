@@ -1,4 +1,4 @@
-import { ImageIcon, Trash2Icon, UploadIcon } from 'lucide-react';
+import { IconPhoto, IconTrash, IconUpload } from '@tabler/icons-react';
 import type * as React from 'react';
 import { useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -79,7 +79,7 @@ export function ThumbnailField({
             type="button"
             variant="outline"
           >
-            {field.state.value ? <ImageIcon data-icon="inline-start" /> : <UploadIcon data-icon="inline-start" />}
+            {field.state.value ? <IconPhoto data-icon="inline-start" /> : <IconUpload data-icon="inline-start" />}
             {field.state.value ? 'Replace' : 'Upload'}
           </Button>
           {field.state.value ? (
@@ -93,7 +93,7 @@ export function ThumbnailField({
               type="button"
               variant="outline"
             >
-              <Trash2Icon />
+              <IconTrash />
               <span className="sr-only">Remove thumbnail</span>
             </Button>
           ) : null}

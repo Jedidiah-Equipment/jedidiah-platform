@@ -10,7 +10,13 @@ import {
   type ToolCallMessagePartProps,
   useAuiState,
 } from '@assistant-ui/react';
-import { ArrowDownIcon, ArrowUpIcon, CopyIcon, RefreshCwIcon, SquareIcon } from 'lucide-react';
+import {
+  IconArrowDown,
+  IconArrowUp,
+  IconCopy,
+  IconRefresh,
+  IconSquare,
+} from '@tabler/icons-react';
 import type { FC, ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge.js';
@@ -98,7 +104,7 @@ const ThreadScrollToBottom: FC = () => {
           tooltip="Scroll to bottom"
           variant="outline"
         >
-          <ArrowDownIcon />
+          <IconArrowDown />
         </TooltipIconButton>
       }
     />
@@ -121,7 +127,7 @@ const Composer: FC = () => {
             <ComposerPrimitive.Cancel
               render={
                 <Button aria-label="Stop generating" size="icon-sm" type="button" variant="outline">
-                  <SquareIcon className="fill-current" />
+                  <IconSquare className="fill-current" />
                 </Button>
               }
             />
@@ -130,7 +136,7 @@ const Composer: FC = () => {
             <ComposerPrimitive.Send
               render={
                 <Button aria-label="Send message" size="icon-sm" type="button">
-                  <ArrowUpIcon />
+                  <IconArrowUp />
                 </Button>
               }
             />
@@ -241,14 +247,14 @@ const AssistantActionBar: FC = () => {
       <ActionBarPrimitive.Copy
         render={
           <TooltipIconButton tooltip="Copy">
-            <CopyIcon />
+            <IconCopy />
           </TooltipIconButton>
         }
       />
       <ActionBarPrimitive.Reload
         render={
           <TooltipIconButton tooltip="Refresh">
-            <RefreshCwIcon />
+            <IconRefresh />
           </TooltipIconButton>
         }
       />

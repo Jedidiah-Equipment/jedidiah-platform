@@ -1,5 +1,5 @@
 import { AssistantRuntimeProvider, Suggestions, useAui, useAuiState, useLocalRuntime } from '@assistant-ui/react';
-import { MessageSquareIcon, PlusIcon, Trash2Icon } from 'lucide-react';
+import { IconMessage, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -88,7 +88,7 @@ function AssistantChatFrame() {
             type="button"
             variant="outline"
           >
-            <PlusIcon />
+            <IconPlus />
             New Chat
           </Button>
         </div>
@@ -115,7 +115,7 @@ function AssistantChatFrame() {
                     onClick={() => selectChat(chat.id)}
                     type="button"
                   >
-                    <MessageSquareIcon className="size-4 shrink-0 text-muted-foreground" />
+                    <IconMessage className="size-4 shrink-0 text-muted-foreground" />
                     <span className="truncate">{chat.title}</span>
                   </button>
                   <TooltipIconButton
@@ -126,7 +126,7 @@ function AssistantChatFrame() {
                     tooltip="Delete chat"
                     type="button"
                   >
-                    <Trash2Icon />
+                    <IconTrash />
                   </TooltipIconButton>
                 </div>
               );

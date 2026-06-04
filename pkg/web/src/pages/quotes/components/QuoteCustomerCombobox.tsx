@@ -1,6 +1,6 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import type { Customer, UUID } from '@pkg/schema';
-import { PlusIcon } from 'lucide-react';
+import { IconPlus } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
@@ -155,7 +155,7 @@ export const QuoteCustomerCombobox: React.FC<QuoteCustomerComboboxProps> = ({
             <ComboboxItem key={customer.id} value={customer}>
               {customer.type === 'inline' ? (
                 <>
-                  <PlusIcon data-icon="inline-start" />
+                  <IconPlus data-icon="inline-start" />
                   Use "{customer.companyName}"
                 </>
               ) : (

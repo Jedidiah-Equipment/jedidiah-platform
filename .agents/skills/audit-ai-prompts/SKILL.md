@@ -23,11 +23,11 @@ Read these first:
 Then derive current AI truth from source files, not from this skill:
 
 - Find prompt builders with `rg -n "createSystemPrompt|system prompt|Domain Context|Retrieval playbooks" pkg/api/src`.
-- Find registered tools from `AI_TOOL_NAMES` in `pkg/api/src/routes/ai/ai-tools.ts`.
+- Find registered tools from `AI_TOOL_REGISTRY` / `AI_TOOL_NAMES` in `pkg/api/src/routes/ai/ai-tool-registry.ts`.
 - Find tool contracts from `pkg/api/src/routes/ai/tools/*.ts`.
-- Find structured descriptors from `pkg/api/src/routes/ai/ai-tool-descriptors.ts`.
+- Find structured descriptors from `pkg/api/src/routes/ai/ai-tool-registry.ts`; `pkg/api/src/routes/ai/ai-tool-descriptors.ts` may only re-export registry-owned descriptors.
 - Find playbooks and relationships from `pkg/api/src/routes/ai/ai-domain-guidance.ts`.
-- Find assistant-facing projections from `pkg/api/src/routes/ai/ai-result-projections.ts`.
+- Find assistant-facing projections from `projectAiToolResult` and the registry `projectResult` entries in `pkg/api/src/routes/ai/ai-tool-registry.ts`.
 - Find public contracts from relevant `pkg/schema/src/**` files imported by the AI tools.
 - Find behavior and query capabilities from relevant `pkg/core/src/**` services called by the AI tools.
 - Find domain terminology and policies from relevant `pkg/domain/src/**` files.
@@ -97,7 +97,7 @@ When asked to fix drift:
 After fixes, run focused checks first:
 
 ```bash
-pnpm --filter @pkg/api exec vitest run src/routes/ai/ai-tools.test.ts src/routes/ai/ai-domain-guidance.test.ts src/routes/ai/ai-prompts.test.ts src/routes/ai/ai-result-projections.test.ts
+pnpm --filter @pkg/api exec vitest run src/routes/ai/ai-tools.test.ts src/routes/ai/ai-domain-guidance.test.ts src/routes/ai/ai-prompts.test.ts src/routes/ai/ai-tool-registry.test.ts
 pnpm typecheck
 pnpm lint
 ```

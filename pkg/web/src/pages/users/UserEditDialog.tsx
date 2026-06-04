@@ -1,6 +1,6 @@
 import { hasPermission } from '@pkg/domain';
 import type { Department, UserSummary } from '@pkg/schema';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { MailCheckIcon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
@@ -23,7 +24,7 @@ type UserEditDialogProps = {
 
 export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose }) => {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const { invalidateAuth, invalidateUsers } = useQueryInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const access = accessQuery.data;
@@ -42,8 +43,8 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
 
   const refreshUser = async () => {
     await Promise.all([
-      queryClient.invalidateQueries(trpc.users.list.queryFilter()),
-      queryClient.invalidateQueries(trpc.auth.access.queryFilter()),
+      invalidateUsers(),
+      invalidateAuth(),
       user?.id === access?.userId ? authClient.getSession() : Promise.resolve(),
     ]);
   };

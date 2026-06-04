@@ -1,6 +1,6 @@
 import { formatBytes, formatDate, hasPermission } from '@pkg/domain';
 import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { DownloadIcon, EyeIcon, FilePlus2Icon, FileTextIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { downloadQuoteDocument } from '@/utils/document.js';
 
@@ -123,7 +124,7 @@ function GenerateQuoteDocumentDialog({
   quote: QuoteDetail;
 }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const { invalidateDocuments } = useQueryInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const defaultLeadTime = getDefaultQuoteDocumentLeadTime(quote);
@@ -136,7 +137,7 @@ function GenerateQuoteDocumentDialog({
   const generateMutation = useMutation(
     trpc.quotes.generateDocument.mutationOptions({
       onSuccess: async (result) => {
-        await queryClient.invalidateQueries({ queryKey: trpc.documents.pathKey() });
+        await invalidateDocuments();
         onGenerated(result.warnings);
         toast.success('Quote Document generated');
         for (const warning of result.warnings) {

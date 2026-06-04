@@ -1,17 +1,16 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { usePostHog } from 'posthog-js/react';
 import { useEffect } from 'react';
 import { getClientConfig } from '@/lib/app-config.js';
 import { authClient } from '@/lib/auth-client.js';
-import { clearReactQueryCache } from '@/lib/trpc-cache.js';
+import { useQueryInvalidation } from './use-query-invalidation.js';
 
 const config = getClientConfig();
 
 export function useAuth() {
   const navigate = useNavigate();
   const posthog = usePostHog();
-  const queryClient = useQueryClient();
+  const { clearQueryCache } = useQueryInvalidation();
   const { data: session, isPending } = authClient.useSession();
   const userName = session?.user.name || 'Signed in';
   const userEmail = session?.user.email || 'Account active';
@@ -19,7 +18,7 @@ export function useAuth() {
   async function onSignOut() {
     await authClient.signOut();
     posthog.reset();
-    clearReactQueryCache(queryClient);
+    clearQueryCache();
     await navigate({ to: '/login' });
   }
 

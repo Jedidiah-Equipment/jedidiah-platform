@@ -1,5 +1,5 @@
 import type { Part, Supplier, UUID } from '@pkg/schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
 
@@ -9,6 +9,7 @@ import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PartTable } from '../parts/components/PartTable.js';
 import { PartBulkImportDialog } from '../parts/PartBulkImportDialog.js';
@@ -21,16 +22,13 @@ type SupplierEditPageProps = {
 };
 
 export const SupplierEditPage: React.FC<SupplierEditPageProps> = ({ supplierId }) => {
-  const queryClient = useQueryClient();
   const trpc = useTRPC();
+  const { invalidateSuppliers } = useQueryInvalidation();
   const supplierQuery = useQuery(trpc.suppliers.get.queryOptions({ id: supplierId }));
   const updateSupplierMutation = useMutation(
     trpc.suppliers.update.mutationOptions({
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries(trpc.suppliers.list.queryFilter()),
-          queryClient.invalidateQueries(trpc.suppliers.get.queryFilter({ id: supplierId })),
-        ]);
+        await invalidateSuppliers();
       },
     }),
   );

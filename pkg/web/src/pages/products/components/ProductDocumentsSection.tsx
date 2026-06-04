@@ -1,6 +1,6 @@
 import { formatBytes, formatDate, hasPermission, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import { type ProductDocument, ProductDocumentType, type UUID } from '@pkg/schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -37,6 +37,7 @@ import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import {
@@ -82,7 +83,7 @@ const documentSortOptions: SortOptions<DocumentTableSortInput> = {
 
 export function ProductDocumentsSection({ productId }: ProductDocumentsSectionProps) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const { invalidateDocuments } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 
   const accessQuery = useAccess();
@@ -128,7 +129,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      await queryClient.invalidateQueries({ queryKey: trpc.documents.pathKey() });
+      await invalidateDocuments();
       toast.success('Document uploaded');
     },
     onError: (error) => {
@@ -371,13 +372,13 @@ function DocumentUploadForm({
 
 function DeleteDocumentButton({ document, productId }: { document: ProductDocument; productId: UUID }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const { invalidateDocuments } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
   const deleteMutation = useMutation(
     trpc.documents.deleteByProduct.mutationOptions({
       onSuccess: async () => {
-        await queryClient.invalidateQueries({ queryKey: trpc.documents.pathKey() });
+        await invalidateDocuments();
         toast.success('Document deleted');
         setIsOpen(false);
       },

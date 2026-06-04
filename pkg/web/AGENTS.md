@@ -29,6 +29,11 @@
   separate hooks with explicit names, for example `useCustomerOptions` for app-level customer reads
   and `useCustomerForQuoteOptions` for quote-scoped customer reads. Do not hide endpoint differences
   behind a generic `source` prop.
+- All React Query invalidation and cache clearing must go through
+  `src/hooks/use-query-invalidation.ts`. Use its named base-path invalidators, such as
+  `invalidateQuotes` or `invalidateProducts`, instead of calling `queryClient.invalidateQueries`
+  directly. Mutations should invalidate the whole affected tRPC root path; cross-entity mutations
+  should call each affected root invalidator explicitly.
 - For TanStack Form descendants that need form context, use `useTypedAppFormContext` from
   `src/components/form/use-app-form.ts`.
 - Prefer `src/components/ui/scroll-area.tsx` `ScrollArea` for page and panel scrolling instead of
@@ -44,8 +49,8 @@ by the list page, and editing happens on the entity edit route with `useAutosave
 
 The create dialog contains only the schema-required fields needed to create a valid entity. Do not
 add a routed `*CreatePage`/`new` route or reuse the full edit form for creation. After a successful
-create mutation, close the dialog, invalidate the relevant list query, toast once, and navigate to
-the new entity's edit page.
+create mutation, close the dialog, invalidate the relevant entity root with `useQueryInvalidation`,
+toast once, and navigate to the new entity's edit page.
 
 The edit page owns the full form and has no Save button or edit-mode toggle. Text and number fields
 autosave on blur. Selects, checkboxes, date-pickers, and structural operations such as add/remove,

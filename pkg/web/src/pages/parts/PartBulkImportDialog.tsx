@@ -1,5 +1,5 @@
 import { PART_UNIT_OF_MEASURE_LABELS, type Supplier } from '@pkg/schema';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Loader2Icon, UploadIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import {
   PART_BULK_IMPORT_COLUMNS,
@@ -40,7 +41,7 @@ type PartBulkImportDialogProps = {
 
 export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supplier }) => {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -55,10 +56,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
   const importMutation = useMutation(
     trpc.parts.bulkImport.mutationOptions({
       onSuccess: async (data) => {
-        await Promise.all([
-          queryClient.invalidateQueries(trpc.parts.list.queryFilter()),
-          queryClient.invalidateQueries(trpc.parts.categories.queryFilter()),
-        ]);
+        await invalidateParts();
         setResult(data);
         toast.success(
           data.errors.length > 0 || parseResult.errors.length > 0 ? 'Parts imported with issues' : 'Parts imported',

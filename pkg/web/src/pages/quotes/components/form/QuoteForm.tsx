@@ -281,7 +281,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
               };
             }}
           >
-            {(summary) => <QuoteRightPanel quote={quote} summary={summary} />}
+            {(summary) => <QuoteRightPanel flushAutosave={autosave.flush} quote={quote} summary={summary} />}
           </form.Subscribe>
         </div>
       </FieldGroup>

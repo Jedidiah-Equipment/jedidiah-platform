@@ -39,6 +39,7 @@ export type AssistantChatStore = {
 };
 
 const ASSISTANT_CHAT_PERSIST_NAME = 'assistant-chats';
+const ASSISTANT_CHAT_PERSIST_VERSION = 2;
 const DEFAULT_CHAT_TITLE = 'New chat';
 const MAX_PERSISTED_ASSISTANT_CHATS = 20;
 
@@ -127,11 +128,12 @@ export const useAssistantChatStore = create<AssistantChatStore>()(
     {
       name: ASSISTANT_CHAT_PERSIST_NAME,
       storage: createJSONStorage(getAssistantChatStorage),
+      migrate: () => resetAssistantChatStoreState(),
       partialize: (state) => ({
         activeChatId: state.activeChatId,
         chats: trimAssistantChatsForPersistence(state.chats, state.activeChatId),
       }),
-      version: 1,
+      version: ASSISTANT_CHAT_PERSIST_VERSION,
     },
   ),
 );
@@ -249,6 +251,17 @@ export function trimAssistantChatsForPersistence(
   }
 
   return Object.fromEntries(keptChats);
+}
+
+export function resetAssistantChatStoreState(
+  fallbackChat = createAssistantChat(),
+): Pick<AssistantChatStore, 'activeChatId' | 'chats'> {
+  return {
+    activeChatId: fallbackChat.id,
+    chats: {
+      [fallbackChat.id]: fallbackChat,
+    },
+  };
 }
 
 function serializeRepositoryItem(item: ExportedMessageRepositoryItem): SerializedMessageRepositoryItem {

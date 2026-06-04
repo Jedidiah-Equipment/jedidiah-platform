@@ -8,8 +8,9 @@ import {
   IconGauge,
   IconHeartHandshake,
   IconPackage,
-  type TablerIcon,
+  IconRobot,
   IconUsers,
+  type TablerIcon,
 } from '@tabler/icons-react';
 import { Link, linkOptions } from '@tanstack/react-router';
 import type React from 'react';
@@ -66,11 +67,11 @@ const mainNavItems = [
     link: linkOptions({ to: '/products' }),
     icon: IconPackage,
   },
-  // {
-  //   title: 'Assistant',
-  //   link: linkOptions({ to: '/assistant' }),
-  //   icon: BotIcon,
-  // },
+  {
+    title: 'Assistant',
+    link: linkOptions({ to: '/assistant' }),
+    icon: IconRobot,
+  },
   {
     title: 'Users',
     permission: 'user:list',

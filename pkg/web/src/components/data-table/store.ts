@@ -89,6 +89,7 @@ export function createPersistedDataTableStore({
       {
         name: persistName,
         storage: createJSONStorage(() => localStorage),
+        migrate: () => resolvedInitialState,
         partialize: (state) => ({
           columnFilters: state.columnFilters,
           globalFilter: state.globalFilter,

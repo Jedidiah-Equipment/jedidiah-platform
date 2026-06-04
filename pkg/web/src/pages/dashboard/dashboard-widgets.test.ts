@@ -7,6 +7,9 @@ import { dashboardWidgets } from './dashboard-widgets.js';
 
 vi.mock('./widgets/RecentQuotesWidget.js', () => ({ RecentQuotesWidget: () => null }));
 vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
+vi.mock('./widgets/QuotesCreatedOverTimeWidget.js', () => ({ QuotesCreatedOverTimeWidget: () => null }));
+vi.mock('./widgets/ProductsWidget.js', () => ({ ProductsWidget: () => null }));
+vi.mock('./widgets/RecentActivityWidget.js', () => ({ RecentActivityWidget: () => null }));
 
 const WidgetComponent = () => null;
 
@@ -94,6 +97,36 @@ describe('dashboardWidgets', () => {
     });
   });
 
+  it('registers Quotes created over time behind quote read access', () => {
+    const quotesCreatedWidget = dashboardWidgets.find((widget) => widget.id === 'quotes-created-over-time');
+
+    expect(quotesCreatedWidget).toMatchObject({
+      requires: 'quote:read',
+      size: 'md',
+      title: 'Quotes created over time',
+    });
+  });
+
+  it('registers Products behind product read access', () => {
+    const productsWidget = dashboardWidgets.find((widget) => widget.id === 'products');
+
+    expect(productsWidget).toMatchObject({
+      requires: 'product:read',
+      size: 'md',
+      title: 'Products',
+    });
+  });
+
+  it('registers Recent activity behind audit read access', () => {
+    const recentActivityWidget = dashboardWidgets.find((widget) => widget.id === 'recent-activity');
+
+    expect(recentActivityWidget).toMatchObject({
+      requires: 'audit:read',
+      size: 'md',
+      title: 'Recent activity',
+    });
+  });
+
   it('shows Recent Quotes to sales users and hides it from product editors', () => {
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
     const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
@@ -108,5 +141,33 @@ describe('dashboardWidgets', () => {
 
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-by-status');
     expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('quotes-by-status');
+  });
+
+  it('shows quote widgets to sales users and hides them from product editors', () => {
+    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
+    const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+
+    expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-created-over-time');
+    expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain(
+      'quotes-created-over-time',
+    );
+  });
+
+  it('shows Products to product editors and hides it from sales users', () => {
+    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
+    const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+
+    expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).toContain('products');
+    expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).not.toContain('products');
+  });
+
+  it('shows Recent activity only to admins', () => {
+    const adminAccess = createUserAccessSummary({ role: 'admin', userId: 'user-1' });
+    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
+    const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+
+    expect(widgetIds(filterDashboardWidgets(adminAccess, dashboardWidgets))).toContain('recent-activity');
+    expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).not.toContain('recent-activity');
+    expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('recent-activity');
   });
 });

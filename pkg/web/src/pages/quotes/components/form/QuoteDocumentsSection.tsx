@@ -1,10 +1,6 @@
 import { hasPermission } from '@pkg/domain';
 import type { QuoteDetail, QuoteDocument, QuoteDocumentGenerationWarning } from '@pkg/schema';
-import {
-  IconFilePlus,
-  IconLoader2,
-  IconAlertTriangle,
-} from '@tabler/icons-react';
+import { IconAlertTriangle, IconFilePlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -12,6 +8,7 @@ import { toast } from 'sonner';
 import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
+import { Card, CardContent } from '@/components/ui/card.js';
 import {
   Dialog,
   DialogClose,
@@ -57,17 +54,19 @@ export function QuoteDocumentsSection({
 
   return (
     <>
-      <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-1 text-sm">
-          <span className="font-medium">Quote Document</span>
-          <span className="text-muted-foreground">
-            {hasUnsavedChanges
-              ? 'Waiting for autosave before a new document can be generated.'
-              : 'Ready to generate from saved Quote details.'}
-          </span>
-        </div>
-        <GenerateQuoteDocumentDialog hasUnsavedChanges={hasUnsavedChanges} onGenerated={onGenerated} quote={quote} />
-      </div>
+      <Card size="sm">
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="grid gap-1 text-sm">
+            <span className="font-medium">Quote Document</span>
+            <span className="text-muted-foreground">
+              {hasUnsavedChanges
+                ? 'Waiting for autosave before a new document can be generated.'
+                : 'Ready to generate from saved Quote details.'}
+            </span>
+          </div>
+          <GenerateQuoteDocumentDialog hasUnsavedChanges={hasUnsavedChanges} onGenerated={onGenerated} quote={quote} />
+        </CardContent>
+      </Card>
       {generationWarnings.length > 0 ? (
         <Alert>
           <IconAlertTriangle />

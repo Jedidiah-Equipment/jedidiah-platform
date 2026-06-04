@@ -7,6 +7,7 @@ import {
   createAssistantChatHistoryAdapter,
   deriveAssistantChatTitle,
   getSortedAssistantChats,
+  resetAssistantChatStoreState,
   trimAssistantChatsForPersistence,
   useAssistantChatStore,
 } from './assistant-chat-store.js';
@@ -244,6 +245,17 @@ describe('assistant chat persistence', () => {
     expect(trimmedChats['chat-24']).toBeDefined();
     expect(trimmedChats['chat-6']).toBeDefined();
     expect(trimmedChats['chat-5']).toBeUndefined();
+  });
+
+  it('resets persisted chat state to a fallback chat', () => {
+    const fallbackChat = createAssistantChat('fallback-chat', new Date('2026-05-18T12:02:00.000Z'));
+
+    expect(resetAssistantChatStoreState(fallbackChat)).toEqual({
+      activeChatId: fallbackChat.id,
+      chats: {
+        [fallbackChat.id]: fallbackChat,
+      },
+    });
   });
 });
 

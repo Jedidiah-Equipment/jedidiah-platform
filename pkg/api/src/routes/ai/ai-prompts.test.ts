@@ -21,6 +21,7 @@ describe('AI system prompt', () => {
     expect(prompt).toContain('use pure Markdown syntax and do not use HTML tags');
     expect(prompt).toContain('Use Markdown links only when the link comes from tool result link metadata');
     expect(prompt).toContain('When a tool result record includes a links array');
+    expect(prompt).toContain('prefer Rand formatting like "R 20 990.20"');
     expect(prompt).toContain('write mm quantities like "6000 mm"');
   });
 });

@@ -57,6 +57,16 @@ describe('aiTools', () => {
     }
   });
 
+  test('keeps Job tool descriptions aligned to the current Job contract', () => {
+    const jobDescriptions = [aiTools.listJobs.description, aiTools.getJob.description].join('\n');
+
+    expect(jobDescriptions).toContain('Stage summaries');
+    expect(jobDescriptions).toContain('CFO Part quantities with unitOfMeasure');
+    expect(jobDescriptions).not.toContain('Job Status');
+    expect(jobDescriptions).not.toContain('Due Date');
+    expect(jobDescriptions).not.toContain('Workflow events');
+  });
+
   test('creates strict Agents tools with closed object parameter schemas', () => {
     for (const name of AI_TOOL_NAMES) {
       expect(() => toStrictJsonObjectParameters(name, aiTools[name].jsonSchema)).not.toThrow();

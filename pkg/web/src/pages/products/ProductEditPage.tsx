@@ -1,5 +1,5 @@
 import type { Product, UUID } from '@pkg/schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
 import { BackButton } from '@/components/button/BackButton.js';
@@ -7,6 +7,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductDocumentsSection } from './components/ProductDocumentsSection.js';
 import { ProductForm } from './components/ProductForm.js';
@@ -17,17 +18,14 @@ type ProductEditPageProps = {
 
 export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) => {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const { invalidateProducts } = useQueryInvalidation();
 
   const productQuery = useQuery(trpc.products.get.queryOptions({ id: productId }));
 
   const updateProductMutation = useMutation(
     trpc.products.update.mutationOptions({
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries(trpc.products.list.queryFilter()),
-          queryClient.invalidateQueries(trpc.products.get.queryFilter({ id: productId })),
-        ]);
+        await invalidateProducts();
       },
     }),
   );

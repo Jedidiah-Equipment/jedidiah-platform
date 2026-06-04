@@ -1,6 +1,6 @@
 import { hasPermission } from '@pkg/domain';
 import type { QuoteSummary } from '@pkg/schema';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { BriefcaseBusinessIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type GenerateJobFromQuoteDialogProps = {
@@ -30,7 +31,7 @@ type GenerateJobFromQuoteDialogProps = {
 export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProps> = ({ quote, size = 'default' }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { invalidateJobs, invalidateQuotes } = useQueryInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -39,10 +40,7 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
   const createJobMutation = useMutation(
     trpc.jobs.create.mutationOptions({
       onSuccess: async (job) => {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: trpc.jobs.pathKey() }),
-          queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() }),
-        ]);
+        await Promise.all([invalidateJobs(), invalidateQuotes()]);
         toast.success('Job started');
         setIsOpen(false);
         await navigate({ params: { id: job.id }, to: '/jobs/$id' });

@@ -1,5 +1,5 @@
 import type { Supplier } from '@pkg/schema';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PartForm } from './components/PartForm.js';
 
@@ -17,7 +18,7 @@ type PartCreateDialogProps = {
 
 export const PartCreateDialog: React.FC<PartCreateDialogProps> = ({ supplier }) => {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -25,10 +26,7 @@ export const PartCreateDialog: React.FC<PartCreateDialogProps> = ({ supplier }) 
   const createPartMutation = useMutation(
     trpc.parts.create.mutationOptions({
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries(trpc.parts.list.queryFilter()),
-          queryClient.invalidateQueries(trpc.parts.categories.queryFilter()),
-        ]);
+        await invalidateParts();
         setIsOpen(false);
         toast.success('Part created');
       },

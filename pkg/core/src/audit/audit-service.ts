@@ -1,217 +1,55 @@
 import { auditEvents, type DatabaseTransaction, type Db, getSortOrder, user, withPagination } from '@pkg/db';
 import type { AuditAction, AuditChanges, AuditEntityType, AuditListInput, AuditListResult } from '@pkg/schema';
-import { AuditEvent, formatJobCode, formatQuoteCode, JobCode, QuoteCode } from '@pkg/schema';
+import { AuditEvent } from '@pkg/schema';
 import { and, eq, gte, inArray, lte, type SQL } from 'drizzle-orm';
 
-type AuditRecord = Record<string, unknown>;
+export type AuditRecord = Record<string, unknown>;
 
-type AuditEntityDescriptor = {
+/**
+ * Everything the audit engine needs to summarize an entity, independent of how its audited record is
+ * projected. The user-departments membership delta hands a hand-built record straight to
+ * {@link recordAuditEvent}, so it only needs this much.
+ */
+export type AuditSummaryDescriptor = {
   entityType: AuditEntityType;
   noun: string;
   primaryLabelField: string;
   primaryLabelFormatter?: (value: unknown) => string;
-  fields: Record<string, string>;
 };
 
-type CreateAuditSummaryInput = {
-  action: AuditAction;
-  changes: AuditChanges | null;
-  entityType: AuditEntityType;
-  before?: AuditRecord | null;
-  after?: AuditRecord | null;
+/**
+ * A feature owns its descriptor and defines it next to its service. `toRecord` projects the aggregate
+ * (row plus any related collections) into the audited record; the audited field set is exactly the
+ * record's keys — there is no separate field list to keep in sync. `entityId` derives the audited
+ * entity id from the same input. The engine stays generic over {@link AuditRecord} and depends on no
+ * aggregate type; the dependency points feature -> audit, never the reverse.
+ */
+export type AuditDescriptor<TInput> = AuditSummaryDescriptor & {
+  toRecord: (input: TInput) => AuditRecord;
+  entityId: (input: TInput) => string;
+  // Optional when the summary label is not itself an audited field (e.g. a Job's code or a User's
+  // email): keeps the label out of `toRecord` so it never pollutes the change set. Defaults to
+  // reading `primaryLabelField` from the projected record.
+  label?: (input: TInput) => unknown;
 };
 
-type InsertAuditEventInput = CreateAuditSummaryInput & {
-  actorUserId: string | null;
-  entityId: string;
-};
-
-export const productAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'product',
-  noun: 'product',
-  primaryLabelField: 'name',
-  fields: {
-    assemblies: 'assemblies',
-    basePrice: 'base price',
-    currencyCode: 'currency',
-    description: 'description',
-    buildTimeDays: 'build time days',
-    modelCode: 'model code',
-    name: 'name',
-    requiresVinNumber: 'requires VIN number',
-    thumbnailDataUrl: 'thumbnail',
-  },
-};
-
-export const documentAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'document',
-  noun: 'document',
-  primaryLabelField: 'filename',
-  fields: {
-    byteSize: 'byte size',
-    contentType: 'content type',
-    filename: 'filename',
-    jobId: 'job',
-    metadata: 'metadata',
-    ownerType: 'owner type',
-    productId: 'product',
-    quoteId: 'quote',
-    sourceProductId: 'source product',
-    storageKey: 'storage key',
-  },
-};
-
-export const partAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'part',
-  noun: 'part',
-  primaryLabelField: 'name',
-  fields: {
-    category: 'category',
-    code: 'code',
-    description: 'description',
-    drawingCode: 'drawing code',
-    finish: 'finish',
-    isInternallyFabricated: 'internally fabricated',
-    name: 'name',
-    supplierCode: 'supplier code',
-    supplierId: 'supplier',
-    unitOfMeasure: 'unit of measure',
-  },
-};
-
-export const customerAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'customer',
-  noun: 'customer',
-  primaryLabelField: 'companyName',
-  fields: {
-    address: 'address',
-    companyName: 'company name',
-    contactPerson: 'contact person',
-    email: 'email',
-    notes: 'notes',
-    phone: 'phone',
-    thumbnailDataUrl: 'thumbnail',
-    vatNumber: 'VAT number',
-  },
-};
-
-export const userAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'user',
-  noun: 'user',
-  primaryLabelField: 'email',
-  fields: {
-    department: 'department',
-    member: 'department membership',
-    phoneNumber: 'phone number',
-    thumbnailDataUrl: 'thumbnail',
-  },
-};
-
-export const jobAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'job',
-  noun: 'job',
-  primaryLabelField: 'code',
-  primaryLabelFormatter: formatJobAuditLabel,
-  fields: {
-    productId: 'product',
-    productSerialNumber: 'product serial number',
-    quoteId: 'quote',
-  },
-};
-
-function formatJobAuditLabel(value: unknown): string {
-  if (typeof value === 'number') {
-    return formatJobCode(value);
-  }
-
-  const result = JobCode.safeParse(value);
-
-  return result.success ? result.data : String(value);
+export function defineAuditDescriptor<TInput>(descriptor: AuditDescriptor<TInput>): AuditDescriptor<TInput> {
+  return descriptor;
 }
-
-export const jobStageAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'job_stage',
-  noun: 'job stage',
-  primaryLabelField: 'stage',
-  fields: {},
-};
-
-export const quoteAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'quote',
-  noun: 'quote',
-  primaryLabelField: 'code',
-  primaryLabelFormatter: formatQuoteAuditLabel,
-  // Quote update lock enforcement uses these fields to detect locked-field changes.
-  fields: {
-    customerId: 'customer',
-    depositPercent: 'deposit percent',
-    deliveryIncluded: 'delivery included',
-    deliveryPrice: 'delivery price',
-    discountAmount: 'discount amount',
-    notes: 'notes',
-    documentNotes: 'document notes',
-    plannedDeliveryDate: 'planned delivery date',
-    preferredDeliveryDate: 'preferred delivery date',
-    productId: 'product',
-    quotedBasePrice: 'quoted base price',
-    quotedCurrencyCode: 'quoted currency',
-    salesPersonId: 'salesperson',
-    selectedAssemblies: 'selected assemblies',
-    status: 'status',
-    validUntil: 'valid until',
-  },
-};
-
-export const supplierAuditDescriptor: AuditEntityDescriptor = {
-  entityType: 'supplier',
-  noun: 'supplier',
-  primaryLabelField: 'companyName',
-  fields: {
-    address: 'address',
-    companyName: 'company name',
-    contactPerson: 'contact person',
-    email: 'email',
-    notes: 'notes',
-    phone: 'phone',
-    thumbnailDataUrl: 'thumbnail',
-  },
-};
-
-function formatQuoteAuditLabel(value: unknown): string {
-  if (typeof value === 'number') {
-    return formatQuoteCode(value);
-  }
-
-  const result = QuoteCode.safeParse(value);
-
-  return result.success ? result.data : String(value);
-}
-
-const auditEntityDescriptors: Record<AuditEntityType, AuditEntityDescriptor> = {
-  customer: customerAuditDescriptor,
-  document: documentAuditDescriptor,
-  job: jobAuditDescriptor,
-  job_stage: jobStageAuditDescriptor,
-  part: partAuditDescriptor,
-  product: productAuditDescriptor,
-  quote: quoteAuditDescriptor,
-  supplier: supplierAuditDescriptor,
-  user: userAuditDescriptor,
-};
 
 type AuditEventRow = typeof auditEvents.$inferSelect & {
   actorName: string | null;
   actorEmail: string | null;
 };
 
-export function createAuditChanges<TRecord extends AuditRecord>(
-  before: TRecord,
-  after: TRecord,
-  fields: Record<string, string>,
-): AuditChanges | null {
+/**
+ * The concentrated diff-and-skip rule: the audited field set is the projected record's own keys.
+ * Returns the changed fields, or `null` when nothing audited changed so the caller can skip the write.
+ */
+export function diffAuditRecords(before: AuditRecord, after: AuditRecord): AuditChanges | null {
   const changes: AuditChanges = {};
 
-  for (const field of Object.keys(fields)) {
+  for (const field of Object.keys(after)) {
     const from = toAuditValue(before[field]);
     const to = toAuditValue(after[field]);
 
@@ -223,14 +61,18 @@ export function createAuditChanges<TRecord extends AuditRecord>(
   return Object.keys(changes).length > 0 ? changes : null;
 }
 
-export function createAuditSnapshotChanges<TRecord extends AuditRecord>(
-  record: TRecord,
-  fields: Record<string, string>,
-  action: Extract<AuditAction, 'created' | 'deleted'>,
-): AuditChanges {
+export function diffAuditUpdate<TInput>(
+  descriptor: AuditDescriptor<TInput>,
+  before: TInput,
+  after: TInput,
+): AuditChanges | null {
+  return diffAuditRecords(descriptor.toRecord(before), descriptor.toRecord(after));
+}
+
+function snapshotAuditChanges(record: AuditRecord, action: Extract<AuditAction, 'created' | 'deleted'>): AuditChanges {
   const changes: AuditChanges = {};
 
-  for (const field of Object.keys(fields)) {
+  for (const field of Object.keys(record)) {
     const value = toAuditValue(record[field]);
 
     changes[field] = action === 'created' ? { from: null, to: value } : { from: value, to: null };
@@ -239,39 +81,167 @@ export function createAuditSnapshotChanges<TRecord extends AuditRecord>(
   return changes;
 }
 
-export function createAuditSummary(input: CreateAuditSummaryInput): string {
-  const descriptor = getAuditEntityDescriptor(input.entityType);
-
-  if (input.action === 'created') {
-    return `Created ${descriptor.noun} ${quoteLabel(getEntityLabel(descriptor, input.after))}`;
+export function buildAuditSummary(
+  descriptor: AuditSummaryDescriptor,
+  action: AuditAction,
+  changes: AuditChanges | null,
+  label: unknown,
+): string {
+  if (action === 'created') {
+    return `Created ${descriptor.noun} ${quoteLabel(formatEntityLabel(descriptor, label ?? 'Unknown'))}`;
   }
 
-  if (input.action === 'deleted') {
-    return `Deleted ${descriptor.noun} ${quoteLabel(getEntityLabel(descriptor, input.before))}`;
+  if (action === 'deleted') {
+    return `Deleted ${descriptor.noun} ${quoteLabel(formatEntityLabel(descriptor, label ?? 'Unknown'))}`;
   }
 
-  const primaryFieldChange = input.changes?.[descriptor.primaryLabelField];
+  const primaryFieldChange = changes?.[descriptor.primaryLabelField];
   if (primaryFieldChange) {
     return `Renamed ${descriptor.noun} ${quoteLabel(formatEntityLabel(descriptor, primaryFieldChange.from))} to ${quoteLabel(formatEntityLabel(descriptor, primaryFieldChange.to))}`;
   }
 
-  return `Updated ${descriptor.noun} ${quoteLabel(getEntityLabel(descriptor, input.after ?? input.before))}`;
+  return `Updated ${descriptor.noun} ${quoteLabel(formatEntityLabel(descriptor, label ?? 'Unknown'))}`;
 }
 
-export async function insertAuditEvent({
+/**
+ * Low-level emitter. Inserts one audit event from an already-projected record and (where applicable)
+ * already-computed changes. Use the {@link recordAuditCreate}/{@link recordAuditUpdate}/
+ * {@link recordAuditDelete} helpers for the standard row-diff path; reach for this only when the
+ * changes are not a field diff (e.g. user department membership add/remove).
+ */
+async function insertAuditRow({
   db,
+  descriptor,
+  action,
+  actorUserId,
+  entityId,
+  changes,
+  label,
+}: {
+  db: DatabaseTransaction;
+  descriptor: AuditSummaryDescriptor;
+  action: AuditAction;
+  actorUserId: string | null;
+  entityId: string;
+  changes: AuditChanges | null;
+  label: unknown;
+}): Promise<void> {
+  await db.insert(auditEvents).values({
+    action,
+    actorUserId,
+    changes,
+    entityId,
+    entityType: descriptor.entityType,
+    summary: buildAuditSummary(descriptor, action, changes, label),
+  });
+}
+
+function recordLabel<TInput>(descriptor: AuditDescriptor<TInput>, input: TInput, record: AuditRecord): unknown {
+  return descriptor.label ? descriptor.label(input) : record[descriptor.primaryLabelField];
+}
+
+export async function recordAuditEvent({
+  db,
+  descriptor,
+  action,
+  actorUserId,
+  entityId,
+  changes,
+  record,
+}: {
+  db: DatabaseTransaction;
+  descriptor: AuditSummaryDescriptor;
+  action: AuditAction;
+  actorUserId: string | null;
+  entityId: string;
+  changes: AuditChanges | null;
+  record: AuditRecord;
+}): Promise<void> {
+  await insertAuditRow({
+    db,
+    descriptor,
+    action,
+    actorUserId,
+    entityId,
+    changes,
+    label: record[descriptor.primaryLabelField],
+  });
+}
+
+export async function recordAuditCreate<TInput>({
+  db,
+  descriptor,
+  actorUserId,
   input,
 }: {
   db: DatabaseTransaction;
-  input: InsertAuditEventInput;
+  descriptor: AuditDescriptor<TInput>;
+  actorUserId: string | null;
+  input: TInput;
 }): Promise<void> {
-  await db.insert(auditEvents).values({
-    action: input.action,
-    actorUserId: input.actorUserId,
-    changes: input.changes,
-    entityId: input.entityId,
-    entityType: input.entityType,
-    summary: createAuditSummary(input),
+  const record = descriptor.toRecord(input);
+
+  await insertAuditRow({
+    db,
+    descriptor,
+    action: 'created',
+    actorUserId,
+    entityId: descriptor.entityId(input),
+    changes: snapshotAuditChanges(record, 'created'),
+    label: recordLabel(descriptor, input, record),
+  });
+}
+
+export async function recordAuditDelete<TInput>({
+  db,
+  descriptor,
+  actorUserId,
+  input,
+}: {
+  db: DatabaseTransaction;
+  descriptor: AuditDescriptor<TInput>;
+  actorUserId: string | null;
+  input: TInput;
+}): Promise<void> {
+  const record = descriptor.toRecord(input);
+
+  await insertAuditRow({
+    db,
+    descriptor,
+    action: 'deleted',
+    actorUserId,
+    entityId: descriptor.entityId(input),
+    changes: snapshotAuditChanges(record, 'deleted'),
+    label: recordLabel(descriptor, input, record),
+  });
+}
+
+/**
+ * Emit the update event. The caller computes `changes` first (via {@link diffAuditUpdate}) so it can
+ * run its own control flow between the diff and the write — the skip-on-no-change branch and, for
+ * Quotes, the Locked Quote gate that reads the changed field set (ADR-0027).
+ */
+export async function recordAuditUpdate<TInput>({
+  db,
+  descriptor,
+  actorUserId,
+  after,
+  changes,
+}: {
+  db: DatabaseTransaction;
+  descriptor: AuditDescriptor<TInput>;
+  actorUserId: string | null;
+  after: TInput;
+  changes: AuditChanges;
+}): Promise<void> {
+  await insertAuditRow({
+    db,
+    descriptor,
+    action: 'updated',
+    actorUserId,
+    entityId: descriptor.entityId(after),
+    changes,
+    label: recordLabel(descriptor, after, descriptor.toRecord(after)),
   });
 }
 
@@ -352,15 +322,7 @@ function mapAuditEvent(row: AuditEventRow): AuditEvent {
   });
 }
 
-function getAuditEntityDescriptor(entityType: AuditEntityType): AuditEntityDescriptor {
-  return auditEntityDescriptors[entityType];
-}
-
-function getEntityLabel(descriptor: AuditEntityDescriptor, record: AuditRecord | null | undefined): string {
-  return formatEntityLabel(descriptor, record?.[descriptor.primaryLabelField] ?? 'Unknown');
-}
-
-function formatEntityLabel(descriptor: AuditEntityDescriptor, value: unknown): string {
+function formatEntityLabel(descriptor: AuditSummaryDescriptor, value: unknown): string {
   return descriptor.primaryLabelFormatter?.(value) ?? String(value);
 }
 

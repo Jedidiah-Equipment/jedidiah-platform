@@ -14,8 +14,24 @@ import {
 } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 
-import { createAuditChanges, insertAuditEvent, userAuditDescriptor } from '../audit/audit-service.js';
+import { defineAuditDescriptor, diffAuditUpdate, recordAuditEvent, recordAuditUpdate } from '../audit/audit-service.js';
 import { UserNotFoundError } from './user-errors.js';
+
+type UserAuditInput = Pick<typeof user.$inferSelect, 'id' | 'email' | 'image' | 'phoneNumber'>;
+
+// `email` is the summary label, not an audited field on these paths, so it lives in `label` rather
+// than `toRecord`. Department membership audits its own changes via recordAuditEvent below.
+export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
+  entityType: 'user',
+  noun: 'user',
+  primaryLabelField: 'email',
+  entityId: (row) => row.id,
+  label: (row) => row.email,
+  toRecord: (row) => ({
+    phoneNumber: row.phoneNumber,
+    thumbnailDataUrl: row.image,
+  }),
+});
 
 type UserRow = Pick<typeof user.$inferSelect, 'email' | 'emailVerified' | 'id' | 'image' | 'name' | 'phoneNumber'> & {
   departments: readonly Department[];
@@ -142,27 +158,14 @@ export async function setUserDepartments({
         },
       } satisfies AuditChanges;
 
-      await insertAuditEvent({
+      await recordAuditEvent({
         db: tx,
-        input: {
-          action: 'updated',
-          actorUserId,
-          after: {
-            department,
-            email: targetUser.email,
-            id: userId,
-            member: isMember,
-          },
-          before: {
-            department,
-            email: targetUser.email,
-            id: userId,
-            member: wasMember,
-          },
-          changes,
-          entityId: userId,
-          entityType: 'user',
-        },
+        descriptor: userAuditDescriptor,
+        action: 'updated',
+        actorUserId,
+        entityId: userId,
+        changes,
+        record: { email: targetUser.email },
       });
     }
 
@@ -188,9 +191,8 @@ export async function updateUserThumbnail({
       throw new UserNotFoundError(userId);
     }
 
-    const after = { ...before, thumbnailDataUrl };
-    const beforeAuditRecord = { ...before, thumbnailDataUrl: before.image };
-    const changes = createAuditChanges(beforeAuditRecord, after, userAuditDescriptor.fields);
+    const after = { ...before, image: thumbnailDataUrl };
+    const changes = diffAuditUpdate(userAuditDescriptor, before, after);
 
     if (!changes) {
       return UserAccount.parse(mapUser({ ...before, departments: [] }));
@@ -206,18 +208,7 @@ export async function updateUserThumbnail({
       throw new UserNotFoundError(userId);
     }
 
-    await insertAuditEvent({
-      db: tx,
-      input: {
-        action: 'updated',
-        actorUserId,
-        after: { ...row, thumbnailDataUrl: row.image },
-        before: beforeAuditRecord,
-        changes,
-        entityId: row.id,
-        entityType: userAuditDescriptor.entityType,
-      },
-    });
+    await recordAuditUpdate({ db: tx, descriptor: userAuditDescriptor, actorUserId, after: row, changes });
 
     return UserAccount.parse(mapUser({ ...row, departments: [] }));
   });

@@ -4,7 +4,7 @@ import type { AuthId, DocumentOwnerType, DocumentSummary, UUID } from '@pkg/sche
 import { DocumentSummary as DocumentSummarySchema } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
-import { createAuditSnapshotChanges, documentAuditDescriptor, insertAuditEvent } from '../audit/audit-service.js';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditDelete } from '../audit/audit-service.js';
 import {
   DocumentNotFoundError,
   DocumentPolicyViolationError,
@@ -161,18 +161,7 @@ export async function createDocumentRecord({
         throw new Error('Document insert did not return a row');
       }
 
-      await insertAuditEvent({
-        db: tx,
-        input: {
-          action: 'created',
-          actorUserId,
-          after: toDocumentAuditRecord(row),
-          before: null,
-          changes: createAuditSnapshotChanges(toDocumentAuditRecord(row), documentAuditDescriptor.fields, 'created'),
-          entityId: row.id,
-          entityType: documentAuditDescriptor.entityType,
-        },
-      });
+      await recordAuditCreate({ db: tx, descriptor: documentAuditDescriptor, actorUserId, input: row });
 
       return row;
     });
@@ -205,18 +194,7 @@ export async function deleteDocumentRecord({
       throw new DocumentNotFoundError(document.id);
     }
 
-    await insertAuditEvent({
-      db: tx,
-      input: {
-        action: 'deleted',
-        actorUserId,
-        after: null,
-        before: toDocumentAuditRecord(document),
-        changes: createAuditSnapshotChanges(toDocumentAuditRecord(document), documentAuditDescriptor.fields, 'deleted'),
-        entityId: document.id,
-        entityType: documentAuditDescriptor.entityType,
-      },
-    });
+    await recordAuditDelete({ db: tx, descriptor: documentAuditDescriptor, actorUserId, input: document });
   });
 }
 
@@ -267,13 +245,15 @@ export function collectDocumentErrorText(error: unknown): string[] {
   return [...ownText, ...causeText];
 }
 
-function toDocumentAuditRecord(row: DocumentBaseRow) {
-  return {
+export const documentAuditDescriptor = defineAuditDescriptor<DocumentBaseRow>({
+  entityType: 'document',
+  noun: 'document',
+  primaryLabelField: 'filename',
+  entityId: (row) => row.id,
+  toRecord: (row) => ({
     byteSize: row.byteSize,
     contentType: row.contentType,
-    createdAt: row.createdAt.toISOString(),
     filename: row.filename,
-    id: row.id,
     jobId: row.jobId,
     metadata: row.metadata,
     ownerType: row.ownerType,
@@ -281,9 +261,8 @@ function toDocumentAuditRecord(row: DocumentBaseRow) {
     quoteId: row.quoteId,
     sourceProductId: row.sourceProductId,
     storageKey: row.storageKey,
-    uploaderUserId: row.uploaderUserId,
-  };
-}
+  }),
+});
 
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));

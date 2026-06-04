@@ -1,5 +1,5 @@
 import { type Quote, QuoteStatus } from '@pkg/schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo } from 'react';
@@ -10,6 +10,7 @@ import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteCustomerCombobox } from './components/QuoteCustomerCombobox.js';
 import { QuoteProductCombobox } from './components/QuoteProductCombobox.js';
@@ -24,7 +25,7 @@ type QuoteCreateDialogProps = {
 export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChange, open }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { invalidateQuotes } = useQueryInvalidation();
   const currentUserQuery = useQuery(trpc.auth.me.queryOptions());
   const salespeopleOptions = useSalesPersonOptions();
   const showMutationError = useApiMutationErrorToast();
@@ -52,7 +53,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
       key={open ? 'open' : 'closed'}
       onCreate={(values) => createQuoteMutation.mutateAsync(toQuoteCreateInput(values))}
       onCreated={async (quote: Quote) => {
-        await queryClient.invalidateQueries({ queryKey: trpc.quotes.pathKey() });
+        await invalidateQuotes();
         onOpenChange(false);
         toast.success('Quote created');
         await navigate({ params: { id: quote.id }, to: '/quotes/$id/edit' });

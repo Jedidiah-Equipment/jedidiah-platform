@@ -1,6 +1,6 @@
 import { hasPermission } from '@pkg/domain';
 import { AuthId } from '@pkg/schema';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { UserCreateForm, type UserCreateFormValues } from './components/UserCreateForm.js';
@@ -17,7 +18,7 @@ import { unwrapAuthResult } from './user-admin-client.js';
 
 export const UserCreateDialog: React.FC = () => {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const { invalidateAuth, invalidateUsers } = useQueryInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const canAssignDepartments = hasPermission(accessQuery.data, 'user:assign-departments');
@@ -46,10 +47,7 @@ export const UserCreateDialog: React.FC = () => {
       return result;
     },
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries(trpc.users.list.queryFilter()),
-        queryClient.invalidateQueries(trpc.auth.access.queryFilter()),
-      ]);
+      await Promise.all([invalidateUsers(), invalidateAuth()]);
       setIsOpen(false);
       toast.success('User created');
     },

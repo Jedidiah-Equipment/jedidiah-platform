@@ -1,11 +1,12 @@
 import type { Product } from '@pkg/schema';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductCreateFormValues, toProductMinimalCreateInput } from './components/types.js';
 
@@ -24,7 +25,7 @@ const PRODUCT_CREATE_DEFAULT_VALUES: ProductCreateFormValues = {
 export const ProductCreateDialog: React.FC<ProductCreateDialogProps> = ({ onOpenChange, open }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { invalidateProducts } = useQueryInvalidation();
 
   const showMutationError = useApiMutationErrorToast();
 
@@ -42,7 +43,7 @@ export const ProductCreateDialog: React.FC<ProductCreateDialogProps> = ({ onOpen
       key={open ? 'open' : 'closed'}
       onCreate={(values) => createProductMutation.mutateAsync(toProductMinimalCreateInput(values))}
       onCreated={async (product: Product) => {
-        await queryClient.invalidateQueries(trpc.products.list.queryFilter());
+        await invalidateProducts();
         onOpenChange(false);
         toast.success('Product created');
         await navigate({ to: '/products/$id/edit', params: { id: product.id } });

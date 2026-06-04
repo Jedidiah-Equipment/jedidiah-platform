@@ -1,10 +1,11 @@
 import type { Part, Supplier } from '@pkg/schema';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { toast } from 'sonner';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PartForm } from './components/PartForm.js';
 
@@ -16,16 +17,13 @@ type PartEditDialogProps = {
 
 export const PartEditDialog: React.FC<PartEditDialogProps> = ({ onClose, part, supplier }) => {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 
   const updatePartMutation = useMutation(
     trpc.parts.update.mutationOptions({
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries(trpc.parts.list.queryFilter()),
-          queryClient.invalidateQueries(trpc.parts.categories.queryFilter()),
-        ]);
+        await invalidateParts();
         onClose();
         toast.success('Part updated');
       },

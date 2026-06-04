@@ -26,6 +26,7 @@ import { Separator } from '@/components/ui/separator.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
+import { GenerateJobFromQuoteDialog } from '../GenerateJobFromQuoteDialog.js';
 import type { SelectedAssemblySnapshot } from '../types.js';
 
 export type QuoteComputedSummary = {
@@ -45,7 +46,7 @@ export function QuoteRightPanel({ quote, summary }: { quote: QuoteDetail; summar
     <aside className="order-first grid h-fit gap-4 border-b pb-5 text-sm xl:sticky xl:top-4 xl:order-0 xl:border-b-0 xl:pb-0 xl:pl-5">
       <QuoteCustomerCard quote={quote} />
       <QuoteProductCard quote={quote} />
-      <QuoteTotalCard summary={summary} />
+      <QuoteTotalCard quote={quote} summary={summary} />
     </aside>
   );
 }
@@ -201,7 +202,7 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
   );
 }
 
-function QuoteTotalCard({ summary }: { summary: QuoteComputedSummary }) {
+function QuoteTotalCard({ quote, summary }: { quote: QuoteDetail; summary: QuoteComputedSummary }) {
   return (
     <Card size="sm">
       <CardHeader>
@@ -240,6 +241,7 @@ function QuoteTotalCard({ summary }: { summary: QuoteComputedSummary }) {
           <span>Total</span>
           <span>{formatCurrency(summary.total, summary.currencyCode)}</span>
         </div>
+        <GenerateJobFromQuoteDialog className="mt-2 w-full" quote={quote} />
       </CardContent>
     </Card>
   );

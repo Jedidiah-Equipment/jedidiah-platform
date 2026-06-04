@@ -13,7 +13,7 @@ describe('mapSupplier', () => {
         email: 'sales@acme.example',
         id: '00000000-0000-4000-8000-000000000001',
         notes: null,
-        phone: '+27 11 555 0100',
+        phone: '+27115550100',
         thumbnailDataUrl: null,
         updatedAt: new Date('2026-01-02T00:00:00.000Z'),
       }),
@@ -25,7 +25,7 @@ describe('mapSupplier', () => {
       email: 'sales@acme.example',
       id: '00000000-0000-4000-8000-000000000001',
       notes: null,
-      phone: '+27 11 555 0100',
+      phone: '+27115550100',
       thumbnailDataUrl: null,
       updatedAt: '2026-01-02T00:00:00.000Z',
     });

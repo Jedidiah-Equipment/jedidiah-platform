@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo } from 'react';
+import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
@@ -81,20 +82,6 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
         header: 'Company',
       },
       {
-        accessorKey: 'email',
-        cell: ({ row }) => <span className="text-sm">{row.original.email}</span>,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Email',
-      },
-      {
-        accessorKey: 'vatNumber',
-        cell: ({ row }) => row.original.vatNumber ?? <span className="text-muted-foreground">None</span>,
-        enableColumnFilter: true,
-        enableSorting: false,
-        header: 'VAT number',
-      },
-      {
         accessorKey: 'contactPerson',
         cell: ({ row }) => row.original.contactPerson ?? <span className="text-muted-foreground">None</span>,
         enableColumnFilter: false,
@@ -109,22 +96,33 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ onEditCustomer }) 
         header: 'Phone',
       },
       {
+        accessorKey: 'email',
+        cell: ({ row }) =>
+          row.original.email ? (
+            <span className="flex min-w-0 items-center gap-1 text-sm">
+              <span className="min-w-0 truncate">{row.original.email}</span>
+              <CopyValueButton label="Copy customer email" value={row.original.email} />
+            </span>
+          ) : (
+            <span className="text-muted-foreground">None</span>
+          ),
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Email',
+      },
+      {
+        accessorKey: 'vatNumber',
+        cell: ({ row }) => row.original.vatNumber ?? <span className="text-muted-foreground">None</span>,
+        enableColumnFilter: true,
+        enableSorting: false,
+        header: 'VAT number',
+      },
+      {
         accessorKey: 'createdAt',
         cell: ({ row }) => <DateDisplay date={row.original.createdAt} />,
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Created',
-      },
-      {
-        accessorKey: 'id',
-        cell: ({ row }) => (
-          <span className="block max-w-[240px] truncate font-mono text-xs text-muted-foreground">
-            {row.original.id}
-          </span>
-        ),
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'ID',
       },
     ],
     [],

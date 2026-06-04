@@ -17,7 +17,7 @@ function buildSupplier(overrides: Record<string, unknown> = {}): Supplier {
     email: 'orders@bolt.test',
     address: '2 Side Road',
     contactPerson: 'Sam',
-    phone: '0456',
+    phone: '+27821234567',
     notes: 'Preferred',
     thumbnailDataUrl: null,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -34,12 +34,12 @@ describe('toSupplierFormValues', () => {
       contactPerson: '',
       email: '',
       notes: '',
-      phone: '',
+      phone: null,
       thumbnailDataUrl: null,
     });
   });
 
-  it('collapses null fields to empty strings', () => {
+  it('maps nullable supplier fields to their form shapes', () => {
     const values = toSupplierFormValues(
       buildSupplier({ email: null, address: null, contactPerson: null, phone: null, notes: null }),
     );
@@ -50,7 +50,7 @@ describe('toSupplierFormValues', () => {
       contactPerson: '',
       email: '',
       notes: '',
-      phone: '',
+      phone: null,
       thumbnailDataUrl: null,
     });
   });
@@ -64,7 +64,7 @@ describe('toSupplierCreateInput', () => {
       contactPerson: '',
       email: 'Orders@Bolt.TEST',
       notes: '',
-      phone: '',
+      phone: null,
       thumbnailDataUrl: null,
     });
 
@@ -106,7 +106,7 @@ describe('toSupplierUpdateInput', () => {
       contactPerson: 'Sam',
       email: 'Orders@Bolt.TEST',
       notes: 'Preferred',
-      phone: '0456',
+      phone: '+27821234567',
       thumbnailDataUrl: null,
     });
 
@@ -117,8 +117,22 @@ describe('toSupplierUpdateInput', () => {
       email: 'orders@bolt.test',
       id: SUPPLIER_ID,
       notes: 'Preferred',
-      phone: '0456',
+      phone: '+27821234567',
       thumbnailDataUrl: null,
     });
+  });
+
+  it('rejects non-E.164 supplier phone numbers', () => {
+    expect(() =>
+      toSupplierUpdateInput(SUPPLIER_ID, {
+        address: '2 Side Road',
+        companyName: 'Bolt Co',
+        contactPerson: 'Sam',
+        email: 'orders@bolt.test',
+        notes: 'Preferred',
+        phone: '0821234567',
+        thumbnailDataUrl: null,
+      }),
+    ).toThrow('Enter a valid South African phone number');
   });
 });

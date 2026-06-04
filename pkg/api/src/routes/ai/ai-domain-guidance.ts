@@ -73,9 +73,9 @@ export const AI_RETRIEVAL_PLAYBOOKS = [
       },
     ],
     disambiguation: [
-      'If exactly one relevant active or paused Job exists, answer for that Job.',
-      'If multiple active or paused Jobs exist, ask the user to choose and show linked Job Codes.',
-      'If only complete or cancelled Jobs exist, state that there are no currently active Jobs before summarizing history.',
+      'If exactly one relevant Job has incomplete Stage work, answer for that Job.',
+      'If multiple relevant Jobs have incomplete Stage work, ask the user to choose and show linked Job Codes.',
+      'If every relevant Job has complete Stage work, state that no matching Jobs have incomplete Stage work before summarizing history.',
       'If the Customer has Quotes but no linked Jobs, explain that no Jobs have been created from those Quotes yet.',
       'Do not summarize multiple Jobs as "the job" unless the user asks for a Customer overview.',
     ],

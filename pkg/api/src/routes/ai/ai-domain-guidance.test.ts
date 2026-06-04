@@ -32,9 +32,11 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('listQuoteCustomers');
     expect(prompt).toContain('listQuotes');
     expect(prompt).toContain('getJob');
-    expect(prompt).toContain('If multiple active or paused Jobs exist, ask the user to choose');
+    expect(prompt).toContain('If multiple relevant Jobs have incomplete Stage work, ask the user to choose');
     expect(prompt).toContain('Render Markdown links only from link metadata');
     expect(prompt).toContain('Do not show UUIDs in prose');
+    expect(prompt).not.toContain('active or paused');
+    expect(prompt).not.toContain('complete or cancelled');
     expect(prompt).not.toContain('Quote lifecycle');
     expect(prompt).not.toContain('prefer accepted Quotes');
   });

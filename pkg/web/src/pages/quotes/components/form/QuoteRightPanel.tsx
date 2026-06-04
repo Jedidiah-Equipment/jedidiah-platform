@@ -1,16 +1,16 @@
 import { formatCurrency, formatPercent } from '@pkg/domain';
 import type { ProductDocument, QuoteDetail } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
 import {
-  ClockIcon,
-  EyeIcon,
-  MailIcon,
-  MapPinIcon,
-  PackageIcon,
-  PhoneIcon,
-  ReceiptTextIcon,
-  TriangleAlertIcon,
-} from 'lucide-react';
+  IconClock,
+  IconEye,
+  IconMail,
+  IconMapPin,
+  IconPackage,
+  IconPhone,
+  IconReceipt2,
+  IconAlertTriangle,
+} from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -71,7 +71,7 @@ function QuoteCustomerCard({ quote }: { quote: QuoteDetail }) {
       </CardHeader>
       <CardContent className="grid gap-3">
         <QuotePanelFact
-          icon={<MailIcon />}
+          icon={<IconMail />}
           label="Email"
           value={
             quote.customerEmail ? (
@@ -86,19 +86,19 @@ function QuoteCustomerCard({ quote }: { quote: QuoteDetail }) {
           muted={!quote.customerEmail}
         />
         <QuotePanelFact
-          icon={<PhoneIcon />}
+          icon={<IconPhone />}
           label={quote.customerContactPerson ? quote.customerContactPerson : 'Phone'}
           value={quote.customerPhone ?? 'Not captured'}
           muted={!quote.customerPhone}
         />
         <QuotePanelFact
-          icon={<ReceiptTextIcon />}
+          icon={<IconReceipt2 />}
           label="VAT"
           value={quote.customerVatNumber ?? 'Not captured'}
           muted={!quote.customerVatNumber}
         />
         <QuotePanelFact
-          icon={<MapPinIcon />}
+          icon={<IconMapPin />}
           label="Address"
           value={
             quote.customerAddress ? (
@@ -163,24 +163,24 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
                 setPreviewDocument(brochure);
               }}
             >
-              <EyeIcon data-icon="inline-start" />
+              <IconEye data-icon="inline-start" />
               View Brochure
             </Button>
           </div>
         )}
         {isMissingBrochure ? (
           <Alert variant="destructive">
-            <TriangleAlertIcon />
+            <IconAlertTriangle />
             <AlertDescription>No Product brochure is attached.</AlertDescription>
           </Alert>
         ) : null}
         <div className="grid grid-cols-2 gap-2">
           <QuoteMiniMetric
-            icon={<PackageIcon />}
+            icon={<IconPackage />}
             label="Base price"
             value={formatCurrency(quote.quotedBasePrice, quote.productCurrencyCode)}
           />
-          <QuoteMiniMetric icon={<ClockIcon />} label="Build" value={`${quote.productBuildTimeDays} days`} />
+          <QuoteMiniMetric icon={<IconClock />} label="Build" value={`${quote.productBuildTimeDays} days`} />
           <QuoteMiniMetric label="Standard Assemblies" value={String(standardCount)} />
           <QuoteMiniMetric label="Optional Assemblies" value={String(optionalCount)} />
         </div>

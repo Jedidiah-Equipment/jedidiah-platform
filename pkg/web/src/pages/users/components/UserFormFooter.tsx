@@ -1,4 +1,4 @@
-import { Loader2Icon } from 'lucide-react';
+import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 
 import { Button } from '@/components/ui/button.js';
@@ -13,7 +13,7 @@ type SubmitFooterProps = {
 export const SubmitFooter: React.FC<SubmitFooterProps> = ({ form, isPending, label }) => (
   <DialogFooter className="mt-4" showCloseButton>
     <Button disabled={isPending} form={form} type="submit">
-      {isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+      {isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
       {label}
     </Button>
   </DialogFooter>

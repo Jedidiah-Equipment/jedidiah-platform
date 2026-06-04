@@ -1,5 +1,7 @@
 // biome-ignore-all lint/a11y/useSemanticElements: kibo-ui vendored sidebar items preserve registry interaction semantics.
 // biome-ignore-all lint/suspicious/noArrayIndexKey: kibo-ui vendored timeline columns are generated from stable date ranges.
+
+import { IconTrash } from '@tabler/icons-react';
 import {
   addDays,
   differenceInDays,
@@ -17,7 +19,6 @@ import {
   startOfMonth,
 } from 'date-fns';
 import throttle from 'lodash.throttle';
-import { TrashIcon } from 'lucide-react';
 import type { CSSProperties, FC, KeyboardEventHandler, MouseEventHandler, ReactNode, RefObject } from 'react';
 import { createContext, memo, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
@@ -548,7 +549,7 @@ export const GanttMarker: FC<
         <ContextMenuContent>
           {onRemove ? (
             <ContextMenuItem className="flex items-center gap-2 text-destructive" onClick={handleRemove}>
-              <TrashIcon size={16} />
+              <IconTrash size={16} />
               Remove marker
             </ContextMenuItem>
           ) : null}

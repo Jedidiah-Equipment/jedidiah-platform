@@ -1,10 +1,10 @@
 import {
   type CodeHeaderProps,
   MarkdownTextPrimitive,
-  unstable_memoizeMarkdownComponents as memoizeMarkdownComponents,
+  unstable_memoizeMarkdownComponents,
   useIsMarkdownCodeBlock,
 } from '@assistant-ui/react-markdown';
-import { CheckIcon, CopyIcon } from 'lucide-react';
+import { IconCheck, IconCopy } from '@tabler/icons-react';
 import { type FC, memo, useState } from 'react';
 import remarkGfm from 'remark-gfm';
 
@@ -33,7 +33,7 @@ const CodeHeader: FC<CodeHeaderProps> = ({ code, language }) => {
         }}
         tooltip="Copy"
       >
-        {isCopied ? <CheckIcon /> : <CopyIcon />}
+        {isCopied ? <IconCheck /> : <IconCopy />}
       </TooltipIconButton>
     </div>
   );
@@ -56,7 +56,7 @@ function useCopyToClipboard({ copiedDuration = 3_000 }: { copiedDuration?: numbe
   return { copyToClipboard, isCopied };
 }
 
-const defaultComponents = memoizeMarkdownComponents({
+const defaultComponents = unstable_memoizeMarkdownComponents({
   a: AssistantMarkdownLink,
   blockquote: ({ className, ...props }) => (
     <blockquote

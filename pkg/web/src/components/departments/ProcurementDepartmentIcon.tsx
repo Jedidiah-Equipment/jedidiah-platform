@@ -1,6 +1,6 @@
-import { ClipboardListIcon } from 'lucide-react';
+import { IconClipboardList } from '@tabler/icons-react';
 import type React from 'react';
 
-export function ProcurementDepartmentIcon(props: React.ComponentProps<typeof ClipboardListIcon>) {
-  return <ClipboardListIcon {...props} />;
+export function ProcurementDepartmentIcon(props: React.ComponentProps<typeof IconClipboardList>) {
+  return <IconClipboardList {...props} />;
 }

@@ -1,6 +1,6 @@
 import { PART_UNIT_OF_MEASURE_LABELS, type Supplier } from '@pkg/schema';
+import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import { Loader2Icon, UploadIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -120,7 +120,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
   return (
     <>
       <Button onClick={handleOpenButtonClick} variant="outline">
-        <UploadIcon data-icon="inline-start" />
+        <IconUpload data-icon="inline-start" />
         Bulk parts import
       </Button>
       <Dialog onOpenChange={handleOpenChange} open={isOpen}>
@@ -239,7 +239,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
                 </Button>
               ) : (
                 <Button disabled={!canImport} type="submit">
-                  {importMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+                  {importMutation.isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
                   Import parts
                 </Button>
               )}

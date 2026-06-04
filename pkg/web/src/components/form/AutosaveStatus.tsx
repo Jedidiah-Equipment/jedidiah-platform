@@ -1,4 +1,4 @@
-import { AlertCircleIcon, RotateCcwIcon } from 'lucide-react';
+import { IconAlertCircle, IconRotate } from '@tabler/icons-react';
 
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
@@ -16,12 +16,12 @@ export function AutosaveStatus({ onRetry, state }: AutosaveStatusProps) {
 
   return (
     <Alert className="flex items-center gap-2" variant="destructive">
-      <AlertCircleIcon className="shrink-0 translate-y-0!" />
+      <IconAlertCircle className="shrink-0 translate-y-0!" />
       <AlertDescription className="leading-5">{state.errorMessage ?? 'Unable to save changes.'}</AlertDescription>
       {state.status === 'error' && onRetry ? (
         <AlertAction>
           <Button onClick={onRetry} size="sm" type="button" variant="outline">
-            <RotateCcwIcon data-icon="inline-start" />
+            <IconRotate data-icon="inline-start" />
             Retry
           </Button>
         </AlertAction>

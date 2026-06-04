@@ -1,5 +1,5 @@
+import { IconPlus } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 
@@ -25,7 +25,7 @@ export const SuppliersPage: React.FC = () => {
               {canUpdatePart ? <PartBulkImportDialog /> : null}
               {canUpdateSupplier ? (
                 <Button onClick={() => setIsCreateDialogOpen(true)}>
-                  <PlusIcon data-icon="inline-start" />
+                  <IconPlus data-icon="inline-start" />
                   New supplier
                 </Button>
               ) : null}

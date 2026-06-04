@@ -1,5 +1,10 @@
 import { departmentLabels, roleLabels } from '@pkg/domain';
-import { Building2Icon, ChevronsUpDownIcon, LogOutIcon, ShieldIcon } from 'lucide-react';
+import {
+  IconBuilding,
+  IconSelector,
+  IconLogout,
+  IconShield,
+} from '@tabler/icons-react';
 import type React from 'react';
 
 import { DepartmentIcon } from '@/components/departments/index.js';
@@ -48,7 +53,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
               <span className="truncate font-medium">{user.name}</span>
               <span className="truncate text-xs">{user.email}</span>
             </div>
-            <ChevronsUpDownIcon className="ml-auto" />
+            <IconSelector className="ml-auto" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
@@ -73,7 +78,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <ShieldIcon />
+                <IconShield />
                 <span className="flex min-w-0 flex-col">
                   <span>Role</span>
                   <span className="truncate text-muted-foreground text-xs">
@@ -82,7 +87,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
                 </span>
               </DropdownMenuItem>
               <DropdownMenuItem>
-                {primaryDepartment ? <DepartmentIcon department={primaryDepartment} /> : <Building2Icon />}
+                {primaryDepartment ? <DepartmentIcon department={primaryDepartment} /> : <IconBuilding />}
                 <span className="flex min-w-0 flex-col">
                   <span>Department</span>
                   <span className="truncate text-muted-foreground text-xs">{departmentLabel}</span>
@@ -91,7 +96,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onSignOut}>
-              <LogOutIcon />
+              <IconLogout />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

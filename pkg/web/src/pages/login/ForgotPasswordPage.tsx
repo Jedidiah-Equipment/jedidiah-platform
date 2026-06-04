@@ -1,5 +1,9 @@
+import {
+  IconCircleCheck,
+  IconLoader2,
+  IconMail,
+} from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { CheckCircleIcon, Loader2Icon, MailIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { z } from 'zod';
@@ -49,7 +53,7 @@ export const ForgotPasswordPage: React.FC = () => {
           {submitted ? (
             <div className="flex flex-col gap-4">
               <Alert>
-                <CheckCircleIcon />
+                <IconCircleCheck />
                 <AlertTitle>Check your email</AlertTitle>
                 <AlertDescription>
                   If that email address is associated with an account, you will receive a password reset link shortly.
@@ -76,9 +80,9 @@ export const ForgotPasswordPage: React.FC = () => {
                   {(isSubmitting) => (
                     <Button className="w-full" disabled={isSubmitting} size="lg" type="submit">
                       {isSubmitting ? (
-                        <Loader2Icon data-icon="inline-start" className="animate-spin" />
+                        <IconLoader2 data-icon="inline-start" className="animate-spin" />
                       ) : (
-                        <MailIcon data-icon="inline-start" />
+                        <IconMail data-icon="inline-start" />
                       )}
                       {isSubmitting ? 'Sending' : 'Send reset link'}
                     </Button>

@@ -1,8 +1,8 @@
 import { hasPermission } from '@pkg/domain';
 import type { QuoteSummary } from '@pkg/schema';
+import { IconBriefcase2, IconLoader2 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { BriefcaseBusinessIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -65,7 +65,7 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
           />
         }
       >
-        <BriefcaseBusinessIcon data-icon={size === 'icon-sm' ? undefined : 'inline-start'} />
+        <IconBriefcase2 data-icon={size === 'icon-sm' ? undefined : 'inline-start'} />
         {size === 'icon-sm' ? null : 'Generate CFO & Start Job'}
       </DialogTrigger>
       <DialogContent>
@@ -84,7 +84,7 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
             onClick={() => createJobMutation.mutate({ quoteId: quote.id })}
             type="button"
           >
-            {createJobMutation.isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+            {createJobMutation.isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
             Generate CFO & Start Job
           </Button>
         </DialogFooter>

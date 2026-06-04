@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon } from 'lucide-react';
+import { IconCheck, IconCopy } from '@tabler/icons-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -37,7 +37,7 @@ export function CopyValueButton({ label, value }: CopyValueButtonProps) {
           />
         }
       >
-        {isCopied ? <CheckIcon className="text-green-500" /> : <CopyIcon />}
+        {isCopied ? <IconCheck className="text-green-500" /> : <IconCopy />}
       </TooltipTrigger>
       <TooltipContent>{isCopied ? 'Copied' : label}</TooltipContent>
     </Tooltip>

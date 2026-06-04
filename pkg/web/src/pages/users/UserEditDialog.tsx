@@ -1,7 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import type { Department, UserSummary } from '@pkg/schema';
+import { IconMailCheck } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import { MailCheckIcon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -162,7 +162,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             onClick={() => sendVerificationMutation.mutate({ userId: baselineUser.id })}
             variant="outline"
           >
-            <MailCheckIcon data-icon="inline-start" />
+            <IconMailCheck data-icon="inline-start" />
             {sendVerificationMutation.isPending ? 'Sending' : 'Send verification email'}
           </Button>
         ) : null}

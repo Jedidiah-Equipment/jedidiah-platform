@@ -1,7 +1,14 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import { formatDate } from '@pkg/domain';
+import {
+  IconArrowDown,
+  IconArrowsSort,
+  IconArrowUp,
+  IconCalendar,
+  IconFilter,
+  IconX,
+} from '@tabler/icons-react';
 import { type Column, flexRender, type Header } from '@tanstack/react-table';
-import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, CalendarIcon, FunnelIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button.js';
@@ -46,7 +53,7 @@ type DataTableSortButtonProps<TData> = {
 
 function DataTableSortButton<TData>({ column }: DataTableSortButtonProps<TData>) {
   const sorted = column.getIsSorted();
-  const Icon = sorted === false ? ArrowUpDownIcon : sorted === 'asc' ? ArrowUpIcon : ArrowDownIcon;
+  const Icon = sorted === false ? IconArrowsSort : sorted === 'asc' ? IconArrowUp : IconArrowDown;
   const label = getColumnLabel(column);
 
   return (
@@ -86,7 +93,7 @@ function DataTableFilterButton<TData>({ column, debounceMs }: DataTableFilterBut
           />
         }
       >
-        <FunnelIcon />
+        <IconFilter />
       </PopoverTrigger>
       <PopoverContent align="end" className={getFilterPopoverClassName(column)}>
         <div className="flex flex-col gap-2">
@@ -263,7 +270,7 @@ function DataTableDateRangeFilter<TData>({
             />
           }
         >
-          <CalendarIcon data-icon="inline-start" />
+          <IconCalendar data-icon="inline-start" />
           <span className="min-w-0 truncate">{selectedRange ? getDateRangeLabel(selectedRange) : 'Pick dates'}</span>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-auto p-0">
@@ -296,7 +303,7 @@ function ClearFilterButton({ disabled, label, onClear }: ClearFilterButtonProps)
       type="button"
       variant="outline"
     >
-      <XIcon />
+      <IconX />
     </Button>
   );
 }

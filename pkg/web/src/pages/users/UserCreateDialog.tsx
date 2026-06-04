@@ -1,7 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import { AuthId } from '@pkg/schema';
+import { IconPlus } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import { PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -63,7 +63,7 @@ export const UserCreateDialog: React.FC = () => {
   return (
     <>
       <Button onClick={() => setIsOpen(true)}>
-        <PlusIcon data-icon="inline-start" />
+        <IconPlus data-icon="inline-start" />
         New user
       </Button>
       <Dialog onOpenChange={setIsOpen} open={isOpen}>

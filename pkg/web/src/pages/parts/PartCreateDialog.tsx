@@ -1,6 +1,6 @@
 import type { Supplier } from '@pkg/schema';
+import { IconPlus } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import { PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -39,7 +39,7 @@ export const PartCreateDialog: React.FC<PartCreateDialogProps> = ({ supplier }) 
   return (
     <>
       <Button onClick={() => setIsOpen(true)}>
-        <PlusIcon data-icon="inline-start" />
+        <IconPlus data-icon="inline-start" />
         New part
       </Button>
       <Dialog onOpenChange={setIsOpen} open={isOpen}>

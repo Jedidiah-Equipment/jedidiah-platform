@@ -1,6 +1,6 @@
+import { IconArrowLeft } from '@tabler/icons-react';
 import { createLink } from '@tanstack/react-router';
 import type { VariantProps } from 'class-variance-authority';
-import { ArrowLeftIcon } from 'lucide-react';
 import React from 'react';
 
 import { buttonVariants } from '@/components/ui/button.js';
@@ -16,7 +16,7 @@ const BackButtonAnchor = React.forwardRef<HTMLAnchorElement, BackButtonAnchorPro
       className={cn(buttonVariants({ variant: 'ghost', size, className }))}
       {...props}
     >
-      <ArrowLeftIcon data-icon="inline-start" />
+      <IconArrowLeft data-icon="inline-start" />
       {children}
     </a>
   ),

@@ -5,6 +5,7 @@ import {
   SupplierCreateInput,
   SupplierEmail,
   SupplierOptionalText,
+  SupplierPhone,
   SupplierUpdateInput,
   type UUID,
 } from '@pkg/schema';
@@ -19,7 +20,7 @@ export const SupplierFormValues = z.object({
   contactPerson: emptyStringOr(SupplierOptionalText),
   email: emptyStringOr(SupplierEmail),
   notes: emptyStringOr(SupplierOptionalText),
-  phone: emptyStringOr(SupplierOptionalText),
+  phone: SupplierPhone,
   thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
@@ -28,7 +29,7 @@ export const SupplierCreateFormValues = z.object({
   companyName: SupplierCompanyName,
 });
 
-/** Schema → form. Nullable schema fields collapse to `''` for controlled inputs. */
+/** Schema → form. Text inputs use `''` for blanks; phone follows PhoneNumberField's `null` shape. */
 export function toSupplierFormValues(initialSupplier?: Supplier): SupplierFormValues {
   return {
     address: initialSupplier?.address ?? '',
@@ -36,14 +37,14 @@ export function toSupplierFormValues(initialSupplier?: Supplier): SupplierFormVa
     contactPerson: initialSupplier?.contactPerson ?? '',
     email: initialSupplier?.email ?? '',
     notes: initialSupplier?.notes ?? '',
-    phone: initialSupplier?.phone ?? '',
+    phone: initialSupplier?.phone ?? null,
     thumbnailDataUrl: initialSupplier?.thumbnailDataUrl ?? null,
   };
 }
 
 /**
  * Form → schema. Field names align with the API contract, so parsing through `SupplierCreateInput`
- * applies the shared transforms (`''` → null, email trim/lowercase) and enforces the contract.
+ * applies the shared text/email transforms (`''` → null, email trim/lowercase) and enforces the contract.
  */
 export function toSupplierCreateInput(value: SupplierFormValues): SupplierCreateInput {
   return SupplierCreateInput.parse(value);

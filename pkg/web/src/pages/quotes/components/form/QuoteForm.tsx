@@ -10,7 +10,6 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
 
-import { GenerateJobFromQuoteDialog } from '../GenerateJobFromQuoteDialog.js';
 import { quoteStatusLabels } from '../QuoteStatusBadge.js';
 import { QuoteFormValues, resolveSelectedAssemblySnapshots, toQuoteFormValues, toQuoteUpdateInput } from '../types.js';
 import { QuoteAssembliesSelector } from './QuoteAssembliesSelector.js';
@@ -221,7 +220,13 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
             </TabsContent>
             <TabsContent className="pt-4" value="documents">
               <form.AppField name="documentNotes">
-                {(field) => <field.TextareaField label="Quote Notes" rows={4} />}
+                {(field) => (
+                  <field.TextareaField
+                    label="Quote Notes"
+                    rows={4}
+                    placeholder="Notes entered here will be included in the quote document."
+                  />
+                )}
               </form.AppField>
               <div className="mt-6 grid gap-6">
                 <QuoteDocumentsSection
@@ -280,9 +285,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
           </form.Subscribe>
         </div>
       </FieldGroup>
-      <div className="flex justify-end gap-2 border-t pt-5">
-        <GenerateJobFromQuoteDialog quote={quote} />
-      </div>
     </form>
   );
 };

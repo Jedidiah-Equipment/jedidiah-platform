@@ -4,6 +4,7 @@ import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable
 import type React from 'react';
 import { useMemo } from 'react';
 
+import { CopyValueButton } from '@/components/button/CopyValueButton.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
@@ -83,7 +84,15 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({ onEditSupplier }) 
       },
       {
         accessorKey: 'email',
-        cell: ({ row }) => <span className="text-sm">{row.original.email}</span>,
+        cell: ({ row }) =>
+          row.original.email ? (
+            <span className="flex min-w-0 items-center gap-1 text-sm">
+              <span className="min-w-0 truncate">{row.original.email}</span>
+              <CopyValueButton label="Copy supplier email" value={row.original.email} />
+            </span>
+          ) : (
+            <span className="text-muted-foreground">None</span>
+          ),
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Email',
@@ -108,17 +117,6 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({ onEditSupplier }) 
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Created',
-      },
-      {
-        accessorKey: 'id',
-        cell: ({ row }) => (
-          <span className="block max-w-[240px] truncate font-mono text-xs text-muted-foreground">
-            {row.original.id}
-          </span>
-        ),
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'ID',
       },
     ];
 

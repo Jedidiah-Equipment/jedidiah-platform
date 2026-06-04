@@ -24,11 +24,16 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 type GenerateJobFromQuoteDialogProps = {
+  className?: string;
   quote: Pick<QuoteSummary, 'code' | 'id' | 'linkedJobs' | 'status'>;
   size?: 'default' | 'icon-sm';
 };
 
-export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProps> = ({ quote, size = 'default' }) => {
+export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProps> = ({
+  className,
+  quote,
+  size = 'default',
+}) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const { invalidateJobs, invalidateQuotes } = useQueryInvalidation();
@@ -59,6 +64,7 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
         render={
           <Button
             aria-label={`Generate CFO and start job from quote ${quote.code}`}
+            className={className}
             size={size}
             type="button"
             variant={size === 'icon-sm' ? 'outline' : 'default'}

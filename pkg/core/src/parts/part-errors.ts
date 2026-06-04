@@ -9,17 +9,6 @@ export class DuplicatePartCodeError extends Error {
   }
 }
 
-export class DuplicatePartSupplierCodeError extends Error {
-  readonly code = 'part.duplicate_supplier_code';
-  readonly metadata: { supplierCode: string; supplierId: string };
-
-  constructor({ supplierCode, supplierId }: { supplierCode: string; supplierId: string }) {
-    super(`Part supplier code already exists for supplier: ${supplierId} ${supplierCode}`);
-    this.name = 'DuplicatePartSupplierCodeError';
-    this.metadata = { supplierCode, supplierId };
-  }
-}
-
 export class PartNotFoundError extends Error {
   readonly code = 'part.not_found';
   readonly metadata: { id: string };
@@ -64,7 +53,6 @@ export class PartBulkImportConflictError extends Error {
 export type PartCoreError =
   | PartBulkImportConflictError
   | DuplicatePartCodeError
-  | DuplicatePartSupplierCodeError
   | PartNotFoundError
   | PartSupplierNotFoundError;
 
@@ -72,7 +60,6 @@ export function isPartCoreError(error: unknown): error is PartCoreError {
   return (
     error instanceof PartBulkImportConflictError ||
     error instanceof DuplicatePartCodeError ||
-    error instanceof DuplicatePartSupplierCodeError ||
     error instanceof PartNotFoundError ||
     error instanceof PartSupplierNotFoundError
   );

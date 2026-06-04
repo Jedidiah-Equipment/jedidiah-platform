@@ -4,7 +4,6 @@ import { CustomerNotFoundError, isCustomerCoreError } from './customers/customer
 import { isJobCoreError, JobCreateFromQuoteDeniedError, JobNotFoundError } from './jobs/job-errors.js';
 import {
   DuplicatePartCodeError,
-  DuplicatePartSupplierCodeError,
   isPartCoreError,
   PartNotFoundError,
   PartSupplierNotFoundError,
@@ -35,9 +34,6 @@ describe('core error codes and guards', () => {
 
   it('identifies part core errors', () => {
     expect(new DuplicatePartCodeError('P-100').code).toBe('part.duplicate_code');
-    expect(new DuplicatePartSupplierCodeError({ supplierCode: 'SUP-100', supplierId: 'supplier-id' }).code).toBe(
-      'part.duplicate_supplier_code',
-    );
     expect(new PartNotFoundError('part-id').code).toBe('part.not_found');
     expect(new PartSupplierNotFoundError('supplier-id').code).toBe('part.supplier_not_found');
     expect(isPartCoreError(new PartNotFoundError('part-id'))).toBe(true);

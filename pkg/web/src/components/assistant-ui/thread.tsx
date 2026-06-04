@@ -5,18 +5,11 @@ import {
   ErrorPrimitive,
   MessagePrimitive,
   type PartState,
-  SuggestionPrimitive,
   ThreadPrimitive,
   type ToolCallMessagePartProps,
   useAuiState,
 } from '@assistant-ui/react';
-import {
-  IconArrowDown,
-  IconArrowUp,
-  IconCopy,
-  IconRefresh,
-  IconSquare,
-} from '@tabler/icons-react';
+import { IconArrowDown, IconArrowUp, IconCopy, IconRefresh, IconSquare } from '@tabler/icons-react';
 import type { FC, ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge.js';
@@ -28,7 +21,11 @@ import { cn } from '@/lib/utils.js';
 import { MarkdownText } from './markdown-text.js';
 import { TooltipIconButton } from './tooltip-icon-button.js';
 
-export const Thread: FC = () => {
+type ThreadProps = {
+  composerSlot?: ReactNode;
+};
+
+export const Thread: FC<ThreadProps> = ({ composerSlot }) => {
   return (
     <ScrollAreaRoot
       render={<ThreadPrimitive.Root className="flex h-full min-h-0 min-w-0 flex-col rounded-lg border bg-background" />}
@@ -52,7 +49,7 @@ export const Thread: FC = () => {
 
           <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mt-auto flex flex-col gap-3 bg-background pb-4">
             <ThreadScrollToBottom />
-            <Composer />
+            <Composer composerSlot={composerSlot} />
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ScrollAreaViewport>
@@ -69,29 +66,12 @@ const ThreadMessage: FC = () => {
 
 const ThreadWelcome: FC = () => {
   return (
-    <div className="my-auto flex min-h-72 flex-col justify-center gap-5 px-2">
+    <div className="my-auto flex min-h-72 flex-col justify-center px-2">
       <div>
         <h1 className="font-semibold text-2xl">Assistant</h1>
         <p className="text-muted-foreground text-sm">Conversations are saved locally in this browser.</p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <ThreadPrimitive.Suggestions>
-          {({ suggestion }) => <SuggestionItem title={suggestion.title} />}
-        </ThreadPrimitive.Suggestions>
-      </div>
     </div>
-  );
-};
-
-const SuggestionItem: FC<{ title: string }> = ({ title }) => {
-  return (
-    <SuggestionPrimitive.Trigger
-      className="min-h-10 rounded-md border bg-muted/35 px-3 py-2 text-left text-muted-foreground text-sm leading-5 transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-      send
-      type="button"
-    >
-      <span className="text-sm leading-5">{title}</span>
-    </SuggestionPrimitive.Trigger>
   );
 };
 
@@ -111,9 +91,10 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 
-const Composer: FC = () => {
+const Composer: FC<ThreadProps> = ({ composerSlot }) => {
   return (
     <ComposerPrimitive.Root className="relative flex w-full flex-col">
+      {composerSlot}
       <div className="flex w-full flex-col gap-2 rounded-lg border bg-background p-2 shadow-sm focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20">
         <ComposerPrimitive.Input
           aria-label="Message"

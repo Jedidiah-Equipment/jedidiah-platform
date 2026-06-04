@@ -1,6 +1,7 @@
-import { AssistantRuntimeProvider, Suggestions, useAui, useAuiState, useLocalRuntime } from '@assistant-ui/react';
+import { AssistantRuntimeProvider, useAui, useAuiState, useLocalRuntime } from '@assistant-ui/react';
 import { IconMessage, IconPlus, IconTrash } from '@tabler/icons-react';
-import { useEffect, useMemo } from 'react';
+import { useNavigate } from '@tanstack/react-router';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { Thread } from '@/components/assistant-ui/thread.js';
@@ -14,24 +15,29 @@ import {
   getSortedAssistantChats,
   useAssistantChatStore,
 } from './assistant-chat-store.js';
+import { withAssistantDraftPromptHistoryState } from './assistant-history-state.js';
 import { jedidiahChatAdapter } from './assistant-ui-adapter.js';
 
-export const ASSISTANT_EXAMPLE_QUESTIONS: string[] = [
-  'how is the job for Thaba Mining Supplies going?',
-  'show me quotes waiting for customer approval',
-  'which jobs are behind schedule?',
-  'what work is active in Production?',
-  'find recent audit activity for quote changes',
-  'which customers have open jobs?',
-];
+type AssistantPanelProps = {
+  newChat?: boolean;
+  prompt?: string | undefined;
+};
 
-export function AssistantPanel() {
+type PendingDraftPrompt = {
+  chatId: string;
+  prompt: string;
+};
+
+export function AssistantPanel({ newChat = false, prompt }: AssistantPanelProps) {
+  const navigate = useNavigate();
   const { activeChatId, activeChat } = useAssistantChatStore(
     useShallow((state) => ({
       activeChat: state.chats[state.activeChatId],
       activeChatId: state.activeChatId,
     })),
   );
+  const handledDraftSearchRef = useRef<string | null>(null);
+  const [pendingDraftPrompt, setPendingDraftPrompt] = useState<PendingDraftPrompt | null>(null);
 
   useEffect(() => {
     if (!activeChat) {
@@ -39,17 +45,61 @@ export function AssistantPanel() {
     }
   }, [activeChat]);
 
+  useEffect(() => {
+    const draftSearchKey = prompt ? `${newChat ? 'new' : 'active'}:${prompt}` : null;
+
+    if (!draftSearchKey || !prompt) {
+      handledDraftSearchRef.current = null;
+      return;
+    }
+
+    if (handledDraftSearchRef.current === draftSearchKey) {
+      return;
+    }
+
+    handledDraftSearchRef.current = draftSearchKey;
+
+    const store = useAssistantChatStore.getState();
+    const targetChatId = newChat ? store.createChat() : store.activeChatId;
+
+    setPendingDraftPrompt({ chatId: targetChatId, prompt });
+  }, [newChat, prompt]);
+
+  const handleDraftPromptConsumed = useCallback(() => {
+    setPendingDraftPrompt(null);
+    void navigate({
+      replace: true,
+      search: (current) => ({
+        ...current,
+        newChat: undefined,
+        prompt: undefined,
+      }),
+      state: (current) => withAssistantDraftPromptHistoryState(current, undefined),
+      to: '/assistant',
+    });
+  }, [navigate]);
+
   if (!activeChat) {
     return null;
   }
 
-  return <AssistantRuntimeSession key={activeChatId} activeChatId={activeChatId} />;
+  const activeDraftPrompt = pendingDraftPrompt?.chatId === activeChatId ? pendingDraftPrompt.prompt : undefined;
+
+  return (
+    <AssistantRuntimeSession
+      key={activeChatId}
+      activeChatId={activeChatId}
+      composerSlot={
+        activeDraftPrompt ? (
+          <AssistantDraftPrompt prompt={activeDraftPrompt} onConsumed={handleDraftPromptConsumed} />
+        ) : null
+      }
+    />
+  );
 }
 
-function AssistantRuntimeSession({ activeChatId }: { activeChatId: string }) {
-  const aui = useAui({
-    suggestions: Suggestions(ASSISTANT_EXAMPLE_QUESTIONS),
-  });
+function AssistantRuntimeSession({ activeChatId, composerSlot }: { activeChatId: string; composerSlot?: ReactNode }) {
+  const aui = useAui({});
   const history = useMemo(() => createAssistantChatHistoryAdapter(activeChatId), [activeChatId]);
   const runtime = useLocalRuntime(jedidiahChatAdapter, {
     adapters: {
@@ -59,12 +109,12 @@ function AssistantRuntimeSession({ activeChatId }: { activeChatId: string }) {
 
   return (
     <AssistantRuntimeProvider aui={aui} runtime={runtime}>
-      <AssistantChatFrame />
+      <AssistantChatFrame composerSlot={composerSlot} />
     </AssistantRuntimeProvider>
   );
 }
 
-function AssistantChatFrame() {
+function AssistantChatFrame({ composerSlot }: { composerSlot?: ReactNode }) {
   const { activeChatId, chatRecords, deleteChat, newChat, selectChat } = useAssistantChatStore(
     useShallow((state) => ({
       activeChatId: state.activeChatId,
@@ -134,7 +184,18 @@ function AssistantChatFrame() {
           </div>
         </ScrollArea>
       </aside>
-      <Thread />
+      <Thread composerSlot={composerSlot} />
     </div>
   );
+}
+
+function AssistantDraftPrompt({ onConsumed, prompt }: { onConsumed: () => void; prompt: string }) {
+  const aui = useAui();
+
+  useEffect(() => {
+    aui.composer().setText(prompt);
+    onConsumed();
+  }, [aui, onConsumed, prompt]);
+
+  return null;
 }

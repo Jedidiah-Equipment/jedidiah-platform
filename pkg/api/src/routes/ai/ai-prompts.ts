@@ -1,3 +1,4 @@
+import { formatCurrency } from '@pkg/domain';
 import { createDomainGuidancePrompt } from './ai-domain-guidance.js';
 import type { AiToolName } from './ai-tools.js';
 
@@ -24,7 +25,7 @@ const RESPONSE_STYLE_PROMPT = [
   'Your response is displayed in a Markdown renderer, so use pure Markdown syntax and do not use HTML tags.',
   'Use Markdown links only when the link comes from tool result link metadata or code-owned route metadata.',
   'When a tool result record includes a links array, use those links for the matching labels you mention, especially the main record label.',
-  'When writing ZAR amounts in prose, prefer Rand formatting like "R 20 990.20" instead of "ZAR 20,990.20".',
+  `When writing ZAR amounts in prose, prefer Rand formatting like "${formatCurrency(20990.2, 'ZAR')}" instead of "ZAR 20,990.20".`,
   'When reporting Part or bill-of-materials quantities, pair the number with unitOfMeasure: write mm quantities like "6000 mm" and quantity values as counts.',
   'Use tables when they make comparisons or lists easier to scan; otherwise prefer short paragraphs or bullets.',
 ];

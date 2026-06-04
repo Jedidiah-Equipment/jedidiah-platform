@@ -1,15 +1,16 @@
-import { AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy, DateIso } from '@pkg/schema';
+import { AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy } from '@pkg/schema';
 import { IconEye } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import type { StoreApi, UseBoundStore } from 'zustand';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
-import { createPersistedDataTableStore } from '@/components/data-table/store.js';
+import { createPersistedDataTableStore, type DataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -21,14 +22,19 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { type AuditChangeMap, formatAuditChangesJson, getAuditChangeDisplays } from './audit-change-display.js';
-
-type DateRangeFilterValue = {
-  end?: string;
-  start?: string;
-};
+import { type AuditTableFixedFilters, getAuditListInputExtras } from './audit-table-input.js';
 
 type AuditEventRow = Omit<AuditEvent, 'changes'> & {
   changes: AuditChangeMap | null;
+};
+
+type AuditTableStoreHook = UseBoundStore<StoreApi<DataTableStore>>;
+
+type AuditTableProps = {
+  emptyMessage?: string;
+  fixedFilters?: AuditTableFixedFilters;
+  showEntityTypeFilter?: boolean;
+  store: AuditTableStoreHook;
 };
 
 const auditEntityTypeLabels = {
@@ -63,16 +69,38 @@ const auditEntityTypeOptions = AuditEntityType.options.map((entityType) => ({
   value: entityType,
 }));
 
+const auditTableInitialState = {
+  sorting: [
+    {
+      desc: true,
+      id: 'occurredAt',
+    },
+  ],
+};
+
 export const useAuditTableStore = createPersistedDataTableStore({
-  initialState: {
-    sorting: [
-      {
-        desc: true,
-        id: 'occurredAt',
-      },
-    ],
-  },
+  initialState: auditTableInitialState,
   persistName: 'audit-table',
+});
+
+export const useQuoteAuditTableStore = createPersistedDataTableStore({
+  initialState: auditTableInitialState,
+  persistName: 'quote-audit-table',
+});
+
+export const useProductAuditTableStore = createPersistedDataTableStore({
+  initialState: auditTableInitialState,
+  persistName: 'product-audit-table',
+});
+
+export const useCustomerAuditTableStore = createPersistedDataTableStore({
+  initialState: auditTableInitialState,
+  persistName: 'customer-audit-table',
+});
+
+export const useSupplierAuditTableStore = createPersistedDataTableStore({
+  initialState: auditTableInitialState,
+  persistName: 'supplier-audit-table',
 });
 
 const auditSortOptions: SortOptions<AuditListInput> = {
@@ -83,13 +111,24 @@ const auditSortOptions: SortOptions<AuditListInput> = {
   },
 };
 
-export const AuditTable: React.FC = () => {
+export const AuditTable: React.FC<AuditTableProps> = ({
+  emptyMessage = 'No audit events found.',
+  fixedFilters,
+  showEntityTypeFilter = true,
+  store,
+}) => {
   const trpc = useTRPC();
 
+  const getListInputExtras = useCallback(
+    (columnFilters: Parameters<typeof getAuditListInputExtras>[0]) =>
+      getAuditListInputExtras(columnFilters, fixedFilters),
+    [fixedFilters],
+  );
+
   const tableController = useServerSideTableController({
-    store: useAuditTableStore,
+    store,
     sortOptions: auditSortOptions,
-    getListInputExtras: getAuditListInputExtras,
+    getListInputExtras,
   });
 
   const userOptions = useUserOptions();
@@ -134,20 +173,24 @@ export const AuditTable: React.FC = () => {
           headerClassName: 'w-64 min-w-64',
         },
       },
-      {
-        accessorKey: 'entityType',
-        cell: ({ row }) => (
-          <span className="text-muted-foreground">{auditEntityTypeLabels[row.original.entityType]}</span>
-        ),
-        enableColumnFilter: true,
-        enableSorting: false,
-        header: 'Entity',
-        meta: {
-          filterOptions: auditEntityTypeOptions,
-          filterVariant: 'multi-select',
-          headerClassName: 'w-44 min-w-44',
-        },
-      },
+      ...(showEntityTypeFilter
+        ? [
+            {
+              accessorKey: 'entityType',
+              cell: ({ row }) => (
+                <span className="text-muted-foreground">{auditEntityTypeLabels[row.original.entityType]}</span>
+              ),
+              enableColumnFilter: true,
+              enableSorting: false,
+              header: 'Entity',
+              meta: {
+                filterOptions: auditEntityTypeOptions,
+                filterVariant: 'multi-select',
+                headerClassName: 'w-44 min-w-44',
+              },
+            } satisfies ColumnDef<AuditEventRow>,
+          ]
+        : []),
       {
         accessorKey: 'action',
         cell: ({ row }) => <AuditActionBadge action={row.original.action} />,
@@ -165,8 +208,7 @@ export const AuditTable: React.FC = () => {
         enableSorting: false,
         header: 'Summary',
         meta: {
-          cellClassName: 'max-w-[28rem]',
-          headerClassName: 'w-[28rem]',
+          cellClassName: 'min-w-0',
         },
       },
       {
@@ -181,7 +223,7 @@ export const AuditTable: React.FC = () => {
         },
       },
     ],
-    [userOptions.selectOptions],
+    [showEntityTypeFilter, userOptions.selectOptions],
   );
 
   const table = useReactTable<AuditEventRow>({
@@ -206,7 +248,7 @@ export const AuditTable: React.FC = () => {
 
   return (
     <DataTable
-      emptyMessage="No audit events found."
+      emptyMessage={emptyMessage}
       errorMessage={getApiQueryErrorMessage(auditQuery.error, 'Unable to load audit events.')}
       hideGlobalFilter
       isLoading={isLoading}
@@ -217,22 +259,6 @@ export const AuditTable: React.FC = () => {
     />
   );
 };
-
-function getAuditListInputExtras(columnFilters: ColumnFiltersState) {
-  const occurredAtRange = getDateRangeFilterValue(columnFilters, 'occurredAt');
-  const occurredAtStart = occurredAtRange.start ? DateIso.parse(toLocalDayStartIso(occurredAtRange.start)) : undefined;
-  const occurredAtEnd = occurredAtRange.end ? DateIso.parse(toLocalDayEndIso(occurredAtRange.end)) : undefined;
-
-  return {
-    filters: {
-      actorUserIds: getMultiSelectFilterValue(columnFilters, 'actorUserId'),
-      entityIds: [],
-      entityTypes: getEntityTypeFilterValue(columnFilters),
-      ...(occurredAtStart ? { occurredAtStart } : {}),
-      ...(occurredAtEnd ? { occurredAtEnd } : {}),
-    },
-  } satisfies Pick<AuditListInput, 'filters'>;
-}
 
 type ActorCellProps = {
   event: AuditEventRow;
@@ -248,9 +274,6 @@ const ActorCell: React.FC<ActorCellProps> = ({ event }) => {
   return (
     <div className="min-w-0">
       <div className="truncate font-medium">{actorLabel}</div>
-      {event.actorEmail && event.actorEmail !== actorLabel ? (
-        <div className="truncate text-xs text-muted-foreground">{event.actorEmail}</div>
-      ) : null}
     </div>
   );
 };
@@ -332,76 +355,3 @@ const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, disp
     </DialogContent>
   </Dialog>
 );
-
-function getMultiSelectFilterValue(columnFilters: ColumnFiltersState, id: 'actorUserId' | 'entityType'): string[] {
-  const value = columnFilters.find((filter) => filter.id === id)?.value;
-
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.length > 0)
-    : [];
-}
-
-function getEntityTypeFilterValue(columnFilters: ColumnFiltersState): AuditListInput['filters']['entityTypes'] {
-  const allowedEntityTypes = new Set<string>(AuditEntityType.options);
-
-  return getMultiSelectFilterValue(columnFilters, 'entityType').filter((entityType) =>
-    allowedEntityTypes.has(entityType),
-  ) as AuditListInput['filters']['entityTypes'];
-}
-
-function getDateRangeFilterValue(columnFilters: ColumnFiltersState, id: 'occurredAt'): DateRangeFilterValue {
-  const value = columnFilters.find((filter) => filter.id === id)?.value;
-
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
-  }
-
-  const range = value as { end?: unknown; start?: unknown };
-
-  return {
-    ...(typeof range.end === 'string' && range.end ? { end: range.end } : {}),
-    ...(typeof range.start === 'string' && range.start ? { start: range.start } : {}),
-  };
-}
-
-function toLocalDayStartIso(value: string): string | undefined {
-  const dateParts = parseDateInput(value);
-
-  if (!dateParts) {
-    return undefined;
-  }
-
-  const [year, month, day] = dateParts;
-
-  return toIsoString(new Date(year, month - 1, day, 0, 0, 0, 0));
-}
-
-function toLocalDayEndIso(value: string): string | undefined {
-  const dateParts = parseDateInput(value);
-
-  if (!dateParts) {
-    return undefined;
-  }
-
-  const [year, month, day] = dateParts;
-
-  return toIsoString(new Date(year, month - 1, day, 23, 59, 59, 999));
-}
-
-function parseDateInput(value: string): [number, number, number] | undefined {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return undefined;
-  }
-
-  const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10));
-
-  if (!year || !month || !day) {
-    return undefined;
-  }
-
-  return [year, month, day];
-}
-
-function toIsoString(date: Date): string | undefined {
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
-}

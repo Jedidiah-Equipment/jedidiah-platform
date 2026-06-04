@@ -1,9 +1,5 @@
 import { UserPassword } from '@pkg/schema';
-import {
-  IconAlertCircle,
-  IconKey,
-  IconLoader2,
-} from '@tabler/icons-react';
+import { IconAlertCircle, IconKey, IconLoader2 } from '@tabler/icons-react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';

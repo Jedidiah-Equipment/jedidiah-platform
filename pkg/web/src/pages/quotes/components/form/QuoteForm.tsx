@@ -3,12 +3,14 @@ import { type QuoteDetail, type QuoteDocumentGenerationWarning, QuoteStatus, typ
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
+import { AuditTable, useQuoteAuditTableStore } from '@/components/audit/AuditTable.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useSalesPersonOptions } from '@/hooks/options/index.js';
+import { useCan } from '@/hooks/use-access.js';
 
 import { quoteStatusLabels } from '../QuoteStatusBadge.js';
 import { QuoteFormValues, resolveSelectedAssemblySnapshots, toQuoteFormValues, toQuoteUpdateInput } from '../types.js';
@@ -37,7 +39,15 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
     [quote],
   );
   const salespeopleOptions = useSalesPersonOptions();
+  const auditAccess = useCan('audit:read');
   const [generationWarnings, setGenerationWarnings] = useState<QuoteDocumentGenerationWarning[]>([]);
+  const quoteAuditFilters = useMemo(
+    () => ({
+      entityIds: [quote.id],
+      entityTypes: ['quote' as const],
+    }),
+    [quote.id],
+  );
 
   const { autosave, form, formProps } = useAutosaveForm({
     defaultValues: toQuoteFormValues(quote),
@@ -63,6 +73,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
             <TabsList variant="default">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
+              {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
             </TabsList>
             <TabsContent className="pt-4" value="details">
               <div className="grid gap-6">
@@ -237,6 +248,16 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
                 />
               </div>
             </TabsContent>
+            {auditAccess.can ? (
+              <TabsContent className="pt-4" value="audit">
+                <AuditTable
+                  emptyMessage="No audit events found for this quote."
+                  fixedFilters={quoteAuditFilters}
+                  showEntityTypeFilter={false}
+                  store={useQuoteAuditTableStore}
+                />
+              </TabsContent>
+            ) : null}
           </Tabs>
           <form.Subscribe
             selector={(state): QuoteComputedSummary => {

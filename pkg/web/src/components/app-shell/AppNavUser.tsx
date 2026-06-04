@@ -1,10 +1,5 @@
 import { departmentLabels, roleLabels } from '@pkg/domain';
-import {
-  IconBuilding,
-  IconSelector,
-  IconLogout,
-  IconShield,
-} from '@tabler/icons-react';
+import { IconBuilding, IconLogout, IconSelector, IconShield } from '@tabler/icons-react';
 import type React from 'react';
 
 import { DepartmentIcon } from '@/components/departments/index.js';

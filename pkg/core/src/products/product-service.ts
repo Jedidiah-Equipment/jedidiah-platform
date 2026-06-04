@@ -33,10 +33,10 @@ import { and, asc, desc, eq, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import {
-  createAuditChanges,
-  createAuditSnapshotChanges,
-  insertAuditEvent,
-  productAuditDescriptor,
+  defineAuditDescriptor,
+  diffAuditUpdate,
+  recordAuditCreate,
+  recordAuditUpdate,
 } from '../audit/audit-service.js';
 import {
   DocumentNotFoundError,
@@ -67,7 +67,27 @@ const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci
 
 type ProductRow = typeof products.$inferSelect;
 type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
-type ProductCatalogAuditRecord = ProductRow & { assemblies: string };
+type ProductAuditInput = ProductRow & { assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']> };
+
+// `assemblies` is folded into one stable JSON field so the Product aggregate's assemblies diff as a
+// unit (Product Assemblies are audited under the `product` entity — ADR, no separate entity type).
+export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
+  entityType: 'product',
+  noun: 'product',
+  primaryLabelField: 'name',
+  entityId: (input) => input.id,
+  toRecord: (input) => ({
+    assemblies: JSON.stringify(toAuditAssemblies(input.assemblies)),
+    basePrice: input.basePrice,
+    currencyCode: input.currencyCode,
+    description: input.description,
+    buildTimeDays: input.buildTimeDays,
+    modelCode: input.modelCode,
+    name: input.name,
+    requiresVinNumber: input.requiresVinNumber,
+    thumbnailDataUrl: input.thumbnailDataUrl,
+  }),
+});
 export type ProductDocumentCreateInput = {
   bytes: Uint8Array;
   contentType: string;
@@ -460,22 +480,7 @@ export async function createProduct({
       });
       const after = { ...row, assemblies };
 
-      await insertAuditEvent({
-        db: tx,
-        input: {
-          action: 'created',
-          actorUserId,
-          after: toProductCatalogAuditRecord(after),
-          before: null,
-          changes: createAuditSnapshotChanges(
-            toProductCatalogAuditRecord(after),
-            productAuditDescriptor.fields,
-            'created',
-          ),
-          entityId: row.id,
-          entityType: productAuditDescriptor.entityType,
-        },
-      });
+      await recordAuditCreate({ db: tx, descriptor: productAuditDescriptor, actorUserId, input: after });
 
       return mapProduct(after);
     });
@@ -514,11 +519,7 @@ export async function updateProduct({
         thumbnailDataUrl: input.thumbnailDataUrl,
       };
       const after = { ...before, ...patch, assemblies: desiredAssemblies };
-      const changes = createAuditChanges(
-        toProductCatalogAuditRecord({ ...before, assemblies: beforeAssemblies }),
-        toProductCatalogAuditRecord(after),
-        productAuditDescriptor.fields,
-      );
+      const changes = diffAuditUpdate(productAuditDescriptor, { ...before, assemblies: beforeAssemblies }, after);
 
       if (!changes) {
         return mapProduct({ ...before, assemblies: beforeAssemblies });
@@ -543,17 +544,12 @@ export async function updateProduct({
         : beforeAssemblies;
       const afterWithAssemblies = { ...row, assemblies };
 
-      await insertAuditEvent({
+      await recordAuditUpdate({
         db: tx,
-        input: {
-          action: 'updated',
-          actorUserId,
-          after: toProductCatalogAuditRecord(afterWithAssemblies),
-          before: toProductCatalogAuditRecord({ ...before, assemblies: beforeAssemblies }),
-          changes,
-          entityId: row.id,
-          entityType: productAuditDescriptor.entityType,
-        },
+        descriptor: productAuditDescriptor,
+        actorUserId,
+        after: afterWithAssemblies,
+        changes,
       });
 
       return mapProduct(afterWithAssemblies);
@@ -575,15 +571,6 @@ async function assertProductExists({ db, productId }: { db: Db; productId: UUID 
   if (!product) {
     throw new ProductNotFoundError(productId);
   }
-}
-
-function toProductCatalogAuditRecord(
-  row: ProductRow & { assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']> },
-): ProductCatalogAuditRecord {
-  return {
-    ...row,
-    assemblies: JSON.stringify(toAuditAssemblies(row.assemblies)),
-  };
 }
 
 function toAuditAssemblies(

@@ -20,14 +20,30 @@ import { Supplier as SupplierSchema } from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
 import {
-  createAuditChanges,
-  createAuditSnapshotChanges,
-  insertAuditEvent,
-  supplierAuditDescriptor,
+  defineAuditDescriptor,
+  diffAuditUpdate,
+  recordAuditCreate,
+  recordAuditUpdate,
 } from '../audit/audit-service.js';
 import { DuplicateSupplierNameError, SupplierNotFoundError } from './supplier-errors.js';
 
 type SupplierRow = typeof supplier.$inferSelect;
+
+export const supplierAuditDescriptor = defineAuditDescriptor<SupplierRow>({
+  entityType: 'supplier',
+  noun: 'supplier',
+  primaryLabelField: 'companyName',
+  entityId: (row) => row.id,
+  toRecord: (row) => ({
+    address: row.address,
+    companyName: row.companyName,
+    contactPerson: row.contactPerson,
+    email: row.email,
+    notes: row.notes,
+    phone: row.phone,
+    thumbnailDataUrl: row.thumbnailDataUrl,
+  }),
+});
 
 export function mapSupplier(row: SupplierRow): Supplier {
   return SupplierSchema.parse({
@@ -124,18 +140,7 @@ export async function createSupplier({
         throw new Error('Supplier insert did not return a row');
       }
 
-      await insertAuditEvent({
-        db: tx,
-        input: {
-          action: 'created',
-          actorUserId,
-          after: row,
-          before: null,
-          changes: createAuditSnapshotChanges(row, supplierAuditDescriptor.fields, 'created'),
-          entityId: row.id,
-          entityType: supplierAuditDescriptor.entityType,
-        },
-      });
+      await recordAuditCreate({ db: tx, descriptor: supplierAuditDescriptor, actorUserId, input: row });
 
       return mapSupplier(row);
     });
@@ -171,7 +176,7 @@ export async function updateSupplier({
         thumbnailDataUrl: input.thumbnailDataUrl,
       };
       const after = { ...before, ...patch };
-      const changes = createAuditChanges(before, after, supplierAuditDescriptor.fields);
+      const changes = diffAuditUpdate(supplierAuditDescriptor, before, after);
 
       if (!changes) {
         return mapSupplier(before);
@@ -187,18 +192,7 @@ export async function updateSupplier({
         throw new SupplierNotFoundError(input.id);
       }
 
-      await insertAuditEvent({
-        db: tx,
-        input: {
-          action: 'updated',
-          actorUserId,
-          after: row,
-          before,
-          changes,
-          entityId: row.id,
-          entityType: supplierAuditDescriptor.entityType,
-        },
-      });
+      await recordAuditUpdate({ db: tx, descriptor: supplierAuditDescriptor, actorUserId, after: row, changes });
 
       return mapSupplier(row);
     });

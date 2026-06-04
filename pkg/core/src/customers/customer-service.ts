@@ -18,14 +18,31 @@ import { Customer } from '@pkg/schema';
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
 import {
-  createAuditChanges,
-  createAuditSnapshotChanges,
-  customerAuditDescriptor,
-  insertAuditEvent,
+  defineAuditDescriptor,
+  diffAuditUpdate,
+  recordAuditCreate,
+  recordAuditUpdate,
 } from '../audit/audit-service.js';
 import { CustomerNotFoundError } from './customer-errors.js';
 
 type CustomerRow = typeof customers.$inferSelect;
+
+export const customerAuditDescriptor = defineAuditDescriptor<CustomerRow>({
+  entityType: 'customer',
+  noun: 'customer',
+  primaryLabelField: 'companyName',
+  entityId: (row) => row.id,
+  toRecord: (row) => ({
+    address: row.address,
+    companyName: row.companyName,
+    contactPerson: row.contactPerson,
+    email: row.email,
+    notes: row.notes,
+    phone: row.phone,
+    thumbnailDataUrl: row.thumbnailDataUrl,
+    vatNumber: row.vatNumber,
+  }),
+});
 
 export function mapCustomer(row: CustomerRow): Customer {
   return Customer.parse({
@@ -127,18 +144,7 @@ export async function createCustomer({
       throw new Error('Customer insert did not return a row');
     }
 
-    await insertAuditEvent({
-      db: tx,
-      input: {
-        action: 'created',
-        actorUserId,
-        after: row,
-        before: null,
-        changes: createAuditSnapshotChanges(row, customerAuditDescriptor.fields, 'created'),
-        entityId: row.id,
-        entityType: customerAuditDescriptor.entityType,
-      },
-    });
+    await recordAuditCreate({ db: tx, descriptor: customerAuditDescriptor, actorUserId, input: row });
 
     return mapCustomer(row);
   });
@@ -171,7 +177,7 @@ export async function updateCustomer({
       vatNumber: input.vatNumber,
     };
     const after = { ...before, ...patch };
-    const changes = createAuditChanges(before, after, customerAuditDescriptor.fields);
+    const changes = diffAuditUpdate(customerAuditDescriptor, before, after);
 
     if (!changes) {
       return mapCustomer(before);
@@ -187,18 +193,7 @@ export async function updateCustomer({
       throw new CustomerNotFoundError(input.id);
     }
 
-    await insertAuditEvent({
-      db: tx,
-      input: {
-        action: 'updated',
-        actorUserId,
-        after: row,
-        before,
-        changes,
-        entityId: row.id,
-        entityType: customerAuditDescriptor.entityType,
-      },
-    });
+    await recordAuditUpdate({ db: tx, descriptor: customerAuditDescriptor, actorUserId, after: row, changes });
 
     return mapCustomer(row);
   });

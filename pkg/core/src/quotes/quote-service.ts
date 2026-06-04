@@ -15,9 +15,11 @@ import { assertQuoteEditable, parseJobCodeSearch, validateDiscount } from '@pkg/
 import {
   type Assembly,
   type AuthId,
+  formatQuoteCode,
   JobCode,
   ProductCurrencyCode,
   Quote,
+  QuoteCode,
   type QuoteCreateInput,
   type QuoteDetail,
   type QuoteListInput,
@@ -32,12 +34,12 @@ import {
 import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import {
-  createAuditChanges,
-  createAuditSnapshotChanges,
-  customerAuditDescriptor,
-  insertAuditEvent,
-  quoteAuditDescriptor,
+  defineAuditDescriptor,
+  diffAuditUpdate,
+  recordAuditCreate,
+  recordAuditUpdate,
 } from '../audit/audit-service.js';
+import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import {
   QuoteDiscountInvalidError,
@@ -56,27 +58,46 @@ import {
 
 type QuoteRow = typeof quotes.$inferSelect;
 type ProductRow = typeof products.$inferSelect;
-type QuoteAuditRecord = Pick<
-  QuoteRow,
-  | 'code'
-  | 'customerId'
-  | 'depositPercent'
-  | 'deliveryIncluded'
-  | 'deliveryPrice'
-  | 'discountAmount'
-  | 'notes'
-  | 'documentNotes'
-  | 'plannedDeliveryDate'
-  | 'preferredDeliveryDate'
-  | 'productId'
-  | 'quotedBasePrice'
-  | 'quotedCurrencyCode'
-  | 'salesPersonId'
-  | 'status'
-  | 'validUntil'
-> & {
-  selectedAssemblies: string;
-};
+type QuoteAuditInput = { row: QuoteRow; selectedAssemblies: readonly QuoteSelectedAssemblyRow[] };
+
+// `code` is the summary label, not an audited field, so it lives in `label`. `selectedAssemblies` is
+// folded into one stable JSON field — the Quote Selected Assembly snapshot the audit log diffs against.
+export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
+  entityType: 'quote',
+  noun: 'quote',
+  primaryLabelField: 'code',
+  primaryLabelFormatter: formatQuoteAuditLabel,
+  entityId: ({ row }) => row.id,
+  label: ({ row }) => row.code,
+  toRecord: ({ row, selectedAssemblies }) => ({
+    customerId: row.customerId,
+    depositPercent: row.depositPercent,
+    deliveryIncluded: row.deliveryIncluded,
+    deliveryPrice: row.deliveryPrice,
+    discountAmount: row.discountAmount,
+    notes: row.notes,
+    documentNotes: row.documentNotes,
+    plannedDeliveryDate: row.plannedDeliveryDate,
+    preferredDeliveryDate: row.preferredDeliveryDate,
+    productId: row.productId,
+    quotedBasePrice: row.quotedBasePrice,
+    quotedCurrencyCode: row.quotedCurrencyCode,
+    salesPersonId: row.salesPersonId,
+    selectedAssemblies: JSON.stringify(toQuoteSelectedAssemblyAuditRecord(selectedAssemblies)),
+    status: row.status,
+    validUntil: row.validUntil,
+  }),
+});
+
+function formatQuoteAuditLabel(value: unknown): string {
+  if (typeof value === 'number') {
+    return formatQuoteCode(value);
+  }
+
+  const result = QuoteCode.safeParse(value);
+
+  return result.success ? result.data : String(value);
+}
 
 type QuoteListRow = {
   quote: QuoteRow;
@@ -181,21 +202,11 @@ export async function createQuote({
     });
     const selectedAssemblies = await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx });
 
-    await insertAuditEvent({
+    await recordAuditCreate({
       db: tx,
-      input: {
-        action: 'created',
-        actorUserId,
-        after: mapQuoteAuditRecord(row, selectedAssemblies),
-        before: null,
-        changes: createAuditSnapshotChanges(
-          mapQuoteAuditRecord(row, selectedAssemblies),
-          quoteAuditDescriptor.fields,
-          'created',
-        ),
-        entityId: row.id,
-        entityType: quoteAuditDescriptor.entityType,
-      },
+      descriptor: quoteAuditDescriptor,
+      actorUserId,
+      input: { row, selectedAssemblies },
     });
 
     return getQuote({ db: tx, id: row.id });
@@ -382,10 +393,10 @@ export async function updateQuote({
       quoteId: before.id,
       tx,
     });
-    const changes = createAuditChanges(
-      mapQuoteAuditRecord(before, beforeSelectedAssemblies),
-      mapQuoteAuditRecord(after, resolved.rows),
-      quoteAuditDescriptor.fields,
+    const changes = diffAuditUpdate(
+      quoteAuditDescriptor,
+      { row: before, selectedAssemblies: beforeSelectedAssemblies },
+      { row: after, selectedAssemblies: resolved.rows },
     );
 
     if (!changes) {
@@ -413,17 +424,12 @@ export async function updateQuote({
 
     const selectedAssemblies = await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx });
 
-    await insertAuditEvent({
+    await recordAuditUpdate({
       db: tx,
-      input: {
-        action: 'updated',
-        actorUserId,
-        after: mapQuoteAuditRecord(row, selectedAssemblies),
-        before: mapQuoteAuditRecord(before, beforeSelectedAssemblies),
-        changes,
-        entityId: row.id,
-        entityType: quoteAuditDescriptor.entityType,
-      },
+      descriptor: quoteAuditDescriptor,
+      actorUserId,
+      after: { row, selectedAssemblies },
+      changes,
     });
 
     return getQuote({ db: tx, id: row.id });
@@ -539,18 +545,7 @@ async function resolveQuoteCustomer({
     throw new Error('Inline customer insert did not return a row');
   }
 
-  await insertAuditEvent({
-    db: tx,
-    input: {
-      action: 'created',
-      actorUserId,
-      after: customer,
-      before: null,
-      changes: createAuditSnapshotChanges(customer, customerAuditDescriptor.fields, 'created'),
-      entityId: customer.id,
-      entityType: customerAuditDescriptor.entityType,
-    },
-  });
+  await recordAuditCreate({ db: tx, descriptor: customerAuditDescriptor, actorUserId, input: customer });
 
   return customer.id;
 }
@@ -609,31 +604,6 @@ function assertValidDiscount({ basePrice, discountAmount }: { basePrice: number;
   if (!result.allowed) {
     throw new QuoteDiscountInvalidError(result.reason);
   }
-}
-
-function mapQuoteAuditRecord(
-  quote: Omit<QuoteAuditRecord, 'selectedAssemblies'>,
-  selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
-): QuoteAuditRecord {
-  return {
-    code: quote.code,
-    customerId: quote.customerId,
-    depositPercent: quote.depositPercent,
-    deliveryIncluded: quote.deliveryIncluded,
-    deliveryPrice: quote.deliveryPrice,
-    discountAmount: quote.discountAmount,
-    notes: quote.notes,
-    documentNotes: quote.documentNotes,
-    plannedDeliveryDate: quote.plannedDeliveryDate,
-    preferredDeliveryDate: quote.preferredDeliveryDate,
-    productId: quote.productId,
-    quotedBasePrice: quote.quotedBasePrice,
-    quotedCurrencyCode: quote.quotedCurrencyCode,
-    salesPersonId: quote.salesPersonId,
-    selectedAssemblies: JSON.stringify(toQuoteSelectedAssemblyAuditRecord(selectedAssemblies)),
-    status: quote.status,
-    validUntil: quote.validUntil,
-  };
 }
 
 function toQuoteSelectedAssemblyAuditRecord(selectedAssemblies: readonly QuoteSelectedAssemblyRow[]) {

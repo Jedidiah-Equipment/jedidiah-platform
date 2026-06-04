@@ -3,7 +3,6 @@ import { Job, JobStage } from '@pkg/schema';
 
 export type JobRow = typeof jobs.$inferSelect;
 export type JobStageRow = typeof jobStages.$inferSelect;
-export type JobAuditRecord = Pick<JobRow, 'code' | 'productId' | 'productSerialNumber' | 'quoteId'>;
 
 export function mapJob(row: JobRow): Job {
   return Job.parse({
@@ -19,15 +18,6 @@ export function mapJob(row: JobRow): Job {
     updatedAt: row.updatedAt.toISOString(),
     vinNumber: row.vinNumber,
   });
-}
-
-export function mapJobAuditRecord(job: JobAuditRecord): JobAuditRecord {
-  return {
-    code: job.code,
-    productId: job.productId,
-    productSerialNumber: job.productSerialNumber,
-    quoteId: job.quoteId,
-  };
 }
 
 export function mapJobStage(row: JobStageRow): JobStage {

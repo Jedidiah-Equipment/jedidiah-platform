@@ -25,12 +25,12 @@ import { Part as PartSchema } from '@pkg/schema';
 import { and, asc, count, eq, or, type SQL, sql } from 'drizzle-orm';
 
 import {
-  createAuditChanges,
-  createAuditSnapshotChanges,
-  insertAuditEvent,
-  partAuditDescriptor,
-  supplierAuditDescriptor,
+  defineAuditDescriptor,
+  diffAuditUpdate,
+  recordAuditCreate,
+  recordAuditUpdate,
 } from '../audit/audit-service.js';
+import { supplierAuditDescriptor } from '../suppliers/supplier-service.js';
 import {
   DuplicatePartCodeError,
   PartBulkImportConflictError,
@@ -40,6 +40,25 @@ import {
 
 type PartRow = typeof parts.$inferSelect;
 type SupplierRow = Pick<typeof supplier.$inferSelect, 'companyName' | 'id'>;
+
+export const partAuditDescriptor = defineAuditDescriptor<PartRow>({
+  entityType: 'part',
+  noun: 'part',
+  primaryLabelField: 'name',
+  entityId: (row) => row.id,
+  toRecord: (row) => ({
+    category: row.category,
+    code: row.code,
+    description: row.description,
+    drawingCode: row.drawingCode,
+    finish: row.finish,
+    isInternallyFabricated: row.isInternallyFabricated,
+    name: row.name,
+    supplierCode: row.supplierCode,
+    supplierId: row.supplierId,
+    unitOfMeasure: row.unitOfMeasure,
+  }),
+});
 
 type PartWithSupplierRow = PartRow & {
   supplier: SupplierRow;
@@ -213,18 +232,7 @@ export async function createPart({
         throw new Error('Part insert did not return a row');
       }
 
-      await insertAuditEvent({
-        db: tx,
-        input: {
-          action: 'created',
-          actorUserId,
-          after: row,
-          before: null,
-          changes: createAuditSnapshotChanges(row, partAuditDescriptor.fields, 'created'),
-          entityId: row.id,
-          entityType: partAuditDescriptor.entityType,
-        },
-      });
+      await recordAuditCreate({ db: tx, descriptor: partAuditDescriptor, actorUserId, input: row });
 
       return getPart({ db: tx, id: row.id });
     });
@@ -265,7 +273,7 @@ export async function updatePart({
         unitOfMeasure: input.unitOfMeasure,
       };
       const after = { ...before, ...patch };
-      const changes = createAuditChanges(before, after, partAuditDescriptor.fields);
+      const changes = diffAuditUpdate(partAuditDescriptor, before, after);
 
       if (!changes) {
         return getPart({ db: tx, id: before.id });
@@ -277,18 +285,7 @@ export async function updatePart({
         throw new PartNotFoundError(input.id);
       }
 
-      await insertAuditEvent({
-        db: tx,
-        input: {
-          action: 'updated',
-          actorUserId,
-          after: row,
-          before,
-          changes,
-          entityId: row.id,
-          entityType: partAuditDescriptor.entityType,
-        },
-      });
+      await recordAuditUpdate({ db: tx, descriptor: partAuditDescriptor, actorUserId, after: row, changes });
 
       return getPart({ db: tx, id: row.id });
     });
@@ -365,18 +362,7 @@ export async function bulkImportParts({
             throw new Error('Part import insert did not return a row');
           }
 
-          await insertAuditEvent({
-            db: tx,
-            input: {
-              action: 'created',
-              actorUserId,
-              after: created,
-              before: null,
-              changes: createAuditSnapshotChanges(created, partAuditDescriptor.fields, 'created'),
-              entityId: created.id,
-              entityType: partAuditDescriptor.entityType,
-            },
-          });
+          await recordAuditCreate({ db: tx, descriptor: partAuditDescriptor, actorUserId, input: created });
           importedCount += 1;
           continue;
         }
@@ -385,7 +371,7 @@ export async function bulkImportParts({
           ...existingPart,
           ...partInput,
         };
-        const changes = createAuditChanges(existingPart, after, partAuditDescriptor.fields);
+        const changes = diffAuditUpdate(partAuditDescriptor, existingPart, after);
 
         if (!changes) {
           continue;
@@ -397,18 +383,7 @@ export async function bulkImportParts({
           throw new PartNotFoundError(existingPart.id);
         }
 
-        await insertAuditEvent({
-          db: tx,
-          input: {
-            action: 'updated',
-            actorUserId,
-            after: updated,
-            before: existingPart,
-            changes,
-            entityId: updated.id,
-            entityType: partAuditDescriptor.entityType,
-          },
-        });
+        await recordAuditUpdate({ db: tx, descriptor: partAuditDescriptor, actorUserId, after: updated, changes });
         updatedCount += 1;
       }
 
@@ -499,18 +474,7 @@ async function createImportSupplier({
     throw new Error('Supplier import insert did not return a row');
   }
 
-  await insertAuditEvent({
-    db,
-    input: {
-      action: 'created',
-      actorUserId,
-      after: created,
-      before: null,
-      changes: createAuditSnapshotChanges(created, supplierAuditDescriptor.fields, 'created'),
-      entityId: created.id,
-      entityType: supplierAuditDescriptor.entityType,
-    },
-  });
+  await recordAuditCreate({ db, descriptor: supplierAuditDescriptor, actorUserId, input: created });
 
   return {
     companyName: created.companyName,

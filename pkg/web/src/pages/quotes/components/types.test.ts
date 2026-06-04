@@ -56,6 +56,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     productThumbnailDataUrl: null,
     salesPersonEmail: 'sales@example.com',
     salesPersonName: 'Sales Person',
+    salesPersonThumbnailDataUrl: null,
     selectedAssemblies: [
       {
         id: SELECTION_ID,

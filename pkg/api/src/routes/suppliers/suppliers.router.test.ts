@@ -77,7 +77,7 @@ describe('suppliers.create', () => {
       address: '12 Main Road',
       contactPerson: 'Jane Buyer',
       notes: 'Prefers email',
-      phone: '+27 11 555 0100',
+      phone: '+27115550100',
     });
 
     expect(created).toMatchObject({
@@ -86,7 +86,7 @@ describe('suppliers.create', () => {
       contactPerson: 'Jane Buyer',
       email: 'acme-supplies@example.com',
       notes: 'Prefers email',
-      phone: '+27 11 555 0100',
+      phone: '+27115550100',
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
@@ -327,7 +327,7 @@ describe('suppliers.update', () => {
       email: 'sales@acme.example',
       id: created.id,
       notes: null,
-      phone: '+27 11 555 0100',
+      phone: '+27115550100',
     });
 
     expect(updated).toMatchObject({
@@ -336,7 +336,7 @@ describe('suppliers.update', () => {
       contactPerson: 'Jane Buyer',
       email: 'sales@acme.example',
       id: created.id,
-      phone: '+27 11 555 0100',
+      phone: '+27115550100',
     });
     expect(new Date(updated.updatedAt).getTime()).toBeGreaterThanOrEqual(new Date(created.updatedAt).getTime());
 
@@ -374,7 +374,7 @@ describe('suppliers.update', () => {
           },
           phone: {
             from: null,
-            to: '+27 11 555 0100',
+            to: '+27115550100',
           },
         },
         entityId: created.id,
@@ -390,7 +390,7 @@ describe('suppliers.update', () => {
       address: 'Known address',
       contactPerson: 'Known person',
       notes: 'Known notes',
-      phone: 'Known phone',
+      phone: '+27821234567',
     });
 
     const updated = await caller.suppliers.update({
@@ -400,7 +400,7 @@ describe('suppliers.update', () => {
       email: created.email,
       id: created.id,
       notes: ' ',
-      phone: '',
+      phone: null,
     });
 
     expect(updated).toMatchObject({

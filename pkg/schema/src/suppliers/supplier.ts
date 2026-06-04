@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { DateIso } from '../common/date.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
+import { NullablePhoneNumber } from '../common/phone-number.js';
 import {
   nullableEmailInput,
   nullableTrimmedText,
@@ -26,6 +27,9 @@ export const SupplierOptionalText = nullableTrimmedText();
 export type SupplierOptionalTextInput = z.infer<typeof SupplierOptionalTextInput>;
 export const SupplierOptionalTextInput = nullableTrimmedTextInput();
 
+export type SupplierPhone = z.infer<typeof SupplierPhone>;
+export const SupplierPhone = NullablePhoneNumber;
+
 export type Supplier = z.infer<typeof Supplier>;
 export const Supplier = z.object({
   id: UUID,
@@ -33,7 +37,7 @@ export const Supplier = z.object({
   email: SupplierEmail.nullable(),
   address: SupplierOptionalText,
   contactPerson: SupplierOptionalText,
-  phone: SupplierOptionalText,
+  phone: SupplierPhone,
   notes: SupplierOptionalText,
   thumbnailDataUrl: NullableThumbnailDataUrl,
   createdAt: DateIso,
@@ -58,7 +62,7 @@ export const SupplierCreateInput = z.object({
   email: SupplierEmailInput,
   address: SupplierOptionalTextInput,
   contactPerson: SupplierOptionalTextInput,
-  phone: SupplierOptionalTextInput,
+  phone: SupplierPhone.default(null),
   notes: SupplierOptionalTextInput,
   thumbnailDataUrl: NullableThumbnailDataUrl.default(null),
 });

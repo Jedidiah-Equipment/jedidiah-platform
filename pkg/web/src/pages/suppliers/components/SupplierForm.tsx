@@ -50,7 +50,7 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({ onSave, supplier }) 
         <form.AppField name="contactPerson">
           {(field) => <field.TextField autoComplete="name" label="Contact person" />}
         </form.AppField>
-        <form.AppField name="phone">{(field) => <field.TextField autoComplete="tel" label="Phone" />}</form.AppField>
+        <form.AppField name="phone">{(field) => <field.PhoneNumberField label="Phone" />}</form.AppField>
         <EditFormFullWidth>
           <form.AppField name="address">
             {(field) => <field.TextareaField autoComplete="street-address" label="Address" rows={4} />}

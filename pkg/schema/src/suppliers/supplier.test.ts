@@ -12,7 +12,7 @@ describe('SupplierCreateInput', () => {
         contactPerson: '  Jane Buyer  ',
         email: '  SALES@ACME.EXAMPLE  ',
         notes: '  Prefers email  ',
-        phone: '  +27 11 555 0100  ',
+        phone: '  +27115550100  ',
       }),
     ).toEqual({
       address: '12 Main Road',
@@ -20,12 +20,12 @@ describe('SupplierCreateInput', () => {
       contactPerson: 'Jane Buyer',
       email: 'sales@acme.example',
       notes: 'Prefers email',
-      phone: '+27 11 555 0100',
+      phone: '+27115550100',
       thumbnailDataUrl: null,
     });
   });
 
-  it('stores blank optional fields as null', () => {
+  it('stores blank optional text fields as null', () => {
     expect(
       SupplierCreateInput.parse({
         address: ' ',
@@ -33,7 +33,7 @@ describe('SupplierCreateInput', () => {
         contactPerson: '',
         email: '',
         notes: ' ',
-        phone: '',
+        phone: null,
       }),
     ).toEqual({
       address: null,
@@ -43,6 +43,16 @@ describe('SupplierCreateInput', () => {
       notes: null,
       phone: null,
       thumbnailDataUrl: null,
+    });
+  });
+
+  it('defaults omitted supplier phone numbers to null', () => {
+    expect(
+      SupplierCreateInput.parse({
+        companyName: 'Acme Supplies',
+      }),
+    ).toMatchObject({
+      phone: null,
     });
   });
 
@@ -61,6 +71,15 @@ describe('SupplierCreateInput', () => {
         email: 'not-an-email',
       }),
     ).toThrow('Enter a valid email address');
+  });
+
+  it('requires valid South African supplier phone numbers', () => {
+    expect(() =>
+      SupplierCreateInput.parse({
+        companyName: 'Acme Supplies',
+        phone: '0821234567',
+      }),
+    ).toThrow('Enter a valid South African phone number');
   });
 });
 

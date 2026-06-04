@@ -36,6 +36,7 @@ const test = createTester(async ({ db }) => {
     name: 'Test User',
     email: 'test@example.com',
     emailVerified: true,
+    phoneNumber: '+27821234567',
     role: 'admin',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -484,7 +485,11 @@ describe('generateQuoteDocument', () => {
       phone: '012 345 6789',
       vatNumber: 'VAT-DOC-123',
     });
-    expect(rendered.document.salesPerson).toMatchObject({ name: 'Test User' });
+    expect(rendered.document.salesPerson).toMatchObject({
+      email: 'test@example.com',
+      name: 'Test User',
+      phoneNumber: '+27821234567',
+    });
     expect(baseItem).toMatchObject({
       amount: 1_000,
       descriptionLines: ['DOC-TEST Document Test Product'],

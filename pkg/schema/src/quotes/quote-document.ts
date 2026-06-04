@@ -20,6 +20,7 @@ export type QuoteDocumentCustomer = {
 export type QuoteDocumentSalesPerson = {
   email: string;
   name: string;
+  phoneNumber: string | null;
 } | null;
 
 export type QuoteDocumentModel = {

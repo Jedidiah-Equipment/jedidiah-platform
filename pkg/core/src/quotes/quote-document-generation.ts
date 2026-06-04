@@ -33,7 +33,7 @@ export type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
     'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'vatNumber'
   >;
   product: Pick<typeof products.$inferSelect, 'buildTimeDays' | 'currencyCode' | 'modelCode' | 'name'>;
-  salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
+  salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name' | 'phoneNumber'> | null;
   selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
 
@@ -264,6 +264,7 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
         columns: {
           email: true,
           name: true,
+          phoneNumber: true,
         },
       },
       selectedAssemblies: {

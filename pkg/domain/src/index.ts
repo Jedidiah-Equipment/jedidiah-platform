@@ -6,6 +6,7 @@ export * from './documents/document-policy.js';
 export * from './environment.js';
 export * from './formatting/date.js';
 export * from './formatting/number.js';
+export * from './formatting/phone-number.js';
 export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';
 export * from './jobs/job-stage-pipeline.js';

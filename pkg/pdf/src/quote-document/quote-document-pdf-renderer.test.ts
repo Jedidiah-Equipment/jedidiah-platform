@@ -1,6 +1,7 @@
 import type { QuoteDocumentModel } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
+import { getSalesContactLine } from './QuoteDocumentHeader.js';
 import { renderQuoteDocumentPdf } from './quote-document-pdf-renderer.js';
 
 describe('renderQuoteDocumentPdf', () => {
@@ -12,6 +13,30 @@ describe('renderQuoteDocumentPdf', () => {
 
     expect(bytes.byteLength).toBeGreaterThan(1_000);
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
+  });
+});
+
+describe('getSalesContactLine', () => {
+  test('omits the phone number when the sales user has no phone number', () => {
+    expect(
+      getSalesContactLine({
+        ...testQuoteDocument(),
+        salesPerson: {
+          email: 'dean@example.com',
+          name: 'Dean van Niekerk',
+          phoneNumber: null,
+        },
+      }),
+    ).toBe('Email: dean@example.com');
+  });
+
+  test('omits the contact line when no sales contact details exist', () => {
+    expect(
+      getSalesContactLine({
+        ...testQuoteDocument(),
+        salesPerson: null,
+      }),
+    ).toBeNull();
   });
 });
 
@@ -54,6 +79,7 @@ function testQuoteDocument(): QuoteDocumentModel {
     salesPerson: {
       email: 'dean@example.com',
       name: 'Dean van Niekerk',
+      phoneNumber: '+27821234567',
     },
     staleSelectionNotes: [],
     subtotal: 615_000,

@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, formatPhoneNumber } from '@pkg/domain';
 import type { QuoteDocumentModel } from '@pkg/schema';
 import { Image, StyleSheet, Text, View } from '@react-pdf/renderer';
 
@@ -68,6 +68,8 @@ const styles = StyleSheet.create({
 });
 
 export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
+  const contactLine = getSalesContactLine(document);
+
   return (
     <View style={pdfStyles.flexRow}>
       <View
@@ -91,9 +93,9 @@ export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
         <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine]}>
           Stoneybrook Farm, Kokstad, 4700
         </Text>
-        <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine]}>
-          Email: jed@jedidiahequipment.co.za | Cell: +27 (0) 082 419 4464
-        </Text>
+        {contactLine ? (
+          <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine]}>{contactLine}</Text>
+        ) : null}
         <Text style={[pdfStyles.colorMutedOnDark, pdfStyles.textBodyXs, styles.brandLine]}>
           C/K 2019/513612/07 | VAT No. 4420294821
         </Text>
@@ -123,6 +125,16 @@ export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
       </View>
     </View>
   );
+}
+
+export function getSalesContactLine(document: QuoteDocumentModel): string | null {
+  const email = document.salesPerson?.email.trim();
+  const phoneNumber = formatPhoneNumber(document.salesPerson?.phoneNumber);
+  const contactParts = [email ? `Email: ${email}` : null, phoneNumber ? `Cell: ${phoneNumber}` : null].filter(
+    (part): part is string => part !== null,
+  );
+
+  return contactParts.length > 0 ? contactParts.join(' | ') : null;
 }
 
 function HeaderMeta({ label, value }: { label: string; value: string }) {

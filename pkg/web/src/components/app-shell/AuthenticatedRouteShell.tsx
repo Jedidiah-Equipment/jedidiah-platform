@@ -1,5 +1,5 @@
+import { IconMoon, IconSun } from '@tabler/icons-react';
 import { Link, useMatches } from '@tanstack/react-router';
-import { MoonIcon, SunIcon } from 'lucide-react';
 import type React from 'react';
 import { AppSidebar } from '@/components/app-shell/AppSidebar.js';
 import {
@@ -57,9 +57,9 @@ export const AuthenticatedRouteShell: React.FC<AuthenticatedRouteShellProps> = (
               variant="ghost"
             >
               {isDark ? (
-                <SunIcon aria-hidden="true" data-icon="inline-start" />
+                <IconSun aria-hidden="true" data-icon="inline-start" />
               ) : (
-                <MoonIcon aria-hidden="true" data-icon="inline-start" />
+                <IconMoon aria-hidden="true" data-icon="inline-start" />
               )}
             </Button>
           </div>

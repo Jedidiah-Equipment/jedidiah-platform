@@ -1,4 +1,4 @@
-import { Loader2Icon } from 'lucide-react';
+import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 import type { z } from 'zod';
 
@@ -90,7 +90,7 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
                   Cancel
                 </DialogClose>
                 <Button disabled={isSubmitting} type="submit">
-                  {isSubmitting ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+                  {isSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
                   {submitLabel}
                 </Button>
               </DialogFooter>

@@ -1,5 +1,5 @@
 import type { Part, Supplier } from '@pkg/schema';
-import { Loader2Icon } from 'lucide-react';
+import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 
 import { useAppForm } from '@/components/form/index.js';
@@ -88,7 +88,7 @@ export const PartForm: React.FC<PartFormProps> = ({ fixedSupplier, initialPart, 
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button disabled={isSubmitting || isPending || isSupplierSelectPending} type="submit">
-              {isSubmitting || isPending ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+              {isSubmitting || isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
               {submitLabel}
             </Button>
           )}

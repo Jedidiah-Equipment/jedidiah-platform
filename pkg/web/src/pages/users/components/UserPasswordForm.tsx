@@ -1,5 +1,5 @@
 import { UserPassword } from '@pkg/schema';
-import { Loader2Icon } from 'lucide-react';
+import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 import { z } from 'zod';
 
@@ -60,7 +60,7 @@ export const UserPasswordForm: React.FC<UserPasswordFormProps> = ({ isPending, o
                 />
                 <InputGroupAddon align="inline-end">
                   <InputGroupButton disabled={isPending} type="submit" variant="outline">
-                    {isPending ? <Loader2Icon className="animate-spin" data-icon="inline-start" /> : null}
+                    {isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
                     Set password
                   </InputGroupButton>
                 </InputGroupAddon>

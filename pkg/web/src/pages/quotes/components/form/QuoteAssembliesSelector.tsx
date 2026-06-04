@@ -1,6 +1,6 @@
 import { formatCurrency, resolveEffectiveBom } from '@pkg/domain';
 import type { Assembly, QuoteSelectedAssembly } from '@pkg/schema';
-import { XIcon } from 'lucide-react';
+import { IconX } from '@tabler/icons-react';
 import type React from 'react';
 
 import { Button } from '@/components/ui/button.js';
@@ -145,7 +145,7 @@ export const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = (
                           onChange(value.filter((item) => item.type !== 'existing' || item.id !== selection.id))
                         }
                       >
-                        <XIcon />
+                        <IconX />
                       </Button>
                     )}
                   </span>

@@ -1,7 +1,7 @@
 import { formatBytes } from '@pkg/domain';
 import type { DocumentSummary } from '@pkg/schema';
+import { IconDownload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { DownloadIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
@@ -98,7 +98,7 @@ export function DocumentPreviewSheet({ document, onOpenChange, open, owner }: Do
                 variant="outline"
                 onClick={() => void downloadMutation.mutateAsync()}
               >
-                <DownloadIcon data-icon="inline-start" />
+                <IconDownload data-icon="inline-start" />
                 Download
               </Button>
             ) : null}

@@ -1,5 +1,9 @@
+import {
+  IconAlertCircle,
+  IconCircleCheck,
+  IconLoader2,
+} from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { AlertCircleIcon, CheckCircleIcon, Loader2Icon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 
@@ -44,13 +48,13 @@ export const VerifyEmailPage: React.FC = () => {
         <CardContent>
           {status === 'pending' ? (
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2Icon className="animate-spin" size={16} />
+              <IconLoader2 className="animate-spin" size={16} />
               <span>Verifying your email address</span>
             </div>
           ) : status === 'success' ? (
             <div className="flex flex-col gap-4">
               <Alert>
-                <CheckCircleIcon />
+                <IconCircleCheck />
                 <AlertTitle>Email verified</AlertTitle>
                 <AlertDescription>Your email address has been verified. You can now sign in.</AlertDescription>
               </Alert>
@@ -61,7 +65,7 @@ export const VerifyEmailPage: React.FC = () => {
           ) : (
             <div className="flex flex-col gap-4">
               <Alert variant="destructive">
-                <AlertCircleIcon />
+                <IconAlertCircle />
                 <AlertTitle>Verification failed</AlertTitle>
                 <AlertDescription>
                   This verification link is invalid or has expired. Please contact your administrator to resend the

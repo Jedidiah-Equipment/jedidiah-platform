@@ -1,4 +1,4 @@
-import { PlusIcon } from 'lucide-react';
+import { IconPlus } from '@tabler/icons-react';
 import { useMemo } from 'react';
 
 import {
@@ -65,7 +65,7 @@ export function CreatableComboboxField({
               <ComboboxItem key={option} value={option}>
                 {option === trimmedValue && !hasExactOption ? (
                   <>
-                    <PlusIcon data-icon="inline-start" />
+                    <IconPlus data-icon="inline-start" />
                     Use "{option}"
                   </>
                 ) : (

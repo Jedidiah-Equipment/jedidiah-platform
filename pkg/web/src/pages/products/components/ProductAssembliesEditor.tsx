@@ -3,7 +3,12 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { formatCurrency } from '@pkg/domain';
 import type { AssemblyInput, Part } from '@pkg/schema';
-import { ChevronDownIcon, GripVerticalIcon, PlusIcon, Trash2Icon } from 'lucide-react';
+import {
+  IconChevronDown,
+  IconGripVertical,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react';
 import React, { useMemo } from 'react';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import { CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
@@ -213,7 +218,7 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
       <div className="flex items-center justify-between gap-3">
         <h3 className="font-medium text-sm">{title}</h3>
         <Button size="sm" type="button" variant="outline" onClick={onAdd}>
-          <PlusIcon />
+          <IconPlus />
           Add
         </Button>
       </div>
@@ -314,7 +319,7 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                   {...attributes}
                   {...listeners}
                 >
-                  <GripVerticalIcon />
+                  <IconGripVertical />
                 </Button>
                 <AssemblySummary
                   assembly={assembly}
@@ -324,7 +329,7 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <CollapsibleTrigger render={<Button size="sm" type="button" variant="outline" />}>
-                  <ChevronDownIcon
+                  <IconChevronDown
                     aria-hidden="true"
                     className="transition-transform group-aria-expanded/button:rotate-180"
                     data-icon="inline-start"
@@ -332,7 +337,7 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                   {isExpanded ? 'Done' : 'Edit'}
                 </CollapsibleTrigger>
                 <Button aria-label="Remove assembly" size="icon-sm" type="button" variant="ghost" onClick={onRemove}>
-                  <Trash2Icon />
+                  <IconTrash />
                 </Button>
               </div>
             </div>
@@ -463,7 +468,7 @@ const OverridePicker: React.FC<OverridePickerProps> = ({ index, onStructuralChan
                 <span className="truncate">
                   <OverrideSummary selectedIds={field.state.value} standardAssemblies={standardAssemblies} />
                 </span>
-                <ChevronDownIcon data-icon="inline-end" />
+                <IconChevronDown data-icon="inline-end" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-64">
                 <DropdownMenuGroup>
@@ -580,7 +585,7 @@ const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({
                 onStructuralChange();
               }}
             >
-              <PlusIcon />
+              <IconPlus />
               Add part
             </Button>
           </div>
@@ -726,7 +731,7 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
       </TableCell>
       <TableCell>
         <Button aria-label="Remove part" size="icon" type="button" variant="ghost" onClick={onRemove}>
-          <Trash2Icon />
+          <IconTrash />
         </Button>
       </TableCell>
     </TableRow>

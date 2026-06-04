@@ -1,7 +1,7 @@
 import { AuditEntityType, type AuditEvent, type AuditListInput, AuditSortBy, DateIso } from '@pkg/schema';
+import { IconEye } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { EyeIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -327,7 +327,7 @@ type AuditChangesDetailsProps = {
 const AuditChangesDetails: React.FC<AuditChangesDetailsProps> = ({ changes, displays }) => (
   <Popover>
     <PopoverTrigger render={<Button aria-label="View audit changes" size="icon-xs" variant="ghost" />}>
-      <EyeIcon />
+      <IconEye />
     </PopoverTrigger>
     <PopoverContent align="end" className="w-[min(42rem,calc(100vw-2rem))] gap-3 p-3">
       <PopoverHeader>

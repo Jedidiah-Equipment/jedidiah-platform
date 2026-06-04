@@ -1,6 +1,6 @@
 import { getRolePermissions, roleLabels } from '@pkg/domain';
 import { APP_ROLES, AppRole } from '@pkg/schema';
-import { ChevronDownIcon } from 'lucide-react';
+import { IconChevronDown } from '@tabler/icons-react';
 import type React from 'react';
 
 import { PermissionBadge } from '@/components/common/PermissionBadge.js';
@@ -27,7 +27,7 @@ export const UserRoleMenu: React.FC<UserRoleMenuProps> = ({ disabled, id, onRole
       render={<Button className="w-full justify-between" disabled={disabled} id={id} type="button" variant="outline" />}
     >
       {roleLabels[value]}
-      <ChevronDownIcon data-icon="inline-end" />
+      <IconChevronDown data-icon="inline-end" />
     </DropdownMenuTrigger>
     <DropdownMenuContent align="start" className="min-w-72">
       <DropdownMenuRadioGroup onValueChange={(nextValue) => onRoleChange(AppRole.parse(nextValue))} value={value}>

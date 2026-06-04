@@ -1,6 +1,7 @@
 import { formatCurrency, formatPercent } from '@pkg/domain';
 import type { ProductDocument, QuoteDetail } from '@pkg/schema';
 import {
+  IconAlertTriangle,
   IconClock,
   IconEye,
   IconMail,
@@ -8,7 +9,6 @@ import {
   IconPackage,
   IconPhone,
   IconReceipt2,
-  IconAlertTriangle,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -27,8 +27,6 @@ import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 
 import type { SelectedAssemblySnapshot } from '../types.js';
-
-const quotePanelCardClassName = 'bg-muted/30';
 
 export type QuoteComputedSummary = {
   currencyCode: string;
@@ -54,7 +52,7 @@ export function QuoteRightPanel({ quote, summary }: { quote: QuoteDetail; summar
 
 function QuoteCustomerCard({ quote }: { quote: QuoteDetail }) {
   return (
-    <Card className={quotePanelCardClassName} size="sm">
+    <Card size="sm">
       <CardHeader>
         <CardDescription>Customer</CardDescription>
         <CardTitle className="min-w-0">
@@ -127,7 +125,7 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
   const isMissingBrochure = brochureQuery.isSuccess && !brochure;
 
   return (
-    <Card className={quotePanelCardClassName} size="sm">
+    <Card size="sm">
       <CardHeader>
         <CardDescription>Product</CardDescription>
         <CardTitle className="min-w-0">
@@ -205,7 +203,7 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
 
 function QuoteTotalCard({ summary }: { summary: QuoteComputedSummary }) {
   return (
-    <Card className={quotePanelCardClassName} size="sm">
+    <Card size="sm">
       <CardHeader>
         <CardDescription>Quote total</CardDescription>
         <CardTitle className="text-2xl tabular-nums">{formatCurrency(summary.total, summary.currencyCode)}</CardTitle>
@@ -271,13 +269,15 @@ function QuotePanelFact({
 
 function QuoteMiniMetric({ icon, label, value }: { icon?: React.ReactElement; label: string; value: string }) {
   return (
-    <div className="grid min-h-14 gap-1 rounded-md border bg-muted/20 p-2">
-      <span className="flex items-center gap-1 text-muted-foreground text-xs">
-        {icon ? <span className="[&>svg]:size-3.5">{icon}</span> : null}
-        <span className="truncate">{label}</span>
-      </span>
-      <span className="truncate font-medium">{value}</span>
-    </div>
+    <Card className="min-h-14" size="sm">
+      <CardContent className="grid gap-1">
+        <span className="flex items-center gap-1 text-muted-foreground text-xs">
+          {icon ? <span className="[&>svg]:size-3.5">{icon}</span> : null}
+          <span className="truncate">{label}</span>
+        </span>
+        <span className="truncate font-medium">{value}</span>
+      </CardContent>
+    </Card>
   );
 }
 

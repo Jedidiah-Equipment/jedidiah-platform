@@ -3,12 +3,12 @@ import type { DocumentSummary } from '@pkg/schema';
 import {
   IconDownload,
   IconEye,
-  IconFileUnknown,
   IconFileTypeJpg,
   IconFileTypePdf,
   IconFileTypePng,
-  IconPhoto,
+  IconFileUnknown,
   IconLoader2,
+  IconPhoto,
   IconSearch,
   IconTrash,
 } from '@tabler/icons-react';
@@ -170,7 +170,9 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
         </div>
       ) : null}
       {!isLoading && visible.documents.length === 0 ? (
-        <p className="rounded-lg border bg-muted/30 p-3 text-muted-foreground text-sm">{emptyMessage}</p>
+        <Card size="sm">
+          <CardContent className="text-muted-foreground">{emptyMessage}</CardContent>
+        </Card>
       ) : null}
       {shouldShowPager ? (
         <Pagination className="justify-end">
@@ -227,11 +229,8 @@ function DocumentCard<TDocument extends DocumentSummary>({
   const fileKind = getDocumentFileKind(document);
 
   return (
-    <Card
-      className="gap-1 rounded-lg border-border/70 bg-card/80 transition-colors hover:border-foreground/20"
-      size="sm"
-    >
-      <CardHeader className="min-w-0 gap-1">
+    <Card size="sm">
+      <CardHeader className="min-w-0">
         <div className="flex min-w-0 items-start gap-3">
           <div
             className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${fileKind.iconChromeClassName}`}
@@ -241,7 +240,7 @@ function DocumentCard<TDocument extends DocumentSummary>({
             <span className="sr-only">{fileKind.label}</span>
           </div>
           <div className="min-w-0 space-y-0.5">
-            <CardTitle className="truncate leading-tight">{document.filename}</CardTitle>
+            <CardTitle className="truncate">{document.filename}</CardTitle>
             <div className="truncate text-muted-foreground text-sm">{metadata}</div>
           </div>
         </div>
@@ -261,7 +260,7 @@ function DocumentCard<TDocument extends DocumentSummary>({
           </div>
         </CardAction>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent>
         <dl className="flex flex-wrap items-center gap-x-6 gap-y-1">
           <DocumentFact label="Size" value={formatBytes(document.byteSize)} />
           <DocumentFact label="Uploader" value={getDocumentUploader(document)} />

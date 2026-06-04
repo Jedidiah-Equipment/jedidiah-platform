@@ -36,6 +36,10 @@
   should call each affected root invalidator explicitly.
 - For TanStack Form descendants that need form context, use `useTypedAppFormContext` from
   `src/components/form/use-app-form.ts`.
+- Use `src/components/ui/card.tsx` `Card` composition for card surfaces. The shared `Card`
+  owns radius, border, surface, and nested-card backgrounds via `data-slot="card"` with
+  `in-data-[slot=card]`; do not add one-off radius, border, background, or nested-card
+  styling at call sites.
 - Prefer `src/components/ui/scroll-area.tsx` `ScrollArea` for page and panel scrolling instead of
   native `overflow-y-auto`.
 - Do not test via the browser unless asked.

@@ -81,12 +81,14 @@ type QuoteAuditRecord = Pick<
 type QuoteListRow = {
   quote: QuoteRow;
   customerCompanyName: string;
+  customerThumbnailDataUrl: string | null;
   productBuildTimeDays: number;
   productCurrencyCode: string;
   productModelCode: string;
   productName: string;
   salesPersonEmail: string | null;
   salesPersonName: string | null;
+  salesPersonThumbnailDataUrl: string | null;
 };
 
 type QuoteLinkedJobRow = {
@@ -105,7 +107,7 @@ type QuoteDetailRow = QuoteRow & {
     typeof products.$inferSelect,
     'buildTimeDays' | 'currencyCode' | 'description' | 'modelCode' | 'name' | 'requiresVinNumber' | 'thumbnailDataUrl'
   >;
-  salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name'> | null;
+  salesPerson: Pick<typeof user.$inferSelect, 'email' | 'image' | 'name'> | null;
   selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
 
@@ -212,12 +214,14 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
       .select({
         quote: quotes,
         customerCompanyName: customers.companyName,
+        customerThumbnailDataUrl: customers.thumbnailDataUrl,
         productBuildTimeDays: products.buildTimeDays,
         productCurrencyCode: products.currencyCode,
         productModelCode: products.modelCode,
         productName: products.name,
         salesPersonEmail: user.email,
         salesPersonName: user.name,
+        salesPersonThumbnailDataUrl: user.image,
       })
       .from(quotes)
       .innerJoin(customers, eq(quotes.customerId, customers.id))
@@ -295,6 +299,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       salesPerson: {
         columns: {
           email: true,
+          image: true,
           name: true,
         },
       },
@@ -438,6 +443,7 @@ function mapQuoteSummary(
   return {
     ...mapQuote(row.quote),
     customerCompanyName: row.customerCompanyName,
+    customerThumbnailDataUrl: row.customerThumbnailDataUrl,
     linkedJobs: linkedJobs.map((job) => ({
       jobCode: JobCode.parse(job.jobCode),
       jobId: job.jobId,
@@ -448,6 +454,7 @@ function mapQuoteSummary(
     productName: row.productName,
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,
+    salesPersonThumbnailDataUrl: row.salesPersonThumbnailDataUrl,
     selectedAssemblies: selectedAssemblies.map(mapQuoteSelectedAssembly),
   };
 }
@@ -476,6 +483,7 @@ function mapQuoteDetail(row: QuoteDetailRow, productAssembliesForQuote: Assembly
     productThumbnailDataUrl: row.product.thumbnailDataUrl,
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
+    salesPersonThumbnailDataUrl: row.salesPerson?.image ?? null,
     selectedAssemblies: row.selectedAssemblies.map(mapQuoteSelectedAssembly),
   };
 }

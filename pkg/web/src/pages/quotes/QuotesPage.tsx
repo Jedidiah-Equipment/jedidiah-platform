@@ -1,4 +1,4 @@
-import { computeQuoteTotal, formatCurrency, hasPermission } from '@pkg/domain';
+import { computeQuoteTotal, formatCurrency, formatPercent, hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -14,6 +14,7 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { useCustomerForQuoteOptions, useProductForQuoteOptions, useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -107,28 +108,25 @@ const QuoteTable: React.FC = () => {
   const columns = useMemo<ColumnDef<QuoteSummary>[]>(
     () => [
       {
-        accessorKey: 'createdAt',
-        cell: ({ row }) => <DateDisplay date={row.original.createdAt} />,
-        enableColumnFilter: false,
-        enableSorting: true,
-        header: 'Created',
-      },
-      {
         accessorKey: 'code',
-        cell: ({ row }) => <span className="font-medium">{row.original.code}</span>,
+        cell: ({ row }) => <QuoteCodeCell quote={row.original} />,
         enableColumnFilter: false,
         enableSorting: true,
         header: 'Quote',
+        meta: {
+          headerClassName: 'min-w-36',
+        },
       },
       {
         accessorKey: 'customerCompanyName',
-        cell: ({ row }) => row.original.customerCompanyName,
+        cell: ({ row }) => <CustomerCell quote={row.original} />,
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Customer',
         meta: {
           filterOptions: customerOptions.selectOptions,
           filterVariant: 'select',
+          headerClassName: 'min-w-52',
         },
       },
       {
@@ -140,39 +138,51 @@ const QuoteTable: React.FC = () => {
         meta: {
           filterOptions: salespersonOptions.selectOptions,
           filterVariant: 'select',
+          headerClassName: 'min-w-48',
         },
       },
       {
         accessorKey: 'productName',
-        cell: ({ row }) => (
-          <>
-            {row.original.productName}
-            <span className="ml-2 text-muted-foreground">{row.original.productModelCode}</span>
-          </>
-        ),
+        cell: ({ row }) => <ProductCell quote={row.original} />,
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Product',
         meta: {
           filterOptions: productOptions.selectOptions,
           filterVariant: 'select',
+          headerClassName: 'min-w-60',
         },
       },
       {
         id: 'total',
-        cell: ({ row }) => {
-          return formatCurrency(getQuoteTotal(row.original), row.original.quotedCurrencyCode);
-        },
+        cell: ({ row }) => <CommercialCell quote={row.original} />,
         enableColumnFilter: false,
         enableSorting: false,
         header: 'Total',
+        meta: {
+          cellClassName: 'text-right',
+          headerClassName: 'min-w-36 text-right',
+        },
+      },
+      {
+        id: 'terms',
+        cell: ({ row }) => <TermsCell quote={row.original} />,
+        enableColumnFilter: false,
+        enableSorting: false,
+        header: 'Terms',
+        meta: {
+          headerClassName: 'min-w-36',
+        },
       },
       {
         accessorKey: 'validUntil',
-        cell: ({ row }) => <DateDisplay date={row.original.validUntil} emptyValue="Not set" />,
+        cell: ({ row }) => <QuoteDatesCell quote={row.original} />,
         enableColumnFilter: false,
         enableSorting: false,
-        header: 'Valid until',
+        header: 'Dates',
+        meta: {
+          headerClassName: 'min-w-44',
+        },
       },
       {
         accessorKey: 'status',
@@ -253,6 +263,7 @@ const QuoteTable: React.FC = () => {
       onRowClick={
         canUpdateQuote ? (quote) => navigate({ params: { id: quote.id }, to: '/quotes/$id/edit' }) : undefined
       }
+      tableClassName="min-w-[1180px]"
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'quote' : 'quotes'}`}
@@ -288,12 +299,100 @@ function getIdFilterValue(
   return typeof value === 'string' && value ? value : undefined;
 }
 
+function QuoteCodeCell({ quote }: { quote: QuoteSummary }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="font-medium tabular-nums">{quote.code}</span>
+      <span className="text-xs text-muted-foreground">
+        Created <DateDisplay date={quote.createdAt} />
+      </span>
+    </div>
+  );
+}
+
+function CustomerCell({ quote }: { quote: QuoteSummary }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <EntityThumbnail label={quote.customerCompanyName} size="sm" thumbnailDataUrl={quote.customerThumbnailDataUrl} />
+      <span className="min-w-0 truncate font-medium">{quote.customerCompanyName}</span>
+    </div>
+  );
+}
+
 function SalesPersonCell({ quote }: { quote: QuoteSummary }) {
   if (!quote.salesPersonName) {
     return <span className="text-muted-foreground">Not assigned</span>;
   }
 
-  return <span className="truncate">{quote.salesPersonName}</span>;
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <EntityThumbnail label={quote.salesPersonName} size="sm" thumbnailDataUrl={quote.salesPersonThumbnailDataUrl} />
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate font-medium">{quote.salesPersonName}</span>
+        {quote.salesPersonEmail ? (
+          <span className="truncate text-xs text-muted-foreground">{quote.salesPersonEmail}</span>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
+function ProductCell({ quote }: { quote: QuoteSummary }) {
+  const selectedAssemblyCount = getLiveSelectedAssemblyCount(quote);
+
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="truncate font-medium">{quote.productName}</span>
+      <span className="truncate text-xs text-muted-foreground">
+        {quote.productModelCode} / {quote.productBuildTimeDays}d build
+        {selectedAssemblyCount > 0 ? ` / ${selectedAssemblyCount} option${selectedAssemblyCount === 1 ? '' : 's'}` : ''}
+      </span>
+    </div>
+  );
+}
+
+function CommercialCell({ quote }: { quote: QuoteSummary }) {
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <span className="font-medium tabular-nums">{formatCurrency(getQuoteTotal(quote), quote.quotedCurrencyCode)}</span>
+      {quote.discountAmount > 0 ? (
+        <span className="text-xs text-muted-foreground">
+          {formatCurrency(quote.discountAmount, quote.quotedCurrencyCode)} discount
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function TermsCell({ quote }: { quote: QuoteSummary }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="tabular-nums">{formatPercent(quote.depositPercent)} deposit</span>
+      <span className="text-xs text-muted-foreground">
+        {quote.deliveryIncluded
+          ? `${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)} delivery`
+          : 'Delivery excluded'}
+      </span>
+    </div>
+  );
+}
+
+function QuoteDatesCell({ quote }: { quote: QuoteSummary }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span>
+        Valid <DateDisplay date={quote.validUntil} emptyValue="Not set" />
+      </span>
+      <span className="text-xs text-muted-foreground">
+        Preferred <DateDisplay date={quote.preferredDeliveryDate} emptyValue="not set" />
+      </span>
+      {quote.plannedDeliveryDate ? (
+        <span className="text-xs text-muted-foreground">
+          Planned <DateDisplay date={quote.plannedDeliveryDate} />
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 function getQuoteTotal(quote: QuoteSummary): number {
@@ -310,4 +409,8 @@ function getQuoteTotal(quote: QuoteSummary): number {
     quotedBasePrice: quote.quotedBasePrice,
     selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
   });
+}
+
+function getLiveSelectedAssemblyCount(quote: QuoteSummary): number {
+  return quote.selectedAssemblies.filter((assembly) => assembly.productAssemblyId !== null).length;
 }

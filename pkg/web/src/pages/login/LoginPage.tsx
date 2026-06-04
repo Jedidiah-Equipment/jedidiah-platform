@@ -1,9 +1,5 @@
 import { demoUsers, departmentLabels, getRolePermissions, roleLabels } from '@pkg/domain';
-import {
-  IconAlertCircle,
-  IconLoader2,
-  IconLogin,
-} from '@tabler/icons-react';
+import { IconAlertCircle, IconLoader2, IconLogin } from '@tabler/icons-react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';

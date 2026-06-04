@@ -1,12 +1,14 @@
 import type { Product, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
-
+import { useMemo } from 'react';
+import { AuditTable, useProductAuditTableStore } from '@/components/audit/AuditTable.js';
 import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { useCan } from '@/hooks/use-access.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { ProductDocumentsSection } from './components/ProductDocumentsSection.js';
@@ -54,11 +56,21 @@ type ProductEditTabsProps = {
 };
 
 const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, product }) => {
+  const auditAccess = useCan('audit:read');
+  const productAuditFilters = useMemo(
+    () => ({
+      entityIds: [product.id],
+      entityTypes: ['product' as const],
+    }),
+    [product.id],
+  );
+
   return (
     <Tabs className="w-full" defaultValue="details" size="sm">
       <TabsList variant="default">
         <TabsTrigger value="details">Details</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
+        {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
       </TabsList>
       <TabsContent className="pt-4" value="details">
         <ProductForm key={product.id} onSave={onProductSave} product={product} />
@@ -66,6 +78,16 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, produc
       <TabsContent className="pt-4" value="documents">
         <ProductDocumentsSection productId={product.id} />
       </TabsContent>
+      {auditAccess.can ? (
+        <TabsContent className="pt-4" value="audit">
+          <AuditTable
+            emptyMessage="No audit events found for this product."
+            fixedFilters={productAuditFilters}
+            showEntityTypeFilter={false}
+            store={useProductAuditTableStore}
+          />
+        </TabsContent>
+      ) : null}
     </Tabs>
   );
 };

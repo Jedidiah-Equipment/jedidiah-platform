@@ -1,8 +1,8 @@
 import type { Part, Supplier, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useState } from 'react';
-
+import { useMemo, useState } from 'react';
+import { AuditTable, useSupplierAuditTableStore } from '@/components/audit/AuditTable.js';
 import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
@@ -59,13 +59,22 @@ type SupplierEditTabsProps = {
 const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, supplier }) => {
   const canReadPart = useCan('part:read').can;
   const canUpdatePart = useCan('part:update').can;
+  const auditAccess = useCan('audit:read');
   const [editingPart, setEditingPart] = useState<Part | null>(null);
+  const supplierAuditFilters = useMemo(
+    () => ({
+      entityIds: [supplier.id],
+      entityTypes: ['supplier' as const],
+    }),
+    [supplier.id],
+  );
 
   return (
     <Tabs className="w-full" defaultValue="supplier" size="sm">
       <TabsList variant="default">
         <TabsTrigger value="supplier">Details</TabsTrigger>
         {canReadPart ? <TabsTrigger value="parts">Parts</TabsTrigger> : null}
+        {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
       </TabsList>
       <TabsContent className="pt-4" value="supplier">
         <SupplierForm key={supplier.id} onSave={onSupplierSave} supplier={supplier} />
@@ -85,6 +94,16 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
             supplierId={supplier.id}
           />
           <PartEditDialog onClose={() => setEditingPart(null)} part={editingPart} supplier={supplier} />
+        </TabsContent>
+      ) : null}
+      {auditAccess.can ? (
+        <TabsContent className="pt-4" value="audit">
+          <AuditTable
+            emptyMessage="No audit events found for this supplier."
+            fixedFilters={supplierAuditFilters}
+            showEntityTypeFilter={false}
+            store={useSupplierAuditTableStore}
+          />
         </TabsContent>
       ) : null}
     </Tabs>

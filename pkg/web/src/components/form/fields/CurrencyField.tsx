@@ -1,4 +1,4 @@
-import { formatCurrency, formatNumber } from '@pkg/domain';
+import { CURRENCY_SYMBOL_BY_CODE, formatCurrency, formatNumber } from '@pkg/domain';
 import * as React from 'react';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
@@ -55,8 +55,8 @@ export function CurrencyField({ currencyCode = 'ZAR', label, ...inputProps }: Cu
           value={displayValue}
           {...inputProps}
         />
-        <InputGroupAddon align="inline-end">
-          <InputGroupText>{currencyCode}</InputGroupText>
+        <InputGroupAddon align="inline-start">
+          <InputGroupText>{CURRENCY_SYMBOL_BY_CODE[currencyCode]}</InputGroupText>
         </InputGroupAddon>
       </InputGroup>
       <FieldError errors={fieldErrors} />

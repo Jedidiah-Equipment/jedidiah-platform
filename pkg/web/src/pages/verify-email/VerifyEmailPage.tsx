@@ -1,8 +1,4 @@
-import {
-  IconAlertCircle,
-  IconCircleCheck,
-  IconLoader2,
-} from '@tabler/icons-react';
+import { IconAlertCircle, IconCircleCheck, IconLoader2 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { useEffect, useState } from 'react';

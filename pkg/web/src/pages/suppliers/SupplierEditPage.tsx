@@ -82,7 +82,6 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
                 </div>
               ) : undefined
             }
-            showEditActions={canUpdatePart}
             supplierId={supplier.id}
           />
           <PartEditDialog onClose={() => setEditingPart(null)} part={editingPart} supplier={supplier} />

@@ -8,7 +8,6 @@ import {
 } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { PencilIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 
@@ -18,7 +17,6 @@ import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-que
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
-import { Button } from '@/components/ui/button.js';
 import { usePartCategoryOptions } from '@/hooks/options/index.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -26,7 +24,6 @@ import { useTRPC } from '@/lib/trpc.js';
 type PartTableProps = {
   onEditPart: ((part: Part) => void) | undefined;
   rightSection?: React.ReactNode;
-  showEditActions: boolean;
   supplierId: UUID;
 };
 
@@ -49,7 +46,7 @@ const partSortOptions: SortOptions<PartListInput> = {
   },
 };
 
-export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, showEditActions, supplierId }) => {
+export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, supplierId }) => {
   const trpc = useTRPC();
 
   const tableController = useServerSideTableController({
@@ -158,33 +155,8 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
       },
     ];
 
-    if (showEditActions && onEditPart) {
-      tableColumns.push({
-        id: 'actions',
-        cell: ({ row }) => (
-          <div className="text-right">
-            <Button
-              aria-label={`Edit ${row.original.name}`}
-              onClick={() => onEditPart?.(row.original)}
-              size="icon-sm"
-              variant="outline"
-            >
-              <PencilIcon />
-            </Button>
-          </div>
-        ),
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: () => <span className="sr-only">Actions</span>,
-        meta: {
-          cellClassName: 'text-right',
-          headerClassName: 'w-20 text-right',
-        },
-      });
-    }
-
     return tableColumns;
-  }, [categoryOptions.selectOptions, onEditPart, showEditActions]);
+  }, [categoryOptions.selectOptions]);
 
   const table = useReactTable({
     columns,
@@ -212,8 +184,10 @@ export const PartTable: React.FC<PartTableProps> = ({ onEditPart, rightSection, 
     <DataTable
       emptyMessage="No parts found."
       errorMessage={getApiQueryErrorMessage(partsQuery.error, 'Unable to load parts.')}
+      getRowAriaLabel={onEditPart ? (part) => `Edit ${part.name}` : undefined}
       globalFilterPlaceholder="Search parts..."
       isLoading={isLoading}
+      onRowClick={onEditPart}
       rightSection={rightSection}
       table={table}
       total={total}

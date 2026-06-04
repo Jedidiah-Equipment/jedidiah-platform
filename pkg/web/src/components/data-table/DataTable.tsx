@@ -22,10 +22,12 @@ type DataTableProps<TData> = {
   emptyMessage: string;
   errorMessage?: string | undefined;
   filterDebounceMs?: number;
+  getRowAriaLabel?: ((item: TData) => string) | undefined;
   globalFilterPlaceholder?: string;
   hideGlobalFilter?: boolean;
   isLoading?: boolean;
   loadingRowCount?: number;
+  onRowClick?: ((item: TData) => void) | undefined;
   pageSizeOptions?: number[];
   rightSection?: React.ReactNode;
   tableClassName?: string;
@@ -38,10 +40,12 @@ export function DataTable<TData>({
   emptyMessage,
   errorMessage,
   filterDebounceMs = 250,
+  getRowAriaLabel,
   globalFilterPlaceholder = 'Search...',
   hideGlobalFilter = false,
   isLoading = false,
   loadingRowCount = 10,
+  onRowClick,
   pageSizeOptions = [10, 25, 50],
   rightSection,
   table,
@@ -98,7 +102,29 @@ export function DataTable<TData>({
 
               {!isLoading
                 ? table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow
+                      aria-label={getRowAriaLabel?.(row.original)}
+                      className={cn(onRowClick ? 'cursor-pointer' : undefined)}
+                      key={row.id}
+                      onClick={(event) => {
+                        if (!onRowClick || shouldIgnoreRowEvent(event.currentTarget, event.target)) {
+                          return;
+                        }
+
+                        onRowClick(row.original);
+                      }}
+                      onKeyDown={(event) => {
+                        if (!onRowClick || shouldIgnoreRowEvent(event.currentTarget, event.target)) {
+                          return;
+                        }
+
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          onRowClick(row.original);
+                        }
+                      }}
+                      tabIndex={onRowClick ? 0 : undefined}
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell className={getCellClassName(cell)} key={cell.id}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -116,4 +142,24 @@ export function DataTable<TData>({
       <DataTablePagination pageSizeOptions={pageSizeOptions} table={table} total={total} totalLabel={totalLabel} />
     </div>
   );
+}
+
+const interactiveTargetSelector = [
+  'a',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'summary',
+  '[contenteditable="true"]',
+  '[role="button"]',
+  '[role="link"]',
+].join(',');
+
+function isInteractiveEventTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest(interactiveTargetSelector));
+}
+
+function shouldIgnoreRowEvent(rowElement: HTMLTableRowElement, target: EventTarget | null) {
+  return !(target instanceof Node) || !rowElement.contains(target) || isInteractiveEventTarget(target);
 }

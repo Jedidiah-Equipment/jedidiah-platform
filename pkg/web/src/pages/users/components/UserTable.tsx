@@ -8,7 +8,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { PencilIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -22,13 +21,11 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import { getPageCount, type SortOptions } from '@/components/data-table/table-state.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
-import { Button } from '@/components/ui/button.js';
 
 type UserTableProps = {
   currentUserId: AuthId | undefined;
   errorMessage: string | undefined;
   isLoading: boolean;
-  showEditActions: boolean;
   users: UserSummary[];
   onEditUser: ((user: UserSummary) => void) | undefined;
 };
@@ -57,14 +54,7 @@ const userSortOptions: SortOptions<UserTableSortInput> = {
   },
 };
 
-export const UserTable: React.FC<UserTableProps> = ({
-  currentUserId,
-  errorMessage,
-  isLoading,
-  onEditUser,
-  showEditActions,
-  users,
-}) => {
+export const UserTable: React.FC<UserTableProps> = ({ currentUserId, errorMessage, isLoading, onEditUser, users }) => {
   const {
     columnFilters,
     globalFilter,
@@ -130,33 +120,8 @@ export const UserTable: React.FC<UserTableProps> = ({
       },
     ];
 
-    if (showEditActions && onEditUser) {
-      tableColumns.push({
-        id: 'actions',
-        cell: ({ row }) => (
-          <div className="text-right">
-            <Button
-              aria-label={`Edit ${row.original.name}`}
-              onClick={() => onEditUser(row.original)}
-              size="icon-sm"
-              variant="outline"
-            >
-              <PencilIcon />
-            </Button>
-          </div>
-        ),
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: () => <span className="sr-only">Actions</span>,
-        meta: {
-          cellClassName: 'text-right',
-          headerClassName: 'w-20 text-right',
-        },
-      });
-    }
-
     return tableColumns;
-  }, [currentUserId, onEditUser, showEditActions]);
+  }, [currentUserId]);
 
   const tableState = useConstrainedTableState({
     pagination,
@@ -196,8 +161,10 @@ export const UserTable: React.FC<UserTableProps> = ({
     <DataTable
       emptyMessage="No users found."
       errorMessage={errorMessage}
+      getRowAriaLabel={onEditUser ? (user) => `Edit ${user.name}` : undefined}
       globalFilterPlaceholder="Search users..."
       isLoading={isLoading}
+      onRowClick={onEditUser}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'user' : 'users'}`}

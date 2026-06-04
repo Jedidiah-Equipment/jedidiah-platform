@@ -3,7 +3,6 @@ import { type JobListInput, JobSortBy, type JobSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { ArrowRightIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -14,7 +13,6 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
-import { Button } from '@/components/ui/button.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -122,40 +120,16 @@ const JobTable: React.FC = () => {
       });
     }
 
-    baseColumns.push(
-      {
-        cell: ({ row }) => <JobStageChips stages={row.original.stages} />,
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: 'Departments',
-        id: 'stages',
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => (
-          <div className="text-right">
-            <Button
-              aria-label={`Open job ${row.original.code}`}
-              onClick={() => navigate({ params: { id: row.original.id }, to: '/jobs/$id' })}
-              size="icon-sm"
-              variant="outline"
-            >
-              <ArrowRightIcon />
-            </Button>
-          </div>
-        ),
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: () => <span className="sr-only">Actions</span>,
-        meta: {
-          cellClassName: 'text-right',
-          headerClassName: 'w-20 text-right',
-        },
-      },
-    );
+    baseColumns.push({
+      cell: ({ row }) => <JobStageChips stages={row.original.stages} />,
+      enableColumnFilter: false,
+      enableSorting: false,
+      header: 'Departments',
+      id: 'stages',
+    });
 
     return baseColumns;
-  }, [canSeeQuotes, navigate]);
+  }, [canSeeQuotes]);
 
   const table = useReactTable({
     columns,
@@ -183,8 +157,10 @@ const JobTable: React.FC = () => {
     <DataTable
       emptyMessage="No jobs found."
       errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load jobs.')}
+      getRowAriaLabel={(job) => `Open job ${job.code}`}
       globalFilterPlaceholder="Search jobs..."
       isLoading={isLoading}
+      onRowClick={(job) => navigate({ params: { id: job.id }, to: '/jobs/$id' })}
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`}

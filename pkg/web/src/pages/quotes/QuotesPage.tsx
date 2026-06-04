@@ -1,11 +1,11 @@
 import { computeQuoteTotal, formatCurrency, hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { PencilIcon, PlusIcon } from 'lucide-react';
+import { PlusIcon } from 'lucide-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
-import { ButtonLink } from '@/components/button/ButtonLink.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
@@ -74,6 +74,7 @@ export const QuotesPage: React.FC = () => {
 
 const QuoteTable: React.FC = () => {
   const trpc = useTRPC();
+  const navigate = useNavigate();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
@@ -191,24 +192,13 @@ const QuoteTable: React.FC = () => {
         enableSorting: false,
         header: 'Job',
       },
-      ...(canCreateJob || canUpdateQuote
+      ...(canCreateJob
         ? [
             {
               id: 'actions',
               cell: ({ row }) => (
                 <div className="flex justify-end gap-1">
                   <GenerateJobFromQuoteDialog quote={row.original} size="icon-sm" />
-                  {canUpdateQuote ? (
-                    <ButtonLink
-                      aria-label={`Edit quote ${row.original.code}`}
-                      params={{ id: row.original.id }}
-                      size="icon-sm"
-                      to="/quotes/$id/edit"
-                      variant="outline"
-                    >
-                      <PencilIcon />
-                    </ButtonLink>
-                  ) : null}
                 </div>
               ),
               enableColumnFilter: false,
@@ -225,7 +215,6 @@ const QuoteTable: React.FC = () => {
     [
       canOpenJobs,
       canCreateJob,
-      canUpdateQuote,
       customerOptions.selectOptions,
       productOptions.selectOptions,
       salespersonOptions.selectOptions,
@@ -258,8 +247,12 @@ const QuoteTable: React.FC = () => {
     <DataTable
       emptyMessage="No quotes found."
       errorMessage={getApiQueryErrorMessage(quotesQuery.error, 'Unable to load quotes.')}
+      getRowAriaLabel={canUpdateQuote ? (quote) => `Edit quote ${quote.code}` : undefined}
       globalFilterPlaceholder="Search quotes..."
       isLoading={isLoading}
+      onRowClick={
+        canUpdateQuote ? (quote) => navigate({ params: { id: quote.id }, to: '/quotes/$id/edit' }) : undefined
+      }
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'quote' : 'quotes'}`}

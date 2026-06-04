@@ -35,7 +35,6 @@ export const ProductsPage: React.FC = () => {
               ? (product) => navigate({ to: '/products/$id/edit', params: { id: product.id } })
               : undefined
           }
-          showEditActions={canUpdateProduct}
         />
       </ListPageLayout>
       {canCreateProduct ? <ProductCreateDialog onOpenChange={setIsCreateDialogOpen} open={isCreateDialogOpen} /> : null}

@@ -1,22 +1,16 @@
-import { formatBytes, formatDate } from '@pkg/domain';
+import { PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDetail, JobDocument, UUID } from '@pkg/schema';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { DownloadIcon, EyeIcon, FileTextIcon, Loader2Icon } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useState } from 'react';
 
 import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
+import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
-import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { downloadJobDocument } from '@/utils/document.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
 import { JobFact } from './components/JobFact.js';
-import { groupDocumentsByType } from './group-documents-by-type.js';
 
 type JobDetailPageProps = {
   jobId: UUID;
@@ -51,111 +45,30 @@ const JobDocuments: React.FC<{
   documents: JobDetail['documents'];
   jobId: UUID;
 }> = ({ documents, jobId }) => {
-  const [previewDocument, setPreviewDocument] = useState<JobDocument | null>(null);
-
-  if (documents.length === 0) {
-    return (
-      <section className="grid gap-2">
-        <h2 className="font-heading text-base font-medium">Documents</h2>
-        <p className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">No documents captured.</p>
-      </section>
-    );
-  }
-
-  const documentGroups = groupDocumentsByType(documents);
-
   return (
     <section className="grid gap-3">
       <h2 className="font-heading text-base font-medium">Documents</h2>
-      <div className="grid gap-3">
-        {documentGroups.map((group) => (
-          <div className="overflow-hidden rounded-lg border" key={group.type}>
-            <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-3 py-2">
-              <h3 className="font-medium">{group.label}</h3>
-              <span className="text-xs font-medium text-muted-foreground">
-                {group.documents.length} {group.documents.length === 1 ? 'document' : 'documents'}
-              </span>
-            </div>
-            <div className="divide-y">
-              {group.documents.map((document) => (
-                <div
-                  className="grid gap-3 px-3 py-3 text-sm md:grid-cols-[minmax(0,1fr)_11rem_10rem_5rem] md:items-center"
-                  key={document.id}
-                >
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-2 font-medium">
-                      <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="truncate">{document.filename}</span>
-                    </div>
-                  </div>
-                  <div className="text-muted-foreground">{formatBytes(document.byteSize)}</div>
-                  <div className="text-muted-foreground">{formatDate(document.createdAt, 'medium')}</div>
-                  <div className="flex justify-end gap-1">
-                    <PreviewButton document={document} onPreviewDocument={setPreviewDocument} />
-                    <DownloadButton document={document} jobId={jobId} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-      <DocumentPreviewSheet
-        document={previewDocument}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPreviewDocument(null);
-          }
-        }}
-        open={Boolean(previewDocument)}
+      <DocumentCardList
+        documents={documents}
+        emptyMessage="No documents captured."
+        isLoading={false}
+        metadata={jobDocumentMetadata}
         owner={{ id: jobId, type: 'job' }}
       />
     </section>
   );
 };
 
-function PreviewButton({
-  document,
-  onPreviewDocument,
-}: {
-  document: JobDocument;
-  onPreviewDocument: (document: JobDocument) => void;
-}) {
-  return (
-    <Button
-      aria-label={`Preview ${document.filename}`}
-      size="icon-sm"
-      type="button"
-      variant="ghost"
-      onClick={() => onPreviewDocument(document)}
-    >
-      <EyeIcon />
-    </Button>
-  );
-}
-
-function DownloadButton({ document, jobId }: { document: JobDocument; jobId: UUID }) {
-  const showMutationError = useApiMutationErrorToast();
-  const downloadMutation = useMutation({
-    mutationFn: () => downloadJobDocument(jobId, document),
-    onError: (error) => {
-      showMutationError(error, 'Unable to download document.');
-    },
-  });
-
-  return (
-    <Button
-      aria-label={`Download ${document.filename}`}
-      disabled={downloadMutation.isPending}
-      size="icon-sm"
-      type="button"
-      variant="ghost"
-      onClick={() => void downloadMutation.mutateAsync()}
-    >
-      {downloadMutation.isPending ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
-    </Button>
-  );
-}
+const jobDocumentMetadata = {
+  getSearchText: (document: JobDocument) =>
+    `${PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type]} ${document.sourceProductName}`,
+  render: (document: JobDocument) => (
+    <span>
+      {PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type]}
+      <span className="font-normal text-muted-foreground"> from {document.sourceProductName}</span>
+    </span>
+  ),
+};
 
 const JobCfoDump: React.FC<{
   cfo: JobDetail['cfo'];

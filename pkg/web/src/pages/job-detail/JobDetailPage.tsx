@@ -7,6 +7,7 @@ import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
 import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { formatPartQuantity } from '@/utils/part-quantity-format.js';
@@ -77,7 +78,9 @@ const JobCfoDump: React.FC<{
     return (
       <section className="grid gap-2">
         <h2 className="font-heading text-base font-medium">CFO dump</h2>
-        <p className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">No assemblies captured.</p>
+        <Card size="sm">
+          <CardContent className="text-muted-foreground">No assemblies captured.</CardContent>
+        </Card>
       </section>
     );
   }
@@ -87,29 +90,33 @@ const JobCfoDump: React.FC<{
       <h2 className="font-heading text-base font-medium">CFO dump</h2>
       <div className="grid gap-3">
         {cfo.map((assembly) => (
-          <div className="overflow-hidden rounded-lg border" key={`${assembly.kind}-${assembly.assemblyName}`}>
-            <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-3 py-2">
-              <h3 className="font-medium">{assembly.assemblyName}</h3>
-              <span className="text-xs font-medium text-muted-foreground capitalize">{assembly.kind}</span>
-            </div>
+          <Card key={`${assembly.kind}-${assembly.assemblyName}`} size="sm">
+            <CardHeader>
+              <CardTitle>{assembly.assemblyName}</CardTitle>
+              <CardAction span="title">
+                <span className="text-xs font-medium text-muted-foreground capitalize">{assembly.kind}</span>
+              </CardAction>
+            </CardHeader>
             {assembly.parts.length > 0 ? (
-              <div className="divide-y text-sm">
-                {assembly.parts.map((part) => (
-                  <div className="grid grid-cols-[minmax(0,1fr)_4rem] gap-3 px-3 py-2" key={part.partId}>
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">{part.partName}</div>
-                      <div className="truncate text-muted-foreground">{part.partCode}</div>
+              <CardContent>
+                <div className="divide-y text-sm">
+                  {assembly.parts.map((part) => (
+                    <div className="grid grid-cols-[minmax(0,1fr)_4rem] gap-3 py-2" key={part.partId}>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{part.partName}</div>
+                        <div className="truncate text-muted-foreground">{part.partCode}</div>
+                      </div>
+                      <div className="text-right tabular-nums">
+                        {formatPartQuantity(part.quantity, part.unitOfMeasure)}
+                      </div>
                     </div>
-                    <div className="text-right tabular-nums">
-                      {formatPartQuantity(part.quantity, part.unitOfMeasure)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </CardContent>
             ) : (
-              <p className="px-3 py-2 text-sm text-muted-foreground">No parts captured.</p>
+              <CardContent className="text-muted-foreground">No parts captured.</CardContent>
             )}
-          </div>
+          </Card>
         ))}
       </div>
     </section>

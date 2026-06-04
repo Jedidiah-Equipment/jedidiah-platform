@@ -106,6 +106,18 @@ _Avoid_: File, Attachment, Media, Asset.
 **Job Document Snapshot**:
 The Product's Documents frozen onto a Job at the moment the Job is created. Created alongside the CFO during Create Job from Quote, it copies the Job's Product's current Documents onto the Job as new Documents pointing at the same stored files. Each snapshotted Document remembers its **source** (the Product it came from) so the Job page can attribute it; the source's display name is read from the live Product (the same intentional drift the CFO accepts). It also carries its source Document's **metadata** (e.g. the Product document's type) copied verbatim and **frozen** — the Job page groups by this frozen copy, never re-reading it live. Only the source's *display name* is read live, because only the source entity can be renamed in place; a Document's metadata can never change in place, so there is nothing to drift. Like the CFO it is a **frozen build record**: read-only forever, and unaffected by later edits or deletions of the Product's Documents. Because stored files are never deleted, a later change to a Product Document never strands the Job's copy. (Snapshotting Part Documents — grouped per Part — is a planned future extension, out of scope for now and additive when it lands; likewise Job-specific document uploads are not part of this snapshot.)
 
+**Dashboard**:
+The single always-visible landing surface every signed-in user sees, regardless of App Role. It is composed of Dashboard Widgets filtered by the viewer's permissions — never a per-role bespoke page. There is exactly one Dashboard; per-user custom Dashboards are an anticipated but out-of-scope future extension.
+_Avoid_: Home, Overview, Landing, Report.
+
+**Dashboard Widget**:
+A single self-contained item on the Dashboard — one chart, one list, or one stat — that declares the App Permission it requires to be shown. Widgets are entries in a registry; the Dashboard renders the subset the viewer is permitted to see. A viewer who lacks a Widget's required permission never sees it, so Role-dependence is a consequence of permission gating rather than per-role layout. Adding a Widget means adding a registry entry, not editing the Dashboard page.
+_Avoid_: Card, Tile, Panel, Block.
+
+**Dashboard Metric**:
+A single computed read a Dashboard Widget displays — a count, a sum, or a grouped/time series — derived live from existing entity tables at request time. Dashboard Metrics are never persisted: there are no dashboard-specific rollup, summary, or reporting tables. They are read functions in `pkg/core`, permission-gated like any other read. A future Widget that needs an aggregate the live tables cannot answer cheaply may grow its own purpose-built read model in isolation, without affecting other Widgets.
+_Avoid_: Stat, Rollup, Report, KPI.
+
 ## Relationships
 
 - A **Job** has exactly five **Stages**, one per Department in Pipeline order.

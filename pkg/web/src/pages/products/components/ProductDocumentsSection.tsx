@@ -33,7 +33,7 @@ type ProductDocumentsSectionProps = {
 
 export function ProductDocumentsSection({ productId }: ProductDocumentsSectionProps) {
   const trpc = useTRPC();
-  const { invalidateDocuments } = useQueryInvalidation();
+  const { invalidateDocuments, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 
   const accessQuery = useAccess();
@@ -54,7 +54,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      await invalidateDocuments();
+      await Promise.all([invalidateDocuments(), invalidateQuotes()]);
       toast.success('Document uploaded');
     },
     onError: (error) => {
@@ -64,7 +64,7 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   const deleteMutation = useMutation(
     trpc.documents.deleteByProduct.mutationOptions({
       onSuccess: async () => {
-        await invalidateDocuments();
+        await Promise.all([invalidateDocuments(), invalidateQuotes()]);
         toast.success('Document deleted');
       },
       onError: (error) => {

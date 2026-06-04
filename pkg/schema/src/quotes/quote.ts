@@ -213,3 +213,14 @@ export type QuoteStatusSummary = z.infer<typeof QuoteStatusSummary>;
 export const QuoteStatusSummary = z.object({
   items: z.array(QuoteStatusCount),
 });
+
+export type QuoteCreatedByWeekCount = z.infer<typeof QuoteCreatedByWeekCount>;
+export const QuoteCreatedByWeekCount = z.object({
+  weekStartDate: DateOnlyIso,
+  count: z.number().int().min(0),
+});
+
+export type QuoteCreatedByWeekSummary = z.infer<typeof QuoteCreatedByWeekSummary>;
+export const QuoteCreatedByWeekSummary = z.object({
+  items: z.array(QuoteCreatedByWeekCount),
+});

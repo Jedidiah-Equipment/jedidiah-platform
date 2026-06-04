@@ -20,6 +20,7 @@ import {
   ProductCurrencyCode,
   Quote,
   QuoteCode,
+  QuoteCreatedByWeekSummary,
   type QuoteCreateInput,
   type QuoteDetail,
   type QuoteListInput,
@@ -33,7 +34,7 @@ import {
   UserSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lt, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -61,6 +62,10 @@ import {
 type QuoteRow = typeof quotes.$inferSelect;
 type ProductRow = typeof products.$inferSelect;
 type QuoteAuditInput = { row: QuoteRow; selectedAssemblies: readonly QuoteSelectedAssemblyRow[] };
+
+const JOHANNESBURG_TIME_ZONE = 'Africa/Johannesburg';
+const QUOTE_CREATED_BY_WEEK_COUNT = 12;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // `code` is the summary label, not an audited field, so it lives in `label`. `selectedAssemblies` is
 // folded into one stable JSON field — the Quote Selected Assembly snapshot the audit log diffs against.
@@ -290,6 +295,37 @@ export async function summarizeQuotesByStatus({ db }: { db: Db }): Promise<Quote
     items: QuoteStatus.options.map((status) => ({
       count: countsByStatus.get(status) ?? 0,
       status,
+    })),
+  });
+}
+
+export async function countQuotesByWeek({
+  clock = () => new Date(),
+  db,
+  weekCount = QUOTE_CREATED_BY_WEEK_COUNT,
+}: {
+  clock?: () => Date;
+  db: Db;
+  weekCount?: number;
+}): Promise<QuoteCreatedByWeekSummary> {
+  const range = getJohannesburgWeekRange({ now: clock(), weekCount });
+  // Keep the bucket calendar server-side: Johannesburg weeks are part of the reporting contract.
+  const weekStartExpression = sql<string>`to_char(date_trunc('week', ${quotes.createdAt} AT TIME ZONE ${JOHANNESBURG_TIME_ZONE})::date, 'YYYY-MM-DD')`;
+  const rows = await db
+    .select({
+      count: sql<number>`count(*)`,
+      weekStartDate: weekStartExpression,
+    })
+    .from(quotes)
+    .where(and(gte(quotes.createdAt, range.startInstant), lt(quotes.createdAt, range.endInstant)))
+    // Drizzle may qualify the same expression differently between SELECT and GROUP BY; group by ordinal.
+    .groupBy(sql`2`);
+  const countsByWeekStart = new Map(rows.map((row) => [row.weekStartDate, Number(row.count)]));
+
+  return QuoteCreatedByWeekSummary.parse({
+    items: range.weekStartDates.map((weekStartDate) => ({
+      count: countsByWeekStart.get(weekStartDate) ?? 0,
+      weekStartDate,
     })),
   });
 }
@@ -734,4 +770,124 @@ function parseQuoteCodeSearch(search: string): number | undefined {
   const code = Number.parseInt(normalized, 10);
 
   return Number.isSafeInteger(code) && code > 0 ? code : undefined;
+}
+
+function getJohannesburgWeekRange({ now, weekCount }: { now: Date; weekCount: number }) {
+  const currentJohannesburgDay = getZonedDateParts(now, JOHANNESBURG_TIME_ZONE);
+  const currentEpochDay = toEpochDay(currentJohannesburgDay);
+  const currentWeekStartEpochDay = currentEpochDay - getMondayBasedWeekdayOffset(currentJohannesburgDay.weekday);
+  const rangeStartEpochDay = currentWeekStartEpochDay - (weekCount - 1) * 7;
+  const rangeEndEpochDay = currentWeekStartEpochDay + 7;
+  const weekStartDates = Array.from({ length: weekCount }, (_, index) => toDateOnlyIso(rangeStartEpochDay + index * 7));
+
+  return {
+    endInstant: zonedDateStartToUtcInstant(toDateOnlyIso(rangeEndEpochDay), JOHANNESBURG_TIME_ZONE),
+    startInstant: zonedDateStartToUtcInstant(toDateOnlyIso(rangeStartEpochDay), JOHANNESBURG_TIME_ZONE),
+    weekStartDates,
+  };
+}
+
+function getMondayBasedWeekdayOffset(weekday: number): number {
+  return (weekday + 6) % 7;
+}
+
+function getZonedDateParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    hourCycle: 'h23',
+    month: '2-digit',
+    timeZone,
+    weekday: 'short',
+    year: 'numeric',
+  }).formatToParts(date);
+
+  return {
+    day: Number(getDateTimePart(parts, 'day')),
+    month: Number(getDateTimePart(parts, 'month')),
+    weekday: parseWeekday(getDateTimePart(parts, 'weekday')),
+    year: Number(getDateTimePart(parts, 'year')),
+  };
+}
+
+function zonedDateStartToUtcInstant(dateOnly: string, timeZone: string): Date {
+  const { day, month, year } = parseDateOnlyParts(dateOnly);
+  const localMidnightAsUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  const offset = getTimeZoneOffsetMilliseconds(localMidnightAsUtc, timeZone);
+  const candidate = new Date(localMidnightAsUtc.getTime() - offset);
+
+  return new Date(localMidnightAsUtc.getTime() - getTimeZoneOffsetMilliseconds(candidate, timeZone));
+}
+
+function parseDateOnlyParts(dateOnly: string): { day: number; month: number; year: number } {
+  const match = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/.exec(dateOnly);
+
+  if (!match?.groups) {
+    throw new Error(`Invalid date-only value ${dateOnly}`);
+  }
+
+  return {
+    day: Number(match.groups.day),
+    month: Number(match.groups.month),
+    year: Number(match.groups.year),
+  };
+}
+
+function getTimeZoneOffsetMilliseconds(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+    minute: '2-digit',
+    month: '2-digit',
+    second: '2-digit',
+    timeZone,
+    year: 'numeric',
+  }).formatToParts(date);
+  const zonedTimestamp = Date.UTC(
+    Number(getDateTimePart(parts, 'year')),
+    Number(getDateTimePart(parts, 'month')) - 1,
+    Number(getDateTimePart(parts, 'day')),
+    Number(getDateTimePart(parts, 'hour')),
+    Number(getDateTimePart(parts, 'minute')),
+    Number(getDateTimePart(parts, 'second')),
+  );
+
+  return zonedTimestamp - date.getTime();
+}
+
+function getDateTimePart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
+  const value = parts.find((part) => part.type === type)?.value;
+
+  if (!value) {
+    throw new Error(`Missing ${type} part in formatted date`);
+  }
+
+  return value;
+}
+
+function parseWeekday(weekday: string): number {
+  const weekdays = {
+    Fri: 5,
+    Mon: 1,
+    Sat: 6,
+    Sun: 0,
+    Thu: 4,
+    Tue: 2,
+    Wed: 3,
+  } as const satisfies Record<string, number>;
+  const parsed = weekdays[weekday as keyof typeof weekdays];
+
+  if (parsed === undefined) {
+    throw new Error(`Unsupported weekday ${weekday}`);
+  }
+
+  return parsed;
+}
+
+function toEpochDay({ day, month, year }: { day: number; month: number; year: number }): number {
+  return Math.floor(Date.UTC(year, month - 1, day) / MILLISECONDS_PER_DAY);
+}
+
+function toDateOnlyIso(epochDay: number): string {
+  return new Date(epochDay * MILLISECONDS_PER_DAY).toISOString().slice(0, 10);
 }

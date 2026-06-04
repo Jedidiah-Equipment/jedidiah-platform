@@ -1,4 +1,5 @@
 import {
+  countQuotesByWeek,
   createQuote,
   generateQuoteDocument,
   getQuote,
@@ -45,6 +46,8 @@ export const quotesRouter = router({
   salespeople: authorizedProcedure('quote:read').query(({ ctx }) => listQuoteSalespeople({ db: ctx.db })),
 
   summaryByStatus: authorizedProcedure('quote:read').query(({ ctx }) => summarizeQuotesByStatus({ db: ctx.db })),
+
+  createdByWeek: authorizedProcedure('quote:read').query(({ ctx }) => countQuotesByWeek({ db: ctx.db })),
 
   customers: authorizedProcedure('quote:read')
     .input(CustomerListInput)

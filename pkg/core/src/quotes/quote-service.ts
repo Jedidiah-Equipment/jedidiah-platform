@@ -25,6 +25,8 @@ import {
   type QuoteListInput,
   type QuoteListResult,
   type QuoteSortBy,
+  QuoteStatus,
+  QuoteStatusSummary,
   type QuoteSummary,
   type QuoteUpdateInput,
   type UserListResult,
@@ -272,6 +274,24 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     sortDirection: input.sortDirection,
     total: Number(totalRow?.count ?? 0),
   };
+}
+
+export async function summarizeQuotesByStatus({ db }: { db: Db }): Promise<QuoteStatusSummary> {
+  const rows = await db
+    .select({
+      count: sql<number>`count(*)`,
+      status: quotes.status,
+    })
+    .from(quotes)
+    .groupBy(quotes.status);
+  const countsByStatus = new Map(rows.map((row) => [row.status, Number(row.count)]));
+
+  return QuoteStatusSummary.parse({
+    items: QuoteStatus.options.map((status) => ({
+      count: countsByStatus.get(status) ?? 0,
+      status,
+    })),
+  });
 }
 
 export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<QuoteDetail> {

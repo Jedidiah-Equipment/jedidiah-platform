@@ -669,6 +669,26 @@ describe('quotes.list', () => {
   });
 });
 
+describe('quotes.summaryByStatus', () => {
+  test('requires quote read access and returns a zero-filled status summary', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const productEditorCaller = context.createCaller(mockSession('product-editor'));
+
+    await expect(productEditorCaller.quotes.summaryByStatus()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(salesCaller.quotes.summaryByStatus()).resolves.toEqual({
+      items: [
+        { count: 0, status: 'draft' },
+        { count: 0, status: 'sent' },
+        { count: 0, status: 'accepted' },
+        { count: 0, status: 'rejected' },
+        { count: 0, status: 'cancelled' },
+      ],
+    });
+  });
+});
+
 describe('quotes.getProductBrochure', () => {
   test('returns the latest Product brochure through quote read access', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));

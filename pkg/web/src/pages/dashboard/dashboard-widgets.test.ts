@@ -6,6 +6,7 @@ import { filterDashboardWidgets } from './dashboard-widget-types.js';
 import { dashboardWidgets } from './dashboard-widgets.js';
 
 vi.mock('./widgets/RecentQuotesWidget.js', () => ({ RecentQuotesWidget: () => null }));
+vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
 
 const WidgetComponent = () => null;
 
@@ -83,11 +84,29 @@ describe('dashboardWidgets', () => {
     });
   });
 
+  it('registers Quotes by status behind quote read access', () => {
+    const quotesByStatusWidget = dashboardWidgets.find((widget) => widget.id === 'quotes-by-status');
+
+    expect(quotesByStatusWidget).toMatchObject({
+      requires: 'quote:read',
+      size: 'md',
+      title: 'Quotes by status',
+    });
+  });
+
   it('shows Recent Quotes to sales users and hides it from product editors', () => {
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
     const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('recent-quotes');
     expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('recent-quotes');
+  });
+
+  it('shows Quotes by status to sales users and hides it from product editors', () => {
+    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
+    const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+
+    expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-by-status');
+    expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('quotes-by-status');
   });
 });

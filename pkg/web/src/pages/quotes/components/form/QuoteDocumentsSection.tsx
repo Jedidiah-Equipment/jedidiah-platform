@@ -78,6 +78,7 @@ export function QuoteDocumentsSection({
         </Alert>
       ) : null}
       <DocumentCardList
+        defaultSort="createdAtDesc"
         documents={documentsQuery.data ?? []}
         emptyMessage="No Quote Documents captured."
         errorMessage={getApiQueryErrorMessage(documentsQuery.error, 'Unable to load Quote Documents.') ?? null}

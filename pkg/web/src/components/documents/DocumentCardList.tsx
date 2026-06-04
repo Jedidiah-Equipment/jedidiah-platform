@@ -68,6 +68,7 @@ type DocumentCardListProps<TDocument extends DocumentSummary> = {
   metadata: DocumentCardListMetadata<TDocument>;
   owner: DocumentPreviewOwner;
   canDelete?: boolean;
+  defaultSort?: DocumentCardSortValue;
   onDelete?: (document: TDocument) => Promise<void> | void;
   pageSize?: number;
   rightSection?: React.ReactNode;
@@ -75,6 +76,7 @@ type DocumentCardListProps<TDocument extends DocumentSummary> = {
 
 export function DocumentCardList<TDocument extends DocumentSummary>({
   canDelete = false,
+  defaultSort = DEFAULT_DOCUMENT_CARD_SORT,
   documents,
   emptyMessage,
   errorMessage,
@@ -88,7 +90,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
   const [previewDocument, setPreviewDocument] = useState<TDocument | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<DocumentCardSortValue>(DEFAULT_DOCUMENT_CARD_SORT);
+  const [sort, setSort] = useState<DocumentCardSortValue>(defaultSort);
 
   const visible = useMemo(
     () => getVisibleDocumentCards({ documents, metadata, pageIndex, pageSize, search, sort }),

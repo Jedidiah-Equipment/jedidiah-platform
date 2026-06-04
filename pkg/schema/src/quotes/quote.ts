@@ -89,6 +89,7 @@ export const QuoteSelectedAssemblyInput = z.discriminatedUnion('type', [
 export type QuoteSummary = z.infer<typeof QuoteSummary>;
 export const QuoteSummary = Quote.extend({
   customerCompanyName: z.string().trim().min(1),
+  customerThumbnailDataUrl: NullableThumbnailDataUrl,
   linkedJobs: z.array(QuoteLinkedJob),
   productCurrencyCode: ProductCurrencyCode,
   productModelCode: z.string().trim().min(1),
@@ -96,6 +97,7 @@ export const QuoteSummary = Quote.extend({
   productBuildTimeDays: z.number().int().min(0),
   salesPersonEmail: z.email().nullable(),
   salesPersonName: z.string().trim().min(1).nullable(),
+  salesPersonThumbnailDataUrl: NullableThumbnailDataUrl,
   selectedAssemblies: z.array(QuoteSelectedAssembly),
 });
 
@@ -105,7 +107,6 @@ export const QuoteDetail = QuoteSummary.extend({
   customerContactPerson: CustomerOptionalText,
   customerEmail: CustomerEmail.nullable(),
   customerPhone: CustomerOptionalText,
-  customerThumbnailDataUrl: NullableThumbnailDataUrl,
   customerVatNumber: CustomerVatNumber,
   productAssemblies: z.array(Assembly),
   productDescription: ProductDescription,

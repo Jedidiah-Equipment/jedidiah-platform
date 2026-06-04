@@ -1,0 +1,38 @@
+name: Notify Slack on PR merge
+
+on:
+  # This workflow never checks out PR code; pull_request_target is only used so
+  # repository secrets are available for merge notifications.
+  pull_request_target:
+    types:
+      - closed
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  notify:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Post merge notification to Slack
+        uses: slackapi/slack-github-action@v3.0.3
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: |
+              Merged PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+            blocks:
+              - type: section
+                text:
+                  type: mrkdwn
+                  text: |
+                    *Merged:* <${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}>
+              - type: context
+                elements:
+                  - type: mrkdwn
+                    text: |
+                      Merged by `${{ github.event.pull_request.merged_by.login }}` into `${{ github.event.pull_request.base.ref }}`

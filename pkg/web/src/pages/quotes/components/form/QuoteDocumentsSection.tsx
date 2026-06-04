@@ -109,10 +109,13 @@ function GenerateQuoteDocumentDialog({
   const defaultLeadTime = getDefaultQuoteDocumentLeadTime(quote);
   const [isOpen, setIsOpen] = useState(false);
   const [leadTime, setLeadTime] = useState(defaultLeadTime);
+  const [confirmMissingBrochure, setConfirmMissingBrochure] = useState(false);
   const canGenerateStatus = quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const canGenerate = canUpdateQuote && canGenerateStatus;
   const trimmedLeadTime = leadTime.trim();
+  const brochureQuery = useQuery(trpc.quotes.getProductBrochure.queryOptions({ quoteId: quote.id }));
+  const isMissingBrochure = brochureQuery.isSuccess && !brochureQuery.data;
   const generateMutation = useMutation(
     trpc.quotes.generateDocument.mutationOptions({
       onSuccess: async (result) => {
@@ -131,6 +134,7 @@ function GenerateQuoteDocumentDialog({
   useEffect(() => {
     if (isOpen) {
       setLeadTime(defaultLeadTime);
+      setConfirmMissingBrochure(false);
     }
   }, [defaultLeadTime, isOpen]);
 
@@ -162,26 +166,46 @@ function GenerateQuoteDocumentDialog({
           <Input
             disabled={generateMutation.isPending || hasUnsavedChanges}
             id="quote-document-lead-time"
-            onChange={(event) => setLeadTime(event.target.value)}
+            onChange={(event) => {
+              setLeadTime(event.target.value);
+              setConfirmMissingBrochure(false);
+            }}
             value={leadTime}
           />
         </Field>
+        {confirmMissingBrochure ? (
+          <Alert variant="destructive">
+            <IconAlertTriangle />
+            <AlertTitle>No Product brochure attached</AlertTitle>
+            <AlertDescription>
+              This Quote Document will be generated without a Product brochure. Proceed only if that is intentional.
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <DialogFooter>
           <DialogClose render={<Button disabled={generateMutation.isPending} type="button" variant="outline" />}>
             Cancel
           </DialogClose>
           <Button
-            disabled={generateMutation.isPending || hasUnsavedChanges || trimmedLeadTime.length === 0}
-            onClick={() =>
+            disabled={
+              generateMutation.isPending || brochureQuery.isLoading || hasUnsavedChanges || trimmedLeadTime.length === 0
+            }
+            onClick={() => {
+              // Server generation can omit the brochure, but sales must acknowledge that path explicitly.
+              if (isMissingBrochure && !confirmMissingBrochure) {
+                setConfirmMissingBrochure(true);
+                return;
+              }
+
               generateMutation.mutate({
                 leadTime: trimmedLeadTime,
                 quoteId: quote.id,
-              })
-            }
+              });
+            }}
             type="button"
           >
             {generateMutation.isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
-            Generate
+            {confirmMissingBrochure ? 'Proceed without brochure' : 'Generate'}
           </Button>
         </DialogFooter>
       </DialogContent>

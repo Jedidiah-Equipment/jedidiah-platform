@@ -1,8 +1,4 @@
-import {
-  IconChevronLeft,
-  IconChevronRight,
-  IconDots,
-} from '@tabler/icons-react';
+import { IconChevronLeft, IconChevronRight, IconDots } from '@tabler/icons-react';
 import type * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

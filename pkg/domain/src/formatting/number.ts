@@ -1,4 +1,4 @@
-const currencySymbolByCode: Record<string, string> = {
+export const CURRENCY_SYMBOL_BY_CODE: Record<string, string> = {
   ZAR: 'R',
 };
 
@@ -31,7 +31,7 @@ export function formatCurrency(value: number, currencyCode?: string): string {
     return formattedValue;
   }
 
-  return `${currencySymbolByCode[currencyCode] ?? currencyCode} ${formattedValue}`;
+  return `${CURRENCY_SYMBOL_BY_CODE[currencyCode] ?? currencyCode} ${formattedValue}`;
 }
 
 export function formatPercent(value: number, options: FormatPercentOptions = {}): string {

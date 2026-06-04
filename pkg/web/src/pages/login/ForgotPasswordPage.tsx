@@ -1,8 +1,4 @@
-import {
-  IconCircleCheck,
-  IconLoader2,
-  IconMail,
-} from '@tabler/icons-react';
+import { IconCircleCheck, IconLoader2, IconMail } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';

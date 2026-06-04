@@ -20,7 +20,6 @@ import { useCustomerForQuoteOptions, useProductForQuoteOptions, useSalesPersonOp
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { GenerateJobFromQuoteDialog } from './components/GenerateJobFromQuoteDialog.js';
 import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { QuoteCreateDialog } from './QuoteCreateDialog.js';
@@ -78,7 +77,6 @@ const QuoteTable: React.FC = () => {
   const navigate = useNavigate();
   const accessQuery = useAccess();
   const canOpenJobs = hasPermission(accessQuery.data, 'job:read') || hasPermission(accessQuery.data, 'job:update');
-  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const customerOptions = useCustomerForQuoteOptions({ pageSize: 0 });
   const productOptions = useProductForQuoteOptions({ pageSize: 0 });
@@ -202,33 +200,8 @@ const QuoteTable: React.FC = () => {
         enableSorting: false,
         header: 'Job',
       },
-      ...(canCreateJob
-        ? [
-            {
-              id: 'actions',
-              cell: ({ row }) => (
-                <div className="flex justify-end gap-1">
-                  <GenerateJobFromQuoteDialog quote={row.original} size="icon-sm" />
-                </div>
-              ),
-              enableColumnFilter: false,
-              enableSorting: false,
-              header: () => <span className="sr-only">Actions</span>,
-              meta: {
-                cellClassName: 'text-right',
-                headerClassName: 'w-20 text-right',
-              },
-            } satisfies ColumnDef<QuoteSummary>,
-          ]
-        : []),
     ],
-    [
-      canOpenJobs,
-      canCreateJob,
-      customerOptions.selectOptions,
-      productOptions.selectOptions,
-      salespersonOptions.selectOptions,
-    ],
+    [canOpenJobs, customerOptions.selectOptions, productOptions.selectOptions, salespersonOptions.selectOptions],
   );
 
   const table = useReactTable({
@@ -386,11 +359,6 @@ function QuoteDatesCell({ quote }: { quote: QuoteSummary }) {
       <span className="text-xs text-muted-foreground">
         Preferred <DateDisplay date={quote.preferredDeliveryDate} emptyValue="not set" />
       </span>
-      {quote.plannedDeliveryDate ? (
-        <span className="text-xs text-muted-foreground">
-          Planned <DateDisplay date={quote.plannedDeliveryDate} />
-        </span>
-      ) : null}
     </div>
   );
 }

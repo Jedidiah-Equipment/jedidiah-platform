@@ -3,12 +3,7 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { formatCurrency } from '@pkg/domain';
 import type { AssemblyInput, Part } from '@pkg/schema';
-import {
-  IconChevronDown,
-  IconGripVertical,
-  IconPlus,
-  IconTrash,
-} from '@tabler/icons-react';
+import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import { CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
@@ -16,6 +11,7 @@ import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { Card, CardContent, CardHeader } from '@/components/ui/card.js';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible.js';
 import {
   Combobox,
@@ -298,17 +294,18 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
     <productForm.Subscribe selector={(state) => hasFieldErrorsForPrefix(state.fieldMeta, assemblyFieldPrefix)}>
       {(hasError) => (
         <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
-          <div
+          <Card
             ref={setNodeRef}
+            size="sm"
             style={sortableStyle}
             aria-invalid={hasError}
             className={cn(
-              'rounded-lg border p-3',
+              'gap-0',
               hasError && 'border-destructive',
               isDragging && 'relative z-10 opacity-80 shadow-lg',
             )}
           >
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <Button
                   aria-label="Reorder assembly"
@@ -340,9 +337,9 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                   <IconTrash />
                 </Button>
               </div>
-            </div>
+            </CardHeader>
             <CollapsibleContent keepMounted>
-              <div className="mt-4 flex flex-col gap-3">
+              <CardContent className="mt-3 flex flex-col gap-3">
                 <div
                   className={
                     assembly.kind === 'optional'
@@ -397,9 +394,9 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                   onStructuralChange={onStructuralChange}
                   partOptions={partOptions}
                 />
-              </div>
+              </CardContent>
             </CollapsibleContent>
-          </div>
+          </Card>
         </Collapsible>
       )}
     </productForm.Subscribe>

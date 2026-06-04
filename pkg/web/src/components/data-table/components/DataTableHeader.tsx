@@ -1,13 +1,6 @@
 import { useDebouncedValue } from '@mantine/hooks';
 import { formatDate } from '@pkg/domain';
-import {
-  IconArrowDown,
-  IconArrowsSort,
-  IconArrowUp,
-  IconCalendar,
-  IconFilter,
-  IconX,
-} from '@tabler/icons-react';
+import { IconArrowDown, IconArrowsSort, IconArrowUp, IconCalendar, IconFilter, IconX } from '@tabler/icons-react';
 import { type Column, flexRender, type Header } from '@tanstack/react-table';
 import { useEffect, useState } from 'react';
 import type { DateRange } from 'react-day-picker';

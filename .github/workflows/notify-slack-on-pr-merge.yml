@@ -17,22 +17,54 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Build Slack payload
+        run: |
+          node <<'EOF'
+          const { readFileSync, writeFileSync } = require("node:fs");
+
+          const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+          const pr = event.pull_request;
+          const maxBodyLength = 2400;
+          const rawBody = pr.body?.trim() || "No PR body provided.";
+          const body =
+            rawBody.length > maxBodyLength
+              ? `${rawBody.slice(0, maxBodyLength).trimEnd()}\n...`
+              : rawBody;
+          const payload = {
+            text: `Merged PR #${pr.number}: ${pr.title}`,
+            blocks: [
+              {
+                type: "section",
+                text: {
+                  type: "mrkdwn",
+                  text: `*Merged:* <${pr.html_url}|#${pr.number} ${pr.title}>`,
+                },
+              },
+              {
+                type: "section",
+                text: {
+                  type: "mrkdwn",
+                  text: `*PR body:*\n${body}`,
+                },
+              },
+              {
+                type: "context",
+                elements: [
+                  {
+                    type: "mrkdwn",
+                    text: `Merged by \`${pr.merged_by.login}\` into \`${pr.base.ref}\``,
+                  },
+                ],
+              },
+            ],
+          };
+
+          writeFileSync("slack-payload.json", `${JSON.stringify(payload, null, 2)}\n`);
+          EOF
+
       - name: Post merge notification to Slack
         uses: slackapi/slack-github-action@v3.0.3
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
-          payload: |
-            text: |
-              Merged PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
-            blocks:
-              - type: section
-                text:
-                  type: mrkdwn
-                  text: |
-                    *Merged:* <${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}>
-              - type: context
-                elements:
-                  - type: mrkdwn
-                    text: |
-                      Merged by `${{ github.event.pull_request.merged_by.login }}` into `${{ github.event.pull_request.base.ref }}`
+          payload-file-path: slack-payload.json

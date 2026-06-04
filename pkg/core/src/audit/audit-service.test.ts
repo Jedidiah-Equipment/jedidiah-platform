@@ -1,169 +1,104 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  createAuditChanges,
-  createAuditSnapshotChanges,
-  createAuditSummary,
-  jobAuditDescriptor,
-  productAuditDescriptor,
+  type AuditDescriptor,
+  buildAuditSummary,
+  defineAuditDescriptor,
+  diffAuditRecords,
+  diffAuditUpdate,
 } from './audit-service.js';
 
-describe('createAuditChanges', () => {
-  it('returns changed audited fields only', () => {
-    expect(
-      createAuditChanges(
-        { id: 'product-id', name: 'Wheel Loader', ignored: 'old' },
-        { id: 'product-id', name: 'Wheel Loader XL', ignored: 'new' },
-        productAuditDescriptor.fields,
-      ),
-    ).toEqual({
-      name: {
-        from: 'Wheel Loader',
-        to: 'Wheel Loader XL',
-      },
+type Widget = { id: string; name: string; price: number };
+
+const widgetDescriptor: AuditDescriptor<Widget> = defineAuditDescriptor({
+  entityType: 'product',
+  noun: 'widget',
+  primaryLabelField: 'name',
+  entityId: (widget) => widget.id,
+  toRecord: (widget) => ({ name: widget.name, price: widget.price }),
+});
+
+describe('diffAuditRecords', () => {
+  it('returns changed fields only, keyed by the after record', () => {
+    expect(diffAuditRecords({ name: 'Wheel Loader', price: 10 }, { name: 'Wheel Loader XL', price: 10 })).toEqual({
+      name: { from: 'Wheel Loader', to: 'Wheel Loader XL' },
     });
   });
 
-  it('returns null when audited values are unchanged', () => {
+  it('returns null when nothing audited changed', () => {
+    expect(diffAuditRecords({ name: 'Wheel Loader' }, { name: 'Wheel Loader' })).toBeNull();
+  });
+
+  it('normalizes undefined to null so absent values do not register as changes', () => {
+    expect(diffAuditRecords({ name: 'Wheel Loader' }, { name: 'Wheel Loader', price: undefined })).toBeNull();
+  });
+});
+
+describe('diffAuditUpdate', () => {
+  it('diffs the projected records of two inputs', () => {
     expect(
-      createAuditChanges(
-        { id: 'product-id', name: 'Wheel Loader' },
-        { id: 'product-id', name: 'Wheel Loader' },
-        productAuditDescriptor.fields,
+      diffAuditUpdate(
+        widgetDescriptor,
+        { id: 'w1', name: 'Wheel Loader', price: 10 },
+        { id: 'w1', name: 'Wheel Loader', price: 12 },
       ),
+    ).toEqual({ price: { from: 10, to: 12 } });
+  });
+
+  it('ignores fields the projection drops (the audited field set is the record keys)', () => {
+    const labelled = defineAuditDescriptor<Widget>({
+      ...widgetDescriptor,
+      toRecord: (widget) => ({ price: widget.price }),
+    });
+
+    expect(
+      diffAuditUpdate(labelled, { id: 'w1', name: 'A', price: 10 }, { id: 'w1', name: 'B', price: 10 }),
     ).toBeNull();
   });
 });
 
-describe('createAuditSnapshotChanges', () => {
-  it('maps every audited field from null to value for created records', () => {
+describe('buildAuditSummary', () => {
+  it('summarizes created entities from the label', () => {
+    expect(buildAuditSummary(widgetDescriptor, 'created', null, 'Wheel Loader')).toBe('Created widget "Wheel Loader"');
+  });
+
+  it('summarizes deletions from the label', () => {
+    expect(buildAuditSummary(widgetDescriptor, 'deleted', null, 'Wheel Loader')).toBe('Deleted widget "Wheel Loader"');
+  });
+
+  it('summarizes primary-label changes as renames', () => {
     expect(
-      createAuditSnapshotChanges(
-        { id: 'product-id', name: 'Wheel Loader', description: null, ignored: 'value' },
-        productAuditDescriptor.fields,
-        'created',
+      buildAuditSummary(
+        widgetDescriptor,
+        'updated',
+        { name: { from: 'Wheel Loader', to: 'Wheel Loader XL' } },
+        'Wheel Loader XL',
       ),
-    ).toMatchObject({
-      description: {
-        from: null,
-        to: null,
-      },
-      name: {
-        from: null,
-        to: 'Wheel Loader',
-      },
-    });
-  });
-
-  it('maps every audited field from value to null for deleted records', () => {
-    expect(
-      createAuditSnapshotChanges(
-        { id: 'product-id', name: 'Wheel Loader', description: 'Heavy loader', ignored: 'value' },
-        productAuditDescriptor.fields,
-        'deleted',
-      ),
-    ).toMatchObject({
-      description: {
-        from: 'Heavy loader',
-        to: null,
-      },
-      name: {
-        from: 'Wheel Loader',
-        to: null,
-      },
-    });
-  });
-
-  it('normalizes missing fields to null', () => {
-    expect(
-      createAuditSnapshotChanges({ name: 'Wheel Loader' }, productAuditDescriptor.fields, 'created'),
-    ).toMatchObject({
-      modelCode: {
-        from: null,
-        to: null,
-      },
-    });
-  });
-});
-
-describe('createAuditSummary', () => {
-  it('summarizes created entities', () => {
-    expect(
-      createAuditSummary({
-        action: 'created',
-        after: { name: 'Wheel Loader' },
-        before: null,
-        changes: null,
-        entityType: 'product',
-      }),
-    ).toBe('Created product "Wheel Loader"');
-  });
-
-  it('summarizes primary label updates as renames', () => {
-    expect(
-      createAuditSummary({
-        action: 'updated',
-        after: { name: 'Wheel Loader XL' },
-        before: { name: 'Wheel Loader' },
-        changes: {
-          name: {
-            from: 'Wheel Loader',
-            to: 'Wheel Loader XL',
-          },
-        },
-        entityType: 'product',
-      }),
-    ).toBe('Renamed product "Wheel Loader" to "Wheel Loader XL"');
+    ).toBe('Renamed widget "Wheel Loader" to "Wheel Loader XL"');
   });
 
   it('summarizes non-primary updates generically', () => {
-    expect(
-      createAuditSummary({
-        action: 'updated',
-        after: { name: 'Wheel Loader', status: 'active' },
-        before: { name: 'Wheel Loader', status: 'draft' },
-        changes: {
-          status: {
-            from: 'draft',
-            to: 'active',
-          },
-        },
-        entityType: 'product',
-      }),
-    ).toBe('Updated product "Wheel Loader"');
+    expect(buildAuditSummary(widgetDescriptor, 'updated', { price: { from: 10, to: 12 } }, 'Wheel Loader')).toBe(
+      'Updated widget "Wheel Loader"',
+    );
   });
 
-  it('uses the job code for job summaries', () => {
-    expect(
-      createAuditSummary({
-        action: 'updated',
-        after: { code: 'JOB-00001', status: 'paused' },
-        before: { code: 'JOB-00001', status: 'active' },
-        changes: {
-          status: {
-            from: 'active',
-            to: 'paused',
-          },
-        },
-        entityType: jobAuditDescriptor.entityType,
-      }),
-    ).toBe('Updated job "JOB-00001"');
+  it('applies the primary label formatter (e.g. job codes) and tolerates a non-record label', () => {
+    const jobDescriptor: AuditDescriptor<{ id: string; code: number }> = defineAuditDescriptor({
+      entityType: 'job',
+      noun: 'job',
+      primaryLabelField: 'code',
+      primaryLabelFormatter: (value) =>
+        typeof value === 'number' ? `JOB-${String(value).padStart(5, '0')}` : String(value),
+      entityId: (job) => job.id,
+      label: (job) => job.code,
+      toRecord: (job) => ({ code: job.code }),
+    });
+
+    expect(buildAuditSummary(jobDescriptor, 'created', null, 1)).toBe('Created job "JOB-00001"');
   });
 
-  it('formats job codes in summaries without requiring padded audit records', () => {
-    expect(
-      createAuditSummary({
-        action: 'updated',
-        after: { code: 1, status: 'paused' },
-        before: { code: 1, status: 'active' },
-        changes: {
-          status: {
-            from: 'active',
-            to: 'paused',
-          },
-        },
-        entityType: jobAuditDescriptor.entityType,
-      }),
-    ).toBe('Updated job "JOB-00001"');
+  it('falls back to "Unknown" when the label is nullish', () => {
+    expect(buildAuditSummary(widgetDescriptor, 'created', null, undefined)).toBe('Created widget "Unknown"');
   });
 });

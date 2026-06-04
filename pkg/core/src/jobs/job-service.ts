@@ -14,7 +14,9 @@ import {
 import { buildCfo, type CfoEntry, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import {
   type AuthId,
+  formatJobCode,
   formatProductSerialNumber,
+  JobCode,
   type JobCreateInput,
   type JobDetail,
   ProductSerialPrefix,
@@ -25,12 +27,36 @@ import {
 } from '@pkg/schema';
 import { asc, eq, sql } from 'drizzle-orm';
 
-import { createAuditSnapshotChanges, insertAuditEvent, jobAuditDescriptor } from '../audit/audit-service.js';
+import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
 import { documentBaseSelect } from '../documents/document-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { JobCreateFromQuoteDeniedError } from './job-errors.js';
-import { mapJobAuditRecord } from './job-mappers.js';
+import type { JobRow } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
+
+export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
+  entityType: 'job',
+  noun: 'job',
+  primaryLabelField: 'code',
+  primaryLabelFormatter: formatJobAuditLabel,
+  entityId: (row) => row.id,
+  label: (row) => row.code,
+  toRecord: (row) => ({
+    productId: row.productId,
+    productSerialNumber: row.productSerialNumber,
+    quoteId: row.quoteId,
+  }),
+});
+
+function formatJobAuditLabel(value: unknown): string {
+  if (typeof value === 'number') {
+    return formatJobCode(value);
+  }
+
+  const result = JobCode.safeParse(value);
+
+  return result.success ? result.data : String(value);
+}
 
 export async function createJob({
   access,
@@ -85,18 +111,7 @@ export async function createJob({
       throw new Error('Job stage insert did not return every row');
     }
 
-    await insertAuditEvent({
-      db: tx,
-      input: {
-        action: 'created',
-        actorUserId,
-        after: mapJobAuditRecord(job),
-        before: null,
-        changes: createAuditSnapshotChanges(mapJobAuditRecord(job), jobAuditDescriptor.fields, 'created'),
-        entityId: job.id,
-        entityType: jobAuditDescriptor.entityType,
-      },
-    });
+    await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
 
     return getJob({ access, db: tx, id: job.id });
   });

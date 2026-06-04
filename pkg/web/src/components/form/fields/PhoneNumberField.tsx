@@ -53,7 +53,7 @@ export function PhoneNumberField({ label, ...inputProps }: PhoneNumberFieldProps
           value={displayValue}
           {...inputProps}
         />
-        <InputGroupAddon align="inline-end">
+        <InputGroupAddon align="inline-start">
           <InputGroupText>{COUNTRY_CODE}</InputGroupText>
         </InputGroupAddon>
       </InputGroup>

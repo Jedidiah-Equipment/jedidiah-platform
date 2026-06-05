@@ -1,4 +1,4 @@
-import { customers, type Db, products, quotes } from '@pkg/db';
+import { customers, type Db, jobBays, products, quotes } from '@pkg/db';
 import type { Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -8,6 +8,7 @@ import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db, 'job-supervisor');
+  await seedFabricationBays(db);
   const product = await createProduct(db);
   const quote = await createAcceptedQuote(db, product.id);
 
@@ -15,6 +16,28 @@ const test = createTester(async ({ db }) => {
     product,
     quote,
   };
+});
+
+describe('jobs.listBays', () => {
+  test('returns fabrication bays for authorized job readers', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+
+    await expect(caller.jobs.listBays()).resolves.toMatchObject({
+      items: [
+        { department: 'fabrication', name: 'Fabrication Bay 1' },
+        { department: 'fabrication', name: 'Fabrication Bay 2' },
+        { department: 'fabrication', name: 'Fabrication Bay 3' },
+      ],
+    });
+  });
+
+  test('rejects roles without job read permission', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await expect(caller.jobs.listBays()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
 });
 
 describe('jobs.create', () => {
@@ -91,6 +114,37 @@ async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
   }
 
   return product;
+}
+
+async function seedFabricationBays(db: Db): Promise<void> {
+  const now = new Date('2026-06-05T00:00:00.000Z');
+
+  await db.insert(jobBays).values([
+    {
+      createdAt: now,
+      department: 'fabrication',
+      id: '00000000-0000-4000-8000-000000000b01',
+      name: 'Fabrication Bay 1',
+      scheduleOrigin: now,
+      updatedAt: now,
+    },
+    {
+      createdAt: now,
+      department: 'fabrication',
+      id: '00000000-0000-4000-8000-000000000b02',
+      name: 'Fabrication Bay 2',
+      scheduleOrigin: now,
+      updatedAt: now,
+    },
+    {
+      createdAt: now,
+      department: 'fabrication',
+      id: '00000000-0000-4000-8000-000000000b03',
+      name: 'Fabrication Bay 3',
+      scheduleOrigin: now,
+      updatedAt: now,
+    },
+  ]);
 }
 
 async function createAcceptedQuote(db: Db, productId: Product['id']) {

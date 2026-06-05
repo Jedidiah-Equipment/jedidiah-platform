@@ -5,6 +5,7 @@ import {
   type Db,
   documents,
   getPaginationQueryOptions,
+  jobBays,
   jobCfoAssemblies,
   jobCfoParts,
   jobStages,
@@ -16,6 +17,9 @@ import {
 } from '@pkg/db';
 import { canViewStage, parseJobCodeSearch } from '@pkg/domain';
 import {
+  Bay,
+  type BayListResult,
+  type Department,
   type JobDetail,
   JobDocument,
   type JobListInput,
@@ -29,7 +33,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -54,6 +58,23 @@ type JobWithProductRow = JobRow & {
 type JobDocumentRow = DocumentSummaryRow & {
   sourceProductName: string | null;
 };
+
+export async function listBays({ db, access }: { db: Db; access: UserAccessSummary }): Promise<BayListResult> {
+  const visibleDepartments = getVisibleBayDepartments(access);
+
+  if (visibleDepartments !== 'all' && visibleDepartments.length === 0) {
+    return { items: [] };
+  }
+
+  const rows = await db.query.jobBays.findMany({
+    orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
+    where: visibleDepartments === 'all' ? undefined : inArray(jobBays.department, visibleDepartments),
+  });
+
+  return {
+    items: rows.map(mapBay),
+  };
+}
 
 export async function listJobs({
   db,
@@ -122,6 +143,26 @@ export async function listJobs({
     sortDirection: input.sortDirection,
     total,
   };
+}
+
+function getVisibleBayDepartments(access: UserAccessSummary): 'all' | Department[] {
+  if (access.role === 'admin' || access.role === 'job-supervisor') {
+    return 'all';
+  }
+
+  if (access.role === 'job-department-manager') {
+    if (access.departments.length === 0) {
+      return 'all';
+    }
+
+    return [...access.departments];
+  }
+
+  return [];
+}
+
+function mapBay(row: typeof jobBays.$inferSelect) {
+  return Bay.parse(row);
 }
 
 function buildJobListWhere(input: JobListInput): SQL | undefined {

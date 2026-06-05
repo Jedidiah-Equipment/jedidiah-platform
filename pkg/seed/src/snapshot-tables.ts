@@ -3,6 +3,7 @@ import {
   assemblyOverrides,
   assemblyParts,
   customers,
+  jobBays,
   parts,
   productAssemblies,
   products,
@@ -44,6 +45,12 @@ export const snapshotTables = [
     table: userDepartment,
     tableName: 'user_department',
     timestampColumns: [],
+  },
+  {
+    fileName: 'job_bay.json',
+    table: jobBays,
+    tableName: 'job_bay',
+    timestampColumns: ['createdAt', 'scheduleOrigin', 'updatedAt'],
   },
   {
     fileName: 'account.json',

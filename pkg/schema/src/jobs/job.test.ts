@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatProductSerialNumber, JOB_STAGES, Job, JobCode, JobDetail, JobListFilters, JobWorkState } from './job.js';
+import {
+  BookJobSlotInput,
+  BookJobSlotResult,
+  formatProductSerialNumber,
+  JOB_STAGES,
+  Job,
+  JobCode,
+  JobDetail,
+  JobListFilters,
+  JobWorkState,
+  ProjectedJobSlot,
+} from './job.js';
 
 describe('JobCode', () => {
   it('formats DB integers as branded job codes', () => {
@@ -101,5 +112,70 @@ describe('JobWorkState', () => {
   it('only accepts derived stage states', () => {
     expect(JobWorkState.parse('complete')).toBe('complete');
     expect(() => JobWorkState.parse('welding')).toThrow();
+  });
+});
+
+describe('JobSlot schemas', () => {
+  it('accepts booking inputs with positive minute durations', () => {
+    expect(
+      BookJobSlotInput.parse({
+        bayId: '00000000-0000-4000-8000-000000000001',
+        durationMinutes: 480,
+        jobStageId: '00000000-0000-4000-8000-000000000002',
+      }),
+    ).toMatchObject({
+      durationMinutes: 480,
+    });
+    expect(() =>
+      BookJobSlotInput.parse({
+        bayId: '00000000-0000-4000-8000-000000000001',
+        durationMinutes: 0,
+        jobStageId: '00000000-0000-4000-8000-000000000002',
+      }),
+    ).toThrow();
+  });
+
+  it('normalizes projected slot dates and job codes at the schema boundary', () => {
+    expect(
+      ProjectedJobSlot.parse({
+        bayId: '00000000-0000-4000-8000-000000000001',
+        createdAt: new Date('2026-06-05T00:00:00.000Z'),
+        durationMinutes: 480,
+        endAt: new Date('2026-06-05T08:00:00.000Z'),
+        id: '00000000-0000-4000-8000-000000000003',
+        jobCode: 12,
+        jobId: '00000000-0000-4000-8000-000000000004',
+        jobStageId: '00000000-0000-4000-8000-000000000002',
+        sequence: 1,
+        startAt: new Date('2026-06-05T00:00:00.000Z'),
+        updatedAt: new Date('2026-06-05T00:00:00.000Z'),
+      }),
+    ).toMatchObject({
+      endAt: '2026-06-05T08:00:00.000Z',
+      jobCode: 'JOB-00012',
+      startAt: '2026-06-05T00:00:00.000Z',
+    });
+  });
+
+  it('returns the inserted slot from booking mutations without projection fields', () => {
+    expect(
+      BookJobSlotResult.parse({
+        slot: {
+          bayId: '00000000-0000-4000-8000-000000000001',
+          createdAt: new Date('2026-06-05T00:00:00.000Z'),
+          durationMinutes: 480,
+          id: '00000000-0000-4000-8000-000000000003',
+          jobStageId: '00000000-0000-4000-8000-000000000002',
+          sequence: 1,
+          updatedAt: new Date('2026-06-05T00:00:00.000Z'),
+        },
+      }),
+    ).toMatchObject({
+      slot: {
+        createdAt: '2026-06-05T00:00:00.000Z',
+        durationMinutes: 480,
+        sequence: 1,
+      },
+    });
   });
 });

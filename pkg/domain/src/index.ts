@@ -9,6 +9,7 @@ export * from './formatting/number.js';
 export * from './formatting/phone-number.js';
 export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';
+export * from './jobs/job-slot-projection.js';
 export * from './jobs/job-stage-pipeline.js';
 export * from './jobs/job-stage-status-labels.js';
 export * from './quotes/effective-bom.js';

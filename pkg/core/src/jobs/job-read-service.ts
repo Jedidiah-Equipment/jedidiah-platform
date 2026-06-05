@@ -8,6 +8,7 @@ import {
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
+  jobSlots,
   jobStages,
   jobs,
   parts,
@@ -15,10 +16,11 @@ import {
   type quotes,
   user,
 } from '@pkg/db';
-import { canViewStage, parseJobCodeSearch } from '@pkg/domain';
+import { canViewStage, parseJobCodeSearch, projectJobSlots } from '@pkg/domain';
 import {
   Bay,
   type BayListResult,
+  BaySchedule,
   type Department,
   type JobDetail,
   JobDocument,
@@ -28,6 +30,7 @@ import {
   type JobStageRollup,
   JobStageSummary,
   type JobSummary,
+  ProjectedJobSlot,
   QuoteCode,
   type SortDirection,
   type UserAccessSummary,
@@ -58,8 +61,21 @@ type JobWithProductRow = JobRow & {
 type JobDocumentRow = DocumentSummaryRow & {
   sourceProductName: string | null;
 };
+type BayScheduleRow = typeof jobBays.$inferSelect & {
+  slots: (typeof jobSlots.$inferSelect & {
+    stage: Pick<typeof jobStages.$inferSelect, 'id' | 'jobId' | 'stage'> & {
+      job: Pick<typeof jobs.$inferSelect, 'code' | 'id'>;
+    };
+  })[];
+};
 
-export async function listBays({ db, access }: { db: Db; access: UserAccessSummary }): Promise<BayListResult> {
+export async function listBays({
+  db,
+  access,
+}: {
+  db: Db | DatabaseTransaction;
+  access: UserAccessSummary;
+}): Promise<BayListResult> {
   const visibleDepartments = getVisibleBayDepartments(access);
 
   if (visibleDepartments !== 'all' && visibleDepartments.length === 0) {
@@ -69,10 +85,32 @@ export async function listBays({ db, access }: { db: Db; access: UserAccessSumma
   const rows = await db.query.jobBays.findMany({
     orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
     where: visibleDepartments === 'all' ? undefined : inArray(jobBays.department, visibleDepartments),
+    with: {
+      slots: {
+        orderBy: [asc(jobSlots.sequence), asc(jobSlots.id)],
+        with: {
+          stage: {
+            columns: {
+              id: true,
+              jobId: true,
+              stage: true,
+            },
+            with: {
+              job: {
+                columns: {
+                  code: true,
+                  id: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   });
 
   return {
-    items: rows.map(mapBay),
+    items: rows.map(mapBaySchedule),
   };
 }
 
@@ -161,8 +199,25 @@ function getVisibleBayDepartments(access: UserAccessSummary): 'all' | Department
   return [];
 }
 
-function mapBay(row: typeof jobBays.$inferSelect) {
-  return Bay.parse(row);
+function mapBaySchedule(row: BayScheduleRow) {
+  const projection = projectJobSlots({
+    scheduleOrigin: row.scheduleOrigin,
+    slots: row.slots,
+  });
+
+  return BaySchedule.parse({
+    ...Bay.parse(row),
+    nextAvailableAt: projection.nextAvailableAt,
+    slots: projection.slots.map((slot) =>
+      ProjectedJobSlot.parse({
+        ...slot,
+        jobCode: slot.stage.job.code,
+        jobId: slot.stage.job.id,
+        startAt: slot.startAt,
+        endAt: slot.endAt,
+      }),
+    ),
+  });
 }
 
 function buildJobListWhere(input: JobListInput): SQL | undefined {

@@ -218,6 +218,13 @@
       "when": 1780657278108,
       "tag": "0030_steep_santa_claus",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1780660446513,
+      "tag": "0031_minor_kabuki",
+      "breakpoints": true
     }
   ]
 }

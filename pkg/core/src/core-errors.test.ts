@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { CustomerNotFoundError, isCustomerCoreError } from './customers/customer-errors.js';
-import { isJobCoreError, JobCreateFromQuoteDeniedError, JobNotFoundError } from './jobs/job-errors.js';
+import {
+  isJobCoreError,
+  JobBayNotFoundError,
+  JobCreateFromQuoteDeniedError,
+  JobNotFoundError,
+  JobSlotBookingDeniedError,
+  JobStageNotFoundError,
+} from './jobs/job-errors.js';
 import {
   DuplicatePartCodeError,
   isPartCoreError,
@@ -64,6 +71,9 @@ describe('core error codes and guards', () => {
   it('identifies job core errors', () => {
     expect(new JobNotFoundError('job-id').code).toBe('job.not_found');
     expect(new JobCreateFromQuoteDeniedError('diagnostic').code).toBe('job.create_from_quote_denied');
+    expect(new JobBayNotFoundError('bay-id').code).toBe('job.bay_not_found');
+    expect(new JobStageNotFoundError('stage-id').code).toBe('job.stage_not_found');
+    expect(new JobSlotBookingDeniedError('diagnostic').code).toBe('job.slot_booking_denied');
     expect(isJobCoreError(new JobCreateFromQuoteDeniedError('diagnostic'))).toBe(true);
   });
 });

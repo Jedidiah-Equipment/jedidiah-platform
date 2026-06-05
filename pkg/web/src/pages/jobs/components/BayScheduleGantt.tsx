@@ -334,6 +334,18 @@ const BaySlotBar: React.FC<{
       onResize(slot.id, resizeDrag.durationDays);
     }
   };
+  const cancelResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!resizeDrag) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setResizeDrag(null);
+  };
 
   return (
     <div
@@ -350,7 +362,7 @@ const BaySlotBar: React.FC<{
         aria-label={`Resize ${slot.jobCode}`}
         className="absolute top-0 right-0 h-full w-2 cursor-ew-resize border-primary-foreground/70 border-r-2 bg-primary-foreground/15 outline-none hover:bg-primary-foreground/25 focus-visible:ring-2 focus-visible:ring-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
         disabled={isResizePending}
-        onPointerCancel={finishResize}
+        onPointerCancel={cancelResize}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={finishResize}

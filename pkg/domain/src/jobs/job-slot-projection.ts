@@ -1,4 +1,4 @@
-import { addMinutes } from 'date-fns';
+import { addMinutes, max, startOfDay } from 'date-fns';
 
 export const WORKING_DAY_MINUTES = 480;
 
@@ -20,12 +20,14 @@ export type SlotProjectionResult<TSlot extends ProjectableJobSlot> = {
 
 export function projectJobSlots<TSlot extends ProjectableJobSlot>({
   scheduleOrigin,
+  schedulingFloor,
   slots,
 }: {
   scheduleOrigin: Date;
+  schedulingFloor?: Date;
   slots: readonly TSlot[];
 }): SlotProjectionResult<TSlot> {
-  let cursor = new Date(scheduleOrigin);
+  let cursor = max([scheduleOrigin, startOfDay(schedulingFloor ?? new Date())]);
 
   const projectedSlots = [...slots]
     .sort((left, right) => left.sequence - right.sequence || left.id.localeCompare(right.id))

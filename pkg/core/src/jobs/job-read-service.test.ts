@@ -79,6 +79,19 @@ describe('listBays', () => {
     expect(result.items.map((bay) => bay.department)).toEqual(['fabrication', 'fabrication', 'fabrication']);
   });
 
+  test('returns all bays for unscoped department managers', async ({ context }) => {
+    const result = await listBays({
+      db: context.db,
+      access: createUserAccessSummary({
+        departments: [],
+        role: 'job-department-manager',
+        userId: 'unscoped-manager',
+      }),
+    });
+
+    expect(result.items).toHaveLength(3);
+  });
+
   test('returns no bays for non-fabrication department managers', async ({ context }) => {
     const result = await listBays({
       db: context.db,

@@ -151,6 +151,10 @@ function getVisibleBayDepartments(access: UserAccessSummary): 'all' | Department
   }
 
   if (access.role === 'job-department-manager') {
+    if (access.departments.length === 0) {
+      return 'all';
+    }
+
     return [...access.departments];
   }
 

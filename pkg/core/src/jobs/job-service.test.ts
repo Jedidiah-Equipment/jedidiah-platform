@@ -35,7 +35,7 @@ import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
 import { getJob, listBays } from './job-read-service.js';
-import { bookJobSlot, createJob } from './job-service.js';
+import { bookJobSlot, createJob, resizeJobSlot } from './job-service.js';
 
 const actorUserId = 'test-user-id';
 const jobAccess = createUserAccessSummary({ role: 'job-supervisor', userId: actorUserId });
@@ -639,6 +639,136 @@ describe('bookJobSlot', () => {
         input: { bayId: bay.id, durationMinutes: 480, jobStageId },
       }),
     ).rejects.toThrow('You do not have permission to book this Bay.');
+  });
+});
+
+describe('resizeJobSlot', () => {
+  test('updates duration and reflows downstream projected dates only', async ({ context }) => {
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const thirdJob = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    const firstSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationMinutes: 480, jobStageId: getStageId(firstJob, 'fabrication') },
+    });
+    const secondSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationMinutes: 480, jobStageId: getStageId(secondJob, 'fabrication') },
+    });
+    const thirdSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationMinutes: 480, jobStageId: getStageId(thirdJob, 'fabrication') },
+    });
+
+    await expect(
+      resizeJobSlot({
+        access: jobAccess,
+        db: context.db,
+        input: { slotId: secondSlot.slot.id, durationMinutes: 960 },
+      }),
+    ).resolves.toMatchObject({
+      slot: {
+        id: secondSlot.slot.id,
+        durationMinutes: 960,
+        sequence: 2,
+      },
+    });
+
+    const schedule = await listBays({ access: jobAccess, db: context.db });
+    expect(schedule.items[0]).toEqual(
+      expect.objectContaining({
+        id: bay.id,
+        nextAvailableAt: '2026-06-06T16:00:00.000Z',
+        slots: [
+          expect.objectContaining({
+            id: firstSlot.slot.id,
+            durationMinutes: 480,
+            startAt: '2026-06-05T08:00:00.000Z',
+            endAt: '2026-06-05T16:00:00.000Z',
+          }),
+          expect.objectContaining({
+            id: secondSlot.slot.id,
+            durationMinutes: 960,
+            startAt: '2026-06-05T16:00:00.000Z',
+            endAt: '2026-06-06T08:00:00.000Z',
+          }),
+          expect.objectContaining({
+            id: thirdSlot.slot.id,
+            durationMinutes: 480,
+            startAt: '2026-06-06T08:00:00.000Z',
+            endAt: '2026-06-06T16:00:00.000Z',
+          }),
+        ],
+      }),
+    );
+  });
+
+  test('rejects missing slots', async ({ context }) => {
+    await expect(
+      resizeJobSlot({
+        access: jobAccess,
+        db: context.db,
+        input: {
+          durationMinutes: 960,
+          slotId: '00000000-0000-4000-8000-000000000999',
+        },
+      }),
+    ).rejects.toThrow('Job slot not found');
+  });
+
+  test('enforces bay schedule resize permissions by role and department', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const bookedSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationMinutes: 480, jobStageId: getStageId(job, 'fabrication') },
+    });
+
+    await expect(
+      resizeJobSlot({
+        access: createUserAccessSummary({ role: 'admin', userId: 'admin-user' }),
+        db: context.db,
+        input: { durationMinutes: 960, slotId: bookedSlot.slot.id },
+      }),
+    ).resolves.toMatchObject({ slot: { durationMinutes: 960 } });
+    await expect(
+      resizeJobSlot({
+        access: jobAccess,
+        db: context.db,
+        input: { durationMinutes: 480, slotId: bookedSlot.slot.id },
+      }),
+    ).resolves.toMatchObject({ slot: { durationMinutes: 480 } });
+    await expect(
+      resizeJobSlot({
+        access: createUserAccessSummary({
+          departments: ['fabrication'],
+          role: 'job-department-manager',
+          userId: 'fabrication-manager',
+        }),
+        db: context.db,
+        input: { durationMinutes: 960, slotId: bookedSlot.slot.id },
+      }),
+    ).resolves.toMatchObject({ slot: { durationMinutes: 960 } });
+    await expect(
+      resizeJobSlot({
+        access: createUserAccessSummary({
+          departments: ['paint'],
+          role: 'job-department-manager',
+          userId: 'paint-manager',
+        }),
+        db: context.db,
+        input: { durationMinutes: 480, slotId: bookedSlot.slot.id },
+      }),
+    ).rejects.toThrow('You do not have permission to resize this Bay schedule.');
   });
 });
 

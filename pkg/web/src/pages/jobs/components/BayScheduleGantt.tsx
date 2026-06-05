@@ -2,8 +2,9 @@ import { formatDate, WORKING_DAY_MINUTES } from '@pkg/domain';
 import type { BaySchedule, JobListInput, ProjectedJobSlot } from '@pkg/schema';
 import { IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { addMinutes } from 'date-fns';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import {
@@ -60,6 +61,24 @@ export const BayScheduleGantt: React.FC = () => {
       },
       onError: (error) => showMutationError(error, 'Unable to book job.'),
     }),
+  );
+  const resizeSlotMutation = useMutation(
+    trpc.jobs.resizeSlot.mutationOptions({
+      onSuccess: async () => {
+        await invalidateJobs();
+        toast.success('Slot resized');
+      },
+      onError: (error) => showMutationError(error, 'Unable to resize slot.'),
+    }),
+  );
+  const handleResizeSlot = useCallback(
+    (slotId: string, durationDays: number) => {
+      resizeSlotMutation.mutate({
+        durationMinutes: durationDays * WORKING_DAY_MINUTES,
+        slotId,
+      });
+    },
+    [resizeSlotMutation],
   );
 
   useEffect(() => {
@@ -173,13 +192,14 @@ export const BayScheduleGantt: React.FC = () => {
           className="h-full border border-border/70 bg-background"
           initialDate={initialDate}
           initialDateAlignment="start"
-          range="monthly"
+          range="daily"
+          zoom={200}
         >
           <BayScheduleSidebar bays={bays} />
           <GanttTimeline>
             <GanttHeader />
             <BayLaneDividers bays={bays} />
-            <BaySlotBars bays={bays} />
+            <BaySlotBars bays={bays} isResizePending={resizeSlotMutation.isPending} onResizeSlot={handleResizeSlot} />
             <GanttToday className="bg-primary text-primary-foreground" />
           </GanttTimeline>
         </GanttProvider>
@@ -220,29 +240,112 @@ const BayLaneDividers: React.FC<{
 
 const BaySlotBars: React.FC<{
   bays: BaySchedule[];
-}> = ({ bays }) => {
+  isResizePending: boolean;
+  onResizeSlot: (slotId: string, durationDays: number) => void;
+}> = ({ bays, isResizePending, onResizeSlot }) => {
   const gantt = useGanttContext();
 
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-20">
       {bays.flatMap((bay, bayIndex) =>
         bay.slots.map((slot) => (
-          <BaySlotBar key={slot.id} slot={slot} top={gantt.headerHeight + bayIndex * gantt.rowHeight + 6} />
+          <BaySlotBar
+            isResizePending={isResizePending}
+            key={slot.id}
+            onResize={onResizeSlot}
+            slot={slot}
+            top={gantt.headerHeight + bayIndex * gantt.rowHeight + 6}
+          />
         )),
       )}
     </div>
   );
 };
 
+type SlotResizeDrag = {
+  durationDays: number;
+  initialDurationDays: number;
+  pixelsPerWorkingDay: number;
+  startX: number;
+};
+
 const BaySlotBar: React.FC<{
+  isResizePending: boolean;
+  onResize: (slotId: string, durationDays: number) => void;
   slot: ProjectedJobSlot;
   top: number;
-}> = ({ slot, top }) => {
+}> = ({ isResizePending, onResize, slot, top }) => {
   const gantt = useGanttContext();
+  const [resizeDrag, setResizeDrag] = useState<SlotResizeDrag | null>(null);
   const startAt = useMemo(() => new Date(slot.startAt), [slot.startAt]);
   const endAt = useMemo(() => new Date(slot.endAt), [slot.endAt]);
+  const durationDays = Math.max(1, Math.round(slot.durationMinutes / WORKING_DAY_MINUTES));
+  const previewDurationDays = resizeDrag?.durationDays ?? durationDays;
+  const previewEndAt = useMemo(
+    () => (resizeDrag ? addMinutes(startAt, previewDurationDays * WORKING_DAY_MINUTES) : endAt),
+    [endAt, previewDurationDays, resizeDrag, startAt],
+  );
   const left = getGanttOffset(startAt, gantt);
-  const width = Math.max(getGanttWidth(startAt, endAt, gantt), 28);
+  const width = Math.max(getGanttWidth(startAt, previewEndAt, gantt), 28);
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (isResizePending) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setResizeDrag({
+      durationDays,
+      initialDurationDays: durationDays,
+      pixelsPerWorkingDay: Math.max(getGanttWidth(startAt, addMinutes(startAt, WORKING_DAY_MINUTES), gantt), 1),
+      startX: event.clientX,
+    });
+  };
+  const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!resizeDrag) {
+      return;
+    }
+
+    event.preventDefault();
+    const deltaDays = Math.round((event.clientX - resizeDrag.startX) / resizeDrag.pixelsPerWorkingDay);
+    const nextDurationDays = Math.max(1, resizeDrag.initialDurationDays + deltaDays);
+
+    if (nextDurationDays !== resizeDrag.durationDays) {
+      setResizeDrag({
+        ...resizeDrag,
+        durationDays: nextDurationDays,
+      });
+    }
+  };
+  const finishResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!resizeDrag) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setResizeDrag(null);
+
+    if (resizeDrag.durationDays !== durationDays) {
+      onResize(slot.id, resizeDrag.durationDays);
+    }
+  };
+  const cancelResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!resizeDrag) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setResizeDrag(null);
+  };
 
   return (
     <div
@@ -254,7 +357,17 @@ const BaySlotBar: React.FC<{
       }}
       title={`${slot.jobCode}: ${formatDate(slot.startAt, 'long')} - ${formatDate(slot.endAt, 'long')}`}
     >
-      <span className="block truncate font-medium">{slot.jobCode}</span>
+      <span className="block truncate pr-2 font-medium">{slot.jobCode}</span>
+      <button
+        aria-label={`Resize ${slot.jobCode}`}
+        className="absolute top-0 right-0 h-full w-2 cursor-ew-resize border-primary-foreground/70 border-r-2 bg-primary-foreground/15 outline-none hover:bg-primary-foreground/25 focus-visible:ring-2 focus-visible:ring-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={isResizePending}
+        onPointerCancel={cancelResize}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishResize}
+        type="button"
+      />
     </div>
   );
 };

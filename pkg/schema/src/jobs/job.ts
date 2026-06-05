@@ -80,6 +80,19 @@ export const BookJobSlotResult = z.object({
   slot: JobSlot,
 });
 
+export type ResizeJobSlotInput = z.infer<typeof ResizeJobSlotInput>;
+export const ResizeJobSlotInput = z
+  .object({
+    slotId: UUID,
+    durationMinutes: SlotDurationMinutes,
+  })
+  .strict();
+
+export type ResizeJobSlotResult = z.infer<typeof ResizeJobSlotResult>;
+export const ResizeJobSlotResult = z.object({
+  slot: JobSlot,
+});
+
 export type JobWorkState = z.infer<typeof JobWorkState>;
 export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
 

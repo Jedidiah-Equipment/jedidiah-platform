@@ -13,8 +13,10 @@ import {
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
-import { buildCfo, type CfoEntry, JOB_STAGE_PIPELINE } from '@pkg/domain';
+import { buildCfo, type CfoEntry, JOB_STAGE_PIPELINE, projectJobSlots } from '@pkg/domain';
 import {
+  type AddIdleJobSlotInput,
+  AddIdleJobSlotResult,
   type AuthId,
   type BookJobSlotInput,
   BookJobSlotResult,
@@ -34,7 +36,8 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, gt, sql } from 'drizzle-orm';
+import { differenceInCalendarDays, startOfDay } from 'date-fns';
+import { and, asc, eq, gt, gte, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
 import { documentBaseSelect } from '../documents/document-service.js';
@@ -43,6 +46,7 @@ import {
   JobBayNotFoundError,
   JobCreateFromQuoteDeniedError,
   JobSlotBookingDeniedError,
+  JobSlotIdleAddDeniedError,
   JobSlotNotFoundError,
   JobSlotRemoveDeniedError,
   JobSlotResizeDeniedError,
@@ -136,12 +140,14 @@ export async function createJob({
 
 export async function bookJobSlot({
   access,
+  currentDate,
   db,
   input,
 }: {
   access: UserAccessSummary;
   db: Db;
   input: BookJobSlotInput;
+  currentDate?: Date;
 }): Promise<BookJobSlotResult> {
   return db.transaction(async (tx) => {
     const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
@@ -171,20 +177,33 @@ export async function bookJobSlot({
       throw new JobSlotBookingDeniedError('Bay department must match the Job stage department.');
     }
 
-    const [sequenceRow] = await tx
-      .select({
-        sequence: sql<number>`coalesce(max(${jobSlots.sequence}), 0) + 1`,
-      })
-      .from(jobSlots)
-      .where(eq(jobSlots.bayId, bay.id));
-    const sequence = Number(sequenceRow?.sequence ?? 1);
+    let sequence = await getNextBaySlotSequence(tx, bay.id);
+    const gapDays = await getIdleGapDaysBeforeAppend({
+      bayId: bay.id,
+      currentDate: currentDate ?? new Date(),
+      scheduleOrigin: bay.scheduleOrigin,
+      tx,
+    });
+
+    if (gapDays > 0) {
+      await insertIdleSlot({
+        bayId: bay.id,
+        durationDays: gapDays,
+        label: null,
+        sequence,
+        tx,
+      });
+      sequence += 1;
+    }
 
     const [slot] = await tx
       .insert(jobSlots)
       .values({
         bayId: bay.id,
-        durationMinutes: input.durationMinutes,
+        durationDays: input.durationDays,
         jobStageId: stage.id,
+        kind: 'work',
+        label: null,
         sequence,
       })
       .returning();
@@ -194,6 +213,60 @@ export async function bookJobSlot({
     }
 
     return BookJobSlotResult.parse({ slot });
+  });
+}
+
+export async function addIdleJobSlot({
+  access,
+  db,
+  input,
+}: {
+  access: UserAccessSummary;
+  db: Db;
+  input: AddIdleJobSlotInput;
+}): Promise<AddIdleJobSlotResult> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({
+        bay: jobBays,
+        slot: jobSlots,
+      })
+      .from(jobSlots)
+      .innerJoin(jobBays, eq(jobSlots.bayId, jobBays.id))
+      .where(eq(jobSlots.id, input.targetSlotId))
+      .for('update');
+
+    if (!row) {
+      throw new JobSlotNotFoundError(input.targetSlotId);
+    }
+
+    if (!canEditBaySchedule(access, row.bay.department)) {
+      throw new JobSlotIdleAddDeniedError('You do not have permission to add idle time to this Bay schedule.');
+    }
+
+    const insertionSequence = input.placement === 'before' ? row.slot.sequence : row.slot.sequence + 1;
+    const shiftCondition =
+      input.placement === 'before'
+        ? gte(jobSlots.sequence, row.slot.sequence)
+        : gt(jobSlots.sequence, row.slot.sequence);
+
+    await tx
+      .update(jobSlots)
+      .set({
+        sequence: sql`${jobSlots.sequence} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(jobSlots.bayId, row.bay.id), shiftCondition));
+
+    const slot = await insertIdleSlot({
+      bayId: row.bay.id,
+      durationDays: input.durationDays,
+      label: input.label ?? null,
+      sequence: insertionSequence,
+      tx,
+    });
+
+    return AddIdleJobSlotResult.parse({ slot });
   });
 }
 
@@ -228,7 +301,7 @@ export async function resizeJobSlot({
     const [slot] = await tx
       .update(jobSlots)
       .set({
-        durationMinutes: input.durationMinutes,
+        durationDays: input.durationDays,
         updatedAt: new Date(),
       })
       .where(eq(jobSlots.id, row.slot.id))
@@ -286,6 +359,70 @@ export async function removeJobSlot({
 
     return RemoveJobSlotResult.parse({ slot });
   });
+}
+
+async function getNextBaySlotSequence(tx: DatabaseTransaction, bayId: UUID): Promise<number> {
+  const [sequenceRow] = await tx
+    .select({
+      sequence: sql<number>`coalesce(max(${jobSlots.sequence}), 0) + 1`,
+    })
+    .from(jobSlots)
+    .where(eq(jobSlots.bayId, bayId));
+
+  return Number(sequenceRow?.sequence ?? 1);
+}
+
+async function getIdleGapDaysBeforeAppend({
+  bayId,
+  currentDate,
+  scheduleOrigin,
+  tx,
+}: {
+  bayId: UUID;
+  currentDate: Date;
+  scheduleOrigin: Date;
+  tx: DatabaseTransaction;
+}): Promise<number> {
+  const existingSlots = await tx.query.jobSlots.findMany({
+    orderBy: [asc(jobSlots.sequence), asc(jobSlots.id)],
+    where: eq(jobSlots.bayId, bayId),
+  });
+  const projection = projectJobSlots({ scheduleOrigin, slots: existingSlots });
+  const todayStart = startOfDay(currentDate);
+
+  return Math.max(0, differenceInCalendarDays(todayStart, projection.nextAvailableAt));
+}
+
+async function insertIdleSlot({
+  bayId,
+  durationDays,
+  label,
+  sequence,
+  tx,
+}: {
+  bayId: UUID;
+  durationDays: number;
+  label: string | null;
+  sequence: number;
+  tx: DatabaseTransaction;
+}) {
+  const [slot] = await tx
+    .insert(jobSlots)
+    .values({
+      bayId,
+      durationDays,
+      jobStageId: null,
+      kind: 'idle',
+      label,
+      sequence,
+    })
+    .returning();
+
+  if (!slot) {
+    throw new Error('Idle job slot insert did not return a row');
+  }
+
+  return slot;
 }
 
 function canEditBaySchedule(access: UserAccessSummary, department: Department): boolean {

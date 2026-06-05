@@ -2,7 +2,7 @@
 
 Updated by ADR-0037: Bay Slots are whole-day planning blocks stored as `durationDays`, and idle time is represented by first-class idle Slots in the same queue.
 
-A **Slot** books one Job's Stage onto one **Bay** in that Bay's queue. We store only the Slot's `sequence` (queue position) and `durationMinutes` — never start/end dates. Calendar dates are computed at read time by **Slot Projection**: walk a Bay's Slots in queue order from the Bay's `scheduleOrigin` (today, for now), starting each Slot where the previous one ends. This is the *relative* scheduling model: a Slot finishing early or late naturally reflows everything after it, with no rows to rewrite.
+A **Slot** is one whole-day planning block in one **Bay** queue. We store only the Slot's `sequence` (queue position), `kind`, and `durationDays` — never start/end dates. Calendar dates are computed at read time by **Slot Projection**: walk a Bay's Slots in queue order from the Bay's fixed `scheduleOrigin`, starting each Slot where the previous one ends. This is the *relative* scheduling model: a Slot finishing early or late naturally reflows everything after it, with no rows to rewrite.
 
 ## Considered Options
 
@@ -14,5 +14,5 @@ A **Slot** books one Job's Stage onto one **Bay** in that Bay's queue. We store 
 - **The plan and actuals are different shapes.** This ADR governs the *plan*. Real clock-on/clock-off (time tracking) is a separate, date-stamped concern added later — never folded into Slot columns.
 - **Projection is a live server-side read** (same lineage as ADR-0035): the read endpoint returns Slots with computed `startAt`/`endAt`; the Gantt renders what it is handed (Bay = lane). There are no scheduling rollup/reporting tables.
 - **Non-overlap is structural**, not enforced by a constraint: a Bay's Slots are a contiguous projected queue and cannot overlap by construction. A Postgres `EXCLUDE USING gist` constraint is deliberately *not* added now — it earns its keep later, on stored date ranges: **actuals** and any **pinned** Slots.
-- **Deferred work has prepared seams, so it stays additive:** duration is stored in **minutes** (shift math when the working calendar lands), `scheduleOrigin` is a real datetime (superseded by actuals for in-progress jobs), buffers become an extra term in the projection walk, and `unique(bayId, sequence)` is **deferrable** so drag-to-reorder can renumber a queue in one transaction.
-- **v1 scope:** a Department is scheduled iff it has Bays (Fabrication only); mutations are append / remove / resize (reorder deferred); the queue always projects forward from today (in-progress jobs are not yet modelled — that arrives with actuals).
+- **Deferred work has prepared seams, so it stays additive:** `scheduleOrigin` is a real datetime (superseded by actuals for in-progress jobs), explicit idle Slots carry visible downtime, and `unique(bayId, sequence)` is **deferrable** so drag-to-reorder can renumber a queue in one transaction.
+- **v1 scope:** a Department is scheduled iff it has Bays (Fabrication only); mutations are append / add idle / remove / resize (reorder deferred); the queue projects from fixed Bay origin (in-progress jobs are not yet modelled — that arrives with actuals).

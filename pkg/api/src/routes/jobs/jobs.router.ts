@@ -1,4 +1,5 @@
 import {
+  addIdleJobSlot,
   bookJobSlot,
   createJob,
   getJob,
@@ -10,6 +11,7 @@ import {
   resizeJobSlot,
 } from '@pkg/core';
 import {
+  AddIdleJobSlotInput,
   BookJobSlotInput,
   JobCreateInput,
   JobListInput,
@@ -42,6 +44,10 @@ export const jobsRouter = router({
   bookSlot: authorizedProcedure(['job:update', 'job-stage:update'])
     .input(BookJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => bookJobSlot({ db: ctx.db, access: ctx.access, input }))),
+
+  addIdleSlot: authorizedProcedure(['job:update', 'job-stage:update'])
+    .input(AddIdleJobSlotInput)
+    .mutation(({ ctx, input }) => mapJobErrors(() => addIdleJobSlot({ db: ctx.db, access: ctx.access, input }))),
 
   resizeSlot: authorizedProcedure(['job:update', 'job-stage:update'])
     .input(ResizeJobSlotInput)
@@ -83,6 +89,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         message: 'Job stage not found.',
       };
     case 'job.slot_booking_denied':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: error.message,
+      };
+    case 'job.slot_idle_add_denied':
       return {
         appCode: error.code,
         code: 'FORBIDDEN',

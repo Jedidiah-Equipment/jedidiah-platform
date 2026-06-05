@@ -137,17 +137,24 @@ export const jobSlots = pgTable(
     bayId: uuid('bay_id')
       .notNull()
       .references(() => jobBays.id, { onDelete: 'restrict' }),
-    jobStageId: uuid('job_stage_id')
-      .notNull()
-      .references(() => jobStages.id, { onDelete: 'cascade' }),
+    jobStageId: uuid('job_stage_id').references(() => jobStages.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['work', 'idle'] }).notNull(),
+    label: text('label'),
     sequence: integer('sequence').notNull(),
-    durationMinutes: integer('duration_minutes').notNull(),
+    durationDays: integer('duration_days').notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    check('job_slot_kind_check', sql`${table.kind} IN ('work', 'idle')`),
+    check(
+      'job_slot_work_stage_required_idle_stage_forbidden',
+      sql`(${table.kind} = 'work' AND ${table.jobStageId} IS NOT NULL) OR (${table.kind} = 'idle' AND ${table.jobStageId} IS NULL)`,
+    ),
+    check('job_slot_idle_label_only', sql`${table.label} IS NULL OR ${table.kind} = 'idle'`),
+    check('job_slot_label_nonempty', sql`${table.label} IS NULL OR length(trim(${table.label})) > 0`),
     check('job_slot_sequence_positive', sql`${table.sequence} > 0`),
-    check('job_slot_duration_minutes_positive', sql`${table.durationMinutes} > 0`),
+    check('job_slot_duration_days_positive', sql`${table.durationDays} > 0`),
     unique('job_slot_bay_id_sequence_unique').on(table.bayId, table.sequence),
   ],
 );

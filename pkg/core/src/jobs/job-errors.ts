@@ -78,11 +78,21 @@ export class JobSlotRemoveDeniedError extends Error {
   }
 }
 
+export class JobSlotIdleAddDeniedError extends Error {
+  readonly code = 'job.slot_idle_add_denied';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'JobSlotIdleAddDeniedError';
+  }
+}
+
 export type JobCoreError =
   | JobBayNotFoundError
   | JobCreateFromQuoteDeniedError
   | JobNotFoundError
   | JobSlotBookingDeniedError
+  | JobSlotIdleAddDeniedError
   | JobSlotNotFoundError
   | JobSlotRemoveDeniedError
   | JobSlotResizeDeniedError
@@ -94,6 +104,7 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobCreateFromQuoteDeniedError ||
     error instanceof JobNotFoundError ||
     error instanceof JobSlotBookingDeniedError ||
+    error instanceof JobSlotIdleAddDeniedError ||
     error instanceof JobSlotNotFoundError ||
     error instanceof JobSlotRemoveDeniedError ||
     error instanceof JobSlotResizeDeniedError ||

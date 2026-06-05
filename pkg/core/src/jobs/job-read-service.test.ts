@@ -1,4 +1,4 @@
-import { bays } from '@pkg/db';
+import { jobBays } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { JobStageName } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
@@ -8,7 +8,7 @@ import { listBays, mapJobSummary } from './job-read-service.js';
 
 const test = createTester(async ({ db }) => {
   await db
-    .insert(bays)
+    .insert(jobBays)
     .values([
       bayRow('00000000-0000-4000-8000-000000000b03', 'Fabrication Bay 3'),
       bayRow('00000000-0000-4000-8000-000000000b01', 'Fabrication Bay 1'),

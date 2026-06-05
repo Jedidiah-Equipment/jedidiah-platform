@@ -7,7 +7,7 @@ describe('snapshot table registry', () => {
     expect(snapshotTableNames).toEqual([
       'user',
       'user_department',
-      'bay',
+      'job_bay',
       'account',
       'customers',
       'supplier',
@@ -27,7 +27,7 @@ describe('snapshot table registry', () => {
     expect(snapshotTables.map((table) => table.fileName)).toEqual([
       'user.json',
       'user_department.json',
-      'bay.json',
+      'job_bay.json',
       'account.json',
       'customers.json',
       'supplier.json',

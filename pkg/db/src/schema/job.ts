@@ -30,8 +30,8 @@ export const productSerialSequences = pgTable(
   (table) => [check('product_serial_sequence_last_sequence_positive', sql`${table.lastSequence} > 0`)],
 );
 
-export const bays = pgTable(
-  'bay',
+export const jobBays = pgTable(
+  'job_bay',
   {
     id: uuid('id').defaultRandom().primaryKey(),
     department: text('department').notNull().$type<Department>(),
@@ -42,10 +42,10 @@ export const bays = pgTable(
   },
   (table) => [
     check(
-      'bay_department_check',
+      'job_bay_department_check',
       sql`${table.department} IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly')`,
     ),
-    check('bay_name_nonempty', sql`length(trim(${table.name})) > 0`),
+    check('job_bay_name_nonempty', sql`length(trim(${table.name})) > 0`),
   ],
 );
 

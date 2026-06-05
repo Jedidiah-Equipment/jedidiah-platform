@@ -987,8 +987,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.bay": {
-      "name": "bay",
+    "public.job_bay": {
+      "name": "job_bay",
       "schema": "",
       "columns": {
         "id": {
@@ -1038,13 +1038,13 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "bay_department_check": {
-          "name": "bay_department_check",
-          "value": "\"bay\".\"department\" IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly')"
+        "job_bay_department_check": {
+          "name": "job_bay_department_check",
+          "value": "\"job_bay\".\"department\" IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly')"
         },
-        "bay_name_nonempty": {
-          "name": "bay_name_nonempty",
-          "value": "length(trim(\"bay\".\"name\")) > 0"
+        "job_bay_name_nonempty": {
+          "name": "job_bay_name_nonempty",
+          "value": "length(trim(\"job_bay\".\"name\")) > 0"
         }
       },
       "isRLSEnabled": false

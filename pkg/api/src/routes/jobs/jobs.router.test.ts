@@ -1,4 +1,4 @@
-import { bays, customers, type Db, products, quotes } from '@pkg/db';
+import { customers, type Db, jobBays, products, quotes } from '@pkg/db';
 import type { Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -119,7 +119,7 @@ async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
 async function seedFabricationBays(db: Db): Promise<void> {
   const now = new Date('2026-06-05T00:00:00.000Z');
 
-  await db.insert(bays).values([
+  await db.insert(jobBays).values([
     {
       createdAt: now,
       department: 'fabrication',

@@ -1,11 +1,11 @@
 import {
-  bays,
   createEscapedContainsSearchCondition,
   type customers,
   type DatabaseTransaction,
   type Db,
   documents,
   getPaginationQueryOptions,
+  jobBays,
   jobCfoAssemblies,
   jobCfoParts,
   jobStages,
@@ -66,9 +66,9 @@ export async function listBays({ db, access }: { db: Db; access: UserAccessSumma
     return { items: [] };
   }
 
-  const rows = await db.query.bays.findMany({
-    orderBy: [asc(bays.department), asc(bays.name), asc(bays.id)],
-    where: visibleDepartments === 'all' ? undefined : inArray(bays.department, visibleDepartments),
+  const rows = await db.query.jobBays.findMany({
+    orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
+    where: visibleDepartments === 'all' ? undefined : inArray(jobBays.department, visibleDepartments),
   });
 
   return {
@@ -157,7 +157,7 @@ function getVisibleBayDepartments(access: UserAccessSummary): 'all' | Department
   return [];
 }
 
-function mapBay(row: typeof bays.$inferSelect) {
+function mapBay(row: typeof jobBays.$inferSelect) {
   return Bay.parse(row);
 }
 

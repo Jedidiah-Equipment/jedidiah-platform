@@ -239,6 +239,13 @@
       "when": 1780664985588,
       "tag": "0033_normalize_fabrication_bay_origin",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1780672146928,
+      "tag": "0034_flashy_puppet_master",
+      "breakpoints": true
     }
   ]
 }

@@ -63,9 +63,11 @@ type JobDocumentRow = DocumentSummaryRow & {
 };
 type BayScheduleRow = typeof jobBays.$inferSelect & {
   slots: (typeof jobSlots.$inferSelect & {
-    stage: Pick<typeof jobStages.$inferSelect, 'id' | 'jobId' | 'stage'> & {
-      job: Pick<typeof jobs.$inferSelect, 'code' | 'id'>;
-    };
+    stage:
+      | (Pick<typeof jobStages.$inferSelect, 'id' | 'jobId' | 'stage'> & {
+          job: Pick<typeof jobs.$inferSelect, 'code' | 'id'>;
+        })
+      | null;
   })[];
 };
 
@@ -208,15 +210,27 @@ function mapBaySchedule(row: BayScheduleRow) {
   return BaySchedule.parse({
     ...Bay.parse(row),
     nextAvailableAt: projection.nextAvailableAt,
-    slots: projection.slots.map((slot) =>
-      ProjectedJobSlot.parse({
+    slots: projection.slots.map((slot) => {
+      if (slot.kind === 'idle') {
+        return ProjectedJobSlot.parse({
+          ...slot,
+          startAt: slot.startAt,
+          endAt: slot.endAt,
+        });
+      }
+
+      if (!slot.stage) {
+        throw new Error('Work Job slot was missing its Job stage relation');
+      }
+
+      return ProjectedJobSlot.parse({
         ...slot,
         jobCode: slot.stage.job.code,
         jobId: slot.stage.job.id,
         startAt: slot.startAt,
         endAt: slot.endAt,
-      }),
-    ),
+      });
+    }),
   });
 }
 

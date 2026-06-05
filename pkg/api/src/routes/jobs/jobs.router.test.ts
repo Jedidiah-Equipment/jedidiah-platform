@@ -1,10 +1,19 @@
-import { customers, type Db, jobBays, products, quotes } from '@pkg/db';
+import { customers, type Db, jobBays, products, quotes, sql } from '@pkg/db';
 import type { Product } from '@pkg/schema';
-import { describe, expect } from 'vitest';
+import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import { createActorUser } from '@/test/ai-tools.js';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-06-05T09:00:00.000+02:00'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db, 'job-supervisor');
@@ -110,13 +119,13 @@ describe('jobs.bookSlot', () => {
     await expect(
       caller.jobs.bookSlot({
         bayId: '00000000-0000-4000-8000-000000000b01',
-        durationMinutes: 480,
+        durationDays: 1,
         jobStageId: fabricationStage.id,
       }),
     ).resolves.toMatchObject({
       slot: {
         bayId: '00000000-0000-4000-8000-000000000b01',
-        durationMinutes: 480,
+        durationDays: 1,
         jobStageId: fabricationStage.id,
         sequence: 1,
       },
@@ -133,7 +142,7 @@ describe('jobs.bookSlot', () => {
     await expect(
       salesCaller.jobs.bookSlot({
         bayId: '00000000-0000-4000-8000-000000000b01',
-        durationMinutes: 480,
+        durationDays: 1,
         jobStageId: getStage(job, 'fabrication').id,
       }),
     ).rejects.toMatchObject({
@@ -149,7 +158,7 @@ describe('jobs.bookSlot', () => {
 
     await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
-      durationMinutes: 960,
+      durationDays: 2,
       jobStageId: getStage(job, 'fabrication').id,
     });
 
@@ -170,6 +179,46 @@ describe('jobs.bookSlot', () => {
       ]),
     );
   });
+
+  test('bookSlot auto-inserts a projected idle gap when the bay queue ended in the past', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    await context.db.execute(sql`
+      UPDATE "job_bay"
+      SET "schedule_origin" = '2026-06-01T00:00:00.000Z'
+      WHERE "id" = '00000000-0000-4000-8000-000000000b04'
+    `);
+
+    const workSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b04',
+      durationDays: 1,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b04',
+          slots: [
+            expect.objectContaining({
+              durationDays: 4,
+              kind: 'idle',
+              label: null,
+              sequence: 1,
+            }),
+            expect.objectContaining({
+              id: workSlot.slot.id,
+              kind: 'work',
+              sequence: 2,
+            }),
+          ],
+        }),
+      ]),
+    );
+  });
 });
 
 describe('jobs.resizeSlot', () => {
@@ -184,24 +233,24 @@ describe('jobs.resizeSlot', () => {
     });
     const firstSlot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b03',
-      durationMinutes: 480,
+      durationDays: 1,
       jobStageId: getStage(firstJob, 'fabrication').id,
     });
 
     await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b03',
-      durationMinutes: 480,
+      durationDays: 1,
       jobStageId: getStage(secondJob, 'fabrication').id,
     });
 
     await expect(
       caller.jobs.resizeSlot({
-        durationMinutes: 960,
+        durationDays: 2,
         slotId: firstSlot.slot.id,
       }),
     ).resolves.toMatchObject({
       slot: {
-        durationMinutes: 960,
+        durationDays: 2,
         id: firstSlot.slot.id,
       },
     });
@@ -214,7 +263,7 @@ describe('jobs.resizeSlot', () => {
           slots: [
             expect.objectContaining({
               id: firstSlot.slot.id,
-              durationMinutes: 960,
+              durationDays: 2,
               startAt: '2026-06-04T22:00:00.000Z',
               endAt: '2026-06-06T22:00:00.000Z',
             }),
@@ -237,18 +286,114 @@ describe('jobs.resizeSlot', () => {
     });
     const slot = await supervisorCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
-      durationMinutes: 480,
+      durationDays: 1,
       jobStageId: getStage(job, 'fabrication').id,
     });
 
     await expect(
       salesCaller.jobs.resizeSlot({
-        durationMinutes: 960,
+        durationDays: 2,
         slotId: slot.slot.id,
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
+  });
+});
+
+describe('jobs.addIdleSlot', () => {
+  test('adds an idle slot next to an existing slot and returns it', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const workSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b04',
+      durationDays: 1,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+
+    await expect(
+      caller.jobs.addIdleSlot({
+        durationDays: 1,
+        label: null,
+        placement: 'after',
+        targetSlotId: workSlot.slot.id,
+      }),
+    ).resolves.toMatchObject({
+      slot: {
+        durationDays: 1,
+        jobStageId: null,
+        kind: 'idle',
+        label: null,
+        sequence: 2,
+      },
+    });
+  });
+
+  test('rejects users without job scheduling permissions', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const job = await supervisorCaller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const workSlot = await supervisorCaller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      durationDays: 1,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+
+    await expect(
+      salesCaller.jobs.addIdleSlot({
+        durationDays: 1,
+        placement: 'after',
+        targetSlotId: workSlot.slot.id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('listBays returns projected idle slots after insertion', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const workSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b05',
+      durationDays: 1,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+    const idleSlot = await caller.jobs.addIdleSlot({
+      durationDays: 1,
+      placement: 'before',
+      targetSlotId: workSlot.slot.id,
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b05',
+          slots: [
+            expect.objectContaining({
+              id: idleSlot.slot.id,
+              kind: 'idle',
+              label: null,
+              startAt: '2026-06-04T22:00:00.000Z',
+              endAt: '2026-06-05T22:00:00.000Z',
+            }),
+            expect.objectContaining({
+              id: workSlot.slot.id,
+              jobCode: job.code,
+              kind: 'work',
+              startAt: '2026-06-05T22:00:00.000Z',
+              endAt: '2026-06-06T22:00:00.000Z',
+            }),
+          ],
+        }),
+      ]),
+    );
   });
 });
 
@@ -260,7 +405,7 @@ describe('jobs.removeSlot', () => {
     });
     const slot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
-      durationMinutes: 480,
+      durationDays: 1,
       jobStageId: getStage(job, 'fabrication').id,
     });
 
@@ -284,7 +429,7 @@ describe('jobs.removeSlot', () => {
     });
     const slot = await supervisorCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
-      durationMinutes: 480,
+      durationDays: 1,
       jobStageId: getStage(job, 'fabrication').id,
     });
 
@@ -312,18 +457,18 @@ describe('jobs.removeSlot', () => {
     });
     const firstSlot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
-      durationMinutes: 480,
+      durationDays: 1,
       jobStageId: getStage(firstJob, 'fabrication').id,
     });
     const secondSlot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
-      durationMinutes: 480,
+      durationDays: 1,
       jobStageId: getStage(secondJob, 'fabrication').id,
     });
 
     await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
-      durationMinutes: 480,
+      durationDays: 1,
       jobStageId: getStage(thirdJob, 'fabrication').id,
     });
     await caller.jobs.removeSlot({

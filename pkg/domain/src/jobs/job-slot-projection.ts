@@ -1,10 +1,9 @@
-import { addMinutes, max, startOfDay } from 'date-fns';
+import { addDays, startOfDay } from 'date-fns';
 
-export const WORKING_DAY_MINUTES = 480;
-const CALENDAR_DAY_MINUTES = 24 * 60;
+export const DEFAULT_IDLE_SLOT_LABEL = 'Idle';
 
 export type ProjectableJobSlot = {
-  durationMinutes: number;
+  durationDays: number;
   id: string;
   sequence: number;
 };
@@ -21,20 +20,18 @@ export type SlotProjectionResult<TSlot extends ProjectableJobSlot> = {
 
 export function projectJobSlots<TSlot extends ProjectableJobSlot>({
   scheduleOrigin,
-  schedulingFloor,
   slots,
 }: {
   scheduleOrigin: Date;
-  schedulingFloor?: Date;
   slots: readonly TSlot[];
 }): SlotProjectionResult<TSlot> {
-  let cursor = max([startOfDay(scheduleOrigin), startOfDay(schedulingFloor ?? new Date())]);
+  let cursor = startOfDay(scheduleOrigin);
 
   const projectedSlots = [...slots]
     .sort((left, right) => left.sequence - right.sequence || left.id.localeCompare(right.id))
     .map((slot) => {
       const startAt = cursor;
-      const endAt = addJobSlotDuration(startAt, slot.durationMinutes);
+      const endAt = addJobSlotDuration(startAt, slot.durationDays);
       cursor = endAt;
 
       return {
@@ -50,6 +47,6 @@ export function projectJobSlots<TSlot extends ProjectableJobSlot>({
   };
 }
 
-export function addJobSlotDuration(startAt: Date, durationMinutes: number): Date {
-  return addMinutes(startAt, (durationMinutes / WORKING_DAY_MINUTES) * CALENDAR_DAY_MINUTES);
+export function addJobSlotDuration(startAt: Date, durationDays: number): Date {
+  return addDays(startAt, durationDays);
 }

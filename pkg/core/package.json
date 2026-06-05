@@ -19,8 +19,8 @@
     "@pkg/domain": "workspace:*",
     "@pkg/pdf": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "date-fns": "^4.3.0",
+    "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.2",
-    "sql-formatter": "^15.8.0"
+    "sql-formatter": "^15.8.1"
   }
 }

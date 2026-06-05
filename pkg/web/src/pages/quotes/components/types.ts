@@ -174,7 +174,7 @@ export function resolveSelectedAssemblySnapshots({
         (item) => item.id === selection.productAssemblyId && item.kind === 'optional',
       );
 
-      if (!assembly || assembly.kind !== 'optional') {
+      if (assembly?.kind !== 'optional') {
         return null;
       }
 

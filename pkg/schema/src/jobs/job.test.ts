@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AddIdleJobSlotInput,
+  AddIdleJobSlotResult,
   BookJobSlotInput,
   BookJobSlotResult,
   formatProductSerialNumber,
@@ -120,43 +122,68 @@ describe('JobWorkState', () => {
 });
 
 describe('JobSlot schemas', () => {
-  it('accepts booking inputs with positive minute durations', () => {
+  it('accepts booking inputs with positive day durations', () => {
     expect(
       BookJobSlotInput.parse({
         bayId: '00000000-0000-4000-8000-000000000001',
-        durationMinutes: 480,
+        durationDays: 1,
         jobStageId: '00000000-0000-4000-8000-000000000002',
       }),
     ).toMatchObject({
-      durationMinutes: 480,
+      durationDays: 1,
     });
     expect(() =>
       BookJobSlotInput.parse({
         bayId: '00000000-0000-4000-8000-000000000001',
-        durationMinutes: 0,
+        durationDays: 0,
         jobStageId: '00000000-0000-4000-8000-000000000002',
       }),
     ).toThrow();
   });
 
-  it('normalizes projected slot dates and job codes at the schema boundary', () => {
+  it('normalizes projected work slot dates and job codes at the schema boundary', () => {
     expect(
       ProjectedJobSlot.parse({
         bayId: '00000000-0000-4000-8000-000000000001',
         createdAt: new Date('2026-06-05T00:00:00.000Z'),
-        durationMinutes: 480,
-        endAt: new Date('2026-06-05T08:00:00.000Z'),
+        durationDays: 1,
+        endAt: new Date('2026-06-06T00:00:00.000Z'),
         id: '00000000-0000-4000-8000-000000000003',
         jobCode: 12,
         jobId: '00000000-0000-4000-8000-000000000004',
         jobStageId: '00000000-0000-4000-8000-000000000002',
+        kind: 'work',
+        label: null,
         sequence: 1,
         startAt: new Date('2026-06-05T00:00:00.000Z'),
         updatedAt: new Date('2026-06-05T00:00:00.000Z'),
       }),
     ).toMatchObject({
-      endAt: '2026-06-05T08:00:00.000Z',
+      endAt: '2026-06-06T00:00:00.000Z',
       jobCode: 'JOB-00012',
+      startAt: '2026-06-05T00:00:00.000Z',
+    });
+  });
+
+  it('normalizes projected idle slots without job fields', () => {
+    expect(
+      ProjectedJobSlot.parse({
+        bayId: '00000000-0000-4000-8000-000000000001',
+        createdAt: new Date('2026-06-05T00:00:00.000Z'),
+        durationDays: 1,
+        endAt: new Date('2026-06-06T00:00:00.000Z'),
+        id: '00000000-0000-4000-8000-000000000003',
+        jobStageId: null,
+        kind: 'idle',
+        label: 'Idle gap',
+        sequence: 1,
+        startAt: new Date('2026-06-05T00:00:00.000Z'),
+        updatedAt: new Date('2026-06-05T00:00:00.000Z'),
+      }),
+    ).toMatchObject({
+      endAt: '2026-06-06T00:00:00.000Z',
+      kind: 'idle',
+      label: 'Idle gap',
       startAt: '2026-06-05T00:00:00.000Z',
     });
   });
@@ -167,9 +194,11 @@ describe('JobSlot schemas', () => {
         slot: {
           bayId: '00000000-0000-4000-8000-000000000001',
           createdAt: new Date('2026-06-05T00:00:00.000Z'),
-          durationMinutes: 480,
+          durationDays: 1,
           id: '00000000-0000-4000-8000-000000000003',
           jobStageId: '00000000-0000-4000-8000-000000000002',
+          kind: 'work',
+          label: null,
           sequence: 1,
           updatedAt: new Date('2026-06-05T00:00:00.000Z'),
         },
@@ -177,24 +206,24 @@ describe('JobSlot schemas', () => {
     ).toMatchObject({
       slot: {
         createdAt: '2026-06-05T00:00:00.000Z',
-        durationMinutes: 480,
+        durationDays: 1,
         sequence: 1,
       },
     });
   });
 
-  it('accepts resize inputs with positive minute durations', () => {
+  it('accepts resize inputs with positive day durations', () => {
     expect(
       ResizeJobSlotInput.parse({
-        durationMinutes: 960,
+        durationDays: 2,
         slotId: '00000000-0000-4000-8000-000000000003',
       }),
     ).toMatchObject({
-      durationMinutes: 960,
+      durationDays: 2,
     });
     expect(() =>
       ResizeJobSlotInput.parse({
-        durationMinutes: 0,
+        durationDays: 0,
         slotId: '00000000-0000-4000-8000-000000000003',
       }),
     ).toThrow();
@@ -206,16 +235,18 @@ describe('JobSlot schemas', () => {
         slot: {
           bayId: '00000000-0000-4000-8000-000000000001',
           createdAt: new Date('2026-06-05T00:00:00.000Z'),
-          durationMinutes: 960,
+          durationDays: 2,
           id: '00000000-0000-4000-8000-000000000003',
           jobStageId: '00000000-0000-4000-8000-000000000002',
+          kind: 'work',
+          label: null,
           sequence: 1,
           updatedAt: new Date('2026-06-06T00:00:00.000Z'),
         },
       }),
     ).toMatchObject({
       slot: {
-        durationMinutes: 960,
+        durationDays: 2,
         updatedAt: '2026-06-06T00:00:00.000Z',
       },
     });
@@ -242,9 +273,11 @@ describe('JobSlot schemas', () => {
         slot: {
           bayId: '00000000-0000-4000-8000-000000000001',
           createdAt: new Date('2026-06-05T00:00:00.000Z'),
-          durationMinutes: 480,
+          durationDays: 1,
           id: '00000000-0000-4000-8000-000000000003',
-          jobStageId: '00000000-0000-4000-8000-000000000002',
+          jobStageId: null,
+          kind: 'idle',
+          label: null,
           sequence: 2,
           updatedAt: new Date('2026-06-06T00:00:00.000Z'),
         },
@@ -254,6 +287,87 @@ describe('JobSlot schemas', () => {
         createdAt: '2026-06-05T00:00:00.000Z',
         sequence: 2,
         updatedAt: '2026-06-06T00:00:00.000Z',
+      },
+    });
+  });
+
+  it('requires work slots to have a stage and idle slots to have no stage', () => {
+    expect(() =>
+      BookJobSlotResult.parse({
+        slot: {
+          bayId: '00000000-0000-4000-8000-000000000001',
+          createdAt: new Date('2026-06-05T00:00:00.000Z'),
+          durationDays: 1,
+          id: '00000000-0000-4000-8000-000000000003',
+          jobStageId: null,
+          kind: 'work',
+          label: null,
+          sequence: 1,
+          updatedAt: new Date('2026-06-05T00:00:00.000Z'),
+        },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      RemoveJobSlotResult.parse({
+        slot: {
+          bayId: '00000000-0000-4000-8000-000000000001',
+          createdAt: new Date('2026-06-05T00:00:00.000Z'),
+          durationDays: 1,
+          id: '00000000-0000-4000-8000-000000000003',
+          jobStageId: '00000000-0000-4000-8000-000000000002',
+          kind: 'idle',
+          label: null,
+          sequence: 1,
+          updatedAt: new Date('2026-06-05T00:00:00.000Z'),
+        },
+      }),
+    ).toThrow();
+  });
+
+  it('accepts target-slot idle insertion inputs', () => {
+    expect(
+      AddIdleJobSlotInput.parse({
+        durationDays: 1,
+        label: null,
+        placement: 'before',
+        targetSlotId: '00000000-0000-4000-8000-000000000003',
+      }),
+    ).toEqual({
+      durationDays: 1,
+      label: null,
+      placement: 'before',
+      targetSlotId: '00000000-0000-4000-8000-000000000003',
+    });
+    expect(() =>
+      AddIdleJobSlotInput.parse({
+        durationDays: 0,
+        placement: 'after',
+        targetSlotId: '00000000-0000-4000-8000-000000000003',
+      }),
+    ).toThrow();
+  });
+
+  it('returns the inserted idle slot without a persisted default label', () => {
+    expect(
+      AddIdleJobSlotResult.parse({
+        slot: {
+          bayId: '00000000-0000-4000-8000-000000000001',
+          createdAt: new Date('2026-06-05T00:00:00.000Z'),
+          durationDays: 1,
+          id: '00000000-0000-4000-8000-000000000003',
+          jobStageId: null,
+          kind: 'idle',
+          label: null,
+          sequence: 2,
+          updatedAt: new Date('2026-06-06T00:00:00.000Z'),
+        },
+      }),
+    ).toMatchObject({
+      slot: {
+        kind: 'idle',
+        label: null,
+        sequence: 2,
       },
     });
   });

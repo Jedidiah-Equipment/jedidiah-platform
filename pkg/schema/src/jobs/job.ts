@@ -33,27 +33,61 @@ export const Bay = z.object({
 export type SlotSequence = z.infer<typeof SlotSequence>;
 export const SlotSequence = z.int().positive().refine(Number.isSafeInteger);
 
-export type SlotDurationMinutes = z.infer<typeof SlotDurationMinutes>;
-export const SlotDurationMinutes = z.int().positive().refine(Number.isSafeInteger);
+export type SlotDurationDays = z.infer<typeof SlotDurationDays>;
+export const SlotDurationDays = z.int().positive().refine(Number.isSafeInteger);
 
-export type JobSlot = z.infer<typeof JobSlot>;
-export const JobSlot = z.object({
+export type JobSlotPlacement = z.infer<typeof JobSlotPlacement>;
+export const JobSlotPlacement = z.enum(['before', 'after']);
+
+const JobSlotBase = z.object({
   id: UUID,
   bayId: UUID,
-  jobStageId: UUID,
   sequence: SlotSequence,
-  durationMinutes: SlotDurationMinutes,
+  durationDays: SlotDurationDays,
   createdAt: DateIso,
   updatedAt: DateIso,
 });
 
-export type ProjectedJobSlot = z.infer<typeof ProjectedJobSlot>;
-export const ProjectedJobSlot = JobSlot.extend({
-  jobCode: JobCode,
-  jobId: UUID,
+export type WorkJobSlot = z.infer<typeof WorkJobSlot>;
+export const WorkJobSlot = JobSlotBase.extend({
+  kind: z.literal('work'),
+  jobStageId: UUID,
+  label: z.null(),
+});
+
+export type IdleJobSlot = z.infer<typeof IdleJobSlot>;
+export const IdleJobSlot = JobSlotBase.extend({
+  kind: z.literal('idle'),
+  jobStageId: z.null(),
+  label: nullableTrimmedText(),
+});
+
+export type JobSlot = z.infer<typeof JobSlot>;
+export const JobSlot = z.discriminatedUnion('kind', [WorkJobSlot, IdleJobSlot]);
+
+const ProjectedJobSlotBase = JobSlotBase.extend({
   startAt: DateIso,
   endAt: DateIso,
 });
+
+export type ProjectedWorkJobSlot = z.infer<typeof ProjectedWorkJobSlot>;
+export const ProjectedWorkJobSlot = ProjectedJobSlotBase.extend({
+  kind: z.literal('work'),
+  jobCode: JobCode,
+  jobId: UUID,
+  jobStageId: UUID,
+  label: z.null(),
+});
+
+export type ProjectedIdleJobSlot = z.infer<typeof ProjectedIdleJobSlot>;
+export const ProjectedIdleJobSlot = ProjectedJobSlotBase.extend({
+  kind: z.literal('idle'),
+  jobStageId: z.null(),
+  label: nullableTrimmedText(),
+});
+
+export type ProjectedJobSlot = z.infer<typeof ProjectedJobSlot>;
+export const ProjectedJobSlot = z.discriminatedUnion('kind', [ProjectedWorkJobSlot, ProjectedIdleJobSlot]);
 
 export type BaySchedule = z.infer<typeof BaySchedule>;
 export const BaySchedule = Bay.extend({
@@ -71,7 +105,7 @@ export const BookJobSlotInput = z
   .object({
     bayId: UUID,
     jobStageId: UUID,
-    durationMinutes: SlotDurationMinutes,
+    durationDays: SlotDurationDays,
   })
   .strict();
 
@@ -84,7 +118,7 @@ export type ResizeJobSlotInput = z.infer<typeof ResizeJobSlotInput>;
 export const ResizeJobSlotInput = z
   .object({
     slotId: UUID,
-    durationMinutes: SlotDurationMinutes,
+    durationDays: SlotDurationDays,
   })
   .strict();
 
@@ -102,6 +136,21 @@ export const RemoveJobSlotInput = z
 
 export type RemoveJobSlotResult = z.infer<typeof RemoveJobSlotResult>;
 export const RemoveJobSlotResult = z.object({
+  slot: JobSlot,
+});
+
+export type AddIdleJobSlotInput = z.infer<typeof AddIdleJobSlotInput>;
+export const AddIdleJobSlotInput = z
+  .object({
+    targetSlotId: UUID,
+    placement: JobSlotPlacement,
+    durationDays: SlotDurationDays,
+    label: nullableTrimmedText().optional(),
+  })
+  .strict();
+
+export type AddIdleJobSlotResult = z.infer<typeof AddIdleJobSlotResult>;
+export const AddIdleJobSlotResult = z.object({
   slot: JobSlot,
 });
 

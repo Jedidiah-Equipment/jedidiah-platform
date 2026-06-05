@@ -1,6 +1,6 @@
-import { addJobSlotDuration, formatDate, WORKING_DAY_MINUTES } from '@pkg/domain';
-import type { BaySchedule, JobListInput, ProjectedJobSlot } from '@pkg/schema';
-import { IconCalendarPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
+import { addJobSlotDuration, DEFAULT_IDLE_SLOT_LABEL, formatDate } from '@pkg/domain';
+import type { BaySchedule, JobListInput, JobSlotPlacement, ProjectedJobSlot } from '@pkg/schema';
+import { IconCalendarPlus, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -18,6 +18,13 @@ import {
 } from '@/components/kibo-ui/gantt/index.js';
 import { Button } from '@/components/ui/button.js';
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu.js';
+import {
   Dialog,
   DialogClose,
   DialogContent,
@@ -34,6 +41,7 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 
 const allJobsInput = {
   filters: {},
@@ -103,12 +111,26 @@ export const BayScheduleGantt: React.FC = () => {
       onError: (error) => showMutationError(error, 'Unable to remove slot.'),
     }),
   );
+  const addIdleSlotMutation = useMutation(
+    trpc.jobs.addIdleSlot.mutationOptions({
+      onSuccess: async () => {
+        await invalidateJobs();
+        toast.success('Idle slot added');
+      },
+      onError: (error) => showMutationError(error, 'Unable to add idle slot.'),
+    }),
+  );
+  const isScheduleMutationPending =
+    bookSlotMutation.isPending ||
+    resizeSlotMutation.isPending ||
+    removeSlotMutation.isPending ||
+    addIdleSlotMutation.isPending;
   const handleResizeSlot = useCallback(
     (slotId: string, durationDays: number) => {
       // Keep the dropped width visible while the projected schedule refetches.
       setOptimisticResizeDaysBySlotId((current) => ({ ...current, [slotId]: durationDays }));
       resizeSlotMutation.mutate({
-        durationMinutes: durationDays * WORKING_DAY_MINUTES,
+        durationDays,
         slotId,
       });
     },
@@ -119,6 +141,17 @@ export const BayScheduleGantt: React.FC = () => {
       await removeSlotMutation.mutateAsync({ slotId });
     },
     [removeSlotMutation],
+  );
+  const handleAddIdleSlot = useCallback(
+    (targetSlotId: string, placement: JobSlotPlacement) => {
+      addIdleSlotMutation.mutate({
+        durationDays: 1,
+        label: null,
+        placement,
+        targetSlotId,
+      });
+    },
+    [addIdleSlotMutation],
   );
 
   useEffect(() => {
@@ -158,7 +191,7 @@ export const BayScheduleGantt: React.FC = () => {
 
           bookSlotMutation.mutate({
             bayId: selectedBay.id,
-            durationMinutes: durationDays * WORKING_DAY_MINUTES,
+            durationDays,
             jobStageId: selectedStage.id,
           });
         }}
@@ -229,7 +262,7 @@ export const BayScheduleGantt: React.FC = () => {
             value={durationDays}
           />
         </Field>
-        <Button disabled={!canBook || bookSlotMutation.isPending} type="submit">
+        <Button disabled={!canBook || isScheduleMutationPending} type="submit">
           {bookSlotMutation.isPending ? (
             <IconLoader2 className="animate-spin" data-icon="inline-start" />
           ) : (
@@ -257,8 +290,8 @@ export const BayScheduleGantt: React.FC = () => {
             <BayLaneDividers bays={bays} />
             <BaySlotBars
               bays={bays}
-              isRemovePending={removeSlotMutation.isPending}
-              isResizePending={resizeSlotMutation.isPending}
+              isScheduleMutationPending={isScheduleMutationPending}
+              onAddIdleSlot={handleAddIdleSlot}
               onRemoveSlot={handleRemoveSlot}
               onResizeSlot={handleResizeSlot}
               optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
@@ -303,12 +336,12 @@ const BayLaneDividers: React.FC<{
 
 const BaySlotBars: React.FC<{
   bays: BaySchedule[];
-  isRemovePending: boolean;
-  isResizePending: boolean;
+  isScheduleMutationPending: boolean;
+  onAddIdleSlot: (targetSlotId: string, placement: JobSlotPlacement) => void;
   onRemoveSlot: (slotId: string) => Promise<void>;
   onResizeSlot: (slotId: string, durationDays: number) => void;
   optimisticResizeDaysBySlotId: Record<string, number>;
-}> = ({ bays, isRemovePending, isResizePending, onRemoveSlot, onResizeSlot, optimisticResizeDaysBySlotId }) => {
+}> = ({ bays, isScheduleMutationPending, onAddIdleSlot, onRemoveSlot, onResizeSlot, optimisticResizeDaysBySlotId }) => {
   const gantt = useGanttContext();
 
   return (
@@ -316,9 +349,9 @@ const BaySlotBars: React.FC<{
       {bays.flatMap((bay, bayIndex) =>
         bay.slots.map((slot) => (
           <BaySlotBar
-            isRemovePending={isRemovePending}
-            isResizePending={isResizePending}
+            isScheduleMutationPending={isScheduleMutationPending}
             key={slot.id}
+            onAddIdle={onAddIdleSlot}
             onRemove={onRemoveSlot}
             onResize={onResizeSlot}
             optimisticDurationDays={optimisticResizeDaysBySlotId[slot.id] ?? null}
@@ -334,37 +367,39 @@ const BaySlotBars: React.FC<{
 type SlotResizeDrag = {
   durationDays: number;
   initialDurationDays: number;
-  pixelsPerWorkingDay: number;
+  pixelsPerDay: number;
   startX: number;
 };
 
 const BaySlotBar: React.FC<{
-  isRemovePending: boolean;
-  isResizePending: boolean;
+  isScheduleMutationPending: boolean;
+  onAddIdle: (targetSlotId: string, placement: JobSlotPlacement) => void;
   onRemove: (slotId: string) => Promise<void>;
   onResize: (slotId: string, durationDays: number) => void;
   optimisticDurationDays: number | null;
   slot: ProjectedJobSlot;
   top: number;
-}> = ({ isRemovePending, isResizePending, onRemove, onResize, optimisticDurationDays, slot, top }) => {
+}> = ({ isScheduleMutationPending, onAddIdle, onRemove, onResize, optimisticDurationDays, slot, top }) => {
   const gantt = useGanttContext();
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [resizeDrag, setResizeDrag] = useState<SlotResizeDrag | null>(null);
   const startAt = useMemo(() => new Date(slot.startAt), [slot.startAt]);
   const endAt = useMemo(() => new Date(slot.endAt), [slot.endAt]);
-  const durationDays = Math.max(1, Math.round(slot.durationMinutes / WORKING_DAY_MINUTES));
+  const label = getSlotLabel(slot);
+  const durationDays = slot.durationDays;
   const displayDurationDays = optimisticDurationDays ?? durationDays;
   const previewDurationDays = resizeDrag?.durationDays ?? displayDurationDays;
   const shouldProjectPreview = resizeDrag !== null || optimisticDurationDays !== null;
   const previewEndAt = useMemo(
-    () => (shouldProjectPreview ? addJobSlotDuration(startAt, previewDurationDays * WORKING_DAY_MINUTES) : endAt),
+    () => (shouldProjectPreview ? addJobSlotDuration(startAt, previewDurationDays) : endAt),
     [endAt, previewDurationDays, shouldProjectPreview, startAt],
   );
   const left = getGanttOffset(startAt, gantt);
   const width = Math.max(getGanttWidth(startAt, previewEndAt, gantt), 28);
+  const isIdle = slot.kind === 'idle';
   const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (isResizePending) {
+    if (isScheduleMutationPending) {
       return;
     }
 
@@ -374,7 +409,7 @@ const BaySlotBar: React.FC<{
     setResizeDrag({
       durationDays,
       initialDurationDays: durationDays,
-      pixelsPerWorkingDay: Math.max(getGanttWidth(startAt, addJobSlotDuration(startAt, WORKING_DAY_MINUTES), gantt), 1),
+      pixelsPerDay: Math.max(getGanttWidth(startAt, addJobSlotDuration(startAt, 1), gantt), 1),
       startX: event.clientX,
     });
   };
@@ -384,7 +419,7 @@ const BaySlotBar: React.FC<{
     }
 
     event.preventDefault();
-    const deltaDays = Math.round((event.clientX - resizeDrag.startX) / resizeDrag.pixelsPerWorkingDay);
+    const deltaDays = Math.round((event.clientX - resizeDrag.startX) / resizeDrag.pixelsPerDay);
     const nextDurationDays = Math.max(1, resizeDrag.initialDurationDays + deltaDays);
 
     if (nextDurationDays !== resizeDrag.durationDays) {
@@ -424,70 +459,107 @@ const BaySlotBar: React.FC<{
   };
 
   return (
-    <div
-      className="pointer-events-auto absolute h-6 overflow-hidden rounded-sm bg-primary px-2 py-1 text-primary-foreground text-xs shadow-sm"
-      style={{
-        left,
-        top,
-        width,
-      }}
-      title={`${slot.jobCode}: ${formatDate(slot.startAt, 'long')} - ${formatDate(slot.endAt, 'long')}`}
-    >
-      <span className="block truncate pr-8 font-medium">{slot.jobCode}</span>
-      <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
-        <DialogTrigger
-          render={
-            <button
-              aria-label={`Remove ${slot.jobCode}`}
-              className="absolute top-0 right-2 flex h-full w-6 items-center justify-center bg-primary/80 outline-none hover:bg-destructive focus-visible:ring-2 focus-visible:ring-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isRemovePending || isRemoving}
-              type="button"
-            />
-          }
-        >
-          <IconTrash className="size-3.5" />
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove slot</DialogTitle>
-            <DialogDescription>
-              Remove {slot.jobCode} from the Bay schedule. Later Slots will move up to close the gap.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>Cancel</DialogClose>
-            <Button
-              disabled={isRemoving}
-              onClick={async () => {
-                setIsRemoving(true);
-                try {
-                  await onRemove(slot.id);
-                  setIsRemoveDialogOpen(false);
-                } catch {
-                  // The mutation hook owns the user-facing error toast.
-                } finally {
-                  setIsRemoving(false);
-                }
-              }}
-              type="button"
-              variant="destructive"
-            >
-              {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-              Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <button
-        aria-label={`Resize ${slot.jobCode}`}
-        className="absolute top-0 right-0 h-full w-2 cursor-ew-resize border-primary-foreground/70 border-r-2 bg-primary-foreground/15 outline-none hover:bg-primary-foreground/25 focus-visible:ring-2 focus-visible:ring-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={isResizePending || isRemoving}
-        onPointerCancel={cancelResize}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={finishResize}
-        type="button"
-      />
-    </div>
+    <ContextMenu>
+      <ContextMenuTrigger
+        render={
+          <div
+            className={cn(
+              'pointer-events-auto absolute h-6 overflow-hidden rounded-sm px-2 py-1 text-xs shadow-sm',
+              isIdle ? 'border border-border bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground',
+            )}
+            style={{
+              left,
+              top,
+              width,
+            }}
+            title={`${label}: ${formatDate(slot.startAt, 'long')} - ${formatDate(slot.endAt, 'long')}`}
+          />
+        }
+      >
+        <span className="block truncate pr-8 font-medium">{label}</span>
+        <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
+          <DialogTrigger
+            render={
+              <button
+                aria-label={`Remove ${label}`}
+                className={cn(
+                  'absolute top-0 right-2 flex h-full w-6 items-center justify-center outline-none hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                  isIdle
+                    ? 'bg-muted/80 focus-visible:ring-foreground'
+                    : 'bg-primary/80 focus-visible:ring-primary-foreground',
+                )}
+                disabled={isScheduleMutationPending || isRemoving}
+                type="button"
+              />
+            }
+          >
+            <IconTrash className="size-3.5" />
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Remove slot</DialogTitle>
+              <DialogDescription>
+                Remove {label} from the Bay schedule. Later Slots will move up to close the gap.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>
+                Cancel
+              </DialogClose>
+              <Button
+                disabled={isRemoving}
+                onClick={async () => {
+                  setIsRemoving(true);
+                  try {
+                    await onRemove(slot.id);
+                    setIsRemoveDialogOpen(false);
+                  } catch {
+                    // The mutation hook owns the user-facing error toast.
+                  } finally {
+                    setIsRemoving(false);
+                  }
+                }}
+                type="button"
+                variant="destructive"
+              >
+                {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+                Remove
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <button
+          aria-label={`Resize ${label}`}
+          className={cn(
+            'absolute top-0 right-0 h-full w-2 cursor-ew-resize border-r-2 outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            isIdle
+              ? 'border-foreground/40 bg-foreground/10 hover:bg-foreground/15 focus-visible:ring-2 focus-visible:ring-foreground'
+              : 'border-primary-foreground/70 bg-primary-foreground/15 hover:bg-primary-foreground/25 focus-visible:ring-2 focus-visible:ring-primary-foreground',
+          )}
+          disabled={isScheduleMutationPending || isRemoving}
+          onPointerCancel={cancelResize}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={finishResize}
+          type="button"
+        />
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuGroup>
+          <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'before')}>
+            <IconClockPlus />
+            Add idle slot before
+          </ContextMenuItem>
+          <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'after')}>
+            <IconClockPlus />
+            Add idle slot after
+          </ContextMenuItem>
+        </ContextMenuGroup>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };
+
+function getSlotLabel(slot: ProjectedJobSlot): string {
+  return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;
+}

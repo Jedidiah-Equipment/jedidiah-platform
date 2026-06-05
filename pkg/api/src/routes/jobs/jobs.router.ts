@@ -6,9 +6,17 @@ import {
   type JobCoreError,
   listBays,
   listJobs,
+  removeJobSlot,
   resizeJobSlot,
 } from '@pkg/core';
-import { BookJobSlotInput, JobCreateInput, JobListInput, ResizeJobSlotInput, UUID } from '@pkg/schema';
+import {
+  BookJobSlotInput,
+  JobCreateInput,
+  JobListInput,
+  RemoveJobSlotInput,
+  ResizeJobSlotInput,
+  UUID,
+} from '@pkg/schema';
 import { z } from 'zod';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -38,6 +46,10 @@ export const jobsRouter = router({
   resizeSlot: authorizedProcedure(['job:update', 'job-stage:update'])
     .input(ResizeJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => resizeJobSlot({ db: ctx.db, access: ctx.access, input }))),
+
+  removeSlot: authorizedProcedure(['job:update', 'job-stage:update'])
+    .input(RemoveJobSlotInput)
+    .mutation(({ ctx, input }) => mapJobErrors(() => removeJobSlot({ db: ctx.db, access: ctx.access, input }))),
 });
 
 async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -83,6 +95,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         message: 'Job slot not found.',
       };
     case 'job.slot_resize_denied':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: error.message,
+      };
+    case 'job.slot_remove_denied':
       return {
         appCode: error.code,
         code: 'FORBIDDEN',

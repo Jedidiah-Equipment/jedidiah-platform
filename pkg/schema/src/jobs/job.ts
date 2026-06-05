@@ -93,6 +93,18 @@ export const ResizeJobSlotResult = z.object({
   slot: JobSlot,
 });
 
+export type RemoveJobSlotInput = z.infer<typeof RemoveJobSlotInput>;
+export const RemoveJobSlotInput = z
+  .object({
+    slotId: UUID,
+  })
+  .strict();
+
+export type RemoveJobSlotResult = z.infer<typeof RemoveJobSlotResult>;
+export const RemoveJobSlotResult = z.object({
+  slot: JobSlot,
+});
+
 export type JobWorkState = z.infer<typeof JobWorkState>;
 export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
 

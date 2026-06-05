@@ -27,12 +27,14 @@ import {
   ProductSerialPrefix,
   ProductSerialSequence,
   ProductSerialYear,
+  type RemoveJobSlotInput,
+  RemoveJobSlotResult,
   type ResizeJobSlotInput,
   ResizeJobSlotResult,
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
 import { documentBaseSelect } from '../documents/document-service.js';
@@ -42,6 +44,7 @@ import {
   JobCreateFromQuoteDeniedError,
   JobSlotBookingDeniedError,
   JobSlotNotFoundError,
+  JobSlotRemoveDeniedError,
   JobSlotResizeDeniedError,
   JobStageNotFoundError,
 } from './job-errors.js';
@@ -147,7 +150,7 @@ export async function bookJobSlot({
       throw new JobBayNotFoundError(input.bayId);
     }
 
-    if (!canBookBaySchedule(access, bay.department)) {
+    if (!canEditBaySchedule(access, bay.department)) {
       throw new JobSlotBookingDeniedError('You do not have permission to book this Bay.');
     }
 
@@ -218,7 +221,7 @@ export async function resizeJobSlot({
       throw new JobSlotNotFoundError(input.slotId);
     }
 
-    if (!canBookBaySchedule(access, row.bay.department)) {
+    if (!canEditBaySchedule(access, row.bay.department)) {
       throw new JobSlotResizeDeniedError('You do not have permission to resize this Bay schedule.');
     }
 
@@ -239,7 +242,53 @@ export async function resizeJobSlot({
   });
 }
 
-function canBookBaySchedule(access: UserAccessSummary, department: Department): boolean {
+export async function removeJobSlot({
+  access,
+  db,
+  input,
+}: {
+  access: UserAccessSummary;
+  db: Db;
+  input: RemoveJobSlotInput;
+}): Promise<RemoveJobSlotResult> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({
+        bay: jobBays,
+        slot: jobSlots,
+      })
+      .from(jobSlots)
+      .innerJoin(jobBays, eq(jobSlots.bayId, jobBays.id))
+      .where(eq(jobSlots.id, input.slotId))
+      .for('update');
+
+    if (!row) {
+      throw new JobSlotNotFoundError(input.slotId);
+    }
+
+    if (!canEditBaySchedule(access, row.bay.department)) {
+      throw new JobSlotRemoveDeniedError('You do not have permission to remove from this Bay schedule.');
+    }
+
+    const [slot] = await tx.delete(jobSlots).where(eq(jobSlots.id, row.slot.id)).returning();
+
+    if (!slot) {
+      throw new Error('Job slot delete did not return a row');
+    }
+
+    await tx
+      .update(jobSlots)
+      .set({
+        sequence: sql`${jobSlots.sequence} - 1`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(jobSlots.bayId, row.bay.id), gt(jobSlots.sequence, row.slot.sequence)));
+
+    return RemoveJobSlotResult.parse({ slot });
+  });
+}
+
+function canEditBaySchedule(access: UserAccessSummary, department: Department): boolean {
   if (access.role === 'admin' || access.role === 'job-supervisor') {
     return true;
   }

@@ -28,6 +28,8 @@ describe('jobs.listBays', () => {
         { department: 'fabrication', name: 'Fabrication Bay 1' },
         { department: 'fabrication', name: 'Fabrication Bay 2' },
         { department: 'fabrication', name: 'Fabrication Bay 3' },
+        { department: 'fabrication', name: 'Fabrication Bay 4' },
+        { department: 'fabrication', name: 'Fabrication Bay 5' },
       ],
     });
   });
@@ -156,12 +158,12 @@ describe('jobs.bookSlot', () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: '00000000-0000-4000-8000-000000000b02',
-          nextAvailableAt: '2026-06-05T16:00:00.000Z',
+          nextAvailableAt: '2026-06-06T22:00:00.000Z',
           slots: [
             expect.objectContaining({
               jobCode: job.code,
-              startAt: '2026-06-05T00:00:00.000Z',
-              endAt: '2026-06-05T16:00:00.000Z',
+              startAt: '2026-06-04T22:00:00.000Z',
+              endAt: '2026-06-06T22:00:00.000Z',
             }),
           ],
         }),
@@ -213,13 +215,13 @@ describe('jobs.resizeSlot', () => {
             expect.objectContaining({
               id: firstSlot.slot.id,
               durationMinutes: 960,
-              startAt: '2026-06-05T00:00:00.000Z',
-              endAt: '2026-06-05T16:00:00.000Z',
+              startAt: '2026-06-04T22:00:00.000Z',
+              endAt: '2026-06-06T22:00:00.000Z',
             }),
             expect.objectContaining({
               jobCode: secondJob.code,
-              startAt: '2026-06-05T16:00:00.000Z',
-              endAt: '2026-06-06T00:00:00.000Z',
+              startAt: '2026-06-06T22:00:00.000Z',
+              endAt: '2026-06-07T22:00:00.000Z',
             }),
           ],
         }),
@@ -250,6 +252,111 @@ describe('jobs.resizeSlot', () => {
   });
 });
 
+describe('jobs.removeSlot', () => {
+  test('removes an authorized slot', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const slot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      durationMinutes: 480,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+
+    await expect(
+      caller.jobs.removeSlot({
+        slotId: slot.slot.id,
+      }),
+    ).resolves.toMatchObject({
+      slot: {
+        id: slot.slot.id,
+        sequence: 1,
+      },
+    });
+  });
+
+  test('rejects users without job scheduling permissions', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const job = await supervisorCaller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const slot = await supervisorCaller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      durationMinutes: 480,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+
+    await expect(
+      salesCaller.jobs.removeSlot({
+        slotId: slot.slot.id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('listBays returns reflowed projected slots after removal', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const firstJob = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({
+      quoteId: secondQuote.id,
+    });
+    const thirdQuote = await createAcceptedQuote(context.db, context.product.id);
+    const thirdJob = await caller.jobs.create({
+      quoteId: thirdQuote.id,
+    });
+    const firstSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      durationMinutes: 480,
+      jobStageId: getStage(firstJob, 'fabrication').id,
+    });
+    const secondSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      durationMinutes: 480,
+      jobStageId: getStage(secondJob, 'fabrication').id,
+    });
+
+    await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      durationMinutes: 480,
+      jobStageId: getStage(thirdJob, 'fabrication').id,
+    });
+    await caller.jobs.removeSlot({
+      slotId: firstSlot.slot.id,
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b02',
+          nextAvailableAt: '2026-06-06T22:00:00.000Z',
+          slots: [
+            expect.objectContaining({
+              id: secondSlot.slot.id,
+              jobCode: secondJob.code,
+              sequence: 1,
+              startAt: '2026-06-04T22:00:00.000Z',
+              endAt: '2026-06-05T22:00:00.000Z',
+            }),
+            expect.objectContaining({
+              jobCode: thirdJob.code,
+              sequence: 2,
+              startAt: '2026-06-05T22:00:00.000Z',
+              endAt: '2026-06-06T22:00:00.000Z',
+            }),
+          ],
+        }),
+      ]),
+    );
+  });
+});
+
 async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
   const [product] = await db
     .insert(products)
@@ -273,32 +380,58 @@ async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
 async function seedFabricationBays(db: Db): Promise<void> {
   const now = new Date('2026-06-05T00:00:00.000Z');
 
-  await db.insert(jobBays).values([
-    {
-      createdAt: now,
-      department: 'fabrication',
-      id: '00000000-0000-4000-8000-000000000b01',
-      name: 'Fabrication Bay 1',
-      scheduleOrigin: now,
-      updatedAt: now,
-    },
-    {
-      createdAt: now,
-      department: 'fabrication',
-      id: '00000000-0000-4000-8000-000000000b02',
-      name: 'Fabrication Bay 2',
-      scheduleOrigin: now,
-      updatedAt: now,
-    },
-    {
-      createdAt: now,
-      department: 'fabrication',
-      id: '00000000-0000-4000-8000-000000000b03',
-      name: 'Fabrication Bay 3',
-      scheduleOrigin: now,
-      updatedAt: now,
-    },
-  ]);
+  await db
+    .insert(jobBays)
+    .values([
+      {
+        createdAt: now,
+        department: 'fabrication',
+        id: '00000000-0000-4000-8000-000000000b01',
+        name: 'Fabrication Bay 1',
+        scheduleOrigin: now,
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        department: 'fabrication',
+        id: '00000000-0000-4000-8000-000000000b02',
+        name: 'Fabrication Bay 2',
+        scheduleOrigin: now,
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        department: 'fabrication',
+        id: '00000000-0000-4000-8000-000000000b03',
+        name: 'Fabrication Bay 3',
+        scheduleOrigin: now,
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        department: 'fabrication',
+        id: '00000000-0000-4000-8000-000000000b04',
+        name: 'Fabrication Bay 4',
+        scheduleOrigin: now,
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        department: 'fabrication',
+        id: '00000000-0000-4000-8000-000000000b05',
+        name: 'Fabrication Bay 5',
+        scheduleOrigin: now,
+        updatedAt: now,
+      },
+    ])
+    .onConflictDoUpdate({
+      target: jobBays.id,
+      set: {
+        department: 'fabrication',
+        scheduleOrigin: now,
+        updatedAt: now,
+      },
+    });
 }
 
 async function createAcceptedQuote(db: Db, productId: Product['id']) {

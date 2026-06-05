@@ -1,5 +1,7 @@
 # Slot Dates Are Derived, Not Stored
 
+Updated by ADR-0037: Bay Slots are whole-day planning blocks stored as `durationDays`, and idle time is represented by first-class idle Slots in the same queue.
+
 A **Slot** books one Job's Stage onto one **Bay** in that Bay's queue. We store only the Slot's `sequence` (queue position) and `durationMinutes` — never start/end dates. Calendar dates are computed at read time by **Slot Projection**: walk a Bay's Slots in queue order from the Bay's `scheduleOrigin` (today, for now), starting each Slot where the previous one ends. This is the *relative* scheduling model: a Slot finishing early or late naturally reflows everything after it, with no rows to rewrite.
 
 ## Considered Options

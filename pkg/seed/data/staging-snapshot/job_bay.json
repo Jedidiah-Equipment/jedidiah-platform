@@ -2,16 +2,31 @@
   {
     "department": "fabrication",
     "id": "00000000-0000-4000-8000-000000000b01",
-    "name": "Fabrication Bay 1"
+    "name": "Fabrication Bay 1",
+    "scheduleOrigin": "2026-06-05T00:00:00.000Z"
   },
   {
     "department": "fabrication",
     "id": "00000000-0000-4000-8000-000000000b02",
-    "name": "Fabrication Bay 2"
+    "name": "Fabrication Bay 2",
+    "scheduleOrigin": "2026-06-05T00:00:00.000Z"
   },
   {
     "department": "fabrication",
     "id": "00000000-0000-4000-8000-000000000b03",
-    "name": "Fabrication Bay 3"
+    "name": "Fabrication Bay 3",
+    "scheduleOrigin": "2026-06-05T00:00:00.000Z"
+  },
+  {
+    "department": "fabrication",
+    "id": "00000000-0000-4000-8000-000000000b04",
+    "name": "Fabrication Bay 4",
+    "scheduleOrigin": "2026-06-05T00:00:00.000Z"
+  },
+  {
+    "department": "fabrication",
+    "id": "00000000-0000-4000-8000-000000000b05",
+    "name": "Fabrication Bay 5",
+    "scheduleOrigin": "2026-06-05T00:00:00.000Z"
   }
 ]

@@ -1,9 +1,10 @@
-import { addMinutes, startOfDay } from 'date-fns';
+import { startOfDay } from 'date-fns';
 import { describe, expect, it } from 'vitest';
 
-import { projectJobSlots } from './job-slot-projection.js';
+import { addJobSlotDuration, projectJobSlots } from './job-slot-projection.js';
 
 const scheduleOrigin = new Date('2026-06-05T08:00:00.000Z');
+const scheduleOriginDayStart = startOfDay(scheduleOrigin);
 
 describe('projectJobSlots', () => {
   it('reports the schedule origin as next available for an empty bay', () => {
@@ -14,10 +15,10 @@ describe('projectJobSlots', () => {
     });
 
     expect(projection.slots).toEqual([]);
-    expect(projection.nextAvailableAt).toEqual(scheduleOrigin);
+    expect(projection.nextAvailableAt).toEqual(scheduleOriginDayStart);
   });
 
-  it('projects appended slots sequentially from the schedule origin', () => {
+  it('projects appended slots sequentially from the schedule origin day start', () => {
     const projection = projectJobSlots({
       scheduleOrigin,
       schedulingFloor: new Date('2026-06-01T00:00:00.000Z'),
@@ -30,16 +31,16 @@ describe('projectJobSlots', () => {
     expect(projection.slots.map(({ id, startAt, endAt }) => ({ id, startAt, endAt }))).toEqual([
       {
         id: 'slot-1',
-        startAt: new Date('2026-06-05T08:00:00.000Z'),
-        endAt: new Date('2026-06-05T16:00:00.000Z'),
+        startAt: scheduleOriginDayStart,
+        endAt: addJobSlotDuration(scheduleOriginDayStart, 480),
       },
       {
         id: 'slot-2',
-        startAt: new Date('2026-06-05T16:00:00.000Z'),
-        endAt: new Date('2026-06-06T08:00:00.000Z'),
+        startAt: addJobSlotDuration(scheduleOriginDayStart, 480),
+        endAt: addJobSlotDuration(scheduleOriginDayStart, 1440),
       },
     ]);
-    expect(projection.nextAvailableAt).toEqual(new Date('2026-06-06T08:00:00.000Z'));
+    expect(projection.nextAvailableAt).toEqual(addJobSlotDuration(scheduleOriginDayStart, 1440));
   });
 
   it('projects multiple slots for the same job stage as separate queue entries', () => {
@@ -54,15 +55,15 @@ describe('projectJobSlots', () => {
     });
 
     expect(projection.slots.map(({ id, jobStageId, startAt }) => ({ id, jobStageId, startAt }))).toEqual([
-      { id: 'slot-a', jobStageId: 'stage-1', startAt: new Date('2026-06-05T08:00:00.000Z') },
-      { id: 'slot-b', jobStageId: 'stage-2', startAt: new Date('2026-06-05T16:00:00.000Z') },
-      { id: 'slot-c', jobStageId: 'stage-1', startAt: new Date('2026-06-06T00:00:00.000Z') },
+      { id: 'slot-a', jobStageId: 'stage-1', startAt: scheduleOriginDayStart },
+      { id: 'slot-b', jobStageId: 'stage-2', startAt: addJobSlotDuration(scheduleOriginDayStart, 480) },
+      { id: 'slot-c', jobStageId: 'stage-1', startAt: addJobSlotDuration(scheduleOriginDayStart, 960) },
     ]);
   });
 
   it('starts empty or stale queues from the current scheduling day floor', () => {
     const expectedStartAt = startOfDay(new Date('2026-06-05T14:00:00.000Z'));
-    const expectedEndAt = addMinutes(expectedStartAt, 480);
+    const expectedEndAt = addJobSlotDuration(expectedStartAt, 480);
     const emptyProjection = projectJobSlots({
       scheduleOrigin: new Date('2026-06-01T08:00:00.000Z'),
       schedulingFloor: new Date('2026-06-05T14:00:00.000Z'),
@@ -84,6 +85,13 @@ describe('projectJobSlots', () => {
       endAt: expectedEndAt,
     });
     expect(projection.nextAvailableAt).toEqual(expectedEndAt);
+  });
+
+  it('treats working-day minute durations as calendar day spans for daily schedules', () => {
+    const startAt = new Date('2026-06-05T00:00:00.000Z');
+
+    expect(addJobSlotDuration(startAt, 4 * 480)).toEqual(new Date('2026-06-09T00:00:00.000Z'));
+    expect(addJobSlotDuration(startAt, 6 * 480)).toEqual(new Date('2026-06-11T00:00:00.000Z'));
   });
 });
 

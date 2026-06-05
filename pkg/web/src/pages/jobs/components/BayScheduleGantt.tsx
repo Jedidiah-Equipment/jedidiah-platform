@@ -1,8 +1,7 @@
-import { formatDate, WORKING_DAY_MINUTES } from '@pkg/domain';
+import { addJobSlotDuration, formatDate, WORKING_DAY_MINUTES } from '@pkg/domain';
 import type { BaySchedule, JobListInput, ProjectedJobSlot } from '@pkg/schema';
-import { IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
+import { IconCalendarPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { addMinutes } from 'date-fns';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -18,6 +17,16 @@ import {
   useGanttContext,
 } from '@/components/kibo-ui/gantt/index.js';
 import { Button } from '@/components/ui/button.js';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
@@ -46,6 +55,7 @@ export const BayScheduleGantt: React.FC = () => {
   const [selectedBayId, setSelectedBayId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [durationDays, setDurationDays] = useState(1);
+  const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const selectedBay = bays.find((bay) => bay.id === selectedBayId) ?? bays[0] ?? null;
   const jobs = jobsQuery.data?.items ?? [];
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
@@ -53,6 +63,12 @@ export const BayScheduleGantt: React.FC = () => {
     ? (selectedJob?.stages.find((stage) => stage.stage === selectedBay.department) ?? null)
     : null;
   const canBook = Boolean(selectedBay && selectedStage && durationDays > 0);
+  const clearOptimisticResize = useCallback((slotId: string) => {
+    setOptimisticResizeDaysBySlotId((current) => {
+      const { [slotId]: _removed, ...next } = current;
+      return next;
+    });
+  }, []);
   const bookSlotMutation = useMutation(
     trpc.jobs.bookSlot.mutationOptions({
       onSuccess: async () => {
@@ -64,21 +80,45 @@ export const BayScheduleGantt: React.FC = () => {
   );
   const resizeSlotMutation = useMutation(
     trpc.jobs.resizeSlot.mutationOptions({
+      onSuccess: async (_result, variables) => {
+        try {
+          await invalidateJobs();
+          toast.success('Slot resized');
+        } finally {
+          clearOptimisticResize(variables.slotId);
+        }
+      },
+      onError: (error, variables) => {
+        clearOptimisticResize(variables.slotId);
+        showMutationError(error, 'Unable to resize slot.');
+      },
+    }),
+  );
+  const removeSlotMutation = useMutation(
+    trpc.jobs.removeSlot.mutationOptions({
       onSuccess: async () => {
         await invalidateJobs();
-        toast.success('Slot resized');
+        toast.success('Slot removed');
       },
-      onError: (error) => showMutationError(error, 'Unable to resize slot.'),
+      onError: (error) => showMutationError(error, 'Unable to remove slot.'),
     }),
   );
   const handleResizeSlot = useCallback(
     (slotId: string, durationDays: number) => {
+      // Keep the dropped width visible while the projected schedule refetches.
+      setOptimisticResizeDaysBySlotId((current) => ({ ...current, [slotId]: durationDays }));
       resizeSlotMutation.mutate({
         durationMinutes: durationDays * WORKING_DAY_MINUTES,
         slotId,
       });
     },
     [resizeSlotMutation],
+  );
+  const handleRemoveSlot = useCallback(
+    async (slotId: string) => {
+      await removeSlotMutation.mutateAsync({ slotId });
+    },
+    [removeSlotMutation],
   );
 
   useEffect(() => {
@@ -127,7 +167,16 @@ export const BayScheduleGantt: React.FC = () => {
           <FieldLabel htmlFor="bay-schedule-bay">Bay</FieldLabel>
           <Select onValueChange={(value) => setSelectedBayId(String(value))} value={selectedBay?.id ?? ''}>
             <SelectTrigger id="bay-schedule-bay" className="w-full">
-              <SelectValue placeholder="Select bay" />
+              <SelectValue placeholder="Select bay">
+                {selectedBay ? (
+                  <>
+                    <span className="truncate">{selectedBay.name}</span>
+                    <span className="shrink-0 text-muted-foreground">
+                      {formatDate(selectedBay.nextAvailableAt, 'MMM d')}
+                    </span>
+                  </>
+                ) : null}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent align="start">
               <SelectGroup>
@@ -149,7 +198,14 @@ export const BayScheduleGantt: React.FC = () => {
             value={selectedJob?.id ?? ''}
           >
             <SelectTrigger id="bay-schedule-job" className="w-full">
-              <SelectValue placeholder={jobsQuery.isLoading ? 'Loading jobs' : 'Select job'} />
+              <SelectValue placeholder={jobsQuery.isLoading ? 'Loading jobs' : 'Select job'}>
+                {selectedJob ? (
+                  <>
+                    <span className="truncate">{selectedJob.code}</span>
+                    <span className="shrink-0 text-muted-foreground">{selectedJob.productSerialNumber}</span>
+                  </>
+                ) : null}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent align="start">
               <SelectGroup>
@@ -185,7 +241,7 @@ export const BayScheduleGantt: React.FC = () => {
       <div
         className="w-full overflow-hidden"
         style={{
-          height: Math.max(220, 60 + bays.length * 36),
+          height: Math.max(220, 60 + bays.length * 46),
         }}
       >
         <GanttProvider
@@ -199,7 +255,14 @@ export const BayScheduleGantt: React.FC = () => {
           <GanttTimeline>
             <GanttHeader />
             <BayLaneDividers bays={bays} />
-            <BaySlotBars bays={bays} isResizePending={resizeSlotMutation.isPending} onResizeSlot={handleResizeSlot} />
+            <BaySlotBars
+              bays={bays}
+              isRemovePending={removeSlotMutation.isPending}
+              isResizePending={resizeSlotMutation.isPending}
+              onRemoveSlot={handleRemoveSlot}
+              onResizeSlot={handleResizeSlot}
+              optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
+            />
             <GanttToday className="bg-primary text-primary-foreground" />
           </GanttTimeline>
         </GanttProvider>
@@ -240,9 +303,12 @@ const BayLaneDividers: React.FC<{
 
 const BaySlotBars: React.FC<{
   bays: BaySchedule[];
+  isRemovePending: boolean;
   isResizePending: boolean;
+  onRemoveSlot: (slotId: string) => Promise<void>;
   onResizeSlot: (slotId: string, durationDays: number) => void;
-}> = ({ bays, isResizePending, onResizeSlot }) => {
+  optimisticResizeDaysBySlotId: Record<string, number>;
+}> = ({ bays, isRemovePending, isResizePending, onRemoveSlot, onResizeSlot, optimisticResizeDaysBySlotId }) => {
   const gantt = useGanttContext();
 
   return (
@@ -250,9 +316,12 @@ const BaySlotBars: React.FC<{
       {bays.flatMap((bay, bayIndex) =>
         bay.slots.map((slot) => (
           <BaySlotBar
+            isRemovePending={isRemovePending}
             isResizePending={isResizePending}
             key={slot.id}
+            onRemove={onRemoveSlot}
             onResize={onResizeSlot}
+            optimisticDurationDays={optimisticResizeDaysBySlotId[slot.id] ?? null}
             slot={slot}
             top={gantt.headerHeight + bayIndex * gantt.rowHeight + 6}
           />
@@ -270,20 +339,27 @@ type SlotResizeDrag = {
 };
 
 const BaySlotBar: React.FC<{
+  isRemovePending: boolean;
   isResizePending: boolean;
+  onRemove: (slotId: string) => Promise<void>;
   onResize: (slotId: string, durationDays: number) => void;
+  optimisticDurationDays: number | null;
   slot: ProjectedJobSlot;
   top: number;
-}> = ({ isResizePending, onResize, slot, top }) => {
+}> = ({ isRemovePending, isResizePending, onRemove, onResize, optimisticDurationDays, slot, top }) => {
   const gantt = useGanttContext();
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [resizeDrag, setResizeDrag] = useState<SlotResizeDrag | null>(null);
   const startAt = useMemo(() => new Date(slot.startAt), [slot.startAt]);
   const endAt = useMemo(() => new Date(slot.endAt), [slot.endAt]);
   const durationDays = Math.max(1, Math.round(slot.durationMinutes / WORKING_DAY_MINUTES));
-  const previewDurationDays = resizeDrag?.durationDays ?? durationDays;
+  const displayDurationDays = optimisticDurationDays ?? durationDays;
+  const previewDurationDays = resizeDrag?.durationDays ?? displayDurationDays;
+  const shouldProjectPreview = resizeDrag !== null || optimisticDurationDays !== null;
   const previewEndAt = useMemo(
-    () => (resizeDrag ? addMinutes(startAt, previewDurationDays * WORKING_DAY_MINUTES) : endAt),
-    [endAt, previewDurationDays, resizeDrag, startAt],
+    () => (shouldProjectPreview ? addJobSlotDuration(startAt, previewDurationDays * WORKING_DAY_MINUTES) : endAt),
+    [endAt, previewDurationDays, shouldProjectPreview, startAt],
   );
   const left = getGanttOffset(startAt, gantt);
   const width = Math.max(getGanttWidth(startAt, previewEndAt, gantt), 28);
@@ -298,7 +374,7 @@ const BaySlotBar: React.FC<{
     setResizeDrag({
       durationDays,
       initialDurationDays: durationDays,
-      pixelsPerWorkingDay: Math.max(getGanttWidth(startAt, addMinutes(startAt, WORKING_DAY_MINUTES), gantt), 1),
+      pixelsPerWorkingDay: Math.max(getGanttWidth(startAt, addJobSlotDuration(startAt, WORKING_DAY_MINUTES), gantt), 1),
       startX: event.clientX,
     });
   };
@@ -357,11 +433,55 @@ const BaySlotBar: React.FC<{
       }}
       title={`${slot.jobCode}: ${formatDate(slot.startAt, 'long')} - ${formatDate(slot.endAt, 'long')}`}
     >
-      <span className="block truncate pr-2 font-medium">{slot.jobCode}</span>
+      <span className="block truncate pr-8 font-medium">{slot.jobCode}</span>
+      <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
+        <DialogTrigger
+          render={
+            <button
+              aria-label={`Remove ${slot.jobCode}`}
+              className="absolute top-0 right-2 flex h-full w-6 items-center justify-center bg-primary/80 outline-none hover:bg-destructive focus-visible:ring-2 focus-visible:ring-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isRemovePending || isRemoving}
+              type="button"
+            />
+          }
+        >
+          <IconTrash className="size-3.5" />
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove slot</DialogTitle>
+            <DialogDescription>
+              Remove {slot.jobCode} from the Bay schedule. Later Slots will move up to close the gap.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>Cancel</DialogClose>
+            <Button
+              disabled={isRemoving}
+              onClick={async () => {
+                setIsRemoving(true);
+                try {
+                  await onRemove(slot.id);
+                  setIsRemoveDialogOpen(false);
+                } catch {
+                  // The mutation hook owns the user-facing error toast.
+                } finally {
+                  setIsRemoving(false);
+                }
+              }}
+              type="button"
+              variant="destructive"
+            >
+              {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <button
         aria-label={`Resize ${slot.jobCode}`}
         className="absolute top-0 right-0 h-full w-2 cursor-ew-resize border-primary-foreground/70 border-r-2 bg-primary-foreground/15 outline-none hover:bg-primary-foreground/25 focus-visible:ring-2 focus-visible:ring-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={isResizePending}
+        disabled={isResizePending || isRemoving}
         onPointerCancel={cancelResize}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

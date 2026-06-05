@@ -25,15 +25,23 @@ Stages are labelled for users by their owning Departments: Procurement, Supply, 
 Current Stage state is intentionally minimal (`pending | in-progress | complete`) and defaults to `pending` until the next workflow model replaces it. Do not infer progress from lower-level production resources unless a new workflow contract introduces them.
 
 **Bay**:
-A durable physical workspace that belongs to exactly one Department (for example a Fabrication bay). A Department has zero or more Bays. One person is attached to a Bay. Bays are the resources that Jobs are scheduled onto: each Bay holds an ordered queue of Slots. Not every Department's Bays are scheduled (see Slot).
+A durable physical workspace that belongs to exactly one Department (for example a Fabrication bay). A Department has zero or more Bays. One person is attached to a Bay. Bays are the resources that Jobs are scheduled onto: each Bay holds an ordered queue of Slots from a fixed `scheduleOrigin`. Not every Department's Bays are scheduled (see Slot).
 _Avoid_: Station, Workstation, Cell, Machine.
 
 **Slot**:
-A single booking of one Job onto one Bay for a duration, holding a position in that Bay's queue. A Bay's Slots are sequential and never overlap. The same Job may occupy more than one Slot on the same Bay (e.g. work stops and later restarts). A Slot's calendar dates are not its source of truth — they are derived by projecting the Bay's queue forward (see Slot Projection).
+A single whole-day planning block in one Bay's queue. A Slot is either a **Work Slot**, which books one Job Stage onto the Bay, or an **Idle Slot**, which reserves Bay time without a Job Stage. A Bay's Slots are sequential and never overlap. The same Job may occupy more than one Work Slot on the same Bay (e.g. work stops and later restarts). A Slot's calendar dates are not its source of truth — they are derived by projecting the Bay's queue forward (see Slot Projection). Slots store queue position and `durationDays`, not start/end dates or minute-level planning.
 _Avoid_: Booking, Reservation, Appointment, Block.
 
+**Idle Slot**:
+A Slot that intentionally represents downtime in a Bay queue. It has no Job Stage, advances Slot Projection exactly like a Work Slot, and is rendered differently from booked Job work on the schedule chart. Idle Slots may have a nullable label; a missing label displays as the domain default `Idle`. Idle Slots can be created automatically when booking work after the queue has gone idle, or manually from a slot context menu (`Add idle slot before` / `Add idle slot after`). Adjacent Idle Slots are valid and are not automatically merged; planners can remove and resize them manually.
+_Avoid_: Hidden buffer, gap, pause.
+
+**Work Slot**:
+A Slot that books one Job Stage onto a Bay. Work Slots display by Job code on the schedule chart and require the Bay Department to match the Job Stage Department.
+_Avoid_: Booking, Reservation, Appointment.
+
 **Slot Projection**:
-The read-time computation that turns a Bay's queue of Slots into concrete calendar dates. It walks the Bay's Slots in queue order from the Bay's anchor (its `scheduleOrigin`, defaulting to today): the first Slot starts at the anchor, each later Slot starts where the previous one ends, and a Slot's end is its start plus its duration. Dates are never stored on a Slot — only sequence and duration are. Because dates are derived, a Slot finishing early or late naturally reflows everything after it. Working calendar and buffers will refine this projection later without changing what is stored.
+The read-time computation that turns a Bay's queue of Slots into concrete calendar dates. It walks the Bay's Slots in queue order from the Bay's fixed anchor (`scheduleOrigin`): the first Slot starts at the anchor, each later Slot starts where the previous one ends, and a Slot's end is its start plus its `durationDays`. Dates are never stored on a Slot — only sequence, kind, duration, and Slot-specific references/labels are. Because dates are derived, resizing or removing a Slot naturally reflows everything after it. Idle time is represented by Idle Slots in the queue, never by moving `scheduleOrigin` or silently flooring the whole projection to today.
 
 **CFO (Customer Fabrication Order)**:
 The frozen bill of materials for a Job, snapshotted from the Quote's Effective Bill of Materials at the moment the Job is created. It captures the Standard and selected Optional Assemblies (Standards overridden by a selected Optional are excluded) and their Parts. Parts are referenced by id rather than copied: the reference always resolves because Parts are never deleted, and the dump deliberately reflects each Part's *current* code and name — so editing or renaming a Part is intentionally allowed to change how an existing CFO reads. The CFO is the shop-floor build instruction for that one physical unit.
@@ -138,8 +146,8 @@ _Avoid_: Stat, Rollup, Report, KPI.
 - A **Quote** may have zero or more **Quote Selected Assemblies**.
 - A **Quote** may own **Quote Documents**.
 - A **Department** has zero or more **Bays**; a Department is scheduled only if it has Bays (first pass: Fabrication only).
-- A **Bay** belongs to exactly one **Department** and holds an ordered, non-overlapping queue of **Slots**.
-- A **Slot** books one Job's Department **Stage** onto one **Bay**; the same Stage may occupy more than one Slot on a Bay.
+- A **Bay** belongs to exactly one **Department** and holds an ordered, non-overlapping queue of **Slots** from a fixed `scheduleOrigin`.
+- A **Slot** is either a **Work Slot** or an **Idle Slot**. A Work Slot books one Job's Department **Stage** onto one **Bay**; the same Stage may occupy more than one Work Slot on a Bay. An Idle Slot has no Stage and reserves Bay time in the same queue.
 - A **Supplier** currently stands alone as a procurement directory record.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
 - A **Document** has exactly one owning entity. A **Product** has zero or more **Documents**.

@@ -225,6 +225,20 @@
       "when": 1780660446513,
       "tag": "0031_minor_kabuki",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1780664083467,
+      "tag": "0032_seed_fabrication_bays",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1780664985588,
+      "tag": "0033_normalize_fabrication_bay_origin",
+      "breakpoints": true
     }
   ]
 }

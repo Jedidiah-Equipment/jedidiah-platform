@@ -8,6 +8,8 @@
 
 ## Workflows and commands
 
+- For schema changes, run `pnpm db:generate`, review and commit the generated SQL in
+  `pkg/db/migrations`, then run `pnpm db:migrate`.
 - Run `pnpm db:up:template` after schema or seed changes, or when DB-backed tests fail with
   stale-schema errors such as missing tables, missing columns, or `relation "user" does not exist`.
 - `pnpm db:reset` is destructive because it drops Docker volumes. Confirm before running it unless

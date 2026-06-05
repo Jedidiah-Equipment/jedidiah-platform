@@ -49,11 +49,33 @@ export class JobSlotBookingDeniedError extends Error {
   }
 }
 
+export class JobSlotNotFoundError extends Error {
+  readonly code = 'job.slot_not_found';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super(`Job slot not found: ${id}`);
+    this.name = 'JobSlotNotFoundError';
+    this.metadata = { id };
+  }
+}
+
+export class JobSlotResizeDeniedError extends Error {
+  readonly code = 'job.slot_resize_denied';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'JobSlotResizeDeniedError';
+  }
+}
+
 export type JobCoreError =
   | JobBayNotFoundError
   | JobCreateFromQuoteDeniedError
   | JobNotFoundError
   | JobSlotBookingDeniedError
+  | JobSlotNotFoundError
+  | JobSlotResizeDeniedError
   | JobStageNotFoundError;
 
 export function isJobCoreError(error: unknown): error is JobCoreError {
@@ -62,6 +84,8 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobCreateFromQuoteDeniedError ||
     error instanceof JobNotFoundError ||
     error instanceof JobSlotBookingDeniedError ||
+    error instanceof JobSlotNotFoundError ||
+    error instanceof JobSlotResizeDeniedError ||
     error instanceof JobStageNotFoundError
   );
 }

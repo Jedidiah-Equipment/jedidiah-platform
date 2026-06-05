@@ -96,6 +96,79 @@ describe('jobs.create', () => {
   });
 });
 
+describe('jobs.bookSlot', () => {
+  test('books an authorized job stage onto a fabrication bay', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const fabricationStage = getStage(job, 'fabrication');
+
+    await expect(
+      caller.jobs.bookSlot({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        durationMinutes: 480,
+        jobStageId: fabricationStage.id,
+      }),
+    ).resolves.toMatchObject({
+      slot: {
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        durationMinutes: 480,
+        jobStageId: fabricationStage.id,
+        sequence: 1,
+      },
+    });
+  });
+
+  test('rejects users without job scheduling permissions', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const job = await supervisorCaller.jobs.create({
+      quoteId: context.quote.id,
+    });
+
+    await expect(
+      salesCaller.jobs.bookSlot({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        durationMinutes: 480,
+        jobStageId: getStage(job, 'fabrication').id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('listBays returns projected slots after booking', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const job = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+
+    await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      durationMinutes: 960,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b02',
+          nextAvailableAt: '2026-06-05T16:00:00.000Z',
+          slots: [
+            expect.objectContaining({
+              jobCode: job.code,
+              startAt: '2026-06-05T00:00:00.000Z',
+              endAt: '2026-06-05T16:00:00.000Z',
+            }),
+          ],
+        }),
+      ]),
+    );
+  });
+});
+
 async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
   const [product] = await db
     .insert(products)
@@ -176,4 +249,14 @@ async function createAcceptedQuote(db: Db, productId: Product['id']) {
   }
 
   return quote;
+}
+
+function getStage(job: { stages: { id: string; stage: string }[] }, stageName: string) {
+  const stage = job.stages.find((item) => item.stage === stageName);
+
+  if (!stage) {
+    throw new Error(`Job stage not found: ${stageName}`);
+  }
+
+  return stage;
 }

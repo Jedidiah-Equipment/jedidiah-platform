@@ -2,8 +2,10 @@ import {
   type DatabaseTransaction,
   type Db,
   documents,
+  jobBays,
   jobCfoAssemblies,
   jobCfoParts,
+  jobSlots,
   jobStages,
   jobs,
   productSerialSequences,
@@ -14,6 +16,9 @@ import {
 import { buildCfo, type CfoEntry, JOB_STAGE_PIPELINE } from '@pkg/domain';
 import {
   type AuthId,
+  type BookJobSlotInput,
+  BookJobSlotResult,
+  type Department,
   formatJobCode,
   formatProductSerialNumber,
   JobCode,
@@ -30,7 +35,12 @@ import { asc, eq, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
 import { documentBaseSelect } from '../documents/document-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
-import { JobCreateFromQuoteDeniedError } from './job-errors.js';
+import {
+  JobBayNotFoundError,
+  JobCreateFromQuoteDeniedError,
+  JobSlotBookingDeniedError,
+  JobStageNotFoundError,
+} from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
@@ -115,6 +125,81 @@ export async function createJob({
 
     return getJob({ access, db: tx, id: job.id });
   });
+}
+
+export async function bookJobSlot({
+  access,
+  db,
+  input,
+}: {
+  access: UserAccessSummary;
+  db: Db;
+  input: BookJobSlotInput;
+}): Promise<BookJobSlotResult> {
+  return db.transaction(async (tx) => {
+    const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
+
+    if (!bay) {
+      throw new JobBayNotFoundError(input.bayId);
+    }
+
+    if (!canBookBaySchedule(access, bay.department)) {
+      throw new JobSlotBookingDeniedError('You do not have permission to book this Bay.');
+    }
+
+    const [stage] = await tx
+      .select({
+        id: jobStages.id,
+        jobId: jobStages.jobId,
+        stage: jobStages.stage,
+      })
+      .from(jobStages)
+      .where(eq(jobStages.id, input.jobStageId));
+
+    if (!stage) {
+      throw new JobStageNotFoundError(input.jobStageId);
+    }
+
+    if (stage.stage !== bay.department) {
+      throw new JobSlotBookingDeniedError('Bay department must match the Job stage department.');
+    }
+
+    const [sequenceRow] = await tx
+      .select({
+        sequence: sql<number>`coalesce(max(${jobSlots.sequence}), 0) + 1`,
+      })
+      .from(jobSlots)
+      .where(eq(jobSlots.bayId, bay.id));
+    const sequence = Number(sequenceRow?.sequence ?? 1);
+
+    const [slot] = await tx
+      .insert(jobSlots)
+      .values({
+        bayId: bay.id,
+        durationMinutes: input.durationMinutes,
+        jobStageId: stage.id,
+        sequence,
+      })
+      .returning();
+
+    if (!slot) {
+      throw new Error('Job slot insert did not return a row');
+    }
+
+    return BookJobSlotResult.parse({ slot });
+  });
+}
+
+function canBookBaySchedule(access: UserAccessSummary, department: Department): boolean {
+  if (access.role === 'admin' || access.role === 'job-supervisor') {
+    return true;
+  }
+
+  if (access.role !== 'job-department-manager') {
+    return false;
+  }
+
+  return access.departments.length === 0 || access.departments.includes(department);
 }
 
 async function createProductSerial({

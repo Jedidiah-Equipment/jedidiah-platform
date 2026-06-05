@@ -30,9 +30,54 @@ export const Bay = z.object({
   updatedAt: DateIso,
 });
 
+export type SlotSequence = z.infer<typeof SlotSequence>;
+export const SlotSequence = z.int().positive().refine(Number.isSafeInteger);
+
+export type SlotDurationMinutes = z.infer<typeof SlotDurationMinutes>;
+export const SlotDurationMinutes = z.int().positive().refine(Number.isSafeInteger);
+
+export type JobSlot = z.infer<typeof JobSlot>;
+export const JobSlot = z.object({
+  id: UUID,
+  bayId: UUID,
+  jobStageId: UUID,
+  sequence: SlotSequence,
+  durationMinutes: SlotDurationMinutes,
+  createdAt: DateIso,
+  updatedAt: DateIso,
+});
+
+export type ProjectedJobSlot = z.infer<typeof ProjectedJobSlot>;
+export const ProjectedJobSlot = JobSlot.extend({
+  jobCode: JobCode,
+  jobId: UUID,
+  startAt: DateIso,
+  endAt: DateIso,
+});
+
+export type BaySchedule = z.infer<typeof BaySchedule>;
+export const BaySchedule = Bay.extend({
+  nextAvailableAt: DateIso,
+  slots: z.array(ProjectedJobSlot),
+});
+
 export type BayListResult = z.infer<typeof BayListResult>;
 export const BayListResult = z.object({
-  items: z.array(Bay),
+  items: z.array(BaySchedule),
+});
+
+export type BookJobSlotInput = z.infer<typeof BookJobSlotInput>;
+export const BookJobSlotInput = z
+  .object({
+    bayId: UUID,
+    jobStageId: UUID,
+    durationMinutes: SlotDurationMinutes,
+  })
+  .strict();
+
+export type BookJobSlotResult = z.infer<typeof BookJobSlotResult>;
+export const BookJobSlotResult = z.object({
+  slot: JobSlot,
 });
 
 export type JobWorkState = z.infer<typeof JobWorkState>;

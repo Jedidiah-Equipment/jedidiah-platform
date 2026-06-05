@@ -8,6 +8,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -129,6 +130,32 @@ export const jobStages = pgTable(
   ],
 );
 
+export const jobSlots = pgTable(
+  'job_slot',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    bayId: uuid('bay_id')
+      .notNull()
+      .references(() => jobBays.id, { onDelete: 'restrict' }),
+    jobStageId: uuid('job_stage_id')
+      .notNull()
+      .references(() => jobStages.id, { onDelete: 'cascade' }),
+    sequence: integer('sequence').notNull(),
+    durationMinutes: integer('duration_minutes').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check('job_slot_sequence_positive', sql`${table.sequence} > 0`),
+    check('job_slot_duration_minutes_positive', sql`${table.durationMinutes} > 0`),
+    unique('job_slot_bay_id_sequence_unique').on(table.bayId, table.sequence),
+  ],
+);
+
+export const jobBaysRelations = relations(jobBays, ({ many }) => ({
+  slots: many(jobSlots),
+}));
+
 export const jobsRelations = relations(jobs, ({ many, one }) => ({
   product: one(products, {
     fields: [jobs.productId],
@@ -142,10 +169,22 @@ export const jobsRelations = relations(jobs, ({ many, one }) => ({
   stages: many(jobStages),
 }));
 
-export const jobStagesRelations = relations(jobStages, ({ one }) => ({
+export const jobStagesRelations = relations(jobStages, ({ many, one }) => ({
   job: one(jobs, {
     fields: [jobStages.jobId],
     references: [jobs.id],
+  }),
+  slots: many(jobSlots),
+}));
+
+export const jobSlotsRelations = relations(jobSlots, ({ one }) => ({
+  bay: one(jobBays, {
+    fields: [jobSlots.bayId],
+    references: [jobBays.id],
+  }),
+  stage: one(jobStages, {
+    fields: [jobSlots.jobStageId],
+    references: [jobStages.id],
   }),
 }));
 

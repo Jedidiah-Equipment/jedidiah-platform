@@ -5,8 +5,10 @@ import {
   customers,
   type Db,
   documents,
+  jobBays,
   jobCfoAssemblies,
   jobCfoParts,
+  jobSlots,
   jobStages,
   jobs,
   parts,
@@ -19,14 +21,21 @@ import {
   user,
 } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import { type PartUnitOfMeasure, type ProductDocumentType, QuoteUpdateInput } from '@pkg/schema';
-import { eq } from 'drizzle-orm';
+import {
+  type Department,
+  type JobDetail,
+  type JobStageName,
+  type PartUnitOfMeasure,
+  type ProductDocumentType,
+  QuoteUpdateInput,
+} from '@pkg/schema';
+import { asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
-import { getJob } from './job-read-service.js';
-import { createJob } from './job-service.js';
+import { getJob, listBays } from './job-read-service.js';
+import { bookJobSlot, createJob } from './job-service.js';
 
 const actorUserId = 'test-user-id';
 const jobAccess = createUserAccessSummary({ role: 'job-supervisor', userId: actorUserId });
@@ -493,6 +502,146 @@ describe('createJob', () => {
   });
 });
 
+describe('bookJobSlot', () => {
+  test('appends slots to the back of a bay queue and returns projected dates', async ({ context }) => {
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    const firstSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: {
+        bayId: bay.id,
+        durationMinutes: 480,
+        jobStageId: getStageId(firstJob, 'fabrication'),
+      },
+    });
+    const secondSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: {
+        bayId: bay.id,
+        durationMinutes: 960,
+        jobStageId: getStageId(secondJob, 'fabrication'),
+      },
+    });
+
+    const storedSlots = await context.db
+      .select({
+        durationMinutes: jobSlots.durationMinutes,
+        id: jobSlots.id,
+        sequence: jobSlots.sequence,
+      })
+      .from(jobSlots)
+      .orderBy(asc(jobSlots.sequence));
+    expect(storedSlots).toEqual([
+      { id: firstSlot.slot.id, sequence: 1, durationMinutes: 480 },
+      { id: secondSlot.slot.id, sequence: 2, durationMinutes: 960 },
+    ]);
+
+    const schedule = await listBays({ access: jobAccess, db: context.db });
+    expect(schedule.items).toEqual([
+      expect.objectContaining({
+        id: bay.id,
+        nextAvailableAt: '2026-06-06T08:00:00.000Z',
+        slots: [
+          expect.objectContaining({
+            id: firstSlot.slot.id,
+            jobCode: firstJob.code,
+            sequence: 1,
+            startAt: '2026-06-05T08:00:00.000Z',
+            endAt: '2026-06-05T16:00:00.000Z',
+          }),
+          expect.objectContaining({
+            id: secondSlot.slot.id,
+            jobCode: secondJob.code,
+            sequence: 2,
+            startAt: '2026-06-05T16:00:00.000Z',
+            endAt: '2026-06-06T08:00:00.000Z',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('allows the same job stage to be booked more than once', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const jobStageId = getStageId(job, 'fabrication');
+
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationMinutes: 480, jobStageId },
+    });
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationMinutes: 480, jobStageId },
+    });
+
+    const schedule = await listBays({ access: jobAccess, db: context.db });
+    expect(schedule.items[0]?.slots.map((slot) => slot.jobStageId)).toEqual([jobStageId, jobStageId]);
+  });
+
+  test('rejects a bay whose department does not match the job stage', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'paint' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    await expect(
+      bookJobSlot({
+        access: jobAccess,
+        db: context.db,
+        input: {
+          bayId: bay.id,
+          durationMinutes: 480,
+          jobStageId: getStageId(job, 'fabrication'),
+        },
+      }),
+    ).rejects.toThrow('Bay department must match the Job stage department.');
+  });
+
+  test('enforces bay schedule permissions by role and department', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const jobStageId = getStageId(job, 'fabrication');
+
+    await expect(
+      bookJobSlot({
+        access: createUserAccessSummary({ role: 'admin', userId: 'admin-user' }),
+        db: context.db,
+        input: { bayId: bay.id, durationMinutes: 480, jobStageId },
+      }),
+    ).resolves.toMatchObject({ slot: { sequence: 1 } });
+    await expect(
+      bookJobSlot({
+        access: createUserAccessSummary({
+          departments: ['fabrication'],
+          role: 'job-department-manager',
+          userId: 'fabrication-manager',
+        }),
+        db: context.db,
+        input: { bayId: bay.id, durationMinutes: 480, jobStageId },
+      }),
+    ).resolves.toMatchObject({ slot: { sequence: 2 } });
+    await expect(
+      bookJobSlot({
+        access: createUserAccessSummary({
+          departments: ['paint'],
+          role: 'job-department-manager',
+          userId: 'paint-manager',
+        }),
+        db: context.db,
+        input: { bayId: bay.id, durationMinutes: 480, jobStageId },
+      }),
+    ).rejects.toThrow('You do not have permission to book this Bay.');
+  });
+});
+
 async function createActorUser(db: Db) {
   const now = new Date();
 
@@ -505,6 +654,56 @@ async function createActorUser(db: Db) {
     role: 'sales',
     updatedAt: now,
   });
+}
+
+async function createBay(
+  db: Db,
+  {
+    department,
+    scheduleOrigin = new Date('2026-06-05T08:00:00.000Z'),
+  }: {
+    department: Department;
+    scheduleOrigin?: Date;
+  },
+) {
+  const [bay] = await db
+    .insert(jobBays)
+    .values({
+      department,
+      name: `${department} Test Bay`,
+      scheduleOrigin,
+    })
+    .returning();
+
+  if (!bay) {
+    throw new Error('Bay insert did not return a row');
+  }
+
+  return bay;
+}
+
+async function createAcceptedJob(db: Db, productId: string): Promise<JobDetail> {
+  const quote = await createQuote(db, {
+    productId,
+    status: 'accepted',
+  });
+
+  return createJob({
+    access: jobAccess,
+    actorUserId,
+    db,
+    input: { quoteId: quote.id },
+  });
+}
+
+function getStageId(job: JobDetail, stageName: JobStageName) {
+  const stage = job.stages.find((item) => item.stage === stageName);
+
+  if (!stage) {
+    throw new Error(`Job stage not found: ${stageName}`);
+  }
+
+  return stage.id;
 }
 
 async function createCatalog(db: Db) {

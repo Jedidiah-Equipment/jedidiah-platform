@@ -1,4 +1,4 @@
-import type { JobStageName } from '@pkg/schema';
+import type { Department, JobStageName } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   check,
@@ -28,6 +28,25 @@ export const productSerialSequences = pgTable(
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [check('product_serial_sequence_last_sequence_positive', sql`${table.lastSequence} > 0`)],
+);
+
+export const bays = pgTable(
+  'bay',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    department: text('department').notNull().$type<Department>(),
+    name: text('name').notNull(),
+    scheduleOrigin: timestamp('schedule_origin', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      'bay_department_check',
+      sql`${table.department} IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly')`,
+    ),
+    check('bay_name_nonempty', sql`length(trim(${table.name})) > 0`),
+  ],
 );
 
 export const jobs = pgTable(

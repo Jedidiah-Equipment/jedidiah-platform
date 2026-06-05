@@ -410,14 +410,19 @@ export const GanttSidebarItem: FC<GanttSidebarItemProps> = ({ feature, onSelectI
   );
 };
 
-export const GanttSidebarHeader: FC = () => (
+export type GanttSidebarHeaderProps = {
+  secondaryTitle?: string | null | undefined;
+  title?: string | undefined;
+};
+
+export const GanttSidebarHeader: FC<GanttSidebarHeaderProps> = ({ secondaryTitle = 'Duration', title = 'Issues' }) => (
   <div
     className="sticky top-0 z-10 flex shrink-0 items-end justify-between gap-2.5 border-border/50 border-b bg-backdrop/90 p-2.5 font-medium text-muted-foreground text-xs backdrop-blur-sm"
     style={{ height: 'var(--gantt-header-height)' }}
   >
     {/* <Checkbox className="shrink-0" /> */}
-    <p className="flex-1 truncate text-left">Issues</p>
-    <p className="shrink-0">Duration</p>
+    <p className="flex-1 truncate text-left">{title}</p>
+    {secondaryTitle ? <p className="shrink-0">{secondaryTitle}</p> : null}
   </div>
 );
 
@@ -442,9 +447,11 @@ export const GanttSidebarGroup: FC<GanttSidebarGroupProps> = ({ children, name, 
 export type GanttSidebarProps = {
   children: ReactNode;
   className?: string;
+  secondaryTitle?: string | null | undefined;
+  title?: string | undefined;
 };
 
-export const GanttSidebar: FC<GanttSidebarProps> = ({ children, className }) => (
+export const GanttSidebar: FC<GanttSidebarProps> = ({ children, className, secondaryTitle, title }) => (
   <div
     className={cn(
       'sticky left-0 z-30 h-max min-h-full overflow-clip border-border/50 border-r bg-background/90 backdrop-blur-md',
@@ -452,7 +459,7 @@ export const GanttSidebar: FC<GanttSidebarProps> = ({ children, className }) => 
     )}
     data-roadmap-ui="gantt-sidebar"
   >
-    <GanttSidebarHeader />
+    <GanttSidebarHeader secondaryTitle={secondaryTitle} title={title} />
     <div className="space-y-4">{children}</div>
   </div>
 );

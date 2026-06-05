@@ -1,7 +1,22 @@
+import { bays } from '@pkg/db';
+import { createUserAccessSummary } from '@pkg/domain';
 import type { JobStageName } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { mapJobSummary } from './job-read-service.js';
+import { createTester } from '../test/create-tester.js';
+import { listBays, mapJobSummary } from './job-read-service.js';
+
+const test = createTester(async ({ db }) => {
+  await db
+    .insert(bays)
+    .values([
+      bayRow('00000000-0000-4000-8000-000000000b03', 'Fabrication Bay 3'),
+      bayRow('00000000-0000-4000-8000-000000000b01', 'Fabrication Bay 1'),
+      bayRow('00000000-0000-4000-8000-000000000b02', 'Fabrication Bay 2'),
+    ]);
+
+  return {};
+});
 
 describe('mapJobSummary', () => {
   it('maps jobs with stage summaries', () => {
@@ -25,6 +40,56 @@ describe('mapJobSummary', () => {
       'assembly',
     ]);
     expect(summary.productSerialNumber).toBe('MODEL-001260001');
+  });
+});
+
+describe('listBays', () => {
+  test('returns bays in deterministic order for admins', async ({ context }) => {
+    const result = await listBays({
+      db: context.db,
+      access: createUserAccessSummary({ role: 'admin', userId: 'admin-user' }),
+    });
+
+    expect(result.items.map((bay) => bay.name)).toEqual([
+      'Fabrication Bay 1',
+      'Fabrication Bay 2',
+      'Fabrication Bay 3',
+    ]);
+  });
+
+  test('returns all bays for job supervisors', async ({ context }) => {
+    const result = await listBays({
+      db: context.db,
+      access: createUserAccessSummary({ role: 'job-supervisor', userId: 'supervisor-user' }),
+    });
+
+    expect(result.items).toHaveLength(3);
+  });
+
+  test('returns matching department bays for fabrication department managers', async ({ context }) => {
+    const result = await listBays({
+      db: context.db,
+      access: createUserAccessSummary({
+        departments: ['fabrication'],
+        role: 'job-department-manager',
+        userId: 'fabrication-manager',
+      }),
+    });
+
+    expect(result.items.map((bay) => bay.department)).toEqual(['fabrication', 'fabrication', 'fabrication']);
+  });
+
+  test('returns no bays for non-fabrication department managers', async ({ context }) => {
+    const result = await listBays({
+      db: context.db,
+      access: createUserAccessSummary({
+        departments: ['paint'],
+        role: 'job-department-manager',
+        userId: 'paint-manager',
+      }),
+    });
+
+    expect(result.items).toEqual([]);
   });
 });
 
@@ -62,6 +127,19 @@ function stageRow(stage: JobStageName, sequence: number) {
     jobId: '00000000-0000-4000-8000-000000000001',
     sequence,
     stage,
+  };
+}
+
+function bayRow(id: string, name: string) {
+  const now = new Date('2026-06-05T00:00:00.000Z');
+
+  return {
+    createdAt: now,
+    department: 'fabrication' as const,
+    id,
+    name,
+    scheduleOrigin: now,
+    updatedAt: now,
   };
 }
 

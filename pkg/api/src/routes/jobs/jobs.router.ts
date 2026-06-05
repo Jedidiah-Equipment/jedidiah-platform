@@ -1,4 +1,4 @@
-import { createJob, getJob, isJobCoreError, type JobCoreError, listJobs } from '@pkg/core';
+import { createJob, getJob, isJobCoreError, type JobCoreError, listBays, listJobs } from '@pkg/core';
 import { JobCreateInput, JobListInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
@@ -6,6 +6,8 @@ import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trp
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const jobsRouter = router({
+  listBays: authorizedProcedure('job:read').query(({ ctx }) => listBays({ db: ctx.db, access: ctx.access })),
+
   list: authorizedProcedure('job:read')
     .input(JobListInput)
     .query(({ ctx, input }) => listJobs({ db: ctx.db, access: ctx.access, input })),

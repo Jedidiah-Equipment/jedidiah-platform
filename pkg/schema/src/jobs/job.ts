@@ -17,6 +17,24 @@ export const JOB_STAGES = DEPARTMENTS;
 export type JobStageName = z.infer<typeof JobStageName>;
 export const JobStageName = Department;
 
+export type BayName = z.infer<typeof BayName>;
+export const BayName = requiredTrimmedText('Bay name is required').brand<'BayName'>();
+
+export type Bay = z.infer<typeof Bay>;
+export const Bay = z.object({
+  id: UUID,
+  department: Department,
+  name: BayName,
+  scheduleOrigin: DateIso,
+  createdAt: DateIso,
+  updatedAt: DateIso,
+});
+
+export type BayListResult = z.infer<typeof BayListResult>;
+export const BayListResult = z.object({
+  items: z.array(Bay),
+});
+
 export type JobWorkState = z.infer<typeof JobWorkState>;
 export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
 

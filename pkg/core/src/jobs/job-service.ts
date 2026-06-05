@@ -27,6 +27,8 @@ import {
   ProductSerialPrefix,
   ProductSerialSequence,
   ProductSerialYear,
+  type ResizeJobSlotInput,
+  ResizeJobSlotResult,
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
@@ -39,6 +41,8 @@ import {
   JobBayNotFoundError,
   JobCreateFromQuoteDeniedError,
   JobSlotBookingDeniedError,
+  JobSlotNotFoundError,
+  JobSlotResizeDeniedError,
   JobStageNotFoundError,
 } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
@@ -187,6 +191,51 @@ export async function bookJobSlot({
     }
 
     return BookJobSlotResult.parse({ slot });
+  });
+}
+
+export async function resizeJobSlot({
+  access,
+  db,
+  input,
+}: {
+  access: UserAccessSummary;
+  db: Db;
+  input: ResizeJobSlotInput;
+}): Promise<ResizeJobSlotResult> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({
+        bay: jobBays,
+        slot: jobSlots,
+      })
+      .from(jobSlots)
+      .innerJoin(jobBays, eq(jobSlots.bayId, jobBays.id))
+      .where(eq(jobSlots.id, input.slotId))
+      .for('update');
+
+    if (!row) {
+      throw new JobSlotNotFoundError(input.slotId);
+    }
+
+    if (!canBookBaySchedule(access, row.bay.department)) {
+      throw new JobSlotResizeDeniedError('You do not have permission to resize this Bay schedule.');
+    }
+
+    const [slot] = await tx
+      .update(jobSlots)
+      .set({
+        durationMinutes: input.durationMinutes,
+        updatedAt: new Date(),
+      })
+      .where(eq(jobSlots.id, row.slot.id))
+      .returning();
+
+    if (!slot) {
+      throw new Error('Job slot update did not return a row');
+    }
+
+    return ResizeJobSlotResult.parse({ slot });
   });
 }
 

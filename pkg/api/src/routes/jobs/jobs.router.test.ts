@@ -13,6 +13,7 @@ const test = createTester(async ({ db }) => {
   const quote = await createAcceptedQuote(db, product.id);
 
   return {
+    db,
     product,
     quote,
   };
@@ -166,6 +167,86 @@ describe('jobs.bookSlot', () => {
         }),
       ]),
     );
+  });
+});
+
+describe('jobs.resizeSlot', () => {
+  test('resizes an authorized slot and returns reflowed projections from listBays', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+    const firstJob = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({
+      quoteId: secondQuote.id,
+    });
+    const firstSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b03',
+      durationMinutes: 480,
+      jobStageId: getStage(firstJob, 'fabrication').id,
+    });
+
+    await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b03',
+      durationMinutes: 480,
+      jobStageId: getStage(secondJob, 'fabrication').id,
+    });
+
+    await expect(
+      caller.jobs.resizeSlot({
+        durationMinutes: 960,
+        slotId: firstSlot.slot.id,
+      }),
+    ).resolves.toMatchObject({
+      slot: {
+        durationMinutes: 960,
+        id: firstSlot.slot.id,
+      },
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b03',
+          slots: [
+            expect.objectContaining({
+              id: firstSlot.slot.id,
+              durationMinutes: 960,
+              startAt: '2026-06-05T00:00:00.000Z',
+              endAt: '2026-06-05T16:00:00.000Z',
+            }),
+            expect.objectContaining({
+              jobCode: secondJob.code,
+              startAt: '2026-06-05T16:00:00.000Z',
+              endAt: '2026-06-06T00:00:00.000Z',
+            }),
+          ],
+        }),
+      ]),
+    );
+  });
+
+  test('rejects users without job scheduling permissions', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const job = await supervisorCaller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const slot = await supervisorCaller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      durationMinutes: 480,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+
+    await expect(
+      salesCaller.jobs.resizeSlot({
+        durationMinutes: 960,
+        slotId: slot.slot.id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
   });
 });
 

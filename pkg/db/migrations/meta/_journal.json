@@ -211,6 +211,13 @@
       "when": 1780552870340,
       "tag": "0029_aspiring_killer_shrike",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1780657278108,
+      "tag": "0030_steep_santa_claus",
+      "breakpoints": true
     }
   ]
 }

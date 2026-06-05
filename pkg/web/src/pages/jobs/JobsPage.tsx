@@ -16,6 +16,7 @@ import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { BayScheduleGantt } from './components/BayScheduleGantt.js';
 import { JobStageChips } from './components/JobStageChips.js';
 
 export const useJobTableStore = createPersistedDataTableStore({
@@ -41,6 +42,7 @@ const jobSortOptions: SortOptions<JobListInput> = {
 export const JobsPage: React.FC = () => {
   return (
     <ListPageLayout description="Production" title="Jobs">
+      <BayScheduleGantt />
       <JobTable />
     </ListPageLayout>
   );

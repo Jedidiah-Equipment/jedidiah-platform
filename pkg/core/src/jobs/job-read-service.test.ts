@@ -1,4 +1,3 @@
-import { jobBays } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import type { JobStageName } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
@@ -6,17 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import { listBays, mapJobSummary } from './job-read-service.js';
 
-const test = createTester(async ({ db }) => {
-  await db
-    .insert(jobBays)
-    .values([
-      bayRow('00000000-0000-4000-8000-000000000b03', 'Fabrication Bay 3'),
-      bayRow('00000000-0000-4000-8000-000000000b01', 'Fabrication Bay 1'),
-      bayRow('00000000-0000-4000-8000-000000000b02', 'Fabrication Bay 2'),
-    ]);
-
-  return {};
-});
+const test = createTester(() => ({}));
 
 describe('mapJobSummary', () => {
   it('maps jobs with stage summaries', () => {
@@ -54,6 +43,8 @@ describe('listBays', () => {
       'Fabrication Bay 1',
       'Fabrication Bay 2',
       'Fabrication Bay 3',
+      'Fabrication Bay 4',
+      'Fabrication Bay 5',
     ]);
   });
 
@@ -63,7 +54,7 @@ describe('listBays', () => {
       access: createUserAccessSummary({ role: 'job-supervisor', userId: 'supervisor-user' }),
     });
 
-    expect(result.items).toHaveLength(3);
+    expect(result.items).toHaveLength(5);
   });
 
   test('returns matching department bays for fabrication department managers', async ({ context }) => {
@@ -76,7 +67,13 @@ describe('listBays', () => {
       }),
     });
 
-    expect(result.items.map((bay) => bay.department)).toEqual(['fabrication', 'fabrication', 'fabrication']);
+    expect(result.items.map((bay) => bay.department)).toEqual([
+      'fabrication',
+      'fabrication',
+      'fabrication',
+      'fabrication',
+      'fabrication',
+    ]);
   });
 
   test('returns all bays for unscoped department managers', async ({ context }) => {
@@ -89,7 +86,7 @@ describe('listBays', () => {
       }),
     });
 
-    expect(result.items).toHaveLength(3);
+    expect(result.items).toHaveLength(5);
   });
 
   test('returns no bays for non-fabrication department managers', async ({ context }) => {
@@ -140,19 +137,6 @@ function stageRow(stage: JobStageName, sequence: number) {
     jobId: '00000000-0000-4000-8000-000000000001',
     sequence,
     stage,
-  };
-}
-
-function bayRow(id: string, name: string) {
-  const now = new Date('2026-06-05T00:00:00.000Z');
-
-  return {
-    createdAt: now,
-    department: 'fabrication' as const,
-    id,
-    name,
-    scheduleOrigin: now,
-    updatedAt: now,
   };
 }
 

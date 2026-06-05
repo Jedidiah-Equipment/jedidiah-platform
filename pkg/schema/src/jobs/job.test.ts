@@ -11,6 +11,8 @@ import {
   JobListFilters,
   JobWorkState,
   ProjectedJobSlot,
+  RemoveJobSlotInput,
+  RemoveJobSlotResult,
   ResizeJobSlotInput,
   ResizeJobSlotResult,
 } from './job.js';
@@ -214,6 +216,43 @@ describe('JobSlot schemas', () => {
     ).toMatchObject({
       slot: {
         durationMinutes: 960,
+        updatedAt: '2026-06-06T00:00:00.000Z',
+      },
+    });
+  });
+
+  it('accepts remove inputs with a valid slot id', () => {
+    expect(
+      RemoveJobSlotInput.parse({
+        slotId: '00000000-0000-4000-8000-000000000003',
+      }),
+    ).toMatchObject({
+      slotId: '00000000-0000-4000-8000-000000000003',
+    });
+    expect(() =>
+      RemoveJobSlotInput.parse({
+        slotId: 'not-a-uuid',
+      }),
+    ).toThrow();
+  });
+
+  it('returns the removed slot without projection fields', () => {
+    expect(
+      RemoveJobSlotResult.parse({
+        slot: {
+          bayId: '00000000-0000-4000-8000-000000000001',
+          createdAt: new Date('2026-06-05T00:00:00.000Z'),
+          durationMinutes: 480,
+          id: '00000000-0000-4000-8000-000000000003',
+          jobStageId: '00000000-0000-4000-8000-000000000002',
+          sequence: 2,
+          updatedAt: new Date('2026-06-06T00:00:00.000Z'),
+        },
+      }),
+    ).toMatchObject({
+      slot: {
+        createdAt: '2026-06-05T00:00:00.000Z',
+        sequence: 2,
         updatedAt: '2026-06-06T00:00:00.000Z',
       },
     });

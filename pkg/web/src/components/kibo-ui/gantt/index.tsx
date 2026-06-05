@@ -549,7 +549,7 @@ export const GanttMarker: FC<
           }
         >
           {label}
-          <span className="max-h-[0] overflow-hidden opacity-80 transition-all group-hover:max-h-[2rem]">
+          <span className="max-h-0 overflow-hidden opacity-80 transition-all group-hover:max-h-8">
             {formatDate(date, 'MMM dd, yyyy')}
           </span>
         </ContextMenuTrigger>
@@ -881,7 +881,7 @@ export const GanttToday: FC<GanttTodayProps> = ({ className }) => {
         )}
       >
         {label}
-        <span className="max-h-[0] overflow-hidden opacity-80 transition-all group-hover:max-h-[2rem]">
+        <span className="max-h-0 overflow-hidden opacity-80 transition-all group-hover:max-h-8">
           {formatDate(date, 'MMM dd, yyyy')}
         </span>
       </div>

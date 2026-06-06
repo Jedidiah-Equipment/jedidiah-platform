@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AddBayCalendarExceptionInput,
+  AddBayCalendarExceptionResult,
   AddIdleJobSlotInput,
   AddIdleJobSlotResult,
   BayCalendarException,
@@ -19,6 +20,7 @@ import {
   OffDay,
   ProjectedJobSlot,
   RemoveBayCalendarExceptionInput,
+  RemoveBayCalendarExceptionResult,
   RemoveJobSlotInput,
   RemoveJobSlotResult,
   ResizeJobSlotInput,
@@ -127,7 +129,17 @@ describe('Working Calendar schemas', () => {
     });
   });
 
-  it('accepts toggle results and bay list Off-Day facts', () => {
+  it('accepts mutation results and bay list calendar facts', () => {
+    const exception = {
+      bayId: '00000000-0000-4000-8000-000000000001',
+      date: '2026-06-20',
+      direction: 'work',
+      label: null,
+    } as const;
+
+    expect(AddBayCalendarExceptionResult.parse({ exception })).toEqual({ exception });
+    expect(RemoveBayCalendarExceptionResult.parse({ exception })).toEqual({ exception });
+    expect(RemoveBayCalendarExceptionResult.parse({ exception: null })).toEqual({ exception: null });
     expect(
       ToggleOffDayResult.parse({
         offDay: {
@@ -144,7 +156,19 @@ describe('Working Calendar schemas', () => {
     expect(ToggleOffDayResult.parse({ offDay: null })).toEqual({ offDay: null });
     expect(
       BayListResult.parse({
-        items: [],
+        items: [
+          {
+            calendarExceptions: [exception],
+            createdAt: '2026-06-01T00:00:00.000Z',
+            department: 'fabrication',
+            id: '00000000-0000-4000-8000-000000000002',
+            name: 'Fabrication Bay 1',
+            nextAvailableAt: '2026-06-05T00:00:00.000Z',
+            scheduleOrigin: '2026-06-05T00:00:00.000Z',
+            slots: [],
+            updatedAt: '2026-06-01T00:00:00.000Z',
+          },
+        ],
         offDays: [
           {
             date: '2026-06-16',
@@ -153,7 +177,19 @@ describe('Working Calendar schemas', () => {
         ],
       }),
     ).toEqual({
-      items: [],
+      items: [
+        {
+          calendarExceptions: [exception],
+          createdAt: '2026-06-01T00:00:00.000Z',
+          department: 'fabrication',
+          id: '00000000-0000-4000-8000-000000000002',
+          name: 'Fabrication Bay 1',
+          nextAvailableAt: '2026-06-05T00:00:00.000Z',
+          scheduleOrigin: '2026-06-05T00:00:00.000Z',
+          slots: [],
+          updatedAt: '2026-06-01T00:00:00.000Z',
+        },
+      ],
       offDays: [
         {
           date: '2026-06-16',

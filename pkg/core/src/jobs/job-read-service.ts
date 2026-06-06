@@ -5,6 +5,7 @@ import {
   type Db,
   documents,
   getPaginationQueryOptions,
+  jobBayCalendarExceptions,
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
@@ -20,6 +21,7 @@ import {
 import { canViewStage, parseJobCodeSearch, projectJobSlots, type WorkingCalendar } from '@pkg/domain';
 import {
   Bay,
+  BayCalendarException,
   type BayListResult,
   BaySchedule,
   type Department,
@@ -64,6 +66,7 @@ type JobDocumentRow = DocumentSummaryRow & {
   sourceProductName: string | null;
 };
 type BayScheduleRow = typeof jobBays.$inferSelect & {
+  calendarExceptions: (typeof jobBayCalendarExceptions.$inferSelect)[];
   slots: (typeof jobSlots.$inferSelect & {
     stage:
       | (Pick<typeof jobStages.$inferSelect, 'id' | 'jobId' | 'stage'> & {
@@ -91,6 +94,9 @@ export async function listBays({
     orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
     where: visibleDepartments === 'all' ? undefined : inArray(jobBays.department, visibleDepartments),
     with: {
+      calendarExceptions: {
+        orderBy: [asc(jobBayCalendarExceptions.date)],
+      },
       slots: {
         orderBy: [asc(jobSlots.sequence), asc(jobSlots.id)],
         with: {
@@ -114,10 +120,10 @@ export async function listBays({
     },
   });
 
-  const workingCalendar = createOrgWorkingCalendar(offDays);
+  const orgWorkingCalendar = createOrgWorkingCalendar(offDays);
 
   return {
-    items: rows.map((row) => mapBaySchedule(row, workingCalendar)),
+    items: rows.map((row) => mapBaySchedule(row, createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions))),
     offDays,
   };
 }
@@ -138,6 +144,31 @@ export function createOrgWorkingCalendar(offDays: readonly OffDay[]): WorkingCal
   return {
     orgOffDays: new Set(offDays.map((offDay) => offDay.date)),
   };
+}
+
+export function createBayWorkingCalendar(
+  orgWorkingCalendar: WorkingCalendar,
+  exceptions: readonly { date: string; direction: 'work' | 'off' }[],
+): WorkingCalendar {
+  return {
+    ...orgWorkingCalendar,
+    bayExceptions: new Map(exceptions.map((exception) => [exception.date, exception.direction])),
+  };
+}
+
+export async function listBayCalendarExceptions(db: Db | DatabaseTransaction, bayId: UUID) {
+  const rows = await db
+    .select({
+      bayId: jobBayCalendarExceptions.bayId,
+      date: jobBayCalendarExceptions.date,
+      direction: jobBayCalendarExceptions.direction,
+      label: jobBayCalendarExceptions.label,
+    })
+    .from(jobBayCalendarExceptions)
+    .where(eq(jobBayCalendarExceptions.bayId, bayId))
+    .orderBy(asc(jobBayCalendarExceptions.date));
+
+  return rows.map((row) => BayCalendarException.parse(row));
 }
 
 export async function listJobs({
@@ -234,6 +265,14 @@ function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
 
   return BaySchedule.parse({
     ...Bay.parse(row),
+    calendarExceptions: row.calendarExceptions.map((exception) =>
+      BayCalendarException.parse({
+        bayId: exception.bayId,
+        date: exception.date,
+        direction: exception.direction,
+        label: exception.label,
+      }),
+    ),
     nextAvailableAt: projection.nextAvailableAt,
     slots: projection.slots.map((slot) => {
       if (slot.kind === 'idle') {

@@ -1,3 +1,5 @@
+import { formatJobSchedulingDateKey } from '@pkg/domain';
+
 export type MaintainedHorizonWarning = {
   bayId: string;
   maintainedThrough: string;
@@ -30,7 +32,7 @@ export function getMaintainedHorizonWarnings({
   }
 
   return bays.flatMap((bay) => {
-    const queueEndDate = formatLocalDateKey(new Date(bay.nextAvailableAt));
+    const queueEndDate = formatJobSchedulingDateKey(new Date(bay.nextAvailableAt));
 
     if (queueEndDate <= maintainedThrough) {
       return [];

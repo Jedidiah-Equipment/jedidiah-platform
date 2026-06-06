@@ -27,6 +27,21 @@ describe('getMaintainedHorizonWarnings', () => {
     ]);
   });
 
+  it('compares queue ends using Johannesburg business dates', () => {
+    expect(
+      getMaintainedHorizonWarnings({
+        bays: [{ id: 'bay-1', nextAvailableAt: '2026-06-18T22:00:00.000Z' }],
+        offDays: [{ date: '2026-06-18' }],
+      }),
+    ).toEqual([
+      {
+        bayId: 'bay-1',
+        maintainedThrough: '2026-06-18',
+        queueEndDate: '2026-06-19',
+      },
+    ]);
+  });
+
   it('does not warn when a Bay queue ends on or before the maintained horizon', () => {
     expect(
       getMaintainedHorizonWarnings({

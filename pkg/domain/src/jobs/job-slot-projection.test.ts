@@ -131,6 +131,22 @@ describe('projectJobSlots', () => {
     expect(projection.nextAvailableAt).toEqual(new Date('2026-06-08T22:00:00.000Z'));
   });
 
+  it('uses Johannesburg business dates for off-day lookups even when the instant is UTC-prior-day', () => {
+    const projection = projectJobSlots({
+      scheduleOrigin: new Date('2026-06-05T22:30:00.000Z'),
+      slots: [slot({ id: 'slot-1', sequence: 1 })],
+      workingCalendar: {
+        orgOffDays: new Set(['2026-06-06']),
+      },
+    });
+
+    expect(projection.slots[0]).toMatchObject({
+      id: 'slot-1',
+      startAt: new Date('2026-06-06T22:00:00.000Z'),
+      endAt: new Date('2026-06-07T22:00:00.000Z'),
+    });
+  });
+
   it('lets a bay work exception open an org off-day', () => {
     const projection = projectJobSlots({
       scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),

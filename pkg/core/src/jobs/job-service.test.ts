@@ -19,6 +19,7 @@ import {
   quotes,
   supplier,
   user,
+  workingCalendarOffDays,
 } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import {
@@ -28,6 +29,7 @@ import {
   type PartUnitOfMeasure,
   type ProductDocumentType,
   QuoteUpdateInput,
+  ToggleOffDayInput,
 } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
@@ -35,9 +37,10 @@ import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
 import { getJob, listBays } from './job-read-service.js';
-import { addIdleJobSlot, bookJobSlot, createJob, removeJobSlot, resizeJobSlot } from './job-service.js';
+import { addIdleJobSlot, bookJobSlot, createJob, removeJobSlot, resizeJobSlot, toggleOffDay } from './job-service.js';
 
 const actorUserId = 'test-user-id';
+const calendarAccess = createUserAccessSummary({ role: 'admin', userId: actorUserId });
 const jobAccess = createUserAccessSummary({ role: 'job-supervisor', userId: actorUserId });
 
 beforeEach(() => {
@@ -511,6 +514,99 @@ describe('createJob', () => {
   });
 });
 
+describe('toggleOffDay', () => {
+  test('inserts, updates, and removes org Off-Days for calendar editors', async ({ context }) => {
+    await expect(
+      toggleOffDay({
+        access: calendarAccess,
+        db: context.db,
+        input: offDayInput({ date: '2026-06-16', isOffDay: true, label: '  Youth Day  ' }),
+      }),
+    ).resolves.toEqual({
+      offDay: {
+        date: '2026-06-16',
+        label: 'Youth Day',
+      },
+    });
+    await expect(
+      toggleOffDay({
+        access: calendarAccess,
+        db: context.db,
+        input: offDayInput({ date: '2026-06-16', isOffDay: true, label: null }),
+      }),
+    ).resolves.toEqual({
+      offDay: {
+        date: '2026-06-16',
+        label: null,
+      },
+    });
+    await expect(
+      toggleOffDay({
+        access: calendarAccess,
+        db: context.db,
+        input: offDayInput({ date: '2026-06-16', isOffDay: false, label: null }),
+      }),
+    ).resolves.toEqual({ offDay: null });
+
+    const rows = await context.db.select().from(workingCalendarOffDays);
+    expect(rows).toEqual([]);
+  });
+
+  test('denies users without the Job calendar permission', async ({ context }) => {
+    await expect(
+      toggleOffDay({
+        access: jobAccess,
+        db: context.db,
+        input: offDayInput({ date: '2026-06-16', isOffDay: true, label: null }),
+      }),
+    ).rejects.toThrow('You do not have permission to manage the Job calendar.');
+  });
+
+  test('returns Off-Day facts and reflows Bay projections', async ({ context }) => {
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    await toggleOffDay({
+      access: calendarAccess,
+      db: context.db,
+      input: offDayInput({ date: '2026-06-06', isOffDay: true, label: 'Shutdown' }),
+    });
+
+    const firstSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+    });
+    const secondSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+    });
+
+    const schedule = await listBays({ access: jobAccess, db: context.db });
+    expect(schedule.offDays).toEqual([{ date: '2026-06-06', label: 'Shutdown' }]);
+    expect(getBaySchedule(schedule, bay.id)).toEqual(
+      expect.objectContaining({
+        slots: [
+          expect.objectContaining({
+            id: firstSlot.slot.id,
+            startAt: '2026-06-04T22:00:00.000Z',
+            endAt: '2026-06-05T22:00:00.000Z',
+          }),
+          expect.objectContaining({
+            id: secondSlot.slot.id,
+            startAt: '2026-06-06T22:00:00.000Z',
+            endAt: '2026-06-07T22:00:00.000Z',
+          }),
+        ],
+      }),
+    );
+  });
+});
+
 describe('bookJobSlot', () => {
   test('appends slots to the back of a bay queue and returns projected dates', async ({ context }) => {
     const bay = await createBay(context.db, {
@@ -725,6 +821,52 @@ describe('bookJobSlot', () => {
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
       workingCalendar,
+    });
+
+    const storedSlots = await context.db
+      .select({
+        durationDays: jobSlots.durationDays,
+        kind: jobSlots.kind,
+        sequence: jobSlots.sequence,
+      })
+      .from(jobSlots)
+      .where(eq(jobSlots.bayId, bay.id))
+      .orderBy(asc(jobSlots.sequence));
+    expect(storedSlots).toEqual([
+      { durationDays: 1, kind: 'work', sequence: 1 },
+      { durationDays: 2, kind: 'idle', sequence: 2 },
+      { durationDays: 1, kind: 'work', sequence: 3 },
+    ]);
+  });
+
+  test('counts auto-inserted idle gaps in working days from persisted Off-Days', async ({ context }) => {
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    await toggleOffDay({
+      access: calendarAccess,
+      db: context.db,
+      input: offDayInput({ date: '2026-06-06', isOffDay: true, label: null }),
+    });
+    await toggleOffDay({
+      access: calendarAccess,
+      db: context.db,
+      input: offDayInput({ date: '2026-06-07', isOffDay: true, label: null }),
+    });
+
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+    });
+    vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
     });
 
     const storedSlots = await context.db
@@ -1286,6 +1428,10 @@ function getBaySchedule(schedule: Awaited<ReturnType<typeof listBays>>, bayId: s
   }
 
   return bay;
+}
+
+function offDayInput(input: Parameters<typeof ToggleOffDayInput.parse>[0]) {
+  return ToggleOffDayInput.parse(input);
 }
 
 async function createAcceptedJob(db: Db, productId: string): Promise<JobDetail> {

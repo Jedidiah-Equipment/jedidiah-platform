@@ -29,6 +29,7 @@ import { Route as AuthedQuotesIndexRouteImport } from './../routes/_authed.quote
 import { Route as AuthedProductsIndexRouteImport } from './../routes/_authed.products.index'
 import { Route as AuthedJobsIndexRouteImport } from './../routes/_authed.jobs.index'
 import { Route as AuthedCustomersIndexRouteImport } from './../routes/_authed.customers.index'
+import { Route as AuthedJobsCalendarRouteImport } from './../routes/_authed.jobs.calendar'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
 import { Route as AuthedSuppliersIdEditRouteImport } from './../routes/_authed.suppliers.$id.edit'
 import { Route as AuthedQuotesIdEditRouteImport } from './../routes/_authed.quotes.$id_.edit'
@@ -134,6 +135,11 @@ const AuthedCustomersIndexRoute = AuthedCustomersIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedCustomersRoute,
 } as any)
+const AuthedJobsCalendarRoute = AuthedJobsCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AuthedJobsRoute,
+} as any)
 const AuthedJobsIdRoute = AuthedJobsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/suppliers': typeof AuthedSuppliersRouteWithChildren
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
+  '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/customers/': typeof AuthedCustomersIndexRoute
   '/jobs/': typeof AuthedJobsIndexRoute
   '/products/': typeof AuthedProductsIndexRoute
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthedDashboardRoute
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
+  '/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/customers': typeof AuthedCustomersIndexRoute
   '/jobs': typeof AuthedJobsIndexRoute
   '/products': typeof AuthedProductsIndexRoute
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/_authed/suppliers': typeof AuthedSuppliersRouteWithChildren
   '/_authed/users': typeof AuthedUsersRoute
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
+  '/_authed/jobs/calendar': typeof AuthedJobsCalendarRoute
   '/_authed/customers/': typeof AuthedCustomersIndexRoute
   '/_authed/jobs/': typeof AuthedJobsIndexRoute
   '/_authed/products/': typeof AuthedProductsIndexRoute
@@ -253,6 +262,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/users'
     | '/jobs/$id'
+    | '/jobs/calendar'
     | '/customers/'
     | '/jobs/'
     | '/products/'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/users'
     | '/jobs/$id'
+    | '/jobs/calendar'
     | '/customers'
     | '/jobs'
     | '/products'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/_authed/suppliers'
     | '/_authed/users'
     | '/_authed/jobs/$id'
+    | '/_authed/jobs/calendar'
     | '/_authed/customers/'
     | '/_authed/jobs/'
     | '/_authed/products/'
@@ -463,6 +475,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCustomersIndexRouteImport
       parentRoute: typeof AuthedCustomersRoute
     }
+    '/_authed/jobs/calendar': {
+      id: '/_authed/jobs/calendar'
+      path: '/calendar'
+      fullPath: '/jobs/calendar'
+      preLoaderRoute: typeof AuthedJobsCalendarRouteImport
+      parentRoute: typeof AuthedJobsRoute
+    }
     '/_authed/jobs/$id': {
       id: '/_authed/jobs/$id'
       path: '/$id'
@@ -517,11 +536,13 @@ const AuthedCustomersRouteWithChildren = AuthedCustomersRoute._addFileChildren(
 
 interface AuthedJobsRouteChildren {
   AuthedJobsIdRoute: typeof AuthedJobsIdRoute
+  AuthedJobsCalendarRoute: typeof AuthedJobsCalendarRoute
   AuthedJobsIndexRoute: typeof AuthedJobsIndexRoute
 }
 
 const AuthedJobsRouteChildren: AuthedJobsRouteChildren = {
   AuthedJobsIdRoute: AuthedJobsIdRoute,
+  AuthedJobsCalendarRoute: AuthedJobsCalendarRoute,
   AuthedJobsIndexRoute: AuthedJobsIndexRoute,
 }
 

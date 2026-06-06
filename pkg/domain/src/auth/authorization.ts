@@ -26,6 +26,7 @@ export const permissionLabels = {
   'job:create': 'Create jobs',
   'job:read': 'View jobs',
   'job:update': 'Update jobs',
+  'job:update-calendar': 'Manage job calendar',
   'product:create': 'Create products',
   'product:read': 'View products',
   'product:update': 'Update products',
@@ -54,6 +55,7 @@ export const permissionDescriptions = {
   'job:create': 'Create new production jobs.',
   'job:read': 'View production jobs.',
   'job:update': 'Update production job details.',
+  'job:update-calendar': 'Manage org-wide production Off-Days.',
   'product:create': 'Add new product catalog records.',
   'product:read': 'View product catalog records.',
   'product:update': 'Edit existing product catalog records.',
@@ -73,7 +75,7 @@ export const permissionDescriptions = {
 export const authorizationStatement = {
   audit: ['read'],
   customer: ['read', 'create', 'update'],
-  job: ['read', 'create', 'update'],
+  job: ['read', 'create', 'update', 'update-calendar'],
   'job-stage': ['read', 'update'],
   part: ['read', 'update'],
   product: ['read', 'create', 'update'],
@@ -92,7 +94,7 @@ export const appRoleAccess = {
   admin: {
     audit: ['read'],
     customer: ['read', 'create', 'update'],
-    job: ['read', 'create', 'update'],
+    job: ['read', 'create', 'update', 'update-calendar'],
     'job-stage': ['read', 'update'],
     part: ['read', 'update'],
     product: ['read', 'create', 'update'],

@@ -50,6 +50,88 @@ describe('jobs.listBays', () => {
       code: 'FORBIDDEN',
     });
   });
+
+  test('returns Off-Day facts and reflowed projected slots', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const job = await supervisorCaller.jobs.create({
+      quoteId: context.quote.id,
+    });
+
+    await adminCaller.jobs.toggleOffDay({
+      date: '2026-06-06',
+      isOffDay: true,
+      label: 'Shutdown',
+    });
+    await supervisorCaller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      durationDays: 2,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+
+    await expect(supervisorCaller.jobs.listBays()).resolves.toMatchObject({
+      offDays: [{ date: '2026-06-06', label: 'Shutdown' }],
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b02',
+          nextAvailableAt: '2026-06-07T22:00:00.000Z',
+          slots: [
+            expect.objectContaining({
+              jobCode: job.code,
+              startAt: '2026-06-04T22:00:00.000Z',
+              endAt: '2026-06-07T22:00:00.000Z',
+            }),
+          ],
+        }),
+      ]),
+    });
+  });
+});
+
+describe('jobs.toggleOffDay', () => {
+  test('allows admins to create and remove Off-Days', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+
+    await expect(
+      caller.jobs.toggleOffDay({
+        date: '2026-06-16',
+        isOffDay: true,
+        label: '  Youth Day  ',
+      }),
+    ).resolves.toEqual({
+      offDay: {
+        date: '2026-06-16',
+        label: 'Youth Day',
+      },
+    });
+    await expect(
+      caller.jobs.toggleOffDay({
+        date: '2026-06-16',
+        isOffDay: false,
+        label: null,
+      }),
+    ).resolves.toEqual({ offDay: null });
+  });
+
+  test('rejects non-admin Job users', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+
+    await expect(
+      supervisorCaller.jobs.toggleOffDay({
+        date: '2026-06-16',
+        isOffDay: true,
+        label: null,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      salesCaller.jobs.toggleOffDay({
+        date: '2026-06-16',
+        isOffDay: true,
+        label: null,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
 });
 
 describe('jobs.create', () => {

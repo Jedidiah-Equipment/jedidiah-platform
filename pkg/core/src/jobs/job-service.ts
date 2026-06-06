@@ -13,7 +13,14 @@ import {
   quoteSelectedAssemblies,
   quotes,
 } from '@pkg/db';
-import { buildCfo, type CfoEntry, JOB_STAGE_PIPELINE, projectJobSlots } from '@pkg/domain';
+import {
+  buildCfo,
+  type CfoEntry,
+  countWorkingDaysBetween,
+  JOB_STAGE_PIPELINE,
+  projectJobSlots,
+  type WorkingCalendar,
+} from '@pkg/domain';
 import {
   type AddIdleJobSlotInput,
   AddIdleJobSlotResult,
@@ -36,7 +43,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { differenceInCalendarDays, startOfDay } from 'date-fns';
+import { startOfDay } from 'date-fns';
 import { and, asc, eq, gt, gte, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
@@ -143,11 +150,13 @@ export async function bookJobSlot({
   currentDate,
   db,
   input,
+  workingCalendar,
 }: {
   access: UserAccessSummary;
+  currentDate?: Date;
   db: Db;
   input: BookJobSlotInput;
-  currentDate?: Date;
+  workingCalendar?: WorkingCalendar;
 }): Promise<BookJobSlotResult> {
   return db.transaction(async (tx) => {
     const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
@@ -183,6 +192,7 @@ export async function bookJobSlot({
       currentDate: currentDate ?? new Date(),
       scheduleOrigin: bay.scheduleOrigin,
       tx,
+      ...(workingCalendar === undefined ? {} : { workingCalendar }),
     });
 
     if (gapDays > 0) {
@@ -377,20 +387,26 @@ async function getIdleGapDaysBeforeAppend({
   currentDate,
   scheduleOrigin,
   tx,
+  workingCalendar,
 }: {
   bayId: UUID;
   currentDate: Date;
   scheduleOrigin: Date;
   tx: DatabaseTransaction;
+  workingCalendar?: WorkingCalendar;
 }): Promise<number> {
   const existingSlots = await tx.query.jobSlots.findMany({
     orderBy: [asc(jobSlots.sequence), asc(jobSlots.id)],
     where: eq(jobSlots.bayId, bayId),
   });
-  const projection = projectJobSlots({ scheduleOrigin, slots: existingSlots });
+  const projection = projectJobSlots({
+    scheduleOrigin,
+    slots: existingSlots,
+    ...(workingCalendar === undefined ? {} : { workingCalendar }),
+  });
   const todayStart = startOfDay(currentDate);
 
-  return Math.max(0, differenceInCalendarDays(todayStart, projection.nextAvailableAt));
+  return countWorkingDaysBetween(projection.nextAvailableAt, todayStart, workingCalendar);
 }
 
 async function insertIdleSlot({

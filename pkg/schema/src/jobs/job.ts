@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-import { DateIso } from '../common/date.js';
+import { DateIso, DateOnlyIso } from '../common/date.js';
 import { DEPARTMENTS, Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
-import { nullableTrimmedText, requiredTrimmedText } from '../common/text.js';
+import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 import { JobDocument } from '../documents/document.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
@@ -29,6 +29,54 @@ export const Bay = z.object({
   createdAt: DateIso,
   updatedAt: DateIso,
 });
+
+export type OffDay = z.infer<typeof OffDay>;
+export const OffDay = z
+  .object({
+    date: DateOnlyIso,
+    label: nullableTrimmedText(),
+  })
+  .strict();
+
+export type BayCalendarExceptionDirection = z.infer<typeof BayCalendarExceptionDirection>;
+export const BayCalendarExceptionDirection = z.enum(['work', 'off']);
+
+export type BayCalendarException = z.infer<typeof BayCalendarException>;
+export const BayCalendarException = z
+  .object({
+    bayId: UUID,
+    date: DateOnlyIso,
+    direction: BayCalendarExceptionDirection,
+    label: nullableTrimmedText(),
+  })
+  .strict();
+
+export type ToggleOffDayInput = z.infer<typeof ToggleOffDayInput>;
+export const ToggleOffDayInput = z
+  .object({
+    date: DateOnlyIso,
+    isOffDay: z.boolean(),
+    label: nullableTrimmedTextInput(),
+  })
+  .strict();
+
+export type AddBayCalendarExceptionInput = z.infer<typeof AddBayCalendarExceptionInput>;
+export const AddBayCalendarExceptionInput = z
+  .object({
+    bayId: UUID,
+    date: DateOnlyIso,
+    direction: BayCalendarExceptionDirection,
+    label: nullableTrimmedTextInput(),
+  })
+  .strict();
+
+export type RemoveBayCalendarExceptionInput = z.infer<typeof RemoveBayCalendarExceptionInput>;
+export const RemoveBayCalendarExceptionInput = z
+  .object({
+    bayId: UUID,
+    date: DateOnlyIso,
+  })
+  .strict();
 
 export type SlotSequence = z.infer<typeof SlotSequence>;
 export const SlotSequence = z.int().positive().refine(Number.isSafeInteger);

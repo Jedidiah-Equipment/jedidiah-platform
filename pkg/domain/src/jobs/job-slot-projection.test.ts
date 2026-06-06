@@ -107,7 +107,7 @@ describe('projectJobSlots', () => {
 
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: startOfDay(thursday),
+      startAt: new Date('2026-06-03T22:00:00.000Z'),
       endAt: new Date('2026-06-10T22:00:00.000Z'),
     });
     expect(projection.nextAvailableAt).toEqual(new Date('2026-06-10T22:00:00.000Z'));
@@ -159,7 +159,7 @@ describe('projectJobSlots', () => {
 
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: scheduleOriginDayStart,
+      startAt: new Date('2026-06-04T22:00:00.000Z'),
       endAt: new Date('2026-06-08T22:00:00.000Z'),
     });
   });
@@ -175,7 +175,7 @@ describe('projectJobSlots', () => {
 
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: scheduleOriginDayStart,
+      startAt: new Date('2026-06-04T22:00:00.000Z'),
       endAt: new Date('2026-06-07T22:00:00.000Z'),
     });
   });
@@ -196,7 +196,7 @@ describe('projectJobSlots', () => {
     expect(projection.slots.map(({ id, startAt, endAt }) => ({ id, startAt, endAt }))).toEqual([
       {
         id: 'slot-a',
-        startAt: scheduleOriginDayStart,
+        startAt: new Date('2026-06-04T22:00:00.000Z'),
         endAt: new Date('2026-06-05T22:00:00.000Z'),
       },
       {

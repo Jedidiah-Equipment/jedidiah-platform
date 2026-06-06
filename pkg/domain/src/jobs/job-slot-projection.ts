@@ -1,15 +1,9 @@
-import { addDays, startOfDay } from 'date-fns';
+import { addDays, addHours, format, parseISO, startOfDay } from 'date-fns';
 
 export const DEFAULT_IDLE_SLOT_LABEL = 'Idle';
 // Off-Day keys are Johannesburg business dates; keep projection independent of the host TZ.
 const JOHANNESBURG_MIDNIGHT_OFFSET = '+02:00';
-const JOHANNESBURG_TIME_ZONE = 'Africa/Johannesburg';
-const JOHANNESBURG_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
-  day: '2-digit',
-  month: '2-digit',
-  timeZone: JOHANNESBURG_TIME_ZONE,
-  year: 'numeric',
-});
+const JOHANNESBURG_UTC_OFFSET_HOURS = 2;
 
 export type ProjectableJobSlot = {
   durationDays: number;
@@ -126,24 +120,9 @@ function isWorkingDay(date: Date, workingCalendar?: WorkingCalendar): boolean {
 }
 
 function toDateKey(date: Date): string {
-  const parts = JOHANNESBURG_DATE_FORMAT.formatToParts(date);
-  const year = getDatePart(parts, 'year');
-  const month = getDatePart(parts, 'month');
-  const day = getDatePart(parts, 'day');
-
-  return `${year}-${month}-${day}`;
+  return format(addHours(date, JOHANNESBURG_UTC_OFFSET_HOURS), 'yyyy-MM-dd');
 }
 
 function startOfJohannesburgDay(date: Date): Date {
-  return new Date(`${toDateKey(date)}T00:00:00.000${JOHANNESBURG_MIDNIGHT_OFFSET}`);
-}
-
-function getDatePart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
-  const value = parts.find((part) => part.type === type)?.value;
-
-  if (!value) {
-    throw new Error(`Missing Johannesburg date part: ${type}`);
-  }
-
-  return value;
+  return parseISO(`${toDateKey(date)}T00:00:00.000${JOHANNESBURG_MIDNIGHT_OFFSET}`);
 }

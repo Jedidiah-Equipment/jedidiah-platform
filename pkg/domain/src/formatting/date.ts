@@ -2,6 +2,9 @@ import { differenceInSeconds, formatDate as formatDateDfns, fromUnixTime, isVali
 
 export type DateFormat = 'short' | 'medium' | 'long' | 'duration' | 'duration-short' | (string & NonNullable<unknown>);
 
+export const JOHANNESBURG_TIME_ZONE = 'Africa/Johannesburg';
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
 const commonDateInputFormats = [
   // Internal parse-only formats for typed form input; display formatting still uses formatDate.
   'yyyy-MM-dd',
@@ -163,6 +166,92 @@ export const secondsToAgeString = (seconds: number, short = false) => {
   return str || '1s';
 };
 
+export function getZonedDateParts(
+  date: Date,
+  timeZone: string,
+): {
+  day: number;
+  month: number;
+  weekday: number;
+  year: number;
+} {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    hourCycle: 'h23',
+    month: '2-digit',
+    timeZone,
+    weekday: 'short',
+    year: 'numeric',
+  }).formatToParts(date);
+
+  return {
+    day: Number(getDateTimePart(parts, 'day')),
+    month: Number(getDateTimePart(parts, 'month')),
+    weekday: parseWeekday(getDateTimePart(parts, 'weekday')),
+    year: Number(getDateTimePart(parts, 'year')),
+  };
+}
+
+export function zonedDateStartToUtcInstant(dateOnly: string, timeZone: string): Date {
+  const { day, month, year } = parseDateOnlyParts(dateOnly);
+  const localMidnightAsUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  const offset = getTimeZoneOffsetMilliseconds(localMidnightAsUtc, timeZone);
+  const candidate = new Date(localMidnightAsUtc.getTime() - offset);
+
+  return new Date(localMidnightAsUtc.getTime() - getTimeZoneOffsetMilliseconds(candidate, timeZone));
+}
+
+export function parseDateOnlyParts(dateOnly: string): { day: number; month: number; year: number } {
+  const match = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/.exec(dateOnly);
+
+  if (!match?.groups) {
+    throw new Error(`Invalid date-only value ${dateOnly}`);
+  }
+
+  return {
+    day: Number(match.groups.day),
+    month: Number(match.groups.month),
+    year: Number(match.groups.year),
+  };
+}
+
+export function getTimeZoneOffsetMilliseconds(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+    minute: '2-digit',
+    month: '2-digit',
+    second: '2-digit',
+    timeZone,
+    year: 'numeric',
+  }).formatToParts(date);
+  const zonedTimestamp = Date.UTC(
+    Number(getDateTimePart(parts, 'year')),
+    Number(getDateTimePart(parts, 'month')) - 1,
+    Number(getDateTimePart(parts, 'day')),
+    Number(getDateTimePart(parts, 'hour')),
+    Number(getDateTimePart(parts, 'minute')),
+    Number(getDateTimePart(parts, 'second')),
+  );
+
+  return zonedTimestamp - date.getTime();
+}
+
+export function toDateOnlyIso(epochDay: number): string {
+  return new Date(epochDay * MILLISECONDS_PER_DAY).toISOString().slice(0, 10);
+}
+
+export function toJohannesburgDateKey(date: Date): string {
+  const { day, month, year } = getZonedDateParts(date, JOHANNESBURG_TIME_ZONE);
+
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+export function johannesburgDayStart(date: Date): Date {
+  return zonedDateStartToUtcInstant(toJohannesburgDateKey(date), JOHANNESBURG_TIME_ZONE);
+}
+
 function isIntegerString(value: string): boolean {
   return /^-?\d+$/.test(value.trim());
 }
@@ -177,4 +266,33 @@ function hasFourDigitYear(date: Date): boolean {
   const year = date.getFullYear();
 
   return year >= 1000 && year <= 9999;
+}
+
+function getDateTimePart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
+  const value = parts.find((part) => part.type === type)?.value;
+
+  if (!value) {
+    throw new Error(`Missing ${type} part in formatted date`);
+  }
+
+  return value;
+}
+
+function parseWeekday(weekday: string): number {
+  const weekdays = {
+    Fri: 5,
+    Mon: 1,
+    Sat: 6,
+    Sun: 0,
+    Thu: 4,
+    Tue: 2,
+    Wed: 3,
+  } as const satisfies Record<string, number>;
+  const parsed = weekdays[weekday as keyof typeof weekdays];
+
+  if (parsed === undefined) {
+    throw new Error(`Unsupported weekday ${weekday}`);
+  }
+
+  return parsed;
 }

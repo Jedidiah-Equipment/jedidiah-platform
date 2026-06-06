@@ -1017,29 +1017,34 @@ describe('bookJobSlot', () => {
     );
   });
 
-  test('counts auto-inserted idle gaps in working days when a resolved calendar is provided', async ({ context }) => {
-    const workingCalendar = {
-      orgOffDays: new Set(['2026-06-06', '2026-06-07']),
-    };
+  test('counts auto-inserted idle gaps in working days from persisted Off-Days', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
       scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    await toggleOffDay({
+      access: calendarAccess,
+      db: context.db,
+      input: offDayInput({ date: '2026-06-06', isOffDay: true, label: null }),
+    });
+    await toggleOffDay({
+      access: calendarAccess,
+      db: context.db,
+      input: offDayInput({ date: '2026-06-07', isOffDay: true, label: null }),
+    });
 
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
-      workingCalendar,
     });
     vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
-      workingCalendar,
     });
 
     const storedSlots = await context.db

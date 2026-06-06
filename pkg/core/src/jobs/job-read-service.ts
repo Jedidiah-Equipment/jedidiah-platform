@@ -65,8 +65,12 @@ type JobWithProductRow = JobRow & {
 type JobDocumentRow = DocumentSummaryRow & {
   sourceProductName: string | null;
 };
+type BayCalendarExceptionRow = Pick<
+  typeof jobBayCalendarExceptions.$inferSelect,
+  'bayId' | 'date' | 'direction' | 'label'
+>;
 type BayScheduleRow = typeof jobBays.$inferSelect & {
-  calendarExceptions: (typeof jobBayCalendarExceptions.$inferSelect)[];
+  calendarExceptions: BayCalendarExceptionRow[];
   slots: (typeof jobSlots.$inferSelect & {
     stage:
       | (Pick<typeof jobStages.$inferSelect, 'id' | 'jobId' | 'stage'> & {
@@ -95,6 +99,12 @@ export async function listBays({
     where: visibleDepartments === 'all' ? undefined : inArray(jobBays.department, visibleDepartments),
     with: {
       calendarExceptions: {
+        columns: {
+          bayId: true,
+          date: true,
+          direction: true,
+          label: true,
+        },
         orderBy: [asc(jobBayCalendarExceptions.date)],
       },
       slots: {
@@ -265,14 +275,7 @@ function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
 
   return BaySchedule.parse({
     ...Bay.parse(row),
-    calendarExceptions: row.calendarExceptions.map((exception) =>
-      BayCalendarException.parse({
-        bayId: exception.bayId,
-        date: exception.date,
-        direction: exception.direction,
-        label: exception.label,
-      }),
-    ),
+    calendarExceptions: row.calendarExceptions,
     nextAvailableAt: projection.nextAvailableAt,
     slots: projection.slots.map((slot) => {
       if (slot.kind === 'idle') {

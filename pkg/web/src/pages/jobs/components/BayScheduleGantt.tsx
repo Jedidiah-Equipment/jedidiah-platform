@@ -1,4 +1,10 @@
-import { addJobSlotDuration, DEFAULT_IDLE_SLOT_LABEL, formatDate, hasPermission } from '@pkg/domain';
+import {
+  addJobSlotDuration,
+  DEFAULT_IDLE_SLOT_LABEL,
+  formatDate,
+  hasPermission,
+  type WorkingCalendar,
+} from '@pkg/domain';
 import type {
   BayCalendarException,
   BayCalendarExceptionDirection,
@@ -18,7 +24,6 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { addDays } from 'date-fns';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -60,11 +65,9 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import {
-  formatLocalDateKey,
-  getMaintainedHorizonWarnings,
-  type MaintainedHorizonWarning,
-} from './maintained-horizon.js';
+import { BayCalendarExceptionContextMenu, BayExceptionBands, OffDayBands } from './BayCalendarOverlays.js';
+import { fromJobCalendarDateKey } from './job-date-key.js';
+import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
 const allJobsInput = {
   filters: {},
@@ -379,6 +382,7 @@ export const BayScheduleGantt: React.FC = () => {
             <BaySlotBars
               bays={bays}
               isScheduleMutationPending={isScheduleMutationPending}
+              offDays={offDays}
               onAddIdleSlot={handleAddIdleSlot}
               onRemoveSlot={handleRemoveSlot}
               onResizeSlot={handleResizeSlot}
@@ -395,7 +399,7 @@ export const BayScheduleGantt: React.FC = () => {
               {bayExceptionDialog?.direction === 'work' ? 'Add bay overtime' : 'Add bay closure'}
             </DialogTitle>
             <DialogDescription>
-              {bayExceptionDialog ? formatDate(parseDateColumn(bayExceptionDialog.date), 'PPP') : null}
+              {bayExceptionDialog ? formatDate(fromJobCalendarDateKey(bayExceptionDialog.date), 'PPP') : null}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -536,8 +540,8 @@ const BayScheduleSidebar: React.FC<{
 const MaintainedHorizonWarningBadge: React.FC<{
   warning: MaintainedHorizonWarning;
 }> = ({ warning }) => {
-  const maintainedThrough = parseDateColumn(warning.maintainedThrough);
-  const queueEndDate = parseDateColumn(warning.queueEndDate);
+  const maintainedThrough = fromJobCalendarDateKey(warning.maintainedThrough);
+  const queueEndDate = fromJobCalendarDateKey(warning.queueEndDate);
   const message = `Unmaintained after ${formatDate(maintainedThrough, 'MMM d')}; projected tail may be optimistic.`;
 
   return (
@@ -567,135 +571,25 @@ const BayLaneDividers: React.FC<{
   </div>
 );
 
-const OffDayBands: React.FC<{
-  offDays: OffDay[];
-}> = ({ offDays }) => {
-  const gantt = useGanttContext();
-
-  return (
-    <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-10 h-[calc(100%-var(--gantt-header-height))] w-full">
-      {offDays.map((offDay) => {
-        const startAt = parseDateColumn(offDay.date);
-        const left = getGanttOffset(startAt, gantt);
-        const width = Math.max(getGanttWidth(startAt, addDays(startAt, 1), gantt), 1);
-
-        return (
-          <div
-            className="absolute top-0 h-full border-destructive/20 border-x bg-destructive/10"
-            key={offDay.date}
-            style={{ left, width }}
-            title={`${formatDate(startAt, 'PPP')}${offDay.label ? `: ${offDay.label}` : ''}`}
-          />
-        );
-      })}
-    </div>
-  );
-};
-
-const BayExceptionBands: React.FC<{
-  bays: BaySchedule[];
-}> = ({ bays }) => {
-  const gantt = useGanttContext();
-
-  return (
-    <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-[12] h-[calc(100%-var(--gantt-header-height))] w-full">
-      {bays.flatMap((bay, bayIndex) =>
-        bay.calendarExceptions.map((exception) => {
-          const startAt = parseDateColumn(exception.date);
-          const left = getGanttOffset(startAt, gantt);
-          const width = Math.max(getGanttWidth(startAt, addDays(startAt, 1), gantt), 1);
-          const isOvertime = exception.direction === 'work';
-
-          return (
-            <div
-              className={cn(
-                'absolute border-x',
-                isOvertime ? 'border-emerald-500/40 bg-emerald-500/20' : 'border-amber-500/50 bg-amber-500/20',
-              )}
-              key={`${bay.id}-${exception.date}`}
-              style={{
-                height: gantt.rowHeight,
-                left,
-                top: bayIndex * gantt.rowHeight,
-                width,
-              }}
-              title={`${bay.name} ${isOvertime ? 'overtime' : 'closure'}: ${formatDate(startAt, 'PPP')}${
-                exception.label ? `: ${exception.label}` : ''
-              }`}
-            />
-          );
-        }),
-      )}
-    </div>
-  );
-};
-
-const BayCalendarExceptionContextMenu: React.FC<{
-  bays: BaySchedule[];
-  canEditSchedule: boolean;
-  isScheduleMutationPending: boolean;
-  onOpenDialog: (selection: Pick<BayExceptionDialogState, 'bayId' | 'date' | 'direction'>) => void;
-}> = ({ bays, canEditSchedule, isScheduleMutationPending, onOpenDialog }) => {
-  const gantt = useGanttContext();
-  const [selection, setSelection] = useState<{ bayId: string; date: string } | null>(null);
-
-  if (!canEditSchedule) {
-    return null;
-  }
-
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger
-        render={
-          <button
-            aria-label="Bay calendar actions"
-            className="pointer-events-auto absolute top-(--gantt-header-height) left-0 z-[15] h-[calc(100%-var(--gantt-header-height))] w-full border-0 bg-transparent p-0"
-            onContextMenu={(event) => {
-              const nextSelection = getBayDateSelectionFromPointer({ bays, event, gantt });
-              setSelection(nextSelection);
-            }}
-            tabIndex={-1}
-            type="button"
-          />
-        }
-      />
-      <ContextMenuContent>
-        <ContextMenuGroup>
-          <ContextMenuItem
-            disabled={isScheduleMutationPending || !selection}
-            onClick={() => {
-              if (!selection) return;
-              onOpenDialog({ ...selection, direction: 'work' });
-            }}
-          >
-            <IconSun />
-            Add bay overtime
-          </ContextMenuItem>
-          <ContextMenuItem
-            disabled={isScheduleMutationPending || !selection}
-            onClick={() => {
-              if (!selection) return;
-              onOpenDialog({ ...selection, direction: 'off' });
-            }}
-          >
-            <IconMoon />
-            Add bay closure
-          </ContextMenuItem>
-        </ContextMenuGroup>
-      </ContextMenuContent>
-    </ContextMenu>
-  );
-};
-
 const BaySlotBars: React.FC<{
   bays: BaySchedule[];
   isScheduleMutationPending: boolean;
+  offDays: OffDay[];
   onAddIdleSlot: (targetSlotId: string, placement: JobSlotPlacement) => void;
   onRemoveSlot: (slotId: string) => Promise<void>;
   onResizeSlot: (slotId: string, durationDays: number) => void;
   optimisticResizeDaysBySlotId: Record<string, number>;
-}> = ({ bays, isScheduleMutationPending, onAddIdleSlot, onRemoveSlot, onResizeSlot, optimisticResizeDaysBySlotId }) => {
+}> = ({
+  bays,
+  isScheduleMutationPending,
+  offDays,
+  onAddIdleSlot,
+  onRemoveSlot,
+  onResizeSlot,
+  optimisticResizeDaysBySlotId,
+}) => {
   const gantt = useGanttContext();
+  const workingCalendarsByBayId = useMemo(() => createWorkingCalendarsByBayId(bays, offDays), [bays, offDays]);
 
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-20">
@@ -710,6 +604,7 @@ const BaySlotBars: React.FC<{
             optimisticDurationDays={optimisticResizeDaysBySlotId[slot.id] ?? null}
             slot={slot}
             top={gantt.headerHeight + bayIndex * gantt.rowHeight + 6}
+            workingCalendar={workingCalendarsByBayId.get(bay.id) ?? {}}
           />
         )),
       )}
@@ -732,7 +627,17 @@ const BaySlotBar: React.FC<{
   optimisticDurationDays: number | null;
   slot: ProjectedJobSlot;
   top: number;
-}> = ({ isScheduleMutationPending, onAddIdle, onRemove, onResize, optimisticDurationDays, slot, top }) => {
+  workingCalendar: WorkingCalendar;
+}> = ({
+  isScheduleMutationPending,
+  onAddIdle,
+  onRemove,
+  onResize,
+  optimisticDurationDays,
+  slot,
+  top,
+  workingCalendar,
+}) => {
   const gantt = useGanttContext();
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -745,8 +650,8 @@ const BaySlotBar: React.FC<{
   const previewDurationDays = resizeDrag?.durationDays ?? displayDurationDays;
   const shouldProjectPreview = resizeDrag !== null || optimisticDurationDays !== null;
   const previewEndAt = useMemo(
-    () => (shouldProjectPreview ? addJobSlotDuration(startAt, previewDurationDays) : endAt),
-    [endAt, previewDurationDays, shouldProjectPreview, startAt],
+    () => (shouldProjectPreview ? addJobSlotDuration(startAt, previewDurationDays, workingCalendar) : endAt),
+    [endAt, previewDurationDays, shouldProjectPreview, startAt, workingCalendar],
   );
   const left = getGanttOffset(startAt, gantt);
   const width = Math.max(getGanttWidth(startAt, previewEndAt, gantt), 28);
@@ -762,7 +667,7 @@ const BaySlotBar: React.FC<{
     setResizeDrag({
       durationDays,
       initialDurationDays: durationDays,
-      pixelsPerDay: Math.max(getGanttWidth(startAt, addJobSlotDuration(startAt, 1), gantt), 1),
+      pixelsPerDay: Math.max(getGanttWidth(startAt, addJobSlotDuration(startAt, 1, workingCalendar), gantt), 1),
       startX: event.clientX,
     });
   };
@@ -917,41 +822,18 @@ function getSlotLabel(slot: ProjectedJobSlot): string {
   return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;
 }
 
-function getBayDateSelectionFromPointer({
-  bays,
-  event,
-  gantt,
-}: {
-  bays: BaySchedule[];
-  event: React.MouseEvent<HTMLElement>;
-  gantt: ReturnType<typeof useGanttContext>;
-}) {
-  const rect = event.currentTarget.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
-  const bay = bays[Math.floor(y / gantt.rowHeight)];
+function createWorkingCalendarsByBayId(bays: BaySchedule[], offDays: OffDay[]): Map<string, WorkingCalendar> {
+  const orgOffDays = new Set(offDays.map((offDay) => offDay.date));
 
-  if (!bay) {
-    return null;
-  }
-
-  const timelineStartDate = new Date(gantt.timelineData.at(0)?.year ?? new Date().getFullYear(), 0, 1);
-  const renderedColumnWidth = (gantt.columnWidth * gantt.zoom) / 100;
-  const date = addDays(timelineStartDate, Math.max(0, Math.floor(x / renderedColumnWidth)));
-
-  return {
-    bayId: bay.id,
-    date: formatLocalDateKey(date),
-  };
-}
-
-function parseDateColumn(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
-
-  if (!year || !month || !day) {
-    throw new Error(`Invalid date-only value: ${value}`);
-  }
-
-  // Gantt columns are local browser days; keep the API date key on that displayed column.
-  return new Date(year, month - 1, day);
+  return new Map(
+    bays.map((bay) => [
+      bay.id,
+      {
+        bayExceptions: new Map(
+          bay.calendarExceptions.map((exception) => [exception.date, exception.direction] as const),
+        ),
+        orgOffDays,
+      },
+    ]),
+  );
 }

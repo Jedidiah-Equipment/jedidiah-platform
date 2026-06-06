@@ -22,6 +22,7 @@ import {
   hasPermission,
   JOB_STAGE_PIPELINE,
   projectJobSlots,
+  toJohannesburgDateKey,
   type WorkingCalendar,
 } from '@pkg/domain';
 import {
@@ -52,7 +53,6 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { startOfDay } from 'date-fns';
 import { and, asc, eq, gt, gte, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
@@ -166,13 +166,11 @@ export async function bookJobSlot({
   currentDate,
   db,
   input,
-  workingCalendar,
 }: {
   access: UserAccessSummary;
   currentDate?: Date;
   db: Db;
   input: BookJobSlotInput;
-  workingCalendar?: WorkingCalendar;
 }): Promise<BookJobSlotResult> {
   return db.transaction(async (tx) => {
     const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
@@ -202,19 +200,17 @@ export async function bookJobSlot({
       throw new JobSlotBookingDeniedError('Bay department must match the Job stage department.');
     }
 
-    const resolvedWorkingCalendar =
-      workingCalendar ??
-      createBayWorkingCalendar(
-        createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
-        await listBayCalendarExceptions(tx, bay.id),
-      );
+    const workingCalendar = createBayWorkingCalendar(
+      createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
+      await listBayCalendarExceptions(tx, bay.id),
+    );
     let sequence = await getNextBaySlotSequence(tx, bay.id);
     const gapDays = await getIdleGapDaysBeforeAppend({
       bayId: bay.id,
       currentDate: currentDate ?? new Date(),
       scheduleOrigin: bay.scheduleOrigin,
       tx,
-      workingCalendar: resolvedWorkingCalendar,
+      workingCalendar,
     });
 
     if (gapDays > 0) {
@@ -546,7 +542,7 @@ async function getIdleGapDaysBeforeAppend({
   currentDate: Date;
   scheduleOrigin: Date;
   tx: DatabaseTransaction;
-  workingCalendar?: WorkingCalendar;
+  workingCalendar: WorkingCalendar;
 }): Promise<number> {
   const existingSlots = await tx.query.jobSlots.findMany({
     orderBy: [asc(jobSlots.sequence), asc(jobSlots.id)],
@@ -555,11 +551,10 @@ async function getIdleGapDaysBeforeAppend({
   const projection = projectJobSlots({
     scheduleOrigin,
     slots: existingSlots,
-    ...(workingCalendar === undefined ? {} : { workingCalendar }),
+    workingCalendar,
   });
-  const todayStart = startOfDay(currentDate);
 
-  return countWorkingDaysBetween(projection.nextAvailableAt, todayStart, workingCalendar);
+  return countWorkingDaysBetween(projection.nextAvailableAt, currentDate, workingCalendar);
 }
 
 async function insertIdleSlot({
@@ -662,12 +657,7 @@ async function createProductSerial({
 }
 
 function getJohannesburgTwoDigitYear(date: Date): number {
-  const year = new Intl.DateTimeFormat('en-ZA', {
-    timeZone: 'Africa/Johannesburg',
-    year: '2-digit',
-  }).format(date);
-
-  return Number.parseInt(year, 10);
+  return Number.parseInt(toJohannesburgDateKey(date).slice(2, 4), 10);
 }
 
 async function validateJobQuoteForCreate({

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDate, parseCommonDateInput, parseDate, secondsToAgeString } from './date.js';
+import {
+  formatDate,
+  johannesburgDayStart,
+  parseCommonDateInput,
+  parseDate,
+  secondsToAgeString,
+  toJohannesburgDateKey,
+  zonedDateStartToUtcInstant,
+} from './date.js';
 
 describe('parseDate', () => {
   it('returns Date values unchanged', () => {
@@ -69,5 +77,21 @@ describe('secondsToAgeString', () => {
 
   it('formats short ages with one unit', () => {
     expect(secondsToAgeString(3_660, true)).toBe('1h ');
+  });
+});
+
+describe('Johannesburg date helpers', () => {
+  it('formats instants as Johannesburg business date keys', () => {
+    expect(toJohannesburgDateKey(new Date('2026-06-18T21:59:59.000Z'))).toBe('2026-06-18');
+    expect(toJohannesburgDateKey(new Date('2026-06-18T22:00:00.000Z'))).toBe('2026-06-19');
+  });
+
+  it('returns the UTC instant for the start of a Johannesburg day', () => {
+    expect(johannesburgDayStart(new Date('2026-06-18T22:30:00.000Z'))).toEqual(new Date('2026-06-18T22:00:00.000Z'));
+  });
+
+  it('uses IANA timezone offsets when converting local day starts', () => {
+    expect(zonedDateStartToUtcInstant('2026-01-15', 'America/New_York')).toEqual(new Date('2026-01-15T05:00:00.000Z'));
+    expect(zonedDateStartToUtcInstant('2026-07-15', 'America/New_York')).toEqual(new Date('2026-07-15T04:00:00.000Z'));
   });
 });

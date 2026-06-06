@@ -5,6 +5,8 @@ import {
   zonedDateStartToUtcInstant,
 } from '@pkg/domain';
 
+// Job scheduling data is stored as Johannesburg business dates, while Kibo renders
+// calendar/Gantt columns as browser-local dates. Keep both conversions explicit.
 export function toJobDateKey(date: Date): string {
   return toJohannesburgDateKey(date);
 }
@@ -24,6 +26,6 @@ export function toJobCalendarDateKey(date: Date): string {
 export function fromJobCalendarDateKey(value: string): Date {
   const { day, month, year } = parseDateOnlyParts(value);
 
-  // Kibo calendar/Gantt columns are rendered as browser-local days.
+  // Use browser-local midnight so bands line up with Kibo's local daily columns.
   return new Date(year, month - 1, day);
 }

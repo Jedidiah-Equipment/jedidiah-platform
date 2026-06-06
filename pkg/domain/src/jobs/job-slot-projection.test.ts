@@ -1,6 +1,6 @@
-import { startOfDay } from 'date-fns';
 import { describe, expect, it } from 'vitest';
 
+import { johannesburgDayStart } from '../formatting/date.js';
 import {
   addJobSlotDuration,
   countWorkingDaysBetween,
@@ -10,7 +10,7 @@ import {
 } from './job-slot-projection.js';
 
 const scheduleOrigin = new Date('2026-06-05T08:00:00.000Z');
-const scheduleOriginDayStart = startOfDay(scheduleOrigin);
+const scheduleOriginDayStart = johannesburgDayStart(scheduleOrigin);
 
 describe('projectJobSlots', () => {
   it('reports the schedule origin as next available for an empty bay', () => {
@@ -23,7 +23,7 @@ describe('projectJobSlots', () => {
     expect(projection.nextAvailableAt).toEqual(scheduleOriginDayStart);
   });
 
-  it('projects appended slots sequentially from the schedule origin day start', () => {
+  it('projects appended slots sequentially from the Johannesburg schedule origin day start', () => {
     const projection = projectJobSlots({
       scheduleOrigin,
       slots: [
@@ -66,7 +66,7 @@ describe('projectJobSlots', () => {
 
   it('does not silently floor stale queues to today', () => {
     const staleOrigin = new Date('2026-06-01T08:00:00.000Z');
-    const expectedStartAt = startOfDay(staleOrigin);
+    const expectedStartAt = johannesburgDayStart(staleOrigin);
     const expectedEndAt = addJobSlotDuration(expectedStartAt, 1);
     const emptyProjection = projectJobSlots({
       scheduleOrigin: staleOrigin,
@@ -89,11 +89,11 @@ describe('projectJobSlots', () => {
     expect(projection.nextAvailableAt).toEqual(expectedEndAt);
   });
 
-  it('adds slot durations as whole calendar days', () => {
+  it('adds slot durations as working days with an empty calendar', () => {
     const startAt = new Date('2026-06-05T00:00:00.000Z');
 
-    expect(addJobSlotDuration(startAt, 4)).toEqual(new Date('2026-06-09T00:00:00.000Z'));
-    expect(addJobSlotDuration(startAt, 6)).toEqual(new Date('2026-06-11T00:00:00.000Z'));
+    expect(addJobSlotDuration(startAt, 4)).toEqual(new Date('2026-06-08T22:00:00.000Z'));
+    expect(addJobSlotDuration(startAt, 6)).toEqual(new Date('2026-06-10T22:00:00.000Z'));
   });
 
   it('projects slot durations as working days across org off-days', () => {

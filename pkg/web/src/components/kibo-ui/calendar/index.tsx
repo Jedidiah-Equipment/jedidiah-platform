@@ -1,19 +1,9 @@
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
 import type { ReactNode } from 'react';
-import { createContext, memo, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button.js';
 import { cn } from '@/lib/utils.js';
-
-export type CalendarFeature = {
-  date: Date;
-  id: string;
-  name: string;
-  status: {
-    color: string;
-    name: string;
-  };
-};
 
 type CalendarContextValue = {
   month: Date;
@@ -92,32 +82,22 @@ export function CalendarHeader({ className }: { className?: string }) {
 }
 
 export type CalendarBodyProps = {
-  children: (props: { date: Date; features: CalendarFeature[]; isCurrentMonth: boolean }) => ReactNode;
-  features: CalendarFeature[];
+  children: (props: { date: Date; dateKey: string; isCurrentMonth: boolean }) => ReactNode;
+  getDateKey?: (date: Date) => string;
 };
 
-export function CalendarBody({ children, features }: CalendarBodyProps) {
+export function CalendarBody({ children, getDateKey = (date) => format(date, 'yyyy-MM-dd') }: CalendarBodyProps) {
   const { month } = useCalendarContext();
   const monthStart = startOfMonth(month);
   const days = eachDayOfInterval({
     start: startOfWeek(monthStart),
     end: endOfWeek(endOfMonth(month)),
   });
-  const featuresByDate = useMemo(() => {
-    const result = new Map<string, CalendarFeature[]>();
-
-    for (const feature of features) {
-      const key = format(feature.date, 'yyyy-MM-dd');
-      result.set(key, [...(result.get(key) ?? []), feature]);
-    }
-
-    return result;
-  }, [features]);
 
   return (
     <div className="grid flex-1 grid-cols-7">
       {days.map((day, index) => {
-        const key = format(day, 'yyyy-MM-dd');
+        const key = getDateKey(day);
         const isCurrentMonth = day.getMonth() === month.getMonth() && day.getFullYear() === month.getFullYear();
 
         return (
@@ -129,27 +109,13 @@ export function CalendarBody({ children, features }: CalendarBodyProps) {
             )}
             key={key}
           >
-            {children({ date: day, features: featuresByDate.get(key) ?? [], isCurrentMonth })}
+            {children({ date: day, dateKey: key, isCurrentMonth })}
           </div>
         );
       })}
     </div>
   );
 }
-
-export type CalendarItemProps = {
-  className?: string;
-  feature: CalendarFeature;
-};
-
-export const CalendarItem = memo(({ className, feature }: CalendarItemProps) => (
-  <div className={cn('flex min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-1 text-xs', className)}>
-    <div className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: feature.status.color }} />
-    <span className="truncate">{feature.name}</span>
-  </div>
-));
-
-CalendarItem.displayName = 'CalendarItem';
 
 function useCalendarContext() {
   const value = useContext(CalendarContext);

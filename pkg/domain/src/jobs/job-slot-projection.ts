@@ -1,4 +1,4 @@
-import { addDays, startOfDay } from 'date-fns';
+import { addDays, format, startOfDay } from 'date-fns';
 
 export const DEFAULT_IDLE_SLOT_LABEL = 'Idle';
 
@@ -6,6 +6,13 @@ export type ProjectableJobSlot = {
   durationDays: number;
   id: string;
   sequence: number;
+};
+
+export type WorkingCalendarDayDirection = 'work' | 'off';
+
+export type WorkingCalendar = {
+  bayExceptions?: ReadonlyMap<string, WorkingCalendarDayDirection>;
+  orgOffDays?: ReadonlySet<string>;
 };
 
 export type ProjectedSlot<TSlot extends ProjectableJobSlot> = TSlot & {
@@ -21,18 +28,20 @@ export type SlotProjectionResult<TSlot extends ProjectableJobSlot> = {
 export function projectJobSlots<TSlot extends ProjectableJobSlot>({
   scheduleOrigin,
   slots,
+  workingCalendar,
 }: {
   scheduleOrigin: Date;
   slots: readonly TSlot[];
+  workingCalendar?: WorkingCalendar;
 }): SlotProjectionResult<TSlot> {
-  let cursor = startOfDay(scheduleOrigin);
+  let cursor = firstWorkingDayOnOrAfter(startOfDay(scheduleOrigin), workingCalendar);
 
   const projectedSlots = [...slots]
     .sort((left, right) => left.sequence - right.sequence || left.id.localeCompare(right.id))
     .map((slot) => {
       const startAt = cursor;
-      const endAt = addJobSlotDuration(startAt, slot.durationDays);
-      cursor = endAt;
+      const endAt = addJobSlotDuration(startAt, slot.durationDays, workingCalendar);
+      cursor = firstWorkingDayOnOrAfter(endAt, workingCalendar);
 
       return {
         ...slot,
@@ -47,6 +56,62 @@ export function projectJobSlots<TSlot extends ProjectableJobSlot>({
   };
 }
 
-export function addJobSlotDuration(startAt: Date, durationDays: number): Date {
-  return addDays(startAt, durationDays);
+export function addJobSlotDuration(startAt: Date, durationDays: number, workingCalendar?: WorkingCalendar): Date {
+  if (!workingCalendar) {
+    return addDays(startAt, durationDays);
+  }
+
+  let cursor = firstWorkingDayOnOrAfter(startOfDay(startAt), workingCalendar);
+  let remainingDays = durationDays;
+
+  while (remainingDays > 0) {
+    if (isWorkingDay(cursor, workingCalendar)) {
+      remainingDays -= 1;
+    }
+
+    cursor = addDays(cursor, 1);
+  }
+
+  return cursor;
+}
+
+export function countWorkingDaysBetween(startAt: Date, endAt: Date, workingCalendar?: WorkingCalendar): number {
+  let cursor = firstWorkingDayOnOrAfter(startOfDay(startAt), workingCalendar);
+  const end = startOfDay(endAt);
+  let count = 0;
+
+  while (cursor < end) {
+    if (isWorkingDay(cursor, workingCalendar)) {
+      count += 1;
+    }
+
+    cursor = addDays(cursor, 1);
+  }
+
+  return count;
+}
+
+function firstWorkingDayOnOrAfter(date: Date, workingCalendar?: WorkingCalendar): Date {
+  let cursor = date;
+
+  while (!isWorkingDay(cursor, workingCalendar)) {
+    cursor = addDays(cursor, 1);
+  }
+
+  return cursor;
+}
+
+function isWorkingDay(date: Date, workingCalendar?: WorkingCalendar): boolean {
+  const dateKey = toDateKey(date);
+  const bayException = workingCalendar?.bayExceptions?.get(dateKey);
+
+  if (bayException) {
+    return bayException === 'work';
+  }
+
+  return !workingCalendar?.orgOffDays?.has(dateKey);
+}
+
+function toDateKey(date: Date): string {
+  return format(date, 'yyyy-MM-dd');
 }

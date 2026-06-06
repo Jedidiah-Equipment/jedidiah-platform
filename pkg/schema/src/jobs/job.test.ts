@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AddBayCalendarExceptionInput,
   AddIdleJobSlotInput,
   AddIdleJobSlotResult,
+  BayCalendarException,
+  BayCalendarExceptionDirection,
   BookJobSlotInput,
   BookJobSlotResult,
   formatProductSerialNumber,
@@ -12,11 +15,14 @@ import {
   JobDetail,
   JobListFilters,
   JobWorkState,
+  OffDay,
   ProjectedJobSlot,
+  RemoveBayCalendarExceptionInput,
   RemoveJobSlotInput,
   RemoveJobSlotResult,
   ResizeJobSlotInput,
   ResizeJobSlotResult,
+  ToggleOffDayInput,
 } from './job.js';
 
 describe('JobCode', () => {
@@ -63,6 +69,97 @@ describe('Job', () => {
 describe('JOB_STAGES', () => {
   it('uses production departments', () => {
     expect(JOB_STAGES).toEqual(['procurement', 'supply', 'fabrication', 'paint', 'assembly']);
+  });
+});
+
+describe('Working Calendar schemas', () => {
+  it('accepts off-days and bay exceptions with nullable labels', () => {
+    expect(
+      OffDay.parse({
+        date: '2026-06-16',
+        label: 'Youth Day',
+      }),
+    ).toEqual({
+      date: '2026-06-16',
+      label: 'Youth Day',
+    });
+    expect(
+      BayCalendarException.parse({
+        bayId: '00000000-0000-4000-8000-000000000001',
+        date: '2026-06-20',
+        direction: 'work',
+        label: null,
+      }),
+    ).toEqual({
+      bayId: '00000000-0000-4000-8000-000000000001',
+      date: '2026-06-20',
+      direction: 'work',
+      label: null,
+    });
+  });
+
+  it('normalizes empty write labels to null', () => {
+    expect(
+      ToggleOffDayInput.parse({
+        date: '2026-06-16',
+        isOffDay: true,
+        label: '  ',
+      }),
+    ).toEqual({
+      date: '2026-06-16',
+      isOffDay: true,
+      label: null,
+    });
+    expect(
+      AddBayCalendarExceptionInput.parse({
+        bayId: '00000000-0000-4000-8000-000000000001',
+        date: '2026-06-20',
+        direction: 'off',
+        label: '  Bay maintenance  ',
+      }),
+    ).toEqual({
+      bayId: '00000000-0000-4000-8000-000000000001',
+      date: '2026-06-20',
+      direction: 'off',
+      label: 'Bay maintenance',
+    });
+  });
+
+  it('accepts bay exception removal by bay and date', () => {
+    expect(
+      RemoveBayCalendarExceptionInput.parse({
+        bayId: '00000000-0000-4000-8000-000000000001',
+        date: '2026-06-20',
+      }),
+    ).toEqual({
+      bayId: '00000000-0000-4000-8000-000000000001',
+      date: '2026-06-20',
+    });
+  });
+
+  it('rejects bad shapes and unknown fields', () => {
+    expect(() => BayCalendarExceptionDirection.parse('maybe')).toThrow();
+    expect(() =>
+      BayCalendarException.parse({
+        bayId: 'not-a-uuid',
+        date: '2026-06-20',
+        direction: 'work',
+        label: null,
+      }),
+    ).toThrow();
+    expect(() =>
+      OffDay.parse({
+        date: '2026-06-20T00:00:00.000Z',
+        label: null,
+      }),
+    ).toThrow();
+    expect(() =>
+      ToggleOffDayInput.parse({
+        date: '2026-06-20',
+        extra: true,
+        isOffDay: false,
+      }),
+    ).toThrow();
   });
 });
 

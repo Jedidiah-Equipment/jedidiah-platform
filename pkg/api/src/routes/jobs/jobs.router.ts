@@ -9,6 +9,7 @@ import {
   listJobs,
   removeJobSlot,
   resizeJobSlot,
+  toggleOffDay,
 } from '@pkg/core';
 import {
   AddIdleJobSlotInput,
@@ -17,6 +18,7 @@ import {
   JobListInput,
   RemoveJobSlotInput,
   ResizeJobSlotInput,
+  ToggleOffDayInput,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
@@ -26,6 +28,10 @@ import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const jobsRouter = router({
   listBays: authorizedProcedure('job:read').query(({ ctx }) => listBays({ db: ctx.db, access: ctx.access })),
+
+  toggleOffDay: authorizedProcedure('job:update-calendar')
+    .input(ToggleOffDayInput)
+    .mutation(({ ctx, input }) => mapJobErrors(() => toggleOffDay({ db: ctx.db, access: ctx.access, input }))),
 
   list: authorizedProcedure('job:read')
     .input(JobListInput)
@@ -113,6 +119,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         message: error.message,
       };
     case 'job.slot_remove_denied':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: error.message,
+      };
+    case 'job.calendar_edit_denied':
       return {
         appCode: error.code,
         code: 'FORBIDDEN',

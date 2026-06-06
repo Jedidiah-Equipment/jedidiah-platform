@@ -3,6 +3,7 @@ import type { AppPermission } from '@pkg/schema';
 import {
   IconBriefcase2,
   IconBuilding,
+  IconCalendar,
   IconClipboardList,
   IconFileText,
   IconGauge,
@@ -48,6 +49,12 @@ const mainNavItems = [
     permission: 'job:read',
     link: linkOptions({ to: '/jobs' }),
     icon: IconBriefcase2,
+  },
+  {
+    title: 'Job Calendar',
+    permission: 'job:read',
+    link: linkOptions({ to: '/jobs/calendar' }),
+    icon: IconCalendar,
   },
   {
     title: 'Customers',

@@ -87,8 +87,18 @@ export class JobSlotIdleAddDeniedError extends Error {
   }
 }
 
+export class JobCalendarEditDeniedError extends Error {
+  readonly code = 'job.calendar_edit_denied';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'JobCalendarEditDeniedError';
+  }
+}
+
 export type JobCoreError =
   | JobBayNotFoundError
+  | JobCalendarEditDeniedError
   | JobCreateFromQuoteDeniedError
   | JobNotFoundError
   | JobSlotBookingDeniedError
@@ -101,6 +111,7 @@ export type JobCoreError =
 export function isJobCoreError(error: unknown): error is JobCoreError {
   return (
     error instanceof JobBayNotFoundError ||
+    error instanceof JobCalendarEditDeniedError ||
     error instanceof JobCreateFromQuoteDeniedError ||
     error instanceof JobNotFoundError ||
     error instanceof JobSlotBookingDeniedError ||

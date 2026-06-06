@@ -1,7 +1,8 @@
 import { addJobSlotDuration, DEFAULT_IDLE_SLOT_LABEL, formatDate } from '@pkg/domain';
-import type { BaySchedule, JobListInput, JobSlotPlacement, ProjectedJobSlot } from '@pkg/schema';
+import type { BaySchedule, JobListInput, JobSlotPlacement, OffDay, ProjectedJobSlot } from '@pkg/schema';
 import { IconCalendarPlus, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { addDays } from 'date-fns';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -59,6 +60,7 @@ export const BayScheduleGantt: React.FC = () => {
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
   const bays = baysQuery.data?.items ?? [];
+  const offDays = baysQuery.data?.offDays ?? [];
   const initialDate = useMemo(() => new Date(), []);
   const [selectedBayId, setSelectedBayId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -287,6 +289,7 @@ export const BayScheduleGantt: React.FC = () => {
           <BayScheduleSidebar bays={bays} />
           <GanttTimeline>
             <GanttHeader />
+            <OffDayBands offDays={offDays} />
             <BayLaneDividers bays={bays} />
             <BaySlotBars
               bays={bays}
@@ -333,6 +336,31 @@ const BayLaneDividers: React.FC<{
     ))}
   </div>
 );
+
+const OffDayBands: React.FC<{
+  offDays: OffDay[];
+}> = ({ offDays }) => {
+  const gantt = useGanttContext();
+
+  return (
+    <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-10 h-[calc(100%-var(--gantt-header-height))] w-full">
+      {offDays.map((offDay) => {
+        const startAt = parseOffDayDate(offDay.date);
+        const left = getGanttOffset(startAt, gantt);
+        const width = Math.max(getGanttWidth(startAt, addDays(startAt, 1), gantt), 1);
+
+        return (
+          <div
+            className="absolute top-0 h-full border-destructive/20 border-x bg-destructive/10"
+            key={offDay.date}
+            style={{ left, width }}
+            title={`${formatDate(startAt, 'PPP')}${offDay.label ? `: ${offDay.label}` : ''}`}
+          />
+        );
+      })}
+    </div>
+  );
+};
 
 const BaySlotBars: React.FC<{
   bays: BaySchedule[];
@@ -562,4 +590,15 @@ const BaySlotBar: React.FC<{
 
 function getSlotLabel(slot: ProjectedJobSlot): string {
   return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;
+}
+
+function parseOffDayDate(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number);
+
+  if (!year || !month || !day) {
+    throw new Error(`Invalid Off-Day date: ${value}`);
+  }
+
+  // Gantt columns are local browser days; keep the API date key on that displayed column.
+  return new Date(year, month - 1, day);
 }

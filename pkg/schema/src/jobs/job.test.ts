@@ -6,6 +6,7 @@ import {
   AddIdleJobSlotResult,
   BayCalendarException,
   BayCalendarExceptionDirection,
+  BayListResult,
   BookJobSlotInput,
   BookJobSlotResult,
   formatProductSerialNumber,
@@ -23,6 +24,7 @@ import {
   ResizeJobSlotInput,
   ResizeJobSlotResult,
   ToggleOffDayInput,
+  ToggleOffDayResult,
 } from './job.js';
 
 describe('JobCode', () => {
@@ -122,6 +124,42 @@ describe('Working Calendar schemas', () => {
       date: '2026-06-20',
       direction: 'off',
       label: 'Bay maintenance',
+    });
+  });
+
+  it('accepts toggle results and bay list Off-Day facts', () => {
+    expect(
+      ToggleOffDayResult.parse({
+        offDay: {
+          date: '2026-06-16',
+          label: null,
+        },
+      }),
+    ).toEqual({
+      offDay: {
+        date: '2026-06-16',
+        label: null,
+      },
+    });
+    expect(ToggleOffDayResult.parse({ offDay: null })).toEqual({ offDay: null });
+    expect(
+      BayListResult.parse({
+        items: [],
+        offDays: [
+          {
+            date: '2026-06-16',
+            label: 'Youth Day',
+          },
+        ],
+      }),
+    ).toEqual({
+      items: [],
+      offDays: [
+        {
+          date: '2026-06-16',
+          label: 'Youth Day',
+        },
+      ],
     });
   });
 

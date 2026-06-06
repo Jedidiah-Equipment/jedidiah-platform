@@ -12,11 +12,13 @@ import {
   products,
   quoteSelectedAssemblies,
   quotes,
+  workingCalendarOffDays,
 } from '@pkg/db';
 import {
   buildCfo,
   type CfoEntry,
   countWorkingDaysBetween,
+  hasPermission,
   JOB_STAGE_PIPELINE,
   projectJobSlots,
   type WorkingCalendar,
@@ -40,6 +42,8 @@ import {
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
   ResizeJobSlotResult,
+  type ToggleOffDayInput,
+  ToggleOffDayResult,
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
@@ -51,6 +55,7 @@ import { documentBaseSelect } from '../documents/document-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import {
   JobBayNotFoundError,
+  JobCalendarEditDeniedError,
   JobCreateFromQuoteDeniedError,
   JobSlotBookingDeniedError,
   JobSlotIdleAddDeniedError,
@@ -60,7 +65,7 @@ import {
   JobStageNotFoundError,
 } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
-import { getJob } from './job-read-service.js';
+import { createOrgWorkingCalendar, getJob, listWorkingCalendarOffDays } from './job-read-service.js';
 
 export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityType: 'job',
@@ -186,13 +191,14 @@ export async function bookJobSlot({
       throw new JobSlotBookingDeniedError('Bay department must match the Job stage department.');
     }
 
+    const resolvedWorkingCalendar = workingCalendar ?? createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx));
     let sequence = await getNextBaySlotSequence(tx, bay.id);
     const gapDays = await getIdleGapDaysBeforeAppend({
       bayId: bay.id,
       currentDate: currentDate ?? new Date(),
       scheduleOrigin: bay.scheduleOrigin,
       tx,
-      ...(workingCalendar === undefined ? {} : { workingCalendar }),
+      workingCalendar: resolvedWorkingCalendar,
     });
 
     if (gapDays > 0) {
@@ -223,6 +229,52 @@ export async function bookJobSlot({
     }
 
     return BookJobSlotResult.parse({ slot });
+  });
+}
+
+export async function toggleOffDay({
+  access,
+  db,
+  input,
+}: {
+  access: UserAccessSummary;
+  db: Db;
+  input: ToggleOffDayInput;
+}): Promise<ToggleOffDayResult> {
+  if (!hasPermission(access, 'job:update-calendar')) {
+    throw new JobCalendarEditDeniedError('You do not have permission to manage the Job calendar.');
+  }
+
+  return db.transaction(async (tx) => {
+    if (!input.isOffDay) {
+      await tx.delete(workingCalendarOffDays).where(eq(workingCalendarOffDays.date, input.date));
+
+      return ToggleOffDayResult.parse({ offDay: null });
+    }
+
+    const [row] = await tx
+      .insert(workingCalendarOffDays)
+      .values({
+        date: input.date,
+        label: input.label,
+      })
+      .onConflictDoUpdate({
+        target: workingCalendarOffDays.date,
+        set: {
+          label: input.label,
+          updatedAt: new Date(),
+        },
+      })
+      .returning({
+        date: workingCalendarOffDays.date,
+        label: workingCalendarOffDays.label,
+      });
+
+    if (!row) {
+      throw new Error('Off-Day upsert did not return a row');
+    }
+
+    return ToggleOffDayResult.parse({ offDay: row });
   });
 }
 

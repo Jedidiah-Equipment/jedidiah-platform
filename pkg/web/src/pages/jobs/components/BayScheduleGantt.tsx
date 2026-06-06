@@ -8,7 +8,15 @@ import type {
   OffDay,
   ProjectedJobSlot,
 } from '@pkg/schema';
-import { IconCalendarPlus, IconClockPlus, IconLoader2, IconMoon, IconSun, IconTrash } from '@tabler/icons-react';
+import {
+  IconAlertTriangle,
+  IconCalendarPlus,
+  IconClockPlus,
+  IconLoader2,
+  IconMoon,
+  IconSun,
+  IconTrash,
+} from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { addDays } from 'date-fns';
 import type React from 'react';
@@ -52,6 +60,11 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
+import {
+  formatLocalDateKey,
+  getMaintainedHorizonWarnings,
+  type MaintainedHorizonWarning,
+} from './maintained-horizon.js';
 
 const allJobsInput = {
   filters: {},
@@ -79,6 +92,10 @@ export const BayScheduleGantt: React.FC = () => {
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
   const bays = baysQuery.data?.items ?? [];
   const offDays = baysQuery.data?.offDays ?? [];
+  const horizonWarnings = useMemo(
+    () => new Map(getMaintainedHorizonWarnings({ bays, offDays }).map((warning) => [warning.bayId, warning])),
+    [bays, offDays],
+  );
   const initialDate = useMemo(() => new Date(), []);
   const [selectedBayId, setSelectedBayId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -347,7 +364,7 @@ export const BayScheduleGantt: React.FC = () => {
           range="daily"
           zoom={200}
         >
-          <BayScheduleSidebar bays={bays} />
+          <BayScheduleSidebar bays={bays} horizonWarnings={horizonWarnings} />
           <GanttTimeline>
             <GanttHeader />
             <OffDayBands offDays={offDays} />
@@ -494,17 +511,45 @@ export const BayScheduleGantt: React.FC = () => {
 
 const BayScheduleSidebar: React.FC<{
   bays: BaySchedule[];
-}> = ({ bays }) => (
+  horizonWarnings: ReadonlyMap<string, MaintainedHorizonWarning>;
+}> = ({ bays, horizonWarnings }) => (
   <GanttSidebar secondaryTitle={null} title="Bay">
     <div className="divide-y divide-border/50">
-      {bays.map((bay) => (
-        <div className="flex items-center px-2.5 text-xs" key={bay.id} style={{ height: 'var(--gantt-row-height)' }}>
-          <p className="truncate font-medium">{bay.name}</p>
-        </div>
-      ))}
+      {bays.map((bay) => {
+        const warning = horizonWarnings.get(bay.id);
+
+        return (
+          <div
+            className="flex items-center gap-2 px-2.5 text-xs"
+            key={bay.id}
+            style={{ height: 'var(--gantt-row-height)' }}
+          >
+            <p className="min-w-0 flex-1 truncate font-medium">{bay.name}</p>
+            {warning ? <MaintainedHorizonWarningBadge warning={warning} /> : null}
+          </div>
+        );
+      })}
     </div>
   </GanttSidebar>
 );
+
+const MaintainedHorizonWarningBadge: React.FC<{
+  warning: MaintainedHorizonWarning;
+}> = ({ warning }) => {
+  const maintainedThrough = parseDateColumn(warning.maintainedThrough);
+  const queueEndDate = parseDateColumn(warning.queueEndDate);
+  const message = `Unmaintained after ${formatDate(maintainedThrough, 'MMM d')}; projected tail may be optimistic.`;
+
+  return (
+    <div
+      className="flex max-w-[12rem] shrink-0 items-center gap-1 rounded-sm bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300"
+      title={`Calendar ${message} Queue ends ${formatDate(queueEndDate, 'MMM d')}.`}
+    >
+      <IconAlertTriangle className="size-3.5 shrink-0" />
+      <span className="whitespace-normal leading-tight">{message}</span>
+    </div>
+  );
+};
 
 const BayLaneDividers: React.FC<{
   bays: BaySchedule[];
@@ -896,16 +941,8 @@ function getBayDateSelectionFromPointer({
 
   return {
     bayId: bay.id,
-    date: formatDateColumnKey(date),
+    date: formatLocalDateKey(date),
   };
-}
-
-function formatDateColumnKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
 }
 
 function parseDateColumn(value: string): Date {

@@ -60,6 +60,11 @@ export const ToggleOffDayInput = z
   })
   .strict();
 
+export type ToggleOffDayResult = z.infer<typeof ToggleOffDayResult>;
+export const ToggleOffDayResult = z.object({
+  offDay: OffDay.nullable(),
+});
+
 export type AddBayCalendarExceptionInput = z.infer<typeof AddBayCalendarExceptionInput>;
 export const AddBayCalendarExceptionInput = z
   .object({
@@ -146,6 +151,7 @@ export const BaySchedule = Bay.extend({
 export type BayListResult = z.infer<typeof BayListResult>;
 export const BayListResult = z.object({
   items: z.array(BaySchedule),
+  offDays: z.array(OffDay),
 });
 
 export type BookJobSlotInput = z.infer<typeof BookJobSlotInput>;

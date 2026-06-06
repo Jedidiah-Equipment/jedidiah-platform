@@ -4,6 +4,7 @@ import { CustomerNotFoundError, isCustomerCoreError } from './customers/customer
 import {
   isJobCoreError,
   JobBayNotFoundError,
+  JobCalendarEditDeniedError,
   JobCreateFromQuoteDeniedError,
   JobNotFoundError,
   JobSlotBookingDeniedError,
@@ -74,6 +75,7 @@ describe('core error codes and guards', () => {
     expect(new JobNotFoundError('job-id').code).toBe('job.not_found');
     expect(new JobCreateFromQuoteDeniedError('diagnostic').code).toBe('job.create_from_quote_denied');
     expect(new JobBayNotFoundError('bay-id').code).toBe('job.bay_not_found');
+    expect(new JobCalendarEditDeniedError('diagnostic').code).toBe('job.calendar_edit_denied');
     expect(new JobStageNotFoundError('stage-id').code).toBe('job.stage_not_found');
     expect(new JobSlotBookingDeniedError('diagnostic').code).toBe('job.slot_booking_denied');
     expect(new JobSlotResizeDeniedError('diagnostic').code).toBe('job.slot_resize_denied');

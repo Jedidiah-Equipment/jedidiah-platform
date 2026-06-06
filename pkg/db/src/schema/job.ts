@@ -2,6 +2,7 @@ import type { Department, JobStageName } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   check,
+  date,
   integer,
   pgSequence,
   pgTable,
@@ -47,6 +48,19 @@ export const jobBays = pgTable(
       sql`${table.department} IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly')`,
     ),
     check('job_bay_name_nonempty', sql`length(trim(${table.name})) > 0`),
+  ],
+);
+
+export const workingCalendarOffDays = pgTable(
+  'working_calendar_off_day',
+  {
+    date: date('date', { mode: 'string' }).primaryKey(),
+    label: text('label'),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check('working_calendar_off_day_label_nonempty', sql`${table.label} IS NULL OR length(trim(${table.label})) > 0`),
   ],
 );
 

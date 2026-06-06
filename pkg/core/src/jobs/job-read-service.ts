@@ -15,8 +15,9 @@ import {
   products,
   type quotes,
   user,
+  workingCalendarOffDays,
 } from '@pkg/db';
-import { canViewStage, parseJobCodeSearch, projectJobSlots } from '@pkg/domain';
+import { canViewStage, parseJobCodeSearch, projectJobSlots, type WorkingCalendar } from '@pkg/domain';
 import {
   Bay,
   type BayListResult,
@@ -30,6 +31,7 @@ import {
   type JobStageRollup,
   JobStageSummary,
   type JobSummary,
+  OffDay,
   ProjectedJobSlot,
   QuoteCode,
   type SortDirection,
@@ -78,10 +80,11 @@ export async function listBays({
   db: Db | DatabaseTransaction;
   access: UserAccessSummary;
 }): Promise<BayListResult> {
+  const offDays = await listWorkingCalendarOffDays(db);
   const visibleDepartments = getVisibleBayDepartments(access);
 
   if (visibleDepartments !== 'all' && visibleDepartments.length === 0) {
-    return { items: [] };
+    return { items: [], offDays };
   }
 
   const rows = await db.query.jobBays.findMany({
@@ -111,8 +114,29 @@ export async function listBays({
     },
   });
 
+  const workingCalendar = createOrgWorkingCalendar(offDays);
+
   return {
-    items: rows.map(mapBaySchedule),
+    items: rows.map((row) => mapBaySchedule(row, workingCalendar)),
+    offDays,
+  };
+}
+
+export async function listWorkingCalendarOffDays(db: Db | DatabaseTransaction) {
+  const rows = await db
+    .select({
+      date: workingCalendarOffDays.date,
+      label: workingCalendarOffDays.label,
+    })
+    .from(workingCalendarOffDays)
+    .orderBy(asc(workingCalendarOffDays.date));
+
+  return rows.map((row) => OffDay.parse(row));
+}
+
+export function createOrgWorkingCalendar(offDays: readonly OffDay[]): WorkingCalendar {
+  return {
+    orgOffDays: new Set(offDays.map((offDay) => offDay.date)),
   };
 }
 
@@ -201,10 +225,11 @@ function getVisibleBayDepartments(access: UserAccessSummary): 'all' | Department
   return [];
 }
 
-function mapBaySchedule(row: BayScheduleRow) {
+function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
   const projection = projectJobSlots({
     scheduleOrigin: row.scheduleOrigin,
     slots: row.slots,
+    workingCalendar,
   });
 
   return BaySchedule.parse({

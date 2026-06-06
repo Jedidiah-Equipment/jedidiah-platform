@@ -246,6 +246,13 @@
       "when": 1780672146928,
       "tag": "0034_flashy_puppet_master",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1780740001868,
+      "tag": "0035_cute_deadpool",
+      "breakpoints": true
     }
   ]
 }

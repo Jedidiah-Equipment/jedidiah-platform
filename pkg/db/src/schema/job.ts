@@ -64,6 +64,27 @@ export const workingCalendarOffDays = pgTable(
   ],
 );
 
+export const jobBayCalendarExceptions = pgTable(
+  'job_bay_calendar_exception',
+  {
+    bayId: uuid('bay_id')
+      .notNull()
+      .references(() => jobBays.id, { onDelete: 'cascade' }),
+    date: date('date', { mode: 'string' }).notNull(),
+    direction: text('direction', { enum: ['work', 'off'] })
+      .notNull()
+      .$type<'work' | 'off'>(),
+    label: text('label'),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.bayId, table.date], name: 'job_bay_calendar_exception_pkey' }),
+    check('job_bay_calendar_exception_direction_check', sql`${table.direction} IN ('work', 'off')`),
+    check('job_bay_calendar_exception_label_nonempty', sql`${table.label} IS NULL OR length(trim(${table.label})) > 0`),
+  ],
+);
+
 export const jobs = pgTable(
   'job',
   {
@@ -174,7 +195,15 @@ export const jobSlots = pgTable(
 );
 
 export const jobBaysRelations = relations(jobBays, ({ many }) => ({
+  calendarExceptions: many(jobBayCalendarExceptions),
   slots: many(jobSlots),
+}));
+
+export const jobBayCalendarExceptionsRelations = relations(jobBayCalendarExceptions, ({ one }) => ({
+  bay: one(jobBays, {
+    fields: [jobBayCalendarExceptions.bayId],
+    references: [jobBays.id],
+  }),
 }));
 
 export const jobsRelations = relations(jobs, ({ many, one }) => ({

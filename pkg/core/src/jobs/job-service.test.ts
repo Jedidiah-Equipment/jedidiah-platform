@@ -5,6 +5,7 @@ import {
   customers,
   type Db,
   documents,
+  jobBayCalendarExceptions,
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
@@ -23,12 +24,14 @@ import {
 } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
 import {
+  AddBayCalendarExceptionInput,
   type Department,
   type JobDetail,
   type JobStageName,
   type PartUnitOfMeasure,
   type ProductDocumentType,
   QuoteUpdateInput,
+  RemoveBayCalendarExceptionInput,
   ToggleOffDayInput,
 } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
@@ -37,7 +40,16 @@ import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
 import { getJob, listBays } from './job-read-service.js';
-import { addIdleJobSlot, bookJobSlot, createJob, removeJobSlot, resizeJobSlot, toggleOffDay } from './job-service.js';
+import {
+  addBayCalendarException,
+  addIdleJobSlot,
+  bookJobSlot,
+  createJob,
+  removeBayCalendarException,
+  removeJobSlot,
+  resizeJobSlot,
+  toggleOffDay,
+} from './job-service.js';
 
 const actorUserId = 'test-user-id';
 const calendarAccess = createUserAccessSummary({ role: 'admin', userId: actorUserId });
@@ -607,6 +619,213 @@ describe('toggleOffDay', () => {
   });
 });
 
+describe('Bay calendar exceptions', () => {
+  test('inserts, updates, and removes Bay exceptions for authorized schedulers', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+
+    await expect(
+      addBayCalendarException({
+        access: jobAccess,
+        db: context.db,
+        input: bayExceptionInput({
+          bayId: bay.id,
+          date: '2026-06-06',
+          direction: 'work',
+          label: '  Saturday push  ',
+        }),
+      }),
+    ).resolves.toEqual({
+      exception: {
+        bayId: bay.id,
+        date: '2026-06-06',
+        direction: 'work',
+        label: 'Saturday push',
+      },
+    });
+    await expect(
+      addBayCalendarException({
+        access: jobAccess,
+        db: context.db,
+        input: bayExceptionInput({
+          bayId: bay.id,
+          date: '2026-06-06',
+          direction: 'off',
+          label: null,
+        }),
+      }),
+    ).resolves.toEqual({
+      exception: {
+        bayId: bay.id,
+        date: '2026-06-06',
+        direction: 'off',
+        label: null,
+      },
+    });
+    await expect(
+      removeBayCalendarException({
+        access: jobAccess,
+        db: context.db,
+        input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-06' }),
+      }),
+    ).resolves.toEqual({
+      exception: {
+        bayId: bay.id,
+        date: '2026-06-06',
+        direction: 'off',
+        label: null,
+      },
+    });
+    await expect(
+      removeBayCalendarException({
+        access: jobAccess,
+        db: context.db,
+        input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-06' }),
+      }),
+    ).resolves.toEqual({ exception: null });
+
+    const rows = await context.db.select().from(jobBayCalendarExceptions);
+    expect(rows).toEqual([]);
+  });
+
+  test('rejects missing Bays and unauthorized schedulers', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+
+    await expect(
+      addBayCalendarException({
+        access: jobAccess,
+        db: context.db,
+        input: bayExceptionInput({
+          bayId: '00000000-0000-4000-8000-00000000dead',
+          date: '2026-06-06',
+          direction: 'work',
+          label: null,
+        }),
+      }),
+    ).rejects.toThrow('Job bay not found');
+    await expect(
+      addBayCalendarException({
+        access: createUserAccessSummary({ role: 'sales', userId: 'sales-user' }),
+        db: context.db,
+        input: bayExceptionInput({ bayId: bay.id, date: '2026-06-06', direction: 'work', label: null }),
+      }),
+    ).rejects.toThrow('You do not have permission to manage this Bay calendar.');
+    await expect(
+      addBayCalendarException({
+        access: createUserAccessSummary({
+          departments: ['paint'],
+          role: 'job-department-manager',
+          userId: 'paint-manager',
+        }),
+        db: context.db,
+        input: bayExceptionInput({ bayId: bay.id, date: '2026-06-06', direction: 'work', label: null }),
+      }),
+    ).rejects.toThrow('You do not have permission to manage this Bay calendar.');
+  });
+
+  test('opens an org Off-Day for one Bay only and reflows back after removal', async ({ context }) => {
+    const firstBay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const secondBay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    await toggleOffDay({
+      access: calendarAccess,
+      db: context.db,
+      input: offDayInput({ date: '2026-06-06', isOffDay: true, label: 'Shutdown' }),
+    });
+    await addBayCalendarException({
+      access: jobAccess,
+      db: context.db,
+      input: bayExceptionInput({ bayId: firstBay.id, date: '2026-06-06', direction: 'work', label: 'Overtime' }),
+    });
+
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: firstBay.id, durationDays: 2, jobStageId: getStageId(firstJob, 'fabrication') },
+    });
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: secondBay.id, durationDays: 2, jobStageId: getStageId(secondJob, 'fabrication') },
+    });
+
+    let schedule = await listBays({ access: jobAccess, db: context.db });
+    expect(getBaySchedule(schedule, firstBay.id)).toEqual(
+      expect.objectContaining({
+        calendarExceptions: [{ bayId: firstBay.id, date: '2026-06-06', direction: 'work', label: 'Overtime' }],
+        nextAvailableAt: '2026-06-06T22:00:00.000Z',
+      }),
+    );
+    expect(getBaySchedule(schedule, secondBay.id)).toEqual(
+      expect.objectContaining({
+        calendarExceptions: [],
+        nextAvailableAt: '2026-06-07T22:00:00.000Z',
+      }),
+    );
+
+    await removeBayCalendarException({
+      access: jobAccess,
+      db: context.db,
+      input: removeBayExceptionInput({ bayId: firstBay.id, date: '2026-06-06' }),
+    });
+
+    schedule = await listBays({ access: jobAccess, db: context.db });
+    expect(getBaySchedule(schedule, firstBay.id)).toEqual(
+      expect.objectContaining({
+        calendarExceptions: [],
+        nextAvailableAt: '2026-06-07T22:00:00.000Z',
+      }),
+    );
+  });
+
+  test('closes an otherwise-working day for one Bay only', async ({ context }) => {
+    const firstBay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const secondBay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    await addBayCalendarException({
+      access: jobAccess,
+      db: context.db,
+      input: bayExceptionInput({ bayId: firstBay.id, date: '2026-06-06', direction: 'off', label: 'Maintenance' }),
+    });
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: firstBay.id, durationDays: 2, jobStageId: getStageId(firstJob, 'fabrication') },
+    });
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: secondBay.id, durationDays: 2, jobStageId: getStageId(secondJob, 'fabrication') },
+    });
+
+    const schedule = await listBays({ access: jobAccess, db: context.db });
+    expect(getBaySchedule(schedule, firstBay.id)).toEqual(
+      expect.objectContaining({
+        nextAvailableAt: '2026-06-07T22:00:00.000Z',
+      }),
+    );
+    expect(getBaySchedule(schedule, secondBay.id)).toEqual(
+      expect.objectContaining({
+        nextAvailableAt: '2026-06-06T22:00:00.000Z',
+      }),
+    );
+  });
+});
+
 describe('bookJobSlot', () => {
   test('appends slots to the back of a bay queue and returns projected dates', async ({ context }) => {
     const bay = await createBay(context.db, {
@@ -855,6 +1074,52 @@ describe('bookJobSlot', () => {
       access: calendarAccess,
       db: context.db,
       input: offDayInput({ date: '2026-06-07', isOffDay: true, label: null }),
+    });
+
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+    });
+    vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+    });
+
+    const storedSlots = await context.db
+      .select({
+        durationDays: jobSlots.durationDays,
+        kind: jobSlots.kind,
+        sequence: jobSlots.sequence,
+      })
+      .from(jobSlots)
+      .where(eq(jobSlots.bayId, bay.id))
+      .orderBy(asc(jobSlots.sequence));
+    expect(storedSlots).toEqual([
+      { durationDays: 1, kind: 'work', sequence: 1 },
+      { durationDays: 2, kind: 'idle', sequence: 2 },
+      { durationDays: 1, kind: 'work', sequence: 3 },
+    ]);
+  });
+
+  test('counts auto-inserted idle gaps from persisted Bay exceptions', async ({ context }) => {
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    await addBayCalendarException({
+      access: jobAccess,
+      db: context.db,
+      input: bayExceptionInput({ bayId: bay.id, date: '2026-06-06', direction: 'off', label: null }),
+    });
+    await addBayCalendarException({
+      access: jobAccess,
+      db: context.db,
+      input: bayExceptionInput({ bayId: bay.id, date: '2026-06-07', direction: 'off', label: null }),
     });
 
     await bookJobSlot({
@@ -1432,6 +1697,14 @@ function getBaySchedule(schedule: Awaited<ReturnType<typeof listBays>>, bayId: s
 
 function offDayInput(input: Parameters<typeof ToggleOffDayInput.parse>[0]) {
   return ToggleOffDayInput.parse(input);
+}
+
+function bayExceptionInput(input: Parameters<typeof AddBayCalendarExceptionInput.parse>[0]) {
+  return AddBayCalendarExceptionInput.parse(input);
+}
+
+function removeBayExceptionInput(input: Parameters<typeof RemoveBayCalendarExceptionInput.parse>[0]) {
+  return RemoveBayCalendarExceptionInput.parse(input);
 }
 
 async function createAcceptedJob(db: Db, productId: string): Promise<JobDetail> {

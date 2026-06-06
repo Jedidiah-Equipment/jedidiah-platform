@@ -75,6 +75,11 @@ export const AddBayCalendarExceptionInput = z
   })
   .strict();
 
+export type AddBayCalendarExceptionResult = z.infer<typeof AddBayCalendarExceptionResult>;
+export const AddBayCalendarExceptionResult = z.object({
+  exception: BayCalendarException,
+});
+
 export type RemoveBayCalendarExceptionInput = z.infer<typeof RemoveBayCalendarExceptionInput>;
 export const RemoveBayCalendarExceptionInput = z
   .object({
@@ -82,6 +87,11 @@ export const RemoveBayCalendarExceptionInput = z
     date: DateOnlyIso,
   })
   .strict();
+
+export type RemoveBayCalendarExceptionResult = z.infer<typeof RemoveBayCalendarExceptionResult>;
+export const RemoveBayCalendarExceptionResult = z.object({
+  exception: BayCalendarException.nullable(),
+});
 
 export type SlotSequence = z.infer<typeof SlotSequence>;
 export const SlotSequence = z.int().positive().refine(Number.isSafeInteger);
@@ -144,6 +154,7 @@ export const ProjectedJobSlot = z.discriminatedUnion('kind', [ProjectedWorkJobSl
 
 export type BaySchedule = z.infer<typeof BaySchedule>;
 export const BaySchedule = Bay.extend({
+  calendarExceptions: z.array(BayCalendarException),
   nextAvailableAt: DateIso,
   slots: z.array(ProjectedJobSlot),
 });

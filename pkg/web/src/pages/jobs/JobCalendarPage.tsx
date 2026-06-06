@@ -2,7 +2,6 @@ import { formatDate, hasPermission } from '@pkg/domain';
 import type { OffDay } from '@pkg/schema';
 import { IconCalendarCheck, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -11,9 +10,7 @@ import {
   CalendarBody,
   CalendarDate,
   CalendarDatePagination,
-  type CalendarFeature,
   CalendarHeader,
-  CalendarItem,
   CalendarMonthLabel,
   CalendarProvider,
 } from '@/components/kibo-ui/calendar/index.js';
@@ -36,6 +33,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
+import { toJobCalendarDateKey } from './components/job-date-key.js';
 
 type SelectedCalendarDay = {
   date: Date;
@@ -51,21 +49,6 @@ export const JobCalendarPage: React.FC = () => {
   const offDays = baysQuery.data?.offDays ?? [];
   const offDaysByDate = useMemo(
     () => new Map<string, OffDay>(offDays.map((offDay) => [offDay.date, offDay])),
-    [offDays],
-  );
-  const features = useMemo(
-    () =>
-      offDays.map(
-        (offDay): CalendarFeature => ({
-          date: parseDateColumn(offDay.date),
-          id: offDay.date,
-          name: offDay.label ?? 'Off-Day',
-          status: {
-            color: 'var(--destructive)',
-            name: 'Off-Day',
-          },
-        }),
-      ),
     [offDays],
   );
   const canEditCalendar = hasPermission(accessQuery.data, 'job:update-calendar');
@@ -106,9 +89,8 @@ export const JobCalendarPage: React.FC = () => {
           <CalendarDatePagination />
         </CalendarDate>
         <CalendarHeader />
-        <CalendarBody features={features}>
-          {({ date, features, isCurrentMonth }) => {
-            const dateKey = formatDateOnly(date);
+        <CalendarBody getDateKey={toJobCalendarDateKey}>
+          {({ date, dateKey, isCurrentMonth }) => {
             const offDay = offDaysByDate.get(dateKey) ?? null;
 
             return (
@@ -133,12 +115,15 @@ export const JobCalendarPage: React.FC = () => {
                     offDay && !isToday(date) && 'bg-destructive/10 text-destructive',
                   )}
                 >
-                  {format(date, 'd')}
+                  {formatDate(date, 'd')}
                 </span>
                 <div className="flex min-w-0 flex-col gap-1">
-                  {features.slice(0, 3).map((feature) => (
-                    <CalendarItem className="bg-destructive/10 text-destructive" feature={feature} key={feature.id} />
-                  ))}
+                  {offDay ? (
+                    <div className="flex min-w-0 items-center gap-1.5 rounded-sm bg-destructive/10 px-1.5 py-1 text-destructive text-xs">
+                      <div className="size-1.5 shrink-0 rounded-full bg-destructive" />
+                      <span className="truncate">{offDay.label ?? 'Off-Day'}</span>
+                    </div>
+                  ) : null}
                 </div>
               </button>
             );
@@ -171,7 +156,7 @@ export const JobCalendarPage: React.FC = () => {
                   if (!selectedDay) return;
 
                   toggleOffDayMutation.mutate({
-                    date: formatDateOnly(selectedDay.date),
+                    date: toJobCalendarDateKey(selectedDay.date),
                     isOffDay: false,
                     label: null,
                   });
@@ -188,7 +173,7 @@ export const JobCalendarPage: React.FC = () => {
                 if (!selectedDay) return;
 
                 toggleOffDayMutation.mutate({
-                  date: formatDateOnly(selectedDay.date),
+                  date: toJobCalendarDateKey(selectedDay.date),
                   isOffDay: true,
                   label,
                 });
@@ -209,21 +194,6 @@ export const JobCalendarPage: React.FC = () => {
   );
 };
 
-function formatDateOnly(date: Date): string {
-  return format(date, 'yyyy-MM-dd');
-}
-
-function parseDateColumn(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
-
-  if (!year || !month || !day) {
-    throw new Error(`Invalid date-only value: ${value}`);
-  }
-
-  // These Date objects drive local browser calendar columns; the API date key remains authoritative.
-  return new Date(year, month - 1, day);
-}
-
 function isToday(date: Date): boolean {
-  return formatDateOnly(date) === formatDateOnly(new Date());
+  return toJobCalendarDateKey(date) === toJobCalendarDateKey(new Date());
 }

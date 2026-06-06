@@ -233,6 +233,14 @@ export function getGanttWidth(startAt: Date, endAt: Date | null, context: GanttC
   return getWidth(startAt, endAt, context);
 }
 
+export function getGanttDailyDateFromOffset(offset: number, context: GanttContextProps): Date {
+  const timelineStartDate = new Date(context.timelineData.at(0)?.year ?? new Date().getFullYear(), 0, 1);
+  const renderedColumnWidth = (context.columnWidth * context.zoom) / 100;
+
+  // Keep daily hit-testing tied to the same geometry that renders daily timeline columns.
+  return addDays(timelineStartDate, Math.max(0, Math.floor(offset / renderedColumnWidth)));
+}
+
 export type GanttContentHeaderProps = {
   renderHeaderItem: (index: number) => ReactNode;
   title: string;

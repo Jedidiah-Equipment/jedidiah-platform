@@ -11,7 +11,15 @@ import {
   user,
   withPagination,
 } from '@pkg/db';
-import { assertQuoteEditable, parseJobCodeSearch, validateDiscount } from '@pkg/domain';
+import {
+  assertQuoteEditable,
+  getZonedDateParts,
+  JOHANNESBURG_TIME_ZONE,
+  parseJobCodeSearch,
+  toDateOnlyIso,
+  validateDiscount,
+  zonedDateStartToUtcInstant,
+} from '@pkg/domain';
 import {
   type Assembly,
   type AuthId,
@@ -63,7 +71,6 @@ type QuoteRow = typeof quotes.$inferSelect;
 type ProductRow = typeof products.$inferSelect;
 type QuoteAuditInput = { row: QuoteRow; selectedAssemblies: readonly QuoteSelectedAssemblyRow[] };
 
-const JOHANNESBURG_TIME_ZONE = 'Africa/Johannesburg';
 const QUOTE_CREATED_BY_WEEK_COUNT = 12;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -791,103 +798,6 @@ function getMondayBasedWeekdayOffset(weekday: number): number {
   return (weekday + 6) % 7;
 }
 
-function getZonedDateParts(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    hourCycle: 'h23',
-    month: '2-digit',
-    timeZone,
-    weekday: 'short',
-    year: 'numeric',
-  }).formatToParts(date);
-
-  return {
-    day: Number(getDateTimePart(parts, 'day')),
-    month: Number(getDateTimePart(parts, 'month')),
-    weekday: parseWeekday(getDateTimePart(parts, 'weekday')),
-    year: Number(getDateTimePart(parts, 'year')),
-  };
-}
-
-function zonedDateStartToUtcInstant(dateOnly: string, timeZone: string): Date {
-  const { day, month, year } = parseDateOnlyParts(dateOnly);
-  const localMidnightAsUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-  const offset = getTimeZoneOffsetMilliseconds(localMidnightAsUtc, timeZone);
-  const candidate = new Date(localMidnightAsUtc.getTime() - offset);
-
-  return new Date(localMidnightAsUtc.getTime() - getTimeZoneOffsetMilliseconds(candidate, timeZone));
-}
-
-function parseDateOnlyParts(dateOnly: string): { day: number; month: number; year: number } {
-  const match = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/.exec(dateOnly);
-
-  if (!match?.groups) {
-    throw new Error(`Invalid date-only value ${dateOnly}`);
-  }
-
-  return {
-    day: Number(match.groups.day),
-    month: Number(match.groups.month),
-    year: Number(match.groups.year),
-  };
-}
-
-function getTimeZoneOffsetMilliseconds(date: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    hour: '2-digit',
-    hourCycle: 'h23',
-    minute: '2-digit',
-    month: '2-digit',
-    second: '2-digit',
-    timeZone,
-    year: 'numeric',
-  }).formatToParts(date);
-  const zonedTimestamp = Date.UTC(
-    Number(getDateTimePart(parts, 'year')),
-    Number(getDateTimePart(parts, 'month')) - 1,
-    Number(getDateTimePart(parts, 'day')),
-    Number(getDateTimePart(parts, 'hour')),
-    Number(getDateTimePart(parts, 'minute')),
-    Number(getDateTimePart(parts, 'second')),
-  );
-
-  return zonedTimestamp - date.getTime();
-}
-
-function getDateTimePart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
-  const value = parts.find((part) => part.type === type)?.value;
-
-  if (!value) {
-    throw new Error(`Missing ${type} part in formatted date`);
-  }
-
-  return value;
-}
-
-function parseWeekday(weekday: string): number {
-  const weekdays = {
-    Fri: 5,
-    Mon: 1,
-    Sat: 6,
-    Sun: 0,
-    Thu: 4,
-    Tue: 2,
-    Wed: 3,
-  } as const satisfies Record<string, number>;
-  const parsed = weekdays[weekday as keyof typeof weekdays];
-
-  if (parsed === undefined) {
-    throw new Error(`Unsupported weekday ${weekday}`);
-  }
-
-  return parsed;
-}
-
 function toEpochDay({ day, month, year }: { day: number; month: number; year: number }): number {
   return Math.floor(Date.UTC(year, month - 1, day) / MILLISECONDS_PER_DAY);
-}
-
-function toDateOnlyIso(epochDay: number): string {
-  return new Date(epochDay * MILLISECONDS_PER_DAY).toISOString().slice(0, 10);
 }

@@ -66,7 +66,7 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { BayCalendarExceptionContextMenu, BayExceptionBands, OffDayBands } from './BayCalendarOverlays.js';
-import { fromJobDateKey } from './job-date-key.js';
+import { fromJobCalendarDateKey } from './job-date-key.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
 const allJobsInput = {
@@ -399,7 +399,7 @@ export const BayScheduleGantt: React.FC = () => {
               {bayExceptionDialog?.direction === 'work' ? 'Add bay overtime' : 'Add bay closure'}
             </DialogTitle>
             <DialogDescription>
-              {bayExceptionDialog ? formatDate(fromJobDateKey(bayExceptionDialog.date), 'PPP') : null}
+              {bayExceptionDialog ? formatDate(fromJobCalendarDateKey(bayExceptionDialog.date), 'PPP') : null}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -540,8 +540,8 @@ const BayScheduleSidebar: React.FC<{
 const MaintainedHorizonWarningBadge: React.FC<{
   warning: MaintainedHorizonWarning;
 }> = ({ warning }) => {
-  const maintainedThrough = fromJobDateKey(warning.maintainedThrough);
-  const queueEndDate = fromJobDateKey(warning.queueEndDate);
+  const maintainedThrough = fromJobCalendarDateKey(warning.maintainedThrough);
+  const queueEndDate = fromJobCalendarDateKey(warning.queueEndDate);
   const message = `Unmaintained after ${formatDate(maintainedThrough, 'MMM d')}; projected tail may be optimistic.`;
 
   return (

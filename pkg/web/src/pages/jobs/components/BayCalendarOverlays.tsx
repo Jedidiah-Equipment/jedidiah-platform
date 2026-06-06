@@ -18,7 +18,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu.js';
 import { cn } from '@/lib/utils.js';
-import { fromJobDateKey, toJobDateKey } from './job-date-key.js';
+import { fromJobCalendarDateKey, toJobCalendarDateKey } from './job-date-key.js';
 
 type BayCalendarExceptionSelection = {
   bayId: string;
@@ -34,7 +34,7 @@ export const OffDayBands: React.FC<{
   return (
     <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-10 h-[calc(100%-var(--gantt-header-height))] w-full">
       {offDays.map((offDay) => {
-        const startAt = fromJobDateKey(offDay.date);
+        const startAt = fromJobCalendarDateKey(offDay.date);
         const left = getGanttOffset(startAt, gantt);
         const width = Math.max(getGanttWidth(startAt, addDays(startAt, 1), gantt), 1);
 
@@ -60,7 +60,7 @@ export const BayExceptionBands: React.FC<{
     <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-[12] h-[calc(100%-var(--gantt-header-height))] w-full">
       {bays.flatMap((bay, bayIndex) =>
         bay.calendarExceptions.map((exception) => {
-          const startAt = fromJobDateKey(exception.date);
+          const startAt = fromJobCalendarDateKey(exception.date);
           const left = getGanttOffset(startAt, gantt);
           const width = Math.max(getGanttWidth(startAt, addDays(startAt, 1), gantt), 1);
           const isOvertime = exception.direction === 'work';
@@ -168,6 +168,6 @@ function getBayDateSelectionFromPointer({
 
   return {
     bayId: bay.id,
-    date: toJobDateKey(date),
+    date: toJobCalendarDateKey(date),
   };
 }

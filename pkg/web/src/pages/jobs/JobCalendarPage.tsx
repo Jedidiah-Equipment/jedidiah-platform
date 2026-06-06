@@ -33,7 +33,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { toJobDateKey } from './components/job-date-key.js';
+import { toJobCalendarDateKey } from './components/job-date-key.js';
 
 type SelectedCalendarDay = {
   date: Date;
@@ -89,7 +89,7 @@ export const JobCalendarPage: React.FC = () => {
           <CalendarDatePagination />
         </CalendarDate>
         <CalendarHeader />
-        <CalendarBody getDateKey={toJobDateKey}>
+        <CalendarBody getDateKey={toJobCalendarDateKey}>
           {({ date, dateKey, isCurrentMonth }) => {
             const offDay = offDaysByDate.get(dateKey) ?? null;
 
@@ -156,7 +156,7 @@ export const JobCalendarPage: React.FC = () => {
                   if (!selectedDay) return;
 
                   toggleOffDayMutation.mutate({
-                    date: toJobDateKey(selectedDay.date),
+                    date: toJobCalendarDateKey(selectedDay.date),
                     isOffDay: false,
                     label: null,
                   });
@@ -173,7 +173,7 @@ export const JobCalendarPage: React.FC = () => {
                 if (!selectedDay) return;
 
                 toggleOffDayMutation.mutate({
-                  date: toJobDateKey(selectedDay.date),
+                  date: toJobCalendarDateKey(selectedDay.date),
                   isOffDay: true,
                   label,
                 });
@@ -195,5 +195,5 @@ export const JobCalendarPage: React.FC = () => {
 };
 
 function isToday(date: Date): boolean {
-  return toJobDateKey(date) === toJobDateKey(new Date());
+  return toJobCalendarDateKey(date) === toJobCalendarDateKey(new Date());
 }

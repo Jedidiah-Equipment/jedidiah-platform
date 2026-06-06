@@ -701,6 +701,47 @@ describe('bookJobSlot', () => {
       }),
     );
   });
+
+  test('counts auto-inserted idle gaps in working days when a resolved calendar is provided', async ({ context }) => {
+    const workingCalendar = {
+      orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+    };
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      workingCalendar,
+    });
+    vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+      workingCalendar,
+    });
+
+    const storedSlots = await context.db
+      .select({
+        durationDays: jobSlots.durationDays,
+        kind: jobSlots.kind,
+        sequence: jobSlots.sequence,
+      })
+      .from(jobSlots)
+      .where(eq(jobSlots.bayId, bay.id))
+      .orderBy(asc(jobSlots.sequence));
+    expect(storedSlots).toEqual([
+      { durationDays: 1, kind: 'work', sequence: 1 },
+      { durationDays: 2, kind: 'idle', sequence: 2 },
+      { durationDays: 1, kind: 'work', sequence: 3 },
+    ]);
+  });
 });
 
 describe('addIdleJobSlot', () => {

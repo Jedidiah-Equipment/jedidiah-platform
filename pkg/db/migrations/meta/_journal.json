@@ -253,6 +253,13 @@
       "when": 1780740001868,
       "tag": "0035_cute_deadpool",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1780741529854,
+      "tag": "0036_noisy_silver_fox",
+      "breakpoints": true
     }
   ]
 }

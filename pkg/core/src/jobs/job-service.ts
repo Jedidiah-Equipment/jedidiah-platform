@@ -2,6 +2,7 @@ import {
   type DatabaseTransaction,
   type Db,
   documents,
+  jobBayCalendarExceptions,
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
@@ -24,6 +25,8 @@ import {
   type WorkingCalendar,
 } from '@pkg/domain';
 import {
+  type AddBayCalendarExceptionInput,
+  AddBayCalendarExceptionResult,
   type AddIdleJobSlotInput,
   AddIdleJobSlotResult,
   type AuthId,
@@ -38,6 +41,8 @@ import {
   ProductSerialPrefix,
   ProductSerialSequence,
   ProductSerialYear,
+  type RemoveBayCalendarExceptionInput,
+  RemoveBayCalendarExceptionResult,
   type RemoveJobSlotInput,
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
@@ -65,7 +70,13 @@ import {
   JobStageNotFoundError,
 } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
-import { createOrgWorkingCalendar, getJob, listWorkingCalendarOffDays } from './job-read-service.js';
+import {
+  createBayWorkingCalendar,
+  createOrgWorkingCalendar,
+  getJob,
+  listBayCalendarExceptions,
+  listWorkingCalendarOffDays,
+} from './job-read-service.js';
 
 export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityType: 'job',
@@ -191,7 +202,12 @@ export async function bookJobSlot({
       throw new JobSlotBookingDeniedError('Bay department must match the Job stage department.');
     }
 
-    const resolvedWorkingCalendar = workingCalendar ?? createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx));
+    const resolvedWorkingCalendar =
+      workingCalendar ??
+      createBayWorkingCalendar(
+        createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
+        await listBayCalendarExceptions(tx, bay.id),
+      );
     let sequence = await getNextBaySlotSequence(tx, bay.id);
     const gapDays = await getIdleGapDaysBeforeAppend({
       bayId: bay.id,
@@ -275,6 +291,91 @@ export async function toggleOffDay({
     }
 
     return ToggleOffDayResult.parse({ offDay: row });
+  });
+}
+
+export async function addBayCalendarException({
+  access,
+  db,
+  input,
+}: {
+  access: UserAccessSummary;
+  db: Db;
+  input: AddBayCalendarExceptionInput;
+}): Promise<AddBayCalendarExceptionResult> {
+  return db.transaction(async (tx) => {
+    const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
+
+    if (!bay) {
+      throw new JobBayNotFoundError(input.bayId);
+    }
+
+    if (!canEditBaySchedule(access, bay.department)) {
+      throw new JobCalendarEditDeniedError('You do not have permission to manage this Bay calendar.');
+    }
+
+    const [row] = await tx
+      .insert(jobBayCalendarExceptions)
+      .values({
+        bayId: bay.id,
+        date: input.date,
+        direction: input.direction,
+        label: input.label,
+      })
+      .onConflictDoUpdate({
+        target: [jobBayCalendarExceptions.bayId, jobBayCalendarExceptions.date],
+        set: {
+          direction: input.direction,
+          label: input.label,
+          updatedAt: new Date(),
+        },
+      })
+      .returning({
+        bayId: jobBayCalendarExceptions.bayId,
+        date: jobBayCalendarExceptions.date,
+        direction: jobBayCalendarExceptions.direction,
+        label: jobBayCalendarExceptions.label,
+      });
+
+    if (!row) {
+      throw new Error('Bay calendar exception upsert did not return a row');
+    }
+
+    return AddBayCalendarExceptionResult.parse({ exception: row });
+  });
+}
+
+export async function removeBayCalendarException({
+  access,
+  db,
+  input,
+}: {
+  access: UserAccessSummary;
+  db: Db;
+  input: RemoveBayCalendarExceptionInput;
+}): Promise<RemoveBayCalendarExceptionResult> {
+  return db.transaction(async (tx) => {
+    const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
+
+    if (!bay) {
+      throw new JobBayNotFoundError(input.bayId);
+    }
+
+    if (!canEditBaySchedule(access, bay.department)) {
+      throw new JobCalendarEditDeniedError('You do not have permission to manage this Bay calendar.');
+    }
+
+    const [row] = await tx
+      .delete(jobBayCalendarExceptions)
+      .where(and(eq(jobBayCalendarExceptions.bayId, bay.id), eq(jobBayCalendarExceptions.date, input.date)))
+      .returning({
+        bayId: jobBayCalendarExceptions.bayId,
+        date: jobBayCalendarExceptions.date,
+        direction: jobBayCalendarExceptions.direction,
+        label: jobBayCalendarExceptions.label,
+      });
+
+    return RemoveBayCalendarExceptionResult.parse({ exception: row ?? null });
   });
 }
 

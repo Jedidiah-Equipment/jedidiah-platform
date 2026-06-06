@@ -1,4 +1,5 @@
 import {
+  addBayCalendarException,
   addIdleJobSlot,
   bookJobSlot,
   createJob,
@@ -7,15 +8,18 @@ import {
   type JobCoreError,
   listBays,
   listJobs,
+  removeBayCalendarException,
   removeJobSlot,
   resizeJobSlot,
   toggleOffDay,
 } from '@pkg/core';
 import {
+  AddBayCalendarExceptionInput,
   AddIdleJobSlotInput,
   BookJobSlotInput,
   JobCreateInput,
   JobListInput,
+  RemoveBayCalendarExceptionInput,
   RemoveJobSlotInput,
   ResizeJobSlotInput,
   ToggleOffDayInput,
@@ -54,6 +58,18 @@ export const jobsRouter = router({
   addIdleSlot: authorizedProcedure(['job:update', 'job-stage:update'])
     .input(AddIdleJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => addIdleJobSlot({ db: ctx.db, access: ctx.access, input }))),
+
+  addBayException: authorizedProcedure(['job:update', 'job-stage:update'])
+    .input(AddBayCalendarExceptionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => addBayCalendarException({ db: ctx.db, access: ctx.access, input })),
+    ),
+
+  removeBayException: authorizedProcedure(['job:update', 'job-stage:update'])
+    .input(RemoveBayCalendarExceptionInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => removeBayCalendarException({ db: ctx.db, access: ctx.access, input })),
+    ),
 
   resizeSlot: authorizedProcedure(['job:update', 'job-stage:update'])
     .input(ResizeJobSlotInput)

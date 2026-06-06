@@ -134,6 +134,112 @@ describe('jobs.toggleOffDay', () => {
   });
 });
 
+describe('jobs bay calendar exceptions', () => {
+  test('allows authorized schedulers to add and remove Bay exceptions', async ({ context }) => {
+    const caller = context.createCaller(mockSession('job-supervisor'));
+
+    await expect(
+      caller.jobs.addBayException({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        date: '2026-06-06',
+        direction: 'work',
+        label: '  Saturday push  ',
+      }),
+    ).resolves.toEqual({
+      exception: {
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        date: '2026-06-06',
+        direction: 'work',
+        label: 'Saturday push',
+      },
+    });
+    await expect(
+      caller.jobs.removeBayException({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        date: '2026-06-06',
+      }),
+    ).resolves.toEqual({
+      exception: {
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        date: '2026-06-06',
+        direction: 'work',
+        label: 'Saturday push',
+      },
+    });
+    await expect(
+      caller.jobs.removeBayException({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        date: '2026-06-06',
+      }),
+    ).resolves.toEqual({ exception: null });
+  });
+
+  test('rejects unauthorized schedulers and missing Bays', async ({ context }) => {
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+
+    await expect(
+      salesCaller.jobs.addBayException({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        date: '2026-06-06',
+        direction: 'work',
+        label: null,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      supervisorCaller.jobs.addBayException({
+        bayId: '00000000-0000-4000-8000-00000000dead',
+        date: '2026-06-06',
+        direction: 'work',
+        label: null,
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  test('listBays returns Bay exception facts and reflowed projections', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const job = await supervisorCaller.jobs.create({
+      quoteId: context.quote.id,
+    });
+
+    await adminCaller.jobs.toggleOffDay({
+      date: '2026-06-06',
+      isOffDay: true,
+      label: 'Shutdown',
+    });
+    await supervisorCaller.jobs.addBayException({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      date: '2026-06-06',
+      direction: 'work',
+      label: 'Overtime',
+    });
+    await supervisorCaller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      durationDays: 2,
+      jobStageId: getStage(job, 'fabrication').id,
+    });
+
+    await expect(supervisorCaller.jobs.listBays()).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          calendarExceptions: [
+            {
+              bayId: '00000000-0000-4000-8000-000000000b02',
+              date: '2026-06-06',
+              direction: 'work',
+              label: 'Overtime',
+            },
+          ],
+          id: '00000000-0000-4000-8000-000000000b02',
+          nextAvailableAt: '2026-06-06T22:00:00.000Z',
+        }),
+      ]),
+      offDays: [{ date: '2026-06-06', label: 'Shutdown' }],
+    });
+  });
+});
+
 describe('jobs.create', () => {
   test('creates a job with the production stage model', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-supervisor'));

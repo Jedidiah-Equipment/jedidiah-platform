@@ -57,7 +57,7 @@ export const JobCalendarPage: React.FC = () => {
     () =>
       offDays.map(
         (offDay): CalendarFeature => ({
-          date: parseDateOnly(offDay.date),
+          date: parseDateColumn(offDay.date),
           id: offDay.date,
           name: offDay.label ?? 'Off-Day',
           status: {
@@ -213,8 +213,15 @@ function formatDateOnly(date: Date): string {
   return format(date, 'yyyy-MM-dd');
 }
 
-function parseDateOnly(value: string): Date {
-  return new Date(`${value}T00:00:00.000+02:00`);
+function parseDateColumn(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number);
+
+  if (!year || !month || !day) {
+    throw new Error(`Invalid date-only value: ${value}`);
+  }
+
+  // These Date objects drive local browser calendar columns; the API date key remains authoritative.
+  return new Date(year, month - 1, day);
 }
 
 function isToday(date: Date): boolean {

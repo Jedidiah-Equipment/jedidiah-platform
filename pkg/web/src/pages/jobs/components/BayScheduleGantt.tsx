@@ -593,5 +593,12 @@ function getSlotLabel(slot: ProjectedJobSlot): string {
 }
 
 function parseOffDayDate(value: string): Date {
-  return new Date(`${value}T00:00:00.000+02:00`);
+  const [year, month, day] = value.split('-').map(Number);
+
+  if (!year || !month || !day) {
+    throw new Error(`Invalid Off-Day date: ${value}`);
+  }
+
+  // Gantt columns are local browser days; keep the API date key on that displayed column.
+  return new Date(year, month - 1, day);
 }

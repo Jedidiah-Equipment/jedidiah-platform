@@ -1,4 +1,4 @@
-import { addDays, addHours, format, parseISO, startOfDay } from 'date-fns';
+import { addDays, addHours, parseISO, startOfDay } from 'date-fns';
 
 export const DEFAULT_IDLE_SLOT_LABEL = 'Idle';
 // Off-Day keys are Johannesburg business dates; keep projection independent of the host TZ.
@@ -109,7 +109,7 @@ function firstWorkingDayOnOrAfter(date: Date, workingCalendar?: WorkingCalendar)
 }
 
 function isWorkingDay(date: Date, workingCalendar?: WorkingCalendar): boolean {
-  const dateKey = toDateKey(date);
+  const dateKey = formatJobSchedulingDateKey(date);
   const bayException = workingCalendar?.bayExceptions?.get(dateKey);
 
   if (bayException) {
@@ -119,10 +119,16 @@ function isWorkingDay(date: Date, workingCalendar?: WorkingCalendar): boolean {
   return !workingCalendar?.orgOffDays?.has(dateKey);
 }
 
-function toDateKey(date: Date): string {
-  return format(addHours(date, JOHANNESBURG_UTC_OFFSET_HOURS), 'yyyy-MM-dd');
+export function formatJobSchedulingDateKey(date: Date): string {
+  const johannesburgDate = addHours(date, JOHANNESBURG_UTC_OFFSET_HOURS);
+  // Read the shifted instant as UTC so the key is stable in every browser timezone.
+  const year = johannesburgDate.getUTCFullYear();
+  const month = String(johannesburgDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(johannesburgDate.getUTCDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 function startOfJohannesburgDay(date: Date): Date {
-  return parseISO(`${toDateKey(date)}T00:00:00.000${JOHANNESBURG_MIDNIGHT_OFFSET}`);
+  return parseISO(`${formatJobSchedulingDateKey(date)}T00:00:00.000${JOHANNESBURG_MIDNIGHT_OFFSET}`);
 }

@@ -5,6 +5,7 @@ import {
   addJobSlotDuration,
   countWorkingDaysBetween,
   DEFAULT_IDLE_SLOT_LABEL,
+  formatJobSchedulingDateKey,
   projectJobSlots,
 } from './job-slot-projection.js';
 
@@ -145,6 +146,10 @@ describe('projectJobSlots', () => {
       startAt: new Date('2026-06-06T22:00:00.000Z'),
       endAt: new Date('2026-06-07T22:00:00.000Z'),
     });
+  });
+
+  it('formats scheduling date keys as Johannesburg business dates', () => {
+    expect(formatJobSchedulingDateKey(new Date('2026-06-18T22:00:00.000Z'))).toBe('2026-06-19');
   });
 
   it('lets a bay work exception open an org off-day', () => {

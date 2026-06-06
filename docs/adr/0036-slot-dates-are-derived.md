@@ -2,6 +2,8 @@
 
 Updated by ADR-0037: Bay Slots are whole-day planning blocks stored as `durationDays`, and idle time is represented by first-class idle Slots in the same queue.
 
+Updated by ADR-0038: `durationDays` counts working days; Slot Projection skips explicitly-marked Off-Days (the deferred "working calendar" seam), and per-Bay overtime opens Off-Days for one Bay.
+
 A **Slot** is one whole-day planning block in one **Bay** queue. We store only the Slot's `sequence` (queue position), `kind`, and `durationDays` — never start/end dates. Calendar dates are computed at read time by **Slot Projection**: walk a Bay's Slots in queue order from the Bay's fixed `scheduleOrigin`, starting each Slot where the previous one ends. This is the *relative* scheduling model: a Slot finishing early or late naturally reflows everything after it, with no rows to rewrite.
 
 ## Considered Options

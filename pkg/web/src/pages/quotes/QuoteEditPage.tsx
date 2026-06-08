@@ -2,9 +2,8 @@ import type { UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
-import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -29,17 +28,16 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
   );
 
   return (
-    <EditPageLayout
-      back={<BackButton to="/quotes">Quotes</BackButton>}
-      badge={quote ? <QuoteStatusBadge size="lg" status={quote.status} /> : undefined}
-      contentClassName="max-w-7xl"
+    <PageLayout
+      actions={quote ? <QuoteStatusBadge size="lg" status={quote.status} /> : undefined}
       description="Edit Quote"
+      size="lg"
       title={quote?.code ?? 'Loading quote...'}
     >
       <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
       {quoteQuery.isPending ? <QuoteFormSkeleton /> : null}
       {quote ? <QuoteForm key={quote.id} onSave={(value) => updateMutation.mutateAsync(value)} quote={quote} /> : null}
-    </EditPageLayout>
+    </PageLayout>
   );
 };
 

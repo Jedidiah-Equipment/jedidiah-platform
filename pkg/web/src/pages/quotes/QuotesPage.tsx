@@ -13,7 +13,7 @@ import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-que
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
-import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { useCustomerForQuoteOptions, useProductForQuoteOptions, useSalesPersonOptions } from '@/hooks/options/index.js';
@@ -55,18 +55,19 @@ export const QuotesPage: React.FC = () => {
 
   return (
     <>
-      <ListPageLayout
-        action={
+      <PageLayout
+        actions={
           <Button onClick={() => setIsCreateOpen(true)} type="button">
             <IconPlus data-icon="inline-start" />
             New quote
           </Button>
         }
         description="Sales"
+        size="lg"
         title="Quotes"
       >
         <QuoteTable />
-      </ListPageLayout>
+      </PageLayout>
       <QuoteCreateDialog onOpenChange={setIsCreateOpen} open={isCreateOpen} />
     </>
   );

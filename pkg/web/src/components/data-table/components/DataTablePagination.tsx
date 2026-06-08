@@ -30,7 +30,7 @@ export function DataTablePagination<TData>({
   const paginationItems = getPaginationItems(page, pageCount);
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
         <div className="text-sm text-muted-foreground">{totalLabel(total)}</div>
         <div className="flex items-center gap-2">
@@ -39,7 +39,7 @@ export function DataTablePagination<TData>({
             onValueChange={(value) => table.setPageSize(Number.parseInt(String(value), 10))}
             value={String(pagination.pageSize)}
           >
-            <SelectTrigger size="sm">
+            <SelectTrigger className="text-sm" size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -55,23 +55,38 @@ export function DataTablePagination<TData>({
         </div>
       </div>
       <Pagination className="mx-0 w-auto justify-start sm:justify-end">
-        <PaginationContent>
+        <PaginationContent className="text-sm">
           <PaginationItem>
-            <PaginationPrevious disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()} />
+            <PaginationPrevious
+              className="text-sm"
+              disabled={!table.getCanPreviousPage()}
+              onClick={() => table.previousPage()}
+              size="sm"
+            />
           </PaginationItem>
           {paginationItems.map((item, index) => (
             <PaginationItem key={item === 'ellipsis' ? `ellipsis-${index}` : item}>
               {item === 'ellipsis' ? (
-                <PaginationEllipsis />
+                <PaginationEllipsis className="size-7 text-sm" />
               ) : (
-                <PaginationLink isActive={item === page} onClick={() => table.setPageIndex(item - 1)}>
+                <PaginationLink
+                  className="text-sm"
+                  isActive={item === page}
+                  onClick={() => table.setPageIndex(item - 1)}
+                  size="icon-sm"
+                >
                   {item}
                 </PaginationLink>
               )}
             </PaginationItem>
           ))}
           <PaginationItem>
-            <PaginationNext disabled={!table.getCanNextPage()} onClick={() => table.nextPage()} />
+            <PaginationNext
+              className="text-sm"
+              disabled={!table.getCanNextPage()}
+              onClick={() => table.nextPage()}
+              size="sm"
+            />
           </PaginationItem>
         </PaginationContent>
       </Pagination>

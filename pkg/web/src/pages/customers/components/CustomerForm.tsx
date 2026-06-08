@@ -2,7 +2,7 @@ import type { Customer, CustomerUpdateInput } from '@pkg/schema';
 import type React from 'react';
 
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
-import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
+import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { CustomerFormValues, toCustomerFormValues, toCustomerUpdateInput } from './types.js';
 
 type CustomerFormProps = {

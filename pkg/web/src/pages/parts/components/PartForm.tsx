@@ -3,7 +3,7 @@ import { IconLoader2 } from '@tabler/icons-react';
 import type React from 'react';
 
 import { useAppForm } from '@/components/form/index.js';
-import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
+import { EditFormActions, EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { usePartCategoryOptions, useSupplierOptions } from '@/hooks/options/index.js';
 import { PartFormValues, partUnitOfMeasureOptions, toPartFormValues } from './types.js';

@@ -57,15 +57,6 @@ export function DataTable<TData>({
 
   return (
     <div className="flex flex-col gap-4">
-      {!hideGlobalFilter || rightSection ? (
-        <DataTableSearch
-          debounceMs={filterDebounceMs}
-          placeholder={globalFilterPlaceholder}
-          rightSection={rightSection}
-          table={table}
-        />
-      ) : null}
-
       {errorMessage ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {errorMessage}
@@ -73,6 +64,16 @@ export function DataTable<TData>({
       ) : null}
 
       <div className="overflow-hidden rounded-lg border border-border/70 bg-card text-card-foreground">
+        {!hideGlobalFilter || rightSection ? (
+          <DataTableSearch
+            debounceMs={filterDebounceMs}
+            placeholder={globalFilterPlaceholder}
+            rightSection={rightSection}
+            showSearch={!hideGlobalFilter}
+            table={table}
+          />
+        ) : null}
+
         <ScrollArea className="w-full">
           <table data-slot="table" className={cn('w-full caption-bottom text-sm', tableClassName)}>
             <TableHeader>

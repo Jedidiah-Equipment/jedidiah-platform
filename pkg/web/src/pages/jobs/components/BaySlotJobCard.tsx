@@ -1,8 +1,9 @@
 import { formatDate, type SlotCalendarDaySegment, type SlotCalendarDays } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
 import type React from 'react';
-import { getGanttWidth, useGanttContext } from '@/components/kibo-ui/gantt/index.js';
+import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { getJobGanttOffsetDistance, getJobGanttWidth } from './job-gantt-geometry.js';
 
 type BaySlotJobCardProps = {
   dayBreakdown: SlotCalendarDays;
@@ -111,8 +112,8 @@ export const BaySlotDayHatch: React.FC<{
           return null;
         }
 
-        const left = getGanttWidth(slotStart, segment.startAt, gantt);
-        const width = getGanttWidth(segment.startAt, segment.endAt, gantt);
+        const left = getJobGanttOffsetDistance(slotStart, segment.startAt, gantt);
+        const width = getJobGanttWidth(segment.startAt, segment.endAt, gantt);
 
         return (
           <div

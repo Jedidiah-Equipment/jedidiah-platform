@@ -20,8 +20,6 @@ import {
   GanttSidebar,
   GanttTimeline,
   GanttToday,
-  getGanttOffset,
-  getGanttWidth,
   useGanttContext,
 } from '@/components/kibo-ui/gantt/index.js';
 import { Button } from '@/components/ui/button.js';
@@ -54,6 +52,7 @@ import { cn } from '@/lib/utils.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
 import { BaySlotDayHatch, BaySlotJobCard, BaySlotJobDetails } from './BaySlotJobCard.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
+import { getJobGanttOffset, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
 // Taller rows give each booked slot room for the rich job card (thumbnails + details).
@@ -487,8 +486,8 @@ const BaySlotBar: React.FC<{
     [previewEndAt, startAt, workingCalendar],
   );
   const daySummary = formatSlotDaySummary(dayBreakdown);
-  const left = getGanttOffset(startAt, gantt);
-  const width = Math.max(getGanttWidth(startAt, previewEndAt, gantt), 28);
+  const left = getJobGanttOffset(startAt, gantt);
+  const width = Math.max(getJobGanttWidth(startAt, previewEndAt, gantt), 28);
   const isIdle = slot.kind === 'idle';
   // The "active" slot is the booked job currently in progress (today within its span).
   const isActive = !isIdle && startAt.getTime() <= Date.now() && Date.now() < previewEndAt.getTime();
@@ -506,7 +505,7 @@ const BaySlotBar: React.FC<{
     setResizeDrag({
       durationDays,
       initialDurationDays: durationDays,
-      pixelsPerDay: Math.max(getGanttWidth(startAt, addJobSlotDuration(startAt, 1, workingCalendar), gantt), 1),
+      pixelsPerDay: Math.max(getJobGanttWidth(startAt, addJobSlotDuration(startAt, 1, workingCalendar), gantt), 1),
       startX: event.clientX,
     });
   };

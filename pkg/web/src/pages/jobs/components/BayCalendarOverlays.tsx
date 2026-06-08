@@ -1,9 +1,9 @@
 import { formatDate } from '@pkg/domain';
 import type { OffDay } from '@pkg/schema';
-import { addDays } from 'date-fns';
 import type React from 'react';
-import { getGanttOffset, getGanttWidth, useGanttContext } from '@/components/kibo-ui/gantt/index.js';
+import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
+import { getJobCalendarDayOffset, getJobCalendarDayWidth } from './job-gantt-geometry.js';
 
 export const OffDayBands: React.FC<{
   offDays: OffDay[];
@@ -14,8 +14,8 @@ export const OffDayBands: React.FC<{
     <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-10 h-[calc(100%-var(--gantt-header-height))] w-full">
       {offDays.map((offDay) => {
         const startAt = fromJobCalendarDateKey(offDay.date);
-        const left = getGanttOffset(startAt, gantt);
-        const width = Math.max(getGanttWidth(startAt, addDays(startAt, 1), gantt), 1);
+        const left = getJobCalendarDayOffset(offDay.date, gantt);
+        const width = getJobCalendarDayWidth(offDay.date, gantt);
 
         return (
           <div

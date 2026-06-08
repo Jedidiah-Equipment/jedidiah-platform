@@ -29,3 +29,7 @@ export function fromJobCalendarDateKey(value: string): Date {
   // Use browser-local midnight so bands line up with Kibo's local daily columns.
   return new Date(year, month - 1, day);
 }
+
+export function toJobCalendarDate(date: Date): Date {
+  return fromJobCalendarDateKey(toJobDateKey(date));
+}

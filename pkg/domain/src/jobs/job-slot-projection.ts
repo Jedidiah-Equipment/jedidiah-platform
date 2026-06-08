@@ -38,14 +38,15 @@ export function projectJobSlots<TSlot extends ProjectableJobSlot>({
   workingCalendar?: WorkingCalendar;
 }): SlotProjectionResult<TSlot> {
   const resolvedWorkingCalendar = workingCalendar ?? {};
-  let cursor = firstWorkingDayOnOrAfter(johannesburgDayStart(scheduleOrigin), resolvedWorkingCalendar);
+  let cursor = johannesburgDayStart(scheduleOrigin);
 
   const projectedSlots = [...slots]
     .sort((left, right) => left.sequence - right.sequence || left.id.localeCompare(right.id))
     .map((slot) => {
       const startAt = cursor;
       const endAt = addJobSlotDuration(startAt, slot.durationDays, resolvedWorkingCalendar);
-      cursor = firstWorkingDayOnOrAfter(endAt, resolvedWorkingCalendar);
+      // Slots are a contiguous queue visually, even when the boundary falls on an off-day.
+      cursor = endAt;
 
       return {
         ...slot,

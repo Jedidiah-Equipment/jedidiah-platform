@@ -116,7 +116,34 @@ describe('projectJobSlots', () => {
     expect(projection.nextAvailableAt).toEqual(new Date('2026-06-10T22:00:00.000Z'));
   });
 
-  it('starts the first slot on the next working day when the schedule origin is an off-day', () => {
+  it('keeps queued slots contiguous when a previous slot ends on an off-day', () => {
+    const projection = projectJobSlots({
+      scheduleOrigin,
+      slots: [
+        slot({ durationDays: 1, id: 'slot-1', sequence: 1 }),
+        slot({ durationDays: 3, id: 'slot-2', sequence: 2 }),
+      ],
+      workingCalendar: {
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      },
+    });
+
+    expect(projection.slots.map(({ id, startAt, endAt }) => ({ id, startAt, endAt }))).toEqual([
+      {
+        id: 'slot-1',
+        startAt: new Date('2026-06-04T22:00:00.000Z'),
+        endAt: new Date('2026-06-05T22:00:00.000Z'),
+      },
+      {
+        id: 'slot-2',
+        startAt: new Date('2026-06-05T22:00:00.000Z'),
+        endAt: new Date('2026-06-10T22:00:00.000Z'),
+      },
+    ]);
+    expect(projection.nextAvailableAt).toEqual(new Date('2026-06-10T22:00:00.000Z'));
+  });
+
+  it('starts the first slot at the schedule origin when the origin is an off-day', () => {
     const saturday = new Date('2026-06-06T08:00:00.000Z');
     const projection = projectJobSlots({
       scheduleOrigin: saturday,
@@ -128,13 +155,13 @@ describe('projectJobSlots', () => {
 
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: new Date('2026-06-07T22:00:00.000Z'),
+      startAt: new Date('2026-06-05T22:00:00.000Z'),
       endAt: new Date('2026-06-08T22:00:00.000Z'),
     });
     expect(projection.nextAvailableAt).toEqual(new Date('2026-06-08T22:00:00.000Z'));
   });
 
-  it('uses Johannesburg business dates for off-day lookups even when the instant is UTC-prior-day', () => {
+  it('uses Johannesburg business dates for off-day duration lookups even when the instant is UTC-prior-day', () => {
     const projection = projectJobSlots({
       scheduleOrigin: new Date('2026-06-05T22:30:00.000Z'),
       slots: [slot({ id: 'slot-1', sequence: 1 })],
@@ -145,7 +172,7 @@ describe('projectJobSlots', () => {
 
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: new Date('2026-06-06T22:00:00.000Z'),
+      startAt: new Date('2026-06-05T22:00:00.000Z'),
       endAt: new Date('2026-06-07T22:00:00.000Z'),
     });
   });
@@ -208,7 +235,7 @@ describe('projectJobSlots', () => {
       },
       {
         id: 'slot-b',
-        startAt: new Date('2026-06-07T22:00:00.000Z'),
+        startAt: new Date('2026-06-05T22:00:00.000Z'),
         endAt: new Date('2026-06-09T22:00:00.000Z'),
       },
       {

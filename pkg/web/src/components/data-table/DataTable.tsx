@@ -72,7 +72,7 @@ export function DataTable<TData>({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-lg border">
+      <div className="overflow-hidden rounded-lg border border-border/70 bg-card text-card-foreground">
         <ScrollArea className="w-full">
           <table data-slot="table" className={cn('w-full caption-bottom text-sm', tableClassName)}>
             <TableHeader>

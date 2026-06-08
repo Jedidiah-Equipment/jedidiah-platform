@@ -3,9 +3,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { AuditTable, useSupplierAuditTableStore } from '@/components/audit/AuditTable.js';
-import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -34,11 +33,7 @@ export const SupplierEditPage: React.FC<SupplierEditPageProps> = ({ supplierId }
   );
 
   return (
-    <EditPageLayout
-      back={<BackButton to="/suppliers">Suppliers</BackButton>}
-      description="Edit Supplier"
-      title={supplierQuery.data?.companyName ?? 'Loading supplier...'}
-    >
+    <PageLayout description="Edit Supplier" size="md" title={supplierQuery.data?.companyName ?? 'Loading supplier...'}>
       {supplierQuery.isPending ? <SupplierFormSkeleton /> : null}
       <ErrorMessage error={supplierQuery.error} fallbackMessage="Unable to load supplier." />
       {supplierQuery.data ? (
@@ -47,7 +42,7 @@ export const SupplierEditPage: React.FC<SupplierEditPageProps> = ({ supplierId }
           supplier={supplierQuery.data}
         />
       ) : null}
-    </EditPageLayout>
+    </PageLayout>
   );
 };
 

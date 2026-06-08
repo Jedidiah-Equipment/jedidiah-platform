@@ -3,9 +3,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo } from 'react';
 import { AuditTable, useProductAuditTableStore } from '@/components/audit/AuditTable.js';
-import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -33,11 +32,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
   );
 
   return (
-    <EditPageLayout
-      back={<BackButton to="/products">Products</BackButton>}
-      description="Edit Product"
-      title={productQuery.data?.name ?? 'Loading product...'}
-    >
+    <PageLayout description="Edit Product" size="md" title={productQuery.data?.name ?? 'Loading product...'}>
       {productQuery.isPending ? <ProductFormSkeleton /> : null}
       <ErrorMessage error={productQuery.error} fallbackMessage="Unable to load product." />
       {productQuery.data ? (
@@ -46,7 +41,7 @@ export const ProductEditPage: React.FC<ProductEditPageProps> = ({ productId }) =
           product={productQuery.data}
         />
       ) : null}
-    </EditPageLayout>
+    </PageLayout>
   );
 };
 

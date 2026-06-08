@@ -2,7 +2,7 @@ import type { Supplier, SupplierUpdateInput } from '@pkg/schema';
 import type React from 'react';
 
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
-import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
+import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { SupplierFormValues, toSupplierFormValues, toSupplierUpdateInput } from './types.js';
 
 type SupplierFormProps = {

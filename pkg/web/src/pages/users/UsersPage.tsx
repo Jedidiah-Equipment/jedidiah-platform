@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
 
-import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -29,7 +29,7 @@ export const UsersPage: React.FC = () => {
 
   return (
     <>
-      <ListPageLayout action={<UserCreateDialog />} description="Access" title="Users">
+      <PageLayout actions={<UserCreateDialog />} description="Access" size="lg" title="Users">
         <UserTable
           currentUserId={access?.userId}
           errorMessage={getApiQueryErrorMessage(usersQuery.error, 'Unable to load users.')}
@@ -37,7 +37,7 @@ export const UsersPage: React.FC = () => {
           onEditUser={canManageUsers ? setEditingUser : undefined}
           users={usersQuery.data?.users ?? emptyUsers}
         />
-      </ListPageLayout>
+      </PageLayout>
 
       {editingUser ? <UserEditDialog user={editingUser} onClose={() => setEditingUser(null)} /> : null}
     </>

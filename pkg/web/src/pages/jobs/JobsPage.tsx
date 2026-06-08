@@ -12,7 +12,7 @@ import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-que
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
-import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -41,10 +41,10 @@ const jobSortOptions: SortOptions<JobListInput> = {
 
 export const JobsPage: React.FC = () => {
   return (
-    <ListPageLayout description="Production" title="Jobs">
+    <PageLayout description="Production" size="lg" title="Jobs">
       <BayScheduleGantt />
       <JobTable />
-    </ListPageLayout>
+    </PageLayout>
   );
 };
 

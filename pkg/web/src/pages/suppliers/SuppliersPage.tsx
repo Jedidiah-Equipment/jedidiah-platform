@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
 
-import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { useCan } from '@/hooks/use-access.js';
 import { PartBulkImportDialog } from '../parts/PartBulkImportDialog.js';
@@ -18,8 +18,8 @@ export const SuppliersPage: React.FC = () => {
 
   return (
     <>
-      <ListPageLayout
-        action={
+      <PageLayout
+        actions={
           canUpdatePart || canUpdateSupplier ? (
             <div className="flex gap-2">
               {canUpdatePart ? <PartBulkImportDialog /> : null}
@@ -33,6 +33,7 @@ export const SuppliersPage: React.FC = () => {
           ) : null
         }
         description="Procurement"
+        size="lg"
         title="Suppliers"
       >
         <SupplierTable
@@ -42,7 +43,7 @@ export const SuppliersPage: React.FC = () => {
               : undefined
           }
         />
-      </ListPageLayout>
+      </PageLayout>
       {canUpdateSupplier ? (
         <SupplierCreateDialog onOpenChange={setIsCreateDialogOpen} open={isCreateDialogOpen} />
       ) : null}

@@ -136,6 +136,59 @@ export function summarizeSlotCalendarDays(
   return { workingDays, closureDays, overtimeDays };
 }
 
+export type SlotCalendarDayKind = 'working' | 'closure' | 'overtime';
+
+export type SlotCalendarDaySegment = {
+  kind: SlotCalendarDayKind;
+  startAt: Date;
+  endAt: Date;
+};
+
+/**
+ * Splits a projected slot span into contiguous day segments classified as working,
+ * closure (non-working day inside the span), or overtime (a working day that only exists
+ * because a bay exception opened an org off-day). Consecutive same-kind days are merged.
+ * The span is half-open `[startAt, endAt)`, matching {@link projectJobSlots} output and
+ * the day counts from {@link summarizeSlotCalendarDays}.
+ */
+export function segmentSlotCalendarDays(
+  startAt: Date,
+  endAt: Date,
+  workingCalendar: WorkingCalendar = {},
+): SlotCalendarDaySegment[] {
+  let cursor = johannesburgDayStart(startAt);
+  const end = johannesburgDayStart(endAt);
+  const segments: SlotCalendarDaySegment[] = [];
+
+  while (cursor < end) {
+    const dateKey = toJohannesburgDateKey(cursor);
+    const bayException = workingCalendar.bayExceptions?.get(dateKey);
+    const isOrgOffDay = workingCalendar.orgOffDays?.has(dateKey) ?? false;
+
+    let kind: SlotCalendarDayKind;
+    if (!isWorkingDay(cursor, workingCalendar)) {
+      kind = 'closure';
+    } else if (bayException === 'work' && isOrgOffDay) {
+      kind = 'overtime';
+    } else {
+      kind = 'working';
+    }
+
+    const nextDay = addDays(cursor, 1);
+    const previous = segments.at(-1);
+
+    if (previous && previous.kind === kind) {
+      previous.endAt = nextDay;
+    } else {
+      segments.push({ endAt: nextDay, kind, startAt: cursor });
+    }
+
+    cursor = nextDay;
+  }
+
+  return segments;
+}
+
 function firstWorkingDayOnOrAfter(date: Date, workingCalendar: WorkingCalendar): Date {
   let cursor = date;
 

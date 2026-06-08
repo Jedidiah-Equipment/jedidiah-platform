@@ -20,8 +20,6 @@ import {
   GanttSidebar,
   GanttTimeline,
   GanttToday,
-  getGanttOffset,
-  getGanttWidth,
   useGanttContext,
 } from '@/components/kibo-ui/gantt/index.js';
 import { Button } from '@/components/ui/button.js';
@@ -54,14 +52,15 @@ import { cn } from '@/lib/utils.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
 import { BaySlotDayHatch, BaySlotJobCard, BaySlotJobDetails } from './BaySlotJobCard.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
+import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
 // Taller rows give each booked slot room for the rich job card (thumbnails + details).
 const BAY_ROW_HEIGHT = 72;
-// Work-slot card height, leaving a small inset above/below within the row.
+// Slot card height, leaving a small inset above/below within the row.
 const SLOT_CARD_HEIGHT = 60;
-// Compact height kept for idle slots.
-const IDLE_SLOT_HEIGHT = 24;
+const IDLE_SLOT_HATCH_BACKGROUND =
+  'repeating-linear-gradient(45deg, rgb(113 113 122 / 0.18) 0 5px, transparent 5px 10px)';
 
 const allJobsInput = {
   filters: {},
@@ -88,6 +87,7 @@ export const BayScheduleGantt: React.FC = () => {
   const [selectedBayId, setSelectedBayId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [durationDays, setDurationDays] = useState(1);
+  const [hoveredBayId, setHoveredBayId] = useState<string | null>(null);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const selectedBay = bays.find((bay) => bay.id === selectedBayId) ?? bays[0] ?? null;
   const jobs = jobsQuery.data?.items ?? [];
@@ -303,24 +303,30 @@ export const BayScheduleGantt: React.FC = () => {
         }}
       >
         <GanttProvider
-          className="h-full border border-border/70 bg-background"
+          className="h-full"
           initialDate={initialDate}
           initialDateAlignment="start"
           range="daily"
           rowHeight={BAY_ROW_HEIGHT}
           zoom={200}
         >
-          <BayScheduleSidebar bays={bays} horizonWarnings={horizonWarnings} />
+          <BayScheduleSidebar
+            bays={bays}
+            horizonWarnings={horizonWarnings}
+            hoveredBayId={hoveredBayId}
+            onHoverBay={setHoveredBayId}
+          />
           <GanttTimeline>
             <GanttHeader />
             <OffDayBands offDays={offDays} />
-            <BayLaneDividers bays={bays} />
+            <BayLaneRows bays={bays} hoveredBayId={hoveredBayId} onHoverBay={setHoveredBayId} />
             <BaySlotBars
               bays={bays}
               isScheduleMutationPending={isScheduleMutationPending}
               jobsById={jobsById}
               offDays={offDays}
               onAddIdleSlot={handleAddIdleSlot}
+              onHoverBay={setHoveredBayId}
               onRemoveSlot={handleRemoveSlot}
               onResizeSlot={handleResizeSlot}
               optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
@@ -336,26 +342,44 @@ export const BayScheduleGantt: React.FC = () => {
 const BayScheduleSidebar: React.FC<{
   bays: BaySchedule[];
   horizonWarnings: ReadonlyMap<string, MaintainedHorizonWarning>;
-}> = ({ bays, horizonWarnings }) => (
-  <GanttSidebar secondaryTitle={null} title="Bay">
-    <div className="divide-y divide-border/50">
-      {bays.map((bay) => {
-        const warning = horizonWarnings.get(bay.id);
+  hoveredBayId: string | null;
+  onHoverBay: (bayId: string | null) => void;
+}> = ({ bays, horizonWarnings, hoveredBayId, onHoverBay }) => {
+  const now = Date.now();
 
-        return (
-          <div
-            className="flex items-center gap-2 px-2.5 text-xs"
-            key={bay.id}
-            style={{ height: 'var(--gantt-row-height)' }}
-          >
-            <p className="min-w-0 flex-1 truncate font-medium">{bay.name}</p>
-            {warning ? <MaintainedHorizonWarningBadge warning={warning} /> : null}
-          </div>
-        );
-      })}
-    </div>
-  </GanttSidebar>
-);
+  return (
+    <GanttSidebar secondaryTitle={null} title="Bay">
+      <div className="divide-y divide-border/50">
+        {bays.map((bay) => {
+          const warning = horizonWarnings.get(bay.id);
+          const currentSlot = getCurrentBaySlot(bay.slots, now);
+          const statusLabel = currentSlot?.kind === 'work' ? 'Busy on' : 'Idle';
+          const statusValue = currentSlot?.kind === 'work' ? currentSlot.jobCode : (currentSlot?.label ?? '');
+
+          return (
+            <div
+              className={cn(
+                'flex items-center gap-3 px-3 text-xs transition-colors',
+                hoveredBayId === bay.id && 'bg-muted/45',
+              )}
+              key={bay.id}
+              onPointerEnter={() => onHoverBay(bay.id)}
+              onPointerLeave={() => onHoverBay(null)}
+              style={{ height: 'var(--gantt-row-height)' }}
+            >
+              <div className="flex min-w-40 flex-1 flex-col gap-1">
+                <p className="truncate text-base text-foreground leading-tight">{bay.name}</p>
+                <p className="font-medium text-muted-foreground leading-none">{statusLabel}</p>
+                <p className="truncate text-xs leading-tight">{statusValue}</p>
+              </div>
+              {warning ? <MaintainedHorizonWarningBadge warning={warning} /> : null}
+            </div>
+          );
+        })}
+      </div>
+    </GanttSidebar>
+  );
+};
 
 const MaintainedHorizonWarningBadge: React.FC<{
   warning: MaintainedHorizonWarning;
@@ -366,7 +390,7 @@ const MaintainedHorizonWarningBadge: React.FC<{
 
   return (
     <div
-      className="flex max-w-[12rem] shrink-0 items-center gap-1 rounded-sm bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300"
+      className="flex max-w-48 shrink-0 items-center gap-1 rounded-sm bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300"
       title={`Calendar ${message} Queue ends ${formatDate(queueEndDate, 'MMM d')}.`}
     >
       <IconAlertTriangle className="size-3.5 shrink-0" />
@@ -375,14 +399,21 @@ const MaintainedHorizonWarningBadge: React.FC<{
   );
 };
 
-const BayLaneDividers: React.FC<{
+const BayLaneRows: React.FC<{
   bays: BaySchedule[];
-}> = ({ bays }) => (
+  hoveredBayId: string | null;
+  onHoverBay: (bayId: string | null) => void;
+}> = ({ bays, hoveredBayId, onHoverBay }) => (
   <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-10 w-full">
     {bays.map((bay) => (
       <div
-        className="border-border/50 border-b"
+        className={cn(
+          'pointer-events-auto border-border/50 border-b transition-colors',
+          hoveredBayId === bay.id && 'bg-muted/30',
+        )}
         key={bay.id}
+        onPointerEnter={() => onHoverBay(bay.id)}
+        onPointerLeave={() => onHoverBay(null)}
         style={{
           height: 'var(--gantt-row-height)',
         }}
@@ -391,12 +422,21 @@ const BayLaneDividers: React.FC<{
   </div>
 );
 
+const getCurrentBaySlot = (slots: ProjectedJobSlot[], timestamp: number) =>
+  slots.find((slot) => {
+    const startAt = new Date(slot.startAt).getTime();
+    const endAt = new Date(slot.endAt).getTime();
+
+    return startAt <= timestamp && timestamp < endAt;
+  }) ?? null;
+
 const BaySlotBars: React.FC<{
   bays: BaySchedule[];
   isScheduleMutationPending: boolean;
   jobsById: ReadonlyMap<string, JobSummary>;
   offDays: OffDay[];
   onAddIdleSlot: (targetSlotId: string, placement: JobSlotPlacement) => void;
+  onHoverBay: (bayId: string | null) => void;
   onRemoveSlot: (slotId: string) => Promise<void>;
   onResizeSlot: (slotId: string, durationDays: number) => void;
   optimisticResizeDaysBySlotId: Record<string, number>;
@@ -406,6 +446,7 @@ const BaySlotBars: React.FC<{
   jobsById,
   offDays,
   onAddIdleSlot,
+  onHoverBay,
   onRemoveSlot,
   onResizeSlot,
   optimisticResizeDaysBySlotId,
@@ -418,10 +459,12 @@ const BaySlotBars: React.FC<{
       {bays.flatMap((bay, bayIndex) =>
         bay.slots.map((slot) => (
           <BaySlotBar
+            bayId={bay.id}
             isScheduleMutationPending={isScheduleMutationPending}
             job={slot.kind === 'work' ? (jobsById.get(slot.jobId) ?? null) : null}
             key={slot.id}
             onAddIdle={onAddIdleSlot}
+            onHoverBay={onHoverBay}
             onRemove={onRemoveSlot}
             onResize={onResizeSlot}
             optimisticDurationDays={optimisticResizeDaysBySlotId[slot.id] ?? null}
@@ -443,9 +486,11 @@ type SlotResizeDrag = {
 };
 
 const BaySlotBar: React.FC<{
+  bayId: string;
   isScheduleMutationPending: boolean;
   job: JobSummary | null;
   onAddIdle: (targetSlotId: string, placement: JobSlotPlacement) => void;
+  onHoverBay: (bayId: string | null) => void;
   onRemove: (slotId: string) => Promise<void>;
   onResize: (slotId: string, durationDays: number) => void;
   optimisticDurationDays: number | null;
@@ -453,9 +498,11 @@ const BaySlotBar: React.FC<{
   slot: ProjectedJobSlot;
   workingCalendar: WorkingCalendar;
 }> = ({
+  bayId,
   isScheduleMutationPending,
   job,
   onAddIdle,
+  onHoverBay,
   onRemove,
   onResize,
   optimisticDurationDays,
@@ -487,12 +534,12 @@ const BaySlotBar: React.FC<{
     [previewEndAt, startAt, workingCalendar],
   );
   const daySummary = formatSlotDaySummary(dayBreakdown);
-  const left = getGanttOffset(startAt, gantt);
-  const width = Math.max(getGanttWidth(startAt, previewEndAt, gantt), 28);
+  const left = getJobGanttOffset(startAt, gantt);
+  const width = Math.max(getJobGanttWidth(startAt, previewEndAt, gantt), 28);
   const isIdle = slot.kind === 'idle';
   // The "active" slot is the booked job currently in progress (today within its span).
   const isActive = !isIdle && startAt.getTime() <= Date.now() && Date.now() < previewEndAt.getTime();
-  const height = isIdle ? IDLE_SLOT_HEIGHT : SLOT_CARD_HEIGHT;
+  const height = SLOT_CARD_HEIGHT;
   // Center the bar/card vertically within its (taller) bay row.
   const top = rowTop + (gantt.rowHeight - height) / 2;
   const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -506,7 +553,7 @@ const BaySlotBar: React.FC<{
     setResizeDrag({
       durationDays,
       initialDurationDays: durationDays,
-      pixelsPerDay: Math.max(getGanttWidth(startAt, addJobSlotDuration(startAt, 1, workingCalendar), gantt), 1),
+      pixelsPerDay: getJobGanttResizeStepWidth(endAt, workingCalendar, gantt),
       startX: event.clientX,
     });
   };
@@ -560,13 +607,14 @@ const BaySlotBar: React.FC<{
       <ContextMenuTrigger
         render={
           <div
+            data-gantt-drag-scroll-ignore
             className={cn(
-              'pointer-events-auto absolute overflow-hidden text-xs shadow-sm',
+              'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm',
               isIdle
-                ? 'rounded-sm border border-border bg-muted px-2 py-1 text-muted-foreground'
+                ? 'rounded-sm border border-border bg-card px-2 py-1 text-muted-foreground'
                 : cn(
-                    'rounded-lg border-2 bg-card px-2.5 py-1.5 text-card-foreground',
-                    isActive ? 'border-primary' : 'border-border',
+                    'rounded-lg border bg-card px-2.5 py-1.5 text-card-foreground',
+                    isActive ? 'border-white/70 ring-1 ring-white/25' : 'border-border',
                   ),
             )}
             style={{
@@ -575,13 +623,22 @@ const BaySlotBar: React.FC<{
               top,
               width,
             }}
+            onPointerEnter={() => onHoverBay(bayId)}
+            onPointerLeave={() => onHoverBay(null)}
             title={`${label}: ${formatDate(slot.startAt, 'long')} - ${formatDate(slot.endAt, 'long')}\n${dayBreakdown.workingDays} working day(s), ${dayBreakdown.closureDays} closure day(s), ${dayBreakdown.overtimeDays} overtime day(s)`}
           />
         }
       >
-        {isIdle ? null : <BaySlotDayHatch segments={daySegments} slotStart={startAt} />}
         {isIdle ? (
-          <span className="flex items-center gap-1.5 pr-8">
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ backgroundImage: IDLE_SLOT_HATCH_BACKGROUND }}
+          />
+        ) : (
+          <BaySlotDayHatch segments={daySegments} slotStart={startAt} />
+        )}
+        {isIdle ? (
+          <span className="relative z-10 flex h-full items-center gap-1.5 pr-8">
             <span className="min-w-0 truncate font-medium">{label}</span>
             <span className="shrink-0 text-[0.65rem] tabular-nums opacity-80">{daySummary}</span>
           </span>
@@ -614,8 +671,8 @@ const BaySlotBar: React.FC<{
               <button
                 aria-label={`Remove ${label}`}
                 className={cn(
-                  'absolute top-0 right-2 flex h-full w-6 items-center justify-center outline-none hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
-                  isIdle ? 'bg-muted/80 focus-visible:ring-foreground' : 'bg-card/80 focus-visible:ring-ring',
+                  'absolute top-1/2 right-2 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                  'hover:bg-destructive hover:text-white focus-visible:ring-ring',
                 )}
                 disabled={isScheduleMutationPending || isRemoving}
                 type="button"

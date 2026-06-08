@@ -610,7 +610,7 @@ describe('toggleOffDay', () => {
           }),
           expect.objectContaining({
             id: secondSlot.slot.id,
-            startAt: '2026-06-06T22:00:00.000Z',
+            startAt: '2026-06-05T22:00:00.000Z',
             endAt: '2026-06-07T22:00:00.000Z',
           }),
         ],

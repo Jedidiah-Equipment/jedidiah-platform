@@ -3,7 +3,7 @@ import type { AppPermission } from '@pkg/schema';
 import {
   IconBriefcase2,
   IconBuilding,
-  IconCalendar,
+  IconChevronRight,
   IconClipboardList,
   IconFileText,
   IconGauge,
@@ -14,108 +14,245 @@ import {
   type TablerIcon,
 } from '@tabler/icons-react';
 import { Link, linkOptions } from '@tanstack/react-router';
-import type React from 'react';
+import React from 'react';
 
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible.js';
 import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from '@/components/ui/sidebar.js';
 import { useAccess } from '@/hooks/use-access.js';
+import { cn } from '@/lib/utils.js';
+
+type NavSubItem = {
+  title: string;
+  permission?: AppPermission;
+  link: ReturnType<typeof linkOptions>;
+};
 
 type MainNavItem = {
   title: string;
   permission?: AppPermission;
   link: ReturnType<typeof linkOptions>;
   icon: TablerIcon;
+  children?: readonly NavSubItem[];
 };
 
-const mainNavItems = [
+type NavSection = {
+  label?: string;
+  items: readonly MainNavItem[];
+};
+
+const navSections = [
   {
-    title: 'Dashboard',
-    link: linkOptions({ to: '/dashboard' }),
-    icon: IconGauge,
+    label: '',
+    items: [
+      {
+        title: 'Dashboard',
+        link: linkOptions({ to: '/dashboard' }),
+        icon: IconGauge,
+      },
+      {
+        title: 'Assistant',
+        link: linkOptions({ to: '/assistant' }),
+        icon: IconRobot,
+      },
+    ],
   },
   {
-    title: 'Quotes',
-    permission: 'quote:read',
-    link: linkOptions({ to: '/quotes' }),
-    icon: IconFileText,
+    label: 'Operations',
+    items: [
+      {
+        title: 'Quotes',
+        permission: 'quote:read',
+        link: linkOptions({ to: '/quotes' }),
+        icon: IconFileText,
+      },
+      {
+        title: 'Jobs',
+        permission: 'job:read',
+        link: linkOptions({ to: '/jobs' }),
+        icon: IconBriefcase2,
+        children: [
+          {
+            title: 'Planning',
+            permission: 'job:read',
+            link: linkOptions({ to: '/jobs' }),
+          },
+          {
+            title: 'Calendar',
+            permission: 'job:read',
+            link: linkOptions({ to: '/jobs/calendar' }),
+          },
+        ],
+      },
+      {
+        title: 'Customers',
+        permission: 'customer:read',
+        link: linkOptions({ to: '/customers' }),
+        icon: IconBuilding,
+      },
+      {
+        title: 'Suppliers',
+        permission: 'supplier:read',
+        link: linkOptions({ to: '/suppliers' }),
+        icon: IconHeartHandshake,
+      },
+      {
+        title: 'Products',
+        permission: 'product:read',
+        link: linkOptions({ to: '/products' }),
+        icon: IconPackage,
+      },
+    ],
   },
   {
-    title: 'Jobs',
-    permission: 'job:read',
-    link: linkOptions({ to: '/jobs' }),
-    icon: IconBriefcase2,
+    label: 'Admin',
+    items: [
+      {
+        title: 'Users',
+        permission: 'user:list',
+        link: linkOptions({ to: '/users' }),
+        icon: IconUsers,
+      },
+      {
+        title: 'Audit',
+        permission: 'audit:read',
+        link: linkOptions({ to: '/audit' }),
+        icon: IconClipboardList,
+      },
+    ],
   },
-  {
-    title: 'Job Calendar',
-    permission: 'job:read',
-    link: linkOptions({ to: '/jobs/calendar' }),
-    icon: IconCalendar,
-  },
-  {
-    title: 'Customers',
-    permission: 'customer:read',
-    link: linkOptions({ to: '/customers' }),
-    icon: IconBuilding,
-  },
-  {
-    title: 'Suppliers',
-    permission: 'supplier:read',
-    link: linkOptions({ to: '/suppliers' }),
-    icon: IconHeartHandshake,
-  },
-  {
-    title: 'Products',
-    permission: 'product:read',
-    link: linkOptions({ to: '/products' }),
-    icon: IconPackage,
-  },
-  {
-    title: 'Assistant',
-    link: linkOptions({ to: '/assistant' }),
-    icon: IconRobot,
-  },
-  {
-    title: 'Users',
-    permission: 'user:list',
-    link: linkOptions({ to: '/users' }),
-    icon: IconUsers,
-  },
-  {
-    title: 'Audit',
-    permission: 'audit:read',
-    link: linkOptions({ to: '/audit' }),
-    icon: IconClipboardList,
-  },
-] as const satisfies readonly MainNavItem[];
+] as const satisfies readonly NavSection[];
+
+// Inactive items render dimmed; the active item stays at full contrast (the
+// active state also gets a background + accent foreground from the button variant).
+const inactiveItemClass = 'text-sidebar-foreground/55';
+// Bump the icon up from the variant default (size-4) for a bit more presence.
+const biggerIconClass = '[&_svg]:size-5';
+// The active child gets a bright vertical marker that overlays the sub-menu's
+// guide line on its left edge (the button's own overflow is opened up so the
+// marker isn't clipped).
+const activeSubMarkerClass =
+  'relative overflow-visible data-active:before:absolute data-active:before:-left-2.5 data-active:before:inset-y-0.5 data-active:before:w-0.5 data-active:before:rounded-full data-active:before:bg-sidebar-foreground';
+
+type NavLinkProps = React.ComponentProps<typeof Link>;
+
+// A parent that expands to its children. The parent row doubles as a shortcut
+// to its first child (same destination) and toggles the group open/closed.
+const NavCollapsibleItem: React.FC<{
+  title: string;
+  icon: TablerIcon;
+  navLink: NavLinkProps;
+  subItems: ReadonlyArray<{ title: string; link: NavLinkProps }>;
+}> = ({ title, icon: Icon, navLink, subItems }) => {
+  const [open, setOpen] = React.useState(true);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} render={<SidebarMenuItem />}>
+      <Link {...navLink} onClick={() => setOpen((value) => !value)}>
+        {({ isActive }) => (
+          <SidebarMenuButton
+            isActive={isActive}
+            render={<span />}
+            tooltip={title}
+            className={cn(biggerIconClass, !isActive && inactiveItemClass)}
+          >
+            <Icon />
+            <span>{title}</span>
+            <IconChevronRight
+              aria-hidden="true"
+              className={cn('ml-auto size-4! transition-transform', open && 'rotate-90')}
+            />
+          </SidebarMenuButton>
+        )}
+      </Link>
+      <CollapsibleContent>
+        <SidebarMenuSub>
+          {subItems.map((child) => (
+            <SidebarMenuSubItem key={child.title}>
+              {/* Exact match so a parent route (e.g. /jobs) isn't flagged active on a child route (/jobs/calendar). */}
+              <Link {...child.link} activeOptions={{ exact: true }}>
+                {({ isActive }) => (
+                  <SidebarMenuSubButton
+                    isActive={isActive}
+                    render={<span />}
+                    className={cn(activeSubMarkerClass, !isActive && inactiveItemClass)}
+                  >
+                    <span>{child.title}</span>
+                  </SidebarMenuSubButton>
+                )}
+              </Link>
+            </SidebarMenuSubItem>
+          ))}
+        </SidebarMenuSub>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
 
 export const AppNavMain: React.FC = () => {
   const accessQuery = useAccess();
-  const visibleNavItems = mainNavItems.filter(
-    (item) => !('permission' in item) || hasPermission(accessQuery.data, item.permission),
-  );
+
+  const canSee = (permission?: AppPermission) =>
+    permission === undefined || hasPermission(accessQuery.data, permission);
+
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => canSee('permission' in item ? item.permission : undefined)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
-      <SidebarMenu className="gap-1">
-        {visibleNavItems.map((item) => (
-          <SidebarMenuItem key={item.title}>
-            <Link {...item.link}>
-              {({ isActive }) => (
-                <SidebarMenuButton isActive={isActive} render={<span />} tooltip={item.title}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </SidebarMenuButton>
-              )}
-            </Link>
-          </SidebarMenuItem>
-        ))}
-      </SidebarMenu>
-    </SidebarGroup>
+    <>
+      {visibleSections.map((section, index) => (
+        <SidebarGroup key={section.label ?? `section-${index}`}>
+          {section.label ? <SidebarGroupLabel>{section.label}</SidebarGroupLabel> : null}
+          <SidebarMenu className="gap-1">
+            {section.items.map((item) => {
+              const subItems = 'children' in item ? item.children.filter((child) => canSee(child.permission)) : [];
+              const [firstChild] = subItems;
+
+              if (!firstChild) {
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <Link {...item.link}>
+                      {({ isActive }) => (
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          render={<span />}
+                          tooltip={item.title}
+                          className={cn(biggerIconClass, !isActive && inactiveItemClass)}
+                        >
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </SidebarMenuButton>
+                      )}
+                    </Link>
+                  </SidebarMenuItem>
+                );
+              }
+
+              return (
+                <NavCollapsibleItem
+                  key={item.title}
+                  title={item.title}
+                  icon={item.icon}
+                  navLink={firstChild.link}
+                  subItems={subItems}
+                />
+              );
+            })}
+          </SidebarMenu>
+        </SidebarGroup>
+      ))}
+    </>
   );
 };

@@ -1,4 +1,11 @@
-import { addJobSlotDuration, DEFAULT_IDLE_SLOT_LABEL, formatDate, type WorkingCalendar } from '@pkg/domain';
+import {
+  addJobSlotDuration,
+  DEFAULT_IDLE_SLOT_LABEL,
+  formatDate,
+  type SlotCalendarDays,
+  summarizeSlotCalendarDays,
+  type WorkingCalendar,
+} from '@pkg/domain';
 import type { BaySchedule, JobListInput, JobSlotPlacement, OffDay, ProjectedJobSlot } from '@pkg/schema';
 import { IconAlertTriangle, IconCalendarPlus, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -454,6 +461,11 @@ const BaySlotBar: React.FC<{
     () => (shouldProjectPreview ? addJobSlotDuration(startAt, previewDurationDays, workingCalendar) : endAt),
     [endAt, previewDurationDays, shouldProjectPreview, startAt, workingCalendar],
   );
+  const dayBreakdown = useMemo(
+    () => summarizeSlotCalendarDays(startAt, previewEndAt, workingCalendar),
+    [previewEndAt, startAt, workingCalendar],
+  );
+  const daySummary = formatSlotDaySummary(dayBreakdown);
   const left = getGanttOffset(startAt, gantt);
   const width = Math.max(getGanttWidth(startAt, previewEndAt, gantt), 28);
   const isIdle = slot.kind === 'idle';
@@ -531,11 +543,14 @@ const BaySlotBar: React.FC<{
               top,
               width,
             }}
-            title={`${label}: ${formatDate(slot.startAt, 'long')} - ${formatDate(slot.endAt, 'long')}`}
+            title={`${label}: ${formatDate(slot.startAt, 'long')} - ${formatDate(slot.endAt, 'long')}\n${dayBreakdown.workingDays} working day(s), ${dayBreakdown.closureDays} closure day(s), ${dayBreakdown.overtimeDays} overtime day(s)`}
           />
         }
       >
-        <span className="block truncate pr-8 font-medium">{label}</span>
+        <span className="flex items-center gap-1.5 pr-8">
+          <span className="min-w-0 truncate font-medium">{label}</span>
+          <span className="shrink-0 text-[0.65rem] tabular-nums opacity-80">{daySummary}</span>
+        </span>
         <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
           <DialogTrigger
             render={
@@ -621,6 +636,23 @@ const BaySlotBar: React.FC<{
 
 function getSlotLabel(slot: ProjectedJobSlot): string {
   return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;
+}
+
+// Total working days, with closure and overtime days called out in brackets
+// (each only shown when non-zero), e.g. "5d (2 closed, 1 OT)".
+function formatSlotDaySummary({ workingDays, closureDays, overtimeDays }: SlotCalendarDays): string {
+  const extras: string[] = [];
+
+  if (closureDays > 0) {
+    extras.push(`${closureDays} closed`);
+  }
+
+  if (overtimeDays > 0) {
+    extras.push(`${overtimeDays} OT`);
+  }
+
+  const days = `${workingDays}d`;
+  return extras.length > 0 ? `${days} (${extras.join(', ')})` : days;
 }
 
 function createWorkingCalendarsByBayId(bays: BaySchedule[], offDays: OffDay[]): Map<string, WorkingCalendar> {

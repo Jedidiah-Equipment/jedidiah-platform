@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { JobCalendarPage } from '@/pages/jobs/JobCalendarPage.js';
+import { JobCalendarPage } from '@/pages/job-calendar/JobCalendarPage.js';
 
 export const Route = createFileRoute('/_authed/jobs/calendar')({
   staticData: {

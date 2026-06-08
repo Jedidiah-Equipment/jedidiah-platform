@@ -91,6 +91,51 @@ export function countWorkingDaysBetween(startAt: Date, endAt: Date, workingCalen
   return count;
 }
 
+export type SlotCalendarDays = {
+  /** Working days the slot consumes (matches the slot duration). */
+  workingDays: number;
+  /** Non-working calendar days that fall inside the slot span (off-days, bay closures). */
+  closureDays: number;
+  /** Working days that exist only because a bay exception opened an otherwise-off day. */
+  overtimeDays: number;
+};
+
+/**
+ * Breaks a projected slot span into its working, closure, and overtime day counts.
+ * The span is half-open `[startAt, endAt)`, matching {@link projectJobSlots} output.
+ */
+export function summarizeSlotCalendarDays(
+  startAt: Date,
+  endAt: Date,
+  workingCalendar: WorkingCalendar = {},
+): SlotCalendarDays {
+  let cursor = johannesburgDayStart(startAt);
+  const end = johannesburgDayStart(endAt);
+  let workingDays = 0;
+  let closureDays = 0;
+  let overtimeDays = 0;
+
+  while (cursor < end) {
+    const dateKey = toJohannesburgDateKey(cursor);
+    const bayException = workingCalendar.bayExceptions?.get(dateKey);
+    const isOrgOffDay = workingCalendar.orgOffDays?.has(dateKey) ?? false;
+
+    if (isWorkingDay(cursor, workingCalendar)) {
+      workingDays += 1;
+
+      if (bayException === 'work' && isOrgOffDay) {
+        overtimeDays += 1;
+      }
+    } else {
+      closureDays += 1;
+    }
+
+    cursor = addDays(cursor, 1);
+  }
+
+  return { workingDays, closureDays, overtimeDays };
+}
+
 function firstWorkingDayOnOrAfter(date: Date, workingCalendar: WorkingCalendar): Date {
   let cursor = date;
 

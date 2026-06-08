@@ -7,6 +7,7 @@ import {
   DEFAULT_IDLE_SLOT_LABEL,
   formatJobSchedulingDateKey,
   projectJobSlots,
+  summarizeSlotCalendarDays,
 } from './job-slot-projection.js';
 
 const scheduleOrigin = new Date('2026-06-05T08:00:00.000Z');
@@ -236,6 +237,51 @@ describe('projectJobSlots', () => {
 
   it('exposes the default idle slot label', () => {
     expect(DEFAULT_IDLE_SLOT_LABEL).toBe('Idle');
+  });
+});
+
+describe('summarizeSlotCalendarDays', () => {
+  it('counts every day as working with an empty calendar', () => {
+    expect(
+      summarizeSlotCalendarDays(new Date('2026-06-05T00:00:00.000Z'), new Date('2026-06-08T22:00:00.000Z')),
+    ).toEqual({ workingDays: 4, closureDays: 0, overtimeDays: 0 });
+  });
+
+  it('counts org off-days inside the span as closures', () => {
+    // 5 working days projected across two org off-days (the projected span from job-slot tests).
+    const startAt = new Date('2026-06-03T22:00:00.000Z');
+    const endAt = new Date('2026-06-10T22:00:00.000Z');
+
+    expect(
+      summarizeSlotCalendarDays(startAt, endAt, {
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      }),
+    ).toEqual({ workingDays: 5, closureDays: 2, overtimeDays: 0 });
+  });
+
+  it('counts a bay work exception on an org off-day as overtime', () => {
+    // 3 working days with 2026-06-06 opened as overtime and 2026-06-07 still closed.
+    const startAt = new Date('2026-06-04T22:00:00.000Z');
+    const endAt = new Date('2026-06-08T22:00:00.000Z');
+
+    expect(
+      summarizeSlotCalendarDays(startAt, endAt, {
+        bayExceptions: new Map([['2026-06-06', 'work']]),
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      }),
+    ).toEqual({ workingDays: 3, closureDays: 1, overtimeDays: 1 });
+  });
+
+  it('counts a bay off exception inside the span as a closure', () => {
+    // 2 working days with 2026-06-06 closed by a bay exception.
+    const startAt = new Date('2026-06-04T22:00:00.000Z');
+    const endAt = new Date('2026-06-07T22:00:00.000Z');
+
+    expect(
+      summarizeSlotCalendarDays(startAt, endAt, {
+        bayExceptions: new Map([['2026-06-06', 'off']]),
+      }),
+    ).toEqual({ workingDays: 2, closureDays: 1, overtimeDays: 0 });
   });
 });
 

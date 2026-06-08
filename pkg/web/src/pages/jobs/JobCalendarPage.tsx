@@ -136,6 +136,27 @@ export const JobCalendarPage: React.FC = () => {
       label: existingException?.label ?? '',
     });
   };
+  const openBayExceptionForChip = (chip: BayExceptionChip) => {
+    const bay = bays.find((item) => item.id === chip.bayId);
+
+    if (!bay) {
+      return;
+    }
+
+    const existingException = getBayCalendarException(bay, chip.date);
+
+    if (!existingException) {
+      return;
+    }
+
+    setBayExceptionDialog({
+      bayId: chip.bayId,
+      date: chip.date,
+      direction: existingException.direction,
+      existingException,
+      label: existingException.label ?? '',
+    });
+  };
 
   if (baysQuery.isLoading) {
     return (
@@ -206,7 +227,11 @@ export const JobCalendarPage: React.FC = () => {
                     </div>
                   ) : null}
                   {visibleBayExceptionChips.map((exception) => (
-                    <BayExceptionCalendarChip exception={exception} key={`${exception.bayId}-${exception.date}`} />
+                    <BayExceptionCalendarChip
+                      exception={exception}
+                      key={`${exception.bayId}-${exception.date}`}
+                      onSelect={canEditBaySchedule ? () => openBayExceptionForChip(exception) : undefined}
+                    />
                   ))}
                   {hiddenBayExceptionCount > 0 ? (
                     <div className="rounded-sm bg-muted px-1.5 py-1 text-muted-foreground text-xs">
@@ -241,6 +266,20 @@ export const JobCalendarPage: React.FC = () => {
                       Add bay closure
                     </ContextMenuItem>
                   </ContextMenuGroup>
+                  {bayExceptionChips.length > 0 ? (
+                    <ContextMenuGroup>
+                      {bayExceptionChips.map((chip) => (
+                        <ContextMenuItem
+                          disabled={isBayExceptionMutationPending}
+                          key={`${chip.bayId}-${chip.date}-edit`}
+                          onClick={() => openBayExceptionForChip(chip)}
+                        >
+                          <IconTrash />
+                          Remove {chip.bayName} {chip.direction === 'work' ? 'overtime' : 'closure'}
+                        </ContextMenuItem>
+                      ))}
+                    </ContextMenuGroup>
+                  ) : null}
                 </ContextMenuContent>
               </ContextMenu>
             );
@@ -311,7 +350,8 @@ export const JobCalendarPage: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {bayExceptionDialog?.direction === 'work' ? 'Add bay overtime' : 'Add bay closure'}
+              {bayExceptionDialog?.existingException ? 'Edit' : 'Add'}{' '}
+              {bayExceptionDialog?.direction === 'work' ? 'bay overtime' : 'bay closure'}
             </DialogTitle>
             <DialogDescription>
               {bayExceptionDialog ? formatDate(fromJobCalendarDateKey(bayExceptionDialog.date), 'PPP') : null}
@@ -429,17 +469,33 @@ export const JobCalendarPage: React.FC = () => {
 
 const BayExceptionCalendarChip: React.FC<{
   exception: BayExceptionChip;
-}> = ({ exception }) => {
+  onSelect?: (() => void) | undefined;
+}> = ({ exception, onSelect }) => {
   const isOvertime = exception.direction === 'work';
   const label = `${exception.bayName}: ${isOvertime ? 'Overtime' : 'Closure'}`;
+  const detail = exception.label ? `: ${exception.label}` : '';
 
+  // A plain (non-focusable) clickable div: it lives inside the day cell button,
+  // so it must not be interactive content. Click opens the exception dialog,
+  // where the entry can be edited or removed.
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: chip is nested in the day-cell button so it can't be focusable; keyboard users edit/remove via the day's context menu.
+    // biome-ignore lint/a11y/noStaticElementInteractions: see above — a role would require focusability that nesting forbids; the context menu is the accessible path.
     <div
       className={cn(
         'flex min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-1 text-xs',
         isOvertime ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/15 text-amber-700',
+        onSelect && 'cursor-pointer hover:ring-1 hover:ring-current/40 hover:ring-inset',
       )}
-      title={`${label}${exception.label ? `: ${exception.label}` : ''}`}
+      onClick={
+        onSelect
+          ? (event) => {
+              event.stopPropagation();
+              onSelect();
+            }
+          : undefined
+      }
+      title={`${label}${detail}${onSelect ? ' — click to edit or remove' : ''}`}
     >
       {isOvertime ? <IconSun className="size-3 shrink-0" /> : <IconMoon className="size-3 shrink-0" />}
       <span className="truncate">{label}</span>

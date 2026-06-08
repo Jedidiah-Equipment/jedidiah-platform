@@ -5,6 +5,7 @@ import { DEPARTMENTS, Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { JobDocument } from '../documents/document.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
@@ -358,8 +359,10 @@ export const Job = z.object({
 export type JobSummary = z.infer<typeof JobSummary>;
 export const JobSummary = Job.extend({
   customerCompanyName: z.string().trim().min(1).nullable(),
+  customerThumbnailDataUrl: NullableThumbnailDataUrl,
   productModelCode: z.string().trim().min(1),
   productName: z.string().trim().min(1),
+  productThumbnailDataUrl: NullableThumbnailDataUrl,
   quoteCode: QuoteCode,
   stages: z.array(JobStageSummary).length(5),
 });

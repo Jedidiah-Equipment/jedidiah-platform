@@ -7,6 +7,7 @@ import {
   DEFAULT_IDLE_SLOT_LABEL,
   formatJobSchedulingDateKey,
   projectJobSlots,
+  segmentSlotCalendarDays,
   summarizeSlotCalendarDays,
 } from './job-slot-projection.js';
 
@@ -282,6 +283,57 @@ describe('summarizeSlotCalendarDays', () => {
         bayExceptions: new Map([['2026-06-06', 'off']]),
       }),
     ).toEqual({ workingDays: 2, closureDays: 1, overtimeDays: 0 });
+  });
+});
+
+describe('segmentSlotCalendarDays', () => {
+  const toKeys = (segments: ReturnType<typeof segmentSlotCalendarDays>) =>
+    segments.map((segment) => ({
+      kind: segment.kind,
+      start: formatJobSchedulingDateKey(segment.startAt),
+      end: formatJobSchedulingDateKey(segment.endAt),
+    }));
+
+  it('returns a single working segment with an empty calendar', () => {
+    expect(
+      toKeys(segmentSlotCalendarDays(new Date('2026-06-05T00:00:00.000Z'), new Date('2026-06-08T22:00:00.000Z'))),
+    ).toEqual([{ kind: 'working', start: '2026-06-05', end: '2026-06-09' }]);
+  });
+
+  it('merges consecutive org off-days into one closure segment', () => {
+    const startAt = new Date('2026-06-03T22:00:00.000Z');
+    const endAt = new Date('2026-06-10T22:00:00.000Z');
+
+    expect(
+      toKeys(
+        segmentSlotCalendarDays(startAt, endAt, {
+          orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+        }),
+      ),
+    ).toEqual([
+      { kind: 'working', start: '2026-06-04', end: '2026-06-06' },
+      { kind: 'closure', start: '2026-06-06', end: '2026-06-08' },
+      { kind: 'working', start: '2026-06-08', end: '2026-06-11' },
+    ]);
+  });
+
+  it('classifies a bay work exception on an org off-day as overtime', () => {
+    const startAt = new Date('2026-06-04T22:00:00.000Z');
+    const endAt = new Date('2026-06-08T22:00:00.000Z');
+
+    expect(
+      toKeys(
+        segmentSlotCalendarDays(startAt, endAt, {
+          bayExceptions: new Map([['2026-06-06', 'work']]),
+          orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+        }),
+      ),
+    ).toEqual([
+      { kind: 'working', start: '2026-06-05', end: '2026-06-06' },
+      { kind: 'overtime', start: '2026-06-06', end: '2026-06-07' },
+      { kind: 'closure', start: '2026-06-07', end: '2026-06-08' },
+      { kind: 'working', start: '2026-06-08', end: '2026-06-09' },
+    ]);
   });
 });
 

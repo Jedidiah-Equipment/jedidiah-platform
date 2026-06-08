@@ -580,6 +580,7 @@ GanttMarker.displayName = 'GanttMarker';
 export type GanttProviderProps = {
   range?: Range;
   zoom?: number;
+  rowHeight?: number;
   initialDateAlignment?: 'center' | 'end' | 'start';
   initialDate?: Date | undefined;
   onVisibleWindowChange?: ((window: { end: Date; start: Date }) => void) | undefined;
@@ -590,6 +591,7 @@ export type GanttProviderProps = {
 export const GanttProvider: FC<GanttProviderProps> = ({
   zoom = 100,
   range = 'monthly',
+  rowHeight = 36,
   initialDateAlignment = 'end',
   initialDate,
   onVisibleWindowChange,
@@ -603,7 +605,6 @@ export const GanttProvider: FC<GanttProviderProps> = ({
   const [sidebarWidth, setSidebarWidth] = useState(0);
 
   const headerHeight = 60;
-  const rowHeight = 36;
   let columnWidth = 50;
 
   if (range === 'monthly') {
@@ -622,7 +623,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         '--gantt-row-height': `${rowHeight}px`,
         '--gantt-sidebar-width': `${sidebarWidth}px`,
       }) as CSSProperties,
-    [zoom, columnWidth, sidebarWidth],
+    [zoom, columnWidth, rowHeight, sidebarWidth],
   );
 
   const notifyVisibleWindowChange = useCallback(
@@ -690,6 +691,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     initialDateAlignment,
     notifyVisibleWindowChange,
     range,
+    rowHeight,
     sidebarWidth,
     timelineData,
     zoom,
@@ -808,7 +810,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         behavior: 'smooth',
       });
     },
-    [timelineData, zoom, range, columnWidth, sidebarWidth],
+    [timelineData, zoom, range, columnWidth, rowHeight, sidebarWidth],
   );
 
   const contextValue = useMemo(
@@ -824,7 +826,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
       ref: scrollRef,
       scrollToFeature,
     }),
-    [zoom, range, columnWidth, sidebarWidth, timelineData, scrollToFeature],
+    [zoom, range, columnWidth, rowHeight, sidebarWidth, timelineData, scrollToFeature],
   );
 
   return (

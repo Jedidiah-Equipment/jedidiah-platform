@@ -19,9 +19,18 @@ import {
   startOfMonth,
 } from 'date-fns';
 import throttle from 'lodash.throttle';
-import type { CSSProperties, FC, KeyboardEventHandler, MouseEventHandler, ReactNode, RefObject } from 'react';
+import type {
+  CSSProperties,
+  FC,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  PointerEventHandler,
+  ReactNode,
+  RefObject,
+} from 'react';
 import { createContext, memo, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 export type GanttStatus = {
@@ -55,6 +64,27 @@ export type TimelineData = {
     }[];
   }[];
 }[];
+
+type GanttDragScrollState = {
+  pointerId: number;
+  scrollLeft: number;
+  scrollTop: number;
+  startX: number;
+  startY: number;
+};
+
+const GANTT_DRAG_SCROLL_IGNORE_SELECTOR = [
+  '[data-gantt-drag-scroll-ignore]',
+  '[data-roadmap-ui="gantt-sidebar"]',
+  'a',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'summary',
+  '[contenteditable="true"]',
+  '[role="button"]',
+].join(',');
 
 export type GanttContextProps = {
   zoom: number;
@@ -252,7 +282,7 @@ export const GanttContentHeader: FC<GanttContentHeaderProps> = ({ title, columns
 
   return (
     <div
-      className="sticky top-0 z-20 grid w-full shrink-0 bg-backdrop/90 backdrop-blur-sm"
+      className="sticky top-0 z-20 grid w-full shrink-0 bg-card/95 backdrop-blur-sm"
       style={{ height: 'var(--gantt-header-height)' }}
     >
       <div>
@@ -294,7 +324,7 @@ const DailyHeader: FC = () => {
             renderHeaderItem={(item: number) => (
               <div className="flex items-center justify-center gap-1">
                 <p>{format(addDays(new Date(year.year, index, 1), item), 'd')}</p>
-                <p className="text-muted-foreground">{format(addDays(new Date(year.year, index, 1), item), 'EEEEE')}</p>
+                <p className="text-muted-foreground">{format(addDays(new Date(year.year, index, 1), item), 'EEE')}</p>
               </div>
             )}
             title={format(new Date(year.year, index, 1), 'MMMM yyyy')}
@@ -395,7 +425,7 @@ export const GanttSidebarItem: FC<GanttSidebarItemProps> = ({ feature, onSelectI
 
   return (
     <div
-      className={cn('relative flex items-center gap-2.5 p-2.5 text-xs hover:bg-secondary', className)}
+      className={cn('relative flex items-center gap-2.5 p-2.5 text-xs hover:bg-muted/50', className)}
       key={feature.id}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -425,7 +455,7 @@ export type GanttSidebarHeaderProps = {
 
 export const GanttSidebarHeader: FC<GanttSidebarHeaderProps> = ({ secondaryTitle = 'Duration', title = 'Issues' }) => (
   <div
-    className="sticky top-0 z-10 flex shrink-0 items-end justify-between gap-2.5 border-border/50 border-b bg-backdrop/90 p-2.5 font-medium text-muted-foreground text-xs backdrop-blur-sm"
+    className="sticky top-0 z-10 flex shrink-0 items-end justify-between gap-2.5 border-border/50 border-b bg-card p-2.5 font-medium text-muted-foreground text-xs"
     style={{ height: 'var(--gantt-header-height)' }}
   >
     {/* <Checkbox className="shrink-0" /> */}
@@ -462,7 +492,7 @@ export type GanttSidebarProps = {
 export const GanttSidebar: FC<GanttSidebarProps> = ({ children, className, secondaryTitle, title }) => (
   <div
     className={cn(
-      'sticky left-0 z-30 h-max min-h-full overflow-clip border-border/50 border-r bg-background/90 backdrop-blur-md',
+      'sticky left-0 z-30 h-max min-h-full cursor-default overflow-clip border-border/50 border-r bg-card shadow-[12px_0_22px_-18px_rgb(0_0_0_/_0.85)]',
       className,
     )}
     data-roadmap-ui="gantt-sidebar"
@@ -477,7 +507,7 @@ export type GanttColumnProps = {
 };
 
 export const GanttColumn: FC<GanttColumnProps> = memo(({ isSecondary }) => (
-  <div className={cn('group relative h-full overflow-hidden', isSecondary ? 'bg-secondary' : '')} />
+  <div className={cn('group relative h-full overflow-hidden', isSecondary ? 'bg-muted/50' : '')} />
 ));
 
 GanttColumn.displayName = 'GanttColumn';
@@ -549,8 +579,9 @@ export const GanttMarker: FC<
         <ContextMenuTrigger
           render={
             <div
+              data-gantt-drag-scroll-ignore
               className={cn(
-                'group pointer-events-auto sticky top-0 flex select-auto flex-col flex-nowrap items-center justify-center whitespace-nowrap rounded-b-md bg-card px-2 py-1 text-foreground text-xs',
+                'group pointer-events-auto sticky top-0 flex cursor-default select-auto flex-col flex-nowrap items-center justify-center whitespace-nowrap rounded-b-md bg-card px-2 py-1 text-foreground text-xs',
                 className,
               )}
             />
@@ -600,9 +631,11 @@ export const GanttProvider: FC<GanttProviderProps> = ({
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef(false);
+  const dragScrollRef = useRef<GanttDragScrollState | null>(null);
   const notifyVisibleWindowChangeRef = useRef<(scrollElement: HTMLDivElement) => void>(() => {});
   const [timelineData, setTimelineData] = useState<TimelineData>(createInitialTimelineData(initialDate ?? new Date()));
   const [sidebarWidth, setSidebarWidth] = useState(0);
+  const [isDragScrolling, setIsDragScrolling] = useState(false);
 
   const headerHeight = 60;
   let columnWidth = 50;
@@ -779,6 +812,54 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     };
   }, [handleScroll]);
 
+  const handleDragScrollPointerDown = useCallback<PointerEventHandler<HTMLDivElement>>((event) => {
+    if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) {
+      return;
+    }
+
+    if (!(event.target instanceof Element) || event.target.closest(GANTT_DRAG_SCROLL_IGNORE_SELECTOR)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragScrollRef.current = {
+      pointerId: event.pointerId,
+      scrollLeft: event.currentTarget.scrollLeft,
+      scrollTop: event.currentTarget.scrollTop,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+    setIsDragScrolling(true);
+  }, []);
+
+  const handleDragScrollPointerMove = useCallback<PointerEventHandler<HTMLDivElement>>((event) => {
+    const dragScroll = dragScrollRef.current;
+
+    if (!dragScroll || dragScroll.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.scrollLeft = dragScroll.scrollLeft - (event.clientX - dragScroll.startX);
+    event.currentTarget.scrollTop = dragScroll.scrollTop - (event.clientY - dragScroll.startY);
+  }, []);
+
+  const endDragScroll = useCallback<PointerEventHandler<HTMLDivElement>>((event) => {
+    const dragScroll = dragScrollRef.current;
+
+    if (!dragScroll || dragScroll.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    dragScrollRef.current = null;
+    setIsDragScrolling(false);
+  }, []);
+
   const scrollToFeature = useCallback(
     (feature: GanttFeature) => {
       const scrollElement = scrollRef.current;
@@ -831,20 +912,33 @@ export const GanttProvider: FC<GanttProviderProps> = ({
 
   return (
     <GanttContext.Provider value={contextValue}>
-      <div
+      <ScrollAreaRoot
         className={cn(
-          'gantt relative isolate grid h-full w-full flex-none select-none overflow-x-auto overflow-y-hidden rounded-sm bg-secondary',
+          'gantt isolate h-full w-full flex-none overflow-hidden rounded-lg border border-border/70 bg-card text-card-foreground',
           range,
           className,
         )}
-        ref={scrollRef}
         style={{
           ...cssVariables,
-          gridTemplateColumns: 'var(--gantt-sidebar-width) 1fr',
         }}
       >
-        {children}
-      </div>
+        <ScrollAreaViewport
+          className="grid h-full w-full cursor-grab select-none overflow-y-hidden data-[drag-scrolling=true]:cursor-grabbing"
+          data-drag-scrolling={isDragScrolling ? 'true' : undefined}
+          onLostPointerCapture={endDragScroll}
+          onPointerCancel={endDragScroll}
+          onPointerDown={handleDragScrollPointerDown}
+          onPointerMove={handleDragScrollPointerMove}
+          onPointerUp={endDragScroll}
+          ref={scrollRef}
+          style={{
+            gridTemplateColumns: 'var(--gantt-sidebar-width) 1fr',
+          }}
+        >
+          {children}
+        </ScrollAreaViewport>
+        <ScrollBar orientation="horizontal" />
+      </ScrollAreaRoot>
     </GanttContext.Provider>
   );
 };
@@ -885,8 +979,9 @@ export const GanttToday: FC<GanttTodayProps> = ({ className }) => {
       }}
     >
       <div
+        data-gantt-drag-scroll-ignore
         className={cn(
-          'group pointer-events-auto sticky top-0 flex select-auto flex-col flex-nowrap items-center justify-center whitespace-nowrap rounded-b-md bg-card px-2 py-1 text-foreground text-xs',
+          'group pointer-events-auto sticky top-0 flex cursor-default select-auto flex-col flex-nowrap items-center justify-center whitespace-nowrap rounded-b-md bg-card px-2 py-1 text-foreground text-xs',
           className,
         )}
       >

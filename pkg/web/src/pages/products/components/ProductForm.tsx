@@ -1,7 +1,7 @@
 import type { Product, ProductUpdateInput } from '@pkg/schema';
 import type React from 'react';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
-import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditPageLayout.js';
+import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductFormValues, toProductFormValues, toProductUpdateInput } from './types.js';
 

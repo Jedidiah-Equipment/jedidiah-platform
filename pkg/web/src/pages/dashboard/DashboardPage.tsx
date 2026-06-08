@@ -1,5 +1,6 @@
 import type React from 'react';
 
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { useAccess } from '@/hooks/use-access.js';
 
 import { DashboardWidgetCard } from './DashboardWidgetCard.js';
@@ -13,7 +14,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
   const visibleWidgets = filterDashboardWidgets(accessQuery.data, dashboardWidgets);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+    <PageLayout title="Dashboard">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {visibleWidgets.map((widget) => (
           <DashboardWidgetCard key={widget.id} size={widget.size} title={widget.title}>
@@ -21,6 +22,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
           </DashboardWidgetCard>
         ))}
       </div>
-    </div>
+    </PageLayout>
   );
 };

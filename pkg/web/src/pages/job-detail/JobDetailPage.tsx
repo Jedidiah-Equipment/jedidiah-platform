@@ -3,10 +3,9 @@ import type { JobDetail, JobDocument, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
-import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
-import { DetailPageLayout } from '@/components/page-layout/DetailPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -22,7 +21,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const job = jobQuery.data;
   return (
-    <DetailPageLayout back={<BackButton to="/jobs">Jobs</BackButton>} description={job?.quoteCode} title={job?.code}>
+    <PageLayout description={job?.quoteCode} size="md" title={job?.code}>
       <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
       {job ? (
         <>
@@ -38,7 +37,7 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId }) => {
         </>
       ) : null}
       {jobQuery.isLoading ? <Skeleton className="h-48" /> : null}
-    </DetailPageLayout>
+    </PageLayout>
   );
 };
 

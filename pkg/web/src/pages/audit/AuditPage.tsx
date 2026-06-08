@@ -1,10 +1,10 @@
 import type React from 'react';
 
 import { AuditTable, useAuditTableStore } from '@/components/audit/AuditTable.js';
-import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 
 export const AuditPage: React.FC = () => (
-  <ListPageLayout description="History" title="Audit Log">
+  <PageLayout description="History" title="Audit Log">
     <AuditTable store={useAuditTableStore} />
-  </ListPageLayout>
+  </PageLayout>
 );

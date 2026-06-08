@@ -3,9 +3,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo } from 'react';
 import { AuditTable, useCustomerAuditTableStore } from '@/components/audit/AuditTable.js';
-import { BackButton } from '@/components/button/BackButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { EditPageLayout } from '@/components/page-layout/EditPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -30,11 +29,7 @@ export const CustomerEditPage: React.FC<CustomerEditPageProps> = ({ customerId }
   );
 
   return (
-    <EditPageLayout
-      back={<BackButton to="/customers">Customers</BackButton>}
-      description="Edit Customer"
-      title={customerQuery.data?.companyName ?? 'Loading customer...'}
-    >
+    <PageLayout description="Edit Customer" size="md" title={customerQuery.data?.companyName ?? 'Loading customer...'}>
       {customerQuery.isPending ? <CustomerFormSkeleton /> : null}
       <ErrorMessage error={customerQuery.error} fallbackMessage="Unable to load customer." />
       {customerQuery.data ? (
@@ -43,7 +38,7 @@ export const CustomerEditPage: React.FC<CustomerEditPageProps> = ({ customerId }
           onCustomerSave={(value) => updateCustomerMutation.mutateAsync(value)}
         />
       ) : null}
-    </EditPageLayout>
+    </PageLayout>
   );
 };
 

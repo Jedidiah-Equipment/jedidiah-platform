@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
 
-import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { useCan } from '@/hooks/use-access.js';
 import { ProductTable } from './components/ProductTable.js';
@@ -17,8 +17,8 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <>
-      <ListPageLayout
-        action={
+      <PageLayout
+        actions={
           canCreateProduct ? (
             <Button onClick={() => setIsCreateDialogOpen(true)}>
               <IconPlus data-icon="inline-start" />
@@ -27,6 +27,7 @@ export const ProductsPage: React.FC = () => {
           ) : null
         }
         description="Catalog"
+        size="lg"
         title="Products"
       >
         <ProductTable
@@ -36,7 +37,7 @@ export const ProductsPage: React.FC = () => {
               : undefined
           }
         />
-      </ListPageLayout>
+      </PageLayout>
       {canCreateProduct ? <ProductCreateDialog onOpenChange={setIsCreateDialogOpen} open={isCreateDialogOpen} /> : null}
     </>
   );

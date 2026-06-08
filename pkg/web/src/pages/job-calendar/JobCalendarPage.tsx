@@ -13,7 +13,7 @@ import {
   CalendarMonthLabel,
   CalendarProvider,
 } from '@/components/kibo-ui/calendar/index.js';
-import { ListPageLayout } from '@/components/page-layout/ListPageLayout.js';
+import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -116,22 +116,22 @@ export const JobCalendarPage: React.FC = () => {
 
   if (baysQuery.isLoading) {
     return (
-      <ListPageLayout description="Production" title="Job Calendar">
+      <PageLayout description="Production" title="Job Calendar">
         <Skeleton className="h-[640px] w-full" />
-      </ListPageLayout>
+      </PageLayout>
     );
   }
 
   if (baysQuery.error) {
     return (
-      <ListPageLayout description="Production" title="Job Calendar">
+      <PageLayout description="Production" title="Job Calendar">
         <ErrorMessage error={baysQuery.error} fallbackMessage="Unable to load Job calendar." />
-      </ListPageLayout>
+      </PageLayout>
     );
   }
 
   return (
-    <ListPageLayout description="Production" title="Job Calendar">
+    <PageLayout description="Production" title="Job Calendar">
       <CalendarProvider className="min-h-[640px]">
         <CalendarDate>
           <CalendarMonthLabel />
@@ -206,6 +206,6 @@ export const JobCalendarPage: React.FC = () => {
         }}
         state={bayExceptionDialog}
       />
-    </ListPageLayout>
+    </PageLayout>
   );
 };

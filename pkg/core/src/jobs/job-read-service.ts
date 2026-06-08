@@ -52,8 +52,8 @@ import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, type JobStageRow, mapJob, mapJobStage } from './job-mappers.js';
 
-type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name'>;
-type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName'>;
+type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name' | 'thumbnailDataUrl'>;
+type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'thumbnailDataUrl'>;
 type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'> & {
   customer: CustomerRow;
 };
@@ -214,6 +214,7 @@ export async function listJobs({
         columns: {
           modelCode: true,
           name: true,
+          thumbnailDataUrl: true,
         },
       },
       quote: {
@@ -224,6 +225,7 @@ export async function listJobs({
           customer: {
             columns: {
               companyName: true,
+              thumbnailDataUrl: true,
             },
           },
         },
@@ -358,6 +360,7 @@ export async function getJob({
         columns: {
           modelCode: true,
           name: true,
+          thumbnailDataUrl: true,
         },
       },
       quote: {
@@ -368,6 +371,7 @@ export async function getJob({
           customer: {
             columns: {
               companyName: true,
+              thumbnailDataUrl: true,
             },
           },
         },
@@ -564,8 +568,10 @@ export function mapJobSummary(row: JobWithProductRow): JobSummary {
   return {
     ...mappedJob,
     customerCompanyName: row.quote.customer.companyName,
+    customerThumbnailDataUrl: row.quote.customer.thumbnailDataUrl,
     productModelCode: row.product.modelCode,
     productName: row.product.name,
+    productThumbnailDataUrl: row.product.thumbnailDataUrl,
     quoteCode: QuoteCode.parse(row.quote.code),
     stages: row.stages.map(mapJobStageSummary),
   };

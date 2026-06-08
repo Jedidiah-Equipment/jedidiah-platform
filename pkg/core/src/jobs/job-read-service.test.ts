@@ -113,6 +113,7 @@ function jobRow() {
     product: {
       modelCode: 'MODEL-001',
       name: 'Test Product',
+      thumbnailDataUrl: null,
     },
     productId: '00000000-0000-4000-8000-000000000002',
     productSerialNumber: 'MODEL-001260001',
@@ -123,6 +124,7 @@ function jobRow() {
       code: 1,
       customer: {
         companyName: 'Test Customer',
+        thumbnailDataUrl: null,
       },
     },
     quoteId: '00000000-0000-4000-8000-000000000003',

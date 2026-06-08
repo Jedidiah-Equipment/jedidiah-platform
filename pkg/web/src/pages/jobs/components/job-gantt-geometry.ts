@@ -1,3 +1,4 @@
+import { addJobSlotDuration, type WorkingCalendar } from '@pkg/domain';
 import { addDays } from 'date-fns';
 import { type GanttContextProps, getGanttOffset, getGanttWidth } from '@/components/kibo-ui/gantt/index.js';
 import { fromJobCalendarDateKey, toJobCalendarDate } from './job-date-key.js';
@@ -11,7 +12,21 @@ export function getJobGanttOffsetDistance(startAt: Date, endAt: Date, gantt: Gan
 }
 
 export function getJobGanttWidth(startAt: Date, endAt: Date | null, gantt: GanttContextProps): number {
-  return getGanttWidth(toJobCalendarDate(startAt), endAt ? toJobCalendarDate(endAt) : null, gantt);
+  if (!endAt) {
+    return getGanttWidth(toJobCalendarDate(startAt), null, gantt);
+  }
+
+  return Math.max(getJobGanttOffsetDistance(startAt, endAt, gantt), 1);
+}
+
+export function getJobGanttResizeStepWidth(
+  currentEndAt: Date,
+  workingCalendar: WorkingCalendar,
+  gantt: GanttContextProps,
+): number {
+  const nextEndAt = addJobSlotDuration(currentEndAt, 1, workingCalendar);
+
+  return Math.max(getJobGanttWidth(currentEndAt, nextEndAt, gantt), 1);
 }
 
 export function getJobCalendarDayOffset(dateKey: string, gantt: GanttContextProps): number {

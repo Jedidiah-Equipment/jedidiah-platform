@@ -52,7 +52,7 @@ import { cn } from '@/lib/utils.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
 import { BaySlotDayHatch, BaySlotJobCard, BaySlotJobDetails } from './BaySlotJobCard.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
-import { getJobGanttOffset, getJobGanttWidth } from './job-gantt-geometry.js';
+import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
 // Taller rows give each booked slot room for the rich job card (thumbnails + details).
@@ -553,7 +553,7 @@ const BaySlotBar: React.FC<{
     setResizeDrag({
       durationDays,
       initialDurationDays: durationDays,
-      pixelsPerDay: Math.max(getJobGanttWidth(startAt, addJobSlotDuration(startAt, 1, workingCalendar), gantt), 1),
+      pixelsPerDay: getJobGanttResizeStepWidth(endAt, workingCalendar, gantt),
       startX: event.clientX,
     });
   };

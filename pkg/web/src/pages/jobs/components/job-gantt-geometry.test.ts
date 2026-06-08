@@ -5,6 +5,7 @@ import {
   getJobCalendarDayWidth,
   getJobGanttOffset,
   getJobGanttOffsetDistance,
+  getJobGanttResizeStepWidth,
   getJobGanttWidth,
 } from './job-gantt-geometry.js';
 
@@ -39,6 +40,30 @@ describe('job Gantt geometry', () => {
     const sundayJobStart = new Date('2026-06-06T22:00:00.000Z');
 
     expect(getJobGanttWidth(saturdayJobStart, sundayJobStart, gantt)).toBe(getJobCalendarDayWidth('2026-06-06', gantt));
+  });
+
+  it('bases slot widths on local column offsets instead of elapsed milliseconds', () => {
+    const saturdayJobStart = new Date('2026-06-05T22:00:00.000Z');
+    const tuesdayJobEnd = new Date('2026-06-08T22:00:00.000Z');
+
+    expect(getJobGanttWidth(saturdayJobStart, tuesdayJobEnd, gantt)).toBe(
+      getJobGanttOffsetDistance(saturdayJobStart, tuesdayJobEnd, gantt),
+    );
+  });
+
+  it('sizes resize drag increments from the next additional working-day span', () => {
+    const saturdayJobStart = new Date('2026-06-05T22:00:00.000Z');
+    const tuesdayJobEnd = new Date('2026-06-08T22:00:00.000Z');
+    const workingCalendar = {
+      orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+    };
+
+    expect(getJobGanttResizeStepWidth(tuesdayJobEnd, workingCalendar, gantt)).toBe(
+      getJobCalendarDayWidth('2026-06-09', gantt),
+    );
+    expect(getJobGanttResizeStepWidth(tuesdayJobEnd, workingCalendar, gantt)).toBeLessThan(
+      getJobGanttWidth(saturdayJobStart, tuesdayJobEnd, gantt),
+    );
   });
 
   it('returns zero offset distance when a hatch segment starts at the slot start', () => {

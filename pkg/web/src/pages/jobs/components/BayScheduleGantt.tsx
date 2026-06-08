@@ -1,28 +1,6 @@
-import {
-  addJobSlotDuration,
-  DEFAULT_IDLE_SLOT_LABEL,
-  formatDate,
-  hasPermission,
-  type WorkingCalendar,
-} from '@pkg/domain';
-import type {
-  BayCalendarException,
-  BayCalendarExceptionDirection,
-  BaySchedule,
-  JobListInput,
-  JobSlotPlacement,
-  OffDay,
-  ProjectedJobSlot,
-} from '@pkg/schema';
-import {
-  IconAlertTriangle,
-  IconCalendarPlus,
-  IconClockPlus,
-  IconLoader2,
-  IconMoon,
-  IconSun,
-  IconTrash,
-} from '@tabler/icons-react';
+import { addJobSlotDuration, DEFAULT_IDLE_SLOT_LABEL, formatDate, type WorkingCalendar } from '@pkg/domain';
+import type { BaySchedule, JobListInput, JobSlotPlacement, OffDay, ProjectedJobSlot } from '@pkg/schema';
+import { IconAlertTriangle, IconCalendarPlus, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -60,12 +38,11 @@ import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { BayCalendarExceptionContextMenu, BayExceptionBands, OffDayBands } from './BayCalendarOverlays.js';
+import { BayExceptionBands, OffDayBands } from './BayCalendarOverlays.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
@@ -78,19 +55,10 @@ const allJobsInput = {
   sortDirection: 'desc',
 } satisfies JobListInput;
 
-type BayExceptionDialogState = {
-  bayId: string;
-  date: string;
-  direction: BayCalendarExceptionDirection;
-  existingException: BayCalendarException | null;
-  label: string;
-};
-
 export const BayScheduleGantt: React.FC = () => {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const accessQuery = useAccess();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
   const bays = baysQuery.data?.items ?? [];
@@ -103,20 +71,14 @@ export const BayScheduleGantt: React.FC = () => {
   const [selectedBayId, setSelectedBayId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [durationDays, setDurationDays] = useState(1);
-  const [bayExceptionDialog, setBayExceptionDialog] = useState<BayExceptionDialogState | null>(null);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const selectedBay = bays.find((bay) => bay.id === selectedBayId) ?? bays[0] ?? null;
-  const selectedExceptionBay = bayExceptionDialog
-    ? (bays.find((bay) => bay.id === bayExceptionDialog.bayId) ?? null)
-    : null;
   const jobs = jobsQuery.data?.items ?? [];
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
   const selectedStage = selectedBay
     ? (selectedJob?.stages.find((stage) => stage.stage === selectedBay.department) ?? null)
     : null;
   const canBook = Boolean(selectedBay && selectedStage && durationDays > 0);
-  const canEditSchedule =
-    hasPermission(accessQuery.data, 'job:update') || hasPermission(accessQuery.data, 'job-stage:update');
   const clearOptimisticResize = useCallback((slotId: string) => {
     setOptimisticResizeDaysBySlotId((current) => {
       const { [slotId]: _removed, ...next } = current;
@@ -166,33 +128,11 @@ export const BayScheduleGantt: React.FC = () => {
       onError: (error) => showMutationError(error, 'Unable to add idle slot.'),
     }),
   );
-  const addBayExceptionMutation = useMutation(
-    trpc.jobs.addBayException.mutationOptions({
-      onSuccess: async (_result, variables) => {
-        await invalidateJobs();
-        toast.success(variables.direction === 'work' ? 'Bay overtime saved' : 'Bay closure saved');
-        setBayExceptionDialog(null);
-      },
-      onError: (error) => showMutationError(error, 'Unable to update Bay calendar.'),
-    }),
-  );
-  const removeBayExceptionMutation = useMutation(
-    trpc.jobs.removeBayException.mutationOptions({
-      onSuccess: async () => {
-        await invalidateJobs();
-        toast.success('Bay exception removed');
-        setBayExceptionDialog(null);
-      },
-      onError: (error) => showMutationError(error, 'Unable to remove Bay exception.'),
-    }),
-  );
   const isScheduleMutationPending =
     bookSlotMutation.isPending ||
     resizeSlotMutation.isPending ||
     removeSlotMutation.isPending ||
-    addIdleSlotMutation.isPending ||
-    addBayExceptionMutation.isPending ||
-    removeBayExceptionMutation.isPending;
+    addIdleSlotMutation.isPending;
   const handleResizeSlot = useCallback(
     (slotId: string, durationDays: number) => {
       // Keep the dropped width visible while the projected schedule refetches.
@@ -221,22 +161,6 @@ export const BayScheduleGantt: React.FC = () => {
     },
     [addIdleSlotMutation],
   );
-  const handleOpenBayExceptionDialog = useCallback(
-    ({ bayId, date, direction }: Pick<BayExceptionDialogState, 'bayId' | 'date' | 'direction'>) => {
-      const bay = bays.find((item) => item.id === bayId);
-      const existingException = bay?.calendarExceptions.find((exception) => exception.date === date) ?? null;
-
-      setBayExceptionDialog({
-        bayId,
-        date,
-        direction,
-        existingException,
-        label: existingException?.label ?? '',
-      });
-    },
-    [bays],
-  );
-
   useEffect(() => {
     if (!selectedBayId && bays[0]) {
       setSelectedBayId(bays[0].id);
@@ -373,12 +297,6 @@ export const BayScheduleGantt: React.FC = () => {
             <OffDayBands offDays={offDays} />
             <BayExceptionBands bays={bays} />
             <BayLaneDividers bays={bays} />
-            <BayCalendarExceptionContextMenu
-              bays={bays}
-              canEditSchedule={canEditSchedule}
-              isScheduleMutationPending={isScheduleMutationPending}
-              onOpenDialog={handleOpenBayExceptionDialog}
-            />
             <BaySlotBars
               bays={bays}
               isScheduleMutationPending={isScheduleMutationPending}
@@ -392,123 +310,6 @@ export const BayScheduleGantt: React.FC = () => {
           </GanttTimeline>
         </GanttProvider>
       </div>
-      <Dialog onOpenChange={(open) => !open && setBayExceptionDialog(null)} open={bayExceptionDialog !== null}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {bayExceptionDialog?.direction === 'work' ? 'Add bay overtime' : 'Add bay closure'}
-            </DialogTitle>
-            <DialogDescription>
-              {bayExceptionDialog ? formatDate(fromJobCalendarDateKey(bayExceptionDialog.date), 'PPP') : null}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <Field>
-              <FieldLabel htmlFor="bay-exception-bay">Bay</FieldLabel>
-              <Select
-                disabled={isScheduleMutationPending}
-                onValueChange={(value) => {
-                  if (!value) {
-                    return;
-                  }
-
-                  setBayExceptionDialog((current) => {
-                    if (!current) return current;
-
-                    const bay = bays.find((item) => item.id === value);
-                    const existingException =
-                      bay?.calendarExceptions.find((exception) => exception.date === current.date) ?? null;
-
-                    return {
-                      ...current,
-                      bayId: value,
-                      existingException,
-                      label: existingException?.label ?? '',
-                    };
-                  });
-                }}
-                value={bayExceptionDialog?.bayId ?? ''}
-              >
-                <SelectTrigger id="bay-exception-bay" className="w-full">
-                  <SelectValue placeholder="Select bay">{selectedExceptionBay?.name ?? null}</SelectValue>
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    {bays.map((bay) => (
-                      <SelectItem key={bay.id} value={bay.id}>
-                        {bay.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="bay-exception-label">Reason</FieldLabel>
-              <Input
-                disabled={isScheduleMutationPending}
-                id="bay-exception-label"
-                onChange={(event) =>
-                  setBayExceptionDialog((current) =>
-                    current ? { ...current, label: event.currentTarget.value } : current,
-                  )
-                }
-                value={bayExceptionDialog?.label ?? ''}
-              />
-            </Field>
-          </div>
-          <DialogFooter>
-            <DialogClose render={<Button disabled={isScheduleMutationPending} type="button" variant="outline" />}>
-              Cancel
-            </DialogClose>
-            {bayExceptionDialog?.existingException ? (
-              <Button
-                disabled={isScheduleMutationPending}
-                onClick={() => {
-                  if (!bayExceptionDialog) return;
-
-                  removeBayExceptionMutation.mutate({
-                    bayId: bayExceptionDialog.bayId,
-                    date: bayExceptionDialog.date,
-                  });
-                }}
-                type="button"
-                variant="outline"
-              >
-                {removeBayExceptionMutation.isPending ? (
-                  <IconLoader2 className="animate-spin" data-icon="inline-start" />
-                ) : (
-                  <IconTrash data-icon="inline-start" />
-                )}
-                Remove exception
-              </Button>
-            ) : null}
-            <Button
-              disabled={isScheduleMutationPending || !bayExceptionDialog}
-              onClick={() => {
-                if (!bayExceptionDialog) return;
-
-                addBayExceptionMutation.mutate({
-                  bayId: bayExceptionDialog.bayId,
-                  date: bayExceptionDialog.date,
-                  direction: bayExceptionDialog.direction,
-                  label: bayExceptionDialog.label,
-                });
-              }}
-              type="button"
-            >
-              {addBayExceptionMutation.isPending ? (
-                <IconLoader2 className="animate-spin" data-icon="inline-start" />
-              ) : bayExceptionDialog?.direction === 'work' ? (
-                <IconSun data-icon="inline-start" />
-              ) : (
-                <IconMoon data-icon="inline-start" />
-              )}
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

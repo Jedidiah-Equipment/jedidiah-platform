@@ -3,7 +3,6 @@ import {
   customers,
   type Db,
   documents,
-  jobStages,
   jobs,
   productAssemblies,
   products,
@@ -812,7 +811,7 @@ describe('quotes.generateDocument', () => {
 });
 
 describe('jobs.create with quote links', () => {
-  test('creates one job from one accepted quote with stages and locks frozen quote fields', async ({ context }) => {
+  test('creates one job from one accepted quote and locks frozen quote fields', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const adminCaller = context.createCaller(mockSession('admin'));
     const created = await createReadyQuote(salesCaller, context.product.id);
@@ -830,14 +829,12 @@ describe('jobs.create with quote links', () => {
       quoteId: accepted.id,
     });
     const jobRows = await context.db.select().from(jobs);
-    const stageRows = await context.db.select().from(jobStages);
 
     expect(job).toMatchObject({
       productId: context.product.id,
       quoteId: accepted.id,
     });
     expect(jobRows).toHaveLength(1);
-    expect(stageRows).toHaveLength(5);
 
     await expect(
       salesCaller.quotes.update({

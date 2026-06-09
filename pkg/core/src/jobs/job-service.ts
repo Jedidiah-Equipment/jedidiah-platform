@@ -7,7 +7,6 @@ import {
   jobCfoAssemblies,
   jobCfoParts,
   jobSlots,
-  jobStages,
   jobs,
   productSerialSequences,
   products,
@@ -18,9 +17,9 @@ import {
 import {
   buildCfo,
   type CfoEntry,
+  canScheduleBay,
   countWorkingDaysBetween,
   hasPermission,
-  JOB_STAGE_PIPELINE,
   projectJobSlots,
   toJohannesburgDateKey,
   type WorkingCalendar,
@@ -62,12 +61,12 @@ import {
   JobBayNotFoundError,
   JobCalendarEditDeniedError,
   JobCreateFromQuoteDeniedError,
+  JobNotFoundError,
   JobSlotBookingDeniedError,
   JobSlotIdleAddDeniedError,
   JobSlotNotFoundError,
   JobSlotRemoveDeniedError,
   JobSlotResizeDeniedError,
-  JobStageNotFoundError,
 } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
 import {
@@ -147,14 +146,6 @@ export async function createJob({
       tx,
     });
 
-    const stageRows = await tx
-      .insert(jobStages)
-      .values(buildJobStageInsertValues({ jobId: job.id }))
-      .returning();
-    if (stageRows.length !== JOB_STAGE_PIPELINE.length) {
-      throw new Error('Job stage insert did not return every row');
-    }
-
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
 
     return getJob({ access, db: tx, id: job.id });
@@ -183,21 +174,15 @@ export async function bookJobSlot({
       throw new JobSlotBookingDeniedError('You do not have permission to book this Bay.');
     }
 
-    const [stage] = await tx
+    const [job] = await tx
       .select({
-        id: jobStages.id,
-        jobId: jobStages.jobId,
-        stage: jobStages.stage,
+        id: jobs.id,
       })
-      .from(jobStages)
-      .where(eq(jobStages.id, input.jobStageId));
+      .from(jobs)
+      .where(eq(jobs.id, input.jobId));
 
-    if (!stage) {
-      throw new JobStageNotFoundError(input.jobStageId);
-    }
-
-    if (stage.stage !== bay.department) {
-      throw new JobSlotBookingDeniedError('Bay department must match the Job stage department.');
+    if (!job) {
+      throw new JobNotFoundError(input.jobId);
     }
 
     const workingCalendar = createBayWorkingCalendar(
@@ -229,7 +214,7 @@ export async function bookJobSlot({
       .values({
         bayId: bay.id,
         durationDays: input.durationDays,
-        jobStageId: stage.id,
+        jobId: job.id,
         kind: 'work',
         label: null,
         sequence,
@@ -575,7 +560,7 @@ async function insertIdleSlot({
     .values({
       bayId,
       durationDays,
-      jobStageId: null,
+      jobId: null,
       kind: 'idle',
       label,
       sequence,
@@ -590,15 +575,7 @@ async function insertIdleSlot({
 }
 
 function canEditBaySchedule(access: UserAccessSummary, department: Department): boolean {
-  if (access.role === 'admin') {
-    return true;
-  }
-
-  if (access.role !== 'job-department-manager') {
-    return false;
-  }
-
-  return access.departments.length === 0 || access.departments.includes(department);
+  return canScheduleBay(access, department);
 }
 
 async function createProductSerial({
@@ -799,14 +776,4 @@ export async function snapshotJobDocuments({
       uploaderUserId: document.uploaderUserId,
     })),
   );
-}
-
-function buildJobStageInsertValues({ jobId }: { jobId: UUID }) {
-  return JOB_STAGE_PIPELINE.map(({ sequence, stage }) => {
-    return {
-      jobId,
-      sequence,
-      stage,
-    };
-  });
 }

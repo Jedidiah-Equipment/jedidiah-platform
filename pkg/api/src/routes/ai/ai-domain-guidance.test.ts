@@ -19,7 +19,8 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('Quote -> Job');
     expect(prompt).toContain('A Quote sources at most one Job');
     expect(prompt).toContain('Job -> Department');
-    expect(prompt).toContain('users experience and label them as Departments');
+    expect(prompt).toContain('A Job has no Stage rows');
+    expect(prompt).toContain('through Work Slots on Bays');
     expect(prompt).toContain('Assembly -> Part');
     expect(prompt).toContain('bill-of-materials quantities must be read with the Part unit');
     expect(prompt).toContain('Part.unitOfMeasure is either quantity');
@@ -32,7 +33,7 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('listQuoteCustomers');
     expect(prompt).toContain('listQuotes');
     expect(prompt).toContain('getJob');
-    expect(prompt).toContain('If multiple relevant Jobs have incomplete Stage work, ask the user to choose');
+    expect(prompt).toContain('If multiple relevant Jobs have scheduled Work Slots, ask the user to choose');
     expect(prompt).toContain('Render Markdown links only from link metadata');
     expect(prompt).toContain('Do not show UUIDs in prose');
     expect(prompt).not.toContain('active or paused');

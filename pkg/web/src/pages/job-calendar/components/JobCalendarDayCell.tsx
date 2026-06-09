@@ -22,6 +22,7 @@ type JobCalendarDayCellProps = {
   offDay: OffDay | null;
   bayExceptionChips: BayExceptionChip[];
   canEditCalendar: boolean;
+  canEditBayException: (chip: BayExceptionChip) => boolean;
   canEditBaySchedule: boolean;
   isBayExceptionMutationPending: boolean;
   hasBays: boolean;
@@ -36,6 +37,7 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
   offDay,
   bayExceptionChips,
   canEditCalendar,
+  canEditBayException,
   canEditBaySchedule,
   isBayExceptionMutationPending,
   hasBays,
@@ -45,6 +47,7 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
 }) => {
   const visibleBayExceptionChips = bayExceptionChips.slice(0, visibleBayExceptionLimit);
   const hiddenBayExceptionCount = bayExceptionChips.length - visibleBayExceptionChips.length;
+  const editableBayExceptionChips = bayExceptionChips.filter(canEditBayException);
 
   const dayButton = (
     <button
@@ -87,7 +90,9 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
           <BayExceptionCalendarChip
             exception={exception}
             key={`${exception.bayId}-${exception.date}`}
-            onSelect={canEditBaySchedule ? () => onSelectBayException(exception) : undefined}
+            onSelect={
+              canEditBaySchedule && canEditBayException(exception) ? () => onSelectBayException(exception) : undefined
+            }
           />
         ))}
         {hiddenBayExceptionCount > 0 ? (
@@ -123,9 +128,9 @@ export const JobCalendarDayCell: React.FC<JobCalendarDayCellProps> = ({
             Add bay closure
           </ContextMenuItem>
         </ContextMenuGroup>
-        {bayExceptionChips.length > 0 ? (
+        {editableBayExceptionChips.length > 0 ? (
           <ContextMenuGroup>
-            {bayExceptionChips.map((chip) => (
+            {editableBayExceptionChips.map((chip) => (
               <ContextMenuItem
                 disabled={isBayExceptionMutationPending}
                 key={`${chip.bayId}-${chip.date}-edit`}

@@ -36,7 +36,7 @@ export const AI_DOMAIN_RELATIONSHIPS = [
     from: 'Job',
     to: 'Department',
     meaning:
-      'Every Job has five fixed Pipeline Stages, but users experience and label them as Departments: Procurement, Supply, Fabrication, Paint, Assembly.',
+      'A Job has no Stage rows; it appears in a Department only through Work Slots on Bays in that Department. The five Departments still display in Pipeline order.',
   },
   {
     from: 'Assembly',
@@ -73,9 +73,9 @@ export const AI_RETRIEVAL_PLAYBOOKS = [
       },
     ],
     disambiguation: [
-      'If exactly one relevant Job has incomplete Stage work, answer for that Job.',
-      'If multiple relevant Jobs have incomplete Stage work, ask the user to choose and show linked Job Codes.',
-      'If every relevant Job has complete Stage work, state that no matching Jobs have incomplete Stage work before summarizing history.',
+      'If exactly one relevant Job has scheduled Work Slots, answer for that Job.',
+      'If multiple relevant Jobs have scheduled Work Slots, ask the user to choose and show linked Job Codes.',
+      'If every relevant Job has no scheduled Work Slots, state that no matching Jobs have scheduled Bay work before summarizing history.',
       'If the Customer has Quotes but no linked Jobs, explain that no Jobs have been created from those Quotes yet.',
       'Do not summarize multiple Jobs as "the job" unless the user asks for a Customer overview.',
     ],

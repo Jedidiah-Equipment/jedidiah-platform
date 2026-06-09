@@ -29,17 +29,6 @@ export class JobBayNotFoundError extends Error {
   }
 }
 
-export class JobStageNotFoundError extends Error {
-  readonly code = 'job.stage_not_found';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Job stage not found: ${id}`);
-    this.name = 'JobStageNotFoundError';
-    this.metadata = { id };
-  }
-}
-
 export class JobSlotBookingDeniedError extends Error {
   readonly code = 'job.slot_booking_denied';
 
@@ -105,8 +94,7 @@ export type JobCoreError =
   | JobSlotIdleAddDeniedError
   | JobSlotNotFoundError
   | JobSlotRemoveDeniedError
-  | JobSlotResizeDeniedError
-  | JobStageNotFoundError;
+  | JobSlotResizeDeniedError;
 
 export function isJobCoreError(error: unknown): error is JobCoreError {
   return (
@@ -118,7 +106,6 @@ export function isJobCoreError(error: unknown): error is JobCoreError {
     error instanceof JobSlotIdleAddDeniedError ||
     error instanceof JobSlotNotFoundError ||
     error instanceof JobSlotRemoveDeniedError ||
-    error instanceof JobSlotResizeDeniedError ||
-    error instanceof JobStageNotFoundError
+    error instanceof JobSlotResizeDeniedError
   );
 }

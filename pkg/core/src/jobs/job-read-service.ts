@@ -10,7 +10,6 @@ import {
   jobCfoAssemblies,
   jobCfoParts,
   jobSlots,
-  jobStages,
   jobs,
   parts,
   products,
@@ -18,20 +17,18 @@ import {
   user,
   workingCalendarOffDays,
 } from '@pkg/db';
-import { canViewStage, parseJobCodeSearch, projectJobSlots, type WorkingCalendar } from '@pkg/domain';
+import { JOB_DEPARTMENT_PIPELINE, parseJobCodeSearch, projectJobSlots, type WorkingCalendar } from '@pkg/domain';
 import {
   Bay,
   BayCalendarException,
   type BayListResult,
   BaySchedule,
-  type Department,
+  type JobDepartmentSchedule,
   type JobDetail,
   JobDocument,
   type JobListInput,
   type JobListResult,
   type JobSortBy,
-  type JobStageRollup,
-  JobStageSummary,
   type JobSummary,
   OffDay,
   ProjectedJobSlot,
@@ -40,7 +37,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -50,7 +47,7 @@ import {
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { JobNotFoundError } from './job-errors.js';
-import { type JobRow, type JobStageRow, mapJob, mapJobStage } from './job-mappers.js';
+import { type JobRow, mapJob } from './job-mappers.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'thumbnailDataUrl'>;
@@ -60,7 +57,6 @@ type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'> & {
 type JobWithProductRow = JobRow & {
   product: ProductRow;
   quote: QuoteRow;
-  stages: JobStageRow[];
 };
 type JobDocumentRow = DocumentSummaryRow & {
   sourceProductName: string | null;
@@ -72,11 +68,7 @@ type BayCalendarExceptionRow = Pick<
 type BayScheduleRow = typeof jobBays.$inferSelect & {
   calendarExceptions: BayCalendarExceptionRow[];
   slots: (typeof jobSlots.$inferSelect & {
-    stage:
-      | (Pick<typeof jobStages.$inferSelect, 'id' | 'jobId' | 'stage'> & {
-          job: Pick<typeof jobs.$inferSelect, 'code' | 'id'>;
-        })
-      | null;
+    job: Pick<typeof jobs.$inferSelect, 'code' | 'id'> | null;
   })[];
 };
 
@@ -87,16 +79,11 @@ export async function listBays({
   db: Db | DatabaseTransaction;
   access: UserAccessSummary;
 }): Promise<BayListResult> {
+  void access;
   const offDays = await listWorkingCalendarOffDays(db);
-  const visibleDepartments = getVisibleBayDepartments(access);
-
-  if (visibleDepartments !== 'all' && visibleDepartments.length === 0) {
-    return { items: [], offDays };
-  }
 
   const rows = await db.query.jobBays.findMany({
     orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
-    where: visibleDepartments === 'all' ? undefined : inArray(jobBays.department, visibleDepartments),
     with: {
       calendarExceptions: {
         columns: {
@@ -110,19 +97,10 @@ export async function listBays({
       slots: {
         orderBy: [asc(jobSlots.sequence), asc(jobSlots.id)],
         with: {
-          stage: {
+          job: {
             columns: {
+              code: true,
               id: true,
-              jobId: true,
-              stage: true,
-            },
-            with: {
-              job: {
-                columns: {
-                  code: true,
-                  id: true,
-                },
-              },
             },
           },
         },
@@ -230,15 +208,6 @@ export async function listJobs({
           },
         },
       },
-      stages: {
-        columns: {
-          id: true,
-          jobId: true,
-          sequence: true,
-          stage: true,
-        },
-        orderBy: [asc(jobStages.sequence)],
-      },
     },
   });
 
@@ -250,22 +219,6 @@ export async function listJobs({
     sortDirection: input.sortDirection,
     total,
   };
-}
-
-function getVisibleBayDepartments(access: UserAccessSummary): 'all' | Department[] {
-  if (access.role === 'admin') {
-    return 'all';
-  }
-
-  if (access.role === 'job-department-manager') {
-    if (access.departments.length === 0) {
-      return 'all';
-    }
-
-    return [...access.departments];
-  }
-
-  return [];
 }
 
 function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
@@ -288,14 +241,14 @@ function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
         });
       }
 
-      if (!slot.stage) {
-        throw new Error('Work Job slot was missing its Job stage relation');
+      if (!slot.job) {
+        throw new Error('Work Job slot was missing its Job relation');
       }
 
       return ProjectedJobSlot.parse({
         ...slot,
-        jobCode: slot.stage.job.code,
-        jobId: slot.stage.job.id,
+        jobCode: slot.job.code,
+        jobId: slot.job.id,
         startAt: slot.startAt,
         endAt: slot.endAt,
       });
@@ -376,9 +329,6 @@ export async function getJob({
           },
         },
       },
-      stages: {
-        orderBy: [asc(jobStages.sequence)],
-      },
     },
   });
 
@@ -386,11 +336,13 @@ export async function getJob({
     throw new JobNotFoundError(id);
   }
 
+  const bayList = await listBays({ access, db });
+
   return {
     ...mapJobSummary(row),
     cfo: await listJobCfo({ db, jobId: row.id }),
     documents: await getJobDocuments({ db, jobId: row.id }),
-    stages: mapJobDetailStages({ access, stageRows: row.stages }),
+    schedule: mapJobSchedule({ bays: bayList.items, jobId: row.id }),
   };
 }
 
@@ -573,44 +525,20 @@ export function mapJobSummary(row: JobWithProductRow): JobSummary {
     productName: row.product.name,
     productThumbnailDataUrl: row.product.thumbnailDataUrl,
     quoteCode: QuoteCode.parse(row.quote.code),
-    stages: row.stages.map(mapJobStageSummary),
   };
 }
 
-function mapJobStageSummary(row: JobStageRow): JobStageSummary {
-  const mappedStage = mapJobStage(row);
-
-  return JobStageSummary.parse({
-    ...mappedStage,
-    department: row.stage,
-  });
-}
-
-function mapStageAccess({ access, stage }: { access: UserAccessSummary; stage: JobStageRow }): JobStageRollup {
-  if (canViewStage(access, stage)) {
-    return {
-      ...mapJobStageSummary(stage),
-      access: 'visible',
-    };
-  }
-
-  return {
-    ...mapJobStageSummary(stage),
-    access: 'summary',
-  };
-}
-
-function mapJobDetailStages({
-  access,
-  stageRows,
-}: {
-  access: UserAccessSummary;
-  stageRows: JobStageRow[];
-}): JobStageRollup[] {
-  return stageRows.map((stageRow) =>
-    mapStageAccess({
-      access,
-      stage: stageRow,
-    }),
-  );
+function mapJobSchedule({ bays, jobId }: { bays: BaySchedule[]; jobId: UUID }): JobDepartmentSchedule[] {
+  return JOB_DEPARTMENT_PIPELINE.map(({ department }) => ({
+    department,
+    bays: bays
+      .filter((bay) => bay.department === department)
+      .map((bay) =>
+        BaySchedule.parse({
+          ...bay,
+          slots: bay.slots.filter((slot) => slot.kind === 'work' && slot.jobId === jobId),
+        }),
+      )
+      .filter((bay) => bay.slots.length > 0),
+  }));
 }

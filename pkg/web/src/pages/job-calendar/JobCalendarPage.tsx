@@ -1,8 +1,8 @@
-import { hasPermission } from '@pkg/domain';
+import { canScheduleBay, hasPermission } from '@pkg/domain';
 import type { BayCalendarExceptionDirection, OffDay } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import {
@@ -33,6 +33,11 @@ export const JobCalendarPage: React.FC = () => {
   const showMutationError = useApiMutationErrorToast();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const bays = baysQuery.data?.items ?? [];
+  const schedulableBays = useMemo(
+    () => bays.filter((bay) => canScheduleBay(accessQuery.data, bay.department)),
+    [accessQuery.data, bays],
+  );
+  const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);
   const offDays = baysQuery.data?.offDays ?? [];
   const offDaysByDate = useMemo(
     () => new Map<string, OffDay>(offDays.map((offDay) => [offDay.date, offDay])),
@@ -40,8 +45,7 @@ export const JobCalendarPage: React.FC = () => {
   );
   const bayExceptionChipsByDate = useMemo(() => groupBayExceptionChipsByDate(bays), [bays]);
   const canEditCalendar = hasPermission(accessQuery.data, 'job:update-calendar');
-  const canEditBaySchedule =
-    hasPermission(accessQuery.data, 'job:update') || hasPermission(accessQuery.data, 'job-stage:update');
+  const canEditBaySchedule = schedulableBays.length > 0;
   const [selectedDay, setSelectedDay] = useState<SelectedCalendarDay | null>(null);
   const [bayExceptionDialog, setBayExceptionDialog] = useState<BayExceptionDialogState | null>(null);
   const toggleOffDayMutation = useMutation(
@@ -75,8 +79,12 @@ export const JobCalendarPage: React.FC = () => {
     }),
   );
   const isBayExceptionMutationPending = addBayExceptionMutation.isPending || removeBayExceptionMutation.isPending;
+  const canEditBayException = useCallback(
+    (chip: BayExceptionChip) => schedulableBayIds.has(chip.bayId),
+    [schedulableBayIds],
+  );
   const openBayExceptionDialog = (date: string, direction: BayCalendarExceptionDirection) => {
-    const bay = bays[0];
+    const bay = schedulableBays[0];
 
     if (!bay) {
       return;
@@ -93,7 +101,7 @@ export const JobCalendarPage: React.FC = () => {
     });
   };
   const openBayExceptionForChip = (chip: BayExceptionChip) => {
-    const bay = bays.find((item) => item.id === chip.bayId);
+    const bay = schedulableBays.find((item) => item.id === chip.bayId);
 
     if (!bay) {
       return;
@@ -142,10 +150,11 @@ export const JobCalendarPage: React.FC = () => {
           {({ date, dateKey, isCurrentMonth }) => (
             <JobCalendarDayCell
               bayExceptionChips={bayExceptionChipsByDate.get(dateKey) ?? []}
+              canEditBayException={canEditBayException}
               canEditBaySchedule={canEditBaySchedule}
               canEditCalendar={canEditCalendar}
               date={date}
-              hasBays={bays.length > 0}
+              hasBays={schedulableBays.length > 0}
               isBayExceptionMutationPending={isBayExceptionMutationPending}
               isCurrentMonth={isCurrentMonth}
               offDay={offDaysByDate.get(dateKey) ?? null}
@@ -180,7 +189,7 @@ export const JobCalendarPage: React.FC = () => {
         selectedDay={selectedDay}
       />
       <BayExceptionDialog
-        bays={bays}
+        bays={schedulableBays}
         isAddPending={addBayExceptionMutation.isPending}
         isPending={isBayExceptionMutationPending}
         isRemovePending={removeBayExceptionMutation.isPending}

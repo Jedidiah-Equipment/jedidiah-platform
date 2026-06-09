@@ -10,7 +10,6 @@ import {
   jobCfoAssemblies,
   jobCfoParts,
   jobSlots,
-  jobStages,
   jobs,
   parts,
   productAssemblies,
@@ -27,7 +26,6 @@ import {
   AddBayCalendarExceptionInput,
   type Department,
   type JobDetail,
-  type JobStageName,
   type PartUnitOfMeasure,
   type ProductDocumentType,
   QuoteUpdateInput,
@@ -75,7 +73,7 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('createJob', () => {
-  test('creates one quote-backed job with CFO rows, stages, audit, and a locked quote', async ({ context }) => {
+  test('creates one quote-backed job with CFO rows, audit, and a locked quote', async ({ context }) => {
     const quote = await createQuote(context.db, {
       productId: context.catalog.product.id,
       selectedAssemblyId: context.catalog.heavyAxle.id,
@@ -90,11 +88,10 @@ describe('createJob', () => {
       input: { quoteId: quote.id },
     });
 
-    const [jobRows, cfoAssemblyRows, cfoPartRows, stageRows, events] = await Promise.all([
+    const [jobRows, cfoAssemblyRows, cfoPartRows, events] = await Promise.all([
       context.db.select().from(jobs),
       context.db.select().from(jobCfoAssemblies),
       context.db.select().from(jobCfoParts),
-      context.db.select().from(jobStages),
       context.db.select().from(auditEvents).where(eq(auditEvents.entityType, 'job')),
     ]);
 
@@ -139,7 +136,14 @@ describe('createJob', () => {
       expect.arrayContaining(['Standard Chassis', 'Heavy Axle Upgrade']),
     );
     expect(cfoPartRows).toHaveLength(2);
-    expect(stageRows).toHaveLength(5);
+    expect(job.schedule.map((item) => item.department)).toEqual([
+      'procurement',
+      'supply',
+      'fabrication',
+      'paint',
+      'assembly',
+    ]);
+    expect(job.schedule.every((item) => item.bays.length === 0)).toBe(true);
     expect(events).toMatchObject([
       {
         action: 'created',
@@ -590,12 +594,12 @@ describe('toggleOffDay', () => {
     const firstSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
 
     const schedule = await listBays({ access: jobAccess, db: context.db });
@@ -747,12 +751,12 @@ describe('Bay calendar exceptions', () => {
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: firstBay.id, durationDays: 2, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: firstBay.id, durationDays: 2, jobId: firstJob.id },
     });
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: secondBay.id, durationDays: 2, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: secondBay.id, durationDays: 2, jobId: secondJob.id },
     });
 
     let schedule = await listBays({ access: jobAccess, db: context.db });
@@ -804,12 +808,12 @@ describe('Bay calendar exceptions', () => {
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: firstBay.id, durationDays: 2, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: firstBay.id, durationDays: 2, jobId: firstJob.id },
     });
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: secondBay.id, durationDays: 2, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: secondBay.id, durationDays: 2, jobId: secondJob.id },
     });
 
     const schedule = await listBays({ access: jobAccess, db: context.db });
@@ -841,7 +845,7 @@ describe('bookJobSlot', () => {
       input: {
         bayId: bay.id,
         durationDays: 1,
-        jobStageId: getStageId(firstJob, 'fabrication'),
+        jobId: firstJob.id,
       },
     });
     const secondSlot = await bookJobSlot({
@@ -850,7 +854,7 @@ describe('bookJobSlot', () => {
       input: {
         bayId: bay.id,
         durationDays: 2,
-        jobStageId: getStageId(secondJob, 'fabrication'),
+        jobId: secondJob.id,
       },
     });
 
@@ -891,27 +895,27 @@ describe('bookJobSlot', () => {
     );
   });
 
-  test('allows the same job stage to be booked more than once', async ({ context }) => {
+  test('allows the same Job to be booked more than once', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
-    const jobStageId = getStageId(job, 'fabrication');
+    const jobId = job.id;
 
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId },
+      input: { bayId: bay.id, durationDays: 1, jobId },
     });
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId },
+      input: { bayId: bay.id, durationDays: 1, jobId },
     });
 
     const schedule = await listBays({ access: jobAccess, db: context.db });
-    expect(getBaySchedule(schedule, bay.id).slots.map((slot) => slot.jobStageId)).toEqual([jobStageId, jobStageId]);
+    expect(getBaySchedule(schedule, bay.id).slots.map((slot) => slot.jobId)).toEqual([jobId, jobId]);
   });
 
-  test('rejects a bay whose department does not match the job stage', async ({ context }) => {
+  test('allows a job to be booked onto any bay department', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'paint' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
 
@@ -922,22 +926,27 @@ describe('bookJobSlot', () => {
         input: {
           bayId: bay.id,
           durationDays: 1,
-          jobStageId: getStageId(job, 'fabrication'),
+          jobId: job.id,
         },
       }),
-    ).rejects.toThrow('Bay department must match the Job stage department.');
+    ).resolves.toMatchObject({
+      slot: {
+        bayId: bay.id,
+        jobId: job.id,
+      },
+    });
   });
 
   test('enforces bay schedule permissions by role and department', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
-    const jobStageId = getStageId(job, 'fabrication');
+    const jobId = job.id;
 
     await expect(
       bookJobSlot({
         access: createUserAccessSummary({ role: 'admin', userId: 'admin-user' }),
         db: context.db,
-        input: { bayId: bay.id, durationDays: 1, jobStageId },
+        input: { bayId: bay.id, durationDays: 1, jobId },
       }),
     ).resolves.toMatchObject({ slot: { sequence: 1 } });
     await expect(
@@ -948,7 +957,7 @@ describe('bookJobSlot', () => {
           userId: 'fabrication-manager',
         }),
         db: context.db,
-        input: { bayId: bay.id, durationDays: 1, jobStageId },
+        input: { bayId: bay.id, durationDays: 1, jobId },
       }),
     ).resolves.toMatchObject({ slot: { sequence: 2 } });
     await expect(
@@ -959,7 +968,7 @@ describe('bookJobSlot', () => {
           userId: 'paint-manager',
         }),
         db: context.db,
-        input: { bayId: bay.id, durationDays: 1, jobStageId },
+        input: { bayId: bay.id, durationDays: 1, jobId },
       }),
     ).rejects.toThrow('You do not have permission to book this Bay.');
   });
@@ -976,13 +985,13 @@ describe('bookJobSlot', () => {
       access: jobAccess,
       currentDate: new Date('2026-06-05T09:00:00.000+02:00'),
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
       access: jobAccess,
       currentDate: new Date('2026-06-10T09:00:00.000+02:00'),
       db: context.db,
-      input: { bayId: bay.id, durationDays: 2, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 2, jobId: secondJob.id },
     });
 
     const schedule = await listBays({ access: jobAccess, db: context.db });
@@ -998,7 +1007,7 @@ describe('bookJobSlot', () => {
           }),
           expect.objectContaining({
             durationDays: 4,
-            jobStageId: null,
+            jobId: null,
             kind: 'idle',
             label: null,
             sequence: 2,
@@ -1038,13 +1047,13 @@ describe('bookJobSlot', () => {
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
 
     const storedSlots = await context.db
@@ -1084,13 +1093,13 @@ describe('bookJobSlot', () => {
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
 
     const storedSlots = await context.db
@@ -1130,13 +1139,13 @@ describe('bookJobSlot', () => {
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
     await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
 
     const storedSlots = await context.db
@@ -1166,12 +1175,12 @@ describe('addIdleJobSlot', () => {
     const firstSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
 
     const beforeIdle = await addIdleJobSlot({
@@ -1208,7 +1217,7 @@ describe('addIdleJobSlot', () => {
     const workSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(job, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
     });
 
     const firstIdle = await addIdleJobSlot({
@@ -1236,7 +1245,7 @@ describe('addIdleJobSlot', () => {
     const workSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(job, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
     });
 
     await expect(
@@ -1266,17 +1275,17 @@ describe('resizeJobSlot', () => {
     const firstSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
     const thirdSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(thirdJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: thirdJob.id },
     });
 
     await expect(
@@ -1341,7 +1350,7 @@ describe('resizeJobSlot', () => {
     const bookedSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(job, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
     });
 
     await expect(
@@ -1388,7 +1397,7 @@ describe('resizeJobSlot', () => {
     const workSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(job, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
     });
     const idleSlot = await addIdleJobSlot({
       access: jobAccess,
@@ -1437,17 +1446,17 @@ describe('removeJobSlot', () => {
     const firstSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
     const thirdSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(thirdJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: thirdJob.id },
     });
 
     await expect(
@@ -1508,12 +1517,12 @@ describe('removeJobSlot', () => {
     const firstSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(firstJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 2, jobStageId: getStageId(secondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 2, jobId: secondJob.id },
     });
 
     await removeJobSlot({
@@ -1560,22 +1569,22 @@ describe('removeJobSlot', () => {
     const adminSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(adminJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: adminJob.id },
     });
     const adminSecondSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(adminSecondJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: adminSecondJob.id },
     });
     const managerSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(managerJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: managerJob.id },
     });
     const deniedSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(deniedJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: deniedJob.id },
     });
 
     await expect(
@@ -1622,7 +1631,7 @@ describe('removeJobSlot', () => {
     const workSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(job, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
     });
     const idleSlot = await addIdleJobSlot({
       access: jobAccess,
@@ -1724,16 +1733,6 @@ async function createAcceptedJob(db: Db, productId: string): Promise<JobDetail> 
     db,
     input: { quoteId: quote.id },
   });
-}
-
-function getStageId(job: JobDetail, stageName: JobStageName) {
-  const stage = job.stages.find((item) => item.stage === stageName);
-
-  if (!stage) {
-    throw new Error(`Job stage not found: ${stageName}`);
-  }
-
-  return stage.id;
 }
 
 async function createCatalog(db: Db) {

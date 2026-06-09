@@ -53,9 +53,9 @@ describe('projectJobSlots', () => {
     const projection = projectJobSlots({
       scheduleOrigin,
       slots: [
-        slot({ id: 'slot-a', jobStageId: 'stage-1', kind: 'work', sequence: 1 }),
+        slot({ id: 'slot-a', jobId: 'job-1', kind: 'work', sequence: 1 }),
         slot({ id: 'slot-b', kind: 'idle', label: null, sequence: 2 }),
-        slot({ id: 'slot-c', jobStageId: 'stage-1', kind: 'work', sequence: 3 }),
+        slot({ id: 'slot-c', jobId: 'job-1', kind: 'work', sequence: 3 }),
       ],
     });
 
@@ -367,7 +367,7 @@ describe('segmentSlotCalendarDays', () => {
 function slot(input: {
   durationDays?: number;
   id: string;
-  jobStageId?: string | null;
+  jobId?: string | null;
   kind?: 'work' | 'idle';
   label?: string | null;
   sequence: number;
@@ -376,7 +376,7 @@ function slot(input: {
   return {
     durationDays: input.durationDays ?? 1,
     id: input.id,
-    jobStageId: kind === 'work' ? (input.jobStageId ?? 'stage-1') : null,
+    jobId: kind === 'work' ? (input.jobId ?? 'job-1') : null,
     kind,
     label: kind === 'idle' ? (input.label ?? null) : null,
     sequence: input.sequence,

@@ -1,4 +1,4 @@
-import { formatDate, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
+import { departmentLabels, formatDate, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDetail, JobDocument, UUID } from '@pkg/schema';
 import { IconX } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -53,6 +53,7 @@ export const JobDetailAside: React.FC<JobDetailAsideProps> = ({ bayId, jobId, on
 
       {schedule ? <SlotSection schedule={schedule} /> : null}
       {job ? <JobSection job={job} /> : null}
+      {job ? <JobScheduleSection job={job} /> : null}
       {job ? <JobDocuments documents={job.documents} jobId={job.id} /> : null}
 
       {jobQuery.isLoading ? <Skeleton className="h-48" /> : null}
@@ -107,6 +108,37 @@ const JobSection: React.FC<{ job: JobDetail }> = ({ job }) => (
       <InfoRow label="Customer" value={job.customerCompanyName ?? 'Customer unavailable'} />
       <InfoRow label="Product" value={job.productName} />
     </InfoList>
+  </Section>
+);
+
+const JobScheduleSection: React.FC<{ job: JobDetail }> = ({ job }) => (
+  <Section title="Schedule">
+    <div className="grid gap-2 text-sm">
+      {job.schedule.map((department) => (
+        <div className="rounded-lg border p-3" key={department.department}>
+          <div className="font-medium">{departmentLabels[department.department]}</div>
+          {department.bays.length === 0 ? (
+            <div className="mt-1 text-muted-foreground">No slots scheduled.</div>
+          ) : (
+            <div className="mt-2 grid gap-2">
+              {department.bays.map((bay) => (
+                <div className="grid gap-1" key={bay.id}>
+                  <div className="text-muted-foreground">{bay.name}</div>
+                  {bay.slots.map((slot) => (
+                    <div className="flex items-center justify-between gap-3" key={slot.id}>
+                      <span>{formatDate(slot.startAt, 'short')}</span>
+                      <span className="text-muted-foreground">to</span>
+                      <span>{formatDate(slot.endAt, 'short')}</span>
+                      <span className="ml-auto tabular-nums">{slot.durationDays}d</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   </Section>
 );
 

@@ -1,4 +1,4 @@
-import type { AppPermission, AppRole, Department, JobStageName, UserAccessSummary } from '@pkg/schema';
+import type { AppPermission, AppRole, Department, UserAccessSummary } from '@pkg/schema';
 
 export const DEFAULT_APP_ROLE = 'sales' satisfies AppRole;
 
@@ -18,12 +18,11 @@ export const permissionLabels = {
   'customer:create': 'Create customers',
   'customer:read': 'View customers',
   'customer:update': 'Update customers',
-  'job-stage:read': 'View job stages',
-  'job-stage:update': 'Update job stages',
   'part:read': 'View parts',
   'part:update': 'Manage parts',
   'job:create': 'Create jobs',
   'job:read': 'View jobs',
+  'job:schedule': 'Schedule jobs',
   'job:update': 'Update jobs',
   'job:update-calendar': 'Manage job calendar',
   'product:create': 'Create products',
@@ -47,12 +46,11 @@ export const permissionDescriptions = {
   'customer:create': 'Add new customer directory records.',
   'customer:read': 'View customer directory records.',
   'customer:update': 'Edit existing customer directory records.',
-  'job-stage:read': 'View job stage status and details.',
-  'job-stage:update': 'Update job stage status and progress.',
   'part:read': 'View part records.',
   'part:update': 'Create and edit part records.',
   'job:create': 'Create new production jobs.',
   'job:read': 'View production jobs.',
+  'job:schedule': 'Book, resize, and remove Bay Slots and manage Bay Calendar Exceptions in Department scope.',
   'job:update': 'Update production job details.',
   'job:update-calendar': 'Manage org-wide production Off-Days.',
   'product:create': 'Add new product catalog records.',
@@ -74,8 +72,7 @@ export const permissionDescriptions = {
 export const authorizationStatement = {
   audit: ['read'],
   customer: ['read', 'create', 'update'],
-  job: ['read', 'create', 'update', 'update-calendar'],
-  'job-stage': ['read', 'update'],
+  job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
   part: ['read', 'update'],
   product: ['read', 'create', 'update'],
   quote: ['read', 'create', 'update'],
@@ -93,8 +90,7 @@ export const appRoleAccess = {
   admin: {
     audit: ['read'],
     customer: ['read', 'create', 'update'],
-    job: ['read', 'create', 'update', 'update-calendar'],
-    'job-stage': ['read', 'update'],
+    job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
     part: ['read', 'update'],
     product: ['read', 'create', 'update'],
     quote: ['read', 'create', 'update'],
@@ -104,14 +100,12 @@ export const appRoleAccess = {
   'procurement-manager': {
     customer: ['read', 'create', 'update'],
     job: ['read'],
-    'job-stage': ['read'],
     part: ['read', 'update'],
     product: ['read', 'create', 'update'],
     supplier: ['read', 'update'],
   },
   'job-department-manager': {
-    job: ['read'],
-    'job-stage': ['read', 'update'],
+    job: ['read', 'schedule'],
   },
   sales: {
     quote: ['read', 'create', 'update'],
@@ -164,24 +158,12 @@ function flattenRolePermissions(role: AppRole): AppPermission[] {
   return permissions;
 }
 
-export type JobStageResource = {
-  stage: JobStageName;
-};
-
-export type JobResource = {
-  stages: readonly JobStageResource[];
-};
-
 export function canViewJob(access: UserAccessSummary | null | undefined): boolean {
   return hasPermission(access, 'job:read');
 }
 
-export function canViewStage(access: UserAccessSummary | null | undefined, stage: JobStageResource): boolean {
-  return hasPermission(access, 'job-stage:read') && canAccessStageDepartment(access, stage);
-}
-
-export function canEditStage(access: UserAccessSummary | null | undefined, stage: JobStageResource): boolean {
-  return hasPermission(access, 'job-stage:update') && canAccessStageDepartment(access, stage);
+export function canScheduleBay(access: UserAccessSummary | null | undefined, department: Department): boolean {
+  return hasPermission(access, 'job:schedule') && canAccessDepartment(access, department);
 }
 
 export function canViewQuote(access: UserAccessSummary | null | undefined): boolean {
@@ -196,14 +178,10 @@ export function canEditQuote(access: UserAccessSummary | null | undefined): bool
   return hasPermission(access, 'quote:update');
 }
 
-function canAccessStageDepartment(access: UserAccessSummary | null | undefined, stage: JobStageResource): boolean {
-  return canAccessDepartment(access, stage.stage);
-}
-
 function canAccessDepartment(access: UserAccessSummary | null | undefined, department: Department): boolean {
   if (!access) return false;
 
-  // If the user has no departments, they have cross-cutting access to all stages
+  // For department-aware roles, an empty department list intentionally means unscoped scheduling.
   if (access.departments.length === 0) return true;
 
   return access.departments.includes(department);

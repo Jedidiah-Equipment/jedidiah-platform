@@ -1,14 +1,16 @@
 import { departmentLabels, hasPermission, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
-import { type Bay, JobCreateInput, type QuoteSummary } from '@pkg/schema';
+import { JobBaySeedInput, JobCreateInput, type QuoteSummary } from '@pkg/schema';
 import { IconBriefcase2, IconLoader2, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DepartmentIcon } from '@/components/departments/index.js';
+import { useAppForm } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -20,8 +22,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
-import { Field, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -35,13 +35,15 @@ type GenerateJobFromQuoteDialogProps = {
   size?: 'default' | 'icon-sm';
 };
 
-type BaySeedRow = {
-  bayId: string;
-  durationDays: string;
-  key: string;
-};
-
 const jobDepartments = JOB_DEPARTMENT_PIPELINE.map((step) => step.department);
+const jobCreateFormDefaultValues: JobCreateFormValues = { baySeeds: [] };
+const JobCreateBaySeedFormRow = JobBaySeedInput.extend({
+  rowKey: z.string().min(1),
+});
+const JobCreateFormValues = z.object({
+  baySeeds: z.array(JobCreateBaySeedFormRow),
+});
+type JobCreateFormValues = z.infer<typeof JobCreateFormValues>;
 
 export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProps> = ({
   className,
@@ -54,7 +56,6 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [baySeedRows, setBaySeedRows] = useState<BaySeedRow[]>([]);
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
   const canGenerate = quote.status === 'accepted' && quote.linkedJobs.length === 0;
   const enabledBaysQuery = useQuery(
@@ -75,61 +76,38 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
       })),
     [enabledBays],
   );
-  const hasInvalidSeedRows = baySeedRows.some((row) => parsePositiveInteger(row.durationDays) === null);
   const createJobMutation = useMutation(
     trpc.jobs.create.mutationOptions({
       onSuccess: async (job) => {
         await Promise.all([invalidateJobs(), invalidateQuotes()]);
         toast.success('Job started');
         setIsOpen(false);
-        setBaySeedRows([]);
+        form.reset();
         await navigate({ search: { job: job.id }, to: '/jobs' });
       },
       onError: (error) => showMutationError(error, 'Unable to start job.'),
     }),
   );
-  const isPending = createJobMutation.isPending;
-  const canSubmit = !isPending && !hasInvalidSeedRows;
+  const form = useAppForm({
+    defaultValues: jobCreateFormDefaultValues,
+    validators: {
+      onChange: JobCreateFormValues,
+      onSubmit: JobCreateFormValues,
+    },
+    onSubmit: ({ value }) => {
+      const baySeeds = value.baySeeds.map(({ bayId, durationDays }) => ({ bayId, durationDays }));
+
+      createJobMutation.mutate(JobCreateInput.parse({ baySeeds, quoteId: quote.id }));
+    },
+  });
+  const isPending = createJobMutation.isPending || form.state.isSubmitting;
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
 
     if (!open) {
-      setBaySeedRows([]);
+      form.reset();
     }
-  };
-
-  const addBaySeedRow = (bay: Bay) => {
-    setBaySeedRows((current) => [
-      ...current,
-      {
-        bayId: bay.id,
-        durationDays: '',
-        key: globalThis.crypto.randomUUID(),
-      },
-    ]);
-  };
-
-  const updateBaySeedDuration = (key: string, durationDays: string) => {
-    setBaySeedRows((current) => current.map((row) => (row.key === key ? { ...row, durationDays } : row)));
-  };
-
-  const removeBaySeedRow = (key: string) => {
-    setBaySeedRows((current) => current.filter((row) => row.key !== key));
-  };
-
-  const submit = () => {
-    if (!canSubmit) {
-      return;
-    }
-
-    const baySeeds = baySeedRows.flatMap((row) => {
-      const durationDays = parsePositiveInteger(row.durationDays);
-
-      return durationDays === null ? [] : [{ bayId: row.bayId, durationDays }];
-    });
-
-    createJobMutation.mutate(JobCreateInput.parse({ baySeeds, quoteId: quote.id }));
   };
 
   if (!canCreateJob || !canGenerate) {
@@ -159,52 +137,62 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
             Generate CFO and start Job, quote will be locked once the Job is created.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void form.handleSubmit();
+          }}
+        >
           <div className="space-y-2">
             <p className="font-medium text-sm">Bay seeds</p>
-            {baySeedRows.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No Bays selected.</p>
-            ) : (
-              <div className="divide-y rounded-md border border-border/70">
-                {baySeedRows.map((row, index) => {
-                  const bay = baysById.get(row.bayId);
+            <form.Field name="baySeeds" mode="array">
+              {(baySeedsField) =>
+                baySeedsField.state.value.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No Bays selected.</p>
+                ) : (
+                  <div className="divide-y rounded-md border border-border/70">
+                    {baySeedsField.state.value.map((row, index) => {
+                      const bay = baysById.get(row.bayId);
 
-                  return (
-                    <div key={row.key} className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
-                      <div className="min-w-0 self-center">
-                        <p className="truncate font-medium">{bay?.name ?? 'Unavailable Bay'}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {bay ? departmentLabels[bay.department] : 'Bay must be reselected'}
-                        </p>
-                      </div>
-                      <Field className="gap-1">
-                        <FieldLabel htmlFor={`job-bay-seed-duration-${row.key}`}>Days</FieldLabel>
-                        <Input
-                          disabled={isPending}
-                          id={`job-bay-seed-duration-${row.key}`}
-                          min={1}
-                          onChange={(event) => updateBaySeedDuration(row.key, event.currentTarget.value)}
-                          placeholder="1"
-                          type="number"
-                          value={row.durationDays}
-                        />
-                      </Field>
-                      <Button
-                        aria-label={`Remove Bay seed ${index + 1}`}
-                        className="self-end"
-                        disabled={isPending}
-                        onClick={() => removeBaySeedRow(row.key)}
-                        size="icon"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <IconTrash />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                      return (
+                        <div key={row.rowKey} className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
+                          <div className="min-w-0 self-center">
+                            <p className="truncate font-medium">{bay?.name ?? 'Unavailable Bay'}</p>
+                            <p className="text-muted-foreground text-xs">
+                              {bay ? departmentLabels[bay.department] : 'Bay must be reselected'}
+                            </p>
+                          </div>
+                          <form.AppField name={`baySeeds[${index}].durationDays`}>
+                            {(field) => (
+                              <field.NumberField
+                                disabled={isPending}
+                                emptyValue={Number.NaN}
+                                inputMode="numeric"
+                                label="Days"
+                                placeholder="1"
+                              />
+                            )}
+                          </form.AppField>
+                          <Button
+                            aria-label={`Remove Bay seed ${index + 1}`}
+                            className="self-end"
+                            disabled={isPending}
+                            onClick={() => baySeedsField.removeValue(index)}
+                            size="icon"
+                            type="button"
+                            variant="ghost"
+                          >
+                            <IconTrash />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              }
+            </form.Field>
           </div>
           <div className="space-y-2">
             <p className="font-medium text-sm">Add Bay</p>
@@ -229,7 +217,13 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
                             <Button
                               disabled={isPending}
                               key={bay.id}
-                              onClick={() => addBaySeedRow(bay)}
+                              onClick={() =>
+                                form.pushFieldValue('baySeeds', {
+                                  bayId: bay.id,
+                                  durationDays: NaN,
+                                  rowKey: globalThis.crypto.randomUUID(),
+                                })
+                              }
                               size="sm"
                               type="button"
                               variant="outline"
@@ -246,25 +240,21 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
               </ScrollArea>
             ) : null}
           </div>
-        </div>
-        <DialogFooter>
-          <DialogClose render={<Button disabled={isPending} type="button" variant="outline" />}>Cancel</DialogClose>
-          <Button disabled={!canSubmit} onClick={submit} type="button">
-            {isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
-            Generate CFO & Start Job
-          </Button>
-        </DialogFooter>
+          <form.Subscribe selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}>
+            {({ canSubmit, isSubmitting }) => (
+              <DialogFooter>
+                <DialogClose render={<Button disabled={isPending} type="button" variant="outline" />}>
+                  Cancel
+                </DialogClose>
+                <Button disabled={isPending || isSubmitting || !canSubmit} type="submit">
+                  {isPending || isSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
+                  Generate CFO & Start Job
+                </Button>
+              </DialogFooter>
+            )}
+          </form.Subscribe>
+        </form>
       </DialogContent>
     </Dialog>
   );
 };
-
-function parsePositiveInteger(value: string): number | null {
-  if (!/^\d+$/.test(value)) {
-    return null;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-
-  return parsed > 0 ? parsed : null;
-}

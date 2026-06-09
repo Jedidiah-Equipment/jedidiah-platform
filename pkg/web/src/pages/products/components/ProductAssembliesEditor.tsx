@@ -2,16 +2,26 @@ import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor,
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { formatCurrency } from '@pkg/domain';
-import type { AssemblyInput, Part } from '@pkg/schema';
+import { type AssemblyInput, AssemblyName, type Part, Price, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import { CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
+import { validateStructuralFieldOnMount } from '@/components/form/utils/field-validators.js';
+import { requiredSelection } from '@/components/form/utils/form-schema.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardHeader } from '@/components/ui/card.js';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardSeparator,
+  CardTitle,
+} from '@/components/ui/card.js';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible.js';
 import {
   Combobox,
@@ -28,17 +38,23 @@ import {
   DropdownMenuGroup,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
+import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table.js';
 import { usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 import { emptyProductFormValues } from './types.js';
 
 const ALL_CATEGORIES = '__all__';
+const AssemblyPartSelection = requiredSelection(UUID, 'Select a part');
 const assemblyPartKeys = new WeakMap<AssemblyInput['parts'][number], string>();
+
+const ASSEMBLY_NAME_FIELD_VALIDATORS = validateStructuralFieldOnMount(AssemblyName);
+const ASSEMBLY_PRICE_FIELD_VALIDATORS = validateStructuralFieldOnMount(Price);
+const ASSEMBLY_PART_FIELD_VALIDATORS = validateStructuralFieldOnMount(AssemblyPartSelection);
 
 type ProductAssembliesEditorProps = {
   assembliesField: ArrayFieldApi<AssemblyInput>;
@@ -189,6 +205,10 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
   // being interpreted as a drag.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const sortableIds = assemblies.map(({ assembly }) => assembly.id ?? '');
+  const description =
+    kind === 'standard'
+      ? 'Included by default when quoting this Product.'
+      : 'Customer-selectable upgrades for this Product.';
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -210,46 +230,57 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
   };
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="font-medium text-sm">{title}</h3>
-        <Button size="sm" type="button" variant="outline" onClick={onAdd}>
-          <IconPlus />
-          Add
-        </Button>
-      </div>
-      <DndContext
-        collisionDetection={closestCenter}
-        modifiers={[restrictToVerticalAxis]}
-        sensors={sensors}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-col gap-3">
-            {assemblies.map(({ assembly, index }) => (
-              <AssemblyRow
-                assembly={assembly}
-                categories={categories}
-                index={index}
-                key={assembly.id}
-                isExpanded={Boolean(assembly.id && expandedAssemblyIds.has(assembly.id))}
-                onExpandedChange={(isExpanded) => onExpandedChange(assembly.id, isExpanded)}
-                onRemove={() => onRemove(index)}
-                onStructuralChange={onStructuralChange}
-                parts={parts}
-                standardAssemblies={standardAssemblies}
-                currencyCode={currencyCode}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
-      {assemblies.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No {kind === 'standard' ? 'standard' : 'optional'} assemblies added.
-        </p>
-      ) : null}
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+        <CardAction>
+          <Button type="button" variant="outline" onClick={onAdd}>
+            <IconPlus data-icon="inline-start" />
+            Add
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardSeparator />
+      <CardContent>
+        {assemblies.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyIcon />
+              <EmptyTitle>No {kind === 'standard' ? 'standard' : 'optional'} assemblies added.</EmptyTitle>
+              <EmptyDescription>Add an assembly from the header to define this Product's build.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <DndContext
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+            sensors={sensors}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-3">
+                {assemblies.map(({ assembly, index }) => (
+                  <AssemblyRow
+                    assembly={assembly}
+                    categories={categories}
+                    index={index}
+                    key={assembly.id}
+                    isExpanded={Boolean(assembly.id && expandedAssemblyIds.has(assembly.id))}
+                    onExpandedChange={(isExpanded) => onExpandedChange(assembly.id, isExpanded)}
+                    onRemove={() => onRemove(index)}
+                    onStructuralChange={onStructuralChange}
+                    parts={parts}
+                    standardAssemblies={standardAssemblies}
+                    currencyCode={currencyCode}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -347,27 +378,16 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                       : 'grid gap-3'
                   }
                 >
-                  <FormField name={`assemblies[${index}].name`}>
+                  <FormField name={`assemblies[${index}].name`} validators={ASSEMBLY_NAME_FIELD_VALIDATORS}>
                     {(field: FieldApi<string>) => {
                       const errors = getFieldErrors(field.state.meta.errors);
                       const isInvalid = errors.length > 0;
 
-                      return (
-                        <Field data-invalid={isInvalid}>
-                          <FieldLabel>Name</FieldLabel>
-                          <Input
-                            aria-invalid={isInvalid}
-                            value={field.state.value}
-                            onBlur={field.handleBlur}
-                            onChange={(event) => field.handleChange(event.target.value)}
-                          />
-                          <FieldError errors={errors} />
-                        </Field>
-                      );
+                      return <AssemblyNameField errors={errors} field={field} isInvalid={isInvalid} />;
                     }}
                   </FormField>
                   {assembly.kind === 'optional' ? (
-                    <FormField name={`assemblies[${index}].price`}>
+                    <FormField name={`assemblies[${index}].price`} validators={ASSEMBLY_PRICE_FIELD_VALIDATORS}>
                       {(field) => (
                         <fieldContext.Provider value={field}>
                           <CurrencyField
@@ -402,6 +422,25 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
     </productForm.Subscribe>
   );
 };
+
+type AssemblyNameFieldProps = {
+  errors: ReturnType<typeof getFieldErrors>;
+  field: FieldApi<string>;
+  isInvalid: boolean;
+};
+
+const AssemblyNameField: React.FC<AssemblyNameFieldProps> = ({ errors, field, isInvalid }) => (
+  <Field data-invalid={isInvalid}>
+    <FieldLabel>Name</FieldLabel>
+    <Input
+      aria-invalid={isInvalid}
+      value={field.state.value}
+      onBlur={field.handleBlur}
+      onChange={(event) => field.handleChange(event.target.value)}
+    />
+    <FieldError errors={errors} />
+  </Field>
+);
 
 type AssemblySummaryProps = {
   assembly: AssemblyInput;
@@ -568,52 +607,49 @@ const AssemblyPartsTable: React.FC<AssemblyPartsTableProps> = ({
 
   return (
     <FormField name={`assemblies[${index}].parts`} mode="array">
-      {(partsField: ArrayFieldApi<AssemblyInput['parts'][number]>) => (
-        <div className="mt-3 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium text-sm">Parts</h4>
-            <Button
-              disabled={partOptions.length === 0}
-              size="sm"
-              type="button"
-              variant="outline"
-              onClick={() => {
-                partsField.pushValue({ partId: '', quantity: 1 });
-                onStructuralChange();
-              }}
-            >
-              <IconPlus />
-              Add part
-            </Button>
+      {(partsField: ArrayFieldApi<AssemblyInput['parts'][number]>) => {
+        const assemblyParts = partsField.state.value ?? [];
+
+        return (
+          <div className="mt-3 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm">Parts</h4>
+              <Button
+                disabled={partOptions.length === 0}
+                size="sm"
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  partsField.pushValue({ partId: '', quantity: 1 });
+                  onStructuralChange();
+                }}
+              >
+                <IconPlus />
+                Add part
+              </Button>
+            </div>
+            <Table>
+              <TableBody>
+                {assemblyParts.map((part, partIndex) => (
+                  <AssemblyPartRow
+                    categories={categories}
+                    key={getAssemblyPartKey(part)}
+                    part={part}
+                    partIndex={partIndex}
+                    partOptions={partOptions}
+                    parentIndex={index}
+                    onRemove={() => {
+                      partsField.removeValue(partIndex);
+                      onStructuralChange();
+                    }}
+                    onStructuralChange={onStructuralChange}
+                  />
+                ))}
+              </TableBody>
+            </Table>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Part</TableHead>
-                <TableHead className="w-36">Quantity</TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {partsField.state.value.map((part, partIndex) => (
-                <AssemblyPartRow
-                  categories={categories}
-                  key={getAssemblyPartKey(part)}
-                  part={part}
-                  partIndex={partIndex}
-                  partOptions={partOptions}
-                  parentIndex={index}
-                  onRemove={() => {
-                    partsField.removeValue(partIndex);
-                    onStructuralChange();
-                  }}
-                  onStructuralChange={onStructuralChange}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+        );
+      }}
     </FormField>
   );
 };
@@ -645,10 +681,12 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
   return (
     <TableRow>
       <TableCell>
-        <div className="grid gap-2 md:grid-cols-[10rem_minmax(12rem,1fr)]">
+        <div className="grid gap-2 md:grid-cols-[13rem_minmax(12rem,1fr)]">
           <Select value={category} onValueChange={(value) => setCategory(value ?? ALL_CATEGORIES)}>
-            <SelectTrigger>
-              <SelectValue>{category === ALL_CATEGORIES ? 'All categories' : category}</SelectValue>
+            <SelectTrigger className="w-full min-w-0">
+              <SelectValue className="min-w-0 truncate">
+                {category === ALL_CATEGORIES ? 'All categories' : category}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -661,7 +699,10 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
               </SelectGroup>
             </SelectContent>
           </Select>
-          <FormField name={`assemblies[${parentIndex}].parts[${partIndex}].partId`}>
+          <FormField
+            name={`assemblies[${parentIndex}].parts[${partIndex}].partId`}
+            validators={ASSEMBLY_PART_FIELD_VALIDATORS}
+          >
             {(field: FieldApi<string>) => {
               const errors = getFieldErrors(field.state.meta.errors);
               const isInvalid = errors.length > 0;
@@ -672,36 +713,13 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
                   : visibleParts;
 
               return (
-                <Field data-invalid={isInvalid}>
-                  <Combobox
-                    items={visiblePartOptions}
-                    itemToStringLabel={formatPartLabel}
-                    itemToStringValue={(option) => option.id}
-                    onValueChange={(value) => {
-                      field.handleChange(value?.id ?? '');
-                      onStructuralChange();
-                    }}
-                    value={selectedPart ?? null}
-                  >
-                    <ComboboxInput
-                      aria-invalid={isInvalid}
-                      className="w-full"
-                      onBlur={field.handleBlur}
-                      placeholder="Search for parts..."
-                    />
-                    <ComboboxContent>
-                      <ComboboxEmpty>No parts found.</ComboboxEmpty>
-                      <ComboboxList>
-                        {(option: Part) => (
-                          <ComboboxItem key={option.id} value={option}>
-                            {formatPartLabel(option)}
-                          </ComboboxItem>
-                        )}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                  <FieldError errors={errors} />
-                </Field>
+                <AssemblyPartPickerField
+                  field={field}
+                  isInvalid={isInvalid}
+                  options={visiblePartOptions}
+                  selectedPart={selectedPart ?? null}
+                  onStructuralChange={onStructuralChange}
+                />
               );
             }}
           </FormField>
@@ -735,6 +753,54 @@ const AssemblyPartRow: React.FC<AssemblyPartRowProps> = ({
   );
 };
 
+type AssemblyPartPickerFieldProps = {
+  field: FieldApi<string>;
+  isInvalid: boolean;
+  options: Part[];
+  selectedPart: Part | null;
+  onStructuralChange: () => void;
+};
+
+const AssemblyPartPickerField: React.FC<AssemblyPartPickerFieldProps> = ({
+  field,
+  isInvalid,
+  options,
+  selectedPart,
+  onStructuralChange,
+}) => {
+  return (
+    <Field data-invalid={isInvalid}>
+      <Combobox
+        items={options}
+        itemToStringLabel={formatPartLabel}
+        itemToStringValue={(option) => option.id}
+        onValueChange={(value) => {
+          field.handleChange(value?.id ?? '');
+          onStructuralChange();
+        }}
+        value={selectedPart}
+      >
+        <ComboboxInput
+          aria-invalid={isInvalid}
+          className="w-full"
+          onBlur={field.handleBlur}
+          placeholder="Select part"
+        />
+        <ComboboxContent>
+          <ComboboxEmpty>No parts found.</ComboboxEmpty>
+          <ComboboxList>
+            {(option: Part) => (
+              <ComboboxItem key={option.id} value={option}>
+                {formatPartLabel(option)}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </Field>
+  );
+};
+
 type PartQuantityFieldProps = {
   errors: ReturnType<typeof getFieldErrors>;
   field: FieldApi<number>;
@@ -763,6 +829,7 @@ const PartQuantityField: React.FC<PartQuantityFieldProps> = ({
         return (
           <Field data-invalid={isInvalid}>
             <div className="flex items-center gap-2">
+              <span className="font-medium text-sm">Qty</span>
               <Input
                 aria-invalid={isInvalid}
                 className="w-24"

@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
+import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Input } from '@/components/ui/input.js';
 import {
   Pagination,
@@ -67,6 +68,8 @@ type DocumentCardListMetadata<TDocument extends DocumentSummary> = {
 type DocumentCardListProps<TDocument extends DocumentSummary> = {
   documents: TDocument[];
   emptyMessage: string;
+  emptyActionMessage?: string;
+  emptySearchMessage?: string;
   errorMessage?: string | null;
   isLoading: boolean;
   metadata: DocumentCardListMetadata<TDocument>;
@@ -82,7 +85,9 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
   canDelete = false,
   defaultSort = DEFAULT_DOCUMENT_CARD_SORT,
   documents,
+  emptyActionMessage,
   emptyMessage,
+  emptySearchMessage = 'No documents match this search.',
   errorMessage,
   isLoading,
   metadata,
@@ -105,6 +110,9 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
   const selectedSortOption =
     DOCUMENT_CARD_SORT_OPTIONS.find((option) => option.value === sort) ?? DOCUMENT_CARD_SORT_OPTIONS[0];
   const shouldShowPager = visible.pageCount > 1;
+  const hasSearch = search.trim().length > 0;
+  const emptyTitle = hasSearch ? emptySearchMessage : emptyMessage;
+  const emptyDescription = hasSearch ? 'Try a different search term.' : rightSection ? emptyActionMessage : undefined;
 
   useEffect(() => {
     if (visible.pageIndex !== pageIndex) {
@@ -177,9 +185,13 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
             </div>
           ) : null}
           {!isLoading && visible.documents.length === 0 ? (
-            <Card size="sm">
-              <CardContent className="text-muted-foreground">{emptyMessage}</CardContent>
-            </Card>
+            <Empty>
+              <EmptyHeader>
+                <EmptyIcon />
+                <EmptyTitle>{emptyTitle}</EmptyTitle>
+                {emptyDescription ? <EmptyDescription>{emptyDescription}</EmptyDescription> : null}
+              </EmptyHeader>
+            </Empty>
           ) : null}
         </CardContent>
         {shouldShowPager || !isCompact ? (

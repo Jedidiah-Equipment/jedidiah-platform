@@ -39,7 +39,7 @@ import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trp
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const jobsRouter = router({
-  listBays: authorizedProcedure('job:read').query(({ ctx }) => listBays({ db: ctx.db, access: ctx.access })),
+  listBays: authorizedProcedure('job:read').query(({ ctx }) => listBays({ db: ctx.db })),
 
   listJobBays: authorizedProcedure(['job:read', 'job_bay:read'])
     .input(JobBayListInput)
@@ -73,12 +73,12 @@ export const jobsRouter = router({
 
   get: authorizedProcedure('job:read')
     .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapJobErrors(() => getJob({ db: ctx.db, access: ctx.access, id: input.id }))),
+    .query(({ ctx, input }) => mapJobErrors(() => getJob({ db: ctx.db, id: input.id }))),
 
   create: authorizedProcedure('job:create')
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => createJob({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id })),
+      mapJobErrors(() => createJob({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
     ),
 
   bookSlot: authorizedProcedure('job:schedule')

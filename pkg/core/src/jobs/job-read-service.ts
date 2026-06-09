@@ -37,7 +37,7 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -72,17 +72,10 @@ type BayScheduleRow = typeof jobBays.$inferSelect & {
   })[];
 };
 
-export async function listBays({
-  db,
-  access,
-}: {
-  db: Db | DatabaseTransaction;
-  access: UserAccessSummary;
-}): Promise<BayListResult> {
-  void access;
-  const offDays = await listWorkingCalendarOffDays(db);
-
-  const rows = await db.query.jobBays.findMany({
+// Any `job:read` user sees the full cross-department schedule, so bay reads are not department-scoped.
+function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
+  return db.query.jobBays.findMany({
+    where,
     orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
     with: {
       calendarExceptions: {
@@ -107,13 +100,44 @@ export async function listBays({
       },
     },
   });
+}
 
+function toBaySchedules(rows: BayScheduleRow[], offDays: readonly OffDay[]): BaySchedule[] {
   const orgWorkingCalendar = createOrgWorkingCalendar(offDays);
 
+  return rows.map((row) => mapBaySchedule(row, createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions)));
+}
+
+export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promise<BayListResult> {
+  const offDays = await listWorkingCalendarOffDays(db);
+  const rows = await findBayScheduleRows(db);
+
   return {
-    items: rows.map((row) => mapBaySchedule(row, createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions))),
+    items: toBaySchedules(rows, offDays),
     offDays,
   };
+}
+
+// A Job's schedule only needs the bays that actually hold one of its Work Slots. We resolve those
+// bay ids first, then project only their full queues — rather than projecting the whole shop floor.
+async function getJobSchedule({
+  db,
+  jobId,
+}: {
+  db: Db | DatabaseTransaction;
+  jobId: UUID;
+}): Promise<JobDepartmentSchedule[]> {
+  const bayIdRows = await db.selectDistinct({ bayId: jobSlots.bayId }).from(jobSlots).where(eq(jobSlots.jobId, jobId));
+  const bayIds = bayIdRows.map((row) => row.bayId);
+
+  if (bayIds.length === 0) {
+    return mapJobSchedule({ bays: [], jobId });
+  }
+
+  const offDays = await listWorkingCalendarOffDays(db);
+  const rows = await findBayScheduleRows(db, inArray(jobBays.id, bayIds));
+
+  return mapJobSchedule({ bays: toBaySchedules(rows, offDays), jobId });
 }
 
 export async function listWorkingCalendarOffDays(db: Db | DatabaseTransaction) {
@@ -284,15 +308,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-export async function getJob({
-  db,
-  id,
-  access,
-}: {
-  db: Db | DatabaseTransaction;
-  id: UUID;
-  access: UserAccessSummary;
-}): Promise<JobDetail> {
+export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<JobDetail> {
   const row = await db.query.jobs.findFirst({
     columns: {
       createdAt: true,
@@ -336,13 +352,17 @@ export async function getJob({
     throw new JobNotFoundError(id);
   }
 
-  const bayList = await listBays({ access, db });
+  const [cfo, documents, schedule] = await Promise.all([
+    listJobCfo({ db, jobId: row.id }),
+    listJobDocumentRows({ db, jobId: row.id }),
+    getJobSchedule({ db, jobId: row.id }),
+  ]);
 
   return {
     ...mapJobSummary(row),
-    cfo: await listJobCfo({ db, jobId: row.id }),
-    documents: await getJobDocuments({ db, jobId: row.id }),
-    schedule: mapJobSchedule({ bays: bayList.items, jobId: row.id }),
+    cfo,
+    documents,
+    schedule,
   };
 }
 
@@ -355,6 +375,16 @@ export async function getJobDocuments({
 }): Promise<JobDetail['documents']> {
   await assertJobExists({ db, jobId });
 
+  return listJobDocumentRows({ db, jobId });
+}
+
+async function listJobDocumentRows({
+  db,
+  jobId,
+}: {
+  db: Db | DatabaseTransaction;
+  jobId: UUID;
+}): Promise<JobDetail['documents']> {
   const rows = await selectJobDocuments(db).where(eq(documents.jobId, jobId)).orderBy(asc(documents.filename));
 
   return rows.map(mapJobDocument);

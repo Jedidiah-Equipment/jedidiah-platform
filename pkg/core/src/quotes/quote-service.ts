@@ -25,6 +25,7 @@ import {
   type AuthId,
   formatQuoteCode,
   JobCode,
+  type ProductBay,
   ProductCurrencyCode,
   Quote,
   QuoteCode,
@@ -52,6 +53,7 @@ import {
 } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
+import { listProductBays } from '../products/product-service.js';
 import {
   QuoteDiscountInvalidError,
   QuoteInvalidReferenceError,
@@ -387,9 +389,12 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
     throw new QuoteNotFoundError(id);
   }
 
-  const assemblies = await listAssemblies({ tx: db, productId: row.productId });
+  const [assemblies, productBaysForQuote] = await Promise.all([
+    listAssemblies({ tx: db, productId: row.productId }),
+    listProductBays({ db, productId: row.productId }),
+  ]);
 
-  return mapQuoteDetail(row, assemblies);
+  return mapQuoteDetail(row, assemblies, productBaysForQuote);
 }
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {
@@ -528,7 +533,11 @@ function mapQuoteSummary(
   };
 }
 
-function mapQuoteDetail(row: QuoteDetailRow, productAssembliesForQuote: Assembly[]): QuoteDetail {
+function mapQuoteDetail(
+  row: QuoteDetailRow,
+  productAssembliesForQuote: Assembly[],
+  productBaysForQuote: ProductBay[],
+): QuoteDetail {
   return {
     ...mapQuote(row),
     customerAddress: row.customer.address,
@@ -548,6 +557,7 @@ function mapQuoteDetail(row: QuoteDetailRow, productAssembliesForQuote: Assembly
     productModelCode: row.product.modelCode,
     productName: row.product.name,
     productAssemblies: productAssembliesForQuote,
+    productBays: productBaysForQuote,
     productRequiresVinNumber: row.product.requiresVinNumber,
     productThumbnailDataUrl: row.product.thumbnailDataUrl,
     salesPersonEmail: row.salesPerson?.email ?? null,

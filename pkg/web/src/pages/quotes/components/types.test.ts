@@ -15,6 +15,7 @@ import {
 const QUOTE_ID = '550e8400-e29b-41d4-a716-446655440000';
 const CUSTOMER_ID = '550e8400-e29b-41d4-a716-446655440001';
 const PRODUCT_ID = '550e8400-e29b-41d4-a716-446655440002';
+const BAY_ID = '550e8400-e29b-41d4-a716-446655440003';
 const SELECTION_ID = '550e8400-e29b-41d4-a716-446655440010';
 const PRODUCT_ASSEMBLY_ID = '550e8400-e29b-41d4-a716-446655440011';
 
@@ -69,6 +70,22 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
       },
     ],
     productAssemblies: [],
+    productBays: [
+      {
+        bay: {
+          createdAt: '2026-01-01T00:00:00.000Z',
+          department: 'fabrication',
+          disabledAt: null,
+          id: BAY_ID,
+          name: 'Fabrication Bay',
+          scheduleOrigin: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        bayId: BAY_ID,
+        defaultWorkingDays: 5,
+        productId: PRODUCT_ID,
+      },
+    ],
     ...overrides,
   });
 }

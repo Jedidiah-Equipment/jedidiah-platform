@@ -1,12 +1,11 @@
 import { departmentLabels, hasPermission, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
-import { JobBaySeedInput, JobCreateInput, type QuoteSummary } from '@pkg/schema';
+import type { QuoteDetail } from '@pkg/schema';
 import { IconBriefcase2, IconLoader2, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DepartmentIcon } from '@/components/departments/index.js';
@@ -29,21 +28,20 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import {
+  getBaySeedBayMap,
+  JobCreateFormValues,
+  toJobCreateFormValues,
+  toJobCreateInput,
+} from './generate-job-from-quote-form.js';
+
 type GenerateJobFromQuoteDialogProps = {
   className?: string;
-  quote: Pick<QuoteSummary, 'code' | 'id' | 'linkedJobs' | 'status'>;
+  quote: Pick<QuoteDetail, 'code' | 'id' | 'linkedJobs' | 'productBays' | 'status'>;
   size?: 'default' | 'icon-sm';
 };
 
 const jobDepartments = JOB_DEPARTMENT_PIPELINE.map((step) => step.department);
-const jobCreateFormDefaultValues: JobCreateFormValues = { baySeeds: [] };
-const JobCreateBaySeedFormRow = JobBaySeedInput.extend({
-  rowKey: z.string().min(1),
-});
-const JobCreateFormValues = z.object({
-  baySeeds: z.array(JobCreateBaySeedFormRow),
-});
-type JobCreateFormValues = z.infer<typeof JobCreateFormValues>;
 
 export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProps> = ({
   className,
@@ -73,11 +71,15 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
   const { invalidateJobs, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
+  const initialFormValues = useMemo(() => toJobCreateFormValues(quote), [quote]);
   const enabledBaysQuery = useQuery(
     trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }, { enabled: isOpen }),
   );
   const enabledBays = enabledBaysQuery.data?.items ?? [];
-  const baysById = useMemo(() => new Map(enabledBays.map((bay) => [bay.id, bay])), [enabledBays]);
+  const baysById = useMemo(
+    () => getBaySeedBayMap({ enabledBays, productBays: quote.productBays }),
+    [enabledBays, quote.productBays],
+  );
   const groupedBays = useMemo(
     () =>
       jobDepartments.map((department) => ({
@@ -94,22 +96,20 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
         await Promise.all([invalidateJobs(), invalidateQuotes()]);
         toast.success('Job started');
         setIsOpen(false);
-        form.reset();
+        form.reset(initialFormValues);
         await navigate({ search: { job: job.id }, to: '/jobs' });
       },
       onError: (error) => showMutationError(error, 'Unable to start job.'),
     }),
   );
   const form = useAppForm({
-    defaultValues: jobCreateFormDefaultValues,
+    defaultValues: initialFormValues,
     validators: {
       onChange: JobCreateFormValues,
       onSubmit: JobCreateFormValues,
     },
     onSubmit: ({ value }) => {
-      const baySeeds = value.baySeeds.map(({ bayId, durationDays }) => ({ bayId, durationDays }));
-
-      createJobMutation.mutate(JobCreateInput.parse({ baySeeds, quoteId: quote.id }));
+      createJobMutation.mutate(toJobCreateInput({ quoteId: quote.id, value }));
     },
   });
   const isPending = createJobMutation.isPending || form.state.isSubmitting;
@@ -117,9 +117,7 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
 
-    if (!open) {
-      form.reset();
-    }
+    form.reset(initialFormValues);
   };
 
   return (

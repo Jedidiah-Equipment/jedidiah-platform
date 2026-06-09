@@ -9,7 +9,13 @@ import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } fr
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { CustomerEmail, CustomerOptionalText, CustomerVatNumber } from '../customers/customer.js';
-import { Assembly, ProductCurrencyCode, ProductDescription, ProductRequiresVinNumber } from '../products/product.js';
+import {
+  Assembly,
+  ProductBay,
+  ProductCurrencyCode,
+  ProductDescription,
+  ProductRequiresVinNumber,
+} from '../products/product.js';
 
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
@@ -109,6 +115,7 @@ export const QuoteDetail = QuoteSummary.extend({
   customerPhone: CustomerOptionalText,
   customerVatNumber: CustomerVatNumber,
   productAssemblies: z.array(Assembly),
+  productBays: z.array(ProductBay),
   productDescription: ProductDescription,
   productRequiresVinNumber: ProductRequiresVinNumber,
   productThumbnailDataUrl: NullableThumbnailDataUrl,

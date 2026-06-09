@@ -255,33 +255,38 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
 }
 
 export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
-  const row = await db.query.products.findFirst({
-    where: eq(products.id, id),
-    with: {
-      assemblies: {
-        orderBy: productAssemblyOrderBy,
-        with: {
-          assemblyParts: {
-            with: {
-              part: {
-                columns: {
-                  category: true,
-                  code: true,
+  // The Product's Bays key off the same id as the main read, so load both in parallel rather than
+  // waiting on the Product row before fetching its Bays.
+  const [row, productBaysForProduct] = await Promise.all([
+    db.query.products.findFirst({
+      where: eq(products.id, id),
+      with: {
+        assemblies: {
+          orderBy: productAssemblyOrderBy,
+          with: {
+            assemblyParts: {
+              with: {
+                part: {
+                  columns: {
+                    category: true,
+                    code: true,
+                  },
                 },
               },
             },
+            optionalOverrides: true,
           },
-          optionalOverrides: true,
         },
       },
-    },
-  });
+    }),
+    listProductBays({ db, productId: id }),
+  ]);
 
   if (!row) {
     throw new ProductNotFoundError(id);
   }
 
-  return mapProductListRow(row, await listProductBays({ db, productId: row.id }));
+  return mapProductListRow(row, productBaysForProduct);
 }
 
 export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<ProductDocument[]> {
@@ -366,8 +371,14 @@ export async function readProductDocument({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<ReadDocumentResult> {
-  await assertProductExists({ db, productId });
-  const document = await getProductDocumentSummaryRow({ db, documentId, productId });
+  // Finding the document proves the Product exists (the document is scoped to its productId), so only
+  // fall back to the existence check on a miss to distinguish a missing Product from a missing document.
+  const document = await findProductDocumentSummaryRow({ db, documentId, productId });
+
+  if (!document) {
+    await assertProductExists({ db, productId });
+    throw new DocumentNotFoundError(documentId);
+  }
 
   return {
     document: mapDocumentSummary(document),
@@ -386,10 +397,10 @@ export async function readProductBrochure({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<ReadDocumentResult> {
-  await assertProductExists({ db, productId });
   const document = await getProductBrochureSummaryRow({ db, documentId, productId });
 
   if (!document) {
+    await assertProductExists({ db, productId });
     throw new DocumentNotFoundError(documentId);
   }
 
@@ -453,15 +464,29 @@ async function getProductDocumentSummaryRow({
   documentId: UUID;
   productId: UUID;
 }): Promise<DocumentSummaryRow> {
-  const [row] = await selectProductDocumentSummary(db)
-    .where(and(eq(documents.productId, productId), eq(documents.id, documentId)))
-    .limit(1);
+  const row = await findProductDocumentSummaryRow({ db, documentId, productId });
 
   if (!row) {
     throw new DocumentNotFoundError(documentId);
   }
 
   return row;
+}
+
+async function findProductDocumentSummaryRow({
+  db,
+  documentId,
+  productId,
+}: {
+  db: Db;
+  documentId: UUID;
+  productId: UUID;
+}): Promise<DocumentSummaryRow | null> {
+  const [row] = await selectProductDocumentSummary(db)
+    .where(and(eq(documents.productId, productId), eq(documents.id, documentId)))
+    .limit(1);
+
+  return row ?? null;
 }
 
 async function getProductBrochureSummaryRow({

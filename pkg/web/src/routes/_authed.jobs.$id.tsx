@@ -1,7 +1,5 @@
 import { UUID } from '@pkg/schema';
-import { createFileRoute } from '@tanstack/react-router';
-
-import { JobDetailPage } from '@/pages/job-detail/JobDetailPage.js';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_authed/jobs/$id')({
   params: {
@@ -15,11 +13,8 @@ export const Route = createFileRoute('/_authed/jobs/$id')({
   staticData: {
     pageLabel: 'Jobs',
   },
-  component: JobDetailRoute,
+  beforeLoad: ({ params }) => {
+    // The standalone job detail page was dropped; jobs now open in the aside on the jobs list.
+    throw redirect({ search: { job: params.id }, to: '/jobs' });
+  },
 });
-
-function JobDetailRoute() {
-  const { id } = Route.useParams();
-
-  return <JobDetailPage jobId={id} />;
-}

@@ -42,7 +42,7 @@ export const JobCodeDisplay: React.FC<JobCodeDisplayProps> = ({
 };
 
 const JobCodeLink: React.FC<{ jobCode: JobCode; jobId: UUID }> = ({ jobCode, jobId }) => (
-  <PrimaryLink params={{ id: jobId }} to="/jobs/$id">
+  <PrimaryLink search={{ job: jobId }} to="/jobs">
     {jobCode}
   </PrimaryLink>
 );

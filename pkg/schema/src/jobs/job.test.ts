@@ -5,6 +5,7 @@ import {
   AddBayCalendarExceptionResult,
   AddIdleJobSlotInput,
   AddIdleJobSlotResult,
+  Bay,
   BayCalendarException,
   BayCalendarExceptionDirection,
   BayListResult,
@@ -12,6 +13,14 @@ import {
   BookJobSlotResult,
   formatProductSerialNumber,
   Job,
+  JobBayCreateInput,
+  JobBayCreateResult,
+  JobBayListInput,
+  JobBayListResult,
+  JobBayRenameInput,
+  JobBayRenameResult,
+  JobBaySetDisabledInput,
+  JobBaySetDisabledResult,
   JobCode,
   JobDetail,
   JobListFilters,
@@ -153,6 +162,7 @@ describe('Working Calendar schemas', () => {
             calendarExceptions: [exception],
             createdAt: '2026-06-01T00:00:00.000Z',
             department: 'fabrication',
+            disabledAt: null,
             id: '00000000-0000-4000-8000-000000000002',
             name: 'Fabrication Bay 1',
             nextAvailableAt: '2026-06-05T00:00:00.000Z',
@@ -174,6 +184,7 @@ describe('Working Calendar schemas', () => {
           calendarExceptions: [exception],
           createdAt: '2026-06-01T00:00:00.000Z',
           department: 'fabrication',
+          disabledAt: null,
           id: '00000000-0000-4000-8000-000000000002',
           name: 'Fabrication Bay 1',
           nextAvailableAt: '2026-06-05T00:00:00.000Z',
@@ -226,6 +237,54 @@ describe('Working Calendar schemas', () => {
         isOffDay: false,
       }),
     ).toThrow();
+  });
+});
+
+describe('Job Bay schemas', () => {
+  it('accepts active and disabled Bays', () => {
+    expect(
+      Bay.parse({
+        createdAt: '2026-06-01T00:00:00.000Z',
+        department: 'paint',
+        disabledAt: '2026-06-02T00:00:00.000Z',
+        id: '00000000-0000-4000-8000-000000000001',
+        name: 'Paint Bay 1',
+        scheduleOrigin: '2026-06-01T00:00:00.000Z',
+        updatedAt: '2026-06-02T00:00:00.000Z',
+      }),
+    ).toMatchObject({
+      disabledAt: '2026-06-02T00:00:00.000Z',
+      name: 'Paint Bay 1',
+    });
+  });
+
+  it('normalizes bay management names and accepts results', () => {
+    const bay = Bay.parse({
+      createdAt: '2026-06-01T00:00:00.000Z',
+      department: 'assembly',
+      disabledAt: null,
+      id: '00000000-0000-4000-8000-000000000001',
+      name: 'Assembly Bay 1',
+      scheduleOrigin: '2026-06-01T00:00:00.000Z',
+      updatedAt: '2026-06-01T00:00:00.000Z',
+    });
+
+    expect(JobBayCreateInput.parse({ department: 'assembly', name: '  Assembly Bay 1  ' })).toEqual({
+      department: 'assembly',
+      name: 'Assembly Bay 1',
+    });
+    expect(JobBayListInput.parse({ filters: { isDisabled: false } })).toEqual({
+      filters: { isDisabled: false },
+    });
+    expect(JobBayRenameInput.parse({ id: bay.id, name: '  Final Assembly  ' })).toEqual({
+      id: bay.id,
+      name: 'Final Assembly',
+    });
+    expect(JobBaySetDisabledInput.parse({ disabled: true, id: bay.id })).toEqual({ disabled: true, id: bay.id });
+    expect(JobBayListResult.parse({ items: [bay] })).toEqual({ items: [bay] });
+    expect(JobBayCreateResult.parse({ bay })).toEqual({ bay });
+    expect(JobBayRenameResult.parse({ bay })).toEqual({ bay });
+    expect(JobBaySetDisabledResult.parse({ bay })).toEqual({ bay });
   });
 });
 

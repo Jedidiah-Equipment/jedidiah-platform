@@ -21,6 +21,7 @@ export const Bay = z.object({
   department: Department,
   name: BayName,
   scheduleOrigin: DateIso,
+  disabledAt: DateIso.nullable(),
   createdAt: DateIso,
   updatedAt: DateIso,
 });
@@ -157,6 +158,66 @@ export type BayListResult = z.infer<typeof BayListResult>;
 export const BayListResult = z.object({
   items: z.array(BaySchedule),
   offDays: z.array(OffDay),
+});
+
+export type JobBayListResult = z.infer<typeof JobBayListResult>;
+export const JobBayListResult = z.object({
+  items: z.array(Bay),
+});
+
+export type JobBayListFilters = z.infer<typeof JobBayListFilters>;
+export const JobBayListFilters = z
+  .object({
+    isDisabled: z.boolean().optional(),
+  })
+  .default({});
+
+export type JobBayListInput = z.infer<typeof JobBayListInput>;
+export const JobBayListInput = z
+  .object({
+    filters: JobBayListFilters,
+  })
+  .default({
+    filters: {},
+  });
+
+export type JobBayCreateInput = z.infer<typeof JobBayCreateInput>;
+export const JobBayCreateInput = z
+  .object({
+    department: Department,
+    name: BayName,
+  })
+  .strict();
+
+export type JobBayCreateResult = z.infer<typeof JobBayCreateResult>;
+export const JobBayCreateResult = z.object({
+  bay: Bay,
+});
+
+export type JobBayRenameInput = z.infer<typeof JobBayRenameInput>;
+export const JobBayRenameInput = z
+  .object({
+    id: UUID,
+    name: BayName,
+  })
+  .strict();
+
+export type JobBayRenameResult = z.infer<typeof JobBayRenameResult>;
+export const JobBayRenameResult = z.object({
+  bay: Bay,
+});
+
+export type JobBaySetDisabledInput = z.infer<typeof JobBaySetDisabledInput>;
+export const JobBaySetDisabledInput = z
+  .object({
+    id: UUID,
+    disabled: z.boolean(),
+  })
+  .strict();
+
+export type JobBaySetDisabledResult = z.infer<typeof JobBaySetDisabledResult>;
+export const JobBaySetDisabledResult = z.object({
+  bay: Bay,
 });
 
 export type BookJobSlotInput = z.infer<typeof BookJobSlotInput>;

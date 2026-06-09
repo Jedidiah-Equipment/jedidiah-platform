@@ -23,6 +23,8 @@ describe('getRolePermissions', () => {
       'job:schedule',
       'job:update',
       'job:update-calendar',
+      'job_bay:read',
+      'job_bay:update',
       'part:read',
       'part:update',
       'product:create',

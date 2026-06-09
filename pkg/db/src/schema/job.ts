@@ -39,6 +39,7 @@ export const jobBays = pgTable(
     department: text('department').notNull().$type<Department>(),
     name: text('name').notNull(),
     scheduleOrigin: timestamp('schedule_origin', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    disabledAt: timestamp('disabled_at', { mode: 'date', withTimezone: true }),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },

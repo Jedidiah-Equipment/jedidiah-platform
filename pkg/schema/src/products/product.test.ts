@@ -149,7 +149,7 @@ describe('ProductAssembliesInput', () => {
 });
 
 describe('ProductUpdateInput', () => {
-  it('preserves omitted assemblies as undefined', () => {
+  it('preserves omitted child collections as undefined', () => {
     expect(
       ProductUpdateInput.parse({
         id: '00000000-0000-4000-8000-000000000102',
@@ -169,7 +169,6 @@ describe('ProductUpdateInput', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
-      productBays: [],
       requiresVinNumber: true,
       thumbnailDataUrl: null,
     });

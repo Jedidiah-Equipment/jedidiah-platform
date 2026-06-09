@@ -294,7 +294,7 @@ export const ProductUpdateInput = z
   .object({
     id: UUID,
     assemblies: ProductAssemblies.optional(),
-    productBays: ProductBaysInput,
+    productBays: ProductBays.optional(),
     basePrice: ProductBasePrice,
     currencyCode: ProductCurrencyCode,
     description: ProductDescriptionInput,

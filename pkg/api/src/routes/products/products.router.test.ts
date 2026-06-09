@@ -491,9 +491,14 @@ describe('products.update', () => {
     );
   });
 
-  test('preserves assemblies when update omits assembly composition', async ({ context }) => {
+  test('preserves child collections when update omits them', async ({ context }) => {
     const caller = context.createCaller();
     const partIds = await createParts(context.db);
+    const bayId = await createBay(context.db, {
+      department: 'fabrication',
+      id: '00000000-0000-4000-8000-000000000408',
+      name: 'Fabrication Bay Preserve',
+    });
     const created = await createProduct(caller, 'Wheel Loader Preserve Assemblies', {
       assemblies: [
         {
@@ -503,6 +508,7 @@ describe('products.update', () => {
           parts: [{ partId: partIds.bucket, quantity: 1 }],
         },
       ],
+      productBays: [{ bayId, defaultWorkingDays: 4 }],
     });
 
     const updated = await caller.products.update({
@@ -517,6 +523,7 @@ describe('products.update', () => {
     });
 
     expect(updated.assemblies).toEqual(created.assemblies);
+    expect(updated.productBays).toEqual(created.productBays);
   });
 
   test('rejects duplicate override targets before insert', async ({ context }) => {

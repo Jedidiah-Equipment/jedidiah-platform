@@ -546,7 +546,7 @@ export async function updateProduct({
       const beforeAssemblies = await listAssemblies({ tx, productId: input.id });
       const beforeProductBays = await listProductBays({ db: tx, productId: input.id });
       const desiredAssemblies = input.assemblies ?? beforeAssemblies;
-      const desiredProductBays = input.productBays;
+      const desiredProductBays = input.productBays ?? beforeProductBays;
       const patch = {
         basePrice: input.basePrice,
         currencyCode: input.currencyCode,
@@ -585,11 +585,14 @@ export async function updateProduct({
             desired: input.assemblies,
           })
         : beforeAssemblies;
-      const syncedProductBays = await syncProductBays({
-        tx,
-        productId: row.id,
-        desired: desiredProductBays,
-      });
+      const syncedProductBays =
+        input.productBays === undefined
+          ? beforeProductBays
+          : await syncProductBays({
+              tx,
+              productId: row.id,
+              desired: input.productBays,
+            });
       const afterWithChildren = { ...row, assemblies, productBays: syncedProductBays };
 
       await recordAuditUpdate({

@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 const test = createTester(async ({ db }) => {
-  await createActorUser(db, 'job-supervisor');
+  await createActorUser(db, 'admin');
   await seedFabricationBays(db);
   const product = await createProduct(db);
   const quote = await createAcceptedQuote(db, product.id);
@@ -30,7 +30,7 @@ const test = createTester(async ({ db }) => {
 
 describe('jobs.listBays', () => {
   test('returns fabrication bays for authorized job readers', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
 
     await expect(caller.jobs.listBays()).resolves.toMatchObject({
       items: [
@@ -53,8 +53,7 @@ describe('jobs.listBays', () => {
 
   test('returns Off-Day facts and reflowed projected slots', async ({ context }) => {
     const adminCaller = context.createCaller(mockSession('admin'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const job = await supervisorCaller.jobs.create({
+    const job = await adminCaller.jobs.create({
       quoteId: context.quote.id,
     });
 
@@ -63,13 +62,13 @@ describe('jobs.listBays', () => {
       isOffDay: true,
       label: 'Shutdown',
     });
-    await supervisorCaller.jobs.bookSlot({
+    await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
       durationDays: 2,
       jobStageId: getStage(job, 'fabrication').id,
     });
 
-    await expect(supervisorCaller.jobs.listBays()).resolves.toMatchObject({
+    await expect(adminCaller.jobs.listBays()).resolves.toMatchObject({
       offDays: [{ date: '2026-06-06', label: 'Shutdown' }],
       items: expect.arrayContaining([
         expect.objectContaining({
@@ -114,11 +113,11 @@ describe('jobs.toggleOffDay', () => {
   });
 
   test('rejects non-admin Job users', async ({ context }) => {
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const procurementCaller = context.createCaller(mockSession('procurement-manager'));
     const salesCaller = context.createCaller(mockSession('sales'));
 
     await expect(
-      supervisorCaller.jobs.toggleOffDay({
+      procurementCaller.jobs.toggleOffDay({
         date: '2026-06-16',
         isOffDay: true,
         label: null,
@@ -136,7 +135,7 @@ describe('jobs.toggleOffDay', () => {
 
 describe('jobs bay calendar exceptions', () => {
   test('allows authorized schedulers to add and remove Bay exceptions', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
 
     await expect(
       caller.jobs.addBayException({
@@ -175,7 +174,7 @@ describe('jobs bay calendar exceptions', () => {
   });
 
   test('rejects unauthorized schedulers and missing Bays', async ({ context }) => {
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const salesCaller = context.createCaller(mockSession('sales'));
 
     await expect(
@@ -187,7 +186,7 @@ describe('jobs bay calendar exceptions', () => {
       }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(
-      supervisorCaller.jobs.addBayException({
+      adminCaller.jobs.addBayException({
         bayId: '00000000-0000-4000-8000-00000000dead',
         date: '2026-06-06',
         direction: 'work',
@@ -198,8 +197,7 @@ describe('jobs bay calendar exceptions', () => {
 
   test('listBays returns Bay exception facts and reflowed projections', async ({ context }) => {
     const adminCaller = context.createCaller(mockSession('admin'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
-    const job = await supervisorCaller.jobs.create({
+    const job = await adminCaller.jobs.create({
       quoteId: context.quote.id,
     });
 
@@ -208,19 +206,19 @@ describe('jobs bay calendar exceptions', () => {
       isOffDay: true,
       label: 'Shutdown',
     });
-    await supervisorCaller.jobs.addBayException({
+    await adminCaller.jobs.addBayException({
       bayId: '00000000-0000-4000-8000-000000000b02',
       date: '2026-06-06',
       direction: 'work',
       label: 'Overtime',
     });
-    await supervisorCaller.jobs.bookSlot({
+    await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
       durationDays: 2,
       jobStageId: getStage(job, 'fabrication').id,
     });
 
-    await expect(supervisorCaller.jobs.listBays()).resolves.toMatchObject({
+    await expect(adminCaller.jobs.listBays()).resolves.toMatchObject({
       items: expect.arrayContaining([
         expect.objectContaining({
           calendarExceptions: [
@@ -242,7 +240,7 @@ describe('jobs bay calendar exceptions', () => {
 
 describe('jobs.create', () => {
   test('creates a job with the production stage model', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
 
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
@@ -266,7 +264,7 @@ describe('jobs.create', () => {
   });
 
   test('returns the product serial number from get and list, and can search by it', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
@@ -298,7 +296,7 @@ describe('jobs.create', () => {
 
 describe('jobs.bookSlot', () => {
   test('books an authorized job stage onto a fabrication bay', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
@@ -321,9 +319,9 @@ describe('jobs.bookSlot', () => {
   });
 
   test('rejects users without job scheduling permissions', async ({ context }) => {
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const salesCaller = context.createCaller(mockSession('sales'));
-    const job = await supervisorCaller.jobs.create({
+    const job = await adminCaller.jobs.create({
       quoteId: context.quote.id,
     });
 
@@ -339,7 +337,7 @@ describe('jobs.bookSlot', () => {
   });
 
   test('listBays returns projected slots after booking', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
@@ -369,7 +367,7 @@ describe('jobs.bookSlot', () => {
   });
 
   test('bookSlot auto-inserts a projected idle gap when the bay queue ended in the past', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
@@ -411,7 +409,7 @@ describe('jobs.bookSlot', () => {
 
 describe('jobs.resizeSlot', () => {
   test('resizes an authorized slot and returns reflowed projections from listBays', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const firstJob = await caller.jobs.create({
       quoteId: context.quote.id,
     });
@@ -467,12 +465,12 @@ describe('jobs.resizeSlot', () => {
   });
 
   test('rejects users without job scheduling permissions', async ({ context }) => {
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const salesCaller = context.createCaller(mockSession('sales'));
-    const job = await supervisorCaller.jobs.create({
+    const job = await adminCaller.jobs.create({
       quoteId: context.quote.id,
     });
-    const slot = await supervisorCaller.jobs.bookSlot({
+    const slot = await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
       durationDays: 1,
       jobStageId: getStage(job, 'fabrication').id,
@@ -491,7 +489,7 @@ describe('jobs.resizeSlot', () => {
 
 describe('jobs.addIdleSlot', () => {
   test('adds an idle slot next to an existing slot and returns it', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
@@ -520,12 +518,12 @@ describe('jobs.addIdleSlot', () => {
   });
 
   test('rejects users without job scheduling permissions', async ({ context }) => {
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const salesCaller = context.createCaller(mockSession('sales'));
-    const job = await supervisorCaller.jobs.create({
+    const job = await adminCaller.jobs.create({
       quoteId: context.quote.id,
     });
-    const workSlot = await supervisorCaller.jobs.bookSlot({
+    const workSlot = await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
       durationDays: 1,
       jobStageId: getStage(job, 'fabrication').id,
@@ -543,7 +541,7 @@ describe('jobs.addIdleSlot', () => {
   });
 
   test('listBays returns projected idle slots after insertion', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
@@ -587,7 +585,7 @@ describe('jobs.addIdleSlot', () => {
 
 describe('jobs.removeSlot', () => {
   test('removes an authorized slot', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
@@ -610,12 +608,12 @@ describe('jobs.removeSlot', () => {
   });
 
   test('rejects users without job scheduling permissions', async ({ context }) => {
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const salesCaller = context.createCaller(mockSession('sales'));
-    const job = await supervisorCaller.jobs.create({
+    const job = await adminCaller.jobs.create({
       quoteId: context.quote.id,
     });
-    const slot = await supervisorCaller.jobs.bookSlot({
+    const slot = await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
       durationDays: 1,
       jobStageId: getStage(job, 'fabrication').id,
@@ -631,7 +629,7 @@ describe('jobs.removeSlot', () => {
   });
 
   test('listBays returns reflowed projected slots after removal', async ({ context }) => {
-    const caller = context.createCaller(mockSession('job-supervisor'));
+    const caller = context.createCaller(mockSession('admin'));
     const firstJob = await caller.jobs.create({
       quoteId: context.quote.id,
     });

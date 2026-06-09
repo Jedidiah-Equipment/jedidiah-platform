@@ -44,23 +44,24 @@ describe('getRolePermissions', () => {
     ]);
   });
 
-  it('grants product write permissions to product editors', () => {
-    expect(getRolePermissions('product-editor')).toEqual(['product:create', 'product:read', 'product:update']);
-  });
-
-  it('grants cross-cutting job write permissions to job supervisors', () => {
-    expect(getRolePermissions('job-supervisor')).toEqual([
+  it('grants procurement permissions to procurement managers', () => {
+    expect(getRolePermissions('procurement-manager')).toEqual([
+      'customer:create',
+      'customer:read',
+      'customer:update',
       'job-stage:read',
-      'job-stage:update',
-      'job:create',
       'job:read',
-      'job:update',
+      'part:read',
+      'part:update',
+      'product:create',
       'product:read',
-      'quote:read',
+      'product:update',
+      'supplier:read',
+      'supplier:update',
     ]);
   });
 
-  it('grants department-scoped stage write permissions to job stage editors', () => {
+  it('grants department-scoped stage write permissions to job department managers', () => {
     expect(getRolePermissions('job-department-manager')).toEqual(['job-stage:read', 'job-stage:update', 'job:read']);
   });
 
@@ -106,7 +107,7 @@ describe('createUserAccessSummary', () => {
 
 describe('hasPermission', () => {
   it('checks access summaries', () => {
-    const access = createUserAccessSummary({ role: 'product-editor', userId: 'user_123' });
+    const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'user_123' });
 
     expect(hasPermission(access, 'product:update')).toBe(true);
     expect(hasPermission(access, 'user:list')).toBe(false);
@@ -144,7 +145,7 @@ describe('job authorization policy', () => {
       },
       {
         access: createUserAccessSummary({
-          role: 'job-supervisor',
+          role: 'admin',
           userId: 'user_123',
         }),
         editableStages: stages,
@@ -194,7 +195,7 @@ describe('job authorization policy', () => {
     }
   });
 
-  it('scopes single-department job stage editors to their department', () => {
+  it('scopes single-department job department managers to their department', () => {
     const access = createUserAccessSummary({
       departments: ['paint'],
       role: 'job-department-manager',
@@ -227,7 +228,7 @@ describe('job authorization policy', () => {
     expect(canViewStage(jobOnlyAccess, { stage: 'fabrication' })).toBe(false);
   });
 
-  it('scopes multi-department job stage editors to any of their departments', () => {
+  it('scopes multi-department job department managers to any of their departments', () => {
     const access = createUserAccessSummary({
       departments: ['fabrication', 'supply'],
       role: 'job-department-manager',
@@ -239,17 +240,6 @@ describe('job authorization policy', () => {
     expect(canEditStage(access, { stage: 'supply' })).toBe(true);
     expect(canViewStage(access, { stage: 'procurement' })).toBe(false);
     expect(canEditStage(access, { stage: 'paint' })).toBe(false);
-  });
-
-  it('grants job supervisors cross-cutting read/write stage access', () => {
-    const access = createUserAccessSummary({
-      role: 'job-supervisor',
-      userId: 'user_123',
-    });
-
-    expect(canViewJob(access)).toBe(true);
-    expect(canViewStage(access, { stage: 'assembly' })).toBe(true);
-    expect(canEditStage(access, { stage: 'assembly' })).toBe(true);
   });
 
   it('grants admins cross-cutting read/write stage access', () => {
@@ -274,7 +264,7 @@ describe('job authorization policy', () => {
     expect(canEditStage(access, { stage: 'paint' })).toBe(false);
   });
 
-  it('treats job stage editors with no selected departments as all-stage editors', () => {
+  it('treats job department managers with no selected departments as all-stage editors', () => {
     const access = createUserAccessSummary({
       departments: [],
       role: 'job-department-manager',

@@ -18,7 +18,7 @@ describe('getProductTool', () => {
     const caller = context.createCaller();
     const created = await createProduct(caller, 'Compact Loader');
     const access = createUserAccessSummary({
-      role: 'product-editor',
+      role: 'procurement-manager',
       userId: 'test-user-id',
     });
 
@@ -32,7 +32,7 @@ describe('getProductTool', () => {
 
   test('surfaces the core not-found message for missing products', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'product-editor',
+      role: 'procurement-manager',
       userId: 'test-user-id',
     });
 
@@ -48,7 +48,7 @@ describe('getProductTool', () => {
 
   test('rejects invalid product get args', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'product-editor',
+      role: 'procurement-manager',
       userId: 'test-user-id',
     });
 

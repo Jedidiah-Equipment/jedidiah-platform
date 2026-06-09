@@ -454,7 +454,7 @@ describe('quotes.update', () => {
 describe('quotes.list', () => {
   test('searches joined quote fields and keeps totals aligned with filtered rows', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const crusherProduct = await createProduct(context.db, {
       modelCode: 'CRUSH-77',
       name: 'Crusher Bucket',
@@ -491,7 +491,7 @@ describe('quotes.list', () => {
       ...toUpdateInput(createdCancelledQuote),
       status: 'cancelled',
     });
-    const job = await supervisorCaller.jobs.create({
+    const job = await adminCaller.jobs.create({
       quoteId: finalQuote.id,
     });
 
@@ -672,7 +672,7 @@ describe('quotes.list', () => {
 describe('quotes.summaryByStatus', () => {
   test('requires quote read access and returns a zero-filled status summary', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('product-editor'));
+    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
 
     await expect(productEditorCaller.quotes.summaryByStatus()).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -692,7 +692,7 @@ describe('quotes.summaryByStatus', () => {
 describe('quotes.createdByWeek', () => {
   test('requires quote read access and returns the weekly series', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('product-editor'));
+    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
 
     await expect(productEditorCaller.quotes.createdByWeek()).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -707,7 +707,7 @@ describe('quotes.createdByWeek', () => {
 describe('quotes.getProductBrochure', () => {
   test('returns the latest Product brochure through quote read access', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('product-editor'));
+    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
     const created = await createReadyQuote(salesCaller, context.product.id);
     const older = await createProductDocument(context.db, {
       filename: 'Old Brochure.pdf',
@@ -756,7 +756,7 @@ describe('quotes.getProductBrochure', () => {
 describe('quotes.generateDocument', () => {
   test('requires quote update access and returns the created Quote Document', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const productEditorCaller = context.createCaller(mockSession('product-editor'));
+    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
     const created = await createReadyQuote(salesCaller, context.product.id);
 
     await expect(
@@ -814,19 +814,19 @@ describe('quotes.generateDocument', () => {
 describe('jobs.create with quote links', () => {
   test('creates one job from one accepted quote with stages and locks frozen quote fields', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const created = await createReadyQuote(salesCaller, context.product.id);
     const accepted = await salesCaller.quotes.update({
       ...toUpdateInput(created),
       status: 'accepted',
     });
 
-    await expect(supervisorCaller.quotes.get({ id: accepted.id })).resolves.toMatchObject({
+    await expect(adminCaller.quotes.get({ id: accepted.id })).resolves.toMatchObject({
       id: accepted.id,
       status: 'accepted',
     });
 
-    const job = await supervisorCaller.jobs.create({
+    const job = await adminCaller.jobs.create({
       quoteId: accepted.id,
     });
     const jobRows = await context.db.select().from(jobs);
@@ -852,7 +852,7 @@ describe('jobs.create with quote links', () => {
 
   test('rejects every frozen quote field after a job exists', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const alternateSalesPersonId = 'locked-sales-id';
     await createSalesUser(context.db, {
       email: 'locked-sales@example.com',
@@ -925,7 +925,7 @@ describe('jobs.create with quote links', () => {
         deliveryPrice: 100,
         status: 'accepted',
       });
-      await supervisorCaller.jobs.create({
+      await adminCaller.jobs.create({
         quoteId: accepted.id,
       });
 
@@ -938,13 +938,13 @@ describe('jobs.create with quote links', () => {
 
   test('allows logistics and free-text quote fields after a job exists', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const created = await createReadyQuote(salesCaller, context.product.id);
     const accepted = await salesCaller.quotes.update({
       ...toUpdateInput(created),
       status: 'accepted',
     });
-    await supervisorCaller.jobs.create({
+    await adminCaller.jobs.create({
       quoteId: accepted.id,
     });
 
@@ -968,19 +968,19 @@ describe('jobs.create with quote links', () => {
 
   test('rejects a second job from the same quote', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const created = await createReadyQuote(salesCaller, context.product.id);
     const accepted = await salesCaller.quotes.update({
       ...toUpdateInput(created),
       status: 'accepted',
     });
 
-    await supervisorCaller.jobs.create({
+    await adminCaller.jobs.create({
       quoteId: accepted.id,
     });
 
     await expect(
-      supervisorCaller.jobs.create({
+      adminCaller.jobs.create({
         quoteId: accepted.id,
       }),
     ).rejects.toMatchObject({
@@ -991,7 +991,7 @@ describe('jobs.create with quote links', () => {
 
   test('rejects a job from a non-accepted quote', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const created = await createReadyQuote(salesCaller, context.product.id);
     const cancelled = await salesCaller.quotes.update({
       ...toUpdateInput(created),
@@ -999,7 +999,7 @@ describe('jobs.create with quote links', () => {
     });
 
     await expect(
-      supervisorCaller.jobs.create({
+      adminCaller.jobs.create({
         quoteId: cancelled.id,
       }),
     ).rejects.toMatchObject({
@@ -1008,16 +1008,16 @@ describe('jobs.create with quote links', () => {
     });
   });
 
-  test('uses the quote product instead of accepting a supervisor-selected product', async ({ context }) => {
+  test('uses the quote product instead of accepting a admin-selected product', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const supervisorCaller = context.createCaller(mockSession('job-supervisor'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const created = await createReadyQuote(salesCaller, context.product.id);
     const accepted = await salesCaller.quotes.update({
       ...toUpdateInput(created),
       status: 'accepted',
     });
 
-    const job = await supervisorCaller.jobs.create({
+    const job = await adminCaller.jobs.create({
       quoteId: accepted.id,
     });
 
@@ -1026,7 +1026,7 @@ describe('jobs.create with quote links', () => {
       quoteId: accepted.id,
     });
     await expect(
-      supervisorCaller.jobs.create({
+      adminCaller.jobs.create({
         productId: '00000000-0000-4000-8000-000000000999',
         quoteId: accepted.id,
       } as never),

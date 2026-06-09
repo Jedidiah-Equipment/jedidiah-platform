@@ -4,13 +4,12 @@ export const DEFAULT_APP_ROLE = 'sales' satisfies AppRole;
 
 // Only Job access can depend on department memberships, so request access summaries use this set
 // to avoid reading user_department for roles whose authorization cannot be department-scoped.
-export const DEPARTMENT_AWARE_ROLES = new Set<AppRole>(['job-department-manager', 'job-supervisor']);
+export const DEPARTMENT_AWARE_ROLES = new Set<AppRole>(['job-department-manager']);
 
 export const roleLabels = {
   admin: 'Administrator',
   'job-department-manager': 'Job Department Manager',
-  'job-supervisor': 'Job supervisor',
-  'product-editor': 'Product manager',
+  'procurement-manager': 'Procurement manager',
   sales: 'Sales',
 } as const satisfies Record<AppRole, string>;
 
@@ -102,14 +101,13 @@ export const appRoleAccess = {
     supplier: ['read', 'update'],
     user: ['list', 'create', 'update', 'set-role', 'set-password', 'assign-departments'],
   },
-  'product-editor': {
+  'procurement-manager': {
+    customer: ['read', 'create', 'update'],
+    job: ['read'],
+    'job-stage': ['read'],
+    part: ['read', 'update'],
     product: ['read', 'create', 'update'],
-  },
-  'job-supervisor': {
-    job: ['read', 'create', 'update'],
-    'job-stage': ['read', 'update'],
-    product: ['read'],
-    quote: ['read'],
+    supplier: ['read', 'update'],
   },
   'job-department-manager': {
     job: ['read'],

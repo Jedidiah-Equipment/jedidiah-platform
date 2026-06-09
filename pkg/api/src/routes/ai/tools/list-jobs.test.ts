@@ -13,7 +13,7 @@ import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
 const test = createTester(async ({ db }) => {
-  await createActorUser(db, 'job-supervisor');
+  await createActorUser(db, 'admin');
   const product = await createProduct(db);
   const quote = await createAcceptedQuote(db, product.id);
 
@@ -22,12 +22,12 @@ const test = createTester(async ({ db }) => {
 
 describe('listJobsTool', () => {
   test('returns the same job list result shape as jobs.list', async ({ context }) => {
-    const supervisorAccess = createUserAccessSummary({
-      role: 'job-supervisor',
+    const adminAccess = createUserAccessSummary({
+      role: 'admin',
       userId: 'test-user-id',
     });
-    const supervisorCaller = createCaller(context.db, supervisorAccess);
-    const created = await supervisorCaller.jobs.create({ quoteId: context.quote.id });
+    const adminCaller = createCaller(context.db, adminAccess);
+    const created = await adminCaller.jobs.create({ quoteId: context.quote.id });
     const input: JobListInput = {
       filters: {},
       page: 1,
@@ -38,8 +38,8 @@ describe('listJobsTool', () => {
     };
 
     const [toolResult, trpcResult] = await Promise.all([
-      listJobsTool.handler(input, createAiContext(context.db, supervisorAccess)),
-      supervisorCaller.jobs.list(input),
+      listJobsTool.handler(input, createAiContext(context.db, adminAccess)),
+      adminCaller.jobs.list(input),
     ]);
 
     expect(toolResult).toEqual(trpcResult);
@@ -47,7 +47,7 @@ describe('listJobsTool', () => {
 
   test('treats null tool args as the default job list input', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'job-supervisor',
+      role: 'admin',
       userId: 'test-user-id',
     });
     const listJobsSpy = vi.spyOn(core, 'listJobs').mockResolvedValue({
@@ -78,7 +78,7 @@ describe('listJobsTool', () => {
 
   test('rejects invalid job list args', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'job-supervisor',
+      role: 'admin',
       userId: 'test-user-id',
     });
 

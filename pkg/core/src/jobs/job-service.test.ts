@@ -53,7 +53,7 @@ import {
 
 const actorUserId = 'test-user-id';
 const calendarAccess = createUserAccessSummary({ role: 'admin', userId: actorUserId });
-const jobAccess = createUserAccessSummary({ role: 'job-supervisor', userId: actorUserId });
+const jobAccess = createUserAccessSummary({ role: 'admin', userId: actorUserId });
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -567,7 +567,7 @@ describe('toggleOffDay', () => {
   test('denies users without the Job calendar permission', async ({ context }) => {
     await expect(
       toggleOffDay({
-        access: jobAccess,
+        access: createUserAccessSummary({ role: 'sales', userId: 'sales-user' }),
         db: context.db,
         input: offDayInput({ date: '2026-06-16', isOffDay: true, label: null }),
       }),
@@ -1554,7 +1554,7 @@ describe('removeJobSlot', () => {
   test('enforces bay schedule remove permissions by role and department', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const adminJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const supervisorJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const adminSecondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const managerJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const deniedJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const adminSlot = await bookJobSlot({
@@ -1562,10 +1562,10 @@ describe('removeJobSlot', () => {
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(adminJob, 'fabrication') },
     });
-    const supervisorSlot = await bookJobSlot({
+    const adminSecondSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(supervisorJob, 'fabrication') },
+      input: { bayId: bay.id, durationDays: 1, jobStageId: getStageId(adminSecondJob, 'fabrication') },
     });
     const managerSlot = await bookJobSlot({
       access: jobAccess,
@@ -1589,9 +1589,9 @@ describe('removeJobSlot', () => {
       removeJobSlot({
         access: jobAccess,
         db: context.db,
-        input: { slotId: supervisorSlot.slot.id },
+        input: { slotId: adminSecondSlot.slot.id },
       }),
-    ).resolves.toMatchObject({ slot: { id: supervisorSlot.slot.id } });
+    ).resolves.toMatchObject({ slot: { id: adminSecondSlot.slot.id } });
     await expect(
       removeJobSlot({
         access: createUserAccessSummary({

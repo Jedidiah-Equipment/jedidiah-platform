@@ -64,7 +64,7 @@ async function createActorUser(db: Db) {
 describe('listProductsTool', () => {
   test('returns the same product list result shape as products.list', async ({ context }) => {
     const adminCaller = context.createCaller();
-    const editorCaller = context.createCaller(mockSession('product-editor'));
+    const editorCaller = context.createCaller(mockSession('procurement-manager'));
     await createProduct(adminCaller, 'Compact Loader', {
       modelCode: 'CL-100',
       thumbnailDataUrl: 'data:image/webp;base64,aaaa',
@@ -84,7 +84,7 @@ describe('listProductsTool', () => {
       sortDirection: 'asc',
     } as const;
     const access = createUserAccessSummary({
-      role: 'product-editor',
+      role: 'procurement-manager',
       userId: 'test-user-id',
     });
 
@@ -98,7 +98,7 @@ describe('listProductsTool', () => {
 
   test('treats null tool args as the default product list input', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'product-editor',
+      role: 'procurement-manager',
       userId: 'test-user-id',
     });
     const listProductsSpy = vi.spyOn(productsCore, 'listProducts').mockResolvedValue({
@@ -133,7 +133,7 @@ describe('listProductsTool', () => {
 
   test('rejects invalid product list args', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'product-editor',
+      role: 'procurement-manager',
       userId: 'test-user-id',
     });
 

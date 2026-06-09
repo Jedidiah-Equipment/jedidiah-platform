@@ -590,7 +590,7 @@ async function insertIdleSlot({
 }
 
 function canEditBaySchedule(access: UserAccessSummary, department: Department): boolean {
-  if (access.role === 'admin' || access.role === 'job-supervisor') {
+  if (access.role === 'admin') {
     return true;
   }
 

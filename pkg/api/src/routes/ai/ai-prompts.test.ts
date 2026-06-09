@@ -13,7 +13,7 @@ describe('AI system prompt', () => {
     expect(prompt).toContain('Intent customer_job_progress');
     expect(prompt).toContain('## Tool Use');
     expect(prompt).toContain('Use tools for current app data; do not guess records, statuses, prices, or links.');
-    expect(prompt).toContain('present the five Job Stages as Departments');
+    expect(prompt).toContain('describe scheduled Work Slots on Bays grouped by Department');
     expect(prompt).toContain('Quote Status as the Job creation gate');
     expect(prompt).toContain('Product as immutable after creation');
     expect(prompt).toContain('quotedBasePrice plus quotedCurrencyCode as the price snapshot latched at creation');

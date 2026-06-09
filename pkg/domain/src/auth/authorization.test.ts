@@ -1,9 +1,8 @@
 import { APP_PERMISSIONS, APP_ROLES, type UserAccessSummary } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import {
-  canEditStage,
+  canScheduleBay,
   canViewJob,
-  canViewStage,
   createUserAccessSummary,
   getRolePermissions,
   hasPermission,
@@ -19,10 +18,9 @@ describe('getRolePermissions', () => {
       'customer:create',
       'customer:read',
       'customer:update',
-      'job-stage:read',
-      'job-stage:update',
       'job:create',
       'job:read',
+      'job:schedule',
       'job:update',
       'job:update-calendar',
       'part:read',
@@ -49,7 +47,6 @@ describe('getRolePermissions', () => {
       'customer:create',
       'customer:read',
       'customer:update',
-      'job-stage:read',
       'job:read',
       'part:read',
       'part:update',
@@ -61,8 +58,8 @@ describe('getRolePermissions', () => {
     ]);
   });
 
-  it('grants department-scoped stage write permissions to job department managers', () => {
-    expect(getRolePermissions('job-department-manager')).toEqual(['job-stage:read', 'job-stage:update', 'job:read']);
+  it('grants department-scoped schedule permissions to job department managers', () => {
+    expect(getRolePermissions('job-department-manager')).toEqual(['job:read', 'job:schedule']);
   });
 
   it('grants quote-only permissions to sales', () => {
@@ -120,10 +117,10 @@ describe('hasPermission', () => {
 });
 
 describe('job authorization policy', () => {
-  const stages = ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const;
-  type Stage = (typeof stages)[number];
+  const departments = ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const;
+  type Department = (typeof departments)[number];
 
-  it('covers the viewer profile by stage matrix', () => {
+  it('covers the scheduling profile by department matrix', () => {
     const matrix = [
       {
         access: createUserAccessSummary({
@@ -131,8 +128,7 @@ describe('job authorization policy', () => {
           role: 'job-department-manager',
           userId: 'user_123',
         }),
-        editableStages: ['paint'],
-        viewableStages: ['paint'],
+        schedulableDepartments: ['paint'],
       },
       {
         access: createUserAccessSummary({
@@ -140,32 +136,21 @@ describe('job authorization policy', () => {
           role: 'job-department-manager',
           userId: 'user_123',
         }),
-        editableStages: ['fabrication', 'supply'],
-        viewableStages: ['fabrication', 'supply'],
+        schedulableDepartments: ['fabrication', 'supply'],
       },
       {
         access: createUserAccessSummary({
           role: 'admin',
           userId: 'user_123',
         }),
-        editableStages: stages,
-        viewableStages: stages,
-      },
-      {
-        access: createUserAccessSummary({
-          role: 'admin',
-          userId: 'user_123',
-        }),
-        editableStages: stages,
-        viewableStages: stages,
+        schedulableDepartments: departments,
       },
       {
         access: createUserAccessSummary({
           role: 'sales',
           userId: 'user_123',
         }),
-        editableStages: [],
-        viewableStages: [],
+        schedulableDepartments: [],
       },
       {
         access: createUserAccessSummary({
@@ -173,24 +158,22 @@ describe('job authorization policy', () => {
           role: 'job-department-manager',
           userId: 'user_123',
         }),
-        editableStages: stages,
-        viewableStages: stages,
+        schedulableDepartments: departments,
       },
     ] satisfies readonly {
       access: ReturnType<typeof createUserAccessSummary>;
-      editableStages: readonly Stage[];
-      viewableStages: readonly Stage[];
+      schedulableDepartments: readonly Department[];
     }[];
 
-    for (const { access, editableStages, viewableStages } of matrix) {
-      const editableStageSet = new Set<Stage>(editableStages);
-      const viewableStageSet = new Set<Stage>(viewableStages);
+    for (const { access, schedulableDepartments } of matrix) {
+      const schedulableDepartmentSet = new Set<Department>(schedulableDepartments);
 
-      expect(canViewJob(access), `${access.role} can view job`).toBe(viewableStages.length > 0);
+      expect(canViewJob(access), `${access.role} can view job`).toBe(access.permissions.includes('job:read'));
 
-      for (const stage of stages) {
-        expect(canViewStage(access, { stage }), `${access.role} can view ${stage}`).toBe(viewableStageSet.has(stage));
-        expect(canEditStage(access, { stage }), `${access.role} can edit ${stage}`).toBe(editableStageSet.has(stage));
+      for (const department of departments) {
+        expect(canScheduleBay(access, department), `${access.role} can schedule ${department}`).toBe(
+          schedulableDepartmentSet.has(department),
+        );
       }
     }
   });
@@ -203,13 +186,11 @@ describe('job authorization policy', () => {
     });
 
     expect(canViewJob(access)).toBe(true);
-    expect(canViewStage(access, { stage: 'paint' })).toBe(true);
-    expect(canEditStage(access, { stage: 'paint' })).toBe(true);
-    expect(canViewStage(access, { stage: 'assembly' })).toBe(false);
-    expect(canEditStage(access, { stage: 'assembly' })).toBe(false);
+    expect(canScheduleBay(access, 'paint')).toBe(true);
+    expect(canScheduleBay(access, 'assembly')).toBe(false);
   });
 
-  it('keeps stage detail read gated by job-stage read plus department scope', () => {
+  it('keeps scheduling gated by job schedule plus department scope', () => {
     const paintScopedAccess = createUserAccessSummary({
       departments: ['paint'],
       role: 'job-department-manager',
@@ -223,9 +204,9 @@ describe('job authorization policy', () => {
     } satisfies UserAccessSummary;
 
     expect(canViewJob(paintScopedAccess)).toBe(true);
-    expect(canViewStage(paintScopedAccess, { stage: 'fabrication' })).toBe(false);
+    expect(canScheduleBay(paintScopedAccess, 'fabrication')).toBe(false);
     expect(canViewJob(jobOnlyAccess)).toBe(true);
-    expect(canViewStage(jobOnlyAccess, { stage: 'fabrication' })).toBe(false);
+    expect(canScheduleBay(jobOnlyAccess, 'fabrication')).toBe(false);
   });
 
   it('scopes multi-department job department managers to any of their departments', () => {
@@ -236,21 +217,20 @@ describe('job authorization policy', () => {
     });
 
     expect(canViewJob(access)).toBe(true);
-    expect(canViewStage(access, { stage: 'fabrication' })).toBe(true);
-    expect(canEditStage(access, { stage: 'supply' })).toBe(true);
-    expect(canViewStage(access, { stage: 'procurement' })).toBe(false);
-    expect(canEditStage(access, { stage: 'paint' })).toBe(false);
+    expect(canScheduleBay(access, 'fabrication')).toBe(true);
+    expect(canScheduleBay(access, 'supply')).toBe(true);
+    expect(canScheduleBay(access, 'procurement')).toBe(false);
+    expect(canScheduleBay(access, 'paint')).toBe(false);
   });
 
-  it('grants admins cross-cutting read/write stage access', () => {
+  it('grants admins cross-cutting schedule access', () => {
     const access = createUserAccessSummary({
       role: 'admin',
       userId: 'user_123',
     });
 
     expect(canViewJob(access)).toBe(true);
-    expect(canViewStage(access, { stage: 'procurement' })).toBe(true);
-    expect(canEditStage(access, { stage: 'procurement' })).toBe(true);
+    expect(canScheduleBay(access, 'procurement')).toBe(true);
   });
 
   it('denies users with no job role', () => {
@@ -260,11 +240,10 @@ describe('job authorization policy', () => {
     });
 
     expect(canViewJob(access)).toBe(false);
-    expect(canViewStage(access, { stage: 'paint' })).toBe(false);
-    expect(canEditStage(access, { stage: 'paint' })).toBe(false);
+    expect(canScheduleBay(access, 'paint')).toBe(false);
   });
 
-  it('treats job department managers with no selected departments as all-stage editors', () => {
+  it('treats job department managers with no selected departments as all-department schedulers', () => {
     const access = createUserAccessSummary({
       departments: [],
       role: 'job-department-manager',
@@ -272,8 +251,7 @@ describe('job authorization policy', () => {
     });
 
     expect(canViewJob(access)).toBe(true);
-    expect(canViewStage(access, { stage: 'paint' })).toBe(true);
-    expect(canEditStage(access, { stage: 'paint' })).toBe(true);
-    expect(canEditStage(access, { stage: 'supply' })).toBe(true);
+    expect(canScheduleBay(access, 'paint')).toBe(true);
+    expect(canScheduleBay(access, 'supply')).toBe(true);
   });
 });

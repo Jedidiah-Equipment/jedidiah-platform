@@ -51,31 +51,31 @@ export const jobsRouter = router({
       mapJobErrors(() => createJob({ db: ctx.db, access: ctx.access, input, actorUserId: ctx.session.user.id })),
     ),
 
-  bookSlot: authorizedProcedure(['job:update', 'job-stage:update'])
+  bookSlot: authorizedProcedure('job:schedule')
     .input(BookJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => bookJobSlot({ db: ctx.db, access: ctx.access, input }))),
 
-  addIdleSlot: authorizedProcedure(['job:update', 'job-stage:update'])
+  addIdleSlot: authorizedProcedure('job:schedule')
     .input(AddIdleJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => addIdleJobSlot({ db: ctx.db, access: ctx.access, input }))),
 
-  addBayException: authorizedProcedure(['job:update', 'job-stage:update'])
+  addBayException: authorizedProcedure('job:schedule')
     .input(AddBayCalendarExceptionInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => addBayCalendarException({ db: ctx.db, access: ctx.access, input })),
     ),
 
-  removeBayException: authorizedProcedure(['job:update', 'job-stage:update'])
+  removeBayException: authorizedProcedure('job:schedule')
     .input(RemoveBayCalendarExceptionInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => removeBayCalendarException({ db: ctx.db, access: ctx.access, input })),
     ),
 
-  resizeSlot: authorizedProcedure(['job:update', 'job-stage:update'])
+  resizeSlot: authorizedProcedure('job:schedule')
     .input(ResizeJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => resizeJobSlot({ db: ctx.db, access: ctx.access, input }))),
 
-  removeSlot: authorizedProcedure(['job:update', 'job-stage:update'])
+  removeSlot: authorizedProcedure('job:schedule')
     .input(RemoveJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => removeJobSlot({ db: ctx.db, access: ctx.access, input }))),
 });
@@ -103,12 +103,6 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Job bay not found.',
-      };
-    case 'job.stage_not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Job stage not found.',
       };
     case 'job.slot_booking_denied':
       return {

@@ -240,7 +240,7 @@ describe('users.list', () => {
 
     await expect(caller.auth.access()).resolves.toMatchObject({
       departments: ['supply'],
-      permissions: ['job-stage:read', 'job-stage:update', 'job:read'],
+      permissions: ['job:read', 'job:schedule'],
       role: 'job-department-manager',
       userId: currentDepartmentUserId,
     });

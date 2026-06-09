@@ -8,7 +8,6 @@ import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { JobStageChips } from './JobStageChips.js';
 
 type JobCodeDisplayProps = {
   canOpenJob: boolean;
@@ -106,10 +105,7 @@ const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => (
       <JobPreviewFact label="Customer" value={job.customerCompanyName ?? 'Standalone'} />
       <JobPreviewFact label="Product" value={`${job.productName} (${job.productModelCode})`} />
       <JobPreviewFact label="Quote" value={job.quoteCode} />
-    </div>
-    <div className="flex flex-col gap-1.5">
-      <div className="text-xs font-medium text-muted-foreground">Departments</div>
-      <JobStageChips stages={job.stages} />
+      <JobPreviewFact label="Serial" value={job.productSerialNumber} />
     </div>
   </div>
 );

@@ -60,8 +60,9 @@ describe('aiTools', () => {
   test('keeps Job tool descriptions aligned to the current Job contract', () => {
     const jobDescriptions = [aiTools.listJobs.description, aiTools.getJob.description].join('\n');
 
-    expect(jobDescriptions).toContain('Stage summaries');
+    expect(jobDescriptions).toContain('Bay schedule detail');
     expect(jobDescriptions).toContain('CFO Part quantities with unitOfMeasure');
+    expect(jobDescriptions).not.toContain('Stage');
     expect(jobDescriptions).not.toContain('Job Status');
     expect(jobDescriptions).not.toContain('Due Date');
     expect(jobDescriptions).not.toContain('Workflow events');

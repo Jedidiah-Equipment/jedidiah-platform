@@ -1,4 +1,4 @@
-import type { Department, JobStageName } from '@pkg/schema';
+import type { Department } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   check,
@@ -149,22 +149,6 @@ export const jobCfoParts = pgTable(
   ],
 );
 
-export const jobStages = pgTable(
-  'job_stage',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    jobId: uuid('job_id')
-      .notNull()
-      .references(() => jobs.id, { onDelete: 'cascade' }),
-    sequence: integer('sequence').notNull(),
-    stage: text('stage').notNull().$type<JobStageName>(),
-  },
-  (table) => [
-    uniqueIndex('job_stage_job_id_sequence_unique').on(table.jobId, table.sequence),
-    uniqueIndex('job_stage_job_id_stage_unique').on(table.jobId, table.stage),
-  ],
-);
-
 export const jobSlots = pgTable(
   'job_slot',
   {
@@ -172,7 +156,7 @@ export const jobSlots = pgTable(
     bayId: uuid('bay_id')
       .notNull()
       .references(() => jobBays.id, { onDelete: 'restrict' }),
-    jobStageId: uuid('job_stage_id').references(() => jobStages.id, { onDelete: 'cascade' }),
+    jobId: uuid('job_id').references(() => jobs.id, { onDelete: 'cascade' }),
     kind: text('kind', { enum: ['work', 'idle'] }).notNull(),
     label: text('label'),
     sequence: integer('sequence').notNull(),
@@ -183,8 +167,8 @@ export const jobSlots = pgTable(
   (table) => [
     check('job_slot_kind_check', sql`${table.kind} IN ('work', 'idle')`),
     check(
-      'job_slot_work_stage_required_idle_stage_forbidden',
-      sql`(${table.kind} = 'work' AND ${table.jobStageId} IS NOT NULL) OR (${table.kind} = 'idle' AND ${table.jobStageId} IS NULL)`,
+      'job_slot_work_job_required_idle_job_forbidden',
+      sql`(${table.kind} = 'work' AND ${table.jobId} IS NOT NULL) OR (${table.kind} = 'idle' AND ${table.jobId} IS NULL)`,
     ),
     check('job_slot_idle_label_only', sql`${table.label} IS NULL OR ${table.kind} = 'idle'`),
     check('job_slot_label_nonempty', sql`${table.label} IS NULL OR length(trim(${table.label})) > 0`),
@@ -216,14 +200,6 @@ export const jobsRelations = relations(jobs, ({ many, one }) => ({
     references: [quotes.id],
   }),
   cfoAssemblies: many(jobCfoAssemblies),
-  stages: many(jobStages),
-}));
-
-export const jobStagesRelations = relations(jobStages, ({ many, one }) => ({
-  job: one(jobs, {
-    fields: [jobStages.jobId],
-    references: [jobs.id],
-  }),
   slots: many(jobSlots),
 }));
 
@@ -232,9 +208,9 @@ export const jobSlotsRelations = relations(jobSlots, ({ one }) => ({
     fields: [jobSlots.bayId],
     references: [jobBays.id],
   }),
-  stage: one(jobStages, {
-    fields: [jobSlots.jobStageId],
-    references: [jobStages.id],
+  job: one(jobs, {
+    fields: [jobSlots.jobId],
+    references: [jobs.id],
   }),
 }));
 

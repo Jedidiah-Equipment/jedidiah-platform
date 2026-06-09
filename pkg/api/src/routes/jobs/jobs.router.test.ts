@@ -1,4 +1,4 @@
-import { auditEvents, customers, type Db, jobBays, products, quotes, sql } from '@pkg/db';
+import { auditEvents, customers, type Db, jobBays, jobSlots, products, quotes, sql } from '@pkg/db';
 import type { Product } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
@@ -348,6 +348,81 @@ describe('jobs.create', () => {
       'assembly',
     ]);
     expect(job.schedule.every((item) => item.bays.length === 0)).toBe(true);
+  });
+
+  test('creates a job with seeded Bay slots in the returned schedule', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+
+    const job = await caller.jobs.create({
+      baySeeds: [
+        { bayId: '00000000-0000-4000-8000-000000000b01', durationDays: 2 },
+        { bayId: '00000000-0000-4000-8000-000000000b02', durationDays: 1 },
+      ],
+      quoteId: context.quote.id,
+    });
+
+    const slots = await context.db
+      .select()
+      .from(jobSlots)
+      .orderBy(sql`${jobSlots.bayId} asc`, sql`${jobSlots.sequence} asc`);
+    expect(slots).toMatchObject([
+      {
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        durationDays: 2,
+        jobId: job.id,
+        kind: 'work',
+        sequence: 1,
+      },
+      {
+        bayId: '00000000-0000-4000-8000-000000000b02',
+        durationDays: 1,
+        jobId: job.id,
+        kind: 'work',
+        sequence: 1,
+      },
+    ]);
+    expect(job.schedule.flatMap((department) => department.bays).flatMap((bay) => bay.slots)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          durationDays: 2,
+          jobCode: job.code,
+          jobId: job.id,
+        }),
+        expect.objectContaining({
+          durationDays: 1,
+          jobCode: job.code,
+          jobId: job.id,
+        }),
+      ]),
+    );
+  });
+
+  test('rejects invalid and unavailable Bay seeds', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+
+    await expect(
+      caller.jobs.create({
+        baySeeds: [{ bayId: '00000000-0000-4000-8000-000000000b01', durationDays: 0 }],
+        quoteId: context.quote.id,
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+
+    await context.db
+      .update(jobBays)
+      .set({ disabledAt: new Date() })
+      .where(sql`${jobBays.id} = '00000000-0000-4000-8000-000000000b01'`);
+    await expect(
+      caller.jobs.create({
+        baySeeds: [{ bayId: '00000000-0000-4000-8000-000000000b01', durationDays: 1 }],
+        quoteId: context.quote.id,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      caller.jobs.create({
+        baySeeds: [{ bayId: '00000000-0000-4000-8000-00000000dead', durationDays: 1 }],
+        quoteId: context.quote.id,
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
   test('returns the product serial number from get and list, and can search by it', async ({ context }) => {

@@ -50,19 +50,31 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
   quote,
   size = 'default',
 }) => {
+  const accessQuery = useAccess();
+  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
+  const canGenerate = quote.status === 'accepted' && quote.linkedJobs.length === 0;
+
+  if (!canCreateJob || !canGenerate) {
+    return null;
+  }
+
+  return (
+    <GenerateJobFromQuoteDialogContent {...(className === undefined ? {} : { className })} quote={quote} size={size} />
+  );
+};
+
+const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProps> = ({
+  className,
+  quote,
+  size = 'default',
+}) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const { invalidateJobs, invalidateQuotes } = useQueryInvalidation();
-  const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
   const [isOpen, setIsOpen] = useState(false);
-  const canCreateJob = hasPermission(accessQuery.data, 'job:create');
-  const canGenerate = quote.status === 'accepted' && quote.linkedJobs.length === 0;
   const enabledBaysQuery = useQuery(
-    trpc.jobs.listJobBays.queryOptions(
-      { filters: { isDisabled: false } },
-      { enabled: isOpen && canCreateJob && canGenerate },
-    ),
+    trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }, { enabled: isOpen }),
   );
   const enabledBays = enabledBaysQuery.data?.items ?? [];
   const baysById = useMemo(() => new Map(enabledBays.map((bay) => [bay.id, bay])), [enabledBays]);
@@ -109,10 +121,6 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
       form.reset();
     }
   };
-
-  if (!canCreateJob || !canGenerate) {
-    return null;
-  }
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={isOpen}>

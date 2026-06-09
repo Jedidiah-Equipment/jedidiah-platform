@@ -22,6 +22,7 @@ import {
   JobBaySetDisabledInput,
   JobBaySetDisabledResult,
   JobCode,
+  JobCreateInput,
   JobDetail,
   JobListFilters,
   OffDay,
@@ -297,6 +298,54 @@ describe('JobListFilters', () => {
     expect(JobListFilters.parse({ jobId: '00000000-0000-4000-8000-000000000001' })).toEqual({
       jobId: '00000000-0000-4000-8000-000000000001',
     });
+  });
+});
+
+describe('JobCreateInput', () => {
+  const quoteId = '00000000-0000-4000-8000-000000000001';
+  const bayOneId = '00000000-0000-4000-8000-000000000002';
+  const bayTwoId = '00000000-0000-4000-8000-000000000003';
+
+  it('defaults missing Bay seeds to an empty list', () => {
+    expect(JobCreateInput.parse({ quoteId })).toEqual({
+      baySeeds: [],
+      quoteId,
+    });
+    expect(JobCreateInput.parse({ baySeeds: [], quoteId })).toEqual({
+      baySeeds: [],
+      quoteId,
+    });
+  });
+
+  it('accepts positive integer Bay seed durations and preserves row order', () => {
+    expect(
+      JobCreateInput.parse({
+        baySeeds: [
+          { bayId: bayOneId, durationDays: 3 },
+          { bayId: bayTwoId, durationDays: 1 },
+          { bayId: bayOneId, durationDays: 2 },
+        ],
+        quoteId,
+      }),
+    ).toEqual({
+      baySeeds: [
+        { bayId: bayOneId, durationDays: 3 },
+        { bayId: bayTwoId, durationDays: 1 },
+        { bayId: bayOneId, durationDays: 2 },
+      ],
+      quoteId,
+    });
+  });
+
+  it('rejects non-positive and fractional Bay seed durations', () => {
+    for (const durationDays of [0, -1, 1.5]) {
+      expect(() =>
+        JobCreateInput.parse({
+          baySeeds: [{ bayId: bayOneId, durationDays }],
+          quoteId,
+        }),
+      ).toThrow();
+    }
   });
 });
 

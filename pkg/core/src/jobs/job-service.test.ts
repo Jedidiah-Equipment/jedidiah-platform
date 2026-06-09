@@ -168,6 +168,142 @@ describe('createJob', () => {
     ).rejects.toThrow('Quote is locked because it already has a Job; discountAmount cannot be changed.');
   });
 
+  test('creates a bare job with an explicit empty Bay seed list', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    const job = await createJob({
+      access: jobAccess,
+      actorUserId,
+      db: context.db,
+      input: { baySeeds: [], quoteId: quote.id },
+    });
+
+    expect(job.schedule.every((department) => department.bays.length === 0)).toBe(true);
+    await expect(context.db.select().from(jobSlots)).resolves.toHaveLength(0);
+  });
+
+  test('seeds work slots across Bays in input order, including duplicate Bay rows', async ({ context }) => {
+    const fabricationBay = await createBay(context.db, { department: 'fabrication' });
+    const paintBay = await createBay(context.db, { department: 'paint' });
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    const job = await createJob({
+      access: jobAccess,
+      actorUserId,
+      currentDate: new Date('2026-06-05T09:00:00.000+02:00'),
+      db: context.db,
+      input: {
+        baySeeds: [
+          { bayId: fabricationBay.id, durationDays: 2 },
+          { bayId: paintBay.id, durationDays: 3 },
+          { bayId: fabricationBay.id, durationDays: 1 },
+        ],
+        quoteId: quote.id,
+      },
+    });
+
+    const fabricationSlots = await context.db
+      .select()
+      .from(jobSlots)
+      .where(eq(jobSlots.bayId, fabricationBay.id))
+      .orderBy(asc(jobSlots.sequence));
+    const paintSlots = await context.db
+      .select()
+      .from(jobSlots)
+      .where(eq(jobSlots.bayId, paintBay.id))
+      .orderBy(asc(jobSlots.sequence));
+
+    expect(fabricationSlots).toMatchObject([
+      { durationDays: 2, jobId: job.id, kind: 'work', sequence: 1 },
+      { durationDays: 1, jobId: job.id, kind: 'work', sequence: 2 },
+    ]);
+    expect(paintSlots).toMatchObject([{ durationDays: 3, jobId: job.id, kind: 'work', sequence: 1 }]);
+    expect(
+      job.schedule.flatMap((department) => department.bays).find((bay) => bay.id === fabricationBay.id)?.slots,
+    ).toHaveLength(2);
+  });
+
+  test('auto-inserts an idle gap before a seeded slot when the Bay queue ended in the past', async ({ context }) => {
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-01T00:00:00.000Z'),
+    });
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    const job = await createJob({
+      access: jobAccess,
+      actorUserId,
+      db: context.db,
+      input: {
+        baySeeds: [{ bayId: bay.id, durationDays: 1 }],
+        quoteId: quote.id,
+      },
+    });
+
+    const slots = await context.db
+      .select()
+      .from(jobSlots)
+      .where(eq(jobSlots.bayId, bay.id))
+      .orderBy(asc(jobSlots.sequence));
+    expect(slots).toMatchObject([
+      { durationDays: 4, jobId: null, kind: 'idle', sequence: 1 },
+      { durationDays: 1, jobId: job.id, kind: 'work', sequence: 2 },
+    ]);
+  });
+
+  test('rejects disabled Bay seeds and rolls back the created Job', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    await context.db.update(jobBays).set({ disabledAt: new Date() }).where(eq(jobBays.id, bay.id));
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    await expect(
+      createJob({
+        access: jobAccess,
+        actorUserId,
+        db: context.db,
+        input: {
+          baySeeds: [{ bayId: bay.id, durationDays: 1 }],
+          quoteId: quote.id,
+        },
+      }),
+    ).rejects.toThrow('This Bay is disabled and cannot accept new bookings.');
+    await expect(context.db.select().from(jobs)).resolves.toHaveLength(0);
+    await expect(context.db.select().from(jobSlots)).resolves.toHaveLength(0);
+  });
+
+  test('rejects missing Bay seeds and rolls back the created Job', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+
+    await expect(
+      createJob({
+        access: jobAccess,
+        actorUserId,
+        db: context.db,
+        input: {
+          baySeeds: [{ bayId: '00000000-0000-4000-8000-00000000dead', durationDays: 1 }],
+          quoteId: quote.id,
+        },
+      }),
+    ).rejects.toThrow('Job bay not found: 00000000-0000-4000-8000-00000000dead');
+    await expect(context.db.select().from(jobs)).resolves.toHaveLength(0);
+    await expect(context.db.select().from(jobSlots)).resolves.toHaveLength(0);
+  });
+
   test('freezes CFO sequence by display order, ignoring name and selection order', async ({ context }) => {
     const product = await createProduct(context.db, { modelCode: 'ORD-001', name: 'Ordering Product' });
 

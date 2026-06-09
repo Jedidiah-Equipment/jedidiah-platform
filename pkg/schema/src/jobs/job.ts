@@ -377,9 +377,17 @@ export const JobDetail = JobSummary.extend({
   schedule: z.array(JobDepartmentSchedule).length(5),
 });
 
+export type JobBaySeedInput = z.infer<typeof JobBaySeedInput>;
+export const JobBaySeedInput = z
+  .object({
+    bayId: UUID,
+    durationDays: SlotDurationDays,
+  })
+  .strict();
 export type JobCreateInput = z.infer<typeof JobCreateInput>;
 export const JobCreateInput = z
   .object({
+    baySeeds: z.array(JobBaySeedInput).default([]),
     quoteId: UUID,
   })
   .strict();

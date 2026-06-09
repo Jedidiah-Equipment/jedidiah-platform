@@ -3,8 +3,10 @@ import {
   customers,
   type Db,
   documents,
+  jobBays,
   jobs,
   productAssemblies,
+  productBays,
   products,
   quoteSelectedAssemblies,
   quotes,
@@ -316,6 +318,54 @@ describe('quotes.create', () => {
 
     expect(updated.selectedAssemblies).toEqual([]);
     await expect(context.db.select().from(quoteSelectedAssemblies)).resolves.toEqual([]);
+  });
+
+  test('returns Product Bays for the Quote Product, including disabled existing Bays', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const enabledBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000501',
+      name: 'A Quote Enabled Product Bay',
+    });
+    const disabledBay = await createBay(context.db, {
+      disabledAt: new Date('2026-06-01T00:00:00.000Z'),
+      id: '00000000-0000-4000-8000-000000000502',
+      name: 'Z Quote Disabled Product Bay',
+    });
+    await context.db.insert(productBays).values([
+      { bayId: enabledBay.id, defaultWorkingDays: 4, productId: context.product.id },
+      { bayId: disabledBay.id, defaultWorkingDays: 6, productId: context.product.id },
+    ]);
+
+    const created = await caller.quotes.create({
+      customer: {
+        type: 'inline',
+        companyName: 'Product Bay Customer',
+      },
+      notes: null,
+      documentNotes: null,
+      productId: context.product.id,
+      salesPersonId: 'test-user-id',
+      status: 'accepted',
+      validUntil: null,
+    });
+
+    await expect(caller.quotes.get({ id: created.id })).resolves.toMatchObject({
+      productBays: [
+        {
+          bay: expect.objectContaining({ disabledAt: null, name: 'A Quote Enabled Product Bay' }),
+          bayId: enabledBay.id,
+          defaultWorkingDays: 4,
+        },
+        {
+          bay: expect.objectContaining({
+            disabledAt: '2026-06-01T00:00:00.000Z',
+            name: 'Z Quote Disabled Product Bay',
+          }),
+          bayId: disabledBay.id,
+          defaultWorkingDays: 6,
+        },
+      ],
+    });
   });
 });
 
@@ -1217,4 +1267,29 @@ async function createProductAssembly(
   }
 
   return assembly;
+}
+
+async function createBay(
+  db: Db,
+  values: {
+    disabledAt?: Date | null;
+    id: string;
+    name: string;
+  },
+) {
+  const [bay] = await db
+    .insert(jobBays)
+    .values({
+      department: 'fabrication',
+      disabledAt: null,
+      scheduleOrigin: new Date('2026-01-01T00:00:00.000Z'),
+      ...values,
+    })
+    .returning();
+
+  if (!bay) {
+    throw new Error('Bay insert did not return a row');
+  }
+
+  return bay;
 }

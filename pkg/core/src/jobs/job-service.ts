@@ -520,10 +520,7 @@ async function appendWorkJobSlotToBayQueue({
 
   onBayLocked?.(bay);
 
-  const workingCalendar = createBayWorkingCalendar(
-    createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
-    await listBayCalendarExceptions(tx, bay.id),
-  );
+  const workingCalendar = await getWorkingCalendar(tx, bay.id);
   let sequence = await getNextBaySlotSequence(tx, bay.id);
   const gapDays = await getIdleGapDaysBeforeAppend({
     bayId: bay.id,
@@ -561,6 +558,13 @@ async function appendWorkJobSlotToBayQueue({
   }
 
   return slot;
+}
+
+async function getWorkingCalendar(tx: DatabaseTransaction, bayId: UUID): Promise<WorkingCalendar> {
+  return createBayWorkingCalendar(
+    createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
+    await listBayCalendarExceptions(tx, bayId),
+  );
 }
 
 async function getIdleGapDaysBeforeAppend({

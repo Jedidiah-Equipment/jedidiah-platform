@@ -253,7 +253,7 @@ export async function listJobs({
 }
 
 function getVisibleBayDepartments(access: UserAccessSummary): 'all' | Department[] {
-  if (access.role === 'admin' || access.role === 'job-supervisor') {
+  if (access.role === 'admin') {
     return 'all';
   }
 

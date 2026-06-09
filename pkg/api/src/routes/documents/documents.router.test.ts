@@ -10,7 +10,7 @@ const test = createTester(async ({ db }) => {
     name: 'Test User',
     email: 'test@example.com',
     emailVerified: true,
-    role: 'product-editor',
+    role: 'procurement-manager',
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -23,7 +23,7 @@ const test = createTester(async ({ db }) => {
 
 describe('documents.deleteByProduct', () => {
   test('deletes product documents through tRPC and audits the delete', async ({ context }) => {
-    const caller = context.createCaller(mockSession('product-editor'));
+    const caller = context.createCaller(mockSession('procurement-manager'));
     const document = await createProductDocument(context.db, context.product.id);
 
     await caller.documents.deleteByProduct({
@@ -93,7 +93,7 @@ describe('documents.listByQuote', () => {
   });
 
   test('requires quote read permission', async ({ context }) => {
-    const caller = context.createCaller(mockSession('product-editor'));
+    const caller = context.createCaller(mockSession('procurement-manager'));
     const quote = await createQuote(context.db, context.product.id);
 
     await expect(caller.documents.listByQuote({ quoteId: quote.id })).rejects.toThrow(

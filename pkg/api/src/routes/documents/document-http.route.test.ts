@@ -93,7 +93,7 @@ describe('document HTTP routes', () => {
   });
 
   test('downloads job documents through the owner-scoped Job route', async ({ context }) => {
-    routeTestState.session = mockSession('job-supervisor');
+    routeTestState.session = mockSession('admin');
     const storage = new MemoryStorage();
     const app = await createDocumentApp(storage);
     const job = await createJobOwner(context.db, context.product.id);

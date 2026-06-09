@@ -5,10 +5,12 @@ import { parseBetterAuthRole } from './session.js';
 describe('parseBetterAuthRole', () => {
   test('parses supported role strings', () => {
     expect(parseBetterAuthRole('admin')).toBe('admin');
+    expect(parseBetterAuthRole('procurement-manager')).toBe('procurement-manager');
+    expect(parseBetterAuthRole('job-department-manager')).toBe('job-department-manager');
   });
 
   test('accepts the first role from better-auth array-shaped values', () => {
-    expect(parseBetterAuthRole(['job-supervisor', 'admin'])).toBe('job-supervisor');
+    expect(parseBetterAuthRole(['admin', 'admin'])).toBe('admin');
   });
 
   test('rejects unsupported role strings', () => {

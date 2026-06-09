@@ -48,10 +48,10 @@ describe('listBays', () => {
     ]);
   });
 
-  test('returns all bays for job supervisors', async ({ context }) => {
+  test('returns all bays for admins', async ({ context }) => {
     const result = await listBays({
       db: context.db,
-      access: createUserAccessSummary({ role: 'job-supervisor', userId: 'supervisor-user' }),
+      access: createUserAccessSummary({ role: 'admin', userId: 'supervisor-user' }),
     });
 
     expect(result.items).toHaveLength(5);

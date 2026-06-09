@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button.js';
+import { Button, type ButtonSize } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -14,9 +14,10 @@ import { PartForm } from './components/PartForm.js';
 
 type PartCreateDialogProps = {
   supplier: Pick<Supplier, 'companyName' | 'id'>;
+  buttonSize?: ButtonSize;
 };
 
-export const PartCreateDialog: React.FC<PartCreateDialogProps> = ({ supplier }) => {
+export const PartCreateDialog: React.FC<PartCreateDialogProps> = ({ supplier, buttonSize = 'default' }) => {
   const trpc = useTRPC();
   const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
@@ -38,7 +39,7 @@ export const PartCreateDialog: React.FC<PartCreateDialogProps> = ({ supplier }) 
 
   return (
     <>
-      <Button onClick={() => setIsOpen(true)}>
+      <Button onClick={() => setIsOpen(true)} size={buttonSize}>
         <IconPlus data-icon="inline-start" />
         New part
       </Button>

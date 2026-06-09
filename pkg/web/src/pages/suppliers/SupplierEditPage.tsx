@@ -81,8 +81,8 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
             rightSection={
               canUpdatePart ? (
                 <div className="flex gap-2">
-                  <PartBulkImportDialog supplier={supplier} />
-                  <PartCreateDialog supplier={supplier} />
+                  <PartBulkImportDialog supplier={supplier} buttonSize="sm" />
+                  <PartCreateDialog supplier={supplier} buttonSize="sm" />
                 </div>
               ) : undefined
             }

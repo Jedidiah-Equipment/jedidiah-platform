@@ -17,8 +17,9 @@ describe('Department', () => {
 });
 
 describe('AppRole', () => {
-  it('accepts job roles', () => {
-    expect(AppRole.parse('job-supervisor')).toBe('job-supervisor');
+  it('accepts app roles', () => {
+    expect(AppRole.parse('admin')).toBe('admin');
+    expect(AppRole.parse('procurement-manager')).toBe('procurement-manager');
     expect(AppRole.parse('job-department-manager')).toBe('job-department-manager');
     expect(AppRole.parse('sales')).toBe('sales');
   });

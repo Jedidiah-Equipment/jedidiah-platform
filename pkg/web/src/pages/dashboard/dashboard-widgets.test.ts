@@ -58,8 +58,8 @@ describe('filterDashboardWidgets', () => {
     expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'quotes']);
   });
 
-  it('keeps role-visible widgets in registry order for product editors', () => {
-    const access = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+  it('keeps role-visible widgets in registry order for procurement managers', () => {
+    const access = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'products']);
   });
@@ -127,25 +127,25 @@ describe('dashboardWidgets', () => {
     });
   });
 
-  it('shows Recent Quotes to sales users and hides it from product editors', () => {
+  it('shows Recent Quotes to sales users and hides it from procurement managers', () => {
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('recent-quotes');
     expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('recent-quotes');
   });
 
-  it('shows Quotes by status to sales users and hides it from product editors', () => {
+  it('shows Quotes by status to sales users and hides it from procurement managers', () => {
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-by-status');
     expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('quotes-by-status');
   });
 
-  it('shows quote widgets to sales users and hides them from product editors', () => {
+  it('shows quote widgets to sales users and hides them from procurement managers', () => {
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-created-over-time');
     expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain(
@@ -153,9 +153,9 @@ describe('dashboardWidgets', () => {
     );
   });
 
-  it('shows Products to product editors and hides it from sales users', () => {
+  it('shows Products to procurement managers and hides it from sales users', () => {
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).toContain('products');
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).not.toContain('products');
@@ -164,7 +164,7 @@ describe('dashboardWidgets', () => {
   it('shows Recent activity only to admins', () => {
     const adminAccess = createUserAccessSummary({ role: 'admin', userId: 'user-1' });
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'product-editor', userId: 'user-1' });
+    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
     expect(widgetIds(filterDashboardWidgets(adminAccess, dashboardWidgets))).toContain('recent-activity');
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).not.toContain('recent-activity');

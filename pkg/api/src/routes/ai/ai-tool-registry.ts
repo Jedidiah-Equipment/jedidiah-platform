@@ -144,7 +144,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
       purpose: 'List Jobs visible to Job readers.',
       useWhen: ['Searching by Job Code, product serial number, numeric code, Job UUID, or partial UUID.'],
       doNotUseWhen: [
-        'The user needs Stage detail, CFO parts, or Documents for one Job; call getJob after identifying the Job id.',
+        'The user needs Bay schedule detail, CFO parts, or Documents for one Job; call getJob after identifying the Job id.',
       ],
       searchableIdentifiers: [
         'Job UUID',
@@ -158,7 +158,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Customer company name',
         'Product name',
         'Product model code',
-        'Stage summaries',
+        'scheduled Bay slots',
         'Quote Code',
       ],
       linkTarget: aiLinkMetadata.Job,
@@ -168,9 +168,10 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
   {
     tool: getJobTool,
     descriptor: {
-      purpose:
-        'Get one Job by UUID, including Stage summaries, visible Stage details, CFO part quantities, and Documents.',
-      useWhen: ['A Job id is already known and the user needs production progress, Stage detail, CFO, or Documents.'],
+      purpose: 'Get one Job by UUID, including Bay schedule detail, CFO part quantities, and Documents.',
+      useWhen: [
+        'A Job id is already known and the user needs production progress, Bay schedule detail, CFO, or Documents.',
+      ],
       doNotUseWhen: ['Searching by Job Code, product serial number, numeric code, or partial id; use listJobs first.'],
       searchableIdentifiers: ['Job UUID'],
       resultIdentifiers: [
@@ -179,8 +180,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
         'Quote Code',
         'Customer company name',
         'Product name',
-        'Stage summaries',
-        'visible Stage details',
+        'scheduled Department and Bay slots',
         'CFO Part quantities with unitOfMeasure',
         'Documents',
       ],

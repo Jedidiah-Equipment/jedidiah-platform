@@ -11,12 +11,10 @@ import {
   BookJobSlotInput,
   BookJobSlotResult,
   formatProductSerialNumber,
-  JOB_STAGES,
   Job,
   JobCode,
   JobDetail,
   JobListFilters,
-  JobWorkState,
   OffDay,
   ProjectedJobSlot,
   RemoveBayCalendarExceptionInput,
@@ -67,12 +65,6 @@ describe('Job', () => {
       productSerialYear: 26,
       vinNumber: null,
     });
-  });
-});
-
-describe('JOB_STAGES', () => {
-  it('uses production departments', () => {
-    expect(JOB_STAGES).toEqual(['procurement', 'supply', 'fabrication', 'paint', 'assembly']);
   });
 });
 
@@ -285,20 +277,13 @@ describe('JobDetail', () => {
   });
 });
 
-describe('JobWorkState', () => {
-  it('only accepts derived stage states', () => {
-    expect(JobWorkState.parse('complete')).toBe('complete');
-    expect(() => JobWorkState.parse('welding')).toThrow();
-  });
-});
-
 describe('JobSlot schemas', () => {
   it('accepts booking inputs with positive day durations', () => {
     expect(
       BookJobSlotInput.parse({
         bayId: '00000000-0000-4000-8000-000000000001',
         durationDays: 1,
-        jobStageId: '00000000-0000-4000-8000-000000000002',
+        jobId: '00000000-0000-4000-8000-000000000002',
       }),
     ).toMatchObject({
       durationDays: 1,
@@ -307,7 +292,7 @@ describe('JobSlot schemas', () => {
       BookJobSlotInput.parse({
         bayId: '00000000-0000-4000-8000-000000000001',
         durationDays: 0,
-        jobStageId: '00000000-0000-4000-8000-000000000002',
+        jobId: '00000000-0000-4000-8000-000000000002',
       }),
     ).toThrow();
   });
@@ -321,8 +306,7 @@ describe('JobSlot schemas', () => {
         endAt: new Date('2026-06-06T00:00:00.000Z'),
         id: '00000000-0000-4000-8000-000000000003',
         jobCode: 12,
-        jobId: '00000000-0000-4000-8000-000000000004',
-        jobStageId: '00000000-0000-4000-8000-000000000002',
+        jobId: '00000000-0000-4000-8000-000000000002',
         kind: 'work',
         label: null,
         sequence: 1,
@@ -344,7 +328,7 @@ describe('JobSlot schemas', () => {
         durationDays: 1,
         endAt: new Date('2026-06-06T00:00:00.000Z'),
         id: '00000000-0000-4000-8000-000000000003',
-        jobStageId: null,
+        jobId: null,
         kind: 'idle',
         label: 'Idle gap',
         sequence: 1,
@@ -367,7 +351,7 @@ describe('JobSlot schemas', () => {
           createdAt: new Date('2026-06-05T00:00:00.000Z'),
           durationDays: 1,
           id: '00000000-0000-4000-8000-000000000003',
-          jobStageId: '00000000-0000-4000-8000-000000000002',
+          jobId: '00000000-0000-4000-8000-000000000002',
           kind: 'work',
           label: null,
           sequence: 1,
@@ -408,7 +392,7 @@ describe('JobSlot schemas', () => {
           createdAt: new Date('2026-06-05T00:00:00.000Z'),
           durationDays: 2,
           id: '00000000-0000-4000-8000-000000000003',
-          jobStageId: '00000000-0000-4000-8000-000000000002',
+          jobId: '00000000-0000-4000-8000-000000000002',
           kind: 'work',
           label: null,
           sequence: 1,
@@ -446,7 +430,7 @@ describe('JobSlot schemas', () => {
           createdAt: new Date('2026-06-05T00:00:00.000Z'),
           durationDays: 1,
           id: '00000000-0000-4000-8000-000000000003',
-          jobStageId: null,
+          jobId: null,
           kind: 'idle',
           label: null,
           sequence: 2,
@@ -462,7 +446,7 @@ describe('JobSlot schemas', () => {
     });
   });
 
-  it('requires work slots to have a stage and idle slots to have no stage', () => {
+  it('requires work slots to have a job and idle slots to have no job', () => {
     expect(() =>
       BookJobSlotResult.parse({
         slot: {
@@ -470,7 +454,7 @@ describe('JobSlot schemas', () => {
           createdAt: new Date('2026-06-05T00:00:00.000Z'),
           durationDays: 1,
           id: '00000000-0000-4000-8000-000000000003',
-          jobStageId: null,
+          jobId: null,
           kind: 'work',
           label: null,
           sequence: 1,
@@ -486,7 +470,7 @@ describe('JobSlot schemas', () => {
           createdAt: new Date('2026-06-05T00:00:00.000Z'),
           durationDays: 1,
           id: '00000000-0000-4000-8000-000000000003',
-          jobStageId: '00000000-0000-4000-8000-000000000002',
+          jobId: '00000000-0000-4000-8000-000000000002',
           kind: 'idle',
           label: null,
           sequence: 1,
@@ -527,7 +511,7 @@ describe('JobSlot schemas', () => {
           createdAt: new Date('2026-06-05T00:00:00.000Z'),
           durationDays: 1,
           id: '00000000-0000-4000-8000-000000000003',
-          jobStageId: null,
+          jobId: null,
           kind: 'idle',
           label: null,
           sequence: 2,

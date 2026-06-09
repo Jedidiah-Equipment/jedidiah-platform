@@ -9,17 +9,7 @@ export type AuditAction = z.infer<typeof AuditAction>;
 export const AuditAction = z.enum(['created', 'updated', 'deleted']);
 
 export type AuditEntityType = z.infer<typeof AuditEntityType>;
-export const AuditEntityType = z.enum([
-  'customer',
-  'document',
-  'job',
-  'job_stage',
-  'part',
-  'product',
-  'quote',
-  'supplier',
-  'user',
-]);
+export const AuditEntityType = z.enum(['customer', 'document', 'job', 'part', 'product', 'quote', 'supplier', 'user']);
 
 export type AuditFieldChange = z.infer<typeof AuditFieldChange>;
 export const AuditFieldChange = z.object({

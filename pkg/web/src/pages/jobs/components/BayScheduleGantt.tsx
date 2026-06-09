@@ -101,10 +101,7 @@ export const BayScheduleGantt: React.FC<{
   const jobs = jobsQuery.data?.items ?? [];
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
-  const selectedStage = selectedBay
-    ? (selectedJob?.stages.find((stage) => stage.stage === selectedBay.department) ?? null)
-    : null;
-  const canBook = Boolean(selectedBay && selectedStage && durationDays > 0);
+  const canBook = Boolean(selectedBay && selectedJob && durationDays > 0);
   const clearOptimisticResize = useCallback((slotId: string) => {
     setOptimisticResizeDaysBySlotId((current) => {
       const { [slotId]: _removed, ...next } = current;
@@ -218,14 +215,14 @@ export const BayScheduleGantt: React.FC<{
         onSubmit={(event) => {
           event.preventDefault();
 
-          if (!selectedBay || !selectedStage || durationDays <= 0) {
+          if (!selectedBay || !selectedJob || durationDays <= 0) {
             return;
           }
 
           bookSlotMutation.mutate({
             bayId: selectedBay.id,
             durationDays,
-            jobStageId: selectedStage.id,
+            jobId: selectedJob.id,
           });
         }}
       >

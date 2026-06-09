@@ -40,8 +40,7 @@ export const JobCalendarPage: React.FC = () => {
   );
   const bayExceptionChipsByDate = useMemo(() => groupBayExceptionChipsByDate(bays), [bays]);
   const canEditCalendar = hasPermission(accessQuery.data, 'job:update-calendar');
-  const canEditBaySchedule =
-    hasPermission(accessQuery.data, 'job:update') || hasPermission(accessQuery.data, 'job-stage:update');
+  const canEditBaySchedule = hasPermission(accessQuery.data, 'job:schedule');
   const [selectedDay, setSelectedDay] = useState<SelectedCalendarDay | null>(null);
   const [bayExceptionDialog, setBayExceptionDialog] = useState<BayExceptionDialogState | null>(null);
   const toggleOffDayMutation = useMutation(

@@ -65,7 +65,7 @@ describe('jobs.listBays', () => {
     await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
       durationDays: 2,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
 
     await expect(adminCaller.jobs.listBays()).resolves.toMatchObject({
@@ -215,7 +215,7 @@ describe('jobs bay calendar exceptions', () => {
     await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
       durationDays: 2,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
 
     await expect(adminCaller.jobs.listBays()).resolves.toMatchObject({
@@ -239,7 +239,7 @@ describe('jobs bay calendar exceptions', () => {
 });
 
 describe('jobs.create', () => {
-  test('creates a job with the production stage model', async ({ context }) => {
+  test('creates a job without stage rows', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
 
     const job = await caller.jobs.create({
@@ -254,13 +254,14 @@ describe('jobs.create', () => {
       quoteId: context.quote.id,
       vinNumber: null,
     });
-    expect(job.stages.map((stage) => stage.stage)).toEqual([
+    expect(job.schedule.map((item) => item.department)).toEqual([
       'procurement',
       'supply',
       'fabrication',
       'paint',
       'assembly',
     ]);
+    expect(job.schedule.every((item) => item.bays.length === 0)).toBe(true);
   });
 
   test('returns the product serial number from get and list, and can search by it', async ({ context }) => {
@@ -295,24 +296,22 @@ describe('jobs.create', () => {
 });
 
 describe('jobs.bookSlot', () => {
-  test('books an authorized job stage onto a fabrication bay', async ({ context }) => {
+  test('books an authorized Job onto a fabrication bay', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({
       quoteId: context.quote.id,
     });
-    const fabricationStage = getStage(job, 'fabrication');
-
     await expect(
       caller.jobs.bookSlot({
         bayId: '00000000-0000-4000-8000-000000000b01',
         durationDays: 1,
-        jobStageId: fabricationStage.id,
+        jobId: job.id,
       }),
     ).resolves.toMatchObject({
       slot: {
         bayId: '00000000-0000-4000-8000-000000000b01',
         durationDays: 1,
-        jobStageId: fabricationStage.id,
+        jobId: job.id,
         sequence: 1,
       },
     });
@@ -329,7 +328,7 @@ describe('jobs.bookSlot', () => {
       salesCaller.jobs.bookSlot({
         bayId: '00000000-0000-4000-8000-000000000b01',
         durationDays: 1,
-        jobStageId: getStage(job, 'fabrication').id,
+        jobId: job.id,
       }),
     ).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -345,7 +344,7 @@ describe('jobs.bookSlot', () => {
     await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
       durationDays: 2,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
 
     const schedule = await caller.jobs.listBays();
@@ -380,7 +379,7 @@ describe('jobs.bookSlot', () => {
     const workSlot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b04',
       durationDays: 1,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
 
     const schedule = await caller.jobs.listBays();
@@ -420,13 +419,13 @@ describe('jobs.resizeSlot', () => {
     const firstSlot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b03',
       durationDays: 1,
-      jobStageId: getStage(firstJob, 'fabrication').id,
+      jobId: firstJob.id,
     });
 
     await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b03',
       durationDays: 1,
-      jobStageId: getStage(secondJob, 'fabrication').id,
+      jobId: secondJob.id,
     });
 
     await expect(
@@ -473,7 +472,7 @@ describe('jobs.resizeSlot', () => {
     const slot = await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
       durationDays: 1,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
 
     await expect(
@@ -496,7 +495,7 @@ describe('jobs.addIdleSlot', () => {
     const workSlot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b04',
       durationDays: 1,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
 
     await expect(
@@ -509,7 +508,7 @@ describe('jobs.addIdleSlot', () => {
     ).resolves.toMatchObject({
       slot: {
         durationDays: 1,
-        jobStageId: null,
+        jobId: null,
         kind: 'idle',
         label: null,
         sequence: 2,
@@ -526,7 +525,7 @@ describe('jobs.addIdleSlot', () => {
     const workSlot = await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
       durationDays: 1,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
 
     await expect(
@@ -548,7 +547,7 @@ describe('jobs.addIdleSlot', () => {
     const workSlot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b05',
       durationDays: 1,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
     const idleSlot = await caller.jobs.addIdleSlot({
       durationDays: 1,
@@ -592,7 +591,7 @@ describe('jobs.removeSlot', () => {
     const slot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
       durationDays: 1,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
 
     await expect(
@@ -616,7 +615,7 @@ describe('jobs.removeSlot', () => {
     const slot = await adminCaller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b01',
       durationDays: 1,
-      jobStageId: getStage(job, 'fabrication').id,
+      jobId: job.id,
     });
 
     await expect(
@@ -644,18 +643,18 @@ describe('jobs.removeSlot', () => {
     const firstSlot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
       durationDays: 1,
-      jobStageId: getStage(firstJob, 'fabrication').id,
+      jobId: firstJob.id,
     });
     const secondSlot = await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
       durationDays: 1,
-      jobStageId: getStage(secondJob, 'fabrication').id,
+      jobId: secondJob.id,
     });
 
     await caller.jobs.bookSlot({
       bayId: '00000000-0000-4000-8000-000000000b02',
       durationDays: 1,
-      jobStageId: getStage(thirdJob, 'fabrication').id,
+      jobId: thirdJob.id,
     });
     await caller.jobs.removeSlot({
       slotId: firstSlot.slot.id,
@@ -794,14 +793,4 @@ async function createAcceptedQuote(db: Db, productId: Product['id']) {
   }
 
   return quote;
-}
-
-function getStage(job: { stages: { id: string; stage: string }[] }, stageName: string) {
-  const stage = job.stages.find((item) => item.stage === stageName);
-
-  if (!stage) {
-    throw new Error(`Job stage not found: ${stageName}`);
-  }
-
-  return stage;
 }

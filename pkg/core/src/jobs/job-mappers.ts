@@ -1,8 +1,7 @@
-import type { jobStages, jobs } from '@pkg/db';
-import { Job, JobStage } from '@pkg/schema';
+import type { jobs } from '@pkg/db';
+import { Job } from '@pkg/schema';
 
 export type JobRow = typeof jobs.$inferSelect;
-export type JobStageRow = typeof jobStages.$inferSelect;
 
 export function mapJob(row: JobRow): Job {
   return Job.parse({
@@ -17,15 +16,5 @@ export function mapJob(row: JobRow): Job {
     quoteId: row.quoteId,
     updatedAt: row.updatedAt.toISOString(),
     vinNumber: row.vinNumber,
-  });
-}
-
-export function mapJobStage(row: JobStageRow): JobStage {
-  return JobStage.parse({
-    id: row.id,
-    jobId: row.jobId,
-    sequence: row.sequence,
-    stage: row.stage,
-    state: 'pending',
   });
 }

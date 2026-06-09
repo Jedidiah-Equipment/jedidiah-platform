@@ -1,5 +1,4 @@
 import { createUserAccessSummary } from '@pkg/domain';
-import type { JobStageName } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -8,26 +7,9 @@ import { listBays, mapJobSummary } from './job-read-service.js';
 const test = createTester(() => ({}));
 
 describe('mapJobSummary', () => {
-  it('maps jobs with stage summaries', () => {
-    const summary = mapJobSummary({
-      ...jobRow(),
-      stages: [
-        stageRow('procurement', 1),
-        stageRow('supply', 2),
-        stageRow('fabrication', 3),
-        stageRow('paint', 4),
-        stageRow('assembly', 5),
-      ],
-    });
+  it('maps jobs without stage summaries', () => {
+    const summary = mapJobSummary(jobRow());
 
-    expect(summary.stages).toHaveLength(5);
-    expect(summary.stages.map((stage) => stage.stage)).toEqual([
-      'procurement',
-      'supply',
-      'fabrication',
-      'paint',
-      'assembly',
-    ]);
     expect(summary.productSerialNumber).toBe('MODEL-001260001');
   });
 });
@@ -57,7 +39,7 @@ describe('listBays', () => {
     expect(result.items).toHaveLength(5);
   });
 
-  test('returns matching department bays for fabrication department managers', async ({ context }) => {
+  test('returns all bays for department managers with job read permission', async ({ context }) => {
     const result = await listBays({
       db: context.db,
       access: createUserAccessSummary({
@@ -67,13 +49,7 @@ describe('listBays', () => {
       }),
     });
 
-    expect(result.items.map((bay) => bay.department)).toEqual([
-      'fabrication',
-      'fabrication',
-      'fabrication',
-      'fabrication',
-      'fabrication',
-    ]);
+    expect(result.items).toHaveLength(5);
   });
 
   test('returns all bays for unscoped department managers', async ({ context }) => {
@@ -89,17 +65,13 @@ describe('listBays', () => {
     expect(result.items).toHaveLength(5);
   });
 
-  test('returns no bays for non-fabrication department managers', async ({ context }) => {
+  test('returns all bays for procurement managers with job read permission', async ({ context }) => {
     const result = await listBays({
       db: context.db,
-      access: createUserAccessSummary({
-        departments: ['paint'],
-        role: 'job-department-manager',
-        userId: 'paint-manager',
-      }),
+      access: createUserAccessSummary({ role: 'procurement-manager', userId: 'procurement-manager' }),
     });
 
-    expect(result.items).toEqual([]);
+    expect(result.items).toHaveLength(5);
   });
 });
 
@@ -132,20 +104,3 @@ function jobRow() {
     vinNumber: null,
   };
 }
-
-function stageRow(stage: JobStageName, sequence: number) {
-  return {
-    id: stageRowIds[stage],
-    jobId: '00000000-0000-4000-8000-000000000001',
-    sequence,
-    stage,
-  };
-}
-
-const stageRowIds = {
-  procurement: '00000000-0000-4000-8000-000000000101',
-  supply: '00000000-0000-4000-8000-000000000102',
-  fabrication: '00000000-0000-4000-8000-000000000103',
-  paint: '00000000-0000-4000-8000-000000000104',
-  assembly: '00000000-0000-4000-8000-000000000105',
-} as const satisfies Record<JobStageName, string>;

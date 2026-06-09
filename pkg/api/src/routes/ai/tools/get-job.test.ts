@@ -20,7 +20,7 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('getJobTool', () => {
-  test('returns the same job detail shape as jobs.get with stage visibility enforced', async ({ context }) => {
+  test('returns the same job detail shape as jobs.get', async ({ context }) => {
     const adminAccess = createUserAccessSummary({
       role: 'admin',
       userId: 'test-user-id',
@@ -40,12 +40,13 @@ describe('getJobTool', () => {
     ]);
 
     expect(toolResult).toEqual(trpcResult);
-    expect(toolResult.stages.find((stage) => stage.stage === 'procurement')).toMatchObject({
-      access: 'summary',
-    });
-    expect(toolResult.stages.find((stage) => stage.stage === 'paint')).toMatchObject({
-      access: 'visible',
-    });
+    expect(toolResult.schedule.map((item) => item.department)).toEqual([
+      'procurement',
+      'supply',
+      'fabrication',
+      'paint',
+      'assembly',
+    ]);
   });
 
   test('surfaces the core not-found message for missing jobs', async ({ context }) => {

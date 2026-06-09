@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { DateIso, DateOnlyIso } from '../common/date.js';
-import { DEPARTMENTS, Department } from '../common/departments.js';
+import { Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { JobCode, QuoteCode } from '../common/public-code.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
@@ -11,12 +11,6 @@ import { JobDocument } from '../documents/document.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
 
 export { formatJobCode, JobCode } from '../common/public-code.js';
-
-// Unordered list of job stages. Use JOB_STAGE_PIPELINE for ordered list.
-export const JOB_STAGES = DEPARTMENTS;
-
-export type JobStageName = z.infer<typeof JobStageName>;
-export const JobStageName = Department;
 
 export type BayName = z.infer<typeof BayName>;
 export const BayName = requiredTrimmedText('Bay name is required').brand<'BayName'>();
@@ -115,14 +109,14 @@ const JobSlotBase = z.object({
 export type WorkJobSlot = z.infer<typeof WorkJobSlot>;
 export const WorkJobSlot = JobSlotBase.extend({
   kind: z.literal('work'),
-  jobStageId: UUID,
+  jobId: UUID,
   label: z.null(),
 });
 
 export type IdleJobSlot = z.infer<typeof IdleJobSlot>;
 export const IdleJobSlot = JobSlotBase.extend({
   kind: z.literal('idle'),
-  jobStageId: z.null(),
+  jobId: z.null(),
   label: nullableTrimmedText(),
 });
 
@@ -139,14 +133,13 @@ export const ProjectedWorkJobSlot = ProjectedJobSlotBase.extend({
   kind: z.literal('work'),
   jobCode: JobCode,
   jobId: UUID,
-  jobStageId: UUID,
   label: z.null(),
 });
 
 export type ProjectedIdleJobSlot = z.infer<typeof ProjectedIdleJobSlot>;
 export const ProjectedIdleJobSlot = ProjectedJobSlotBase.extend({
   kind: z.literal('idle'),
-  jobStageId: z.null(),
+  jobId: z.null(),
   label: nullableTrimmedText(),
 });
 
@@ -170,7 +163,7 @@ export type BookJobSlotInput = z.infer<typeof BookJobSlotInput>;
 export const BookJobSlotInput = z
   .object({
     bayId: UUID,
-    jobStageId: UUID,
+    jobId: UUID,
     durationDays: SlotDurationDays,
   })
   .strict();
@@ -220,9 +213,6 @@ export const AddIdleJobSlotResult = z.object({
   slot: JobSlot,
 });
 
-export type JobWorkState = z.infer<typeof JobWorkState>;
-export const JobWorkState = z.enum(['pending', 'in-progress', 'complete']);
-
 export type ProductSerialPrefix = z.infer<typeof ProductSerialPrefix>;
 export const ProductSerialPrefix = requiredTrimmedText('Product serial prefix is required');
 
@@ -262,83 +252,11 @@ export const ScheduleWindow = z.object({
   start: DateIso.nullable(),
 });
 
-const JobStageBase = z.object({
-  id: UUID,
-  jobId: UUID,
-  sequence: z.int().min(1).max(5),
-  state: JobWorkState,
+export type JobDepartmentSchedule = z.infer<typeof JobDepartmentSchedule>;
+export const JobDepartmentSchedule = z.object({
+  department: Department,
+  bays: z.array(BaySchedule),
 });
-
-const ProcurementJobStage = JobStageBase.extend({
-  stage: z.literal('procurement'),
-});
-const SupplyJobStage = JobStageBase.extend({
-  stage: z.literal('supply'),
-});
-const FabricationJobStage = JobStageBase.extend({
-  stage: z.literal('fabrication'),
-});
-const PaintJobStage = JobStageBase.extend({
-  stage: z.literal('paint'),
-});
-const AssemblyJobStage = JobStageBase.extend({
-  stage: z.literal('assembly'),
-});
-
-export type JobStage = z.infer<typeof JobStage>;
-export const JobStage = z.discriminatedUnion('stage', [
-  ProcurementJobStage,
-  SupplyJobStage,
-  FabricationJobStage,
-  PaintJobStage,
-  AssemblyJobStage,
-]);
-
-const ProcurementJobStageSummary = ProcurementJobStage.extend({
-  department: z.literal('procurement'),
-});
-const SupplyJobStageSummary = SupplyJobStage.extend({
-  department: z.literal('supply'),
-});
-const FabricationJobStageSummary = FabricationJobStage.extend({
-  department: z.literal('fabrication'),
-});
-const PaintJobStageSummary = PaintJobStage.extend({
-  department: z.literal('paint'),
-});
-const AssemblyJobStageSummary = AssemblyJobStage.extend({
-  department: z.literal('assembly'),
-});
-
-export type JobStageSummary = z.infer<typeof JobStageSummary>;
-export const JobStageSummary = z.discriminatedUnion('stage', [
-  ProcurementJobStageSummary,
-  SupplyJobStageSummary,
-  FabricationJobStageSummary,
-  PaintJobStageSummary,
-  AssemblyJobStageSummary,
-]);
-
-export type SummaryJobStage = z.infer<typeof SummaryJobStage>;
-export const SummaryJobStage = z.discriminatedUnion('stage', [
-  ProcurementJobStageSummary.extend({ access: z.literal('summary') }),
-  SupplyJobStageSummary.extend({ access: z.literal('summary') }),
-  FabricationJobStageSummary.extend({ access: z.literal('summary') }),
-  PaintJobStageSummary.extend({ access: z.literal('summary') }),
-  AssemblyJobStageSummary.extend({ access: z.literal('summary') }),
-]);
-
-export type VisibleJobStage = z.infer<typeof VisibleJobStage>;
-export const VisibleJobStage = z.discriminatedUnion('stage', [
-  ProcurementJobStageSummary.extend({ access: z.literal('visible') }),
-  SupplyJobStageSummary.extend({ access: z.literal('visible') }),
-  FabricationJobStageSummary.extend({ access: z.literal('visible') }),
-  PaintJobStageSummary.extend({ access: z.literal('visible') }),
-  AssemblyJobStageSummary.extend({ access: z.literal('visible') }),
-]);
-
-export type JobStageRollup = z.infer<typeof JobStageRollup>;
-export const JobStageRollup = z.union([VisibleJobStage, SummaryJobStage]);
 
 export type Job = z.infer<typeof Job>;
 export const Job = z.object({
@@ -364,7 +282,6 @@ export const JobSummary = Job.extend({
   productName: z.string().trim().min(1),
   productThumbnailDataUrl: NullableThumbnailDataUrl,
   quoteCode: QuoteCode,
-  stages: z.array(JobStageSummary).length(5),
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
@@ -396,7 +313,7 @@ export const JobDetail = JobSummary.extend({
     }),
   ),
   documents: z.array(JobDocument),
-  stages: z.array(JobStageRollup).length(5),
+  schedule: z.array(JobDepartmentSchedule).length(5),
 });
 
 export type JobCreateInput = z.infer<typeof JobCreateInput>;

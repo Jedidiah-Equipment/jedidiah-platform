@@ -31,6 +31,39 @@ export class ProductNotFoundError extends Error {
   }
 }
 
+export class DuplicateProductBayError extends Error {
+  readonly code = 'product.bay.duplicate';
+  readonly metadata: { bayId: string };
+
+  constructor(bayId: string) {
+    super(`Bay appears more than once on a product: ${bayId}`);
+    this.name = 'DuplicateProductBayError';
+    this.metadata = { bayId };
+  }
+}
+
+export class ProductBayNotFoundError extends Error {
+  readonly code = 'product.bay.not_found';
+  readonly metadata: { bayId: string };
+
+  constructor(bayId: string) {
+    super(`Product Bay not found: ${bayId}`);
+    this.name = 'ProductBayNotFoundError';
+    this.metadata = { bayId };
+  }
+}
+
+export class ProductBayDisabledError extends Error {
+  readonly code = 'product.bay.disabled';
+  readonly metadata: { bayId: string };
+
+  constructor(bayId: string) {
+    super(`Product Bay is disabled: ${bayId}`);
+    this.name = 'ProductBayDisabledError';
+    this.metadata = { bayId };
+  }
+}
+
 export class DuplicateAssemblyNameError extends Error {
   readonly code = 'product.assembly.duplicate_name';
   readonly metadata: { name: string };
@@ -104,8 +137,11 @@ export type ProductCoreError =
   | AssemblyWrongProductError
   | DuplicateAssemblyNameError
   | DuplicateAssemblyPartError
+  | DuplicateProductBayError
   | DuplicateProductModelCodeError
   | DuplicateProductNameError
+  | ProductBayDisabledError
+  | ProductBayNotFoundError
   | ProductNotFoundError;
 
 export function isProductCoreError(error: unknown): error is ProductCoreError {
@@ -116,8 +152,11 @@ export function isProductCoreError(error: unknown): error is ProductCoreError {
     error instanceof AssemblyWrongProductError ||
     error instanceof DuplicateAssemblyNameError ||
     error instanceof DuplicateAssemblyPartError ||
+    error instanceof DuplicateProductBayError ||
     error instanceof DuplicateProductModelCodeError ||
     error instanceof DuplicateProductNameError ||
+    error instanceof ProductBayDisabledError ||
+    error instanceof ProductBayNotFoundError ||
     error instanceof ProductNotFoundError
   );
 }

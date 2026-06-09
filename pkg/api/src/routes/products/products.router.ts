@@ -68,6 +68,24 @@ function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductC
         code: 'BAD_REQUEST',
         message: 'Assemblies must belong to the product being updated.',
       };
+    case 'product.bay.disabled':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'Only enabled Bays can be added to Product Bays.',
+      };
+    case 'product.bay.duplicate':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: 'A Bay can only be added once per Product.',
+      };
+    case 'product.bay.not_found':
+      return {
+        appCode: error.code,
+        code: 'NOT_FOUND',
+        message: 'Bay not found.',
+      };
     case 'product.duplicate_name':
       return {
         appCode: error.code,

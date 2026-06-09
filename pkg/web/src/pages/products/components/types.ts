@@ -4,6 +4,8 @@ import {
   NullableThumbnailDataUrl,
   Price,
   type Product,
+  ProductBayDefaultWorkingDays,
+  ProductBayInput,
   ProductBuildTimeDays,
   ProductCreateInput,
   ProductDescription,
@@ -12,6 +14,7 @@ import {
   ProductRequiresVinNumber,
   ProductUpdateInput,
   refineProductAssemblies,
+  refineProductBays,
   UUID,
   type UUID as UUIDType,
 } from '@pkg/schema';
@@ -44,6 +47,11 @@ export const ProductAssemblyFormInput = z.discriminatedUnion('kind', [
   OptionalAssemblyFormInput,
 ]);
 
+export type ProductBayFormInput = z.infer<typeof ProductBayFormInput>;
+export const ProductBayFormInput = ProductBayInput.extend({
+  defaultWorkingDays: ProductBayDefaultWorkingDays,
+});
+
 const ProductFormFields = z.object({
   basePrice: Price,
   currencyCode: z.literal('ZAR'),
@@ -58,6 +66,7 @@ const ProductFormFields = z.object({
 export type ProductFormValues = z.infer<typeof ProductFormValues>;
 export const ProductFormValues = ProductFormFields.extend({
   assemblies: z.array(ProductAssemblyFormInput).superRefine(refineProductAssemblies),
+  productBays: z.array(ProductBayFormInput).superRefine(refineProductBays),
 });
 
 export type ProductCreateFormValues = z.infer<typeof ProductCreateFormValues>;
@@ -76,6 +85,7 @@ export const emptyProductFormValues: ProductFormValues = {
   buildTimeDays: NaN,
   modelCode: '',
   name: '',
+  productBays: [],
   requiresVinNumber: false,
   thumbnailDataUrl: null,
 };
@@ -90,6 +100,7 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     buildTimeDays: initialProduct?.buildTimeDays ?? NaN,
     modelCode: initialProduct?.modelCode ?? '',
     name: initialProduct?.name ?? '',
+    productBays: toProductBayInputs(initialProduct),
     requiresVinNumber: initialProduct?.requiresVinNumber ?? false,
     thumbnailDataUrl: initialProduct?.thumbnailDataUrl ?? null,
   };
@@ -114,6 +125,13 @@ export function toProductAssemblyInputs(initialProduct?: Product): ProductAssemb
           price: assembly.price,
         },
   );
+}
+
+export function toProductBayInputs(initialProduct?: Product): ProductBayFormInput[] {
+  return (initialProduct?.productBays ?? []).map((productBay) => ({
+    bayId: productBay.bayId,
+    defaultWorkingDays: productBay.defaultWorkingDays,
+  }));
 }
 
 export function toProductCreateInput(value: ProductFormValues): ProductCreateInput {

@@ -1,20 +1,27 @@
+import type { TablerIcon } from '@tabler/icons-react';
 import type React from 'react';
+
+import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 
 type QuoteFormSectionProps = {
   children: React.ReactNode;
   description?: string;
+  icon?: TablerIcon;
   title: string;
 };
 
-export const QuoteFormSection: React.FC<QuoteFormSectionProps> = ({ children, description, title }) => (
-  <section className="grid gap-4 border-t pt-6 first:border-t-0 first:pt-0">
-    <div className="grid gap-1.5">
-      <h3 className="flex items-center gap-2 font-heading font-medium text-base leading-tight">
-        <span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-primary" />
-        <span>{title}</span>
-      </h3>
-      {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
-    </div>
-    {children}
-  </section>
-);
+export const QuoteFormSection: React.FC<QuoteFormSectionProps> = ({ children, description, icon: Icon, title }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {Icon ? <Icon aria-hidden className="size-5 shrink-0 text-muted-foreground" /> : null}
+          <span>{title}</span>
+        </CardTitle>
+        {description ? <CardDescription className="font-mono">{description}</CardDescription> : null}
+      </CardHeader>
+      <CardSeparator />
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+};

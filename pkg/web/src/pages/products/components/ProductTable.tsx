@@ -83,7 +83,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({ onEditProduct }) => 
       },
       {
         accessorKey: 'modelCode',
-        cell: ({ row }) => <span className="font-mono text-sm">{row.original.modelCode}</span>,
+        cell: ({ row }) => <span className="font-mono">{row.original.modelCode}</span>,
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Model code',

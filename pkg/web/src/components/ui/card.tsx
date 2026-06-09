@@ -72,6 +72,10 @@ function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
   return <div data-slot="card-content" className={cn('px-4 group-data-[size=sm]/card:px-3', className)} {...props} />;
 }
 
+function CardSeparator({ className, role = 'separator', ...props }: React.ComponentProps<'div'>) {
+  return <div data-slot="card-separator" role={role} className={cn('striped-bg h-2 shrink-0', className)} {...props} />;
+}
+
 function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -82,4 +86,4 @@ function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
-export { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };
+export { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardSeparator, CardTitle };

@@ -1,3 +1,4 @@
+import { useElementSize } from '@mantine/hooks';
 import { formatBytes, formatDate } from '@pkg/domain';
 import type { DocumentSummary } from '@pkg/schema';
 import {
@@ -17,7 +18,7 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import {
   Dialog,
   DialogClose,
@@ -28,7 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group.js';
+import { Input } from '@/components/ui/input.js';
 import {
   Pagination,
   PaginationContent,
@@ -39,6 +40,7 @@ import {
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { cn } from '@/lib/utils.js';
 import { type DocumentPreviewOwner, downloadDocument } from '@/utils/document.js';
 import {
   DEFAULT_DOCUMENT_CARD_PAGE_SIZE,
@@ -55,6 +57,7 @@ const DOCUMENT_CARD_SKELETON_KEYS = [
   'document-card-skeleton-2',
   'document-card-skeleton-3',
 ];
+const DOCUMENT_CARD_COMPACT_WIDTH = 720;
 
 type DocumentCardListMetadata<TDocument extends DocumentSummary> = {
   getSearchText: (document: TDocument) => string;
@@ -92,6 +95,8 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
   const [pageIndex, setPageIndex] = useState(0);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<DocumentCardSortValue>(defaultSort);
+  const { ref: listRef, width } = useElementSize();
+  const isCompact = width > 0 && width < DOCUMENT_CARD_COMPACT_WIDTH;
 
   const visible = useMemo(
     () => getVisibleDocumentCards({ documents, metadata, pageIndex, pageSize, search, sort }),
@@ -108,95 +113,108 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
   }, [pageIndex, visible.pageIndex]);
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-          <InputGroup className="sm:max-w-80">
-            <InputGroupAddon>
-              <IconSearch />
-            </InputGroupAddon>
-            <InputGroupInput
-              aria-label="Search documents"
-              placeholder="Search documents..."
-              value={search}
-              onChange={(event) => {
-                setSearch(event.currentTarget.value);
+    <section className="min-w-0" ref={listRef}>
+      <Card className="min-w-0 gap-0 py-0">
+        <CardContent className="flex min-h-10 flex-col gap-3 bg-muted/20 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className={cn('flex min-w-0 flex-1 items-center gap-3', !isCompact && 'sm:justify-between')}>
+            <div className={cn('relative min-w-0 text-xs', isCompact ? 'w-full' : 'sm:w-80')}>
+              <IconSearch className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-0 size-4 text-muted-foreground" />
+              <Input
+                aria-label="Search documents"
+                className="h-6 translate-y-px border-0 bg-transparent! pr-0 pl-6 shadow-none focus-visible:border-0 focus-visible:ring-0"
+                placeholder={isCompact ? 'Search...' : 'Search documents...'}
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.currentTarget.value);
+                  setPageIndex(0);
+                }}
+              />
+            </div>
+            <Select
+              value={sort}
+              onValueChange={(value) => {
+                setSort(parseDocumentCardSortValue(value ?? ''));
                 setPageIndex(0);
               }}
-            />
-          </InputGroup>
-          <Select
-            value={sort}
-            onValueChange={(value) => {
-              setSort(parseDocumentCardSortValue(value ?? ''));
-              setPageIndex(0);
-            }}
-          >
-            <SelectTrigger aria-label="Sort documents" className="w-full sm:w-48">
-              <SelectValue>{selectedSortOption.label}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {DOCUMENT_CARD_SORT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-        {rightSection ? <div className="flex justify-start lg:justify-end">{rightSection}</div> : null}
-      </div>
-      {errorMessage ? <p className="text-destructive text-sm">{errorMessage}</p> : null}
-      <div className="flex items-center justify-between gap-3 text-muted-foreground text-sm">
-        <span>{formatDocumentCount(visible.total)}</span>
-        {search.trim() ? <span>{formatSearchResultCount(visible.total, documents.length)}</span> : null}
-      </div>
-      {isLoading ? <DocumentCardListSkeleton /> : null}
-      {!isLoading && visible.documents.length > 0 ? (
-        <div className="grid gap-3">
-          {visible.documents.map((document) => (
-            <DocumentCard
-              canDelete={canDelete && Boolean(onDelete)}
-              document={document}
-              key={document.id}
-              metadata={metadata.render(document)}
-              onPreviewDocument={setPreviewDocument}
-              owner={owner}
-              {...(onDelete ? { onDelete } : {})}
-            />
-          ))}
-        </div>
-      ) : null}
-      {!isLoading && visible.documents.length === 0 ? (
-        <Card size="sm">
-          <CardContent className="text-muted-foreground">{emptyMessage}</CardContent>
-        </Card>
-      ) : null}
-      {shouldShowPager ? (
-        <Pagination className="justify-end">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                disabled={visible.pageIndex === 0}
-                onClick={() => setPageIndex((current) => Math.max(current - 1, 0))}
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <span className="px-2 text-muted-foreground text-sm">
-                Page {visible.pageIndex + 1} of {visible.pageCount}
+            >
+              <SelectTrigger
+                aria-label="Sort documents"
+                className="h-6 w-fit border-0 bg-transparent! px-0 py-0 shadow-none focus-visible:border-0 focus-visible:ring-0 sm:justify-end"
+              >
+                <SelectValue>{selectedSortOption.label}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {DOCUMENT_CARD_SORT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+          {rightSection ? <div className="flex justify-start lg:justify-end">{rightSection}</div> : null}
+        </CardContent>
+        <CardSeparator />
+        <CardContent className="grid min-w-0 gap-3 py-4">
+          {errorMessage ? <p className="text-destructive text-sm">{errorMessage}</p> : null}
+          {isLoading ? <DocumentCardListSkeleton /> : null}
+          {!isLoading && visible.documents.length > 0 ? (
+            <div className="grid min-w-0 gap-3">
+              {visible.documents.map((document) => (
+                <DocumentCard
+                  canDelete={canDelete && Boolean(onDelete)}
+                  document={document}
+                  key={document.id}
+                  metadata={metadata.render(document)}
+                  compact={isCompact}
+                  onPreviewDocument={setPreviewDocument}
+                  owner={owner}
+                  {...(onDelete ? { onDelete } : {})}
+                />
+              ))}
+            </div>
+          ) : null}
+          {!isLoading && visible.documents.length === 0 ? (
+            <Card size="sm">
+              <CardContent className="text-muted-foreground">{emptyMessage}</CardContent>
+            </Card>
+          ) : null}
+        </CardContent>
+        {shouldShowPager || !isCompact ? (
+          <CardContent className="flex flex-col gap-3 py-3 text-muted-foreground text-sm sm:flex-row sm:items-center sm:justify-between">
+            {!isCompact ? (
+              <span>
+                {formatDocumentFooterCount({ documentCount: documents.length, search, visibleTotal: visible.total })}
               </span>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                disabled={visible.pageIndex >= visible.pageCount - 1}
-                onClick={() => setPageIndex((current) => Math.min(current + 1, visible.pageCount - 1))}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      ) : null}
+            ) : null}
+            {shouldShowPager ? (
+              <Pagination className="mx-0 w-auto justify-end">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      disabled={visible.pageIndex === 0}
+                      onClick={() => setPageIndex((current) => Math.max(current - 1, 0))}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <span className="px-2 text-muted-foreground text-sm">
+                      Page {visible.pageIndex + 1} of {visible.pageCount}
+                    </span>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationNext
+                      disabled={visible.pageIndex >= visible.pageCount - 1}
+                      onClick={() => setPageIndex((current) => Math.min(current + 1, visible.pageCount - 1))}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            ) : null}
+          </CardContent>
+        ) : null}
+      </Card>
       <DocumentPreviewSheet
         document={previewDocument}
         onOpenChange={(open) => {
@@ -213,6 +231,7 @@ export function DocumentCardList<TDocument extends DocumentSummary>({
 
 function DocumentCard<TDocument extends DocumentSummary>({
   canDelete,
+  compact,
   document,
   metadata,
   onDelete,
@@ -220,6 +239,7 @@ function DocumentCard<TDocument extends DocumentSummary>({
   owner,
 }: {
   canDelete: boolean;
+  compact: boolean;
   document: TDocument;
   metadata: React.ReactNode;
   owner: DocumentPreviewOwner;
@@ -229,8 +249,8 @@ function DocumentCard<TDocument extends DocumentSummary>({
   const fileKind = getDocumentFileKind(document);
 
   return (
-    <Card size="sm">
-      <CardHeader className="min-w-0">
+    <Card className="min-w-0" size="sm">
+      <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto]">
         <div className="flex min-w-0 items-start gap-3">
           <div
             className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${fileKind.iconChromeClassName}`}
@@ -260,13 +280,15 @@ function DocumentCard<TDocument extends DocumentSummary>({
           </div>
         </CardAction>
       </CardHeader>
-      <CardContent>
-        <dl className="flex flex-wrap items-center gap-x-6 gap-y-1">
-          <DocumentFact label="Size" value={formatBytes(document.byteSize)} />
-          <DocumentFact label="Uploader" value={getDocumentUploader(document)} />
-          <DocumentFact label="Uploaded" value={formatDate(document.createdAt, 'medium')} />
-        </dl>
-      </CardContent>
+      {!compact ? (
+        <CardContent>
+          <dl className="flex flex-wrap items-center gap-x-6 gap-y-1">
+            <DocumentFact label="Size" value={formatBytes(document.byteSize)} />
+            <DocumentFact label="Uploader" value={getDocumentUploader(document)} />
+            <DocumentFact label="Uploaded" value={formatDate(document.createdAt, 'medium')} />
+          </dl>
+        </CardContent>
+      ) : null}
     </Card>
   );
 }
@@ -397,6 +419,18 @@ function formatDocumentCount(total: number): string {
   return `${total} ${total === 1 ? 'document' : 'documents'}`;
 }
 
-function formatSearchResultCount(total: number, documentCount: number): string {
-  return `${total} of ${documentCount}`;
+function formatDocumentFooterCount({
+  documentCount,
+  search,
+  visibleTotal,
+}: {
+  documentCount: number;
+  search: string;
+  visibleTotal: number;
+}): string {
+  if (search.trim()) {
+    return `${visibleTotal} of ${formatDocumentCount(documentCount)}`;
+  }
+
+  return formatDocumentCount(visibleTotal);
 }

@@ -96,7 +96,6 @@ export const BayScheduleGantt: React.FC<{
   const [selectedBayId, setSelectedBayId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [durationDays, setDurationDays] = useState(1);
-  const [hoveredBayId, setHoveredBayId] = useState<string | null>(null);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const selectedBay = bays.find((bay) => bay.id === selectedBayId) ?? bays[0] ?? null;
   const jobs = jobsQuery.data?.items ?? [];
@@ -319,23 +318,17 @@ export const BayScheduleGantt: React.FC<{
           rowHeight={BAY_ROW_HEIGHT}
           zoom={200}
         >
-          <BayScheduleSidebar
-            bays={bays}
-            horizonWarnings={horizonWarnings}
-            hoveredBayId={hoveredBayId}
-            onHoverBay={setHoveredBayId}
-          />
+          <BayScheduleSidebar bays={bays} horizonWarnings={horizonWarnings} />
           <GanttTimeline>
             <GanttHeader />
             <OffDayBands offDays={offDays} />
-            <BayLaneRows bays={bays} hoveredBayId={hoveredBayId} onHoverBay={setHoveredBayId} />
+            <BayLaneRows bays={bays} />
             <BaySlotBars
               bays={bays}
               isScheduleMutationPending={isScheduleMutationPending}
               jobsById={jobsById}
               offDays={offDays}
               onAddIdleSlot={handleAddIdleSlot}
-              onHoverBay={setHoveredBayId}
               onRemoveSlot={handleRemoveSlot}
               onResizeSlot={handleResizeSlot}
               onSelectSlot={onSelectSlot}
@@ -352,9 +345,7 @@ export const BayScheduleGantt: React.FC<{
 const BayScheduleSidebar: React.FC<{
   bays: BaySchedule[];
   horizonWarnings: ReadonlyMap<string, MaintainedHorizonWarning>;
-  hoveredBayId: string | null;
-  onHoverBay: (bayId: string | null) => void;
-}> = ({ bays, horizonWarnings, hoveredBayId, onHoverBay }) => {
+}> = ({ bays, horizonWarnings }) => {
   const now = Date.now();
 
   return (
@@ -368,19 +359,14 @@ const BayScheduleSidebar: React.FC<{
 
           return (
             <div
-              className={cn(
-                'flex items-center gap-3 px-3 text-xs transition-colors',
-                hoveredBayId === bay.id && 'bg-muted/45',
-              )}
+              className="flex items-center gap-3 px-3 text-xs"
               key={bay.id}
-              onPointerEnter={() => onHoverBay(bay.id)}
-              onPointerLeave={() => onHoverBay(null)}
               style={{ height: 'var(--gantt-row-height)' }}
             >
               <div className="flex min-w-40 flex-1 flex-col gap-1">
                 <p className="truncate text-base text-foreground leading-tight">{bay.name}</p>
                 <p className="font-medium text-muted-foreground leading-none">{statusLabel}</p>
-                <p className="truncate text-xs leading-tight">{statusValue}</p>
+                <p className="truncate text-xs leading-tight font-mono">{statusValue}</p>
               </div>
               {warning ? <MaintainedHorizonWarningBadge warning={warning} /> : null}
             </div>
@@ -411,19 +397,12 @@ const MaintainedHorizonWarningBadge: React.FC<{
 
 const BayLaneRows: React.FC<{
   bays: BaySchedule[];
-  hoveredBayId: string | null;
-  onHoverBay: (bayId: string | null) => void;
-}> = ({ bays, hoveredBayId, onHoverBay }) => (
+}> = ({ bays }) => (
   <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-10 w-full">
     {bays.map((bay) => (
       <div
-        className={cn(
-          'pointer-events-auto border-border/50 border-b transition-colors',
-          hoveredBayId === bay.id && 'bg-muted/30',
-        )}
+        className="border-border/50 border-b"
         key={bay.id}
-        onPointerEnter={() => onHoverBay(bay.id)}
-        onPointerLeave={() => onHoverBay(null)}
         style={{
           height: 'var(--gantt-row-height)',
         }}
@@ -446,7 +425,6 @@ const BaySlotBars: React.FC<{
   jobsById: ReadonlyMap<string, JobSummary>;
   offDays: OffDay[];
   onAddIdleSlot: (targetSlotId: string, placement: JobSlotPlacement) => void;
-  onHoverBay: (bayId: string | null) => void;
   onRemoveSlot: (slotId: string) => Promise<void>;
   onResizeSlot: (slotId: string, durationDays: number) => void;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
@@ -457,7 +435,6 @@ const BaySlotBars: React.FC<{
   jobsById,
   offDays,
   onAddIdleSlot,
-  onHoverBay,
   onRemoveSlot,
   onResizeSlot,
   onSelectSlot,
@@ -476,7 +453,6 @@ const BaySlotBars: React.FC<{
             job={slot.kind === 'work' ? (jobsById.get(slot.jobId) ?? null) : null}
             key={slot.id}
             onAddIdle={onAddIdleSlot}
-            onHoverBay={onHoverBay}
             onRemove={onRemoveSlot}
             onResize={onResizeSlot}
             onSelectSlot={onSelectSlot}
@@ -503,7 +479,6 @@ const BaySlotBar: React.FC<{
   isScheduleMutationPending: boolean;
   job: JobSummary | null;
   onAddIdle: (targetSlotId: string, placement: JobSlotPlacement) => void;
-  onHoverBay: (bayId: string | null) => void;
   onRemove: (slotId: string) => Promise<void>;
   onResize: (slotId: string, durationDays: number) => void;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
@@ -516,7 +491,6 @@ const BaySlotBar: React.FC<{
   isScheduleMutationPending,
   job,
   onAddIdle,
-  onHoverBay,
   onRemove,
   onResize,
   onSelectSlot,
@@ -638,8 +612,6 @@ const BaySlotBar: React.FC<{
               top,
               width,
             }}
-            onPointerEnter={() => onHoverBay(bayId)}
-            onPointerLeave={() => onHoverBay(null)}
             title={`${label}: ${formatDate(slot.startAt, 'long')} - ${formatDate(slot.endAt, 'long')}\n${dayBreakdown.workingDays} working day(s), ${dayBreakdown.closureDays} closure day(s), ${dayBreakdown.overtimeDays} overtime day(s)`}
           />
         }

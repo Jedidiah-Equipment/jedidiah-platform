@@ -1,5 +1,6 @@
 import { computeQuoteTotal, resolveEffectiveBom } from '@pkg/domain';
 import { type QuoteDetail, type QuoteDocumentGenerationWarning, QuoteStatus, type QuoteUpdateInput } from '@pkg/schema';
+import { IconComponents, IconNotes, IconReceipt2, IconSettings, IconTruckDelivery } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
@@ -77,7 +78,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
             </TabsList>
             <TabsContent className="pt-4" value="details">
               <div className="grid gap-6">
-                <QuoteFormSection title="Quote setup">
+                <QuoteFormSection icon={IconSettings} title="Quote setup">
                   <div className="grid gap-3 md:grid-cols-2">
                     <form.AppField name="salesPersonId">
                       {(field) => (
@@ -106,7 +107,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
                   </div>
                 </QuoteFormSection>
 
-                <QuoteFormSection title="Dates and delivery">
+                <QuoteFormSection icon={IconTruckDelivery} title="Dates and delivery">
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <form.AppField name="preferredDeliveryDate">
                       {(field) => (
@@ -176,7 +177,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
                   </div>
                 </QuoteFormSection>
 
-                <QuoteFormSection title="Pricing">
+                <QuoteFormSection icon={IconReceipt2} title="Pricing">
                   <div className="grid gap-3 md:grid-cols-2">
                     <form.AppField name="discountAmount">
                       {(field) => (
@@ -203,12 +204,13 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
                   </div>
                 </QuoteFormSection>
 
-                <QuoteFormSection title="Internal notes">
+                <QuoteFormSection icon={IconNotes} title="Internal notes">
                   <form.AppField name="notes">{(field) => <field.TextareaField rows={4} />}</form.AppField>
                 </QuoteFormSection>
 
                 <QuoteFormSection
                   description="Standard assemblies are included. Optional assemblies add to the quote."
+                  icon={IconComponents}
                   title="Assemblies"
                 >
                   <form.Field name="selectedAssemblies">
@@ -230,15 +232,16 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
               </div>
             </TabsContent>
             <TabsContent className="pt-4" value="documents">
-              <form.AppField name="documentNotes">
-                {(field) => (
-                  <field.TextareaField
-                    label="Quote Notes"
-                    rows={4}
-                    placeholder="Notes entered here will be included in the quote document."
-                  />
-                )}
-              </form.AppField>
+              <QuoteFormSection icon={IconNotes} title="Quote Notes">
+                <form.AppField name="documentNotes">
+                  {(field) => (
+                    <field.TextareaField
+                      rows={4}
+                      placeholder="Notes entered here will be included in the quote document."
+                    />
+                  )}
+                </form.AppField>
+              </QuoteFormSection>
               <div className="mt-6 grid gap-6">
                 <QuoteDocumentsSection
                   generationWarnings={generationWarnings}

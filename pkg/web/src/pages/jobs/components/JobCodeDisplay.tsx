@@ -42,7 +42,7 @@ export const JobCodeDisplay: React.FC<JobCodeDisplayProps> = ({
 };
 
 const JobCodeLink: React.FC<{ jobCode: JobCode; jobId: UUID }> = ({ jobCode, jobId }) => (
-  <PrimaryLink search={{ job: jobId }} to="/jobs">
+  <PrimaryLink className="font-mono" search={{ job: jobId }} to="/jobs">
     {jobCode}
   </PrimaryLink>
 );

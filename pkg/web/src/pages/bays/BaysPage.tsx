@@ -10,7 +10,15 @@ import { DepartmentIcon } from '@/components/departments/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardSeparator,
+  CardTitle,
+} from '@/components/ui/card.js';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +36,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { baysPageDescription } from '@/utils/page-descriptions.js';
 
 type CreateDialogState = {
   department: Department;
@@ -48,9 +57,12 @@ export const BaysPage: React.FC = () => {
   const access = accessQuery.data;
   const showMutationError = useApiMutationErrorToast();
   const { invalidateAudit, invalidateJobs } = useQueryInvalidation();
+
   const canManageBays = hasPermission(access, 'job_bay:update');
+
   const baysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: {} }));
   const bays = baysQuery.data?.items ?? [];
+
   const groupedBays = useMemo(
     () =>
       jobDepartments.map((department) => ({
@@ -59,11 +71,14 @@ export const BaysPage: React.FC = () => {
       })),
     [bays],
   );
+
   const [createDialog, setCreateDialog] = useState<CreateDialogState | null>(null);
   const [editDialog, setEditDialog] = useState<EditDialogState | null>(null);
+
   const refreshBayData = async () => {
     await Promise.all([invalidateJobs(), invalidateAudit()]);
   };
+
   const createBayMutation = useMutation(
     trpc.jobs.createBay.mutationOptions({
       onSuccess: async () => {
@@ -74,16 +89,19 @@ export const BaysPage: React.FC = () => {
       onError: (error) => showMutationError(error, 'Unable to create Bay.'),
     }),
   );
+
   const renameBayMutation = useMutation(
     trpc.jobs.renameBay.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to rename Bay.'),
     }),
   );
+
   const setBayDisabledMutation = useMutation(
     trpc.jobs.setBayDisabled.mutationOptions({
       onError: (error) => showMutationError(error, 'Unable to update Bay status.'),
     }),
   );
+
   const isEditPending = renameBayMutation.isPending || setBayDisabledMutation.isPending;
 
   const saveEdit = async (state: EditDialogState) => {
@@ -111,7 +129,7 @@ export const BaysPage: React.FC = () => {
 
   if (baysQuery.isLoading) {
     return (
-      <PageLayout description="Admin" title="Bays">
+      <PageLayout description={baysPageDescription} title="Bays">
         <div className="grid gap-4 md:grid-cols-2">
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
@@ -122,7 +140,7 @@ export const BaysPage: React.FC = () => {
 
   if (baysQuery.error) {
     return (
-      <PageLayout description="Admin" title="Bays">
+      <PageLayout description={baysPageDescription} title="Bays">
         <ErrorMessage error={baysQuery.error} fallbackMessage="Unable to load Bays." />
       </PageLayout>
     );
@@ -139,8 +157,9 @@ export const BaysPage: React.FC = () => {
             </Button>
           ) : null
         }
-        description="Admin"
+        description={baysPageDescription}
         title="Bays"
+        size="lg"
       >
         <div className="grid gap-4 lg:grid-cols-2">
           {groupedBays.map(({ department, bays }) => (
@@ -150,39 +169,45 @@ export const BaysPage: React.FC = () => {
                   <DepartmentIcon className="size-4 text-muted-foreground" department={department} />
                   {departmentLabels[department]}
                 </CardTitle>
-                <CardDescription>
-                  {bays.length} {bays.length === 1 ? 'Bay' : 'Bays'}
-                </CardDescription>
               </CardHeader>
+              <CardSeparator />
               <CardContent>
                 {bays.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No Bays configured.</p>
+                  <Card size="sm">
+                    <CardContent className="text-muted-foreground">No Bays configured.</CardContent>
+                  </Card>
                 ) : (
-                  <div className="divide-y rounded-md border border-border/70">
+                  <div className="grid gap-3">
                     {bays.map((bay) => (
-                      <div key={bay.id} className="flex min-w-0 items-center justify-between gap-3 p-3">
-                        <div className="min-w-0">
-                          <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            <span className="truncate font-medium">{bay.name}</span>
-                            {bay.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+                      <Card key={bay.id} className="min-w-0" size="sm">
+                        <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto] gap-0">
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                              <CardTitle className="truncate">{bay.name}</CardTitle>
+                              {bay.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+                            </div>
+                            <CardDescription className="text-xs">
+                              Origin {formatDate(bay.scheduleOrigin, 'medium')}
+                              {bay.disabledAt ? ` / Disabled ${formatDate(bay.disabledAt, 'medium')}` : ''}
+                            </CardDescription>
                           </div>
-                          <p className="text-muted-foreground text-xs">
-                            Origin {formatDate(bay.scheduleOrigin, 'medium')}
-                            {bay.disabledAt ? ` / Disabled ${formatDate(bay.disabledAt, 'medium')}` : ''}
-                          </p>
-                        </div>
-                        {canManageBays ? (
-                          <Button
-                            aria-label={`Edit ${bay.name}`}
-                            onClick={() => setEditDialog({ bay, disabled: Boolean(bay.disabledAt), name: bay.name })}
-                            size="icon"
-                            type="button"
-                            variant="ghost"
-                          >
-                            <IconPencil />
-                          </Button>
-                        ) : null}
-                      </div>
+                          {canManageBays ? (
+                            <CardAction span="title">
+                              <Button
+                                aria-label={`Edit ${bay.name}`}
+                                onClick={() =>
+                                  setEditDialog({ bay, disabled: Boolean(bay.disabledAt), name: bay.name })
+                                }
+                                size="icon-sm"
+                                type="button"
+                                variant="ghost"
+                              >
+                                <IconPencil />
+                              </Button>
+                            </CardAction>
+                          ) : null}
+                        </CardHeader>
+                      </Card>
                     ))}
                   </div>
                 )}

@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { baySchedulePageDescription } from '@/utils/page-descriptions.js';
 import { BayScheduleGantt } from './components/BayScheduleGantt.js';
 import { JobDetailAside } from './components/JobDetailAside.js';
 
@@ -25,7 +26,7 @@ export const JobsPage: React.FC<JobsPageProps> = ({ selectedBayId, selectedJobId
           />
         ) : undefined
       }
-      description="Production"
+      description={baySchedulePageDescription}
       size="full"
       title="Jobs"
     >

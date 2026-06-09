@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   toProductAssemblyInputs,
+  toProductBayInputs,
   toProductCreateInput,
   toProductFormValues,
   toProductMinimalCreateInput,
@@ -12,6 +13,7 @@ import {
 const PRODUCT_ID = '550e8400-e29b-41d4-a716-446655440000';
 const STANDARD_ID = '550e8400-e29b-41d4-a716-446655440001';
 const OPTIONAL_ID = '550e8400-e29b-41d4-a716-446655440002';
+const BAY_ID = '550e8400-e29b-41d4-a716-446655440003';
 
 function buildProduct(overrides: Record<string, unknown> = {}): Product {
   return {
@@ -35,6 +37,22 @@ function buildProduct(overrides: Record<string, unknown> = {}): Product {
         overrideStandardAssemblyIds: [STANDARD_ID],
       },
     ],
+    productBays: [
+      {
+        bay: {
+          createdAt: '2026-01-01T00:00:00.000Z',
+          department: 'fabrication',
+          disabledAt: null,
+          id: BAY_ID,
+          name: 'Fab Bay 1',
+          scheduleOrigin: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        bayId: BAY_ID,
+        defaultWorkingDays: 5,
+        productId: PRODUCT_ID,
+      },
+    ],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -51,6 +69,7 @@ describe('toProductFormValues', () => {
     expect(values.currencyCode).toBe('ZAR');
     expect(values.requiresVinNumber).toBe(false);
     expect(values.assemblies).toEqual([]);
+    expect(values.productBays).toEqual([]);
     expect(Number.isNaN(values.basePrice)).toBe(true);
     expect(Number.isNaN(values.buildTimeDays)).toBe(true);
   });
@@ -63,6 +82,7 @@ describe('toProductFormValues', () => {
     expect(values.buildTimeDays).toBe(14);
     expect(values.requiresVinNumber).toBe(false);
     expect(values.assemblies).toHaveLength(2);
+    expect(values.productBays).toEqual([{ bayId: BAY_ID, defaultWorkingDays: 5 }]);
   });
 
   it('maps an existing product VIN requirement into form state', () => {
@@ -94,6 +114,16 @@ describe('toProductAssemblyInputs', () => {
   });
 });
 
+describe('toProductBayInputs', () => {
+  it('maps product Bays into editor inputs', () => {
+    expect(toProductBayInputs(buildProduct())).toEqual([{ bayId: BAY_ID, defaultWorkingDays: 5 }]);
+  });
+
+  it('returns an empty array when there is no product', () => {
+    expect(toProductBayInputs()).toEqual([]);
+  });
+});
+
 describe('toProductCreateInput', () => {
   it('maps full form values through the create schema', () => {
     expect(toProductCreateInput(toProductFormValues(buildProduct({ description: null })))).toEqual({
@@ -114,6 +144,7 @@ describe('toProductCreateInput', () => {
       description: null,
       modelCode: 'MOD-1',
       name: 'Widget',
+      productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
       requiresVinNumber: false,
       thumbnailDataUrl: null,
     });
@@ -137,6 +168,7 @@ describe('toProductMinimalCreateInput', () => {
       description: null,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      productBays: [],
       requiresVinNumber: false,
       thumbnailDataUrl: null,
     });
@@ -163,6 +195,7 @@ describe('toProductUpdateInput', () => {
       currencyCode: 'ZAR',
       modelCode: 'MOD-1',
       name: 'Widget',
+      productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
     });
   });
 });

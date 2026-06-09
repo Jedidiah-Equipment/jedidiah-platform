@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { customersPageDescription } from '@/utils/page-descriptions.js';
 import { CustomerCreateDialog } from './CustomerCreateDialog.js';
 import { CustomerTable } from './components/CustomerTable.js';
 
@@ -21,7 +22,7 @@ export const CustomersPage: React.FC = () => {
             New customer
           </Button>
         }
-        description="Directory"
+        description={customersPageDescription}
         size="lg"
         title="Customers"
       >

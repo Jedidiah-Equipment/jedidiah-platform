@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { useCan } from '@/hooks/use-access.js';
+import { suppliersPageDescription } from '@/utils/page-descriptions.js';
 import { PartBulkImportDialog } from '../parts/PartBulkImportDialog.js';
 import { SupplierTable } from './components/SupplierTable.js';
 import { SupplierCreateDialog } from './SupplierCreateDialog.js';
@@ -32,7 +33,7 @@ export const SuppliersPage: React.FC = () => {
             </div>
           ) : null
         }
-        description="Procurement"
+        description={suppliersPageDescription}
         size="lg"
         title="Suppliers"
       >

@@ -31,6 +31,7 @@ function productInput(assemblies: AssemblyInput[], overrides: Partial<ProductCre
     description: null,
     modelCode: 'MODEL-1',
     name: 'Test Product',
+    productBays: [],
     requiresVinNumber: false,
     thumbnailDataUrl: null,
     ...overrides,
@@ -108,6 +109,7 @@ describe('assembly display order', () => {
         id: created.id,
         modelCode: 'MODEL-1',
         name: 'Test Product',
+        productBays: [],
         requiresVinNumber: false,
         thumbnailDataUrl: null,
         assemblies: [

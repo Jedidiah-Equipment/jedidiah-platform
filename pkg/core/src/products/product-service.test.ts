@@ -31,6 +31,7 @@ describe('mapProduct', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      productBays: [],
       requiresVinNumber: true,
       thumbnailDataUrl: null,
       updatedAt: updatedAt.toISOString(),

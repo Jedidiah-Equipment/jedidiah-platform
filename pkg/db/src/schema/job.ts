@@ -52,6 +52,25 @@ export const jobBays = pgTable(
   ],
 );
 
+export const productBays = pgTable(
+  'product_bay',
+  {
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    bayId: uuid('bay_id')
+      .notNull()
+      .references(() => jobBays.id, { onDelete: 'restrict' }),
+    defaultWorkingDays: integer('default_working_days').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.productId, table.bayId], name: 'product_bay_pkey' }),
+    check('product_bay_default_working_days_positive', sql`${table.defaultWorkingDays} > 0`),
+  ],
+);
+
 export const workingCalendarOffDays = pgTable(
   'working_calendar_off_day',
   {
@@ -181,7 +200,19 @@ export const jobSlots = pgTable(
 
 export const jobBaysRelations = relations(jobBays, ({ many }) => ({
   calendarExceptions: many(jobBayCalendarExceptions),
+  productBays: many(productBays),
   slots: many(jobSlots),
+}));
+
+export const productBaysRelations = relations(productBays, ({ one }) => ({
+  bay: one(jobBays, {
+    fields: [productBays.bayId],
+    references: [jobBays.id],
+  }),
+  product: one(products, {
+    fields: [productBays.productId],
+    references: [products.id],
+  }),
 }));
 
 export const jobBayCalendarExceptionsRelations = relations(jobBayCalendarExceptions, ({ one }) => ({

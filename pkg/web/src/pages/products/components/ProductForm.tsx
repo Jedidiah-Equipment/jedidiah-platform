@@ -3,6 +3,7 @@ import type React from 'react';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
+import { ProductBaysEditor } from './ProductBaysEditor.js';
 import { ProductFormValues, toProductFormValues, toProductUpdateInput } from './types.js';
 
 type ProductFormProps = {
@@ -70,6 +71,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
             <form.AppField name="description">
               {(field) => <field.TextareaField label="Description" rows={4} />}
             </form.AppField>
+          </EditFormFullWidth>
+          <EditFormFullWidth>
+            <form.Field name="productBays" mode="array">
+              {(productBaysField) => (
+                <ProductBaysEditor
+                  onStructuralChange={saveCommittedField}
+                  productBays={product.productBays}
+                  productBaysField={productBaysField}
+                />
+              )}
+            </form.Field>
           </EditFormFullWidth>
           <EditFormFullWidth>
             <form.Field name="assemblies" mode="array">

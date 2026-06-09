@@ -1,0 +1,17 @@
+export const auditPageDescription = 'Field-level log of boundary-visible entity changes';
+
+export const baysPageDescription = 'Department workspaces used to schedule Jobs';
+
+export const baySchedulePageDescription = 'Bay-by-bay projected queues for booking, resizing, and removing Job Slots';
+
+export const customersPageDescription = 'Companies receiving Quotes and buying Jobs';
+
+export const jobCalendarPageDescription = 'Org Off-Days and per-Bay calendar exceptions for slot projection';
+
+export const productsPageDescription = 'Product models with assemblies, pricing, and build documents';
+
+export const quotesPageDescription = 'Sales offers to customers for product builds and optional assemblies';
+
+export const suppliersPageDescription = 'Procurement directory records for supplier-sourced Parts';
+
+export const usersPageDescription = 'Sign-in accounts with app roles and department assignments';

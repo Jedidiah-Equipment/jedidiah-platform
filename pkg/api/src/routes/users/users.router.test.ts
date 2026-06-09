@@ -92,8 +92,8 @@ describe('users.list', () => {
     await expect(context.createCaller().users.list()).rejects.toThrow();
   });
 
-  test('rejects product editors', async ({ context }) => {
-    const caller = context.createCaller(mockSession('product-editor'));
+  test('rejects procurement managers', async ({ context }) => {
+    const caller = context.createCaller(mockSession('procurement-manager'));
 
     await expect(caller.users.list()).rejects.toMatchObject({
       code: 'FORBIDDEN',
@@ -107,7 +107,7 @@ describe('users.list', () => {
       name: 'Department Target',
       role: 'sales',
     });
-    const caller = context.createCaller(mockSession('product-editor'));
+    const caller = context.createCaller(mockSession('procurement-manager'));
 
     await expect(
       caller.users.setDepartments({

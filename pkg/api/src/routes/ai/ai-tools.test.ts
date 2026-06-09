@@ -110,15 +110,24 @@ describe('aiTools', () => {
     expect(aiTools.listUsers.requiredPermission).toBe('user:list');
   });
 
-  test('returns product tools for product readers', () => {
+  test('returns procurement tools for procurement managers', () => {
     const tools = getAuthorizedTools(
       createUserAccessSummary({
-        role: 'product-editor',
+        role: 'procurement-manager',
         userId: 'test-user-id',
       }),
     );
 
-    expect(getAuthorizedToolNames(tools)).toEqual(['listProducts', 'getProduct']);
+    expect(getAuthorizedToolNames(tools)).toEqual([
+      'listProducts',
+      'getProduct',
+      'listParts',
+      'getPart',
+      'listCustomers',
+      'getCustomer',
+      'listJobs',
+      'getJob',
+    ]);
   });
 
   test('returns part tools for part readers', () => {

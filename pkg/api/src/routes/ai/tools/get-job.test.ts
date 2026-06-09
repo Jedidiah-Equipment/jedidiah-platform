@@ -12,7 +12,7 @@ import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
 const test = createTester(async ({ db }) => {
-  await createActorUser(db, 'job-supervisor');
+  await createActorUser(db, 'admin');
   const product = await createProduct(db);
   const quote = await createAcceptedQuote(db, product.id);
 
@@ -21,8 +21,8 @@ const test = createTester(async ({ db }) => {
 
 describe('getJobTool', () => {
   test('returns the same job detail shape as jobs.get with stage visibility enforced', async ({ context }) => {
-    const supervisorAccess = createUserAccessSummary({
-      role: 'job-supervisor',
+    const adminAccess = createUserAccessSummary({
+      role: 'admin',
       userId: 'test-user-id',
     });
     const paintAccess = createUserAccessSummary({
@@ -30,9 +30,9 @@ describe('getJobTool', () => {
       role: 'job-department-manager',
       userId: 'test-user-id',
     });
-    const supervisorCaller = createCaller(context.db, supervisorAccess);
+    const adminCaller = createCaller(context.db, adminAccess);
     const paintCaller = createCaller(context.db, paintAccess);
-    const created = await supervisorCaller.jobs.create({ quoteId: context.quote.id });
+    const created = await adminCaller.jobs.create({ quoteId: context.quote.id });
 
     const [toolResult, trpcResult] = await Promise.all([
       getJobTool.handler({ id: created.id }, createAiContext(context.db, paintAccess)),
@@ -50,7 +50,7 @@ describe('getJobTool', () => {
 
   test('surfaces the core not-found message for missing jobs', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'job-supervisor',
+      role: 'admin',
       userId: 'test-user-id',
     });
 
@@ -66,7 +66,7 @@ describe('getJobTool', () => {
 
   test('rejects invalid job get args', async ({ context }) => {
     const access = createUserAccessSummary({
-      role: 'job-supervisor',
+      role: 'admin',
       userId: 'test-user-id',
     });
 

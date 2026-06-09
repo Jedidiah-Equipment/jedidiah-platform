@@ -61,7 +61,7 @@ describe('suppliers.create', () => {
 
   test('rejects non-admin supplier creates', async ({ context }) => {
     await expect(
-      context.createCaller(mockSession('product-editor')).suppliers.create({
+      context.createCaller(mockSession('sales')).suppliers.create({
         companyName: 'Editor Supplier',
         email: 'editor@example.com',
       }),
@@ -141,7 +141,7 @@ describe('suppliers.list', () => {
   });
 
   test('rejects non-admin supplier lists', async ({ context }) => {
-    await expect(context.createCaller(mockSession('product-editor')).suppliers.list({})).rejects.toMatchObject({
+    await expect(context.createCaller(mockSession('sales')).suppliers.list({})).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });
@@ -302,7 +302,7 @@ describe('suppliers.update', () => {
 
   test('rejects non-admin supplier updates', async ({ context }) => {
     const adminCaller = context.createCaller();
-    const editorCaller = context.createCaller(mockSession('product-editor'));
+    const editorCaller = context.createCaller(mockSession('sales'));
     const created = await createSupplier(adminCaller, 'Editor Supplier');
 
     await expect(

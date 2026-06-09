@@ -17,7 +17,7 @@ describe('audit.list', () => {
   });
 
   test('rejects non-admin audit reads', async ({ context }) => {
-    const caller = context.createCaller(mockSession('product-editor'));
+    const caller = context.createCaller(mockSession('procurement-manager'));
 
     await expect(caller.audit.list({})).rejects.toMatchObject({
       code: 'FORBIDDEN',

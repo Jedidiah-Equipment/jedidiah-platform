@@ -4,26 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { getUserAccessSummary } from './user-service.js';
 
 describe('getUserAccessSummary', () => {
-  it('skips department reads for non-job roles', async () => {
+  it.each(['sales', 'procurement-manager', 'admin'] as const)('skips department reads for %s', async (role) => {
     const { db, select } = createDepartmentDb([]);
-
-    await expect(
-      getUserAccessSummary({
-        db,
-        role: 'sales',
-        userId: 'user_123',
-      }),
-    ).resolves.toEqual({
-      departments: [],
-      permissions: ['quote:create', 'quote:read', 'quote:update'],
-      role: 'sales',
-      userId: 'user_123',
-    });
-    expect(select).not.toHaveBeenCalled();
-  });
-
-  it.each(['job-department-manager', 'job-supervisor'] as const)('loads departments for %s', async (role) => {
-    const { db, select } = createDepartmentDb([{ department: 'paint' }, { department: 'supply' }]);
 
     await expect(
       getUserAccessSummary({
@@ -32,8 +14,25 @@ describe('getUserAccessSummary', () => {
         userId: 'user_123',
       }),
     ).resolves.toMatchObject({
-      departments: ['paint', 'supply'],
+      departments: [],
       role,
+      userId: 'user_123',
+    });
+    expect(select).not.toHaveBeenCalled();
+  });
+
+  it('loads departments for job department managers', async () => {
+    const { db, select } = createDepartmentDb([{ department: 'paint' }, { department: 'supply' }]);
+
+    await expect(
+      getUserAccessSummary({
+        db,
+        role: 'job-department-manager',
+        userId: 'user_123',
+      }),
+    ).resolves.toMatchObject({
+      departments: ['paint', 'supply'],
+      role: 'job-department-manager',
       userId: 'user_123',
     });
     expect(select).toHaveBeenCalledTimes(1);

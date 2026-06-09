@@ -63,7 +63,7 @@ describe('parts.create', () => {
     const supplier = await createSupplier(context.createCaller());
 
     await expect(
-      context.createCaller(mockSession('product-editor')).parts.create({
+      context.createCaller(mockSession('sales')).parts.create({
         category: 'Bearings',
         code: 'P-100',
         description: 'Main bearing',
@@ -172,7 +172,7 @@ describe('parts.bulkImport', () => {
     });
 
     await expect(
-      context.createCaller(mockSession('product-editor')).parts.bulkImport({
+      context.createCaller(mockSession('sales')).parts.bulkImport({
         rows: [bulkImportRow()],
       }),
     ).rejects.toMatchObject({
@@ -330,7 +330,7 @@ describe('parts.bulkImport', () => {
 describe('parts.list and parts.categories', () => {
   test('rejects unauthenticated and unauthorized reads', async ({ context }) => {
     await expect(context.createAnonCaller().parts.list({})).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
-    await expect(context.createCaller(mockSession('product-editor')).parts.categories()).rejects.toMatchObject({
+    await expect(context.createCaller(mockSession('sales')).parts.categories()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });

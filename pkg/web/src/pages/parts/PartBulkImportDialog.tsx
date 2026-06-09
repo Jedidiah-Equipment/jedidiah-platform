@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
-import { Button } from '@/components/ui/button.js';
+import { Button, type ButtonSize } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import {
   Dialog,
@@ -37,9 +37,10 @@ type BulkImportResult = {
 
 type PartBulkImportDialogProps = {
   supplier?: Pick<Supplier, 'companyName' | 'id'>;
+  buttonSize?: ButtonSize;
 };
 
-export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supplier }) => {
+export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supplier, buttonSize = 'default' }) => {
   const trpc = useTRPC();
   const { invalidateParts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
@@ -119,7 +120,7 @@ export const PartBulkImportDialog: React.FC<PartBulkImportDialogProps> = ({ supp
 
   return (
     <>
-      <Button onClick={handleOpenButtonClick} variant="outline">
+      <Button onClick={handleOpenButtonClick} size={buttonSize} variant="outline">
         <IconUpload data-icon="inline-start" />
         Bulk parts import
       </Button>

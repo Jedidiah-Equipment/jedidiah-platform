@@ -1,44 +1,46 @@
 # Jedidah Ops
 
-Domain language for Jedidah Ops. The core unit is a **Job**: one physical product instance moving through a five-stage manufacturing pipeline.
+Domain language for Jedidah Ops. The core unit is a **Job**: one physical product instance scheduled across the Bays of a five-Department manufacturing pipeline.
 
 ## Language
 
 **Job**:
-The realized build of an accepted Quote — the confirmed order behind it. A Job is always sourced from exactly one Quote; there is no way to create a Job without one. Creating a Job locks the Quote's commercial facts, assigns the physical Product Serial Number for the unit being built, and snapshots its bill of materials (see Create Job from Quote and CFO).
+The realized build of an accepted Quote — the confirmed order behind it. A Job is always sourced from exactly one Quote; there is no way to create a Job without one. Creating a Job locks the Quote's commercial facts, assigns the physical Product Serial Number for the unit being built, snapshots its bill of materials, and optionally seeds Work Slots onto Bays from the Product's Default Bays (see Create Job from Quote and CFO). A Job has no Stage rows; its presence in a Department is emergent — it appears in a Department only while it has a Slot on one of that Department's Bays.
 _Avoid_: Order, Work Order, Build, Ticket.
 
 **Product Serial Number**:
 The physical unit serial assigned to one Job at creation, formatted as `{productModelCode}{twoDigitYear}{sequence}` (for example `SG1836260009`). The prefix is the Product model code as stored when the Job is created; the year is the Africa/Johannesburg business calendar year; and the sequence is a per-Product running count that continues across years. This is not the Job code: the Job code (`JOB-xxxxx`) remains the app-facing operational identifier, while the Product Serial Number identifies the real product unit.
 
 **Pipeline**:
-The fixed manufacturing sequence: Procurement -> Supply -> Fabrication -> Paint -> Assembly. The sequence is for visual ordering and shared language only; it is not a server-side work gate.
+The fixed Department ordering: Procurement -> Supply -> Fabrication -> Paint -> Assembly. It is for visual ordering and shared language only — it is not a server-side work gate and is not materialized as any per-Job row. It survives purely as the order in which Departments (and their Bays/Slots) are grouped on Job and schedule surfaces.
+_Avoid_: Stage sequence, Step, Phase.
 
-**Stage**:
-One of the five fixed Pipeline steps. Represented by a `job_stage` row. All five rows are materialized when a Job is created.
-_Avoid_: Step, Phase, Task.
-
-**Department-facing Stage Label**:
-Stages are labelled for users by their owning Departments: Procurement, Supply, Fabrication, Paint, Assembly. Internally these remain Stages.
-
-**Stage Work State**:
-Current Stage state is intentionally minimal (`pending | in-progress | complete`) and defaults to `pending` until the next workflow model replaces it. Do not infer progress from lower-level production resources unless a new workflow contract introduces them.
+**Department**:
+One of the five fixed manufacturing functions (Procurement, Supply, Fabrication, Paint, Assembly), also an authorization axis. A Department owns zero or more Bays and is the unit a `job-department-manager` is scoped to. A Job has no per-Department record of its own; it relates to a Department only through the Slots it has on that Department's Bays.
 
 **Bay**:
-A durable physical workspace that belongs to exactly one Department (for example a Fabrication bay). A Department has zero or more Bays. One person is attached to a Bay. Bays are the resources that Jobs are scheduled onto: each Bay holds an ordered queue of Slots from a fixed `scheduleOrigin`. Not every Department's Bays are scheduled (see Slot).
+A durable physical workspace that belongs to exactly one Department (for example a Fabrication bay). A Department has zero or more Bays. One person is attached to a Bay. Bays are the resources that Jobs are scheduled onto: each Bay holds an ordered queue of Slots from a fixed `scheduleOrigin`. Bays are admin-managed (created, renamed, disabled — see Disabled Bay); a Bay's Department is fixed at creation and never changes. A Slot's Department is simply its Bay's Department — there is no separate match check.
 _Avoid_: Station, Workstation, Cell, Machine.
 
+**Disabled Bay**:
+A Bay an admin has soft-retired by setting `disabledAt`. A Disabled Bay is hidden from new selection (the Create Job form's Bay picker and the Product Default Bays picker) and accepts no new bookings, but its existing Slots remain and still project on the schedule chart, and it can be re-enabled. Bays are never hard-deleted — disabling is the only retirement path, which preserves the retired Bay's existing Slots and schedule history and stays reversible (removing individual Slots is a separate, intended schedule mutation). A Product Default Bay pointing at a now-Disabled Bay is skipped when seeding a new Job and is shown as disabled (and removable) in the Product editor.
+_Avoid_: Deleted bay, archived bay, closed bay.
+
+**Product Default Bay**:
+A (Bay, default working-days) entry configured on a Product that pre-fills Job Bay Seeding when a Job is created from a Quote for that Product. A Product may have zero or more, including several in the same Department; each names one enabled Bay and a positive default working-days count. Configuring them is optional — a Product with none opens the Create Job form with no pre-filled rows. They are a scheduling convenience only and are deliberately decoupled from the Product's `buildTimeDays` (the customer-facing quote lead time): the sum of default working-days is not required to equal `buildTimeDays`, and neither is derived from the other.
+_Avoid_: Default station, build plan, routing.
+
 **Slot**:
-A single whole-day planning block in one Bay's queue. A Slot is either a **Work Slot**, which books one Job Stage onto the Bay, or an **Idle Slot**, which reserves Bay time without a Job Stage. A Bay's Slots are sequential and never overlap. The same Job may occupy more than one Work Slot on the same Bay (e.g. work stops and later restarts). A Slot's calendar dates are not its source of truth — they are derived by projecting the Bay's queue forward (see Slot Projection). Slots store queue position and `durationDays`, not start/end dates or minute-level planning. A Slot's `durationDays` counts **working days**, not calendar days: Slot Projection skips the Bay's Off-Days when laying the Slot on the calendar (see Working Calendar), so a Slot can span an Off-Day on the chart.
+A single whole-day planning block in one Bay's queue. A Slot is either a **Work Slot**, which books one Job onto the Bay, or an **Idle Slot**, which reserves Bay time without a Job. A Bay's Slots are sequential and never overlap. The same Job may occupy more than one Work Slot on the same Bay (e.g. work stops and later restarts). A Slot's calendar dates are not its source of truth — they are derived by projecting the Bay's queue forward (see Slot Projection). Slots store queue position and `durationDays`, not start/end dates or minute-level planning. A Slot's `durationDays` counts **working days**, not calendar days: Slot Projection skips the Bay's Off-Days when laying the Slot on the calendar (see Working Calendar), so a Slot can span an Off-Day on the chart.
 _Avoid_: Booking, Reservation, Appointment, Block.
 
 **Idle Slot**:
-A Slot that intentionally represents downtime in a Bay queue — a working day deliberately left empty, distinct from an Off-Day, which is a non-working date stepped over. It has no Job Stage, advances Slot Projection exactly like a Work Slot (its `durationDays` counts working days and skips Off-Days), and is rendered differently from booked Job work on the schedule chart. Idle Slots may have a nullable label; a missing label displays as the domain default `Idle`. Idle Slots can be created automatically when booking work after the queue has gone idle (the gap filled is the count of **working days** between the queue's end and today, never raw calendar days), or manually from a slot context menu (`Add idle slot before` / `Add idle slot after`). Adjacent Idle Slots are valid and are not automatically merged; planners can remove and resize them manually.
+A Slot that intentionally represents downtime in a Bay queue — a working day deliberately left empty, distinct from an Off-Day, which is a non-working date stepped over. It has no Job, advances Slot Projection exactly like a Work Slot (its `durationDays` counts working days and skips Off-Days), and is rendered differently from booked Job work on the schedule chart. Idle Slots may have a nullable label; a missing label displays as the domain default `Idle`. Idle Slots can be created automatically when booking work after the queue has gone idle (the gap filled is the count of **working days** between the queue's end and today, never raw calendar days), or manually from a slot context menu (`Add idle slot before` / `Add idle slot after`). Adjacent Idle Slots are valid and are not automatically merged; planners can remove and resize them manually.
 _Avoid_: Hidden buffer, gap, pause.
 
 **Work Slot**:
-A Slot that books one Job Stage onto a Bay. Work Slots display by Job code on the schedule chart and require the Bay Department to match the Job Stage Department.
-_Avoid_: Booking, Reservation, Appointment.
+A Slot that books one Job onto a Bay, referencing the Job directly (there is no intervening Stage). Work Slots display by Job code on the schedule chart. The Slot's Department is whatever its Bay's Department is; a Job may be booked onto any Bay in any Department with no match validation. The same Job may hold several Work Slots, including several in the same Department or on the same Bay.
+_Avoid_: Booking, Reservation, Appointment, Stage booking.
 
 **Slot Projection**:
 The read-time computation that turns a Bay's queue of Slots into concrete calendar dates. It walks the Bay's Slots in queue order from the Bay's fixed anchor (`scheduleOrigin`), consuming each Slot's `durationDays` as **working days** and skipping the Bay's Off-Days per the Working Calendar: the first Slot starts on the anchor's first working day, each later Slot starts on the next working day after the previous one ends, and a Slot's working days may straddle Off-Days. Dates are never stored on a Slot — only sequence, kind, duration, and Slot-specific references/labels are. Because dates are derived, resizing or removing a Slot, or changing which dates are Off-Days, naturally reflows everything after it. Idle time inside the queue is represented by Idle Slots, never by moving `scheduleOrigin` or silently flooring the whole projection to today; Off-Days (weekends, holidays, shutdowns) are not Idle Slots — they are non-working dates the projection steps over.
@@ -122,10 +124,13 @@ The domain-owned value-added tax percentage used by customer-facing Quote Docume
 A generated customer-facing PDF packet of a Quote, owned by that Quote. A Quote may have multiple Quote Documents as the customer asks for changes; each is named as a revision, carries its revision in metadata, and the newest created Quote Document is treated as the latest one. It can be generated from a `draft`, `sent`, or `accepted` Quote, including a Locked Quote, but not from a `rejected` or `cancelled` Quote. It is a point-in-time record of the Quote offer, using the current live Customer details and the Quote Product's latest PDF brochure at generation time, where latest means the newest created Product Document classified as a brochure and stored as a PDF.
 
 **Create Job from Quote**:
-The single way a Job comes into existence. A `job-supervisor` or `admin` triggers it from an `accepted` Quote that has no Job yet ("Generate CFO & Start Job"). The action: assigns the Product Serial Number, snapshots the Quote's Effective Bill of Materials into the Job's CFO, snapshots the Product's Documents onto the Job (see Job Document Snapshot), materializes the five Stages, and turns the Quote into a Locked Quote. A Quote sources at most one Job. Creation is **blocked** if any selected Optional Assembly is stale (its catalog Assembly was deleted), because the CFO cannot resolve that assembly's Parts — the error names the offending assembly. There is no other Job-creation path (Direct Job Creation is retired) and no product-picking step; everything is inherited from the Quote.
+The single way a Job comes into existence. A user holding `job:create` (currently `admin`) triggers it from an `accepted` Quote that has no Job yet ("Generate CFO & Start Job"). The action: assigns the Product Serial Number, snapshots the Quote's Effective Bill of Materials into the Job's CFO, snapshots the Product's Documents onto the Job (see Job Document Snapshot), optionally seeds Work Slots onto Bays (see Job Bay Seeding), and turns the Quote into a Locked Quote. No Stage rows are created — Stages no longer exist. A Quote sources at most one Job. Creation is **blocked** if any selected Optional Assembly is stale (its catalog Assembly was deleted), because the CFO cannot resolve that assembly's Parts — the error names the offending assembly. There is no other Job-creation path (Direct Job Creation is retired) and no product-picking step; everything else is inherited from the Quote.
+
+**Job Bay Seeding**:
+The optional Bay-assignment step of the Create Job form. The form lists every enabled Bay grouped by Department in Pipeline order, pre-filled with the Quote's Product's Default Bays and their default working-days. The planner may add or remove Bays (including several in one Department) and edit each row's working-days before submitting. Each retained row appends one Work Slot to that Bay's queue in the same transaction as Job creation — `durationDays` counting working days, with the same auto-inserted Idle Slot gap that booking on the Gantt uses when a Bay's queue ended before today. Seeding is optional: a Job may be created with zero Bays and scheduled entirely later on the Gantt. A manually-added Bay with no Product default has a blank working-days field that must be a positive integer before submit.
 
 **Audit Event**:
-Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_stage`, `product`, `quote`, `supplier`, and `user`. Product Assemblies, their Parts lists, and override links are part of the `product` aggregate and audited under the `product` entity — there is no separate `product_assembly` audit entity type.
+Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_bay`, `product`, `quote`, `supplier`, and `user`. Admin Bay create/edit/disable is audited under `job_bay`; Slots are not audited. Product Assemblies, their Parts lists, and override links are part of the `product` aggregate and audited under the `product` entity — there is no separate `product_assembly` audit entity type.
 
 **Demo User**:
 A deterministic seeded auth user for local/staging sign-in and demo-account display. The canonical roster and shared password live in `pkg/domain/src/demo.ts`; database seeding code consumes that roster rather than duplicating demo-user facts.
@@ -155,15 +160,16 @@ _Avoid_: Stat, Rollup, Report, KPI.
 
 ## Relationships
 
-- A **Job** has exactly five **Stages**, one per Department in Pipeline order.
+- A **Job** has no Stage rows; it relates to a **Department** only through the **Slots** it holds on that Department's **Bays**. The five-Department Pipeline survives only as a display ordering.
 - A **Job** references exactly one **Product** (inherited from its Quote).
 - A **Job** references exactly one **Quote**; a **Quote** sources at most one **Job**.
 - A **Quote** references one **Customer**, one **Product**, and one **Salesperson** at creation.
 - A **Quote** may have zero or more **Quote Selected Assemblies**.
 - A **Quote** may own **Quote Documents**.
-- A **Department** has zero or more **Bays**; a Department is scheduled only if it has Bays (first pass: Fabrication only).
+- A **Department** has zero or more **Bays** (admin-managed); a Department is scheduled only if it has enabled Bays. Any of the five Departments may have Bays.
 - A **Bay** belongs to exactly one **Department** and holds an ordered, non-overlapping queue of **Slots** from a fixed `scheduleOrigin`.
-- A **Slot** is either a **Work Slot** or an **Idle Slot**. A Work Slot books one Job's Department **Stage** onto one **Bay**; the same Stage may occupy more than one Work Slot on a Bay. An Idle Slot has no Stage and reserves Bay time in the same queue.
+- A **Slot** is either a **Work Slot** or an **Idle Slot**. A Work Slot books one **Job** directly onto one **Bay** (its Department is the Bay's); the same Job may occupy more than one Work Slot on a Bay, in any Department, with no match validation. An Idle Slot has no Job and reserves Bay time in the same queue.
+- A **Product** has zero or more **Product Default Bays**, each a (Bay, default working-days) pair that pre-fills **Job Bay Seeding** on Job creation.
 - The org has one **Working Calendar** of explicit **Off-Days** applying to every **Bay**; a Bay may carry **Bay Calendar Exceptions** (Overtime / Bay Closure) that override the org Off-Days for that Bay alone. **Slot Projection** reads a Bay's effective calendar (org Off-Days overlaid with the Bay's Exceptions) to count Slot durations in working days.
 - A **Supplier** currently stands alone as a procurement directory record.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
@@ -175,16 +181,13 @@ _Avoid_: Stat, Rollup, Report, KPI.
 **admin**:
 Department-blind access to all application resources.
 
-Can read, create, and update Suppliers.
+Can read, create, and update Suppliers. Can create, edit, and disable Bays (the Admin Bay section).
 
-**job-supervisor**:
-Can read, create, and update Jobs; can read Products and Quotes.
+**procurement-manager**:
+Can read, create, and update Customers, Products, Parts, and Suppliers; can read Jobs (including their Bay schedule). Does not create Jobs or edit the schedule.
 
 **job-department-manager**:
-Can read Jobs and read/update Stage-level surfaces according to Department scope.
-
-**product-editor**:
-Can read, create, and update Products.
+Holds `job:read` and `job:schedule`. Can read Jobs and manage the Bay schedule for their Department(s) — book, resize, and remove Slots and edit Bay Calendar Exceptions on their Department's Bays, gated by `job:schedule` plus Department scope. A manager with **no** Departments selected is unscoped and may edit **every** Bay (the empty-set footgun, surfaced loudly in the Users UI). There is no per-Job Stage record to edit; "their" Jobs are simply the Jobs with a Slot on one of their Department's Bays.
 
 **sales**:
 Can read, create, and update Quotes.

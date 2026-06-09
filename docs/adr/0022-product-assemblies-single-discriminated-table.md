@@ -24,4 +24,4 @@ The new Product schema replaces the flat `product_options` model with two relate
 
 - A future engineer reading `assembly_overrides` will see FK columns with embedded constants and a redundant `product_id` on each side. The reason is the kind-and-same-product invariant — not a normalisation mistake.
 - Adding a third Assembly kind later is a CHECK-constraint and discriminator-enum change, plus a new constant in the override FK if it participates in overrides.
-- Sharing one table aligns with ADR-0002 (single `job_stage` table) — composite shape inside an aggregate, single discriminator outside.
+- Sharing one table follows the project's discriminated-table pattern — composite shape inside an aggregate, a single discriminator column outside.

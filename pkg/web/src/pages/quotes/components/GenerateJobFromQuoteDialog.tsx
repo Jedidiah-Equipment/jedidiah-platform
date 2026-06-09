@@ -48,7 +48,7 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
         await Promise.all([invalidateJobs(), invalidateQuotes()]);
         toast.success('Job started');
         setIsOpen(false);
-        await navigate({ params: { id: job.id }, to: '/jobs/$id' });
+        await navigate({ search: { job: job.id }, to: '/jobs' });
       },
       onError: (error) => showMutationError(error, 'Unable to start job.'),
     }),

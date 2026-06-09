@@ -1,13 +1,20 @@
 import {
   addJobSlotDuration,
-  DEFAULT_IDLE_SLOT_LABEL,
   formatDate,
   type SlotCalendarDays,
   segmentSlotCalendarDays,
   summarizeSlotCalendarDays,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type { BaySchedule, JobListInput, JobSlotPlacement, JobSummary, OffDay, ProjectedJobSlot } from '@pkg/schema';
+import type {
+  BaySchedule,
+  JobListInput,
+  JobSlotPlacement,
+  JobSummary,
+  OffDay,
+  ProjectedJobSlot,
+  UUID,
+} from '@pkg/schema';
 import { IconAlertTriangle, IconCalendarPlus, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -42,7 +49,6 @@ import {
 } from '@/components/ui/dialog.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -50,7 +56,8 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
-import { BaySlotDayHatch, BaySlotJobCard, BaySlotJobDetails } from './BaySlotJobCard.js';
+import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
+import { createWorkingCalendarsByBayId, getSlotLabel } from './bay-schedule-summary.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
@@ -71,7 +78,9 @@ const allJobsInput = {
   sortDirection: 'desc',
 } satisfies JobListInput;
 
-export const BayScheduleGantt: React.FC = () => {
+export const BayScheduleGantt: React.FC<{
+  onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
+}> = ({ onSelectSlot }) => {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
@@ -329,6 +338,7 @@ export const BayScheduleGantt: React.FC = () => {
               onHoverBay={setHoveredBayId}
               onRemoveSlot={handleRemoveSlot}
               onResizeSlot={handleResizeSlot}
+              onSelectSlot={onSelectSlot}
               optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
             />
             <GanttToday className="bg-primary text-primary-foreground" />
@@ -439,6 +449,7 @@ const BaySlotBars: React.FC<{
   onHoverBay: (bayId: string | null) => void;
   onRemoveSlot: (slotId: string) => Promise<void>;
   onResizeSlot: (slotId: string, durationDays: number) => void;
+  onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
   optimisticResizeDaysBySlotId: Record<string, number>;
 }> = ({
   bays,
@@ -449,6 +460,7 @@ const BaySlotBars: React.FC<{
   onHoverBay,
   onRemoveSlot,
   onResizeSlot,
+  onSelectSlot,
   optimisticResizeDaysBySlotId,
 }) => {
   const gantt = useGanttContext();
@@ -467,6 +479,7 @@ const BaySlotBars: React.FC<{
             onHoverBay={onHoverBay}
             onRemove={onRemoveSlot}
             onResize={onResizeSlot}
+            onSelectSlot={onSelectSlot}
             optimisticDurationDays={optimisticResizeDaysBySlotId[slot.id] ?? null}
             rowTop={gantt.headerHeight + bayIndex * gantt.rowHeight}
             slot={slot}
@@ -486,13 +499,14 @@ type SlotResizeDrag = {
 };
 
 const BaySlotBar: React.FC<{
-  bayId: string;
+  bayId: UUID;
   isScheduleMutationPending: boolean;
   job: JobSummary | null;
   onAddIdle: (targetSlotId: string, placement: JobSlotPlacement) => void;
   onHoverBay: (bayId: string | null) => void;
   onRemove: (slotId: string) => Promise<void>;
   onResize: (slotId: string, durationDays: number) => void;
+  onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
   optimisticDurationDays: number | null;
   rowTop: number;
   slot: ProjectedJobSlot;
@@ -505,6 +519,7 @@ const BaySlotBar: React.FC<{
   onHoverBay,
   onRemove,
   onResize,
+  onSelectSlot,
   optimisticDurationDays,
   rowTop,
   slot,
@@ -643,27 +658,18 @@ const BaySlotBar: React.FC<{
             <span className="shrink-0 text-[0.65rem] tabular-nums opacity-80">{daySummary}</span>
           </span>
         ) : (
-          <Popover>
-            <PopoverTrigger
-              render={
-                <button
-                  className="relative z-10 block h-full w-full cursor-pointer pr-8 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  type="button"
-                />
+          <button
+            className="relative z-10 block h-full w-full cursor-pointer pr-8 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            disabled={!job}
+            onClick={() => {
+              if (job) {
+                onSelectSlot?.(job.id, bayId);
               }
-            >
-              <BaySlotJobCard dayBreakdown={dayBreakdown} job={job} jobCode={label} />
-            </PopoverTrigger>
-            <PopoverContent align="start">
-              <BaySlotJobDetails
-                dayBreakdown={dayBreakdown}
-                endAt={previewEndAt}
-                job={job}
-                jobCode={label}
-                startAt={startAt}
-              />
-            </PopoverContent>
-          </Popover>
+            }}
+            type="button"
+          >
+            <BaySlotJobCard dayBreakdown={dayBreakdown} job={job} jobCode={label} />
+          </button>
         )}
         <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
           <DialogTrigger
@@ -746,10 +752,6 @@ const BaySlotBar: React.FC<{
   );
 };
 
-function getSlotLabel(slot: ProjectedJobSlot): string {
-  return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;
-}
-
 // Total working days, with closure and overtime days called out in brackets
 // (each only shown when non-zero), e.g. "5d (2 closed, 1 OT)".
 function formatSlotDaySummary({ workingDays, closureDays, overtimeDays }: SlotCalendarDays): string {
@@ -765,20 +767,4 @@ function formatSlotDaySummary({ workingDays, closureDays, overtimeDays }: SlotCa
 
   const days = `${workingDays}d`;
   return extras.length > 0 ? `${days} (${extras.join(', ')})` : days;
-}
-
-function createWorkingCalendarsByBayId(bays: BaySchedule[], offDays: OffDay[]): Map<string, WorkingCalendar> {
-  const orgOffDays = new Set(offDays.map((offDay) => offDay.date));
-
-  return new Map(
-    bays.map((bay) => [
-      bay.id,
-      {
-        bayExceptions: new Map(
-          bay.calendarExceptions.map((exception) => [exception.date, exception.direction] as const),
-        ),
-        orgOffDays,
-      },
-    ]),
-  );
 }

@@ -23,7 +23,7 @@ A durable physical workspace that belongs to exactly one Department (for example
 _Avoid_: Station, Workstation, Cell, Machine.
 
 **Disabled Bay**:
-A Bay an admin has soft-retired by setting `disabledAt`. A Disabled Bay is hidden from new selection (the Create Job form's Bay picker and the Product Default Bays picker) and accepts no new bookings, but its existing Slots remain and still project on the schedule chart, and it can be re-enabled. Bays are never hard-deleted — disabling is the only retirement path, consistent with Slots never being deleted. A Product Default Bay pointing at a now-Disabled Bay is skipped when seeding a new Job and is shown as disabled (and removable) in the Product editor.
+A Bay an admin has soft-retired by setting `disabledAt`. A Disabled Bay is hidden from new selection (the Create Job form's Bay picker and the Product Default Bays picker) and accepts no new bookings, but its existing Slots remain and still project on the schedule chart, and it can be re-enabled. Bays are never hard-deleted — disabling is the only retirement path, which preserves the retired Bay's existing Slots and schedule history and stays reversible (removing individual Slots is a separate, intended schedule mutation). A Product Default Bay pointing at a now-Disabled Bay is skipped when seeding a new Job and is shown as disabled (and removable) in the Product editor.
 _Avoid_: Deleted bay, archived bay, closed bay.
 
 **Product Default Bay**:

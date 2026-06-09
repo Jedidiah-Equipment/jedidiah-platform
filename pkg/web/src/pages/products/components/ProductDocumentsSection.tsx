@@ -84,7 +84,8 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
     <DocumentCardList
       canDelete={canDeleteDocuments}
       documents={documentsQuery.data ?? []}
-      emptyMessage="No documents found."
+      emptyActionMessage="Choose a file and type, then upload the first Product document."
+      emptyMessage="No Product documents yet."
       errorMessage={getApiQueryErrorMessage(documentsQuery.error, 'Unable to load documents.') ?? null}
       isLoading={documentsQuery.isLoading}
       metadata={productDocumentMetadata}

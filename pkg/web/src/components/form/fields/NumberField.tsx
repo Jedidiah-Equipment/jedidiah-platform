@@ -15,15 +15,19 @@ export type NumberFieldProps = {
   decimals?: number;
   description?: React.ReactNode;
   emptyValue?: number;
+  fieldClassName?: string;
   label: React.ReactNode;
+  orientation?: React.ComponentProps<typeof Field>['orientation'];
 } & NumberFieldInputProps;
 
 export function NumberField({
   decimals,
   description,
   emptyValue = NaN,
+  fieldClassName,
   inputMode = 'decimal',
   label,
+  orientation,
   ...inputProps
 }: NumberFieldProps) {
   const field = useFieldContext<number>();
@@ -41,7 +45,12 @@ export function NumberField({
   }, [decimals, field.state.value]);
 
   return (
-    <Field data-disabled={inputProps.disabled} data-invalid={isInvalid}>
+    <Field
+      data-disabled={inputProps.disabled}
+      data-invalid={isInvalid}
+      orientation={orientation}
+      className={fieldClassName}
+    >
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
       <Input
         aria-invalid={isInvalid}

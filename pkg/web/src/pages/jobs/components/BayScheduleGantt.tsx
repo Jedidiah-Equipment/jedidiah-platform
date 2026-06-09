@@ -88,11 +88,16 @@ export const BayScheduleGantt: React.FC<{
   const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
   const bays = baysQuery.data?.items ?? [];
+  const enabledBayIds = useMemo(
+    () => new Set((enabledBaysQuery.data?.items ?? []).map((bay) => bay.id)),
+    [enabledBaysQuery.data?.items],
+  );
   const schedulableBays = useMemo(
-    () => bays.filter((bay) => canScheduleBay(accessQuery.data, bay.department)),
-    [accessQuery.data, bays],
+    () => bays.filter((bay) => enabledBayIds.has(bay.id) && canScheduleBay(accessQuery.data, bay.department)),
+    [accessQuery.data, bays, enabledBayIds],
   );
   const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);
   const canEditSchedule = schedulableBays.length > 0;

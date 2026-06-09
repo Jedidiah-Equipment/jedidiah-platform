@@ -3,20 +3,28 @@ import {
   addIdleJobSlot,
   bookJobSlot,
   createJob,
+  createJobBay,
   getJob,
   isJobCoreError,
   type JobCoreError,
   listBays,
+  listJobBays,
   listJobs,
   removeBayCalendarException,
   removeJobSlot,
+  renameJobBay,
   resizeJobSlot,
+  setJobBayDisabled,
   toggleOffDay,
 } from '@pkg/core';
 import {
   AddBayCalendarExceptionInput,
   AddIdleJobSlotInput,
   BookJobSlotInput,
+  JobBayCreateInput,
+  JobBayListInput,
+  JobBayRenameInput,
+  JobBaySetDisabledInput,
   JobCreateInput,
   JobListInput,
   RemoveBayCalendarExceptionInput,
@@ -32,6 +40,28 @@ import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const jobsRouter = router({
   listBays: authorizedProcedure('job:read').query(({ ctx }) => listBays({ db: ctx.db, access: ctx.access })),
+
+  listJobBays: authorizedProcedure(['job:read', 'job_bay:read'])
+    .input(JobBayListInput)
+    .query(({ ctx, input }) => listJobBays({ db: ctx.db, input })),
+
+  createBay: authorizedProcedure('job_bay:update')
+    .input(JobBayCreateInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => createJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+    ),
+
+  renameBay: authorizedProcedure('job_bay:update')
+    .input(JobBayRenameInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => renameJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+    ),
+
+  setBayDisabled: authorizedProcedure('job_bay:update')
+    .input(JobBaySetDisabledInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => setJobBayDisabled({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+    ),
 
   toggleOffDay: authorizedProcedure('job:update-calendar')
     .input(ToggleOffDayInput)

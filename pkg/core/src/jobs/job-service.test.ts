@@ -25,6 +25,8 @@ import { createUserAccessSummary } from '@pkg/domain';
 import {
   AddBayCalendarExceptionInput,
   type Department,
+  JobBayCreateInput,
+  JobBayRenameInput,
   type JobDetail,
   type PartUnitOfMeasure,
   type ProductDocumentType,
@@ -37,6 +39,7 @@ import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
+import { createJobBay, listJobBays, renameJobBay, setJobBayDisabled } from './job-bay-service.js';
 import { getJob, listBays } from './job-read-service.js';
 import {
   addBayCalendarException,
@@ -827,6 +830,136 @@ describe('Bay calendar exceptions', () => {
         nextAvailableAt: '2026-06-06T22:00:00.000Z',
       }),
     );
+  });
+});
+
+describe('Job Bay management', () => {
+  test('creates Bays with immutable Department facts and audit', async ({ context }) => {
+    const result = await createJobBay({
+      actorUserId,
+      db: context.db,
+      input: JobBayCreateInput.parse({ department: 'paint', name: '  Paint Bay 1  ' }),
+    });
+
+    const [bayRows, events] = await Promise.all([
+      context.db.select().from(jobBays).where(eq(jobBays.id, result.bay.id)),
+      context.db.select().from(auditEvents).where(eq(auditEvents.entityType, 'job_bay')),
+    ]);
+
+    expect(result.bay).toMatchObject({
+      department: 'paint',
+      disabledAt: null,
+      name: 'Paint Bay 1',
+    });
+    expect(bayRows).toMatchObject([{ department: 'paint', name: 'Paint Bay 1' }]);
+    expect(events).toMatchObject([
+      {
+        action: 'created',
+        actorUserId,
+        entityId: result.bay.id,
+        entityType: 'job_bay',
+        summary: 'Created Bay "Paint Bay 1"',
+      },
+    ]);
+  });
+
+  test('renames Bays without changing Department and audits the update', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'assembly' });
+
+    const result = await renameJobBay({
+      actorUserId,
+      db: context.db,
+      input: JobBayRenameInput.parse({ id: bay.id, name: '  Final Assembly Bay  ' }),
+    });
+    const events = await context.db.select().from(auditEvents).where(eq(auditEvents.entityType, 'job_bay'));
+
+    expect(result.bay).toMatchObject({
+      department: 'assembly',
+      name: 'Final Assembly Bay',
+    });
+    expect(events).toMatchObject([
+      {
+        action: 'updated',
+        entityId: bay.id,
+        summary: 'Renamed Bay "assembly Test Bay" to "Final Assembly Bay"',
+      },
+    ]);
+    expect(events[0]?.changes).toMatchObject({
+      name: {
+        from: 'assembly Test Bay',
+        to: 'Final Assembly Bay',
+      },
+    });
+  });
+
+  test('disables, excludes from enabled reads, rejects new bookings, and preserves projection', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const quote = await createQuote(context.db, {
+      productId: context.catalog.product.id,
+      status: 'accepted',
+    });
+    const job = await createJob({
+      access: jobAccess,
+      actorUserId,
+      db: context.db,
+      input: { quoteId: quote.id },
+    });
+
+    await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 2, jobId: job.id },
+    });
+    const disabled = await setJobBayDisabled({
+      actorUserId,
+      db: context.db,
+      input: { disabled: true, id: bay.id },
+    });
+
+    expect(disabled.bay.disabledAt).not.toBeNull();
+    await expect(listJobBays({ db: context.db, input: { filters: {} } })).resolves.toMatchObject({
+      items: expect.arrayContaining([expect.objectContaining({ disabledAt: expect.any(String), id: bay.id })]),
+    });
+    const enabledBays = await listJobBays({ db: context.db, input: { filters: { isDisabled: false } } });
+    expect(enabledBays.items).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: bay.id })]));
+    await expect(
+      bookJobSlot({
+        access: jobAccess,
+        db: context.db,
+        input: { bayId: bay.id, durationDays: 1, jobId: job.id },
+      }),
+    ).rejects.toThrow('This Bay is disabled and cannot accept new bookings.');
+
+    const schedule = await listBays({ access: jobAccess, db: context.db });
+    expect(getBaySchedule(schedule, bay.id)).toMatchObject({
+      disabledAt: expect.any(String),
+      slots: [
+        expect.objectContaining({
+          jobId: job.id,
+          kind: 'work',
+        }),
+      ],
+    });
+  });
+
+  test('re-enables disabled Bays and returns them to enabled reads', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'supply' });
+
+    await setJobBayDisabled({
+      actorUserId,
+      db: context.db,
+      input: { disabled: true, id: bay.id },
+    });
+    const enabled = await setJobBayDisabled({
+      actorUserId,
+      db: context.db,
+      input: { disabled: false, id: bay.id },
+    });
+
+    expect(enabled.bay.disabledAt).toBeNull();
+    await expect(listJobBays({ db: context.db, input: { filters: { isDisabled: false } } })).resolves.toMatchObject({
+      items: expect.arrayContaining([expect.objectContaining({ disabledAt: null, id: bay.id })]),
+    });
   });
 });
 

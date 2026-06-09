@@ -1,4 +1,4 @@
-import { customers, type Db, jobBays, products, quotes, sql } from '@pkg/db';
+import { auditEvents, customers, type Db, jobBays, products, quotes, sql } from '@pkg/db';
 import type { Product } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
@@ -81,6 +81,92 @@ describe('jobs.listBays', () => {
               endAt: '2026-06-07T22:00:00.000Z',
             }),
           ],
+        }),
+      ]),
+    });
+  });
+});
+
+describe('jobs bay management', () => {
+  test('allows admins to create, rename, disable, and re-enable Bays with audit', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+
+    const created = await caller.jobs.createBay({
+      department: 'paint',
+      name: '  Paint Bay 1  ',
+    });
+    expect(created.bay).toMatchObject({
+      department: 'paint',
+      disabledAt: null,
+      name: 'Paint Bay 1',
+    });
+
+    await expect(caller.jobs.renameBay({ id: created.bay.id, name: '  Paint Prep Bay  ' })).resolves.toMatchObject({
+      bay: {
+        department: 'paint',
+        id: created.bay.id,
+        name: 'Paint Prep Bay',
+      },
+    });
+    await expect(caller.jobs.setBayDisabled({ disabled: true, id: created.bay.id })).resolves.toMatchObject({
+      bay: {
+        disabledAt: expect.any(String),
+        id: created.bay.id,
+      },
+    });
+    await expect(caller.jobs.listJobBays({ filters: { isDisabled: false } })).resolves.toMatchObject({
+      items: expect.not.arrayContaining([expect.objectContaining({ id: created.bay.id })]),
+    });
+    await expect(caller.jobs.listJobBays({ filters: { isDisabled: true } })).resolves.toMatchObject({
+      items: expect.arrayContaining([expect.objectContaining({ disabledAt: expect.any(String), id: created.bay.id })]),
+    });
+    await expect(caller.jobs.listJobBays({ filters: {} })).resolves.toMatchObject({
+      items: expect.arrayContaining([expect.objectContaining({ disabledAt: expect.any(String), id: created.bay.id })]),
+    });
+    await expect(caller.jobs.setBayDisabled({ disabled: false, id: created.bay.id })).resolves.toMatchObject({
+      bay: {
+        disabledAt: null,
+        id: created.bay.id,
+      },
+    });
+
+    const events = await context.db.select().from(auditEvents);
+    expect(events.filter((event) => event.entityType === 'job_bay')).toHaveLength(4);
+  });
+
+  test('rejects non-admin bay management and missing Bays', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+
+    await expect(salesCaller.jobs.listJobBays({ filters: {} })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(salesCaller.jobs.createBay({ department: 'paint', name: 'Paint Bay' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(
+      adminCaller.jobs.renameBay({
+        id: '00000000-0000-4000-8000-00000000dead',
+        name: 'Missing Bay',
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  test('rejects new bookings for disabled Bays while schedule reads still include them', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    const bayId = '00000000-0000-4000-8000-000000000b01';
+
+    await caller.jobs.bookSlot({ bayId, durationDays: 1, jobId: job.id });
+    await caller.jobs.setBayDisabled({ disabled: true, id: bayId });
+
+    await expect(caller.jobs.bookSlot({ bayId, durationDays: 1, jobId: job.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(caller.jobs.listBays()).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          disabledAt: expect.any(String),
+          id: bayId,
+          slots: [expect.objectContaining({ jobId: job.id })],
         }),
       ]),
     });

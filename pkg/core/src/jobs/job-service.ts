@@ -32,7 +32,6 @@ import {
   type AuthId,
   type BookJobSlotInput,
   BookJobSlotResult,
-  type Department,
   formatJobCode,
   formatProductSerialNumber,
   JobCode,
@@ -91,10 +90,6 @@ export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   }),
 });
 
-type JobCreateServiceInput = Omit<JobCreateInput, 'baySeeds'> & {
-  baySeeds?: JobCreateInput['baySeeds'];
-};
-
 function formatJobAuditLabel(value: unknown): string {
   if (typeof value === 'number') {
     return formatJobCode(value);
@@ -106,15 +101,13 @@ function formatJobAuditLabel(value: unknown): string {
 }
 
 export async function createJob({
-  access,
   db,
   input,
   actorUserId,
   currentDate,
 }: {
-  access: UserAccessSummary;
   db: Db;
-  input: JobCreateServiceInput;
+  input: JobCreateInput;
   actorUserId: AuthId;
   currentDate?: Date;
 }): Promise<JobDetail> {
@@ -150,7 +143,12 @@ export async function createJob({
       productId: quote.productId,
       tx,
     });
-    for (const seed of input.baySeeds ?? []) {
+    // Seeding deliberately skips the per-Bay `canScheduleBay` department-scope check that the Gantt
+    // mutation paths enforce: it is gated only by `job:create`, which today is granted to `admin`
+    // (unscoped) alone. If `job:create` is ever extended to a department-scoped role, add a
+    // `canScheduleBay(access, bay.department)` check per seed row (via `onBayLocked`) so seeding
+    // cannot route a Job onto a Bay outside the actor's Department scope.
+    for (const seed of input.baySeeds) {
       await appendWorkJobSlotToBayQueue({
         bayId: seed.bayId,
         currentDate: effectiveCurrentDate,
@@ -162,7 +160,7 @@ export async function createJob({
 
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
 
-    return getJob({ access, db: tx, id: job.id });
+    return getJob({ db: tx, id: job.id });
   });
 }
 
@@ -195,7 +193,7 @@ export async function bookJobSlot({
       durationDays: input.durationDays,
       jobId: job.id,
       onBayLocked: (bay) => {
-        if (!canEditBaySchedule(access, bay.department)) {
+        if (!canScheduleBay(access, bay.department)) {
           throw new JobSlotBookingDeniedError('You do not have permission to book this Bay.');
         }
       },
@@ -268,7 +266,7 @@ export async function addBayCalendarException({
       throw new JobBayNotFoundError(input.bayId);
     }
 
-    if (!canEditBaySchedule(access, bay.department)) {
+    if (!canScheduleBay(access, bay.department)) {
       throw new JobCalendarEditDeniedError('You do not have permission to manage this Bay calendar.');
     }
 
@@ -319,7 +317,7 @@ export async function removeBayCalendarException({
       throw new JobBayNotFoundError(input.bayId);
     }
 
-    if (!canEditBaySchedule(access, bay.department)) {
+    if (!canScheduleBay(access, bay.department)) {
       throw new JobCalendarEditDeniedError('You do not have permission to manage this Bay calendar.');
     }
 
@@ -361,7 +359,7 @@ export async function addIdleJobSlot({
       throw new JobSlotNotFoundError(input.targetSlotId);
     }
 
-    if (!canEditBaySchedule(access, row.bay.department)) {
+    if (!canScheduleBay(access, row.bay.department)) {
       throw new JobSlotIdleAddDeniedError('You do not have permission to add idle time to this Bay schedule.');
     }
 
@@ -415,7 +413,7 @@ export async function resizeJobSlot({
       throw new JobSlotNotFoundError(input.slotId);
     }
 
-    if (!canEditBaySchedule(access, row.bay.department)) {
+    if (!canScheduleBay(access, row.bay.department)) {
       throw new JobSlotResizeDeniedError('You do not have permission to resize this Bay schedule.');
     }
 
@@ -460,7 +458,7 @@ export async function removeJobSlot({
       throw new JobSlotNotFoundError(input.slotId);
     }
 
-    if (!canEditBaySchedule(access, row.bay.department)) {
+    if (!canScheduleBay(access, row.bay.department)) {
       throw new JobSlotRemoveDeniedError('You do not have permission to remove from this Bay schedule.');
     }
 
@@ -623,10 +621,6 @@ async function insertIdleSlot({
   }
 
   return slot;
-}
-
-function canEditBaySchedule(access: UserAccessSummary, department: Department): boolean {
-  return canScheduleBay(access, department);
 }
 
 async function createProductSerial({

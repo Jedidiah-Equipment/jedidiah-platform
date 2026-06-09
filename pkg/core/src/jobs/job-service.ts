@@ -91,6 +91,10 @@ export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   }),
 });
 
+type JobCreateServiceInput = Omit<JobCreateInput, 'baySeeds'> & {
+  baySeeds?: JobCreateInput['baySeeds'];
+};
+
 function formatJobAuditLabel(value: unknown): string {
   if (typeof value === 'number') {
     return formatJobCode(value);
@@ -110,17 +114,18 @@ export async function createJob({
 }: {
   access: UserAccessSummary;
   db: Db;
-  input: JobCreateInput;
+  input: JobCreateServiceInput;
   actorUserId: AuthId;
   currentDate?: Date;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const quote = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
     const cfo = await buildJobCfoForQuote({ productId: quote.productId, quoteId: quote.id, tx });
+    const effectiveCurrentDate = currentDate ?? new Date();
     const productSerial = await createProductSerial({
       productId: quote.productId,
       tx,
-      currentDate: currentDate ?? new Date(),
+      currentDate: effectiveCurrentDate,
     });
 
     const [job] = await tx
@@ -145,6 +150,15 @@ export async function createJob({
       productId: quote.productId,
       tx,
     });
+    for (const seed of input.baySeeds ?? []) {
+      await appendWorkJobSlotToBayQueue({
+        bayId: seed.bayId,
+        currentDate: effectiveCurrentDate,
+        durationDays: seed.durationDays,
+        jobId: job.id,
+        tx,
+      });
+    }
 
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
 
@@ -164,20 +178,6 @@ export async function bookJobSlot({
   input: BookJobSlotInput;
 }): Promise<BookJobSlotResult> {
   return db.transaction(async (tx) => {
-    const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
-
-    if (!bay) {
-      throw new JobBayNotFoundError(input.bayId);
-    }
-
-    if (bay.disabledAt) {
-      throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
-    }
-
-    if (!canEditBaySchedule(access, bay.department)) {
-      throw new JobSlotBookingDeniedError('You do not have permission to book this Bay.');
-    }
-
     const [job] = await tx
       .select({
         id: jobs.id,
@@ -189,45 +189,18 @@ export async function bookJobSlot({
       throw new JobNotFoundError(input.jobId);
     }
 
-    const workingCalendar = createBayWorkingCalendar(
-      createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
-      await listBayCalendarExceptions(tx, bay.id),
-    );
-    let sequence = await getNextBaySlotSequence(tx, bay.id);
-    const gapDays = await getIdleGapDaysBeforeAppend({
-      bayId: bay.id,
+    const slot = await appendWorkJobSlotToBayQueue({
+      bayId: input.bayId,
       currentDate: currentDate ?? new Date(),
-      scheduleOrigin: bay.scheduleOrigin,
+      durationDays: input.durationDays,
+      jobId: job.id,
+      onBayLocked: (bay) => {
+        if (!canEditBaySchedule(access, bay.department)) {
+          throw new JobSlotBookingDeniedError('You do not have permission to book this Bay.');
+        }
+      },
       tx,
-      workingCalendar,
     });
-
-    if (gapDays > 0) {
-      await insertIdleSlot({
-        bayId: bay.id,
-        durationDays: gapDays,
-        label: null,
-        sequence,
-        tx,
-      });
-      sequence += 1;
-    }
-
-    const [slot] = await tx
-      .insert(jobSlots)
-      .values({
-        bayId: bay.id,
-        durationDays: input.durationDays,
-        jobId: job.id,
-        kind: 'work',
-        label: null,
-        sequence,
-      })
-      .returning();
-
-    if (!slot) {
-      throw new Error('Job slot insert did not return a row');
-    }
 
     return BookJobSlotResult.parse({ slot });
   });
@@ -518,6 +491,80 @@ async function getNextBaySlotSequence(tx: DatabaseTransaction, bayId: UUID): Pro
     .where(eq(jobSlots.bayId, bayId));
 
   return Number(sequenceRow?.sequence ?? 1);
+}
+
+async function appendWorkJobSlotToBayQueue({
+  bayId,
+  currentDate,
+  durationDays,
+  jobId,
+  onBayLocked,
+  tx,
+}: {
+  bayId: UUID;
+  currentDate: Date;
+  durationDays: number;
+  jobId: UUID;
+  onBayLocked?: (bay: typeof jobBays.$inferSelect) => void;
+  tx: DatabaseTransaction;
+}): Promise<typeof jobSlots.$inferSelect> {
+  const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, bayId)).for('update');
+
+  if (!bay) {
+    throw new JobBayNotFoundError(bayId);
+  }
+
+  if (bay.disabledAt) {
+    throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
+  }
+
+  onBayLocked?.(bay);
+
+  const workingCalendar = await getWorkingCalendar(tx, bay.id);
+  let sequence = await getNextBaySlotSequence(tx, bay.id);
+  const gapDays = await getIdleGapDaysBeforeAppend({
+    bayId: bay.id,
+    currentDate,
+    scheduleOrigin: bay.scheduleOrigin,
+    tx,
+    workingCalendar,
+  });
+
+  if (gapDays > 0) {
+    await insertIdleSlot({
+      bayId: bay.id,
+      durationDays: gapDays,
+      label: null,
+      sequence,
+      tx,
+    });
+    sequence += 1;
+  }
+
+  const [slot] = await tx
+    .insert(jobSlots)
+    .values({
+      bayId: bay.id,
+      durationDays,
+      jobId,
+      kind: 'work',
+      label: null,
+      sequence,
+    })
+    .returning();
+
+  if (!slot) {
+    throw new Error('Job slot insert did not return a row');
+  }
+
+  return slot;
+}
+
+async function getWorkingCalendar(tx: DatabaseTransaction, bayId: UUID): Promise<WorkingCalendar> {
+  return createBayWorkingCalendar(
+    createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
+    await listBayCalendarExceptions(tx, bayId),
+  );
 }
 
 async function getIdleGapDaysBeforeAppend({

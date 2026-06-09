@@ -38,8 +38,10 @@ export const JobDetailAside: React.FC<JobDetailAsideProps> = ({ bayId, jobId, on
             thumbnailDataUrl={job?.productThumbnailDataUrl}
           />
           <div className="flex min-w-0 flex-col gap-0.5">
-            <h2 className="truncate font-heading text-lg font-medium leading-tight">{job?.code ?? 'Job'}</h2>
-            {job?.quoteCode ? <p className="truncate text-sm text-muted-foreground">{job.quoteCode}</p> : null}
+            <h2 className="truncate text-lg font-medium leading-tight font-mono">{job?.code ?? 'Job'}</h2>
+            {job?.quoteCode ? (
+              <p className="truncate text-sm text-muted-foreground font-mono">{job.quoteCode}</p>
+            ) : null}
           </div>
         </div>
         <Button aria-label="Close" onClick={onClose} size="icon" variant="ghost">

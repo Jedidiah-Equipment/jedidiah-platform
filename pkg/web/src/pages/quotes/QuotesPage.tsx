@@ -63,7 +63,7 @@ export const QuotesPage: React.FC = () => {
           </Button>
         }
         description="Sales"
-        size="lg"
+        size="full"
         title="Quotes"
       >
         <QuoteTable />
@@ -276,7 +276,7 @@ function getIdFilterValue(
 function QuoteCodeCell({ quote }: { quote: QuoteSummary }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="font-medium tabular-nums">{quote.code}</span>
+      <span className="font-mono font-medium tabular-nums">{quote.code}</span>
       <span className="text-xs text-muted-foreground">
         Created <DateDisplay date={quote.createdAt} />
       </span>
@@ -301,12 +301,7 @@ function SalesPersonCell({ quote }: { quote: QuoteSummary }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
       <EntityThumbnail label={quote.salesPersonName} size="sm" thumbnailDataUrl={quote.salesPersonThumbnailDataUrl} />
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate font-medium">{quote.salesPersonName}</span>
-        {quote.salesPersonEmail ? (
-          <span className="truncate text-xs text-muted-foreground">{quote.salesPersonEmail}</span>
-        ) : null}
-      </span>
+      <span className="truncate font-medium">{quote.salesPersonName}</span>
     </div>
   );
 }
@@ -318,7 +313,7 @@ function ProductCell({ quote }: { quote: QuoteSummary }) {
     <div className="flex min-w-0 flex-col gap-0.5">
       <span className="truncate font-medium">{quote.productName}</span>
       <span className="truncate text-xs text-muted-foreground">
-        {quote.productModelCode} / {quote.productBuildTimeDays}d build
+        <span className="font-mono">{quote.productModelCode}</span> / {quote.productBuildTimeDays}d build
         {selectedAssemblyCount > 0 ? ` / ${selectedAssemblyCount} option${selectedAssemblyCount === 1 ? '' : 's'}` : ''}
       </span>
     </div>

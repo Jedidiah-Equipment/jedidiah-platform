@@ -28,8 +28,10 @@ export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, jo
       />
       <EntityThumbnail className="shrink-0" label={customerName} thumbnailDataUrl={job?.customerThumbnailDataUrl} />
       <div className="flex min-w-0 flex-col justify-center leading-tight">
-        <span className="truncate font-semibold text-sm">{jobCode}</span>
-        {job ? <span className="truncate text-muted-foreground text-xs">{job.productSerialNumber}</span> : null}
+        <span className="truncate font-semibold text-sm font-mono">{jobCode}</span>
+        {job ? (
+          <span className="truncate text-muted-foreground text-xs font-mono">{job.productSerialNumber}</span>
+        ) : null}
         {productName ? <span className="truncate text-xs">{productName}</span> : null}
       </div>
       <div className="ml-auto flex shrink-0 flex-col items-end justify-center pl-2 text-right leading-tight">

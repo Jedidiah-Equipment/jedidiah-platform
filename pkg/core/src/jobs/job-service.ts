@@ -170,6 +170,10 @@ export async function bookJobSlot({
       throw new JobBayNotFoundError(input.bayId);
     }
 
+    if (bay.disabledAt) {
+      throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
+    }
+
     if (!canEditBaySchedule(access, bay.department)) {
       throw new JobSlotBookingDeniedError('You do not have permission to book this Bay.');
     }

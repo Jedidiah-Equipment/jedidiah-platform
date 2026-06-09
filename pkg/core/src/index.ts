@@ -3,6 +3,7 @@ export * from './customers/customer-errors.js';
 export * from './customers/customer-service.js';
 export * from './documents/document-errors.js';
 export * from './documents/storage-adapter.js';
+export * from './jobs/job-bay-service.js';
 export * from './jobs/job-errors.js';
 export * from './jobs/job-read-service.js';
 export * from './jobs/job-service.js';

@@ -22,6 +22,7 @@ import { Route as AuthedProductsRouteImport } from './../routes/_authed.products
 import { Route as AuthedJobsRouteImport } from './../routes/_authed.jobs'
 import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboard'
 import { Route as AuthedCustomersRouteImport } from './../routes/_authed.customers'
+import { Route as AuthedBaysRouteImport } from './../routes/_authed.bays'
 import { Route as AuthedAuditRouteImport } from './../routes/_authed.audit'
 import { Route as AuthedAssistantRouteImport } from './../routes/_authed.assistant'
 import { Route as AuthedSuppliersIndexRouteImport } from './../routes/_authed.suppliers.index'
@@ -100,6 +101,11 @@ const AuthedCustomersRoute = AuthedCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedBaysRoute = AuthedBaysRouteImport.update({
+  id: '/bays',
+  path: '/bays',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedAuditRoute = AuthedAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/assistant': typeof AuthedAssistantRoute
   '/audit': typeof AuthedAuditRoute
+  '/bays': typeof AuthedBaysRoute
   '/customers': typeof AuthedCustomersRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
   '/jobs': typeof AuthedJobsRouteWithChildren
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/assistant': typeof AuthedAssistantRoute
   '/audit': typeof AuthedAuditRoute
+  '/bays': typeof AuthedBaysRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/_authed/assistant': typeof AuthedAssistantRoute
   '/_authed/audit': typeof AuthedAuditRoute
+  '/_authed/bays': typeof AuthedBaysRoute
   '/_authed/customers': typeof AuthedCustomersRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/jobs': typeof AuthedJobsRouteWithChildren
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/assistant'
     | '/audit'
+    | '/bays'
     | '/customers'
     | '/dashboard'
     | '/jobs'
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/assistant'
     | '/audit'
+    | '/bays'
     | '/dashboard'
     | '/users'
     | '/jobs/$id'
@@ -304,6 +315,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/_authed/assistant'
     | '/_authed/audit'
+    | '/_authed/bays'
     | '/_authed/customers'
     | '/_authed/dashboard'
     | '/_authed/jobs'
@@ -424,6 +436,13 @@ declare module '@tanstack/react-router' {
       path: '/customers'
       fullPath: '/customers'
       preLoaderRoute: typeof AuthedCustomersRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/bays': {
+      id: '/_authed/bays'
+      path: '/bays'
+      fullPath: '/bays'
+      preLoaderRoute: typeof AuthedBaysRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/audit': {
@@ -595,6 +614,7 @@ const AuthedSuppliersRouteWithChildren = AuthedSuppliersRoute._addFileChildren(
 interface AuthedRouteChildren {
   AuthedAssistantRoute: typeof AuthedAssistantRoute
   AuthedAuditRoute: typeof AuthedAuditRoute
+  AuthedBaysRoute: typeof AuthedBaysRoute
   AuthedCustomersRoute: typeof AuthedCustomersRouteWithChildren
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedJobsRoute: typeof AuthedJobsRouteWithChildren
@@ -607,6 +627,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAssistantRoute: AuthedAssistantRoute,
   AuthedAuditRoute: AuthedAuditRoute,
+  AuthedBaysRoute: AuthedBaysRoute,
   AuthedCustomersRoute: AuthedCustomersRouteWithChildren,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedJobsRoute: AuthedJobsRouteWithChildren,

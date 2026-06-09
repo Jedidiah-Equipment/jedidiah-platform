@@ -8,6 +8,7 @@ import {
   IconFileText,
   IconGauge,
   IconHeartHandshake,
+  IconLayoutKanban,
   IconPackage,
   IconRobot,
   IconUsers,
@@ -115,6 +116,12 @@ const navSections = [
   {
     label: 'Admin',
     items: [
+      {
+        title: 'Bays',
+        permission: 'job_bay:read',
+        link: linkOptions({ to: '/bays' }),
+        icon: IconLayoutKanban,
+      },
       {
         title: 'Users',
         permission: 'user:list',

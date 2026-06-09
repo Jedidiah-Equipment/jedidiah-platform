@@ -118,8 +118,10 @@ export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promis
   };
 }
 
-// A Job's schedule only needs the bays that actually hold one of its Work Slots. We resolve those
-// bay ids first, then project only their full queues — rather than projecting the whole shop floor.
+// A Job's schedule only needs the bays that actually hold one of its Work Slots. We restrict the bay
+// projection to those bays with an inline subquery — rather than a separate round trip to resolve the
+// ids, or projecting the whole shop floor — and load the Off-Days in parallel since they don't depend
+// on which bays match.
 async function getJobSchedule({
   db,
   jobId,
@@ -127,15 +129,11 @@ async function getJobSchedule({
   db: Db | DatabaseTransaction;
   jobId: UUID;
 }): Promise<JobDepartmentSchedule[]> {
-  const bayIdRows = await db.selectDistinct({ bayId: jobSlots.bayId }).from(jobSlots).where(eq(jobSlots.jobId, jobId));
-  const bayIds = bayIdRows.map((row) => row.bayId);
-
-  if (bayIds.length === 0) {
-    return mapJobSchedule({ bays: [], jobId });
-  }
-
-  const offDays = await listWorkingCalendarOffDays(db);
-  const rows = await findBayScheduleRows(db, inArray(jobBays.id, bayIds));
+  const jobBayIds = db.selectDistinct({ bayId: jobSlots.bayId }).from(jobSlots).where(eq(jobSlots.jobId, jobId));
+  const [offDays, rows] = await Promise.all([
+    listWorkingCalendarOffDays(db),
+    findBayScheduleRows(db, inArray(jobBays.id, jobBayIds)),
+  ]);
 
   return mapJobSchedule({ bays: toBaySchedules(rows, offDays), jobId });
 }
@@ -401,8 +399,14 @@ export async function readJobDocument({
   jobId: UUID;
   storage: StorageAdapter;
 }): Promise<ReadDocumentResult> {
-  await assertJobExists({ db, jobId });
-  const document = await getJobDocumentSummaryRow({ db, documentId, jobId });
+  // Finding the document proves the Job exists (the document is scoped to its jobId), so only fall
+  // back to the existence check on a miss to distinguish a missing Job from a missing document.
+  const document = await findJobDocumentSummaryRow({ db, documentId, jobId });
+
+  if (!document) {
+    await assertJobExists({ db, jobId });
+    throw new DocumentNotFoundError(documentId);
+  }
 
   return {
     document: mapDocumentSummary(document),
@@ -424,7 +428,7 @@ function selectJobDocuments(db: Db | DatabaseTransaction) {
     .$dynamic();
 }
 
-async function getJobDocumentSummaryRow({
+async function findJobDocumentSummaryRow({
   db,
   documentId,
   jobId,
@@ -432,16 +436,12 @@ async function getJobDocumentSummaryRow({
   db: Db;
   documentId: UUID;
   jobId: UUID;
-}): Promise<DocumentSummaryRow> {
+}): Promise<DocumentSummaryRow | null> {
   const [row] = await selectJobDocuments(db)
     .where(and(eq(documents.jobId, jobId), eq(documents.id, documentId)))
     .limit(1);
 
-  if (!row) {
-    throw new DocumentNotFoundError(documentId);
-  }
-
-  return row;
+  return row ?? null;
 }
 
 function mapJobDocument(row: JobDocumentRow): JobDetail['documents'][number] {

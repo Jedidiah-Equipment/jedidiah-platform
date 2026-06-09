@@ -15,7 +15,9 @@ import { formatQuoteCode, type UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
+import { JobNotFoundError } from '../jobs/job-errors.js';
 import { readJobDocument } from '../jobs/job-read-service.js';
+import { ProductNotFoundError } from '../products/product-errors.js';
 import {
   createProductDocument,
   deleteProductDocument,
@@ -26,9 +28,14 @@ import { createQuoteDocument, getQuoteDocuments, readQuoteDocument } from '../qu
 import { generateQuoteDocument } from '../quotes/quote-document-generation.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
-import { DocumentPolicyViolationError, DuplicateDocumentFilenameError } from './document-errors.js';
+import {
+  DocumentNotFoundError,
+  DocumentPolicyViolationError,
+  DuplicateDocumentFilenameError,
+} from './document-errors.js';
 
 const ACTOR_USER_ID = 'test-user-id';
+const UNKNOWN_ID = '11111111-1111-4111-8111-111111111111';
 
 const test = createTester(async ({ db }) => {
   await db.insert(user).values({
@@ -861,6 +868,68 @@ describe('getProductDocuments and readProductDocument', () => {
       quoteId: context.quoteId,
     });
     await expect(readAll(read.object.body)).resolves.toEqual(pdfBytes());
+  });
+
+  test('throws DocumentNotFoundError when the product exists but the document does not', async ({ context }) => {
+    await expect(
+      readProductDocument({
+        db: context.db,
+        documentId: UNKNOWN_ID,
+        productId: context.productId,
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(DocumentNotFoundError);
+  });
+
+  test('throws DocumentNotFoundError when the document belongs to another product', async ({ context }) => {
+    const otherProductDocument = await uploadPdf(context, {
+      filename: 'Other.pdf',
+      productId: context.otherProductId,
+    });
+
+    await expect(
+      readProductDocument({
+        db: context.db,
+        documentId: otherProductDocument.id,
+        productId: context.productId,
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(DocumentNotFoundError);
+  });
+
+  test('throws ProductNotFoundError when the product itself does not exist', async ({ context }) => {
+    await expect(
+      readProductDocument({
+        db: context.db,
+        documentId: UNKNOWN_ID,
+        productId: UNKNOWN_ID,
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(ProductNotFoundError);
+  });
+
+  test('throws DocumentNotFoundError when the job exists but the document does not', async ({ context }) => {
+    const job = await createJobOwner(context.db, context.productId);
+
+    await expect(
+      readJobDocument({
+        db: context.db,
+        documentId: UNKNOWN_ID,
+        jobId: job.id,
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(DocumentNotFoundError);
+  });
+
+  test('throws JobNotFoundError when the job itself does not exist', async ({ context }) => {
+    await expect(
+      readJobDocument({
+        db: context.db,
+        documentId: UNKNOWN_ID,
+        jobId: UNKNOWN_ID,
+        storage: context.storage,
+      }),
+    ).rejects.toBeInstanceOf(JobNotFoundError);
   });
 });
 

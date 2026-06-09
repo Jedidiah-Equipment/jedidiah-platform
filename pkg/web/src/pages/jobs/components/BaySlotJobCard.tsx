@@ -1,4 +1,4 @@
-import { formatDate, type SlotCalendarDaySegment, type SlotCalendarDays } from '@pkg/domain';
+import type { SlotCalendarDaySegment, SlotCalendarDays } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
 import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
@@ -39,57 +39,6 @@ export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, jo
     </div>
   );
 };
-
-type BaySlotJobDetailsProps = {
-  dayBreakdown: SlotCalendarDays;
-  endAt: Date;
-  job: JobSummary | null;
-  jobCode: string;
-  startAt: Date;
-};
-
-// Full slot detail shown in the click popover — everything that doesn't fit on the card.
-export const BaySlotJobDetails: React.FC<BaySlotJobDetailsProps> = ({ dayBreakdown, endAt, job, jobCode, startAt }) => {
-  const totalDays = dayBreakdown.workingDays + dayBreakdown.closureDays;
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      <div className="flex items-center gap-2.5">
-        <EntityThumbnail
-          className="shrink-0"
-          label={job?.productName || jobCode}
-          size="lg"
-          thumbnailDataUrl={job?.productThumbnailDataUrl}
-        />
-        <div className="flex min-w-0 flex-col leading-tight">
-          <span className="font-semibold">{jobCode}</span>
-          {job ? <span className="text-muted-foreground text-xs">{job.productSerialNumber}</span> : null}
-        </div>
-      </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-        {job ? <DetailRow label="Product">{`${job.productName} (${job.productModelCode})`}</DetailRow> : null}
-        {job?.customerCompanyName ? <DetailRow label="Customer">{job.customerCompanyName}</DetailRow> : null}
-        <DetailRow label="Start">{formatDate(startAt, 'long')}</DetailRow>
-        <DetailRow label="End">{formatDate(endAt, 'long')}</DetailRow>
-        <DetailRow label="Total days">{`${totalDays} (incl. off)`}</DetailRow>
-        <DetailRow label="Working days">{String(dayBreakdown.workingDays)}</DetailRow>
-        {dayBreakdown.overtimeDays > 0 ? (
-          <DetailRow label="Overtime">{`${dayBreakdown.overtimeDays} day(s)`}</DetailRow>
-        ) : null}
-        {dayBreakdown.closureDays > 0 ? (
-          <DetailRow label="Closure">{`${dayBreakdown.closureDays} day(s)`}</DetailRow>
-        ) : null}
-      </dl>
-    </div>
-  );
-};
-
-const DetailRow: React.FC<{ children: React.ReactNode; label: string }> = ({ children, label }) => (
-  <>
-    <dt className="text-muted-foreground">{label}</dt>
-    <dd className="text-right font-medium tabular-nums">{children}</dd>
-  </>
-);
 
 // Diagonal hatch fills, tinted by day kind: red for closures/off-days, green for overtime.
 const HATCH_BACKGROUND: Record<'closure' | 'overtime', string> = {

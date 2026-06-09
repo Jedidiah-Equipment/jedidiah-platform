@@ -5,6 +5,7 @@ import { Price } from '../common/price.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
+import { Bay } from '../jobs/job.js';
 
 export type ProductName = z.infer<typeof ProductName>;
 export const ProductName = requiredTrimmedText('Product name is required');
@@ -35,6 +36,31 @@ export const ProductCurrencyCode = z.literal('ZAR').default('ZAR');
 
 export type ProductRequiresVinNumber = z.infer<typeof ProductRequiresVinNumber>;
 export const ProductRequiresVinNumber = z.boolean();
+
+export type ProductBayDefaultWorkingDays = z.infer<typeof ProductBayDefaultWorkingDays>;
+export const ProductBayDefaultWorkingDays = z
+  .number()
+  .int('Default working days must be a whole number')
+  .min(1, 'Default working days must be at least 1');
+
+export type ProductBayDefaultWorkingDaysInput = z.infer<typeof ProductBayDefaultWorkingDaysInput>;
+export const ProductBayDefaultWorkingDaysInput = z.coerce.number().pipe(ProductBayDefaultWorkingDays);
+
+export type ProductBay = z.infer<typeof ProductBay>;
+export const ProductBay = z.object({
+  bay: Bay,
+  bayId: UUID,
+  defaultWorkingDays: ProductBayDefaultWorkingDays,
+  productId: UUID,
+});
+
+export type ProductBayInput = z.infer<typeof ProductBayInput>;
+export const ProductBayInput = z
+  .object({
+    bayId: UUID,
+    defaultWorkingDays: ProductBayDefaultWorkingDaysInput,
+  })
+  .strict();
 
 export type AssemblyKind = z.infer<typeof AssemblyKind>;
 export const AssemblyKind = z.enum(['standard', 'optional']);
@@ -190,6 +216,34 @@ const ProductAssemblies = z.array(AssemblyInput).superRefine(refineProductAssemb
 export type ProductAssembliesInput = z.infer<typeof ProductAssembliesInput>;
 export const ProductAssembliesInput = ProductAssemblies.default([]);
 
+export function refineProductBays(productBays: ProductBayInput[], ctx: z.RefinementCtx): void {
+  const bayIds = new Map<string, number>();
+
+  productBays.forEach((productBay, index) => {
+    const duplicateIndex = bayIds.get(productBay.bayId);
+
+    if (duplicateIndex !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Bay can only be added once per product',
+        path: [index, 'bayId'],
+      });
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Bay can only be added once per product',
+        path: [duplicateIndex, 'bayId'],
+      });
+    } else {
+      bayIds.set(productBay.bayId, index);
+    }
+  });
+}
+
+const ProductBays = z.array(ProductBayInput).superRefine(refineProductBays);
+
+export type ProductBaysInput = z.infer<typeof ProductBaysInput>;
+export const ProductBaysInput = ProductBays.default([]);
+
 export type Product = z.infer<typeof Product>;
 export const Product = z.object({
   id: UUID,
@@ -201,6 +255,7 @@ export const Product = z.object({
   currencyCode: ProductCurrencyCode,
   requiresVinNumber: ProductRequiresVinNumber,
   assemblies: z.array(Assembly).default([]),
+  productBays: z.array(ProductBay).default([]),
   thumbnailDataUrl: NullableThumbnailDataUrl,
   createdAt: DateIso,
   updatedAt: DateIso,
@@ -226,6 +281,7 @@ export const ProductCreateInput = z
     modelCode: ProductModelCode,
     basePrice: ProductBasePrice,
     assemblies: ProductAssembliesInput,
+    productBays: ProductBaysInput,
     buildTimeDays: ProductBuildTimeDaysInput,
     currencyCode: ProductCurrencyCode,
     requiresVinNumber: ProductRequiresVinNumber.default(false),
@@ -238,6 +294,7 @@ export const ProductUpdateInput = z
   .object({
     id: UUID,
     assemblies: ProductAssemblies.optional(),
+    productBays: ProductBaysInput,
     basePrice: ProductBasePrice,
     currencyCode: ProductCurrencyCode,
     description: ProductDescriptionInput,

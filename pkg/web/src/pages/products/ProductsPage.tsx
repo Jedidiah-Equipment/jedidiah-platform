@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { useCan } from '@/hooks/use-access.js';
+import { productsPageDescription } from '@/utils/page-descriptions.js';
 import { ProductTable } from './components/ProductTable.js';
 import { ProductCreateDialog } from './ProductCreateDialog.js';
 
@@ -26,7 +27,7 @@ export const ProductsPage: React.FC = () => {
             </Button>
           ) : null
         }
-        description="Catalog"
+        description={productsPageDescription}
         size="lg"
         title="Products"
       >

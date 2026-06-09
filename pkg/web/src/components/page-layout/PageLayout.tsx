@@ -25,7 +25,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   <div className="flex flex-1 flex-col p-4 pt-6">
     <div className={cn('flex flex-col gap-4', getPageLayoutSizeClassName(size))}>
       {title !== undefined ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-col gap-1">
             <h1 className="font-heading text-2xl leading-tight font-medium">{title}</h1>
             {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}

@@ -1,4 +1,4 @@
-import { auditEvents, type Db, parts, supplier, user } from '@pkg/db';
+import { auditEvents, type Db, jobBays, parts, sql, supplier, user } from '@pkg/db';
 import type { Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -48,6 +48,7 @@ describe('products.create', () => {
       buildTimeDays: 14,
       modelCode: 'WHEEL-LOADER',
       name: 'Wheel Loader',
+      productBays: [],
       requiresVinNumber: false,
     });
     expectIsoDatetime(created.createdAt);
@@ -107,6 +108,71 @@ describe('products.create', () => {
         price: 250,
       }),
     ]);
+  });
+
+  test('creates products with Product Bays and keeps them decoupled from build time days', async ({ context }) => {
+    const caller = context.createCaller();
+    const assemblyBayId = await createBay(context.db, {
+      department: 'assembly',
+      id: '00000000-0000-4000-8000-000000000401',
+      name: 'Assembly Bay 1',
+    });
+    const fabricationBayId = await createBay(context.db, {
+      department: 'fabrication',
+      id: '00000000-0000-4000-8000-000000000402',
+      name: 'Fabrication Bay 1',
+    });
+
+    const created = await createProduct(caller, 'Wheel Loader Product Bays', {
+      buildTimeDays: 1,
+      productBays: [
+        { bayId: assemblyBayId, defaultWorkingDays: 7 },
+        { bayId: fabricationBayId, defaultWorkingDays: 5 },
+      ],
+    });
+
+    expect(created.productBays).toEqual([
+      expect.objectContaining({
+        bayId: fabricationBayId,
+        defaultWorkingDays: 5,
+        bay: expect.objectContaining({ department: 'fabrication', name: 'Fabrication Bay 1' }),
+      }),
+      expect.objectContaining({
+        bayId: assemblyBayId,
+        defaultWorkingDays: 7,
+        bay: expect.objectContaining({ department: 'assembly', name: 'Assembly Bay 1' }),
+      }),
+    ]);
+  });
+
+  test('rejects duplicate and disabled Product Bays', async ({ context }) => {
+    const caller = context.createCaller();
+    const bayId = await createBay(context.db, {
+      department: 'paint',
+      id: '00000000-0000-4000-8000-000000000403',
+      name: 'Paint Bay 1',
+    });
+    const disabledBayId = await createBay(context.db, {
+      department: 'paint',
+      disabledAt: new Date(),
+      id: '00000000-0000-4000-8000-000000000404',
+      name: 'Paint Bay Disabled',
+    });
+
+    await expect(
+      createProduct(caller, 'Wheel Loader Duplicate Product Bay', {
+        productBays: [
+          { bayId, defaultWorkingDays: 5 },
+          { bayId, defaultWorkingDays: 7 },
+        ],
+      }),
+    ).rejects.toThrow('Bay can only be added once per product');
+
+    await expect(
+      createProduct(caller, 'Wheel Loader Disabled Product Bay', {
+        productBays: [{ bayId: disabledBayId, defaultWorkingDays: 5 }],
+      }),
+    ).rejects.toThrow('Only enabled Bays can be added to Product Bays.');
   });
 });
 
@@ -190,6 +256,27 @@ describe('products.read', () => {
           thumbnailDataUrl: THUMBNAIL_DATA_URL,
         }),
       ],
+    });
+  });
+
+  test('returns Product Bays on get and list', async ({ context }) => {
+    const caller = context.createCaller();
+    const bayId = await createBay(context.db, {
+      department: 'supply',
+      id: '00000000-0000-4000-8000-000000000405',
+      name: 'Supply Bay 1',
+    });
+    const created = await createProduct(caller, 'Wheel Loader Product Bay Read', {
+      productBays: [{ bayId, defaultWorkingDays: 3 }],
+    });
+
+    await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
+      id: created.id,
+      productBays: [expect.objectContaining({ bayId, defaultWorkingDays: 3 })],
+    });
+
+    await expect(caller.products.list({ search: 'Product Bay Read' })).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: created.id, productBays: [expect.objectContaining({ bayId })] })],
     });
   });
 });
@@ -315,6 +402,89 @@ describe('products.update', () => {
       expect.objectContaining({
         changes: expect.objectContaining({
           assemblies: expect.any(Object),
+        }),
+        entityType: 'product',
+      }),
+    );
+  });
+
+  test('replaces, removes, audits, and preserves disabled existing Product Bays', async ({ context }) => {
+    const caller = context.createCaller();
+    const firstBayId = await createBay(context.db, {
+      department: 'fabrication',
+      id: '00000000-0000-4000-8000-000000000406',
+      name: 'Fabrication Bay 2',
+    });
+    const secondBayId = await createBay(context.db, {
+      department: 'assembly',
+      id: '00000000-0000-4000-8000-000000000407',
+      name: 'Assembly Bay 2',
+    });
+    const created = await createProduct(caller, 'Wheel Loader Product Bay Update', {
+      productBays: [{ bayId: firstBayId, defaultWorkingDays: 5 }],
+    });
+
+    await context.db.update(jobBays).set({ disabledAt: new Date() }).where(sql`${jobBays.id} = ${firstBayId}`);
+
+    const retainedDisabled = await caller.products.update({
+      id: created.id,
+      assemblies: created.assemblies,
+      basePrice: created.basePrice,
+      currencyCode: created.currencyCode,
+      description: created.description,
+      buildTimeDays: 1,
+      modelCode: created.modelCode,
+      name: created.name,
+      productBays: productBayInputs(created),
+      requiresVinNumber: created.requiresVinNumber,
+      thumbnailDataUrl: created.thumbnailDataUrl,
+    });
+
+    expect(retainedDisabled.productBays).toEqual([
+      expect.objectContaining({
+        bayId: firstBayId,
+        defaultWorkingDays: 5,
+        bay: expect.objectContaining({ disabledAt: expect.any(String) }),
+      }),
+    ]);
+
+    const replaced = await caller.products.update({
+      id: created.id,
+      assemblies: retainedDisabled.assemblies,
+      basePrice: retainedDisabled.basePrice,
+      currencyCode: retainedDisabled.currencyCode,
+      description: retainedDisabled.description,
+      buildTimeDays: retainedDisabled.buildTimeDays,
+      modelCode: retainedDisabled.modelCode,
+      name: retainedDisabled.name,
+      productBays: [{ bayId: secondBayId, defaultWorkingDays: 8 }],
+      requiresVinNumber: retainedDisabled.requiresVinNumber,
+      thumbnailDataUrl: retainedDisabled.thumbnailDataUrl,
+    });
+
+    expect(replaced.productBays).toEqual([expect.objectContaining({ bayId: secondBayId, defaultWorkingDays: 8 })]);
+    expect((await caller.products.get({ id: created.id })).productBays).toEqual(replaced.productBays);
+
+    const removed = await caller.products.update({
+      id: created.id,
+      assemblies: replaced.assemblies,
+      basePrice: replaced.basePrice,
+      currencyCode: replaced.currencyCode,
+      description: replaced.description,
+      buildTimeDays: replaced.buildTimeDays,
+      modelCode: replaced.modelCode,
+      name: replaced.name,
+      productBays: [],
+      requiresVinNumber: replaced.requiresVinNumber,
+      thumbnailDataUrl: replaced.thumbnailDataUrl,
+    });
+
+    expect(removed.productBays).toEqual([]);
+    const events = await context.db.select().from(auditEvents);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        changes: expect.objectContaining({
+          productBays: expect.any(Object),
         }),
         entityType: 'product',
       }),
@@ -478,4 +648,40 @@ async function createParts(db: Db): Promise<{ bucket: string; hose: string; rock
     hose: '00000000-0000-4000-8000-000000000303',
     rockBucket: '00000000-0000-4000-8000-000000000304',
   };
+}
+
+async function createBay(
+  db: Db,
+  input: {
+    department: typeof jobBays.$inferInsert.department;
+    disabledAt?: Date;
+    id: string;
+    name: string;
+  },
+): Promise<string> {
+  const [bay] = await db
+    .insert(jobBays)
+    .values({
+      department: input.department,
+      disabledAt: input.disabledAt ?? null,
+      id: input.id,
+      name: input.name,
+      scheduleOrigin: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    .returning();
+
+  if (!bay) {
+    throw new Error('Bay insert did not return a row');
+  }
+
+  return bay.id;
+}
+
+function productBayInputs(
+  product: Product,
+): NonNullable<Parameters<AppRouterCaller['products']['update']>[0]['productBays']> {
+  return product.productBays.map((productBay) => ({
+    bayId: productBay.bayId,
+    defaultWorkingDays: productBay.defaultWorkingDays,
+  }));
 }

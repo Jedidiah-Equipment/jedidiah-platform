@@ -3,19 +3,24 @@ import { randomUUID } from 'node:crypto';
 import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
+  type DatabaseTransaction,
   type Db,
   documents,
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
+  jobBays,
+  productBays,
   products,
   user,
 } from '@pkg/db';
-import { validateDocumentMetadata } from '@pkg/domain';
+import { JOB_DEPARTMENT_PIPELINE, validateDocumentMetadata } from '@pkg/domain';
 import type {
   Assembly,
   AuthId,
   Logger,
+  ProductBay,
+  ProductBayInput,
   ProductCreateInput,
   ProductDocument,
   ProductListInput,
@@ -25,11 +30,12 @@ import type {
 } from '@pkg/schema';
 import {
   Product,
+  ProductBay as ProductBaySchema,
   ProductCurrencyCode,
   ProductDocumentMetadata,
   ProductDocument as ProductDocumentSchema,
 } from '@pkg/schema';
-import { and, asc, desc, eq, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import {
@@ -61,16 +67,35 @@ import {
   productAssemblyOrderBy,
   syncAssemblies,
 } from './product-assembly-service.js';
-import { DuplicateProductModelCodeError, DuplicateProductNameError, ProductNotFoundError } from './product-errors.js';
+import {
+  DuplicateProductBayError,
+  DuplicateProductModelCodeError,
+  DuplicateProductNameError,
+  ProductBayDisabledError,
+  ProductBayNotFoundError,
+  ProductNotFoundError,
+} from './product-errors.js';
 
 const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
 
 type ProductRow = typeof products.$inferSelect;
 type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
-type ProductAuditInput = ProductRow & { assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']> };
+type ProductAuditInput = ProductRow & {
+  assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>;
+  productBays: ProductBay[] | ProductBayInput[];
+};
+type ProductBayFlatRow = typeof productBays.$inferSelect & {
+  bayCreatedAt: Date;
+  bayDepartment: typeof jobBays.$inferSelect.department;
+  bayDisabledAt: Date | null;
+  bayId: string;
+  bayName: string;
+  bayScheduleOrigin: Date;
+  bayUpdatedAt: Date;
+};
 
-// `assemblies` is folded into one stable JSON field so the Product aggregate's assemblies diff as a
-// unit (Product Assemblies are audited under the `product` entity — ADR, no separate entity type).
+// Child collections are folded into stable JSON fields so Product aggregate updates audit as a unit
+// instead of introducing separate audit entity types for Product Assemblies or Product Bays.
 export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
   entityType: 'product',
   noun: 'product',
@@ -84,6 +109,7 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
     buildTimeDays: input.buildTimeDays,
     modelCode: input.modelCode,
     name: input.name,
+    productBays: JSON.stringify(toAuditProductBays(input.productBays)),
     requiresVinNumber: input.requiresVinNumber,
     thumbnailDataUrl: input.thumbnailDataUrl,
   }),
@@ -96,7 +122,7 @@ export type ProductDocumentCreateInput = {
   productId: UUID;
 };
 
-export function mapProduct(row: ProductRow & { assemblies?: Assembly[] }): Product {
+export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productBays?: ProductBay[] }): Product {
   return Product.parse({
     assemblies: row.assemblies ?? [],
     basePrice: row.basePrice,
@@ -107,6 +133,7 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[] }): Produ
     buildTimeDays: row.buildTimeDays,
     modelCode: row.modelCode,
     name: row.name,
+    productBays: row.productBays ?? [],
     requiresVinNumber: row.requiresVinNumber,
     thumbnailDataUrl: row.thumbnailDataUrl,
     updatedAt: row.updatedAt.toISOString(),
@@ -173,19 +200,24 @@ export async function listProducts({
   );
 
   const [rows, total] = await Promise.all([productsQuery, db.$count(products, where)]);
+  const productBaysByProductId = await listProductBaysByProductIds({
+    db,
+    productIds: rows.map((row) => row.id),
+  });
 
   return {
-    items: rows.map(mapProductListRow),
+    items: rows.map((row) => mapProductListRow(row, productBaysByProductId.get(row.id) ?? [])),
     total,
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
   };
 }
 
-function mapProductListRow(row: ProductListRow): Product {
+function mapProductListRow(row: ProductListRow, productBaysForRow: ProductBay[] = []): Product {
   return mapProduct({
     ...row,
     assemblies: row.assemblies.map(mapAssembly),
+    productBays: productBaysForRow,
   });
 }
 
@@ -249,7 +281,7 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
     throw new ProductNotFoundError(id);
   }
 
-  return mapProductListRow(row);
+  return mapProductListRow(row, await listProductBays({ db, productId: row.id }));
 }
 
 export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<ProductDocument[]> {
@@ -466,7 +498,7 @@ export async function createProduct({
 }): Promise<Product> {
   try {
     return await db.transaction(async (tx) => {
-      const { assemblies: desiredAssemblies, ...productInput } = input;
+      const { assemblies: desiredAssemblies, productBays: desiredProductBays, ...productInput } = input;
       const [row] = await tx.insert(products).values(productInput).returning();
 
       if (!row) {
@@ -478,7 +510,12 @@ export async function createProduct({
         productId: row.id,
         desired: desiredAssemblies,
       });
-      const after = { ...row, assemblies };
+      const syncedProductBays = await syncProductBays({
+        tx,
+        productId: row.id,
+        desired: desiredProductBays,
+      });
+      const after = { ...row, assemblies, productBays: syncedProductBays };
 
       await recordAuditCreate({ db: tx, descriptor: productAuditDescriptor, actorUserId, input: after });
 
@@ -507,7 +544,9 @@ export async function updateProduct({
       }
 
       const beforeAssemblies = await listAssemblies({ tx, productId: input.id });
+      const beforeProductBays = await listProductBays({ db: tx, productId: input.id });
       const desiredAssemblies = input.assemblies ?? beforeAssemblies;
+      const desiredProductBays = input.productBays;
       const patch = {
         basePrice: input.basePrice,
         currencyCode: input.currencyCode,
@@ -518,11 +557,15 @@ export async function updateProduct({
         requiresVinNumber: input.requiresVinNumber,
         thumbnailDataUrl: input.thumbnailDataUrl,
       };
-      const after = { ...before, ...patch, assemblies: desiredAssemblies };
-      const changes = diffAuditUpdate(productAuditDescriptor, { ...before, assemblies: beforeAssemblies }, after);
+      const after = { ...before, ...patch, assemblies: desiredAssemblies, productBays: desiredProductBays };
+      const changes = diffAuditUpdate(
+        productAuditDescriptor,
+        { ...before, assemblies: beforeAssemblies, productBays: beforeProductBays },
+        after,
+      );
 
       if (!changes) {
-        return mapProduct({ ...before, assemblies: beforeAssemblies });
+        return mapProduct({ ...before, assemblies: beforeAssemblies, productBays: beforeProductBays });
       }
 
       const [row] = await tx
@@ -542,20 +585,180 @@ export async function updateProduct({
             desired: input.assemblies,
           })
         : beforeAssemblies;
-      const afterWithAssemblies = { ...row, assemblies };
+      const syncedProductBays = await syncProductBays({
+        tx,
+        productId: row.id,
+        desired: desiredProductBays,
+      });
+      const afterWithChildren = { ...row, assemblies, productBays: syncedProductBays };
 
       await recordAuditUpdate({
         db: tx,
         descriptor: productAuditDescriptor,
         actorUserId,
-        after: afterWithAssemblies,
+        after: afterWithChildren,
         changes,
       });
 
-      return mapProduct(afterWithAssemblies);
+      return mapProduct(afterWithChildren);
     });
   } catch (error) {
     throw mapProductUniqueViolation(error, input);
+  }
+}
+
+async function syncProductBays({
+  tx,
+  productId,
+  desired,
+}: {
+  tx: DatabaseTransaction;
+  productId: UUID;
+  desired: ProductBayInput[];
+}): Promise<ProductBay[]> {
+  assertUniqueProductBayIds(desired);
+
+  const currentRows = await tx.select().from(productBays).where(eq(productBays.productId, productId));
+  const currentBayIds = new Set(currentRows.map((row) => row.bayId));
+
+  await assertValidProductBayTargets({ tx, currentBayIds, desired });
+  await tx.delete(productBays).where(eq(productBays.productId, productId));
+
+  if (desired.length > 0) {
+    await tx.insert(productBays).values(
+      desired.map((productBay) => ({
+        bayId: productBay.bayId,
+        defaultWorkingDays: productBay.defaultWorkingDays,
+        productId,
+      })),
+    );
+  }
+
+  return listProductBays({ db: tx, productId });
+}
+
+async function listProductBays({
+  db,
+  productId,
+}: {
+  db: Db | DatabaseTransaction;
+  productId: UUID;
+}): Promise<ProductBay[]> {
+  return (await selectProductBays(db).where(eq(productBays.productId, productId))).map(mapProductBayRow);
+}
+
+async function listProductBaysByProductIds({
+  db,
+  productIds,
+}: {
+  db: Db;
+  productIds: UUID[];
+}): Promise<Map<UUID, ProductBay[]>> {
+  const productBaysByProductId = new Map<UUID, ProductBay[]>();
+
+  if (productIds.length === 0) {
+    return productBaysByProductId;
+  }
+
+  for (const productBay of (await selectProductBays(db).where(inArray(productBays.productId, productIds))).map(
+    mapProductBayRow,
+  )) {
+    const productBaysForProduct = productBaysByProductId.get(productBay.productId) ?? [];
+    productBaysForProduct.push(productBay);
+    productBaysByProductId.set(productBay.productId, productBaysForProduct);
+  }
+
+  return productBaysByProductId;
+}
+
+function selectProductBays(db: Db | DatabaseTransaction) {
+  return db
+    .select({
+      bayCreatedAt: jobBays.createdAt,
+      bayDepartment: jobBays.department,
+      bayDisabledAt: jobBays.disabledAt,
+      bayId: productBays.bayId,
+      bayName: jobBays.name,
+      bayScheduleOrigin: jobBays.scheduleOrigin,
+      bayUpdatedAt: jobBays.updatedAt,
+      createdAt: productBays.createdAt,
+      defaultWorkingDays: productBays.defaultWorkingDays,
+      productId: productBays.productId,
+      updatedAt: productBays.updatedAt,
+    })
+    .from(productBays)
+    .innerJoin(jobBays, eq(productBays.bayId, jobBays.id))
+    .orderBy(
+      sql`case ${jobBays.department}
+        ${sql.join(
+          JOB_DEPARTMENT_PIPELINE.map((step, index) => sql`when ${step.department} then ${index}`),
+          sql` `,
+        )}
+        else ${JOB_DEPARTMENT_PIPELINE.length}
+      end`,
+      asc(jobBays.name),
+      asc(jobBays.id),
+    )
+    .$dynamic();
+}
+
+function mapProductBayRow(row: ProductBayFlatRow): ProductBay {
+  return ProductBaySchema.parse({
+    bay: {
+      createdAt: row.bayCreatedAt.toISOString(),
+      department: row.bayDepartment,
+      disabledAt: row.bayDisabledAt?.toISOString() ?? null,
+      id: row.bayId,
+      name: row.bayName,
+      scheduleOrigin: row.bayScheduleOrigin.toISOString(),
+      updatedAt: row.bayUpdatedAt.toISOString(),
+    },
+    bayId: row.bayId,
+    defaultWorkingDays: row.defaultWorkingDays,
+    productId: row.productId,
+  });
+}
+
+async function assertValidProductBayTargets({
+  tx,
+  currentBayIds,
+  desired,
+}: {
+  tx: DatabaseTransaction;
+  currentBayIds: Set<UUID>;
+  desired: ProductBayInput[];
+}): Promise<void> {
+  const desiredBayIds = desired.map((productBay) => productBay.bayId);
+
+  if (desiredBayIds.length === 0) {
+    return;
+  }
+
+  const rows = await tx.select().from(jobBays).where(inArray(jobBays.id, desiredBayIds)).for('update');
+  const rowsById = new Map(rows.map((row) => [row.id, row]));
+
+  for (const productBay of desired) {
+    const bay = rowsById.get(productBay.bayId);
+
+    if (!bay) {
+      throw new ProductBayNotFoundError(productBay.bayId);
+    }
+
+    if (bay.disabledAt && !currentBayIds.has(productBay.bayId)) {
+      throw new ProductBayDisabledError(productBay.bayId);
+    }
+  }
+}
+
+function assertUniqueProductBayIds(productBaysForProduct: ProductBayInput[]): void {
+  const bayIds = new Set<string>();
+
+  for (const productBay of productBaysForProduct) {
+    if (bayIds.has(productBay.bayId)) {
+      throw new DuplicateProductBayError(productBay.bayId);
+    }
+
+    bayIds.add(productBay.bayId);
   }
 }
 
@@ -599,6 +802,15 @@ function toAuditAssemblies(
       price: assembly.price,
     };
   });
+}
+
+function toAuditProductBays(productBaysForProduct: ProductBay[] | ProductBayInput[]): ProductBayInput[] {
+  return productBaysForProduct
+    .map((productBay) => ({
+      bayId: productBay.bayId,
+      defaultWorkingDays: productBay.defaultWorkingDays,
+    }))
+    .toSorted((left, right) => left.bayId.localeCompare(right.bayId));
 }
 
 function getProductSortColumn(sortBy: ProductListInput['sortBy']) {

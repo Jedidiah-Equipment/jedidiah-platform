@@ -19,6 +19,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { jobCalendarPageDescription } from '@/utils/page-descriptions.js';
 import { toJobCalendarDateKey } from '../jobs/components/job-date-key.js';
 import { getBayCalendarException, groupBayExceptionChipsByDate } from './bay-exceptions.js';
 import { BayExceptionDialog } from './components/BayExceptionDialog.js';
@@ -129,7 +130,7 @@ export const JobCalendarPage: React.FC = () => {
 
   if (baysQuery.isLoading) {
     return (
-      <PageLayout description="Production" title="Job Calendar">
+      <PageLayout description={jobCalendarPageDescription} title="Job Calendar">
         <Skeleton className="h-[640px] w-full" />
       </PageLayout>
     );
@@ -137,14 +138,14 @@ export const JobCalendarPage: React.FC = () => {
 
   if (baysQuery.error) {
     return (
-      <PageLayout description="Production" title="Job Calendar">
+      <PageLayout description={jobCalendarPageDescription} title="Job Calendar">
         <ErrorMessage error={baysQuery.error} fallbackMessage="Unable to load Job calendar." />
       </PageLayout>
     );
   }
 
   return (
-    <PageLayout description="Production" title="Job Calendar">
+    <PageLayout description={jobCalendarPageDescription} title="Job Calendar">
       <CalendarProvider className="min-h-[640px]">
         <CalendarDate>
           <CalendarMonthLabel />

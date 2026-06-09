@@ -20,6 +20,7 @@ import { useCustomerForQuoteOptions, useProductForQuoteOptions, useSalesPersonOp
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { quotesPageDescription } from '@/utils/page-descriptions.js';
 import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { QuoteCreateDialog } from './QuoteCreateDialog.js';
@@ -62,7 +63,7 @@ export const QuotesPage: React.FC = () => {
             New quote
           </Button>
         }
-        description="Sales"
+        description={quotesPageDescription}
         size="full"
         title="Quotes"
       >

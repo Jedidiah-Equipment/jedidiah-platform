@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { Product, ProductAssembliesInput, ProductCreateInput, ProductUpdateInput } from './product.js';
+import {
+  Product,
+  ProductAssembliesInput,
+  ProductBaysInput,
+  ProductCreateInput,
+  ProductUpdateInput,
+} from './product.js';
+
+const BAY_ID = '00000000-0000-4000-8000-000000000201';
 
 describe('ProductCreateInput', () => {
   it('normalizes product catalog fields', () => {
@@ -21,6 +29,7 @@ describe('ProductCreateInput', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      productBays: [],
       requiresVinNumber: false,
       thumbnailDataUrl: null,
     });
@@ -38,15 +47,15 @@ describe('ProductCreateInput', () => {
     ).toBeNull();
   });
 
-  it('defaults omitted assemblies to an empty catalog shell', () => {
+  it('defaults omitted child collections to an empty catalog shell', () => {
     expect(
       ProductCreateInput.parse({
         basePrice: 120_000,
         buildTimeDays: 14,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
-      }).assemblies,
-    ).toEqual([]);
+      }),
+    ).toMatchObject({ assemblies: [], productBays: [] });
   });
 
   it('requires a model code and nonnegative price', () => {
@@ -89,6 +98,29 @@ describe('ProductCreateInput', () => {
         name: 'Wheel Loader',
       }),
     ).toThrow();
+  });
+});
+
+describe('ProductBaysInput', () => {
+  it('accepts positive whole default working days', () => {
+    expect(ProductBaysInput.parse([{ bayId: BAY_ID, defaultWorkingDays: '5' }])).toEqual([
+      { bayId: BAY_ID, defaultWorkingDays: 5 },
+    ]);
+  });
+
+  it('rejects non-positive and decimal default working days', () => {
+    expect(() => ProductBaysInput.parse([{ bayId: BAY_ID, defaultWorkingDays: 0 }])).toThrow();
+    expect(() => ProductBaysInput.parse([{ bayId: BAY_ID, defaultWorkingDays: -1 }])).toThrow();
+    expect(() => ProductBaysInput.parse([{ bayId: BAY_ID, defaultWorkingDays: 1.5 }])).toThrow();
+  });
+
+  it('rejects duplicate Bays', () => {
+    expect(() =>
+      ProductBaysInput.parse([
+        { bayId: BAY_ID, defaultWorkingDays: 5 },
+        { bayId: BAY_ID, defaultWorkingDays: 7 },
+      ]),
+    ).toThrow('Bay can only be added once per product');
   });
 });
 
@@ -137,6 +169,7 @@ describe('ProductUpdateInput', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      productBays: [],
       requiresVinNumber: true,
       thumbnailDataUrl: null,
     });

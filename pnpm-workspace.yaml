@@ -1,3 +1,9 @@
 packages:
   - "pkg/*"
   - "pkg/solidworks/*"
+
+allowBuilds:
+  "@posthog/cli": true
+  core-js: false
+  esbuild: false
+  msw: false

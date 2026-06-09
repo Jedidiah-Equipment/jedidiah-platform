@@ -18,7 +18,7 @@ export const QuoteFormSection: React.FC<QuoteFormSectionProps> = ({ children, de
           {Icon ? <Icon aria-hidden className="size-5 shrink-0 text-muted-foreground" /> : null}
           <span>{title}</span>
         </CardTitle>
-        {description ? <CardDescription className="font-mono">{description}</CardDescription> : null}
+        {description ? <CardDescription>{description}</CardDescription> : null}
       </CardHeader>
       <CardSeparator />
       <CardContent>{children}</CardContent>

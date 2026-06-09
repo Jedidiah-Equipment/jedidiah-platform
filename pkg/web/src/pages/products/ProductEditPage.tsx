@@ -10,7 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.j
 import { useCan } from '@/hooks/use-access.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { ProductAssembliesTabTrigger } from './components/ProductAssembliesTabTrigger.js';
+import { ProductBaysTabTrigger } from './components/ProductBaysTabTrigger.js';
 import { ProductDocumentsSection } from './components/ProductDocumentsSection.js';
+import { ProductDocumentsTabTrigger } from './components/ProductDocumentsTabTrigger.js';
 import { ProductForm } from './components/ProductForm.js';
 
 type ProductEditPageProps = {
@@ -64,12 +67,12 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, produc
     <Tabs className="w-full" defaultValue="details" size="sm">
       <TabsList variant="default">
         <TabsTrigger value="details">Details</TabsTrigger>
-        <TabsTrigger value="documents">Documents</TabsTrigger>
+        <ProductBaysTabTrigger productId={product.id} />
+        <ProductAssembliesTabTrigger productId={product.id} />
+        <ProductDocumentsTabTrigger productId={product.id} />
         {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
       </TabsList>
-      <TabsContent className="pt-4" value="details">
-        <ProductForm key={product.id} onSave={onProductSave} product={product} />
-      </TabsContent>
+      <ProductForm key={product.id} onSave={onProductSave} product={product} />
       <TabsContent className="pt-4" value="documents">
         <ProductDocumentsSection productId={product.id} />
       </TabsContent>

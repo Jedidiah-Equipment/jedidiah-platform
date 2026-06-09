@@ -1,9 +1,9 @@
-import { customers, type Db, products, quotes, user } from '@pkg/db';
+import { customers, type Db, jobBays, productBays, products, quotes, user } from '@pkg/db';
 import type { QuoteStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
-import { countQuotesByWeek, summarizeQuotesByStatus } from './quote-service.js';
+import { countQuotesByWeek, getQuote, summarizeQuotesByStatus } from './quote-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -146,6 +146,74 @@ describe('countQuotesByWeek', () => {
   });
 });
 
+describe('getQuote', () => {
+  test('returns Product Bays for the quote Product, including disabled existing Bays', async ({ context }) => {
+    const enabledBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000401',
+      name: 'A Enabled Product Bay',
+    });
+    const disabledBay = await createBay(context.db, {
+      disabledAt: new Date('2026-06-01T00:00:00.000Z'),
+      id: '00000000-0000-4000-8000-000000000402',
+      name: 'Z Disabled Product Bay',
+    });
+    await context.db.insert(productBays).values([
+      { bayId: enabledBay.id, defaultWorkingDays: 3, productId: context.product.id },
+      { bayId: disabledBay.id, defaultWorkingDays: 5, productId: context.product.id },
+    ]);
+    const [quote] = await context.db
+      .insert(quotes)
+      .values({
+        customerId: context.customer.id,
+        productId: context.product.id,
+        quotedBasePrice: 1000,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      })
+      .returning();
+
+    if (!quote) {
+      throw new Error('Quote insert did not return a row');
+    }
+
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+      productBays: [
+        {
+          bay: expect.objectContaining({ disabledAt: null, name: 'A Enabled Product Bay' }),
+          bayId: enabledBay.id,
+          defaultWorkingDays: 3,
+        },
+        {
+          bay: expect.objectContaining({ disabledAt: '2026-06-01T00:00:00.000Z', name: 'Z Disabled Product Bay' }),
+          bayId: disabledBay.id,
+          defaultWorkingDays: 5,
+        },
+      ],
+    });
+  });
+
+  test('returns an empty Product Bay list when the quote Product has none', async ({ context }) => {
+    const [quote] = await context.db
+      .insert(quotes)
+      .values({
+        customerId: context.customer.id,
+        productId: context.product.id,
+        quotedBasePrice: 1000,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      })
+      .returning();
+
+    if (!quote) {
+      throw new Error('Quote insert did not return a row');
+    }
+
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({ productBays: [] });
+  });
+});
+
 async function createQuoteRows(
   db: Db,
   {
@@ -173,4 +241,29 @@ async function createQuoteRows(
       status,
     })),
   );
+}
+
+async function createBay(
+  db: Db,
+  values: {
+    disabledAt?: Date | null;
+    id: string;
+    name: string;
+  },
+) {
+  const [bay] = await db
+    .insert(jobBays)
+    .values({
+      department: 'fabrication',
+      disabledAt: null,
+      scheduleOrigin: new Date('2026-01-01T00:00:00.000Z'),
+      ...values,
+    })
+    .returning();
+
+  if (!bay) {
+    throw new Error('Bay insert did not return a row');
+  }
+
+  return bay;
 }

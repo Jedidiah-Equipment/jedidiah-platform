@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { QuoteCreateInput } from './quote.js';
+import { QuoteCreateInput, QuoteDetail } from './quote.js';
 
 const baseCreateInput = {
   customer: {
@@ -38,5 +38,75 @@ describe('QuoteCreateInput', () => {
         depositPercent: 101,
       }),
     ).toThrow();
+  });
+});
+
+describe('QuoteDetail', () => {
+  it('parses Product Bays with embedded Bay state', () => {
+    expect(
+      QuoteDetail.parse({
+        code: 1,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        customerAddress: null,
+        customerCompanyName: 'Acme Mining',
+        customerContactPerson: null,
+        customerEmail: null,
+        customerId: '550e8400-e29b-41d4-a716-446655440001',
+        customerPhone: null,
+        customerThumbnailDataUrl: null,
+        customerVatNumber: null,
+        deliveryIncluded: true,
+        deliveryPrice: 0,
+        depositPercent: 0,
+        discountAmount: 0,
+        documentNotes: null,
+        id: '550e8400-e29b-41d4-a716-446655440010',
+        linkedJobs: [],
+        notes: null,
+        plannedDeliveryDate: null,
+        preferredDeliveryDate: null,
+        productAssemblies: [],
+        productBays: [
+          {
+            bay: {
+              createdAt: '2026-01-01T00:00:00.000Z',
+              department: 'fabrication',
+              disabledAt: null,
+              id: '550e8400-e29b-41d4-a716-446655440020',
+              name: 'Fabrication Bay',
+              scheduleOrigin: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+            bayId: '550e8400-e29b-41d4-a716-446655440020',
+            defaultWorkingDays: 4,
+            productId: '550e8400-e29b-41d4-a716-446655440000',
+          },
+        ],
+        productBuildTimeDays: 14,
+        productCurrencyCode: 'ZAR',
+        productDescription: null,
+        productId: '550e8400-e29b-41d4-a716-446655440000',
+        productModelCode: 'WL-100',
+        productName: 'Wheel Loader',
+        productRequiresVinNumber: false,
+        productThumbnailDataUrl: null,
+        quotedBasePrice: 1000,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonEmail: null,
+        salesPersonId: 'auth-user-1',
+        salesPersonName: null,
+        salesPersonThumbnailDataUrl: null,
+        selectedAssemblies: [],
+        status: 'accepted',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        validUntil: null,
+      }).productBays,
+    ).toEqual([
+      expect.objectContaining({
+        bay: expect.objectContaining({ disabledAt: null, name: 'Fabrication Bay' }),
+        bayId: '550e8400-e29b-41d4-a716-446655440020',
+        defaultWorkingDays: 4,
+      }),
+    ]);
   });
 });

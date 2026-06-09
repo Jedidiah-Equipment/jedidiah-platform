@@ -640,7 +640,7 @@ async function syncProductBays({
   return listProductBays({ db: tx, productId });
 }
 
-async function listProductBays({
+export async function listProductBays({
   db,
   productId,
 }: {

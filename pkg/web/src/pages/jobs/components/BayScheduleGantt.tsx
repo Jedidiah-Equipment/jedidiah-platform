@@ -1,5 +1,6 @@
 import {
   addJobSlotDuration,
+  canScheduleBay,
   formatDate,
   type SlotCalendarDays,
   segmentSlotCalendarDays,
@@ -51,6 +52,7 @@ import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -84,9 +86,16 @@ export const BayScheduleGantt: React.FC<{
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
+  const accessQuery = useAccess();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
   const bays = baysQuery.data?.items ?? [];
+  const schedulableBays = useMemo(
+    () => bays.filter((bay) => canScheduleBay(accessQuery.data, bay.department)),
+    [accessQuery.data, bays],
+  );
+  const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);
+  const canEditSchedule = schedulableBays.length > 0;
   const offDays = baysQuery.data?.offDays ?? [];
   const horizonWarnings = useMemo(
     () => new Map(getMaintainedHorizonWarnings({ bays, offDays }).map((warning) => [warning.bayId, warning])),
@@ -97,11 +106,11 @@ export const BayScheduleGantt: React.FC<{
   const [selectedJobId, setSelectedJobId] = useState('');
   const [durationDays, setDurationDays] = useState(1);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
-  const selectedBay = bays.find((bay) => bay.id === selectedBayId) ?? bays[0] ?? null;
+  const selectedBay = schedulableBays.find((bay) => bay.id === selectedBayId) ?? schedulableBays[0] ?? null;
   const jobs = jobsQuery.data?.items ?? [];
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
-  const canBook = Boolean(selectedBay && selectedJob && durationDays > 0);
+  const canBook = Boolean(canEditSchedule && selectedBay && selectedJob && durationDays > 0);
   const clearOptimisticResize = useCallback((slotId: string) => {
     setOptimisticResizeDaysBySlotId((current) => {
       const { [slotId]: _removed, ...next } = current;
@@ -185,10 +194,20 @@ export const BayScheduleGantt: React.FC<{
     [addIdleSlotMutation],
   );
   useEffect(() => {
-    if (!selectedBayId && bays[0]) {
-      setSelectedBayId(bays[0].id);
+    if (!canEditSchedule) {
+      setSelectedBayId('');
+      return;
     }
-  }, [bays, selectedBayId]);
+
+    if (!selectedBay) {
+      setSelectedBayId('');
+      return;
+    }
+
+    if (selectedBay.id !== selectedBayId) {
+      setSelectedBayId(selectedBay.id);
+    }
+  }, [canEditSchedule, selectedBay, selectedBayId]);
 
   useEffect(() => {
     if (!selectedJobId && jobs[0]) {
@@ -210,97 +229,99 @@ export const BayScheduleGantt: React.FC<{
 
   return (
     <div className="space-y-3">
-      <form
-        className="flex flex-wrap items-end gap-3 border-border/70 border-y bg-background py-3"
-        onSubmit={(event) => {
-          event.preventDefault();
+      {canEditSchedule ? (
+        <form
+          className="flex flex-wrap items-end gap-3 border-border/70 border-y bg-background py-3"
+          onSubmit={(event) => {
+            event.preventDefault();
 
-          if (!selectedBay || !selectedJob || durationDays <= 0) {
-            return;
-          }
+            if (!selectedBay || !selectedJob || durationDays <= 0) {
+              return;
+            }
 
-          bookSlotMutation.mutate({
-            bayId: selectedBay.id,
-            durationDays,
-            jobId: selectedJob.id,
-          });
-        }}
-      >
-        <Field className="min-w-56 max-w-72 flex-1 gap-1">
-          <FieldLabel htmlFor="bay-schedule-bay">Bay</FieldLabel>
-          <Select onValueChange={(value) => setSelectedBayId(String(value))} value={selectedBay?.id ?? ''}>
-            <SelectTrigger id="bay-schedule-bay" className="w-full">
-              <SelectValue placeholder="Select bay">
-                {selectedBay ? (
-                  <>
-                    <span className="truncate">{selectedBay.name}</span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {formatDate(selectedBay.nextAvailableAt, 'MMM d')}
-                    </span>
-                  </>
-                ) : null}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent align="start">
-              <SelectGroup>
-                {bays.map((bay) => (
-                  <SelectItem key={bay.id} value={bay.id}>
-                    {bay.name}
-                    <span className="text-muted-foreground">{formatDate(bay.nextAvailableAt, 'MMM d')}</span>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="min-w-64 max-w-96 flex-1 gap-1">
-          <FieldLabel htmlFor="bay-schedule-job">Job</FieldLabel>
-          <Select
-            disabled={jobsQuery.isLoading}
-            onValueChange={(value) => setSelectedJobId(String(value))}
-            value={selectedJob?.id ?? ''}
-          >
-            <SelectTrigger id="bay-schedule-job" className="w-full">
-              <SelectValue placeholder={jobsQuery.isLoading ? 'Loading jobs' : 'Select job'}>
-                {selectedJob ? (
-                  <>
-                    <span className="truncate">{selectedJob.code}</span>
-                    <span className="shrink-0 text-muted-foreground">{selectedJob.productSerialNumber}</span>
-                  </>
-                ) : null}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent align="start">
-              <SelectGroup>
-                {jobs.map((job) => (
-                  <SelectItem key={job.id} value={job.id}>
-                    {job.code}
-                    <span className="text-muted-foreground">{job.productSerialNumber}</span>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="w-28 gap-1">
-          <FieldLabel htmlFor="bay-schedule-duration">Days</FieldLabel>
-          <Input
-            id="bay-schedule-duration"
-            min={1}
-            onChange={(event) => setDurationDays(Number.parseInt(event.currentTarget.value, 10) || 0)}
-            type="number"
-            value={durationDays}
-          />
-        </Field>
-        <Button disabled={!canBook || isScheduleMutationPending} type="submit">
-          {bookSlotMutation.isPending ? (
-            <IconLoader2 className="animate-spin" data-icon="inline-start" />
-          ) : (
-            <IconCalendarPlus data-icon="inline-start" />
-          )}
-          Book
-        </Button>
-      </form>
+            bookSlotMutation.mutate({
+              bayId: selectedBay.id,
+              durationDays,
+              jobId: selectedJob.id,
+            });
+          }}
+        >
+          <Field className="min-w-56 max-w-72 flex-1 gap-1">
+            <FieldLabel htmlFor="bay-schedule-bay">Bay</FieldLabel>
+            <Select onValueChange={(value) => setSelectedBayId(String(value))} value={selectedBay?.id ?? ''}>
+              <SelectTrigger id="bay-schedule-bay" className="w-full">
+                <SelectValue placeholder="Select bay">
+                  {selectedBay ? (
+                    <>
+                      <span className="truncate">{selectedBay.name}</span>
+                      <span className="shrink-0 text-muted-foreground">
+                        {formatDate(selectedBay.nextAvailableAt, 'MMM d')}
+                      </span>
+                    </>
+                  ) : null}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent align="start">
+                <SelectGroup>
+                  {schedulableBays.map((bay) => (
+                    <SelectItem key={bay.id} value={bay.id}>
+                      {bay.name}
+                      <span className="text-muted-foreground">{formatDate(bay.nextAvailableAt, 'MMM d')}</span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field className="min-w-64 max-w-96 flex-1 gap-1">
+            <FieldLabel htmlFor="bay-schedule-job">Job</FieldLabel>
+            <Select
+              disabled={jobsQuery.isLoading}
+              onValueChange={(value) => setSelectedJobId(String(value))}
+              value={selectedJob?.id ?? ''}
+            >
+              <SelectTrigger id="bay-schedule-job" className="w-full">
+                <SelectValue placeholder={jobsQuery.isLoading ? 'Loading jobs' : 'Select job'}>
+                  {selectedJob ? (
+                    <>
+                      <span className="truncate">{selectedJob.code}</span>
+                      <span className="shrink-0 text-muted-foreground">{selectedJob.productSerialNumber}</span>
+                    </>
+                  ) : null}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent align="start">
+                <SelectGroup>
+                  {jobs.map((job) => (
+                    <SelectItem key={job.id} value={job.id}>
+                      {job.code}
+                      <span className="text-muted-foreground">{job.productSerialNumber}</span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field className="w-28 gap-1">
+            <FieldLabel htmlFor="bay-schedule-duration">Days</FieldLabel>
+            <Input
+              id="bay-schedule-duration"
+              min={1}
+              onChange={(event) => setDurationDays(Number.parseInt(event.currentTarget.value, 10) || 0)}
+              type="number"
+              value={durationDays}
+            />
+          </Field>
+          <Button disabled={!canBook || isScheduleMutationPending} type="submit">
+            {bookSlotMutation.isPending ? (
+              <IconLoader2 className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <IconCalendarPlus data-icon="inline-start" />
+            )}
+            Book
+          </Button>
+        </form>
+      ) : null}
       <div
         className="w-full overflow-hidden"
         style={{
@@ -322,6 +343,7 @@ export const BayScheduleGantt: React.FC<{
             <BayLaneRows bays={bays} />
             <BaySlotBars
               bays={bays}
+              canEditScheduleByBayId={schedulableBayIds}
               isScheduleMutationPending={isScheduleMutationPending}
               jobsById={jobsById}
               offDays={offDays}
@@ -418,6 +440,7 @@ const getCurrentBaySlot = (slots: ProjectedJobSlot[], timestamp: number) =>
 
 const BaySlotBars: React.FC<{
   bays: BaySchedule[];
+  canEditScheduleByBayId: ReadonlySet<string>;
   isScheduleMutationPending: boolean;
   jobsById: ReadonlyMap<string, JobSummary>;
   offDays: OffDay[];
@@ -428,6 +451,7 @@ const BaySlotBars: React.FC<{
   optimisticResizeDaysBySlotId: Record<string, number>;
 }> = ({
   bays,
+  canEditScheduleByBayId,
   isScheduleMutationPending,
   jobsById,
   offDays,
@@ -446,6 +470,7 @@ const BaySlotBars: React.FC<{
         bay.slots.map((slot) => (
           <BaySlotBar
             bayId={bay.id}
+            canEditSchedule={canEditScheduleByBayId.has(bay.id)}
             isScheduleMutationPending={isScheduleMutationPending}
             job={slot.kind === 'work' ? (jobsById.get(slot.jobId) ?? null) : null}
             key={slot.id}
@@ -473,6 +498,7 @@ type SlotResizeDrag = {
 
 const BaySlotBar: React.FC<{
   bayId: UUID;
+  canEditSchedule: boolean;
   isScheduleMutationPending: boolean;
   job: JobSummary | null;
   onAddIdle: (targetSlotId: string, placement: JobSlotPlacement) => void;
@@ -485,6 +511,7 @@ const BaySlotBar: React.FC<{
   workingCalendar: WorkingCalendar;
 }> = ({
   bayId,
+  canEditSchedule,
   isScheduleMutationPending,
   job,
   onAddIdle,
@@ -529,7 +556,7 @@ const BaySlotBar: React.FC<{
   // Center the bar/card vertically within its (taller) bay row.
   const top = rowTop + (gantt.rowHeight - height) / 2;
   const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (isScheduleMutationPending) {
+    if (!canEditSchedule || isScheduleMutationPending) {
       return;
     }
 
@@ -640,83 +667,89 @@ const BaySlotBar: React.FC<{
             <BaySlotJobCard dayBreakdown={dayBreakdown} job={job} jobCode={label} />
           </button>
         )}
-        <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
-          <DialogTrigger
-            render={
-              <button
-                aria-label={`Remove ${label}`}
-                className={cn(
-                  'absolute top-1/2 right-2 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
-                  'hover:bg-destructive hover:text-white focus-visible:ring-ring',
-                )}
-                disabled={isScheduleMutationPending || isRemoving}
-                type="button"
-              />
-            }
-          >
-            <IconTrash className="size-3.5" />
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Remove slot</DialogTitle>
-              <DialogDescription>
-                Remove {label} from the Bay schedule. Later Slots will move up to close the gap.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>
-                Cancel
-              </DialogClose>
-              <Button
-                disabled={isRemoving}
-                onClick={async () => {
-                  setIsRemoving(true);
-                  try {
-                    await onRemove(slot.id);
-                    setIsRemoveDialogOpen(false);
-                  } catch {
-                    // The mutation hook owns the user-facing error toast.
-                  } finally {
-                    setIsRemoving(false);
-                  }
-                }}
-                type="button"
-                variant="destructive"
+        {canEditSchedule ? (
+          <>
+            <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
+              <DialogTrigger
+                render={
+                  <button
+                    aria-label={`Remove ${label}`}
+                    className={cn(
+                      'absolute top-1/2 right-2 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                      'hover:bg-destructive hover:text-white focus-visible:ring-ring',
+                    )}
+                    disabled={isScheduleMutationPending || isRemoving}
+                    type="button"
+                  />
+                }
               >
-                {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-                Remove
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <button
-          aria-label={`Resize ${label}`}
-          className={cn(
-            'absolute top-0 right-0 h-full w-2 cursor-ew-resize border-r-2 outline-none disabled:cursor-not-allowed disabled:opacity-50',
-            isIdle
-              ? 'border-foreground/40 bg-foreground/10 hover:bg-foreground/15 focus-visible:ring-2 focus-visible:ring-foreground'
-              : 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring',
-          )}
-          disabled={isScheduleMutationPending || isRemoving}
-          onPointerCancel={cancelResize}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={finishResize}
-          type="button"
-        />
+                <IconTrash className="size-3.5" />
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Remove slot</DialogTitle>
+                  <DialogDescription>
+                    Remove {label} from the Bay schedule. Later Slots will move up to close the gap.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>
+                    Cancel
+                  </DialogClose>
+                  <Button
+                    disabled={isRemoving}
+                    onClick={async () => {
+                      setIsRemoving(true);
+                      try {
+                        await onRemove(slot.id);
+                        setIsRemoveDialogOpen(false);
+                      } catch {
+                        // The mutation hook owns the user-facing error toast.
+                      } finally {
+                        setIsRemoving(false);
+                      }
+                    }}
+                    type="button"
+                    variant="destructive"
+                  >
+                    {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+                    Remove
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <button
+              aria-label={`Resize ${label}`}
+              className={cn(
+                'absolute top-0 right-0 h-full w-2 cursor-ew-resize border-r-2 outline-none disabled:cursor-not-allowed disabled:opacity-50',
+                isIdle
+                  ? 'border-foreground/40 bg-foreground/10 hover:bg-foreground/15 focus-visible:ring-2 focus-visible:ring-foreground'
+                  : 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring',
+              )}
+              disabled={isScheduleMutationPending || isRemoving}
+              onPointerCancel={cancelResize}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={finishResize}
+              type="button"
+            />
+          </>
+        ) : null}
       </ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuGroup>
-          <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'before')}>
-            <IconClockPlus />
-            Add idle slot before
-          </ContextMenuItem>
-          <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'after')}>
-            <IconClockPlus />
-            Add idle slot after
-          </ContextMenuItem>
-        </ContextMenuGroup>
-      </ContextMenuContent>
+      {canEditSchedule ? (
+        <ContextMenuContent>
+          <ContextMenuGroup>
+            <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'before')}>
+              <IconClockPlus />
+              Add idle slot before
+            </ContextMenuItem>
+            <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'after')}>
+              <IconClockPlus />
+              Add idle slot after
+            </ContextMenuItem>
+          </ContextMenuGroup>
+        </ContextMenuContent>
+      ) : null}
     </ContextMenu>
   );
 };

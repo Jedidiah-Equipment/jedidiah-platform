@@ -22,7 +22,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { Part as PartSchema } from '@pkg/schema';
-import { and, asc, count, eq, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -312,6 +312,15 @@ export async function bulkImportParts({
         ? await getImportSupplierById({ db: tx, supplierId: input.supplierId })
         : undefined;
 
+      // Preload every supplier and part the import touches in two batched reads rather than two
+      // queries per row, so importing thousands of rows stays a constant number of round trips.
+      // Suppliers/parts created mid-loop are folded back into these maps so later rows referencing
+      // the same name or code resolve them without re-querying.
+      const suppliersByName = scopedSupplier
+        ? new Map<string, SupplierRow>()
+        : await loadImportSuppliersByName({ db: tx, rows: input.rows });
+      const partsByCode = await loadImportPartsByCode({ db: tx, rows: input.rows });
+
       for (const row of input.rows) {
         if (scopedSupplier && row.supplierName.toLowerCase() !== scopedSupplier.companyName.toLowerCase()) {
           errors.push(
@@ -320,9 +329,8 @@ export async function bulkImportParts({
           continue;
         }
 
-        const existingSupplier =
-          scopedSupplier ?? (await findImportSupplier({ db: tx, companyName: row.supplierName }));
-        const [partByCode] = await tx.select().from(parts).where(eq(parts.code, row.code)).for('update');
+        const existingSupplier = scopedSupplier ?? suppliersByName.get(row.supplierName.toLowerCase());
+        const partByCode = partsByCode.get(row.code);
         if (partByCode && (!existingSupplier || partByCode.supplierId !== existingSupplier.id)) {
           errors.push(
             await formatBulkImportIdentityConflict({
@@ -341,6 +349,11 @@ export async function bulkImportParts({
             db: tx,
             companyName: row.supplierName,
           }));
+
+        if (!existingSupplier) {
+          suppliersByName.set(importedSupplier.companyName.toLowerCase(), importedSupplier);
+        }
+
         const partInput = {
           category: row.category,
           code: row.code,
@@ -363,6 +376,7 @@ export async function bulkImportParts({
           }
 
           await recordAuditCreate({ db: tx, descriptor: partAuditDescriptor, actorUserId, input: created });
+          partsByCode.set(created.code, created);
           importedCount += 1;
           continue;
         }
@@ -384,6 +398,7 @@ export async function bulkImportParts({
         }
 
         await recordAuditUpdate({ db: tx, descriptor: partAuditDescriptor, actorUserId, after: updated, changes });
+        partsByCode.set(updated.code, updated);
         updatedCount += 1;
       }
 
@@ -421,20 +436,58 @@ async function formatBulkImportIdentityConflict({
   return `Line ${row.lineNumber}: Part code ${existingPart.code} already exists with supplier ${existingIdentity}; CSV row has ${importIdentity}.`;
 }
 
-async function findImportSupplier({
-  companyName,
+async function loadImportSuppliersByName({
   db,
+  rows,
 }: {
-  companyName: string;
   db: DatabaseTransaction;
-}): Promise<SupplierRow | undefined> {
-  return db.query.supplier.findFirst({
-    columns: {
-      companyName: true,
-      id: true,
-    },
-    where: sql`lower(${supplier.companyName}) = lower(${companyName})`,
-  });
+  rows: PartBulkImportInput['rows'];
+}): Promise<Map<string, SupplierRow>> {
+  const byName = new Map<string, SupplierRow>();
+  const lowerNames = [...new Set(rows.map((row) => row.supplierName.toLowerCase()))];
+
+  if (lowerNames.length === 0) {
+    return byName;
+  }
+
+  const supplierRows = await db
+    .select({
+      companyName: supplier.companyName,
+      id: supplier.id,
+    })
+    .from(supplier)
+    .where(inArray(sql`lower(${supplier.companyName})`, lowerNames));
+
+  for (const supplierRow of supplierRows) {
+    byName.set(supplierRow.companyName.toLowerCase(), supplierRow);
+  }
+
+  return byName;
+}
+
+async function loadImportPartsByCode({
+  db,
+  rows,
+}: {
+  db: DatabaseTransaction;
+  rows: PartBulkImportInput['rows'];
+}): Promise<Map<string, PartRow>> {
+  const byCode = new Map<string, PartRow>();
+  const codes = [...new Set(rows.map((row) => row.code))];
+
+  if (codes.length === 0) {
+    return byCode;
+  }
+
+  // FOR UPDATE locks the matching rows up front, the same exclusive locking the per-row read used
+  // to take — just in one statement with a consistent lock order.
+  const partRows = await db.select().from(parts).where(inArray(parts.code, codes)).for('update');
+
+  for (const partRow of partRows) {
+    byCode.set(partRow.code, partRow);
+  }
+
+  return byCode;
 }
 
 async function getImportSupplierById({

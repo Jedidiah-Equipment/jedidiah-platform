@@ -1,4 +1,3 @@
-import { createUserAccessSummary } from '@pkg/domain';
 import { describe, expect, it } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -18,7 +17,6 @@ describe('listBays', () => {
   test('returns bays in deterministic order for admins', async ({ context }) => {
     const result = await listBays({
       db: context.db,
-      access: createUserAccessSummary({ role: 'admin', userId: 'admin-user' }),
     });
 
     expect(result.items.map((bay) => bay.name)).toEqual([
@@ -33,7 +31,6 @@ describe('listBays', () => {
   test('returns all bays for admins', async ({ context }) => {
     const result = await listBays({
       db: context.db,
-      access: createUserAccessSummary({ role: 'admin', userId: 'supervisor-user' }),
     });
 
     expect(result.items).toHaveLength(5);
@@ -42,11 +39,6 @@ describe('listBays', () => {
   test('returns all bays for department managers with job read permission', async ({ context }) => {
     const result = await listBays({
       db: context.db,
-      access: createUserAccessSummary({
-        departments: ['fabrication'],
-        role: 'job-department-manager',
-        userId: 'fabrication-manager',
-      }),
     });
 
     expect(result.items).toHaveLength(5);
@@ -55,11 +47,6 @@ describe('listBays', () => {
   test('returns all bays for unscoped department managers', async ({ context }) => {
     const result = await listBays({
       db: context.db,
-      access: createUserAccessSummary({
-        departments: [],
-        role: 'job-department-manager',
-        userId: 'unscoped-manager',
-      }),
     });
 
     expect(result.items).toHaveLength(5);
@@ -68,7 +55,6 @@ describe('listBays', () => {
   test('returns all bays for procurement managers with job read permission', async ({ context }) => {
     const result = await listBays({
       db: context.db,
-      access: createUserAccessSummary({ role: 'procurement-manager', userId: 'procurement-manager' }),
     });
 
     expect(result.items).toHaveLength(5);

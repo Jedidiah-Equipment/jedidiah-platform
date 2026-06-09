@@ -84,11 +84,10 @@ describe('createJob', () => {
     });
 
     const job = await createJob({
-      access: jobAccess,
       actorUserId,
       currentDate: new Date('2026-06-01T10:00:00.000+02:00'),
       db: context.db,
-      input: { quoteId: quote.id },
+      input: { baySeeds: [], quoteId: quote.id },
     });
 
     const [jobRows, cfoAssemblyRows, cfoPartRows, events] = await Promise.all([
@@ -175,7 +174,6 @@ describe('createJob', () => {
     });
 
     const job = await createJob({
-      access: jobAccess,
       actorUserId,
       db: context.db,
       input: { baySeeds: [], quoteId: quote.id },
@@ -194,7 +192,6 @@ describe('createJob', () => {
     });
 
     const job = await createJob({
-      access: jobAccess,
       actorUserId,
       currentDate: new Date('2026-06-05T09:00:00.000+02:00'),
       db: context.db,
@@ -240,7 +237,6 @@ describe('createJob', () => {
     });
 
     const job = await createJob({
-      access: jobAccess,
       actorUserId,
       db: context.db,
       input: {
@@ -270,7 +266,6 @@ describe('createJob', () => {
 
     await expect(
       createJob({
-        access: jobAccess,
         actorUserId,
         db: context.db,
         input: {
@@ -291,7 +286,6 @@ describe('createJob', () => {
 
     await expect(
       createJob({
-        access: jobAccess,
         actorUserId,
         db: context.db,
         input: {
@@ -360,10 +354,9 @@ describe('createJob', () => {
     ]);
 
     const job = await createJob({
-      access: jobAccess,
       actorUserId,
       db: context.db,
-      input: { quoteId: quote.id },
+      input: { baySeeds: [], quoteId: quote.id },
     });
 
     expect(job.cfo.map((entry) => entry.assemblyName)).toEqual([
@@ -394,7 +387,7 @@ describe('createJob', () => {
     await context.db.update(productAssemblies).set({ displayOrder: 1 }).where(eq(productAssemblies.id, bOptional.id));
     await context.db.update(productAssemblies).set({ displayOrder: 0 }).where(eq(productAssemblies.id, aOptional.id));
 
-    const reread = await getJob({ access: jobAccess, db: context.db, id: job.id });
+    const reread = await getJob({ db: context.db, id: job.id });
     expect(reread.cfo.map((entry) => entry.assemblyName)).toEqual([
       'B Standard',
       'A Standard',
@@ -422,10 +415,9 @@ describe('createJob', () => {
     });
 
     const job = await createJob({
-      access: jobAccess,
       actorUserId,
       db: context.db,
-      input: { quoteId: quote.id },
+      input: { baySeeds: [], quoteId: quote.id },
     });
 
     const snapshotRows = await context.db.select().from(documents).where(eq(documents.jobId, job.id));
@@ -487,10 +479,9 @@ describe('createJob', () => {
       status: 'accepted',
     });
     const job = await createJob({
-      access: jobAccess,
       actorUserId,
       db: context.db,
-      input: { quoteId: quote.id },
+      input: { baySeeds: [], quoteId: quote.id },
     });
 
     // Re-classify the Product Document: delete + re-upload the same filename with a different type.
@@ -540,10 +531,9 @@ describe('createJob', () => {
 
     await expect(
       createJob({
-        access: jobAccess,
         actorUserId,
         db: context.db,
-        input: { quoteId: quote.id },
+        input: { baySeeds: [], quoteId: quote.id },
       }),
     ).rejects.toThrow('Only accepted quotes can start a Job.');
   });
@@ -555,18 +545,16 @@ describe('createJob', () => {
     });
 
     await createJob({
-      access: jobAccess,
       actorUserId,
       db: context.db,
-      input: { quoteId: quote.id },
+      input: { baySeeds: [], quoteId: quote.id },
     });
 
     await expect(
       createJob({
-        access: jobAccess,
         actorUserId,
         db: context.db,
-        input: { quoteId: quote.id },
+        input: { baySeeds: [], quoteId: quote.id },
       }),
     ).rejects.toThrow('Quote already has a Job.');
   });
@@ -582,10 +570,9 @@ describe('createJob', () => {
 
     await expect(
       createJob({
-        access: jobAccess,
         actorUserId,
         db: context.db,
-        input: { quoteId: quote.id },
+        input: { baySeeds: [], quoteId: quote.id },
       }),
     ).rejects.toThrow('Selected optional assembly is stale: Heavy Axle Upgrade.');
   });
@@ -609,25 +596,22 @@ describe('createJob', () => {
     });
 
     const firstJob = await createJob({
-      access: jobAccess,
       actorUserId,
       currentDate: new Date('2026-06-01T10:00:00.000+02:00'),
       db: context.db,
-      input: { quoteId: firstQuote.id },
+      input: { baySeeds: [], quoteId: firstQuote.id },
     });
     const secondJob = await createJob({
-      access: jobAccess,
       actorUserId,
       currentDate: new Date('2026-06-02T10:00:00.000+02:00'),
       db: context.db,
-      input: { quoteId: secondQuote.id },
+      input: { baySeeds: [], quoteId: secondQuote.id },
     });
     const otherProductJob = await createJob({
-      access: jobAccess,
       actorUserId,
       currentDate: new Date('2026-06-03T10:00:00.000+02:00'),
       db: context.db,
-      input: { quoteId: otherProductQuote.id },
+      input: { baySeeds: [], quoteId: otherProductQuote.id },
     });
 
     expect(firstJob.productSerialNumber).toBe('CFO-001260001');
@@ -650,18 +634,16 @@ describe('createJob', () => {
     });
 
     const firstJob = await createJob({
-      access: jobAccess,
       actorUserId,
       currentDate: new Date('2026-12-31T23:30:00.000+02:00'),
       db: context.db,
-      input: { quoteId: firstQuote.id },
+      input: { baySeeds: [], quoteId: firstQuote.id },
     });
     const secondJob = await createJob({
-      access: jobAccess,
       actorUserId,
       currentDate: new Date('2027-01-01T00:30:00.000+02:00'),
       db: context.db,
-      input: { quoteId: secondQuote.id },
+      input: { baySeeds: [], quoteId: secondQuote.id },
     });
 
     expect(firstJob.productSerialNumber).toBe('CFO-001260009');
@@ -741,7 +723,7 @@ describe('toggleOffDay', () => {
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(schedule.offDays).toEqual([{ date: '2026-06-06', label: 'Shutdown' }]);
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
@@ -898,7 +880,7 @@ describe('Bay calendar exceptions', () => {
       input: { bayId: secondBay.id, durationDays: 2, jobId: secondJob.id },
     });
 
-    let schedule = await listBays({ access: jobAccess, db: context.db });
+    let schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, firstBay.id)).toEqual(
       expect.objectContaining({
         calendarExceptions: [{ bayId: firstBay.id, date: '2026-06-06', direction: 'work', label: 'Overtime' }],
@@ -918,7 +900,7 @@ describe('Bay calendar exceptions', () => {
       input: removeBayExceptionInput({ bayId: firstBay.id, date: '2026-06-06' }),
     });
 
-    schedule = await listBays({ access: jobAccess, db: context.db });
+    schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, firstBay.id)).toEqual(
       expect.objectContaining({
         calendarExceptions: [],
@@ -955,7 +937,7 @@ describe('Bay calendar exceptions', () => {
       input: { bayId: secondBay.id, durationDays: 2, jobId: secondJob.id },
     });
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, firstBay.id)).toEqual(
       expect.objectContaining({
         nextAvailableAt: '2026-06-07T22:00:00.000Z',
@@ -1035,10 +1017,9 @@ describe('Job Bay management', () => {
       status: 'accepted',
     });
     const job = await createJob({
-      access: jobAccess,
       actorUserId,
       db: context.db,
-      input: { quoteId: quote.id },
+      input: { baySeeds: [], quoteId: quote.id },
     });
 
     await bookJobSlot({
@@ -1066,7 +1047,7 @@ describe('Job Bay management', () => {
       }),
     ).rejects.toThrow('This Bay is disabled and cannot accept new bookings.');
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id)).toMatchObject({
       disabledAt: expect.any(String),
       slots: [
@@ -1140,7 +1121,7 @@ describe('bookJobSlot', () => {
       { id: secondSlot.slot.id, sequence: 2, durationDays: 2 },
     ]);
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
         nextAvailableAt: '2026-06-07T22:00:00.000Z',
@@ -1180,7 +1161,7 @@ describe('bookJobSlot', () => {
       input: { bayId: bay.id, durationDays: 1, jobId },
     });
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id).slots.map((slot) => slot.jobId)).toEqual([jobId, jobId]);
   });
 
@@ -1263,7 +1244,7 @@ describe('bookJobSlot', () => {
       input: { bayId: bay.id, durationDays: 2, jobId: secondJob.id },
     });
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
         nextAvailableAt: '2026-06-11T22:00:00.000Z',
@@ -1500,7 +1481,7 @@ describe('addIdleJobSlot', () => {
       input: { durationDays: 1, placement: 'after', targetSlotId: firstIdle.slot.id },
     });
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id).slots).toEqual([
       expect.objectContaining({ id: workSlot.slot.id, kind: 'work', sequence: 1 }),
       expect.objectContaining({ id: firstIdle.slot.id, kind: 'idle', sequence: 2 }),
@@ -1571,7 +1552,7 @@ describe('resizeJobSlot', () => {
       },
     });
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
         id: bay.id,
@@ -1682,7 +1663,7 @@ describe('resizeJobSlot', () => {
       }),
     ).resolves.toMatchObject({ slot: { durationDays: 2, kind: 'idle' } });
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id).slots).toEqual([
       expect.objectContaining({
         id: idleSlot.slot.id,
@@ -1754,7 +1735,7 @@ describe('removeJobSlot', () => {
       { id: thirdSlot.slot.id, sequence: 2 },
     ]);
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
         id: bay.id,
@@ -1800,7 +1781,7 @@ describe('removeJobSlot', () => {
       input: { slotId: secondSlot.slot.id },
     });
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
         id: bay.id,
@@ -1916,7 +1897,7 @@ describe('removeJobSlot', () => {
       }),
     ).resolves.toMatchObject({ slot: { id: idleSlot.slot.id, kind: 'idle' } });
 
-    const schedule = await listBays({ access: jobAccess, db: context.db });
+    const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id).slots).toEqual([
       expect.objectContaining({
         id: workSlot.slot.id,
@@ -1997,10 +1978,9 @@ async function createAcceptedJob(db: Db, productId: string): Promise<JobDetail> 
   });
 
   return createJob({
-    access: jobAccess,
     actorUserId,
     db,
-    input: { quoteId: quote.id },
+    input: { baySeeds: [], quoteId: quote.id },
   });
 }
 

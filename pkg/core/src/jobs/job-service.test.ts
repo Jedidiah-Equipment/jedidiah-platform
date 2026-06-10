@@ -6,6 +6,7 @@ import {
   type Db,
   documents,
   jobBayCalendarExceptions,
+  jobBayOperatorAssignments,
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
@@ -41,6 +42,7 @@ import { createTester } from '../test/create-tester.js';
 import {
   assignJobBayOperator,
   createJobBay,
+  listBayOperatorAssignmentHistory,
   listBayOperators,
   listJobBays,
   renameJobBay,
@@ -1171,6 +1173,100 @@ describe('Job Bay management', () => {
         input: { bayId: bay.id, operatorUserId: operator.id },
       }),
     ).rejects.toThrow('This Bay is disabled and cannot accept new operator assignments.');
+  });
+
+  test('lists Bay Operator assignment history newest first for one Bay', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const otherBay = await createBay(context.db, { department: 'paint' });
+    const firstOperator = await createTestUser(context.db, {
+      email: 'first.operator@example.com',
+      id: 'first-operator-user-id',
+      name: 'First Operator',
+      role: 'bay-operator',
+    });
+    const secondOperator = await createTestUser(context.db, {
+      email: 'second.operator@example.com',
+      id: 'second-operator-user-id',
+      name: 'Second Operator',
+      role: 'bay-operator',
+    });
+    const assignedAt = new Date('2026-06-05T07:00:00.000Z');
+
+    await context.db.insert(jobBayOperatorAssignments).values([
+      {
+        assignedAt,
+        bayId: bay.id,
+        id: '00000000-0000-4000-8000-000000000101',
+        operatorUserId: firstOperator.id,
+        unassignedAt: new Date('2026-06-05T08:00:00.000Z'),
+      },
+      {
+        assignedAt,
+        bayId: bay.id,
+        id: '00000000-0000-4000-8000-000000000102',
+        operatorUserId: secondOperator.id,
+        unassignedAt: new Date('2026-06-05T09:00:00.000Z'),
+      },
+      {
+        assignedAt: new Date('2026-06-06T07:00:00.000Z'),
+        bayId: otherBay.id,
+        id: '00000000-0000-4000-8000-000000000103',
+        operatorUserId: secondOperator.id,
+        unassignedAt: null,
+      },
+    ]);
+
+    await expect(
+      listBayOperatorAssignmentHistory({
+        db: context.db,
+        input: { bayId: bay.id },
+      }),
+    ).resolves.toEqual({
+      items: [
+        {
+          assignedAt: '2026-06-05T07:00:00.000Z',
+          id: '00000000-0000-4000-8000-000000000102',
+          operator: {
+            email: 'second.operator@example.com',
+            id: secondOperator.id,
+            name: 'Second Operator',
+            thumbnailDataUrl: null,
+          },
+          unassignedAt: '2026-06-05T09:00:00.000Z',
+        },
+        {
+          assignedAt: '2026-06-05T07:00:00.000Z',
+          id: '00000000-0000-4000-8000-000000000101',
+          operator: {
+            email: 'first.operator@example.com',
+            id: firstOperator.id,
+            name: 'First Operator',
+            thumbnailDataUrl: null,
+          },
+          unassignedAt: '2026-06-05T08:00:00.000Z',
+        },
+      ],
+    });
+  });
+
+  test('returns empty Bay Operator assignment history for an existing Bay', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+
+    await expect(
+      listBayOperatorAssignmentHistory({
+        db: context.db,
+        input: { bayId: bay.id },
+      }),
+    ).resolves.toEqual({ items: [] });
+  });
+
+  test('rejects Bay Operator assignment history reads for missing Bays', async ({ context }) => {
+    await expect(
+      listBayOperatorAssignmentHistory({
+        db: context.db,
+        input: { bayId: '00000000-0000-4000-8000-00000000dead' },
+      }),
+    ).rejects.toThrow('Job bay not found: 00000000-0000-4000-8000-00000000dead');
   });
 });
 

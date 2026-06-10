@@ -258,6 +258,26 @@ export const JobBayUnassignOperatorResult = z.object({
   bay: Bay,
 });
 
+export type JobBayOperatorAssignmentHistoryInput = z.infer<typeof JobBayOperatorAssignmentHistoryInput>;
+export const JobBayOperatorAssignmentHistoryInput = z
+  .object({
+    bayId: UUID,
+  })
+  .strict();
+
+export type JobBayOperatorAssignmentHistoryItem = z.infer<typeof JobBayOperatorAssignmentHistoryItem>;
+export const JobBayOperatorAssignmentHistoryItem = z.object({
+  id: UUID,
+  operator: BayOperator,
+  assignedAt: DateIso,
+  unassignedAt: DateIso.nullable(),
+});
+
+export type JobBayOperatorAssignmentHistoryResult = z.infer<typeof JobBayOperatorAssignmentHistoryResult>;
+export const JobBayOperatorAssignmentHistoryResult = z.object({
+  items: z.array(JobBayOperatorAssignmentHistoryItem),
+});
+
 export type BayOperatorListResult = z.infer<typeof BayOperatorListResult>;
 export const BayOperatorListResult = z.object({
   operators: z.array(BayOperator),

@@ -65,6 +65,8 @@ export type TimelineData = {
   }[];
 }[];
 
+export type GanttDateScrollAlignment = 'center' | 'start';
+
 type GanttDragScrollState = {
   pointerId: number;
   scrollLeft: number;
@@ -74,6 +76,7 @@ type GanttDragScrollState = {
 };
 
 type GanttDateScrollRequest = {
+  alignment: GanttDateScrollAlignment;
   behavior: ScrollBehavior;
   date: Date;
 };
@@ -102,7 +105,7 @@ export type GanttContextProps = {
   timelineData: TimelineData;
   ref: RefObject<HTMLDivElement | null> | null;
   scrollToFeature?: ((feature: GanttFeature) => void) | undefined;
-  scrollToDate?: ((date: Date, behavior?: ScrollBehavior) => void) | undefined;
+  scrollToDate?: ((date: Date, behavior?: ScrollBehavior, alignment?: GanttDateScrollAlignment) => void) | undefined;
 };
 
 const getDifferenceIn = (range: Range) => {
@@ -287,6 +290,38 @@ export function getGanttDailyDateFromOffset(offset: number, context: GanttContex
 
   // Keep daily hit-testing tied to the same geometry that renders daily timeline columns.
   return addDays(timelineStartDate, Math.max(0, Math.floor(offset / renderedColumnWidth)));
+}
+
+export function getGanttDateScrollLeft(
+  date: Date,
+  context: GanttContextProps,
+  options: {
+    alignment?: GanttDateScrollAlignment;
+    viewportWidth: number;
+  },
+): number {
+  const alignment = options.alignment ?? 'start';
+  const offset = getGanttOffset(date, context);
+
+  if (alignment === 'center') {
+    const visibleTimelineWidth = Math.max(0, options.viewportWidth - context.sidebarWidth);
+
+    return Math.max(0, offset - visibleTimelineWidth / 2);
+  }
+
+  const renderedColumnWidth = (context.columnWidth * context.zoom) / 100;
+
+  return Math.max(0, offset - renderedColumnWidth * 2);
+}
+
+export function getGanttCenteredDateFromScrollLeft(
+  scrollLeft: number,
+  context: GanttContextProps,
+  viewportWidth: number,
+): Date {
+  const visibleTimelineWidth = Math.max(0, viewportWidth - context.sidebarWidth);
+
+  return getGanttDailyDateFromOffset(scrollLeft + visibleTimelineWidth / 2, context);
 }
 
 export type GanttContentHeaderProps = {
@@ -894,28 +929,30 @@ export const GanttProvider: FC<GanttProviderProps> = ({
   }, []);
 
   const performDateScroll = useCallback(
-    (date: Date, behavior: ScrollBehavior = 'smooth') => {
+    (date: Date, behavior: ScrollBehavior = 'smooth', alignment: GanttDateScrollAlignment = 'start') => {
       const scrollElement = scrollRef.current;
       if (!scrollElement) {
         return;
       }
 
-      const timelineStartDate = new Date(timelineData[0]?.year ?? new Date().getFullYear(), 0, 1);
-
-      const offset = getOffset(date, timelineStartDate, {
-        zoom,
-        range,
-        columnWidth,
-        sidebarWidth,
-        headerHeight,
-        rowHeight,
-        placeholderLength: 2,
-        timelineData,
-        ref: scrollRef,
-      });
-      const renderedColumnWidth = (zoom / 100) * columnWidth;
-
-      const targetScrollLeft = Math.max(0, offset - renderedColumnWidth * 2);
+      const targetScrollLeft = getGanttDateScrollLeft(
+        date,
+        {
+          zoom,
+          range,
+          columnWidth,
+          sidebarWidth,
+          headerHeight,
+          rowHeight,
+          placeholderLength: 2,
+          timelineData,
+          ref: scrollRef,
+        },
+        {
+          alignment,
+          viewportWidth: scrollElement.clientWidth,
+        },
+      );
 
       scrollElement.scrollTo({
         left: targetScrollLeft,
@@ -926,14 +963,14 @@ export const GanttProvider: FC<GanttProviderProps> = ({
   );
 
   const scrollToDate = useCallback(
-    (date: Date, behavior: ScrollBehavior = 'smooth') => {
+    (date: Date, behavior: ScrollBehavior = 'smooth', alignment: GanttDateScrollAlignment = 'start') => {
       if (!timelineIncludesDate(timelineData, date)) {
-        pendingDateScrollRef.current = { behavior, date };
+        pendingDateScrollRef.current = { alignment, behavior, date };
         expandTimelineToDate(date);
         return;
       }
 
-      performDateScroll(date, behavior);
+      performDateScroll(date, behavior, alignment);
     },
     [expandTimelineToDate, performDateScroll, timelineData],
   );
@@ -946,7 +983,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
 
     pendingDateScrollRef.current = null;
     const frame = window.requestAnimationFrame(() => {
-      performDateScroll(pendingDateScroll.date, pendingDateScroll.behavior);
+      performDateScroll(pendingDateScroll.date, pendingDateScroll.behavior, pendingDateScroll.alignment);
     });
 
     return () => {

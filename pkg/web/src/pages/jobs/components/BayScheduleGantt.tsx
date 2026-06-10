@@ -7,19 +7,11 @@ import {
   summarizeSlotCalendarDays,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type {
-  BaySchedule,
-  JobListInput,
-  JobSlotPlacement,
-  JobSummary,
-  OffDay,
-  ProjectedJobSlot,
-  UUID,
-} from '@pkg/schema';
-import { IconAlertTriangle, IconCalendarPlus, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
+import type { BaySchedule, JobSlotPlacement, JobSummary, OffDay, ProjectedJobSlot, UUID } from '@pkg/schema';
+import { IconAlertTriangle, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import {
@@ -48,15 +40,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
-import { Field, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
+import { allJobsInput } from './all-jobs-input.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
 import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
 import { createWorkingCalendarsByBayId, getSlotLabel } from './bay-schedule-summary.js';
@@ -70,15 +60,6 @@ const BAY_ROW_HEIGHT = 72;
 const SLOT_CARD_HEIGHT = 60;
 const IDLE_SLOT_HATCH_BACKGROUND =
   'repeating-linear-gradient(45deg, rgb(113 113 122 / 0.18) 0 5px, transparent 5px 10px)';
-
-const allJobsInput = {
-  filters: {},
-  page: 1,
-  pageSize: 0,
-  search: '',
-  sortBy: 'createdAt',
-  sortDirection: 'desc',
-} satisfies JobListInput;
 
 export const BayScheduleGantt: React.FC<{
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
@@ -100,37 +81,21 @@ export const BayScheduleGantt: React.FC<{
     [accessQuery.data, bays, enabledBayIds],
   );
   const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);
-  const canEditSchedule = schedulableBays.length > 0;
   const offDays = baysQuery.data?.offDays ?? [];
   const horizonWarnings = useMemo(
     () => new Map(getMaintainedHorizonWarnings({ bays, offDays }).map((warning) => [warning.bayId, warning])),
     [bays, offDays],
   );
   const initialDate = useMemo(() => new Date(), []);
-  const [selectedBayId, setSelectedBayId] = useState('');
-  const [selectedJobId, setSelectedJobId] = useState('');
-  const [durationDays, setDurationDays] = useState(1);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
-  const selectedBay = schedulableBays.find((bay) => bay.id === selectedBayId) ?? schedulableBays[0] ?? null;
   const jobs = jobsQuery.data?.items ?? [];
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
-  const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
-  const canBook = Boolean(canEditSchedule && selectedBay && selectedJob && durationDays > 0);
   const clearOptimisticResize = useCallback((slotId: string) => {
     setOptimisticResizeDaysBySlotId((current) => {
       const { [slotId]: _removed, ...next } = current;
       return next;
     });
   }, []);
-  const bookSlotMutation = useMutation(
-    trpc.jobs.bookSlot.mutationOptions({
-      onSuccess: async () => {
-        await invalidateJobs();
-        toast.success('Job booked');
-      },
-      onError: (error) => showMutationError(error, 'Unable to book job.'),
-    }),
-  );
   const resizeSlotMutation = useMutation(
     trpc.jobs.resizeSlot.mutationOptions({
       onSuccess: async (_result, variables) => {
@@ -166,10 +131,7 @@ export const BayScheduleGantt: React.FC<{
     }),
   );
   const isScheduleMutationPending =
-    bookSlotMutation.isPending ||
-    resizeSlotMutation.isPending ||
-    removeSlotMutation.isPending ||
-    addIdleSlotMutation.isPending;
+    resizeSlotMutation.isPending || removeSlotMutation.isPending || addIdleSlotMutation.isPending;
   const handleResizeSlot = useCallback(
     (slotId: string, durationDays: number) => {
       // Keep the dropped width visible while the projected schedule refetches.
@@ -198,28 +160,6 @@ export const BayScheduleGantt: React.FC<{
     },
     [addIdleSlotMutation],
   );
-  useEffect(() => {
-    if (!canEditSchedule) {
-      setSelectedBayId('');
-      return;
-    }
-
-    if (!selectedBay) {
-      setSelectedBayId('');
-      return;
-    }
-
-    if (selectedBay.id !== selectedBayId) {
-      setSelectedBayId(selectedBay.id);
-    }
-  }, [canEditSchedule, selectedBay, selectedBayId]);
-
-  useEffect(() => {
-    if (!selectedJobId && jobs[0]) {
-      setSelectedJobId(jobs[0].id);
-    }
-  }, [jobs, selectedJobId]);
-
   if (baysQuery.isLoading) {
     return <Skeleton className="h-56 w-full" />;
   }
@@ -233,135 +173,40 @@ export const BayScheduleGantt: React.FC<{
   }
 
   return (
-    <div className="space-y-3">
-      {canEditSchedule ? (
-        <form
-          className="flex flex-wrap items-end gap-3 border-border/70 border-y bg-background py-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-
-            if (!selectedBay || !selectedJob || durationDays <= 0) {
-              return;
-            }
-
-            bookSlotMutation.mutate({
-              bayId: selectedBay.id,
-              durationDays,
-              jobId: selectedJob.id,
-            });
-          }}
-        >
-          <Field className="min-w-56 max-w-72 flex-1 gap-1">
-            <FieldLabel htmlFor="bay-schedule-bay">Bay</FieldLabel>
-            <Select onValueChange={(value) => setSelectedBayId(String(value))} value={selectedBay?.id ?? ''}>
-              <SelectTrigger id="bay-schedule-bay" className="w-full">
-                <SelectValue placeholder="Select bay">
-                  {selectedBay ? (
-                    <>
-                      <span className="truncate">{selectedBay.name}</span>
-                      <span className="shrink-0 text-muted-foreground">
-                        {formatDate(selectedBay.nextAvailableAt, 'MMM d')}
-                      </span>
-                    </>
-                  ) : null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent align="start">
-                <SelectGroup>
-                  {schedulableBays.map((bay) => (
-                    <SelectItem key={bay.id} value={bay.id}>
-                      {bay.name}
-                      <span className="text-muted-foreground">{formatDate(bay.nextAvailableAt, 'MMM d')}</span>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field className="min-w-64 max-w-96 flex-1 gap-1">
-            <FieldLabel htmlFor="bay-schedule-job">Job</FieldLabel>
-            <Select
-              disabled={jobsQuery.isLoading}
-              onValueChange={(value) => setSelectedJobId(String(value))}
-              value={selectedJob?.id ?? ''}
-            >
-              <SelectTrigger id="bay-schedule-job" className="w-full">
-                <SelectValue placeholder={jobsQuery.isLoading ? 'Loading jobs' : 'Select job'}>
-                  {selectedJob ? (
-                    <>
-                      <span className="truncate">{selectedJob.code}</span>
-                      <span className="shrink-0 text-muted-foreground">{selectedJob.productSerialNumber}</span>
-                    </>
-                  ) : null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent align="start">
-                <SelectGroup>
-                  {jobs.map((job) => (
-                    <SelectItem key={job.id} value={job.id}>
-                      {job.code}
-                      <span className="text-muted-foreground">{job.productSerialNumber}</span>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field className="w-28 gap-1">
-            <FieldLabel htmlFor="bay-schedule-duration">Days</FieldLabel>
-            <Input
-              id="bay-schedule-duration"
-              min={1}
-              onChange={(event) => setDurationDays(Number.parseInt(event.currentTarget.value, 10) || 0)}
-              type="number"
-              value={durationDays}
-            />
-          </Field>
-          <Button disabled={!canBook || isScheduleMutationPending} type="submit">
-            {bookSlotMutation.isPending ? (
-              <IconLoader2 className="animate-spin" data-icon="inline-start" />
-            ) : (
-              <IconCalendarPlus data-icon="inline-start" />
-            )}
-            Book
-          </Button>
-        </form>
-      ) : null}
-      <div
-        className="w-full overflow-hidden"
-        style={{
-          height: Math.max(220, 60 + bays.length * (BAY_ROW_HEIGHT + 10)),
-        }}
+    <div
+      className="w-full overflow-hidden"
+      style={{
+        height: Math.max(220, 60 + bays.length * (BAY_ROW_HEIGHT + 10)),
+      }}
+    >
+      <GanttProvider
+        className="h-full"
+        initialDate={initialDate}
+        initialDateAlignment="start"
+        range="daily"
+        rowHeight={BAY_ROW_HEIGHT}
+        zoom={200}
       >
-        <GanttProvider
-          className="h-full"
-          initialDate={initialDate}
-          initialDateAlignment="start"
-          range="daily"
-          rowHeight={BAY_ROW_HEIGHT}
-          zoom={200}
-        >
-          <BayScheduleSidebar bays={bays} horizonWarnings={horizonWarnings} />
-          <GanttTimeline>
-            <GanttHeader />
-            <OffDayBands offDays={offDays} />
-            <BayLaneRows bays={bays} />
-            <BaySlotBars
-              bays={bays}
-              canEditScheduleByBayId={schedulableBayIds}
-              isScheduleMutationPending={isScheduleMutationPending}
-              jobsById={jobsById}
-              offDays={offDays}
-              onAddIdleSlot={handleAddIdleSlot}
-              onRemoveSlot={handleRemoveSlot}
-              onResizeSlot={handleResizeSlot}
-              onSelectSlot={onSelectSlot}
-              optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
-            />
-            <GanttToday className="bg-primary text-primary-foreground" />
-          </GanttTimeline>
-        </GanttProvider>
-      </div>
+        <BayScheduleSidebar bays={bays} horizonWarnings={horizonWarnings} />
+        <GanttTimeline>
+          <GanttHeader />
+          <OffDayBands offDays={offDays} />
+          <BayLaneRows bays={bays} />
+          <BaySlotBars
+            bays={bays}
+            canEditScheduleByBayId={schedulableBayIds}
+            isScheduleMutationPending={isScheduleMutationPending}
+            jobsById={jobsById}
+            offDays={offDays}
+            onAddIdleSlot={handleAddIdleSlot}
+            onRemoveSlot={handleRemoveSlot}
+            onResizeSlot={handleResizeSlot}
+            onSelectSlot={onSelectSlot}
+            optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
+          />
+          <GanttToday className="bg-primary text-primary-foreground" />
+        </GanttTimeline>
+      </GanttProvider>
     </div>
   );
 };

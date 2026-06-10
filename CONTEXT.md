@@ -19,12 +19,20 @@ _Avoid_: Stage sequence, Step, Phase.
 One of the five fixed manufacturing functions (Procurement, Supply, Fabrication, Paint, Assembly), also an authorization axis. A Department owns zero or more Bays and is the unit a `job-department-manager` is scoped to. A Job has no per-Department record of its own; it relates to a Department only through the Slots it has on that Department's Bays.
 
 **Bay**:
-A durable physical workspace that belongs to exactly one Department (for example a Fabrication bay). A Department has zero or more Bays. One person is attached to a Bay. Bays are the resources that Jobs are scheduled onto: each Bay holds an ordered queue of Slots from a fixed `scheduleOrigin`. Bays are admin-managed (created, renamed, disabled — see Disabled Bay); a Bay's Department is fixed at creation and never changes. A Slot's Department is simply its Bay's Department — there is no separate match check.
+A durable physical workspace that belongs to exactly one Department (for example a Fabrication bay). A Department has zero or more Bays. At most one Bay Operator is attached to a Bay at a time (see Operator Assignment). Bays are the resources that Jobs are scheduled onto: each Bay holds an ordered queue of Slots from a fixed `scheduleOrigin`. Bays are admin-managed (created, renamed, disabled — see Disabled Bay); a Bay's Department is fixed at creation and never changes. A Slot's Department is simply its Bay's Department — there is no separate match check.
 _Avoid_: Station, Workstation, Cell, Machine.
 
 **Disabled Bay**:
-A Bay an admin has soft-retired by setting `disabledAt`. A Disabled Bay is hidden from new selection (the Create Job form's Bay picker and the Product Bays picker) and accepts no new bookings, but its existing Slots remain and still project on the schedule chart, and it can be re-enabled. Bays are never hard-deleted — disabling is the only retirement path, which preserves the retired Bay's existing Slots and schedule history and stays reversible (removing individual Slots is a separate, intended schedule mutation). A Product Bay pointing at a now-Disabled Bay is shown as disabled (and removable) in the Product editor.
+A Bay an admin has soft-retired by setting `disabledAt`. A Disabled Bay is hidden from new selection (the Create Job form's Bay picker and the Product Bays picker) and accepts no new bookings, but its existing Slots remain and still project on the schedule chart, and it can be re-enabled. Bays are never hard-deleted — disabling is the only retirement path, which preserves the retired Bay's existing Slots and schedule history and stays reversible (removing individual Slots is a separate, intended schedule mutation). A Product Bay pointing at a now-Disabled Bay is shown as disabled (and removable) in the Product editor. Disabling does not touch the Bay's Operator Assignment — the current Bay Operator stays attached — but a Disabled Bay accepts no new Operator Assignment (unassigning remains allowed).
 _Avoid_: Deleted bay, archived bay, closed bay.
+
+**Bay Operator**:
+A User holding the `bay-operator` App Role — the personnel category for shop-floor workers who are attached to Bays. A Bay Operator holds no App Permissions and therefore cannot sign in (see Access). Only Bay Operators may be attached to Bays; changing the role of a user currently attached to any Bay is blocked until they are unassigned.
+_Avoid_: Worker, Technician, Staff, Artisan, Operator (unqualified).
+
+**Operator Assignment**:
+The attachment of one Bay Operator to one Bay, from an assignment moment until unassigned. A Bay has at most one current Bay Operator; one Bay Operator may hold several Bays at once. There is no Department match check — the Bay's own Department is the operative fact. Assignment history is first-class domain data kept beyond the Audit log: the current operator is simply the assignment not yet ended. Assigning and unassigning is admin Bay configuration (the same authority that creates and disables Bays), not day-to-day scheduling. The current operator displays wherever the Bay does; the history timeline is an admin Bay surface.
+_Avoid_: Allocation, crew, staffing, operator booking.
 
 **Product Bay**:
 A (Bay, default working-days) entry configured on a Product. A Product may have zero or more, including several in the same Department; each names one enabled Bay and a positive default working-days count. Configuring them is optional and is a scheduling convenience only; Create Job prefill uses enabled Product Bays as editable Bay Seed rows. Product Bays are deliberately decoupled from the Product's `buildTimeDays` (the customer-facing quote lead time): the sum of default working-days is not required to equal `buildTimeDays`, and neither is derived from the other.
@@ -130,7 +138,7 @@ The single way a Job comes into existence. A user holding `job:create` (currentl
 The optional Bay-assignment step of the Create Job form. The form pre-fills editable rows from the Quote Product's enabled Product Bays, silently skipping Product Bays whose Bay is disabled; Products with no enabled Product Bays start with zero selected rows. It lists every enabled Bay grouped by Department in Pipeline order and lets the planner add or remove Bays (including several in one Department) and edit each row's working-days before submitting. Each retained row appends one Work Slot to that Bay's queue in the same transaction as Job creation — `durationDays` counting working days, with the same auto-inserted Idle Slot gap that booking on the Gantt uses when a Bay's queue ended before today. Seeding is optional: a Job may be created with zero Bays and scheduled entirely later on the Gantt.
 
 **Audit Event**:
-Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_bay`, `product`, `quote`, `supplier`, and `user`. Admin Bay create/edit/disable is audited under `job_bay`; Slots are not audited. Product Assemblies, their Parts lists, and override links are part of the `product` aggregate and audited under the `product` entity — there is no separate `product_assembly` audit entity type.
+Field-level forensic log for boundary-visible changes. Current entity types include `customer`, `job`, `job_bay`, `product`, `quote`, `supplier`, and `user`. Admin Bay create/edit/disable is audited under `job_bay`, as are Operator Assignment assign/unassign events; Slots are not audited. Product Assemblies, their Parts lists, and override links are part of the `product` aggregate and audited under the `product` entity — there is no separate `product_assembly` audit entity type.
 
 **Demo User**:
 A deterministic seeded auth user for local/staging sign-in and demo-account display. The canonical roster and shared password live in `pkg/domain/src/demo.ts`; database seeding code consumes that roster rather than duplicating demo-user facts.
@@ -173,6 +181,7 @@ _Avoid_: Stat, Rollup, Report, KPI.
 - The org has one **Working Calendar** of explicit **Off-Days** applying to every **Bay**; a Bay may carry **Bay Calendar Exceptions** (Overtime / Bay Closure) that override the org Off-Days for that Bay alone. **Slot Projection** reads a Bay's effective calendar (org Off-Days overlaid with the Bay's Exceptions) to count Slot durations in working days.
 - A **Supplier** currently stands alone as a procurement directory record.
 - A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
+- A **Bay** has at most one current **Bay Operator** via an **Operator Assignment**; a **Bay Operator** may hold several **Bays** at once. Past Operator Assignments are retained as first-class history.
 - A **Document** has exactly one owning entity. A **Product** has zero or more **Documents**.
 - Creating a **Job** snapshots its **Product**'s **Documents** onto the Job as a frozen **Job Document Snapshot** (see Create Job from Quote).
 
@@ -191,3 +200,6 @@ Holds `job:read` and `job:schedule`. Can read Jobs and manage the Bay schedule f
 
 **sales**:
 Can read, create, and update Quotes.
+
+**bay-operator**:
+Holds no App Permissions. A role with no permissions cannot sign in — there is no separate login flag; sign-in eligibility is derived from the role's permission set, so bay-operator accounts are records, not logins, until the role is ever granted a permission.

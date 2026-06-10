@@ -30,7 +30,7 @@ const UserThumbnailInput = z.object({
 
 export const usersRouter = router({
   list: authorizedProcedure('user:list').query(({ ctx }) => listUsers({ db: ctx.db })),
-  setDepartments: authorizedProcedure('user:assign-departments')
+  setDepartments: authorizedProcedure('user:update')
     .input(UserDepartmentInput)
     .mutation(async ({ ctx, input }) => {
       await mapUserErrors(() =>

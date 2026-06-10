@@ -838,9 +838,8 @@ describe('Bay calendar exceptions', () => {
     await expect(
       addBayCalendarException({
         access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
+          role: 'job-viewer',
+          userId: 'job-viewer-user',
         }),
         db: context.db,
         input: bayExceptionInput({ bayId: bay.id, date: '2026-06-06', direction: 'work', label: null }),
@@ -1188,7 +1187,7 @@ describe('bookJobSlot', () => {
     });
   });
 
-  test('enforces bay schedule permissions by role and department', async ({ context }) => {
+  test('enforces bay schedule permissions by role', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
     const jobId = job.id;
@@ -1203,20 +1202,8 @@ describe('bookJobSlot', () => {
     await expect(
       bookJobSlot({
         access: createUserAccessSummary({
-          departments: ['fabrication'],
-          role: 'job-department-manager',
-          userId: 'fabrication-manager',
-        }),
-        db: context.db,
-        input: { bayId: bay.id, durationDays: 1, jobId },
-      }),
-    ).resolves.toMatchObject({ slot: { sequence: 2 } });
-    await expect(
-      bookJobSlot({
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
+          role: 'job-viewer',
+          userId: 'job-viewer-user',
         }),
         db: context.db,
         input: { bayId: bay.id, durationDays: 1, jobId },
@@ -1490,7 +1477,7 @@ describe('addIdleJobSlot', () => {
     ]);
   });
 
-  test('enforces bay schedule permissions by role and department', async ({ context }) => {
+  test('enforces bay schedule permissions by role', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
     const workSlot = await bookJobSlot({
@@ -1502,9 +1489,8 @@ describe('addIdleJobSlot', () => {
     await expect(
       addIdleJobSlot({
         access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
+          role: 'job-viewer',
+          userId: 'job-viewer-user',
         }),
         db: context.db,
         input: { durationDays: 1, placement: 'after', targetSlotId: workSlot.slot.id },
@@ -1595,7 +1581,7 @@ describe('resizeJobSlot', () => {
     ).rejects.toThrow('Job slot not found');
   });
 
-  test('enforces bay schedule resize permissions by role and department', async ({ context }) => {
+  test('enforces bay schedule resize permissions by role', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
     const bookedSlot = await bookJobSlot({
@@ -1613,28 +1599,9 @@ describe('resizeJobSlot', () => {
     ).resolves.toMatchObject({ slot: { durationDays: 2 } });
     await expect(
       resizeJobSlot({
-        access: jobAccess,
-        db: context.db,
-        input: { durationDays: 1, slotId: bookedSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { durationDays: 1 } });
-    await expect(
-      resizeJobSlot({
         access: createUserAccessSummary({
-          departments: ['fabrication'],
-          role: 'job-department-manager',
-          userId: 'fabrication-manager',
-        }),
-        db: context.db,
-        input: { durationDays: 2, slotId: bookedSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { durationDays: 2 } });
-    await expect(
-      resizeJobSlot({
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
+          role: 'job-viewer',
+          userId: 'job-viewer-user',
         }),
         db: context.db,
         input: { durationDays: 1, slotId: bookedSlot.slot.id },
@@ -2012,26 +1979,14 @@ describe('removeJobSlot', () => {
     ).rejects.toThrow('Job slot not found');
   });
 
-  test('enforces bay schedule remove permissions by role and department', async ({ context }) => {
+  test('enforces bay schedule remove permissions by role', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const adminJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const adminSecondJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const managerJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const deniedJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const adminSlot = await bookJobSlot({
       access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: adminJob.id },
-    });
-    const adminSecondSlot = await bookJobSlot({
-      access: jobAccess,
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: adminSecondJob.id },
-    });
-    const managerSlot = await bookJobSlot({
-      access: jobAccess,
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: managerJob.id },
     });
     const deniedSlot = await bookJobSlot({
       access: jobAccess,
@@ -2048,28 +2003,9 @@ describe('removeJobSlot', () => {
     ).resolves.toMatchObject({ slot: { id: adminSlot.slot.id } });
     await expect(
       removeJobSlot({
-        access: jobAccess,
-        db: context.db,
-        input: { slotId: adminSecondSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { id: adminSecondSlot.slot.id } });
-    await expect(
-      removeJobSlot({
         access: createUserAccessSummary({
-          departments: ['fabrication'],
-          role: 'job-department-manager',
-          userId: 'fabrication-manager',
-        }),
-        db: context.db,
-        input: { slotId: managerSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { id: managerSlot.slot.id } });
-    await expect(
-      removeJobSlot({
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
+          role: 'job-viewer',
+          userId: 'job-viewer-user',
         }),
         db: context.db,
         input: { slotId: deniedSlot.slot.id },

@@ -20,7 +20,7 @@ describe('AppRole', () => {
   it('accepts app roles', () => {
     expect(AppRole.parse('admin')).toBe('admin');
     expect(AppRole.parse('procurement-manager')).toBe('procurement-manager');
-    expect(AppRole.parse('job-department-manager')).toBe('job-department-manager');
+    expect(AppRole.parse('job-viewer')).toBe('job-viewer');
     expect(AppRole.parse('sales')).toBe('sales');
     expect(AppRole.parse('bay-operator')).toBe('bay-operator');
   });
@@ -37,28 +37,26 @@ describe('AppPermission', () => {
     expect(AppPermission.parse('part:update')).toBe('part:update');
     expect(AppPermission.parse('supplier:read')).toBe('supplier:read');
     expect(AppPermission.parse('supplier:update')).toBe('supplier:update');
-    expect(AppPermission.parse('user:assign-departments')).toBe('user:assign-departments');
+  });
+
+  it('rejects retired permissions', () => {
+    expect(() => AppPermission.parse('user:assign-departments')).toThrow();
   });
 });
 
 describe('UserAccessSummary', () => {
-  it('requires department memberships', () => {
-    expect(() =>
+  it('carries no department memberships', () => {
+    expect(
       UserAccessSummary.parse({
         permissions: [],
         role: 'sales',
         userId: 'user_123',
       }),
-    ).toThrow();
-
-    expect(
-      UserAccessSummary.parse({
-        departments: ['assembly'],
-        permissions: [],
-        role: 'sales',
-        userId: 'user_123',
-      }).departments,
-    ).toEqual(['assembly']);
+    ).toEqual({
+      permissions: [],
+      role: 'sales',
+      userId: 'user_123',
+    });
   });
 });
 

@@ -123,7 +123,7 @@ export const BayScheduleGantt: React.FC<{
     [enabledBaysQuery.data?.items],
   );
   const schedulableBays = useMemo(
-    () => bays.filter((bay) => enabledBayIds.has(bay.id) && canScheduleBay(accessQuery.data, bay.department)),
+    () => bays.filter((bay) => enabledBayIds.has(bay.id) && canScheduleBay(accessQuery.data)),
     [accessQuery.data, bays, enabledBayIds],
   );
   const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);

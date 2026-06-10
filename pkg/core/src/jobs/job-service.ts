@@ -147,11 +147,9 @@ export async function createJob({
       productId: quote.productId,
       tx,
     });
-    // Seeding deliberately skips the per-Bay `canScheduleBay` department-scope check that the Gantt
-    // mutation paths enforce: it is gated only by `job:create`, which today is granted to `admin`
-    // (unscoped) alone. If `job:create` is ever extended to a department-scoped role, add a
-    // `canScheduleBay(access, bay.department)` check per seed row (via `onBayLocked`) so seeding
-    // cannot route a Job onto a Bay outside the actor's Department scope.
+    // Seeding skips the `canScheduleBay` check that the Gantt mutation paths enforce: it is gated
+    // only by `job:create`, which today is granted to `admin` alone — a role that also holds
+    // `job:schedule`, so the check would be redundant here.
     for (const seed of input.baySeeds) {
       await appendWorkJobSlotToBayQueue({
         bayId: seed.bayId,
@@ -196,8 +194,8 @@ export async function bookJobSlot({
       currentDate: currentDate ?? new Date(),
       durationDays: input.durationDays,
       jobId: job.id,
-      onBayLocked: (bay) => {
-        if (!canScheduleBay(access, bay.department)) {
+      onBayLocked: () => {
+        if (!canScheduleBay(access)) {
           throw new JobSlotBookingDeniedError('You do not have permission to book this Bay.');
         }
       },
@@ -270,7 +268,7 @@ export async function addBayCalendarException({
       throw new JobBayNotFoundError(input.bayId);
     }
 
-    if (!canScheduleBay(access, bay.department)) {
+    if (!canScheduleBay(access)) {
       throw new JobCalendarEditDeniedError('You do not have permission to manage this Bay calendar.');
     }
 
@@ -321,7 +319,7 @@ export async function removeBayCalendarException({
       throw new JobBayNotFoundError(input.bayId);
     }
 
-    if (!canScheduleBay(access, bay.department)) {
+    if (!canScheduleBay(access)) {
       throw new JobCalendarEditDeniedError('You do not have permission to manage this Bay calendar.');
     }
 
@@ -363,7 +361,7 @@ export async function addIdleJobSlot({
       throw new JobSlotNotFoundError(input.targetSlotId);
     }
 
-    if (!canScheduleBay(access, row.bay.department)) {
+    if (!canScheduleBay(access)) {
       throw new JobSlotIdleAddDeniedError('You do not have permission to add idle time to this Bay schedule.');
     }
 
@@ -417,7 +415,7 @@ export async function resizeJobSlot({
       throw new JobSlotNotFoundError(input.slotId);
     }
 
-    if (!canScheduleBay(access, row.bay.department)) {
+    if (!canScheduleBay(access)) {
       throw new JobSlotResizeDeniedError('You do not have permission to resize this Bay schedule.');
     }
 
@@ -561,7 +559,7 @@ export async function removeJobSlot({
       throw new JobSlotNotFoundError(input.slotId);
     }
 
-    if (!canScheduleBay(access, row.bay.department)) {
+    if (!canScheduleBay(access)) {
       throw new JobSlotRemoveDeniedError('You do not have permission to remove from this Bay schedule.');
     }
 

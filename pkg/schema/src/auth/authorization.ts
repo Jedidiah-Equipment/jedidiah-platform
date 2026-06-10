@@ -4,7 +4,7 @@ import { NullablePhoneNumber } from '../common/phone-number.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { AuthId } from './auth-id.js';
 
-export const APP_ROLES = ['admin', 'procurement-manager', 'job-department-manager', 'sales', 'bay-operator'] as const;
+export const APP_ROLES = ['admin', 'procurement-manager', 'job-viewer', 'sales'] as const;
 
 export type AppRole = z.infer<typeof AppRole>;
 export const AppRole = z.enum(APP_ROLES);
@@ -36,7 +36,6 @@ export const APP_PERMISSIONS = [
   'user:update',
   'user:set-role',
   'user:set-password',
-  'user:assign-departments',
 ] as const;
 
 export type AppPermission = z.infer<typeof AppPermission>;
@@ -44,7 +43,6 @@ export const AppPermission = z.enum(APP_PERMISSIONS);
 
 export type UserAccessSummary = z.infer<typeof UserAccessSummary>;
 export const UserAccessSummary = z.object({
-  departments: z.array(Department),
   permissions: z.array(AppPermission),
   role: AppRole,
   userId: AuthId,

@@ -281,6 +281,13 @@
       "when": 1781009468416,
       "tag": "0039_third_bug",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1781089274174,
+      "tag": "0040_rename_job_department_manager_role",
+      "breakpoints": true
     }
   ]
 }

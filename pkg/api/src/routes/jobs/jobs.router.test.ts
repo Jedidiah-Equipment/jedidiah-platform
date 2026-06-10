@@ -743,6 +743,121 @@ describe('jobs.addIdleSlot', () => {
   });
 });
 
+describe('jobs.moveSlot', () => {
+  test('moves an authorized slot and returns it', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const firstJob = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({
+      quoteId: secondQuote.id,
+    });
+    await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      durationDays: 1,
+      jobId: firstJob.id,
+    });
+    const secondSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      durationDays: 1,
+      jobId: secondJob.id,
+    });
+
+    await expect(
+      caller.jobs.moveSlot({
+        direction: 'left',
+        slotId: secondSlot.slot.id,
+      }),
+    ).resolves.toMatchObject({
+      slot: {
+        id: secondSlot.slot.id,
+        sequence: 1,
+      },
+    });
+  });
+
+  test('rejects users without job scheduling permissions', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const job = await adminCaller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const slot = await adminCaller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      durationDays: 1,
+      jobId: job.id,
+    });
+
+    await expect(
+      salesCaller.jobs.moveSlot({
+        direction: 'left',
+        slotId: slot.slot.id,
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('listBays returns projected slots in moved order', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const firstJob = await caller.jobs.create({
+      quoteId: context.quote.id,
+    });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({
+      quoteId: secondQuote.id,
+    });
+    const thirdQuote = await createAcceptedQuote(context.db, context.product.id);
+    const thirdJob = await caller.jobs.create({
+      quoteId: thirdQuote.id,
+    });
+    const firstSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b03',
+      durationDays: 1,
+      jobId: firstJob.id,
+    });
+    const secondSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b03',
+      durationDays: 1,
+      jobId: secondJob.id,
+    });
+    const thirdSlot = await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b03',
+      durationDays: 2,
+      jobId: thirdJob.id,
+    });
+
+    await caller.jobs.moveSlot({
+      direction: 'right',
+      slotId: secondSlot.slot.id,
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b03',
+          slots: [
+            expect.objectContaining({
+              id: firstSlot.slot.id,
+              sequence: 1,
+            }),
+            expect.objectContaining({
+              id: thirdSlot.slot.id,
+              sequence: 2,
+            }),
+            expect.objectContaining({
+              id: secondSlot.slot.id,
+              sequence: 3,
+            }),
+          ],
+        }),
+      ]),
+    );
+  });
+});
+
 describe('jobs.removeSlot', () => {
   test('removes an authorized slot', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));

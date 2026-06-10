@@ -88,13 +88,12 @@ export const BookSlotDialog: React.FC = () => {
     <>
       <Button onClick={() => handleOpenChange(true)}>
         <IconCalendarPlus data-icon="inline-start" />
-        Book Job
+        Schedule Bay Job
       </Button>
       <Dialog onOpenChange={handleOpenChange} open={open}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Book Job</DialogTitle>
-            <DialogDescription>Book a Job into a Bay schedule.</DialogDescription>
+            <DialogTitle>Book Job into Bay Schedule</DialogTitle>
           </DialogHeader>
           <form
             id="book-slot-form"

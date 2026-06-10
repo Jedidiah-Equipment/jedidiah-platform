@@ -98,6 +98,9 @@ export const SlotDurationDays = z.int().positive().refine(Number.isSafeInteger);
 export type JobSlotPlacement = z.infer<typeof JobSlotPlacement>;
 export const JobSlotPlacement = z.enum(['before', 'after']);
 
+export type JobSlotMoveDirection = z.infer<typeof JobSlotMoveDirection>;
+export const JobSlotMoveDirection = z.enum(['left', 'right']);
+
 const JobSlotBase = z.object({
   id: UUID,
   bayId: UUID,
@@ -256,6 +259,19 @@ export const RemoveJobSlotInput = z
 
 export type RemoveJobSlotResult = z.infer<typeof RemoveJobSlotResult>;
 export const RemoveJobSlotResult = z.object({
+  slot: JobSlot,
+});
+
+export type MoveJobSlotInput = z.infer<typeof MoveJobSlotInput>;
+export const MoveJobSlotInput = z
+  .object({
+    slotId: UUID,
+    direction: JobSlotMoveDirection,
+  })
+  .strict();
+
+export type MoveJobSlotResult = z.infer<typeof MoveJobSlotResult>;
+export const MoveJobSlotResult = z.object({
   slot: JobSlot,
 });
 

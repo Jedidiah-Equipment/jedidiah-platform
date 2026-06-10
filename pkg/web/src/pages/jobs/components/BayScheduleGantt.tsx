@@ -7,8 +7,25 @@ import {
   summarizeSlotCalendarDays,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type { BaySchedule, JobSlotPlacement, JobSummary, OffDay, ProjectedJobSlot, UUID } from '@pkg/schema';
-import { IconAlertTriangle, IconClockPlus, IconLoader2, IconMinus, IconPlus, IconTrash } from '@tabler/icons-react';
+import type {
+  BaySchedule,
+  JobSlotMoveDirection,
+  JobSlotPlacement,
+  JobSummary,
+  OffDay,
+  ProjectedJobSlot,
+  UUID,
+} from '@pkg/schema';
+import {
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconArrowRight,
+  IconClockPlus,
+  IconLoader2,
+  IconMinus,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -25,6 +42,7 @@ import {
 } from '@/components/kibo-ui/gantt/index.js';
 import { PageLayoutFullscreenToggle } from '@/components/page-layout/PageLayoutFullscreenToggle.js';
 import { Button } from '@/components/ui/button.js';
+import { Card, CardContent, CardHeader, CardSeparator } from '@/components/ui/card.js';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -61,6 +79,7 @@ import {
   hasActiveBayScheduleFilter,
   slotMatchesBayScheduleFilter,
 } from './bay-schedule-filter.js';
+import { moveBaySlotForDisplay } from './bay-schedule-display-move.js';
 import { createWorkingCalendarsByBayId, getSlotLabel } from './bay-schedule-summary.js';
 import {
   BAY_SCHEDULE_ZOOM_DEFAULT,
@@ -114,6 +133,7 @@ export const BayScheduleGantt: React.FC<{
     [bays, offDays],
   );
   const initialDate = useMemo(() => new Date(), []);
+  const [optimisticBays, setOptimisticBays] = useState<BaySchedule[] | null>(null);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<BayScheduleFilter>(emptyBayScheduleFilter);
   const [filterScrollRequest, setFilterScrollRequest] = useState<FilterScrollRequest | null>(null);
@@ -124,10 +144,11 @@ export const BayScheduleGantt: React.FC<{
   const anchoredZoomChangeRef = useRef<AnchoredZoomChange | null>(null);
   const jobs = jobsQuery.data?.items ?? [];
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
+  const displayedBays = optimisticBays ?? bays;
   const isFilterActive = hasActiveBayScheduleFilter(filter);
   const filterMatchCount = useMemo(
-    () => (isFilterActive ? countBayScheduleFilterMatches({ bays, filter, jobsById }) : 0),
-    [bays, filter, isFilterActive, jobsById],
+    () => (isFilterActive ? countBayScheduleFilterMatches({ bays: displayedBays, filter, jobsById }) : 0),
+    [displayedBays, filter, isFilterActive, jobsById],
   );
   const clearOptimisticResize = useCallback((slotId: string) => {
     setOptimisticResizeDaysBySlotId((current) => {
@@ -169,8 +190,27 @@ export const BayScheduleGantt: React.FC<{
       onError: (error) => showMutationError(error, 'Unable to add idle slot.'),
     }),
   );
+  const moveSlotMutation = useMutation(
+    trpc.jobs.moveSlot.mutationOptions({
+      onSuccess: async () => {
+        try {
+          await invalidateJobs();
+          toast.success('Slot moved');
+        } finally {
+          setOptimisticBays(null);
+        }
+      },
+      onError: (error) => {
+        setOptimisticBays(null);
+        showMutationError(error, 'Unable to move slot.');
+      },
+    }),
+  );
   const isScheduleMutationPending =
-    resizeSlotMutation.isPending || removeSlotMutation.isPending || addIdleSlotMutation.isPending;
+    resizeSlotMutation.isPending ||
+    removeSlotMutation.isPending ||
+    addIdleSlotMutation.isPending ||
+    moveSlotMutation.isPending;
   const handleResizeSlot = useCallback(
     (slotId: string, durationDays: number) => {
       // Keep the dropped width visible while the projected schedule refetches.
@@ -199,6 +239,13 @@ export const BayScheduleGantt: React.FC<{
     },
     [addIdleSlotMutation],
   );
+  const handleMoveSlot = useCallback(
+    (slotId: string, direction: JobSlotMoveDirection) => {
+      setOptimisticBays(moveBaySlotForDisplay(displayedBays, offDays, slotId, direction));
+      moveSlotMutation.mutate({ direction, slotId });
+    },
+    [displayedBays, moveSlotMutation, offDays],
+  );
   const handleFilterChange = useCallback(
     (nextFilter: BayScheduleFilter) => {
       setFilter(nextFilter);
@@ -209,7 +256,7 @@ export const BayScheduleGantt: React.FC<{
       }
 
       const targetStart = getEarliestBayScheduleFilterMatchStart({
-        bays,
+        bays: displayedBays,
         filter: nextFilter,
         jobsById,
       });
@@ -223,7 +270,7 @@ export const BayScheduleGantt: React.FC<{
           : null,
       );
     },
-    [bays, jobsById],
+    [displayedBays, jobsById],
   );
   const registerAnchoredZoomChange = useCallback((handler: AnchoredZoomChange | null) => {
     anchoredZoomChangeRef.current = handler;
@@ -244,71 +291,77 @@ export const BayScheduleGantt: React.FC<{
     return <ErrorMessage error={baysQuery.error} fallbackMessage="Unable to load bay schedule." />;
   }
 
-  if (bays.length === 0) {
+  if (displayedBays.length === 0) {
     return null;
   }
 
   return (
-    <div className="space-y-3">
-      <BayScheduleFilterBar
-        bays={bays}
-        filter={filter}
-        jobs={jobs}
-        noMatches={isFilterActive && filterMatchCount === 0}
-        onFilterChange={handleFilterChange}
-        trailingContent={
-          <div className="flex items-center gap-2">
-            {onFullscreenChange ? (
-              <PageLayoutFullscreenToggle fullscreen={fullscreen} onFullscreenChange={onFullscreenChange} />
-            ) : null}
-            <BayScheduleZoomControls
-              onReset={() => applyAnchoredZoomChange(resetZoom)}
-              onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
-              onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
-              zoom={zoom}
-            />
-          </div>
-        }
-      />
-      <div
-        className="w-full overflow-hidden"
-        style={{
-          height: Math.max(220, 60 + bays.length * (BAY_ROW_HEIGHT + 10)),
-        }}
-      >
-        <GanttProvider
-          className="h-full"
-          initialDate={initialDate}
-          initialDateAlignment="start"
-          range="daily"
-          rowHeight={BAY_ROW_HEIGHT}
-          zoom={zoom}
+    <Card className="gap-0 pb-0">
+      <CardHeader className="block pb-4">
+        <BayScheduleFilterBar
+          bays={bays}
+          filter={filter}
+          jobs={jobs}
+          noMatches={isFilterActive && filterMatchCount === 0}
+          onFilterChange={handleFilterChange}
+          trailingContent={
+            <div className="flex items-center gap-2">
+              {onFullscreenChange ? (
+                <PageLayoutFullscreenToggle fullscreen={fullscreen} onFullscreenChange={onFullscreenChange} />
+              ) : null}
+              <BayScheduleZoomControls
+                onReset={() => applyAnchoredZoomChange(resetZoom)}
+                onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
+                onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
+                zoom={zoom}
+              />
+            </div>
+          }
+        />
+      </CardHeader>
+      <CardSeparator />
+      <CardContent className="p-0">
+        <div
+          className="w-full overflow-hidden"
+          style={{
+            height: Math.max(220, 60 + displayedBays.length * (BAY_ROW_HEIGHT + 10)),
+          }}
         >
-          <BayScheduleFilterScrollController request={filterScrollRequest} />
-          <BayScheduleZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
-          <BayScheduleSidebar bays={bays} horizonWarnings={horizonWarnings} />
-          <GanttTimeline>
-            <GanttHeader />
-            <OffDayBands offDays={offDays} />
-            <BayLaneRows bays={bays} />
-            <BaySlotBars
-              bays={bays}
-              canEditScheduleByBayId={schedulableBayIds}
-              filter={filter}
-              isScheduleMutationPending={isScheduleMutationPending}
-              jobsById={jobsById}
-              offDays={offDays}
-              onAddIdleSlot={handleAddIdleSlot}
-              onRemoveSlot={handleRemoveSlot}
-              onResizeSlot={handleResizeSlot}
-              onSelectSlot={onSelectSlot}
-              optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
-            />
-            <GanttToday className="bg-primary text-primary-foreground" />
-          </GanttTimeline>
-        </GanttProvider>
-      </div>
-    </div>
+          <GanttProvider
+            className="h-full rounded-none border-0 bg-transparent"
+            initialDate={initialDate}
+            initialDateAlignment="start"
+            range="daily"
+            rowHeight={BAY_ROW_HEIGHT}
+            zoom={zoom}
+          >
+            <BayScheduleFilterScrollController request={filterScrollRequest} />
+            <BayScheduleZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
+            <BayScheduleSidebar bays={displayedBays} horizonWarnings={horizonWarnings} />
+            <GanttTimeline>
+              <GanttHeader />
+              <OffDayBands offDays={offDays} />
+              <BayLaneRows bays={displayedBays} />
+              <BaySlotBars
+                bays={displayedBays}
+                canEditScheduleByBayId={schedulableBayIds}
+                filter={filter}
+                isScheduleMutationPending={isScheduleMutationPending}
+                jobsById={jobsById}
+                offDays={offDays}
+                onAddIdleSlot={handleAddIdleSlot}
+                onMoveSlot={handleMoveSlot}
+                onRemoveSlot={handleRemoveSlot}
+                onResizeSlot={handleResizeSlot}
+                onSelectSlot={onSelectSlot}
+                optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
+              />
+              <GanttToday className="bg-primary text-primary-foreground" />
+            </GanttTimeline>
+          </GanttProvider>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -533,6 +586,7 @@ const BaySlotBars: React.FC<{
   jobsById: ReadonlyMap<string, JobSummary>;
   offDays: OffDay[];
   onAddIdleSlot: (targetSlotId: string, placement: JobSlotPlacement) => void;
+  onMoveSlot: (slotId: string, direction: JobSlotMoveDirection) => void;
   onRemoveSlot: (slotId: string) => Promise<void>;
   onResizeSlot: (slotId: string, durationDays: number) => void;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
@@ -545,6 +599,7 @@ const BaySlotBars: React.FC<{
   jobsById,
   offDays,
   onAddIdleSlot,
+  onMoveSlot,
   onRemoveSlot,
   onResizeSlot,
   onSelectSlot,
@@ -557,7 +612,7 @@ const BaySlotBars: React.FC<{
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-20">
       {bays.flatMap((bay, bayIndex) =>
-        bay.slots.map((slot) => (
+        bay.slots.map((slot, slotIndex) => (
           <BaySlotBar
             bayId={bay.id}
             canEditSchedule={canEditScheduleByBayId.has(bay.id)}
@@ -566,12 +621,15 @@ const BaySlotBars: React.FC<{
             job={slot.kind === 'work' ? (jobsById.get(slot.jobId) ?? null) : null}
             key={slot.id}
             onAddIdle={onAddIdleSlot}
+            onMove={onMoveSlot}
             onRemove={onRemoveSlot}
             onResize={onResizeSlot}
             onSelectSlot={onSelectSlot}
             optimisticDurationDays={optimisticResizeDaysBySlotId[slot.id] ?? null}
             rowTop={gantt.headerHeight + bayIndex * gantt.rowHeight}
             slot={slot}
+            slotIndex={slotIndex}
+            slotCount={bay.slots.length}
             workingCalendar={workingCalendarsByBayId.get(bay.id) ?? {}}
           />
         )),
@@ -594,12 +652,15 @@ const BaySlotBar: React.FC<{
   isScheduleMutationPending: boolean;
   job: JobSummary | null;
   onAddIdle: (targetSlotId: string, placement: JobSlotPlacement) => void;
+  onMove: (slotId: string, direction: JobSlotMoveDirection) => void;
   onRemove: (slotId: string) => Promise<void>;
   onResize: (slotId: string, durationDays: number) => void;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
   optimisticDurationDays: number | null;
   rowTop: number;
   slot: ProjectedJobSlot;
+  slotIndex: number;
+  slotCount: number;
   workingCalendar: WorkingCalendar;
 }> = ({
   bayId,
@@ -608,12 +669,15 @@ const BaySlotBar: React.FC<{
   isScheduleMutationPending,
   job,
   onAddIdle,
+  onMove,
   onRemove,
   onResize,
   onSelectSlot,
   optimisticDurationDays,
   rowTop,
   slot,
+  slotIndex,
+  slotCount,
   workingCalendar,
 }) => {
   const gantt = useGanttContext();
@@ -706,6 +770,13 @@ const BaySlotBar: React.FC<{
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     setResizeDrag(null);
+  };
+  const moveSlot = (direction: JobSlotMoveDirection) => {
+    if (isScheduleMutationPending) {
+      return;
+    }
+
+    onMove(slot.id, direction);
   };
 
   return (
@@ -834,6 +905,20 @@ const BaySlotBar: React.FC<{
       {canEditSchedule ? (
         <ContextMenuContent>
           <ContextMenuGroup>
+            <ContextMenuItem
+              disabled={isScheduleMutationPending || slotIndex === 0}
+              onClick={() => moveSlot('left')}
+            >
+              <IconArrowLeft />
+              Move slot left
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={isScheduleMutationPending || slotIndex === slotCount - 1}
+              onClick={() => moveSlot('right')}
+            >
+              <IconArrowRight />
+              Move slot right
+            </ContextMenuItem>
             <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'before')}>
               <IconClockPlus />
               Add idle slot before

@@ -1,4 +1,15 @@
-import { auditEvents, customers, type Db, jobBays, jobSlots, products, quotes, sql } from '@pkg/db';
+import {
+  auditEvents,
+  customers,
+  type Db,
+  jobBayOperatorAssignments,
+  jobBays,
+  jobSlots,
+  products,
+  quotes,
+  sql,
+  user,
+} from '@pkg/db';
 import type { Product } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
@@ -170,6 +181,119 @@ describe('jobs bay management', () => {
         }),
       ]),
     });
+  });
+
+  test('assigns, lists, and unassigns Bay Operators with audit and interval history', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+    await createUser(context.db, {
+      email: 'operator@example.com',
+      id: 'operator-user-id',
+      name: 'Operator User',
+      role: 'bay-operator',
+    });
+    await createUser(context.db, {
+      email: 'other@example.com',
+      id: 'other-user-id',
+      name: 'Other User',
+      role: 'sales',
+    });
+
+    await expect(adminCaller.jobs.listBayOperators()).resolves.toEqual({
+      operators: [
+        {
+          email: 'operator@example.com',
+          id: 'operator-user-id',
+          name: 'Operator User',
+          thumbnailDataUrl: null,
+        },
+      ],
+    });
+    await expect(
+      salesCaller.jobs.assignBayOperator({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        operatorUserId: 'operator-user-id',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    await expect(
+      adminCaller.jobs.assignBayOperator({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        operatorUserId: 'other-user-id',
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Only Bay Operator users can be assigned to Bays.',
+    });
+    await expect(
+      adminCaller.jobs.assignBayOperator({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        operatorUserId: 'operator-user-id',
+      }),
+    ).resolves.toMatchObject({
+      bay: {
+        currentOperator: {
+          id: 'operator-user-id',
+          name: 'Operator User',
+        },
+        id: '00000000-0000-4000-8000-000000000b01',
+      },
+    });
+    await expect(
+      adminCaller.jobs.assignBayOperator({
+        bayId: '00000000-0000-4000-8000-000000000b02',
+        operatorUserId: 'operator-user-id',
+      }),
+    ).resolves.toMatchObject({
+      bay: {
+        currentOperator: {
+          id: 'operator-user-id',
+        },
+        id: '00000000-0000-4000-8000-000000000b02',
+      },
+    });
+    await expect(
+      adminCaller.jobs.assignBayOperator({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+        operatorUserId: 'operator-user-id',
+      }),
+    ).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: 'Bay already has a current operator.',
+    });
+    await expect(adminCaller.jobs.listJobBays({ filters: {} })).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          currentOperator: expect.objectContaining({ id: 'operator-user-id' }),
+          id: '00000000-0000-4000-8000-000000000b01',
+        }),
+      ]),
+    });
+    await expect(adminCaller.jobs.listBays()).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          currentOperator: expect.objectContaining({ id: 'operator-user-id' }),
+          id: '00000000-0000-4000-8000-000000000b01',
+        }),
+      ]),
+    });
+
+    await expect(
+      adminCaller.jobs.unassignBayOperator({ bayId: '00000000-0000-4000-8000-000000000b01' }),
+    ).resolves.toMatchObject({
+      bay: {
+        currentOperator: null,
+        id: '00000000-0000-4000-8000-000000000b01',
+      },
+    });
+    const [closedAssignment] = await context.db
+      .select()
+      .from(jobBayOperatorAssignments)
+      .where(sql`${jobBayOperatorAssignments.bayId} = '00000000-0000-4000-8000-000000000b01'`);
+    const events = await context.db.select().from(auditEvents).where(sql`${auditEvents.entityType} = 'job_bay'`);
+
+    expect(closedAssignment?.unassignedAt).toBeInstanceOf(Date);
+    expect(events.filter((event) => event.entityId === '00000000-0000-4000-8000-000000000b01')).toHaveLength(2);
   });
 });
 
@@ -1038,6 +1162,28 @@ async function seedFabricationBays(db: Db): Promise<void> {
         updatedAt: now,
       },
     });
+}
+
+async function createUser(
+  db: Db,
+  input: {
+    email: string;
+    id: string;
+    name: string;
+    role: 'bay-operator' | 'sales';
+  },
+) {
+  const now = new Date('2026-06-05T00:00:00.000Z');
+
+  await db.insert(user).values({
+    createdAt: now,
+    email: input.email,
+    emailVerified: true,
+    id: input.id,
+    name: input.name,
+    role: input.role,
+    updatedAt: now,
+  });
 }
 
 async function createAcceptedQuote(db: Db, productId: Product['id']) {

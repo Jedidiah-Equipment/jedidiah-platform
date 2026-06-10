@@ -29,6 +29,46 @@ export class JobBayNotFoundError extends Error {
   }
 }
 
+export class JobBayOperatorNotFoundError extends Error {
+  readonly code = 'job.bay_operator_not_found';
+  readonly metadata: { id: string };
+
+  constructor(id: string) {
+    super(`Bay operator not found: ${id}`);
+    this.name = 'JobBayOperatorNotFoundError';
+    this.metadata = { id };
+  }
+}
+
+export class JobBayOperatorRoleDeniedError extends Error {
+  readonly code = 'job.bay_operator_role_denied';
+
+  constructor() {
+    super('Only Bay Operator users can be assigned to Bays.');
+    this.name = 'JobBayOperatorRoleDeniedError';
+  }
+}
+
+export class JobBayAlreadyAssignedError extends Error {
+  readonly code = 'job.bay_already_assigned';
+
+  constructor() {
+    super('Bay already has a current operator.');
+    this.name = 'JobBayAlreadyAssignedError';
+  }
+}
+
+export class JobBayOperatorAssignmentNotFoundError extends Error {
+  readonly code = 'job.bay_operator_assignment_not_found';
+  readonly metadata: { bayId: string };
+
+  constructor(bayId: string) {
+    super(`Bay has no current operator assignment: ${bayId}`);
+    this.name = 'JobBayOperatorAssignmentNotFoundError';
+    this.metadata = { bayId };
+  }
+}
+
 export class JobSlotBookingDeniedError extends Error {
   readonly code = 'job.slot_booking_denied';
 
@@ -50,7 +90,11 @@ export class JobSlotNotFoundError extends Error {
 }
 
 export type JobCoreError =
+  | JobBayAlreadyAssignedError
   | JobBayNotFoundError
+  | JobBayOperatorAssignmentNotFoundError
+  | JobBayOperatorNotFoundError
+  | JobBayOperatorRoleDeniedError
   | JobCreateFromQuoteDeniedError
   | JobNotFoundError
   | JobSlotBookingDeniedError
@@ -59,6 +103,10 @@ export type JobCoreError =
 export function isJobCoreError(error: unknown): error is JobCoreError {
   return (
     error instanceof JobBayNotFoundError ||
+    error instanceof JobBayOperatorAssignmentNotFoundError ||
+    error instanceof JobBayOperatorNotFoundError ||
+    error instanceof JobBayOperatorRoleDeniedError ||
+    error instanceof JobBayAlreadyAssignedError ||
     error instanceof JobCreateFromQuoteDeniedError ||
     error instanceof JobNotFoundError ||
     error instanceof JobSlotBookingDeniedError ||

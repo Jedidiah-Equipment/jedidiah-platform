@@ -1,6 +1,13 @@
 import { departmentLabels, formatDate, hasPermission, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
-import { type Bay, type Department, JobBayCreateInput, JobBayRenameInput } from '@pkg/schema';
-import { IconLoader2, IconPencil, IconPlus } from '@tabler/icons-react';
+import {
+  type AuthId,
+  type Bay,
+  type BayOperator,
+  type Department,
+  JobBayCreateInput,
+  JobBayRenameInput,
+} from '@pkg/schema';
+import { IconLoader2, IconPencil, IconPlus, IconUser, IconUserMinus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -47,6 +54,7 @@ type EditDialogState = {
   bay: Bay;
   disabled: boolean;
   name: string;
+  operatorUserId: AuthId | null;
 };
 
 const jobDepartments = JOB_DEPARTMENT_PIPELINE.map((step) => step.department);
@@ -61,7 +69,12 @@ export const BaysPage: React.FC = () => {
   const canManageBays = hasPermission(access, 'job_bay:update');
 
   const baysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: {} }));
+  const operatorsQuery = useQuery({
+    ...trpc.jobs.listBayOperators.queryOptions(),
+    enabled: canManageBays,
+  });
   const bays = baysQuery.data?.items ?? [];
+  const operators = operatorsQuery.data?.operators ?? [];
 
   const groupedBays = useMemo(
     () =>
@@ -101,15 +114,30 @@ export const BaysPage: React.FC = () => {
       onError: (error) => showMutationError(error, 'Unable to update Bay status.'),
     }),
   );
+  const assignBayOperatorMutation = useMutation(
+    trpc.jobs.assignBayOperator.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to assign Bay Operator.'),
+    }),
+  );
+  const unassignBayOperatorMutation = useMutation(
+    trpc.jobs.unassignBayOperator.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to unassign Bay Operator.'),
+    }),
+  );
 
-  const isEditPending = renameBayMutation.isPending || setBayDisabledMutation.isPending;
+  const isEditPending =
+    renameBayMutation.isPending ||
+    setBayDisabledMutation.isPending ||
+    assignBayOperatorMutation.isPending ||
+    unassignBayOperatorMutation.isPending;
 
   const saveEdit = async (state: EditDialogState) => {
     const nextName = state.name.trim();
     const nameChanged = nextName !== state.bay.name;
     const disabledChanged = state.disabled !== Boolean(state.bay.disabledAt);
+    const operatorChanged = !state.bay.currentOperator && state.operatorUserId !== null;
 
-    if (!nameChanged && !disabledChanged) {
+    if (!nameChanged && !disabledChanged && !operatorChanged) {
       toast.info('No Bay changes to save');
       return;
     }
@@ -122,9 +150,20 @@ export const BaysPage: React.FC = () => {
       await setBayDisabledMutation.mutateAsync({ disabled: state.disabled, id: state.bay.id });
     }
 
+    if (operatorChanged && state.operatorUserId) {
+      await assignBayOperatorMutation.mutateAsync({ bayId: state.bay.id, operatorUserId: state.operatorUserId });
+    }
+
     await refreshBayData();
     setEditDialog(null);
     toast.success('Bay updated');
+  };
+
+  const unassignOperator = async (state: EditDialogState) => {
+    await unassignBayOperatorMutation.mutateAsync({ bayId: state.bay.id });
+    await refreshBayData();
+    setEditDialog(null);
+    toast.success('Bay Operator unassigned');
   };
 
   if (baysQuery.isLoading) {
@@ -190,13 +229,19 @@ export const BaysPage: React.FC = () => {
                               Origin {formatDate(bay.scheduleOrigin, 'medium')}
                               {bay.disabledAt ? ` / Disabled ${formatDate(bay.disabledAt, 'medium')}` : ''}
                             </CardDescription>
+                            <CurrentOperatorLine operator={bay.currentOperator} />
                           </div>
                           {canManageBays ? (
                             <CardAction span="title">
                               <Button
                                 aria-label={`Edit ${bay.name}`}
                                 onClick={() =>
-                                  setEditDialog({ bay, disabled: Boolean(bay.disabledAt), name: bay.name })
+                                  setEditDialog({
+                                    bay,
+                                    disabled: Boolean(bay.disabledAt),
+                                    name: bay.name,
+                                    operatorUserId: null,
+                                  })
                                 }
                                 size="icon-sm"
                                 type="button"
@@ -226,8 +271,11 @@ export const BaysPage: React.FC = () => {
       />
       <EditBayDialog
         isPending={isEditPending}
+        operators={operators}
+        operatorsLoading={operatorsQuery.isLoading}
         onClose={() => setEditDialog(null)}
         onSubmit={saveEdit}
+        onUnassignOperator={unassignOperator}
         state={editDialog}
         onChange={setEditDialog}
       />
@@ -312,12 +360,24 @@ const CreateBayDialog: React.FC<CreateBayDialogProps> = ({ state, isPending, onC
 type EditBayDialogProps = {
   state: EditDialogState | null;
   isPending: boolean;
+  operators: BayOperator[];
+  operatorsLoading: boolean;
   onChange: (state: EditDialogState | null) => void;
   onClose: () => void;
   onSubmit: (value: EditDialogState) => Promise<unknown>;
+  onUnassignOperator: (value: EditDialogState) => Promise<unknown>;
 };
 
-const EditBayDialog: React.FC<EditBayDialogProps> = ({ state, isPending, onChange, onClose, onSubmit }) => {
+const EditBayDialog: React.FC<EditBayDialogProps> = ({
+  state,
+  isPending,
+  operators,
+  operatorsLoading,
+  onChange,
+  onClose,
+  onSubmit,
+  onUnassignOperator,
+}) => {
   const [localState, setLocalState] = useState<EditDialogState | null>(state);
 
   useEffect(() => {
@@ -325,6 +385,7 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({ state, isPending, onChang
   }, [state]);
 
   const canSubmit = Boolean(localState?.name.trim());
+  const canAssignOperator = localState ? !localState.bay.currentOperator && operators.length > 0 : false;
 
   return (
     <Dialog onOpenChange={(open) => !open && onClose()} open={state !== null}>
@@ -370,6 +431,61 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({ state, isPending, onChang
                   <FieldLabel htmlFor="edit-bay-disabled">Disabled</FieldLabel>
                 </FieldContent>
               </Field>
+              {localState.bay.currentOperator ? (
+                <Field>
+                  <FieldLabel>Current Operator</FieldLabel>
+                  <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border px-3 py-2">
+                    <OperatorIdentity operator={localState.bay.currentOperator} />
+                    <Button
+                      disabled={isPending}
+                      onClick={() => void onUnassignOperator(localState)}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      {isPending ? (
+                        <IconLoader2 className="animate-spin" data-icon="inline-start" />
+                      ) : (
+                        <IconUserMinus data-icon="inline-start" />
+                      )}
+                      Unassign
+                    </Button>
+                  </div>
+                </Field>
+              ) : (
+                <Field>
+                  <FieldLabel htmlFor="edit-bay-operator">Current Operator</FieldLabel>
+                  <Select
+                    disabled={isPending || operatorsLoading || operators.length === 0}
+                    onValueChange={(value) => {
+                      const next = { ...localState, operatorUserId: value as AuthId };
+                      setLocalState(next);
+                      onChange(next);
+                    }}
+                    value={localState.operatorUserId ?? undefined}
+                  >
+                    <SelectTrigger id="edit-bay-operator" className="w-full">
+                      <SelectValue
+                        placeholder={operatorsLoading ? 'Loading Bay Operators...' : 'No Operator assigned'}
+                      />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      <SelectGroup>
+                        {operators.map((operator) => (
+                          <SelectItem key={operator.id} value={operator.id}>
+                            {operator.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  {canAssignOperator ? null : (
+                    <p className="text-muted-foreground text-xs">
+                      {operatorsLoading ? 'Loading Bay Operators.' : 'No Bay Operators available.'}
+                    </p>
+                  )}
+                </Field>
+              )}
             </FieldGroup>
           </form>
         ) : null}
@@ -386,3 +502,17 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({ state, isPending, onChang
     </Dialog>
   );
 };
+
+const CurrentOperatorLine: React.FC<{ operator: BayOperator | null }> = ({ operator }) => (
+  <div className="mt-2 flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
+    <IconUser className="size-3.5 shrink-0" />
+    <span className="truncate">{operator ? operator.name : 'No Operator assigned'}</span>
+  </div>
+);
+
+const OperatorIdentity: React.FC<{ operator: BayOperator }> = ({ operator }) => (
+  <div className="min-w-0">
+    <div className="truncate font-medium text-sm">{operator.name}</div>
+    <div className="truncate text-muted-foreground text-xs">{operator.email}</div>
+  </div>
+);

@@ -67,6 +67,10 @@ describe('getRolePermissions', () => {
   it('grants quote-only permissions to sales', () => {
     expect(getRolePermissions('sales')).toEqual(['quote:create', 'quote:read', 'quote:update']);
   });
+
+  it('grants no permissions to Bay Operators', () => {
+    expect(getRolePermissions('bay-operator')).toEqual([]);
+  });
 });
 
 describe('roleLabels', () => {
@@ -99,10 +103,11 @@ describe('sign-in eligibility', () => {
     expect(isPermissionSetSignInEligible(['quote:read'])).toBe(true);
   });
 
-  it('allows every current app role to sign in', () => {
-    for (const role of APP_ROLES) {
+  it('allows roles with permissions and denies Bay Operators', () => {
+    for (const role of APP_ROLES.filter((role) => role !== 'bay-operator')) {
       expect(isRoleSignInEligible(role), role).toBe(true);
     }
+    expect(isRoleSignInEligible('bay-operator')).toBe(false);
   });
 });
 

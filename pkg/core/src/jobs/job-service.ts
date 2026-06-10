@@ -37,6 +37,8 @@ import {
   JobCode,
   type JobCreateInput,
   type JobDetail,
+  type MoveJobSlotInput,
+  MoveJobSlotResult,
   ProductSerialPrefix,
   ProductSerialSequence,
   ProductSerialYear,
@@ -51,11 +53,12 @@ import {
   type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, gt, gte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
 
-import { defineAuditDescriptor, recordAuditCreate } from '../audit/audit-service.js';
+import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../audit/audit-service.js';
 import { documentBaseSelect } from '../documents/document-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
+import { jobBayAuditDescriptor } from './job-bay-service.js';
 import {
   JobBayNotFoundError,
   JobCalendarEditDeniedError,
@@ -63,6 +66,7 @@ import {
   JobNotFoundError,
   JobSlotBookingDeniedError,
   JobSlotIdleAddDeniedError,
+  JobSlotMoveDeniedError,
   JobSlotNotFoundError,
   JobSlotRemoveDeniedError,
   JobSlotResizeDeniedError,
@@ -431,6 +435,105 @@ export async function resizeJobSlot({
     }
 
     return ResizeJobSlotResult.parse({ slot });
+  });
+}
+
+export async function moveJobSlot({
+  access,
+  actorUserId,
+  db,
+  input,
+}: {
+  access: UserAccessSummary;
+  actorUserId: AuthId;
+  db: Db;
+  input: MoveJobSlotInput;
+}): Promise<MoveJobSlotResult> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({
+        bay: jobBays,
+        slot: jobSlots,
+      })
+      .from(jobSlots)
+      .innerJoin(jobBays, eq(jobSlots.bayId, jobBays.id))
+      .where(eq(jobSlots.id, input.slotId))
+      .for('update');
+
+    if (!row) {
+      throw new JobSlotNotFoundError(input.slotId);
+    }
+
+    if (!canScheduleBay(access, row.bay.department)) {
+      throw new JobSlotMoveDeniedError('You do not have permission to move this Bay schedule.');
+    }
+
+    const movingLeft = input.direction === 'left';
+    const [adjacentSlot] = await tx
+      .select()
+      .from(jobSlots)
+      .where(
+        and(
+          eq(jobSlots.bayId, row.bay.id),
+          movingLeft
+            ? lt(jobSlots.sequence, row.slot.sequence)
+            : gt(jobSlots.sequence, row.slot.sequence),
+        ),
+      )
+      .orderBy(movingLeft ? desc(jobSlots.sequence) : asc(jobSlots.sequence))
+      .limit(1)
+      .for('update');
+
+    if (!adjacentSlot) {
+      return MoveJobSlotResult.parse({ slot: row.slot });
+    }
+
+    const updatedAt = new Date();
+    // The bay sequence unique index is deferrable, so this swap may pass through a temporary duplicate.
+    const [slot] = await tx
+      .update(jobSlots)
+      .set({
+        sequence: adjacentSlot.sequence,
+        updatedAt,
+      })
+      .where(eq(jobSlots.id, row.slot.id))
+      .returning();
+
+    if (!slot) {
+      throw new Error('Job slot move did not return a row');
+    }
+
+    const [swappedAdjacentSlot] = await tx
+      .update(jobSlots)
+      .set({
+        sequence: row.slot.sequence,
+        updatedAt,
+      })
+      .where(eq(jobSlots.id, adjacentSlot.id))
+      .returning({ id: jobSlots.id });
+
+    if (!swappedAdjacentSlot) {
+      throw new Error('Adjacent job slot move did not return a row');
+    }
+
+    const beforeSlotOrder = movingLeft ? [adjacentSlot.id, row.slot.id] : [row.slot.id, adjacentSlot.id];
+    const afterSlotOrder = movingLeft ? [row.slot.id, adjacentSlot.id] : [adjacentSlot.id, row.slot.id];
+    await recordAuditEvent({
+      action: 'updated',
+      actorUserId,
+      changes: {
+        slotOrder: {
+          from: beforeSlotOrder,
+          to: afterSlotOrder,
+        },
+      },
+      db: tx,
+      descriptor: jobBayAuditDescriptor,
+      entityId: row.bay.id,
+      record: { name: row.bay.name },
+    });
+
+    return MoveJobSlotResult.parse({ slot });
   });
 }
 

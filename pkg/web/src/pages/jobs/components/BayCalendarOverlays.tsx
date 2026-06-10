@@ -19,7 +19,7 @@ export const OffDayBands: React.FC<{
 
         return (
           <div
-            className="absolute top-0 h-full border-destructive/20 border-x bg-destructive/10"
+            className="absolute top-0 h-full border-destructive/10 border-x bg-destructive/5"
             key={offDay.date}
             style={{ left, width }}
             title={`${formatDate(startAt, 'PPP')}${offDay.label ? `: ${offDay.label}` : ''}`}

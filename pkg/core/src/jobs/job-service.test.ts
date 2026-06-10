@@ -46,6 +46,7 @@ import {
   addIdleJobSlot,
   bookJobSlot,
   createJob,
+  moveJobSlot,
   removeBayCalendarException,
   removeJobSlot,
   resizeJobSlot,
@@ -1678,6 +1679,207 @@ describe('resizeJobSlot', () => {
         startAt: '2026-06-06T22:00:00.000Z',
       }),
     ]);
+  });
+});
+
+describe('moveJobSlot', () => {
+  test('moves a middle slot left by swapping with the previous bay slot', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const thirdJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const firstSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
+    });
+    const secondSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
+    });
+    const thirdSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: thirdJob.id },
+    });
+
+    await expect(
+      moveJobSlot({
+        access: jobAccess,
+        actorUserId,
+        db: context.db,
+        input: { direction: 'left', slotId: secondSlot.slot.id },
+      }),
+    ).resolves.toMatchObject({
+      slot: {
+        id: secondSlot.slot.id,
+        sequence: 1,
+      },
+    });
+
+    const storedSlots = await context.db
+      .select({
+        id: jobSlots.id,
+        sequence: jobSlots.sequence,
+      })
+      .from(jobSlots)
+      .where(eq(jobSlots.bayId, bay.id))
+      .orderBy(asc(jobSlots.sequence));
+    expect(storedSlots).toEqual([
+      { id: secondSlot.slot.id, sequence: 1 },
+      { id: firstSlot.slot.id, sequence: 2 },
+      { id: thirdSlot.slot.id, sequence: 3 },
+    ]);
+
+    const [event] = await context.db.select().from(auditEvents).where(eq(auditEvents.entityType, 'job_bay'));
+    expect(event).toMatchObject({
+      action: 'updated',
+      actorUserId,
+      changes: {
+        slotOrder: {
+          from: [firstSlot.slot.id, secondSlot.slot.id],
+          to: [secondSlot.slot.id, firstSlot.slot.id],
+        },
+      },
+      entityId: bay.id,
+      summary: `Updated Bay "${bay.name}"`,
+    });
+  });
+
+  test('moves a middle slot right and reflows projected dates', async ({ context }) => {
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const thirdJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const firstSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
+    });
+    const secondSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
+    });
+    const thirdSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 2, jobId: thirdJob.id },
+    });
+
+    await expect(
+      moveJobSlot({
+        access: jobAccess,
+        actorUserId,
+        db: context.db,
+        input: { direction: 'right', slotId: secondSlot.slot.id },
+      }),
+    ).resolves.toMatchObject({
+      slot: {
+        id: secondSlot.slot.id,
+        sequence: 3,
+      },
+    });
+
+    const schedule = await listBays({ db: context.db });
+    expect(getBaySchedule(schedule, bay.id)).toEqual(
+      expect.objectContaining({
+        slots: [
+          expect.objectContaining({
+            id: firstSlot.slot.id,
+            sequence: 1,
+            startAt: '2026-06-04T22:00:00.000Z',
+            endAt: '2026-06-05T22:00:00.000Z',
+          }),
+          expect.objectContaining({
+            id: thirdSlot.slot.id,
+            sequence: 2,
+            startAt: '2026-06-05T22:00:00.000Z',
+            endAt: '2026-06-07T22:00:00.000Z',
+          }),
+          expect.objectContaining({
+            id: secondSlot.slot.id,
+            sequence: 3,
+            startAt: '2026-06-07T22:00:00.000Z',
+            endAt: '2026-06-08T22:00:00.000Z',
+          }),
+        ],
+      }),
+    );
+  });
+
+  test('returns the original slot when moving beyond queue boundaries', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const firstSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
+    });
+    const secondSlot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
+    });
+
+    await expect(
+      moveJobSlot({
+        access: jobAccess,
+        actorUserId,
+        db: context.db,
+        input: { direction: 'left', slotId: firstSlot.slot.id },
+      }),
+    ).resolves.toMatchObject({ slot: { id: firstSlot.slot.id, sequence: 1 } });
+    await expect(
+      moveJobSlot({
+        access: jobAccess,
+        actorUserId,
+        db: context.db,
+        input: { direction: 'right', slotId: secondSlot.slot.id },
+      }),
+    ).resolves.toMatchObject({ slot: { id: secondSlot.slot.id, sequence: 2 } });
+  });
+
+  test('rejects missing slots', async ({ context }) => {
+    await expect(
+      moveJobSlot({
+        access: jobAccess,
+        actorUserId,
+        db: context.db,
+        input: {
+          direction: 'left',
+          slotId: '00000000-0000-4000-8000-000000000999',
+        },
+      }),
+    ).rejects.toThrow('Job slot not found');
+  });
+
+  test('enforces bay schedule move permissions by role and department', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const slot = await bookJobSlot({
+      access: jobAccess,
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
+    });
+
+    await expect(
+      moveJobSlot({
+        access: createUserAccessSummary({
+          departments: ['paint'],
+          role: 'job-department-manager',
+          userId: 'paint-manager',
+        }),
+        actorUserId,
+        db: context.db,
+        input: { direction: 'left', slotId: slot.slot.id },
+      }),
+    ).rejects.toThrow('You do not have permission to move this Bay schedule.');
   });
 });
 

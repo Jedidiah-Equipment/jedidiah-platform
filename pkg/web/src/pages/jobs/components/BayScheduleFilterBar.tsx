@@ -56,7 +56,7 @@ export const BayScheduleFilterBar: React.FC<BayScheduleFilterBarProps> = ({
   const isActive = hasActiveBayScheduleFilter(filter);
 
   return (
-    <div className="flex flex-wrap items-center gap-3 border-border/70 border-y bg-background py-3">
+    <div className="flex flex-wrap items-center gap-3">
       <FilterCombobox
         inputId="bay-schedule-filter-job"
         onChange={(jobId) => onFilterChange({ ...filter, jobId })}

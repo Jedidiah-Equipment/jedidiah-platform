@@ -10,6 +10,7 @@ import {
   listBays,
   listJobBays,
   listJobs,
+  moveJobSlot,
   removeBayCalendarException,
   removeJobSlot,
   renameJobBay,
@@ -27,6 +28,7 @@ import {
   JobBaySetDisabledInput,
   JobCreateInput,
   JobListInput,
+  MoveJobSlotInput,
   RemoveBayCalendarExceptionInput,
   RemoveJobSlotInput,
   ResizeJobSlotInput,
@@ -105,6 +107,12 @@ export const jobsRouter = router({
     .input(ResizeJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => resizeJobSlot({ db: ctx.db, access: ctx.access, input }))),
 
+  moveSlot: authorizedProcedure('job:schedule')
+    .input(MoveJobSlotInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => moveJobSlot({ db: ctx.db, access: ctx.access, actorUserId: ctx.session.user.id, input })),
+    ),
+
   removeSlot: authorizedProcedure('job:schedule')
     .input(RemoveJobSlotInput)
     .mutation(({ ctx, input }) => mapJobErrors(() => removeJobSlot({ db: ctx.db, access: ctx.access, input }))),
@@ -159,6 +167,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         message: error.message,
       };
     case 'job.slot_remove_denied':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: error.message,
+      };
+    case 'job.slot_move_denied':
       return {
         appCode: error.code,
         code: 'FORBIDDEN',

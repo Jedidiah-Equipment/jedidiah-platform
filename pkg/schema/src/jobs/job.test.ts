@@ -25,6 +25,8 @@ import {
   JobCreateInput,
   JobDetail,
   JobListFilters,
+  MoveJobSlotInput,
+  MoveJobSlotResult,
   OffDay,
   ProjectedJobSlot,
   RemoveBayCalendarExceptionInput,
@@ -549,6 +551,53 @@ describe('JobSlot schemas', () => {
       slot: {
         createdAt: '2026-06-05T00:00:00.000Z',
         sequence: 2,
+        updatedAt: '2026-06-06T00:00:00.000Z',
+      },
+    });
+  });
+
+  it('accepts move inputs with a valid slot id and direction', () => {
+    expect(
+      MoveJobSlotInput.parse({
+        direction: 'left',
+        slotId: '00000000-0000-4000-8000-000000000003',
+      }),
+    ).toEqual({
+      direction: 'left',
+      slotId: '00000000-0000-4000-8000-000000000003',
+    });
+    expect(() =>
+      MoveJobSlotInput.parse({
+        direction: 'up',
+        slotId: '00000000-0000-4000-8000-000000000003',
+      }),
+    ).toThrow();
+    expect(() =>
+      MoveJobSlotInput.parse({
+        direction: 'right',
+        slotId: 'not-a-uuid',
+      }),
+    ).toThrow();
+  });
+
+  it('returns the moved slot without projection fields', () => {
+    expect(
+      MoveJobSlotResult.parse({
+        slot: {
+          bayId: '00000000-0000-4000-8000-000000000001',
+          createdAt: new Date('2026-06-05T00:00:00.000Z'),
+          durationDays: 1,
+          id: '00000000-0000-4000-8000-000000000003',
+          jobId: null,
+          kind: 'idle',
+          label: null,
+          sequence: 1,
+          updatedAt: new Date('2026-06-06T00:00:00.000Z'),
+        },
+      }),
+    ).toMatchObject({
+      slot: {
+        sequence: 1,
         updatedAt: '2026-06-06T00:00:00.000Z',
       },
     });

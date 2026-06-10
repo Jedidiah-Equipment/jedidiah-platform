@@ -324,6 +324,18 @@ export function getGanttCenteredDateFromScrollLeft(
   return getGanttDailyDateFromOffset(scrollLeft + visibleTimelineWidth / 2, context);
 }
 
+export function getGanttDailyHeaderWeekdayLabel(date: Date, zoom: number): string | null {
+  if (zoom <= 80) {
+    return null;
+  }
+
+  if (zoom <= 95) {
+    return format(date, 'EEEEE').toLowerCase();
+  }
+
+  return format(date, 'EEE');
+}
+
 export type GanttContentHeaderProps = {
   renderHeaderItem: (index: number) => ReactNode;
   title: string;
@@ -374,12 +386,17 @@ const DailyHeader: FC = () => {
         <div className="relative flex flex-col" key={`${year.year}-${index}`}>
           <GanttContentHeader
             columns={month.days}
-            renderHeaderItem={(item: number) => (
-              <div className="flex items-center justify-center gap-1">
-                <p>{format(addDays(new Date(year.year, index, 1), item), 'd')}</p>
-                <p className="text-muted-foreground">{format(addDays(new Date(year.year, index, 1), item), 'EEE')}</p>
-              </div>
-            )}
+            renderHeaderItem={(item: number) => {
+              const date = addDays(new Date(year.year, index, 1), item);
+              const weekdayLabel = getGanttDailyHeaderWeekdayLabel(date, gantt.zoom);
+
+              return (
+                <div className="flex items-center justify-center gap-1">
+                  <p>{format(date, 'd')}</p>
+                  {weekdayLabel ? <p className="text-muted-foreground">{weekdayLabel}</p> : null}
+                </div>
+              );
+            }}
             title={format(new Date(year.year, index, 1), 'MMMM yyyy')}
           />
           <GanttColumns

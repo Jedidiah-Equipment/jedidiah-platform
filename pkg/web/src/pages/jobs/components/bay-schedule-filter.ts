@@ -1,4 +1,5 @@
 import type { UUID } from '@pkg/schema';
+import { toJobDateKey } from './job-date-key.js';
 
 export type BayScheduleFilter = {
   bayId: UUID | null;
@@ -15,6 +16,10 @@ export const emptyBayScheduleFilter: BayScheduleFilter = {
 type FilterableSlot = {
   // Work slots carry the booked job id; idle slots carry null.
   jobId: UUID | null;
+};
+
+type FilterableSlotWithStart = FilterableSlot & {
+  startAt: Date | string;
 };
 
 type FilterableJob = {
@@ -81,4 +86,45 @@ export function countBayScheduleFilterMatches({
   }
 
   return count;
+}
+
+export function getEarliestBayScheduleFilterMatchStart({
+  bays,
+  filter,
+  jobsById,
+  today = new Date(),
+}: {
+  bays: ReadonlyArray<{ id: UUID; slots: ReadonlyArray<FilterableSlotWithStart> }>;
+  filter: BayScheduleFilter;
+  jobsById: ReadonlyMap<UUID, FilterableJob>;
+  today?: Date;
+}): Date | null {
+  let earliestStart: Date | null = null;
+  let earliestFutureStart: Date | null = null;
+  const shouldPreferFuture = filter.bayId !== null || filter.customerId !== null;
+  const todayDateKey = toJobDateKey(today);
+
+  for (const bay of bays) {
+    for (const slot of bay.slots) {
+      if (!slotMatchesBayScheduleFilter({ bayId: bay.id, filter, jobsById, slot })) {
+        continue;
+      }
+
+      const startAt = new Date(slot.startAt);
+
+      if (earliestStart === null || startAt.getTime() < earliestStart.getTime()) {
+        earliestStart = startAt;
+      }
+
+      if (
+        shouldPreferFuture &&
+        toJobDateKey(startAt) >= todayDateKey &&
+        (earliestFutureStart === null || startAt.getTime() < earliestFutureStart.getTime())
+      ) {
+        earliestFutureStart = startAt;
+      }
+    }
+  }
+
+  return earliestFutureStart ?? earliestStart;
 }

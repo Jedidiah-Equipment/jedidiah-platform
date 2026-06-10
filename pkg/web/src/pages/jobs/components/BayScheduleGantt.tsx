@@ -11,7 +11,7 @@ import type { BaySchedule, JobSlotPlacement, JobSummary, OffDay, ProjectedJobSlo
 import { IconAlertTriangle, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import {
@@ -54,11 +54,12 @@ import {
   type BayScheduleFilter,
   countBayScheduleFilterMatches,
   emptyBayScheduleFilter,
+  getEarliestBayScheduleFilterMatchStart,
   hasActiveBayScheduleFilter,
   slotMatchesBayScheduleFilter,
 } from './bay-schedule-filter.js';
 import { createWorkingCalendarsByBayId, getSlotLabel } from './bay-schedule-summary.js';
-import { fromJobCalendarDateKey } from './job-date-key.js';
+import { fromJobCalendarDateKey, toJobCalendarDate } from './job-date-key.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
@@ -68,6 +69,11 @@ const BAY_ROW_HEIGHT = 72;
 const SLOT_CARD_HEIGHT = 60;
 const IDLE_SLOT_HATCH_BACKGROUND =
   'repeating-linear-gradient(45deg, rgb(113 113 122 / 0.18) 0 5px, transparent 5px 10px)';
+
+type FilterScrollRequest = {
+  date: Date;
+  id: number;
+};
 
 export const BayScheduleGantt: React.FC<{
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
@@ -97,6 +103,7 @@ export const BayScheduleGantt: React.FC<{
   const initialDate = useMemo(() => new Date(), []);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<BayScheduleFilter>(emptyBayScheduleFilter);
+  const [filterScrollRequest, setFilterScrollRequest] = useState<FilterScrollRequest | null>(null);
   const jobs = jobsQuery.data?.items ?? [];
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
   const isFilterActive = hasActiveBayScheduleFilter(filter);
@@ -174,6 +181,32 @@ export const BayScheduleGantt: React.FC<{
     },
     [addIdleSlotMutation],
   );
+  const handleFilterChange = useCallback(
+    (nextFilter: BayScheduleFilter) => {
+      setFilter(nextFilter);
+
+      if (!hasActiveBayScheduleFilter(nextFilter)) {
+        setFilterScrollRequest(null);
+        return;
+      }
+
+      const targetStart = getEarliestBayScheduleFilterMatchStart({
+        bays,
+        filter: nextFilter,
+        jobsById,
+      });
+
+      setFilterScrollRequest((current) =>
+        targetStart
+          ? {
+              date: toJobCalendarDate(targetStart),
+              id: (current?.id ?? 0) + 1,
+            }
+          : null,
+      );
+    },
+    [bays, jobsById],
+  );
   if (baysQuery.isLoading) {
     return <Skeleton className="h-56 w-full" />;
   }
@@ -193,7 +226,7 @@ export const BayScheduleGantt: React.FC<{
         filter={filter}
         jobs={jobs}
         noMatches={isFilterActive && filterMatchCount === 0}
-        onFilterChange={setFilter}
+        onFilterChange={handleFilterChange}
       />
       <div
         className="w-full overflow-hidden"
@@ -209,6 +242,7 @@ export const BayScheduleGantt: React.FC<{
           rowHeight={BAY_ROW_HEIGHT}
           zoom={200}
         >
+          <BayScheduleFilterScrollController request={filterScrollRequest} />
           <BayScheduleSidebar bays={bays} horizonWarnings={horizonWarnings} />
           <GanttTimeline>
             <GanttHeader />
@@ -233,6 +267,27 @@ export const BayScheduleGantt: React.FC<{
       </div>
     </div>
   );
+};
+
+const BayScheduleFilterScrollController: React.FC<{
+  request: FilterScrollRequest | null;
+}> = ({ request }) => {
+  const gantt = useGanttContext();
+  const scrollToDateRef = useRef(gantt.scrollToDate);
+
+  useEffect(() => {
+    scrollToDateRef.current = gantt.scrollToDate;
+  }, [gantt.scrollToDate]);
+
+  useEffect(() => {
+    if (!request) {
+      return;
+    }
+
+    scrollToDateRef.current?.(request.date, 'smooth');
+  }, [request]);
+
+  return null;
 };
 
 const BayScheduleSidebar: React.FC<{

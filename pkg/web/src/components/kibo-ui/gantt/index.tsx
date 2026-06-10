@@ -73,6 +73,11 @@ type GanttDragScrollState = {
   startY: number;
 };
 
+type GanttDateScrollRequest = {
+  behavior: ScrollBehavior;
+  date: Date;
+};
+
 const GANTT_DRAG_SCROLL_IGNORE_SELECTOR = [
   '[data-gantt-drag-scroll-ignore]',
   '[data-roadmap-ui="gantt-sidebar"]',
@@ -97,6 +102,7 @@ export type GanttContextProps = {
   timelineData: TimelineData;
   ref: RefObject<HTMLDivElement | null> | null;
   scrollToFeature?: ((feature: GanttFeature) => void) | undefined;
+  scrollToDate?: ((date: Date, behavior?: ScrollBehavior) => void) | undefined;
 };
 
 const getDifferenceIn = (range: Range) => {
@@ -156,6 +162,17 @@ const createInitialTimelineData = (today: Date) => [
   createTimelineYearData(today.getFullYear()),
   createTimelineYearData(today.getFullYear() + 1),
 ];
+
+const createTimelineDataForYearRange = (startYear: number, endYear: number): TimelineData =>
+  Array.from({ length: endYear - startYear + 1 }, (_, index) => createTimelineYearData(startYear + index));
+
+const timelineIncludesDate = (timelineData: TimelineData, date: Date): boolean => {
+  const firstYear = timelineData[0]?.year;
+  const lastYear = timelineData.at(-1)?.year;
+  const targetYear = date.getFullYear();
+
+  return firstYear !== undefined && lastYear !== undefined && firstYear <= targetYear && targetYear <= lastYear;
+};
 
 const getOffset = (date: Date, timelineStartDate: Date, context: GanttContextProps) => {
   const parsedColumnWidth = (context.columnWidth * context.zoom) / 100;
@@ -249,6 +266,7 @@ const GanttContext = createContext<GanttContextProps>({
   timelineData: [],
   ref: null,
   scrollToFeature: undefined,
+  scrollToDate: undefined,
 });
 
 export const useGanttContext = () => useContext(GanttContext);
@@ -632,6 +650,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef(false);
   const dragScrollRef = useRef<GanttDragScrollState | null>(null);
+  const pendingDateScrollRef = useRef<GanttDateScrollRequest | null>(null);
   const notifyVisibleWindowChangeRef = useRef<(scrollElement: HTMLDivElement) => void>(() => {});
   const [timelineData, setTimelineData] = useState<TimelineData>(createInitialTimelineData(initialDate ?? new Date()));
   const [sidebarWidth, setSidebarWidth] = useState(0);
@@ -860,6 +879,81 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     setIsDragScrolling(false);
   }, []);
 
+  const expandTimelineToDate = useCallback((date: Date) => {
+    setTimelineData((currentTimelineData) => {
+      if (timelineIncludesDate(currentTimelineData, date)) {
+        return currentTimelineData;
+      }
+
+      const targetYear = date.getFullYear();
+      const firstYear = currentTimelineData[0]?.year ?? targetYear;
+      const lastYear = currentTimelineData.at(-1)?.year ?? targetYear;
+
+      return createTimelineDataForYearRange(Math.min(firstYear, targetYear), Math.max(lastYear, targetYear));
+    });
+  }, []);
+
+  const performDateScroll = useCallback(
+    (date: Date, behavior: ScrollBehavior = 'smooth') => {
+      const scrollElement = scrollRef.current;
+      if (!scrollElement) {
+        return;
+      }
+
+      const timelineStartDate = new Date(timelineData[0]?.year ?? new Date().getFullYear(), 0, 1);
+
+      const offset = getOffset(date, timelineStartDate, {
+        zoom,
+        range,
+        columnWidth,
+        sidebarWidth,
+        headerHeight,
+        rowHeight,
+        placeholderLength: 2,
+        timelineData,
+        ref: scrollRef,
+      });
+      const renderedColumnWidth = (zoom / 100) * columnWidth;
+
+      const targetScrollLeft = Math.max(0, offset - renderedColumnWidth * 2);
+
+      scrollElement.scrollTo({
+        left: targetScrollLeft,
+        behavior,
+      });
+    },
+    [timelineData, zoom, range, columnWidth, rowHeight, sidebarWidth],
+  );
+
+  const scrollToDate = useCallback(
+    (date: Date, behavior: ScrollBehavior = 'smooth') => {
+      if (!timelineIncludesDate(timelineData, date)) {
+        pendingDateScrollRef.current = { behavior, date };
+        expandTimelineToDate(date);
+        return;
+      }
+
+      performDateScroll(date, behavior);
+    },
+    [expandTimelineToDate, performDateScroll, timelineData],
+  );
+
+  useEffect(() => {
+    const pendingDateScroll = pendingDateScrollRef.current;
+    if (!pendingDateScroll || !timelineIncludesDate(timelineData, pendingDateScroll.date)) {
+      return;
+    }
+
+    pendingDateScrollRef.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      performDateScroll(pendingDateScroll.date, pendingDateScroll.behavior);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [performDateScroll, timelineData]);
+
   const scrollToFeature = useCallback(
     (feature: GanttFeature) => {
       const scrollElement = scrollRef.current;
@@ -867,10 +961,8 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         return;
       }
 
-      // Calculate timeline start date from timelineData
+      // Preserve the original feature-sidebar alignment for existing consumers.
       const timelineStartDate = new Date(timelineData[0]?.year ?? new Date().getFullYear(), 0, 1);
-
-      // Calculate the horizontal offset for the feature's start date
       const offset = getOffset(feature.startAt, timelineStartDate, {
         zoom,
         range,
@@ -883,11 +975,8 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         ref: scrollRef,
       });
 
-      // Scroll to align the feature's start with the right side of the sidebar
-      const targetScrollLeft = Math.max(0, offset);
-
       scrollElement.scrollTo({
-        left: targetScrollLeft,
+        left: Math.max(0, offset),
         behavior: 'smooth',
       });
     },
@@ -906,8 +995,9 @@ export const GanttProvider: FC<GanttProviderProps> = ({
       placeholderLength: 2,
       ref: scrollRef,
       scrollToFeature,
+      scrollToDate,
     }),
-    [zoom, range, columnWidth, rowHeight, sidebarWidth, timelineData, scrollToFeature],
+    [zoom, range, columnWidth, rowHeight, sidebarWidth, timelineData, scrollToFeature, scrollToDate],
   );
 
   return (

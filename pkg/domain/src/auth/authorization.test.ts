@@ -6,8 +6,11 @@ import {
   createUserAccessSummary,
   getRolePermissions,
   hasPermission,
+  isPermissionSetSignInEligible,
+  isRoleSignInEligible,
   permissionDescriptions,
   permissionLabels,
+  roleDescriptions,
   roleLabels,
 } from './authorization.js';
 
@@ -67,11 +70,21 @@ describe('getRolePermissions', () => {
   it('grants quote-only permissions to sales', () => {
     expect(getRolePermissions('sales')).toEqual(['quote:create', 'quote:read', 'quote:update']);
   });
+
+  it('grants no permissions to bay operators', () => {
+    expect(getRolePermissions('bay-operator')).toEqual([]);
+  });
 });
 
 describe('roleLabels', () => {
   it('labels every app role', () => {
     expect(Object.keys(roleLabels).sort()).toEqual([...APP_ROLES].sort());
+  });
+});
+
+describe('roleDescriptions', () => {
+  it('describes every app role', () => {
+    expect(Object.keys(roleDescriptions).sort()).toEqual([...APP_ROLES].sort());
   });
 });
 
@@ -84,6 +97,18 @@ describe('permissionLabels', () => {
 describe('permissionDescriptions', () => {
   it('describes every app permission', () => {
     expect(Object.keys(permissionDescriptions).sort()).toEqual([...APP_PERMISSIONS].sort());
+  });
+});
+
+describe('sign-in eligibility', () => {
+  it('derives sign-in eligibility from the permission set', () => {
+    expect(isPermissionSetSignInEligible([])).toBe(false);
+    expect(isPermissionSetSignInEligible(['quote:read'])).toBe(true);
+  });
+
+  it('blocks permissionless roles and allows roles with permissions', () => {
+    expect(isRoleSignInEligible('bay-operator')).toBe(false);
+    expect(isRoleSignInEligible('sales')).toBe(true);
   });
 });
 
@@ -150,6 +175,13 @@ describe('job authorization policy', () => {
       {
         access: createUserAccessSummary({
           role: 'sales',
+          userId: 'user_123',
+        }),
+        schedulableDepartments: [],
+      },
+      {
+        access: createUserAccessSummary({
+          role: 'bay-operator',
           userId: 'user_123',
         }),
         schedulableDepartments: [],

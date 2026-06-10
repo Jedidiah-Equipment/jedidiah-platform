@@ -22,6 +22,7 @@ describe('AppRole', () => {
     expect(AppRole.parse('procurement-manager')).toBe('procurement-manager');
     expect(AppRole.parse('job-department-manager')).toBe('job-department-manager');
     expect(AppRole.parse('sales')).toBe('sales');
+    expect(AppRole.parse('bay-operator')).toBe('bay-operator');
   });
 });
 

@@ -6,6 +6,7 @@ import { emailSender } from '../email/index.js';
 import { getApiConfig } from '../env.js';
 import { ac, authRoles, defaultAuthRole } from './access-control.js';
 import { adminUserSafetyPlugin } from './admin-user-safety.js';
+import { assertUserCanCreateSession } from './sign-in-eligibility.js';
 import { userPhoneValidationPlugin } from './user-phone-validation.js';
 
 const config = getApiConfig();
@@ -27,6 +28,15 @@ export function createAuth(database: Db) {
       provider: 'pg',
       schema,
     }),
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => {
+            await assertUserCanCreateSession({ db: database, userId: session.userId });
+          },
+        },
+      },
+    },
     user: {
       additionalFields: {
         phoneNumber: { type: 'string', required: false, input: true },

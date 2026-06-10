@@ -1,12 +1,14 @@
 import { describe, expect, test } from 'vitest';
+import { mockSession } from '@/test/test-utils.js';
 
-import { parseBetterAuthRole } from './session.js';
+import { filterSignInEligibleSession, parseBetterAuthRole } from './session.js';
 
 describe('parseBetterAuthRole', () => {
   test('parses supported role strings', () => {
     expect(parseBetterAuthRole('admin')).toBe('admin');
     expect(parseBetterAuthRole('procurement-manager')).toBe('procurement-manager');
     expect(parseBetterAuthRole('job-department-manager')).toBe('job-department-manager');
+    expect(parseBetterAuthRole('bay-operator')).toBe('bay-operator');
   });
 
   test('accepts the first role from better-auth array-shaped values', () => {
@@ -19,5 +21,17 @@ describe('parseBetterAuthRole', () => {
 
   test('rejects non-string role values', () => {
     expect(() => parseBetterAuthRole({ role: 'admin' })).toThrow();
+  });
+});
+
+describe('filterSignInEligibleSession', () => {
+  test('keeps sessions for roles with permissions', () => {
+    const session = mockSession('sales');
+
+    expect(filterSignInEligibleSession(session)).toBe(session);
+  });
+
+  test('denies existing sessions for permissionless roles', () => {
+    expect(filterSignInEligibleSession(mockSession('bay-operator'))).toBeNull();
   });
 });

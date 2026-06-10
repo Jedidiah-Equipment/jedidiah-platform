@@ -1,16 +1,25 @@
-import { departmentLabels, hasPermission, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
+import { hasPermission } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
-import { IconBriefcase2, IconLoader2, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconBriefcase2, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { AddBaySelect, BayRowCard } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { DepartmentIcon } from '@/components/departments/index.js';
 import { useAppForm } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardSeparator,
+  CardTitle,
+} from '@/components/ui/card.js';
 import {
   Dialog,
   DialogClose,
@@ -21,7 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
-import { ScrollArea } from '@/components/ui/scroll-area.js';
+import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -40,8 +49,6 @@ type GenerateJobFromQuoteDialogProps = {
   quote: Pick<QuoteDetail, 'code' | 'id' | 'linkedJobs' | 'productBays' | 'status'>;
   size?: 'default' | 'icon-sm';
 };
-
-const jobDepartments = JOB_DEPARTMENT_PIPELINE.map((step) => step.department);
 
 export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProps> = ({
   className,
@@ -79,16 +86,6 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
   const baysById = useMemo(
     () => getBaySeedBayMap({ enabledBays, productBays: quote.productBays }),
     [enabledBays, quote.productBays],
-  );
-  const groupedBays = useMemo(
-    () =>
-      jobDepartments.map((department) => ({
-        bays: enabledBays
-          .filter((bay) => bay.department === department)
-          .sort((left, right) => left.name.localeCompare(right.name)),
-        department,
-      })),
-    [enabledBays],
   );
   const createJobMutation = useMutation(
     trpc.jobs.create.mutationOptions({
@@ -151,101 +148,76 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
             void form.handleSubmit();
           }}
         >
-          <div className="space-y-2">
-            <p className="font-medium text-sm">Bay seeds</p>
-            <form.Field name="baySeeds" mode="array">
-              {(baySeedsField) =>
-                baySeedsField.state.value.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No Bays selected.</p>
-                ) : (
-                  <div className="divide-y rounded-md border border-border/70">
-                    {baySeedsField.state.value.map((row, index) => {
-                      const bay = baysById.get(row.bayId);
+          <form.Field name="baySeeds" mode="array">
+            {(baySeedsField) => {
+              const selectedBayIds = new Set(baySeedsField.state.value.map((row) => row.bayId));
 
-                      return (
-                        <div key={row.rowKey} className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
-                          <div className="min-w-0 self-center">
-                            <p className="truncate font-medium">{bay?.name ?? 'Unavailable Bay'}</p>
-                            <p className="text-muted-foreground text-xs">
-                              {bay ? departmentLabels[bay.department] : 'Bay must be reselected'}
-                            </p>
-                          </div>
-                          <form.AppField name={`baySeeds[${index}].durationDays`}>
-                            {(field) => (
-                              <field.NumberField
-                                disabled={isPending}
-                                emptyValue={Number.NaN}
-                                inputMode="numeric"
-                                label="Days"
-                                placeholder="1"
-                              />
-                            )}
-                          </form.AppField>
-                          <Button
-                            aria-label={`Remove Bay seed ${index + 1}`}
-                            className="self-end"
-                            disabled={isPending}
-                            onClick={() => baySeedsField.removeValue(index)}
-                            size="icon"
-                            type="button"
-                            variant="ghost"
-                          >
-                            <IconTrash />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )
-              }
-            </form.Field>
-          </div>
-          <div className="space-y-2">
-            <p className="font-medium text-sm">Add Bay</p>
-            {enabledBaysQuery.isLoading ? <Skeleton className="h-24" /> : null}
-            {enabledBaysQuery.error ? (
-              <ErrorMessage error={enabledBaysQuery.error} fallbackMessage="Unable to load Bays." />
-            ) : null}
-            {!enabledBaysQuery.isLoading && !enabledBaysQuery.error ? (
-              <ScrollArea className="max-h-64 rounded-md border border-border/70">
-                <div className="space-y-4 p-3">
-                  {groupedBays.map(({ bays, department }) => (
-                    <div key={department} className="space-y-2">
-                      <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                        <DepartmentIcon className="size-3.5" department={department} />
-                        <span>{departmentLabels[department]}</span>
-                      </div>
-                      {bays.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">No enabled Bays.</p>
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Assigned Bays</CardTitle>
+                    <CardDescription>Job duration estimates by Bay.</CardDescription>
+                    <CardAction>
+                      {enabledBaysQuery.isLoading ? <Skeleton className="h-8 w-72 max-w-full" /> : null}
+                      {!enabledBaysQuery.isLoading && !enabledBaysQuery.error ? (
+                        <AddBaySelect
+                          bays={enabledBays}
+                          disabled={isPending}
+                          excludeBayIds={selectedBayIds}
+                          onAdd={(bay) => baySeedsField.pushValue({ bayId: bay.id, durationDays: NaN })}
+                        />
+                      ) : null}
+                    </CardAction>
+                  </CardHeader>
+                  <CardSeparator />
+                  <CardContent>
+                    <section className="flex flex-col gap-4">
+                      {enabledBaysQuery.error ? (
+                        <ErrorMessage error={enabledBaysQuery.error} fallbackMessage="Unable to load Bays." />
+                      ) : null}
+                      {baySeedsField.state.value.length === 0 ? (
+                        <Empty>
+                          <EmptyHeader>
+                            <EmptyIcon />
+                            <EmptyTitle>No Bays selected.</EmptyTitle>
+                            <EmptyDescription>Select a Bay from the header to add it to the Job.</EmptyDescription>
+                          </EmptyHeader>
+                        </Empty>
                       ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {bays.map((bay) => (
-                            <Button
-                              disabled={isPending}
-                              key={bay.id}
-                              onClick={() =>
-                                form.pushFieldValue('baySeeds', {
-                                  bayId: bay.id,
-                                  durationDays: NaN,
-                                  rowKey: globalThis.crypto.randomUUID(),
-                                })
-                              }
-                              size="sm"
-                              type="button"
-                              variant="outline"
+                        <div className="flex flex-col gap-3">
+                          {baySeedsField.state.value.map((row, index) => (
+                            <BayRowCard
+                              bay={baysById.get(row.bayId)}
+                              key={row.bayId}
+                              onRemove={() => baySeedsField.removeValue(index)}
+                              removeDisabled={isPending}
+                              removeLabel={`Remove Bay seed ${index + 1}`}
+                              unavailableHint="Bay must be reselected"
                             >
-                              <IconPlus data-icon="inline-start" />
-                              {bay.name}
-                            </Button>
+                              <form.AppField name={`baySeeds[${index}].durationDays`}>
+                                {(field) => (
+                                  <field.NumberField
+                                    className="w-20"
+                                    disabled={isPending}
+                                    emptyValue={Number.NaN}
+                                    inputMode="numeric"
+                                    label="Days"
+                                    orientation="horizontal"
+                                    placeholder="1"
+                                    fieldClassName="self-center *:data-[slot=field-label]:flex-none"
+                                  />
+                                )}
+                              </form.AppField>
+                            </BayRowCard>
                           ))}
                         </div>
                       )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            ) : null}
-          </div>
+                    </section>
+                  </CardContent>
+                </Card>
+              );
+            }}
+          </form.Field>
           <form.Subscribe selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}>
             {({ canSubmit, isSubmitting }) => (
               <DialogFooter>

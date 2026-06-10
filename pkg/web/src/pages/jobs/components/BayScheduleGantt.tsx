@@ -8,7 +8,7 @@ import {
   type WorkingCalendar,
 } from '@pkg/domain';
 import type { BaySchedule, JobSlotPlacement, JobSummary, OffDay, ProjectedJobSlot, UUID } from '@pkg/schema';
-import { IconAlertTriangle, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconClockPlus, IconLoader2, IconMinus, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -20,6 +20,7 @@ import {
   GanttSidebar,
   GanttTimeline,
   GanttToday,
+  getGanttCenteredDateFromScrollLeft,
   useGanttContext,
 } from '@/components/kibo-ui/gantt/index.js';
 import { Button } from '@/components/ui/button.js';
@@ -41,6 +42,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -59,6 +61,12 @@ import {
   slotMatchesBayScheduleFilter,
 } from './bay-schedule-filter.js';
 import { createWorkingCalendarsByBayId, getSlotLabel } from './bay-schedule-summary.js';
+import {
+  BAY_SCHEDULE_ZOOM_DEFAULT,
+  BAY_SCHEDULE_ZOOM_MAX,
+  BAY_SCHEDULE_ZOOM_MIN,
+  useBayScheduleViewStore,
+} from './bay-schedule-view-store.js';
 import { fromJobCalendarDateKey, toJobCalendarDate } from './job-date-key.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
@@ -74,6 +82,8 @@ type FilterScrollRequest = {
   date: Date;
   id: number;
 };
+
+type AnchoredZoomChange = (applyZoomChange: () => void) => void;
 
 export const BayScheduleGantt: React.FC<{
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
@@ -104,6 +114,11 @@ export const BayScheduleGantt: React.FC<{
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<BayScheduleFilter>(emptyBayScheduleFilter);
   const [filterScrollRequest, setFilterScrollRequest] = useState<FilterScrollRequest | null>(null);
+  const zoom = useBayScheduleViewStore((state) => state.zoom);
+  const resetZoom = useBayScheduleViewStore((state) => state.resetZoom);
+  const zoomIn = useBayScheduleViewStore((state) => state.zoomIn);
+  const zoomOut = useBayScheduleViewStore((state) => state.zoomOut);
+  const anchoredZoomChangeRef = useRef<AnchoredZoomChange | null>(null);
   const jobs = jobsQuery.data?.items ?? [];
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
   const isFilterActive = hasActiveBayScheduleFilter(filter);
@@ -207,6 +222,17 @@ export const BayScheduleGantt: React.FC<{
     },
     [bays, jobsById],
   );
+  const registerAnchoredZoomChange = useCallback((handler: AnchoredZoomChange | null) => {
+    anchoredZoomChangeRef.current = handler;
+  }, []);
+  const applyAnchoredZoomChange = useCallback((applyZoomChange: () => void) => {
+    if (!anchoredZoomChangeRef.current) {
+      applyZoomChange();
+      return;
+    }
+
+    anchoredZoomChangeRef.current(applyZoomChange);
+  }, []);
   if (baysQuery.isLoading) {
     return <Skeleton className="h-56 w-full" />;
   }
@@ -227,6 +253,14 @@ export const BayScheduleGantt: React.FC<{
         jobs={jobs}
         noMatches={isFilterActive && filterMatchCount === 0}
         onFilterChange={handleFilterChange}
+        trailingContent={
+          <BayScheduleZoomControls
+            onReset={() => applyAnchoredZoomChange(resetZoom)}
+            onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
+            onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
+            zoom={zoom}
+          />
+        }
       />
       <div
         className="w-full overflow-hidden"
@@ -240,9 +274,10 @@ export const BayScheduleGantt: React.FC<{
           initialDateAlignment="start"
           range="daily"
           rowHeight={BAY_ROW_HEIGHT}
-          zoom={200}
+          zoom={zoom}
         >
           <BayScheduleFilterScrollController request={filterScrollRequest} />
+          <BayScheduleZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
           <BayScheduleSidebar bays={bays} horizonWarnings={horizonWarnings} />
           <GanttTimeline>
             <GanttHeader />
@@ -286,6 +321,121 @@ const BayScheduleFilterScrollController: React.FC<{
 
     scrollToDateRef.current?.(request.date, 'smooth');
   }, [request]);
+
+  return null;
+};
+
+const BayScheduleZoomControls: React.FC<{
+  onReset: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  zoom: number;
+}> = ({ onReset, onZoomIn, onZoomOut, zoom }) => (
+  <div className="flex items-center gap-1 rounded-lg border border-border/70 bg-card px-1 py-0.5">
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label="Zoom out"
+            disabled={zoom <= BAY_SCHEDULE_ZOOM_MIN}
+            onClick={onZoomOut}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          />
+        }
+      >
+        <IconMinus />
+      </TooltipTrigger>
+      <TooltipContent>Zoom out</TooltipContent>
+    </Tooltip>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label={`Reset zoom to ${BAY_SCHEDULE_ZOOM_DEFAULT}%`}
+            className="w-14 tabular-nums"
+            onClick={onReset}
+            size="sm"
+            type="button"
+            variant="ghost"
+          />
+        }
+      >
+        {zoom}%
+      </TooltipTrigger>
+      <TooltipContent>Reset zoom</TooltipContent>
+    </Tooltip>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label="Zoom in"
+            disabled={zoom >= BAY_SCHEDULE_ZOOM_MAX}
+            onClick={onZoomIn}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          />
+        }
+      >
+        <IconPlus />
+      </TooltipTrigger>
+      <TooltipContent>Zoom in</TooltipContent>
+    </Tooltip>
+  </div>
+);
+
+const BayScheduleZoomAnchorController: React.FC<{
+  onReady: (handler: AnchoredZoomChange | null) => void;
+  zoom: number;
+}> = ({ onReady, zoom }) => {
+  const gantt = useGanttContext();
+  const ganttRef = useRef(gantt);
+  const lastZoomRef = useRef(zoom);
+  const pendingAnchorDateRef = useRef<Date | null>(null);
+  const scrollToDateRef = useRef(gantt.scrollToDate);
+
+  useEffect(() => {
+    ganttRef.current = gantt;
+    scrollToDateRef.current = gantt.scrollToDate;
+  }, [gantt]);
+
+  const applyAnchoredZoomChange = useCallback<AnchoredZoomChange>((applyZoomChange) => {
+    const currentGantt = ganttRef.current;
+    const scrollElement = currentGantt.ref?.current;
+
+    if (scrollElement) {
+      pendingAnchorDateRef.current = getGanttCenteredDateFromScrollLeft(
+        scrollElement.scrollLeft,
+        currentGantt,
+        scrollElement.clientWidth,
+      );
+    }
+
+    applyZoomChange();
+  }, []);
+
+  useEffect(() => {
+    onReady(applyAnchoredZoomChange);
+
+    return () => onReady(null);
+  }, [applyAnchoredZoomChange, onReady]);
+
+  useEffect(() => {
+    if (lastZoomRef.current === zoom) {
+      return;
+    }
+
+    lastZoomRef.current = zoom;
+    const anchorDate = pendingAnchorDateRef.current;
+    if (!anchorDate) {
+      return;
+    }
+
+    pendingAnchorDateRef.current = null;
+    scrollToDateRef.current?.(anchorDate, 'auto', 'center');
+  }, [zoom]);
 
   return null;
 };

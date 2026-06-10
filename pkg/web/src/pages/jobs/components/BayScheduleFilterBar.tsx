@@ -22,7 +22,7 @@ type FilterOption<TId extends string> = {
 type BayScheduleFilterBarProps = {
   bays: ReadonlyArray<{ id: UUID; name: string }>;
   filter: BayScheduleFilter;
-  jobs: ReadonlyArray<Pick<JobSummary, 'id' | 'code' | 'customerCompanyName' | 'productSerialNumber'>>;
+  jobs: ReadonlyArray<Pick<JobSummary, 'id' | 'code' | 'customerCompanyName' | 'customerId' | 'productSerialNumber'>>;
   noMatches: boolean;
   onFilterChange: (filter: BayScheduleFilter) => void;
 };
@@ -38,16 +38,16 @@ export const BayScheduleFilterBar: React.FC<BayScheduleFilterBarProps> = ({
     () => jobs.map((job) => ({ hint: job.productSerialNumber, id: job.id, label: job.code })),
     [jobs],
   );
-  const customerOptions = useMemo<FilterOption<string>[]>(() => {
-    const names = new Set<string>();
+  const customerOptions = useMemo<FilterOption<UUID>[]>(() => {
+    const labelsByCustomerId = new Map<UUID, string>();
 
     for (const job of jobs) {
-      if (job.customerCompanyName) {
-        names.add(job.customerCompanyName);
+      if (job.customerCompanyName && !labelsByCustomerId.has(job.customerId)) {
+        labelsByCustomerId.set(job.customerId, job.customerCompanyName);
       }
     }
 
-    return [...names].sort((a, b) => a.localeCompare(b)).map((name) => ({ id: name, label: name }));
+    return [...labelsByCustomerId].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label));
   }, [jobs]);
   const bayOptions = useMemo<FilterOption<UUID>[]>(() => bays.map((bay) => ({ id: bay.id, label: bay.name })), [bays]);
   const isActive = hasActiveBayScheduleFilter(filter);
@@ -63,10 +63,10 @@ export const BayScheduleFilterBar: React.FC<BayScheduleFilterBarProps> = ({
       />
       <FilterCombobox
         inputId="bay-schedule-filter-customer"
-        onChange={(customerCompanyName) => onFilterChange({ ...filter, customerCompanyName })}
+        onChange={(customerId) => onFilterChange({ ...filter, customerId })}
         options={customerOptions}
         placeholder="Filter by customer"
-        value={filter.customerCompanyName}
+        value={filter.customerId}
       />
       <FilterCombobox
         inputId="bay-schedule-filter-bay"

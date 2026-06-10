@@ -2,13 +2,13 @@ import type { UUID } from '@pkg/schema';
 
 export type BayScheduleFilter = {
   bayId: UUID | null;
-  customerCompanyName: string | null;
+  customerId: UUID | null;
   jobId: UUID | null;
 };
 
 export const emptyBayScheduleFilter: BayScheduleFilter = {
   bayId: null,
-  customerCompanyName: null,
+  customerId: null,
   jobId: null,
 };
 
@@ -18,11 +18,11 @@ type FilterableSlot = {
 };
 
 type FilterableJob = {
-  customerCompanyName: string | null;
+  customerId: UUID;
 };
 
 export function hasActiveBayScheduleFilter(filter: BayScheduleFilter): boolean {
-  return filter.bayId !== null || filter.customerCompanyName !== null || filter.jobId !== null;
+  return filter.bayId !== null || filter.customerId !== null || filter.jobId !== null;
 }
 
 // A slot matches only when it satisfies every active filter dimension. Idle
@@ -46,14 +46,14 @@ export function slotMatchesBayScheduleFilter({
     return false;
   }
 
-  if (filter.customerCompanyName !== null) {
+  if (filter.customerId !== null) {
     if (slot.jobId === null) {
       return false;
     }
 
     const job = jobsById.get(slot.jobId);
 
-    if ((job?.customerCompanyName ?? null) !== filter.customerCompanyName) {
+    if ((job?.customerId ?? null) !== filter.customerId) {
       return false;
     }
   }

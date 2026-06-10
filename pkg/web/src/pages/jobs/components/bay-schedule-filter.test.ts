@@ -16,9 +16,12 @@ const bay2 = id('bay-2');
 const job1 = id('job-1');
 const job2 = id('job-2');
 
+const customerA = id('customer-a');
+const customerB = id('customer-b');
+
 const jobsById = new Map([
-  [job1, { customerCompanyName: 'Acme Mining' }],
-  [job2, { customerCompanyName: null }],
+  [job1, { customerId: customerA }],
+  [job2, { customerId: customerB }],
 ]);
 
 const filterWith = (overrides: Partial<BayScheduleFilter>): BayScheduleFilter => ({
@@ -33,7 +36,7 @@ describe('hasActiveBayScheduleFilter', () => {
 
   it('is true when any dimension is set', () => {
     expect(hasActiveBayScheduleFilter(filterWith({ bayId: bay1 }))).toBe(true);
-    expect(hasActiveBayScheduleFilter(filterWith({ customerCompanyName: 'Acme Mining' }))).toBe(true);
+    expect(hasActiveBayScheduleFilter(filterWith({ customerId: customerA }))).toBe(true);
     expect(hasActiveBayScheduleFilter(filterWith({ jobId: job1 }))).toBe(true);
   });
 });
@@ -76,7 +79,7 @@ describe('slotMatchesBayScheduleFilter', () => {
     expect(
       slotMatchesBayScheduleFilter({
         bayId: bay1,
-        filter: filterWith({ customerCompanyName: 'Acme Mining' }),
+        filter: filterWith({ customerId: customerA }),
         jobsById,
         slot: { jobId: null },
       }),
@@ -84,17 +87,17 @@ describe('slotMatchesBayScheduleFilter', () => {
   });
 
   it('matches the customer dimension through the booked job', () => {
-    const filter = filterWith({ customerCompanyName: 'Acme Mining' });
+    const filter = filterWith({ customerId: customerA });
 
     expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job1 } })).toBe(true);
     expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job2 } })).toBe(false);
-    expect(
-      slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: id('job-missing') } }),
-    ).toBe(false);
+    expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: id('job-missing') } })).toBe(
+      false,
+    );
   });
 
   it('requires every active dimension to match', () => {
-    const filter = filterWith({ bayId: bay1, customerCompanyName: 'Acme Mining', jobId: job1 });
+    const filter = filterWith({ bayId: bay1, customerId: customerA, jobId: job1 });
 
     expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job1 } })).toBe(true);
     expect(slotMatchesBayScheduleFilter({ bayId: bay2, filter, jobsById, slot: { jobId: job1 } })).toBe(false);
@@ -114,13 +117,11 @@ describe('countBayScheduleFilterMatches', () => {
 
   it('counts only slots matching all active dimensions', () => {
     expect(countBayScheduleFilterMatches({ bays, filter: filterWith({ bayId: bay1 }), jobsById })).toBe(2);
-    expect(
-      countBayScheduleFilterMatches({ bays, filter: filterWith({ customerCompanyName: 'Acme Mining' }), jobsById }),
-    ).toBe(1);
+    expect(countBayScheduleFilterMatches({ bays, filter: filterWith({ customerId: customerA }), jobsById })).toBe(1);
     expect(
       countBayScheduleFilterMatches({
         bays,
-        filter: filterWith({ bayId: bay2, customerCompanyName: 'Acme Mining' }),
+        filter: filterWith({ bayId: bay2, customerId: customerA }),
         jobsById,
       }),
     ).toBe(0);

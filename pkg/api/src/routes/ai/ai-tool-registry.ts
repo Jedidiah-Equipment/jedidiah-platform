@@ -432,6 +432,7 @@ function projectJob(value: unknown): unknown {
   return addLinks(value, [
     label ? createAiLink('Job', label, value.id) : null,
     createLink('Quote', value.quoteCode, value.quoteId),
+    createLink('Customer', value.customerCompanyName, value.customerId),
   ]);
 }
 

@@ -9,10 +9,13 @@ import {
   BayCalendarException,
   BayCalendarExceptionDirection,
   BayListResult,
+  BayOperatorListResult,
   BookJobSlotInput,
   BookJobSlotResult,
   formatProductSerialNumber,
   Job,
+  JobBayAssignOperatorInput,
+  JobBayAssignOperatorResult,
   JobBayCreateInput,
   JobBayCreateResult,
   JobBayListInput,
@@ -21,6 +24,8 @@ import {
   JobBayRenameResult,
   JobBaySetDisabledInput,
   JobBaySetDisabledResult,
+  JobBayUnassignOperatorInput,
+  JobBayUnassignOperatorResult,
   JobCode,
   JobCreateInput,
   JobDetail,
@@ -164,6 +169,7 @@ describe('Working Calendar schemas', () => {
           {
             calendarExceptions: [exception],
             createdAt: '2026-06-01T00:00:00.000Z',
+            currentOperator: null,
             department: 'fabrication',
             disabledAt: null,
             id: '00000000-0000-4000-8000-000000000002',
@@ -186,6 +192,7 @@ describe('Working Calendar schemas', () => {
         {
           calendarExceptions: [exception],
           createdAt: '2026-06-01T00:00:00.000Z',
+          currentOperator: null,
           department: 'fabrication',
           disabledAt: null,
           id: '00000000-0000-4000-8000-000000000002',
@@ -203,6 +210,44 @@ describe('Working Calendar schemas', () => {
         },
       ],
     });
+  });
+
+  it('accepts Bay Operator assignment contracts', () => {
+    const operator = {
+      email: 'operator@example.com',
+      id: 'operator-user-id',
+      name: 'Operator User',
+      thumbnailDataUrl: null,
+    };
+    const bay = Bay.parse({
+      createdAt: '2026-06-01T00:00:00.000Z',
+      currentOperator: operator,
+      department: 'fabrication',
+      disabledAt: null,
+      id: '00000000-0000-4000-8000-000000000002',
+      name: 'Fabrication Bay 1',
+      scheduleOrigin: '2026-06-05T00:00:00.000Z',
+      updatedAt: '2026-06-01T00:00:00.000Z',
+    });
+
+    expect(
+      JobBayAssignOperatorInput.parse({
+        bayId: bay.id,
+        operatorUserId: operator.id,
+      }),
+    ).toEqual({
+      bayId: bay.id,
+      operatorUserId: operator.id,
+    });
+    expect(JobBayAssignOperatorResult.parse({ bay })).toEqual({ bay });
+    expect(JobBayUnassignOperatorInput.parse({ bayId: bay.id })).toEqual({ bayId: bay.id });
+    expect(JobBayUnassignOperatorResult.parse({ bay: { ...bay, currentOperator: null } })).toMatchObject({
+      bay: {
+        currentOperator: null,
+        id: bay.id,
+      },
+    });
+    expect(BayOperatorListResult.parse({ operators: [operator] })).toEqual({ operators: [operator] });
   });
 
   it('accepts bay exception removal by bay and date', () => {

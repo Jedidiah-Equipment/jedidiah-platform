@@ -4,6 +4,7 @@ export const DEFAULT_APP_ROLE = 'sales' satisfies AppRole;
 
 export const roleLabels = {
   admin: 'Administrator',
+  'bay-operator': 'Bay Operator',
   'job-viewer': 'Job Viewer',
   'procurement-manager': 'Procurement manager',
   sales: 'Sales',
@@ -11,6 +12,7 @@ export const roleLabels = {
 
 export const roleDescriptions = {
   admin: 'Full workspace administration, including user management and cross-functional operations.',
+  'bay-operator': 'Shop-floor personnel record for Bay assignment; this role is not enabled for sign-in.',
   'job-viewer': 'Read-only access to production Jobs.',
   'procurement-manager': 'Manage procurement records and view production Jobs.',
   sales: 'Create, read, and update sales Quotes.',
@@ -117,6 +119,7 @@ export const appRoleAccess = {
   sales: {
     quote: ['read', 'create', 'update'],
   },
+  'bay-operator': {},
 } as const satisfies Record<AppRole, RoleAccess>;
 
 export function hasPermission(

@@ -45,6 +45,7 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
+import { listCurrentBayOperatorsByBayId } from './job-bay-service.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 
@@ -101,18 +102,32 @@ function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
   });
 }
 
-function toBaySchedules(rows: BayScheduleRow[], offDays: readonly OffDay[]): BaySchedule[] {
+function toBaySchedules(
+  rows: BayScheduleRow[],
+  offDays: readonly OffDay[],
+  operatorsByBayId: ReadonlyMap<string, Bay['currentOperator']>,
+): BaySchedule[] {
   const orgWorkingCalendar = createOrgWorkingCalendar(offDays);
 
-  return rows.map((row) => mapBaySchedule(row, createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions)));
+  return rows.map((row) =>
+    mapBaySchedule(
+      row,
+      createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions),
+      operatorsByBayId.get(row.id) ?? null,
+    ),
+  );
 }
 
 export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promise<BayListResult> {
   const offDays = await listWorkingCalendarOffDays(db);
   const rows = await findBayScheduleRows(db);
+  const operatorsByBayId = await listCurrentBayOperatorsByBayId(
+    db,
+    rows.map((row) => row.id),
+  );
 
   return {
-    items: toBaySchedules(rows, offDays),
+    items: toBaySchedules(rows, offDays, operatorsByBayId),
     offDays,
   };
 }
@@ -133,8 +148,12 @@ async function getJobSchedule({
     listWorkingCalendarOffDays(db),
     findBayScheduleRows(db, inArray(jobBays.id, jobBayIds)),
   ]);
+  const operatorsByBayId = await listCurrentBayOperatorsByBayId(
+    db,
+    rows.map((row) => row.id),
+  );
 
-  return mapJobSchedule({ bays: toBaySchedules(rows, offDays), jobId });
+  return mapJobSchedule({ bays: toBaySchedules(rows, offDays, operatorsByBayId), jobId });
 }
 
 export async function listWorkingCalendarOffDays(db: Db | DatabaseTransaction) {
@@ -236,7 +255,11 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
   };
 }
 
-function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
+function mapBaySchedule(
+  row: BayScheduleRow,
+  workingCalendar: WorkingCalendar,
+  currentOperator: Bay['currentOperator'],
+) {
   const projection = projectJobSlots({
     scheduleOrigin: row.scheduleOrigin,
     slots: row.slots,
@@ -244,7 +267,7 @@ function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
   });
 
   return BaySchedule.parse({
-    ...Bay.parse(row),
+    ...Bay.parse({ ...row, currentOperator }),
     calendarExceptions: row.calendarExceptions,
     nextAvailableAt: projection.nextAvailableAt,
     slots: projection.slots.map((slot) => {

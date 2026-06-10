@@ -4,7 +4,7 @@ import { NullablePhoneNumber } from '../common/phone-number.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { AuthId } from './auth-id.js';
 
-export const APP_ROLES = ['admin', 'procurement-manager', 'job-viewer', 'sales'] as const;
+export const APP_ROLES = ['admin', 'procurement-manager', 'job-viewer', 'sales', 'bay-operator'] as const;
 
 export type AppRole = z.infer<typeof AppRole>;
 export const AppRole = z.enum(APP_ROLES);

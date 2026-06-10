@@ -8,6 +8,7 @@ describe('parseBetterAuthRole', () => {
     expect(parseBetterAuthRole('admin')).toBe('admin');
     expect(parseBetterAuthRole('procurement-manager')).toBe('procurement-manager');
     expect(parseBetterAuthRole('job-viewer')).toBe('job-viewer');
+    expect(parseBetterAuthRole('bay-operator')).toBe('bay-operator');
   });
 
   test('accepts the first role from better-auth array-shaped values', () => {
@@ -28,5 +29,9 @@ describe('filterSignInEligibleSession', () => {
     const session = mockSession('job-viewer');
 
     expect(filterSignInEligibleSession(session)).toBe(session);
+  });
+
+  test('denies existing sessions for permissionless roles', () => {
+    expect(filterSignInEligibleSession(mockSession('bay-operator'))).toBeNull();
   });
 });

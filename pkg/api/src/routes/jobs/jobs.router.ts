@@ -1,12 +1,14 @@
 import {
   addBayCalendarException,
   addIdleJobSlot,
+  assignJobBayOperator,
   bookJobSlot,
   createJob,
   createJobBay,
   getJob,
   isJobCoreError,
   type JobCoreError,
+  listBayOperators,
   listBays,
   listJobBays,
   listJobs,
@@ -17,15 +19,18 @@ import {
   resizeJobSlot,
   setJobBayDisabled,
   toggleOffDay,
+  unassignJobBayOperator,
 } from '@pkg/core';
 import {
   AddBayCalendarExceptionInput,
   AddIdleJobSlotInput,
   BookJobSlotInput,
+  JobBayAssignOperatorInput,
   JobBayCreateInput,
   JobBayListInput,
   JobBayRenameInput,
   JobBaySetDisabledInput,
+  JobBayUnassignOperatorInput,
   JobCreateInput,
   JobListInput,
   MoveJobSlotInput,
@@ -63,6 +68,20 @@ export const jobsRouter = router({
     .input(JobBaySetDisabledInput)
     .mutation(({ ctx, input }) =>
       mapJobErrors(() => setJobBayDisabled({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+    ),
+
+  listBayOperators: authorizedProcedure('job_bay:update').query(({ ctx }) => listBayOperators({ db: ctx.db })),
+
+  assignBayOperator: authorizedProcedure('job_bay:update')
+    .input(JobBayAssignOperatorInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => assignJobBayOperator({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+    ),
+
+  unassignBayOperator: authorizedProcedure('job_bay:update')
+    .input(JobBayUnassignOperatorInput)
+    .mutation(({ ctx, input }) =>
+      mapJobErrors(() => unassignJobBayOperator({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
   toggleOffDay: authorizedProcedure('job:update-calendar')
@@ -137,6 +156,30 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Job bay not found.',
+      };
+    case 'job.bay_operator_not_found':
+      return {
+        appCode: error.code,
+        code: 'NOT_FOUND',
+        message: 'Bay operator not found.',
+      };
+    case 'job.bay_operator_role_denied':
+      return {
+        appCode: error.code,
+        code: 'BAD_REQUEST',
+        message: error.message,
+      };
+    case 'job.bay_already_assigned':
+      return {
+        appCode: error.code,
+        code: 'CONFLICT',
+        message: error.message,
+      };
+    case 'job.bay_operator_assignment_not_found':
+      return {
+        appCode: error.code,
+        code: 'NOT_FOUND',
+        message: 'Bay has no current operator assignment.',
       };
     case 'job.slot_booking_denied':
       return {

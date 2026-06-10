@@ -38,7 +38,15 @@ import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
-import { createJobBay, listJobBays, renameJobBay, setJobBayDisabled } from './job-bay-service.js';
+import {
+  assignJobBayOperator,
+  createJobBay,
+  listBayOperators,
+  listJobBays,
+  renameJobBay,
+  setJobBayDisabled,
+  unassignJobBayOperator,
+} from './job-bay-service.js';
 import { getJob, listBays } from './job-read-service.js';
 import {
   addBayCalendarException,
@@ -1024,6 +1032,122 @@ describe('Job Bay management', () => {
       items: expect.arrayContaining([expect.objectContaining({ disabledAt: null, id: bay.id })]),
     });
   });
+
+  test('assigns and unassigns Bay Operators through open interval rows with audit', async ({ context }) => {
+    const firstBay = await createBay(context.db, { department: 'fabrication' });
+    const secondBay = await createBay(context.db, { department: 'paint' });
+    const operator = await createTestUser(context.db, {
+      email: 'operator@example.com',
+      id: 'operator-user-id',
+      name: 'Operator User',
+      role: 'bay-operator',
+    });
+
+    await expect(listBayOperators({ db: context.db })).resolves.toEqual({
+      operators: [
+        {
+          email: 'operator@example.com',
+          id: operator.id,
+          name: 'Operator User',
+          thumbnailDataUrl: null,
+        },
+      ],
+    });
+
+    const assigned = await assignJobBayOperator({
+      actorUserId,
+      db: context.db,
+      input: { bayId: firstBay.id, operatorUserId: operator.id },
+    });
+    await expect(
+      assignJobBayOperator({
+        actorUserId,
+        db: context.db,
+        input: { bayId: secondBay.id, operatorUserId: operator.id },
+      }),
+    ).resolves.toMatchObject({
+      bay: {
+        currentOperator: {
+          id: operator.id,
+        },
+        id: secondBay.id,
+      },
+    });
+
+    expect(assigned.bay.currentOperator).toMatchObject({
+      email: 'operator@example.com',
+      id: operator.id,
+      name: 'Operator User',
+    });
+    await expect(listJobBays({ db: context.db, input: { filters: {} } })).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          currentOperator: expect.objectContaining({ id: operator.id }),
+          id: firstBay.id,
+        }),
+      ]),
+    });
+    await expect(listBays({ db: context.db })).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          currentOperator: expect.objectContaining({ id: operator.id }),
+          id: firstBay.id,
+        }),
+      ]),
+    });
+
+    await expect(
+      assignJobBayOperator({
+        actorUserId,
+        db: context.db,
+        input: { bayId: firstBay.id, operatorUserId: operator.id },
+      }),
+    ).rejects.toThrow('Bay already has a current operator.');
+
+    const unassigned = await unassignJobBayOperator({
+      actorUserId,
+      db: context.db,
+      input: { bayId: firstBay.id },
+    });
+    const events = await context.db.select().from(auditEvents).where(eq(auditEvents.entityType, 'job_bay'));
+
+    expect(unassigned.bay.currentOperator).toBeNull();
+    expect(events.filter((event) => event.entityId === firstBay.id)).toMatchObject([
+      {
+        action: 'updated',
+        summary: `Updated Bay "${firstBay.name}"`,
+      },
+      {
+        action: 'updated',
+        summary: `Updated Bay "${firstBay.name}"`,
+      },
+    ]);
+  });
+
+  test('rejects non-Bay-Operator users and missing current assignments', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const salesUser = await createTestUser(context.db, {
+      email: 'sales@example.com',
+      id: 'sales-user-id',
+      name: 'Sales User',
+      role: 'sales',
+    });
+
+    await expect(
+      assignJobBayOperator({
+        actorUserId,
+        db: context.db,
+        input: { bayId: bay.id, operatorUserId: salesUser.id },
+      }),
+    ).rejects.toThrow('Only Bay Operator users can be assigned to Bays.');
+    await expect(
+      unassignJobBayOperator({
+        actorUserId,
+        db: context.db,
+        input: { bayId: bay.id },
+      }),
+    ).rejects.toThrow(`Bay has no current operator assignment: ${bay.id}`);
+  });
 });
 
 describe('bookJobSlot', () => {
@@ -1817,6 +1941,37 @@ async function createActorUser(db: Db) {
     role: 'sales',
     updatedAt: now,
   });
+}
+
+async function createTestUser(
+  db: Db,
+  input: {
+    email: string;
+    id: string;
+    name: string;
+    role: 'bay-operator' | 'sales';
+  },
+) {
+  const now = new Date();
+
+  const [row] = await db
+    .insert(user)
+    .values({
+      createdAt: now,
+      email: input.email,
+      emailVerified: true,
+      id: input.id,
+      name: input.name,
+      role: input.role,
+      updatedAt: now,
+    })
+    .returning({ id: user.id });
+
+  if (!row) {
+    throw new Error('User insert did not return a row');
+  }
+
+  return row;
 }
 
 async function createBay(

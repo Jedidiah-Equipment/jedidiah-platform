@@ -1,7 +1,18 @@
-import { type DatabaseTransaction, type Db, jobBays } from '@pkg/db';
+import {
+  type DatabaseTransaction,
+  type Db,
+  getUniqueViolationConstraint,
+  jobBayOperatorAssignments,
+  jobBays,
+  user,
+} from '@pkg/db';
 import {
   type AuthId,
   Bay,
+  BayOperator,
+  BayOperatorListResult,
+  type JobBayAssignOperatorInput,
+  JobBayAssignOperatorResult,
   type JobBayCreateInput,
   JobBayCreateResult,
   type JobBayListInput,
@@ -10,18 +21,28 @@ import {
   JobBayRenameResult,
   type JobBaySetDisabledInput,
   JobBaySetDisabledResult,
+  type JobBayUnassignOperatorInput,
+  JobBayUnassignOperatorResult,
 } from '@pkg/schema';
-import { asc, eq, isNotNull, isNull, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, type SQL } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
   diffAuditUpdate,
   recordAuditCreate,
+  recordAuditEvent,
   recordAuditUpdate,
 } from '../audit/audit-service.js';
-import { JobBayNotFoundError } from './job-errors.js';
+import {
+  JobBayAlreadyAssignedError,
+  JobBayNotFoundError,
+  JobBayOperatorAssignmentNotFoundError,
+  JobBayOperatorNotFoundError,
+  JobBayOperatorRoleDeniedError,
+} from './job-errors.js';
 
 type JobBayRow = typeof jobBays.$inferSelect;
+type BayOperatorRow = Pick<typeof user.$inferSelect, 'email' | 'id' | 'image' | 'name'>;
 
 export const jobBayAuditDescriptor = defineAuditDescriptor<JobBayRow>({
   entityType: 'job_bay',
@@ -43,8 +64,14 @@ export async function listJobBays({
   db: Db | DatabaseTransaction;
   input: JobBayListInput;
 }): Promise<JobBayListResult> {
+  const rows = await selectJobBayRows(db, getJobBayListWhere(input));
+  const operatorsByBayId = await listCurrentBayOperatorsByBayId(
+    db,
+    rows.map((row) => row.id),
+  );
+
   return {
-    items: await selectJobBays(db, getJobBayListWhere(input)),
+    items: rows.map((row) => mapJobBay(row, operatorsByBayId.get(row.id) ?? null)),
   };
 }
 
@@ -72,7 +99,7 @@ export async function createJobBay({
 
     await recordAuditCreate({ db: tx, descriptor: jobBayAuditDescriptor, actorUserId, input: bay });
 
-    return JobBayCreateResult.parse({ bay });
+    return JobBayCreateResult.parse({ bay: mapJobBay(bay, null) });
   });
 }
 
@@ -118,6 +145,105 @@ export async function setJobBayDisabled({
   });
 }
 
+export async function listBayOperators({ db }: { db: Db | DatabaseTransaction }): Promise<BayOperatorListResult> {
+  const rows = await db
+    .select({
+      email: user.email,
+      id: user.id,
+      image: user.image,
+      name: user.name,
+    })
+    .from(user)
+    .where(eq(user.role, 'bay-operator'))
+    .orderBy(asc(user.name), asc(user.email), asc(user.id));
+
+  return BayOperatorListResult.parse({ operators: rows.map(mapBayOperator) });
+}
+
+export async function assignJobBayOperator({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: JobBayAssignOperatorInput;
+}): Promise<JobBayAssignOperatorResult> {
+  return db.transaction(async (tx) => {
+    const bay = await getJobBayForUpdate(tx, input.bayId);
+    const operator = await getAssignableBayOperatorForUpdate(tx, input.operatorUserId);
+    const currentAssignment = await getCurrentAssignmentForUpdate(tx, input.bayId);
+
+    if (currentAssignment) {
+      throw new JobBayAlreadyAssignedError();
+    }
+
+    try {
+      await tx.insert(jobBayOperatorAssignments).values({
+        assignedAt: new Date(),
+        bayId: input.bayId,
+        operatorUserId: input.operatorUserId,
+      });
+    } catch (error) {
+      if (getUniqueViolationConstraint(error)?.includes('job_bay_operator_assignment_open_bay_unique')) {
+        throw new JobBayAlreadyAssignedError();
+      }
+
+      throw error;
+    }
+
+    await recordBayOperatorAssignmentAudit({
+      actorUserId,
+      bay,
+      db: tx,
+      from: null,
+      to: operator,
+    });
+
+    return JobBayAssignOperatorResult.parse({ bay: mapJobBay(bay, mapBayOperator(operator)) });
+  });
+}
+
+export async function unassignJobBayOperator({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: JobBayUnassignOperatorInput;
+}): Promise<JobBayUnassignOperatorResult> {
+  return db.transaction(async (tx) => {
+    const bay = await getJobBayForUpdate(tx, input.bayId);
+    const currentAssignment = await getCurrentAssignmentForUpdate(tx, input.bayId);
+
+    if (!currentAssignment) {
+      throw new JobBayOperatorAssignmentNotFoundError(input.bayId);
+    }
+
+    const unassignedAt = new Date();
+    const [closedAssignment] = await tx
+      .update(jobBayOperatorAssignments)
+      .set({ unassignedAt })
+      .where(eq(jobBayOperatorAssignments.id, currentAssignment.assignmentId))
+      .returning();
+
+    if (!closedAssignment) {
+      throw new JobBayOperatorAssignmentNotFoundError(input.bayId);
+    }
+
+    await recordBayOperatorAssignmentAudit({
+      actorUserId,
+      bay,
+      db: tx,
+      from: currentAssignment.operator,
+      to: null,
+    });
+
+    return JobBayUnassignOperatorResult.parse({ bay: mapJobBay(bay, null) });
+  });
+}
+
 async function updateJobBay<TResult>({
   actorUserId,
   db,
@@ -128,7 +254,7 @@ async function updateJobBay<TResult>({
   actorUserId: AuthId;
   db: Db;
   id: string;
-  result: { parse: (input: { bay: JobBayRow }) => TResult };
+  result: { parse: (input: { bay: Bay }) => TResult };
   set: Partial<typeof jobBays.$inferInsert>;
 }): Promise<TResult> {
   return db.transaction(async (tx) => {
@@ -144,7 +270,9 @@ async function updateJobBay<TResult>({
       await recordAuditUpdate({ db: tx, descriptor: jobBayAuditDescriptor, actorUserId, after: bay, changes });
     }
 
-    return result.parse({ bay });
+    const operatorsByBayId = await listCurrentBayOperatorsByBayId(tx, [bay.id]);
+
+    return result.parse({ bay: mapJobBay(bay, operatorsByBayId.get(bay.id) ?? null) });
   });
 }
 
@@ -158,13 +286,11 @@ async function getJobBayForUpdate(tx: DatabaseTransaction, id: string): Promise<
   return bay;
 }
 
-async function selectJobBays(db: Db | DatabaseTransaction, where?: SQL) {
-  const rows = await db.query.jobBays.findMany({
+async function selectJobBayRows(db: Db | DatabaseTransaction, where?: SQL) {
+  return db.query.jobBays.findMany({
     where,
     orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
   });
-
-  return rows.map((row) => Bay.parse(row));
 }
 
 function getJobBayListWhere(input: JobBayListInput): SQL | undefined {
@@ -177,4 +303,135 @@ function getJobBayListWhere(input: JobBayListInput): SQL | undefined {
   }
 
   return undefined;
+}
+
+export async function listCurrentBayOperatorsByBayId(
+  db: Db | DatabaseTransaction,
+  bayIds?: readonly string[],
+): Promise<Map<string, BayOperator>> {
+  if (bayIds && bayIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select({
+      bayId: jobBayOperatorAssignments.bayId,
+      email: user.email,
+      id: user.id,
+      image: user.image,
+      name: user.name,
+    })
+    .from(jobBayOperatorAssignments)
+    .innerJoin(user, eq(jobBayOperatorAssignments.operatorUserId, user.id))
+    .where(
+      bayIds
+        ? and(isNull(jobBayOperatorAssignments.unassignedAt), inArray(jobBayOperatorAssignments.bayId, [...bayIds]))
+        : isNull(jobBayOperatorAssignments.unassignedAt),
+    )
+    .orderBy(asc(user.name), asc(user.email), asc(user.id));
+
+  return new Map(rows.map((row) => [row.bayId, mapBayOperator(row)]));
+}
+
+function mapJobBay(row: JobBayRow, currentOperator: BayOperator | null): Bay {
+  return Bay.parse({
+    ...row,
+    currentOperator,
+  });
+}
+
+function mapBayOperator(row: BayOperatorRow): BayOperator {
+  return BayOperator.parse({
+    email: row.email,
+    id: row.id,
+    name: row.name,
+    thumbnailDataUrl: row.image,
+  });
+}
+
+async function getAssignableBayOperatorForUpdate(
+  tx: DatabaseTransaction,
+  operatorUserId: AuthId,
+): Promise<BayOperatorRow> {
+  const [operator] = await tx
+    .select({
+      email: user.email,
+      id: user.id,
+      image: user.image,
+      name: user.name,
+      role: user.role,
+    })
+    .from(user)
+    .where(eq(user.id, operatorUserId))
+    .for('update');
+
+  if (!operator) {
+    throw new JobBayOperatorNotFoundError(operatorUserId);
+  }
+
+  if (operator.role !== 'bay-operator') {
+    throw new JobBayOperatorRoleDeniedError();
+  }
+
+  return operator;
+}
+
+async function getCurrentAssignmentForUpdate(
+  tx: DatabaseTransaction,
+  bayId: string,
+): Promise<{ assignmentId: string; operator: BayOperatorRow } | null> {
+  const [assignment] = await tx
+    .select({
+      assignmentId: jobBayOperatorAssignments.id,
+      email: user.email,
+      id: user.id,
+      image: user.image,
+      name: user.name,
+    })
+    .from(jobBayOperatorAssignments)
+    .innerJoin(user, eq(jobBayOperatorAssignments.operatorUserId, user.id))
+    .where(and(eq(jobBayOperatorAssignments.bayId, bayId), isNull(jobBayOperatorAssignments.unassignedAt)))
+    .for('update');
+
+  if (!assignment) {
+    return null;
+  }
+
+  return {
+    assignmentId: assignment.assignmentId,
+    operator: assignment,
+  };
+}
+
+async function recordBayOperatorAssignmentAudit({
+  actorUserId,
+  bay,
+  db,
+  from,
+  to,
+}: {
+  actorUserId: AuthId;
+  bay: JobBayRow;
+  db: DatabaseTransaction;
+  from: BayOperatorRow | null;
+  to: BayOperatorRow | null;
+}): Promise<void> {
+  await recordAuditEvent({
+    action: 'updated',
+    actorUserId,
+    changes: {
+      currentOperator: {
+        from: from ? formatBayOperatorAuditValue(from) : null,
+        to: to ? formatBayOperatorAuditValue(to) : null,
+      },
+    },
+    db,
+    descriptor: jobBayAuditDescriptor,
+    entityId: bay.id,
+    record: { name: bay.name },
+  });
+}
+
+function formatBayOperatorAuditValue(operator: BayOperatorRow): string {
+  return `${operator.name} <${operator.email}>`;
 }

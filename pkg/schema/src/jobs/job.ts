@@ -1,5 +1,6 @@
 import { z } from 'zod';
-
+import { AuthId } from '../auth/auth-id.js';
+import { UserSummary } from '../auth/authorization.js';
 import { DateIso, DateOnlyIso } from '../common/date.js';
 import { Department } from '../common/departments.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
@@ -15,11 +16,20 @@ export { formatJobCode, JobCode } from '../common/public-code.js';
 export type BayName = z.infer<typeof BayName>;
 export const BayName = requiredTrimmedText('Bay name is required').brand<'BayName'>();
 
+export type BayOperator = z.infer<typeof BayOperator>;
+export const BayOperator = UserSummary.pick({
+  email: true,
+  id: true,
+  name: true,
+  thumbnailDataUrl: true,
+});
+
 export type Bay = z.infer<typeof Bay>;
 export const Bay = z.object({
   id: UUID,
   department: Department,
   name: BayName,
+  currentOperator: BayOperator.nullable().default(null),
   scheduleOrigin: DateIso,
   disabledAt: DateIso.nullable(),
   createdAt: DateIso,
@@ -221,6 +231,36 @@ export const JobBaySetDisabledInput = z
 export type JobBaySetDisabledResult = z.infer<typeof JobBaySetDisabledResult>;
 export const JobBaySetDisabledResult = z.object({
   bay: Bay,
+});
+
+export type JobBayAssignOperatorInput = z.infer<typeof JobBayAssignOperatorInput>;
+export const JobBayAssignOperatorInput = z
+  .object({
+    bayId: UUID,
+    operatorUserId: AuthId,
+  })
+  .strict();
+
+export type JobBayAssignOperatorResult = z.infer<typeof JobBayAssignOperatorResult>;
+export const JobBayAssignOperatorResult = z.object({
+  bay: Bay,
+});
+
+export type JobBayUnassignOperatorInput = z.infer<typeof JobBayUnassignOperatorInput>;
+export const JobBayUnassignOperatorInput = z
+  .object({
+    bayId: UUID,
+  })
+  .strict();
+
+export type JobBayUnassignOperatorResult = z.infer<typeof JobBayUnassignOperatorResult>;
+export const JobBayUnassignOperatorResult = z.object({
+  bay: Bay,
+});
+
+export type BayOperatorListResult = z.infer<typeof BayOperatorListResult>;
+export const BayOperatorListResult = z.object({
+  operators: z.array(BayOperator),
 });
 
 export type BookJobSlotInput = z.infer<typeof BookJobSlotInput>;

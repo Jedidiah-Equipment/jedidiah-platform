@@ -13,7 +13,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-
+import { user } from './auth.js';
 import { parts } from './part.js';
 import { products } from './product.js';
 import { quotes } from './quote.js';
@@ -49,6 +49,30 @@ export const jobBays = pgTable(
       sql`${table.department} IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly')`,
     ),
     check('job_bay_name_nonempty', sql`length(trim(${table.name})) > 0`),
+  ],
+);
+
+export const jobBayOperatorAssignments = pgTable(
+  'job_bay_operator_assignment',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    bayId: uuid('bay_id')
+      .notNull()
+      .references(() => jobBays.id, { onDelete: 'restrict' }),
+    operatorUserId: text('operator_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'restrict' }),
+    assignedAt: timestamp('assigned_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    unassignedAt: timestamp('unassigned_at', { mode: 'date', withTimezone: true }),
+  },
+  (table) => [
+    check(
+      'job_bay_operator_assignment_interval_order',
+      sql`${table.unassignedAt} IS NULL OR ${table.unassignedAt} >= ${table.assignedAt}`,
+    ),
+    uniqueIndex('job_bay_operator_assignment_open_bay_unique')
+      .on(table.bayId)
+      .where(sql`${table.unassignedAt} IS NULL`),
   ],
 );
 
@@ -200,8 +224,20 @@ export const jobSlots = pgTable(
 
 export const jobBaysRelations = relations(jobBays, ({ many }) => ({
   calendarExceptions: many(jobBayCalendarExceptions),
+  operatorAssignments: many(jobBayOperatorAssignments),
   productBays: many(productBays),
   slots: many(jobSlots),
+}));
+
+export const jobBayOperatorAssignmentsRelations = relations(jobBayOperatorAssignments, ({ one }) => ({
+  bay: one(jobBays, {
+    fields: [jobBayOperatorAssignments.bayId],
+    references: [jobBays.id],
+  }),
+  operator: one(user, {
+    fields: [jobBayOperatorAssignments.operatorUserId],
+    references: [user.id],
+  }),
 }));
 
 export const productBaysRelations = relations(productBays, ({ one }) => ({

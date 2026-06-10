@@ -1,6 +1,13 @@
 import { departmentLabels, formatDate, hasPermission, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain';
-import { type Bay, type Department, JobBayCreateInput, JobBayRenameInput } from '@pkg/schema';
-import { IconLoader2, IconPencil, IconPlus } from '@tabler/icons-react';
+import {
+  type AuthId,
+  type Bay,
+  type BayOperator,
+  type Department,
+  JobBayCreateInput,
+  JobBayRenameInput,
+} from '@pkg/schema';
+import { IconLoader2, IconPencil, IconPlus, IconUserMinus, IconUserOff } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -8,6 +15,7 @@ import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DepartmentIcon } from '@/components/departments/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import {
@@ -32,6 +40,7 @@ import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Switch } from '@/components/ui/switch.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -41,12 +50,15 @@ import { baysPageDescription } from '@/utils/page-descriptions.js';
 type CreateDialogState = {
   department: Department;
   name: string;
+  operatorUserId: AuthId | null;
 };
 
 type EditDialogState = {
   bay: Bay;
   disabled: boolean;
   name: string;
+  operatorUnassigned: boolean;
+  operatorUserId: AuthId | null;
 };
 
 const jobDepartments = JOB_DEPARTMENT_PIPELINE.map((step) => step.department);
@@ -61,7 +73,12 @@ export const BaysPage: React.FC = () => {
   const canManageBays = hasPermission(access, 'job_bay:update');
 
   const baysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: {} }));
+  const operatorsQuery = useQuery({
+    ...trpc.jobs.listBayOperators.queryOptions(),
+    enabled: canManageBays,
+  });
   const bays = baysQuery.data?.items ?? [];
+  const operators = operatorsQuery.data?.operators ?? [];
 
   const groupedBays = useMemo(
     () =>
@@ -81,11 +98,6 @@ export const BaysPage: React.FC = () => {
 
   const createBayMutation = useMutation(
     trpc.jobs.createBay.mutationOptions({
-      onSuccess: async () => {
-        await refreshBayData();
-        setCreateDialog(null);
-        toast.success('Bay created');
-      },
       onError: (error) => showMutationError(error, 'Unable to create Bay.'),
     }),
   );
@@ -101,15 +113,51 @@ export const BaysPage: React.FC = () => {
       onError: (error) => showMutationError(error, 'Unable to update Bay status.'),
     }),
   );
+  const assignBayOperatorMutation = useMutation(
+    trpc.jobs.assignBayOperator.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to assign Bay Operator.'),
+    }),
+  );
+  const unassignBayOperatorMutation = useMutation(
+    trpc.jobs.unassignBayOperator.mutationOptions({
+      onError: (error) => showMutationError(error, 'Unable to unassign Bay Operator.'),
+    }),
+  );
 
-  const isEditPending = renameBayMutation.isPending || setBayDisabledMutation.isPending;
+  const isEditPending =
+    renameBayMutation.isPending ||
+    setBayDisabledMutation.isPending ||
+    assignBayOperatorMutation.isPending ||
+    unassignBayOperatorMutation.isPending;
+  const isCreatePending = createBayMutation.isPending || assignBayOperatorMutation.isPending;
+
+  const createBay = async (state: CreateDialogState) => {
+    const result = await createBayMutation.mutateAsync(
+      JobBayCreateInput.parse({ department: state.department, name: state.name }),
+    );
+
+    if (state.operatorUserId) {
+      await assignBayOperatorMutation.mutateAsync({
+        bayId: result.bay.id,
+        operatorUserId: state.operatorUserId,
+      });
+    }
+
+    await refreshBayData();
+    setCreateDialog(null);
+    toast.success('Bay created');
+  };
 
   const saveEdit = async (state: EditDialogState) => {
     const nextName = state.name.trim();
     const nameChanged = nextName !== state.bay.name;
     const disabledChanged = state.disabled !== Boolean(state.bay.disabledAt);
+    const operatorUnassignChanged = Boolean(state.bay.currentOperator) && state.operatorUnassigned;
+    const operatorAssignChanged =
+      (!state.bay.currentOperator || state.operatorUnassigned) && state.operatorUserId !== null;
+    const operatorChanged = operatorUnassignChanged || operatorAssignChanged;
 
-    if (!nameChanged && !disabledChanged) {
+    if (!nameChanged && !disabledChanged && !operatorChanged) {
       toast.info('No Bay changes to save');
       return;
     }
@@ -120,6 +168,14 @@ export const BaysPage: React.FC = () => {
 
     if (disabledChanged) {
       await setBayDisabledMutation.mutateAsync({ disabled: state.disabled, id: state.bay.id });
+    }
+
+    if (operatorUnassignChanged) {
+      await unassignBayOperatorMutation.mutateAsync({ bayId: state.bay.id });
+    }
+
+    if (operatorAssignChanged && state.operatorUserId) {
+      await assignBayOperatorMutation.mutateAsync({ bayId: state.bay.id, operatorUserId: state.operatorUserId });
     }
 
     await refreshBayData();
@@ -151,7 +207,7 @@ export const BaysPage: React.FC = () => {
       <PageLayout
         actions={
           canManageBays ? (
-            <Button onClick={() => setCreateDialog({ department: 'fabrication', name: '' })}>
+            <Button onClick={() => setCreateDialog({ department: 'fabrication', name: '', operatorUserId: null })}>
               <IconPlus data-icon="inline-start" />
               New Bay
             </Button>
@@ -181,22 +237,31 @@ export const BaysPage: React.FC = () => {
                     {bays.map((bay) => (
                       <Card key={bay.id} className="min-w-0" size="sm">
                         <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto] gap-0">
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex min-w-0 flex-wrap items-center gap-2">
-                              <CardTitle className="truncate">{bay.name}</CardTitle>
-                              {bay.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+                          <div className="flex min-w-0 items-center gap-3">
+                            <BayOperatorIndicator operator={bay.currentOperator} />
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                <CardTitle className="truncate">{bay.name}</CardTitle>
+                                {bay.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+                              </div>
+                              <CardDescription className="text-xs">
+                                Origin {formatDate(bay.scheduleOrigin, 'medium')}
+                                {bay.disabledAt ? ` / Disabled ${formatDate(bay.disabledAt, 'medium')}` : ''}
+                              </CardDescription>
                             </div>
-                            <CardDescription className="text-xs">
-                              Origin {formatDate(bay.scheduleOrigin, 'medium')}
-                              {bay.disabledAt ? ` / Disabled ${formatDate(bay.disabledAt, 'medium')}` : ''}
-                            </CardDescription>
                           </div>
-                          {canManageBays ? (
-                            <CardAction span="title">
+                          <CardAction span="header">
+                            {canManageBays ? (
                               <Button
                                 aria-label={`Edit ${bay.name}`}
                                 onClick={() =>
-                                  setEditDialog({ bay, disabled: Boolean(bay.disabledAt), name: bay.name })
+                                  setEditDialog({
+                                    bay,
+                                    disabled: Boolean(bay.disabledAt),
+                                    name: bay.name,
+                                    operatorUnassigned: false,
+                                    operatorUserId: null,
+                                  })
                                 }
                                 size="icon-sm"
                                 type="button"
@@ -204,8 +269,8 @@ export const BaysPage: React.FC = () => {
                               >
                                 <IconPencil />
                               </Button>
-                            </CardAction>
-                          ) : null}
+                            ) : null}
+                          </CardAction>
                         </CardHeader>
                       </Card>
                     ))}
@@ -218,14 +283,18 @@ export const BaysPage: React.FC = () => {
       </PageLayout>
 
       <CreateBayDialog
-        isPending={createBayMutation.isPending}
+        isPending={isCreatePending}
+        operators={operators}
+        operatorsLoading={operatorsQuery.isLoading}
         onClose={() => setCreateDialog(null)}
-        onSubmit={(value) => createBayMutation.mutateAsync(JobBayCreateInput.parse(value))}
+        onSubmit={createBay}
         state={createDialog}
         onChange={setCreateDialog}
       />
       <EditBayDialog
         isPending={isEditPending}
+        operators={operators}
+        operatorsLoading={operatorsQuery.isLoading}
         onClose={() => setEditDialog(null)}
         onSubmit={saveEdit}
         state={editDialog}
@@ -238,12 +307,22 @@ export const BaysPage: React.FC = () => {
 type CreateBayDialogProps = {
   state: CreateDialogState | null;
   isPending: boolean;
+  operators: BayOperator[];
+  operatorsLoading: boolean;
   onChange: (state: CreateDialogState | null) => void;
   onClose: () => void;
   onSubmit: (value: CreateDialogState) => Promise<unknown>;
 };
 
-const CreateBayDialog: React.FC<CreateBayDialogProps> = ({ state, isPending, onChange, onClose, onSubmit }) => {
+const CreateBayDialog: React.FC<CreateBayDialogProps> = ({
+  state,
+  isPending,
+  operators,
+  operatorsLoading,
+  onChange,
+  onClose,
+  onSubmit,
+}) => {
   const canSubmit = Boolean(state?.name.trim());
 
   return (
@@ -258,7 +337,7 @@ const CreateBayDialog: React.FC<CreateBayDialogProps> = ({ state, isPending, onC
             id="create-bay-form"
             onSubmit={(event) => {
               event.preventDefault();
-              void onSubmit({ department: state.department, name: state.name });
+              void onSubmit(state);
             }}
           >
             <FieldGroup>
@@ -292,6 +371,22 @@ const CreateBayDialog: React.FC<CreateBayDialogProps> = ({ state, isPending, onC
                   value={state.name}
                 />
               </Field>
+              <Field>
+                <FieldLabel htmlFor="create-bay-operator">Current Operator</FieldLabel>
+                <BayOperatorSelect
+                  disabled={isPending}
+                  id="create-bay-operator"
+                  operators={operators}
+                  operatorsLoading={operatorsLoading}
+                  onValueChange={(operatorUserId) => onChange({ ...state, operatorUserId })}
+                  value={state.operatorUserId}
+                />
+                {operatorsLoading || operators.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    {operatorsLoading ? 'Loading Bay Operators.' : 'No Bay Operators available.'}
+                  </p>
+                ) : null}
+              </Field>
             </FieldGroup>
           </form>
         ) : null}
@@ -312,12 +407,22 @@ const CreateBayDialog: React.FC<CreateBayDialogProps> = ({ state, isPending, onC
 type EditBayDialogProps = {
   state: EditDialogState | null;
   isPending: boolean;
+  operators: BayOperator[];
+  operatorsLoading: boolean;
   onChange: (state: EditDialogState | null) => void;
   onClose: () => void;
   onSubmit: (value: EditDialogState) => Promise<unknown>;
 };
 
-const EditBayDialog: React.FC<EditBayDialogProps> = ({ state, isPending, onChange, onClose, onSubmit }) => {
+const EditBayDialog: React.FC<EditBayDialogProps> = ({
+  state,
+  isPending,
+  operators,
+  operatorsLoading,
+  onChange,
+  onClose,
+  onSubmit,
+}) => {
   const [localState, setLocalState] = useState<EditDialogState | null>(state);
 
   useEffect(() => {
@@ -325,6 +430,9 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({ state, isPending, onChang
   }, [state]);
 
   const canSubmit = Boolean(localState?.name.trim());
+  const canAssignOperator = localState
+    ? (!localState.bay.currentOperator || localState.operatorUnassigned) && operators.length > 0
+    : false;
 
   return (
     <Dialog onOpenChange={(open) => !open && onClose()} open={state !== null}>
@@ -370,6 +478,49 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({ state, isPending, onChang
                   <FieldLabel htmlFor="edit-bay-disabled">Disabled</FieldLabel>
                 </FieldContent>
               </Field>
+              {localState.bay.currentOperator && !localState.operatorUnassigned ? (
+                <Field>
+                  <FieldLabel>Current Operator</FieldLabel>
+                  <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border px-3 py-2">
+                    <OperatorIdentity operator={localState.bay.currentOperator} />
+                    <Button
+                      disabled={isPending}
+                      onClick={() => {
+                        const next = { ...localState, operatorUnassigned: true, operatorUserId: null };
+                        setLocalState(next);
+                        onChange(next);
+                      }}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <IconUserMinus data-icon="inline-start" />
+                      Unassign
+                    </Button>
+                  </div>
+                </Field>
+              ) : (
+                <Field>
+                  <FieldLabel htmlFor="edit-bay-operator">Current Operator</FieldLabel>
+                  <BayOperatorSelect
+                    disabled={isPending}
+                    id="edit-bay-operator"
+                    operators={operators}
+                    operatorsLoading={operatorsLoading}
+                    onValueChange={(operatorUserId) => {
+                      const next = { ...localState, operatorUserId };
+                      setLocalState(next);
+                      onChange(next);
+                    }}
+                    value={localState.operatorUserId}
+                  />
+                  {canAssignOperator ? null : (
+                    <p className="text-muted-foreground text-xs">
+                      {operatorsLoading ? 'Loading Bay Operators.' : 'No Bay Operators available.'}
+                    </p>
+                  )}
+                </Field>
+              )}
             </FieldGroup>
           </form>
         ) : null}
@@ -386,3 +537,91 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({ state, isPending, onChang
     </Dialog>
   );
 };
+
+type BayOperatorSelectProps = {
+  disabled: boolean;
+  id: string;
+  operators: BayOperator[];
+  operatorsLoading: boolean;
+  value: AuthId | null;
+  onValueChange: (operatorUserId: AuthId) => void;
+};
+
+const BayOperatorSelect: React.FC<BayOperatorSelectProps> = ({
+  disabled,
+  id,
+  operators,
+  operatorsLoading,
+  value,
+  onValueChange,
+}) => {
+  const selectedOperator = value ? (operators.find((operator) => operator.id === value) ?? null) : null;
+
+  return (
+    <Select
+      disabled={disabled || operatorsLoading || operators.length === 0}
+      onValueChange={(nextValue) => onValueChange(nextValue as AuthId)}
+      value={value ?? undefined}
+    >
+      <SelectTrigger id={id} className="w-full">
+        <SelectValue placeholder={operatorsLoading ? 'Loading Bay Operators...' : 'No Operator assigned'}>
+          {selectedOperator?.name ?? null}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent align="start">
+        <SelectGroup>
+          {operators.map((operator) => (
+            <SelectItem key={operator.id} value={operator.id}>
+              {operator.name}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+};
+
+const BayOperatorIndicator: React.FC<{ operator: BayOperator | null }> = ({ operator }) => {
+  if (!operator) {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              aria-label="No Operator assigned"
+              className="flex size-8 shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground"
+              type="button"
+            />
+          }
+        >
+          <IconUserOff className="size-4" />
+        </TooltipTrigger>
+        <TooltipContent>No Operator assigned</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            aria-label={`Current Operator: ${operator.name}`}
+            className="flex shrink-0 rounded-md"
+            type="button"
+          />
+        }
+      >
+        <EntityThumbnail label={operator.name} size="default" thumbnailDataUrl={operator.thumbnailDataUrl} />
+      </TooltipTrigger>
+      <TooltipContent>{operator.name}</TooltipContent>
+    </Tooltip>
+  );
+};
+
+const OperatorIdentity: React.FC<{ operator: BayOperator }> = ({ operator }) => (
+  <div className="min-w-0">
+    <div className="truncate font-medium text-sm">{operator.name}</div>
+    <div className="truncate text-muted-foreground text-xs">{operator.email}</div>
+  </div>
+);

@@ -23,6 +23,7 @@ import {
   getGanttCenteredDateFromScrollLeft,
   useGanttContext,
 } from '@/components/kibo-ui/gantt/index.js';
+import { PageLayoutFullscreenToggle } from '@/components/page-layout/PageLayoutFullscreenToggle.js';
 import { Button } from '@/components/ui/button.js';
 import {
   ContextMenu,
@@ -86,8 +87,10 @@ type FilterScrollRequest = {
 type AnchoredZoomChange = (applyZoomChange: () => void) => void;
 
 export const BayScheduleGantt: React.FC<{
+  fullscreen?: boolean;
+  onFullscreenChange?: ((fullscreen: boolean) => void) | undefined;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
-}> = ({ onSelectSlot }) => {
+}> = ({ fullscreen = false, onFullscreenChange, onSelectSlot }) => {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
@@ -254,12 +257,17 @@ export const BayScheduleGantt: React.FC<{
         noMatches={isFilterActive && filterMatchCount === 0}
         onFilterChange={handleFilterChange}
         trailingContent={
-          <BayScheduleZoomControls
-            onReset={() => applyAnchoredZoomChange(resetZoom)}
-            onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
-            onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
-            zoom={zoom}
-          />
+          <div className="flex items-center gap-2">
+            {onFullscreenChange ? (
+              <PageLayoutFullscreenToggle fullscreen={fullscreen} onFullscreenChange={onFullscreenChange} />
+            ) : null}
+            <BayScheduleZoomControls
+              onReset={() => applyAnchoredZoomChange(resetZoom)}
+              onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
+              onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
+              zoom={zoom}
+            />
+          </div>
         }
       />
       <div

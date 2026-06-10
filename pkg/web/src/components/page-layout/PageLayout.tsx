@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useEffect } from 'react';
 
 import { Separator } from '@/components/ui/separator.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
@@ -10,6 +11,8 @@ type PageLayoutProps = {
   aside?: React.ReactNode;
   children: React.ReactNode;
   description?: string | undefined;
+  fullscreen?: boolean;
+  onFullscreenChange?: ((fullscreen: boolean) => void) | undefined;
   size?: PageLayoutSize;
   title?: React.ReactNode | undefined;
 };
@@ -19,34 +22,74 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   aside,
   children,
   description,
+  fullscreen = false,
+  onFullscreenChange,
   size = 'full',
   title,
-}) => (
-  <div className="flex flex-1 flex-col p-4 pt-6">
-    <div className={cn('flex flex-col gap-4', getPageLayoutSizeClassName(size))}>
-      {title !== undefined ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="font-heading text-2xl leading-tight font-medium">{title}</h1>
-            {description ? <p className="text-muted-foreground text-sm font-mono">{description}</p> : null}
+}) => {
+  useEffect(() => {
+    if (!fullscreen || !onFullscreenChange) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!shouldExitPageLayoutFullscreenOnKey(event, fullscreen)) {
+        return;
+      }
+
+      event.preventDefault();
+      onFullscreenChange(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullscreen, onFullscreenChange]);
+
+  return (
+    <div className="flex flex-1 flex-col p-4 pt-6">
+      <div className={cn('flex flex-col gap-4', getPageLayoutSizeClassName(size))}>
+        {title !== undefined ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-col gap-1">
+              <h1 className="font-heading text-2xl leading-tight font-medium">{title}</h1>
+              {description ? <p className="text-muted-foreground text-sm font-mono">{description}</p> : null}
+            </div>
+            {actions ? <div className="flex shrink-0 items-center gap-2 text-sm font-sans">{actions}</div> : null}
           </div>
-          {actions ? <div className="flex shrink-0 items-center gap-2 text-sm font-sans">{actions}</div> : null}
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        )}
+        <Separator />
+        <div
+          className={cn(fullscreen && 'fixed inset-0 z-40 overflow-auto bg-background p-4')}
+          data-page-layout-fullscreen={fullscreen ? '' : undefined}
+        >
+          <div className={cn(fullscreen && getPageLayoutSizeClassName(size))}>
+            <PageLayoutBody aside={aside}>{children}</PageLayoutBody>
+          </div>
         </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-24" />
-        </div>
-      )}
-      <Separator />
-      {aside ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="flex min-w-0 flex-col gap-4">{children}</div>
-          <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">{aside}</aside>
-        </div>
-      ) : (
-        <div className="flex w-full flex-col gap-4">{children}</div>
-      )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+export function shouldExitPageLayoutFullscreenOnKey(event: Pick<KeyboardEvent, 'key'>, fullscreen: boolean): boolean {
+  return fullscreen && event.key === 'Escape';
+}
+
+const PageLayoutBody: React.FC<{
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ aside, children }) =>
+  aside ? (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="flex min-w-0 flex-col gap-4">{children}</div>
+      <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">{aside}</aside>
+    </div>
+  ) : (
+    <div className="flex w-full flex-col gap-4">{children}</div>
+  );

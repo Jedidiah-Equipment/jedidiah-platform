@@ -17,6 +17,7 @@ describe('PageLayout fullscreen', () => {
     );
 
     expect(html).toContain('data-page-layout-fullscreen');
+    expect(html.match(/Bay Gantt Body/g)).toHaveLength(1);
 
     const overlayHtml = html.slice(html.indexOf('data-page-layout-fullscreen'));
     expect(overlayHtml).toContain('Bay Gantt Body');

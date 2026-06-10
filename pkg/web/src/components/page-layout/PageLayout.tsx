@@ -27,8 +27,6 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   size = 'full',
   title,
 }) => {
-  const body = <PageLayoutBody aside={aside}>{children}</PageLayoutBody>;
-
   useEffect(() => {
     if (!fullscreen || !onFullscreenChange) {
       return;
@@ -66,13 +64,15 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
           </div>
         )}
         <Separator />
-        {fullscreen ? null : body}
-      </div>
-      {fullscreen ? (
-        <div className="fixed inset-0 z-40 overflow-auto bg-background p-4" data-page-layout-fullscreen="">
-          <div className={getPageLayoutSizeClassName(size)}>{body}</div>
+        <div
+          className={cn(fullscreen && 'fixed inset-0 z-40 overflow-auto bg-background p-4')}
+          data-page-layout-fullscreen={fullscreen ? '' : undefined}
+        >
+          <div className={cn(fullscreen && getPageLayoutSizeClassName(size))}>
+            <PageLayoutBody aside={aside}>{children}</PageLayoutBody>
+          </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 };

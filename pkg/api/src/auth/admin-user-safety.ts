@@ -16,6 +16,8 @@ const LAST_ADMIN_ERROR = {
   message: 'You cannot remove the last admin.',
 } as const;
 
+const OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE = 'USER_HAS_OPEN_BAY_OPERATOR_ASSIGNMENTS';
+
 export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
   return {
     id: 'admin-user-safety',
@@ -43,14 +45,21 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
-            const canAssignRole = await canAssignUserRole({
+            const roleAssignmentPolicy = await canAssignUserRole({
               db: database,
               role: nextRole,
               userId: roleChange.userId,
             });
 
-            if (!canAssignRole) {
-              throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
+            if (!roleAssignmentPolicy.allowed) {
+              if (roleAssignmentPolicy.reason === 'last-admin') {
+                throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
+              }
+
+              throw APIError.from('FORBIDDEN', {
+                code: OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE,
+                message: `Unassign from ${formatList(roleAssignmentPolicy.bayNames)} first`,
+              });
             }
           }),
         },
@@ -93,4 +102,12 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function formatList(values: readonly string[]): string {
+  if (values.length <= 1) {
+    return values[0] ?? '';
+  }
+
+  return `${values.slice(0, -1).join(', ')} and ${values.at(-1)}`;
 }

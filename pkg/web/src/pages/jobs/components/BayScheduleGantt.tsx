@@ -30,6 +30,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { BayOperatorIndicator } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import {
   GanttHeader,
@@ -71,6 +72,7 @@ import { allJobsInput } from './all-jobs-input.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
 import { BayScheduleFilterBar } from './BayScheduleFilterBar.js';
 import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
+import { moveBaySlotForDisplay } from './bay-schedule-display-move.js';
 import {
   type BayScheduleFilter,
   countBayScheduleFilterMatches,
@@ -79,7 +81,6 @@ import {
   hasActiveBayScheduleFilter,
   slotMatchesBayScheduleFilter,
 } from './bay-schedule-filter.js';
-import { moveBaySlotForDisplay } from './bay-schedule-display-move.js';
 import { createWorkingCalendarsByBayId, getSlotLabel } from './bay-schedule-summary.js';
 import {
   BAY_SCHEDULE_ZOOM_DEFAULT,
@@ -522,6 +523,7 @@ const BayScheduleSidebar: React.FC<{
               key={bay.id}
               style={{ height: 'var(--gantt-row-height)' }}
             >
+              <BayOperatorIndicator operator={bay.currentOperator} />
               <div className="flex min-w-40 flex-1 flex-col gap-1">
                 <p className="truncate text-base text-foreground leading-tight">{bay.name}</p>
                 <p className="font-medium text-muted-foreground leading-none">{statusLabel}</p>
@@ -905,10 +907,7 @@ const BaySlotBar: React.FC<{
       {canEditSchedule ? (
         <ContextMenuContent>
           <ContextMenuGroup>
-            <ContextMenuItem
-              disabled={isScheduleMutationPending || slotIndex === 0}
-              onClick={() => moveSlot('left')}
-            >
+            <ContextMenuItem disabled={isScheduleMutationPending || slotIndex === 0} onClick={() => moveSlot('left')}>
               <IconArrowLeft />
               Move slot left
             </ContextMenuItem>

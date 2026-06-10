@@ -27,6 +27,7 @@ export function createWorkingCalendarsByBayId(bays: BaySchedule[], offDays: OffD
 }
 
 export type JobScheduleSummary = {
+  currentOperator: BaySchedule['currentOperator'];
   dayBreakdown: SlotCalendarDays;
   endAt: Date;
   startAt: Date;
@@ -59,6 +60,7 @@ export function findJobScheduleSummary(
       const workingCalendar = workingCalendarsByBayId.get(bay.id) ?? {};
 
       return {
+        currentOperator: bay.currentOperator,
         dayBreakdown: summarizeSlotCalendarDays(startAt, endAt, workingCalendar),
         endAt,
         startAt,

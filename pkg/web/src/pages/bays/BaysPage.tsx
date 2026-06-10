@@ -8,11 +8,12 @@ import {
   type JobBayOperatorAssignmentHistoryItem,
   JobBayRenameInput,
 } from '@pkg/schema';
-import { IconHistory, IconLoader2, IconPencil, IconPlus, IconUserMinus, IconUserOff } from '@tabler/icons-react';
+import { IconHistory, IconLoader2, IconPencil, IconPlus, IconUserMinus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { BayOperatorIndicator } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DepartmentIcon } from '@/components/departments/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -608,44 +609,6 @@ const BayOperatorSelect: React.FC<BayOperatorSelectProps> = ({
         </SelectGroup>
       </SelectContent>
     </Select>
-  );
-};
-
-const BayOperatorIndicator: React.FC<{ operator: BayOperator | null }> = ({ operator }) => {
-  if (!operator) {
-    return (
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <button
-              aria-label="No Operator assigned"
-              className="flex size-8 shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground"
-              type="button"
-            />
-          }
-        >
-          <IconUserOff className="size-4" />
-        </TooltipTrigger>
-        <TooltipContent>No Operator assigned</TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            aria-label={`Current Operator: ${operator.name}`}
-            className="flex shrink-0 rounded-md"
-            type="button"
-          />
-        }
-      >
-        <EntityThumbnail label={operator.name} size="default" thumbnailDataUrl={operator.thumbnailDataUrl} />
-      </TooltipTrigger>
-      <TooltipContent>{operator.name}</TooltipContent>
-    </Tooltip>
   );
 };
 

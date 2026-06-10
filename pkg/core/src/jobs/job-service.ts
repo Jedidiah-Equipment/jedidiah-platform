@@ -413,9 +413,7 @@ export async function moveJobSlot({
       .where(
         and(
           eq(jobSlots.bayId, row.bay.id),
-          movingLeft
-            ? lt(jobSlots.sequence, row.slot.sequence)
-            : gt(jobSlots.sequence, row.slot.sequence),
+          movingLeft ? lt(jobSlots.sequence, row.slot.sequence) : gt(jobSlots.sequence, row.slot.sequence),
         ),
       )
       .orderBy(movingLeft ? desc(jobSlots.sequence) : asc(jobSlots.sequence))

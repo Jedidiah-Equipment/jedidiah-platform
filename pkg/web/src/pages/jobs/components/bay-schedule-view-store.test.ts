@@ -61,7 +61,8 @@ describe('Bay schedule view store', () => {
 
     useBayScheduleViewStore.getState().resetZoom();
 
-    expect(useBayScheduleViewStore.getState().zoom).toBe(BAY_SCHEDULE_ZOOM_DEFAULT);
+    expect(BAY_SCHEDULE_ZOOM_DEFAULT).toBe(100);
+    expect(useBayScheduleViewStore.getState().zoom).toBe(100);
   });
 
   it('persists only the zoom field', () => {

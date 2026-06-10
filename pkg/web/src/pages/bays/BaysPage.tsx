@@ -93,6 +93,7 @@ export const BaysPage: React.FC = () => {
 
   const [createDialog, setCreateDialog] = useState<CreateDialogState | null>(null);
   const [editDialog, setEditDialog] = useState<EditDialogState | null>(null);
+  const [historyDialog, setHistoryDialog] = useState<Bay | null>(null);
 
   const refreshBayData = async () => {
     await Promise.all([invalidateJobs(), invalidateAudit()]);
@@ -252,7 +253,25 @@ export const BaysPage: React.FC = () => {
                               </CardDescription>
                             </div>
                           </div>
-                          <CardAction span="header">
+                          <CardAction className="flex items-center gap-1" span="header">
+                            {canReadBayHistory ? (
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <Button
+                                      aria-label={`View Operator history for ${bay.name}`}
+                                      onClick={() => setHistoryDialog(bay)}
+                                      size="icon-sm"
+                                      type="button"
+                                      variant="ghost"
+                                    />
+                                  }
+                                >
+                                  <IconHistory />
+                                </TooltipTrigger>
+                                <TooltipContent>Operator history</TooltipContent>
+                              </Tooltip>
+                            ) : null}
                             {canManageBays ? (
                               <Button
                                 aria-label={`Edit ${bay.name}`}
@@ -274,7 +293,6 @@ export const BaysPage: React.FC = () => {
                             ) : null}
                           </CardAction>
                         </CardHeader>
-                        <BayOperatorHistory bayId={bay.id} enabled={canReadBayHistory} />
                       </Card>
                     ))}
                   </div>
@@ -303,6 +321,7 @@ export const BaysPage: React.FC = () => {
         state={editDialog}
         onChange={setEditDialog}
       />
+      <BayOperatorHistoryDialog bay={historyDialog} onClose={() => setHistoryDialog(null)} />
     </>
   );
 };
@@ -630,55 +649,51 @@ const BayOperatorIndicator: React.FC<{ operator: BayOperator | null }> = ({ oper
   );
 };
 
-const BayOperatorHistory: React.FC<{ bayId: Bay['id']; enabled: boolean }> = ({ bayId, enabled }) => {
+const BayOperatorHistoryDialog: React.FC<{ bay: Bay | null; onClose: () => void }> = ({ bay, onClose }) => {
   const trpc = useTRPC();
-  const historyQuery = useQuery(trpc.jobs.listBayOperatorAssignmentHistory.queryOptions({ bayId }, { enabled }));
-
-  if (!enabled) {
-    return null;
-  }
-
-  if (historyQuery.isLoading) {
-    return (
-      <CardContent className="pt-0">
-        <div className="space-y-2 border-t pt-3">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-8 w-full" />
-        </div>
-      </CardContent>
-    );
-  }
-
-  if (historyQuery.error) {
-    return (
-      <CardContent className="pt-0">
-        <p className="border-t pt-3 text-muted-foreground text-xs">Unable to load Operator history.</p>
-      </CardContent>
-    );
-  }
+  const historyQuery = useQuery(
+    trpc.jobs.listBayOperatorAssignmentHistory.queryOptions(
+      { bayId: bay?.id ?? '00000000-0000-4000-8000-000000000000' },
+      { enabled: bay !== null },
+    ),
+  );
 
   const history = historyQuery.data?.items ?? [];
 
   return (
-    <CardContent className="pt-0">
-      <div className="space-y-2 border-t pt-3">
-        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-          <IconHistory className="size-3.5" />
-          Operator History
+    <Dialog onOpenChange={(open) => !open && onClose()} open={bay !== null}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>Operator History</DialogTitle>
+          <DialogDescription>{bay ? bay.name : null}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {historyQuery.isLoading ? <BayOperatorHistorySkeleton /> : null}
+          {historyQuery.error ? (
+            <p className="text-muted-foreground text-sm">Unable to load Operator history.</p>
+          ) : null}
+          {!historyQuery.isLoading && !historyQuery.error && history.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No Operator history.</p>
+          ) : null}
+          {history.length > 0 ? (
+            <div className="space-y-2">
+              {history.map((item) => (
+                <BayOperatorHistoryItem key={item.id} item={item} />
+              ))}
+            </div>
+          ) : null}
         </div>
-        {history.length > 0 ? (
-          <div className="space-y-2">
-            {history.map((item) => (
-              <BayOperatorHistoryItem key={item.id} item={item} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-xs">No Operator history.</p>
-        )}
-      </div>
-    </CardContent>
+      </DialogContent>
+    </Dialog>
   );
 };
+
+const BayOperatorHistorySkeleton: React.FC = () => (
+  <div className="space-y-2">
+    <Skeleton className="h-10 w-full" />
+    <Skeleton className="h-10 w-full" />
+  </div>
+);
 
 const BayOperatorHistoryItem: React.FC<{ item: JobBayOperatorAssignmentHistoryItem }> = ({ item }) => (
   <div className="flex min-w-0 items-center gap-2">

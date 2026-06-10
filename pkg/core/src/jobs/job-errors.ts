@@ -58,6 +58,15 @@ export class JobBayAlreadyAssignedError extends Error {
   }
 }
 
+export class JobBayOperatorAssignmentDeniedError extends Error {
+  readonly code = 'job.bay_operator_assignment_denied';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'JobBayOperatorAssignmentDeniedError';
+  }
+}
+
 export class JobBayOperatorAssignmentNotFoundError extends Error {
   readonly code = 'job.bay_operator_assignment_not_found';
   readonly metadata: { bayId: string };
@@ -92,6 +101,7 @@ export class JobSlotNotFoundError extends Error {
 export type JobCoreError =
   | JobBayAlreadyAssignedError
   | JobBayNotFoundError
+  | JobBayOperatorAssignmentDeniedError
   | JobBayOperatorAssignmentNotFoundError
   | JobBayOperatorNotFoundError
   | JobBayOperatorRoleDeniedError
@@ -103,6 +113,7 @@ export type JobCoreError =
 export function isJobCoreError(error: unknown): error is JobCoreError {
   return (
     error instanceof JobBayNotFoundError ||
+    error instanceof JobBayOperatorAssignmentDeniedError ||
     error instanceof JobBayOperatorAssignmentNotFoundError ||
     error instanceof JobBayOperatorNotFoundError ||
     error instanceof JobBayOperatorRoleDeniedError ||

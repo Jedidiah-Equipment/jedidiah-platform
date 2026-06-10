@@ -192,7 +192,7 @@ _Avoid_: Stat, Rollup, Report, KPI.
 ## Access
 
 **admin**:
-Full access to all application resources. The only role holding `job:schedule` — all Bay scheduling (booking, resizing, removing Slots, Bay Calendar Exceptions, the Job Calendar) is admin-only for now.
+Full access to all application resources. The only role holding `job:schedule` (Bay scheduling: booking, resizing, and removing Slots, and Bay Calendar Exceptions) and the only role holding `job:update-calendar` (org-wide Off-Days), so all schedule mutation is admin-only for now.
 
 Can read, create, and update Suppliers. Can create, edit, and disable Bays (the Admin Bay section).
 

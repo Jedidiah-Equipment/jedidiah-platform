@@ -431,7 +431,10 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({
 
   const canSubmit = Boolean(localState?.name.trim());
   const canAssignOperator = localState
-    ? (!localState.bay.currentOperator || localState.operatorUnassigned) && operators.length > 0
+    ? !localState.disabled && (!localState.bay.currentOperator || localState.operatorUnassigned) && operators.length > 0
+    : false;
+  const showOperatorPicker = localState
+    ? !localState.disabled && (!localState.bay.currentOperator || localState.operatorUnassigned)
     : false;
 
   return (
@@ -469,7 +472,12 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({
                   disabled={isPending}
                   id="edit-bay-disabled"
                   onCheckedChange={(checked) => {
-                    const next = { ...localState, disabled: checked === true };
+                    const nextDisabled = checked === true;
+                    const next = {
+                      ...localState,
+                      disabled: nextDisabled,
+                      operatorUserId: nextDisabled ? null : localState.operatorUserId,
+                    };
                     setLocalState(next);
                     onChange(next);
                   }}
@@ -499,7 +507,7 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({
                     </Button>
                   </div>
                 </Field>
-              ) : (
+              ) : showOperatorPicker ? (
                 <Field>
                   <FieldLabel htmlFor="edit-bay-operator">Current Operator</FieldLabel>
                   <BayOperatorSelect
@@ -520,7 +528,7 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({
                     </p>
                   )}
                 </Field>
-              )}
+              ) : null}
             </FieldGroup>
           </form>
         ) : null}

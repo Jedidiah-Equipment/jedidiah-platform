@@ -36,6 +36,7 @@ import {
 import {
   JobBayAlreadyAssignedError,
   JobBayNotFoundError,
+  JobBayOperatorAssignmentDeniedError,
   JobBayOperatorAssignmentNotFoundError,
   JobBayOperatorNotFoundError,
   JobBayOperatorRoleDeniedError,
@@ -171,6 +172,11 @@ export async function assignJobBayOperator({
 }): Promise<JobBayAssignOperatorResult> {
   return db.transaction(async (tx) => {
     const bay = await getJobBayForUpdate(tx, input.bayId);
+
+    if (bay.disabledAt) {
+      throw new JobBayOperatorAssignmentDeniedError('This Bay is disabled and cannot accept new operator assignments.');
+    }
+
     const operator = await getAssignableBayOperatorForUpdate(tx, input.operatorUserId);
     const currentAssignment = await getCurrentAssignmentForUpdate(tx, input.bayId);
 

@@ -169,6 +169,12 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         code: 'BAD_REQUEST',
         message: error.message,
       };
+    case 'job.bay_operator_assignment_denied':
+      return {
+        appCode: error.code,
+        code: 'FORBIDDEN',
+        message: error.message,
+      };
     case 'job.bay_already_assigned':
       return {
         appCode: error.code,

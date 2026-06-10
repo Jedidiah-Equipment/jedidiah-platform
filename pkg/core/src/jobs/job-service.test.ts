@@ -1148,6 +1148,30 @@ describe('Job Bay management', () => {
       }),
     ).rejects.toThrow(`Bay has no current operator assignment: ${bay.id}`);
   });
+
+  test('rejects assigning Bay Operators to disabled Bays', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const operator = await createTestUser(context.db, {
+      email: 'operator@example.com',
+      id: 'operator-user-id',
+      name: 'Operator User',
+      role: 'bay-operator',
+    });
+
+    await setJobBayDisabled({
+      actorUserId,
+      db: context.db,
+      input: { disabled: true, id: bay.id },
+    });
+
+    await expect(
+      assignJobBayOperator({
+        actorUserId,
+        db: context.db,
+        input: { bayId: bay.id, operatorUserId: operator.id },
+      }),
+    ).rejects.toThrow('This Bay is disabled and cannot accept new operator assignments.');
+  });
 });
 
 describe('bookJobSlot', () => {

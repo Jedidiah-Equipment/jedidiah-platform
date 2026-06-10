@@ -34,7 +34,6 @@ import {
   ProjectedJobSlot,
   QuoteCode,
   type SortDirection,
-  type UserAccessSummary,
   UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
@@ -181,14 +180,7 @@ export async function listBayCalendarExceptions(db: Db | DatabaseTransaction, ba
   return rows.map((row) => BayCalendarException.parse(row));
 }
 
-export async function listJobs({
-  db,
-  input,
-}: {
-  db: Db;
-  access: UserAccessSummary;
-  input: JobListInput;
-}): Promise<JobListResult> {
+export async function listJobs({ db, input }: { db: Db; input: JobListInput }): Promise<JobListResult> {
   const where = buildJobListWhere(input);
   const orderBy = getJobSortOrder(input.sortBy, input.sortDirection);
 

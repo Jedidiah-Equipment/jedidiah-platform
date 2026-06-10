@@ -61,7 +61,6 @@ describe('listJobsTool', () => {
       await listJobsTool.handler(null, createAiContext(context.db, access));
 
       expect(listJobsSpy).toHaveBeenCalledWith({
-        access,
         db: context.db,
         input: expect.objectContaining({
           page: 1,

@@ -1,4 +1,4 @@
-import { canScheduleBay, formatDate } from '@pkg/domain';
+import { formatDate, hasPermission } from '@pkg/domain';
 import { IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -36,7 +36,10 @@ export const BookSlotDialog: React.FC = () => {
     [enabledBaysQuery.data?.items],
   );
   const schedulableBays = useMemo(
-    () => (baysQuery.data?.items ?? []).filter((bay) => enabledBayIds.has(bay.id) && canScheduleBay(accessQuery.data)),
+    () =>
+      (baysQuery.data?.items ?? []).filter(
+        (bay) => enabledBayIds.has(bay.id) && hasPermission(accessQuery.data, 'job:schedule'),
+      ),
     [accessQuery.data, baysQuery.data?.items, enabledBayIds],
   );
   const jobs = jobsQuery.data?.items ?? [];

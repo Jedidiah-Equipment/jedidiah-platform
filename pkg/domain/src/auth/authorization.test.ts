@@ -1,8 +1,6 @@
-import { APP_PERMISSIONS, APP_ROLES, type UserAccessSummary } from '@pkg/schema';
+import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import {
-  canScheduleBay,
-  canViewJob,
   createUserAccessSummary,
   getRolePermissions,
   hasPermission,
@@ -138,49 +136,15 @@ describe('hasPermission', () => {
 });
 
 describe('job authorization policy', () => {
-  it('grants admins schedule access to every bay', () => {
-    const access = createUserAccessSummary({
-      role: 'admin',
-      userId: 'user_123',
-    });
+  it('grants only admins the job schedule permission', () => {
+    const admin = createUserAccessSummary({ role: 'admin', userId: 'user_123' });
+    const viewer = createUserAccessSummary({ role: 'job-viewer', userId: 'user_123' });
+    const sales = createUserAccessSummary({ role: 'sales', userId: 'user_123' });
 
-    expect(canViewJob(access)).toBe(true);
-    expect(canScheduleBay(access)).toBe(true);
-  });
-
-  it('keeps job viewers read-only', () => {
-    const access = createUserAccessSummary({
-      role: 'job-viewer',
-      userId: 'user_123',
-    });
-
-    expect(canViewJob(access)).toBe(true);
-    expect(canScheduleBay(access)).toBe(false);
-  });
-
-  it('keeps scheduling gated by the job schedule permission', () => {
-    const jobOnlyAccess = {
-      permissions: ['job:read'],
-      role: 'sales',
-      userId: 'user_456',
-    } satisfies UserAccessSummary;
-
-    expect(canViewJob(jobOnlyAccess)).toBe(true);
-    expect(canScheduleBay(jobOnlyAccess)).toBe(false);
-  });
-
-  it('denies users with no job role', () => {
-    const access = createUserAccessSummary({
-      role: 'sales',
-      userId: 'user_123',
-    });
-
-    expect(canViewJob(access)).toBe(false);
-    expect(canScheduleBay(access)).toBe(false);
-  });
-
-  it('treats missing access as denied', () => {
-    expect(canScheduleBay(null)).toBe(false);
-    expect(canScheduleBay(undefined)).toBe(false);
+    expect(hasPermission(admin, 'job:schedule')).toBe(true);
+    expect(hasPermission(viewer, 'job:read')).toBe(true);
+    expect(hasPermission(viewer, 'job:schedule')).toBe(false);
+    expect(hasPermission(sales, 'job:read')).toBe(false);
+    expect(hasPermission(sales, 'job:schedule')).toBe(false);
   });
 });

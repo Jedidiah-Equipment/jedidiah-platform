@@ -1,4 +1,4 @@
-import { canScheduleBay, hasPermission } from '@pkg/domain';
+import { hasPermission } from '@pkg/domain';
 import type { BayCalendarExceptionDirection, OffDay } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -40,7 +40,7 @@ export const JobCalendarPage: React.FC = () => {
     [enabledBaysQuery.data?.items],
   );
   const schedulableBays = useMemo(
-    () => bays.filter((bay) => enabledBayIds.has(bay.id) && canScheduleBay(accessQuery.data)),
+    () => bays.filter((bay) => enabledBayIds.has(bay.id) && hasPermission(accessQuery.data, 'job:schedule')),
     [accessQuery.data, bays, enabledBayIds],
   );
   const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);

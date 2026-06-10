@@ -167,23 +167,3 @@ function flattenRolePermissions(role: AppRole): AppPermission[] {
 
   return permissions;
 }
-
-export function canViewJob(access: UserAccessSummary | null | undefined): boolean {
-  return hasPermission(access, 'job:read');
-}
-
-export function canScheduleBay(access: UserAccessSummary | null | undefined): boolean {
-  return hasPermission(access, 'job:schedule');
-}
-
-export function canViewQuote(access: UserAccessSummary | null | undefined): boolean {
-  return hasPermission(access, 'quote:read');
-}
-
-export function canCreateQuote(access: UserAccessSummary | null | undefined): boolean {
-  return hasPermission(access, 'quote:create');
-}
-
-export function canEditQuote(access: UserAccessSummary | null | undefined): boolean {
-  return hasPermission(access, 'quote:update');
-}

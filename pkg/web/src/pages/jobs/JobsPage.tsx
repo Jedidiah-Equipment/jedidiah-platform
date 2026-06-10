@@ -5,6 +5,7 @@ import type React from 'react';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { baySchedulePageDescription } from '@/utils/page-descriptions.js';
 import { BayScheduleGantt } from './components/BayScheduleGantt.js';
+import { BookSlotDialog } from './components/BookSlotDialog.js';
 import { JobDetailAside } from './components/JobDetailAside.js';
 
 type JobsPageProps = {
@@ -17,6 +18,7 @@ export const JobsPage: React.FC<JobsPageProps> = ({ selectedBayId, selectedJobId
 
   return (
     <PageLayout
+      actions={<BookSlotDialog />}
       aside={
         selectedJobId ? (
           <JobDetailAside

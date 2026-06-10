@@ -1,13 +1,20 @@
 import { hasPermission } from '@pkg/domain';
 import type { Department, UserSummary } from '@pkg/schema';
-import { IconMailCheck } from '@tabler/icons-react';
+import { IconLoader2, IconMailCheck } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button.js';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -29,11 +36,13 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const showMutationError = useApiMutationErrorToast();
   const access = accessQuery.data;
   const [baselineUser, setBaselineUser] = useState(user);
+  const formId = useId();
 
   const canUpdateProfile = hasPermission(access, 'user:update');
   const canAssignDepartments = hasPermission(access, 'user:assign-departments');
   const canSetRole = hasPermission(access, 'user:set-role');
   const canSetPassword = hasPermission(access, 'user:set-password');
+  const canSaveUser = canUpdateProfile || canSetRole || canAssignDepartments;
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
   const updateThumbnailMutation = useMutation(trpc.users.updateThumbnail.mutationOptions());
 
@@ -144,27 +153,38 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
           <DialogTitle>Edit user</DialogTitle>
           <DialogDescription>{user.email}</DialogDescription>
         </DialogHeader>
-        <UserEditForm
-          canAssignDepartments={canAssignDepartments}
-          canSetPassword={canSetPassword}
-          canSetRole={canSetRole}
-          canUpdateProfile={canUpdateProfile}
-          initialUser={baselineUser}
-          isPasswordPending={setPasswordMutation.isPending}
-          isPending={saveUserMutation.isPending}
-          onPasswordSubmit={(value) => setPasswordMutation.mutateAsync(value)}
-          onSubmit={(value) => saveUserMutation.mutateAsync(value)}
-        />
-        {canUpdateProfile && !baselineUser.emailVerified ? (
-          <Button
-            className="w-full"
-            disabled={sendVerificationMutation.isPending}
-            onClick={() => sendVerificationMutation.mutate({ userId: baselineUser.id })}
-            variant="outline"
-          >
-            <IconMailCheck data-icon="inline-start" />
-            {sendVerificationMutation.isPending ? 'Sending' : 'Send verification email'}
-          </Button>
+        <div className="-mx-4 no-scrollbar max-h-[50vh] overflow-y-auto px-4">
+          <UserEditForm
+            canAssignDepartments={canAssignDepartments}
+            canSetPassword={canSetPassword}
+            canSetRole={canSetRole}
+            canUpdateProfile={canUpdateProfile}
+            formId={formId}
+            initialUser={baselineUser}
+            isPasswordPending={setPasswordMutation.isPending}
+            isPending={saveUserMutation.isPending}
+            onPasswordSubmit={(value) => setPasswordMutation.mutateAsync(value)}
+            onSubmit={(value) => saveUserMutation.mutateAsync(value)}
+          />
+          {canUpdateProfile && !baselineUser.emailVerified ? (
+            <Button
+              className="mt-4 w-full"
+              disabled={sendVerificationMutation.isPending}
+              onClick={() => sendVerificationMutation.mutate({ userId: baselineUser.id })}
+              variant="outline"
+            >
+              <IconMailCheck data-icon="inline-start" />
+              {sendVerificationMutation.isPending ? 'Sending' : 'Send verification email'}
+            </Button>
+          ) : null}
+        </div>
+        {canSaveUser ? (
+          <DialogFooter showCloseButton>
+            <Button disabled={saveUserMutation.isPending} form={formId} type="submit">
+              {saveUserMutation.isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
+              Save user
+            </Button>
+          </DialogFooter>
         ) : null}
       </DialogContent>
     </Dialog>

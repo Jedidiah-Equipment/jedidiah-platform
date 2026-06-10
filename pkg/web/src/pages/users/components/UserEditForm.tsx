@@ -1,13 +1,11 @@
 import { UserSummary, type UserSummary as UserSummaryType } from '@pkg/schema';
 import type React from 'react';
-import { useId } from 'react';
 import type { z } from 'zod';
 
 import { useAppForm } from '@/components/form/index.js';
 import { FieldGroup } from '@/components/ui/field.js';
 import { Separator } from '@/components/ui/separator.js';
 import { UserDepartmentsForm } from './UserDepartmentsForm.js';
-import { SubmitFooter } from './UserFormFooter.js';
 import { UserPasswordForm, type UserPasswordFormValues } from './UserPasswordForm.js';
 import { RoleField } from './UserRoleField.js';
 
@@ -27,6 +25,7 @@ type UserEditFormProps = {
   canSetPassword: boolean;
   canSetRole: boolean;
   canUpdateProfile: boolean;
+  formId: string;
   initialUser: UserSummaryType;
   isPending: boolean;
   isPasswordPending: boolean;
@@ -39,6 +38,7 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
   canSetPassword,
   canSetRole,
   canUpdateProfile,
+  formId,
   initialUser,
   isPending,
   isPasswordPending,
@@ -46,7 +46,6 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
   onSubmit,
 }) => {
   const canSaveUser = canUpdateProfile || canSetRole || canAssignDepartments;
-  const formId = useId();
   const form = useAppForm({
     defaultValues: {
       departments: initialUser.departments,
@@ -136,7 +135,6 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
           <UserPasswordForm isPending={isPasswordPending} onSubmit={onPasswordSubmit} />
         </>
       ) : null}
-      {canSaveUser ? <SubmitFooter form={formId} isPending={isPending} label="Save user" /> : null}
     </div>
   );
 };

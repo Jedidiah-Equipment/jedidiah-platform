@@ -35,7 +35,7 @@ import {
   QuoteCode,
   type SortDirection,
   type UserAccessSummary,
-  type UUID,
+  UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
@@ -50,7 +50,7 @@ import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name' | 'thumbnailDataUrl'>;
-type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'thumbnailDataUrl'>;
+type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
 type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'> & {
   customer: CustomerRow;
 };
@@ -225,6 +225,7 @@ export async function listJobs({
           customer: {
             columns: {
               companyName: true,
+              id: true,
               thumbnailDataUrl: true,
             },
           },
@@ -338,6 +339,7 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
           customer: {
             columns: {
               companyName: true,
+              id: true,
               thumbnailDataUrl: true,
             },
           },
@@ -550,6 +552,7 @@ export function mapJobSummary(row: JobWithProductRow): JobSummary {
   return {
     ...mappedJob,
     customerCompanyName: row.quote.customer.companyName,
+    customerId: UUID.parse(row.quote.customer.id),
     customerThumbnailDataUrl: row.quote.customer.thumbnailDataUrl,
     productModelCode: row.product.modelCode,
     productName: row.product.name,

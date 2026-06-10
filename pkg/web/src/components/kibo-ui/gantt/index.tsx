@@ -97,6 +97,7 @@ export type GanttContextProps = {
   timelineData: TimelineData;
   ref: RefObject<HTMLDivElement | null> | null;
   scrollToFeature?: ((feature: GanttFeature) => void) | undefined;
+  scrollToDate?: ((date: Date, behavior?: ScrollBehavior) => void) | undefined;
 };
 
 const getDifferenceIn = (range: Range) => {
@@ -249,6 +250,7 @@ const GanttContext = createContext<GanttContextProps>({
   timelineData: [],
   ref: null,
   scrollToFeature: undefined,
+  scrollToDate: undefined,
 });
 
 export const useGanttContext = () => useContext(GanttContext);
@@ -860,6 +862,38 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     setIsDragScrolling(false);
   }, []);
 
+  const scrollToDate = useCallback(
+    (date: Date, behavior: ScrollBehavior = 'smooth') => {
+      const scrollElement = scrollRef.current;
+      if (!scrollElement) {
+        return;
+      }
+
+      const timelineStartDate = new Date(timelineData[0]?.year ?? new Date().getFullYear(), 0, 1);
+
+      const offset = getOffset(date, timelineStartDate, {
+        zoom,
+        range,
+        columnWidth,
+        sidebarWidth,
+        headerHeight,
+        rowHeight,
+        placeholderLength: 2,
+        timelineData,
+        ref: scrollRef,
+      });
+      const renderedColumnWidth = (zoom / 100) * columnWidth;
+
+      const targetScrollLeft = Math.max(0, offset - renderedColumnWidth * 2);
+
+      scrollElement.scrollTo({
+        left: targetScrollLeft,
+        behavior,
+      });
+    },
+    [timelineData, zoom, range, columnWidth, rowHeight, sidebarWidth],
+  );
+
   const scrollToFeature = useCallback(
     (feature: GanttFeature) => {
       const scrollElement = scrollRef.current;
@@ -867,10 +901,8 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         return;
       }
 
-      // Calculate timeline start date from timelineData
+      // Preserve the original feature-sidebar alignment for existing consumers.
       const timelineStartDate = new Date(timelineData[0]?.year ?? new Date().getFullYear(), 0, 1);
-
-      // Calculate the horizontal offset for the feature's start date
       const offset = getOffset(feature.startAt, timelineStartDate, {
         zoom,
         range,
@@ -883,11 +915,8 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         ref: scrollRef,
       });
 
-      // Scroll to align the feature's start with the right side of the sidebar
-      const targetScrollLeft = Math.max(0, offset);
-
       scrollElement.scrollTo({
-        left: targetScrollLeft,
+        left: Math.max(0, offset),
         behavior: 'smooth',
       });
     },
@@ -906,8 +935,9 @@ export const GanttProvider: FC<GanttProviderProps> = ({
       placeholderLength: 2,
       ref: scrollRef,
       scrollToFeature,
+      scrollToDate,
     }),
-    [zoom, range, columnWidth, rowHeight, sidebarWidth, timelineData, scrollToFeature],
+    [zoom, range, columnWidth, rowHeight, sidebarWidth, timelineData, scrollToFeature, scrollToDate],
   );
 
   return (

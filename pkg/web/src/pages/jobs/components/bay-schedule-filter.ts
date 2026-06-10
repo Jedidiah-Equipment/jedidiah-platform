@@ -17,6 +17,10 @@ type FilterableSlot = {
   jobId: UUID | null;
 };
 
+type FilterableSlotWithStart = FilterableSlot & {
+  startAt: Date | string;
+};
+
 type FilterableJob = {
   customerId: UUID;
 };
@@ -81,4 +85,44 @@ export function countBayScheduleFilterMatches({
   }
 
   return count;
+}
+
+export function getEarliestBayScheduleFilterMatchStart({
+  bays,
+  filter,
+  jobsById,
+  today = new Date(),
+}: {
+  bays: ReadonlyArray<{ id: UUID; slots: ReadonlyArray<FilterableSlotWithStart> }>;
+  filter: BayScheduleFilter;
+  jobsById: ReadonlyMap<UUID, FilterableJob>;
+  today?: Date;
+}): Date | null {
+  let earliestStart: Date | null = null;
+  let earliestFutureStart: Date | null = null;
+  const shouldPreferFuture = filter.bayId !== null || filter.customerId !== null;
+
+  for (const bay of bays) {
+    for (const slot of bay.slots) {
+      if (!slotMatchesBayScheduleFilter({ bayId: bay.id, filter, jobsById, slot })) {
+        continue;
+      }
+
+      const startAt = new Date(slot.startAt);
+
+      if (earliestStart === null || startAt.getTime() < earliestStart.getTime()) {
+        earliestStart = startAt;
+      }
+
+      if (
+        shouldPreferFuture &&
+        startAt.getTime() > today.getTime() &&
+        (earliestFutureStart === null || startAt.getTime() < earliestFutureStart.getTime())
+      ) {
+        earliestFutureStart = startAt;
+      }
+    }
+  }
+
+  return earliestFutureStart ?? earliestStart;
 }

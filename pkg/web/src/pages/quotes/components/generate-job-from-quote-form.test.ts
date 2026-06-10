@@ -19,8 +19,8 @@ describe('toJobCreateFormValues', () => {
       }),
     ).toEqual({
       baySeeds: [
-        { bayId: ENABLED_BAY_ID, durationDays: 4, rowKey: `product-bay:${ENABLED_BAY_ID}` },
-        { bayId: DISABLED_BAY_ID, durationDays: 6, rowKey: `product-bay:${DISABLED_BAY_ID}` },
+        { bayId: ENABLED_BAY_ID, durationDays: 4 },
+        { bayId: DISABLED_BAY_ID, durationDays: 6 },
       ],
     });
   });
@@ -38,7 +38,7 @@ describe('toJobCreateFormValues', () => {
           }),
         ],
       }).baySeeds,
-    ).toEqual([{ bayId: ENABLED_BAY_ID, durationDays: 4, rowKey: `product-bay:${ENABLED_BAY_ID}` }]);
+    ).toEqual([{ bayId: ENABLED_BAY_ID, durationDays: 4 }]);
   });
 
   it('starts empty when the Product has no Product Bays', () => {
@@ -52,7 +52,7 @@ describe('toJobCreateInput', () => {
       toJobCreateInput({
         quoteId: QUOTE_ID,
         value: {
-          baySeeds: [{ bayId: ENABLED_BAY_ID, durationDays: 7, rowKey: `product-bay:${ENABLED_BAY_ID}` }],
+          baySeeds: [{ bayId: ENABLED_BAY_ID, durationDays: 7 }],
         },
       }),
     ).toEqual({

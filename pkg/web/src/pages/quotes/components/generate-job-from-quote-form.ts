@@ -1,13 +1,9 @@
 import { type Bay, JobBaySeedInput, JobCreateInput, type ProductBay, type QuoteDetail, type UUID } from '@pkg/schema';
 import { z } from 'zod';
 
-const JobCreateBaySeedFormRow = JobBaySeedInput.extend({
-  rowKey: z.string().min(1),
-});
-
 export type JobCreateFormValues = z.infer<typeof JobCreateFormValues>;
 export const JobCreateFormValues = z.object({
-  baySeeds: z.array(JobCreateBaySeedFormRow),
+  baySeeds: z.array(JobBaySeedInput),
 });
 
 export const emptyJobCreateFormValues: JobCreateFormValues = { baySeeds: [] };
@@ -19,14 +15,13 @@ export function toJobCreateFormValues(quote: Pick<QuoteDetail, 'productBays'>): 
       .map((productBay) => ({
         bayId: productBay.bayId,
         durationDays: productBay.defaultWorkingDays,
-        rowKey: `product-bay:${productBay.bayId}`,
       })),
   };
 }
 
 export function toJobCreateInput({ quoteId, value }: { quoteId: UUID; value: JobCreateFormValues }): JobCreateInput {
   return JobCreateInput.parse({
-    baySeeds: value.baySeeds.map(({ bayId, durationDays }) => ({ bayId, durationDays })),
+    baySeeds: value.baySeeds,
     quoteId,
   });
 }

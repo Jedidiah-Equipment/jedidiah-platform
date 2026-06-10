@@ -54,6 +54,78 @@ describe('jobs.listBays', () => {
     });
   });
 
+  test('returns current operators on schedule-backing reads for job readers', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
+    await createUser(context.db, {
+      email: 'schedule.operator@example.com',
+      id: 'schedule-operator-user-id',
+      name: 'Schedule Operator',
+      role: 'bay-operator',
+    });
+    const job = await adminCaller.jobs.create({ quoteId: context.quote.id });
+
+    await adminCaller.jobs.assignBayOperator({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      operatorUserId: 'schedule-operator-user-id',
+    });
+    await adminCaller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      durationDays: 1,
+      jobId: job.id,
+    });
+
+    await expect(jobViewerCaller.jobs.listBays()).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          currentOperator: expect.objectContaining({
+            email: 'schedule.operator@example.com',
+            id: 'schedule-operator-user-id',
+            name: 'Schedule Operator',
+            thumbnailDataUrl: null,
+          }),
+          id: '00000000-0000-4000-8000-000000000b01',
+        }),
+        expect.objectContaining({
+          currentOperator: null,
+          id: '00000000-0000-4000-8000-000000000b03',
+        }),
+      ]),
+    });
+    await expect(jobViewerCaller.jobs.listJobBays({ filters: {} })).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          currentOperator: expect.objectContaining({
+            id: 'schedule-operator-user-id',
+            name: 'Schedule Operator',
+          }),
+          id: '00000000-0000-4000-8000-000000000b01',
+        }),
+        expect.objectContaining({
+          currentOperator: null,
+          id: '00000000-0000-4000-8000-000000000b03',
+        }),
+      ]),
+    });
+    await expect(jobViewerCaller.jobs.get({ id: job.id })).resolves.toMatchObject({
+      schedule: expect.arrayContaining([
+        expect.objectContaining({
+          bays: expect.arrayContaining([
+            expect.objectContaining({
+              currentOperator: expect.objectContaining({
+                id: 'schedule-operator-user-id',
+                name: 'Schedule Operator',
+              }),
+              id: '00000000-0000-4000-8000-000000000b01',
+              slots: [expect.objectContaining({ jobId: job.id })],
+            }),
+          ]),
+          department: 'fabrication',
+        }),
+      ]),
+    });
+  });
+
   test('rejects roles without job read permission', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 

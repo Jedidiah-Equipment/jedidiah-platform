@@ -80,12 +80,13 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, v
 );
 
 const SlotSection: React.FC<{ schedule: JobScheduleSummary }> = ({ schedule }) => {
-  const { dayBreakdown, endAt, startAt } = schedule;
+  const { currentOperator, dayBreakdown, endAt, startAt } = schedule;
   const totalDays = dayBreakdown.workingDays + dayBreakdown.closureDays;
 
   return (
     <Section title="Slot">
       <InfoList>
+        {currentOperator ? <InfoRow label="Operator" value={<OperatorValue operator={currentOperator} />} /> : null}
         <InfoRow label="Start" value={formatDate(startAt, 'short')} />
         <InfoRow label="End" value={formatDate(endAt, 'short')} />
         <InfoRow label="Total days" value={`${totalDays} (incl. off)`} />
@@ -98,6 +99,18 @@ const SlotSection: React.FC<{ schedule: JobScheduleSummary }> = ({ schedule }) =
     </Section>
   );
 };
+
+const OperatorValue: React.FC<{ operator: NonNullable<JobScheduleSummary['currentOperator']> }> = ({ operator }) => (
+  <span className="inline-flex min-w-0 items-center justify-end gap-2">
+    <EntityThumbnail
+      className="shrink-0"
+      label={operator.name}
+      size="sm"
+      thumbnailDataUrl={operator.thumbnailDataUrl}
+    />
+    <span className="min-w-0 truncate">{operator.name}</span>
+  </span>
+);
 
 const JobSection: React.FC<{ job: JobDetail }> = ({ job }) => (
   <Section title="Job">

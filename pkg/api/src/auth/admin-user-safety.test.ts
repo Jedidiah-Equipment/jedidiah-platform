@@ -1,4 +1,4 @@
-import { account, type Db, sql, user } from '@pkg/db';
+import { account, type Db, jobBayOperatorAssignments, jobBays, sql, user } from '@pkg/db';
 import { DEFAULT_DEMO_USER_PASSWORD } from '@pkg/domain';
 import type { AppRole } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
@@ -119,6 +119,187 @@ describe('admin user safety policy', () => {
       }),
     ).rejects.toThrow('You cannot remove the last admin.');
   });
+
+  test('rejects changing a bay operator role while they hold an open assignment', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'assigned-operator@example.com',
+      id: 'assigned-operator-user-id',
+      name: 'Assigned Operator',
+      role: 'bay-operator',
+    });
+    await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000b91',
+      name: 'Fabrication Bay 1',
+    });
+    await createBayOperatorAssignment(context.db, {
+      bayId: '00000000-0000-4000-8000-000000000b91',
+      id: '00000000-0000-4000-8000-000000000a91',
+      operatorUserId: 'assigned-operator-user-id',
+    });
+
+    await expect(
+      context.auth.api.setRole({
+        body: {
+          role: 'sales',
+          userId: 'assigned-operator-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toThrow('Unassign from Fabrication Bay 1 first');
+  });
+
+  test('rejects bay operator role changes through adminUpdateUser while they hold an open assignment', async ({
+    context,
+  }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'update-assigned-operator@example.com',
+      id: 'update-assigned-operator-user-id',
+      name: 'Update Assigned Operator',
+      role: 'bay-operator',
+    });
+    await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000b96',
+      name: 'Fabrication Bay 5',
+    });
+    await createBayOperatorAssignment(context.db, {
+      bayId: '00000000-0000-4000-8000-000000000b96',
+      id: '00000000-0000-4000-8000-000000000a96',
+      operatorUserId: 'update-assigned-operator-user-id',
+    });
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: {
+          data: {
+            role: 'sales',
+          },
+          userId: 'update-assigned-operator-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toThrow('Unassign from Fabrication Bay 5 first');
+  });
+
+  test('names multiple open bay assignments deterministically when rejecting role changes', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'multi-assigned-operator@example.com',
+      id: 'multi-assigned-operator-user-id',
+      name: 'Multi Assigned Operator',
+      role: 'bay-operator',
+    });
+    await createBay(context.db, {
+      department: 'paint',
+      id: '00000000-0000-4000-8000-000000000b93',
+      name: 'Paint Bay 2',
+    });
+    await createBay(context.db, {
+      department: 'fabrication',
+      id: '00000000-0000-4000-8000-000000000b92',
+      name: 'Fabrication Bay 1',
+    });
+    await createBayOperatorAssignment(context.db, {
+      bayId: '00000000-0000-4000-8000-000000000b93',
+      id: '00000000-0000-4000-8000-000000000a93',
+      operatorUserId: 'multi-assigned-operator-user-id',
+    });
+    await createBayOperatorAssignment(context.db, {
+      bayId: '00000000-0000-4000-8000-000000000b92',
+      id: '00000000-0000-4000-8000-000000000a92',
+      operatorUserId: 'multi-assigned-operator-user-id',
+    });
+
+    await expect(
+      context.auth.api.setRole({
+        body: {
+          role: 'sales',
+          userId: 'multi-assigned-operator-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toThrow('Unassign from Fabrication Bay 1 and Paint Bay 2 first');
+  });
+
+  test('allows role changes when a bay operator has only closed assignments', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'previous-operator@example.com',
+      id: 'previous-operator-user-id',
+      name: 'Previous Operator',
+      role: 'bay-operator',
+    });
+    await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000b94',
+      name: 'Fabrication Bay 3',
+    });
+    await createBayOperatorAssignment(context.db, {
+      bayId: '00000000-0000-4000-8000-000000000b94',
+      id: '00000000-0000-4000-8000-000000000a94',
+      operatorUserId: 'previous-operator-user-id',
+      unassignedAt: new Date('2026-06-05T10:00:00.000Z'),
+    });
+
+    const result = await context.auth.api.setRole({
+      body: {
+        role: 'sales',
+        userId: 'previous-operator-user-id',
+      },
+      headers,
+    });
+
+    expect(result.user.role).toBe('sales');
+  });
+
+  test('allows role changes for bay operators without open assignments', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'unassigned-operator@example.com',
+      id: 'unassigned-operator-user-id',
+      name: 'Unassigned Operator',
+      role: 'bay-operator',
+    });
+
+    const result = await context.auth.api.setRole({
+      body: {
+        role: 'sales',
+        userId: 'unassigned-operator-user-id',
+      },
+      headers,
+    });
+
+    expect(result.user.role).toBe('sales');
+  });
+
+  test('allows no-op role assignment for a bay operator with an open assignment', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'same-role-operator@example.com',
+      id: 'same-role-operator-user-id',
+      name: 'Same Role Operator',
+      role: 'bay-operator',
+    });
+    await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000b95',
+      name: 'Fabrication Bay 4',
+    });
+    await createBayOperatorAssignment(context.db, {
+      bayId: '00000000-0000-4000-8000-000000000b95',
+      id: '00000000-0000-4000-8000-000000000a95',
+      operatorUserId: 'same-role-operator-user-id',
+    });
+
+    const result = await context.auth.api.setRole({
+      body: {
+        role: 'bay-operator',
+        userId: 'same-role-operator-user-id',
+      },
+      headers,
+    });
+
+    expect(result.user.role).toBe('bay-operator');
+  });
 });
 
 describe('user phone number validation', () => {
@@ -202,6 +383,46 @@ async function setStoredRole(db: Db, userId: string, role: AppRole): Promise<voi
     SET role = ${role}, updated_at = ${new Date().toISOString()}
     WHERE id = ${userId}
   `);
+}
+
+async function createBay(
+  db: Db,
+  input: {
+    department?: 'fabrication' | 'paint';
+    id: string;
+    name: string;
+  },
+) {
+  const now = new Date('2026-06-05T08:00:00.000Z');
+
+  await db.insert(jobBays).values({
+    createdAt: now,
+    department: input.department ?? 'fabrication',
+    id: input.id,
+    name: input.name,
+    scheduleOrigin: now,
+    updatedAt: now,
+  });
+}
+
+async function createBayOperatorAssignment(
+  db: Db,
+  input: {
+    bayId: string;
+    id: string;
+    operatorUserId: string;
+    unassignedAt?: Date;
+  },
+) {
+  const assignedAt = new Date('2026-06-05T09:00:00.000Z');
+
+  await db.insert(jobBayOperatorAssignments).values({
+    assignedAt,
+    bayId: input.bayId,
+    id: input.id,
+    operatorUserId: input.operatorUserId,
+    unassignedAt: input.unassignedAt,
+  });
 }
 
 async function createUser(

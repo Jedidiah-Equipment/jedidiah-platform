@@ -1,4 +1,4 @@
-import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
+import { type DatabaseTransaction, type Db, jobBayOperatorAssignments, jobBays, user, userDepartment } from '@pkg/db';
 import {
   AppRole,
   type AuditChanges,
@@ -10,7 +10,7 @@ import {
   type UserListResult,
   type UserSummary,
 } from '@pkg/schema';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 
 import { defineAuditDescriptor, diffAuditUpdate, recordAuditEvent, recordAuditUpdate } from '../audit/audit-service.js';
 import { UserNotFoundError } from './user-errors.js';
@@ -233,6 +233,11 @@ export async function listUserDepartments({
   return rows.map((row) => row.department);
 }
 
+export type UserRoleAssignmentPolicyResult =
+  | { allowed: true }
+  | { allowed: false; reason: 'last-admin' }
+  | { allowed: false; bayNames: string[]; reason: 'open-bay-operator-assignments' };
+
 export async function canAssignUserRole({
   db,
   role,
@@ -241,11 +246,7 @@ export async function canAssignUserRole({
   db: Db;
   role: AppRole;
   userId: AuthId;
-}): Promise<boolean> {
-  if (role === 'admin') {
-    return true;
-  }
-
+}): Promise<UserRoleAssignmentPolicyResult> {
   return db.transaction(async (tx) => {
     const [targetUser] = await tx
       .select({
@@ -256,8 +257,30 @@ export async function canAssignUserRole({
       .where(eq(user.id, userId))
       .for('update');
 
-    if (!targetUser || AppRole.parse(targetUser.role) !== 'admin') {
-      return true;
+    if (!targetUser) {
+      return { allowed: true };
+    }
+
+    const currentRole = AppRole.parse(targetUser.role);
+
+    if (currentRole === role) {
+      return { allowed: true };
+    }
+
+    if (currentRole === 'bay-operator') {
+      const openBayOperatorAssignmentBayNames = await listOpenBayOperatorAssignmentBayNames({ db: tx, userId });
+
+      if (openBayOperatorAssignmentBayNames.length > 0) {
+        return {
+          allowed: false,
+          bayNames: openBayOperatorAssignmentBayNames,
+          reason: 'open-bay-operator-assignments',
+        };
+      }
+    }
+
+    if (role === 'admin' || currentRole !== 'admin') {
+      return { allowed: true };
     }
 
     const adminRows = await tx
@@ -269,8 +292,31 @@ export async function canAssignUserRole({
       .orderBy(asc(user.id))
       .for('update');
 
-    return !(adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === userId));
+    if (adminRows.length <= 1 && adminRows.some((adminUser) => adminUser.id === userId)) {
+      return { allowed: false, reason: 'last-admin' };
+    }
+
+    return { allowed: true };
   });
+}
+
+async function listOpenBayOperatorAssignmentBayNames({
+  db,
+  userId,
+}: {
+  db: DatabaseTransaction;
+  userId: AuthId;
+}): Promise<string[]> {
+  const rows = await db
+    .select({
+      bayName: jobBays.name,
+    })
+    .from(jobBayOperatorAssignments)
+    .innerJoin(jobBays, eq(jobBayOperatorAssignments.bayId, jobBays.id))
+    .where(and(eq(jobBayOperatorAssignments.operatorUserId, userId), isNull(jobBayOperatorAssignments.unassignedAt)))
+    .orderBy(asc(jobBays.department), asc(jobBays.name), asc(jobBays.id));
+
+  return rows.map((row) => row.bayName);
 }
 
 async function setUserDepartmentsInTransaction({

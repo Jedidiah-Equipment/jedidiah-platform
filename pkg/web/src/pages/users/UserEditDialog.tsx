@@ -23,7 +23,7 @@ import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
 import type { UserPasswordFormValues } from './components/UserPasswordForm.js';
-import { unwrapAuthResult } from './user-admin-client.js';
+import { AuthAdminError, unwrapAuthResult } from './user-admin-client.js';
 
 type UserEditDialogProps = {
   user: UserSummary;
@@ -37,6 +37,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const showMutationError = useApiMutationErrorToast();
   const access = accessQuery.data;
   const [baselineUser, setBaselineUser] = useState(user);
+  const [roleError, setRoleError] = useState<string | null>(null);
   const formId = useId();
 
   const canUpdateProfile = hasPermission(access, 'user:update');
@@ -49,6 +50,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
 
   useEffect(() => {
     setBaselineUser(user);
+    setRoleError(null);
   }, [user]);
 
   const refreshUser = async () => {
@@ -93,6 +95,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
       }
 
       if (canSetRole && value.role !== baselineUser.role) {
+        setRoleError(null);
         await unwrapAuthResult(await authClient.admin.setRole({ role: value.role, userId: baselineUser.id }));
         didUpdate = true;
       }
@@ -117,10 +120,16 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
         ...currentUser,
         ...value,
       }));
+      setRoleError(null);
       await refreshUser();
       toast.success('User updated');
     },
     onError: (error) => {
+      if (isOpenBayOperatorAssignmentRoleError(error)) {
+        setRoleError(error.message);
+        return;
+      }
+
       showMutationError(error, 'Unable to update user.');
     },
   });
@@ -165,7 +174,9 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
             isPasswordPending={setPasswordMutation.isPending}
             isPending={saveUserMutation.isPending}
             onPasswordSubmit={(value) => setPasswordMutation.mutateAsync(value)}
+            onRoleChange={() => setRoleError(null)}
             onSubmit={(value) => saveUserMutation.mutateAsync(value)}
+            roleError={roleError}
           />
           {canUpdateProfile && !baselineUser.emailVerified ? (
             <Button
@@ -191,6 +202,14 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
     </Dialog>
   );
 };
+
+function isOpenBayOperatorAssignmentRoleError(error: unknown): error is AuthAdminError {
+  return (
+    error instanceof AuthAdminError &&
+    (error.code === 'USER_HAS_OPEN_BAY_OPERATOR_ASSIGNMENTS' ||
+      (error.message.startsWith('Unassign from ') && error.message.endsWith(' first')))
+  );
+}
 
 function haveDepartmentsChanged(left: readonly Department[], right: readonly Department[]) {
   if (left.length !== right.length) {

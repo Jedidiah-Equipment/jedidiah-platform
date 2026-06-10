@@ -30,7 +30,9 @@ type UserEditFormProps = {
   isPending: boolean;
   isPasswordPending: boolean;
   onPasswordSubmit: (value: UserPasswordFormValues) => Promise<unknown>;
+  onRoleChange?: () => void;
   onSubmit: (value: UserEditFormValues) => Promise<unknown>;
+  roleError?: string | null;
 };
 
 export const UserEditForm: React.FC<UserEditFormProps> = ({
@@ -43,7 +45,9 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
   isPending,
   isPasswordPending,
   onPasswordSubmit,
+  onRoleChange,
   onSubmit,
+  roleError,
 }) => {
   const canSaveUser = canUpdateProfile || canSetRole || canAssignDepartments;
   const form = useAppForm({
@@ -107,9 +111,12 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                 {(field) => (
                   <RoleField
                     disabled={isPending}
-                    errors={field.state.meta.errors}
+                    errors={[...field.state.meta.errors, roleError ? { message: roleError } : undefined]}
                     name={field.name}
-                    onRoleChange={(role) => field.handleChange(role)}
+                    onRoleChange={(role) => {
+                      onRoleChange?.();
+                      field.handleChange(role);
+                    }}
                     value={field.state.value}
                   />
                 )}

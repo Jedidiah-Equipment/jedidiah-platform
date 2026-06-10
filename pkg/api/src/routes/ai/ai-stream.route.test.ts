@@ -334,7 +334,6 @@ describe('POST /ai/chat-stream', () => {
       buildContext: async () =>
         createAiContext({
           access: {
-            departments: [],
             permissions: [],
             role: 'sales',
             userId: 'test-user-id',

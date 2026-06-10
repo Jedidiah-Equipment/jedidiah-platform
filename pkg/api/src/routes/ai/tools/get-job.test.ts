@@ -25,18 +25,17 @@ describe('getJobTool', () => {
       role: 'admin',
       userId: 'test-user-id',
     });
-    const paintAccess = createUserAccessSummary({
-      departments: ['paint'],
-      role: 'job-department-manager',
+    const viewerAccess = createUserAccessSummary({
+      role: 'job-viewer',
       userId: 'test-user-id',
     });
     const adminCaller = createCaller(context.db, adminAccess);
-    const paintCaller = createCaller(context.db, paintAccess);
+    const viewerCaller = createCaller(context.db, viewerAccess);
     const created = await adminCaller.jobs.create({ quoteId: context.quote.id });
 
     const [toolResult, trpcResult] = await Promise.all([
-      getJobTool.handler({ id: created.id }, createAiContext(context.db, paintAccess)),
-      paintCaller.jobs.get({ id: created.id }),
+      getJobTool.handler({ id: created.id }, createAiContext(context.db, viewerAccess)),
+      viewerCaller.jobs.get({ id: created.id }),
     ]);
 
     expect(toolResult).toEqual(trpcResult);

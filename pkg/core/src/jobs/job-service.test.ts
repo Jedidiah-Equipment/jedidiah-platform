@@ -21,7 +21,6 @@ import {
   user,
   workingCalendarOffDays,
 } from '@pkg/db';
-import { createUserAccessSummary } from '@pkg/domain';
 import {
   AddBayCalendarExceptionInput,
   type Department,
@@ -54,9 +53,6 @@ import {
 } from './job-service.js';
 
 const actorUserId = 'test-user-id';
-const calendarAccess = createUserAccessSummary({ role: 'admin', userId: actorUserId });
-const jobAccess = createUserAccessSummary({ role: 'admin', userId: actorUserId });
-
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-06-05T09:00:00.000+02:00'));
@@ -656,7 +652,6 @@ describe('toggleOffDay', () => {
   test('inserts, updates, and removes org Off-Days for calendar editors', async ({ context }) => {
     await expect(
       toggleOffDay({
-        access: calendarAccess,
         db: context.db,
         input: offDayInput({ date: '2026-06-16', isOffDay: true, label: '  Youth Day  ' }),
       }),
@@ -668,7 +663,6 @@ describe('toggleOffDay', () => {
     });
     await expect(
       toggleOffDay({
-        access: calendarAccess,
         db: context.db,
         input: offDayInput({ date: '2026-06-16', isOffDay: true, label: null }),
       }),
@@ -680,7 +674,6 @@ describe('toggleOffDay', () => {
     });
     await expect(
       toggleOffDay({
-        access: calendarAccess,
         db: context.db,
         input: offDayInput({ date: '2026-06-16', isOffDay: false, label: null }),
       }),
@@ -688,16 +681,6 @@ describe('toggleOffDay', () => {
 
     const rows = await context.db.select().from(workingCalendarOffDays);
     expect(rows).toEqual([]);
-  });
-
-  test('denies users without the Job calendar permission', async ({ context }) => {
-    await expect(
-      toggleOffDay({
-        access: createUserAccessSummary({ role: 'sales', userId: 'sales-user' }),
-        db: context.db,
-        input: offDayInput({ date: '2026-06-16', isOffDay: true, label: null }),
-      }),
-    ).rejects.toThrow('You do not have permission to manage the Job calendar.');
   });
 
   test('returns Off-Day facts and reflows Bay projections', async ({ context }) => {
@@ -708,18 +691,15 @@ describe('toggleOffDay', () => {
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     await toggleOffDay({
-      access: calendarAccess,
       db: context.db,
       input: offDayInput({ date: '2026-06-06', isOffDay: true, label: 'Shutdown' }),
     });
 
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
@@ -751,7 +731,6 @@ describe('Bay calendar exceptions', () => {
 
     await expect(
       addBayCalendarException({
-        access: jobAccess,
         db: context.db,
         input: bayExceptionInput({
           bayId: bay.id,
@@ -770,7 +749,6 @@ describe('Bay calendar exceptions', () => {
     });
     await expect(
       addBayCalendarException({
-        access: jobAccess,
         db: context.db,
         input: bayExceptionInput({
           bayId: bay.id,
@@ -789,7 +767,6 @@ describe('Bay calendar exceptions', () => {
     });
     await expect(
       removeBayCalendarException({
-        access: jobAccess,
         db: context.db,
         input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-06' }),
       }),
@@ -803,7 +780,6 @@ describe('Bay calendar exceptions', () => {
     });
     await expect(
       removeBayCalendarException({
-        access: jobAccess,
         db: context.db,
         input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-06' }),
       }),
@@ -813,12 +789,9 @@ describe('Bay calendar exceptions', () => {
     expect(rows).toEqual([]);
   });
 
-  test('rejects missing Bays and unauthorized schedulers', async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication' });
-
+  test('rejects missing Bays', async ({ context }) => {
     await expect(
       addBayCalendarException({
-        access: jobAccess,
         db: context.db,
         input: bayExceptionInput({
           bayId: '00000000-0000-4000-8000-00000000dead',
@@ -828,24 +801,6 @@ describe('Bay calendar exceptions', () => {
         }),
       }),
     ).rejects.toThrow('Job bay not found');
-    await expect(
-      addBayCalendarException({
-        access: createUserAccessSummary({ role: 'sales', userId: 'sales-user' }),
-        db: context.db,
-        input: bayExceptionInput({ bayId: bay.id, date: '2026-06-06', direction: 'work', label: null }),
-      }),
-    ).rejects.toThrow('You do not have permission to manage this Bay calendar.');
-    await expect(
-      addBayCalendarException({
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
-        }),
-        db: context.db,
-        input: bayExceptionInput({ bayId: bay.id, date: '2026-06-06', direction: 'work', label: null }),
-      }),
-    ).rejects.toThrow('You do not have permission to manage this Bay calendar.');
   });
 
   test('opens an org Off-Day for one Bay only and reflows back after removal', async ({ context }) => {
@@ -860,23 +815,19 @@ describe('Bay calendar exceptions', () => {
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     await toggleOffDay({
-      access: calendarAccess,
       db: context.db,
       input: offDayInput({ date: '2026-06-06', isOffDay: true, label: 'Shutdown' }),
     });
     await addBayCalendarException({
-      access: jobAccess,
       db: context.db,
       input: bayExceptionInput({ bayId: firstBay.id, date: '2026-06-06', direction: 'work', label: 'Overtime' }),
     });
 
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: firstBay.id, durationDays: 2, jobId: firstJob.id },
     });
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: secondBay.id, durationDays: 2, jobId: secondJob.id },
     });
@@ -896,7 +847,6 @@ describe('Bay calendar exceptions', () => {
     );
 
     await removeBayCalendarException({
-      access: jobAccess,
       db: context.db,
       input: removeBayExceptionInput({ bayId: firstBay.id, date: '2026-06-06' }),
     });
@@ -923,17 +873,14 @@ describe('Bay calendar exceptions', () => {
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
 
     await addBayCalendarException({
-      access: jobAccess,
       db: context.db,
       input: bayExceptionInput({ bayId: firstBay.id, date: '2026-06-06', direction: 'off', label: 'Maintenance' }),
     });
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: firstBay.id, durationDays: 2, jobId: firstJob.id },
     });
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: secondBay.id, durationDays: 2, jobId: secondJob.id },
     });
@@ -1024,7 +971,6 @@ describe('Job Bay management', () => {
     });
 
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 2, jobId: job.id },
     });
@@ -1042,7 +988,6 @@ describe('Job Bay management', () => {
     expect(enabledBays.items).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: bay.id })]));
     await expect(
       bookJobSlot({
-        access: jobAccess,
         db: context.db,
         input: { bayId: bay.id, durationDays: 1, jobId: job.id },
       }),
@@ -1091,7 +1036,6 @@ describe('bookJobSlot', () => {
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
 
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: {
         bayId: bay.id,
@@ -1100,7 +1044,6 @@ describe('bookJobSlot', () => {
       },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: {
         bayId: bay.id,
@@ -1152,12 +1095,10 @@ describe('bookJobSlot', () => {
     const jobId = job.id;
 
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId },
     });
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId },
     });
@@ -1172,7 +1113,6 @@ describe('bookJobSlot', () => {
 
     await expect(
       bookJobSlot({
-        access: jobAccess,
         db: context.db,
         input: {
           bayId: bay.id,
@@ -1188,42 +1128,6 @@ describe('bookJobSlot', () => {
     });
   });
 
-  test('enforces bay schedule permissions by role and department', async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication' });
-    const job = await createAcceptedJob(context.db, context.catalog.product.id);
-    const jobId = job.id;
-
-    await expect(
-      bookJobSlot({
-        access: createUserAccessSummary({ role: 'admin', userId: 'admin-user' }),
-        db: context.db,
-        input: { bayId: bay.id, durationDays: 1, jobId },
-      }),
-    ).resolves.toMatchObject({ slot: { sequence: 1 } });
-    await expect(
-      bookJobSlot({
-        access: createUserAccessSummary({
-          departments: ['fabrication'],
-          role: 'job-department-manager',
-          userId: 'fabrication-manager',
-        }),
-        db: context.db,
-        input: { bayId: bay.id, durationDays: 1, jobId },
-      }),
-    ).resolves.toMatchObject({ slot: { sequence: 2 } });
-    await expect(
-      bookJobSlot({
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
-        }),
-        db: context.db,
-        input: { bayId: bay.id, durationDays: 1, jobId },
-      }),
-    ).rejects.toThrow('You do not have permission to book this Bay.');
-  });
-
   test('inserts an explicit idle slot before new work when the queue ended in the past', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
@@ -1233,13 +1137,11 @@ describe('bookJobSlot', () => {
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
 
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       currentDate: new Date('2026-06-05T09:00:00.000+02:00'),
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       currentDate: new Date('2026-06-10T09:00:00.000+02:00'),
       db: context.db,
       input: { bayId: bay.id, durationDays: 2, jobId: secondJob.id },
@@ -1285,24 +1187,20 @@ describe('bookJobSlot', () => {
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     await toggleOffDay({
-      access: calendarAccess,
       db: context.db,
       input: offDayInput({ date: '2026-06-06', isOffDay: true, label: null }),
     });
     await toggleOffDay({
-      access: calendarAccess,
       db: context.db,
       input: offDayInput({ date: '2026-06-07', isOffDay: true, label: null }),
     });
 
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
@@ -1331,24 +1229,20 @@ describe('bookJobSlot', () => {
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     await toggleOffDay({
-      access: calendarAccess,
       db: context.db,
       input: offDayInput({ date: '2026-06-06', isOffDay: true, label: null }),
     });
     await toggleOffDay({
-      access: calendarAccess,
       db: context.db,
       input: offDayInput({ date: '2026-06-07', isOffDay: true, label: null }),
     });
 
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
@@ -1377,24 +1271,20 @@ describe('bookJobSlot', () => {
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     await addBayCalendarException({
-      access: jobAccess,
       db: context.db,
       input: bayExceptionInput({ bayId: bay.id, date: '2026-06-06', direction: 'off', label: null }),
     });
     await addBayCalendarException({
-      access: jobAccess,
       db: context.db,
       input: bayExceptionInput({ bayId: bay.id, date: '2026-06-07', direction: 'off', label: null }),
     });
 
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
     await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
@@ -1424,23 +1314,19 @@ describe('addIdleJobSlot', () => {
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
 
     const beforeIdle = await addIdleJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { durationDays: 1, label: null, placement: 'before', targetSlotId: secondSlot.slot.id },
     });
     const afterIdle = await addIdleJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { durationDays: 1, label: null, placement: 'after', targetSlotId: beforeIdle.slot.id },
     });
@@ -1466,18 +1352,15 @@ describe('addIdleJobSlot', () => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
     const workSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: job.id },
     });
 
     const firstIdle = await addIdleJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { durationDays: 1, placement: 'after', targetSlotId: workSlot.slot.id },
     });
     const secondIdle = await addIdleJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { durationDays: 1, placement: 'after', targetSlotId: firstIdle.slot.id },
     });
@@ -1488,28 +1371,6 @@ describe('addIdleJobSlot', () => {
       expect.objectContaining({ id: firstIdle.slot.id, kind: 'idle', sequence: 2 }),
       expect.objectContaining({ id: secondIdle.slot.id, kind: 'idle', sequence: 3 }),
     ]);
-  });
-
-  test('enforces bay schedule permissions by role and department', async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication' });
-    const job = await createAcceptedJob(context.db, context.catalog.product.id);
-    const workSlot = await bookJobSlot({
-      access: jobAccess,
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
-    });
-
-    await expect(
-      addIdleJobSlot({
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
-        }),
-        db: context.db,
-        input: { durationDays: 1, placement: 'after', targetSlotId: workSlot.slot.id },
-      }),
-    ).rejects.toThrow('You do not have permission to add idle time to this Bay schedule.');
   });
 });
 
@@ -1524,24 +1385,20 @@ describe('resizeJobSlot', () => {
     const thirdJob = await createAcceptedJob(context.db, context.catalog.product.id);
 
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
     const thirdSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: thirdJob.id },
     });
 
     await expect(
       resizeJobSlot({
-        access: jobAccess,
         db: context.db,
         input: { slotId: secondSlot.slot.id, durationDays: 2 },
       }),
@@ -1585,7 +1442,6 @@ describe('resizeJobSlot', () => {
   test('rejects missing slots', async ({ context }) => {
     await expect(
       resizeJobSlot({
-        access: jobAccess,
         db: context.db,
         input: {
           durationDays: 2,
@@ -1595,70 +1451,20 @@ describe('resizeJobSlot', () => {
     ).rejects.toThrow('Job slot not found');
   });
 
-  test('enforces bay schedule resize permissions by role and department', async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication' });
-    const job = await createAcceptedJob(context.db, context.catalog.product.id);
-    const bookedSlot = await bookJobSlot({
-      access: jobAccess,
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
-    });
-
-    await expect(
-      resizeJobSlot({
-        access: createUserAccessSummary({ role: 'admin', userId: 'admin-user' }),
-        db: context.db,
-        input: { durationDays: 2, slotId: bookedSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { durationDays: 2 } });
-    await expect(
-      resizeJobSlot({
-        access: jobAccess,
-        db: context.db,
-        input: { durationDays: 1, slotId: bookedSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { durationDays: 1 } });
-    await expect(
-      resizeJobSlot({
-        access: createUserAccessSummary({
-          departments: ['fabrication'],
-          role: 'job-department-manager',
-          userId: 'fabrication-manager',
-        }),
-        db: context.db,
-        input: { durationDays: 2, slotId: bookedSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { durationDays: 2 } });
-    await expect(
-      resizeJobSlot({
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
-        }),
-        db: context.db,
-        input: { durationDays: 1, slotId: bookedSlot.slot.id },
-      }),
-    ).rejects.toThrow('You do not have permission to resize this Bay schedule.');
-  });
-
   test('resizes idle slots and reflows later work', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
     const workSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: job.id },
     });
     const idleSlot = await addIdleJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { durationDays: 1, placement: 'before', targetSlotId: workSlot.slot.id },
     });
 
     await expect(
       resizeJobSlot({
-        access: jobAccess,
         db: context.db,
         input: { durationDays: 2, slotId: idleSlot.slot.id },
       }),
@@ -1689,24 +1495,20 @@ describe('moveJobSlot', () => {
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const thirdJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
     const thirdSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: thirdJob.id },
     });
 
     await expect(
       moveJobSlot({
-        access: jobAccess,
         actorUserId,
         db: context.db,
         input: { direction: 'left', slotId: secondSlot.slot.id },
@@ -1756,24 +1558,20 @@ describe('moveJobSlot', () => {
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const thirdJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
     const thirdSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 2, jobId: thirdJob.id },
     });
 
     await expect(
       moveJobSlot({
-        access: jobAccess,
         actorUserId,
         db: context.db,
         input: { direction: 'right', slotId: secondSlot.slot.id },
@@ -1817,19 +1615,16 @@ describe('moveJobSlot', () => {
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
 
     await expect(
       moveJobSlot({
-        access: jobAccess,
         actorUserId,
         db: context.db,
         input: { direction: 'left', slotId: firstSlot.slot.id },
@@ -1837,7 +1632,6 @@ describe('moveJobSlot', () => {
     ).resolves.toMatchObject({ slot: { id: firstSlot.slot.id, sequence: 1 } });
     await expect(
       moveJobSlot({
-        access: jobAccess,
         actorUserId,
         db: context.db,
         input: { direction: 'right', slotId: secondSlot.slot.id },
@@ -1848,7 +1642,6 @@ describe('moveJobSlot', () => {
   test('rejects missing slots', async ({ context }) => {
     await expect(
       moveJobSlot({
-        access: jobAccess,
         actorUserId,
         db: context.db,
         input: {
@@ -1857,29 +1650,6 @@ describe('moveJobSlot', () => {
         },
       }),
     ).rejects.toThrow('Job slot not found');
-  });
-
-  test('enforces bay schedule move permissions by role and department', async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication' });
-    const job = await createAcceptedJob(context.db, context.catalog.product.id);
-    const slot = await bookJobSlot({
-      access: jobAccess,
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
-    });
-
-    await expect(
-      moveJobSlot({
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
-        }),
-        actorUserId,
-        db: context.db,
-        input: { direction: 'left', slotId: slot.slot.id },
-      }),
-    ).rejects.toThrow('You do not have permission to move this Bay schedule.');
   });
 });
 
@@ -1896,24 +1666,20 @@ describe('removeJobSlot', () => {
     const thirdJob = await createAcceptedJob(context.db, context.catalog.product.id);
 
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
     const thirdSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: thirdJob.id },
     });
 
     await expect(
       removeJobSlot({
-        access: jobAccess,
         db: context.db,
         input: { slotId: secondSlot.slot.id },
       }),
@@ -1967,18 +1733,15 @@ describe('removeJobSlot', () => {
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const firstSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     const secondSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 2, jobId: secondJob.id },
     });
 
     await removeJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { slotId: secondSlot.slot.id },
     });
@@ -2003,7 +1766,6 @@ describe('removeJobSlot', () => {
   test('rejects missing slots', async ({ context }) => {
     await expect(
       removeJobSlot({
-        access: jobAccess,
         db: context.db,
         input: {
           slotId: '00000000-0000-4000-8000-000000000999',
@@ -2012,88 +1774,20 @@ describe('removeJobSlot', () => {
     ).rejects.toThrow('Job slot not found');
   });
 
-  test('enforces bay schedule remove permissions by role and department', async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication' });
-    const adminJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const adminSecondJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const managerJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const deniedJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const adminSlot = await bookJobSlot({
-      access: jobAccess,
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: adminJob.id },
-    });
-    const adminSecondSlot = await bookJobSlot({
-      access: jobAccess,
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: adminSecondJob.id },
-    });
-    const managerSlot = await bookJobSlot({
-      access: jobAccess,
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: managerJob.id },
-    });
-    const deniedSlot = await bookJobSlot({
-      access: jobAccess,
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: deniedJob.id },
-    });
-
-    await expect(
-      removeJobSlot({
-        access: createUserAccessSummary({ role: 'admin', userId: 'admin-user' }),
-        db: context.db,
-        input: { slotId: adminSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { id: adminSlot.slot.id } });
-    await expect(
-      removeJobSlot({
-        access: jobAccess,
-        db: context.db,
-        input: { slotId: adminSecondSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { id: adminSecondSlot.slot.id } });
-    await expect(
-      removeJobSlot({
-        access: createUserAccessSummary({
-          departments: ['fabrication'],
-          role: 'job-department-manager',
-          userId: 'fabrication-manager',
-        }),
-        db: context.db,
-        input: { slotId: managerSlot.slot.id },
-      }),
-    ).resolves.toMatchObject({ slot: { id: managerSlot.slot.id } });
-    await expect(
-      removeJobSlot({
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'paint-manager',
-        }),
-        db: context.db,
-        input: { slotId: deniedSlot.slot.id },
-      }),
-    ).rejects.toThrow('You do not have permission to remove from this Bay schedule.');
-  });
-
   test('removes idle slots and closes the queue gap', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);
     const workSlot = await bookJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: job.id },
     });
     const idleSlot = await addIdleJobSlot({
-      access: jobAccess,
       db: context.db,
       input: { durationDays: 1, placement: 'before', targetSlotId: workSlot.slot.id },
     });
 
     await expect(
       removeJobSlot({
-        access: jobAccess,
         db: context.db,
         input: { slotId: idleSlot.slot.id },
       }),

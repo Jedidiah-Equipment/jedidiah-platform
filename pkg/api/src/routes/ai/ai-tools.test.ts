@@ -26,7 +26,6 @@ function createAiContext(access: UserAccessSummary | null = null): AiContext {
 
 function createAccessWithNoProductRead(): UserAccessSummary {
   return {
-    departments: [],
     permissions: [],
     role: 'sales',
     userId: 'test-user-id',
@@ -133,7 +132,6 @@ describe('aiTools', () => {
 
   test('returns part tools for part readers', () => {
     const tools = getAuthorizedTools({
-      departments: [],
       permissions: ['part:read'],
       role: 'sales',
       userId: 'test-user-id',
@@ -161,7 +159,6 @@ describe('aiTools', () => {
 
   test('returns job tools for job readers', () => {
     const tools = getAuthorizedTools({
-      departments: [],
       permissions: ['job:read'],
       role: 'sales',
       userId: 'test-user-id',
@@ -172,7 +169,6 @@ describe('aiTools', () => {
 
   test('returns customer tools for customer readers', () => {
     const tools = getAuthorizedTools({
-      departments: [],
       permissions: ['customer:read'],
       role: 'sales',
       userId: 'test-user-id',
@@ -183,7 +179,6 @@ describe('aiTools', () => {
 
   test('returns audit and user tools for their permissions', () => {
     const tools = getAuthorizedTools({
-      departments: [],
       permissions: ['audit:read', 'user:list'],
       role: 'sales',
       userId: 'test-user-id',

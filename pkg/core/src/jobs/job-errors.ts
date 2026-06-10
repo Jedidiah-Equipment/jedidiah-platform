@@ -49,74 +49,19 @@ export class JobSlotNotFoundError extends Error {
   }
 }
 
-export class JobSlotResizeDeniedError extends Error {
-  readonly code = 'job.slot_resize_denied';
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'JobSlotResizeDeniedError';
-  }
-}
-
-export class JobSlotRemoveDeniedError extends Error {
-  readonly code = 'job.slot_remove_denied';
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'JobSlotRemoveDeniedError';
-  }
-}
-
-export class JobSlotMoveDeniedError extends Error {
-  readonly code = 'job.slot_move_denied';
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'JobSlotMoveDeniedError';
-  }
-}
-
-export class JobSlotIdleAddDeniedError extends Error {
-  readonly code = 'job.slot_idle_add_denied';
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'JobSlotIdleAddDeniedError';
-  }
-}
-
-export class JobCalendarEditDeniedError extends Error {
-  readonly code = 'job.calendar_edit_denied';
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'JobCalendarEditDeniedError';
-  }
-}
-
 export type JobCoreError =
   | JobBayNotFoundError
-  | JobCalendarEditDeniedError
   | JobCreateFromQuoteDeniedError
   | JobNotFoundError
   | JobSlotBookingDeniedError
-  | JobSlotIdleAddDeniedError
-  | JobSlotMoveDeniedError
-  | JobSlotNotFoundError
-  | JobSlotRemoveDeniedError
-  | JobSlotResizeDeniedError;
+  | JobSlotNotFoundError;
 
 export function isJobCoreError(error: unknown): error is JobCoreError {
   return (
     error instanceof JobBayNotFoundError ||
-    error instanceof JobCalendarEditDeniedError ||
     error instanceof JobCreateFromQuoteDeniedError ||
     error instanceof JobNotFoundError ||
     error instanceof JobSlotBookingDeniedError ||
-    error instanceof JobSlotIdleAddDeniedError ||
-    error instanceof JobSlotMoveDeniedError ||
-    error instanceof JobSlotNotFoundError ||
-    error instanceof JobSlotRemoveDeniedError ||
-    error instanceof JobSlotResizeDeniedError
+    error instanceof JobSlotNotFoundError
   );
 }

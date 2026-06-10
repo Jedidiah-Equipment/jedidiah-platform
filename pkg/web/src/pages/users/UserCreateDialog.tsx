@@ -21,7 +21,7 @@ export const UserCreateDialog: React.FC = () => {
   const { invalidateAuth, invalidateUsers } = useQueryInvalidation();
   const accessQuery = useAccess();
   const showMutationError = useApiMutationErrorToast();
-  const canAssignDepartments = hasPermission(accessQuery.data, 'user:assign-departments');
+  const canAssignDepartments = hasPermission(accessQuery.data, 'user:update');
   const [isOpen, setIsOpen] = useState(false);
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
 

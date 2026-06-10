@@ -2,7 +2,6 @@ import { Readable } from 'node:stream';
 
 import {
   createProductDocument,
-  getUserAccessSummary,
   isDocumentCoreError,
   isJobCoreError,
   isProductCoreError,
@@ -14,7 +13,7 @@ import {
   type StorageAdapter,
 } from '@pkg/core';
 import { db } from '@pkg/db';
-import { hasPermission, validateDocumentPolicy } from '@pkg/domain';
+import { createUserAccessSummary, hasPermission, validateDocumentPolicy } from '@pkg/domain';
 import {
   type AppPermission,
   DocumentListByProductInput,
@@ -35,7 +34,7 @@ const JobDocumentRouteInput = z.object({
 });
 
 type RouteAuthContext = {
-  access: Awaited<ReturnType<typeof getUserAccessSummary>>;
+  access: ReturnType<typeof createUserAccessSummary>;
   session: AppSession;
 };
 
@@ -191,8 +190,7 @@ async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): P
     return null;
   }
 
-  const access = await getUserAccessSummary({
-    db,
+  const access = createUserAccessSummary({
     role: parseBetterAuthRole(session.user.role),
     userId: session.user.id,
   });

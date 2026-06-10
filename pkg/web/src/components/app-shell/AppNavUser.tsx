@@ -1,8 +1,7 @@
-import { departmentLabels, roleLabels } from '@pkg/domain';
-import { IconBuilding, IconLogout, IconMoon, IconSelector, IconShield, IconSun } from '@tabler/icons-react';
+import { roleLabels } from '@pkg/domain';
+import { IconLogout, IconMoon, IconSelector, IconShield, IconSun } from '@tabler/icons-react';
 import type React from 'react';
 
-import { DepartmentIcon } from '@/components/departments/index.js';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js';
 import {
   DropdownMenu,
@@ -33,10 +32,6 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
   const accessQuery = useAccess();
   const access = accessQuery.data;
   const isDark = theme === 'dark';
-  const primaryDepartment = access?.departments[0];
-  const departmentLabel = access?.departments.length
-    ? access.departments.map((department) => departmentLabels[department]).join(', ')
-    : 'None';
 
   return (
     <SidebarMenu>
@@ -82,13 +77,6 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ user, onSignOut }) => {
                   <span className="truncate text-muted-foreground text-xs">
                     {access ? roleLabels[access.role] : 'Loading'}
                   </span>
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                {primaryDepartment ? <DepartmentIcon department={primaryDepartment} /> : <IconBuilding />}
-                <span className="flex min-w-0 flex-col">
-                  <span>Department</span>
-                  <span className="truncate text-muted-foreground text-xs">{departmentLabel}</span>
                 </span>
               </DropdownMenuItem>
             </DropdownMenuGroup>

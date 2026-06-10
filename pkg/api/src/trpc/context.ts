@@ -1,5 +1,6 @@
-import { getUserAccessSummary, type StorageAdapter } from '@pkg/core';
+import type { StorageAdapter } from '@pkg/core';
 import { db } from '@pkg/db';
+import { createUserAccessSummary } from '@pkg/domain';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 
@@ -21,8 +22,7 @@ export function createContextFactory(dependencies: ContextDependencies) {
   return async function createContext({ req }: CreateFastifyContextOptions): Promise<Context> {
     const session = await getSessionFromHeaders(req.headers);
     const access: UserAccessSummary | null = session
-      ? await getUserAccessSummary({
-          db,
+      ? createUserAccessSummary({
           role: parseBetterAuthRole(session.user.role),
           userId: session.user.id,
         })

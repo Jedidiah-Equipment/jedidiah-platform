@@ -22,8 +22,7 @@ export const UsersPage: React.FC = () => {
   const canManageUsers =
     hasPermission(access, 'user:update') ||
     hasPermission(access, 'user:set-role') ||
-    hasPermission(access, 'user:set-password') ||
-    hasPermission(access, 'user:assign-departments');
+    hasPermission(access, 'user:set-password');
 
   const usersQuery = useQuery(trpc.users.list.queryOptions());
   const [editingUser, setEditingUser] = useState<UserSummary | null>(null);

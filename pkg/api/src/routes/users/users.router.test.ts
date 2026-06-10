@@ -192,7 +192,7 @@ describe('users.list', () => {
     );
   });
 
-  test('reads assigned departments in the current user access summary', async ({ context }) => {
+  test('keeps department memberships out of the current user access summary', async ({ context }) => {
     const currentDepartmentUserId = '00000000-0000-4000-8000-000000000002';
 
     await createUser(context.db, {
@@ -205,10 +205,10 @@ describe('users.list', () => {
       email: 'current-department@example.com',
       id: currentDepartmentUserId,
       name: 'Current Department User',
-      role: 'job-department-manager',
+      role: 'job-viewer',
     });
 
-    const session = mockSession('job-department-manager');
+    const session = mockSession('job-viewer');
     session.user.id = currentDepartmentUserId;
 
     await context.createCaller().users.setDepartments({
@@ -217,10 +217,6 @@ describe('users.list', () => {
     });
 
     const access = createUserAccessSummary({
-      departments: await listUserDepartments({
-        db: context.db,
-        userId: currentDepartmentUserId,
-      }),
       role: parseBetterAuthRole(session.user.role),
       userId: session.user.id,
     });
@@ -238,12 +234,18 @@ describe('users.list', () => {
       },
     });
 
-    await expect(caller.auth.access()).resolves.toMatchObject({
-      departments: ['supply'],
-      permissions: ['job:read', 'job:schedule'],
-      role: 'job-department-manager',
+    await expect(caller.auth.access()).resolves.toEqual({
+      permissions: ['job:read'],
+      role: 'job-viewer',
       userId: currentDepartmentUserId,
     });
+
+    await expect(
+      listUserDepartments({
+        db: context.db,
+        userId: currentDepartmentUserId,
+      }),
+    ).resolves.toEqual(['supply']);
 
     await context.createCaller().users.setDepartments({
       departments: [],

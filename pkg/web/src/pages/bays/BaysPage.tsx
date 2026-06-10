@@ -5,9 +5,10 @@ import {
   type BayOperator,
   type Department,
   JobBayCreateInput,
+  type JobBayOperatorAssignmentHistoryItem,
   JobBayRenameInput,
 } from '@pkg/schema';
-import { IconLoader2, IconPencil, IconPlus, IconUserMinus, IconUserOff } from '@tabler/icons-react';
+import { IconHistory, IconLoader2, IconPencil, IconPlus, IconUserMinus, IconUserOff } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -71,6 +72,7 @@ export const BaysPage: React.FC = () => {
   const { invalidateAudit, invalidateJobs } = useQueryInvalidation();
 
   const canManageBays = hasPermission(access, 'job_bay:update');
+  const canReadBayHistory = hasPermission(access, 'job_bay:read');
 
   const baysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: {} }));
   const operatorsQuery = useQuery({
@@ -272,6 +274,7 @@ export const BaysPage: React.FC = () => {
                             ) : null}
                           </CardAction>
                         </CardHeader>
+                        <BayOperatorHistory bayId={bay.id} enabled={canReadBayHistory} />
                       </Card>
                     ))}
                   </div>
@@ -626,6 +629,69 @@ const BayOperatorIndicator: React.FC<{ operator: BayOperator | null }> = ({ oper
     </Tooltip>
   );
 };
+
+const BayOperatorHistory: React.FC<{ bayId: Bay['id']; enabled: boolean }> = ({ bayId, enabled }) => {
+  const trpc = useTRPC();
+  const historyQuery = useQuery(trpc.jobs.listBayOperatorAssignmentHistory.queryOptions({ bayId }, { enabled }));
+
+  if (!enabled) {
+    return null;
+  }
+
+  if (historyQuery.isLoading) {
+    return (
+      <CardContent className="pt-0">
+        <div className="space-y-2 border-t pt-3">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      </CardContent>
+    );
+  }
+
+  if (historyQuery.error) {
+    return (
+      <CardContent className="pt-0">
+        <p className="border-t pt-3 text-muted-foreground text-xs">Unable to load Operator history.</p>
+      </CardContent>
+    );
+  }
+
+  const history = historyQuery.data?.items ?? [];
+
+  return (
+    <CardContent className="pt-0">
+      <div className="space-y-2 border-t pt-3">
+        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+          <IconHistory className="size-3.5" />
+          Operator History
+        </div>
+        {history.length > 0 ? (
+          <div className="space-y-2">
+            {history.map((item) => (
+              <BayOperatorHistoryItem key={item.id} item={item} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-xs">No Operator history.</p>
+        )}
+      </div>
+    </CardContent>
+  );
+};
+
+const BayOperatorHistoryItem: React.FC<{ item: JobBayOperatorAssignmentHistoryItem }> = ({ item }) => (
+  <div className="flex min-w-0 items-center gap-2">
+    <EntityThumbnail label={item.operator.name} size="sm" thumbnailDataUrl={item.operator.thumbnailDataUrl} />
+    <div className="min-w-0">
+      <div className="truncate font-medium text-xs">{item.operator.name}</div>
+      <div className="truncate text-muted-foreground text-xs">
+        Assigned {formatDate(item.assignedAt, 'medium')} /{' '}
+        {item.unassignedAt ? `Unassigned ${formatDate(item.unassignedAt, 'medium')}` : 'Current'}
+      </div>
+    </div>
+  </div>
+);
 
 const OperatorIdentity: React.FC<{ operator: BayOperator }> = ({ operator }) => (
   <div className="min-w-0">

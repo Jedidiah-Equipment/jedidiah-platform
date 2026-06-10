@@ -8,6 +8,7 @@ import {
   getJob,
   isJobCoreError,
   type JobCoreError,
+  listBayOperatorAssignmentHistory,
   listBayOperators,
   listBays,
   listJobBays,
@@ -28,6 +29,7 @@ import {
   JobBayAssignOperatorInput,
   JobBayCreateInput,
   JobBayListInput,
+  JobBayOperatorAssignmentHistoryInput,
   JobBayRenameInput,
   JobBaySetDisabledInput,
   JobBayUnassignOperatorInput,
@@ -71,6 +73,10 @@ export const jobsRouter = router({
     ),
 
   listBayOperators: authorizedProcedure('job_bay:update').query(({ ctx }) => listBayOperators({ db: ctx.db })),
+
+  listBayOperatorAssignmentHistory: authorizedProcedure('job_bay:read')
+    .input(JobBayOperatorAssignmentHistoryInput)
+    .query(({ ctx, input }) => mapJobErrors(() => listBayOperatorAssignmentHistory({ db: ctx.db, input }))),
 
   assignBayOperator: authorizedProcedure('job_bay:update')
     .input(JobBayAssignOperatorInput)

@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { getUserAccessSummary } from './user-service.js';
 
 describe('getUserAccessSummary', () => {
-  it.each(['sales', 'procurement-manager', 'admin'] as const)('skips department reads for %s', async (role) => {
+  it.each([
+    'sales',
+    'procurement-manager',
+    'admin',
+    'bay-operator',
+  ] as const)('skips department reads for %s', async (role) => {
     const { db, select } = createDepartmentDb([]);
 
     await expect(

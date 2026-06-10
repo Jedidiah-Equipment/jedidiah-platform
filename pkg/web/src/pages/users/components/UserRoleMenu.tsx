@@ -1,4 +1,4 @@
-import { getRolePermissions, roleLabels } from '@pkg/domain';
+import { getRolePermissions, roleDescriptions, roleLabels } from '@pkg/domain';
 import { APP_ROLES, AppRole } from '@pkg/schema';
 import { IconChevronDown } from '@tabler/icons-react';
 import type React from 'react';
@@ -34,14 +34,7 @@ export const UserRoleMenu: React.FC<UserRoleMenuProps> = ({ disabled, id, onRole
         <DropdownMenuGroup>
           {APP_ROLES.map((role) => (
             <DropdownMenuRadioItem className="items-start py-2 pr-8" key={role} value={role}>
-              <span className="flex min-w-0 flex-col gap-1">
-                <span className="font-medium">{roleLabels[role]}</span>
-                <span className="flex flex-wrap gap-1">
-                  {getRolePermissions(role).map((permission) => (
-                    <PermissionBadge key={permission} permission={permission} />
-                  ))}
-                </span>
-              </span>
+              <UserRoleMenuItemContent appRole={role} />
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuGroup>
@@ -49,3 +42,21 @@ export const UserRoleMenu: React.FC<UserRoleMenuProps> = ({ disabled, id, onRole
     </DropdownMenuContent>
   </DropdownMenu>
 );
+
+export function UserRoleMenuItemContent({ appRole }: { appRole: AppRole }) {
+  const permissions = getRolePermissions(appRole);
+
+  return (
+    <span className="flex min-w-0 flex-col gap-1">
+      <span className="font-medium">{roleLabels[appRole]}</span>
+      <span className="text-muted-foreground text-xs">{roleDescriptions[appRole]}</span>
+      <span className="flex flex-wrap gap-1">
+        {permissions.length > 0 ? (
+          permissions.map((permission) => <PermissionBadge key={permission} permission={permission} />)
+        ) : (
+          <span className="text-muted-foreground text-xs">No sign-in permissions</span>
+        )}
+      </span>
+    </span>
+  );
+}

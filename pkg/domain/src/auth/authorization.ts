@@ -8,9 +8,18 @@ export const DEPARTMENT_AWARE_ROLES = new Set<AppRole>(['job-department-manager'
 
 export const roleLabels = {
   admin: 'Administrator',
+  'bay-operator': 'Bay Operator',
   'job-department-manager': 'Job Department Manager',
   'procurement-manager': 'Procurement manager',
   sales: 'Sales',
+} as const satisfies Record<AppRole, string>;
+
+export const roleDescriptions = {
+  admin: 'Full workspace administration, including user management and cross-functional operations.',
+  'bay-operator': 'Shop-floor personnel record for Bay assignment; this role is not enabled for sign-in.',
+  'job-department-manager': 'View Jobs and schedule Bay work within assigned Departments.',
+  'procurement-manager': 'Manage procurement records and view production Jobs.',
+  sales: 'Create, read, and update sales Quotes.',
 } as const satisfies Record<AppRole, string>;
 
 export const permissionLabels = {
@@ -116,6 +125,7 @@ export const appRoleAccess = {
   sales: {
     quote: ['read', 'create', 'update'],
   },
+  'bay-operator': {},
 } as const satisfies Record<AppRole, RoleAccess>;
 
 export function hasPermission(
@@ -133,6 +143,14 @@ export function getRolePermissions(role: AppRole): AppPermission[] {
   }
 
   return [...permissions].sort();
+}
+
+export function isPermissionSetSignInEligible(permissions: readonly AppPermission[]): boolean {
+  return permissions.length > 0;
+}
+
+export function isRoleSignInEligible(role: AppRole): boolean {
+  return isPermissionSetSignInEligible(getRolePermissions(role));
 }
 
 export function createUserAccessSummary(input: {

@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog.js';
+import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
@@ -153,7 +154,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
           <DialogTitle>Edit user</DialogTitle>
           <DialogDescription>{user.email}</DialogDescription>
         </DialogHeader>
-        <div className="-mx-4 no-scrollbar max-h-[50vh] overflow-y-auto px-4">
+        <ScrollArea className="-mx-4 max-h-[50vh] px-4">
           <UserEditForm
             canAssignDepartments={canAssignDepartments}
             canSetPassword={canSetPassword}
@@ -177,7 +178,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
               {sendVerificationMutation.isPending ? 'Sending' : 'Send verification email'}
             </Button>
           ) : null}
-        </div>
+        </ScrollArea>
         {canSaveUser ? (
           <DialogFooter showCloseButton>
             <Button disabled={saveUserMutation.isPending} form={formId} type="submit">

@@ -296,6 +296,88 @@ describe('jobs bay management', () => {
     expect(events.filter((event) => event.entityId === '00000000-0000-4000-8000-000000000b01')).toHaveLength(2);
   });
 
+  test('returns Bay Operator assignment history newest first', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    await createUser(context.db, {
+      email: 'first.operator@example.com',
+      id: 'first-history-operator-user-id',
+      name: 'First History Operator',
+      role: 'bay-operator',
+    });
+    await createUser(context.db, {
+      email: 'second.operator@example.com',
+      id: 'second-history-operator-user-id',
+      name: 'Second History Operator',
+      role: 'bay-operator',
+    });
+
+    vi.setSystemTime(new Date('2026-06-05T07:00:00.000Z'));
+    await adminCaller.jobs.assignBayOperator({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      operatorUserId: 'first-history-operator-user-id',
+    });
+    vi.setSystemTime(new Date('2026-06-05T08:00:00.000Z'));
+    await adminCaller.jobs.unassignBayOperator({ bayId: '00000000-0000-4000-8000-000000000b01' });
+    vi.setSystemTime(new Date('2026-06-05T09:00:00.000Z'));
+    await adminCaller.jobs.assignBayOperator({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      operatorUserId: 'second-history-operator-user-id',
+    });
+    await adminCaller.jobs.assignBayOperator({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      operatorUserId: 'first-history-operator-user-id',
+    });
+
+    await expect(
+      adminCaller.jobs.listBayOperatorAssignmentHistory({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+      }),
+    ).resolves.toEqual({
+      items: [
+        expect.objectContaining({
+          assignedAt: '2026-06-05T09:00:00.000Z',
+          operator: {
+            email: 'second.operator@example.com',
+            id: 'second-history-operator-user-id',
+            name: 'Second History Operator',
+            thumbnailDataUrl: null,
+          },
+          unassignedAt: null,
+        }),
+        expect.objectContaining({
+          assignedAt: '2026-06-05T07:00:00.000Z',
+          operator: {
+            email: 'first.operator@example.com',
+            id: 'first-history-operator-user-id',
+            name: 'First History Operator',
+            thumbnailDataUrl: null,
+          },
+          unassignedAt: '2026-06-05T08:00:00.000Z',
+        }),
+      ],
+    });
+  });
+
+  test('rejects Bay Operator assignment history without Bay config read permission', async ({ context }) => {
+    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
+
+    await expect(
+      jobViewerCaller.jobs.listBayOperatorAssignmentHistory({
+        bayId: '00000000-0000-4000-8000-000000000b01',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('rejects Bay Operator assignment history reads for missing Bays', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+
+    await expect(
+      adminCaller.jobs.listBayOperatorAssignmentHistory({
+        bayId: '00000000-0000-4000-8000-00000000dead',
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
   test('rejects assigning Bay Operators to disabled Bays', async ({ context }) => {
     const adminCaller = context.createCaller(mockSession('admin'));
     await createUser(context.db, {

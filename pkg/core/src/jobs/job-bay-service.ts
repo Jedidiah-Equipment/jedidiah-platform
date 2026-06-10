@@ -17,6 +17,8 @@ import {
   JobBayCreateResult,
   type JobBayListInput,
   type JobBayListResult,
+  type JobBayOperatorAssignmentHistoryInput,
+  JobBayOperatorAssignmentHistoryResult,
   type JobBayRenameInput,
   JobBayRenameResult,
   type JobBaySetDisabledInput,
@@ -24,7 +26,7 @@ import {
   type JobBayUnassignOperatorInput,
   JobBayUnassignOperatorResult,
 } from '@pkg/schema';
-import { and, asc, eq, inArray, isNotNull, isNull, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, type SQL } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -161,6 +163,45 @@ export async function listBayOperators({ db }: { db: Db | DatabaseTransaction })
   return BayOperatorListResult.parse({ operators: rows.map(mapBayOperator) });
 }
 
+export async function listBayOperatorAssignmentHistory({
+  db,
+  input,
+}: {
+  db: Db | DatabaseTransaction;
+  input: JobBayOperatorAssignmentHistoryInput;
+}): Promise<JobBayOperatorAssignmentHistoryResult> {
+  await assertJobBayExists(db, input.bayId);
+
+  const rows = await db
+    .select({
+      assignedAt: jobBayOperatorAssignments.assignedAt,
+      email: user.email,
+      id: jobBayOperatorAssignments.id,
+      image: user.image,
+      name: user.name,
+      operatorUserId: user.id,
+      unassignedAt: jobBayOperatorAssignments.unassignedAt,
+    })
+    .from(jobBayOperatorAssignments)
+    .innerJoin(user, eq(jobBayOperatorAssignments.operatorUserId, user.id))
+    .where(eq(jobBayOperatorAssignments.bayId, input.bayId))
+    .orderBy(desc(jobBayOperatorAssignments.assignedAt), desc(jobBayOperatorAssignments.id));
+
+  return JobBayOperatorAssignmentHistoryResult.parse({
+    items: rows.map((row) => ({
+      assignedAt: row.assignedAt,
+      id: row.id,
+      operator: mapBayOperator({
+        email: row.email,
+        id: row.operatorUserId,
+        image: row.image,
+        name: row.name,
+      }),
+      unassignedAt: row.unassignedAt,
+    })),
+  });
+}
+
 export async function assignJobBayOperator({
   actorUserId,
   db,
@@ -290,6 +331,14 @@ async function getJobBayForUpdate(tx: DatabaseTransaction, id: string): Promise<
   }
 
   return bay;
+}
+
+async function assertJobBayExists(db: Db | DatabaseTransaction, id: string): Promise<void> {
+  const [bay] = await db.select({ id: jobBays.id }).from(jobBays).where(eq(jobBays.id, id)).limit(1);
+
+  if (!bay) {
+    throw new JobBayNotFoundError(id);
+  }
 }
 
 async function selectJobBayRows(db: Db | DatabaseTransaction, where?: SQL) {

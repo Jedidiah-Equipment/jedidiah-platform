@@ -20,6 +20,8 @@ import {
   JobBayCreateResult,
   JobBayListInput,
   JobBayListResult,
+  JobBayOperatorAssignmentHistoryInput,
+  JobBayOperatorAssignmentHistoryResult,
   JobBayRenameInput,
   JobBayRenameResult,
   JobBaySetDisabledInput,
@@ -246,6 +248,40 @@ describe('Working Calendar schemas', () => {
         currentOperator: null,
         id: bay.id,
       },
+    });
+    expect(JobBayOperatorAssignmentHistoryInput.parse({ bayId: bay.id })).toEqual({ bayId: bay.id });
+    expect(
+      JobBayOperatorAssignmentHistoryResult.parse({
+        items: [
+          {
+            assignedAt: '2026-06-05T07:00:00.000Z',
+            id: '00000000-0000-4000-8000-000000000101',
+            operator,
+            unassignedAt: null,
+          },
+          {
+            assignedAt: new Date('2026-06-04T07:00:00.000Z'),
+            id: '00000000-0000-4000-8000-000000000100',
+            operator,
+            unassignedAt: new Date('2026-06-05T07:00:00.000Z'),
+          },
+        ],
+      }),
+    ).toEqual({
+      items: [
+        {
+          assignedAt: '2026-06-05T07:00:00.000Z',
+          id: '00000000-0000-4000-8000-000000000101',
+          operator,
+          unassignedAt: null,
+        },
+        {
+          assignedAt: '2026-06-04T07:00:00.000Z',
+          id: '00000000-0000-4000-8000-000000000100',
+          operator,
+          unassignedAt: '2026-06-05T07:00:00.000Z',
+        },
+      ],
     });
     expect(BayOperatorListResult.parse({ operators: [operator] })).toEqual({ operators: [operator] });
   });

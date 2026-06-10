@@ -295,6 +295,100 @@ describe('jobs bay management', () => {
     expect(closedAssignment?.unassignedAt).toBeInstanceOf(Date);
     expect(events.filter((event) => event.entityId === '00000000-0000-4000-8000-000000000b01')).toHaveLength(2);
   });
+
+  test('rejects assigning Bay Operators to disabled Bays', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    await createUser(context.db, {
+      email: 'disabled-operator@example.com',
+      id: 'disabled-operator-user-id',
+      name: 'Disabled Bay Operator',
+      role: 'bay-operator',
+    });
+
+    await adminCaller.jobs.setBayDisabled({
+      disabled: true,
+      id: '00000000-0000-4000-8000-000000000b03',
+    });
+
+    await expect(
+      adminCaller.jobs.assignBayOperator({
+        bayId: '00000000-0000-4000-8000-000000000b03',
+        operatorUserId: 'disabled-operator-user-id',
+      }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'This Bay is disabled and cannot accept new operator assignments.',
+    });
+  });
+
+  test('preserves and unassigns operator assignments on disabled Bays', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    await createUser(context.db, {
+      email: 'roundtrip-operator@example.com',
+      id: 'roundtrip-operator-user-id',
+      name: 'Round Trip Operator',
+      role: 'bay-operator',
+    });
+
+    await adminCaller.jobs.assignBayOperator({
+      bayId: '00000000-0000-4000-8000-000000000b04',
+      operatorUserId: 'roundtrip-operator-user-id',
+    });
+
+    await expect(
+      adminCaller.jobs.setBayDisabled({
+        disabled: true,
+        id: '00000000-0000-4000-8000-000000000b04',
+      }),
+    ).resolves.toMatchObject({
+      bay: {
+        currentOperator: expect.objectContaining({ id: 'roundtrip-operator-user-id' }),
+        disabledAt: expect.any(String),
+        id: '00000000-0000-4000-8000-000000000b04',
+      },
+    });
+    await expect(adminCaller.jobs.listJobBays({ filters: {} })).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          currentOperator: expect.objectContaining({ id: 'roundtrip-operator-user-id' }),
+          disabledAt: expect.any(String),
+          id: '00000000-0000-4000-8000-000000000b04',
+        }),
+      ]),
+    });
+    await expect(
+      adminCaller.jobs.setBayDisabled({
+        disabled: false,
+        id: '00000000-0000-4000-8000-000000000b04',
+      }),
+    ).resolves.toMatchObject({
+      bay: {
+        currentOperator: expect.objectContaining({ id: 'roundtrip-operator-user-id' }),
+        disabledAt: null,
+        id: '00000000-0000-4000-8000-000000000b04',
+      },
+    });
+    await adminCaller.jobs.setBayDisabled({
+      disabled: true,
+      id: '00000000-0000-4000-8000-000000000b04',
+    });
+    await expect(
+      adminCaller.jobs.unassignBayOperator({ bayId: '00000000-0000-4000-8000-000000000b04' }),
+    ).resolves.toMatchObject({
+      bay: {
+        currentOperator: null,
+        disabledAt: expect.any(String),
+        id: '00000000-0000-4000-8000-000000000b04',
+      },
+    });
+
+    const [closedAssignment] = await context.db
+      .select()
+      .from(jobBayOperatorAssignments)
+      .where(sql`${jobBayOperatorAssignments.bayId} = '00000000-0000-4000-8000-000000000b04'`);
+
+    expect(closedAssignment?.unassignedAt).toBeInstanceOf(Date);
+  });
 });
 
 describe('jobs.toggleOffDay', () => {

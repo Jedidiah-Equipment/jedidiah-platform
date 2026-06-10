@@ -1,8 +1,6 @@
-import { APP_PERMISSIONS, APP_ROLES, type UserAccessSummary } from '@pkg/schema';
+import { APP_PERMISSIONS, APP_ROLES } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import {
-  canScheduleBay,
-  canViewJob,
   createUserAccessSummary,
   getRolePermissions,
   hasPermission,
@@ -38,7 +36,6 @@ describe('getRolePermissions', () => {
       'quote:update',
       'supplier:read',
       'supplier:update',
-      'user:assign-departments',
       'user:create',
       'user:list',
       'user:set-password',
@@ -63,16 +60,12 @@ describe('getRolePermissions', () => {
     ]);
   });
 
-  it('grants department-scoped schedule permissions to job department managers', () => {
-    expect(getRolePermissions('job-department-manager')).toEqual(['job:read', 'job:schedule']);
+  it('grants read-only job permissions to job viewers', () => {
+    expect(getRolePermissions('job-viewer')).toEqual(['job:read']);
   });
 
   it('grants quote-only permissions to sales', () => {
     expect(getRolePermissions('sales')).toEqual(['quote:create', 'quote:read', 'quote:update']);
-  });
-
-  it('grants no permissions to bay operators', () => {
-    expect(getRolePermissions('bay-operator')).toEqual([]);
   });
 });
 
@@ -106,9 +99,10 @@ describe('sign-in eligibility', () => {
     expect(isPermissionSetSignInEligible(['quote:read'])).toBe(true);
   });
 
-  it('blocks permissionless roles and allows roles with permissions', () => {
-    expect(isRoleSignInEligible('bay-operator')).toBe(false);
-    expect(isRoleSignInEligible('sales')).toBe(true);
+  it('allows every current app role to sign in', () => {
+    for (const role of APP_ROLES) {
+      expect(isRoleSignInEligible(role), role).toBe(true);
+    }
   });
 });
 
@@ -116,12 +110,10 @@ describe('createUserAccessSummary', () => {
   it('builds a serialized access summary', () => {
     expect(
       createUserAccessSummary({
-        departments: ['paint', 'procurement'],
         role: 'sales',
         userId: 'user_123',
       }),
     ).toEqual({
-      departments: ['paint', 'procurement'],
       permissions: ['quote:create', 'quote:read', 'quote:update'],
       role: 'sales',
       userId: 'user_123',
@@ -144,148 +136,15 @@ describe('hasPermission', () => {
 });
 
 describe('job authorization policy', () => {
-  const departments = ['procurement', 'supply', 'fabrication', 'paint', 'assembly'] as const;
-  type Department = (typeof departments)[number];
+  it('grants only admins the job schedule permission', () => {
+    const admin = createUserAccessSummary({ role: 'admin', userId: 'user_123' });
+    const viewer = createUserAccessSummary({ role: 'job-viewer', userId: 'user_123' });
+    const sales = createUserAccessSummary({ role: 'sales', userId: 'user_123' });
 
-  it('covers the scheduling profile by department matrix', () => {
-    const matrix = [
-      {
-        access: createUserAccessSummary({
-          departments: ['paint'],
-          role: 'job-department-manager',
-          userId: 'user_123',
-        }),
-        schedulableDepartments: ['paint'],
-      },
-      {
-        access: createUserAccessSummary({
-          departments: ['fabrication', 'supply'],
-          role: 'job-department-manager',
-          userId: 'user_123',
-        }),
-        schedulableDepartments: ['fabrication', 'supply'],
-      },
-      {
-        access: createUserAccessSummary({
-          role: 'admin',
-          userId: 'user_123',
-        }),
-        schedulableDepartments: departments,
-      },
-      {
-        access: createUserAccessSummary({
-          role: 'sales',
-          userId: 'user_123',
-        }),
-        schedulableDepartments: [],
-      },
-      {
-        access: createUserAccessSummary({
-          role: 'bay-operator',
-          userId: 'user_123',
-        }),
-        schedulableDepartments: [],
-      },
-      {
-        access: createUserAccessSummary({
-          departments: [],
-          role: 'job-department-manager',
-          userId: 'user_123',
-        }),
-        schedulableDepartments: departments,
-      },
-    ] satisfies readonly {
-      access: ReturnType<typeof createUserAccessSummary>;
-      schedulableDepartments: readonly Department[];
-    }[];
-
-    for (const { access, schedulableDepartments } of matrix) {
-      const schedulableDepartmentSet = new Set<Department>(schedulableDepartments);
-
-      expect(canViewJob(access), `${access.role} can view job`).toBe(access.permissions.includes('job:read'));
-
-      for (const department of departments) {
-        expect(canScheduleBay(access, department), `${access.role} can schedule ${department}`).toBe(
-          schedulableDepartmentSet.has(department),
-        );
-      }
-    }
-  });
-
-  it('scopes single-department job department managers to their department', () => {
-    const access = createUserAccessSummary({
-      departments: ['paint'],
-      role: 'job-department-manager',
-      userId: 'user_123',
-    });
-
-    expect(canViewJob(access)).toBe(true);
-    expect(canScheduleBay(access, 'paint')).toBe(true);
-    expect(canScheduleBay(access, 'assembly')).toBe(false);
-  });
-
-  it('keeps scheduling gated by job schedule plus department scope', () => {
-    const paintScopedAccess = createUserAccessSummary({
-      departments: ['paint'],
-      role: 'job-department-manager',
-      userId: 'user_123',
-    });
-    const jobOnlyAccess = {
-      departments: [],
-      permissions: ['job:read'],
-      role: 'sales',
-      userId: 'user_456',
-    } satisfies UserAccessSummary;
-
-    expect(canViewJob(paintScopedAccess)).toBe(true);
-    expect(canScheduleBay(paintScopedAccess, 'fabrication')).toBe(false);
-    expect(canViewJob(jobOnlyAccess)).toBe(true);
-    expect(canScheduleBay(jobOnlyAccess, 'fabrication')).toBe(false);
-  });
-
-  it('scopes multi-department job department managers to any of their departments', () => {
-    const access = createUserAccessSummary({
-      departments: ['fabrication', 'supply'],
-      role: 'job-department-manager',
-      userId: 'user_123',
-    });
-
-    expect(canViewJob(access)).toBe(true);
-    expect(canScheduleBay(access, 'fabrication')).toBe(true);
-    expect(canScheduleBay(access, 'supply')).toBe(true);
-    expect(canScheduleBay(access, 'procurement')).toBe(false);
-    expect(canScheduleBay(access, 'paint')).toBe(false);
-  });
-
-  it('grants admins cross-cutting schedule access', () => {
-    const access = createUserAccessSummary({
-      role: 'admin',
-      userId: 'user_123',
-    });
-
-    expect(canViewJob(access)).toBe(true);
-    expect(canScheduleBay(access, 'procurement')).toBe(true);
-  });
-
-  it('denies users with no job role', () => {
-    const access = createUserAccessSummary({
-      role: 'sales',
-      userId: 'user_123',
-    });
-
-    expect(canViewJob(access)).toBe(false);
-    expect(canScheduleBay(access, 'paint')).toBe(false);
-  });
-
-  it('treats job department managers with no selected departments as all-department schedulers', () => {
-    const access = createUserAccessSummary({
-      departments: [],
-      role: 'job-department-manager',
-      userId: 'user_123',
-    });
-
-    expect(canViewJob(access)).toBe(true);
-    expect(canScheduleBay(access, 'paint')).toBe(true);
-    expect(canScheduleBay(access, 'supply')).toBe(true);
+    expect(hasPermission(admin, 'job:schedule')).toBe(true);
+    expect(hasPermission(viewer, 'job:read')).toBe(true);
+    expect(hasPermission(viewer, 'job:schedule')).toBe(false);
+    expect(hasPermission(sales, 'job:read')).toBe(false);
+    expect(hasPermission(sales, 'job:schedule')).toBe(false);
   });
 });

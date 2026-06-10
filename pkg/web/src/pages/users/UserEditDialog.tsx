@@ -40,10 +40,10 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const formId = useId();
 
   const canUpdateProfile = hasPermission(access, 'user:update');
-  const canAssignDepartments = hasPermission(access, 'user:assign-departments');
+  const canAssignDepartments = canUpdateProfile;
   const canSetRole = hasPermission(access, 'user:set-role');
   const canSetPassword = hasPermission(access, 'user:set-password');
-  const canSaveUser = canUpdateProfile || canSetRole || canAssignDepartments;
+  const canSaveUser = canUpdateProfile || canSetRole;
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
   const updateThumbnailMutation = useMutation(trpc.users.updateThumbnail.mutationOptions());
 

@@ -67,11 +67,11 @@ export const jobsRouter = router({
 
   toggleOffDay: authorizedProcedure('job:update-calendar')
     .input(ToggleOffDayInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => toggleOffDay({ db: ctx.db, access: ctx.access, input }))),
+    .mutation(({ ctx, input }) => mapJobErrors(() => toggleOffDay({ db: ctx.db, input }))),
 
   list: authorizedProcedure('job:read')
     .input(JobListInput)
-    .query(({ ctx, input }) => listJobs({ db: ctx.db, access: ctx.access, input })),
+    .query(({ ctx, input }) => listJobs({ db: ctx.db, input })),
 
   get: authorizedProcedure('job:read')
     .input(z.object({ id: UUID }))
@@ -85,37 +85,33 @@ export const jobsRouter = router({
 
   bookSlot: authorizedProcedure('job:schedule')
     .input(BookJobSlotInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => bookJobSlot({ db: ctx.db, access: ctx.access, input }))),
+    .mutation(({ ctx, input }) => mapJobErrors(() => bookJobSlot({ db: ctx.db, input }))),
 
   addIdleSlot: authorizedProcedure('job:schedule')
     .input(AddIdleJobSlotInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => addIdleJobSlot({ db: ctx.db, access: ctx.access, input }))),
+    .mutation(({ ctx, input }) => mapJobErrors(() => addIdleJobSlot({ db: ctx.db, input }))),
 
   addBayException: authorizedProcedure('job:schedule')
     .input(AddBayCalendarExceptionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() => addBayCalendarException({ db: ctx.db, access: ctx.access, input })),
-    ),
+    .mutation(({ ctx, input }) => mapJobErrors(() => addBayCalendarException({ db: ctx.db, input }))),
 
   removeBayException: authorizedProcedure('job:schedule')
     .input(RemoveBayCalendarExceptionInput)
-    .mutation(({ ctx, input }) =>
-      mapJobErrors(() => removeBayCalendarException({ db: ctx.db, access: ctx.access, input })),
-    ),
+    .mutation(({ ctx, input }) => mapJobErrors(() => removeBayCalendarException({ db: ctx.db, input }))),
 
   resizeSlot: authorizedProcedure('job:schedule')
     .input(ResizeJobSlotInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => resizeJobSlot({ db: ctx.db, access: ctx.access, input }))),
+    .mutation(({ ctx, input }) => mapJobErrors(() => resizeJobSlot({ db: ctx.db, input }))),
 
   moveSlot: authorizedProcedure('job:schedule')
     .input(MoveJobSlotInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => moveJobSlot({ db: ctx.db, access: ctx.access, actorUserId: ctx.session.user.id, input })),
+      mapJobErrors(() => moveJobSlot({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
     ),
 
   removeSlot: authorizedProcedure('job:schedule')
     .input(RemoveJobSlotInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => removeJobSlot({ db: ctx.db, access: ctx.access, input }))),
+    .mutation(({ ctx, input }) => mapJobErrors(() => removeJobSlot({ db: ctx.db, input }))),
 });
 
 async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -148,41 +144,11 @@ function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['co
         code: 'FORBIDDEN',
         message: error.message,
       };
-    case 'job.slot_idle_add_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
     case 'job.slot_not_found':
       return {
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Job slot not found.',
-      };
-    case 'job.slot_resize_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
-    case 'job.slot_remove_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
-    case 'job.slot_move_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
-    case 'job.calendar_edit_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
       };
     default:
       return assertNever(error);

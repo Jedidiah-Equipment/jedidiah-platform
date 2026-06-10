@@ -1,5 +1,4 @@
 import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
-import { createUserAccessSummary, DEPARTMENT_AWARE_ROLES } from '@pkg/domain';
 import {
   AppRole,
   type AuditChanges,
@@ -7,7 +6,6 @@ import {
   Department,
   NullablePhoneNumber,
   NullableThumbnailDataUrl,
-  type UserAccessSummary,
   UserAccount,
   type UserListResult,
   type UserSummary,
@@ -104,24 +102,6 @@ export async function listUsers({ db }: { db: Db }): Promise<UserListResult> {
       }),
     ),
   };
-}
-
-export async function getUserAccessSummary({
-  db,
-  role,
-  userId,
-}: {
-  db: Db;
-  role: AppRole;
-  userId: AuthId;
-}): Promise<UserAccessSummary> {
-  const departments = DEPARTMENT_AWARE_ROLES.has(role) ? await listUserDepartments({ db, userId }) : [];
-
-  return createUserAccessSummary({
-    departments,
-    role,
-    userId,
-  });
 }
 
 export async function setUserDepartments({

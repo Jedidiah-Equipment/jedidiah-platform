@@ -17,9 +17,7 @@ import {
 import {
   buildCfo,
   type CfoEntry,
-  canScheduleBay,
   countWorkingDaysBetween,
-  hasPermission,
   projectJobSlots,
   toJohannesburgDateKey,
   type WorkingCalendar,
@@ -50,7 +48,6 @@ import {
   ResizeJobSlotResult,
   type ToggleOffDayInput,
   ToggleOffDayResult,
-  type UserAccessSummary,
   type UUID,
 } from '@pkg/schema';
 import { and, asc, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
@@ -61,15 +58,10 @@ import { listAssemblies } from '../products/product-assembly-service.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
 import {
   JobBayNotFoundError,
-  JobCalendarEditDeniedError,
   JobCreateFromQuoteDeniedError,
   JobNotFoundError,
   JobSlotBookingDeniedError,
-  JobSlotIdleAddDeniedError,
-  JobSlotMoveDeniedError,
   JobSlotNotFoundError,
-  JobSlotRemoveDeniedError,
-  JobSlotResizeDeniedError,
 } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
 import {
@@ -147,11 +139,6 @@ export async function createJob({
       productId: quote.productId,
       tx,
     });
-    // Seeding deliberately skips the per-Bay `canScheduleBay` department-scope check that the Gantt
-    // mutation paths enforce: it is gated only by `job:create`, which today is granted to `admin`
-    // (unscoped) alone. If `job:create` is ever extended to a department-scoped role, add a
-    // `canScheduleBay(access, bay.department)` check per seed row (via `onBayLocked`) so seeding
-    // cannot route a Job onto a Bay outside the actor's Department scope.
     for (const seed of input.baySeeds) {
       await appendWorkJobSlotToBayQueue({
         bayId: seed.bayId,
@@ -169,12 +156,10 @@ export async function createJob({
 }
 
 export async function bookJobSlot({
-  access,
   currentDate,
   db,
   input,
 }: {
-  access: UserAccessSummary;
   currentDate?: Date;
   db: Db;
   input: BookJobSlotInput;
@@ -196,11 +181,6 @@ export async function bookJobSlot({
       currentDate: currentDate ?? new Date(),
       durationDays: input.durationDays,
       jobId: job.id,
-      onBayLocked: (bay) => {
-        if (!canScheduleBay(access, bay.department)) {
-          throw new JobSlotBookingDeniedError('You do not have permission to book this Bay.');
-        }
-      },
       tx,
     });
 
@@ -208,19 +188,7 @@ export async function bookJobSlot({
   });
 }
 
-export async function toggleOffDay({
-  access,
-  db,
-  input,
-}: {
-  access: UserAccessSummary;
-  db: Db;
-  input: ToggleOffDayInput;
-}): Promise<ToggleOffDayResult> {
-  if (!hasPermission(access, 'job:update-calendar')) {
-    throw new JobCalendarEditDeniedError('You do not have permission to manage the Job calendar.');
-  }
-
+export async function toggleOffDay({ db, input }: { db: Db; input: ToggleOffDayInput }): Promise<ToggleOffDayResult> {
   return db.transaction(async (tx) => {
     if (!input.isOffDay) {
       await tx.delete(workingCalendarOffDays).where(eq(workingCalendarOffDays.date, input.date));
@@ -255,11 +223,9 @@ export async function toggleOffDay({
 }
 
 export async function addBayCalendarException({
-  access,
   db,
   input,
 }: {
-  access: UserAccessSummary;
   db: Db;
   input: AddBayCalendarExceptionInput;
 }): Promise<AddBayCalendarExceptionResult> {
@@ -268,10 +234,6 @@ export async function addBayCalendarException({
 
     if (!bay) {
       throw new JobBayNotFoundError(input.bayId);
-    }
-
-    if (!canScheduleBay(access, bay.department)) {
-      throw new JobCalendarEditDeniedError('You do not have permission to manage this Bay calendar.');
     }
 
     const [row] = await tx
@@ -306,11 +268,9 @@ export async function addBayCalendarException({
 }
 
 export async function removeBayCalendarException({
-  access,
   db,
   input,
 }: {
-  access: UserAccessSummary;
   db: Db;
   input: RemoveBayCalendarExceptionInput;
 }): Promise<RemoveBayCalendarExceptionResult> {
@@ -319,10 +279,6 @@ export async function removeBayCalendarException({
 
     if (!bay) {
       throw new JobBayNotFoundError(input.bayId);
-    }
-
-    if (!canScheduleBay(access, bay.department)) {
-      throw new JobCalendarEditDeniedError('You do not have permission to manage this Bay calendar.');
     }
 
     const [row] = await tx
@@ -340,11 +296,9 @@ export async function removeBayCalendarException({
 }
 
 export async function addIdleJobSlot({
-  access,
   db,
   input,
 }: {
-  access: UserAccessSummary;
   db: Db;
   input: AddIdleJobSlotInput;
 }): Promise<AddIdleJobSlotResult> {
@@ -361,10 +315,6 @@ export async function addIdleJobSlot({
 
     if (!row) {
       throw new JobSlotNotFoundError(input.targetSlotId);
-    }
-
-    if (!canScheduleBay(access, row.bay.department)) {
-      throw new JobSlotIdleAddDeniedError('You do not have permission to add idle time to this Bay schedule.');
     }
 
     const insertionSequence = input.placement === 'before' ? row.slot.sequence : row.slot.sequence + 1;
@@ -394,11 +344,9 @@ export async function addIdleJobSlot({
 }
 
 export async function resizeJobSlot({
-  access,
   db,
   input,
 }: {
-  access: UserAccessSummary;
   db: Db;
   input: ResizeJobSlotInput;
 }): Promise<ResizeJobSlotResult> {
@@ -415,10 +363,6 @@ export async function resizeJobSlot({
 
     if (!row) {
       throw new JobSlotNotFoundError(input.slotId);
-    }
-
-    if (!canScheduleBay(access, row.bay.department)) {
-      throw new JobSlotResizeDeniedError('You do not have permission to resize this Bay schedule.');
     }
 
     const [slot] = await tx
@@ -439,12 +383,10 @@ export async function resizeJobSlot({
 }
 
 export async function moveJobSlot({
-  access,
   actorUserId,
   db,
   input,
 }: {
-  access: UserAccessSummary;
   actorUserId: AuthId;
   db: Db;
   input: MoveJobSlotInput;
@@ -462,10 +404,6 @@ export async function moveJobSlot({
 
     if (!row) {
       throw new JobSlotNotFoundError(input.slotId);
-    }
-
-    if (!canScheduleBay(access, row.bay.department)) {
-      throw new JobSlotMoveDeniedError('You do not have permission to move this Bay schedule.');
     }
 
     const movingLeft = input.direction === 'left';
@@ -538,11 +476,9 @@ export async function moveJobSlot({
 }
 
 export async function removeJobSlot({
-  access,
   db,
   input,
 }: {
-  access: UserAccessSummary;
   db: Db;
   input: RemoveJobSlotInput;
 }): Promise<RemoveJobSlotResult> {
@@ -559,10 +495,6 @@ export async function removeJobSlot({
 
     if (!row) {
       throw new JobSlotNotFoundError(input.slotId);
-    }
-
-    if (!canScheduleBay(access, row.bay.department)) {
-      throw new JobSlotRemoveDeniedError('You do not have permission to remove from this Bay schedule.');
     }
 
     const [slot] = await tx.delete(jobSlots).where(eq(jobSlots.id, row.slot.id)).returning();
@@ -599,14 +531,12 @@ async function appendWorkJobSlotToBayQueue({
   currentDate,
   durationDays,
   jobId,
-  onBayLocked,
   tx,
 }: {
   bayId: UUID;
   currentDate: Date;
   durationDays: number;
   jobId: UUID;
-  onBayLocked?: (bay: typeof jobBays.$inferSelect) => void;
   tx: DatabaseTransaction;
 }): Promise<typeof jobSlots.$inferSelect> {
   const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, bayId)).for('update');
@@ -618,8 +548,6 @@ async function appendWorkJobSlotToBayQueue({
   if (bay.disabledAt) {
     throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
   }
-
-  onBayLocked?.(bay);
 
   const workingCalendar = await getWorkingCalendar(tx, bay.id);
   let sequence = await getNextBaySlotSequence(tx, bay.id);

@@ -44,4 +44,20 @@ export const demoUsers = [
     password: DEFAULT_DEMO_USER_PASSWORD,
     role: 'sales',
   },
+  {
+    departments: [],
+    id: 'seed-operator-fabrication-user',
+    name: 'Fabrication Bay Operator',
+    email: 'fabrication.operator@jedidiahequipment.co.za',
+    password: DEFAULT_DEMO_USER_PASSWORD,
+    role: 'bay-operator',
+  },
+  {
+    departments: [],
+    id: 'seed-operator-assembly-user',
+    name: 'Assembly Bay Operator',
+    email: 'assembly.operator@jedidiahequipment.co.za',
+    password: DEFAULT_DEMO_USER_PASSWORD,
+    role: 'bay-operator',
+  },
 ] as const satisfies readonly DemoUser[];

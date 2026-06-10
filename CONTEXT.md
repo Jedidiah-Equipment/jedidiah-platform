@@ -16,7 +16,11 @@ The fixed Department ordering: Procurement -> Supply -> Fabrication -> Paint -> 
 _Avoid_: Stage sequence, Step, Phase.
 
 **Department**:
-One of the five fixed manufacturing functions (Procurement, Supply, Fabrication, Paint, Assembly), also an authorization axis. A Department owns zero or more Bays and is the unit a `job-department-manager` is scoped to. A Job has no per-Department record of its own; it relates to a Department only through the Slots it has on that Department's Bays.
+One of the five fixed manufacturing functions (Procurement, Supply, Fabrication, Paint, Assembly). A Department owns zero or more Bays. A Job has no per-Department record of its own; it relates to a Department only through the Slots it has on that Department's Bays. A Department is not an authorization axis — access is dictated by App Role alone (see Department Membership).
+
+**Department Membership**:
+The descriptive association of a User with zero or more Departments — which part of the shop the person works in. It is an organizational fact only: membership never grants, scopes, or restricts any capability. Any User may hold memberships regardless of App Role; an empty set simply means no Department is recorded.
+_Avoid_: Department access, department scope, scoped role, Department-Aware role.
 
 **Bay**:
 A durable physical workspace that belongs to exactly one Department (for example a Fabrication bay). A Department has zero or more Bays. At most one Bay Operator is attached to a Bay at a time (see Operator Assignment). Bays are the resources that Jobs are scheduled onto: each Bay holds an ordered queue of Slots from a fixed `scheduleOrigin`. Bays are admin-managed (created, renamed, disabled — see Disabled Bay); a Bay's Department is fixed at creation and never changes. A Slot's Department is simply its Bay's Department — there is no separate match check.
@@ -62,7 +66,7 @@ A calendar date explicitly marked as non-working, which Slot Projection skips so
 _Avoid_: Holiday flag, non-working rule, closed rule, weekend.
 
 **Bay Calendar Exception**:
-A per-Bay, whole-day mark that overrides the org Working Calendar for one Bay on a specific date, beating the org-wide mark (most-specific-wins). There is no sub-day/hours granularity — a date is working or not for that Bay. It has two directions: **Overtime** opens an otherwise Off-Day as a working day for that Bay, and a **Bay Closure** marks an otherwise-working date as off for that Bay. So one Bay can work a public holiday, or sit out an ordinary working day, without affecting any other Bay. A Bay Calendar Exception is editable by whoever can already schedule that Bay (the same permission that books its Slots), not gated behind admin.
+A per-Bay, whole-day mark that overrides the org Working Calendar for one Bay on a specific date, beating the org-wide mark (most-specific-wins). There is no sub-day/hours granularity — a date is working or not for that Bay. It has two directions: **Overtime** opens an otherwise Off-Day as a working day for that Bay, and a **Bay Closure** marks an otherwise-working date as off for that Bay. So one Bay can work a public holiday, or sit out an ordinary working day, without affecting any other Bay. A Bay Calendar Exception is editable by whoever can schedule Bays (the same permission that books Slots).
 _Avoid_: Override, special day, one-off.
 
 **Overtime**:
@@ -180,7 +184,7 @@ _Avoid_: Stat, Rollup, Report, KPI.
 - A **Product** has zero or more **Product Bays**, each a (Bay, default working-days) pair for future **Job Bay Seeding** prefill.
 - The org has one **Working Calendar** of explicit **Off-Days** applying to every **Bay**; a Bay may carry **Bay Calendar Exceptions** (Overtime / Bay Closure) that override the org Off-Days for that Bay alone. **Slot Projection** reads a Bay's effective calendar (org Off-Days overlaid with the Bay's Exceptions) to count Slot durations in working days.
 - A **Supplier** currently stands alone as a procurement directory record.
-- A **User** has exactly one **App Role** and belongs to zero or more **Departments**.
+- A **User** has exactly one **App Role** and may hold **Department Membership** in zero or more **Departments** (descriptive only — never an access scope).
 - A **Bay** has at most one current **Bay Operator** via an **Operator Assignment**; a **Bay Operator** may hold several **Bays** at once. Past Operator Assignments are retained as first-class history.
 - A **Document** has exactly one owning entity. A **Product** has zero or more **Documents**.
 - Creating a **Job** snapshots its **Product**'s **Documents** onto the Job as a frozen **Job Document Snapshot** (see Create Job from Quote).
@@ -188,15 +192,16 @@ _Avoid_: Stat, Rollup, Report, KPI.
 ## Access
 
 **admin**:
-Department-blind access to all application resources.
+Full access to all application resources. The only role holding `job:schedule` — all Bay scheduling (booking, resizing, removing Slots, Bay Calendar Exceptions, the Job Calendar) is admin-only for now.
 
 Can read, create, and update Suppliers. Can create, edit, and disable Bays (the Admin Bay section).
 
 **procurement-manager**:
 Can read, create, and update Customers, Products, Parts, and Suppliers; can read Jobs (including their Bay schedule). Does not create Jobs or edit the schedule.
 
-**job-department-manager**:
-Holds `job:read` and `job:schedule`. Can read Jobs and manage the Bay schedule for their Department(s) — book, resize, and remove Slots and edit Bay Calendar Exceptions on their Department's Bays, gated by `job:schedule` plus Department scope. A manager with **no** Departments selected is unscoped and may edit **every** Bay (the empty-set footgun, surfaced loudly in the Users UI). There is no per-Job Stage record to edit; "their" Jobs are simply the Jobs with a Slot on one of their Department's Bays.
+**job-viewer**:
+Holds `job:read` only. Can view Jobs and the full Bay schedule across all Departments, but changes nothing — no Slot scheduling, no Bay Calendar Exceptions, no org Off-Day edits.
+_Avoid_: job-department-manager (retired name), job-supervisor.
 
 **sales**:
 Can read, create, and update Quotes.

@@ -25,14 +25,14 @@ export const BayOperatorIndicator: React.FC<BayOperatorIndicatorProps> = ({
       <Tooltip>
         <TooltipTrigger
           render={
-            <button
+            <span
               aria-label="No Operator assigned"
               className={cn(
                 'flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground',
                 emptyClassName,
                 className,
               )}
-              type="button"
+              role="img"
             />
           }
         >
@@ -47,10 +47,10 @@ export const BayOperatorIndicator: React.FC<BayOperatorIndicatorProps> = ({
     <Tooltip>
       <TooltipTrigger
         render={
-          <button
+          <span
             aria-label={`Current Operator: ${operator.name}`}
             className={cn('flex shrink-0 rounded-md', className)}
-            type="button"
+            role="img"
           />
         }
       >

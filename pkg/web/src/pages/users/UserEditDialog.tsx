@@ -204,11 +204,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
 };
 
 function isOpenBayOperatorAssignmentRoleError(error: unknown): error is AuthAdminError {
-  return (
-    error instanceof AuthAdminError &&
-    (error.code === 'USER_HAS_OPEN_BAY_OPERATOR_ASSIGNMENTS' ||
-      (error.message.startsWith('Unassign from ') && error.message.endsWith(' first')))
-  );
+  return error instanceof AuthAdminError && error.code === 'USER_HAS_OPEN_BAY_OPERATOR_ASSIGNMENTS';
 }
 
 function haveDepartmentsChanged(left: readonly Department[], right: readonly Department[]) {

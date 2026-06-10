@@ -26,7 +26,7 @@ import {
   type JobBayUnassignOperatorInput,
   JobBayUnassignOperatorResult,
 } from '@pkg/schema';
-import { and, asc, desc, eq, inArray, isNotNull, isNull, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, type SQL } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -46,6 +46,16 @@ import {
 
 type JobBayRow = typeof jobBays.$inferSelect;
 type BayOperatorRow = Pick<typeof user.$inferSelect, 'email' | 'id' | 'image' | 'name'>;
+
+export type OpenOperatorAssignmentsRow = {
+  operatorAssignments: { operator: BayOperatorRow }[];
+};
+
+export function getCurrentBayOperator(row: OpenOperatorAssignmentsRow): BayOperator | null {
+  const operator = row.operatorAssignments[0]?.operator;
+
+  return operator ? mapBayOperator(operator) : null;
+}
 
 export const jobBayAuditDescriptor = defineAuditDescriptor<JobBayRow>({
   entityType: 'job_bay',
@@ -68,13 +78,9 @@ export async function listJobBays({
   input: JobBayListInput;
 }): Promise<JobBayListResult> {
   const rows = await selectJobBayRows(db, getJobBayListWhere(input));
-  const operatorsByBayId = await listCurrentBayOperatorsByBayId(
-    db,
-    rows.map((row) => row.id),
-  );
 
   return {
-    items: rows.map((row) => mapJobBay(row, operatorsByBayId.get(row.id) ?? null)),
+    items: rows.map((row) => mapJobBay(row, getCurrentBayOperator(row))),
   };
 }
 
@@ -219,12 +225,9 @@ export async function assignJobBayOperator({
     }
 
     const operator = await getAssignableBayOperatorForUpdate(tx, input.operatorUserId);
-    const currentAssignment = await getCurrentAssignmentForUpdate(tx, input.bayId);
 
-    if (currentAssignment) {
-      throw new JobBayAlreadyAssignedError();
-    }
-
+    // The partial unique index on open assignments is the canonical one-operator-per-bay guard;
+    // the bay row lock above only serializes assigns against bay updates.
     try {
       await tx.insert(jobBayOperatorAssignments).values({
         assignedAt: new Date(),
@@ -317,9 +320,9 @@ async function updateJobBay<TResult>({
       await recordAuditUpdate({ db: tx, descriptor: jobBayAuditDescriptor, actorUserId, after: bay, changes });
     }
 
-    const operatorsByBayId = await listCurrentBayOperatorsByBayId(tx, [bay.id]);
+    const currentOperator = await getCurrentBayOperatorByBayId(tx, bay.id);
 
-    return result.parse({ bay: mapJobBay(bay, operatorsByBayId.get(bay.id) ?? null) });
+    return result.parse({ bay: mapJobBay(bay, currentOperator) });
   });
 }
 
@@ -345,6 +348,17 @@ async function selectJobBayRows(db: Db | DatabaseTransaction, where?: SQL) {
   return db.query.jobBays.findMany({
     where,
     orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
+    with: {
+      operatorAssignments: {
+        columns: {},
+        where: isNull(jobBayOperatorAssignments.unassignedAt),
+        with: {
+          operator: {
+            columns: { email: true, id: true, image: true, name: true },
+          },
+        },
+      },
+    },
   });
 }
 
@@ -360,17 +374,9 @@ function getJobBayListWhere(input: JobBayListInput): SQL | undefined {
   return undefined;
 }
 
-export async function listCurrentBayOperatorsByBayId(
-  db: Db | DatabaseTransaction,
-  bayIds?: readonly string[],
-): Promise<Map<string, BayOperator>> {
-  if (bayIds && bayIds.length === 0) {
-    return new Map();
-  }
-
-  const rows = await db
+async function getCurrentBayOperatorByBayId(db: Db | DatabaseTransaction, bayId: string): Promise<BayOperator | null> {
+  const [row] = await db
     .select({
-      bayId: jobBayOperatorAssignments.bayId,
       email: user.email,
       id: user.id,
       image: user.image,
@@ -378,14 +384,28 @@ export async function listCurrentBayOperatorsByBayId(
     })
     .from(jobBayOperatorAssignments)
     .innerJoin(user, eq(jobBayOperatorAssignments.operatorUserId, user.id))
-    .where(
-      bayIds
-        ? and(isNull(jobBayOperatorAssignments.unassignedAt), inArray(jobBayOperatorAssignments.bayId, [...bayIds]))
-        : isNull(jobBayOperatorAssignments.unassignedAt),
-    )
-    .orderBy(asc(user.name), asc(user.email), asc(user.id));
+    .where(and(eq(jobBayOperatorAssignments.bayId, bayId), isNull(jobBayOperatorAssignments.unassignedAt)));
 
-  return new Map(rows.map((row) => [row.bayId, mapBayOperator(row)]));
+  return row ? mapBayOperator(row) : null;
+}
+
+export async function listOpenBayOperatorAssignmentBayNames({
+  db,
+  userId,
+}: {
+  db: Db | DatabaseTransaction;
+  userId: string;
+}): Promise<string[]> {
+  const rows = await db
+    .select({
+      bayName: jobBays.name,
+    })
+    .from(jobBayOperatorAssignments)
+    .innerJoin(jobBays, eq(jobBayOperatorAssignments.bayId, jobBays.id))
+    .where(and(eq(jobBayOperatorAssignments.operatorUserId, userId), isNull(jobBayOperatorAssignments.unassignedAt)))
+    .orderBy(asc(jobBays.department), asc(jobBays.name), asc(jobBays.id));
+
+  return rows.map((row) => row.bayName);
 }
 
 function mapJobBay(row: JobBayRow, currentOperator: BayOperator | null): Bay {

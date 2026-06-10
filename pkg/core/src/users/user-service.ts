@@ -1,4 +1,4 @@
-import { type DatabaseTransaction, type Db, jobBayOperatorAssignments, jobBays, user, userDepartment } from '@pkg/db';
+import { type DatabaseTransaction, type Db, user, userDepartment } from '@pkg/db';
 import {
   AppRole,
   type AuditChanges,
@@ -10,9 +10,10 @@ import {
   type UserListResult,
   type UserSummary,
 } from '@pkg/schema';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 import { defineAuditDescriptor, diffAuditUpdate, recordAuditEvent, recordAuditUpdate } from '../audit/audit-service.js';
+import { listOpenBayOperatorAssignmentBayNames } from '../jobs/job-bay-service.js';
 import { UserNotFoundError } from './user-errors.js';
 
 type UserAuditInput = Pick<typeof user.$inferSelect, 'id' | 'email' | 'image' | 'phoneNumber'>;
@@ -238,6 +239,10 @@ export type UserRoleAssignmentPolicyResult =
   | { allowed: false; reason: 'last-admin' }
   | { allowed: false; bayNames: string[]; reason: 'open-bay-operator-assignments' };
 
+// This policy check runs in its own transaction, but the role write it guards happens later inside
+// better-auth, outside any lock taken here. A concurrent operator assignment can land between this
+// check and that write — an accepted race: the window is tiny, the flow is admin-only, and the
+// one-operator-per-bay invariant itself is enforced by the database.
 export async function canAssignUserRole({
   db,
   role,
@@ -268,7 +273,10 @@ export async function canAssignUserRole({
     }
 
     if (currentRole === 'bay-operator') {
-      const openBayOperatorAssignmentBayNames = await listOpenBayOperatorAssignmentBayNames({ db: tx, userId });
+      const openBayOperatorAssignmentBayNames = await listOpenBayOperatorAssignmentBayNames({
+        db: tx,
+        userId,
+      });
 
       if (openBayOperatorAssignmentBayNames.length > 0) {
         return {
@@ -298,25 +306,6 @@ export async function canAssignUserRole({
 
     return { allowed: true };
   });
-}
-
-async function listOpenBayOperatorAssignmentBayNames({
-  db,
-  userId,
-}: {
-  db: DatabaseTransaction;
-  userId: AuthId;
-}): Promise<string[]> {
-  const rows = await db
-    .select({
-      bayName: jobBays.name,
-    })
-    .from(jobBayOperatorAssignments)
-    .innerJoin(jobBays, eq(jobBayOperatorAssignments.bayId, jobBays.id))
-    .where(and(eq(jobBayOperatorAssignments.operatorUserId, userId), isNull(jobBayOperatorAssignments.unassignedAt)))
-    .orderBy(asc(jobBays.department), asc(jobBays.name), asc(jobBays.id));
-
-  return rows.map((row) => row.bayName);
 }
 
 async function setUserDepartmentsInTransaction({

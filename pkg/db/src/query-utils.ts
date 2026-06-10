@@ -57,8 +57,11 @@ export function getUniqueViolationConstraint(error: unknown): string | null {
   }
 
   if ('code' in error && error.code === '23505') {
-    if ('constraint' in error && typeof error.constraint === 'string') {
-      return error.constraint;
+    // node-postgres reports `constraint`; postgres-js reports the wire-protocol `constraint_name`.
+    const constraint = getStringProperty(error, 'constraint') ?? getStringProperty(error, 'constraint_name');
+
+    if (constraint) {
+      return constraint;
     }
 
     const causeConstraint = 'cause' in error ? getUniqueViolationConstraint(error.cause) : null;

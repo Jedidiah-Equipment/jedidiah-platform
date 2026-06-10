@@ -6,6 +6,7 @@ import {
   documents,
   getPaginationQueryOptions,
   jobBayCalendarExceptions,
+  jobBayOperatorAssignments,
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
@@ -36,7 +37,7 @@ import {
   type SortDirection,
   UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -45,7 +46,7 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { listCurrentBayOperatorsByBayId } from './job-bay-service.js';
+import { getCurrentBayOperator, type OpenOperatorAssignmentsRow } from './job-bay-service.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 
@@ -54,23 +55,28 @@ type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 't
 type QuoteRow = Pick<typeof quotes.$inferSelect, 'code'> & {
   customer: CustomerRow;
 };
+
 type JobWithProductRow = JobRow & {
   product: ProductRow;
   quote: QuoteRow;
 };
+
 type JobDocumentRow = DocumentSummaryRow & {
   sourceProductName: string | null;
 };
+
 type BayCalendarExceptionRow = Pick<
   typeof jobBayCalendarExceptions.$inferSelect,
   'bayId' | 'date' | 'direction' | 'label'
 >;
-type BayScheduleRow = typeof jobBays.$inferSelect & {
-  calendarExceptions: BayCalendarExceptionRow[];
-  slots: (typeof jobSlots.$inferSelect & {
-    job: Pick<typeof jobs.$inferSelect, 'code' | 'id'> | null;
-  })[];
-};
+
+type BayScheduleRow = typeof jobBays.$inferSelect &
+  OpenOperatorAssignmentsRow & {
+    calendarExceptions: BayCalendarExceptionRow[];
+    slots: (typeof jobSlots.$inferSelect & {
+      job: Pick<typeof jobs.$inferSelect, 'code' | 'id'> | null;
+    })[];
+  };
 
 // Any `job:read` user sees the full cross-department schedule, so bay reads are not department-scoped.
 function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
@@ -78,6 +84,15 @@ function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
     where,
     orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
     with: {
+      operatorAssignments: {
+        columns: {},
+        where: isNull(jobBayOperatorAssignments.unassignedAt),
+        with: {
+          operator: {
+            columns: { email: true, id: true, image: true, name: true },
+          },
+        },
+      },
       calendarExceptions: {
         columns: {
           bayId: true,
@@ -102,32 +117,17 @@ function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
   });
 }
 
-function toBaySchedules(
-  rows: BayScheduleRow[],
-  offDays: readonly OffDay[],
-  operatorsByBayId: ReadonlyMap<string, Bay['currentOperator']>,
-): BaySchedule[] {
+function toBaySchedules(rows: BayScheduleRow[], offDays: readonly OffDay[]): BaySchedule[] {
   const orgWorkingCalendar = createOrgWorkingCalendar(offDays);
 
-  return rows.map((row) =>
-    mapBaySchedule(
-      row,
-      createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions),
-      operatorsByBayId.get(row.id) ?? null,
-    ),
-  );
+  return rows.map((row) => mapBaySchedule(row, createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions)));
 }
 
 export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promise<BayListResult> {
-  const offDays = await listWorkingCalendarOffDays(db);
-  const rows = await findBayScheduleRows(db);
-  const operatorsByBayId = await listCurrentBayOperatorsByBayId(
-    db,
-    rows.map((row) => row.id),
-  );
+  const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBayScheduleRows(db)]);
 
   return {
-    items: toBaySchedules(rows, offDays, operatorsByBayId),
+    items: toBaySchedules(rows, offDays),
     offDays,
   };
 }
@@ -148,12 +148,8 @@ async function getJobSchedule({
     listWorkingCalendarOffDays(db),
     findBayScheduleRows(db, inArray(jobBays.id, jobBayIds)),
   ]);
-  const operatorsByBayId = await listCurrentBayOperatorsByBayId(
-    db,
-    rows.map((row) => row.id),
-  );
 
-  return mapJobSchedule({ bays: toBaySchedules(rows, offDays, operatorsByBayId), jobId });
+  return mapJobSchedule({ bays: toBaySchedules(rows, offDays), jobId });
 }
 
 export async function listWorkingCalendarOffDays(db: Db | DatabaseTransaction) {
@@ -255,11 +251,7 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
   };
 }
 
-function mapBaySchedule(
-  row: BayScheduleRow,
-  workingCalendar: WorkingCalendar,
-  currentOperator: Bay['currentOperator'],
-) {
+function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
   const projection = projectJobSlots({
     scheduleOrigin: row.scheduleOrigin,
     slots: row.slots,
@@ -267,7 +259,7 @@ function mapBaySchedule(
   });
 
   return BaySchedule.parse({
-    ...Bay.parse({ ...row, currentOperator }),
+    ...Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) }),
     calendarExceptions: row.calendarExceptions,
     nextAvailableAt: projection.nextAvailableAt,
     slots: projection.slots.map((slot) => {

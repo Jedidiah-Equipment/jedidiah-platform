@@ -111,7 +111,7 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                 {(field) => (
                   <RoleField
                     disabled={isPending}
-                    errors={[...field.state.meta.errors, roleError ? { message: roleError } : undefined]}
+                    errors={[...field.state.meta.errors, ...(roleError ? [{ message: roleError }] : [])]}
                     name={field.name}
                     onRoleChange={(role) => {
                       onRoleChange?.();

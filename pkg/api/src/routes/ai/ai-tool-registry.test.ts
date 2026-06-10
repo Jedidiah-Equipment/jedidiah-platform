@@ -4,10 +4,12 @@ import { aiLinkMetadata } from './ai-link-metadata.js';
 import { projectAiToolResult } from './ai-tool-registry.js';
 
 describe('AI result projections', () => {
-  test('adds Job and linked Quote metadata without mutating the base result', () => {
+  test('adds Job and linked Quote and Customer metadata without mutating the base result', () => {
     const job = {
       id: '00000000-0000-4000-8000-000000000001',
       code: 'JOB-00001',
+      customerCompanyName: 'Apex Quarry Services',
+      customerId: '00000000-0000-4000-8000-000000000005',
       quoteCode: 'QUO-00002',
       quoteId: '00000000-0000-4000-8000-000000000002',
     };
@@ -26,6 +28,11 @@ describe('AI result projections', () => {
           entity: 'Quote',
           href: '/quotes/00000000-0000-4000-8000-000000000002',
           label: 'QUO-00002',
+        },
+        {
+          entity: 'Customer',
+          href: '/customers/00000000-0000-4000-8000-000000000005/edit',
+          label: 'Apex Quarry Services',
         },
       ],
     });

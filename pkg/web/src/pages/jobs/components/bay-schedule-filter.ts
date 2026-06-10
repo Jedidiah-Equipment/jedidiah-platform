@@ -1,4 +1,5 @@
 import type { UUID } from '@pkg/schema';
+import { toJobDateKey } from './job-date-key.js';
 
 export type BayScheduleFilter = {
   bayId: UUID | null;
@@ -101,6 +102,7 @@ export function getEarliestBayScheduleFilterMatchStart({
   let earliestStart: Date | null = null;
   let earliestFutureStart: Date | null = null;
   const shouldPreferFuture = filter.bayId !== null || filter.customerId !== null;
+  const todayDateKey = toJobDateKey(today);
 
   for (const bay of bays) {
     for (const slot of bay.slots) {
@@ -116,7 +118,7 @@ export function getEarliestBayScheduleFilterMatchStart({
 
       if (
         shouldPreferFuture &&
-        startAt.getTime() > today.getTime() &&
+        toJobDateKey(startAt) >= todayDateKey &&
         (earliestFutureStart === null || startAt.getTime() < earliestFutureStart.getTime())
       ) {
         earliestFutureStart = startAt;

@@ -8,7 +8,16 @@ import {
   type WorkingCalendar,
 } from '@pkg/domain';
 import type { BaySchedule, JobSlotPlacement, JobSummary, OffDay, ProjectedJobSlot, UUID } from '@pkg/schema';
-import { IconAlertTriangle, IconClockPlus, IconLoader2, IconMinus, IconPlus, IconTrash } from '@tabler/icons-react';
+import {
+  IconAlertTriangle,
+  IconClockPlus,
+  IconLoader2,
+  IconMaximize,
+  IconMinimize,
+  IconMinus,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -86,8 +95,10 @@ type FilterScrollRequest = {
 type AnchoredZoomChange = (applyZoomChange: () => void) => void;
 
 export const BayScheduleGantt: React.FC<{
+  fullscreen?: boolean;
+  onFullscreenChange?: ((fullscreen: boolean) => void) | undefined;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
-}> = ({ onSelectSlot }) => {
+}> = ({ fullscreen = false, onFullscreenChange, onSelectSlot }) => {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
@@ -254,12 +265,17 @@ export const BayScheduleGantt: React.FC<{
         noMatches={isFilterActive && filterMatchCount === 0}
         onFilterChange={handleFilterChange}
         trailingContent={
-          <BayScheduleZoomControls
-            onReset={() => applyAnchoredZoomChange(resetZoom)}
-            onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
-            onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
-            zoom={zoom}
-          />
+          <div className="flex items-center gap-2">
+            {onFullscreenChange ? (
+              <BayScheduleFullscreenToggle fullscreen={fullscreen} onFullscreenChange={onFullscreenChange} />
+            ) : null}
+            <BayScheduleZoomControls
+              onReset={() => applyAnchoredZoomChange(resetZoom)}
+              onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
+              onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
+              zoom={zoom}
+            />
+          </div>
         }
       />
       <div
@@ -323,6 +339,33 @@ const BayScheduleFilterScrollController: React.FC<{
   }, [request]);
 
   return null;
+};
+
+const BayScheduleFullscreenToggle: React.FC<{
+  fullscreen: boolean;
+  onFullscreenChange: (fullscreen: boolean) => void;
+}> = ({ fullscreen, onFullscreenChange }) => {
+  const label = fullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
+  const Icon = fullscreen ? IconMinimize : IconMaximize;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label={label}
+            onClick={() => onFullscreenChange(!fullscreen)}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          />
+        }
+      >
+        <Icon />
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
 };
 
 const BayScheduleZoomControls: React.FC<{

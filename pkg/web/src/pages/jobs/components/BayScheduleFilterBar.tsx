@@ -1,6 +1,7 @@
 import type { JobSummary, UUID } from '@pkg/schema';
 import { IconFilterOff } from '@tabler/icons-react';
 import type React from 'react';
+import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button.js';
 import {
@@ -25,6 +26,7 @@ type BayScheduleFilterBarProps = {
   jobs: ReadonlyArray<Pick<JobSummary, 'id' | 'code' | 'customerCompanyName' | 'customerId' | 'productSerialNumber'>>;
   noMatches: boolean;
   onFilterChange: (filter: BayScheduleFilter) => void;
+  trailingContent?: ReactNode;
 };
 
 export const BayScheduleFilterBar: React.FC<BayScheduleFilterBarProps> = ({
@@ -33,6 +35,7 @@ export const BayScheduleFilterBar: React.FC<BayScheduleFilterBarProps> = ({
   jobs,
   noMatches,
   onFilterChange,
+  trailingContent,
 }) => {
   const jobOptions = useMemo<FilterOption<UUID>[]>(
     () => jobs.map((job) => ({ hint: job.productSerialNumber, id: job.id, label: job.code })),
@@ -82,6 +85,7 @@ export const BayScheduleFilterBar: React.FC<BayScheduleFilterBarProps> = ({
         </Button>
       ) : null}
       {noMatches ? <span className="text-muted-foreground text-xs">No slots match the current filters.</span> : null}
+      {trailingContent ? <div className="ml-auto flex items-center gap-1.5">{trailingContent}</div> : null}
     </div>
   );
 };

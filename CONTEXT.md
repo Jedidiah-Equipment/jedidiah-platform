@@ -104,6 +104,9 @@ The numeric percentage of the Quote Total required as a customer deposit. On a Q
 **Preferred Delivery Date**:
 The date the customer would like delivery. Optional, captured by the salesperson from the customer's ask. No enforced relationship to Planned Delivery Date — Planned may be earlier, later, or equal.
 
+**Job Start Alert**:
+A visibility signal for an accepted Quote that has no Job and has an earliest set delivery date on or before two calendar months from the current Johannesburg date, inclusive. The earliest set delivery date is the minimum of Preferred Delivery Date and Planned Delivery Date, ignoring blank dates; the alert exists to keep near-term accepted work visible until its Job is created.
+
 **Planned Delivery Date**:
 The date the salesperson commits to (or forecasts) for delivery. Optional. No enforced relationship to Preferred Delivery Date.
 

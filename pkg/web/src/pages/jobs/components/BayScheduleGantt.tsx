@@ -89,7 +89,7 @@ import {
   BAY_SCHEDULE_ZOOM_MIN,
   useBayScheduleViewStore,
 } from './bay-schedule-view-store.js';
-import { fromJobCalendarDateKey, toJobCalendarDateKey } from './job-date-key.js';
+import { fromJobCalendarDateKey } from './job-date-key.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
@@ -135,7 +135,8 @@ export const BayScheduleGantt: React.FC<{
     () => new Map(getMaintainedHorizonWarnings({ bays, offDays }).map((warning) => [warning.bayId, warning])),
     [bays, offDays],
   );
-  const initialDate = useMemo(() => new Date(), []);
+  // One scheduling "today" for the whole surface: the view opens on the plant's current day.
+  const initialDate = useMemo(() => (plantToday ? fromJobCalendarDateKey(plantToday) : new Date()), [plantToday]);
   const [optimisticBays, setOptimisticBays] = useState<BaySchedule[] | null>(null);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<BayScheduleFilter>(emptyBayScheduleFilter);
@@ -297,7 +298,7 @@ export const BayScheduleGantt: React.FC<{
     return <ErrorMessage error={baysQuery.error} fallbackMessage="Unable to load bay schedule." />;
   }
 
-  if (displayedBays.length === 0) {
+  if (displayedBays.length === 0 || !plantToday) {
     return null;
   }
 
@@ -343,7 +344,7 @@ export const BayScheduleGantt: React.FC<{
           >
             <BayScheduleFilterScrollController request={filterScrollRequest} />
             <BayScheduleZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
-            <BayScheduleSidebar bays={displayedBays} horizonWarnings={horizonWarnings} />
+            <BayScheduleSidebar bays={displayedBays} horizonWarnings={horizonWarnings} today={plantToday} />
             <GanttTimeline>
               <GanttHeader />
               <OffDayBands offDays={offDays} />
@@ -351,6 +352,7 @@ export const BayScheduleGantt: React.FC<{
               <BaySlotBars
                 bays={displayedBays}
                 canEditScheduleByBayId={schedulableBayIds}
+                today={plantToday}
                 filter={filter}
                 isScheduleMutationPending={isScheduleMutationPending}
                 jobsById={jobsById}
@@ -510,9 +512,9 @@ const BayScheduleZoomAnchorController: React.FC<{
 const BayScheduleSidebar: React.FC<{
   bays: BaySchedule[];
   horizonWarnings: ReadonlyMap<string, MaintainedHorizonWarning>;
-}> = ({ bays, horizonWarnings }) => {
-  const today = toJobCalendarDateKey(new Date());
-
+  /** Plant business date from the schedule read — busy/idle is plant state, not viewer-local. */
+  today: DateOnlyIso;
+}> = ({ bays, horizonWarnings, today }) => {
   return (
     <GanttSidebar secondaryTitle={null} title="Bay">
       <div className="divide-y divide-border/50">
@@ -581,6 +583,7 @@ const getCurrentBaySlot = (slots: ProjectedJobSlot[], today: DateOnlyIso) =>
 const BaySlotBars: React.FC<{
   bays: BaySchedule[];
   canEditScheduleByBayId: ReadonlySet<string>;
+  today: DateOnlyIso;
   filter: BayScheduleFilter;
   isScheduleMutationPending: boolean;
   jobsById: ReadonlyMap<string, JobSummary>;
@@ -604,6 +607,7 @@ const BaySlotBars: React.FC<{
   onResizeSlot,
   onSelectSlot,
   optimisticResizeDaysBySlotId,
+  today,
 }) => {
   const gantt = useGanttContext();
   const workingCalendarsByBayId = useMemo(() => createWorkingCalendarsByBayId(bays, offDays), [bays, offDays]);
@@ -630,6 +634,7 @@ const BaySlotBars: React.FC<{
             slot={slot}
             slotIndex={slotIndex}
             slotCount={bay.slots.length}
+            today={today}
             workingCalendar={workingCalendarsByBayId.get(bay.id) ?? {}}
           />
         )),
@@ -661,6 +666,7 @@ const BaySlotBar: React.FC<{
   slot: ProjectedJobSlot;
   slotIndex: number;
   slotCount: number;
+  today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
 }> = ({
   bayId,
@@ -678,6 +684,7 @@ const BaySlotBar: React.FC<{
   slot,
   slotIndex,
   slotCount,
+  today,
   workingCalendar,
 }) => {
   const gantt = useGanttContext();
@@ -707,8 +714,7 @@ const BaySlotBar: React.FC<{
   const left = getJobGanttOffset(startDate, gantt);
   const width = Math.max(getJobGanttWidth(startDate, previewEndDate, gantt), 28);
   const isIdle = slot.kind === 'idle';
-  // The "active" slot is the booked job currently in progress (today within its span).
-  const today = toJobCalendarDateKey(new Date());
+  // The "active" slot is the booked job in progress on the plant's current business day.
   const isActive = !isIdle && startDate <= today && today < previewEndDate;
   const height = SLOT_CARD_HEIGHT;
   // Center the bar/card vertically within its (taller) bay row.

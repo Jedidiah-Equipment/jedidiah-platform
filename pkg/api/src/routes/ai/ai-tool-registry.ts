@@ -456,7 +456,7 @@ function projectQuote(value: unknown): unknown {
     label ? createAiLink('Quote', label, value.id) : null,
     createLink('Customer', value.customerCompanyName, value.customerId),
     createLink('Product', value.productName, value.productId),
-    ...createLinkedJobLinks(value.linkedJobs),
+    createJobLink(value.job),
   ]);
 }
 
@@ -481,18 +481,12 @@ function createLink(entity: AiLink['entity'], label: unknown, id: unknown): AiLi
   return createAiLink(entity, label, id);
 }
 
-function createLinkedJobLinks(value: unknown): AiLink[] {
-  if (!Array.isArray(value)) {
-    return [];
+function createJobLink(value: unknown): AiLink | null {
+  if (!isObjectRecord(value) || typeof value.jobCode !== 'string' || typeof value.jobId !== 'string') {
+    return null;
   }
 
-  return value
-    .map((item) =>
-      isObjectRecord(item) && typeof item.jobCode === 'string' && typeof item.jobId === 'string'
-        ? createAiLink('Job', item.jobCode, item.jobId)
-        : null,
-    )
-    .filter((link): link is AiLink => link !== null);
+  return createAiLink('Job', value.jobCode, value.jobId);
 }
 
 function isRecord(value: unknown): value is LinkableRecord {

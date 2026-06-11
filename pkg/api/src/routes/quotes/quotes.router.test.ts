@@ -565,12 +565,10 @@ describe('quotes.list', () => {
           documentNotes: 'Paid before dispatch',
           plannedDeliveryDate: '2026-07-05',
           preferredDeliveryDate: '2026-07-01',
-          linkedJobs: [
-            {
-              jobCode: job.code,
-              jobId: job.id,
-            },
-          ],
+          job: {
+            jobCode: job.code,
+            jobId: job.id,
+          },
         },
       ],
     });
@@ -591,12 +589,10 @@ describe('quotes.list', () => {
       items: [
         {
           code: finalQuote.code,
-          linkedJobs: [
-            {
-              jobCode: job.code,
-              jobId: job.id,
-            },
-          ],
+          job: {
+            jobCode: job.code,
+            jobId: job.id,
+          },
         },
       ],
     });

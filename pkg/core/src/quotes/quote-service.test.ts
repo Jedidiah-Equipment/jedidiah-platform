@@ -4,6 +4,7 @@ import {
   jobBayCalendarExceptions,
   jobBays,
   jobSlots,
+  jobs,
   productBays,
   products,
   quotes,
@@ -11,7 +12,7 @@ import {
   workingCalendarOffDays,
 } from '@pkg/db';
 import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow } from '@pkg/domain';
-import type { QuoteStatus } from '@pkg/schema';
+import { formatJobCode, type QuoteStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -19,6 +20,7 @@ import {
   countQuotesByWeek,
   getQuote,
   getQuoteProductBayAvailability,
+  listPriorityQuotes,
   summarizeQuotesByStatus,
 } from './quote-service.js';
 
@@ -161,6 +163,14 @@ describe('countQuotesByWeek', () => {
       ],
     });
   });
+
+  test('uses the injected plant date when the UTC day rolls into a Johannesburg Monday', async ({ context }) => {
+    const rolloverClock = () => new Date('2026-01-04T22:00:00.000Z');
+
+    await expect(countQuotesByWeek({ clock: rolloverClock, db: context.db, weekCount: 1 })).resolves.toEqual({
+      items: [{ count: 0, weekStartDate: '2026-01-05' }],
+    });
+  });
 });
 
 describe('getQuote', () => {
@@ -228,6 +238,66 @@ describe('getQuote', () => {
     }
 
     await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({ productBays: [] });
+  });
+
+  test('returns the single linked Job through the quote compatibility array', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const [job] = await context.db
+      .insert(jobs)
+      .values({
+        productId: quote.productId,
+        productSerialNumber: 'QUOTE-SUMMARY-001-26-001',
+        productSerialPrefix: 'QUOTE-SUMMARY-001',
+        productSerialSequence: 1,
+        productSerialYear: 26,
+        quoteId: quote.id,
+      })
+      .returning();
+
+    if (!job) {
+      throw new Error('Job insert did not return a row');
+    }
+
+    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+      job: { jobCode: formatJobCode(job.code), jobId: job.id },
+    });
+  });
+});
+
+describe('listPriorityQuotes', () => {
+  test('derives the priority window from the injected plant date', async ({ context }) => {
+    const marchEndQuote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      plannedDeliveryDate: '2026-03-31',
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const aprilStartQuote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      plannedDeliveryDate: '2026-04-01',
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+
+    await expect(
+      listPriorityQuotes({
+        clock: () => new Date('2026-01-31T21:59:59.000Z'),
+        db: context.db,
+      }),
+    ).resolves.toMatchObject([{ id: marchEndQuote.id }]);
+    await expect(
+      listPriorityQuotes({
+        clock: () => new Date('2026-01-31T22:00:00.000Z'),
+        db: context.db,
+      }),
+    ).resolves.toMatchObject([{ id: marchEndQuote.id }, { id: aprilStartQuote.id }]);
   });
 });
 
@@ -379,9 +449,13 @@ async function createQuote(
     customerId,
     productId,
     salesPersonId,
+    plannedDeliveryDate,
+    preferredDeliveryDate,
     status = 'draft',
   }: {
     customerId: string;
+    plannedDeliveryDate?: string;
+    preferredDeliveryDate?: string;
     productId: string;
     salesPersonId: string;
     status?: QuoteStatus;
@@ -391,6 +465,8 @@ async function createQuote(
     .insert(quotes)
     .values({
       customerId,
+      plannedDeliveryDate,
+      preferredDeliveryDate,
       productId,
       quotedBasePrice: 1000,
       quotedCurrencyCode: 'ZAR',

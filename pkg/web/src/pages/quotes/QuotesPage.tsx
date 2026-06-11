@@ -1,18 +1,11 @@
-import {
-  computeQuoteDiscountAmount,
-  computeQuoteTotal,
-  formatCurrency,
-  formatPercent,
-  hasPermission,
-} from '@pkg/domain';
+import { hasPermission } from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { type ColumnDef, type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { type ColumnFiltersState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type React from 'react';
 import { useMemo, useState } from 'react';
-import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useConstrainedTableState } from '@/components/data-table/hooks/use-constrained-table-state.js';
 import { usePagedQueryResult } from '@/components/data-table/hooks/use-paged-query-result.js';
@@ -20,15 +13,19 @@ import { useServerSideTableController } from '@/components/data-table/hooks/use-
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { useCustomerForQuoteOptions, useProductForQuoteOptions, useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { quotesPageDescription } from '@/utils/page-descriptions.js';
-import { QuoteLinkedJobs } from './components/QuoteLinkedJobs.js';
-import { QuoteStatusBadge, quoteStatusLabels } from './components/QuoteStatusBadge.js';
+import {
+  createPriorityQuoteTableRow,
+  createQuoteTableColumns,
+  createQuoteTableRow,
+  getQuoteTableRowClassName,
+  type QuoteTableRow,
+} from './components/QuoteTableColumns.js';
 import { QuoteCreateDialog } from './QuoteCreateDialog.js';
 
 export const useQuoteTableStore = createPersistedDataTableStore({
@@ -51,11 +48,6 @@ const quoteSortOptions: SortOptions<QuoteListInput> = {
     id: 'createdAt',
   },
 };
-
-const quoteStatusFilterOptions = QuoteStatus.options.map((status) => ({
-  label: quoteStatusLabels[status],
-  value: status,
-}));
 
 export const QuotesPage: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -101,7 +93,12 @@ const QuoteTable: React.FC = () => {
       placeholderData: keepPreviousData,
     }),
   );
+  const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions());
   const { items: quotes, total, isLoading } = usePagedQueryResult(quotesQuery);
+  const priorityQuotes = priorityQuotesQuery.data ?? [];
+  const normalQuoteRows = useMemo(() => quotes.map(createQuoteTableRow), [quotes]);
+  const priorityQuoteRows = useMemo(() => priorityQuotes.map(createPriorityQuoteTableRow), [priorityQuotes]);
+  const tableRows = useMemo(() => [...priorityQuoteRows, ...normalQuoteRows], [normalQuoteRows, priorityQuoteRows]);
 
   const tableState = useConstrainedTableState({
     pagination: tableController.pagination,
@@ -111,110 +108,20 @@ const QuoteTable: React.FC = () => {
     total,
   });
 
-  const columns = useMemo<ColumnDef<QuoteSummary>[]>(
-    () => [
-      {
-        accessorKey: 'code',
-        cell: ({ row }) => <QuoteCodeCell quote={row.original} />,
-        enableColumnFilter: false,
-        enableSorting: true,
-        header: 'Quote',
-        meta: {
-          headerClassName: 'min-w-36',
-        },
-      },
-      {
-        accessorKey: 'customerCompanyName',
-        cell: ({ row }) => <CustomerCell quote={row.original} />,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Customer',
-        meta: {
-          filterOptions: customerOptions.selectOptions,
-          filterVariant: 'select',
-          headerClassName: 'min-w-52',
-        },
-      },
-      {
-        accessorKey: 'salesPersonName',
-        cell: ({ row }) => <SalesPersonCell quote={row.original} />,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Salesperson',
-        meta: {
-          filterOptions: salespersonOptions.selectOptions,
-          filterVariant: 'select',
-          headerClassName: 'min-w-48',
-        },
-      },
-      {
-        accessorKey: 'productName',
-        cell: ({ row }) => <ProductCell quote={row.original} />,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Product',
-        meta: {
-          filterOptions: productOptions.selectOptions,
-          filterVariant: 'select',
-          headerClassName: 'min-w-60',
-        },
-      },
-      {
-        id: 'total',
-        cell: ({ row }) => <CommercialCell quote={row.original} />,
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: 'Total',
-        meta: {
-          cellClassName: 'text-right',
-          headerClassName: 'min-w-36 text-right',
-        },
-      },
-      {
-        id: 'terms',
-        cell: ({ row }) => <TermsCell quote={row.original} />,
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: 'Terms',
-        meta: {
-          headerClassName: 'min-w-36',
-        },
-      },
-      {
-        accessorKey: 'validUntil',
-        cell: ({ row }) => <QuoteDatesCell quote={row.original} />,
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: 'Dates',
-        meta: {
-          headerClassName: 'min-w-44',
-        },
-      },
-      {
-        accessorKey: 'status',
-        cell: ({ row }) => <QuoteStatusBadge status={row.original.status} />,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Status',
-        meta: {
-          filterOptions: quoteStatusFilterOptions,
-          filterVariant: 'multi-select',
-        },
-      },
-      {
-        accessorKey: 'linkedJobs',
-        cell: ({ row }) => <QuoteLinkedJobs canOpenJobs={canOpenJobs} linkedJobs={row.original.linkedJobs} />,
-        enableColumnFilter: false,
-        enableSorting: false,
-        header: 'Job',
-      },
-    ],
+  const columns = useMemo(
+    () =>
+      createQuoteTableColumns({
+        canOpenJobs,
+        customerOptions: customerOptions.selectOptions,
+        productOptions: productOptions.selectOptions,
+        salespersonOptions: salespersonOptions.selectOptions,
+      }),
     [canOpenJobs, customerOptions.selectOptions, productOptions.selectOptions, salespersonOptions.selectOptions],
   );
 
   const table = useReactTable({
     columns,
-    data: quotes,
+    data: tableRows,
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     manualFiltering: true,
@@ -234,16 +141,25 @@ const QuoteTable: React.FC = () => {
     },
   });
 
+  const handleQuoteClick = (row: QuoteTableRow) => navigate({ params: { id: row.quote.id }, to: '/quotes/$id/edit' });
+  const quoteRowClick = canUpdateQuote ? handleQuoteClick : undefined;
+  const errorMessage =
+    getApiQueryErrorMessage(quotesQuery.error, 'Unable to load quotes.') ??
+    getApiQueryErrorMessage(priorityQuotesQuery.error, 'Unable to load priority quotes.');
+
   return (
     <DataTable
       emptyMessage="No quotes found."
-      errorMessage={getApiQueryErrorMessage(quotesQuery.error, 'Unable to load quotes.')}
-      getRowAriaLabel={canUpdateQuote ? (quote) => `Edit quote ${quote.code}` : undefined}
+      errorMessage={errorMessage}
+      getRowAriaLabel={
+        canUpdateQuote
+          ? (row) => `${row.kind === 'priority' ? 'Edit priority quote' : 'Edit quote'} ${row.quote.code}`
+          : undefined
+      }
+      getRowClassName={getQuoteTableRowClassName}
       globalFilterPlaceholder="Search quotes..."
       isLoading={isLoading}
-      onRowClick={
-        canUpdateQuote ? (quote) => navigate({ params: { id: quote.id }, to: '/quotes/$id/edit' }) : undefined
-      }
+      onRowClick={quoteRowClick}
       tableClassName="min-w-[1180px]"
       table={table}
       total={total}
@@ -278,121 +194,4 @@ function getIdFilterValue(
   const value = columnFilters.find((filter) => filter.id === id)?.value;
 
   return typeof value === 'string' && value ? value : undefined;
-}
-
-function QuoteCodeCell({ quote }: { quote: QuoteSummary }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="font-mono font-medium tabular-nums">{quote.code}</span>
-      <span className="text-xs text-muted-foreground">
-        Created <DateDisplay date={quote.createdAt} />
-      </span>
-    </div>
-  );
-}
-
-function CustomerCell({ quote }: { quote: QuoteSummary }) {
-  return (
-    <div className="flex min-w-0 items-center gap-2">
-      <EntityThumbnail label={quote.customerCompanyName} size="sm" thumbnailDataUrl={quote.customerThumbnailDataUrl} />
-      <span className="min-w-0 truncate font-medium">{quote.customerCompanyName}</span>
-    </div>
-  );
-}
-
-function SalesPersonCell({ quote }: { quote: QuoteSummary }) {
-  if (!quote.salesPersonName) {
-    return <span className="text-muted-foreground">Not assigned</span>;
-  }
-
-  return (
-    <div className="flex min-w-0 items-center gap-2">
-      <EntityThumbnail label={quote.salesPersonName} size="sm" thumbnailDataUrl={quote.salesPersonThumbnailDataUrl} />
-      <span className="truncate font-medium">{quote.salesPersonName}</span>
-    </div>
-  );
-}
-
-function ProductCell({ quote }: { quote: QuoteSummary }) {
-  const selectedAssemblyCount = getLiveSelectedAssemblyCount(quote);
-
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate font-medium">{quote.productName}</span>
-      <span className="truncate text-xs text-muted-foreground">
-        <span className="font-mono">{quote.productModelCode}</span> / {quote.productBuildTimeDays}d build
-        {selectedAssemblyCount > 0 ? ` / ${selectedAssemblyCount} option${selectedAssemblyCount === 1 ? '' : 's'}` : ''}
-      </span>
-    </div>
-  );
-}
-
-function CommercialCell({ quote }: { quote: QuoteSummary }) {
-  const liveSelectedAssemblies = getLiveSelectedAssemblies(quote);
-  const discountAmount = computeQuoteDiscountAmount({
-    discountPercent: quote.discountPercent,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
-  });
-
-  return (
-    <div className="flex flex-col items-end gap-0.5">
-      <span className="font-medium tabular-nums">{formatCurrency(getQuoteTotal(quote), quote.quotedCurrencyCode)}</span>
-      {discountAmount > 0 ? (
-        <span className="text-xs text-muted-foreground">
-          {formatCurrency(discountAmount, quote.quotedCurrencyCode)} ({formatPercent(quote.discountPercent)}) discount
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function TermsCell({ quote }: { quote: QuoteSummary }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="tabular-nums">{formatPercent(quote.depositPercent)} deposit</span>
-      <span className="text-xs text-muted-foreground">
-        {quote.deliveryIncluded
-          ? `${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)} delivery`
-          : 'Delivery excluded'}
-      </span>
-    </div>
-  );
-}
-
-function QuoteDatesCell({ quote }: { quote: QuoteSummary }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span>
-        Valid <DateDisplay date={quote.validUntil} emptyValue="Not set" />
-      </span>
-      <span className="text-xs text-muted-foreground">
-        Preferred <DateDisplay date={quote.preferredDeliveryDate} emptyValue="not set" />
-      </span>
-    </div>
-  );
-}
-
-function getQuoteTotal(quote: QuoteSummary): number {
-  // A stale selection is excluded from the total, matching the edit form's Effective Bill of
-  // Materials. The list has no product catalog to resolve against, but the selection FK is
-  // `on delete set null`, so a deleted catalog Optional Assembly leaves a null reference — which
-  // is the complete stale set for persisted selections.
-  const liveSelectedAssemblies = getLiveSelectedAssemblies(quote);
-
-  return computeQuoteTotal({
-    deliveryIncluded: quote.deliveryIncluded,
-    deliveryPrice: quote.deliveryPrice,
-    discountPercent: quote.discountPercent,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
-  });
-}
-
-function getLiveSelectedAssemblyCount(quote: QuoteSummary): number {
-  return getLiveSelectedAssemblies(quote).length;
-}
-
-function getLiveSelectedAssemblies(quote: QuoteSummary): QuoteSummary['selectedAssemblies'] {
-  return quote.selectedAssemblies.filter((assembly) => assembly.productAssemblyId !== null);
 }

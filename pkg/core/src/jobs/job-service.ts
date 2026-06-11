@@ -125,15 +125,13 @@ export async function createJob({
       productId: quote.productId,
       tx,
     });
-    for (const seed of input.baySeeds) {
-      const queue = await lockBayQueue(tx, seed.bayId, { plantToday });
-      const spec = { durationDays: seed.durationDays, jobId: job.id, kind: 'work' } as const;
+    // Canonical lock order: concurrent creates seeding the same Bays must not deadlock.
+    const seeds = [...input.baySeeds].sort((left, right) => left.bayId.localeCompare(right.bayId));
 
-      if (seed.startDate) {
-        await queue.insertAtDate(spec, { startDate: seed.startDate });
-      } else {
-        await queue.append(spec);
-      }
+    for (const seed of seeds) {
+      const queue = await lockBayQueue(tx, seed.bayId, { plantToday });
+
+      await queue.book({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' }, { startDate: seed.startDate });
     }
 
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
@@ -157,10 +155,10 @@ export async function bookJobSlot({ db, input }: { db: Db; input: BookJobSlotInp
     }
 
     const queue = await lockBayQueue(tx, input.bayId, { plantToday });
-    const spec = { durationDays: input.durationDays, jobId: job.id, kind: 'work' } as const;
-    const slot = input.startDate
-      ? await queue.insertAtDate(spec, { startDate: input.startDate })
-      : await queue.append(spec);
+    const slot = await queue.book(
+      { durationDays: input.durationDays, jobId: job.id, kind: 'work' },
+      { startDate: input.startDate },
+    );
 
     return BookJobSlotResult.parse({ slot });
   });

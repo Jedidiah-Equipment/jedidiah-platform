@@ -11,7 +11,8 @@ import {
 } from './job-slot-projection.js';
 
 export type InsertAtDatePlacement<TSlot extends ProjectableJobSlot> =
-  | { type: 'append'; startDate: DateOnlyIso }
+  /** `idleGapDays` is the idle filler owed between a past queue end and the start (0 when the queue reaches today). */
+  | { type: 'append'; startDate: DateOnlyIso; idleGapDays: number }
   | { type: 'insert-before'; targetSlot: ProjectedSlot<TSlot>; startDate: DateOnlyIso }
   | { type: 'split'; targetSlot: ProjectedSlot<TSlot>; beforeDays: number; afterDays: number; startDate: DateOnlyIso };
 
@@ -22,7 +23,8 @@ export type InsertAtDatePlacement<TSlot extends ProjectableJobSlot> =
  * compared against the live projection — on or past the next available day it
  * clamps to a plain append (never fabricating idle), on a Slot's projected start
  * it inserts cleanly before, and strictly inside a Slot it splits that Slot into
- * two halves whose working days sum to the original.
+ * two halves whose working days sum to the original. No picked date means a
+ * plain append, so date-less bookings share the same placement contract.
  */
 export function resolveInsertAtDatePlacement<TSlot extends ProjectableJobSlot>({
   currentDate,
@@ -32,21 +34,27 @@ export function resolveInsertAtDatePlacement<TSlot extends ProjectableJobSlot>({
   workingCalendar,
 }: {
   currentDate: DateOnlyIso;
-  pickedDate: DateOnlyIso;
+  pickedDate?: DateOnlyIso | undefined;
   scheduleOrigin: DateOnlyIso;
   slots: readonly TSlot[];
   workingCalendar?: WorkingCalendar;
 }): InsertAtDatePlacement<TSlot> {
   const calendar = workingCalendar ?? {};
-  const tomorrow = addDateOnlyDays(currentDate, 1);
-  const floored = maxDateOnly(pickedDate, tomorrow);
-  const effectiveDate = firstWorkingDayOnOrAfter(floored, calendar);
 
   const projection = projectJobSlots({ scheduleOrigin, slots, workingCalendar: calendar });
   const appendPlacement: InsertAtDatePlacement<TSlot> = {
     type: 'append',
     startDate: firstWorkingDayOnOrAfter(maxDateOnly(projection.nextAvailableDate, currentDate), calendar),
+    idleGapDays: countWorkingDaysBetween(projection.nextAvailableDate, currentDate, calendar),
   };
+
+  if (pickedDate === undefined) {
+    return appendPlacement;
+  }
+
+  const tomorrow = addDateOnlyDays(currentDate, 1);
+  const floored = maxDateOnly(pickedDate, tomorrow);
+  const effectiveDate = firstWorkingDayOnOrAfter(floored, calendar);
 
   if (effectiveDate >= firstWorkingDayOnOrAfter(projection.nextAvailableDate, calendar)) {
     return appendPlacement;

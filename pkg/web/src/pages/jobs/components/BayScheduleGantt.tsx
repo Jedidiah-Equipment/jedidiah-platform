@@ -1,12 +1,4 @@
-import {
-  addJobSlotDuration,
-  formatDate,
-  hasPermission,
-  type SlotCalendarDays,
-  segmentSlotCalendarDays,
-  summarizeSlotCalendarDays,
-  type WorkingCalendar,
-} from '@pkg/domain';
+import { formatDate, hasPermission } from '@pkg/domain';
 import type {
   BaySchedule,
   DateOnlyIso,
@@ -17,16 +9,7 @@ import type {
   ProjectedJobSlot,
   UUID,
 } from '@pkg/schema';
-import {
-  IconAlertTriangle,
-  IconArrowLeft,
-  IconArrowRight,
-  IconClockPlus,
-  IconLoader2,
-  IconMinus,
-  IconPlus,
-  IconTrash,
-} from '@tabler/icons-react';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -39,40 +22,25 @@ import {
   GanttSidebar,
   GanttTimeline,
   GanttToday,
-  getGanttCenteredDateFromScrollLeft,
   useGanttContext,
 } from '@/components/kibo-ui/gantt/index.js';
 import { PageLayoutFullscreenToggle } from '@/components/page-layout/PageLayoutFullscreenToggle.js';
-import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardHeader, CardSeparator } from '@/components/ui/card.js';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuGroup,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu.js';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { cn } from '@/lib/utils.js';
 import { allJobsInput } from './all-jobs-input.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
 import { BayScheduleFilterBar } from './BayScheduleFilterBar.js';
-import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
+import { BayScheduleGhostBars } from './BayScheduleGhostBars.js';
+import {
+  type AnchoredZoomChange,
+  BayScheduleZoomAnchorController,
+  BayScheduleZoomControls,
+} from './BayScheduleZoom.js';
+import { BaySlotBar } from './BaySlotBar.js';
 import { moveBaySlotForDisplay } from './bay-schedule-display-move.js';
 import {
   type BayScheduleFilter,
@@ -85,35 +53,21 @@ import {
 import {
   type BayScheduleGhostSeed,
   type DisplayBaySchedule,
-  type DisplayBaySlot,
   deriveGhostBaySchedules,
-  type GhostSlot,
   selectVisibleBaySchedules,
 } from './bay-schedule-ghosts.js';
-import { createWorkingCalendarsByBayId, getSlotLabel } from './bay-schedule-summary.js';
-import {
-  BAY_SCHEDULE_ZOOM_DEFAULT,
-  BAY_SCHEDULE_ZOOM_MAX,
-  BAY_SCHEDULE_ZOOM_MIN,
-  useBayScheduleViewStore,
-} from './bay-schedule-view-store.js';
+import { createWorkingCalendarsByBayId } from './bay-schedule-summary.js';
+import { useBayScheduleViewStore } from './bay-schedule-view-store.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
-import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
 // Taller rows give each booked slot room for the rich job card (thumbnails + details).
 const BAY_ROW_HEIGHT = 72;
-// Slot card height, leaving a small inset above/below within the row.
-const SLOT_CARD_HEIGHT = 60;
-const IDLE_SLOT_HATCH_BACKGROUND =
-  'repeating-linear-gradient(45deg, rgb(113 113 122 / 0.18) 0 5px, transparent 5px 10px)';
 
 type FilterScrollRequest = {
   date: Date;
   id: number;
 };
-
-type AnchoredZoomChange = (applyZoomChange: () => void) => void;
 
 export const BayScheduleGantt: React.FC<{
   /** Dialog embedding: hides the page filter bar; zoom controls remain. */
@@ -409,7 +363,11 @@ export const BayScheduleGantt: React.FC<{
                 optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
               />
               {ghostDerivation && ghostDerivation.ghosts.length > 0 ? (
-                <GhostSlotBars bays={renderedBays} ghosts={ghostDerivation.ghosts} label={ghostLabel ?? 'New Job'} />
+                <BayScheduleGhostBars
+                  bays={renderedBays}
+                  ghosts={ghostDerivation.ghosts}
+                  label={ghostLabel ?? 'New Job'}
+                />
               ) : null}
               <GanttToday className="bg-primary text-primary-foreground" />
             </GanttTimeline>
@@ -437,121 +395,6 @@ const BayScheduleFilterScrollController: React.FC<{
 
     scrollToDateRef.current?.(request.date, 'smooth');
   }, [request]);
-
-  return null;
-};
-
-const BayScheduleZoomControls: React.FC<{
-  onReset: () => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  zoom: number;
-}> = ({ onReset, onZoomIn, onZoomOut, zoom }) => (
-  <div className="flex items-center gap-1 rounded-lg border border-border/70 bg-card px-1 py-0.5">
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            aria-label="Zoom out"
-            disabled={zoom <= BAY_SCHEDULE_ZOOM_MIN}
-            onClick={onZoomOut}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
-        <IconMinus />
-      </TooltipTrigger>
-      <TooltipContent>Zoom out</TooltipContent>
-    </Tooltip>
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            aria-label={`Reset zoom to ${BAY_SCHEDULE_ZOOM_DEFAULT}%`}
-            className="w-14 tabular-nums"
-            onClick={onReset}
-            size="sm"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
-        {zoom}%
-      </TooltipTrigger>
-      <TooltipContent>Reset zoom</TooltipContent>
-    </Tooltip>
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            aria-label="Zoom in"
-            disabled={zoom >= BAY_SCHEDULE_ZOOM_MAX}
-            onClick={onZoomIn}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
-        <IconPlus />
-      </TooltipTrigger>
-      <TooltipContent>Zoom in</TooltipContent>
-    </Tooltip>
-  </div>
-);
-
-const BayScheduleZoomAnchorController: React.FC<{
-  onReady: (handler: AnchoredZoomChange | null) => void;
-  zoom: number;
-}> = ({ onReady, zoom }) => {
-  const gantt = useGanttContext();
-  const ganttRef = useRef(gantt);
-  const lastZoomRef = useRef(zoom);
-  const pendingAnchorDateRef = useRef<Date | null>(null);
-  const scrollToDateRef = useRef(gantt.scrollToDate);
-
-  useEffect(() => {
-    ganttRef.current = gantt;
-    scrollToDateRef.current = gantt.scrollToDate;
-  }, [gantt]);
-
-  const applyAnchoredZoomChange = useCallback<AnchoredZoomChange>((applyZoomChange) => {
-    const currentGantt = ganttRef.current;
-    const scrollElement = currentGantt.ref?.current;
-
-    if (scrollElement) {
-      pendingAnchorDateRef.current = getGanttCenteredDateFromScrollLeft(
-        scrollElement.scrollLeft,
-        currentGantt,
-        scrollElement.clientWidth,
-      );
-    }
-
-    applyZoomChange();
-  }, []);
-
-  useEffect(() => {
-    onReady(applyAnchoredZoomChange);
-
-    return () => onReady(null);
-  }, [applyAnchoredZoomChange, onReady]);
-
-  useEffect(() => {
-    if (lastZoomRef.current === zoom) {
-      return;
-    }
-
-    lastZoomRef.current = zoom;
-    const anchorDate = pendingAnchorDateRef.current;
-    if (!anchorDate) {
-      return;
-    }
-
-    pendingAnchorDateRef.current = null;
-    scrollToDateRef.current?.(anchorDate, 'auto', 'center');
-  }, [zoom]);
 
   return null;
 };
@@ -690,363 +533,3 @@ const BaySlotBars: React.FC<{
     </div>
   );
 };
-
-/**
- * Client-only ghost Slots for pending Job seeds: positioned like real slot bars but
- * rendered as a non-interactive overlay, visually distinct (dashed, primary-tinted).
- */
-const GhostSlotBars: React.FC<{
-  bays: DisplayBaySchedule[];
-  ghosts: GhostSlot[];
-  label: string;
-}> = ({ bays, ghosts, label }) => {
-  const gantt = useGanttContext();
-  const rowIndexByBayId = new Map(bays.map((bay, index) => [bay.id, index]));
-
-  return (
-    <div aria-hidden className="pointer-events-none absolute top-0 left-0 z-30">
-      {ghosts.map((ghost) => {
-        const rowIndex = rowIndexByBayId.get(ghost.bayId);
-
-        if (rowIndex === undefined) {
-          return null;
-        }
-
-        const left = getJobGanttOffset(ghost.startDate, gantt);
-        const width = Math.max(getJobGanttWidth(ghost.startDate, ghost.endDate, gantt), 28);
-        const top = gantt.headerHeight + rowIndex * gantt.rowHeight + (gantt.rowHeight - SLOT_CARD_HEIGHT) / 2;
-
-        return (
-          <div
-            className="absolute flex items-center overflow-hidden rounded-lg border border-primary border-dashed bg-primary/10 px-2.5 py-1.5 text-primary text-xs shadow-sm"
-            key={ghost.id}
-            style={{
-              height: SLOT_CARD_HEIGHT,
-              left,
-              top,
-              width,
-            }}
-            title={`${label}: ${formatDate(ghost.startDate, 'PPP')} - ${formatDate(ghost.endDate, 'PPP')}`}
-          >
-            <span className="min-w-0 truncate font-medium">
-              {label}
-              <span className="ml-1.5 text-[0.65rem] tabular-nums opacity-80">{ghost.durationDays}d</span>
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-type SlotResizeDrag = {
-  durationDays: number;
-  initialDurationDays: number;
-  pixelsPerDay: number;
-  startX: number;
-};
-
-const BaySlotBar: React.FC<{
-  bayId: UUID;
-  canEditSchedule: boolean;
-  isDimmed: boolean;
-  isScheduleMutationPending: boolean;
-  job: JobSummary | null;
-  onAddIdle: (targetSlotId: string, placement: JobSlotPlacement) => void;
-  onMove: (slotId: string, direction: JobSlotMoveDirection) => void;
-  onRemove: (slotId: string) => Promise<void>;
-  onResize: (slotId: string, durationDays: number) => void;
-  onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
-  optimisticDurationDays: number | null;
-  rowTop: number;
-  slot: DisplayBaySlot;
-  slotIndex: number;
-  slotCount: number;
-  today: DateOnlyIso;
-  workingCalendar: WorkingCalendar;
-}> = ({
-  bayId,
-  canEditSchedule,
-  isDimmed,
-  isScheduleMutationPending,
-  job,
-  onAddIdle,
-  onMove,
-  onRemove,
-  onResize,
-  onSelectSlot,
-  optimisticDurationDays,
-  rowTop,
-  slot,
-  slotIndex,
-  slotCount,
-  today,
-  workingCalendar,
-}) => {
-  const gantt = useGanttContext();
-  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
-  const [isRemoving, setIsRemoving] = useState(false);
-  const [resizeDrag, setResizeDrag] = useState<SlotResizeDrag | null>(null);
-  const startDate = slot.startDate;
-  const endDate = slot.endDate;
-  const label = getSlotLabel(slot);
-  const durationDays = slot.durationDays;
-  const displayDurationDays = optimisticDurationDays ?? durationDays;
-  const previewDurationDays = resizeDrag?.durationDays ?? displayDurationDays;
-  const shouldProjectPreview = resizeDrag !== null || optimisticDurationDays !== null;
-  const previewEndDate = useMemo(
-    () => (shouldProjectPreview ? addJobSlotDuration(startDate, previewDurationDays, workingCalendar) : endDate),
-    [endDate, previewDurationDays, shouldProjectPreview, startDate, workingCalendar],
-  );
-  const dayBreakdown = useMemo(
-    () => summarizeSlotCalendarDays(startDate, previewEndDate, workingCalendar),
-    [previewEndDate, startDate, workingCalendar],
-  );
-  const daySegments = useMemo(
-    () => segmentSlotCalendarDays(startDate, previewEndDate, workingCalendar),
-    [previewEndDate, startDate, workingCalendar],
-  );
-  const daySummary = formatSlotDaySummary(dayBreakdown);
-  const left = getJobGanttOffset(startDate, gantt);
-  const width = Math.max(getJobGanttWidth(startDate, previewEndDate, gantt), 28);
-  const isIdle = slot.kind === 'idle';
-  // The "active" slot is the booked job in progress on the plant's current business day.
-  const isActive = !isIdle && startDate <= today && today < previewEndDate;
-  const height = SLOT_CARD_HEIGHT;
-  // Center the bar/card vertically within its (taller) bay row.
-  const top = rowTop + (gantt.rowHeight - height) / 2;
-  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!canEditSchedule || isScheduleMutationPending) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setResizeDrag({
-      durationDays,
-      initialDurationDays: durationDays,
-      pixelsPerDay: getJobGanttResizeStepWidth(endDate, workingCalendar, gantt),
-      startX: event.clientX,
-    });
-  };
-  const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!resizeDrag) {
-      return;
-    }
-
-    event.preventDefault();
-    const deltaDays = Math.round((event.clientX - resizeDrag.startX) / resizeDrag.pixelsPerDay);
-    const nextDurationDays = Math.max(1, resizeDrag.initialDurationDays + deltaDays);
-
-    if (nextDurationDays !== resizeDrag.durationDays) {
-      setResizeDrag({
-        ...resizeDrag,
-        durationDays: nextDurationDays,
-      });
-    }
-  };
-  const finishResize = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!resizeDrag) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setResizeDrag(null);
-
-    if (resizeDrag.durationDays !== durationDays) {
-      onResize(slot.id, resizeDrag.durationDays);
-    }
-  };
-  const cancelResize = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!resizeDrag) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setResizeDrag(null);
-  };
-  const moveSlot = (direction: JobSlotMoveDirection) => {
-    if (isScheduleMutationPending) {
-      return;
-    }
-
-    onMove(slot.id, direction);
-  };
-
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger
-        render={
-          <div
-            data-gantt-drag-scroll-ignore
-            className={cn(
-              'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm transition-opacity duration-200',
-              isIdle
-                ? 'rounded-sm border border-border bg-card px-2 py-1 text-muted-foreground'
-                : cn(
-                    'rounded-lg border bg-card px-2.5 py-1.5 text-card-foreground',
-                    isActive ? 'border-white/70 ring-1 ring-white/25' : 'border-border',
-                  ),
-              // Filtered-out slots fade back but stay interactive; hover restores them.
-              isDimmed && 'opacity-20 hover:opacity-100',
-            )}
-            style={{
-              height,
-              left,
-              top,
-              width,
-            }}
-            title={`${label}: ${formatDate(slot.startDate, 'PPP')} - ${formatDate(slot.endDate, 'PPP')}\n${dayBreakdown.workingDays} working day(s), ${dayBreakdown.closureDays} closure day(s), ${dayBreakdown.overtimeDays} overtime day(s)`}
-          />
-        }
-      >
-        {isIdle ? (
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{ backgroundImage: IDLE_SLOT_HATCH_BACKGROUND }}
-          />
-        ) : (
-          <BaySlotDayHatch segments={daySegments} slotStart={startDate} />
-        )}
-        {isIdle ? (
-          <span className="relative z-10 flex h-full items-center gap-1.5 pr-8">
-            <span className="min-w-0 truncate font-medium">{label}</span>
-            <span className="shrink-0 text-[0.65rem] tabular-nums opacity-80">{daySummary}</span>
-          </span>
-        ) : (
-          <button
-            className="relative z-10 block h-full w-full cursor-pointer pr-8 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            disabled={!job || slot.previewSplit !== undefined}
-            onClick={() => {
-              if (job) {
-                onSelectSlot?.(job.id, bayId);
-              }
-            }}
-            type="button"
-          >
-            <BaySlotJobCard dayBreakdown={dayBreakdown} job={job} jobCode={label} />
-          </button>
-        )}
-        {canEditSchedule ? (
-          <>
-            <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
-              <DialogTrigger
-                render={
-                  <button
-                    aria-label={`Remove ${label}`}
-                    className={cn(
-                      'absolute top-1/2 right-2 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
-                      'hover:bg-destructive hover:text-white focus-visible:ring-ring',
-                    )}
-                    disabled={isScheduleMutationPending || isRemoving}
-                    type="button"
-                  />
-                }
-              >
-                <IconTrash className="size-3.5" />
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Remove slot</DialogTitle>
-                  <DialogDescription>
-                    Remove {label} from the Bay schedule. Later Slots will move up to close the gap.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>
-                    Cancel
-                  </DialogClose>
-                  <Button
-                    disabled={isRemoving}
-                    onClick={async () => {
-                      setIsRemoving(true);
-                      try {
-                        await onRemove(slot.id);
-                        setIsRemoveDialogOpen(false);
-                      } catch {
-                        // The mutation hook owns the user-facing error toast.
-                      } finally {
-                        setIsRemoving(false);
-                      }
-                    }}
-                    type="button"
-                    variant="destructive"
-                  >
-                    {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-                    Remove
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <button
-              aria-label={`Resize ${label}`}
-              className={cn(
-                'absolute top-0 right-0 h-full w-2 cursor-ew-resize border-r-2 outline-none disabled:cursor-not-allowed disabled:opacity-50',
-                isIdle
-                  ? 'border-foreground/40 bg-foreground/10 hover:bg-foreground/15 focus-visible:ring-2 focus-visible:ring-foreground'
-                  : 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring',
-              )}
-              disabled={isScheduleMutationPending || isRemoving}
-              onPointerCancel={cancelResize}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={finishResize}
-              type="button"
-            />
-          </>
-        ) : null}
-      </ContextMenuTrigger>
-      {canEditSchedule ? (
-        <ContextMenuContent>
-          <ContextMenuGroup>
-            <ContextMenuItem disabled={isScheduleMutationPending || slotIndex === 0} onClick={() => moveSlot('left')}>
-              <IconArrowLeft />
-              Move slot left
-            </ContextMenuItem>
-            <ContextMenuItem
-              disabled={isScheduleMutationPending || slotIndex === slotCount - 1}
-              onClick={() => moveSlot('right')}
-            >
-              <IconArrowRight />
-              Move slot right
-            </ContextMenuItem>
-            <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'before')}>
-              <IconClockPlus />
-              Add idle slot before
-            </ContextMenuItem>
-            <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'after')}>
-              <IconClockPlus />
-              Add idle slot after
-            </ContextMenuItem>
-          </ContextMenuGroup>
-        </ContextMenuContent>
-      ) : null}
-    </ContextMenu>
-  );
-};
-
-// Total working days, with closure and overtime days called out in brackets
-// (each only shown when non-zero), e.g. "5d (2 closed, 1 OT)".
-function formatSlotDaySummary({ workingDays, closureDays, overtimeDays }: SlotCalendarDays): string {
-  const extras: string[] = [];
-
-  if (closureDays > 0) {
-    extras.push(`${closureDays} closed`);
-  }
-
-  if (overtimeDays > 0) {
-    extras.push(`${overtimeDays} OT`);
-  }
-
-  const days = `${workingDays}d`;
-  return extras.length > 0 ? `${days} (${extras.join(', ')})` : days;
-}

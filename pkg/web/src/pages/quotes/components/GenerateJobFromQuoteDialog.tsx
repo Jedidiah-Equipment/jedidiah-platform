@@ -1,4 +1,4 @@
-import { formatDate, hasPermission } from '@pkg/domain';
+import { hasPermission } from '@pkg/domain';
 import type { Bay, JobCreateInput, QuoteDetail, UUID } from '@pkg/schema';
 import { IconAlertTriangle, IconBriefcase2, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -31,7 +31,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog.js';
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
-import { Field, FieldLabel } from '@/components/ui/field.js';
 import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
@@ -86,8 +85,6 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
   const navigate = useNavigate();
   const { invalidateJobs, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
-  const accessQuery = useAccess();
-  const canSchedule = hasPermission(accessQuery.data, 'job:schedule');
   const [isOpen, setIsOpen] = useState(false);
   const enabledBaysQuery = useQuery(
     trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }, { enabled: isOpen }),
@@ -151,7 +148,6 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
           <GenerateJobForm
             baysById={baysById}
             baysError={enabledBaysQuery.error ?? baysQuery.error}
-            canSchedule={canSchedule}
             enabledBays={enabledBays}
             isPending={isPending}
             onSubmit={(input) => createJobMutation.mutate(input)}
@@ -167,7 +163,6 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
 type GenerateJobFormProps = {
   baysById: Map<UUID, Bay>;
   baysError: unknown;
-  canSchedule: boolean;
   enabledBays: Bay[];
   isPending: boolean;
   onSubmit: (input: JobCreateInput) => void;
@@ -178,7 +173,6 @@ type GenerateJobFormProps = {
 const GenerateJobForm: React.FC<GenerateJobFormProps> = ({
   baysById,
   baysError,
-  canSchedule,
   enabledBays,
   isPending,
   onSubmit,
@@ -196,7 +190,7 @@ const GenerateJobForm: React.FC<GenerateJobFormProps> = ({
       onSubmit: JobCreateFormValues,
     },
     onSubmit: ({ value }) => {
-      onSubmit(toJobCreateInput({ canSchedule, quoteId: quote.id, value }));
+      onSubmit(toJobCreateInput({ quoteId: quote.id, value }));
     },
   });
 
@@ -272,28 +266,15 @@ const GenerateJobForm: React.FC<GenerateJobFormProps> = ({
 
                                     return (
                                       <>
-                                        {canSchedule ? (
-                                          <startDateField.DatePickerField
-                                            disabled={isPending}
-                                            fieldClassName="w-56 *:data-[slot=field-label]:flex-none"
-                                            isDateDisabled={createBayNonWorkingDateMatcher(
-                                              rowScheduling.workingCalendar,
-                                            )}
-                                            label="Start"
-                                            maxValue={rowScheduling.bounds.maxValue}
-                                            minValue={rowScheduling.bounds.minValue}
-                                            orientation="horizontal"
-                                          />
-                                        ) : (
-                                          <Field className="self-center" orientation="horizontal">
-                                            <FieldLabel>Start</FieldLabel>
-                                            <p className="text-sm whitespace-nowrap">
-                                              {startDateField.state.value
-                                                ? formatDate(startDateField.state.value, 'EEE, MMM d')
-                                                : '—'}
-                                            </p>
-                                          </Field>
-                                        )}
+                                        <startDateField.DatePickerField
+                                          disabled={isPending}
+                                          fieldClassName="w-56 *:data-[slot=field-label]:flex-none"
+                                          isDateDisabled={createBayNonWorkingDateMatcher(rowScheduling.workingCalendar)}
+                                          label="Start"
+                                          maxValue={rowScheduling.bounds.maxValue}
+                                          minValue={rowScheduling.bounds.minValue}
+                                          orientation="horizontal"
+                                        />
                                         {rowScheduling.splitWarning ? (
                                           <Tooltip>
                                             <TooltipTrigger

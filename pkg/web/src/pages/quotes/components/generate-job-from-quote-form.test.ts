@@ -145,10 +145,9 @@ describe('toJobCreateFormValues', () => {
 });
 
 describe('toJobCreateInput', () => {
-  it('carries seed start dates for scheduling holders', () => {
+  it('carries seed start dates, omitting the empty-string append fallback', () => {
     expect(
       toJobCreateInput({
-        canSchedule: true,
         quoteId: QUOTE_ID,
         value: {
           baySeeds: [
@@ -162,21 +161,6 @@ describe('toJobCreateInput', () => {
         { bayId: ENABLED_BAY_ID, durationDays: 7, startDate: '2026-06-09' },
         { bayId: OTHER_BAY_ID, durationDays: 2 },
       ],
-      quoteId: QUOTE_ID,
-    });
-  });
-
-  it('drops seed start dates without job:schedule so seeds append as before', () => {
-    expect(
-      toJobCreateInput({
-        canSchedule: false,
-        quoteId: QUOTE_ID,
-        value: {
-          baySeeds: [{ bayId: ENABLED_BAY_ID, durationDays: 7, startDate: '2026-06-09' }],
-        },
-      }),
-    ).toEqual({
-      baySeeds: [{ bayId: ENABLED_BAY_ID, durationDays: 7 }],
       quoteId: QUOTE_ID,
     });
   });

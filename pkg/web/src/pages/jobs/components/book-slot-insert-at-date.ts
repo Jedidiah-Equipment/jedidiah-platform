@@ -68,7 +68,8 @@ export function describeInsertAtDatePlacement(placement: BookSlotPlacement): {
   startText: string;
   splitWarning: string | null;
 } {
-  const startText = `Starts ${formatDate(placement.startAt, 'EEE, MMM d')}`;
+  // Format via the Johannesburg date key so the scheduling day is shown regardless of the browser timezone.
+  const startText = `Starts ${formatDate(formatJobSchedulingDateKey(placement.startAt), 'EEE, MMM d')}`;
 
   if (placement.type !== 'split') {
     return { startText, splitWarning: null };

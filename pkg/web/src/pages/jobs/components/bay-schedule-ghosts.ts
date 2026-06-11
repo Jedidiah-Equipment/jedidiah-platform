@@ -1,11 +1,4 @@
-import {
-  addJobSlotDuration,
-  firstWorkingDayOnOrAfter,
-  maxDateOnly,
-  projectJobSlots,
-  resolveInsertAtDatePlacement,
-  type WorkingCalendar,
-} from '@pkg/domain';
+import { addJobSlotDuration, projectJobSlots, resolveInsertAtDatePlacement, type WorkingCalendar } from '@pkg/domain';
 import { type BaySchedule, DateOnlyIso, type OffDay, type ProjectedJobSlot, type UUID } from '@pkg/schema';
 
 import { sortBaysByDepartmentPipeline } from '@/components/bays/sort-bays.js';
@@ -191,15 +184,13 @@ function spliceGhostEntry({
   workingCalendar: WorkingCalendar;
 }): WorkingEntry[] {
   const pickedDate = DateOnlyIso.safeParse(seed.startDate);
-  const placement = pickedDate.success
-    ? resolveInsertAtDatePlacement({
-        currentDate: today,
-        pickedDate: pickedDate.data,
-        scheduleOrigin,
-        slots: entries,
-        workingCalendar,
-      })
-    : appendPlacement({ entries, scheduleOrigin, today, workingCalendar });
+  const placement = resolveInsertAtDatePlacement({
+    currentDate: today,
+    pickedDate: pickedDate.success ? pickedDate.data : undefined,
+    scheduleOrigin,
+    slots: entries,
+    workingCalendar,
+  });
   const ghostEntry: WorkingEntry = {
     durationDays: seed.durationDays,
     ghost: {
@@ -249,24 +240,4 @@ function spliceGhostEntry({
   // Renumbering keeps projectJobSlots' sort deterministic (it tiebreaks equal
   // sequences by id, which would shuffle split halves around the ghost).
   return next.map((entry, index) => ({ ...entry, sequence: index + 1 }));
-}
-
-/** A seed with no picked date appends; same formula as the domain resolver's append clamp. */
-function appendPlacement({
-  entries,
-  scheduleOrigin,
-  today,
-  workingCalendar,
-}: {
-  entries: WorkingEntry[];
-  scheduleOrigin: DateOnlyIso;
-  today: DateOnlyIso;
-  workingCalendar: WorkingCalendar;
-}): { type: 'append'; startDate: DateOnlyIso } {
-  const projection = projectJobSlots({ scheduleOrigin, slots: entries, workingCalendar });
-
-  return {
-    startDate: firstWorkingDayOnOrAfter(maxDateOnly(projection.nextAvailableDate, today), workingCalendar),
-    type: 'append',
-  };
 }

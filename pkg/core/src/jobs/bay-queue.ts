@@ -1,11 +1,5 @@
 import { type DatabaseTransaction, jobBays, jobSlots } from '@pkg/db';
-import {
-  countWorkingDaysBetween,
-  getPlantDateNow,
-  projectJobSlots,
-  resolveInsertAtDatePlacement,
-  type WorkingCalendar,
-} from '@pkg/domain';
+import { getPlantDateNow, resolveInsertAtDatePlacement, type WorkingCalendar } from '@pkg/domain';
 import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { and, asc, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
 
@@ -34,8 +28,8 @@ export type BayQueueSwapResult = {
 
 export type BayQueue = {
   bay: JobBayRow;
-  append(spec: BayQueueSlotSpec): Promise<JobSlotRow>;
-  insertAtDate(spec: BayQueueSlotSpec, options: { startDate: DateOnlyIso }): Promise<JobSlotRow>;
+  /** Books a Slot via Insert at Date (ADR-0042); without a start date the placement is a plain append. */
+  book(spec: BayQueueSlotSpec, options?: { startDate?: DateOnlyIso | undefined }): Promise<JobSlotRow>;
   insertRelative(targetSlotId: UUID, placement: 'before' | 'after', spec: BayQueueSlotSpec): Promise<JobSlotRow>;
   swap(slotId: UUID, direction: 'left' | 'right'): Promise<BayQueueSwapResult>;
   remove(slotId: UUID): Promise<JobSlotRow>;
@@ -74,27 +68,31 @@ function createBayQueue(tx: DatabaseTransaction, bay: JobBayRow, plantToday: Dat
   return {
     bay,
 
-    async append(spec) {
-      assertBayAcceptsBookings(bay);
-
-      return appendSlot(tx, bay, spec, plantToday);
-    },
-
-    async insertAtDate(spec, { startDate }) {
+    async book(spec, options = {}) {
       assertBayAcceptsBookings(bay);
 
       const existingSlots = await listQueueSlots(tx, bay.id);
       const workingCalendar = await loadBayWorkingCalendar(tx, bay.id);
       const placement = resolveInsertAtDatePlacement({
         currentDate: plantToday,
-        pickedDate: startDate,
+        pickedDate: options.startDate,
         scheduleOrigin: DateOnlyIso.parse(bay.scheduleOrigin),
         slots: existingSlots,
         workingCalendar,
       });
 
       if (placement.type === 'append') {
-        return appendSlot(tx, bay, spec, plantToday);
+        // A queue that ended in the past gets the gap filled with idle, so the
+        // booked Slot never starts before the plant's current business day.
+        const lastSlot = existingSlots.at(-1);
+        let sequence = lastSlot ? lastSlot.sequence + 1 : 1;
+
+        if (placement.idleGapDays > 0) {
+          await insertSlotRow(tx, bay.id, sequence, { durationDays: placement.idleGapDays, kind: 'idle', label: null });
+          sequence += 1;
+        }
+
+        return insertSlotRow(tx, bay.id, sequence, spec);
       }
 
       if (placement.type === 'insert-before') {
@@ -212,32 +210,6 @@ function assertBayAcceptsBookings(bay: JobBayRow): void {
   if (bay.disabledAt) {
     throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
   }
-}
-
-async function appendSlot(
-  tx: DatabaseTransaction,
-  bay: JobBayRow,
-  spec: BayQueueSlotSpec,
-  plantToday: DateOnlyIso,
-): Promise<JobSlotRow> {
-  const existingSlots = await listQueueSlots(tx, bay.id);
-  const lastSlot = existingSlots.at(-1);
-  let sequence = lastSlot ? lastSlot.sequence + 1 : 1;
-
-  const workingCalendar = await loadBayWorkingCalendar(tx, bay.id);
-  const projection = projectJobSlots({
-    scheduleOrigin: DateOnlyIso.parse(bay.scheduleOrigin),
-    slots: existingSlots,
-    workingCalendar,
-  });
-  const gapDays = countWorkingDaysBetween(projection.nextAvailableDate, plantToday, workingCalendar);
-
-  if (gapDays > 0) {
-    await insertSlotRow(tx, bay.id, sequence, { durationDays: gapDays, kind: 'idle', label: null });
-    sequence += 1;
-  }
-
-  return insertSlotRow(tx, bay.id, sequence, spec);
 }
 
 async function loadBayWorkingCalendar(tx: DatabaseTransaction, bayId: UUID): Promise<WorkingCalendar> {

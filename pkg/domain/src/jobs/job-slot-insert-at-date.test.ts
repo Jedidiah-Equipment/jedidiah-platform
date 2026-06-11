@@ -16,7 +16,27 @@ describe('resolveInsertAtDatePlacement', () => {
       slots: [],
     });
 
-    expect(placement).toEqual({ type: 'append', startDate: '2026-06-05' });
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-05', idleGapDays: 0 });
+  });
+
+  it('appends when no date is picked, sharing the same placement contract', () => {
+    const placement = resolveInsertAtDatePlacement({
+      currentDate,
+      scheduleOrigin,
+      slots: [slot({ id: 'slot-1', sequence: 1, durationDays: 10 })],
+    });
+
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-15', idleGapDays: 0 });
+  });
+
+  it('reports the idle gap owed when a date-less booking lands on a queue that ended before today', () => {
+    const placement = resolveInsertAtDatePlacement({
+      currentDate: day('2026-06-05'),
+      scheduleOrigin: day('2026-06-01'),
+      slots: [slot({ id: 'slot-1', sequence: 1, durationDays: 1 })],
+    });
+
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-05', idleGapDays: 3 });
   });
 
   it('appends when the picked date is exactly the next available day', () => {
@@ -27,7 +47,7 @@ describe('resolveInsertAtDatePlacement', () => {
       slots: [slot({ id: 'slot-1', sequence: 1, durationDays: 10 })],
     });
 
-    expect(placement).toEqual({ type: 'append', startDate: '2026-06-15' });
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-15', idleGapDays: 0 });
   });
 
   it('clamps a picked date past the next available day to a plain append', () => {
@@ -38,7 +58,7 @@ describe('resolveInsertAtDatePlacement', () => {
       slots: [slot({ id: 'slot-1', sequence: 1, durationDays: 10 })],
     });
 
-    expect(placement).toEqual({ type: 'append', startDate: '2026-06-15' });
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-15', idleGapDays: 0 });
   });
 
   it('appends from today when the queue ended before today, matching the idle-gap append', () => {
@@ -49,7 +69,7 @@ describe('resolveInsertAtDatePlacement', () => {
       slots: [slot({ id: 'slot-1', sequence: 1, durationDays: 1 })],
     });
 
-    expect(placement).toEqual({ type: 'append', startDate: '2026-06-05' });
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-05', idleGapDays: 3 });
   });
 
   it("inserts cleanly before a slot when the picked date is exactly the slot's projected start", () => {

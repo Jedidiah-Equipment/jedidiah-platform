@@ -250,6 +250,10 @@ export function toPlantDateOnly(date: Date): DateOnlyIso {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` as DateOnlyIso;
 }
 
+export function getPlantDateNow(): DateOnlyIso {
+  return toPlantDateOnly(new Date());
+}
+
 function isIntegerString(value: string): boolean {
   return /^-?\d+$/.test(value.trim());
 }

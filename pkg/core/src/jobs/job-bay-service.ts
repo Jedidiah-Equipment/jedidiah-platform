@@ -6,7 +6,7 @@ import {
   jobBays,
   user,
 } from '@pkg/db';
-import { toPlantDateOnly } from '@pkg/domain';
+import { getPlantDateNow } from '@pkg/domain';
 import {
   type AuthId,
   Bay,
@@ -100,7 +100,7 @@ export async function createJobBay({
       .values({
         department: input.department,
         name: input.name,
-        scheduleOrigin: toPlantDateOnly(new Date()),
+        scheduleOrigin: getPlantDateNow(),
       })
       .returning();
 

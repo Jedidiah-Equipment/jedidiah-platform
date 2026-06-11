@@ -10,6 +10,7 @@ export * from './formatting/phone-number.js';
 export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';
 export * from './jobs/job-department-pipeline.js';
+export * from './jobs/job-slot-insert-at-date.js';
 export * from './jobs/job-slot-projection.js';
 export * from './quotes/effective-bom.js';
 export * from './quotes/quote-lock.js';

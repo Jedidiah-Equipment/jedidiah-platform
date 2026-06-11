@@ -233,10 +233,16 @@ describe('getQuote', () => {
 
 describe('getQuoteProductBayAvailability', () => {
   test('returns build time when a Product has no enabled Bays', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+    });
+
     await expect(
       getQuoteProductBayAvailability({
         db: context.db,
-        input: { productId: context.product.id },
+        input: { quoteId: quote.id },
       }),
     ).resolves.toMatchObject({
       bays: [],
@@ -274,11 +280,16 @@ describe('getQuoteProductBayAvailability', () => {
       { bayId: slowerBay.id, durationDays: 4, kind: 'idle', label: null, sequence: 1 },
       { bayId: disabledBay.id, durationDays: 8, kind: 'idle', label: null, sequence: 1 },
     ]);
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+    });
 
     await expect(
       getQuoteProductBayAvailability({
         db: context.db,
-        input: { productId: context.product.id },
+        input: { quoteId: quote.id },
       }),
     ).resolves.toMatchObject({
       bays: [
@@ -324,11 +335,16 @@ describe('getQuoteProductBayAvailability', () => {
       { bayId: closedBay.id, durationDays: 2, kind: 'idle', label: null, sequence: 1 },
       { bayId: overtimeBay.id, durationDays: 2, kind: 'idle', label: null, sequence: 1 },
     ]);
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+    });
 
     await expect(
       getQuoteProductBayAvailability({
         db: context.db,
-        input: { productId: context.product.id },
+        input: { quoteId: quote.id },
       }),
     ).resolves.toMatchObject({
       bays: [
@@ -346,7 +362,49 @@ describe('getQuoteProductBayAvailability', () => {
       defaultLeadTimeWorkingDays: 16,
     });
   });
+
+  test('rejects unknown Quotes instead of accepting arbitrary Product ids', async ({ context }) => {
+    await expect(
+      getQuoteProductBayAvailability({
+        db: context.db,
+        input: { quoteId: '00000000-0000-4000-8000-000000000999' },
+      }),
+    ).rejects.toThrow('Quote not found: 00000000-0000-4000-8000-000000000999');
+  });
 });
+
+async function createQuote(
+  db: Db,
+  {
+    customerId,
+    productId,
+    salesPersonId,
+    status = 'draft',
+  }: {
+    customerId: string;
+    productId: string;
+    salesPersonId: string;
+    status?: QuoteStatus;
+  },
+) {
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId,
+      productId,
+      quotedBasePrice: 1000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId,
+      status,
+    })
+    .returning();
+
+  if (!quote) {
+    throw new Error('Quote insert did not return a row');
+  }
+
+  return quote;
+}
 
 async function createQuoteRows(
   db: Db,

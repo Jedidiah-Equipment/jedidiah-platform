@@ -189,7 +189,7 @@ export const QuoteDocumentGenerationInput = z.object({
 export type QuoteProductBayAvailabilityInput = z.infer<typeof QuoteProductBayAvailabilityInput>;
 export const QuoteProductBayAvailabilityInput = z
   .object({
-    productId: UUID,
+    quoteId: UUID,
   })
   .strict();
 

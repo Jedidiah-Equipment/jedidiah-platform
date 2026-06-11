@@ -934,6 +934,7 @@ describe('quotes.productBayAvailability', () => {
     context,
   }) => {
     const caller = context.createCaller(mockSession('sales'));
+    const quote = await createReadyQuote(caller, context.product.id);
     const quickBay = await createBay(context.db, {
       id: '00000000-0000-4000-8000-000000000531',
       name: 'Quote Quick Bay',
@@ -960,8 +961,22 @@ describe('quotes.productBayAvailability', () => {
       { bayId: slowerBay.id, durationDays: 3, kind: 'idle', label: null, sequence: 1 },
       { bayId: disabledBay.id, durationDays: 8, kind: 'idle', label: null, sequence: 1 },
     ]);
+    const alternateProduct = await createProduct(context.db, {
+      modelCode: 'ALT-AVAIL-001',
+      name: 'Alternate Availability Product',
+    });
+    const alternateBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000534',
+      name: 'Alternate Product Bay',
+      scheduleOrigin: '2026-06-10',
+    });
+    await context.db
+      .insert(productBays)
+      .values({ bayId: alternateBay.id, defaultWorkingDays: 1, productId: alternateProduct.id });
 
-    await expect(caller.quotes.productBayAvailability({ productId: context.product.id })).resolves.toMatchObject({
+    const availability = await caller.quotes.productBayAvailability({ quoteId: quote.id });
+
+    expect(availability).toMatchObject({
       bays: [
         expect.objectContaining({ bayId: quickBay.id, name: 'Quote Quick Bay', waitWorkingDays: expect.any(Number) }),
         expect.objectContaining({ bayId: slowerBay.id, name: 'Quote Slower Bay', waitWorkingDays: expect.any(Number) }),
@@ -969,7 +984,18 @@ describe('quotes.productBayAvailability', () => {
       buildTimeDays: context.product.buildTimeDays,
       defaultLeadTimeWorkingDays: expect.any(Number),
     });
+    expect(availability.bays.map((bay) => bay.bayId)).not.toContain(alternateBay.id);
     await expect(caller.jobs.listBays()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('rejects missing Quotes instead of exposing arbitrary Product Bay availability', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await expect(
+      caller.quotes.productBayAvailability({ quoteId: '00000000-0000-4000-8000-000000000999' }),
+    ).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
   });
 });
 

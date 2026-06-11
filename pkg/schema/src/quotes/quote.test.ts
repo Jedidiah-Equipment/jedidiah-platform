@@ -128,8 +128,8 @@ describe('QuoteDetail', () => {
 
 describe('QuoteProductBayAvailability', () => {
   it('parses the quote-scoped Product Bay availability contract', () => {
-    expect(QuoteProductBayAvailabilityInput.parse({ productId: '550e8400-e29b-41d4-a716-446655440000' })).toEqual({
-      productId: '550e8400-e29b-41d4-a716-446655440000',
+    expect(QuoteProductBayAvailabilityInput.parse({ quoteId: '550e8400-e29b-41d4-a716-446655440010' })).toEqual({
+      quoteId: '550e8400-e29b-41d4-a716-446655440010',
     });
     expect(
       QuoteProductBayAvailabilityResult.parse({

@@ -117,7 +117,7 @@ function GenerateQuoteDocumentDialog({
   const trimmedLeadTime = leadTime.trim();
   const brochureQuery = useQuery(trpc.quotes.getProductBrochure.queryOptions({ quoteId: quote.id }));
   const availabilityQuery = useQuery({
-    ...trpc.quotes.productBayAvailability.queryOptions({ productId: quote.productId }),
+    ...trpc.quotes.productBayAvailability.queryOptions({ quoteId: quote.id }),
     enabled: isOpen,
   });
   const availability = availabilityQuery.data;

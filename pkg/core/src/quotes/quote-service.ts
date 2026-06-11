@@ -471,7 +471,7 @@ export async function getQuoteProductBayAvailability({
   db: Db | DatabaseTransaction;
   input: QuoteProductBayAvailabilityInput;
 }): Promise<QuoteProductBayAvailabilityResult> {
-  const product = await readProductForQuote({ productId: input.productId, tx: db });
+  const product = await readQuoteProductForAvailability({ quoteId: input.quoteId, tx: db });
   const productBaysForQuote = (await listProductBays({ db, productId: product.id })).filter(
     (productBay) => !productBay.bay.disabledAt,
   );
@@ -507,6 +507,26 @@ export async function getQuoteProductBayAvailability({
     defaultLeadTimeWorkingDays: product.buildTimeDays + maxBayWaitWorkingDays,
     maxBayWaitWorkingDays,
   });
+}
+
+async function readQuoteProductForAvailability({
+  quoteId,
+  tx,
+}: {
+  quoteId: UUID;
+  tx: Db | DatabaseTransaction;
+}): Promise<ProductRow> {
+  const [row] = await tx
+    .select({ product: products })
+    .from(quotes)
+    .innerJoin(products, eq(quotes.productId, products.id))
+    .where(eq(quotes.id, quoteId));
+
+  if (!row) {
+    throw new QuoteNotFoundError(quoteId);
+  }
+
+  return row.product;
 }
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {

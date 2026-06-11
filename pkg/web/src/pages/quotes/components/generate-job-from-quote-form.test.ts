@@ -1,26 +1,123 @@
-import { Bay, ProductBay } from '@pkg/schema';
+import { Bay, BaySchedule, DateOnlyIso, ProductBay, ProjectedJobSlot, UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { getBaySeedBayMap, toJobCreateFormValues, toJobCreateInput } from './generate-job-from-quote-form.js';
+import {
+  createBaySeedScheduling,
+  getBaySeedBayMap,
+  getBaySeedDefaultStartDate,
+  getBaySeedRowScheduling,
+  toJobCreateFormValues,
+  toJobCreateInput,
+} from './generate-job-from-quote-form.js';
 
 const QUOTE_ID = '550e8400-e29b-41d4-a716-446655440000';
 const PRODUCT_ID = '550e8400-e29b-41d4-a716-446655440001';
 const ENABLED_BAY_ID = '550e8400-e29b-41d4-a716-446655440002';
 const DISABLED_BAY_ID = '550e8400-e29b-41d4-a716-446655440003';
+const OTHER_BAY_ID = '550e8400-e29b-41d4-a716-446655440004';
+
+const day = (value: string) => DateOnlyIso.parse(value);
+
+describe('createBaySeedScheduling / getBaySeedDefaultStartDate', () => {
+  it('defaults a seeded Bay to its next available working day', () => {
+    const scheduling = createBaySeedScheduling({
+      items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
+      offDays: [],
+      today: day('2026-06-05'),
+    });
+
+    expect(getBaySeedDefaultStartDate(scheduling, UUID.parse(ENABLED_BAY_ID))).toBe('2026-06-15');
+  });
+
+  it('floors the default to tomorrow when the Bay queue ended in the past', () => {
+    const scheduling = createBaySeedScheduling({
+      items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-02' })],
+      offDays: [],
+      today: day('2026-06-05'),
+    });
+
+    expect(getBaySeedDefaultStartDate(scheduling, UUID.parse(ENABLED_BAY_ID))).toBe('2026-06-06');
+  });
+
+  it('returns no default without schedule data for the Bay', () => {
+    const scheduling = createBaySeedScheduling({
+      items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
+      offDays: [],
+      today: day('2026-06-05'),
+    });
+
+    expect(getBaySeedDefaultStartDate(scheduling, UUID.parse(OTHER_BAY_ID))).toBe('');
+    expect(getBaySeedDefaultStartDate(null, UUID.parse(ENABLED_BAY_ID))).toBe('');
+  });
+});
+
+describe('getBaySeedRowScheduling', () => {
+  it('returns picker bounds and a split warning naming the affected Job and durations', () => {
+    const scheduling = createBaySeedScheduling({
+      items: [
+        buildBaySchedule({
+          id: ENABLED_BAY_ID,
+          nextAvailableDate: '2026-06-15',
+          slots: [buildWorkSlot({ durationDays: 10, jobCode: 'JOB-01042' })],
+        }),
+      ],
+      offDays: [],
+      today: day('2026-06-05'),
+    });
+
+    expect(
+      getBaySeedRowScheduling(scheduling, { bayId: UUID.parse(ENABLED_BAY_ID), startDate: '2026-06-09' }),
+    ).toMatchObject({
+      bounds: { minValue: '2026-06-06', maxValue: '2026-06-15' },
+      splitWarning: "Splits JOB-01042's 10-day slot into 4 + 6.",
+    });
+  });
+
+  it('reports no split warning for the default next-available date', () => {
+    const scheduling = createBaySeedScheduling({
+      items: [
+        buildBaySchedule({
+          id: ENABLED_BAY_ID,
+          nextAvailableDate: '2026-06-15',
+          slots: [buildWorkSlot({ durationDays: 10, jobCode: 'JOB-01042' })],
+        }),
+      ],
+      offDays: [],
+      today: day('2026-06-05'),
+    });
+
+    expect(
+      getBaySeedRowScheduling(scheduling, { bayId: UUID.parse(ENABLED_BAY_ID), startDate: '2026-06-15' }),
+    ).toMatchObject({
+      splitWarning: null,
+    });
+  });
+
+  it('reports no scheduling for rows whose Bay has no schedule data', () => {
+    expect(getBaySeedRowScheduling(null, { bayId: UUID.parse(ENABLED_BAY_ID), startDate: '2026-06-09' })).toBeNull();
+  });
+});
 
 describe('toJobCreateFormValues', () => {
-  it('prefills from enabled Product Bays using default working-days', () => {
+  it('prefills enabled Product Bays with default working-days and start dates', () => {
+    const scheduling = createBaySeedScheduling({
+      items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
+      offDays: [],
+      today: day('2026-06-05'),
+    });
+
     expect(
       toJobCreateFormValues({
         productBays: [
           buildProductBay({ bayId: ENABLED_BAY_ID, defaultWorkingDays: 4, name: 'Fabrication Bay' }),
-          buildProductBay({ bayId: DISABLED_BAY_ID, defaultWorkingDays: 6, disabledAt: null, name: 'Paint Bay' }),
+          buildProductBay({ bayId: OTHER_BAY_ID, defaultWorkingDays: 6, name: 'Paint Bay' }),
         ],
+        scheduling,
       }),
     ).toEqual({
       baySeeds: [
-        { bayId: ENABLED_BAY_ID, durationDays: 4 },
-        { bayId: DISABLED_BAY_ID, durationDays: 6 },
+        { bayId: ENABLED_BAY_ID, durationDays: 4, startDate: '2026-06-15' },
+        { bayId: OTHER_BAY_ID, durationDays: 6, startDate: '' },
       ],
     });
   });
@@ -37,22 +134,45 @@ describe('toJobCreateFormValues', () => {
             name: 'Retired Bay',
           }),
         ],
+        scheduling: null,
       }).baySeeds,
-    ).toEqual([{ bayId: ENABLED_BAY_ID, durationDays: 4 }]);
+    ).toEqual([{ bayId: ENABLED_BAY_ID, durationDays: 4, startDate: '' }]);
   });
 
   it('starts empty when the Product has no Product Bays', () => {
-    expect(toJobCreateFormValues({ productBays: [] })).toEqual({ baySeeds: [] });
+    expect(toJobCreateFormValues({ productBays: [], scheduling: null })).toEqual({ baySeeds: [] });
   });
 });
 
 describe('toJobCreateInput', () => {
-  it('maps edited and removed rows into the create Job baySeeds payload', () => {
+  it('carries seed start dates for scheduling holders', () => {
     expect(
       toJobCreateInput({
+        canSchedule: true,
         quoteId: QUOTE_ID,
         value: {
-          baySeeds: [{ bayId: ENABLED_BAY_ID, durationDays: 7 }],
+          baySeeds: [
+            { bayId: ENABLED_BAY_ID, durationDays: 7, startDate: '2026-06-09' },
+            { bayId: OTHER_BAY_ID, durationDays: 2, startDate: '' },
+          ],
+        },
+      }),
+    ).toEqual({
+      baySeeds: [
+        { bayId: ENABLED_BAY_ID, durationDays: 7, startDate: '2026-06-09' },
+        { bayId: OTHER_BAY_ID, durationDays: 2 },
+      ],
+      quoteId: QUOTE_ID,
+    });
+  });
+
+  it('drops seed start dates without job:schedule so seeds append as before', () => {
+    expect(
+      toJobCreateInput({
+        canSchedule: false,
+        quoteId: QUOTE_ID,
+        value: {
+          baySeeds: [{ bayId: ENABLED_BAY_ID, durationDays: 7, startDate: '2026-06-09' }],
         },
       }),
     ).toEqual({
@@ -66,7 +186,7 @@ describe('getBaySeedBayMap', () => {
   it('uses Product Bay metadata before the enabled Bay picker finishes loading', () => {
     const productBay = buildProductBay({ bayId: ENABLED_BAY_ID, defaultWorkingDays: 4, name: 'Fabrication Bay' });
 
-    expect(getBaySeedBayMap({ enabledBays: [], productBays: [productBay] }).get(ENABLED_BAY_ID)).toEqual(
+    expect(getBaySeedBayMap({ enabledBays: [], productBays: [productBay] }).get(UUID.parse(ENABLED_BAY_ID))).toEqual(
       productBay.bay,
     );
   });
@@ -79,9 +199,45 @@ describe('getBaySeedBayMap', () => {
       name: 'Retired Bay',
     });
 
-    expect(getBaySeedBayMap({ enabledBays: [], productBays: [disabledProductBay] }).has(DISABLED_BAY_ID)).toBe(false);
+    expect(
+      getBaySeedBayMap({ enabledBays: [], productBays: [disabledProductBay] }).has(UUID.parse(DISABLED_BAY_ID)),
+    ).toBe(false);
   });
 });
+
+function buildBaySchedule({
+  id,
+  nextAvailableDate,
+  slots = [],
+}: {
+  id: string;
+  nextAvailableDate: string;
+  slots?: ProjectedJobSlot[];
+}): BaySchedule {
+  return BaySchedule.parse({
+    ...buildBay({ disabledAt: null, id, name: 'Fabrication Bay' }),
+    calendarExceptions: [],
+    nextAvailableDate,
+    slots,
+  });
+}
+
+function buildWorkSlot({ durationDays, jobCode }: { durationDays: number; jobCode: string }): ProjectedJobSlot {
+  return ProjectedJobSlot.parse({
+    bayId: ENABLED_BAY_ID,
+    createdAt: '2026-06-05T08:00:00.000Z',
+    durationDays,
+    endDate: '2026-06-15',
+    id: '00000000-0000-4000-8000-000000000001',
+    jobCode,
+    jobId: '00000000-0000-4000-8000-00000000aaaa',
+    kind: 'work',
+    label: null,
+    sequence: 1,
+    startDate: '2026-06-05',
+    updatedAt: '2026-06-05T08:00:00.000Z',
+  });
+}
 
 function buildProductBay({
   bayId,
@@ -109,7 +265,7 @@ function buildBay({ disabledAt, id, name }: { disabledAt: string | null; id: str
     disabledAt,
     id,
     name,
-    scheduleOrigin: '2026-01-01',
+    scheduleOrigin: '2026-06-05',
     updatedAt: '2026-01-01T00:00:00.000Z',
   });
 }

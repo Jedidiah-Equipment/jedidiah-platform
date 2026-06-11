@@ -1,6 +1,6 @@
-import { hasPermission } from '@pkg/domain';
-import type { QuoteDetail } from '@pkg/schema';
-import { IconBriefcase2, IconLoader2 } from '@tabler/icons-react';
+import { formatDate, hasPermission } from '@pkg/domain';
+import type { Bay, JobCreateInput, QuoteDetail, UUID } from '@pkg/schema';
+import { IconAlertTriangle, IconBriefcase2, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -31,14 +31,21 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog.js';
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
+import { Field, FieldLabel } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { createBayNonWorkingDateMatcher } from '@/pages/jobs/components/book-slot-insert-at-date.js';
 
 import {
+  type BaySeedScheduling,
+  createBaySeedScheduling,
   getBaySeedBayMap,
+  getBaySeedDefaultStartDate,
+  getBaySeedRowScheduling,
   JobCreateFormValues,
   toJobCreateFormValues,
   toJobCreateInput,
@@ -77,44 +84,39 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
   const navigate = useNavigate();
   const { invalidateJobs, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
+  const accessQuery = useAccess();
+  const canSchedule = hasPermission(accessQuery.data, 'job:schedule');
   const [isOpen, setIsOpen] = useState(false);
-  const initialFormValues = useMemo(() => toJobCreateFormValues(quote), [quote]);
   const enabledBaysQuery = useQuery(
     trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }, { enabled: isOpen }),
   );
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: isOpen }));
   const enabledBays = enabledBaysQuery.data?.items ?? [];
   const baysById = useMemo(
     () => getBaySeedBayMap({ enabledBays, productBays: quote.productBays }),
     [enabledBays, quote.productBays],
   );
+  // Schedule data is enrichment: when it fails the form still works, seeds just append.
+  const scheduling = useMemo(() => (baysQuery.data ? createBaySeedScheduling(baysQuery.data) : null), [baysQuery.data]);
   const createJobMutation = useMutation(
     trpc.jobs.create.mutationOptions({
       onSuccess: async (job) => {
         await Promise.all([invalidateJobs(), invalidateQuotes()]);
         toast.success('Job started');
         setIsOpen(false);
-        form.reset(initialFormValues);
         await navigate({ search: { job: job.id }, to: '/jobs' });
       },
       onError: (error) => showMutationError(error, 'Unable to start job.'),
     }),
   );
-  const form = useAppForm({
-    defaultValues: initialFormValues,
-    validators: {
-      onChange: JobCreateFormValues,
-      onSubmit: JobCreateFormValues,
-    },
-    onSubmit: ({ value }) => {
-      createJobMutation.mutate(toJobCreateInput({ quoteId: quote.id, value }));
-    },
-  });
-  const isPending = createJobMutation.isPending || form.state.isSubmitting;
+  const isPending = createJobMutation.isPending;
 
   const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
+    if (isPending) {
+      return;
+    }
 
-    form.reset(initialFormValues);
+    setIsOpen(open);
   };
 
   return (
@@ -133,106 +135,216 @@ const GenerateJobFromQuoteDialogContent: React.FC<GenerateJobFromQuoteDialogProp
         <IconBriefcase2 data-icon={size === 'icon-sm' ? undefined : 'inline-start'} />
         {size === 'icon-sm' ? null : 'Generate CFO & Start Job'}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[720px]">
+      <DialogContent className="sm:max-w-[760px]">
         <DialogHeader>
           <DialogTitle>Generate CFO & Start Job</DialogTitle>
           <DialogDescription>
             Generate CFO and start Job, quote will be locked once the Job is created.
           </DialogDescription>
         </DialogHeader>
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            void form.handleSubmit();
-          }}
-        >
-          <form.Field name="baySeeds" mode="array">
-            {(baySeedsField) => {
-              const selectedBayIds = new Set(baySeedsField.state.value.map((row) => row.bayId));
-
-              return (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Assigned Bays</CardTitle>
-                    <CardDescription>Job duration estimates by Bay.</CardDescription>
-                    <CardAction>
-                      {enabledBaysQuery.isLoading ? <Skeleton className="h-8 w-72 max-w-full" /> : null}
-                      {!enabledBaysQuery.isLoading && !enabledBaysQuery.error ? (
-                        <AddBaySelect
-                          bays={enabledBays}
-                          disabled={isPending}
-                          excludeBayIds={selectedBayIds}
-                          onAdd={(bay) => baySeedsField.pushValue({ bayId: bay.id, durationDays: NaN })}
-                        />
-                      ) : null}
-                    </CardAction>
-                  </CardHeader>
-                  <CardSeparator />
-                  <CardContent>
-                    <section className="flex flex-col gap-4">
-                      {enabledBaysQuery.error ? (
-                        <ErrorMessage error={enabledBaysQuery.error} fallbackMessage="Unable to load Bays." />
-                      ) : null}
-                      {baySeedsField.state.value.length === 0 ? (
-                        <Empty>
-                          <EmptyHeader>
-                            <EmptyIcon />
-                            <EmptyTitle>No Bays selected.</EmptyTitle>
-                            <EmptyDescription>Select a Bay from the header to add it to the Job.</EmptyDescription>
-                          </EmptyHeader>
-                        </Empty>
-                      ) : (
-                        <div className="flex flex-col gap-3">
-                          {baySeedsField.state.value.map((row, index) => (
-                            <BayRowCard
-                              bay={baysById.get(row.bayId)}
-                              key={row.bayId}
-                              onRemove={() => baySeedsField.removeValue(index)}
-                              removeDisabled={isPending}
-                              removeLabel={`Remove Bay seed ${index + 1}`}
-                              unavailableHint="Bay must be reselected"
-                            >
-                              <form.AppField name={`baySeeds[${index}].durationDays`}>
-                                {(field) => (
-                                  <field.NumberField
-                                    className="w-20"
-                                    disabled={isPending}
-                                    emptyValue={Number.NaN}
-                                    inputMode="numeric"
-                                    label="Days"
-                                    orientation="horizontal"
-                                    placeholder="1"
-                                    fieldClassName="self-center *:data-[slot=field-label]:flex-none"
-                                  />
-                                )}
-                              </form.AppField>
-                            </BayRowCard>
-                          ))}
-                        </div>
-                      )}
-                    </section>
-                  </CardContent>
-                </Card>
-              );
-            }}
-          </form.Field>
-          <form.Subscribe selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}>
-            {({ canSubmit, isSubmitting }) => (
-              <DialogFooter>
-                <DialogClose render={<Button disabled={isPending} type="button" variant="outline" />}>
-                  Cancel
-                </DialogClose>
-                <Button disabled={isPending || isSubmitting || !canSubmit} type="submit">
-                  {isPending || isSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
-                  Generate CFO & Start Job
-                </Button>
-              </DialogFooter>
-            )}
-          </form.Subscribe>
-        </form>
+        {enabledBaysQuery.isLoading || baysQuery.isLoading ? (
+          <Skeleton className="h-64 w-full" />
+        ) : (
+          <GenerateJobForm
+            baysById={baysById}
+            baysError={enabledBaysQuery.error ?? baysQuery.error}
+            canSchedule={canSchedule}
+            enabledBays={enabledBays}
+            isPending={isPending}
+            onSubmit={(input) => createJobMutation.mutate(input)}
+            quote={quote}
+            scheduling={scheduling}
+          />
+        )}
       </DialogContent>
     </Dialog>
+  );
+};
+
+type GenerateJobFormProps = {
+  baysById: Map<UUID, Bay>;
+  baysError: unknown;
+  canSchedule: boolean;
+  enabledBays: Bay[];
+  isPending: boolean;
+  onSubmit: (input: JobCreateInput) => void;
+  quote: Pick<QuoteDetail, 'id' | 'productBays'>;
+  scheduling: BaySeedScheduling | null;
+};
+
+const GenerateJobForm: React.FC<GenerateJobFormProps> = ({
+  baysById,
+  baysError,
+  canSchedule,
+  enabledBays,
+  isPending,
+  onSubmit,
+  quote,
+  scheduling,
+}) => {
+  const initialFormValues = useMemo(
+    () => toJobCreateFormValues({ productBays: quote.productBays, scheduling }),
+    [quote.productBays, scheduling],
+  );
+  const form = useAppForm({
+    defaultValues: initialFormValues,
+    validators: {
+      onChange: JobCreateFormValues,
+      onSubmit: JobCreateFormValues,
+    },
+    onSubmit: ({ value }) => {
+      onSubmit(toJobCreateInput({ canSchedule, quoteId: quote.id, value }));
+    },
+  });
+
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <form.Field name="baySeeds" mode="array">
+        {(baySeedsField) => {
+          const selectedBayIds = new Set(baySeedsField.state.value.map((row) => row.bayId));
+
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle>Assigned Bays</CardTitle>
+                <CardDescription>Job duration estimates by Bay.</CardDescription>
+                <CardAction>
+                  <AddBaySelect
+                    bays={enabledBays}
+                    disabled={isPending}
+                    excludeBayIds={selectedBayIds}
+                    onAdd={(bay) =>
+                      baySeedsField.pushValue({
+                        bayId: bay.id,
+                        durationDays: NaN,
+                        startDate: getBaySeedDefaultStartDate(scheduling, bay.id),
+                      })
+                    }
+                  />
+                </CardAction>
+              </CardHeader>
+              <CardSeparator />
+              <CardContent>
+                <section className="flex flex-col gap-4">
+                  {baysError ? <ErrorMessage error={baysError} fallbackMessage="Unable to load Bays." /> : null}
+                  {baySeedsField.state.value.length === 0 ? (
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyIcon />
+                        <EmptyTitle>No Bays selected.</EmptyTitle>
+                        <EmptyDescription>Select a Bay from the header to add it to the Job.</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {baySeedsField.state.value.map((row, index) => (
+                        <BayRowCard
+                          bay={baysById.get(row.bayId)}
+                          key={row.bayId}
+                          onRemove={() => baySeedsField.removeValue(index)}
+                          removeDisabled={isPending}
+                          removeLabel={`Remove Bay seed ${index + 1}`}
+                          unavailableHint="Bay must be reselected"
+                        >
+                          <div className="flex items-center gap-3 self-center">
+                            <form.AppField name={`baySeeds[${index}].startDate`}>
+                              {(startDateField) => {
+                                const rowScheduling = getBaySeedRowScheduling(scheduling, {
+                                  bayId: row.bayId,
+                                  startDate: startDateField.state.value,
+                                });
+
+                                if (!rowScheduling) {
+                                  return null;
+                                }
+
+                                return (
+                                  <>
+                                    {canSchedule ? (
+                                      <startDateField.DatePickerField
+                                        disabled={isPending}
+                                        fieldClassName="w-56 *:data-[slot=field-label]:flex-none"
+                                        isDateDisabled={createBayNonWorkingDateMatcher(rowScheduling.workingCalendar)}
+                                        label="Start"
+                                        maxValue={rowScheduling.bounds.maxValue}
+                                        minValue={rowScheduling.bounds.minValue}
+                                        orientation="horizontal"
+                                      />
+                                    ) : (
+                                      <Field className="self-center" orientation="horizontal">
+                                        <FieldLabel>Start</FieldLabel>
+                                        <p className="text-sm whitespace-nowrap">
+                                          {startDateField.state.value
+                                            ? formatDate(startDateField.state.value, 'EEE, MMM d')
+                                            : '—'}
+                                        </p>
+                                      </Field>
+                                    )}
+                                    {rowScheduling.splitWarning ? (
+                                      <Tooltip>
+                                        <TooltipTrigger
+                                          render={
+                                            <span
+                                              aria-label={`Bay seed ${index + 1} splits an existing slot`}
+                                              className="text-amber-700 dark:text-amber-300"
+                                              role="img"
+                                            />
+                                          }
+                                        >
+                                          <IconAlertTriangle className="size-4" />
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-64">
+                                          {rowScheduling.splitWarning}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    ) : null}
+                                  </>
+                                );
+                              }}
+                            </form.AppField>
+                            <form.AppField name={`baySeeds[${index}].durationDays`}>
+                              {(field) => (
+                                <field.NumberField
+                                  className="w-20"
+                                  disabled={isPending}
+                                  emptyValue={Number.NaN}
+                                  inputMode="numeric"
+                                  label="Days"
+                                  orientation="horizontal"
+                                  placeholder="1"
+                                  fieldClassName="self-center *:data-[slot=field-label]:flex-none"
+                                />
+                              )}
+                            </form.AppField>
+                          </div>
+                        </BayRowCard>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </CardContent>
+            </Card>
+          );
+        }}
+      </form.Field>
+      <form.Subscribe selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}>
+        {({ canSubmit, isSubmitting: isFormSubmitting }) => (
+          <DialogFooter>
+            <DialogClose render={<Button disabled={isPending} type="button" variant="outline" />}>Cancel</DialogClose>
+            <Button disabled={isPending || isFormSubmitting || !canSubmit} type="submit">
+              {isPending || isFormSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
+              Generate CFO & Start Job
+            </Button>
+          </DialogFooter>
+        )}
+      </form.Subscribe>
+    </form>
   );
 };

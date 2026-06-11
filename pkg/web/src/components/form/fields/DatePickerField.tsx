@@ -8,20 +8,26 @@ import { getFieldErrors } from '../utils/field-errors.js';
 export type DatePickerFieldProps = {
   description?: React.ReactNode;
   disabled?: boolean;
+  fieldClassName?: string;
+  isDateDisabled?: (date: Date) => boolean;
   label: React.ReactNode;
   maxValue?: string;
   minValue?: string;
   onValueCommit?: () => void;
+  orientation?: React.ComponentProps<typeof Field>['orientation'];
   placeholder?: string;
 };
 
 export function DatePickerField({
   description,
   disabled = false,
+  fieldClassName,
+  isDateDisabled,
   label,
   maxValue,
   minValue,
   onValueCommit,
+  orientation,
   placeholder,
 }: DatePickerFieldProps) {
   const field = useFieldContext<string>();
@@ -29,12 +35,13 @@ export function DatePickerField({
   const isInvalid = fieldErrors.length > 0;
 
   return (
-    <Field data-disabled={disabled} data-invalid={isInvalid}>
+    <Field className={fieldClassName} data-disabled={disabled} data-invalid={isInvalid} orientation={orientation}>
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
       <DatePicker
         aria-invalid={isInvalid}
         disabled={disabled}
         id={field.name}
+        {...(isDateDisabled ? { isDateDisabled } : {})}
         {...(maxValue ? { maxValue } : {})}
         {...(minValue ? { minValue } : {})}
         name={field.name}

@@ -5,6 +5,7 @@ import {
   jobBayOperatorAssignments,
   jobBays,
   jobSlots,
+  jobs,
   products,
   quotes,
   sql,
@@ -799,6 +800,119 @@ describe('jobs.create', () => {
         quoteId: context.quote.id,
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  test('seeds Bays at picked start dates with splits, boundary inserts, and appends in one create', async ({
+    context,
+  }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const existingJob = await caller.jobs.create({ quoteId: context.quote.id });
+    // b01: one 10-day slot a dated seed will split; b02: two slots whose boundary a
+    // dated seed lands on; b03: one slot whose next available day a dated seed picks.
+    await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      durationDays: 10,
+      jobId: existingJob.id,
+    });
+    await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      durationDays: 2,
+      jobId: existingJob.id,
+    });
+    await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      durationDays: 3,
+      jobId: existingJob.id,
+    });
+    await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b03',
+      durationDays: 3,
+      jobId: existingJob.id,
+    });
+
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const seededJob = await caller.jobs.create({
+      baySeeds: [
+        { bayId: '00000000-0000-4000-8000-000000000b01', durationDays: 5, startDate: '2026-06-09' },
+        { bayId: '00000000-0000-4000-8000-000000000b02', durationDays: 2, startDate: '2026-06-07' },
+        { bayId: '00000000-0000-4000-8000-000000000b03', durationDays: 1, startDate: '2026-06-08' },
+      ],
+      quoteId: secondQuote.id,
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b01',
+          slots: [
+            expect.objectContaining({ durationDays: 4, jobId: existingJob.id, sequence: 1 }),
+            expect.objectContaining({ durationDays: 5, jobId: seededJob.id, sequence: 2, startDate: '2026-06-09' }),
+            expect.objectContaining({ durationDays: 6, jobId: existingJob.id, sequence: 3 }),
+          ],
+        }),
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b02',
+          slots: [
+            expect.objectContaining({ durationDays: 2, jobId: existingJob.id, sequence: 1 }),
+            expect.objectContaining({ durationDays: 2, jobId: seededJob.id, sequence: 2, startDate: '2026-06-07' }),
+            expect.objectContaining({ durationDays: 3, jobId: existingJob.id, sequence: 3 }),
+          ],
+        }),
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b03',
+          slots: [
+            expect.objectContaining({ durationDays: 3, jobId: existingJob.id, sequence: 1 }),
+            expect.objectContaining({ durationDays: 1, jobId: seededJob.id, sequence: 2, startDate: '2026-06-08' }),
+          ],
+        }),
+      ]),
+    );
+  });
+
+  test('clamps a seed start date past the queue end to a plain append without fabricating idle', async ({
+    context,
+  }) => {
+    const caller = context.createCaller(mockSession('admin'));
+
+    const job = await caller.jobs.create({
+      baySeeds: [{ bayId: '00000000-0000-4000-8000-000000000b03', durationDays: 2, startDate: '2026-06-20' }],
+      quoteId: context.quote.id,
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '00000000-0000-4000-8000-000000000b03',
+          slots: [
+            expect.objectContaining({
+              jobId: job.id,
+              kind: 'work',
+              sequence: 1,
+              startDate: '2026-06-05',
+            }),
+          ],
+        }),
+      ]),
+    );
+  });
+
+  test('creates nothing when any seed in the batch fails', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+
+    await expect(
+      caller.jobs.create({
+        baySeeds: [
+          { bayId: '00000000-0000-4000-8000-000000000b01', durationDays: 2, startDate: '2026-06-06' },
+          { bayId: '00000000-0000-4000-8000-00000000dead', durationDays: 1 },
+        ],
+        quoteId: context.quote.id,
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+    await expect(context.db.select().from(jobs)).resolves.toEqual([]);
+    await expect(context.db.select().from(jobSlots)).resolves.toEqual([]);
   });
 
   test('returns the product serial number from get and list, and can search by it', async ({ context }) => {

@@ -110,6 +110,11 @@ export const QuoteSummary = Quote.extend({
   selectedAssemblies: z.array(QuoteSelectedAssembly),
 });
 
+export type PriorityQuote = z.infer<typeof PriorityQuote>;
+export const PriorityQuote = QuoteSummary.extend({
+  earliestDeliveryDate: DateOnlyIso,
+});
+
 export type QuoteDetail = z.infer<typeof QuoteDetail>;
 export const QuoteDetail = QuoteSummary.extend({
   customerAddress: CustomerOptionalText,

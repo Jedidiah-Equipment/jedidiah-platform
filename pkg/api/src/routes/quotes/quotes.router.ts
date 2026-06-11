@@ -6,6 +6,7 @@ import {
   getQuoteProductBrochure,
   isQuoteCoreError,
   listCustomers,
+  listPriorityQuotes,
   listProducts,
   listQuoteSalespeople,
   listQuotes,
@@ -34,6 +35,8 @@ export const quotesRouter = router({
   list: authorizedProcedure('quote:read')
     .input(QuoteListInput)
     .query(({ ctx, input }) => listQuotes({ db: ctx.db, input })),
+
+  priorityList: authorizedProcedure('quote:read').query(({ ctx }) => listPriorityQuotes({ db: ctx.db })),
 
   get: authorizedProcedure('quote:read')
     .input(z.object({ id: UUID }))

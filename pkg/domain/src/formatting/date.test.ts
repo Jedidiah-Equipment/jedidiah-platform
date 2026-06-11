@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   formatDate,
+  getPlantDateNow,
   parseCommonDateInput,
   parseDate,
   secondsToAgeString,
@@ -80,6 +81,17 @@ describe('secondsToAgeString', () => {
 });
 
 describe('plant date helpers', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('derives the current plant date from the system clock', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-18T22:00:00.000Z'));
+
+    expect(getPlantDateNow()).toBe('2026-06-19');
+  });
+
   it('converts instants to their Johannesburg plant business date', () => {
     expect(toPlantDateOnly(new Date('2026-06-18T21:59:59.000Z'))).toBe('2026-06-18');
     expect(toPlantDateOnly(new Date('2026-06-18T22:00:00.000Z'))).toBe('2026-06-19');

@@ -9,9 +9,11 @@ import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } fr
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { CustomerEmail, CustomerOptionalText, CustomerVatNumber } from '../customers/customer.js';
+import { Bay } from '../jobs/job.js';
 import {
   Assembly,
   ProductBay,
+  ProductBayDefaultWorkingDays,
   ProductCurrencyCode,
   ProductDescription,
   ProductRequiresVinNumber,
@@ -183,6 +185,34 @@ export const QuoteDocumentGenerationInput = z.object({
   quoteId: UUID,
   leadTime: QuoteDocumentLeadTime,
 });
+
+export type QuoteProductBayAvailabilityInput = z.infer<typeof QuoteProductBayAvailabilityInput>;
+export const QuoteProductBayAvailabilityInput = z
+  .object({
+    quoteId: UUID,
+  })
+  .strict();
+
+export type QuoteProductBayAvailabilityBay = z.infer<typeof QuoteProductBayAvailabilityBay>;
+export const QuoteProductBayAvailabilityBay = Bay.pick({
+  department: true,
+  name: true,
+}).extend({
+  bayId: UUID,
+  defaultWorkingDays: ProductBayDefaultWorkingDays,
+  nextAvailableDate: DateOnlyIso,
+  waitWorkingDays: z.number().int().min(0),
+});
+
+export type QuoteProductBayAvailabilityResult = z.infer<typeof QuoteProductBayAvailabilityResult>;
+export const QuoteProductBayAvailabilityResult = z
+  .object({
+    bays: z.array(QuoteProductBayAvailabilityBay),
+    buildTimeDays: z.number().int().min(0),
+    defaultLeadTimeWorkingDays: z.number().int().min(0),
+    maxBayWaitWorkingDays: z.number().int().min(0),
+  })
+  .strict();
 
 export type QuoteSortBy = z.infer<typeof QuoteSortBy>;
 export const QuoteSortBy = z.enum([

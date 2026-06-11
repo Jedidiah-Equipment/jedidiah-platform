@@ -1,9 +1,26 @@
-import { customers, type Db, jobBays, productBays, products, quotes, user } from '@pkg/db';
+import {
+  customers,
+  type Db,
+  jobBayCalendarExceptions,
+  jobBays,
+  jobSlots,
+  productBays,
+  products,
+  quotes,
+  user,
+  workingCalendarOffDays,
+} from '@pkg/db';
+import { addDateOnlyDays, addJobSlotDuration, getPlantDateNow } from '@pkg/domain';
 import type { QuoteStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
-import { countQuotesByWeek, getQuote, summarizeQuotesByStatus } from './quote-service.js';
+import {
+  countQuotesByWeek,
+  getQuote,
+  getQuoteProductBayAvailability,
+  summarizeQuotesByStatus,
+} from './quote-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -214,6 +231,181 @@ describe('getQuote', () => {
   });
 });
 
+describe('getQuoteProductBayAvailability', () => {
+  test('returns build time when a Product has no enabled Bays', async ({ context }) => {
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+    });
+
+    await expect(
+      getQuoteProductBayAvailability({
+        db: context.db,
+        input: { quoteId: quote.id },
+      }),
+    ).resolves.toMatchObject({
+      bays: [],
+      buildTimeDays: 14,
+      defaultLeadTimeWorkingDays: 14,
+      maxBayWaitWorkingDays: 0,
+    });
+  });
+
+  test('uses the max enabled Product Bay wait and ignores disabled Bays', async ({ context }) => {
+    const today = getPlantDateNow();
+    const quickBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000601',
+      name: 'Quick Bay',
+      scheduleOrigin: today,
+    });
+    const slowerBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000602',
+      name: 'Slower Bay',
+      scheduleOrigin: today,
+    });
+    const disabledBay = await createBay(context.db, {
+      disabledAt: new Date('2026-06-01T00:00:00.000Z'),
+      id: '00000000-0000-4000-8000-000000000603',
+      name: 'Disabled Bay',
+      scheduleOrigin: today,
+    });
+    await context.db.insert(productBays).values([
+      { bayId: quickBay.id, defaultWorkingDays: 2, productId: context.product.id },
+      { bayId: slowerBay.id, defaultWorkingDays: 3, productId: context.product.id },
+      { bayId: disabledBay.id, defaultWorkingDays: 9, productId: context.product.id },
+    ]);
+    await context.db.insert(jobSlots).values([
+      { bayId: quickBay.id, durationDays: 1, kind: 'idle', label: null, sequence: 1 },
+      { bayId: slowerBay.id, durationDays: 4, kind: 'idle', label: null, sequence: 1 },
+      { bayId: disabledBay.id, durationDays: 8, kind: 'idle', label: null, sequence: 1 },
+    ]);
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+    });
+
+    await expect(
+      getQuoteProductBayAvailability({
+        db: context.db,
+        input: { quoteId: quote.id },
+      }),
+    ).resolves.toMatchObject({
+      bays: [
+        expect.objectContaining({ bayId: quickBay.id, name: 'Quick Bay', waitWorkingDays: 1 }),
+        expect.objectContaining({ bayId: slowerBay.id, name: 'Slower Bay', waitWorkingDays: 4 }),
+      ],
+      buildTimeDays: 14,
+      defaultLeadTimeWorkingDays: 18,
+      maxBayWaitWorkingDays: 4,
+    });
+  });
+
+  test('uses org Off-Days and Bay Calendar Exceptions when deriving the next available date', async ({ context }) => {
+    const today = getPlantDateNow();
+    const offDay = addDateOnlyDays(today, 1);
+    const closedBayNextAvailableDate = addJobSlotDuration(today, 2, { orgOffDays: new Set([offDay]) });
+    const overtimeBayNextAvailableDate = addJobSlotDuration(today, 2, {
+      bayExceptions: new Map([[offDay, 'work']]),
+      orgOffDays: new Set([offDay]),
+    });
+    const closedBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000604',
+      name: 'Closed Bay',
+      scheduleOrigin: today,
+    });
+    const overtimeBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000605',
+      name: 'Overtime Bay',
+      scheduleOrigin: today,
+    });
+    await context.db.insert(productBays).values([
+      { bayId: closedBay.id, defaultWorkingDays: 2, productId: context.product.id },
+      { bayId: overtimeBay.id, defaultWorkingDays: 2, productId: context.product.id },
+    ]);
+    await context.db.insert(workingCalendarOffDays).values({ date: offDay, label: 'Shutdown' });
+    await context.db.insert(jobBayCalendarExceptions).values({
+      bayId: overtimeBay.id,
+      date: offDay,
+      direction: 'work',
+      label: 'Overtime',
+    });
+    await context.db.insert(jobSlots).values([
+      { bayId: closedBay.id, durationDays: 2, kind: 'idle', label: null, sequence: 1 },
+      { bayId: overtimeBay.id, durationDays: 2, kind: 'idle', label: null, sequence: 1 },
+    ]);
+    const quote = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+    });
+
+    await expect(
+      getQuoteProductBayAvailability({
+        db: context.db,
+        input: { quoteId: quote.id },
+      }),
+    ).resolves.toMatchObject({
+      bays: [
+        expect.objectContaining({
+          bayId: closedBay.id,
+          nextAvailableDate: closedBayNextAvailableDate,
+          waitWorkingDays: 2,
+        }),
+        expect.objectContaining({
+          bayId: overtimeBay.id,
+          nextAvailableDate: overtimeBayNextAvailableDate,
+          waitWorkingDays: 2,
+        }),
+      ],
+      defaultLeadTimeWorkingDays: 16,
+    });
+  });
+
+  test('rejects unknown Quotes instead of accepting arbitrary Product ids', async ({ context }) => {
+    await expect(
+      getQuoteProductBayAvailability({
+        db: context.db,
+        input: { quoteId: '00000000-0000-4000-8000-000000000999' },
+      }),
+    ).rejects.toThrow('Quote not found: 00000000-0000-4000-8000-000000000999');
+  });
+});
+
+async function createQuote(
+  db: Db,
+  {
+    customerId,
+    productId,
+    salesPersonId,
+    status = 'draft',
+  }: {
+    customerId: string;
+    productId: string;
+    salesPersonId: string;
+    status?: QuoteStatus;
+  },
+) {
+  const [quote] = await db
+    .insert(quotes)
+    .values({
+      customerId,
+      productId,
+      quotedBasePrice: 1000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonId,
+      status,
+    })
+    .returning();
+
+  if (!quote) {
+    throw new Error('Quote insert did not return a row');
+  }
+
+  return quote;
+}
+
 async function createQuoteRows(
   db: Db,
   {
@@ -249,6 +441,7 @@ async function createBay(
     disabledAt?: Date | null;
     id: string;
     name: string;
+    scheduleOrigin?: string;
   },
 ) {
   const [bay] = await db

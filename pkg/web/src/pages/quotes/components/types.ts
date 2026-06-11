@@ -11,6 +11,7 @@ import {
   QuoteDiscountPercent,
   QuoteDocumentNotes,
   QuoteNotes,
+  type QuoteProductBayAvailabilityResult,
   type QuoteSelectedAssembly,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
@@ -142,7 +143,35 @@ function refineQuoteCustomerSelection(
 }
 
 export function getDefaultQuoteDocumentLeadTime(quote: Pick<QuoteDetail, 'productBuildTimeDays'>): string {
-  return `${quote.productBuildTimeDays} working days`;
+  return formatQuoteDocumentLeadTime(quote.productBuildTimeDays);
+}
+
+export function formatQuoteDocumentLeadTime(days: number): string {
+  return `${days} working days`;
+}
+
+export function getDefaultQuoteDocumentLeadTimeFromAvailability(
+  availability: Pick<QuoteProductBayAvailabilityResult, 'defaultLeadTimeWorkingDays'>,
+): string {
+  return formatQuoteDocumentLeadTime(availability.defaultLeadTimeWorkingDays);
+}
+
+export function resolveQuoteDocumentLeadTime({
+  availability,
+  fallbackLeadTime,
+  hasUserEditedLeadTime,
+  leadTime,
+}: {
+  availability: Pick<QuoteProductBayAvailabilityResult, 'defaultLeadTimeWorkingDays'> | null | undefined;
+  fallbackLeadTime: string;
+  hasUserEditedLeadTime: boolean;
+  leadTime: string;
+}): string {
+  if (hasUserEditedLeadTime) {
+    return leadTime;
+  }
+
+  return availability ? getDefaultQuoteDocumentLeadTimeFromAvailability(availability) : fallbackLeadTime;
 }
 
 export type SelectedAssemblySnapshot = {

@@ -92,7 +92,6 @@ describe('createJob', () => {
 
     const job = await createJob({
       actorUserId,
-      currentDate: new Date('2026-06-01T10:00:00.000+02:00'),
       db: context.db,
       input: { baySeeds: [], quoteId: quote.id },
     });
@@ -200,7 +199,6 @@ describe('createJob', () => {
 
     const job = await createJob({
       actorUserId,
-      currentDate: new Date('2026-06-05T09:00:00.000+02:00'),
       db: context.db,
       input: {
         baySeeds: [
@@ -604,19 +602,16 @@ describe('createJob', () => {
 
     const firstJob = await createJob({
       actorUserId,
-      currentDate: new Date('2026-06-01T10:00:00.000+02:00'),
       db: context.db,
       input: { baySeeds: [], quoteId: firstQuote.id },
     });
     const secondJob = await createJob({
       actorUserId,
-      currentDate: new Date('2026-06-02T10:00:00.000+02:00'),
       db: context.db,
       input: { baySeeds: [], quoteId: secondQuote.id },
     });
     const otherProductJob = await createJob({
       actorUserId,
-      currentDate: new Date('2026-06-03T10:00:00.000+02:00'),
       db: context.db,
       input: { baySeeds: [], quoteId: otherProductQuote.id },
     });
@@ -640,15 +635,15 @@ describe('createJob', () => {
       status: 'accepted',
     });
 
+    vi.setSystemTime(new Date('2026-12-31T23:30:00.000+02:00'));
     const firstJob = await createJob({
       actorUserId,
-      currentDate: new Date('2026-12-31T23:30:00.000+02:00'),
       db: context.db,
       input: { baySeeds: [], quoteId: firstQuote.id },
     });
+    vi.setSystemTime(new Date('2027-01-01T00:30:00.000+02:00'));
     const secondJob = await createJob({
       actorUserId,
-      currentDate: new Date('2027-01-01T00:30:00.000+02:00'),
       db: context.db,
       input: { baySeeds: [], quoteId: secondQuote.id },
     });
@@ -1381,12 +1376,11 @@ describe('bookJobSlot', () => {
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
 
     const firstSlot = await bookJobSlot({
-      currentDate: new Date('2026-06-05T09:00:00.000+02:00'),
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
+    vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
     const secondSlot = await bookJobSlot({
-      currentDate: new Date('2026-06-10T09:00:00.000+02:00'),
       db: context.db,
       input: { bayId: bay.id, durationDays: 2, jobId: secondJob.id },
     });
@@ -1432,13 +1426,12 @@ describe('bookJobSlot', () => {
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
 
     await bookJobSlot({
-      currentDate: new Date('2026-06-05T09:00:00.000+02:00'),
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
     });
     // 23:30 UTC on Jun 9 is already Jun 10 in Johannesburg, so the idle gap runs through Jun 9.
+    vi.setSystemTime(new Date('2026-06-09T23:30:00.000Z'));
     const secondSlot = await bookJobSlot({
-      currentDate: new Date('2026-06-09T23:30:00.000Z'),
       db: context.db,
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });

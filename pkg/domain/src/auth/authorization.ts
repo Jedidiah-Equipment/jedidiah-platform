@@ -94,6 +94,9 @@ type RoleAccess = Partial<{
   [Resource in AuthorizationResource]: readonly (typeof authorizationStatement)[Resource][number][];
 }>;
 
+// Invariant: any role granted `job:create` must also hold `job:schedule` — creating a
+// Job inherently schedules its Bay seeds (picked start dates, ghost previews), so the
+// create surfaces assume scheduling authority rather than gating seed dates separately.
 export const appRoleAccess = {
   admin: {
     audit: ['read'],

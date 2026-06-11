@@ -40,6 +40,9 @@ export const QuoteDocumentLeadTime = requiredTrimmedText('Lead time is required'
 export type QuoteDepositPercent = z.infer<typeof QuoteDepositPercent>;
 export const QuoteDepositPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');
 
+export type QuoteDiscountPercent = z.infer<typeof QuoteDiscountPercent>;
+export const QuoteDiscountPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');
+
 export type Quote = z.infer<typeof Quote>;
 export const Quote = z.object({
   id: UUID,
@@ -48,7 +51,7 @@ export const Quote = z.object({
   productId: UUID,
   salesPersonId: AuthId,
   status: QuoteStatus,
-  discountAmount: Price,
+  discountPercent: QuoteDiscountPercent,
   depositPercent: QuoteDepositPercent,
   deliveryIncluded: z.boolean(),
   deliveryPrice: Price,
@@ -139,7 +142,7 @@ export const QuoteCreateInput = z.object({
   productId: UUID,
   salesPersonId: AuthId,
   status: QuoteStatus,
-  discountAmount: z.coerce.number().pipe(Price).default(0),
+  discountPercent: z.coerce.number().pipe(QuoteDiscountPercent).default(0),
   depositPercent: z.coerce.number().pipe(QuoteDepositPercent).default(0),
   deliveryIncluded: z.boolean().default(true),
   deliveryPrice: z.coerce.number().pipe(Price).default(0),
@@ -157,7 +160,7 @@ export const QuoteUpdateInput = z
     id: UUID,
     salesPersonId: AuthId,
     status: QuoteStatus,
-    discountAmount: z.coerce.number().pipe(Price).default(0),
+    discountPercent: z.coerce.number().pipe(QuoteDiscountPercent).default(0),
     depositPercent: z.coerce.number().pipe(QuoteDepositPercent).default(0),
     deliveryIncluded: z.boolean().default(true),
     deliveryPrice: z.coerce.number().pipe(Price).default(0),

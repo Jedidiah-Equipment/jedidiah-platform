@@ -118,7 +118,7 @@ function getQuoteTotal(quote: QuoteSummary): number {
   return computeQuoteTotal({
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
-    discountAmount: quote.discountAmount,
+    discountPercent: quote.discountPercent,
     quotedBasePrice: quote.quotedBasePrice,
     selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
   });

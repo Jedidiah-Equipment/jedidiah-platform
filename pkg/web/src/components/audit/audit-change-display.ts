@@ -28,7 +28,7 @@ const auditFieldLabels: Record<string, string> = {
   department: 'Department',
   description: 'Description',
   disabledAt: 'Disabled at',
-  discountAmount: 'Discount amount',
+  discountPercent: 'Discount percent',
   email: 'Email',
   filename: 'Filename',
   buildTimeDays: 'Build time (days)',
@@ -59,7 +59,7 @@ const auditFieldLabels: Record<string, string> = {
   validUntil: 'Valid until',
 };
 
-const currencyFields = new Set(['basePrice', 'discountAmount', 'price', 'quotedBasePrice']);
+const currencyFields = new Set(['basePrice', 'price', 'quotedBasePrice']);
 const dateFields = new Set([
   'actualEnd',
   'actualStart',
@@ -73,7 +73,7 @@ const dateFields = new Set([
   'startedAt',
   'validUntil',
 ]);
-const percentFields = new Set(['depositPercent']);
+const percentFields = new Set(['depositPercent', 'discountPercent']);
 
 export function getAuditChangeDisplays(changes: AuditChangeMap | null): AuditChangeDisplay[] {
   if (!changes) {

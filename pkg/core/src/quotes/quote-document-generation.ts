@@ -1,5 +1,6 @@
 import { type customers, type Db, documents, type products, quoteSelectedAssemblies, quotes, type user } from '@pkg/db';
 import {
+  computeQuoteDiscountAmount,
   computeQuoteTotal,
   formatCurrency,
   formatPercent,
@@ -144,6 +145,12 @@ export async function getQuoteDocumentModel({
     amount: selection.quotedPrice,
     label: selection.quotedName,
   }));
+  const selectedAssemblyPrices = selectedOptionalAssemblies.map((item) => item.amount);
+  const discountAmount = computeQuoteDiscountAmount({
+    discountPercent: quote.discountPercent,
+    quotedBasePrice: quote.quotedBasePrice,
+    selectedAssemblyPrices,
+  });
   const lineItems: QuoteDocumentLineItem[] = [
     {
       amount: quote.quotedBasePrice,
@@ -157,6 +164,16 @@ export async function getQuoteDocumentModel({
       kind: 'optional' as const,
       quantity: 1,
     })),
+    ...(discountAmount > 0
+      ? [
+          {
+            amount: -discountAmount,
+            descriptionLines: [`Discount (${formatPercent(quote.discountPercent)})`],
+            kind: 'discount' as const,
+            quantity: 1,
+          },
+        ]
+      : []),
     ...(quote.deliveryIncluded && quote.deliveryPrice > 0
       ? [
           {
@@ -167,23 +184,13 @@ export async function getQuoteDocumentModel({
           },
         ]
       : []),
-    ...(quote.discountAmount > 0
-      ? [
-          {
-            amount: -quote.discountAmount,
-            descriptionLines: ['Discount'],
-            kind: 'discount' as const,
-            quantity: 1,
-          },
-        ]
-      : []),
   ];
   const subtotal = computeQuoteTotal({
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
-    discountAmount: quote.discountAmount,
+    discountPercent: quote.discountPercent,
     quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices: selectedOptionalAssemblies.map((item) => item.amount),
+    selectedAssemblyPrices,
   });
   const vatAmount = (subtotal * QUOTE_DOCUMENT_VAT_PERCENT) / 100;
 

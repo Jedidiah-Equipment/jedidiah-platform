@@ -1,4 +1,4 @@
-import { computeQuoteTotal, resolveEffectiveBom } from '@pkg/domain';
+import { computeQuoteDiscountAmount, computeQuoteTotal, resolveEffectiveBom } from '@pkg/domain';
 import { type QuoteDetail, type QuoteDocumentGenerationWarning, QuoteStatus, type QuoteUpdateInput } from '@pkg/schema';
 import { IconComponents, IconNotes, IconReceipt2, IconSettings, IconTruckDelivery } from '@tabler/icons-react';
 import type React from 'react';
@@ -179,12 +179,16 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
 
                 <QuoteFormSection icon={IconReceipt2} title="Pricing">
                   <div className="grid gap-3 md:grid-cols-2">
-                    <form.AppField name="discountAmount">
+                    <form.AppField name="discountPercent">
                       {(field) => (
-                        <field.CurrencyField
-                          currencyCode={selectedProduct.currencyCode}
+                        <field.NumberField
+                          decimals={2}
                           disabled={isLocked}
-                          label="Discount amount"
+                          emptyValue={0}
+                          label="Discount percent"
+                          max={100}
+                          min={0}
+                          step="0.01"
                         />
                       )}
                     </form.AppField>
@@ -264,7 +268,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
           </Tabs>
           <form.Subscribe
             selector={(state): QuoteComputedSummary => {
-              const discountAmount = state.values.discountAmount;
+              const discountPercent = state.values.discountPercent;
               const deliveryIncluded = state.values.deliveryIncluded;
               const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
               const quotedBasePrice = quote.quotedBasePrice;
@@ -289,8 +293,12 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
               return {
                 deliveryIncluded,
                 deliveryPrice,
-                discountAmount,
-                discountPercent: quotedBasePrice > 0 ? (discountAmount / quotedBasePrice) * 100 : 0,
+                discountAmount: computeQuoteDiscountAmount({
+                  discountPercent,
+                  quotedBasePrice,
+                  selectedAssemblyPrices: selectedAssemblies.map((assembly) => assembly.quotedPrice),
+                }),
+                discountPercent,
                 productPrice: quotedBasePrice,
                 currencyCode: selectedProduct.currencyCode,
                 selectedAssemblies,
@@ -298,7 +306,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
                 total: computeQuoteTotal({
                   deliveryIncluded,
                   deliveryPrice,
-                  discountAmount,
+                  discountPercent,
                   quotedBasePrice,
                   selectedAssemblyPrices: selectedAssemblies.map((assembly) => assembly.quotedPrice),
                 }),

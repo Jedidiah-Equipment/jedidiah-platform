@@ -18,7 +18,7 @@ describe('QuoteCreateInput', () => {
   it('defaults discount and deposit percents to zero', () => {
     expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({
       depositPercent: 0,
-      discountAmount: 0,
+      discountPercent: 0,
     });
   });
 
@@ -36,6 +36,15 @@ describe('QuoteCreateInput', () => {
       QuoteCreateInput.parse({
         ...baseCreateInput,
         depositPercent: 101,
+      }),
+    ).toThrow();
+  });
+
+  it('rejects a discount percent above 100', () => {
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        discountPercent: 101,
       }),
     ).toThrow();
   });
@@ -58,7 +67,7 @@ describe('QuoteDetail', () => {
         deliveryIncluded: true,
         deliveryPrice: 0,
         depositPercent: 0,
-        discountAmount: 0,
+        discountPercent: 0,
         documentNotes: null,
         id: '550e8400-e29b-41d4-a716-446655440010',
         linkedJobs: [],

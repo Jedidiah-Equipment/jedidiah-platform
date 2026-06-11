@@ -1,58 +1,74 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeQuoteTotal, validateDiscount } from './quote-pricing.js';
+import { computeQuoteDiscountAmount, computeQuoteTotal, validateDiscount } from './quote-pricing.js';
 
 describe('validateDiscount', () => {
-  it.each([0, 100])('allows discount amount %s inside the base price', (discountAmount) => {
-    expect(validateDiscount({ basePrice: 100, discountAmount })).toEqual({
+  it.each([0, 100])('allows discount percent %s', (discountPercent) => {
+    expect(validateDiscount({ discountPercent })).toEqual({
       allowed: true,
       reason: null,
     });
   });
 
-  it('rejects a discount amount above the base price', () => {
-    expect(validateDiscount({ basePrice: 100, discountAmount: 101 })).toMatchObject({
+  it('rejects a discount percent above 100', () => {
+    expect(validateDiscount({ discountPercent: 101 })).toMatchObject({
       allowed: false,
     });
   });
 
-  it('rejects a negative discount amount', () => {
-    expect(validateDiscount({ basePrice: 100, discountAmount: -1 })).toMatchObject({
+  it('rejects a negative discount percent', () => {
+    expect(validateDiscount({ discountPercent: -1 })).toMatchObject({
       allowed: false,
     });
   });
 });
 
+describe('computeQuoteDiscountAmount', () => {
+  it('discounts the product plus selected optional assemblies', () => {
+    expect(
+      computeQuoteDiscountAmount({
+        discountPercent: 10,
+        quotedBasePrice: 1250,
+        selectedAssemblyPrices: [300, 150],
+      }),
+    ).toBe(170);
+  });
+
+  it('rounds the derived currency amount to cents', () => {
+    expect(computeQuoteDiscountAmount({ discountPercent: 12.5, quotedBasePrice: 99.99 })).toBe(12.5);
+  });
+});
+
 describe('computeQuoteTotal', () => {
-  it('subtracts the fixed discount amount from the quoted base price', () => {
-    expect(computeQuoteTotal({ quotedBasePrice: 1250, discountAmount: 200 })).toBe(1050);
+  it('subtracts the discount percent from the quoted base price', () => {
+    expect(computeQuoteTotal({ quotedBasePrice: 1250, discountPercent: 10 })).toBe(1125);
   });
 
   it('adds delivery price when delivery is included', () => {
     expect(
-      computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 350, quotedBasePrice: 1250, discountAmount: 200 }),
-    ).toBe(1400);
+      computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 350, quotedBasePrice: 1250, discountPercent: 10 }),
+    ).toBe(1475);
   });
 
-  it('adds selected optional assembly snapshot prices', () => {
+  it('discounts selected optional assembly snapshot prices', () => {
     expect(
       computeQuoteTotal({
-        discountAmount: 200,
+        discountPercent: 10,
         quotedBasePrice: 1250,
         selectedAssemblyPrices: [300, 150],
       }),
-    ).toBe(1500);
+    ).toBe(1530);
   });
 
   it('ignores delivery price when delivery is excluded', () => {
     expect(
-      computeQuoteTotal({ deliveryIncluded: false, deliveryPrice: 350, quotedBasePrice: 1250, discountAmount: 200 }),
-    ).toBe(1050);
+      computeQuoteTotal({ deliveryIncluded: false, deliveryPrice: 350, quotedBasePrice: 1250, discountPercent: 10 }),
+    ).toBe(1125);
   });
 
-  it('floors stale draft totals at zero when product pricing drops below the discount amount', () => {
+  it('keeps delivery undiscounted when the commercial subtotal is fully discounted', () => {
     expect(
-      computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 50, quotedBasePrice: 100, discountAmount: 125 }),
+      computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 50, quotedBasePrice: 100, discountPercent: 100 }),
     ).toBe(50);
   });
 });

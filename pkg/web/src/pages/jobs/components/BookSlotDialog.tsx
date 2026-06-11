@@ -1,4 +1,4 @@
-import { formatDate, hasPermission } from '@pkg/domain';
+import { hasPermission } from '@pkg/domain';
 import { IconAlertTriangle, IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -23,6 +23,7 @@ import {
   getInsertAtDatePickerBounds,
   resolveBookSlotPlacement,
 } from './book-slot-insert-at-date.js';
+import { formatJobSchedulingDate } from './job-date-key.js';
 
 export const BookSlotDialog: React.FC = () => {
   const trpc = useTRPC();
@@ -160,7 +161,7 @@ export const BookSlotDialog: React.FC = () => {
                         <>
                           <span className="truncate">{selectedBay.name}</span>
                           <span className="shrink-0 text-muted-foreground">
-                            {formatDate(selectedBay.nextAvailableAt, 'MMM d')}
+                            {formatJobSchedulingDate(selectedBay.nextAvailableAt, 'MMM d')}
                           </span>
                         </>
                       ) : null}
@@ -171,7 +172,9 @@ export const BookSlotDialog: React.FC = () => {
                       {schedulableBays.map((bay) => (
                         <SelectItem key={bay.id} value={bay.id}>
                           {bay.name}
-                          <span className="text-muted-foreground">{formatDate(bay.nextAvailableAt, 'MMM d')}</span>
+                          <span className="text-muted-foreground">
+                            {formatJobSchedulingDate(bay.nextAvailableAt, 'MMM d')}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectGroup>

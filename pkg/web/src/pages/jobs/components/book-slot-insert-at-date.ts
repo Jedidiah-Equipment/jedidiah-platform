@@ -1,6 +1,5 @@
 import {
   firstWorkingDayOnOrAfter,
-  formatDate,
   formatJobSchedulingDateKey,
   type InsertAtDatePlacement,
   isWorkingDay,
@@ -14,6 +13,7 @@ import type { ProjectedJobSlot } from '@pkg/schema';
 import { addDays, format } from 'date-fns';
 
 import { getSlotLabel } from './bay-schedule-summary.js';
+import { formatJobSchedulingDate } from './job-date-key.js';
 
 export type BookSlotPlacement = InsertAtDatePlacement<ProjectedJobSlot>;
 
@@ -68,8 +68,7 @@ export function describeInsertAtDatePlacement(placement: BookSlotPlacement): {
   startText: string;
   splitWarning: string | null;
 } {
-  // Format via the Johannesburg date key so the scheduling day is shown regardless of the browser timezone.
-  const startText = `Starts ${formatDate(formatJobSchedulingDateKey(placement.startAt), 'EEE, MMM d')}`;
+  const startText = `Starts ${formatJobSchedulingDate(placement.startAt, 'EEE, MMM d')}`;
 
   if (placement.type !== 'split') {
     return { startText, splitWarning: null };

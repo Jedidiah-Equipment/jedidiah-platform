@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { fromJobCalendarDateKey, fromJobDateKey, toJobCalendarDateKey, toJobDateKey } from './job-date-key.js';
+import {
+  formatJobSchedulingDate,
+  fromJobCalendarDateKey,
+  fromJobDateKey,
+  toJobCalendarDateKey,
+  toJobDateKey,
+} from './job-date-key.js';
 
 describe('job date keys', () => {
   it('formats dates using the Johannesburg business day', () => {
@@ -14,6 +20,12 @@ describe('job date keys', () => {
 
   it('round-trips date keys through the shared Johannesburg basis', () => {
     expect(toJobDateKey(fromJobDateKey('2026-06-19'))).toBe('2026-06-19');
+  });
+
+  it('formats scheduling instants as their Johannesburg business day in any browser timezone', () => {
+    expect(formatJobSchedulingDate(new Date('2026-06-08T22:00:00.000Z'), 'MMM d')).toBe('Jun 9');
+    expect(formatJobSchedulingDate('2026-06-08T22:00:00.000Z', 'MMM d')).toBe('Jun 9');
+    expect(formatJobSchedulingDate(new Date('2026-06-08T21:59:59.000Z'), 'MMM d')).toBe('Jun 8');
   });
 
   it('formats local calendar column dates without timezone conversion', () => {

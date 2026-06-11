@@ -88,7 +88,7 @@ import {
   BAY_SCHEDULE_ZOOM_MIN,
   useBayScheduleViewStore,
 } from './bay-schedule-view-store.js';
-import { fromJobCalendarDateKey, toJobCalendarDate } from './job-date-key.js';
+import { formatJobSchedulingDate, fromJobCalendarDateKey, toJobCalendarDate } from './job-date-key.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
@@ -804,7 +804,7 @@ const BaySlotBar: React.FC<{
               top,
               width,
             }}
-            title={`${label}: ${formatDate(slot.startAt, 'long')} - ${formatDate(slot.endAt, 'long')}\n${dayBreakdown.workingDays} working day(s), ${dayBreakdown.closureDays} closure day(s), ${dayBreakdown.overtimeDays} overtime day(s)`}
+            title={`${label}: ${formatJobSchedulingDate(slot.startAt, 'PPP')} - ${formatJobSchedulingDate(slot.endAt, 'PPP')}\n${dayBreakdown.workingDays} working day(s), ${dayBreakdown.closureDays} closure day(s), ${dayBreakdown.overtimeDays} overtime day(s)`}
           />
         }
       >

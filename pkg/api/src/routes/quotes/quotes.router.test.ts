@@ -40,7 +40,7 @@ describe('quotes.create', () => {
       deliveryIncluded: true,
       deliveryPrice: 350,
       depositPercent: 30,
-      discountAmount: 100,
+      discountPercent: 10,
       notes: 'Demo quote',
       documentNotes: '30% deposit, balance on delivery',
       plannedDeliveryDate: '2026-07-15',
@@ -116,7 +116,7 @@ describe('quotes.create', () => {
     expect(created).toMatchObject({
       customerCompanyName: 'Cancelled Customer',
       depositPercent: 0,
-      discountAmount: 0,
+      discountPercent: 0,
       status: 'cancelled',
     });
   });
@@ -174,7 +174,7 @@ describe('quotes.create', () => {
           type: 'inline',
           companyName: 'Acme Mining',
         },
-        discountAmount: 100,
+        discountPercent: 10,
         notes: 'Demo quote',
         documentNotes: null,
         productId: context.product.id,
@@ -195,7 +195,7 @@ describe('quotes.create', () => {
         type: 'inline',
         companyName: 'Sent Customer',
       },
-      discountAmount: 50,
+      discountPercent: 5,
       notes: null,
       documentNotes: null,
       productId: context.product.id,
@@ -247,7 +247,7 @@ describe('quotes.create', () => {
         type: 'inline',
         companyName: 'Assembly Customer',
       },
-      discountAmount: 25,
+      discountPercent: 25,
       notes: null,
       documentNotes: null,
       productId: context.product.id,
@@ -385,7 +385,7 @@ describe('quotes.update', () => {
       depositPercent: 50,
       deliveryIncluded: false,
       deliveryPrice: 777,
-      discountAmount: 125,
+      discountPercent: 12.5,
       notes: 'Updated draft terms',
       documentNotes: '50% deposit before fabrication',
       plannedDeliveryDate: '2026-08-05',
@@ -401,7 +401,7 @@ describe('quotes.update', () => {
       deliveryIncluded: false,
       deliveryPrice: 0,
       depositPercent: 50,
-      discountAmount: 125,
+      discountPercent: 12.5,
       notes: 'Updated draft terms',
       documentNotes: '50% deposit before fabrication',
       plannedDeliveryDate: '2026-08-05',
@@ -472,7 +472,7 @@ describe('quotes.update', () => {
     });
   });
 
-  test('validates updated discount amounts against the frozen quote snapshot', async ({ context }) => {
+  test('validates updated discount percents independently of the current product price', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
     const created = await createReadyQuote(caller, context.product.id);
 
@@ -481,21 +481,20 @@ describe('quotes.update', () => {
     await expect(
       caller.quotes.update({
         ...toUpdateInput(created),
-        discountAmount: 500,
+        discountPercent: 75,
       }),
     ).resolves.toMatchObject({
-      discountAmount: 500,
+      discountPercent: 75,
       quotedBasePrice: context.product.basePrice,
     });
 
     await expect(
       caller.quotes.update({
         ...toUpdateInput(created),
-        discountAmount: context.product.basePrice + 1,
+        discountPercent: 101,
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
-      message: 'Quote discount is invalid.',
     });
   });
 });
@@ -515,7 +514,7 @@ describe('quotes.list', () => {
     });
     const createdQuote = await createNamedQuote(salesCaller, {
       customerCompanyName: 'Acme Mining',
-      discountAmount: 150,
+      discountPercent: 15,
       documentNotes: 'Paid before dispatch',
       productId: context.product.id,
     });
@@ -527,13 +526,13 @@ describe('quotes.list', () => {
       customerCompanyName: 'Beta Civil',
       deliveryPrice: 75,
       depositPercent: 25,
-      discountAmount: 25,
+      discountPercent: 25,
       productId: crusherProduct.id,
       salesPersonId: 'another-sales-id',
     });
     const createdCancelledQuote = await createNamedQuote(salesCaller, {
       customerCompanyName: 'Cancelled Works',
-      discountAmount: 0,
+      discountPercent: 0,
       productId: context.product.id,
     });
     const cancelledQuote = await salesCaller.quotes.update({
@@ -889,11 +888,11 @@ describe('jobs.create with quote links', () => {
     await expect(
       salesCaller.quotes.update({
         ...toUpdateInput(accepted),
-        discountAmount: 100,
+        discountPercent: 10,
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
-      message: 'Quote is locked because it already has a Job; discountAmount cannot be changed.',
+      message: 'Quote is locked because it already has a Job; discountPercent cannot be changed.',
     });
   });
 
@@ -935,10 +934,10 @@ describe('jobs.create with quote links', () => {
         }),
       },
       {
-        field: 'discountAmount',
+        field: 'discountPercent',
         input: (quote: QuoteDetail) => ({
           ...toUpdateInput(quote),
-          discountAmount: quote.discountAmount + 25,
+          discountPercent: quote.discountPercent + 25,
         }),
       },
       {
@@ -1089,7 +1088,7 @@ async function createReadyQuote(caller: AppRouterCaller, productId: string) {
       type: 'inline',
       companyName: 'Ready Customer',
     },
-    discountAmount: 250,
+    discountPercent: 25,
     notes: null,
     documentNotes: null,
     productId,
@@ -1105,7 +1104,7 @@ async function createNamedQuote(
     customerCompanyName,
     depositPercent = 0,
     deliveryPrice = 0,
-    discountAmount,
+    discountPercent,
     documentNotes = null,
     productId,
     salesPersonId = 'test-user-id',
@@ -1113,7 +1112,7 @@ async function createNamedQuote(
     customerCompanyName: string;
     depositPercent?: number;
     deliveryPrice?: number;
-    discountAmount: number;
+    discountPercent: number;
     documentNotes?: string | null;
     productId: string;
     salesPersonId?: string;
@@ -1127,7 +1126,7 @@ async function createNamedQuote(
     deliveryIncluded: true,
     deliveryPrice,
     depositPercent,
-    discountAmount,
+    discountPercent,
     notes: null,
     documentNotes,
     plannedDeliveryDate: '2026-07-05',
@@ -1145,7 +1144,7 @@ function toUpdateInput(quote: QuoteDetail) {
     depositPercent: quote.depositPercent,
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
-    discountAmount: quote.discountAmount,
+    discountPercent: quote.discountPercent,
     notes: quote.notes,
     documentNotes: quote.documentNotes,
     plannedDeliveryDate: quote.plannedDeliveryDate,

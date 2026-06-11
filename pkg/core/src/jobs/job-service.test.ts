@@ -168,10 +168,10 @@ describe('createJob', () => {
         db: context.db,
         input: QuoteUpdateInput.parse({
           ...quoteUpdateInput(quote),
-          discountAmount: 25,
+          discountPercent: 25,
         }),
       }),
-    ).rejects.toThrow('Quote is locked because it already has a Job; discountAmount cannot be changed.');
+    ).rejects.toThrow('Quote is locked because it already has a Job; discountPercent cannot be changed.');
   });
 
   test('creates a bare job with an explicit empty Bay seed list', async ({ context }) => {
@@ -2343,7 +2343,7 @@ function quoteUpdateInput(quote: typeof quotes.$inferSelect) {
     depositPercent: quote.depositPercent,
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
-    discountAmount: quote.discountAmount,
+    discountPercent: quote.discountPercent,
     id: quote.id,
     notes: quote.notes,
     documentNotes: quote.documentNotes,

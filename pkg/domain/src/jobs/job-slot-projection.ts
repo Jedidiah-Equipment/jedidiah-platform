@@ -190,7 +190,7 @@ export function segmentSlotCalendarDays(
   return segments;
 }
 
-function firstWorkingDayOnOrAfter(date: Date, workingCalendar: WorkingCalendar): Date {
+export function firstWorkingDayOnOrAfter(date: Date, workingCalendar: WorkingCalendar = {}): Date {
   let cursor = date;
 
   while (!isWorkingDay(cursor, workingCalendar)) {
@@ -200,7 +200,7 @@ function firstWorkingDayOnOrAfter(date: Date, workingCalendar: WorkingCalendar):
   return cursor;
 }
 
-function isWorkingDay(date: Date, workingCalendar: WorkingCalendar): boolean {
+export function isWorkingDay(date: Date, workingCalendar: WorkingCalendar = {}): boolean {
   const dateKey = toJohannesburgDateKey(date);
   const bayException = workingCalendar.bayExceptions?.get(dateKey);
 

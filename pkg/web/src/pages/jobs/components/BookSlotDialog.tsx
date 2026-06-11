@@ -1,12 +1,14 @@
 import { formatDate, hasPermission } from '@pkg/domain';
-import { IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
+import { IconAlertTriangle, IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { DatePicker } from '@/components/common/DatePicker.js';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field.js';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -14,6 +16,13 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from './all-jobs-input.js';
+import { createWorkingCalendarsByBayId } from './bay-schedule-summary.js';
+import {
+  createBayNonWorkingDateMatcher,
+  describeInsertAtDatePlacement,
+  getInsertAtDatePickerBounds,
+  resolveBookSlotPlacement,
+} from './book-slot-insert-at-date.js';
 
 export const BookSlotDialog: React.FC = () => {
   const trpc = useTRPC();
@@ -41,9 +50,31 @@ export const BookSlotDialog: React.FC = () => {
   const [selectedBayId, setSelectedBayId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [durationDays, setDurationDays] = useState(1);
+  const [startDate, setStartDate] = useState('');
 
   const selectedBay = schedulableBays.find((bay) => bay.id === selectedBayId) ?? null;
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
+
+  const workingCalendarsByBayId = useMemo(
+    () => createWorkingCalendarsByBayId(baysQuery.data?.items ?? [], baysQuery.data?.offDays ?? []),
+    [baysQuery.data],
+  );
+  const selectedBayCalendar = (selectedBay && workingCalendarsByBayId.get(selectedBay.id)) || {};
+  const pickerBounds = selectedBay ? getInsertAtDatePickerBounds(selectedBay, selectedBayCalendar, new Date()) : null;
+  const placementFeedback = useMemo(() => {
+    if (!selectedBay || !startDate) {
+      return null;
+    }
+
+    const placement = resolveBookSlotPlacement({
+      bay: selectedBay,
+      currentDate: new Date(),
+      startDate,
+      workingCalendar: selectedBayCalendar,
+    });
+
+    return describeInsertAtDatePlacement(placement);
+  }, [selectedBay, selectedBayCalendar, startDate]);
 
   const bookSlotMutation = useMutation(
     trpc.jobs.bookSlot.mutationOptions({
@@ -68,9 +99,19 @@ export const BookSlotDialog: React.FC = () => {
       setSelectedBayId('');
       setSelectedJobId('');
       setDurationDays(1);
+      setStartDate('');
     }
 
     setOpen(nextOpen);
+  };
+
+  const handleBaySelect = (bayId: string) => {
+    setSelectedBayId(bayId);
+
+    const bay = schedulableBays.find((candidate) => candidate.id === bayId);
+    setStartDate(
+      bay ? getInsertAtDatePickerBounds(bay, workingCalendarsByBayId.get(bay.id) ?? {}, new Date()).maxValue : '',
+    );
   };
 
   if (schedulableBays.length === 0) {
@@ -101,6 +142,7 @@ export const BookSlotDialog: React.FC = () => {
                 bayId: selectedBay.id,
                 durationDays,
                 jobId: selectedJob.id,
+                ...(startDate ? { startDate } : {}),
               });
             }}
           >
@@ -109,7 +151,7 @@ export const BookSlotDialog: React.FC = () => {
                 <FieldLabel htmlFor="book-slot-bay">Bay</FieldLabel>
                 <Select
                   disabled={isPending}
-                  onValueChange={(value) => setSelectedBayId(String(value))}
+                  onValueChange={(value) => handleBaySelect(String(value))}
                   value={selectedBay?.id ?? ''}
                 >
                   <SelectTrigger id="book-slot-bay" className="w-full">
@@ -136,6 +178,28 @@ export const BookSlotDialog: React.FC = () => {
                   </SelectContent>
                 </Select>
               </Field>
+              {selectedBay && pickerBounds ? (
+                <Field>
+                  <FieldLabel htmlFor="book-slot-start-date">Start date</FieldLabel>
+                  <DatePicker
+                    disabled={isPending}
+                    id="book-slot-start-date"
+                    isDateDisabled={createBayNonWorkingDateMatcher(selectedBayCalendar)}
+                    maxValue={pickerBounds.maxValue}
+                    minValue={pickerBounds.minValue}
+                    onChange={setStartDate}
+                    value={startDate}
+                  />
+                  {placementFeedback ? <FieldDescription>{placementFeedback.startText}</FieldDescription> : null}
+                  {placementFeedback?.splitWarning ? (
+                    <Alert>
+                      <IconAlertTriangle />
+                      <AlertTitle>Splits an existing slot</AlertTitle>
+                      <AlertDescription>{placementFeedback.splitWarning}</AlertDescription>
+                    </Alert>
+                  ) : null}
+                </Field>
+              ) : null}
               <Field>
                 <FieldLabel htmlFor="book-slot-job">Job</FieldLabel>
                 <Select

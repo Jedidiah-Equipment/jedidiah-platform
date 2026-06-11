@@ -939,6 +939,236 @@ describe('jobs.bookSlot', () => {
   });
 });
 
+describe('jobs.bookSlot with start date', () => {
+  const bayId = '00000000-0000-4000-8000-000000000b01';
+
+  test('splits the work slot containing the picked date, preserving job and total working days', async ({
+    context,
+  }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const firstJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({ quoteId: secondQuote.id });
+    await caller.jobs.bookSlot({ bayId, durationDays: 10, jobId: firstJob.id });
+
+    await expect(
+      caller.jobs.bookSlot({ bayId, durationDays: 3, jobId: secondJob.id, startDate: '2026-06-09' }),
+    ).resolves.toMatchObject({
+      slot: { durationDays: 3, jobId: secondJob.id, sequence: 2 },
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: bayId,
+          slots: [
+            expect.objectContaining({
+              durationDays: 4,
+              jobId: firstJob.id,
+              kind: 'work',
+              sequence: 1,
+              startAt: '2026-06-04T22:00:00.000Z',
+            }),
+            expect.objectContaining({
+              durationDays: 3,
+              jobId: secondJob.id,
+              kind: 'work',
+              sequence: 2,
+              startAt: '2026-06-08T22:00:00.000Z',
+            }),
+            expect.objectContaining({
+              durationDays: 6,
+              jobId: firstJob.id,
+              kind: 'work',
+              sequence: 3,
+              startAt: '2026-06-11T22:00:00.000Z',
+            }),
+          ],
+        }),
+      ]),
+    );
+  });
+
+  test('splits a labeled idle slot identically, keeping the label on both halves', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const firstJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({ quoteId: secondQuote.id });
+    const workSlot = await caller.jobs.bookSlot({ bayId, durationDays: 2, jobId: firstJob.id });
+    await caller.jobs.addIdleSlot({
+      durationDays: 6,
+      label: 'Bay Tidying',
+      placement: 'after',
+      targetSlotId: workSlot.slot.id,
+    });
+
+    await caller.jobs.bookSlot({ bayId, durationDays: 1, jobId: secondJob.id, startDate: '2026-06-09' });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: bayId,
+          slots: [
+            expect.objectContaining({ jobId: firstJob.id, kind: 'work', sequence: 1 }),
+            expect.objectContaining({ durationDays: 2, kind: 'idle', label: 'Bay Tidying', sequence: 2 }),
+            expect.objectContaining({
+              durationDays: 1,
+              jobId: secondJob.id,
+              kind: 'work',
+              sequence: 3,
+              startAt: '2026-06-08T22:00:00.000Z',
+            }),
+            expect.objectContaining({ durationDays: 4, kind: 'idle', label: 'Bay Tidying', sequence: 4 }),
+          ],
+        }),
+      ]),
+    );
+  });
+
+  test("inserts cleanly before a slot when the date is exactly that slot's projected start", async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const firstJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({ quoteId: secondQuote.id });
+    const firstSlot = await caller.jobs.bookSlot({ bayId, durationDays: 4, jobId: firstJob.id });
+    const secondSlot = await caller.jobs.bookSlot({ bayId, durationDays: 2, jobId: firstJob.id });
+
+    const inserted = await caller.jobs.bookSlot({
+      bayId,
+      durationDays: 1,
+      jobId: secondJob.id,
+      startDate: '2026-06-09',
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: bayId,
+          slots: [
+            expect.objectContaining({ durationDays: 4, id: firstSlot.slot.id, sequence: 1 }),
+            expect.objectContaining({
+              id: inserted.slot.id,
+              jobId: secondJob.id,
+              sequence: 2,
+              startAt: '2026-06-08T22:00:00.000Z',
+            }),
+            expect.objectContaining({ durationDays: 2, id: secondSlot.slot.id, sequence: 3 }),
+          ],
+        }),
+      ]),
+    );
+  });
+
+  test('appends when the picked date is the next available day', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await caller.jobs.bookSlot({ bayId, durationDays: 4, jobId: job.id });
+
+    await expect(
+      caller.jobs.bookSlot({ bayId, durationDays: 1, jobId: job.id, startDate: '2026-06-09' }),
+    ).resolves.toMatchObject({
+      slot: { sequence: 2 },
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: bayId,
+          slots: [
+            expect.objectContaining({ durationDays: 4, sequence: 1 }),
+            expect.objectContaining({ kind: 'work', sequence: 2, startAt: '2026-06-08T22:00:00.000Z' }),
+          ],
+        }),
+      ]),
+    );
+  });
+
+  test('clamps a picked date past the next available day to a plain append without idle', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await caller.jobs.bookSlot({ bayId, durationDays: 2, jobId: job.id });
+
+    await expect(
+      caller.jobs.bookSlot({ bayId, durationDays: 1, jobId: job.id, startDate: '2026-06-20' }),
+    ).resolves.toMatchObject({
+      slot: { sequence: 2 },
+    });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: bayId,
+          slots: [
+            expect.objectContaining({ kind: 'work', sequence: 1 }),
+            expect.objectContaining({ kind: 'work', sequence: 2, startAt: '2026-06-06T22:00:00.000Z' }),
+          ],
+        }),
+      ]),
+    );
+  });
+
+  test('counts split halves in working days, skipping marked off-days', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const firstJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({ quoteId: secondQuote.id });
+    await caller.jobs.toggleOffDay({ date: '2026-06-06', isOffDay: true, label: null });
+    await caller.jobs.toggleOffDay({ date: '2026-06-07', isOffDay: true, label: null });
+    await caller.jobs.bookSlot({ bayId, durationDays: 10, jobId: firstJob.id });
+
+    await caller.jobs.bookSlot({ bayId, durationDays: 1, jobId: secondJob.id, startDate: '2026-06-09' });
+
+    const schedule = await caller.jobs.listBays();
+    expect(schedule.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: bayId,
+          slots: [
+            expect.objectContaining({ durationDays: 2, jobId: firstJob.id, sequence: 1 }),
+            expect.objectContaining({
+              durationDays: 1,
+              jobId: secondJob.id,
+              sequence: 2,
+              startAt: '2026-06-08T22:00:00.000Z',
+            }),
+            expect.objectContaining({ durationDays: 8, jobId: firstJob.id, sequence: 3 }),
+          ],
+        }),
+      ]),
+    );
+  });
+
+  test('rejects a booking with a start date without job scheduling permissions', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const job = await adminCaller.jobs.create({ quoteId: context.quote.id });
+
+    await expect(
+      salesCaller.jobs.bookSlot({ bayId, durationDays: 1, jobId: job.id, startDate: '2026-06-09' }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('refuses a booking with a start date on a disabled bay', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await caller.jobs.bookSlot({ bayId, durationDays: 10, jobId: job.id });
+    await caller.jobs.setBayDisabled({ disabled: true, id: bayId });
+
+    await expect(
+      caller.jobs.bookSlot({ bayId, durationDays: 1, jobId: job.id, startDate: '2026-06-09' }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
+
 describe('jobs.resizeSlot', () => {
   test('resizes an authorized slot and returns reflowed projections from listBays', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));

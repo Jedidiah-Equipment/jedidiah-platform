@@ -36,6 +36,7 @@ function mockConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
       appBaseUrl: 'http://localhost:7001',
       apiBaseUrl: 'http://localhost:7002',
       authBaseUrl: 'http://localhost:7002/api/auth',
+      deploymentVersion: null,
       posthog: {
         enabled: false,
         token: undefined,
@@ -144,6 +145,27 @@ describe('web server', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('window.__APP_CONFIG__');
     expect(response.body).toContain('"apiHost":"/info"');
+    await app.close();
+  });
+
+  it('returns the current app deployment version without caching', async () => {
+    const distDir = await mkdtemp(join(tmpdir(), 'jed-web-'));
+    await writeFile(join(distDir, 'index.html'), '<html><head></head><body>app</body></html>');
+    const app = buildWebServer(
+      mockConfig({
+        clientConfig: {
+          ...mockConfig().clientConfig,
+          deploymentVersion: 'abc123',
+        },
+      }),
+      { distDir },
+    );
+
+    const response = await app.inject('/app-version');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toEqual({ deploymentVersion: 'abc123' });
     await app.close();
   });
 });

@@ -119,6 +119,7 @@ function createClientConfig(env: ServerEnv, release: string | null): ClientConfi
     appBaseUrl: env.APP_BASE_URL,
     apiBaseUrl: env.API_BASE_URL,
     authBaseUrl: env.AUTH_BASE_URL,
+    deploymentVersion: release,
     posthog: {
       enabled: env.POSTHOG_ENABLED ?? isRemoteAppEnv(env.APP_ENV),
       token: env.POSTHOG_PROJECT_TOKEN,

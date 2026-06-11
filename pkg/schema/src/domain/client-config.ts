@@ -13,6 +13,7 @@ export const ClientConfig = z.object({
   appBaseUrl: z.string().url(),
   apiBaseUrl: z.string().url(),
   authBaseUrl: z.string().url(),
+  deploymentVersion: z.string().min(1).nullable().default(null),
   posthog: z
     .object({
       enabled: z.boolean(),

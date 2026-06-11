@@ -11,11 +11,43 @@ const baseEnv = {
 
 describe('web server config', () => {
   it('keeps PostHog disabled in development by default', () => {
-    expect(ServerConfig.parse(baseEnv).clientConfig.posthog).toEqual({
-      enabled: false,
-      apiHost: '/info',
-      uiHost: 'https://us.posthog.com',
-      release: null,
+    expect(ServerConfig.parse(baseEnv).clientConfig).toMatchObject({
+      deploymentVersion: null,
+      posthog: {
+        enabled: false,
+        apiHost: '/info',
+        uiHost: 'https://us.posthog.com',
+        release: null,
+      },
+    });
+  });
+
+  it('uses Railway deployment id as the deployment version when commit metadata is missing', () => {
+    expect(
+      ServerConfig.parse({
+        ...baseEnv,
+        RAILWAY_DEPLOYMENT_ID: 'deployment-123',
+      }).clientConfig,
+    ).toMatchObject({
+      deploymentVersion: 'deployment-123',
+      posthog: {
+        release: 'deployment-123',
+      },
+    });
+  });
+
+  it('prefers Railway commit sha for deployment version metadata', () => {
+    expect(
+      ServerConfig.parse({
+        ...baseEnv,
+        RAILWAY_DEPLOYMENT_ID: 'deployment-123',
+        RAILWAY_GIT_COMMIT_SHA: 'abc123',
+      }).clientConfig,
+    ).toMatchObject({
+      deploymentVersion: 'abc123',
+      posthog: {
+        release: 'abc123',
+      },
     });
   });
 
@@ -44,6 +76,7 @@ describe('web server config', () => {
       apiHost: '/info',
       release: 'abc123',
     });
+    expect(config.clientConfig.deploymentVersion).toBe('abc123');
     expect(config.posthogSourceMaps).toEqual({
       enabled: true,
       apiKey: 'phx_test',

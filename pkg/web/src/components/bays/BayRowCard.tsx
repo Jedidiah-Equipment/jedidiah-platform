@@ -25,7 +25,7 @@ export const BayRowCard: React.FC<BayRowCardProps> = ({
 }) => (
   <Card size="sm">
     <CardContent>
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem_auto]">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
         <div className="min-w-0 self-center">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className="truncate font-medium">{bay?.name ?? 'Unavailable Bay'}</span>

@@ -464,6 +464,8 @@ export const JobBaySeedInput = z
   .object({
     bayId: UUID,
     durationDays: SlotDurationDays,
+    /** Insert-at-Date placement hint for the seeded Slot — resolved at booking time, never stored (ADR-0042). */
+    startDate: DateOnlyIso.optional(),
   })
   .strict();
 export type JobCreateInput = z.infer<typeof JobCreateInput>;

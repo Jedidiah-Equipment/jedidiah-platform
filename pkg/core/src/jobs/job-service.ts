@@ -127,7 +127,13 @@ export async function createJob({
     });
     for (const seed of input.baySeeds) {
       const queue = await lockBayQueue(tx, seed.bayId, { plantToday });
-      await queue.append({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' });
+      const spec = { durationDays: seed.durationDays, jobId: job.id, kind: 'work' } as const;
+
+      if (seed.startDate) {
+        await queue.insertAtDate(spec, { startDate: seed.startDate });
+      } else {
+        await queue.append(spec);
+      }
     }
 
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });

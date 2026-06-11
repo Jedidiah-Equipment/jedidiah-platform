@@ -11,6 +11,8 @@ export type DatePickerProps = {
   'aria-invalid'?: boolean;
   disabled?: boolean;
   id?: string;
+  /** Disables individual dates beyond the min/max bounds (e.g. non-working days). */
+  isDateDisabled?: (date: Date) => boolean;
   maxValue?: string;
   minValue?: string;
   name?: string;
@@ -24,6 +26,7 @@ export function DatePicker({
   'aria-invalid': ariaInvalid = false,
   disabled = false,
   id,
+  isDateDisabled,
   maxValue,
   minValue,
   name,
@@ -69,7 +72,7 @@ export function DatePicker({
               onBlur={(event) => {
                 const nextValue = parseDatePickerInputValue(event.target.value);
 
-                if (nextValue && isDatePickerValueAllowed(nextValue, { maxDate, minDate })) {
+                if (nextValue && isDatePickerValueAllowed(nextValue, { isDateDisabled, maxDate, minDate })) {
                   const nextDate = parseDatePickerValue(nextValue);
                   onChange(nextValue);
                   setDisplayValue(formatDatePickerInputValue(nextValue));
@@ -93,7 +96,7 @@ export function DatePicker({
       />
       <PopoverContent align="start" className="w-auto p-0">
         <Calendar
-          disabled={createDatePickerDisabledMatchers({ maxDate, minDate })}
+          disabled={createDatePickerDisabledMatchers({ isDateDisabled, maxDate, minDate })}
           mode="single"
           selected={selectedDate ?? undefined}
           onMonthChange={setCalendarMonth}
@@ -143,16 +146,36 @@ export function parseDatePickerInputValue(value: string): string | null {
   return formatDatePickerValue(parsedDate);
 }
 
-function isDatePickerValueAllowed(value: string, { maxDate, minDate }: { maxDate: Date | null; minDate: Date | null }) {
+function isDatePickerValueAllowed(
+  value: string,
+  {
+    isDateDisabled,
+    maxDate,
+    minDate,
+  }: { isDateDisabled?: ((date: Date) => boolean) | undefined; maxDate: Date | null; minDate: Date | null },
+) {
   const date = parseDatePickerValue(value);
 
   if (!date) return false;
   if (minDate && isBefore(date, startOfDay(minDate))) return false;
   if (maxDate && isAfter(date, endOfDay(maxDate))) return false;
+  if (isDateDisabled?.(date)) return false;
 
   return true;
 }
 
-function createDatePickerDisabledMatchers({ maxDate, minDate }: { maxDate: Date | null; minDate: Date | null }) {
-  return [...(minDate ? [{ before: startOfDay(minDate) }] : []), ...(maxDate ? [{ after: endOfDay(maxDate) }] : [])];
+function createDatePickerDisabledMatchers({
+  isDateDisabled,
+  maxDate,
+  minDate,
+}: {
+  isDateDisabled?: ((date: Date) => boolean) | undefined;
+  maxDate: Date | null;
+  minDate: Date | null;
+}) {
+  return [
+    ...(minDate ? [{ before: startOfDay(minDate) }] : []),
+    ...(maxDate ? [{ after: endOfDay(maxDate) }] : []),
+    ...(isDateDisabled ? [isDateDisabled] : []),
+  ];
 }

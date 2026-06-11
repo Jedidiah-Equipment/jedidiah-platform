@@ -14,7 +14,13 @@ import {
   quotes,
   workingCalendarOffDays,
 } from '@pkg/db';
-import { buildCfo, type CfoEntry, toJohannesburgDateKey } from '@pkg/domain';
+import {
+  buildCfo,
+  type CfoEntry,
+  JOHANNESBURG_TIME_ZONE,
+  toJohannesburgDateKey,
+  zonedDateStartToUtcInstant,
+} from '@pkg/domain';
 import {
   type AddBayCalendarExceptionInput,
   AddBayCalendarExceptionResult,
@@ -162,10 +168,14 @@ export async function bookJobSlot({
     }
 
     const queue = await lockBayQueue(tx, input.bayId);
-    const slot = await queue.append(
-      { durationDays: input.durationDays, jobId: job.id, kind: 'work' },
-      { currentDate: currentDate ?? new Date() },
-    );
+    const spec = { durationDays: input.durationDays, jobId: job.id, kind: 'work' } as const;
+    const effectiveCurrentDate = currentDate ?? new Date();
+    const slot = input.startDate
+      ? await queue.insertAtDate(spec, {
+          currentDate: effectiveCurrentDate,
+          startDate: zonedDateStartToUtcInstant(input.startDate, JOHANNESBURG_TIME_ZONE),
+        })
+      : await queue.append(spec, { currentDate: effectiveCurrentDate });
 
     return BookJobSlotResult.parse({ slot });
   });

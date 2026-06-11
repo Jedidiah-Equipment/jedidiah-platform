@@ -289,6 +289,8 @@ export const BookJobSlotInput = z
     bayId: UUID,
     jobId: UUID,
     durationDays: SlotDurationDays,
+    /** Insert-at-Date placement hint — resolved to a queue position at booking time, never stored (ADR-0042). */
+    startDate: DateOnlyIso.optional(),
   })
   .strict();
 

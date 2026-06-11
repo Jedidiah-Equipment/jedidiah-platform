@@ -1,4 +1,6 @@
 import {
+  type DateFormat,
+  formatDate,
   JOHANNESBURG_TIME_ZONE,
   parseDateOnlyParts,
   toJohannesburgDateKey,
@@ -13,6 +15,12 @@ export function toJobDateKey(date: Date): string {
 
 export function fromJobDateKey(value: string): Date {
   return zonedDateStartToUtcInstant(value, JOHANNESBURG_TIME_ZONE);
+}
+
+// Display a scheduling instant as its Johannesburg business day, so the rendered
+// date never shifts a day in browsers outside the scheduling timezone.
+export function formatJobSchedulingDate(date: Date | string, format: DateFormat): string {
+  return formatDate(toJobDateKey(new Date(date)), format);
 }
 
 export function toJobCalendarDateKey(date: Date): string {

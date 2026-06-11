@@ -1,5 +1,10 @@
 import { type DatabaseTransaction, jobBays, jobSlots } from '@pkg/db';
-import { countWorkingDaysBetween, projectJobSlots } from '@pkg/domain';
+import {
+  countWorkingDaysBetween,
+  projectJobSlots,
+  resolveInsertAtDatePlacement,
+  type WorkingCalendar,
+} from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { and, asc, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
 
@@ -29,6 +34,7 @@ export type BayQueueSwapResult = {
 export type BayQueue = {
   bay: JobBayRow;
   append(spec: BayQueueSlotSpec, options: { currentDate: Date }): Promise<JobSlotRow>;
+  insertAtDate(spec: BayQueueSlotSpec, options: { currentDate: Date; startDate: Date }): Promise<JobSlotRow>;
   insertRelative(targetSlotId: UUID, placement: 'before' | 'after', spec: BayQueueSlotSpec): Promise<JobSlotRow>;
   swap(slotId: UUID, direction: 'left' | 'right'): Promise<BayQueueSwapResult>;
   remove(slotId: UUID): Promise<JobSlotRow>;
@@ -64,50 +70,60 @@ function createBayQueue(tx: DatabaseTransaction, bay: JobBayRow): BayQueue {
     bay,
 
     async append(spec, { currentDate }) {
-      if (bay.disabledAt) {
-        throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
-      }
+      assertBayAcceptsBookings(bay);
+
+      return appendSlot(tx, bay, spec, currentDate);
+    },
+
+    async insertAtDate(spec, { currentDate, startDate }) {
+      assertBayAcceptsBookings(bay);
 
       const existingSlots = await listQueueSlots(tx, bay.id);
-      const lastSlot = existingSlots.at(-1);
-      let sequence = lastSlot ? lastSlot.sequence + 1 : 1;
-
-      const workingCalendar = createBayWorkingCalendar(
-        createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
-        await listBayCalendarExceptions(tx, bay.id),
-      );
-      const projection = projectJobSlots({
+      const workingCalendar = await loadBayWorkingCalendar(tx, bay.id);
+      const placement = resolveInsertAtDatePlacement({
+        currentDate,
+        pickedDate: startDate,
         scheduleOrigin: bay.scheduleOrigin,
         slots: existingSlots,
         workingCalendar,
       });
-      const gapDays = countWorkingDaysBetween(projection.nextAvailableAt, currentDate, workingCalendar);
 
-      if (gapDays > 0) {
-        await insertSlotRow(tx, bay.id, sequence, { durationDays: gapDays, kind: 'idle', label: null });
-        sequence += 1;
+      if (placement.type === 'append') {
+        return appendSlot(tx, bay, spec, currentDate);
       }
 
-      return insertSlotRow(tx, bay.id, sequence, spec);
+      if (placement.type === 'insert-before') {
+        return insertSlotRowAtSequence(tx, bay.id, placement.targetSlot.sequence, spec);
+      }
+
+      const { targetSlot } = placement;
+
+      await tx
+        .update(jobSlots)
+        .set({
+          sequence: sql`${jobSlots.sequence} + 2`,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(jobSlots.bayId, bay.id), gt(jobSlots.sequence, targetSlot.sequence)));
+      await tx
+        .update(jobSlots)
+        .set({
+          durationDays: placement.beforeDays,
+          updatedAt: new Date(),
+        })
+        .where(eq(jobSlots.id, targetSlot.id));
+
+      const slot = await insertSlotRow(tx, bay.id, targetSlot.sequence + 1, spec);
+      await insertSlotRow(tx, bay.id, targetSlot.sequence + 2, secondSplitHalfSpec(targetSlot, placement.afterDays));
+
+      return slot;
     },
 
     async insertRelative(targetSlotId, placement, spec) {
       const targetSlot = await getQueueSlot(tx, bay.id, targetSlotId);
       const insertionSequence = placement === 'before' ? targetSlot.sequence : targetSlot.sequence + 1;
-      const shiftCondition =
-        placement === 'before'
-          ? gte(jobSlots.sequence, targetSlot.sequence)
-          : gt(jobSlots.sequence, targetSlot.sequence);
 
-      await tx
-        .update(jobSlots)
-        .set({
-          sequence: sql`${jobSlots.sequence} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(jobSlots.bayId, bay.id), shiftCondition));
-
-      return insertSlotRow(tx, bay.id, insertionSequence, spec);
+      return insertSlotRowAtSequence(tx, bay.id, insertionSequence, spec);
     },
 
     async swap(slotId, direction) {
@@ -185,6 +201,74 @@ function createBayQueue(tx: DatabaseTransaction, bay: JobBayRow): BayQueue {
       return removedSlot;
     },
   };
+}
+
+function assertBayAcceptsBookings(bay: JobBayRow): void {
+  if (bay.disabledAt) {
+    throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
+  }
+}
+
+async function appendSlot(
+  tx: DatabaseTransaction,
+  bay: JobBayRow,
+  spec: BayQueueSlotSpec,
+  currentDate: Date,
+): Promise<JobSlotRow> {
+  const existingSlots = await listQueueSlots(tx, bay.id);
+  const lastSlot = existingSlots.at(-1);
+  let sequence = lastSlot ? lastSlot.sequence + 1 : 1;
+
+  const workingCalendar = await loadBayWorkingCalendar(tx, bay.id);
+  const projection = projectJobSlots({
+    scheduleOrigin: bay.scheduleOrigin,
+    slots: existingSlots,
+    workingCalendar,
+  });
+  const gapDays = countWorkingDaysBetween(projection.nextAvailableAt, currentDate, workingCalendar);
+
+  if (gapDays > 0) {
+    await insertSlotRow(tx, bay.id, sequence, { durationDays: gapDays, kind: 'idle', label: null });
+    sequence += 1;
+  }
+
+  return insertSlotRow(tx, bay.id, sequence, spec);
+}
+
+async function loadBayWorkingCalendar(tx: DatabaseTransaction, bayId: UUID): Promise<WorkingCalendar> {
+  return createBayWorkingCalendar(
+    createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
+    await listBayCalendarExceptions(tx, bayId),
+  );
+}
+
+function secondSplitHalfSpec(targetSlot: JobSlotRow, durationDays: number): BayQueueSlotSpec {
+  if (targetSlot.kind === 'work') {
+    if (!targetSlot.jobId) {
+      throw new Error('Work slot is missing its job reference');
+    }
+
+    return { durationDays, jobId: targetSlot.jobId, kind: 'work' };
+  }
+
+  return { durationDays, kind: 'idle', label: targetSlot.label };
+}
+
+async function insertSlotRowAtSequence(
+  tx: DatabaseTransaction,
+  bayId: UUID,
+  sequence: number,
+  spec: BayQueueSlotSpec,
+): Promise<JobSlotRow> {
+  await tx
+    .update(jobSlots)
+    .set({
+      sequence: sql`${jobSlots.sequence} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(jobSlots.bayId, bayId), gte(jobSlots.sequence, sequence)));
+
+  return insertSlotRow(tx, bayId, sequence, spec);
 }
 
 function listQueueSlots(tx: DatabaseTransaction, bayId: UUID): Promise<JobSlotRow[]> {

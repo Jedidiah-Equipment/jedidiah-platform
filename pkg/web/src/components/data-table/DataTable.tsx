@@ -1,4 +1,4 @@
-import { flexRender, type RowData, type Table as TanStackTable } from '@tanstack/react-table';
+import { flexRender, type Row, type RowData, type Table as TanStackTable } from '@tanstack/react-table';
 import type React from 'react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area.js';
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
@@ -23,6 +23,7 @@ type DataTableProps<TData> = {
   errorMessage?: string | undefined;
   filterDebounceMs?: number;
   getRowAriaLabel?: ((item: TData) => string) | undefined;
+  getRowClassName?: ((item: TData) => string | undefined) | undefined;
   globalFilterPlaceholder?: string;
   hideGlobalFilter?: boolean;
   isLoading?: boolean;
@@ -41,6 +42,7 @@ export function DataTable<TData>({
   errorMessage,
   filterDebounceMs = 250,
   getRowAriaLabel,
+  getRowClassName,
   globalFilterPlaceholder = 'Search...',
   hideGlobalFilter = false,
   isLoading = false,
@@ -102,37 +104,17 @@ export function DataTable<TData>({
               ) : null}
 
               {!isLoading
-                ? table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      aria-label={getRowAriaLabel?.(row.original)}
-                      className={cn(onRowClick ? 'cursor-pointer' : undefined)}
-                      key={row.id}
-                      onClick={(event) => {
-                        if (!onRowClick || shouldIgnoreRowEvent(event.currentTarget, event.target)) {
-                          return;
-                        }
-
-                        onRowClick(row.original);
-                      }}
-                      onKeyDown={(event) => {
-                        if (!onRowClick || shouldIgnoreRowEvent(event.currentTarget, event.target)) {
-                          return;
-                        }
-
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          onRowClick(row.original);
-                        }
-                      }}
-                      tabIndex={onRowClick ? 0 : undefined}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell className={getCellClassName(cell)} key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                ? table
+                    .getRowModel()
+                    .rows.map((row) => (
+                      <DataTableRow
+                        getRowAriaLabel={getRowAriaLabel}
+                        getRowClassName={getRowClassName}
+                        key={row.id}
+                        onRowClick={onRowClick}
+                        row={row}
+                      />
+                    ))
                 : null}
             </TableBody>
           </table>
@@ -142,6 +124,49 @@ export function DataTable<TData>({
 
       <DataTablePagination pageSizeOptions={pageSizeOptions} table={table} total={total} totalLabel={totalLabel} />
     </div>
+  );
+}
+
+function DataTableRow<TData>({
+  getRowAriaLabel,
+  getRowClassName,
+  onRowClick,
+  row,
+}: {
+  getRowAriaLabel?: ((item: TData) => string) | undefined;
+  getRowClassName?: ((item: TData) => string | undefined) | undefined;
+  onRowClick?: ((item: TData) => void) | undefined;
+  row: Row<TData>;
+}) {
+  return (
+    <TableRow
+      aria-label={getRowAriaLabel?.(row.original)}
+      className={cn(getRowClassName?.(row.original), onRowClick ? 'cursor-pointer' : undefined)}
+      onClick={(event) => {
+        if (!onRowClick || shouldIgnoreRowEvent(event.currentTarget, event.target)) {
+          return;
+        }
+
+        onRowClick(row.original);
+      }}
+      onKeyDown={(event) => {
+        if (!onRowClick || shouldIgnoreRowEvent(event.currentTarget, event.target)) {
+          return;
+        }
+
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onRowClick(row.original);
+        }
+      }}
+      tabIndex={onRowClick ? 0 : undefined}
+    >
+      {row.getVisibleCells().map((cell) => (
+        <TableCell className={getCellClassName(cell)} key={cell.id}>
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </TableCell>
+      ))}
+    </TableRow>
   );
 }
 

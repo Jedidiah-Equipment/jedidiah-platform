@@ -49,7 +49,7 @@ function buildBay({ department, name }: { department: Bay['department']; name: s
     disabledAt: null,
     id: `550e8400-e29b-41d4-a716-4466554400${String(bayCounter).padStart(2, '0')}`,
     name,
-    scheduleOrigin: '2026-01-01T00:00:00.000Z',
+    scheduleOrigin: '2026-01-01',
     updatedAt: '2026-01-01T00:00:00.000Z',
   });
 }

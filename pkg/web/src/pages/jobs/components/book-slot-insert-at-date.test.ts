@@ -1,4 +1,4 @@
-import { ProjectedJobSlot } from '@pkg/schema';
+import { DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,18 +8,19 @@ import {
   resolveBookSlotPlacement,
 } from './book-slot-insert-at-date.js';
 
-const currentDate = new Date('2026-06-05T08:00:00.000Z');
+const day = (value: string) => DateOnlyIso.parse(value);
+const today = day('2026-06-05');
 
 describe('getInsertAtDatePickerBounds', () => {
   it('bounds the picker from tomorrow to the next available day, defaulting to the latter', () => {
-    expect(getInsertAtDatePickerBounds({ nextAvailableAt: '2026-06-14T22:00:00.000Z' }, {}, currentDate)).toEqual({
+    expect(getInsertAtDatePickerBounds({ nextAvailableDate: day('2026-06-15') }, {}, today)).toEqual({
       minValue: '2026-06-06',
       maxValue: '2026-06-15',
     });
   });
 
   it('clamps the max to tomorrow when the queue ended in the past', () => {
-    expect(getInsertAtDatePickerBounds({ nextAvailableAt: '2026-06-01T22:00:00.000Z' }, {}, currentDate)).toEqual({
+    expect(getInsertAtDatePickerBounds({ nextAvailableDate: day('2026-06-02') }, {}, today)).toEqual({
       minValue: '2026-06-06',
       maxValue: '2026-06-06',
     });
@@ -28,9 +29,9 @@ describe('getInsertAtDatePickerBounds', () => {
   it('pushes the max forward when the next available day rests on a non-working date', () => {
     expect(
       getInsertAtDatePickerBounds(
-        { nextAvailableAt: '2026-06-14T22:00:00.000Z' },
+        { nextAvailableDate: day('2026-06-15') },
         { orgOffDays: new Set(['2026-06-15', '2026-06-16']) },
-        currentDate,
+        today,
       ),
     ).toEqual({
       minValue: '2026-06-06',
@@ -69,11 +70,11 @@ describe('resolveBookSlotPlacement / describeInsertAtDatePlacement', () => {
   it('describes a work slot split with the job code and resulting durations', () => {
     const placement = resolveBookSlotPlacement({
       bay: {
-        scheduleOrigin: '2026-06-05T08:00:00.000Z',
+        scheduleOrigin: day('2026-06-05'),
         slots: [workSlot({ durationDays: 10, jobCode: 'JOB-01042' })],
       },
-      currentDate,
       startDate: '2026-06-09',
+      today,
       workingCalendar: {},
     });
 
@@ -87,11 +88,11 @@ describe('resolveBookSlotPlacement / describeInsertAtDatePlacement', () => {
   it('describes an idle slot split by its label, defaulting unlabeled idle', () => {
     const labeled = resolveBookSlotPlacement({
       bay: {
-        scheduleOrigin: '2026-06-05T08:00:00.000Z',
+        scheduleOrigin: day('2026-06-05'),
         slots: [idleSlot({ durationDays: 10, label: 'Bay Tidying' })],
       },
-      currentDate,
       startDate: '2026-06-09',
+      today,
       workingCalendar: {},
     });
 
@@ -99,11 +100,11 @@ describe('resolveBookSlotPlacement / describeInsertAtDatePlacement', () => {
 
     const unlabeled = resolveBookSlotPlacement({
       bay: {
-        scheduleOrigin: '2026-06-05T08:00:00.000Z',
+        scheduleOrigin: day('2026-06-05'),
         slots: [idleSlot({ durationDays: 10, label: null })],
       },
-      currentDate,
       startDate: '2026-06-09',
+      today,
       workingCalendar: {},
     });
 
@@ -113,11 +114,11 @@ describe('resolveBookSlotPlacement / describeInsertAtDatePlacement', () => {
   it('describes a clean append without a split warning', () => {
     const placement = resolveBookSlotPlacement({
       bay: {
-        scheduleOrigin: '2026-06-05T08:00:00.000Z',
+        scheduleOrigin: day('2026-06-05'),
         slots: [workSlot({ durationDays: 4, jobCode: 'JOB-01042' })],
       },
-      currentDate,
       startDate: '2026-06-09',
+      today,
       workingCalendar: {},
     });
 
@@ -153,10 +154,10 @@ function projectedSlotBase(durationDays: number) {
     bayId: '00000000-0000-4000-8000-000000000b01',
     createdAt: '2026-06-05T08:00:00.000Z',
     durationDays,
-    endAt: '2026-06-14T22:00:00.000Z',
+    endDate: '2026-06-15',
     id: '00000000-0000-4000-8000-000000000001',
     sequence: 1,
-    startAt: '2026-06-04T22:00:00.000Z',
+    startDate: '2026-06-05',
     updatedAt: '2026-06-05T08:00:00.000Z',
   };
 }

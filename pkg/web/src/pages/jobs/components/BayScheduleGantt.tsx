@@ -9,6 +9,7 @@ import {
 } from '@pkg/domain';
 import type {
   BaySchedule,
+  DateOnlyIso,
   JobSlotMoveDirection,
   JobSlotPlacement,
   JobSummary,
@@ -88,7 +89,7 @@ import {
   BAY_SCHEDULE_ZOOM_MIN,
   useBayScheduleViewStore,
 } from './bay-schedule-view-store.js';
-import { formatJobSchedulingDate, fromJobCalendarDateKey, toJobCalendarDate } from './job-date-key.js';
+import { fromJobCalendarDateKey } from './job-date-key.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
@@ -129,11 +130,13 @@ export const BayScheduleGantt: React.FC<{
   );
   const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);
   const offDays = baysQuery.data?.offDays ?? [];
+  const plantToday = baysQuery.data?.today ?? null;
   const horizonWarnings = useMemo(
     () => new Map(getMaintainedHorizonWarnings({ bays, offDays }).map((warning) => [warning.bayId, warning])),
     [bays, offDays],
   );
-  const initialDate = useMemo(() => new Date(), []);
+  // One scheduling "today" for the whole surface: the view opens on the plant's current day.
+  const initialDate = useMemo(() => (plantToday ? fromJobCalendarDateKey(plantToday) : new Date()), [plantToday]);
   const [optimisticBays, setOptimisticBays] = useState<BaySchedule[] | null>(null);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<BayScheduleFilter>(emptyBayScheduleFilter);
@@ -256,22 +259,25 @@ export const BayScheduleGantt: React.FC<{
         return;
       }
 
-      const targetStart = getEarliestBayScheduleFilterMatchStart({
-        bays: displayedBays,
-        filter: nextFilter,
-        jobsById,
-      });
+      const targetStart = plantToday
+        ? getEarliestBayScheduleFilterMatchStart({
+            bays: displayedBays,
+            filter: nextFilter,
+            jobsById,
+            today: plantToday,
+          })
+        : null;
 
       setFilterScrollRequest((current) =>
         targetStart
           ? {
-              date: toJobCalendarDate(targetStart),
+              date: fromJobCalendarDateKey(targetStart),
               id: (current?.id ?? 0) + 1,
             }
           : null,
       );
     },
-    [displayedBays, jobsById],
+    [displayedBays, jobsById, plantToday],
   );
   const registerAnchoredZoomChange = useCallback((handler: AnchoredZoomChange | null) => {
     anchoredZoomChangeRef.current = handler;
@@ -292,7 +298,7 @@ export const BayScheduleGantt: React.FC<{
     return <ErrorMessage error={baysQuery.error} fallbackMessage="Unable to load bay schedule." />;
   }
 
-  if (displayedBays.length === 0) {
+  if (displayedBays.length === 0 || !plantToday) {
     return null;
   }
 
@@ -338,7 +344,7 @@ export const BayScheduleGantt: React.FC<{
           >
             <BayScheduleFilterScrollController request={filterScrollRequest} />
             <BayScheduleZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
-            <BayScheduleSidebar bays={displayedBays} horizonWarnings={horizonWarnings} />
+            <BayScheduleSidebar bays={displayedBays} horizonWarnings={horizonWarnings} today={plantToday} />
             <GanttTimeline>
               <GanttHeader />
               <OffDayBands offDays={offDays} />
@@ -346,6 +352,7 @@ export const BayScheduleGantt: React.FC<{
               <BaySlotBars
                 bays={displayedBays}
                 canEditScheduleByBayId={schedulableBayIds}
+                today={plantToday}
                 filter={filter}
                 isScheduleMutationPending={isScheduleMutationPending}
                 jobsById={jobsById}
@@ -505,15 +512,15 @@ const BayScheduleZoomAnchorController: React.FC<{
 const BayScheduleSidebar: React.FC<{
   bays: BaySchedule[];
   horizonWarnings: ReadonlyMap<string, MaintainedHorizonWarning>;
-}> = ({ bays, horizonWarnings }) => {
-  const now = Date.now();
-
+  /** Plant business date from the schedule read — busy/idle is plant state, not viewer-local. */
+  today: DateOnlyIso;
+}> = ({ bays, horizonWarnings, today }) => {
   return (
     <GanttSidebar secondaryTitle={null} title="Bay">
       <div className="divide-y divide-border/50">
         {bays.map((bay) => {
           const warning = horizonWarnings.get(bay.id);
-          const currentSlot = getCurrentBaySlot(bay.slots, now);
+          const currentSlot = getCurrentBaySlot(bay.slots, today);
           const statusLabel = currentSlot?.kind === 'work' ? 'Busy on' : 'Idle';
           const statusValue = currentSlot?.kind === 'work' ? currentSlot.jobCode : (currentSlot?.label ?? '');
 
@@ -541,14 +548,12 @@ const BayScheduleSidebar: React.FC<{
 const MaintainedHorizonWarningBadge: React.FC<{
   warning: MaintainedHorizonWarning;
 }> = ({ warning }) => {
-  const maintainedThrough = fromJobCalendarDateKey(warning.maintainedThrough);
-  const queueEndDate = fromJobCalendarDateKey(warning.queueEndDate);
-  const message = `Unmaintained after ${formatDate(maintainedThrough, 'MMM d')}; projected tail may be optimistic.`;
+  const message = `Unmaintained after ${formatDate(warning.maintainedThrough, 'MMM d')}; projected tail may be optimistic.`;
 
   return (
     <div
       className="flex max-w-48 shrink-0 items-center gap-1 rounded-sm bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300"
-      title={`Calendar ${message} Queue ends ${formatDate(queueEndDate, 'MMM d')}.`}
+      title={`Calendar ${message} Queue ends ${formatDate(warning.queueEndDate, 'MMM d')}.`}
     >
       <IconAlertTriangle className="size-3.5 shrink-0" />
       <span className="whitespace-normal leading-tight">{message}</span>
@@ -572,17 +577,13 @@ const BayLaneRows: React.FC<{
   </div>
 );
 
-const getCurrentBaySlot = (slots: ProjectedJobSlot[], timestamp: number) =>
-  slots.find((slot) => {
-    const startAt = new Date(slot.startAt).getTime();
-    const endAt = new Date(slot.endAt).getTime();
-
-    return startAt <= timestamp && timestamp < endAt;
-  }) ?? null;
+const getCurrentBaySlot = (slots: ProjectedJobSlot[], today: DateOnlyIso) =>
+  slots.find((slot) => slot.startDate <= today && today < slot.endDate) ?? null;
 
 const BaySlotBars: React.FC<{
   bays: BaySchedule[];
   canEditScheduleByBayId: ReadonlySet<string>;
+  today: DateOnlyIso;
   filter: BayScheduleFilter;
   isScheduleMutationPending: boolean;
   jobsById: ReadonlyMap<string, JobSummary>;
@@ -606,6 +607,7 @@ const BaySlotBars: React.FC<{
   onResizeSlot,
   onSelectSlot,
   optimisticResizeDaysBySlotId,
+  today,
 }) => {
   const gantt = useGanttContext();
   const workingCalendarsByBayId = useMemo(() => createWorkingCalendarsByBayId(bays, offDays), [bays, offDays]);
@@ -632,6 +634,7 @@ const BaySlotBars: React.FC<{
             slot={slot}
             slotIndex={slotIndex}
             slotCount={bay.slots.length}
+            today={today}
             workingCalendar={workingCalendarsByBayId.get(bay.id) ?? {}}
           />
         )),
@@ -663,6 +666,7 @@ const BaySlotBar: React.FC<{
   slot: ProjectedJobSlot;
   slotIndex: number;
   slotCount: number;
+  today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
 }> = ({
   bayId,
@@ -680,37 +684,38 @@ const BaySlotBar: React.FC<{
   slot,
   slotIndex,
   slotCount,
+  today,
   workingCalendar,
 }) => {
   const gantt = useGanttContext();
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [resizeDrag, setResizeDrag] = useState<SlotResizeDrag | null>(null);
-  const startAt = useMemo(() => new Date(slot.startAt), [slot.startAt]);
-  const endAt = useMemo(() => new Date(slot.endAt), [slot.endAt]);
+  const startDate = slot.startDate;
+  const endDate = slot.endDate;
   const label = getSlotLabel(slot);
   const durationDays = slot.durationDays;
   const displayDurationDays = optimisticDurationDays ?? durationDays;
   const previewDurationDays = resizeDrag?.durationDays ?? displayDurationDays;
   const shouldProjectPreview = resizeDrag !== null || optimisticDurationDays !== null;
-  const previewEndAt = useMemo(
-    () => (shouldProjectPreview ? addJobSlotDuration(startAt, previewDurationDays, workingCalendar) : endAt),
-    [endAt, previewDurationDays, shouldProjectPreview, startAt, workingCalendar],
+  const previewEndDate = useMemo(
+    () => (shouldProjectPreview ? addJobSlotDuration(startDate, previewDurationDays, workingCalendar) : endDate),
+    [endDate, previewDurationDays, shouldProjectPreview, startDate, workingCalendar],
   );
   const dayBreakdown = useMemo(
-    () => summarizeSlotCalendarDays(startAt, previewEndAt, workingCalendar),
-    [previewEndAt, startAt, workingCalendar],
+    () => summarizeSlotCalendarDays(startDate, previewEndDate, workingCalendar),
+    [previewEndDate, startDate, workingCalendar],
   );
   const daySegments = useMemo(
-    () => segmentSlotCalendarDays(startAt, previewEndAt, workingCalendar),
-    [previewEndAt, startAt, workingCalendar],
+    () => segmentSlotCalendarDays(startDate, previewEndDate, workingCalendar),
+    [previewEndDate, startDate, workingCalendar],
   );
   const daySummary = formatSlotDaySummary(dayBreakdown);
-  const left = getJobGanttOffset(startAt, gantt);
-  const width = Math.max(getJobGanttWidth(startAt, previewEndAt, gantt), 28);
+  const left = getJobGanttOffset(startDate, gantt);
+  const width = Math.max(getJobGanttWidth(startDate, previewEndDate, gantt), 28);
   const isIdle = slot.kind === 'idle';
-  // The "active" slot is the booked job currently in progress (today within its span).
-  const isActive = !isIdle && startAt.getTime() <= Date.now() && Date.now() < previewEndAt.getTime();
+  // The "active" slot is the booked job in progress on the plant's current business day.
+  const isActive = !isIdle && startDate <= today && today < previewEndDate;
   const height = SLOT_CARD_HEIGHT;
   // Center the bar/card vertically within its (taller) bay row.
   const top = rowTop + (gantt.rowHeight - height) / 2;
@@ -725,7 +730,7 @@ const BaySlotBar: React.FC<{
     setResizeDrag({
       durationDays,
       initialDurationDays: durationDays,
-      pixelsPerDay: getJobGanttResizeStepWidth(endAt, workingCalendar, gantt),
+      pixelsPerDay: getJobGanttResizeStepWidth(endDate, workingCalendar, gantt),
       startX: event.clientX,
     });
   };
@@ -804,7 +809,7 @@ const BaySlotBar: React.FC<{
               top,
               width,
             }}
-            title={`${label}: ${formatJobSchedulingDate(slot.startAt, 'PPP')} - ${formatJobSchedulingDate(slot.endAt, 'PPP')}\n${dayBreakdown.workingDays} working day(s), ${dayBreakdown.closureDays} closure day(s), ${dayBreakdown.overtimeDays} overtime day(s)`}
+            title={`${label}: ${formatDate(slot.startDate, 'PPP')} - ${formatDate(slot.endDate, 'PPP')}\n${dayBreakdown.workingDays} working day(s), ${dayBreakdown.closureDays} closure day(s), ${dayBreakdown.overtimeDays} overtime day(s)`}
           />
         }
       >
@@ -814,7 +819,7 @@ const BaySlotBar: React.FC<{
             style={{ backgroundImage: IDLE_SLOT_HATCH_BACKGROUND }}
           />
         ) : (
-          <BaySlotDayHatch segments={daySegments} slotStart={startAt} />
+          <BaySlotDayHatch segments={daySegments} slotStart={startDate} />
         )}
         {isIdle ? (
           <span className="relative z-10 flex h-full items-center gap-1.5 pr-8">

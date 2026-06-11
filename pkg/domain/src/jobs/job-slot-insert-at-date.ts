@@ -1,6 +1,6 @@
-import { addDays } from 'date-fns';
+import type { DateOnlyIso } from '@pkg/schema';
 
-import { johannesburgDayStart } from '../formatting/date.js';
+import { addDateOnlyDays, maxDateOnly } from '../formatting/date-only.js';
 import {
   countWorkingDaysBetween,
   firstWorkingDayOnOrAfter,
@@ -11,9 +11,9 @@ import {
 } from './job-slot-projection.js';
 
 export type InsertAtDatePlacement<TSlot extends ProjectableJobSlot> =
-  | { type: 'append'; startAt: Date }
-  | { type: 'insert-before'; targetSlot: ProjectedSlot<TSlot>; startAt: Date }
-  | { type: 'split'; targetSlot: ProjectedSlot<TSlot>; beforeDays: number; afterDays: number; startAt: Date };
+  | { type: 'append'; startDate: DateOnlyIso }
+  | { type: 'insert-before'; targetSlot: ProjectedSlot<TSlot>; startDate: DateOnlyIso }
+  | { type: 'split'; targetSlot: ProjectedSlot<TSlot>; beforeDays: number; afterDays: number; startDate: DateOnlyIso };
 
 /**
  * Resolves an Insert-at-Date placement hint into a Bay Queue position (ADR-0042).
@@ -31,49 +31,44 @@ export function resolveInsertAtDatePlacement<TSlot extends ProjectableJobSlot>({
   slots,
   workingCalendar,
 }: {
-  currentDate: Date;
-  pickedDate: Date;
-  scheduleOrigin: Date;
+  currentDate: DateOnlyIso;
+  pickedDate: DateOnlyIso;
+  scheduleOrigin: DateOnlyIso;
   slots: readonly TSlot[];
   workingCalendar?: WorkingCalendar;
 }): InsertAtDatePlacement<TSlot> {
   const calendar = workingCalendar ?? {};
-  const tomorrow = addDays(johannesburgDayStart(currentDate), 1);
-  const floored = johannesburgDayStart(pickedDate) < tomorrow ? tomorrow : johannesburgDayStart(pickedDate);
+  const tomorrow = addDateOnlyDays(currentDate, 1);
+  const floored = maxDateOnly(pickedDate, tomorrow);
   const effectiveDate = firstWorkingDayOnOrAfter(floored, calendar);
 
   const projection = projectJobSlots({ scheduleOrigin, slots, workingCalendar: calendar });
   const appendPlacement: InsertAtDatePlacement<TSlot> = {
     type: 'append',
-    startAt: firstWorkingDayOnOrAfter(
-      projection.nextAvailableAt < johannesburgDayStart(currentDate)
-        ? johannesburgDayStart(currentDate)
-        : projection.nextAvailableAt,
-      calendar,
-    ),
+    startDate: firstWorkingDayOnOrAfter(maxDateOnly(projection.nextAvailableDate, currentDate), calendar),
   };
 
-  if (effectiveDate >= firstWorkingDayOnOrAfter(projection.nextAvailableAt, calendar)) {
+  if (effectiveDate >= firstWorkingDayOnOrAfter(projection.nextAvailableDate, calendar)) {
     return appendPlacement;
   }
 
   for (const targetSlot of projection.slots) {
-    if (targetSlot.endAt <= effectiveDate) {
+    if (targetSlot.endDate <= effectiveDate) {
       continue;
     }
 
     // The projection cursor can rest on an off-day, so a Slot's honest start is
     // its first working day — a pick landing there inserts cleanly before it.
-    const slotStartAt = firstWorkingDayOnOrAfter(targetSlot.startAt, calendar);
+    const slotStartDate = firstWorkingDayOnOrAfter(targetSlot.startDate, calendar);
 
-    if (effectiveDate <= slotStartAt) {
-      return { type: 'insert-before', targetSlot, startAt: slotStartAt };
+    if (effectiveDate <= slotStartDate) {
+      return { type: 'insert-before', targetSlot, startDate: slotStartDate };
     }
 
-    const beforeDays = countWorkingDaysBetween(targetSlot.startAt, effectiveDate, calendar);
+    const beforeDays = countWorkingDaysBetween(targetSlot.startDate, effectiveDate, calendar);
 
     if (beforeDays <= 0) {
-      return { type: 'insert-before', targetSlot, startAt: slotStartAt };
+      return { type: 'insert-before', targetSlot, startDate: slotStartDate };
     }
 
     if (beforeDays >= targetSlot.durationDays) {
@@ -85,7 +80,7 @@ export function resolveInsertAtDatePlacement<TSlot extends ProjectableJobSlot>({
       targetSlot,
       beforeDays,
       afterDays: targetSlot.durationDays - beforeDays,
-      startAt: effectiveDate,
+      startDate: effectiveDate,
     };
   }
 

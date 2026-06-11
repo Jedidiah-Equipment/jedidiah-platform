@@ -14,13 +14,7 @@ import {
   quotes,
   workingCalendarOffDays,
 } from '@pkg/db';
-import {
-  buildCfo,
-  type CfoEntry,
-  JOHANNESBURG_TIME_ZONE,
-  toJohannesburgDateKey,
-  zonedDateStartToUtcInstant,
-} from '@pkg/domain';
+import { buildCfo, type CfoEntry, toPlantDateOnly } from '@pkg/domain';
 import {
   type AddBayCalendarExceptionInput,
   AddBayCalendarExceptionResult,
@@ -132,12 +126,10 @@ export async function createJob({
       productId: quote.productId,
       tx,
     });
+    const plantToday = toPlantDateOnly(effectiveCurrentDate);
     for (const seed of input.baySeeds) {
       const queue = await lockBayQueue(tx, seed.bayId);
-      await queue.append(
-        { durationDays: seed.durationDays, jobId: job.id, kind: 'work' },
-        { currentDate: effectiveCurrentDate },
-      );
+      await queue.append({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' }, { currentDate: plantToday });
     }
 
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
@@ -169,13 +161,13 @@ export async function bookJobSlot({
 
     const queue = await lockBayQueue(tx, input.bayId);
     const spec = { durationDays: input.durationDays, jobId: job.id, kind: 'work' } as const;
-    const effectiveCurrentDate = currentDate ?? new Date();
+    const plantToday = toPlantDateOnly(currentDate ?? new Date());
     const slot = input.startDate
       ? await queue.insertAtDate(spec, {
-          currentDate: effectiveCurrentDate,
-          startDate: zonedDateStartToUtcInstant(input.startDate, JOHANNESBURG_TIME_ZONE),
+          currentDate: plantToday,
+          startDate: input.startDate,
         })
-      : await queue.append(spec, { currentDate: effectiveCurrentDate });
+      : await queue.append(spec, { currentDate: plantToday });
 
     return BookJobSlotResult.parse({ slot });
   });
@@ -451,7 +443,7 @@ async function createProductSerial({
 }
 
 function getJohannesburgTwoDigitYear(date: Date): number {
-  return Number.parseInt(toJohannesburgDateKey(date).slice(2, 4), 10);
+  return Number.parseInt(toPlantDateOnly(date).slice(2, 4), 10);
 }
 
 async function validateJobQuoteForCreate({

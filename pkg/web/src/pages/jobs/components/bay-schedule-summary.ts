@@ -4,7 +4,7 @@ import {
   summarizeSlotCalendarDays,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type { BaySchedule, OffDay, ProjectedJobSlot } from '@pkg/schema';
+import type { BaySchedule, DateOnlyIso, OffDay, ProjectedJobSlot } from '@pkg/schema';
 
 export function getSlotLabel(slot: ProjectedJobSlot): string {
   return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;
@@ -29,8 +29,8 @@ export function createWorkingCalendarsByBayId(bays: BaySchedule[], offDays: OffD
 export type JobScheduleSummary = {
   currentOperator: BaySchedule['currentOperator'];
   dayBreakdown: SlotCalendarDays;
-  endAt: Date;
-  startAt: Date;
+  endDate: DateOnlyIso;
+  startDate: DateOnlyIso;
 };
 
 // Locate the booked work slot for a job and summarize its calendar days, so the job aside
@@ -55,15 +55,13 @@ export function findJobScheduleSummary(
         continue;
       }
 
-      const startAt = new Date(slot.startAt);
-      const endAt = new Date(slot.endAt);
       const workingCalendar = workingCalendarsByBayId.get(bay.id) ?? {};
 
       return {
         currentOperator: bay.currentOperator,
-        dayBreakdown: summarizeSlotCalendarDays(startAt, endAt, workingCalendar),
-        endAt,
-        startAt,
+        dayBreakdown: summarizeSlotCalendarDays(slot.startDate, slot.endDate, workingCalendar),
+        endDate: slot.endDate,
+        startDate: slot.startDate,
       };
     }
   }

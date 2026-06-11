@@ -109,7 +109,7 @@ function buildBay({ disabledAt, id, name }: { disabledAt: string | null; id: str
     disabledAt,
     id,
     name,
-    scheduleOrigin: '2026-01-01T00:00:00.000Z',
+    scheduleOrigin: '2026-01-01',
     updatedAt: '2026-01-01T00:00:00.000Z',
   });
 }

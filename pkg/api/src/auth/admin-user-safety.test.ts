@@ -1,5 +1,5 @@
 import { account, type Db, jobBayOperatorAssignments, jobBays, sql, user } from '@pkg/db';
-import { DEFAULT_DEMO_USER_PASSWORD } from '@pkg/domain';
+import { DEFAULT_DEMO_USER_PASSWORD, toPlantDateOnly } from '@pkg/domain';
 import type { AppRole } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { describe, expect } from 'vitest';
@@ -400,7 +400,7 @@ async function createBay(
     department: input.department ?? 'fabrication',
     id: input.id,
     name: input.name,
-    scheduleOrigin: now,
+    scheduleOrigin: toPlantDateOnly(now),
     updatedAt: now,
   });
 }

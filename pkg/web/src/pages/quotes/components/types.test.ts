@@ -78,7 +78,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
           disabledAt: null,
           id: BAY_ID,
           name: 'Fabrication Bay',
-          scheduleOrigin: '2026-01-01T00:00:00.000Z',
+          scheduleOrigin: '2026-01-01',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
         bayId: BAY_ID,

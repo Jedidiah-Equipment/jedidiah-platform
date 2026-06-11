@@ -176,8 +176,8 @@ describe('Working Calendar schemas', () => {
             disabledAt: null,
             id: '00000000-0000-4000-8000-000000000002',
             name: 'Fabrication Bay 1',
-            nextAvailableAt: '2026-06-05T00:00:00.000Z',
-            scheduleOrigin: '2026-06-05T00:00:00.000Z',
+            nextAvailableDate: '2026-06-05',
+            scheduleOrigin: '2026-06-05',
             slots: [],
             updatedAt: '2026-06-01T00:00:00.000Z',
           },
@@ -188,6 +188,7 @@ describe('Working Calendar schemas', () => {
             label: 'Youth Day',
           },
         ],
+        today: '2026-06-05',
       }),
     ).toEqual({
       items: [
@@ -199,8 +200,8 @@ describe('Working Calendar schemas', () => {
           disabledAt: null,
           id: '00000000-0000-4000-8000-000000000002',
           name: 'Fabrication Bay 1',
-          nextAvailableAt: '2026-06-05T00:00:00.000Z',
-          scheduleOrigin: '2026-06-05T00:00:00.000Z',
+          nextAvailableDate: '2026-06-05',
+          scheduleOrigin: '2026-06-05',
           slots: [],
           updatedAt: '2026-06-01T00:00:00.000Z',
         },
@@ -211,6 +212,7 @@ describe('Working Calendar schemas', () => {
           label: 'Youth Day',
         },
       ],
+      today: '2026-06-05',
     });
   });
 
@@ -228,7 +230,7 @@ describe('Working Calendar schemas', () => {
       disabledAt: null,
       id: '00000000-0000-4000-8000-000000000002',
       name: 'Fabrication Bay 1',
-      scheduleOrigin: '2026-06-05T00:00:00.000Z',
+      scheduleOrigin: '2026-06-05',
       updatedAt: '2026-06-01T00:00:00.000Z',
     });
 
@@ -333,7 +335,7 @@ describe('Job Bay schemas', () => {
         disabledAt: '2026-06-02T00:00:00.000Z',
         id: '00000000-0000-4000-8000-000000000001',
         name: 'Paint Bay 1',
-        scheduleOrigin: '2026-06-01T00:00:00.000Z',
+        scheduleOrigin: '2026-06-01',
         updatedAt: '2026-06-02T00:00:00.000Z',
       }),
     ).toMatchObject({
@@ -349,7 +351,7 @@ describe('Job Bay schemas', () => {
       disabledAt: null,
       id: '00000000-0000-4000-8000-000000000001',
       name: 'Assembly Bay 1',
-      scheduleOrigin: '2026-06-01T00:00:00.000Z',
+      scheduleOrigin: '2026-06-01',
       updatedAt: '2026-06-01T00:00:00.000Z',
     });
 
@@ -494,20 +496,20 @@ describe('JobSlot schemas', () => {
         bayId: '00000000-0000-4000-8000-000000000001',
         createdAt: new Date('2026-06-05T00:00:00.000Z'),
         durationDays: 1,
-        endAt: new Date('2026-06-06T00:00:00.000Z'),
+        endDate: '2026-06-06',
         id: '00000000-0000-4000-8000-000000000003',
         jobCode: 12,
         jobId: '00000000-0000-4000-8000-000000000002',
         kind: 'work',
         label: null,
         sequence: 1,
-        startAt: new Date('2026-06-05T00:00:00.000Z'),
+        startDate: '2026-06-05',
         updatedAt: new Date('2026-06-05T00:00:00.000Z'),
       }),
     ).toMatchObject({
-      endAt: '2026-06-06T00:00:00.000Z',
+      endDate: '2026-06-06',
       jobCode: 'JOB-00012',
-      startAt: '2026-06-05T00:00:00.000Z',
+      startDate: '2026-06-05',
     });
   });
 
@@ -517,20 +519,20 @@ describe('JobSlot schemas', () => {
         bayId: '00000000-0000-4000-8000-000000000001',
         createdAt: new Date('2026-06-05T00:00:00.000Z'),
         durationDays: 1,
-        endAt: new Date('2026-06-06T00:00:00.000Z'),
+        endDate: '2026-06-06',
         id: '00000000-0000-4000-8000-000000000003',
         jobId: null,
         kind: 'idle',
         label: 'Idle gap',
         sequence: 1,
-        startAt: new Date('2026-06-05T00:00:00.000Z'),
+        startDate: '2026-06-05',
         updatedAt: new Date('2026-06-05T00:00:00.000Z'),
       }),
     ).toMatchObject({
-      endAt: '2026-06-06T00:00:00.000Z',
+      endDate: '2026-06-06',
       kind: 'idle',
       label: 'Idle gap',
-      startAt: '2026-06-05T00:00:00.000Z',
+      startDate: '2026-06-05',
     });
   });
 

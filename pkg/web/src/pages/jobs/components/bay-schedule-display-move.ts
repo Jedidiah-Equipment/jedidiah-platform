@@ -3,7 +3,7 @@ import type { BaySchedule, JobSlotMoveDirection, OffDay, ProjectedJobSlot } from
 
 import { createWorkingCalendarsByBayId } from './bay-schedule-summary.js';
 
-type ProjectableScheduleSlot = Omit<ProjectedJobSlot, 'endAt' | 'startAt'>;
+type ProjectableScheduleSlot = Omit<ProjectedJobSlot, 'endDate' | 'startDate'>;
 
 export function moveBaySlotForDisplay(
   bays: BaySchedule[],
@@ -26,7 +26,7 @@ export function moveBaySlotForDisplay(
     }
 
     moved = true;
-    const reorderedSlots = bay.slots.map(({ endAt: _endAt, startAt: _startAt, ...slot }) => ({ ...slot }));
+    const reorderedSlots = bay.slots.map(({ endDate: _endDate, startDate: _startDate, ...slot }) => ({ ...slot }));
     const currentSlot = reorderedSlots[slotIndex];
     const adjacentSlot = reorderedSlots[targetIndex];
     if (!currentSlot || !adjacentSlot) {
@@ -39,19 +39,15 @@ export function moveBaySlotForDisplay(
     adjacentSlot.sequence = currentSequence;
 
     const projection = projectJobSlots<ProjectableScheduleSlot>({
-      scheduleOrigin: new Date(bay.scheduleOrigin),
+      scheduleOrigin: bay.scheduleOrigin,
       slots: reorderedSlots,
       workingCalendar: workingCalendarsByBayId.get(bay.id) ?? {},
     });
 
     return {
       ...bay,
-      nextAvailableAt: projection.nextAvailableAt.toISOString() as BaySchedule['nextAvailableAt'],
-      slots: projection.slots.map((slot) => ({
-        ...slot,
-        endAt: slot.endAt.toISOString(),
-        startAt: slot.startAt.toISOString(),
-      })) as BaySchedule['slots'],
+      nextAvailableDate: projection.nextAvailableDate as BaySchedule['nextAvailableDate'],
+      slots: projection.slots as BaySchedule['slots'],
     };
   });
 

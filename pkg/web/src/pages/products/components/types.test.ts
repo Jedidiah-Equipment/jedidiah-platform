@@ -45,7 +45,7 @@ function buildProduct(overrides: Record<string, unknown> = {}): Product {
           disabledAt: null,
           id: BAY_ID,
           name: 'Fab Bay 1',
-          scheduleOrigin: '2026-01-01T00:00:00.000Z',
+          scheduleOrigin: '2026-01-01',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
         bayId: BAY_ID,

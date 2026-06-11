@@ -5,7 +5,7 @@ import {
   resolveInsertAtDatePlacement,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type { UUID } from '@pkg/schema';
+import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { and, asc, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
 
 import { JobBayNotFoundError, JobSlotBookingDeniedError, JobSlotNotFoundError } from './job-errors.js';
@@ -33,8 +33,11 @@ export type BayQueueSwapResult = {
 
 export type BayQueue = {
   bay: JobBayRow;
-  append(spec: BayQueueSlotSpec, options: { currentDate: Date }): Promise<JobSlotRow>;
-  insertAtDate(spec: BayQueueSlotSpec, options: { currentDate: Date; startDate: Date }): Promise<JobSlotRow>;
+  append(spec: BayQueueSlotSpec, options: { currentDate: DateOnlyIso }): Promise<JobSlotRow>;
+  insertAtDate(
+    spec: BayQueueSlotSpec,
+    options: { currentDate: DateOnlyIso; startDate: DateOnlyIso },
+  ): Promise<JobSlotRow>;
   insertRelative(targetSlotId: UUID, placement: 'before' | 'after', spec: BayQueueSlotSpec): Promise<JobSlotRow>;
   swap(slotId: UUID, direction: 'left' | 'right'): Promise<BayQueueSwapResult>;
   remove(slotId: UUID): Promise<JobSlotRow>;
@@ -83,7 +86,7 @@ function createBayQueue(tx: DatabaseTransaction, bay: JobBayRow): BayQueue {
       const placement = resolveInsertAtDatePlacement({
         currentDate,
         pickedDate: startDate,
-        scheduleOrigin: bay.scheduleOrigin,
+        scheduleOrigin: DateOnlyIso.parse(bay.scheduleOrigin),
         slots: existingSlots,
         workingCalendar,
       });
@@ -213,7 +216,7 @@ async function appendSlot(
   tx: DatabaseTransaction,
   bay: JobBayRow,
   spec: BayQueueSlotSpec,
-  currentDate: Date,
+  currentDate: DateOnlyIso,
 ): Promise<JobSlotRow> {
   const existingSlots = await listQueueSlots(tx, bay.id);
   const lastSlot = existingSlots.at(-1);
@@ -221,11 +224,11 @@ async function appendSlot(
 
   const workingCalendar = await loadBayWorkingCalendar(tx, bay.id);
   const projection = projectJobSlots({
-    scheduleOrigin: bay.scheduleOrigin,
+    scheduleOrigin: DateOnlyIso.parse(bay.scheduleOrigin),
     slots: existingSlots,
     workingCalendar,
   });
-  const gapDays = countWorkingDaysBetween(projection.nextAvailableAt, currentDate, workingCalendar);
+  const gapDays = countWorkingDaysBetween(projection.nextAvailableDate, currentDate, workingCalendar);
 
   if (gapDays > 0) {
     await insertSlotRow(tx, bay.id, sequence, { durationDays: gapDays, kind: 'idle', label: null });

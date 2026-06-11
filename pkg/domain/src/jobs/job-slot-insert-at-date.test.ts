@@ -1,14 +1,11 @@
+import { DateOnlyIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { johannesburgDayStart } from '../formatting/date.js';
 import { resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';
 
-const scheduleOrigin = new Date('2026-06-05T08:00:00.000Z');
+const day = (value: string) => DateOnlyIso.parse(value);
+const scheduleOrigin = day('2026-06-05');
 const currentDate = scheduleOrigin;
-
-function day(dateKey: string): Date {
-  return johannesburgDayStart(new Date(`${dateKey}T08:00:00.000Z`));
-}
 
 describe('resolveInsertAtDatePlacement', () => {
   it('appends on an empty queue', () => {
@@ -19,7 +16,7 @@ describe('resolveInsertAtDatePlacement', () => {
       slots: [],
     });
 
-    expect(placement).toEqual({ type: 'append', startAt: day('2026-06-05') });
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-05' });
   });
 
   it('appends when the picked date is exactly the next available day', () => {
@@ -30,7 +27,7 @@ describe('resolveInsertAtDatePlacement', () => {
       slots: [slot({ id: 'slot-1', sequence: 1, durationDays: 10 })],
     });
 
-    expect(placement).toEqual({ type: 'append', startAt: day('2026-06-15') });
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-15' });
   });
 
   it('clamps a picked date past the next available day to a plain append', () => {
@@ -41,7 +38,7 @@ describe('resolveInsertAtDatePlacement', () => {
       slots: [slot({ id: 'slot-1', sequence: 1, durationDays: 10 })],
     });
 
-    expect(placement).toEqual({ type: 'append', startAt: day('2026-06-15') });
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-15' });
   });
 
   it('appends from today when the queue ended before today, matching the idle-gap append', () => {
@@ -52,7 +49,7 @@ describe('resolveInsertAtDatePlacement', () => {
       slots: [slot({ id: 'slot-1', sequence: 1, durationDays: 1 })],
     });
 
-    expect(placement).toEqual({ type: 'append', startAt: day('2026-06-05') });
+    expect(placement).toEqual({ type: 'append', startDate: '2026-06-05' });
   });
 
   it("inserts cleanly before a slot when the picked date is exactly the slot's projected start", () => {
@@ -70,7 +67,7 @@ describe('resolveInsertAtDatePlacement', () => {
     expect(placement).toMatchObject({
       type: 'insert-before',
       targetSlot: { id: 'slot-2' },
-      startAt: day('2026-06-09'),
+      startDate: '2026-06-09',
     });
   });
 
@@ -85,7 +82,7 @@ describe('resolveInsertAtDatePlacement', () => {
     expect(placement).toMatchObject({
       type: 'insert-before',
       targetSlot: { id: 'slot-1' },
-      startAt: day('2026-06-10'),
+      startDate: '2026-06-10',
     });
   });
 
@@ -102,7 +99,7 @@ describe('resolveInsertAtDatePlacement', () => {
       targetSlot: { id: 'slot-1' },
       beforeDays: 4,
       afterDays: 6,
-      startAt: day('2026-06-09'),
+      startDate: '2026-06-09',
     });
   });
 
@@ -135,7 +132,7 @@ describe('resolveInsertAtDatePlacement', () => {
       type: 'split',
       beforeDays: 2,
       afterDays: 8,
-      startAt: day('2026-06-09'),
+      startDate: '2026-06-09',
     });
   });
 
@@ -152,7 +149,7 @@ describe('resolveInsertAtDatePlacement', () => {
       type: 'split',
       beforeDays: 1,
       afterDays: 9,
-      startAt: day('2026-06-08'),
+      startDate: '2026-06-08',
     });
   });
 
@@ -172,7 +169,7 @@ describe('resolveInsertAtDatePlacement', () => {
       type: 'split',
       beforeDays: 1,
       afterDays: 9,
-      startAt: day('2026-06-06'),
+      startDate: '2026-06-06',
     });
   });
 
@@ -188,7 +185,7 @@ describe('resolveInsertAtDatePlacement', () => {
       type: 'split',
       beforeDays: 1,
       afterDays: 9,
-      startAt: day('2026-06-06'),
+      startDate: '2026-06-06',
     });
   });
 
@@ -208,7 +205,7 @@ describe('resolveInsertAtDatePlacement', () => {
     expect(placement).toMatchObject({
       type: 'insert-before',
       targetSlot: { id: 'slot-2' },
-      startAt: day('2026-06-08'),
+      startDate: '2026-06-08',
     });
   });
 });

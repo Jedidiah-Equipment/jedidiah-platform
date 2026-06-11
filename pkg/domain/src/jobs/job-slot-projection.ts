@@ -1,9 +1,8 @@
-import { addDays } from 'date-fns';
+import type { DateOnlyIso } from '@pkg/schema';
 
-import { johannesburgDayStart, toJohannesburgDateKey } from '../formatting/date.js';
+import { addDateOnlyDays } from '../formatting/date-only.js';
 
 export const DEFAULT_IDLE_SLOT_LABEL = 'Idle';
-export { toJohannesburgDateKey as formatJobSchedulingDateKey } from '../formatting/date.js';
 
 export type ProjectableJobSlot = {
   durationDays: number;
@@ -19,12 +18,12 @@ export type WorkingCalendar = {
 };
 
 export type ProjectedSlot<TSlot extends ProjectableJobSlot> = TSlot & {
-  endAt: Date;
-  startAt: Date;
+  endDate: DateOnlyIso;
+  startDate: DateOnlyIso;
 };
 
 export type SlotProjectionResult<TSlot extends ProjectableJobSlot> = {
-  nextAvailableAt: Date;
+  nextAvailableDate: DateOnlyIso;
   slots: ProjectedSlot<TSlot>[];
 };
 
@@ -33,36 +32,40 @@ export function projectJobSlots<TSlot extends ProjectableJobSlot>({
   slots,
   workingCalendar,
 }: {
-  scheduleOrigin: Date;
+  scheduleOrigin: DateOnlyIso;
   slots: readonly TSlot[];
   workingCalendar?: WorkingCalendar;
 }): SlotProjectionResult<TSlot> {
   const resolvedWorkingCalendar = workingCalendar ?? {};
-  let cursor = johannesburgDayStart(scheduleOrigin);
+  let cursor = scheduleOrigin;
 
   const projectedSlots = [...slots]
     .sort((left, right) => left.sequence - right.sequence || left.id.localeCompare(right.id))
     .map((slot) => {
-      const startAt = cursor;
-      const endAt = addJobSlotDuration(startAt, slot.durationDays, resolvedWorkingCalendar);
+      const startDate = cursor;
+      const endDate = addJobSlotDuration(startDate, slot.durationDays, resolvedWorkingCalendar);
       // Slots are a contiguous queue visually, even when the boundary falls on an off-day.
-      cursor = endAt;
+      cursor = endDate;
 
       return {
         ...slot,
-        startAt,
-        endAt,
+        startDate,
+        endDate,
       };
     });
 
   return {
-    nextAvailableAt: cursor,
+    nextAvailableDate: cursor,
     slots: projectedSlots,
   };
 }
 
-export function addJobSlotDuration(startAt: Date, durationDays: number, workingCalendar: WorkingCalendar = {}): Date {
-  let cursor = firstWorkingDayOnOrAfter(johannesburgDayStart(startAt), workingCalendar);
+export function addJobSlotDuration(
+  startDate: DateOnlyIso,
+  durationDays: number,
+  workingCalendar: WorkingCalendar = {},
+): DateOnlyIso {
+  let cursor = firstWorkingDayOnOrAfter(startDate, workingCalendar);
   let remainingDays = durationDays;
 
   while (remainingDays > 0) {
@@ -70,23 +73,26 @@ export function addJobSlotDuration(startAt: Date, durationDays: number, workingC
       remainingDays -= 1;
     }
 
-    cursor = addDays(cursor, 1);
+    cursor = addDateOnlyDays(cursor, 1);
   }
 
   return cursor;
 }
 
-export function countWorkingDaysBetween(startAt: Date, endAt: Date, workingCalendar: WorkingCalendar = {}): number {
-  let cursor = firstWorkingDayOnOrAfter(johannesburgDayStart(startAt), workingCalendar);
-  const end = johannesburgDayStart(endAt);
+export function countWorkingDaysBetween(
+  startDate: DateOnlyIso,
+  endDate: DateOnlyIso,
+  workingCalendar: WorkingCalendar = {},
+): number {
+  let cursor = firstWorkingDayOnOrAfter(startDate, workingCalendar);
   let count = 0;
 
-  while (cursor < end) {
+  while (cursor < endDate) {
     if (isWorkingDay(cursor, workingCalendar)) {
       count += 1;
     }
 
-    cursor = addDays(cursor, 1);
+    cursor = addDateOnlyDays(cursor, 1);
   }
 
   return count;
@@ -103,23 +109,21 @@ export type SlotCalendarDays = {
 
 /**
  * Breaks a projected slot span into its working, closure, and overtime day counts.
- * The span is half-open `[startAt, endAt)`, matching {@link projectJobSlots} output.
+ * The span is half-open `[startDate, endDate)`, matching {@link projectJobSlots} output.
  */
 export function summarizeSlotCalendarDays(
-  startAt: Date,
-  endAt: Date,
+  startDate: DateOnlyIso,
+  endDate: DateOnlyIso,
   workingCalendar: WorkingCalendar = {},
 ): SlotCalendarDays {
-  let cursor = johannesburgDayStart(startAt);
-  const end = johannesburgDayStart(endAt);
+  let cursor = startDate;
   let workingDays = 0;
   let closureDays = 0;
   let overtimeDays = 0;
 
-  while (cursor < end) {
-    const dateKey = toJohannesburgDateKey(cursor);
-    const bayException = workingCalendar.bayExceptions?.get(dateKey);
-    const isOrgOffDay = workingCalendar.orgOffDays?.has(dateKey) ?? false;
+  while (cursor < endDate) {
+    const bayException = workingCalendar.bayExceptions?.get(cursor);
+    const isOrgOffDay = workingCalendar.orgOffDays?.has(cursor) ?? false;
 
     if (isWorkingDay(cursor, workingCalendar)) {
       workingDays += 1;
@@ -131,7 +135,7 @@ export function summarizeSlotCalendarDays(
       closureDays += 1;
     }
 
-    cursor = addDays(cursor, 1);
+    cursor = addDateOnlyDays(cursor, 1);
   }
 
   return { workingDays, closureDays, overtimeDays };
@@ -141,30 +145,28 @@ export type SlotCalendarDayKind = 'working' | 'closure' | 'overtime';
 
 export type SlotCalendarDaySegment = {
   kind: SlotCalendarDayKind;
-  startAt: Date;
-  endAt: Date;
+  startDate: DateOnlyIso;
+  endDate: DateOnlyIso;
 };
 
 /**
  * Splits a projected slot span into contiguous day segments classified as working,
  * closure (non-working day inside the span), or overtime (a working day that only exists
  * because a bay exception opened an org off-day). Consecutive same-kind days are merged.
- * The span is half-open `[startAt, endAt)`, matching {@link projectJobSlots} output and
+ * The span is half-open `[startDate, endDate)`, matching {@link projectJobSlots} output and
  * the day counts from {@link summarizeSlotCalendarDays}.
  */
 export function segmentSlotCalendarDays(
-  startAt: Date,
-  endAt: Date,
+  startDate: DateOnlyIso,
+  endDate: DateOnlyIso,
   workingCalendar: WorkingCalendar = {},
 ): SlotCalendarDaySegment[] {
-  let cursor = johannesburgDayStart(startAt);
-  const end = johannesburgDayStart(endAt);
+  let cursor = startDate;
   const segments: SlotCalendarDaySegment[] = [];
 
-  while (cursor < end) {
-    const dateKey = toJohannesburgDateKey(cursor);
-    const bayException = workingCalendar.bayExceptions?.get(dateKey);
-    const isOrgOffDay = workingCalendar.orgOffDays?.has(dateKey) ?? false;
+  while (cursor < endDate) {
+    const bayException = workingCalendar.bayExceptions?.get(cursor);
+    const isOrgOffDay = workingCalendar.orgOffDays?.has(cursor) ?? false;
 
     let kind: SlotCalendarDayKind;
     if (!isWorkingDay(cursor, workingCalendar)) {
@@ -175,13 +177,13 @@ export function segmentSlotCalendarDays(
       kind = 'working';
     }
 
-    const nextDay = addDays(cursor, 1);
+    const nextDay = addDateOnlyDays(cursor, 1);
     const previous = segments.at(-1);
 
     if (previous && previous.kind === kind) {
-      previous.endAt = nextDay;
+      previous.endDate = nextDay;
     } else {
-      segments.push({ endAt: nextDay, kind, startAt: cursor });
+      segments.push({ endDate: nextDay, kind, startDate: cursor });
     }
 
     cursor = nextDay;
@@ -190,23 +192,22 @@ export function segmentSlotCalendarDays(
   return segments;
 }
 
-export function firstWorkingDayOnOrAfter(date: Date, workingCalendar: WorkingCalendar = {}): Date {
+export function firstWorkingDayOnOrAfter(date: DateOnlyIso, workingCalendar: WorkingCalendar = {}): DateOnlyIso {
   let cursor = date;
 
   while (!isWorkingDay(cursor, workingCalendar)) {
-    cursor = addDays(cursor, 1);
+    cursor = addDateOnlyDays(cursor, 1);
   }
 
   return cursor;
 }
 
-export function isWorkingDay(date: Date, workingCalendar: WorkingCalendar = {}): boolean {
-  const dateKey = toJohannesburgDateKey(date);
-  const bayException = workingCalendar.bayExceptions?.get(dateKey);
+export function isWorkingDay(date: DateOnlyIso, workingCalendar: WorkingCalendar = {}): boolean {
+  const bayException = workingCalendar.bayExceptions?.get(date);
 
   if (bayException) {
     return bayException === 'work';
   }
 
-  return !workingCalendar.orgOffDays?.has(dateKey);
+  return !workingCalendar.orgOffDays?.has(date);
 }

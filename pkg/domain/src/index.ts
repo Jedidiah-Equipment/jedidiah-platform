@@ -5,6 +5,7 @@ export * from './departments.js';
 export * from './documents/document-policy.js';
 export * from './environment.js';
 export * from './formatting/date.js';
+export * from './formatting/date-only.js';
 export * from './formatting/number.js';
 export * from './formatting/phone-number.js';
 export * from './jobs/job-cfo.js';

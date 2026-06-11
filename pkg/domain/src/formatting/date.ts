@@ -1,3 +1,4 @@
+import type { DateOnlyIso } from '@pkg/schema';
 import { differenceInSeconds, formatDate as formatDateDfns, fromUnixTime, isValid, parse, parseISO } from 'date-fns';
 
 export type DateFormat = 'short' | 'medium' | 'long' | 'duration' | 'duration-short' | (string & NonNullable<unknown>);
@@ -242,14 +243,11 @@ export function toDateOnlyIso(epochDay: number): string {
   return new Date(epochDay * MILLISECONDS_PER_DAY).toISOString().slice(0, 10);
 }
 
-export function toJohannesburgDateKey(date: Date): string {
+export function toPlantDateOnly(date: Date): DateOnlyIso {
   const { day, month, year } = getZonedDateParts(date, JOHANNESBURG_TIME_ZONE);
 
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-export function johannesburgDayStart(date: Date): Date {
-  return zonedDateStartToUtcInstant(toJohannesburgDateKey(date), JOHANNESBURG_TIME_ZONE);
+  // Correct by construction — mints the brand where an instant becomes a plant business date.
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` as DateOnlyIso;
 }
 
 function isIntegerString(value: string): boolean {

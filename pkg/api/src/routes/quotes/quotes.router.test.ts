@@ -1463,7 +1463,7 @@ async function createBay(
     .values({
       department: 'fabrication',
       disabledAt: null,
-      scheduleOrigin: new Date('2026-01-01T00:00:00.000Z'),
+      scheduleOrigin: '2026-01-01',
       ...values,
     })
     .returning();

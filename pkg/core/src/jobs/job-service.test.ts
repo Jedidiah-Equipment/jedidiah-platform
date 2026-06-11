@@ -236,7 +236,7 @@ describe('createJob', () => {
   test('auto-inserts an idle gap before a seeded slot when the Bay queue ended in the past', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-01T00:00:00.000Z'),
+      scheduleOrigin: '2026-06-01',
     });
     const quote = await createQuote(context.db, {
       productId: context.catalog.product.id,
@@ -696,7 +696,7 @@ describe('toggleOffDay', () => {
   test('returns Off-Day facts and reflows Bay projections', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -721,13 +721,13 @@ describe('toggleOffDay', () => {
         slots: [
           expect.objectContaining({
             id: firstSlot.slot.id,
-            startAt: '2026-06-04T22:00:00.000Z',
-            endAt: '2026-06-05T22:00:00.000Z',
+            startDate: '2026-06-05',
+            endDate: '2026-06-06',
           }),
           expect.objectContaining({
             id: secondSlot.slot.id,
-            startAt: '2026-06-05T22:00:00.000Z',
-            endAt: '2026-06-07T22:00:00.000Z',
+            startDate: '2026-06-06',
+            endDate: '2026-06-08',
           }),
         ],
       }),
@@ -816,11 +816,11 @@ describe('Bay calendar exceptions', () => {
   test('opens an org Off-Day for one Bay only and reflows back after removal', async ({ context }) => {
     const firstBay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const secondBay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -846,13 +846,13 @@ describe('Bay calendar exceptions', () => {
     expect(getBaySchedule(schedule, firstBay.id)).toEqual(
       expect.objectContaining({
         calendarExceptions: [{ bayId: firstBay.id, date: '2026-06-06', direction: 'work', label: 'Overtime' }],
-        nextAvailableAt: '2026-06-06T22:00:00.000Z',
+        nextAvailableDate: '2026-06-07',
       }),
     );
     expect(getBaySchedule(schedule, secondBay.id)).toEqual(
       expect.objectContaining({
         calendarExceptions: [],
-        nextAvailableAt: '2026-06-07T22:00:00.000Z',
+        nextAvailableDate: '2026-06-08',
       }),
     );
 
@@ -865,7 +865,7 @@ describe('Bay calendar exceptions', () => {
     expect(getBaySchedule(schedule, firstBay.id)).toEqual(
       expect.objectContaining({
         calendarExceptions: [],
-        nextAvailableAt: '2026-06-07T22:00:00.000Z',
+        nextAvailableDate: '2026-06-08',
       }),
     );
   });
@@ -873,11 +873,11 @@ describe('Bay calendar exceptions', () => {
   test('closes an otherwise-working day for one Bay only', async ({ context }) => {
     const firstBay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const secondBay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -898,12 +898,12 @@ describe('Bay calendar exceptions', () => {
     const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, firstBay.id)).toEqual(
       expect.objectContaining({
-        nextAvailableAt: '2026-06-07T22:00:00.000Z',
+        nextAvailableDate: '2026-06-08',
       }),
     );
     expect(getBaySchedule(schedule, secondBay.id)).toEqual(
       expect.objectContaining({
-        nextAvailableAt: '2026-06-06T22:00:00.000Z',
+        nextAvailableDate: '2026-06-07',
       }),
     );
   });
@@ -1274,7 +1274,7 @@ describe('bookJobSlot', () => {
   test('appends slots to the back of a bay queue and returns projected dates', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -1312,21 +1312,21 @@ describe('bookJobSlot', () => {
     const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
-        nextAvailableAt: '2026-06-07T22:00:00.000Z',
+        nextAvailableDate: '2026-06-08',
         slots: [
           expect.objectContaining({
             id: firstSlot.slot.id,
             jobCode: firstJob.code,
             sequence: 1,
-            startAt: '2026-06-04T22:00:00.000Z',
-            endAt: '2026-06-05T22:00:00.000Z',
+            startDate: '2026-06-05',
+            endDate: '2026-06-06',
           }),
           expect.objectContaining({
             id: secondSlot.slot.id,
             jobCode: secondJob.code,
             sequence: 2,
-            startAt: '2026-06-05T22:00:00.000Z',
-            endAt: '2026-06-07T22:00:00.000Z',
+            startDate: '2026-06-06',
+            endDate: '2026-06-08',
           }),
         ],
       }),
@@ -1375,7 +1375,7 @@ describe('bookJobSlot', () => {
   test('inserts an explicit idle slot before new work when the queue ended in the past', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -1394,13 +1394,13 @@ describe('bookJobSlot', () => {
     const schedule = await listBays({ db: context.db });
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
-        nextAvailableAt: '2026-06-11T22:00:00.000Z',
+        nextAvailableDate: '2026-06-12',
         slots: [
           expect.objectContaining({
             id: firstSlot.slot.id,
             kind: 'work',
-            startAt: '2026-06-04T22:00:00.000Z',
-            endAt: '2026-06-05T22:00:00.000Z',
+            startDate: '2026-06-05',
+            endDate: '2026-06-06',
           }),
           expect.objectContaining({
             durationDays: 4,
@@ -1408,25 +1408,58 @@ describe('bookJobSlot', () => {
             kind: 'idle',
             label: null,
             sequence: 2,
-            startAt: '2026-06-05T22:00:00.000Z',
-            endAt: '2026-06-09T22:00:00.000Z',
+            startDate: '2026-06-06',
+            endDate: '2026-06-10',
           }),
           expect.objectContaining({
             id: secondSlot.slot.id,
             kind: 'work',
             sequence: 3,
-            startAt: '2026-06-09T22:00:00.000Z',
-            endAt: '2026-06-11T22:00:00.000Z',
+            startDate: '2026-06-10',
+            endDate: '2026-06-12',
           }),
         ],
       }),
     );
   });
 
+  test('derives plant today from Africa/Johannesburg, not the server clock day', async ({ context }) => {
+    const bay = await createBay(context.db, {
+      department: 'fabrication',
+      scheduleOrigin: '2026-06-05',
+    });
+    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
+    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    await bookJobSlot({
+      currentDate: new Date('2026-06-05T09:00:00.000+02:00'),
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
+    });
+    // 23:30 UTC on Jun 9 is already Jun 10 in Johannesburg, so the idle gap runs through Jun 9.
+    const secondSlot = await bookJobSlot({
+      currentDate: new Date('2026-06-09T23:30:00.000Z'),
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
+    });
+
+    const schedule = await listBays({ db: context.db });
+    expect(getBaySchedule(schedule, bay.id).slots).toEqual([
+      expect.objectContaining({ kind: 'work', startDate: '2026-06-05', endDate: '2026-06-06' }),
+      expect.objectContaining({ durationDays: 4, kind: 'idle', startDate: '2026-06-06', endDate: '2026-06-10' }),
+      expect.objectContaining({
+        id: secondSlot.slot.id,
+        kind: 'work',
+        startDate: '2026-06-10',
+        endDate: '2026-06-11',
+      }),
+    ]);
+  });
+
   test('counts auto-inserted idle gaps in working days from persisted Off-Days', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -1468,7 +1501,7 @@ describe('bookJobSlot', () => {
   test('counts auto-inserted idle gaps in working days from persisted Off-Days', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -1510,7 +1543,7 @@ describe('bookJobSlot', () => {
   test('counts auto-inserted idle gaps from persisted Bay exceptions', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -1622,7 +1655,7 @@ describe('resizeJobSlot', () => {
   test('updates duration and reflows downstream projected dates only', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -1658,25 +1691,25 @@ describe('resizeJobSlot', () => {
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
         id: bay.id,
-        nextAvailableAt: '2026-06-08T22:00:00.000Z',
+        nextAvailableDate: '2026-06-09',
         slots: [
           expect.objectContaining({
             id: firstSlot.slot.id,
             durationDays: 1,
-            startAt: '2026-06-04T22:00:00.000Z',
-            endAt: '2026-06-05T22:00:00.000Z',
+            startDate: '2026-06-05',
+            endDate: '2026-06-06',
           }),
           expect.objectContaining({
             id: secondSlot.slot.id,
             durationDays: 2,
-            startAt: '2026-06-05T22:00:00.000Z',
-            endAt: '2026-06-07T22:00:00.000Z',
+            startDate: '2026-06-06',
+            endDate: '2026-06-08',
           }),
           expect.objectContaining({
             id: thirdSlot.slot.id,
             durationDays: 1,
-            startAt: '2026-06-07T22:00:00.000Z',
-            endAt: '2026-06-08T22:00:00.000Z',
+            startDate: '2026-06-08',
+            endDate: '2026-06-09',
           }),
         ],
       }),
@@ -1718,15 +1751,15 @@ describe('resizeJobSlot', () => {
     expect(getBaySchedule(schedule, bay.id).slots).toEqual([
       expect.objectContaining({
         id: idleSlot.slot.id,
-        endAt: '2026-06-06T22:00:00.000Z',
+        endDate: '2026-06-07',
         kind: 'idle',
-        startAt: '2026-06-04T22:00:00.000Z',
+        startDate: '2026-06-05',
       }),
       expect.objectContaining({
         id: workSlot.slot.id,
-        endAt: '2026-06-07T22:00:00.000Z',
+        endDate: '2026-06-08',
         kind: 'work',
-        startAt: '2026-06-06T22:00:00.000Z',
+        startDate: '2026-06-07',
       }),
     ]);
   });
@@ -1796,7 +1829,7 @@ describe('moveJobSlot', () => {
   test('moves a middle slot right and reflows projected dates', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -1834,20 +1867,20 @@ describe('moveJobSlot', () => {
           expect.objectContaining({
             id: firstSlot.slot.id,
             sequence: 1,
-            startAt: '2026-06-04T22:00:00.000Z',
-            endAt: '2026-06-05T22:00:00.000Z',
+            startDate: '2026-06-05',
+            endDate: '2026-06-06',
           }),
           expect.objectContaining({
             id: thirdSlot.slot.id,
             sequence: 2,
-            startAt: '2026-06-05T22:00:00.000Z',
-            endAt: '2026-06-07T22:00:00.000Z',
+            startDate: '2026-06-06',
+            endDate: '2026-06-08',
           }),
           expect.objectContaining({
             id: secondSlot.slot.id,
             sequence: 3,
-            startAt: '2026-06-07T22:00:00.000Z',
-            endAt: '2026-06-08T22:00:00.000Z',
+            startDate: '2026-06-08',
+            endDate: '2026-06-09',
           }),
         ],
       }),
@@ -1903,7 +1936,7 @@ describe('removeJobSlot', () => {
   }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -1951,18 +1984,18 @@ describe('removeJobSlot', () => {
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
         id: bay.id,
-        nextAvailableAt: '2026-06-06T22:00:00.000Z',
+        nextAvailableDate: '2026-06-07',
         slots: [
           expect.objectContaining({
             id: firstSlot.slot.id,
-            startAt: '2026-06-04T22:00:00.000Z',
-            endAt: '2026-06-05T22:00:00.000Z',
+            startDate: '2026-06-05',
+            endDate: '2026-06-06',
           }),
           expect.objectContaining({
             id: thirdSlot.slot.id,
             sequence: 2,
-            startAt: '2026-06-05T22:00:00.000Z',
-            endAt: '2026-06-06T22:00:00.000Z',
+            startDate: '2026-06-06',
+            endDate: '2026-06-07',
           }),
         ],
       }),
@@ -1972,7 +2005,7 @@ describe('removeJobSlot', () => {
   test('removing the last slot keeps upstream slots unchanged', async ({ context }) => {
     const bay = await createBay(context.db, {
       department: 'fabrication',
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: '2026-06-05',
     });
     const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
     const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
@@ -1994,13 +2027,13 @@ describe('removeJobSlot', () => {
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
         id: bay.id,
-        nextAvailableAt: '2026-06-05T22:00:00.000Z',
+        nextAvailableDate: '2026-06-06',
         slots: [
           expect.objectContaining({
             id: firstSlot.slot.id,
             sequence: 1,
-            startAt: '2026-06-04T22:00:00.000Z',
-            endAt: '2026-06-05T22:00:00.000Z',
+            startDate: '2026-06-05',
+            endDate: '2026-06-06',
           }),
         ],
       }),
@@ -2043,7 +2076,7 @@ describe('removeJobSlot', () => {
         id: workSlot.slot.id,
         kind: 'work',
         sequence: 1,
-        startAt: '2026-06-04T22:00:00.000Z',
+        startDate: '2026-06-05',
       }),
     ]);
   });
@@ -2098,10 +2131,10 @@ async function createBay(
   db: Db,
   {
     department,
-    scheduleOrigin = new Date('2026-06-05T08:00:00.000Z'),
+    scheduleOrigin = '2026-06-05',
   }: {
     department: Department;
-    scheduleOrigin?: Date;
+    scheduleOrigin?: string;
   },
 ) {
   const [bay] = await db

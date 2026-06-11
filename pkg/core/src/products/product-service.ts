@@ -90,7 +90,7 @@ type ProductBayFlatRow = typeof productBays.$inferSelect & {
   bayDisabledAt: Date | null;
   bayId: string;
   bayName: string;
-  bayScheduleOrigin: Date;
+  bayScheduleOrigin: string;
   bayUpdatedAt: Date;
 };
 
@@ -738,7 +738,7 @@ function mapProductBayRow(row: ProductBayFlatRow): ProductBay {
       disabledAt: row.bayDisabledAt?.toISOString() ?? null,
       id: row.bayId,
       name: row.bayName,
-      scheduleOrigin: row.bayScheduleOrigin.toISOString(),
+      scheduleOrigin: row.bayScheduleOrigin,
       updatedAt: row.bayUpdatedAt.toISOString(),
     },
     bayId: row.bayId,

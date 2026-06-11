@@ -1,5 +1,4 @@
-import type { UUID } from '@pkg/schema';
-import { toJobDateKey } from './job-date-key.js';
+import type { DateOnlyIso, UUID } from '@pkg/schema';
 
 export type BayScheduleFilter = {
   bayId: UUID | null;
@@ -19,7 +18,7 @@ type FilterableSlot = {
 };
 
 type FilterableSlotWithStart = FilterableSlot & {
-  startAt: Date | string;
+  startDate: DateOnlyIso;
 };
 
 type FilterableJob = {
@@ -92,17 +91,17 @@ export function getEarliestBayScheduleFilterMatchStart({
   bays,
   filter,
   jobsById,
-  today = new Date(),
+  today,
 }: {
   bays: ReadonlyArray<{ id: UUID; slots: ReadonlyArray<FilterableSlotWithStart> }>;
   filter: BayScheduleFilter;
   jobsById: ReadonlyMap<UUID, FilterableJob>;
-  today?: Date;
-}): Date | null {
-  let earliestStart: Date | null = null;
-  let earliestFutureStart: Date | null = null;
+  /** Plant today as a yyyy-MM-dd business date, from the schedule read. */
+  today: DateOnlyIso;
+}): DateOnlyIso | null {
+  let earliestStart: DateOnlyIso | null = null;
+  let earliestFutureStart: DateOnlyIso | null = null;
   const shouldPreferFuture = filter.bayId !== null || filter.customerId !== null;
-  const todayDateKey = toJobDateKey(today);
 
   for (const bay of bays) {
     for (const slot of bay.slots) {
@@ -110,18 +109,16 @@ export function getEarliestBayScheduleFilterMatchStart({
         continue;
       }
 
-      const startAt = new Date(slot.startAt);
-
-      if (earliestStart === null || startAt.getTime() < earliestStart.getTime()) {
-        earliestStart = startAt;
+      if (earliestStart === null || slot.startDate < earliestStart) {
+        earliestStart = slot.startDate;
       }
 
       if (
         shouldPreferFuture &&
-        toJobDateKey(startAt) >= todayDateKey &&
-        (earliestFutureStart === null || startAt.getTime() < earliestFutureStart.getTime())
+        slot.startDate >= today &&
+        (earliestFutureStart === null || slot.startDate < earliestFutureStart)
       ) {
-        earliestFutureStart = startAt;
+        earliestFutureStart = slot.startDate;
       }
     }
   }

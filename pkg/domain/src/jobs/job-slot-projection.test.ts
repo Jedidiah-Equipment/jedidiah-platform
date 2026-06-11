@@ -1,18 +1,17 @@
+import { DateOnlyIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { johannesburgDayStart } from '../formatting/date.js';
 import {
   addJobSlotDuration,
   countWorkingDaysBetween,
   DEFAULT_IDLE_SLOT_LABEL,
-  formatJobSchedulingDateKey,
   projectJobSlots,
   segmentSlotCalendarDays,
   summarizeSlotCalendarDays,
 } from './job-slot-projection.js';
 
-const scheduleOrigin = new Date('2026-06-05T08:00:00.000Z');
-const scheduleOriginDayStart = johannesburgDayStart(scheduleOrigin);
+const day = (value: string) => DateOnlyIso.parse(value);
+const scheduleOrigin = day('2026-06-05');
 
 describe('projectJobSlots', () => {
   it('reports the schedule origin as next available for an empty bay', () => {
@@ -22,10 +21,10 @@ describe('projectJobSlots', () => {
     });
 
     expect(projection.slots).toEqual([]);
-    expect(projection.nextAvailableAt).toEqual(scheduleOriginDayStart);
+    expect(projection.nextAvailableDate).toBe(scheduleOrigin);
   });
 
-  it('projects appended slots sequentially from the Johannesburg schedule origin day start', () => {
+  it('projects appended slots sequentially from the schedule origin business date', () => {
     const projection = projectJobSlots({
       scheduleOrigin,
       slots: [
@@ -34,19 +33,19 @@ describe('projectJobSlots', () => {
       ],
     });
 
-    expect(projection.slots.map(({ id, startAt, endAt }) => ({ id, startAt, endAt }))).toEqual([
+    expect(projection.slots.map(({ id, startDate, endDate }) => ({ id, startDate, endDate }))).toEqual([
       {
         id: 'slot-1',
-        startAt: scheduleOriginDayStart,
-        endAt: addJobSlotDuration(scheduleOriginDayStart, 1),
+        startDate: '2026-06-05',
+        endDate: '2026-06-06',
       },
       {
         id: 'slot-2',
-        startAt: addJobSlotDuration(scheduleOriginDayStart, 1),
-        endAt: addJobSlotDuration(scheduleOriginDayStart, 3),
+        startDate: '2026-06-06',
+        endDate: '2026-06-08',
       },
     ]);
-    expect(projection.nextAvailableAt).toEqual(addJobSlotDuration(scheduleOriginDayStart, 3));
+    expect(projection.nextAvailableDate).toBe('2026-06-08');
   });
 
   it('projects mixed work and idle slots as one contiguous queue', () => {
@@ -59,17 +58,15 @@ describe('projectJobSlots', () => {
       ],
     });
 
-    expect(projection.slots.map(({ id, kind, startAt }) => ({ id, kind, startAt }))).toEqual([
-      { id: 'slot-a', kind: 'work', startAt: scheduleOriginDayStart },
-      { id: 'slot-b', kind: 'idle', startAt: addJobSlotDuration(scheduleOriginDayStart, 1) },
-      { id: 'slot-c', kind: 'work', startAt: addJobSlotDuration(scheduleOriginDayStart, 2) },
+    expect(projection.slots.map(({ id, kind, startDate }) => ({ id, kind, startDate }))).toEqual([
+      { id: 'slot-a', kind: 'work', startDate: '2026-06-05' },
+      { id: 'slot-b', kind: 'idle', startDate: '2026-06-06' },
+      { id: 'slot-c', kind: 'work', startDate: '2026-06-07' },
     ]);
   });
 
   it('does not silently floor stale queues to today', () => {
-    const staleOrigin = new Date('2026-06-01T08:00:00.000Z');
-    const expectedStartAt = johannesburgDayStart(staleOrigin);
-    const expectedEndAt = addJobSlotDuration(expectedStartAt, 1);
+    const staleOrigin = day('2026-06-01');
     const emptyProjection = projectJobSlots({
       scheduleOrigin: staleOrigin,
       slots: [],
@@ -80,28 +77,26 @@ describe('projectJobSlots', () => {
     });
 
     expect(emptyProjection).toEqual({
-      nextAvailableAt: expectedStartAt,
+      nextAvailableDate: '2026-06-01',
       slots: [],
     });
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: expectedStartAt,
-      endAt: expectedEndAt,
+      startDate: '2026-06-01',
+      endDate: '2026-06-02',
     });
-    expect(projection.nextAvailableAt).toEqual(expectedEndAt);
+    expect(projection.nextAvailableDate).toBe('2026-06-02');
   });
 
   it('adds slot durations as working days with an empty calendar', () => {
-    const startAt = new Date('2026-06-05T00:00:00.000Z');
-
-    expect(addJobSlotDuration(startAt, 4)).toEqual(new Date('2026-06-08T22:00:00.000Z'));
-    expect(addJobSlotDuration(startAt, 6)).toEqual(new Date('2026-06-10T22:00:00.000Z'));
+    expect(addJobSlotDuration(day('2026-06-05'), 4)).toBe('2026-06-09');
+    expect(addJobSlotDuration(day('2026-06-05'), 6)).toBe('2026-06-11');
+    expect(addJobSlotDuration(day('2026-06-28'), 4)).toBe('2026-07-02');
   });
 
   it('projects slot durations as working days across org off-days', () => {
-    const thursday = new Date('2026-06-04T08:00:00.000Z');
     const projection = projectJobSlots({
-      scheduleOrigin: thursday,
+      scheduleOrigin: day('2026-06-04'),
       slots: [slot({ durationDays: 5, id: 'slot-1', sequence: 1 })],
       workingCalendar: {
         orgOffDays: new Set(['2026-06-06', '2026-06-07']),
@@ -110,10 +105,10 @@ describe('projectJobSlots', () => {
 
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: new Date('2026-06-03T22:00:00.000Z'),
-      endAt: new Date('2026-06-10T22:00:00.000Z'),
+      startDate: '2026-06-04',
+      endDate: '2026-06-11',
     });
-    expect(projection.nextAvailableAt).toEqual(new Date('2026-06-10T22:00:00.000Z'));
+    expect(projection.nextAvailableDate).toBe('2026-06-11');
   });
 
   it('keeps queued slots contiguous when a previous slot ends on an off-day', () => {
@@ -128,25 +123,24 @@ describe('projectJobSlots', () => {
       },
     });
 
-    expect(projection.slots.map(({ id, startAt, endAt }) => ({ id, startAt, endAt }))).toEqual([
+    expect(projection.slots.map(({ id, startDate, endDate }) => ({ id, startDate, endDate }))).toEqual([
       {
         id: 'slot-1',
-        startAt: new Date('2026-06-04T22:00:00.000Z'),
-        endAt: new Date('2026-06-05T22:00:00.000Z'),
+        startDate: '2026-06-05',
+        endDate: '2026-06-06',
       },
       {
         id: 'slot-2',
-        startAt: new Date('2026-06-05T22:00:00.000Z'),
-        endAt: new Date('2026-06-10T22:00:00.000Z'),
+        startDate: '2026-06-06',
+        endDate: '2026-06-11',
       },
     ]);
-    expect(projection.nextAvailableAt).toEqual(new Date('2026-06-10T22:00:00.000Z'));
+    expect(projection.nextAvailableDate).toBe('2026-06-11');
   });
 
   it('starts the first slot at the schedule origin when the origin is an off-day', () => {
-    const saturday = new Date('2026-06-06T08:00:00.000Z');
     const projection = projectJobSlots({
-      scheduleOrigin: saturday,
+      scheduleOrigin: day('2026-06-06'),
       slots: [slot({ id: 'slot-1', sequence: 1 })],
       workingCalendar: {
         orgOffDays: new Set(['2026-06-06', '2026-06-07']),
@@ -155,35 +149,15 @@ describe('projectJobSlots', () => {
 
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: new Date('2026-06-05T22:00:00.000Z'),
-      endAt: new Date('2026-06-08T22:00:00.000Z'),
+      startDate: '2026-06-06',
+      endDate: '2026-06-09',
     });
-    expect(projection.nextAvailableAt).toEqual(new Date('2026-06-08T22:00:00.000Z'));
-  });
-
-  it('uses Johannesburg business dates for off-day duration lookups even when the instant is UTC-prior-day', () => {
-    const projection = projectJobSlots({
-      scheduleOrigin: new Date('2026-06-05T22:30:00.000Z'),
-      slots: [slot({ id: 'slot-1', sequence: 1 })],
-      workingCalendar: {
-        orgOffDays: new Set(['2026-06-06']),
-      },
-    });
-
-    expect(projection.slots[0]).toMatchObject({
-      id: 'slot-1',
-      startAt: new Date('2026-06-05T22:00:00.000Z'),
-      endAt: new Date('2026-06-07T22:00:00.000Z'),
-    });
-  });
-
-  it('formats scheduling date keys as Johannesburg business dates', () => {
-    expect(formatJobSchedulingDateKey(new Date('2026-06-18T22:00:00.000Z'))).toBe('2026-06-19');
+    expect(projection.nextAvailableDate).toBe('2026-06-09');
   });
 
   it('lets a bay work exception open an org off-day', () => {
     const projection = projectJobSlots({
-      scheduleOrigin: new Date('2026-06-05T08:00:00.000Z'),
+      scheduleOrigin: day('2026-06-05'),
       slots: [slot({ durationDays: 3, id: 'slot-1', sequence: 1 })],
       workingCalendar: {
         bayExceptions: new Map([['2026-06-06', 'work']]),
@@ -193,8 +167,8 @@ describe('projectJobSlots', () => {
 
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: new Date('2026-06-04T22:00:00.000Z'),
-      endAt: new Date('2026-06-08T22:00:00.000Z'),
+      startDate: '2026-06-05',
+      endDate: '2026-06-09',
     });
   });
 
@@ -209,8 +183,8 @@ describe('projectJobSlots', () => {
 
     expect(projection.slots[0]).toMatchObject({
       id: 'slot-1',
-      startAt: new Date('2026-06-04T22:00:00.000Z'),
-      endAt: new Date('2026-06-07T22:00:00.000Z'),
+      startDate: '2026-06-05',
+      endDate: '2026-06-08',
     });
   });
 
@@ -227,33 +201,33 @@ describe('projectJobSlots', () => {
       },
     });
 
-    expect(projection.slots.map(({ id, startAt, endAt }) => ({ id, startAt, endAt }))).toEqual([
+    expect(projection.slots.map(({ id, startDate, endDate }) => ({ id, startDate, endDate }))).toEqual([
       {
         id: 'slot-a',
-        startAt: new Date('2026-06-04T22:00:00.000Z'),
-        endAt: new Date('2026-06-05T22:00:00.000Z'),
+        startDate: '2026-06-05',
+        endDate: '2026-06-06',
       },
       {
         id: 'slot-b',
-        startAt: new Date('2026-06-05T22:00:00.000Z'),
-        endAt: new Date('2026-06-09T22:00:00.000Z'),
+        startDate: '2026-06-06',
+        endDate: '2026-06-10',
       },
       {
         id: 'slot-c',
-        startAt: new Date('2026-06-09T22:00:00.000Z'),
-        endAt: new Date('2026-06-10T22:00:00.000Z'),
+        startDate: '2026-06-10',
+        endDate: '2026-06-11',
       },
     ]);
   });
 
   it('counts working days between two dates', () => {
     expect(
-      countWorkingDaysBetween(new Date('2026-06-05T08:00:00.000Z'), new Date('2026-06-10T09:00:00.000Z'), {
+      countWorkingDaysBetween(day('2026-06-05'), day('2026-06-10'), {
         orgOffDays: new Set(['2026-06-06', '2026-06-07']),
       }),
     ).toBe(3);
     expect(
-      countWorkingDaysBetween(new Date('2026-06-05T08:00:00.000Z'), new Date('2026-06-10T09:00:00.000Z'), {
+      countWorkingDaysBetween(day('2026-06-05'), day('2026-06-10'), {
         bayExceptions: new Map([
           ['2026-06-06', 'work'],
           ['2026-06-09', 'off'],
@@ -270,18 +244,17 @@ describe('projectJobSlots', () => {
 
 describe('summarizeSlotCalendarDays', () => {
   it('counts every day as working with an empty calendar', () => {
-    expect(
-      summarizeSlotCalendarDays(new Date('2026-06-05T00:00:00.000Z'), new Date('2026-06-08T22:00:00.000Z')),
-    ).toEqual({ workingDays: 4, closureDays: 0, overtimeDays: 0 });
+    expect(summarizeSlotCalendarDays(day('2026-06-05'), day('2026-06-09'))).toEqual({
+      workingDays: 4,
+      closureDays: 0,
+      overtimeDays: 0,
+    });
   });
 
   it('counts org off-days inside the span as closures', () => {
     // 5 working days projected across two org off-days (the projected span from job-slot tests).
-    const startAt = new Date('2026-06-03T22:00:00.000Z');
-    const endAt = new Date('2026-06-10T22:00:00.000Z');
-
     expect(
-      summarizeSlotCalendarDays(startAt, endAt, {
+      summarizeSlotCalendarDays(day('2026-06-04'), day('2026-06-11'), {
         orgOffDays: new Set(['2026-06-06', '2026-06-07']),
       }),
     ).toEqual({ workingDays: 5, closureDays: 2, overtimeDays: 0 });
@@ -289,11 +262,8 @@ describe('summarizeSlotCalendarDays', () => {
 
   it('counts a bay work exception on an org off-day as overtime', () => {
     // 3 working days with 2026-06-06 opened as overtime and 2026-06-07 still closed.
-    const startAt = new Date('2026-06-04T22:00:00.000Z');
-    const endAt = new Date('2026-06-08T22:00:00.000Z');
-
     expect(
-      summarizeSlotCalendarDays(startAt, endAt, {
+      summarizeSlotCalendarDays(day('2026-06-05'), day('2026-06-09'), {
         bayExceptions: new Map([['2026-06-06', 'work']]),
         orgOffDays: new Set(['2026-06-06', '2026-06-07']),
       }),
@@ -302,11 +272,8 @@ describe('summarizeSlotCalendarDays', () => {
 
   it('counts a bay off exception inside the span as a closure', () => {
     // 2 working days with 2026-06-06 closed by a bay exception.
-    const startAt = new Date('2026-06-04T22:00:00.000Z');
-    const endAt = new Date('2026-06-07T22:00:00.000Z');
-
     expect(
-      summarizeSlotCalendarDays(startAt, endAt, {
+      summarizeSlotCalendarDays(day('2026-06-05'), day('2026-06-08'), {
         bayExceptions: new Map([['2026-06-06', 'off']]),
       }),
     ).toEqual({ workingDays: 2, closureDays: 1, overtimeDays: 0 });
@@ -314,52 +281,35 @@ describe('summarizeSlotCalendarDays', () => {
 });
 
 describe('segmentSlotCalendarDays', () => {
-  const toKeys = (segments: ReturnType<typeof segmentSlotCalendarDays>) =>
-    segments.map((segment) => ({
-      kind: segment.kind,
-      start: formatJobSchedulingDateKey(segment.startAt),
-      end: formatJobSchedulingDateKey(segment.endAt),
-    }));
-
   it('returns a single working segment with an empty calendar', () => {
-    expect(
-      toKeys(segmentSlotCalendarDays(new Date('2026-06-05T00:00:00.000Z'), new Date('2026-06-08T22:00:00.000Z'))),
-    ).toEqual([{ kind: 'working', start: '2026-06-05', end: '2026-06-09' }]);
+    expect(segmentSlotCalendarDays(day('2026-06-05'), day('2026-06-09'))).toEqual([
+      { kind: 'working', startDate: '2026-06-05', endDate: '2026-06-09' },
+    ]);
   });
 
   it('merges consecutive org off-days into one closure segment', () => {
-    const startAt = new Date('2026-06-03T22:00:00.000Z');
-    const endAt = new Date('2026-06-10T22:00:00.000Z');
-
     expect(
-      toKeys(
-        segmentSlotCalendarDays(startAt, endAt, {
-          orgOffDays: new Set(['2026-06-06', '2026-06-07']),
-        }),
-      ),
+      segmentSlotCalendarDays(day('2026-06-04'), day('2026-06-11'), {
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      }),
     ).toEqual([
-      { kind: 'working', start: '2026-06-04', end: '2026-06-06' },
-      { kind: 'closure', start: '2026-06-06', end: '2026-06-08' },
-      { kind: 'working', start: '2026-06-08', end: '2026-06-11' },
+      { kind: 'working', startDate: '2026-06-04', endDate: '2026-06-06' },
+      { kind: 'closure', startDate: '2026-06-06', endDate: '2026-06-08' },
+      { kind: 'working', startDate: '2026-06-08', endDate: '2026-06-11' },
     ]);
   });
 
   it('classifies a bay work exception on an org off-day as overtime', () => {
-    const startAt = new Date('2026-06-04T22:00:00.000Z');
-    const endAt = new Date('2026-06-08T22:00:00.000Z');
-
     expect(
-      toKeys(
-        segmentSlotCalendarDays(startAt, endAt, {
-          bayExceptions: new Map([['2026-06-06', 'work']]),
-          orgOffDays: new Set(['2026-06-06', '2026-06-07']),
-        }),
-      ),
+      segmentSlotCalendarDays(day('2026-06-05'), day('2026-06-09'), {
+        bayExceptions: new Map([['2026-06-06', 'work']]),
+        orgOffDays: new Set(['2026-06-06', '2026-06-07']),
+      }),
     ).toEqual([
-      { kind: 'working', start: '2026-06-05', end: '2026-06-06' },
-      { kind: 'overtime', start: '2026-06-06', end: '2026-06-07' },
-      { kind: 'closure', start: '2026-06-07', end: '2026-06-08' },
-      { kind: 'working', start: '2026-06-08', end: '2026-06-09' },
+      { kind: 'working', startDate: '2026-06-05', endDate: '2026-06-06' },
+      { kind: 'overtime', startDate: '2026-06-06', endDate: '2026-06-07' },
+      { kind: 'closure', startDate: '2026-06-07', endDate: '2026-06-08' },
+      { kind: 'working', startDate: '2026-06-08', endDate: '2026-06-09' },
     ]);
   });
 });

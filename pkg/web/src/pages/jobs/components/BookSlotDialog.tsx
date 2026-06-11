@@ -1,4 +1,4 @@
-import { hasPermission } from '@pkg/domain';
+import { formatDate, hasPermission } from '@pkg/domain';
 import { IconAlertTriangle, IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -23,7 +23,6 @@ import {
   getInsertAtDatePickerBounds,
   resolveBookSlotPlacement,
 } from './book-slot-insert-at-date.js';
-import { formatJobSchedulingDate } from './job-date-key.js';
 
 export const BookSlotDialog: React.FC = () => {
   const trpc = useTRPC();
@@ -61,21 +60,23 @@ export const BookSlotDialog: React.FC = () => {
     [baysQuery.data],
   );
   const selectedBayCalendar = (selectedBay && workingCalendarsByBayId.get(selectedBay.id)) || {};
-  const pickerBounds = selectedBay ? getInsertAtDatePickerBounds(selectedBay, selectedBayCalendar, new Date()) : null;
+  const plantToday = baysQuery.data?.today ?? null;
+  const pickerBounds =
+    selectedBay && plantToday ? getInsertAtDatePickerBounds(selectedBay, selectedBayCalendar, plantToday) : null;
   const placementFeedback = useMemo(() => {
-    if (!selectedBay || !startDate) {
+    if (!selectedBay || !startDate || !plantToday) {
       return null;
     }
 
     const placement = resolveBookSlotPlacement({
       bay: selectedBay,
-      currentDate: new Date(),
       startDate,
+      today: plantToday,
       workingCalendar: selectedBayCalendar,
     });
 
     return describeInsertAtDatePlacement(placement);
-  }, [selectedBay, selectedBayCalendar, startDate]);
+  }, [plantToday, selectedBay, selectedBayCalendar, startDate]);
 
   const bookSlotMutation = useMutation(
     trpc.jobs.bookSlot.mutationOptions({
@@ -111,7 +112,9 @@ export const BookSlotDialog: React.FC = () => {
 
     const bay = schedulableBays.find((candidate) => candidate.id === bayId);
     setStartDate(
-      bay ? getInsertAtDatePickerBounds(bay, workingCalendarsByBayId.get(bay.id) ?? {}, new Date()).maxValue : '',
+      bay && plantToday
+        ? getInsertAtDatePickerBounds(bay, workingCalendarsByBayId.get(bay.id) ?? {}, plantToday).maxValue
+        : '',
     );
   };
 
@@ -161,7 +164,7 @@ export const BookSlotDialog: React.FC = () => {
                         <>
                           <span className="truncate">{selectedBay.name}</span>
                           <span className="shrink-0 text-muted-foreground">
-                            {formatJobSchedulingDate(selectedBay.nextAvailableAt, 'MMM d')}
+                            {formatDate(selectedBay.nextAvailableDate, 'MMM d')}
                           </span>
                         </>
                       ) : null}
@@ -172,9 +175,7 @@ export const BookSlotDialog: React.FC = () => {
                       {schedulableBays.map((bay) => (
                         <SelectItem key={bay.id} value={bay.id}>
                           {bay.name}
-                          <span className="text-muted-foreground">
-                            {formatJobSchedulingDate(bay.nextAvailableAt, 'MMM d')}
-                          </span>
+                          <span className="text-muted-foreground">{formatDate(bay.nextAvailableDate, 'MMM d')}</span>
                         </SelectItem>
                       ))}
                     </SelectGroup>

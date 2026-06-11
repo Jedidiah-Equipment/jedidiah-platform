@@ -18,7 +18,13 @@ import {
   user,
   workingCalendarOffDays,
 } from '@pkg/db';
-import { JOB_DEPARTMENT_PIPELINE, parseJobCodeSearch, projectJobSlots, type WorkingCalendar } from '@pkg/domain';
+import {
+  JOB_DEPARTMENT_PIPELINE,
+  parseJobCodeSearch,
+  projectJobSlots,
+  toPlantDateOnly,
+  type WorkingCalendar,
+} from '@pkg/domain';
 import {
   Bay,
   BayCalendarException,
@@ -129,6 +135,8 @@ export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promis
   return {
     items: toBaySchedules(rows, offDays),
     offDays,
+    // Plant "today" enters here, at the server boundary — the client never derives it.
+    today: toPlantDateOnly(new Date()),
   };
 }
 
@@ -252,23 +260,20 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
 }
 
 function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
+  const bay = Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) });
   const projection = projectJobSlots({
-    scheduleOrigin: row.scheduleOrigin,
+    scheduleOrigin: bay.scheduleOrigin,
     slots: row.slots,
     workingCalendar,
   });
 
   return BaySchedule.parse({
-    ...Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) }),
+    ...bay,
     calendarExceptions: row.calendarExceptions,
-    nextAvailableAt: projection.nextAvailableAt,
+    nextAvailableDate: projection.nextAvailableDate,
     slots: projection.slots.map((slot) => {
       if (slot.kind === 'idle') {
-        return ProjectedJobSlot.parse({
-          ...slot,
-          startAt: slot.startAt,
-          endAt: slot.endAt,
-        });
+        return ProjectedJobSlot.parse(slot);
       }
 
       if (!slot.job) {
@@ -279,8 +284,6 @@ function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
         ...slot,
         jobCode: slot.job.code,
         jobId: slot.job.id,
-        startAt: slot.startAt,
-        endAt: slot.endAt,
       });
     }),
   });

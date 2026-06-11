@@ -1,19 +1,17 @@
 import {
+  addDateOnlyDays,
   firstWorkingDayOnOrAfter,
-  formatJobSchedulingDateKey,
+  formatDate,
   type InsertAtDatePlacement,
   isWorkingDay,
-  JOHANNESBURG_TIME_ZONE,
-  johannesburgDayStart,
+  maxDateOnly,
   resolveInsertAtDatePlacement,
   type WorkingCalendar,
-  zonedDateStartToUtcInstant,
 } from '@pkg/domain';
-import type { ProjectedJobSlot } from '@pkg/schema';
-import { addDays, format } from 'date-fns';
+import { DateOnlyIso, type ProjectedJobSlot } from '@pkg/schema';
 
 import { getSlotLabel } from './bay-schedule-summary.js';
-import { formatJobSchedulingDate } from './job-date-key.js';
+import { toJobCalendarDateKey } from './job-date-key.js';
 
 export type BookSlotPlacement = InsertAtDatePlacement<ProjectedJobSlot>;
 
@@ -21,44 +19,44 @@ export type BookSlotPlacement = InsertAtDatePlacement<ProjectedJobSlot>;
  * Picker bounds for an Insert-at-Date booking: earliest tomorrow (the Slot
  * projected over today is never disturbed), latest the Bay's next available
  * working day (no machine-made idle from date picks). The max doubles as the
- * default value. Values are yyyy-MM-dd strings, matching DatePicker.
+ * default value. Values are yyyy-MM-dd strings, matching DatePicker; `today`
+ * is the plant business date shipped by the schedule read, never the client clock.
  */
 export function getInsertAtDatePickerBounds(
-  bay: { nextAvailableAt: string },
+  bay: { nextAvailableDate: DateOnlyIso },
   workingCalendar: WorkingCalendar,
-  currentDate: Date,
+  today: DateOnlyIso,
 ): { minValue: string; maxValue: string } {
-  const tomorrow = addDays(johannesburgDayStart(currentDate), 1);
-  const nextAvailableAt = johannesburgDayStart(new Date(bay.nextAvailableAt));
-  const latest = firstWorkingDayOnOrAfter(nextAvailableAt < tomorrow ? tomorrow : nextAvailableAt, workingCalendar);
+  const tomorrow = addDateOnlyDays(today, 1);
+  const latest = firstWorkingDayOnOrAfter(maxDateOnly(bay.nextAvailableDate, tomorrow), workingCalendar);
 
   return {
-    minValue: formatJobSchedulingDateKey(tomorrow),
-    maxValue: formatJobSchedulingDateKey(latest),
+    minValue: tomorrow,
+    maxValue: latest,
   };
 }
 
 /** Matches the Bay's non-working dates (org Off-Days minus Overtime, plus Closures) for the picker. */
 export function createBayNonWorkingDateMatcher(workingCalendar: WorkingCalendar): (date: Date) => boolean {
-  return (date) =>
-    !isWorkingDay(zonedDateStartToUtcInstant(format(date, 'yyyy-MM-dd'), JOHANNESBURG_TIME_ZONE), workingCalendar);
+  return (date) => !isWorkingDay(toJobCalendarDateKey(date), workingCalendar);
 }
 
 export function resolveBookSlotPlacement({
   bay,
-  currentDate,
   startDate,
+  today,
   workingCalendar,
 }: {
-  bay: { scheduleOrigin: string; slots: readonly ProjectedJobSlot[] };
-  currentDate: Date;
+  bay: { scheduleOrigin: DateOnlyIso; slots: readonly ProjectedJobSlot[] };
+  /** The DatePicker's raw value — validated here, where the unbranded string enters. */
   startDate: string;
+  today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
 }): BookSlotPlacement {
   return resolveInsertAtDatePlacement({
-    currentDate,
-    pickedDate: zonedDateStartToUtcInstant(startDate, JOHANNESBURG_TIME_ZONE),
-    scheduleOrigin: new Date(bay.scheduleOrigin),
+    currentDate: today,
+    pickedDate: DateOnlyIso.parse(startDate),
+    scheduleOrigin: bay.scheduleOrigin,
     slots: bay.slots,
     workingCalendar,
   });
@@ -68,7 +66,7 @@ export function describeInsertAtDatePlacement(placement: BookSlotPlacement): {
   startText: string;
   splitWarning: string | null;
 } {
-  const startText = `Starts ${formatJobSchedulingDate(placement.startAt, 'EEE, MMM d')}`;
+  const startText = `Starts ${formatDate(placement.startDate, 'EEE, MMM d')}`;
 
   if (placement.type !== 'split') {
     return { startText, splitWarning: null };

@@ -46,7 +46,7 @@ import {
 
 type GenerateJobFromQuoteDialogProps = {
   className?: string;
-  quote: Pick<QuoteDetail, 'code' | 'id' | 'linkedJobs' | 'productBays' | 'status'>;
+  quote: Pick<QuoteDetail, 'code' | 'id' | 'job' | 'productBays' | 'status'>;
   size?: 'default' | 'icon-sm';
 };
 
@@ -57,7 +57,7 @@ export const GenerateJobFromQuoteDialog: React.FC<GenerateJobFromQuoteDialogProp
 }) => {
   const accessQuery = useAccess();
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
-  const canGenerate = quote.status === 'accepted' && quote.linkedJobs.length === 0;
+  const canGenerate = quote.status === 'accepted' && quote.job === null;
 
   if (!canCreateJob || !canGenerate) {
     return null;

@@ -7,7 +7,7 @@ import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { cn } from '@/lib/utils.js';
 
-import { QuoteLinkedJobs } from './QuoteLinkedJobs.js';
+import { QuoteLinkedJob } from './QuoteLinkedJob.js';
 import { QuoteStatusBadge, quoteStatusLabels } from './QuoteStatusBadge.js';
 
 type FilterOption = {
@@ -157,17 +157,17 @@ export function createQuoteTableColumns({
       },
     },
     {
-      accessorFn: (row) => row.quote.linkedJobs,
+      accessorFn: (row) => row.quote.job,
       cell: ({ row }) =>
         row.original.kind === 'priority' ? (
           <PriorityQuoteJobCell />
         ) : (
-          <QuoteLinkedJobs canOpenJobs={canOpenJobs} linkedJobs={row.original.quote.linkedJobs} />
+          <QuoteLinkedJob canOpenJobs={canOpenJobs} job={row.original.quote.job} />
         ),
       enableColumnFilter: false,
       enableSorting: false,
       header: 'Job',
-      id: 'linkedJobs',
+      id: 'job',
     },
   ];
 }

@@ -101,7 +101,7 @@ export type QuoteSummary = z.infer<typeof QuoteSummary>;
 export const QuoteSummary = Quote.extend({
   customerCompanyName: z.string().trim().min(1),
   customerThumbnailDataUrl: NullableThumbnailDataUrl,
-  linkedJobs: z.array(QuoteLinkedJob),
+  job: QuoteLinkedJob.nullable(),
   productCurrencyCode: ProductCurrencyCode,
   productModelCode: z.string().trim().min(1),
   productName: z.string().trim().min(1),

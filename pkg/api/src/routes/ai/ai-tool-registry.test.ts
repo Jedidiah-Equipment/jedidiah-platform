@@ -54,16 +54,10 @@ describe('AI result projections', () => {
           customerId: '00000000-0000-4000-8000-000000000005',
           id: '00000000-0000-4000-8000-000000000003',
           code: 'QUO-00003',
-          linkedJobs: [
-            {
-              jobCode: 'JOB-00004',
-              jobId: '00000000-0000-4000-8000-000000000004',
-            },
-            {
-              jobCode: 'JOB-00005',
-              jobId: '00000000-0000-4000-8000-000000000007',
-            },
-          ],
+          job: {
+            jobCode: 'JOB-00004',
+            jobId: '00000000-0000-4000-8000-000000000004',
+          },
           documentNotes: '30% deposit, balance on delivery',
           plannedDeliveryDate: '2026-07-15',
           productId: '00000000-0000-4000-8000-000000000006',
@@ -87,16 +81,10 @@ describe('AI result projections', () => {
           customerId: '00000000-0000-4000-8000-000000000005',
           id: '00000000-0000-4000-8000-000000000003',
           code: 'QUO-00003',
-          linkedJobs: [
-            {
-              jobCode: 'JOB-00004',
-              jobId: '00000000-0000-4000-8000-000000000004',
-            },
-            {
-              jobCode: 'JOB-00005',
-              jobId: '00000000-0000-4000-8000-000000000007',
-            },
-          ],
+          job: {
+            jobCode: 'JOB-00004',
+            jobId: '00000000-0000-4000-8000-000000000004',
+          },
           documentNotes: '30% deposit, balance on delivery',
           plannedDeliveryDate: '2026-07-15',
           productId: '00000000-0000-4000-8000-000000000006',
@@ -126,11 +114,6 @@ describe('AI result projections', () => {
               entity: 'Job',
               href: '/jobs/00000000-0000-4000-8000-000000000004',
               label: 'JOB-00004',
-            },
-            {
-              entity: 'Job',
-              href: '/jobs/00000000-0000-4000-8000-000000000007',
-              label: 'JOB-00005',
             },
           ],
         },

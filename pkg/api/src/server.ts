@@ -26,6 +26,10 @@ export async function buildServer(
 
   const app = Fastify({
     loggerInstance: log.http as FastifyBaseLogger,
+    routerOptions: {
+      // tRPC GET batches encode procedure names in one route param; the quotes page exceeds Fastify's 100-char default.
+      maxParamLength: 1000,
+    },
   });
 
   await app.register(fastifyCors, {

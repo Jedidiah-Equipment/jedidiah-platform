@@ -12,11 +12,12 @@ import {
   withPagination,
 } from '@pkg/db';
 import {
+  addDateOnlyDays,
   assertQuoteEditable,
-  getZonedDateParts,
   JOHANNESBURG_TIME_ZONE,
+  parseDateOnlyParts,
   parseJobCodeSearch,
-  toDateOnlyIso,
+  toPlantDateOnly,
   validateDiscount,
   zonedDateStartToUtcInstant,
 } from '@pkg/domain';
@@ -79,7 +80,6 @@ type QuoteAuditInput = { row: QuoteRow; selectedAssemblies: readonly QuoteSelect
 
 const QUOTE_CREATED_BY_WEEK_COUNT = 12;
 const PRIORITY_QUOTE_WINDOW_MONTHS = 2;
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // `code` is the summary label, not an audited field, so it lives in `label`. `selectedAssemblies` is
 // folded into one stable JSON field — the Quote Selected Assembly snapshot the audit log diffs against.
@@ -280,18 +280,14 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
 
   const [rows, [totalRow]] = await Promise.all([rowsQuery, totalQuery]);
   const quoteIds = rows.map((row) => row.quote.id);
-  const [selectedAssembliesByQuoteId, linkedJobsByQuoteId] = await Promise.all([
+  const [selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
     getSelectedAssembliesByQuoteId({ db, quoteIds }),
-    getLinkedJobsByQuoteId({ db, quoteIds }),
+    getJobByQuoteId({ db, quoteIds }),
   ]);
 
   return {
     items: rows.map((row) =>
-      mapQuoteSummary(
-        row,
-        linkedJobsByQuoteId.get(row.quote.id) ?? [],
-        selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
-      ),
+      mapQuoteSummary(row, jobByQuoteId.get(row.quote.id) ?? null, selectedAssembliesByQuoteId.get(row.quote.id) ?? []),
     ),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
@@ -342,17 +338,13 @@ export async function listPriorityQuotes({
     .orderBy(asc(earliestDeliveryDate), asc(quotes.code), asc(quotes.id));
 
   const quoteIds = rows.map((row) => row.quote.id);
-  const [selectedAssembliesByQuoteId, linkedJobsByQuoteId] = await Promise.all([
+  const [selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
     getSelectedAssembliesByQuoteId({ db, quoteIds }),
-    getLinkedJobsByQuoteId({ db, quoteIds }),
+    getJobByQuoteId({ db, quoteIds }),
   ]);
 
   return rows.map((row) =>
-    mapPriorityQuote(
-      row,
-      linkedJobsByQuoteId.get(row.quote.id) ?? [],
-      selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
-    ),
+    mapPriorityQuote(row, jobByQuoteId.get(row.quote.id) ?? null, selectedAssembliesByQuoteId.get(row.quote.id) ?? []),
   );
 }
 
@@ -383,7 +375,7 @@ export async function countQuotesByWeek({
   db: Db;
   weekCount?: number;
 }): Promise<QuoteCreatedByWeekSummary> {
-  const range = getJohannesburgWeekRange({ now: clock(), weekCount });
+  const range = getPlantWeekRange({ now: clock(), weekCount });
   // Keep the bucket calendar server-side: Johannesburg weeks are part of the reporting contract.
   const weekStartExpression = sql<string>`to_char(date_trunc('week', ${quotes.createdAt} AT TIME ZONE ${JOHANNESBURG_TIME_ZONE})::date, 'YYYY-MM-DD')`;
   const rows = await db
@@ -622,17 +614,14 @@ export async function updateQuote({
 
 function mapQuoteSummary(
   row: QuoteListRow,
-  linkedJobs: readonly QuoteLinkedJobRow[],
+  job: QuoteLinkedJobRow | null,
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
 ): QuoteSummary {
   return {
     ...mapQuote(row.quote),
     customerCompanyName: row.customerCompanyName,
     customerThumbnailDataUrl: row.customerThumbnailDataUrl,
-    linkedJobs: linkedJobs.map((job) => ({
-      jobCode: JobCode.parse(job.jobCode),
-      jobId: job.jobId,
-    })),
+    job: job ? mapQuoteLinkedJob(job) : null,
     productBuildTimeDays: row.productBuildTimeDays,
     productCurrencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
     productModelCode: row.productModelCode,
@@ -646,11 +635,11 @@ function mapQuoteSummary(
 
 function mapPriorityQuote(
   row: PriorityQuoteRow,
-  linkedJobs: readonly QuoteLinkedJobRow[],
+  job: QuoteLinkedJobRow | null,
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
 ): PriorityQuote {
   return {
-    ...mapQuoteSummary(row, linkedJobs, selectedAssemblies),
+    ...mapQuoteSummary(row, job, selectedAssemblies),
     earliestDeliveryDate: DateOnlyIso.parse(row.earliestDeliveryDate),
   };
 }
@@ -669,10 +658,7 @@ function mapQuoteDetail(
     customerPhone: row.customer.phone,
     customerThumbnailDataUrl: row.customer.thumbnailDataUrl,
     customerVatNumber: row.customer.vatNumber,
-    linkedJobs: row.jobs.map((job) => ({
-      jobCode: JobCode.parse(job.code),
-      jobId: job.id,
-    })),
+    job: row.jobs[0] ? mapQuoteLinkedJob({ jobCode: row.jobs[0].code, jobId: row.jobs[0].id }) : null,
     productCurrencyCode: ProductCurrencyCode.parse(row.product.currencyCode),
     productBuildTimeDays: row.product.buildTimeDays,
     productDescription: row.product.description,
@@ -689,13 +675,20 @@ function mapQuoteDetail(
   };
 }
 
-async function getLinkedJobsByQuoteId({
+function mapQuoteLinkedJob(job: Pick<QuoteLinkedJobRow, 'jobCode' | 'jobId'>) {
+  return {
+    jobCode: JobCode.parse(job.jobCode),
+    jobId: job.jobId,
+  };
+}
+
+async function getJobByQuoteId({
   db,
   quoteIds,
 }: {
   db: Db | DatabaseTransaction;
   quoteIds: readonly UUID[];
-}): Promise<Map<UUID, QuoteLinkedJobRow[]>> {
+}): Promise<Map<UUID, QuoteLinkedJobRow>> {
   if (quoteIds.length === 0) {
     return new Map();
   }
@@ -707,16 +700,11 @@ async function getLinkedJobsByQuoteId({
       quoteId: jobs.quoteId,
     })
     .from(jobs)
-    .where(inArray(jobs.quoteId, quoteIds))
-    .orderBy(asc(jobs.code), asc(jobs.id));
-  const byQuoteId = new Map<UUID, QuoteLinkedJobRow[]>();
+    .where(inArray(jobs.quoteId, quoteIds));
+  const byQuoteId = new Map<UUID, QuoteLinkedJobRow>();
 
   for (const row of rows) {
-    if (!row.quoteId) continue;
-
-    const group = byQuoteId.get(row.quoteId) ?? [];
-    group.push(row);
-    byQuoteId.set(row.quoteId, group);
+    byQuoteId.set(row.quoteId, row);
   }
 
   return byQuoteId;
@@ -894,17 +882,15 @@ function getEarliestDeliveryDateExpression(): SQL<string> {
   `;
 }
 
-function getPriorityQuoteWindowEndDate(now: Date): string {
-  const currentJohannesburgDate = getZonedDateParts(now, JOHANNESBURG_TIME_ZONE);
-  const targetMonthIndex = currentJohannesburgDate.month - 1 + PRIORITY_QUOTE_WINDOW_MONTHS;
-  const targetYear = currentJohannesburgDate.year + Math.floor(targetMonthIndex / 12);
-  const targetMonth = targetMonthIndex % 12;
-  const lastDayOfTargetMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
-  // Keep this in date-only UTC math so a server timezone cannot shift the Johannesburg business date.
-  const targetDay = Math.min(currentJohannesburgDate.day, lastDayOfTargetMonth);
-  const targetEpochDay = Math.floor(Date.UTC(targetYear, targetMonth, targetDay) / MILLISECONDS_PER_DAY);
+function getPriorityQuoteWindowEndDate(now: Date): DateOnlyIso {
+  const currentPlantDate = parseDateOnlyParts(toPlantDateOnly(now));
+  const targetMonthIndex = currentPlantDate.month - 1 + PRIORITY_QUOTE_WINDOW_MONTHS;
+  const targetYear = currentPlantDate.year + Math.floor(targetMonthIndex / 12);
+  const targetMonth = (targetMonthIndex % 12) + 1;
+  const lastDayOfTargetMonth = new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate();
+  const targetDay = Math.min(currentPlantDate.day, lastDayOfTargetMonth);
 
-  return toDateOnlyIso(targetEpochDay);
+  return toDateOnlyParts({ day: targetDay, month: targetMonth, year: targetYear });
 }
 
 function parseQuoteCodeSearch(search: string): number | undefined {
@@ -919,17 +905,19 @@ function parseQuoteCodeSearch(search: string): number | undefined {
   return Number.isSafeInteger(code) && code > 0 ? code : undefined;
 }
 
-function getJohannesburgWeekRange({ now, weekCount }: { now: Date; weekCount: number }) {
-  const currentJohannesburgDay = getZonedDateParts(now, JOHANNESBURG_TIME_ZONE);
-  const currentEpochDay = toEpochDay(currentJohannesburgDay);
-  const currentWeekStartEpochDay = currentEpochDay - getMondayBasedWeekdayOffset(currentJohannesburgDay.weekday);
-  const rangeStartEpochDay = currentWeekStartEpochDay - (weekCount - 1) * 7;
-  const rangeEndEpochDay = currentWeekStartEpochDay + 7;
-  const weekStartDates = Array.from({ length: weekCount }, (_, index) => toDateOnlyIso(rangeStartEpochDay + index * 7));
+function getPlantWeekRange({ now, weekCount }: { now: Date; weekCount: number }) {
+  const currentPlantDate = toPlantDateOnly(now);
+  const currentWeekStartDate = addDateOnlyDays(
+    currentPlantDate,
+    -getMondayBasedWeekdayOffset(getDateOnlyWeekday(currentPlantDate)),
+  );
+  const rangeStartDate = addDateOnlyDays(currentWeekStartDate, -(weekCount - 1) * 7);
+  const rangeEndDate = addDateOnlyDays(currentWeekStartDate, 7);
+  const weekStartDates = Array.from({ length: weekCount }, (_, index) => addDateOnlyDays(rangeStartDate, index * 7));
 
   return {
-    endInstant: zonedDateStartToUtcInstant(toDateOnlyIso(rangeEndEpochDay), JOHANNESBURG_TIME_ZONE),
-    startInstant: zonedDateStartToUtcInstant(toDateOnlyIso(rangeStartEpochDay), JOHANNESBURG_TIME_ZONE),
+    endInstant: zonedDateStartToUtcInstant(rangeEndDate, JOHANNESBURG_TIME_ZONE),
+    startInstant: zonedDateStartToUtcInstant(rangeStartDate, JOHANNESBURG_TIME_ZONE),
     weekStartDates,
   };
 }
@@ -938,6 +926,12 @@ function getMondayBasedWeekdayOffset(weekday: number): number {
   return (weekday + 6) % 7;
 }
 
-function toEpochDay({ day, month, year }: { day: number; month: number; year: number }): number {
-  return Math.floor(Date.UTC(year, month - 1, day) / MILLISECONDS_PER_DAY);
+function getDateOnlyWeekday(date: DateOnlyIso): number {
+  const { day, month, year } = parseDateOnlyParts(date);
+
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+function toDateOnlyParts({ day, month, year }: { day: number; month: number; year: number }): DateOnlyIso {
+  return DateOnlyIso.parse(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
 }

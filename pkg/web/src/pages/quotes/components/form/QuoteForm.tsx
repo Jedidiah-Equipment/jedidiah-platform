@@ -26,7 +26,7 @@ type QuoteFormProps = {
 };
 
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
-  const isLocked = quote.linkedJobs.length > 0;
+  const isLocked = quote.job !== null;
 
   const selectedProduct = useMemo(
     () => ({

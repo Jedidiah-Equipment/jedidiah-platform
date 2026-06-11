@@ -98,7 +98,7 @@ function buildPriorityQuote(overrides: Partial<Record<keyof PriorityQuoteType, u
     documentNotes: null,
     earliestDeliveryDate: '2026-06-20',
     id: '00000000-0000-4000-8000-000000000000',
-    linkedJobs: [],
+    job: null,
     notes: null,
     plannedDeliveryDate: '2026-07-10',
     preferredDeliveryDate: '2026-06-20',

@@ -117,21 +117,14 @@ export function toJobCreateFormValues({
   };
 }
 
-export function toJobCreateInput({
-  canSchedule,
-  quoteId,
-  value,
-}: {
-  /** Seed start dates carry scheduling authority; without `job:schedule` seeds append as before. */
-  canSchedule: boolean;
-  quoteId: UUID;
-  value: JobCreateFormValues;
-}): JobCreateInput {
+export function toJobCreateInput({ quoteId, value }: { quoteId: UUID; value: JobCreateFormValues }): JobCreateInput {
+  // `job:create` implies `job:schedule` (see appRoleAccess), so seed dates need no
+  // permission stripping; an empty date is the missing-schedule-data append fallback.
   return JobCreateInput.parse({
     baySeeds: value.baySeeds.map((seed) => ({
       bayId: seed.bayId,
       durationDays: seed.durationDays,
-      ...(canSchedule && seed.startDate ? { startDate: seed.startDate } : {}),
+      ...(seed.startDate ? { startDate: seed.startDate } : {}),
     })),
     quoteId,
   });

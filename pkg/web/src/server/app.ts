@@ -40,6 +40,14 @@ export function buildWebServer(config: ServerConfig, options: WebServerOptions =
     ...config.deployment,
   }));
 
+  app.get('/app-version', async (_request, reply) => {
+    reply.header('Cache-Control', 'no-store');
+
+    return {
+      deploymentVersion: config.clientConfig.deploymentVersion,
+    };
+  });
+
   app.get('/assets/*', (request, reply) => {
     const { '*': assetPath } = request.params as { '*': string };
 

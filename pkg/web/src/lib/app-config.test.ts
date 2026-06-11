@@ -16,6 +16,7 @@ describe('client config', () => {
       appBaseUrl: 'http://localhost:7001',
       apiBaseUrl: 'http://localhost:7002',
       authBaseUrl: 'http://localhost:7002/api/auth',
+      deploymentVersion: null,
       posthog: {
         enabled: false,
         apiHost: '/info',

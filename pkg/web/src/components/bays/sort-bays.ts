@@ -3,7 +3,7 @@ import type { Bay } from '@pkg/schema';
 
 const jobDepartmentOrder = new Map(JOB_DEPARTMENT_PIPELINE.map((step, index) => [step.department, index]));
 
-export function sortBaysByDepartmentPipeline(bays: Bay[]): Bay[] {
+export function sortBaysByDepartmentPipeline<T extends Pick<Bay, 'department' | 'name'>>(bays: T[]): T[] {
   return [...bays].sort((left, right) => {
     const departmentSort =
       (jobDepartmentOrder.get(left.department) ?? Number.MAX_SAFE_INTEGER) -

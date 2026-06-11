@@ -58,7 +58,7 @@ import {
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
-import { listProductBays } from '../products/product-service.js';
+import { getProduct, listProductBays } from '../products/product-service.js';
 import {
   QuoteDiscountInvalidError,
   QuoteInvalidReferenceError,
@@ -75,7 +75,6 @@ import {
 } from './quote-selected-assemblies.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
-type ProductRow = typeof products.$inferSelect;
 type QuoteAuditInput = { row: QuoteRow; selectedAssemblies: readonly QuoteSelectedAssemblyRow[] };
 
 const QUOTE_CREATED_BY_WEEK_COUNT = 12;
@@ -193,7 +192,7 @@ export async function createQuote({
 }): Promise<QuoteDetail> {
   return db.transaction(async (tx) => {
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
-    const product = await readProductForQuote({ productId: input.productId, tx });
+    const product = await getProduct({ db, id: input.productId });
     assertValidDiscount({ discountPercent: input.discountPercent });
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
@@ -471,8 +470,8 @@ export async function getQuoteProductBayAvailability({
   db: Db | DatabaseTransaction;
   input: QuoteProductBayAvailabilityInput;
 }): Promise<QuoteProductBayAvailabilityResult> {
-  const product = await readQuoteProductForAvailability({ quoteId: input.quoteId, tx: db });
-  const productBaysForQuote = (await listProductBays({ db, productId: product.id })).filter(
+  const quote = await getQuote({ db, id: input.quoteId });
+  const productBaysForQuote = (await listProductBays({ db, productId: quote.productId })).filter(
     (productBay) => !productBay.bay.disabledAt,
   );
   const availabilityByBayId = new Map(
@@ -503,30 +502,10 @@ export async function getQuoteProductBayAvailability({
 
   return QuoteProductBayAvailabilityResult.parse({
     bays,
-    buildTimeDays: product.buildTimeDays,
-    defaultLeadTimeWorkingDays: product.buildTimeDays + maxBayWaitWorkingDays,
+    buildTimeDays: quote.productBuildTimeDays,
+    defaultLeadTimeWorkingDays: quote.productBuildTimeDays + maxBayWaitWorkingDays,
     maxBayWaitWorkingDays,
   });
-}
-
-async function readQuoteProductForAvailability({
-  quoteId,
-  tx,
-}: {
-  quoteId: UUID;
-  tx: Db | DatabaseTransaction;
-}): Promise<ProductRow> {
-  const [row] = await tx
-    .select({ product: products })
-    .from(quotes)
-    .innerJoin(products, eq(quotes.productId, products.id))
-    .where(eq(quotes.id, quoteId));
-
-  if (!row) {
-    throw new QuoteNotFoundError(quoteId);
-  }
-
-  return row.product;
 }
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {
@@ -804,22 +783,6 @@ async function assertQuoteSalesPerson({
   if (!salesPerson) {
     throw new QuoteInvalidReferenceError('Quote salesperson must be a sales or admin user.');
   }
-}
-
-async function readProductForQuote({
-  productId,
-  tx,
-}: {
-  productId: UUID;
-  tx: Db | DatabaseTransaction;
-}): Promise<ProductRow> {
-  const [product] = await tx.select().from(products).where(eq(products.id, productId));
-
-  if (!product) {
-    throw new QuoteInvalidReferenceError('Quote product was not found.');
-  }
-
-  return product;
 }
 
 function assertValidDiscount({ discountPercent }: { discountPercent: number }): void {

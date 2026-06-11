@@ -1,4 +1,4 @@
-import { departmentLabels, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
+import { departmentLabels, formatDate, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDetail, JobDocument, UUID } from '@pkg/schema';
 import { IconX } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { findJobScheduleSummary, type JobScheduleSummary } from './bay-schedule-summary.js';
-import { formatJobSchedulingDate } from './job-date-key.js';
 
 type JobDetailAsideProps = {
   bayId?: UUID | undefined;
@@ -81,15 +80,15 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, v
 );
 
 const SlotSection: React.FC<{ schedule: JobScheduleSummary }> = ({ schedule }) => {
-  const { currentOperator, dayBreakdown, endAt, startAt } = schedule;
+  const { currentOperator, dayBreakdown, endDate, startDate } = schedule;
   const totalDays = dayBreakdown.workingDays + dayBreakdown.closureDays;
 
   return (
     <Section title="Slot">
       <InfoList>
         {currentOperator ? <InfoRow label="Operator" value={<OperatorValue operator={currentOperator} />} /> : null}
-        <InfoRow label="Start" value={formatJobSchedulingDate(startAt, 'short')} />
-        <InfoRow label="End" value={formatJobSchedulingDate(endAt, 'short')} />
+        <InfoRow label="Start" value={formatDate(startDate, 'short')} />
+        <InfoRow label="End" value={formatDate(endDate, 'short')} />
         <InfoRow label="Total days" value={`${totalDays} (incl. off)`} />
         <InfoRow label="Working days" value={dayBreakdown.workingDays} />
         {dayBreakdown.overtimeDays > 0 ? (
@@ -140,9 +139,9 @@ const JobScheduleSection: React.FC<{ job: JobDetail }> = ({ job }) => (
                   <div className="text-muted-foreground">{bay.name}</div>
                   {bay.slots.map((slot) => (
                     <div className="flex items-center justify-between gap-3" key={slot.id}>
-                      <span>{formatJobSchedulingDate(slot.startAt, 'short')}</span>
+                      <span>{formatDate(slot.startDate, 'short')}</span>
                       <span className="text-muted-foreground">to</span>
-                      <span>{formatJobSchedulingDate(slot.endAt, 'short')}</span>
+                      <span>{formatDate(slot.endDate, 'short')}</span>
                       <span className="ml-auto tabular-nums">{slot.durationDays}d</span>
                     </div>
                   ))}

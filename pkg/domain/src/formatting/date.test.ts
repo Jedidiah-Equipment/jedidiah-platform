@@ -2,11 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   formatDate,
-  johannesburgDayStart,
   parseCommonDateInput,
   parseDate,
   secondsToAgeString,
-  toJohannesburgDateKey,
+  toPlantDateOnly,
   zonedDateStartToUtcInstant,
 } from './date.js';
 
@@ -80,14 +79,10 @@ describe('secondsToAgeString', () => {
   });
 });
 
-describe('Johannesburg date helpers', () => {
-  it('formats instants as Johannesburg business date keys', () => {
-    expect(toJohannesburgDateKey(new Date('2026-06-18T21:59:59.000Z'))).toBe('2026-06-18');
-    expect(toJohannesburgDateKey(new Date('2026-06-18T22:00:00.000Z'))).toBe('2026-06-19');
-  });
-
-  it('returns the UTC instant for the start of a Johannesburg day', () => {
-    expect(johannesburgDayStart(new Date('2026-06-18T22:30:00.000Z'))).toEqual(new Date('2026-06-18T22:00:00.000Z'));
+describe('plant date helpers', () => {
+  it('converts instants to their Johannesburg plant business date', () => {
+    expect(toPlantDateOnly(new Date('2026-06-18T21:59:59.000Z'))).toBe('2026-06-18');
+    expect(toPlantDateOnly(new Date('2026-06-18T22:00:00.000Z'))).toBe('2026-06-19');
   });
 
   it('uses IANA timezone offsets when converting local day starts', () => {

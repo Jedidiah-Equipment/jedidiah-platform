@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import type { BayCalendarExceptionDirection, OffDay } from '@pkg/schema';
+import type { BayCalendarExceptionDirection, DateOnlyIso, OffDay } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
@@ -89,7 +89,7 @@ export const JobCalendarPage: React.FC = () => {
     (chip: BayExceptionChip) => schedulableBayIds.has(chip.bayId),
     [schedulableBayIds],
   );
-  const openBayExceptionDialog = (date: string, direction: BayCalendarExceptionDirection) => {
+  const openBayExceptionDialog = (date: DateOnlyIso, direction: BayCalendarExceptionDirection) => {
     const bay = schedulableBays[0];
 
     if (!bay) {
@@ -164,7 +164,7 @@ export const JobCalendarPage: React.FC = () => {
               isBayExceptionMutationPending={isBayExceptionMutationPending}
               isCurrentMonth={isCurrentMonth}
               offDay={offDaysByDate.get(dateKey) ?? null}
-              onAddBayException={(direction) => openBayExceptionDialog(dateKey, direction)}
+              onAddBayException={(direction) => openBayExceptionDialog(toJobCalendarDateKey(date), direction)}
               onSelectBayException={openBayExceptionForChip}
               onSelectDay={(selectedDate, offDay) => setSelectedDay({ date: selectedDate, offDay })}
             />

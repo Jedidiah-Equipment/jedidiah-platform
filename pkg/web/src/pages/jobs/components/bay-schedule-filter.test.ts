@@ -1,4 +1,4 @@
-import type { UUID } from '@pkg/schema';
+import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -11,6 +11,7 @@ import {
 } from './bay-schedule-filter.js';
 
 const id = (value: string) => value as UUID;
+const day = (value: string) => DateOnlyIso.parse(value);
 
 const bay1 = id('bay-1');
 const bay2 = id('bay-2');
@@ -134,15 +135,15 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
     {
       id: bay2,
       slots: [
-        { jobId: job2, startAt: '2026-06-14T00:00:00.000Z' },
-        { jobId: null, startAt: '2026-06-09T00:00:00.000Z' },
+        { jobId: job2, startDate: day('2026-06-14') },
+        { jobId: null, startDate: day('2026-06-09') },
       ],
     },
     {
       id: bay1,
       slots: [
-        { jobId: job1, startAt: '2026-06-12T00:00:00.000Z' },
-        { jobId: job1, startAt: '2026-06-10T00:00:00.000Z' },
+        { jobId: job1, startDate: day('2026-06-12') },
+        { jobId: job1, startDate: day('2026-06-10') },
       ],
     },
   ];
@@ -153,8 +154,9 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
         bays,
         filter: filterWith({ jobId: job1 }),
         jobsById,
-      })?.toISOString(),
-    ).toBe('2026-06-10T00:00:00.000Z');
+        today: day('2026-06-11'),
+      }),
+    ).toBe('2026-06-10');
   });
 
   it('does not prioritize future slots for a job-only filter', () => {
@@ -163,9 +165,9 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
         bays,
         filter: filterWith({ jobId: job1 }),
         jobsById,
-        today: new Date('2026-06-11T00:00:00.000Z'),
-      })?.toISOString(),
-    ).toBe('2026-06-10T00:00:00.000Z');
+        today: day('2026-06-11'),
+      }),
+    ).toBe('2026-06-10');
   });
 
   it('recomputes the earliest slot for a different filter value', () => {
@@ -174,8 +176,9 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
         bays,
         filter: filterWith({ jobId: job2 }),
         jobsById,
-      })?.toISOString(),
-    ).toBe('2026-06-14T00:00:00.000Z');
+        today: day('2026-06-11'),
+      }),
+    ).toBe('2026-06-14');
   });
 
   it('returns null when no slots match', () => {
@@ -184,6 +187,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
         bays,
         filter: filterWith({ bayId: bay2, customerId: customerA }),
         jobsById,
+        today: day('2026-06-11'),
       }),
     ).toBeNull();
   });
@@ -194,9 +198,9 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
         bays,
         filter: filterWith({ customerId: customerA }),
         jobsById,
-        today: new Date('2026-06-11T00:00:00.000Z'),
-      })?.toISOString(),
-    ).toBe('2026-06-12T00:00:00.000Z');
+        today: day('2026-06-11'),
+      }),
+    ).toBe('2026-06-12');
   });
 
   it('prioritizes the earliest future match for bay filters', () => {
@@ -205,15 +209,15 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
         bays,
         filter: filterWith({ bayId: bay2 }),
         jobsById,
-        today: new Date('2026-06-11T00:00:00.000Z'),
-      })?.toISOString(),
-    ).toBe('2026-06-14T00:00:00.000Z');
+        today: day('2026-06-11'),
+      }),
+    ).toBe('2026-06-14');
   });
 
   it('includes today slots when prioritizing customer and bay filters', () => {
     const todaySlot = {
       jobId: job1,
-      startAt: '2026-06-10T22:00:00.000Z',
+      startDate: day('2026-06-11'),
     };
 
     expect(
@@ -222,17 +226,17 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
           {
             id: bay1,
             slots: [
-              { jobId: job1, startAt: '2026-06-12T00:00:00.000Z' },
+              { jobId: job1, startDate: day('2026-06-12') },
               todaySlot,
-              { jobId: job1, startAt: '2026-06-09T00:00:00.000Z' },
+              { jobId: job1, startDate: day('2026-06-09') },
             ],
           },
         ],
         filter: filterWith({ bayId: bay1, customerId: customerA }),
         jobsById,
-        today: new Date('2026-06-11T14:00:00.000Z'),
-      })?.toISOString(),
-    ).toBe(todaySlot.startAt);
+        today: day('2026-06-11'),
+      }),
+    ).toBe(todaySlot.startDate);
   });
 
   it('falls back to the earliest match when a customer or bay filter has no future matches', () => {
@@ -241,9 +245,9 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
         bays,
         filter: filterWith({ customerId: customerA }),
         jobsById,
-        today: new Date('2026-06-13T00:00:00.000Z'),
-      })?.toISOString(),
-    ).toBe('2026-06-10T00:00:00.000Z');
+        today: day('2026-06-13'),
+      }),
+    ).toBe('2026-06-10');
   });
 
   it('preserves idle slot behavior under job and customer filters', () => {
@@ -252,16 +256,16 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
         bays,
         filter: filterWith({ bayId: bay2 }),
         jobsById,
-        today: new Date('2026-06-15T00:00:00.000Z'),
-      })?.toISOString(),
-    ).toBe('2026-06-09T00:00:00.000Z');
+        today: day('2026-06-15'),
+      }),
+    ).toBe('2026-06-09');
     expect(
       getEarliestBayScheduleFilterMatchStart({
         bays,
         filter: filterWith({ bayId: bay2, customerId: customerB }),
         jobsById,
-        today: new Date('2026-06-15T00:00:00.000Z'),
-      })?.toISOString(),
-    ).toBe('2026-06-14T00:00:00.000Z');
+        today: day('2026-06-15'),
+      }),
+    ).toBe('2026-06-14');
   });
 });

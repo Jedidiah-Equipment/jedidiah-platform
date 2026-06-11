@@ -50,7 +50,7 @@ export const snapshotTables = [
     fileName: 'job_bay.json',
     table: jobBays,
     tableName: 'job_bay',
-    timestampColumns: ['createdAt', 'disabledAt', 'scheduleOrigin', 'updatedAt'],
+    timestampColumns: ['createdAt', 'disabledAt', 'updatedAt'],
   },
   {
     fileName: 'account.json',

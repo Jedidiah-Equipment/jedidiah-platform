@@ -1,12 +1,15 @@
+import { DateOnlyIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { getMaintainedHorizonWarnings } from './maintained-horizon.js';
+
+const day = (value: string) => DateOnlyIso.parse(value);
 
 describe('getMaintainedHorizonWarnings', () => {
   it('returns no warnings when there are no org Off-Days', () => {
     expect(
       getMaintainedHorizonWarnings({
-        bays: [{ id: 'bay-1', nextAvailableAt: '2026-06-20T00:00:00.000' }],
+        bays: [{ id: 'bay-1', nextAvailableDate: day('2026-06-20') }],
         offDays: [],
       }),
     ).toEqual([]);
@@ -15,8 +18,8 @@ describe('getMaintainedHorizonWarnings', () => {
   it('warns when a Bay queue ends after the last marked Off-Day', () => {
     expect(
       getMaintainedHorizonWarnings({
-        bays: [{ id: 'bay-1', nextAvailableAt: '2026-06-17T00:00:00.000' }],
-        offDays: [{ date: '2026-06-16' }],
+        bays: [{ id: 'bay-1', nextAvailableDate: day('2026-06-17') }],
+        offDays: [{ date: day('2026-06-16') }],
       }),
     ).toEqual([
       {
@@ -27,29 +30,14 @@ describe('getMaintainedHorizonWarnings', () => {
     ]);
   });
 
-  it('compares queue ends using Johannesburg business dates', () => {
-    expect(
-      getMaintainedHorizonWarnings({
-        bays: [{ id: 'bay-1', nextAvailableAt: '2026-06-18T22:00:00.000Z' }],
-        offDays: [{ date: '2026-06-18' }],
-      }),
-    ).toEqual([
-      {
-        bayId: 'bay-1',
-        maintainedThrough: '2026-06-18',
-        queueEndDate: '2026-06-19',
-      },
-    ]);
-  });
-
   it('does not warn when a Bay queue ends on or before the maintained horizon', () => {
     expect(
       getMaintainedHorizonWarnings({
         bays: [
-          { id: 'bay-1', nextAvailableAt: '2026-06-16T00:00:00.000' },
-          { id: 'bay-2', nextAvailableAt: '2026-06-15T00:00:00.000' },
+          { id: 'bay-1', nextAvailableDate: day('2026-06-16') },
+          { id: 'bay-2', nextAvailableDate: day('2026-06-15') },
         ],
-        offDays: [{ date: '2026-06-16' }],
+        offDays: [{ date: day('2026-06-16') }],
       }),
     ).toEqual([]);
   });
@@ -58,10 +46,10 @@ describe('getMaintainedHorizonWarnings', () => {
     expect(
       getMaintainedHorizonWarnings({
         bays: [
-          { id: 'bay-1', nextAvailableAt: '2026-06-16T00:00:00.000' },
-          { id: 'bay-2', nextAvailableAt: '2026-06-18T00:00:00.000' },
+          { id: 'bay-1', nextAvailableDate: day('2026-06-16') },
+          { id: 'bay-2', nextAvailableDate: day('2026-06-18') },
         ],
-        offDays: [{ date: '2026-06-16' }],
+        offDays: [{ date: day('2026-06-16') }],
       }),
     ).toEqual([
       {
@@ -75,8 +63,8 @@ describe('getMaintainedHorizonWarnings', () => {
   it('uses the latest Off-Day when Off-Days are unsorted', () => {
     expect(
       getMaintainedHorizonWarnings({
-        bays: [{ id: 'bay-1', nextAvailableAt: '2026-06-18T00:00:00.000' }],
-        offDays: [{ date: '2026-06-16' }, { date: '2026-06-20' }, { date: '2026-06-10' }],
+        bays: [{ id: 'bay-1', nextAvailableDate: day('2026-06-18') }],
+        offDays: [{ date: day('2026-06-16') }, { date: day('2026-06-20') }, { date: day('2026-06-10') }],
       }),
     ).toEqual([]);
   });

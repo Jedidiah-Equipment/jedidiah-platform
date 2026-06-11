@@ -1,18 +1,18 @@
-import { toJobDateKey } from './job-date-key.js';
+import type { DateOnlyIso } from '@pkg/schema';
 
 export type MaintainedHorizonWarning = {
   bayId: string;
-  maintainedThrough: string;
-  queueEndDate: string;
+  maintainedThrough: DateOnlyIso;
+  queueEndDate: DateOnlyIso;
 };
 
 type MaintainedHorizonBay = {
   id: string;
-  nextAvailableAt: string;
+  nextAvailableDate: DateOnlyIso;
 };
 
 type MaintainedHorizonOffDay = {
-  date: string;
+  date: DateOnlyIso;
 };
 
 export function getMaintainedHorizonWarnings({
@@ -22,7 +22,7 @@ export function getMaintainedHorizonWarnings({
   bays: readonly MaintainedHorizonBay[];
   offDays: readonly MaintainedHorizonOffDay[];
 }): MaintainedHorizonWarning[] {
-  const maintainedThrough = offDays.reduce<string | null>(
+  const maintainedThrough = offDays.reduce<DateOnlyIso | null>(
     (latest, offDay) => (latest === null || offDay.date > latest ? offDay.date : latest),
     null,
   );
@@ -32,7 +32,7 @@ export function getMaintainedHorizonWarnings({
   }
 
   return bays.flatMap((bay) => {
-    const queueEndDate = toJobDateKey(new Date(bay.nextAvailableAt));
+    const queueEndDate = bay.nextAvailableDate;
 
     if (queueEndDate <= maintainedThrough) {
       return [];

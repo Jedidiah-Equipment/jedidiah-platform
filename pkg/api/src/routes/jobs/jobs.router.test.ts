@@ -10,6 +10,7 @@ import {
   sql,
   user,
 } from '@pkg/db';
+import { toPlantDateOnly } from '@pkg/domain';
 import type { Product } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
@@ -153,15 +154,18 @@ describe('jobs.listBays', () => {
 
     await expect(adminCaller.jobs.listBays()).resolves.toMatchObject({
       offDays: [{ date: '2026-06-06', label: 'Shutdown' }],
+      // Plant today: the mocked clock is 09:00 SAST on 2026-06-05.
+      today: '2026-06-05',
       items: expect.arrayContaining([
         expect.objectContaining({
           id: '00000000-0000-4000-8000-000000000b02',
-          nextAvailableAt: '2026-06-07T22:00:00.000Z',
+          nextAvailableDate: '2026-06-08',
+          scheduleOrigin: '2026-06-05',
           slots: [
             expect.objectContaining({
               jobCode: job.code,
-              startAt: '2026-06-04T22:00:00.000Z',
-              endAt: '2026-06-07T22:00:00.000Z',
+              startDate: '2026-06-05',
+              endDate: '2026-06-08',
             }),
           ],
         }),
@@ -688,7 +692,7 @@ describe('jobs bay calendar exceptions', () => {
             },
           ],
           id: '00000000-0000-4000-8000-000000000b02',
-          nextAvailableAt: '2026-06-06T22:00:00.000Z',
+          nextAvailableDate: '2026-06-07',
         }),
       ]),
       offDays: [{ date: '2026-06-06', label: 'Shutdown' }],
@@ -885,12 +889,12 @@ describe('jobs.bookSlot', () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: '00000000-0000-4000-8000-000000000b02',
-          nextAvailableAt: '2026-06-06T22:00:00.000Z',
+          nextAvailableDate: '2026-06-07',
           slots: [
             expect.objectContaining({
               jobCode: job.code,
-              startAt: '2026-06-04T22:00:00.000Z',
-              endAt: '2026-06-06T22:00:00.000Z',
+              startDate: '2026-06-05',
+              endDate: '2026-06-07',
             }),
           ],
         }),
@@ -968,21 +972,21 @@ describe('jobs.bookSlot with start date', () => {
               jobId: firstJob.id,
               kind: 'work',
               sequence: 1,
-              startAt: '2026-06-04T22:00:00.000Z',
+              startDate: '2026-06-05',
             }),
             expect.objectContaining({
               durationDays: 3,
               jobId: secondJob.id,
               kind: 'work',
               sequence: 2,
-              startAt: '2026-06-08T22:00:00.000Z',
+              startDate: '2026-06-09',
             }),
             expect.objectContaining({
               durationDays: 6,
               jobId: firstJob.id,
               kind: 'work',
               sequence: 3,
-              startAt: '2026-06-11T22:00:00.000Z',
+              startDate: '2026-06-12',
             }),
           ],
         }),
@@ -1018,7 +1022,7 @@ describe('jobs.bookSlot with start date', () => {
               jobId: secondJob.id,
               kind: 'work',
               sequence: 3,
-              startAt: '2026-06-08T22:00:00.000Z',
+              startDate: '2026-06-09',
             }),
             expect.objectContaining({ durationDays: 4, kind: 'idle', label: 'Bay Tidying', sequence: 4 }),
           ],
@@ -1053,7 +1057,7 @@ describe('jobs.bookSlot with start date', () => {
               id: inserted.slot.id,
               jobId: secondJob.id,
               sequence: 2,
-              startAt: '2026-06-08T22:00:00.000Z',
+              startDate: '2026-06-09',
             }),
             expect.objectContaining({ durationDays: 2, id: secondSlot.slot.id, sequence: 3 }),
           ],
@@ -1080,7 +1084,7 @@ describe('jobs.bookSlot with start date', () => {
           id: bayId,
           slots: [
             expect.objectContaining({ durationDays: 4, sequence: 1 }),
-            expect.objectContaining({ kind: 'work', sequence: 2, startAt: '2026-06-08T22:00:00.000Z' }),
+            expect.objectContaining({ kind: 'work', sequence: 2, startDate: '2026-06-09' }),
           ],
         }),
       ]),
@@ -1105,7 +1109,7 @@ describe('jobs.bookSlot with start date', () => {
           id: bayId,
           slots: [
             expect.objectContaining({ kind: 'work', sequence: 1 }),
-            expect.objectContaining({ kind: 'work', sequence: 2, startAt: '2026-06-06T22:00:00.000Z' }),
+            expect.objectContaining({ kind: 'work', sequence: 2, startDate: '2026-06-07' }),
           ],
         }),
       ]),
@@ -1134,7 +1138,7 @@ describe('jobs.bookSlot with start date', () => {
               durationDays: 1,
               jobId: secondJob.id,
               sequence: 2,
-              startAt: '2026-06-08T22:00:00.000Z',
+              startDate: '2026-06-09',
             }),
             expect.objectContaining({ durationDays: 8, jobId: firstJob.id, sequence: 3 }),
           ],
@@ -1212,13 +1216,13 @@ describe('jobs.resizeSlot', () => {
             expect.objectContaining({
               id: firstSlot.slot.id,
               durationDays: 2,
-              startAt: '2026-06-04T22:00:00.000Z',
-              endAt: '2026-06-06T22:00:00.000Z',
+              startDate: '2026-06-05',
+              endDate: '2026-06-07',
             }),
             expect.objectContaining({
               jobCode: secondJob.code,
-              startAt: '2026-06-06T22:00:00.000Z',
-              endAt: '2026-06-07T22:00:00.000Z',
+              startDate: '2026-06-07',
+              endDate: '2026-06-08',
             }),
           ],
         }),
@@ -1328,15 +1332,15 @@ describe('jobs.addIdleSlot', () => {
               id: idleSlot.slot.id,
               kind: 'idle',
               label: null,
-              startAt: '2026-06-04T22:00:00.000Z',
-              endAt: '2026-06-05T22:00:00.000Z',
+              startDate: '2026-06-05',
+              endDate: '2026-06-06',
             }),
             expect.objectContaining({
               id: workSlot.slot.id,
               jobCode: job.code,
               kind: 'work',
-              startAt: '2026-06-05T22:00:00.000Z',
-              endAt: '2026-06-06T22:00:00.000Z',
+              startDate: '2026-06-06',
+              endDate: '2026-06-07',
             }),
           ],
         }),
@@ -1543,20 +1547,20 @@ describe('jobs.removeSlot', () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: '00000000-0000-4000-8000-000000000b02',
-          nextAvailableAt: '2026-06-06T22:00:00.000Z',
+          nextAvailableDate: '2026-06-07',
           slots: [
             expect.objectContaining({
               id: secondSlot.slot.id,
               jobCode: secondJob.code,
               sequence: 1,
-              startAt: '2026-06-04T22:00:00.000Z',
-              endAt: '2026-06-05T22:00:00.000Z',
+              startDate: '2026-06-05',
+              endDate: '2026-06-06',
             }),
             expect.objectContaining({
               jobCode: thirdJob.code,
               sequence: 2,
-              startAt: '2026-06-05T22:00:00.000Z',
-              endAt: '2026-06-06T22:00:00.000Z',
+              startDate: '2026-06-06',
+              endDate: '2026-06-07',
             }),
           ],
         }),
@@ -1596,7 +1600,7 @@ async function seedFabricationBays(db: Db): Promise<void> {
         department: 'fabrication',
         id: '00000000-0000-4000-8000-000000000b01',
         name: 'Fabrication Bay 1',
-        scheduleOrigin: now,
+        scheduleOrigin: toPlantDateOnly(now),
         updatedAt: now,
       },
       {
@@ -1604,7 +1608,7 @@ async function seedFabricationBays(db: Db): Promise<void> {
         department: 'fabrication',
         id: '00000000-0000-4000-8000-000000000b02',
         name: 'Fabrication Bay 2',
-        scheduleOrigin: now,
+        scheduleOrigin: toPlantDateOnly(now),
         updatedAt: now,
       },
       {
@@ -1612,7 +1616,7 @@ async function seedFabricationBays(db: Db): Promise<void> {
         department: 'fabrication',
         id: '00000000-0000-4000-8000-000000000b03',
         name: 'Fabrication Bay 3',
-        scheduleOrigin: now,
+        scheduleOrigin: toPlantDateOnly(now),
         updatedAt: now,
       },
       {
@@ -1620,7 +1624,7 @@ async function seedFabricationBays(db: Db): Promise<void> {
         department: 'fabrication',
         id: '00000000-0000-4000-8000-000000000b04',
         name: 'Fabrication Bay 4',
-        scheduleOrigin: now,
+        scheduleOrigin: toPlantDateOnly(now),
         updatedAt: now,
       },
       {
@@ -1628,7 +1632,7 @@ async function seedFabricationBays(db: Db): Promise<void> {
         department: 'fabrication',
         id: '00000000-0000-4000-8000-000000000b05',
         name: 'Fabrication Bay 5',
-        scheduleOrigin: now,
+        scheduleOrigin: toPlantDateOnly(now),
         updatedAt: now,
       },
     ])
@@ -1636,7 +1640,7 @@ async function seedFabricationBays(db: Db): Promise<void> {
       target: jobBays.id,
       set: {
         department: 'fabrication',
-        scheduleOrigin: now,
+        scheduleOrigin: toPlantDateOnly(now),
         updatedAt: now,
       },
     });

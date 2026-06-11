@@ -30,7 +30,8 @@ export const Bay = z.object({
   department: Department,
   name: BayName,
   currentOperator: BayOperator.nullable().default(null),
-  scheduleOrigin: DateIso,
+  /** Date-only Slot Projection anchor — a plant business date (ADR-0043). */
+  scheduleOrigin: DateOnlyIso,
   disabledAt: DateIso.nullable(),
   createdAt: DateIso,
   updatedAt: DateIso,
@@ -138,8 +139,8 @@ export type JobSlot = z.infer<typeof JobSlot>;
 export const JobSlot = z.discriminatedUnion('kind', [WorkJobSlot, IdleJobSlot]);
 
 const ProjectedJobSlotBase = JobSlotBase.extend({
-  startAt: DateIso,
-  endAt: DateIso,
+  startDate: DateOnlyIso,
+  endDate: DateOnlyIso,
 });
 
 export type ProjectedWorkJobSlot = z.infer<typeof ProjectedWorkJobSlot>;
@@ -163,7 +164,7 @@ export const ProjectedJobSlot = z.discriminatedUnion('kind', [ProjectedWorkJobSl
 export type BaySchedule = z.infer<typeof BaySchedule>;
 export const BaySchedule = Bay.extend({
   calendarExceptions: z.array(BayCalendarException),
-  nextAvailableAt: DateIso,
+  nextAvailableDate: DateOnlyIso,
   slots: z.array(ProjectedJobSlot),
 });
 
@@ -171,6 +172,8 @@ export type BayListResult = z.infer<typeof BayListResult>;
 export const BayListResult = z.object({
   items: z.array(BaySchedule),
   offDays: z.array(OffDay),
+  /** Plant "today" as an Africa/Johannesburg business date, derived once at the server boundary. */
+  today: DateOnlyIso,
 });
 
 export type JobBayListResult = z.infer<typeof JobBayListResult>;

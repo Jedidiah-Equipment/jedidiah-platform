@@ -302,6 +302,13 @@
       "when": 1781169440023,
       "tag": "0042_black_strong_guy",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1781181986136,
+      "tag": "0043_typical_blob",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import type { SlotCalendarDaySegment, SlotCalendarDays } from '@pkg/domain';
-import type { JobSummary } from '@pkg/schema';
+import type { DateOnlyIso, JobSummary } from '@pkg/schema';
 import type React from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
@@ -52,7 +52,7 @@ const HATCH_BACKGROUND: Record<'closure' | 'overtime', string> = {
 // Working days render nothing; closure/overtime days get the corresponding hatch.
 export const BaySlotDayHatch: React.FC<{
   segments: SlotCalendarDaySegment[];
-  slotStart: Date;
+  slotStart: DateOnlyIso;
 }> = ({ segments, slotStart }) => {
   const gantt = useGanttContext();
 
@@ -63,13 +63,13 @@ export const BaySlotDayHatch: React.FC<{
           return null;
         }
 
-        const left = getJobGanttOffsetDistance(slotStart, segment.startAt, gantt);
-        const width = getJobGanttWidth(segment.startAt, segment.endAt, gantt);
+        const left = getJobGanttOffsetDistance(slotStart, segment.startDate, gantt);
+        const width = getJobGanttWidth(segment.startDate, segment.endDate, gantt);
 
         return (
           <div
             className="absolute top-0 h-full"
-            key={segment.startAt.toISOString()}
+            key={segment.startDate}
             style={{ backgroundImage: HATCH_BACKGROUND[segment.kind], left, width }}
           />
         );

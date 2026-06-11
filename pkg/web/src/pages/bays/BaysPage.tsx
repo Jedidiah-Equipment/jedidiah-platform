@@ -154,7 +154,7 @@ export const BaysPage: React.FC = () => {
                                 {bay.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
                               </div>
                               <CardDescription className="text-xs">
-                                Origin {formatDate(bay.scheduleOrigin, 'medium')}
+                                Origin {formatDate(bay.scheduleOrigin, 'short')}
                                 {bay.disabledAt ? ` / Disabled ${formatDate(bay.disabledAt, 'medium')}` : ''}
                               </CardDescription>
                             </div>

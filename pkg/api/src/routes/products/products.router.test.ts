@@ -673,7 +673,7 @@ async function createBay(
       disabledAt: input.disabledAt ?? null,
       id: input.id,
       name: input.name,
-      scheduleOrigin: new Date('2026-01-01T00:00:00.000Z'),
+      scheduleOrigin: '2026-01-01',
     })
     .returning();
 

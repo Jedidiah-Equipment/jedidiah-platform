@@ -14,14 +14,7 @@ import {
   quotes,
   workingCalendarOffDays,
 } from '@pkg/db';
-import {
-  buildCfo,
-  type CfoEntry,
-  countWorkingDaysBetween,
-  projectJobSlots,
-  toJohannesburgDateKey,
-  type WorkingCalendar,
-} from '@pkg/domain';
+import { buildCfo, type CfoEntry, toJohannesburgDateKey } from '@pkg/domain';
 import {
   type AddBayCalendarExceptionInput,
   AddBayCalendarExceptionResult,
@@ -50,27 +43,21 @@ import {
   ToggleOffDayResult,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../audit/audit-service.js';
 import { documentBaseSelect } from '../documents/document-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
+import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
 import {
   JobBayNotFoundError,
   JobCreateFromQuoteDeniedError,
   JobNotFoundError,
-  JobSlotBookingDeniedError,
   JobSlotNotFoundError,
 } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
-import {
-  createBayWorkingCalendar,
-  createOrgWorkingCalendar,
-  getJob,
-  listBayCalendarExceptions,
-  listWorkingCalendarOffDays,
-} from './job-read-service.js';
+import { getJob } from './job-read-service.js';
 
 export const jobAuditDescriptor = defineAuditDescriptor<JobRow>({
   entityType: 'job',
@@ -140,13 +127,11 @@ export async function createJob({
       tx,
     });
     for (const seed of input.baySeeds) {
-      await appendWorkJobSlotToBayQueue({
-        bayId: seed.bayId,
-        currentDate: effectiveCurrentDate,
-        durationDays: seed.durationDays,
-        jobId: job.id,
-        tx,
-      });
+      const queue = await lockBayQueue(tx, seed.bayId);
+      await queue.append(
+        { durationDays: seed.durationDays, jobId: job.id, kind: 'work' },
+        { currentDate: effectiveCurrentDate },
+      );
     }
 
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
@@ -176,13 +161,11 @@ export async function bookJobSlot({
       throw new JobNotFoundError(input.jobId);
     }
 
-    const slot = await appendWorkJobSlotToBayQueue({
-      bayId: input.bayId,
-      currentDate: currentDate ?? new Date(),
-      durationDays: input.durationDays,
-      jobId: job.id,
-      tx,
-    });
+    const queue = await lockBayQueue(tx, input.bayId);
+    const slot = await queue.append(
+      { durationDays: input.durationDays, jobId: job.id, kind: 'work' },
+      { currentDate: currentDate ?? new Date() },
+    );
 
     return BookJobSlotResult.parse({ slot });
   });
@@ -303,40 +286,11 @@ export async function addIdleJobSlot({
   input: AddIdleJobSlotInput;
 }): Promise<AddIdleJobSlotResult> {
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        bay: jobBays,
-        slot: jobSlots,
-      })
-      .from(jobSlots)
-      .innerJoin(jobBays, eq(jobSlots.bayId, jobBays.id))
-      .where(eq(jobSlots.id, input.targetSlotId))
-      .for('update');
-
-    if (!row) {
-      throw new JobSlotNotFoundError(input.targetSlotId);
-    }
-
-    const insertionSequence = input.placement === 'before' ? row.slot.sequence : row.slot.sequence + 1;
-    const shiftCondition =
-      input.placement === 'before'
-        ? gte(jobSlots.sequence, row.slot.sequence)
-        : gt(jobSlots.sequence, row.slot.sequence);
-
-    await tx
-      .update(jobSlots)
-      .set({
-        sequence: sql`${jobSlots.sequence} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(jobSlots.bayId, row.bay.id), shiftCondition));
-
-    const slot = await insertIdleSlot({
-      bayId: row.bay.id,
+    const queue = await lockBayQueueBySlot(tx, input.targetSlotId);
+    const slot = await queue.insertRelative(input.targetSlotId, input.placement, {
       durationDays: input.durationDays,
+      kind: 'idle',
       label: input.label ?? null,
-      sequence: insertionSequence,
-      tx,
     });
 
     return AddIdleJobSlotResult.parse({ slot });
@@ -392,82 +346,25 @@ export async function moveJobSlot({
   input: MoveJobSlotInput;
 }): Promise<MoveJobSlotResult> {
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        bay: jobBays,
-        slot: jobSlots,
-      })
-      .from(jobSlots)
-      .innerJoin(jobBays, eq(jobSlots.bayId, jobBays.id))
-      .where(eq(jobSlots.id, input.slotId))
-      .for('update');
+    const queue = await lockBayQueueBySlot(tx, input.slotId);
+    const { slot, swapped } = await queue.swap(input.slotId, input.direction);
 
-    if (!row) {
-      throw new JobSlotNotFoundError(input.slotId);
-    }
-
-    const movingLeft = input.direction === 'left';
-    const [adjacentSlot] = await tx
-      .select()
-      .from(jobSlots)
-      .where(
-        and(
-          eq(jobSlots.bayId, row.bay.id),
-          movingLeft ? lt(jobSlots.sequence, row.slot.sequence) : gt(jobSlots.sequence, row.slot.sequence),
-        ),
-      )
-      .orderBy(movingLeft ? desc(jobSlots.sequence) : asc(jobSlots.sequence))
-      .limit(1)
-      .for('update');
-
-    if (!adjacentSlot) {
-      return MoveJobSlotResult.parse({ slot: row.slot });
-    }
-
-    const updatedAt = new Date();
-    // The bay sequence unique index is deferrable, so this swap may pass through a temporary duplicate.
-    const [slot] = await tx
-      .update(jobSlots)
-      .set({
-        sequence: adjacentSlot.sequence,
-        updatedAt,
-      })
-      .where(eq(jobSlots.id, row.slot.id))
-      .returning();
-
-    if (!slot) {
-      throw new Error('Job slot move did not return a row');
-    }
-
-    const [swappedAdjacentSlot] = await tx
-      .update(jobSlots)
-      .set({
-        sequence: row.slot.sequence,
-        updatedAt,
-      })
-      .where(eq(jobSlots.id, adjacentSlot.id))
-      .returning({ id: jobSlots.id });
-
-    if (!swappedAdjacentSlot) {
-      throw new Error('Adjacent job slot move did not return a row');
-    }
-
-    const beforeSlotOrder = movingLeft ? [adjacentSlot.id, row.slot.id] : [row.slot.id, adjacentSlot.id];
-    const afterSlotOrder = movingLeft ? [row.slot.id, adjacentSlot.id] : [adjacentSlot.id, row.slot.id];
-    await recordAuditEvent({
-      action: 'updated',
-      actorUserId,
-      changes: {
-        slotOrder: {
-          from: beforeSlotOrder,
-          to: afterSlotOrder,
+    if (swapped) {
+      await recordAuditEvent({
+        action: 'updated',
+        actorUserId,
+        changes: {
+          slotOrder: {
+            from: swapped.beforeSlotOrder,
+            to: swapped.afterSlotOrder,
+          },
         },
-      },
-      db: tx,
-      descriptor: jobBayAuditDescriptor,
-      entityId: row.bay.id,
-      record: { name: row.bay.name },
-    });
+        db: tx,
+        descriptor: jobBayAuditDescriptor,
+        entityId: queue.bay.id,
+        record: { name: queue.bay.name },
+      });
+    }
 
     return MoveJobSlotResult.parse({ slot });
   });
@@ -481,175 +378,11 @@ export async function removeJobSlot({
   input: RemoveJobSlotInput;
 }): Promise<RemoveJobSlotResult> {
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        bay: jobBays,
-        slot: jobSlots,
-      })
-      .from(jobSlots)
-      .innerJoin(jobBays, eq(jobSlots.bayId, jobBays.id))
-      .where(eq(jobSlots.id, input.slotId))
-      .for('update');
-
-    if (!row) {
-      throw new JobSlotNotFoundError(input.slotId);
-    }
-
-    const [slot] = await tx.delete(jobSlots).where(eq(jobSlots.id, row.slot.id)).returning();
-
-    if (!slot) {
-      throw new Error('Job slot delete did not return a row');
-    }
-
-    await tx
-      .update(jobSlots)
-      .set({
-        sequence: sql`${jobSlots.sequence} - 1`,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(jobSlots.bayId, row.bay.id), gt(jobSlots.sequence, row.slot.sequence)));
+    const queue = await lockBayQueueBySlot(tx, input.slotId);
+    const slot = await queue.remove(input.slotId);
 
     return RemoveJobSlotResult.parse({ slot });
   });
-}
-
-async function getNextBaySlotSequence(tx: DatabaseTransaction, bayId: UUID): Promise<number> {
-  const [sequenceRow] = await tx
-    .select({
-      sequence: sql<number>`coalesce(max(${jobSlots.sequence}), 0) + 1`,
-    })
-    .from(jobSlots)
-    .where(eq(jobSlots.bayId, bayId));
-
-  return Number(sequenceRow?.sequence ?? 1);
-}
-
-async function appendWorkJobSlotToBayQueue({
-  bayId,
-  currentDate,
-  durationDays,
-  jobId,
-  tx,
-}: {
-  bayId: UUID;
-  currentDate: Date;
-  durationDays: number;
-  jobId: UUID;
-  tx: DatabaseTransaction;
-}): Promise<typeof jobSlots.$inferSelect> {
-  const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, bayId)).for('update');
-
-  if (!bay) {
-    throw new JobBayNotFoundError(bayId);
-  }
-
-  if (bay.disabledAt) {
-    throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
-  }
-
-  const workingCalendar = await getWorkingCalendar(tx, bay.id);
-  let sequence = await getNextBaySlotSequence(tx, bay.id);
-  const gapDays = await getIdleGapDaysBeforeAppend({
-    bayId: bay.id,
-    currentDate,
-    scheduleOrigin: bay.scheduleOrigin,
-    tx,
-    workingCalendar,
-  });
-
-  if (gapDays > 0) {
-    await insertIdleSlot({
-      bayId: bay.id,
-      durationDays: gapDays,
-      label: null,
-      sequence,
-      tx,
-    });
-    sequence += 1;
-  }
-
-  const [slot] = await tx
-    .insert(jobSlots)
-    .values({
-      bayId: bay.id,
-      durationDays,
-      jobId,
-      kind: 'work',
-      label: null,
-      sequence,
-    })
-    .returning();
-
-  if (!slot) {
-    throw new Error('Job slot insert did not return a row');
-  }
-
-  return slot;
-}
-
-async function getWorkingCalendar(tx: DatabaseTransaction, bayId: UUID): Promise<WorkingCalendar> {
-  return createBayWorkingCalendar(
-    createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
-    await listBayCalendarExceptions(tx, bayId),
-  );
-}
-
-async function getIdleGapDaysBeforeAppend({
-  bayId,
-  currentDate,
-  scheduleOrigin,
-  tx,
-  workingCalendar,
-}: {
-  bayId: UUID;
-  currentDate: Date;
-  scheduleOrigin: Date;
-  tx: DatabaseTransaction;
-  workingCalendar: WorkingCalendar;
-}): Promise<number> {
-  const existingSlots = await tx.query.jobSlots.findMany({
-    orderBy: [asc(jobSlots.sequence), asc(jobSlots.id)],
-    where: eq(jobSlots.bayId, bayId),
-  });
-  const projection = projectJobSlots({
-    scheduleOrigin,
-    slots: existingSlots,
-    workingCalendar,
-  });
-
-  return countWorkingDaysBetween(projection.nextAvailableAt, currentDate, workingCalendar);
-}
-
-async function insertIdleSlot({
-  bayId,
-  durationDays,
-  label,
-  sequence,
-  tx,
-}: {
-  bayId: UUID;
-  durationDays: number;
-  label: string | null;
-  sequence: number;
-  tx: DatabaseTransaction;
-}) {
-  const [slot] = await tx
-    .insert(jobSlots)
-    .values({
-      bayId,
-      durationDays,
-      jobId: null,
-      kind: 'idle',
-      label,
-      sequence,
-    })
-    .returning();
-
-  if (!slot) {
-    throw new Error('Idle job slot insert did not return a row');
-  }
-
-  return slot;
 }
 
 async function createProductSerial({

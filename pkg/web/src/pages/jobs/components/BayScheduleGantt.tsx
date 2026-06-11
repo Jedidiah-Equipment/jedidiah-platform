@@ -82,6 +82,14 @@ import {
   hasActiveBayScheduleFilter,
   slotMatchesBayScheduleFilter,
 } from './bay-schedule-filter.js';
+import {
+  type BayScheduleGhostSeed,
+  type DisplayBaySchedule,
+  type DisplayBaySlot,
+  deriveGhostBaySchedules,
+  type GhostSlot,
+  selectVisibleBaySchedules,
+} from './bay-schedule-ghosts.js';
 import { createWorkingCalendarsByBayId, getSlotLabel } from './bay-schedule-summary.js';
 import {
   BAY_SCHEDULE_ZOOM_DEFAULT,
@@ -108,10 +116,26 @@ type FilterScrollRequest = {
 type AnchoredZoomChange = (applyZoomChange: () => void) => void;
 
 export const BayScheduleGantt: React.FC<{
+  /** Dialog embedding: hides the page filter bar; zoom controls remain. */
+  embedded?: boolean;
   fullscreen?: boolean;
+  /** Bar label for ghost slots, e.g. the source Quote code. */
+  ghostLabel?: string | undefined;
+  /** Client-only preview seeds; ghost derivation runs inside against the live query. */
+  ghostSeeds?: readonly BayScheduleGhostSeed[] | undefined;
   onFullscreenChange?: ((fullscreen: boolean) => void) | undefined;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
-}> = ({ fullscreen = false, onFullscreenChange, onSelectSlot }) => {
+  /** When set, only these Bays render as lanes, sorted into Department pipeline order. */
+  visibleBayIds?: readonly UUID[] | undefined;
+}> = ({
+  embedded = false,
+  fullscreen = false,
+  ghostLabel,
+  ghostSeeds,
+  onFullscreenChange,
+  onSelectSlot,
+  visibleBayIds,
+}) => {
   const trpc = useTRPC();
   const { invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
@@ -149,6 +173,20 @@ export const BayScheduleGantt: React.FC<{
   const jobs = jobsQuery.data?.items ?? [];
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
   const displayedBays = optimisticBays ?? bays;
+  // Render pipeline: query → optimistic-move overlay → lane filter → ghost derivation.
+  // Mutations and optimistic moves always operate on the un-ghosted bays.
+  const visibleBays = useMemo(
+    () => selectVisibleBaySchedules(displayedBays, visibleBayIds),
+    [displayedBays, visibleBayIds],
+  );
+  const ghostDerivation = useMemo(
+    () =>
+      ghostSeeds && plantToday
+        ? deriveGhostBaySchedules({ bays: visibleBays, offDays, seeds: ghostSeeds, today: plantToday })
+        : null,
+    [ghostSeeds, offDays, plantToday, visibleBays],
+  );
+  const renderedBays: DisplayBaySchedule[] = ghostDerivation?.bays ?? visibleBays;
   const isFilterActive = hasActiveBayScheduleFilter(filter);
   const filterMatchCount = useMemo(
     () => (isFilterActive ? countBayScheduleFilterMatches({ bays: displayedBays, filter, jobsById }) : 0),
@@ -298,40 +336,46 @@ export const BayScheduleGantt: React.FC<{
     return <ErrorMessage error={baysQuery.error} fallbackMessage="Unable to load bay schedule." />;
   }
 
-  if (displayedBays.length === 0 || !plantToday) {
+  if (renderedBays.length === 0 || !plantToday) {
     return null;
   }
+
+  const trailingControls = (
+    <div className="flex items-center gap-2">
+      {onFullscreenChange ? (
+        <PageLayoutFullscreenToggle fullscreen={fullscreen} onFullscreenChange={onFullscreenChange} />
+      ) : null}
+      <BayScheduleZoomControls
+        onReset={() => applyAnchoredZoomChange(resetZoom)}
+        onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
+        onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
+        zoom={zoom}
+      />
+    </div>
+  );
 
   return (
     <Card className="gap-0 pb-0">
       <CardHeader className="block pb-4">
-        <BayScheduleFilterBar
-          bays={bays}
-          filter={filter}
-          jobs={jobs}
-          noMatches={isFilterActive && filterMatchCount === 0}
-          onFilterChange={handleFilterChange}
-          trailingContent={
-            <div className="flex items-center gap-2">
-              {onFullscreenChange ? (
-                <PageLayoutFullscreenToggle fullscreen={fullscreen} onFullscreenChange={onFullscreenChange} />
-              ) : null}
-              <BayScheduleZoomControls
-                onReset={() => applyAnchoredZoomChange(resetZoom)}
-                onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
-                onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
-                zoom={zoom}
-              />
-            </div>
-          }
-        />
+        {embedded ? (
+          <div className="flex justify-end">{trailingControls}</div>
+        ) : (
+          <BayScheduleFilterBar
+            bays={bays}
+            filter={filter}
+            jobs={jobs}
+            noMatches={isFilterActive && filterMatchCount === 0}
+            onFilterChange={handleFilterChange}
+            trailingContent={trailingControls}
+          />
+        )}
       </CardHeader>
       <CardSeparator />
       <CardContent className="p-0">
         <div
           className="w-full overflow-hidden"
           style={{
-            height: Math.max(220, 60 + displayedBays.length * (BAY_ROW_HEIGHT + 10)),
+            height: Math.max(220, 60 + renderedBays.length * (BAY_ROW_HEIGHT + 10)),
           }}
         >
           <GanttProvider
@@ -344,13 +388,13 @@ export const BayScheduleGantt: React.FC<{
           >
             <BayScheduleFilterScrollController request={filterScrollRequest} />
             <BayScheduleZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
-            <BayScheduleSidebar bays={displayedBays} horizonWarnings={horizonWarnings} today={plantToday} />
+            <BayScheduleSidebar bays={renderedBays} horizonWarnings={horizonWarnings} today={plantToday} />
             <GanttTimeline>
               <GanttHeader />
               <OffDayBands offDays={offDays} />
-              <BayLaneRows bays={displayedBays} />
+              <BayLaneRows bays={renderedBays} />
               <BaySlotBars
-                bays={displayedBays}
+                bays={renderedBays}
                 canEditScheduleByBayId={schedulableBayIds}
                 today={plantToday}
                 filter={filter}
@@ -364,6 +408,9 @@ export const BayScheduleGantt: React.FC<{
                 onSelectSlot={onSelectSlot}
                 optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
               />
+              {ghostDerivation && ghostDerivation.ghosts.length > 0 ? (
+                <GhostSlotBars bays={renderedBays} ghosts={ghostDerivation.ghosts} label={ghostLabel ?? 'New Job'} />
+              ) : null}
               <GanttToday className="bg-primary text-primary-foreground" />
             </GanttTimeline>
           </GanttProvider>
@@ -581,7 +628,7 @@ const getCurrentBaySlot = (slots: ProjectedJobSlot[], today: DateOnlyIso) =>
   slots.find((slot) => slot.startDate <= today && today < slot.endDate) ?? null;
 
 const BaySlotBars: React.FC<{
-  bays: BaySchedule[];
+  bays: DisplayBaySchedule[];
   canEditScheduleByBayId: ReadonlySet<string>;
   today: DateOnlyIso;
   filter: BayScheduleFilter;
@@ -619,7 +666,8 @@ const BaySlotBars: React.FC<{
         bay.slots.map((slot, slotIndex) => (
           <BaySlotBar
             bayId={bay.id}
-            canEditSchedule={canEditScheduleByBayId.has(bay.id)}
+            // Split halves carry synthetic ids that must never reach a mutation.
+            canEditSchedule={canEditScheduleByBayId.has(bay.id) && !slot.previewSplit}
             isDimmed={isFilterActive && !slotMatchesBayScheduleFilter({ bayId: bay.id, filter, jobsById, slot })}
             isScheduleMutationPending={isScheduleMutationPending}
             job={slot.kind === 'work' ? (jobsById.get(slot.jobId) ?? null) : null}
@@ -639,6 +687,54 @@ const BaySlotBars: React.FC<{
           />
         )),
       )}
+    </div>
+  );
+};
+
+/**
+ * Client-only ghost Slots for pending Job seeds: positioned like real slot bars but
+ * rendered as a non-interactive overlay, visually distinct (dashed, primary-tinted).
+ */
+const GhostSlotBars: React.FC<{
+  bays: DisplayBaySchedule[];
+  ghosts: GhostSlot[];
+  label: string;
+}> = ({ bays, ghosts, label }) => {
+  const gantt = useGanttContext();
+  const rowIndexByBayId = new Map(bays.map((bay, index) => [bay.id, index]));
+
+  return (
+    <div aria-hidden className="pointer-events-none absolute top-0 left-0 z-30">
+      {ghosts.map((ghost) => {
+        const rowIndex = rowIndexByBayId.get(ghost.bayId);
+
+        if (rowIndex === undefined) {
+          return null;
+        }
+
+        const left = getJobGanttOffset(ghost.startDate, gantt);
+        const width = Math.max(getJobGanttWidth(ghost.startDate, ghost.endDate, gantt), 28);
+        const top = gantt.headerHeight + rowIndex * gantt.rowHeight + (gantt.rowHeight - SLOT_CARD_HEIGHT) / 2;
+
+        return (
+          <div
+            className="absolute flex items-center overflow-hidden rounded-lg border border-primary border-dashed bg-primary/10 px-2.5 py-1.5 text-primary text-xs shadow-sm"
+            key={ghost.id}
+            style={{
+              height: SLOT_CARD_HEIGHT,
+              left,
+              top,
+              width,
+            }}
+            title={`${label}: ${formatDate(ghost.startDate, 'PPP')} - ${formatDate(ghost.endDate, 'PPP')}`}
+          >
+            <span className="min-w-0 truncate font-medium">
+              {label}
+              <span className="ml-1.5 text-[0.65rem] tabular-nums opacity-80">{ghost.durationDays}d</span>
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -663,7 +759,7 @@ const BaySlotBar: React.FC<{
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
   optimisticDurationDays: number | null;
   rowTop: number;
-  slot: ProjectedJobSlot;
+  slot: DisplayBaySlot;
   slotIndex: number;
   slotCount: number;
   today: DateOnlyIso;
@@ -829,7 +925,7 @@ const BaySlotBar: React.FC<{
         ) : (
           <button
             className="relative z-10 block h-full w-full cursor-pointer pr-8 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            disabled={!job}
+            disabled={!job || slot.previewSplit !== undefined}
             onClick={() => {
               if (job) {
                 onSelectSlot?.(job.id, bayId);

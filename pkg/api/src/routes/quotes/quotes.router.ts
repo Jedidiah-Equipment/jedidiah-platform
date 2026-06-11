@@ -3,6 +3,7 @@ import {
   createQuote,
   generateQuoteDocument,
   getQuote,
+  getQuoteProductBayAvailability,
   getQuoteProductBrochure,
   isQuoteCoreError,
   listCustomers,
@@ -21,6 +22,7 @@ import {
   QuoteCreateInput,
   QuoteDocumentGenerationInput,
   QuoteListInput,
+  QuoteProductBayAvailabilityInput,
   QuoteUpdateInput,
   UUID,
 } from '@pkg/schema';
@@ -59,6 +61,10 @@ export const quotesRouter = router({
   products: authorizedProcedure('quote:read')
     .input(ProductListInput)
     .query(({ ctx, input }) => listProducts({ db: ctx.db, input, log })),
+
+  productBayAvailability: authorizedProcedure('quote:read')
+    .input(QuoteProductBayAvailabilityInput)
+    .query(({ ctx, input }) => mapQuoteErrors(() => getQuoteProductBayAvailability({ db: ctx.db, input }))),
 
   create: authorizedProcedure('quote:create')
     .input(QuoteCreateInput)

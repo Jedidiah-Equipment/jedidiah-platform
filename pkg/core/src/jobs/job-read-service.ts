@@ -19,10 +19,11 @@ import {
   workingCalendarOffDays,
 } from '@pkg/db';
 import {
+  countWorkingDaysBetween,
+  getPlantDateNow,
   JOB_DEPARTMENT_PIPELINE,
   parseJobCodeSearch,
   projectJobSlots,
-  toPlantDateOnly,
   type WorkingCalendar,
 } from '@pkg/domain';
 import {
@@ -84,6 +85,14 @@ type BayScheduleRow = typeof jobBays.$inferSelect &
     })[];
   };
 
+export type BayQueueAvailability = {
+  bayId: UUID;
+  department: BaySchedule['department'];
+  name: BaySchedule['name'];
+  nextAvailableDate: BaySchedule['nextAvailableDate'];
+  waitWorkingDays: number;
+};
+
 // Any `job:read` user sees the full cross-department schedule, so bay reads are not department-scoped.
 function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
   return db.query.jobBays.findMany({
@@ -136,8 +145,40 @@ export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promis
     items: toBaySchedules(rows, offDays),
     offDays,
     // Plant "today" enters here, at the server boundary — the client never derives it.
-    today: toPlantDateOnly(new Date()),
+    today: getPlantDateNow(),
   };
+}
+
+export async function listBayQueueAvailability({
+  bayIds,
+  db,
+}: {
+  bayIds: readonly UUID[];
+  db: Db | DatabaseTransaction;
+}): Promise<BayQueueAvailability[]> {
+  if (bayIds.length === 0) {
+    return [];
+  }
+
+  const [offDays, rows] = await Promise.all([
+    listWorkingCalendarOffDays(db),
+    findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
+  ]);
+  const orgWorkingCalendar = createOrgWorkingCalendar(offDays);
+  const today = getPlantDateNow();
+
+  return rows.map((row) => {
+    const workingCalendar = createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions);
+    const schedule = mapBaySchedule(row, workingCalendar);
+
+    return {
+      bayId: schedule.id,
+      department: schedule.department,
+      name: schedule.name,
+      nextAvailableDate: schedule.nextAvailableDate,
+      waitWorkingDays: countWorkingDaysBetween(today, schedule.nextAvailableDate, workingCalendar),
+    };
+  });
 }
 
 // A Job's schedule only needs the bays that actually hold one of its Work Slots. We restrict the bay

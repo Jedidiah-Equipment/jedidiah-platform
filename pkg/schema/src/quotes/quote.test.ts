@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { PriorityQuote, QuoteCreateInput, QuoteDetail } from './quote.js';
+import {
+  PriorityQuote,
+  QuoteCreateInput,
+  QuoteDetail,
+  QuoteProductBayAvailabilityInput,
+  QuoteProductBayAvailabilityResult,
+} from './quote.js';
 
 const baseCreateInput = {
   customer: {
@@ -117,6 +123,34 @@ describe('QuoteDetail', () => {
         defaultWorkingDays: 4,
       }),
     ]);
+  });
+});
+
+describe('QuoteProductBayAvailability', () => {
+  it('parses the quote-scoped Product Bay availability contract', () => {
+    expect(QuoteProductBayAvailabilityInput.parse({ productId: '550e8400-e29b-41d4-a716-446655440000' })).toEqual({
+      productId: '550e8400-e29b-41d4-a716-446655440000',
+    });
+    expect(
+      QuoteProductBayAvailabilityResult.parse({
+        bays: [
+          {
+            bayId: '550e8400-e29b-41d4-a716-446655440020',
+            defaultWorkingDays: 4,
+            department: 'fabrication',
+            name: 'Fabrication Bay',
+            nextAvailableDate: '2026-06-10',
+            waitWorkingDays: 3,
+          },
+        ],
+        buildTimeDays: 14,
+        defaultLeadTimeWorkingDays: 17,
+        maxBayWaitWorkingDays: 3,
+      }),
+    ).toMatchObject({
+      bays: [expect.objectContaining({ name: 'Fabrication Bay', waitWorkingDays: 3 })],
+      defaultLeadTimeWorkingDays: 17,
+    });
   });
 });
 

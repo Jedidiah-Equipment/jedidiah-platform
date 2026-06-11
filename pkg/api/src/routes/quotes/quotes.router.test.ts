@@ -5,6 +5,7 @@ import {
   type Db,
   documents,
   jobBays,
+  jobSlots,
   jobs,
   productAssemblies,
   productBays,
@@ -928,6 +929,50 @@ describe('quotes.createdByWeek', () => {
   });
 });
 
+describe('quotes.productBayAvailability', () => {
+  test('allows sales users to read quote-scoped Product Bay availability without full job schedule access', async ({
+    context,
+  }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const quickBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000531',
+      name: 'Quote Quick Bay',
+      scheduleOrigin: '2026-06-10',
+    });
+    const slowerBay = await createBay(context.db, {
+      id: '00000000-0000-4000-8000-000000000532',
+      name: 'Quote Slower Bay',
+      scheduleOrigin: '2026-06-10',
+    });
+    const disabledBay = await createBay(context.db, {
+      disabledAt: new Date('2026-06-01T00:00:00.000Z'),
+      id: '00000000-0000-4000-8000-000000000533',
+      name: 'Quote Disabled Bay',
+      scheduleOrigin: '2026-06-10',
+    });
+    await context.db.insert(productBays).values([
+      { bayId: quickBay.id, defaultWorkingDays: 2, productId: context.product.id },
+      { bayId: slowerBay.id, defaultWorkingDays: 4, productId: context.product.id },
+      { bayId: disabledBay.id, defaultWorkingDays: 9, productId: context.product.id },
+    ]);
+    await context.db.insert(jobSlots).values([
+      { bayId: quickBay.id, durationDays: 1, kind: 'idle', label: null, sequence: 1 },
+      { bayId: slowerBay.id, durationDays: 3, kind: 'idle', label: null, sequence: 1 },
+      { bayId: disabledBay.id, durationDays: 8, kind: 'idle', label: null, sequence: 1 },
+    ]);
+
+    await expect(caller.quotes.productBayAvailability({ productId: context.product.id })).resolves.toMatchObject({
+      bays: [
+        expect.objectContaining({ bayId: quickBay.id, name: 'Quote Quick Bay', waitWorkingDays: expect.any(Number) }),
+        expect.objectContaining({ bayId: slowerBay.id, name: 'Quote Slower Bay', waitWorkingDays: expect.any(Number) }),
+      ],
+      buildTimeDays: context.product.buildTimeDays,
+      defaultLeadTimeWorkingDays: expect.any(Number),
+    });
+    await expect(caller.jobs.listBays()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+});
+
 describe('quotes.getProductBrochure', () => {
   test('returns the latest Product brochure through quote read access', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
@@ -1456,6 +1501,7 @@ async function createBay(
     disabledAt?: Date | null;
     id: string;
     name: string;
+    scheduleOrigin?: string;
   },
 ) {
   const [bay] = await db

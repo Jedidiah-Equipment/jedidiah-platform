@@ -1,6 +1,7 @@
 import { type DatabaseTransaction, jobBays, jobSlots } from '@pkg/db';
 import {
   countWorkingDaysBetween,
+  getPlantDateNow,
   projectJobSlots,
   resolveInsertAtDatePlacement,
   type WorkingCalendar,
@@ -33,11 +34,8 @@ export type BayQueueSwapResult = {
 
 export type BayQueue = {
   bay: JobBayRow;
-  append(spec: BayQueueSlotSpec, options: { currentDate: DateOnlyIso }): Promise<JobSlotRow>;
-  insertAtDate(
-    spec: BayQueueSlotSpec,
-    options: { currentDate: DateOnlyIso; startDate: DateOnlyIso },
-  ): Promise<JobSlotRow>;
+  append(spec: BayQueueSlotSpec): Promise<JobSlotRow>;
+  insertAtDate(spec: BayQueueSlotSpec, options: { startDate: DateOnlyIso }): Promise<JobSlotRow>;
   insertRelative(targetSlotId: UUID, placement: 'before' | 'after', spec: BayQueueSlotSpec): Promise<JobSlotRow>;
   swap(slotId: UUID, direction: 'left' | 'right'): Promise<BayQueueSwapResult>;
   remove(slotId: UUID): Promise<JobSlotRow>;
@@ -48,14 +46,18 @@ export type BayQueue = {
  * sequence mutation goes through a queue obtained here, so slot rows
  * themselves are never locked for queue changes.
  */
-export async function lockBayQueue(tx: DatabaseTransaction, bayId: UUID): Promise<BayQueue> {
+export async function lockBayQueue(
+  tx: DatabaseTransaction,
+  bayId: UUID,
+  options: { plantToday?: DateOnlyIso } = {},
+): Promise<BayQueue> {
   const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, bayId)).for('update');
 
   if (!bay) {
     throw new JobBayNotFoundError(bayId);
   }
 
-  return createBayQueue(tx, bay);
+  return createBayQueue(tx, bay, options.plantToday ?? getPlantDateNow());
 }
 
 export async function lockBayQueueBySlot(tx: DatabaseTransaction, slotId: UUID): Promise<BayQueue> {
@@ -68,23 +70,23 @@ export async function lockBayQueueBySlot(tx: DatabaseTransaction, slotId: UUID):
   return lockBayQueue(tx, slot.bayId);
 }
 
-function createBayQueue(tx: DatabaseTransaction, bay: JobBayRow): BayQueue {
+function createBayQueue(tx: DatabaseTransaction, bay: JobBayRow, plantToday: DateOnlyIso): BayQueue {
   return {
     bay,
 
-    async append(spec, { currentDate }) {
+    async append(spec) {
       assertBayAcceptsBookings(bay);
 
-      return appendSlot(tx, bay, spec, currentDate);
+      return appendSlot(tx, bay, spec, plantToday);
     },
 
-    async insertAtDate(spec, { currentDate, startDate }) {
+    async insertAtDate(spec, { startDate }) {
       assertBayAcceptsBookings(bay);
 
       const existingSlots = await listQueueSlots(tx, bay.id);
       const workingCalendar = await loadBayWorkingCalendar(tx, bay.id);
       const placement = resolveInsertAtDatePlacement({
-        currentDate,
+        currentDate: plantToday,
         pickedDate: startDate,
         scheduleOrigin: DateOnlyIso.parse(bay.scheduleOrigin),
         slots: existingSlots,
@@ -92,7 +94,7 @@ function createBayQueue(tx: DatabaseTransaction, bay: JobBayRow): BayQueue {
       });
 
       if (placement.type === 'append') {
-        return appendSlot(tx, bay, spec, currentDate);
+        return appendSlot(tx, bay, spec, plantToday);
       }
 
       if (placement.type === 'insert-before') {
@@ -216,7 +218,7 @@ async function appendSlot(
   tx: DatabaseTransaction,
   bay: JobBayRow,
   spec: BayQueueSlotSpec,
-  currentDate: DateOnlyIso,
+  plantToday: DateOnlyIso,
 ): Promise<JobSlotRow> {
   const existingSlots = await listQueueSlots(tx, bay.id);
   const lastSlot = existingSlots.at(-1);
@@ -228,7 +230,7 @@ async function appendSlot(
     slots: existingSlots,
     workingCalendar,
   });
-  const gapDays = countWorkingDaysBetween(projection.nextAvailableDate, currentDate, workingCalendar);
+  const gapDays = countWorkingDaysBetween(projection.nextAvailableDate, plantToday, workingCalendar);
 
   if (gapDays > 0) {
     await insertSlotRow(tx, bay.id, sequence, { durationDays: gapDays, kind: 'idle', label: null });

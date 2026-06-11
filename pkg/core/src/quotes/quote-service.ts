@@ -36,6 +36,8 @@ import {
   type QuoteDetail,
   type QuoteListInput,
   type QuoteListResult,
+  type QuoteProductBayAvailabilityInput,
+  QuoteProductBayAvailabilityResult,
   type QuoteSortBy,
   QuoteStatus,
   QuoteStatusSummary,
@@ -54,6 +56,7 @@ import {
   recordAuditUpdate,
 } from '../audit/audit-service.js';
 import { customerAuditDescriptor } from '../customers/customer-service.js';
+import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { listProductBays } from '../products/product-service.js';
 import {
@@ -461,6 +464,51 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
   return mapQuoteDetail(row, assemblies, productBaysForQuote);
 }
 
+export async function getQuoteProductBayAvailability({
+  db,
+  input,
+}: {
+  db: Db | DatabaseTransaction;
+  input: QuoteProductBayAvailabilityInput;
+}): Promise<QuoteProductBayAvailabilityResult> {
+  const product = await readProductForQuote({ productId: input.productId, tx: db });
+  const productBaysForQuote = (await listProductBays({ db, productId: product.id })).filter(
+    (productBay) => !productBay.bay.disabledAt,
+  );
+  const availabilityByBayId = new Map(
+    (
+      await listBayQueueAvailability({
+        bayIds: productBaysForQuote.map((productBay) => productBay.bayId),
+        db,
+      })
+    ).map((availability) => [availability.bayId, availability]),
+  );
+  const bays = productBaysForQuote.flatMap((productBay) => {
+    const availability = availabilityByBayId.get(productBay.bayId);
+
+    return availability
+      ? [
+          {
+            bayId: productBay.bayId,
+            defaultWorkingDays: productBay.defaultWorkingDays,
+            department: availability.department,
+            name: availability.name,
+            nextAvailableDate: availability.nextAvailableDate,
+            waitWorkingDays: availability.waitWorkingDays,
+          },
+        ]
+      : [];
+  });
+  const maxBayWaitWorkingDays = Math.max(0, ...bays.map((bay) => bay.waitWorkingDays));
+
+  return QuoteProductBayAvailabilityResult.parse({
+    bays,
+    buildTimeDays: product.buildTimeDays,
+    defaultLeadTimeWorkingDays: product.buildTimeDays + maxBayWaitWorkingDays,
+    maxBayWaitWorkingDays,
+  });
+}
+
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {
   const rows = await db.query.user.findMany({
     where: inArray(user.role, ['admin', 'sales']),
@@ -743,7 +791,7 @@ async function readProductForQuote({
   tx,
 }: {
   productId: UUID;
-  tx: DatabaseTransaction;
+  tx: Db | DatabaseTransaction;
 }): Promise<ProductRow> {
   const [product] = await tx.select().from(products).where(eq(products.id, productId));
 

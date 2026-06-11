@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getDefaultQuoteDocumentLeadTime,
+  getDefaultQuoteDocumentLeadTimeFromAvailability,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
   type QuoteFormValues,
+  resolveQuoteDocumentLeadTime,
   resolveSelectedAssemblySnapshots,
   toQuoteCreateInput,
   toQuoteFormValues,
@@ -182,6 +184,29 @@ describe('QuoteCreateFormValues', () => {
 describe('getDefaultQuoteDocumentLeadTime', () => {
   it('defaults from the Product build time on the saved Quote detail', () => {
     expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ productBuildTimeDays: 21 }))).toBe('21 working days');
+  });
+
+  it('defaults from Product build time plus the max bay wait when availability is loaded', () => {
+    expect(getDefaultQuoteDocumentLeadTimeFromAvailability({ defaultLeadTimeWorkingDays: 34 })).toBe('34 working days');
+  });
+
+  it('does not overwrite a user-edited lead time when availability arrives late', () => {
+    expect(
+      resolveQuoteDocumentLeadTime({
+        availability: { defaultLeadTimeWorkingDays: 34 },
+        fallbackLeadTime: '21 working days',
+        hasUserEditedLeadTime: true,
+        leadTime: 'Call customer first',
+      }),
+    ).toBe('Call customer first');
+    expect(
+      resolveQuoteDocumentLeadTime({
+        availability: { defaultLeadTimeWorkingDays: 34 },
+        fallbackLeadTime: '21 working days',
+        hasUserEditedLeadTime: false,
+        leadTime: '21 working days',
+      }),
+    ).toBe('34 working days');
   });
 });
 

@@ -14,7 +14,7 @@ import {
   quotes,
   workingCalendarOffDays,
 } from '@pkg/db';
-import { buildCfo, type CfoEntry, toPlantDateOnly } from '@pkg/domain';
+import { buildCfo, type CfoEntry, getPlantDateNow } from '@pkg/domain';
 import {
   type AddBayCalendarExceptionInput,
   AddBayCalendarExceptionResult,
@@ -23,6 +23,7 @@ import {
   type AuthId,
   type BookJobSlotInput,
   BookJobSlotResult,
+  type DateOnlyIso,
   formatJobCode,
   formatProductSerialNumber,
   JobCode,
@@ -87,21 +88,19 @@ export async function createJob({
   db,
   input,
   actorUserId,
-  currentDate,
 }: {
   db: Db;
   input: JobCreateInput;
   actorUserId: AuthId;
-  currentDate?: Date;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const quote = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
     const cfo = await buildJobCfoForQuote({ productId: quote.productId, quoteId: quote.id, tx });
-    const effectiveCurrentDate = currentDate ?? new Date();
+    const plantToday = getPlantDateNow();
     const productSerial = await createProductSerial({
       productId: quote.productId,
       tx,
-      currentDate: effectiveCurrentDate,
+      plantToday,
     });
 
     const [job] = await tx
@@ -126,10 +125,9 @@ export async function createJob({
       productId: quote.productId,
       tx,
     });
-    const plantToday = toPlantDateOnly(effectiveCurrentDate);
     for (const seed of input.baySeeds) {
-      const queue = await lockBayQueue(tx, seed.bayId);
-      await queue.append({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' }, { currentDate: plantToday });
+      const queue = await lockBayQueue(tx, seed.bayId, { plantToday });
+      await queue.append({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' });
     }
 
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
@@ -138,16 +136,9 @@ export async function createJob({
   });
 }
 
-export async function bookJobSlot({
-  currentDate,
-  db,
-  input,
-}: {
-  currentDate?: Date;
-  db: Db;
-  input: BookJobSlotInput;
-}): Promise<BookJobSlotResult> {
+export async function bookJobSlot({ db, input }: { db: Db; input: BookJobSlotInput }): Promise<BookJobSlotResult> {
   return db.transaction(async (tx) => {
+    const plantToday = getPlantDateNow();
     const [job] = await tx
       .select({
         id: jobs.id,
@@ -159,15 +150,11 @@ export async function bookJobSlot({
       throw new JobNotFoundError(input.jobId);
     }
 
-    const queue = await lockBayQueue(tx, input.bayId);
+    const queue = await lockBayQueue(tx, input.bayId, { plantToday });
     const spec = { durationDays: input.durationDays, jobId: job.id, kind: 'work' } as const;
-    const plantToday = toPlantDateOnly(currentDate ?? new Date());
     const slot = input.startDate
-      ? await queue.insertAtDate(spec, {
-          currentDate: plantToday,
-          startDate: input.startDate,
-        })
-      : await queue.append(spec, { currentDate: plantToday });
+      ? await queue.insertAtDate(spec, { startDate: input.startDate })
+      : await queue.append(spec);
 
     return BookJobSlotResult.parse({ slot });
   });
@@ -390,12 +377,13 @@ export async function removeJobSlot({
 async function createProductSerial({
   productId,
   tx,
-  currentDate,
+  plantToday,
 }: {
   productId: UUID;
   tx: DatabaseTransaction;
-  currentDate: Date;
+  plantToday: DateOnlyIso;
 }) {
+  const now = new Date();
   const [product] = await tx
     .select({
       modelCode: products.modelCode,
@@ -413,13 +401,13 @@ async function createProductSerial({
     .values({
       lastSequence: 1,
       productId,
-      updatedAt: currentDate,
+      updatedAt: now,
     })
     .onConflictDoUpdate({
       target: productSerialSequences.productId,
       set: {
         lastSequence: sql`${productSerialSequences.lastSequence} + 1`,
-        updatedAt: currentDate,
+        updatedAt: now,
       },
     })
     .returning({
@@ -431,7 +419,7 @@ async function createProductSerial({
   }
 
   const prefix = ProductSerialPrefix.parse(product.modelCode);
-  const year = ProductSerialYear.parse(getJohannesburgTwoDigitYear(currentDate));
+  const year = ProductSerialYear.parse(getPlantDateTwoDigitYear(plantToday));
   const sequence = ProductSerialSequence.parse(sequenceRow.lastSequence);
 
   return {
@@ -442,8 +430,8 @@ async function createProductSerial({
   };
 }
 
-function getJohannesburgTwoDigitYear(date: Date): number {
-  return Number.parseInt(toPlantDateOnly(date).slice(2, 4), 10);
+function getPlantDateTwoDigitYear(plantDate: DateOnlyIso): number {
+  return Number.parseInt(plantDate.slice(2, 4), 10);
 }
 
 async function validateJobQuoteForCreate({

@@ -1,3 +1,4 @@
+import { listPriorityQuotes } from '@pkg/core';
 import {
   auditEvents,
   customers,
@@ -690,6 +691,181 @@ describe('quotes.list', () => {
     });
   });
 
+  test('returns Priority Quotes outside normal quote filters and clears them when a Job exists', async ({
+    context,
+  }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const crusherProduct = await createProduct(context.db, {
+      modelCode: 'CRUSH-ALERT',
+      name: 'Crusher Alert Product',
+    });
+    await createSalesUser(context.db, {
+      email: 'alert-sales@example.com',
+      id: 'alert-sales-id',
+      name: 'Alert Sales',
+    });
+    const normalQuote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Normal Filter Match',
+      discountPercent: 5,
+      productId: crusherProduct.id,
+      salesPersonId: 'alert-sales-id',
+    });
+    const overdueAlert = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Overdue Alert',
+      discountPercent: 10,
+      plannedDeliveryDate: '2026-08-01',
+      preferredDeliveryDate: '2020-05-20',
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    const earliestPreferredAlert = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Preferred Alert',
+      discountPercent: 10,
+      plannedDeliveryDate: '2026-07-15',
+      preferredDeliveryDate: '2026-07-01',
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    const firstSingleDateAlert = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Single Date Alert A',
+      discountPercent: 10,
+      plannedDeliveryDate: '2026-07-10',
+      preferredDeliveryDate: null,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    const secondSingleDateAlert = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Single Date Alert B',
+      discountPercent: 10,
+      plannedDeliveryDate: '2026-07-10',
+      preferredDeliveryDate: null,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    const boundaryAlert = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Boundary Alert',
+      discountPercent: 10,
+      plannedDeliveryDate: '2026-08-11',
+      preferredDeliveryDate: null,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    const farFutureQuote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Far Future Quote',
+      discountPercent: 10,
+      plannedDeliveryDate: '2026-08-12',
+      preferredDeliveryDate: null,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    const blankDateQuote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Blank Dates Quote',
+      discountPercent: 10,
+      plannedDeliveryDate: null,
+      preferredDeliveryDate: null,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    const sentQuote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Sent Quote',
+      discountPercent: 10,
+      plannedDeliveryDate: '2026-07-05',
+      preferredDeliveryDate: null,
+      productId: context.product.id,
+      status: 'sent',
+    });
+    const clearedByJobQuote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Cleared By Job Quote',
+      discountPercent: 10,
+      plannedDeliveryDate: '2026-07-05',
+      preferredDeliveryDate: null,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    await adminCaller.jobs.create({
+      baySeeds: [],
+      quoteId: clearedByJobQuote.id,
+    });
+
+    const normalListResult = await salesCaller.quotes.list({
+      filters: {
+        productId: crusherProduct.id,
+        salesPersonId: 'alert-sales-id',
+        statuses: ['draft'],
+      },
+      page: 1,
+      pageSize: 1,
+      search: 'Normal',
+      sortBy: 'customerCompanyName',
+      sortDirection: 'desc',
+    });
+    const result = await listPriorityQuotes({
+      clock: () => new Date('2026-06-11T10:00:00.000+02:00'),
+      db: context.db,
+    });
+
+    expect(normalListResult).toMatchObject({
+      total: 1,
+      items: [
+        {
+          code: normalQuote.code,
+          customerCompanyName: 'Normal Filter Match',
+          status: 'draft',
+        },
+      ],
+    });
+    expect(normalListResult).not.toHaveProperty('jobStartAlerts');
+    expect(result.map((quote) => quote.code)).toEqual([
+      overdueAlert.code,
+      earliestPreferredAlert.code,
+      firstSingleDateAlert.code,
+      secondSingleDateAlert.code,
+      boundaryAlert.code,
+    ]);
+    expect(result).toEqual([
+      expect.objectContaining({
+        code: overdueAlert.code,
+        earliestDeliveryDate: '2020-05-20',
+      }),
+      expect.objectContaining({
+        code: earliestPreferredAlert.code,
+        earliestDeliveryDate: '2026-07-01',
+      }),
+      expect.objectContaining({
+        code: firstSingleDateAlert.code,
+        earliestDeliveryDate: '2026-07-10',
+      }),
+      expect.objectContaining({
+        code: secondSingleDateAlert.code,
+        earliestDeliveryDate: '2026-07-10',
+      }),
+      expect.objectContaining({
+        code: boundaryAlert.code,
+        earliestDeliveryDate: '2026-08-11',
+      }),
+    ]);
+    expect(result.map((quote) => quote.code)).not.toEqual(
+      expect.arrayContaining([blankDateQuote.code, clearedByJobQuote.code, farFutureQuote.code, sentQuote.code]),
+    );
+
+    const matchingNormalListResult = await salesCaller.quotes.list({
+      filters: {
+        statuses: ['accepted'],
+      },
+      page: 1,
+      pageSize: 10,
+      search: 'Overdue',
+      sortBy: 'code',
+      sortDirection: 'asc',
+    });
+    const endpointResult = await salesCaller.quotes.priorityList();
+
+    expect(matchingNormalListResult.items.map((quote) => quote.code)).toContain(overdueAlert.code);
+    expect(result.map((quote) => quote.code)).toContain(overdueAlert.code);
+    expect(endpointResult.map((quote) => quote.code)).toContain(overdueAlert.code);
+  });
+
   test('keeps list pricing facts based on the frozen quote snapshot when product prices change', async ({
     context,
   }) => {
@@ -1106,16 +1282,22 @@ async function createNamedQuote(
     deliveryPrice = 0,
     discountPercent,
     documentNotes = null,
+    plannedDeliveryDate = '2026-07-05',
     productId,
+    preferredDeliveryDate = '2026-07-01',
     salesPersonId = 'test-user-id',
+    status = 'draft',
   }: {
     customerCompanyName: string;
     depositPercent?: number;
     deliveryPrice?: number;
     discountPercent: number;
     documentNotes?: string | null;
+    plannedDeliveryDate?: string | null;
     productId: string;
+    preferredDeliveryDate?: string | null;
     salesPersonId?: string;
+    status?: 'accepted' | 'cancelled' | 'draft' | 'rejected' | 'sent';
   },
 ) {
   return caller.quotes.create({
@@ -1129,11 +1311,11 @@ async function createNamedQuote(
     discountPercent,
     notes: null,
     documentNotes,
-    plannedDeliveryDate: '2026-07-05',
-    preferredDeliveryDate: '2026-07-01',
+    plannedDeliveryDate,
+    preferredDeliveryDate,
     productId,
     salesPersonId,
-    status: 'draft',
+    status,
     validUntil: '2026-06-30',
   });
 }

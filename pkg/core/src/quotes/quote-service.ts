@@ -23,8 +23,10 @@ import {
 import {
   type Assembly,
   type AuthId,
+  DateOnlyIso,
   formatQuoteCode,
   JobCode,
+  type PriorityQuote,
   type ProductBay,
   ProductCurrencyCode,
   Quote,
@@ -74,6 +76,7 @@ type ProductRow = typeof products.$inferSelect;
 type QuoteAuditInput = { row: QuoteRow; selectedAssemblies: readonly QuoteSelectedAssemblyRow[] };
 
 const QUOTE_CREATED_BY_WEEK_COUNT = 12;
+const PRIORITY_QUOTE_WINDOW_MONTHS = 2;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // `code` is the summary label, not an audited field, so it lives in `label`. `selectedAssemblies` is
@@ -132,6 +135,10 @@ type QuoteLinkedJobRow = {
   jobCode: number;
   jobId: string;
   quoteId: string | null;
+};
+
+type PriorityQuoteRow = QuoteListRow & {
+  earliestDeliveryDate: string;
 };
 
 type QuoteDetailRow = QuoteRow & {
@@ -288,6 +295,63 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     sortDirection: input.sortDirection,
     total: Number(totalRow?.count ?? 0),
   };
+}
+
+export async function listPriorityQuotes({
+  clock = () => new Date(),
+  db,
+}: {
+  clock?: () => Date;
+  db: Db;
+}): Promise<PriorityQuote[]> {
+  const priorityWindowEndDate = getPriorityQuoteWindowEndDate(clock());
+  const earliestDeliveryDate = getEarliestDeliveryDateExpression();
+
+  const rows = await db
+    .select({
+      quote: quotes,
+      customerCompanyName: customers.companyName,
+      customerThumbnailDataUrl: customers.thumbnailDataUrl,
+      earliestDeliveryDate,
+      productBuildTimeDays: products.buildTimeDays,
+      productCurrencyCode: products.currencyCode,
+      productModelCode: products.modelCode,
+      productName: products.name,
+      salesPersonEmail: user.email,
+      salesPersonName: user.name,
+      salesPersonThumbnailDataUrl: user.image,
+    })
+    .from(quotes)
+    .innerJoin(customers, eq(quotes.customerId, customers.id))
+    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(user, eq(quotes.salesPersonId, user.id))
+    .where(
+      and(
+        eq(quotes.status, 'accepted'),
+        sql`${earliestDeliveryDate} is not null`,
+        sql`${earliestDeliveryDate} <= ${priorityWindowEndDate}::date`,
+        sql`not exists (
+          select 1
+          from ${jobs}
+          where ${jobs.quoteId} = ${quotes.id}
+        )`,
+      ),
+    )
+    .orderBy(asc(earliestDeliveryDate), asc(quotes.code), asc(quotes.id));
+
+  const quoteIds = rows.map((row) => row.quote.id);
+  const [selectedAssembliesByQuoteId, linkedJobsByQuoteId] = await Promise.all([
+    getSelectedAssembliesByQuoteId({ db, quoteIds }),
+    getLinkedJobsByQuoteId({ db, quoteIds }),
+  ]);
+
+  return rows.map((row) =>
+    mapPriorityQuote(
+      row,
+      linkedJobsByQuoteId.get(row.quote.id) ?? [],
+      selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+    ),
+  );
 }
 
 export async function summarizeQuotesByStatus({ db }: { db: Db }): Promise<QuoteStatusSummary> {
@@ -533,6 +597,17 @@ function mapQuoteSummary(
   };
 }
 
+function mapPriorityQuote(
+  row: PriorityQuoteRow,
+  linkedJobs: readonly QuoteLinkedJobRow[],
+  selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
+): PriorityQuote {
+  return {
+    ...mapQuoteSummary(row, linkedJobs, selectedAssemblies),
+    earliestDeliveryDate: DateOnlyIso.parse(row.earliestDeliveryDate),
+  };
+}
+
 function mapQuoteDetail(
   row: QuoteDetailRow,
   productAssembliesForQuote: Assembly[],
@@ -775,6 +850,30 @@ function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
   } as const satisfies Record<QuoteSortBy, SQL>;
 
   return columns[sortBy];
+}
+
+function getEarliestDeliveryDateExpression(): SQL<string> {
+  return sql<string>`
+    case
+      when ${quotes.preferredDeliveryDate} is null then ${quotes.plannedDeliveryDate}
+      when ${quotes.plannedDeliveryDate} is null then ${quotes.preferredDeliveryDate}
+      when ${quotes.preferredDeliveryDate} <= ${quotes.plannedDeliveryDate} then ${quotes.preferredDeliveryDate}
+      else ${quotes.plannedDeliveryDate}
+    end
+  `;
+}
+
+function getPriorityQuoteWindowEndDate(now: Date): string {
+  const currentJohannesburgDate = getZonedDateParts(now, JOHANNESBURG_TIME_ZONE);
+  const targetMonthIndex = currentJohannesburgDate.month - 1 + PRIORITY_QUOTE_WINDOW_MONTHS;
+  const targetYear = currentJohannesburgDate.year + Math.floor(targetMonthIndex / 12);
+  const targetMonth = targetMonthIndex % 12;
+  const lastDayOfTargetMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  // Keep this in date-only UTC math so a server timezone cannot shift the Johannesburg business date.
+  const targetDay = Math.min(currentJohannesburgDate.day, lastDayOfTargetMonth);
+  const targetEpochDay = Math.floor(Date.UTC(targetYear, targetMonth, targetDay) / MILLISECONDS_PER_DAY);
+
+  return toDateOnlyIso(targetEpochDay);
 }
 
 function parseQuoteCodeSearch(search: string): number | undefined {

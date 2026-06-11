@@ -295,6 +295,13 @@
       "when": 1781092332150,
       "tag": "0041_nice_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1781169440023,
+      "tag": "0042_black_strong_guy",
+      "breakpoints": true
     }
   ]
 }

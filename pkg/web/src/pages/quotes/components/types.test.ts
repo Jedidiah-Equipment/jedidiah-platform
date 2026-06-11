@@ -28,7 +28,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     salesPersonId: 'auth-user-1',
     status: 'sent',
     depositPercent: 30,
-    discountAmount: 100,
+    discountPercent: 10,
     deliveryIncluded: true,
     deliveryPrice: 50,
     validUntil: '2026-01-01',
@@ -107,7 +107,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
     depositPercent: 30,
     deliveryIncluded: true,
     deliveryPrice: 50,
-    discountAmount: 100,
+    discountPercent: 10,
     notes: 'Some notes',
     documentNotes: '30 days',
     plannedDeliveryDate: '2026-03-01',
@@ -190,7 +190,7 @@ describe('toQuoteCreateInput', () => {
     const input = toQuoteCreateInput(buildCreateFormValues());
 
     expect(input.customer).toEqual({ type: 'existing', customerId: CUSTOMER_ID });
-    expect(input.discountAmount).toBe(0);
+    expect(input.discountPercent).toBe(0);
     expect(input.depositPercent).toBe(0);
     expect(input.deliveryIncluded).toBe(true);
     expect(input.deliveryPrice).toBe(0);
@@ -226,7 +226,7 @@ describe('toQuoteUpdateInput', () => {
       depositPercent: 30,
       salesPersonId: 'auth-user-1',
       status: 'sent',
-      discountAmount: 100,
+      discountPercent: 10,
     });
     expect(input).not.toHaveProperty('customer');
     expect(input).not.toHaveProperty('customerId');

@@ -14,7 +14,7 @@ const frozenLockedQuoteFields = [
   'depositPercent',
   'deliveryIncluded',
   'deliveryPrice',
-  'discountAmount',
+  'discountPercent',
   'productId',
   'quotedBasePrice',
   'salesPersonId',

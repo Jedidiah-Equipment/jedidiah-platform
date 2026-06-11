@@ -1,4 +1,10 @@
-import { computeQuoteTotal, formatCurrency, formatPercent, hasPermission } from '@pkg/domain';
+import {
+  computeQuoteDiscountAmount,
+  computeQuoteTotal,
+  formatCurrency,
+  formatPercent,
+  hasPermission,
+} from '@pkg/domain';
 import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -322,12 +328,19 @@ function ProductCell({ quote }: { quote: QuoteSummary }) {
 }
 
 function CommercialCell({ quote }: { quote: QuoteSummary }) {
+  const liveSelectedAssemblies = getLiveSelectedAssemblies(quote);
+  const discountAmount = computeQuoteDiscountAmount({
+    discountPercent: quote.discountPercent,
+    quotedBasePrice: quote.quotedBasePrice,
+    selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
+  });
+
   return (
     <div className="flex flex-col items-end gap-0.5">
       <span className="font-medium tabular-nums">{formatCurrency(getQuoteTotal(quote), quote.quotedCurrencyCode)}</span>
-      {quote.discountAmount > 0 ? (
+      {discountAmount > 0 ? (
         <span className="text-xs text-muted-foreground">
-          {formatCurrency(quote.discountAmount, quote.quotedCurrencyCode)} discount
+          {formatCurrency(discountAmount, quote.quotedCurrencyCode)} ({formatPercent(quote.discountPercent)}) discount
         </span>
       ) : null}
     </div>
@@ -365,17 +378,21 @@ function getQuoteTotal(quote: QuoteSummary): number {
   // Materials. The list has no product catalog to resolve against, but the selection FK is
   // `on delete set null`, so a deleted catalog Optional Assembly leaves a null reference — which
   // is the complete stale set for persisted selections.
-  const liveSelectedAssemblies = quote.selectedAssemblies.filter((assembly) => assembly.productAssemblyId !== null);
+  const liveSelectedAssemblies = getLiveSelectedAssemblies(quote);
 
   return computeQuoteTotal({
     deliveryIncluded: quote.deliveryIncluded,
     deliveryPrice: quote.deliveryPrice,
-    discountAmount: quote.discountAmount,
+    discountPercent: quote.discountPercent,
     quotedBasePrice: quote.quotedBasePrice,
     selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
   });
 }
 
 function getLiveSelectedAssemblyCount(quote: QuoteSummary): number {
-  return quote.selectedAssemblies.filter((assembly) => assembly.productAssemblyId !== null).length;
+  return getLiveSelectedAssemblies(quote).length;
+}
+
+function getLiveSelectedAssemblies(quote: QuoteSummary): QuoteSummary['selectedAssemblies'] {
+  return quote.selectedAssemblies.filter((assembly) => assembly.productAssemblyId !== null);
 }

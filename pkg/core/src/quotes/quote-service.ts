@@ -90,7 +90,7 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
     depositPercent: row.depositPercent,
     deliveryIncluded: row.deliveryIncluded,
     deliveryPrice: row.deliveryPrice,
-    discountAmount: row.discountAmount,
+    discountPercent: row.discountPercent,
     notes: row.notes,
     documentNotes: row.documentNotes,
     plannedDeliveryDate: row.plannedDeliveryDate,
@@ -156,7 +156,7 @@ export function mapQuote(row: QuoteRow): Quote {
     depositPercent: row.depositPercent,
     deliveryIncluded: row.deliveryIncluded,
     deliveryPrice: row.deliveryPrice,
-    discountAmount: row.discountAmount,
+    discountPercent: row.discountPercent,
     id: row.id,
     notes: row.notes,
     documentNotes: row.documentNotes,
@@ -184,7 +184,7 @@ export async function createQuote({
   return db.transaction(async (tx) => {
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
     const product = await readProductForQuote({ productId: input.productId, tx });
-    assertValidDiscount({ basePrice: product.basePrice, discountAmount: input.discountAmount });
+    assertValidDiscount({ discountPercent: input.discountPercent });
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
     const [row] = await tx
@@ -194,7 +194,7 @@ export async function createQuote({
         depositPercent: input.depositPercent,
         deliveryIncluded: input.deliveryIncluded,
         deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
-        discountAmount: input.discountAmount,
+        discountPercent: input.discountPercent,
         notes: input.notes,
         documentNotes: input.documentNotes,
         plannedDeliveryDate: input.plannedDeliveryDate,
@@ -437,7 +437,7 @@ export async function updateQuote({
 
     const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId: before.id, tx });
 
-    assertValidDiscount({ basePrice: before.quotedBasePrice, discountAmount: input.discountAmount });
+    assertValidDiscount({ discountPercent: input.discountPercent });
 
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
@@ -446,7 +446,7 @@ export async function updateQuote({
       depositPercent: input.depositPercent,
       deliveryIncluded: input.deliveryIncluded,
       deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
-      discountAmount: input.discountAmount,
+      discountPercent: input.discountPercent,
       notes: input.notes,
       documentNotes: input.documentNotes,
       plannedDeliveryDate: input.plannedDeliveryDate,
@@ -679,8 +679,8 @@ async function readProductForQuote({
   return product;
 }
 
-function assertValidDiscount({ basePrice, discountAmount }: { basePrice: number; discountAmount: number }): void {
-  const result = validateDiscount({ basePrice, discountAmount });
+function assertValidDiscount({ discountPercent }: { discountPercent: number }): void {
+  const result = validateDiscount({ discountPercent });
 
   if (!result.allowed) {
     throw new QuoteDiscountInvalidError(result.reason);

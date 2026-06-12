@@ -439,6 +439,36 @@ describe('quotes.update', () => {
     });
   });
 
+  test('sets statusChangedAt on a status transition', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const created = await createReadyQuote(caller, context.product.id);
+    const baseline = new Date('2026-01-01T00:00:00.000Z');
+    await context.db.update(quotes).set({ statusChangedAt: baseline }).where(sql`${quotes.id} = ${created.id}`);
+
+    const updated = await caller.quotes.update({
+      ...toUpdateInput(created),
+      status: 'sent',
+    });
+
+    expect(updated.status).toBe('sent');
+    expect(new Date(updated.statusChangedAt).getTime()).toBeGreaterThan(baseline.getTime());
+  });
+
+  test('leaves statusChangedAt untouched on edits that do not change status', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const created = await createReadyQuote(caller, context.product.id);
+    const baseline = new Date('2026-01-01T00:00:00.000Z');
+    await context.db.update(quotes).set({ statusChangedAt: baseline }).where(sql`${quotes.id} = ${created.id}`);
+
+    const updated = await caller.quotes.update({
+      ...toUpdateInput(created),
+      notes: 'Non-status edit',
+    });
+
+    expect(updated.notes).toBe('Non-status edit');
+    expect(updated.statusChangedAt).toBe(baseline.toISOString());
+  });
+
   test('rejects customer and product changes at the update input boundary', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
     const alternateProduct = await createProduct(context.db, {

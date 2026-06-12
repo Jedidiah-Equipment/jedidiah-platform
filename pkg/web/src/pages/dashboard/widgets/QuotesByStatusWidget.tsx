@@ -1,40 +1,30 @@
 import type { QuoteStatusSummary } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { quoteStatusLabels } from '../../quotes/components/QuoteStatusBadge.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
-const QUOTE_STATUS_CHART_CONFIG = {
+const quoteStatusColors = {
   accepted: {
     color: 'var(--chart-3)',
-    label: quoteStatusLabels.accepted,
   },
   cancelled: {
     color: 'var(--chart-5)',
-    label: quoteStatusLabels.cancelled,
-  },
-  count: {
-    label: 'Quotes',
   },
   draft: {
     color: 'var(--chart-1)',
-    label: quoteStatusLabels.draft,
   },
   rejected: {
     color: 'var(--chart-4)',
-    label: quoteStatusLabels.rejected,
   },
   sent: {
     color: 'var(--chart-2)',
-    label: quoteStatusLabels.sent,
   },
-} satisfies ChartConfig;
+} as const;
 
 export const QuotesByStatusWidget: React.FC = () => {
   const trpc = useTRPC();
@@ -55,26 +45,34 @@ export const QuotesByStatusWidget: React.FC = () => {
 
   const chartData = summary.items.map((item) => ({
     ...item,
-    fill: `var(--color-${item.status})`,
+    fill: quoteStatusColors[item.status].color,
     label: quoteStatusLabels[item.status],
   }));
+  const maxCount = Math.max(...chartData.map((item) => item.count), 1);
 
   return (
-    <div className="flex flex-col gap-4">
-      <ChartContainer config={QUOTE_STATUS_CHART_CONFIG} className="h-52 w-full">
-        <BarChart accessibilityLayer data={chartData} margin={{ bottom: 0, left: 0, right: 8, top: 8 }}>
-          <CartesianGrid vertical={false} />
-          <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} />
-          <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
-          <ChartTooltip content={<ChartTooltipContent hideLabel nameKey="status" />} />
-          <Bar dataKey="count" radius={4}>
-            {chartData.map((item) => (
-              <Cell key={item.status} fill={item.fill} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ChartContainer>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(9rem,12rem)]">
+      <div className="flex min-w-0 flex-col gap-3">
+        {chartData.map((item) => (
+          <div key={item.status} className="grid min-w-0 grid-cols-[4.5rem_1fr] items-center gap-3 text-sm">
+            <span className="truncate text-muted-foreground">{item.label}</span>
+            <div className="h-3 min-w-0 overflow-hidden rounded-sm bg-muted">
+              <div
+                className="h-full rounded-sm"
+                style={{
+                  backgroundColor: item.fill,
+                  width: `${Math.max((item.count / maxCount) * 100, item.count > 0 ? 8 : 0)}%`,
+                }}
+              >
+                <span className="sr-only">
+                  {item.label}: {item.count} quotes
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <dl className="grid content-start gap-y-2 text-sm">
         {chartData.map((item) => (
           <div key={item.status} className="flex items-center justify-between gap-3">
             <dt className="flex min-w-0 items-center gap-2 text-muted-foreground">
@@ -92,12 +90,13 @@ export const QuotesByStatusWidget: React.FC = () => {
 function QuotesByStatusWidgetSkeleton() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex h-52 items-end gap-3">
-        <Skeleton className="h-20 flex-1" />
-        <Skeleton className="h-32 flex-1" />
-        <Skeleton className="h-44 flex-1" />
-        <Skeleton className="h-24 flex-1" />
-        <Skeleton className="h-28 flex-1" />
+      <div className="flex flex-col gap-3">
+        {['draft', 'sent', 'accepted', 'rejected', 'cancelled'].map((status) => (
+          <div key={status} className="grid grid-cols-[4.5rem_1fr] items-center gap-3">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-3 w-full" />
+          </div>
+        ))}
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
         {['draft', 'sent', 'accepted', 'rejected', 'cancelled'].map((status) => (

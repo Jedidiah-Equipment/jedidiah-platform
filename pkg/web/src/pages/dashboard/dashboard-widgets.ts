@@ -1,13 +1,12 @@
 import type { DashboardWidget } from './dashboard-widget-types.js';
 import { ActiveJobsWidget } from './widgets/ActiveJobsWidget.js';
+import { AwaitingJobCreationWidget } from './widgets/AwaitingJobCreationWidget.js';
 import { BayLoadTodayWidget } from './widgets/BayLoadTodayWidget.js';
 import { BayRunwayWidget } from './widgets/BayRunwayWidget.js';
 import { OpenPipelineWidget } from './widgets/OpenPipelineWidget.js';
-import { ProductsWidget } from './widgets/ProductsWidget.js';
 import { QuoteFlowWidget } from './widgets/QuoteFlowWidget.js';
 import { QuotesByStatusWidget } from './widgets/QuotesByStatusWidget.js';
 import { RecentActivityWidget } from './widgets/RecentActivityWidget.js';
-import { RecentQuotesWidget } from './widgets/RecentQuotesWidget.js';
 import { ShopFloorTodayWidget } from './widgets/ShopFloorTodayWidget.js';
 import { StaleSentQuotesWidget } from './widgets/StaleSentQuotesWidget.js';
 import { WinRateWidget } from './widgets/WinRateWidget.js';
@@ -40,13 +39,6 @@ export const dashboardWidgets = [
     requires: 'job:read',
     size: 'xs',
     title: 'Bay load today',
-  },
-  {
-    Component: RecentQuotesWidget,
-    id: 'recent-quotes',
-    requires: 'quote:read',
-    size: 'md',
-    title: 'Recent Quotes',
   },
   {
     Component: QuotesByStatusWidget,
@@ -84,11 +76,11 @@ export const dashboardWidgets = [
     title: 'Stale sent quotes',
   },
   {
-    Component: ProductsWidget,
-    id: 'products',
-    requires: 'product:read',
-    size: 'md',
-    title: 'Products',
+    Component: AwaitingJobCreationWidget,
+    id: 'awaiting-job-creation',
+    requires: 'quote:read',
+    size: 'sm',
+    title: 'Awaiting Job creation',
   },
   {
     Component: RecentActivityWidget,

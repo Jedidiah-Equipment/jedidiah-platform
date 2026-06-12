@@ -46,7 +46,7 @@ export function createPriorityQuoteTableRow(quote: PriorityQuote): QuoteTableRow
 
 export function getQuoteTableRowClassName(row: QuoteTableRow): string | undefined {
   return row.kind === 'priority'
-    ? 'border-amber-300/70 bg-amber-50/95 text-amber-950 hover:bg-amber-100/85 dark:border-amber-800/70 dark:bg-amber-950/30 dark:text-amber-100 dark:hover:bg-amber-950/45'
+    ? 'border-warning/40 text-warning-foreground dark:border-warning/35 [--table-row-bg:var(--warning-surface)] [--table-row-bg-hover:var(--warning-surface-hover)]'
     : undefined;
 }
 
@@ -154,7 +154,9 @@ export function createQuoteTableColumns({
       meta: {
         filterOptions: quoteStatusFilterOptions,
         filterVariant: 'multi-select',
+        headerClassName: 'min-w-32',
       },
+      size: 128,
     },
     {
       accessorFn: (row) => row.quote.job,
@@ -168,6 +170,11 @@ export function createQuoteTableColumns({
       enableSorting: false,
       header: 'Job',
       id: 'job',
+      meta: {
+        cellClassName: 'max-w-36 overflow-hidden',
+        headerClassName: 'min-w-36',
+      },
+      size: 144,
     },
   ];
 }
@@ -175,12 +182,17 @@ export function createQuoteTableColumns({
 function QuoteCodeCell({ row }: { row: QuoteTableRow }) {
   if (row.kind === 'priority') {
     return (
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="inline-flex w-fit items-center gap-1 rounded border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-normal text-amber-900 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-100">
-          <IconAlertTriangle aria-hidden className="size-3.5 shrink-0" />
-          Job start needed
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="font-mono font-semibold tabular-nums">{row.quote.code}</span>
+          <span className="inline-flex w-fit shrink-0 items-center gap-1 rounded border border-warning/45 bg-warning/15 px-1.5 text-[11px] font-semibold uppercase leading-4 tracking-normal text-warning-foreground">
+            <IconAlertTriangle aria-hidden className="size-3.5 shrink-0" />
+            Needs job
+          </span>
+        </div>
+        <span className="text-xs text-warning-foreground/75">
+          Created <DateDisplay date={row.quote.createdAt} />
         </span>
-        <span className="font-mono font-semibold tabular-nums">{row.quote.code}</span>
       </div>
     );
   }
@@ -207,9 +219,7 @@ function CustomerCell({ quote }: { quote: QuoteSummary }) {
 function SalesPersonCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {
   if (!quote.salesPersonName) {
     return (
-      <span className={cn(isPriority ? 'text-amber-900/70 dark:text-amber-100/65' : 'text-muted-foreground')}>
-        Not assigned
-      </span>
+      <span className={cn(isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>Not assigned</span>
     );
   }
 
@@ -227,12 +237,7 @@ function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteS
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <span className="truncate font-medium">{quote.productName}</span>
-      <span
-        className={cn(
-          'truncate text-xs',
-          isPriority ? 'text-amber-900/75 dark:text-amber-100/70' : 'text-muted-foreground',
-        )}
-      >
+      <span className={cn('truncate text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
         <span className="font-mono">{quote.productModelCode}</span> / {quote.productBuildTimeDays}d build
         {selectedAssemblyCount > 0 ? ` / ${selectedAssemblyCount} option${selectedAssemblyCount === 1 ? '' : 's'}` : ''}
       </span>
@@ -252,9 +257,7 @@ function CommercialCell({ isPriority, quote }: { isPriority: boolean; quote: Quo
     <div className="flex flex-col items-end gap-0.5">
       <span className="font-medium tabular-nums">{formatCurrency(getQuoteTotal(quote), quote.quotedCurrencyCode)}</span>
       {discountAmount > 0 ? (
-        <span
-          className={cn('text-xs', isPriority ? 'text-amber-900/75 dark:text-amber-100/70' : 'text-muted-foreground')}
-        >
+        <span className={cn('text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
           {formatCurrency(discountAmount, quote.quotedCurrencyCode)} ({formatPercent(quote.discountPercent)}) discount
         </span>
       ) : null}
@@ -266,9 +269,7 @@ function TermsCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSum
   return (
     <div className="flex flex-col gap-0.5">
       <span className="tabular-nums">{formatPercent(quote.depositPercent)} deposit</span>
-      <span
-        className={cn('text-xs', isPriority ? 'text-amber-900/75 dark:text-amber-100/70' : 'text-muted-foreground')}
-      >
+      <span className={cn('text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
         {quote.deliveryIncluded
           ? `${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)} delivery`
           : 'Delivery excluded'}
@@ -318,12 +319,12 @@ function PriorityQuoteDeliveryDateLine({
 }) {
   return (
     <span
-      className={cn('text-xs text-amber-900/85 dark:text-amber-100/80', isEarliest ? 'font-semibold' : undefined)}
+      className={cn('text-xs text-warning-foreground/85', isEarliest ? 'font-semibold' : undefined)}
       data-priority-date={isEarliest ? 'earliest' : undefined}
     >
       {label}{' '}
       <DateDisplay
-        className={cn(isEarliest ? 'text-sm text-amber-950 dark:text-amber-50' : undefined)}
+        className={cn(isEarliest ? 'text-sm text-warning-foreground' : undefined)}
         date={date}
         emptyValue="not set"
       />
@@ -333,9 +334,9 @@ function PriorityQuoteDeliveryDateLine({
 
 function PriorityQuoteJobCell() {
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="font-semibold text-amber-950 dark:text-amber-50">No job</span>
-      <span className="text-xs text-amber-900/80 dark:text-amber-100/75">Quote needs a Job started</span>
+    <div className="flex min-w-0 items-center gap-1.5">
+      <IconAlertTriangle aria-hidden className="size-4 shrink-0 text-warning-foreground" />
+      <span className="font-semibold text-warning-foreground">No job</span>
     </div>
   );
 }

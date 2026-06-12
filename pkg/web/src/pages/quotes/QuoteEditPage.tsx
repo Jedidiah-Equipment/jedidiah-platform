@@ -1,4 +1,4 @@
-import type { UUID } from '@pkg/schema';
+import type { PriorityQuote, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
@@ -18,7 +18,10 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
   const trpc = useTRPC();
   const { invalidateQuotes } = useQueryInvalidation();
   const quoteQuery = useQuery(trpc.quotes.get.queryOptions({ id: quoteId }));
+  const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions());
   const quote = quoteQuery.data;
+  const priorityQuote: PriorityQuote | null =
+    priorityQuotesQuery.data?.find((priorityQuote) => priorityQuote.id === quoteId) ?? null;
   const updateMutation = useMutation(
     trpc.quotes.update.mutationOptions({
       onSuccess: async () => {
@@ -36,7 +39,14 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
     >
       <ErrorMessage error={quoteQuery.error} fallbackMessage="Unable to load quote." />
       {quoteQuery.isPending ? <QuoteFormSkeleton /> : null}
-      {quote ? <QuoteForm key={quote.id} onSave={(value) => updateMutation.mutateAsync(value)} quote={quote} /> : null}
+      {quote ? (
+        <QuoteForm
+          key={quote.id}
+          onSave={(value) => updateMutation.mutateAsync(value)}
+          priorityQuote={priorityQuote}
+          quote={quote}
+        />
+      ) : null}
     </PageLayout>
   );
 };

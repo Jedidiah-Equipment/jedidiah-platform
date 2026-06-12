@@ -48,6 +48,8 @@ body {
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -87,6 +89,8 @@ body {
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --warning: oklch(0.646 0.182 55.934);
+  --warning-foreground: oklch(0.279 0.077 45.635);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -104,6 +108,11 @@ body {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --warning-surface: color-mix(in oklab, var(--warning) 12%, var(--card));
+  --warning-surface-hover: color-mix(in oklab, var(--warning) 18%, var(--card));
+  /* Opaque row backgrounds let sticky cells use bg-inherit without seams. */
+  --table-row-bg: transparent;
+  --table-row-bg-hover: color-mix(in oklab, var(--muted) 50%, transparent);
 }
 
 .dark {
@@ -122,6 +131,8 @@ body {
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --warning: oklch(0.769 0.188 70.08);
+  --warning-foreground: oklch(0.962 0.059 95.617);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
@@ -138,6 +149,8 @@ body {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --warning-surface: color-mix(in oklab, var(--warning) 16%, var(--card));
+  --warning-surface-hover: color-mix(in oklab, var(--warning) 22%, var(--card));
 }
 
 @layer base {

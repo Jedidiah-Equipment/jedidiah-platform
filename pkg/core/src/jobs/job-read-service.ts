@@ -16,7 +16,6 @@ import {
   products,
   type quotes,
   user,
-  workingCalendarOffDays,
 } from '@pkg/db';
 import {
   countWorkingDaysBetween,
@@ -28,7 +27,6 @@ import {
 } from '@pkg/domain';
 import {
   Bay,
-  BayCalendarException,
   type BayListResult,
   BaySchedule,
   type JobDepartmentSchedule,
@@ -38,7 +36,7 @@ import {
   type JobListResult,
   type JobSortBy,
   type JobSummary,
-  OffDay,
+  type OffDay,
   ProjectedJobSlot,
   QuoteCode,
   type SortDirection,
@@ -56,6 +54,11 @@ import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { getCurrentBayOperator, type OpenOperatorAssignmentsRow } from './job-bay-service.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
+import {
+  createBayWorkingCalendar,
+  createOrgWorkingCalendar,
+  listWorkingCalendarOffDays,
+} from './working-calendar-service.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
@@ -199,49 +202,6 @@ async function getJobSchedule({
   ]);
 
   return mapJobSchedule({ bays: toBaySchedules(rows, offDays), jobId });
-}
-
-export async function listWorkingCalendarOffDays(db: Db | DatabaseTransaction) {
-  const rows = await db
-    .select({
-      date: workingCalendarOffDays.date,
-      label: workingCalendarOffDays.label,
-    })
-    .from(workingCalendarOffDays)
-    .orderBy(asc(workingCalendarOffDays.date));
-
-  return rows.map((row) => OffDay.parse(row));
-}
-
-export function createOrgWorkingCalendar(offDays: readonly OffDay[]): WorkingCalendar {
-  return {
-    orgOffDays: new Set(offDays.map((offDay) => offDay.date)),
-  };
-}
-
-export function createBayWorkingCalendar(
-  orgWorkingCalendar: WorkingCalendar,
-  exceptions: readonly { date: string; direction: 'work' | 'off' }[],
-): WorkingCalendar {
-  return {
-    ...orgWorkingCalendar,
-    bayExceptions: new Map(exceptions.map((exception) => [exception.date, exception.direction])),
-  };
-}
-
-export async function listBayCalendarExceptions(db: Db | DatabaseTransaction, bayId: UUID) {
-  const rows = await db
-    .select({
-      bayId: jobBayCalendarExceptions.bayId,
-      date: jobBayCalendarExceptions.date,
-      direction: jobBayCalendarExceptions.direction,
-      label: jobBayCalendarExceptions.label,
-    })
-    .from(jobBayCalendarExceptions)
-    .where(eq(jobBayCalendarExceptions.bayId, bayId))
-    .orderBy(asc(jobBayCalendarExceptions.date));
-
-  return rows.map((row) => BayCalendarException.parse(row));
 }
 
 export async function listJobs({ db, input }: { db: Db; input: JobListInput }): Promise<JobListResult> {

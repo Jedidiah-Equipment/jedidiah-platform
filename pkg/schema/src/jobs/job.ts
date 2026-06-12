@@ -30,7 +30,7 @@ export const Bay = z.object({
   department: Department,
   name: BayName,
   currentOperator: BayOperator.nullable().default(null),
-  /** Date-only Slot Projection anchor — a plant business date (ADR-0043). */
+  /** Date-only Slot Projection anchor — a plant business date. */
   scheduleOrigin: DateOnlyIso,
   disabledAt: DateIso.nullable(),
   createdAt: DateIso,
@@ -292,7 +292,7 @@ export const BookJobSlotInput = z
     bayId: UUID,
     jobId: UUID,
     durationDays: SlotDurationDays,
-    /** Insert-at-Date placement hint — resolved to a queue position at booking time, never stored (ADR-0042). */
+    /** Insert-at-Date placement hint — resolved to a queue position at booking time, never stored. */
     startDate: DateOnlyIso.optional(),
   })
   .strict();
@@ -464,7 +464,7 @@ export const JobBaySeedInput = z
   .object({
     bayId: UUID,
     durationDays: SlotDurationDays,
-    /** Insert-at-Date placement hint for the seeded Slot — resolved at booking time, never stored (ADR-0042). */
+    /** Insert-at-Date placement hint for the seeded Slot — resolved at booking time, never stored. */
     startDate: DateOnlyIso.optional(),
   })
   .strict();

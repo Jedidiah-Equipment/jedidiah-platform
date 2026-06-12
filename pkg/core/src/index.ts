@@ -7,6 +7,7 @@ export * from './jobs/job-bay-service.js';
 export * from './jobs/job-errors.js';
 export * from './jobs/job-read-service.js';
 export * from './jobs/job-service.js';
+export * from './jobs/working-calendar-service.js';
 export * from './parts/part-errors.js';
 export * from './parts/part-service.js';
 export * from './products/product-assembly-service.js';

@@ -1,14 +1,8 @@
 import type { DateOnlyIso } from '@pkg/schema';
 
 import { addDateOnlyDays, maxDateOnly } from '../formatting/date-only.js';
-import {
-  countWorkingDaysBetween,
-  firstWorkingDayOnOrAfter,
-  type ProjectableJobSlot,
-  type ProjectedSlot,
-  projectJobSlots,
-  type WorkingCalendar,
-} from './job-slot-projection.js';
+import { type ProjectableJobSlot, type ProjectedSlot, projectJobSlots } from './job-slot-projection.js';
+import { countWorkingDaysBetween, firstWorkingDayOnOrAfter, type WorkingCalendar } from './working-calendar.js';
 
 export type InsertAtDatePlacement<TSlot extends ProjectableJobSlot> =
   /** `idleGapDays` is the idle filler owed between a past queue end and the start (0 when the queue reaches today). */
@@ -17,7 +11,7 @@ export type InsertAtDatePlacement<TSlot extends ProjectableJobSlot> =
   | { type: 'split'; targetSlot: ProjectedSlot<TSlot>; beforeDays: number; afterDays: number; startDate: DateOnlyIso };
 
 /**
- * Resolves an Insert-at-Date placement hint into a Bay Queue position (ADR-0042).
+ * Resolves an Insert-at-Date placement hint into a Bay Queue position.
  * The picked date is never stored: it is floored to tomorrow (the Slot projected
  * over today is never disturbed), normalized forward to a working day, and then
  * compared against the live projection — on or past the next available day it

@@ -5,11 +5,13 @@ import { Link } from '@tanstack/react-router';
 import type React from 'react';
 
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
+const AWAITING_JOB_CREATION_MAX_ROWS = 8;
 const AWAITING_JOB_CREATION_SKELETON_ROWS = ['first', 'second', 'third', 'fourth', 'fifth'] as const;
 
 export const AwaitingJobCreationWidget: React.FC = () => {
@@ -29,14 +31,26 @@ export const AwaitingJobCreationWidget: React.FC = () => {
     return <DashboardWidgetEmpty>No accepted quotes need Jobs.</DashboardWidgetEmpty>;
   }
 
+  const visibleQuotes = quotes.slice(0, AWAITING_JOB_CREATION_MAX_ROWS);
+  const hiddenQuoteCount = quotes.length - visibleQuotes.length;
+
   return (
-    <ul className="flex flex-col divide-y">
-      {quotes.map((quote) => (
-        <li key={quote.id}>
-          <AwaitingJobCreationRow quote={quote} />
-        </li>
-      ))}
-    </ul>
+    <div className="flex min-h-0 flex-col gap-3">
+      <ScrollArea className="max-h-80">
+        <ul className="flex flex-col divide-y pr-3">
+          {visibleQuotes.map((quote) => (
+            <li key={quote.id}>
+              <AwaitingJobCreationRow quote={quote} />
+            </li>
+          ))}
+        </ul>
+      </ScrollArea>
+      {hiddenQuoteCount > 0 ? (
+        <p className="text-muted-foreground text-xs">
+          Showing first {visibleQuotes.length} of {quotes.length} quotes needing Jobs.
+        </p>
+      ) : null}
+    </div>
   );
 };
 

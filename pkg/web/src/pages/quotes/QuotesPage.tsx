@@ -49,6 +49,8 @@ const quoteSortOptions: SortOptions<QuoteListInput> = {
   },
 };
 
+const quoteTablePinnedRightColumns = ['status', 'job'];
+
 export const QuotesPage: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -124,6 +126,11 @@ const QuoteTable: React.FC = () => {
     data: tableRows,
     enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
+    initialState: {
+      columnPinning: {
+        right: quoteTablePinnedRightColumns,
+      },
+    },
     manualFiltering: true,
     manualPagination: true,
     manualSorting: true,

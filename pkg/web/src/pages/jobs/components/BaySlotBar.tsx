@@ -199,7 +199,7 @@ export const BaySlotBar: React.FC<{
                       ? 'rounded-sm border border-border bg-card px-2 py-1 text-muted-foreground'
                       : cn(
                           'rounded-lg border bg-card px-2.5 py-1.5 text-card-foreground',
-                          isActive ? 'border-white/70 ring-1 ring-white/25' : 'border-border',
+                          isActive ? 'border-primary/60 ring-1 ring-primary/20' : 'border-border',
                         ),
                     // Filtered-out slots fade back but stay interactive; hover restores them.
                     isDimmed && 'opacity-20 hover:opacity-100',
@@ -224,13 +224,16 @@ export const BaySlotBar: React.FC<{
             <BaySlotDayHatch segments={daySegments} slotStart={startDate} />
           )}
           {isIdle ? (
-            <span className="relative z-10 flex h-full items-center gap-1.5 pr-8">
+            <span className={cn('relative z-10 flex h-full items-center gap-1.5', canEditSchedule && 'pr-14')}>
               <span className="min-w-0 truncate font-medium">{label}</span>
               <span className="shrink-0 text-[0.65rem] tabular-nums opacity-80">{daySummary}</span>
             </span>
           ) : (
             <button
-              className="relative z-10 block h-full w-full cursor-pointer pr-8 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={cn(
+                'relative z-10 block h-full w-full cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                canEditSchedule && 'pr-14',
+              )}
               disabled={!job || slot.previewSplit !== undefined}
               onClick={() => {
                 if (job) {
@@ -250,7 +253,7 @@ export const BaySlotBar: React.FC<{
                     <button
                       aria-label={`Remove ${label}`}
                       className={cn(
-                        'absolute top-1/2 right-2 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                        'absolute top-1/2 right-4 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
                         'hover:bg-destructive hover:text-white focus-visible:ring-ring',
                       )}
                       disabled={isScheduleMutationPending || isRemoving}
@@ -296,7 +299,7 @@ export const BaySlotBar: React.FC<{
               <button
                 aria-label={`Resize ${label}`}
                 className={cn(
-                  'absolute top-0 right-0 h-full w-2 cursor-ew-resize border-r-2 outline-none disabled:cursor-not-allowed disabled:opacity-50',
+                  'absolute top-0 right-0 z-30 h-full w-3 cursor-ew-resize border-r-2 outline-none disabled:cursor-not-allowed disabled:opacity-50',
                   isIdle
                     ? 'border-foreground/40 bg-foreground/10 hover:bg-foreground/15 focus-visible:ring-2 focus-visible:ring-foreground'
                     : 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring',

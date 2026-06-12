@@ -411,8 +411,10 @@ const BayScheduleSidebar: React.FC<{
         {bays.map((bay) => {
           const warning = horizonWarnings.get(bay.id);
           const currentSlot = getCurrentBaySlot(bay.slots, today);
-          const statusLabel = currentSlot?.kind === 'work' ? 'Busy on' : 'Idle';
-          const statusValue = currentSlot?.kind === 'work' ? currentSlot.jobCode : (currentSlot?.label ?? '');
+          const statusText =
+            currentSlot?.kind === 'work'
+              ? `Busy on ${currentSlot.jobCode}`
+              : ['Idle', currentSlot?.label].filter(Boolean).join(' ');
 
           return (
             <div
@@ -423,8 +425,7 @@ const BayScheduleSidebar: React.FC<{
               <BayOperatorIndicator operator={bay.currentOperator} />
               <div className="flex min-w-40 flex-1 flex-col gap-1">
                 <p className="truncate text-base text-foreground leading-tight">{bay.name}</p>
-                <p className="font-medium text-muted-foreground leading-none">{statusLabel}</p>
-                <p className="truncate text-xs leading-tight font-mono">{statusValue}</p>
+                <p className="truncate font-mono text-muted-foreground text-xs leading-tight">{statusText}</p>
               </div>
               {warning ? <MaintainedHorizonWarningBadge warning={warning} /> : null}
             </div>

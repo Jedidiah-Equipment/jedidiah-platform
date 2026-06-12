@@ -54,9 +54,11 @@ export function DashboardWidgetError({ error, fallbackMessage }: { error: unknow
 }
 
 const dashboardWidgetSizeClassNames = {
-  lg: 'md:col-span-2 xl:col-span-4',
-  md: 'md:col-span-2',
-  sm: 'md:col-span-1',
+  lg: 'md:col-span-6 xl:col-span-8',
+  md: 'md:col-span-6',
+  sm: 'md:col-span-3 xl:col-span-4',
+  xl: 'md:col-span-6 xl:col-span-12',
+  xs: 'md:col-span-3',
 } as const satisfies Record<DashboardWidgetSize, string>;
 
 type DashboardWidgetErrorBoundaryProps = {

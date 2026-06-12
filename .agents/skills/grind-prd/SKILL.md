@@ -44,7 +44,7 @@ Work one issue at a time. Never have two grind PRs open at once.
 5. Local review:
    - If this skill is being run by Codex, use Claude as the reviewer to avoid nested Codex reviewing Codex's own work:
      ```
-     claude --print --model opus4.8 --effort high "Review the uncommitted changes and the diff against main in this repo for bugs, missed edge cases, and convention violations. Be specific."
+     claude --print --model claude-opus-4-8 --effort high "Review the uncommitted changes and the diff against main in this repo for bugs, missed edge cases, and convention violations. Be specific."
      ```
    - Otherwise, use Codex review with GPT-5.5 and high reasoning:
      ```

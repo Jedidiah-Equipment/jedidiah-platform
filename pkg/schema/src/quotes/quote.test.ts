@@ -113,6 +113,7 @@ describe('QuoteDetail', () => {
         salesPersonThumbnailDataUrl: null,
         selectedAssemblies: [],
         status: 'accepted',
+        statusChangedAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
         validUntil: null,
       }).productBays,
@@ -185,6 +186,7 @@ describe('PriorityQuote', () => {
       salesPersonThumbnailDataUrl: null,
       selectedAssemblies: [],
       status: 'accepted',
+      statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
       validUntil: null,
     };

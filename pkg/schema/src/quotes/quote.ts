@@ -53,6 +53,7 @@ export const Quote = z.object({
   productId: UUID,
   salesPersonId: AuthId,
   status: QuoteStatus,
+  statusChangedAt: DateIso,
   discountPercent: QuoteDiscountPercent,
   depositPercent: QuoteDepositPercent,
   deliveryIncluded: z.boolean(),

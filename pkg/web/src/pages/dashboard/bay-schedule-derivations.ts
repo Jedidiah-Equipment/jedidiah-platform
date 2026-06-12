@@ -130,6 +130,20 @@ export function getJobProjectedFinishDates(bays: readonly BaySchedule[]): Map<UU
   return finishDates;
 }
 
+export function isJobDeliveryAtRisk({
+  finishDatesByJobId,
+  jobId,
+  plannedDeliveryDate,
+}: {
+  finishDatesByJobId: ReadonlyMap<UUID, DateOnlyIso>;
+  jobId: UUID;
+  plannedDeliveryDate: DateOnlyIso;
+}): boolean {
+  const projectedFinishDate = finishDatesByJobId.get(jobId);
+
+  return projectedFinishDate ? projectedFinishDate > plannedDeliveryDate : false;
+}
+
 export type ActiveJobsSummary = {
   activeJobs: number;
   finishingThisWeek: number;

@@ -11,6 +11,7 @@ import {
   listQuoteSalespeople,
   listQuotes,
   listStaleSentQuotes,
+  listUpcomingDeliveryQuotes,
   type QuoteCoreError,
   summarizeQuotePipeline,
   summarizeQuotesByStatus,
@@ -41,6 +42,8 @@ export const quotesRouter = router({
     .query(({ ctx, input }) => listQuotes({ db: ctx.db, input })),
 
   priorityList: authorizedProcedure('quote:read').query(({ ctx }) => listPriorityQuotes({ db: ctx.db })),
+
+  upcomingDeliveries: authorizedProcedure('quote:read').query(({ ctx }) => listUpcomingDeliveryQuotes({ db: ctx.db })),
 
   get: authorizedProcedure('quote:read')
     .input(z.object({ id: UUID }))

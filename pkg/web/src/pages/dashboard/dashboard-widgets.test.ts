@@ -6,16 +6,15 @@ import { filterDashboardWidgets } from './dashboard-widget-types.js';
 import { dashboardWidgets } from './dashboard-widgets.js';
 
 vi.mock('./widgets/ActiveJobsWidget.js', () => ({ ActiveJobsWidget: () => null }));
+vi.mock('./widgets/AwaitingJobCreationWidget.js', () => ({ AwaitingJobCreationWidget: () => null }));
 vi.mock('./widgets/BayLoadTodayWidget.js', () => ({ BayLoadTodayWidget: () => null }));
 vi.mock('./widgets/BayRunwayWidget.js', () => ({ BayRunwayWidget: () => null }));
 vi.mock('./widgets/ShopFloorTodayWidget.js', () => ({ ShopFloorTodayWidget: () => null }));
-vi.mock('./widgets/RecentQuotesWidget.js', () => ({ RecentQuotesWidget: () => null }));
 vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
 vi.mock('./widgets/OpenPipelineWidget.js', () => ({ OpenPipelineWidget: () => null }));
 vi.mock('./widgets/WinRateWidget.js', () => ({ WinRateWidget: () => null }));
 vi.mock('./widgets/QuoteFlowWidget.js', () => ({ QuoteFlowWidget: () => null }));
 vi.mock('./widgets/StaleSentQuotesWidget.js', () => ({ StaleSentQuotesWidget: () => null }));
-vi.mock('./widgets/ProductsWidget.js', () => ({ ProductsWidget: () => null }));
 vi.mock('./widgets/RecentActivityWidget.js', () => ({ RecentActivityWidget: () => null }));
 
 const WidgetComponent = () => null;
@@ -84,16 +83,6 @@ describe('filterDashboardWidgets', () => {
 });
 
 describe('dashboardWidgets', () => {
-  it('registers Recent Quotes behind quote read access', () => {
-    const recentQuotesWidget = dashboardWidgets.find((widget) => widget.id === 'recent-quotes');
-
-    expect(recentQuotesWidget).toMatchObject({
-      requires: 'quote:read',
-      size: 'md',
-      title: 'Recent Quotes',
-    });
-  });
-
   it('registers Quotes by status behind quote read access', () => {
     const quotesByStatusWidget = dashboardWidgets.find((widget) => widget.id === 'quotes-by-status');
 
@@ -109,25 +98,23 @@ describe('dashboardWidgets', () => {
     const winRateWidget = dashboardWidgets.find((widget) => widget.id === 'win-rate');
     const quoteFlowWidget = dashboardWidgets.find((widget) => widget.id === 'quote-flow');
     const staleSentWidget = dashboardWidgets.find((widget) => widget.id === 'stale-sent-quotes');
+    const awaitingJobCreationWidget = dashboardWidgets.find((widget) => widget.id === 'awaiting-job-creation');
 
     expect(openPipelineWidget).toMatchObject({ requires: 'quote:read', size: 'xs', title: 'Open pipeline (sent)' });
     expect(winRateWidget).toMatchObject({ requires: 'quote:read', size: 'xs', title: 'Win rate (90d)' });
     expect(quoteFlowWidget).toMatchObject({ requires: 'quote:read', size: 'md', title: 'Quote flow' });
     expect(staleSentWidget).toMatchObject({ requires: 'quote:read', size: 'sm', title: 'Stale sent quotes' });
-  });
-
-  it('removes the retired created-over-time widget from the registry', () => {
-    expect(widgetIds(dashboardWidgets)).not.toContain('quotes-created-over-time');
-  });
-
-  it('registers Products behind product read access', () => {
-    const productsWidget = dashboardWidgets.find((widget) => widget.id === 'products');
-
-    expect(productsWidget).toMatchObject({
-      requires: 'product:read',
-      size: 'md',
-      title: 'Products',
+    expect(awaitingJobCreationWidget).toMatchObject({
+      requires: 'quote:read',
+      size: 'sm',
+      title: 'Awaiting Job creation',
     });
+  });
+
+  it('removes the retired widgets from the registry', () => {
+    expect(widgetIds(dashboardWidgets)).not.toContain('quotes-created-over-time');
+    expect(widgetIds(dashboardWidgets)).not.toContain('recent-quotes');
+    expect(widgetIds(dashboardWidgets)).not.toContain('products');
   });
 
   it('registers Recent activity behind audit read access', () => {
@@ -140,14 +127,6 @@ describe('dashboardWidgets', () => {
     });
   });
 
-  it('shows Recent Quotes to sales users and hides it from procurement managers', () => {
-    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
-
-    expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('recent-quotes');
-    expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('recent-quotes');
-  });
-
   it('shows Quotes by status to sales users and hides it from procurement managers', () => {
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
     const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
@@ -157,7 +136,13 @@ describe('dashboardWidgets', () => {
   });
 
   it('shows the sales metrics widgets to sales users and hides them from procurement managers', () => {
-    const salesMetricsWidgetIds = ['open-pipeline', 'win-rate', 'quote-flow', 'stale-sent-quotes'];
+    const salesMetricsWidgetIds = [
+      'open-pipeline',
+      'win-rate',
+      'quote-flow',
+      'stale-sent-quotes',
+      'awaiting-job-creation',
+    ];
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
     const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
@@ -168,14 +153,6 @@ describe('dashboardWidgets', () => {
       expect(salesIds).toContain(widgetId);
       expect(productEditorIds).not.toContain(widgetId);
     }
-  });
-
-  it('shows Products to procurement managers and hides it from sales users', () => {
-    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
-    const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
-
-    expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).toContain('products');
-    expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).not.toContain('products');
   });
 
   it('registers the shop-floor band behind job read access', () => {

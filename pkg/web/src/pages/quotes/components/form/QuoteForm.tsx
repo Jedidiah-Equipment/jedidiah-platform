@@ -1,12 +1,26 @@
-import { computeQuoteDiscountAmount, computeQuoteTotal, resolveEffectiveBom } from '@pkg/domain';
-import { type QuoteDetail, type QuoteDocumentGenerationWarning, QuoteStatus, type QuoteUpdateInput } from '@pkg/schema';
-import { IconComponents, IconNotes, IconReceipt2, IconSettings, IconTruckDelivery } from '@tabler/icons-react';
+import { computeQuoteDiscountAmount, computeQuoteTotal, formatDate, resolveEffectiveBom } from '@pkg/domain';
+import {
+  type PriorityQuote,
+  type QuoteDetail,
+  type QuoteDocumentGenerationWarning,
+  QuoteStatus,
+  type QuoteUpdateInput,
+} from '@pkg/schema';
+import {
+  IconAlertTriangle,
+  IconComponents,
+  IconNotes,
+  IconReceipt2,
+  IconSettings,
+  IconTruckDelivery,
+} from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 
 import { AuditTable, useQuoteAuditTableStore } from '@/components/audit/AuditTable.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
@@ -22,10 +36,11 @@ import { type QuoteComputedSummary, QuoteRightPanel } from './QuoteRightPanel.js
 
 type QuoteFormProps = {
   onSave: (value: QuoteUpdateInput) => Promise<unknown>;
+  priorityQuote?: PriorityQuote | null | undefined;
   quote: QuoteDetail;
 };
 
-export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
+export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
   const isLocked = quote.job !== null;
 
   const selectedProduct = useMemo(
@@ -78,6 +93,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
             </TabsList>
             <TabsContent className="pt-4" value="details">
               <div className="grid gap-6">
+                {priorityQuote ? <QuotePriorityAlert priorityQuote={priorityQuote} /> : null}
                 <QuoteFormSection icon={IconSettings} title="Quote setup">
                   <div className="grid gap-3 md:grid-cols-2">
                     <form.AppField name="salesPersonId">
@@ -320,3 +336,44 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, quote }) => {
     </form>
   );
 };
+
+const QuotePriorityAlert: React.FC<{
+  priorityQuote: PriorityQuote;
+}> = ({ priorityQuote }) => {
+  const buildDuration = formatWorkingDays(priorityQuote.productBuildTimeDays);
+
+  return (
+    <Alert className="border-warning/45 bg-warning/10 text-warning-foreground">
+      <IconAlertTriangle className="text-warning" />
+      <AlertTitle>Needs job</AlertTitle>
+      <AlertDescription className="text-warning-foreground/85">
+        This quote is accepted but no Job has been started. {describeDeliveryDates(priorityQuote)} The{' '}
+        {priorityQuote.productName} takes {buildDuration} to build, so start a Job soon to reserve Bay capacity in time
+        for {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
+      </AlertDescription>
+    </Alert>
+  );
+};
+
+function describeDeliveryDates(quote: PriorityQuote): string {
+  const preferred = quote.preferredDeliveryDate ? formatQuoteDate(quote.preferredDeliveryDate) : null;
+  const planned = quote.plannedDeliveryDate ? formatQuoteDate(quote.plannedDeliveryDate) : null;
+
+  if (preferred && planned) {
+    return `The customer prefers delivery by ${preferred}, and delivery is planned for ${planned}.`;
+  }
+
+  if (preferred) {
+    return `The customer prefers delivery by ${preferred}.`;
+  }
+
+  return planned ? `Delivery is planned for ${planned}.` : '';
+}
+
+function formatQuoteDate(value: string): string {
+  return formatDate(value, 'MMM d, yyyy');
+}
+
+function formatWorkingDays(days: number): string {
+  return `${days} working day${days === 1 ? '' : 's'}`;
+}

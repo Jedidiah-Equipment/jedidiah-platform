@@ -26,9 +26,8 @@ describe('Quote table priority rows', () => {
       ),
     ]);
 
-    expect(html).toContain('Job start needed');
+    expect(html).toContain('Needs job');
     expect(html).toContain('No job');
-    expect(html).toContain('Quote needs a Job started');
     expect(html).toContain('Preferred');
     expect(html).toContain('Jun 20, 2026');
     expect(html).toContain('Planned');
@@ -55,6 +54,19 @@ describe('Quote table priority rows', () => {
 
     expect(html.match(/>QUO-00001</g)).toHaveLength(2);
   });
+
+  it('renders status and job as right-pinned columns', () => {
+    const html = renderQuoteTableRows([
+      createPriorityQuoteTableRow(buildPriorityQuote({ job: null })),
+      createQuoteTableRow(buildPriorityQuote({ job: null })),
+    ]);
+
+    expect(html).toContain('right:144px');
+    expect(html).toContain('right:0px');
+    expect(html).toContain('[--table-row-bg:var(--warning-surface)]');
+    expect(html).toContain('bg-inherit');
+    expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+  });
 });
 
 function renderQuoteTableRows(rows: QuoteTableRow[]) {
@@ -71,6 +83,11 @@ function TestQuoteTable({ rows }: { rows: QuoteTableRow[] }) {
     }),
     data: rows,
     getCoreRowModel: getCoreRowModel(),
+    initialState: {
+      columnPinning: {
+        right: ['status', 'job'],
+      },
+    },
   });
 
   return (

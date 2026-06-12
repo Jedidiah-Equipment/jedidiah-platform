@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/sidebar.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { cn } from '@/lib/utils.js';
+import { QuotesPriorityNavIndicator } from './AppNavIndicators.js';
 
 type NavSubItem = {
   title: string;
@@ -42,6 +43,7 @@ type MainNavItem = {
   permission?: AppPermission;
   link: ReturnType<typeof linkOptions>;
   icon: TablerIcon;
+  indicator?: React.ComponentType;
   children?: readonly NavSubItem[];
 };
 
@@ -74,6 +76,7 @@ const navSections = [
         permission: 'quote:read',
         link: linkOptions({ to: '/quotes' }),
         icon: IconFileText,
+        indicator: QuotesPriorityNavIndicator,
       },
       {
         title: 'Jobs',
@@ -156,9 +159,10 @@ type NavLinkProps = React.ComponentProps<typeof Link>;
 const NavCollapsibleItem: React.FC<{
   title: string;
   icon: TablerIcon;
+  indicator?: React.ComponentType | undefined;
   navLink: NavLinkProps;
   subItems: ReadonlyArray<{ title: string; link: NavLinkProps }>;
-}> = ({ title, icon: Icon, navLink, subItems }) => {
+}> = ({ title, icon: Icon, indicator: Indicator, navLink, subItems }) => {
   const [open, setOpen] = React.useState(true);
 
   return (
@@ -173,6 +177,7 @@ const NavCollapsibleItem: React.FC<{
           >
             <Icon />
             <span>{title}</span>
+            {Indicator ? <Indicator /> : null}
             <IconChevronRight
               aria-hidden="true"
               className={cn('ml-auto size-4! transition-transform', open && 'rotate-90')}
@@ -226,6 +231,7 @@ export const AppNavMain: React.FC = () => {
             {section.items.map((item) => {
               const subItems = 'children' in item ? item.children.filter((child) => canSee(child.permission)) : [];
               const [firstChild] = subItems;
+              const Indicator = 'indicator' in item ? item.indicator : undefined;
 
               if (!firstChild) {
                 return (
@@ -240,6 +246,7 @@ export const AppNavMain: React.FC = () => {
                         >
                           <item.icon />
                           <span>{item.title}</span>
+                          {Indicator ? <Indicator /> : null}
                         </SidebarMenuButton>
                       )}
                     </Link>
@@ -252,6 +259,7 @@ export const AppNavMain: React.FC = () => {
                   key={item.title}
                   title={item.title}
                   icon={item.icon}
+                  indicator={Indicator}
                   navLink={firstChild.link}
                   subItems={subItems}
                 />

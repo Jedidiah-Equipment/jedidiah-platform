@@ -1,4 +1,4 @@
-import { flexRender, type Row, type RowData, type Table as TanStackTable } from '@tanstack/react-table';
+import { type Column, flexRender, type Row, type RowData, type Table as TanStackTable } from '@tanstack/react-table';
 import type React from 'react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area.js';
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
@@ -77,12 +77,26 @@ export function DataTable<TData>({
         ) : null}
 
         <ScrollArea className="w-full">
-          <table data-slot="table" className={cn('w-full caption-bottom text-sm', tableClassName)}>
+          <table
+            data-slot="table"
+            className={cn(
+              'w-full caption-bottom text-sm',
+              '[--table-row-bg:var(--card)] [--table-row-bg-hover:color-mix(in_oklab,var(--muted)_50%,var(--card))]',
+              tableClassName,
+            )}
+          >
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <TableHead className={header.column.columnDef.meta?.headerClassName} key={header.id}>
+                    <TableHead
+                      className={cn(
+                        header.column.columnDef.meta?.headerClassName,
+                        getPinnedColumnClassName(header.column, 'header'),
+                      )}
+                      key={header.id}
+                      style={getPinnedColumnStyle(header.column)}
+                    >
                       {header.isPlaceholder ? null : <DataTableHeader debounceMs={filterDebounceMs} header={header} />}
                     </TableHead>
                   ))}
@@ -162,12 +176,53 @@ function DataTableRow<TData>({
       tabIndex={onRowClick ? 0 : undefined}
     >
       {row.getVisibleCells().map((cell) => (
-        <TableCell className={getCellClassName(cell)} key={cell.id}>
+        <TableCell
+          className={cn(getCellClassName(cell), getPinnedColumnClassName(cell.column, 'cell'))}
+          key={cell.id}
+          style={getPinnedColumnStyle(cell.column)}
+        >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </TableCell>
       ))}
     </TableRow>
   );
+}
+
+function getPinnedColumnClassName<TData>(column: Column<TData, unknown>, kind: 'cell' | 'header') {
+  const pinned = column.getIsPinned();
+
+  if (!pinned) {
+    return undefined;
+  }
+
+  // bg-inherit tracks the row's background through every state (hover, selected) because the
+  // row paints an opaque --table-row-bg; sticky cells therefore never need their own colors.
+  return cn(
+    'sticky bg-inherit',
+    kind === 'header' ? 'z-30' : 'z-20',
+    pinned === 'left' &&
+      column.getIsLastColumn('left') &&
+      'after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border/80 after:content-[""] before:absolute before:inset-y-0 before:right-0 before:w-6 before:translate-x-full before:bg-gradient-to-r before:from-black/30 before:to-transparent before:content-[""]',
+    pinned === 'right' &&
+      column.getIsFirstColumn('right') &&
+      'after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-border/80 after:content-[""] before:absolute before:inset-y-0 before:left-0 before:w-6 before:-translate-x-full before:bg-gradient-to-l before:from-black/30 before:to-transparent before:content-[""]',
+  );
+}
+
+function getPinnedColumnStyle<TData>(column: Column<TData, unknown>): React.CSSProperties | undefined {
+  const pinned = column.getIsPinned();
+
+  if (!pinned) {
+    return undefined;
+  }
+
+  return {
+    left: pinned === 'left' ? `${column.getStart('left')}px` : undefined,
+    maxWidth: `${column.getSize()}px`,
+    minWidth: `${column.getSize()}px`,
+    right: pinned === 'right' ? `${column.getAfter('right')}px` : undefined,
+    width: `${column.getSize()}px`,
+  };
 }
 
 const interactiveTargetSelector = [

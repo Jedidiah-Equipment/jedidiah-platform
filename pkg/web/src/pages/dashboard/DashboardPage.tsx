@@ -15,7 +15,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = () => {
 
   return (
     <PageLayout title="Dashboard">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-6 xl:grid-cols-12">
         {visibleWidgets.map((widget) => (
           <DashboardWidgetCard key={widget.id} size={widget.size} title={widget.title}>
             <widget.Component />

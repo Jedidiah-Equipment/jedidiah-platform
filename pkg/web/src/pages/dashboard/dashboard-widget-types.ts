@@ -2,7 +2,7 @@ import { hasPermission } from '@pkg/domain';
 import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import type React from 'react';
 
-export type DashboardWidgetSize = 'sm' | 'md' | 'lg';
+export type DashboardWidgetSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 export type DashboardWidget = {
   id: string;

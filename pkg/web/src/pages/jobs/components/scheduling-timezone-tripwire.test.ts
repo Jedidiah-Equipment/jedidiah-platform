@@ -10,7 +10,7 @@ import { fromJobCalendarDateKey, toJobCalendarDateKey } from './job-date-key.js'
 
 const day = (value: string) => DateOnlyIso.parse(value);
 
-// The schedule UI must show the same dates from any browser timezone (ADR-0043).
+// The schedule UI must show the same dates from any browser timezone.
 // A regression that leaks the ambient timezone into picker bounds, placement
 // previews, or the local calendar bridge fails here.
 const TRIPWIRE_TIME_ZONES = ['Africa/Johannesburg', 'UTC', 'America/New_York', 'Pacific/Auckland'];

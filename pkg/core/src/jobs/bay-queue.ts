@@ -28,7 +28,7 @@ export type BayQueueSwapResult = {
 
 export type BayQueue = {
   bay: JobBayRow;
-  /** Books a Slot via Insert at Date (ADR-0042); without a start date the placement is a plain append. */
+  /** Books a Slot via Insert at Date; without a start date the placement is a plain append. */
   book(spec: BayQueueSlotSpec, options?: { startDate?: DateOnlyIso | undefined }): Promise<JobSlotRow>;
   insertRelative(targetSlotId: UUID, placement: 'before' | 'after', spec: BayQueueSlotSpec): Promise<JobSlotRow>;
   swap(slotId: UUID, direction: 'left' | 'right'): Promise<BayQueueSwapResult>;

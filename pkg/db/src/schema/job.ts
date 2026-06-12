@@ -38,7 +38,7 @@ export const jobBays = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     department: text('department').notNull().$type<Department>(),
     name: text('name').notNull(),
-    // Plant business date (ADR-0043); set by core at Bay creation, never defaulted by the DB.
+    // Plant business date; set by core at Bay creation, never defaulted by the DB.
     scheduleOrigin: date('schedule_origin', { mode: 'string' }).notNull(),
     disabledAt: timestamp('disabled_at', { mode: 'date', withTimezone: true }),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),

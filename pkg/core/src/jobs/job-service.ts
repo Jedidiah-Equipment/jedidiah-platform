@@ -2,7 +2,6 @@ import {
   type DatabaseTransaction,
   type Db,
   documents,
-  jobBayCalendarExceptions,
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
@@ -12,12 +11,9 @@ import {
   products,
   quoteSelectedAssemblies,
   quotes,
-  workingCalendarOffDays,
 } from '@pkg/db';
 import { buildCfo, type CfoEntry, getPlantDateNow } from '@pkg/domain';
 import {
-  type AddBayCalendarExceptionInput,
-  AddBayCalendarExceptionResult,
   type AddIdleJobSlotInput,
   AddIdleJobSlotResult,
   type AuthId,
@@ -34,29 +30,20 @@ import {
   ProductSerialPrefix,
   ProductSerialSequence,
   ProductSerialYear,
-  type RemoveBayCalendarExceptionInput,
-  RemoveBayCalendarExceptionResult,
   type RemoveJobSlotInput,
   RemoveJobSlotResult,
   type ResizeJobSlotInput,
   ResizeJobSlotResult,
-  type ToggleOffDayInput,
-  ToggleOffDayResult,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../audit/audit-service.js';
 import { documentBaseSelect } from '../documents/document-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
-import {
-  JobBayNotFoundError,
-  JobCreateFromQuoteDeniedError,
-  JobNotFoundError,
-  JobSlotNotFoundError,
-} from './job-errors.js';
+import { JobCreateFromQuoteDeniedError, JobNotFoundError, JobSlotNotFoundError } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
@@ -161,113 +148,6 @@ export async function bookJobSlot({ db, input }: { db: Db; input: BookJobSlotInp
     );
 
     return BookJobSlotResult.parse({ slot });
-  });
-}
-
-export async function toggleOffDay({ db, input }: { db: Db; input: ToggleOffDayInput }): Promise<ToggleOffDayResult> {
-  return db.transaction(async (tx) => {
-    if (!input.isOffDay) {
-      await tx.delete(workingCalendarOffDays).where(eq(workingCalendarOffDays.date, input.date));
-
-      return ToggleOffDayResult.parse({ offDay: null });
-    }
-
-    const [row] = await tx
-      .insert(workingCalendarOffDays)
-      .values({
-        date: input.date,
-        label: input.label,
-      })
-      .onConflictDoUpdate({
-        target: workingCalendarOffDays.date,
-        set: {
-          label: input.label,
-          updatedAt: new Date(),
-        },
-      })
-      .returning({
-        date: workingCalendarOffDays.date,
-        label: workingCalendarOffDays.label,
-      });
-
-    if (!row) {
-      throw new Error('Off-Day upsert did not return a row');
-    }
-
-    return ToggleOffDayResult.parse({ offDay: row });
-  });
-}
-
-export async function addBayCalendarException({
-  db,
-  input,
-}: {
-  db: Db;
-  input: AddBayCalendarExceptionInput;
-}): Promise<AddBayCalendarExceptionResult> {
-  return db.transaction(async (tx) => {
-    const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
-
-    if (!bay) {
-      throw new JobBayNotFoundError(input.bayId);
-    }
-
-    const [row] = await tx
-      .insert(jobBayCalendarExceptions)
-      .values({
-        bayId: bay.id,
-        date: input.date,
-        direction: input.direction,
-        label: input.label,
-      })
-      .onConflictDoUpdate({
-        target: [jobBayCalendarExceptions.bayId, jobBayCalendarExceptions.date],
-        set: {
-          direction: input.direction,
-          label: input.label,
-          updatedAt: new Date(),
-        },
-      })
-      .returning({
-        bayId: jobBayCalendarExceptions.bayId,
-        date: jobBayCalendarExceptions.date,
-        direction: jobBayCalendarExceptions.direction,
-        label: jobBayCalendarExceptions.label,
-      });
-
-    if (!row) {
-      throw new Error('Bay calendar exception upsert did not return a row');
-    }
-
-    return AddBayCalendarExceptionResult.parse({ exception: row });
-  });
-}
-
-export async function removeBayCalendarException({
-  db,
-  input,
-}: {
-  db: Db;
-  input: RemoveBayCalendarExceptionInput;
-}): Promise<RemoveBayCalendarExceptionResult> {
-  return db.transaction(async (tx) => {
-    const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
-
-    if (!bay) {
-      throw new JobBayNotFoundError(input.bayId);
-    }
-
-    const [row] = await tx
-      .delete(jobBayCalendarExceptions)
-      .where(and(eq(jobBayCalendarExceptions.bayId, bay.id), eq(jobBayCalendarExceptions.date, input.date)))
-      .returning({
-        bayId: jobBayCalendarExceptions.bayId,
-        date: jobBayCalendarExceptions.date,
-        direction: jobBayCalendarExceptions.direction,
-        label: jobBayCalendarExceptions.label,
-      });
-
-    return RemoveBayCalendarExceptionResult.parse({ exception: row ?? null });
   });
 }
 

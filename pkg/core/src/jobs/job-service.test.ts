@@ -5,7 +5,6 @@ import {
   customers,
   type Db,
   documents,
-  jobBayCalendarExceptions,
   jobBayOperatorAssignments,
   jobBays,
   jobCfoAssemblies,
@@ -20,7 +19,6 @@ import {
   quotes,
   supplier,
   user,
-  workingCalendarOffDays,
 } from '@pkg/db';
 import {
   AddBayCalendarExceptionInput,
@@ -31,7 +29,6 @@ import {
   type PartUnitOfMeasure,
   type ProductDocumentType,
   QuoteUpdateInput,
-  RemoveBayCalendarExceptionInput,
   ToggleOffDayInput,
 } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
@@ -50,17 +47,8 @@ import {
   unassignJobBayOperator,
 } from './job-bay-service.js';
 import { getJob, listBays } from './job-read-service.js';
-import {
-  addBayCalendarException,
-  addIdleJobSlot,
-  bookJobSlot,
-  createJob,
-  moveJobSlot,
-  removeBayCalendarException,
-  removeJobSlot,
-  resizeJobSlot,
-  toggleOffDay,
-} from './job-service.js';
+import { addIdleJobSlot, bookJobSlot, createJob, moveJobSlot, removeJobSlot, resizeJobSlot } from './job-service.js';
+import { addBayCalendarException, toggleOffDay } from './working-calendar-service.js';
 
 const actorUserId = 'test-user-id';
 beforeEach(() => {
@@ -650,257 +638,6 @@ describe('createJob', () => {
 
     expect(firstJob.productSerialNumber).toBe('CFO-001260009');
     expect(secondJob.productSerialNumber).toBe('CFO-001270010');
-  });
-});
-
-describe('toggleOffDay', () => {
-  test('inserts, updates, and removes org Off-Days for calendar editors', async ({ context }) => {
-    await expect(
-      toggleOffDay({
-        db: context.db,
-        input: offDayInput({ date: '2026-06-16', isOffDay: true, label: '  Youth Day  ' }),
-      }),
-    ).resolves.toEqual({
-      offDay: {
-        date: '2026-06-16',
-        label: 'Youth Day',
-      },
-    });
-    await expect(
-      toggleOffDay({
-        db: context.db,
-        input: offDayInput({ date: '2026-06-16', isOffDay: true, label: null }),
-      }),
-    ).resolves.toEqual({
-      offDay: {
-        date: '2026-06-16',
-        label: null,
-      },
-    });
-    await expect(
-      toggleOffDay({
-        db: context.db,
-        input: offDayInput({ date: '2026-06-16', isOffDay: false, label: null }),
-      }),
-    ).resolves.toEqual({ offDay: null });
-
-    const rows = await context.db.select().from(workingCalendarOffDays);
-    expect(rows).toEqual([]);
-  });
-
-  test('returns Off-Day facts and reflows Bay projections', async ({ context }) => {
-    const bay = await createBay(context.db, {
-      department: 'fabrication',
-      scheduleOrigin: '2026-06-05',
-    });
-    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    await toggleOffDay({
-      db: context.db,
-      input: offDayInput({ date: '2026-06-06', isOffDay: true, label: 'Shutdown' }),
-    });
-
-    const firstSlot = await bookJobSlot({
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: firstJob.id },
-    });
-    const secondSlot = await bookJobSlot({
-      db: context.db,
-      input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
-    });
-
-    const schedule = await listBays({ db: context.db });
-    expect(schedule.offDays).toEqual([{ date: '2026-06-06', label: 'Shutdown' }]);
-    expect(getBaySchedule(schedule, bay.id)).toEqual(
-      expect.objectContaining({
-        slots: [
-          expect.objectContaining({
-            id: firstSlot.slot.id,
-            startDate: '2026-06-05',
-            endDate: '2026-06-06',
-          }),
-          expect.objectContaining({
-            id: secondSlot.slot.id,
-            startDate: '2026-06-06',
-            endDate: '2026-06-08',
-          }),
-        ],
-      }),
-    );
-  });
-});
-
-describe('Bay calendar exceptions', () => {
-  test('inserts, updates, and removes Bay exceptions for authorized schedulers', async ({ context }) => {
-    const bay = await createBay(context.db, { department: 'fabrication' });
-
-    await expect(
-      addBayCalendarException({
-        db: context.db,
-        input: bayExceptionInput({
-          bayId: bay.id,
-          date: '2026-06-06',
-          direction: 'work',
-          label: '  Saturday push  ',
-        }),
-      }),
-    ).resolves.toEqual({
-      exception: {
-        bayId: bay.id,
-        date: '2026-06-06',
-        direction: 'work',
-        label: 'Saturday push',
-      },
-    });
-    await expect(
-      addBayCalendarException({
-        db: context.db,
-        input: bayExceptionInput({
-          bayId: bay.id,
-          date: '2026-06-06',
-          direction: 'off',
-          label: null,
-        }),
-      }),
-    ).resolves.toEqual({
-      exception: {
-        bayId: bay.id,
-        date: '2026-06-06',
-        direction: 'off',
-        label: null,
-      },
-    });
-    await expect(
-      removeBayCalendarException({
-        db: context.db,
-        input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-06' }),
-      }),
-    ).resolves.toEqual({
-      exception: {
-        bayId: bay.id,
-        date: '2026-06-06',
-        direction: 'off',
-        label: null,
-      },
-    });
-    await expect(
-      removeBayCalendarException({
-        db: context.db,
-        input: removeBayExceptionInput({ bayId: bay.id, date: '2026-06-06' }),
-      }),
-    ).resolves.toEqual({ exception: null });
-
-    const rows = await context.db.select().from(jobBayCalendarExceptions);
-    expect(rows).toEqual([]);
-  });
-
-  test('rejects missing Bays', async ({ context }) => {
-    await expect(
-      addBayCalendarException({
-        db: context.db,
-        input: bayExceptionInput({
-          bayId: '00000000-0000-4000-8000-00000000dead',
-          date: '2026-06-06',
-          direction: 'work',
-          label: null,
-        }),
-      }),
-    ).rejects.toThrow('Job bay not found');
-  });
-
-  test('opens an org Off-Day for one Bay only and reflows back after removal', async ({ context }) => {
-    const firstBay = await createBay(context.db, {
-      department: 'fabrication',
-      scheduleOrigin: '2026-06-05',
-    });
-    const secondBay = await createBay(context.db, {
-      department: 'fabrication',
-      scheduleOrigin: '2026-06-05',
-    });
-    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    await toggleOffDay({
-      db: context.db,
-      input: offDayInput({ date: '2026-06-06', isOffDay: true, label: 'Shutdown' }),
-    });
-    await addBayCalendarException({
-      db: context.db,
-      input: bayExceptionInput({ bayId: firstBay.id, date: '2026-06-06', direction: 'work', label: 'Overtime' }),
-    });
-
-    await bookJobSlot({
-      db: context.db,
-      input: { bayId: firstBay.id, durationDays: 2, jobId: firstJob.id },
-    });
-    await bookJobSlot({
-      db: context.db,
-      input: { bayId: secondBay.id, durationDays: 2, jobId: secondJob.id },
-    });
-
-    let schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, firstBay.id)).toEqual(
-      expect.objectContaining({
-        calendarExceptions: [{ bayId: firstBay.id, date: '2026-06-06', direction: 'work', label: 'Overtime' }],
-        nextAvailableDate: '2026-06-07',
-      }),
-    );
-    expect(getBaySchedule(schedule, secondBay.id)).toEqual(
-      expect.objectContaining({
-        calendarExceptions: [],
-        nextAvailableDate: '2026-06-08',
-      }),
-    );
-
-    await removeBayCalendarException({
-      db: context.db,
-      input: removeBayExceptionInput({ bayId: firstBay.id, date: '2026-06-06' }),
-    });
-
-    schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, firstBay.id)).toEqual(
-      expect.objectContaining({
-        calendarExceptions: [],
-        nextAvailableDate: '2026-06-08',
-      }),
-    );
-  });
-
-  test('closes an otherwise-working day for one Bay only', async ({ context }) => {
-    const firstBay = await createBay(context.db, {
-      department: 'fabrication',
-      scheduleOrigin: '2026-06-05',
-    });
-    const secondBay = await createBay(context.db, {
-      department: 'fabrication',
-      scheduleOrigin: '2026-06-05',
-    });
-    const firstJob = await createAcceptedJob(context.db, context.catalog.product.id);
-    const secondJob = await createAcceptedJob(context.db, context.catalog.product.id);
-
-    await addBayCalendarException({
-      db: context.db,
-      input: bayExceptionInput({ bayId: firstBay.id, date: '2026-06-06', direction: 'off', label: 'Maintenance' }),
-    });
-    await bookJobSlot({
-      db: context.db,
-      input: { bayId: firstBay.id, durationDays: 2, jobId: firstJob.id },
-    });
-    await bookJobSlot({
-      db: context.db,
-      input: { bayId: secondBay.id, durationDays: 2, jobId: secondJob.id },
-    });
-
-    const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, firstBay.id)).toEqual(
-      expect.objectContaining({
-        nextAvailableDate: '2026-06-08',
-      }),
-    );
-    expect(getBaySchedule(schedule, secondBay.id)).toEqual(
-      expect.objectContaining({
-        nextAvailableDate: '2026-06-07',
-      }),
-    );
   });
 });
 
@@ -2162,10 +1899,6 @@ function offDayInput(input: Parameters<typeof ToggleOffDayInput.parse>[0]) {
 
 function bayExceptionInput(input: Parameters<typeof AddBayCalendarExceptionInput.parse>[0]) {
   return AddBayCalendarExceptionInput.parse(input);
-}
-
-function removeBayExceptionInput(input: Parameters<typeof RemoveBayCalendarExceptionInput.parse>[0]) {
-  return RemoveBayCalendarExceptionInput.parse(input);
 }
 
 async function createAcceptedJob(db: Db, productId: string): Promise<JobDetail> {

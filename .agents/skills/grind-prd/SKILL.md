@@ -22,7 +22,7 @@ Work one issue at a time. Never have two grind PRs open at once.
 ## Phase A — Pick next issue
 
 1. Read the PRD: `gh issue view <prd-number> --comments`.
-2. Find open child issues: `gh issue list --state open --json number,title,body,labels`, keep those whose body's `## Parent` section references the PRD issue.
+2. Find open child issues: `gh issue list --state open --limit 1000 --json number,title,body,labels`, keep those whose body's `## Parent` section references the PRD issue. Do not make "all children are closed/blocked" decisions from the default 30-item page.
 3. Filter to grabbable: labeled `ready-for-agent` (AFK), and every issue in `## Blocked by` is closed.
 4. If none remain:
    - All children closed → comment on the PRD that all slices are done, tell the user, and **end the loop** (do not reschedule).
@@ -39,20 +39,20 @@ Work one issue at a time. Never have two grind PRs open at once.
 1. Read the issue body and comments fully. Read the closest `pkg/*/AGENTS.md` before changing code.
 2. Implement the slice end-to-end per its acceptance criteria.
 3. Run `pnpm verify`. Fix until green.
-4. UI-test the change with the `/verify` skill (run the app, observe the behavior described in the acceptance criteria).
+4. UI-test the change with the `/verify` skill (run the app, observe the behavior described in the acceptance criteria). If UI changed, capture a proof screenshot that shows the accepted behavior.
 5. Local codex review:
    ```
-   /opt/homebrew/bin/codex exec "Review the uncommitted changes and the diff against main in this repo for bugs, missed edge cases, and convention violations. Be specific."
+   codex exec "Review the uncommitted changes and the diff against main in this repo for bugs, missed edge cases, and convention violations. Be specific."
    ```
    Apply fixes you judge correct (ignore stylistic noise), then re-run `pnpm verify` if you changed code.
-6. Publish with the `/blast-it` skill. Ensure the PR body contains `Closes #<issue-number>`.
+6. Publish with the `/blast-it` skill. Ensure the PR body contains `Closes #<issue-number>`. If UI changed, attach the proof screenshot to the PR before ending the pass.
 7. End the pass. Codex cloud review starts on its own; the next wake-up lands in Phase C.
 
 ## Phase C — PR babysitting
 
 1. Check whether codex is still reviewing — its 👀 reaction on the PR description:
    ```
-   gh api repos/{owner}/{repo}/issues/<pr-number>/reactions --jq '[.[] | select(.content == "eyes")] | length'
+   gh api repos/{owner}/{repo}/issues/<pr-number>/reactions --jq '[.[] | select(.content == "eyes" and .user.login == "chatgpt-codex-connector[bot]")] | length'
    ```
    Non-zero → still reviewing. End the pass and reschedule (~270s).
 2. Eyes gone → fetch feedback: `gh pr view <pr-number> --comments` and

@@ -11,7 +11,10 @@ vi.mock('./widgets/BayRunwayWidget.js', () => ({ BayRunwayWidget: () => null }))
 vi.mock('./widgets/ShopFloorTodayWidget.js', () => ({ ShopFloorTodayWidget: () => null }));
 vi.mock('./widgets/RecentQuotesWidget.js', () => ({ RecentQuotesWidget: () => null }));
 vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
-vi.mock('./widgets/QuotesCreatedOverTimeWidget.js', () => ({ QuotesCreatedOverTimeWidget: () => null }));
+vi.mock('./widgets/OpenPipelineWidget.js', () => ({ OpenPipelineWidget: () => null }));
+vi.mock('./widgets/WinRateWidget.js', () => ({ WinRateWidget: () => null }));
+vi.mock('./widgets/QuoteFlowWidget.js', () => ({ QuoteFlowWidget: () => null }));
+vi.mock('./widgets/StaleSentQuotesWidget.js', () => ({ StaleSentQuotesWidget: () => null }));
 vi.mock('./widgets/ProductsWidget.js', () => ({ ProductsWidget: () => null }));
 vi.mock('./widgets/RecentActivityWidget.js', () => ({ RecentActivityWidget: () => null }));
 
@@ -101,14 +104,20 @@ describe('dashboardWidgets', () => {
     });
   });
 
-  it('registers Quotes created over time behind quote read access', () => {
-    const quotesCreatedWidget = dashboardWidgets.find((widget) => widget.id === 'quotes-created-over-time');
+  it('registers the sales metrics widgets behind quote read access', () => {
+    const openPipelineWidget = dashboardWidgets.find((widget) => widget.id === 'open-pipeline');
+    const winRateWidget = dashboardWidgets.find((widget) => widget.id === 'win-rate');
+    const quoteFlowWidget = dashboardWidgets.find((widget) => widget.id === 'quote-flow');
+    const staleSentWidget = dashboardWidgets.find((widget) => widget.id === 'stale-sent-quotes');
 
-    expect(quotesCreatedWidget).toMatchObject({
-      requires: 'quote:read',
-      size: 'md',
-      title: 'Quotes created over time',
-    });
+    expect(openPipelineWidget).toMatchObject({ requires: 'quote:read', size: 'xs', title: 'Open pipeline (sent)' });
+    expect(winRateWidget).toMatchObject({ requires: 'quote:read', size: 'xs', title: 'Win rate (90d)' });
+    expect(quoteFlowWidget).toMatchObject({ requires: 'quote:read', size: 'md', title: 'Quote flow' });
+    expect(staleSentWidget).toMatchObject({ requires: 'quote:read', size: 'sm', title: 'Stale sent quotes' });
+  });
+
+  it('removes the retired created-over-time widget from the registry', () => {
+    expect(widgetIds(dashboardWidgets)).not.toContain('quotes-created-over-time');
   });
 
   it('registers Products behind product read access', () => {
@@ -147,14 +156,18 @@ describe('dashboardWidgets', () => {
     expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain('quotes-by-status');
   });
 
-  it('shows quote widgets to sales users and hides them from procurement managers', () => {
+  it('shows the sales metrics widgets to sales users and hides them from procurement managers', () => {
+    const salesMetricsWidgetIds = ['open-pipeline', 'win-rate', 'quote-flow', 'stale-sent-quotes'];
     const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
     const productEditorAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
 
-    expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-created-over-time');
-    expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).not.toContain(
-      'quotes-created-over-time',
-    );
+    const salesIds = widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets));
+    const productEditorIds = widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets));
+
+    for (const widgetId of salesMetricsWidgetIds) {
+      expect(salesIds).toContain(widgetId);
+      expect(productEditorIds).not.toContain(widgetId);
+    }
   });
 
   it('shows Products to procurement managers and hides it from sales users', () => {

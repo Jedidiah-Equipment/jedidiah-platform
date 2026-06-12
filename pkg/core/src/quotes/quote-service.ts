@@ -12,14 +12,11 @@ import {
   withPagination,
 } from '@pkg/db';
 import {
-  addDateOnlyDays,
   assertQuoteEditable,
-  JOHANNESBURG_TIME_ZONE,
   parseDateOnlyParts,
   parseJobCodeSearch,
   toPlantDateOnly,
   validateDiscount,
-  zonedDateStartToUtcInstant,
 } from '@pkg/domain';
 import {
   type Assembly,
@@ -32,7 +29,6 @@ import {
   ProductCurrencyCode,
   Quote,
   QuoteCode,
-  QuoteCreatedByWeekSummary,
   type QuoteCreateInput,
   type QuoteDetail,
   type QuoteListInput,
@@ -40,15 +36,13 @@ import {
   type QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
   type QuoteSortBy,
-  QuoteStatus,
-  QuoteStatusSummary,
   type QuoteSummary,
   type QuoteUpdateInput,
   type UserListResult,
   UserSummary,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, eq, gte, inArray, lt, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -78,7 +72,6 @@ import {
 type QuoteRow = typeof quotes.$inferSelect;
 type QuoteAuditInput = { row: QuoteRow; selectedAssemblies: readonly QuoteSelectedAssemblyRow[] };
 
-const QUOTE_CREATED_BY_WEEK_COUNT = 12;
 const PRIORITY_QUOTE_WINDOW_MONTHS = 2;
 
 // `code` is the summary label, not an audited field, so it lives in `label`. `selectedAssemblies` is
@@ -347,55 +340,6 @@ export async function listPriorityQuotes({
   return rows.map((row) =>
     mapPriorityQuote(row, jobByQuoteId.get(row.quote.id) ?? null, selectedAssembliesByQuoteId.get(row.quote.id) ?? []),
   );
-}
-
-export async function summarizeQuotesByStatus({ db }: { db: Db }): Promise<QuoteStatusSummary> {
-  const rows = await db
-    .select({
-      count: sql<number>`count(*)`,
-      status: quotes.status,
-    })
-    .from(quotes)
-    .groupBy(quotes.status);
-  const countsByStatus = new Map(rows.map((row) => [row.status, Number(row.count)]));
-
-  return QuoteStatusSummary.parse({
-    items: QuoteStatus.options.map((status) => ({
-      count: countsByStatus.get(status) ?? 0,
-      status,
-    })),
-  });
-}
-
-export async function countQuotesByWeek({
-  clock = () => new Date(),
-  db,
-  weekCount = QUOTE_CREATED_BY_WEEK_COUNT,
-}: {
-  clock?: () => Date;
-  db: Db;
-  weekCount?: number;
-}): Promise<QuoteCreatedByWeekSummary> {
-  const range = getPlantWeekRange({ now: clock(), weekCount });
-  // Keep the bucket calendar server-side: Johannesburg weeks are part of the reporting contract.
-  const weekStartExpression = sql<string>`to_char(date_trunc('week', ${quotes.createdAt} AT TIME ZONE ${JOHANNESBURG_TIME_ZONE})::date, 'YYYY-MM-DD')`;
-  const rows = await db
-    .select({
-      count: sql<number>`count(*)`,
-      weekStartDate: weekStartExpression,
-    })
-    .from(quotes)
-    .where(and(gte(quotes.createdAt, range.startInstant), lt(quotes.createdAt, range.endInstant)))
-    // Drizzle may qualify the same expression differently between SELECT and GROUP BY; group by ordinal.
-    .groupBy(sql`2`);
-  const countsByWeekStart = new Map(rows.map((row) => [row.weekStartDate, Number(row.count)]));
-
-  return QuoteCreatedByWeekSummary.parse({
-    items: range.weekStartDates.map((weekStartDate) => ({
-      count: countsByWeekStart.get(weekStartDate) ?? 0,
-      weekStartDate,
-    })),
-  });
 }
 
 export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<QuoteDetail> {
@@ -908,33 +852,6 @@ function parseQuoteCodeSearch(search: string): number | undefined {
   const code = Number.parseInt(normalized, 10);
 
   return Number.isSafeInteger(code) && code > 0 ? code : undefined;
-}
-
-function getPlantWeekRange({ now, weekCount }: { now: Date; weekCount: number }) {
-  const currentPlantDate = toPlantDateOnly(now);
-  const currentWeekStartDate = addDateOnlyDays(
-    currentPlantDate,
-    -getMondayBasedWeekdayOffset(getDateOnlyWeekday(currentPlantDate)),
-  );
-  const rangeStartDate = addDateOnlyDays(currentWeekStartDate, -(weekCount - 1) * 7);
-  const rangeEndDate = addDateOnlyDays(currentWeekStartDate, 7);
-  const weekStartDates = Array.from({ length: weekCount }, (_, index) => addDateOnlyDays(rangeStartDate, index * 7));
-
-  return {
-    endInstant: zonedDateStartToUtcInstant(rangeEndDate, JOHANNESBURG_TIME_ZONE),
-    startInstant: zonedDateStartToUtcInstant(rangeStartDate, JOHANNESBURG_TIME_ZONE),
-    weekStartDates,
-  };
-}
-
-function getMondayBasedWeekdayOffset(weekday: number): number {
-  return (weekday + 6) % 7;
-}
-
-function getDateOnlyWeekday(date: DateOnlyIso): number {
-  const { day, month, year } = parseDateOnlyParts(date);
-
-  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
 function toDateOnlyParts({ day, month, year }: { day: number; month: number; year: number }): DateOnlyIso {

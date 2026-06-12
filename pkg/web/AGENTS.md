@@ -6,7 +6,6 @@
 - Route all React Query invalidation through `src/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths.
 - Use shared UI primitives for standard surfaces: `Card` composition from `src/components/ui/card.tsx` and `ScrollArea` for page/panel scrolling.
 - For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/use-app-form.ts`.
-- Do not test via the browser unless asked.
 
 ## Entity Forms
 

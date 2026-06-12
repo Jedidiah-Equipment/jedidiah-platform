@@ -21,6 +21,7 @@ Work one issue at a time. Never have two grind PRs open at once.
 
 ## Phase A — Pick next issue
 
+0. Before picking up a new issue, check context usage: if the context window is more than 50% full, run `/compact` first so the whole issue cycle fits without a mid-implementation squeeze.
 1. Read the PRD: `gh issue view <prd-number> --comments`.
 2. Find open child issues: `gh issue list --state open --limit 1000 --json number,title,body,labels`, keep those whose body's `## Parent` section references the PRD issue. Do not make "all children are closed/blocked" decisions from the default 30-item page.
 3. Filter to grabbable: labeled `ready-for-agent` (AFK), and every issue in `## Blocked by` is closed.

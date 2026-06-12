@@ -1,17 +1,8 @@
 # core (@pkg/core)
 
-## Copy These
+- Put domain behavior here when it should not live in Fastify, tRPC, or React.
+- Do not depend on browser code, Fastify setup, Better Auth handlers, database clients, or direct `process.env`.
+- Shape related data in the owning service query using Drizzle relational `with` where practical; avoid router/API follow-up queries for core-owned reads.
+- Export feature-specific errors and type guards beside the behavior that raises them.
 
-- Product service: `src/products/product-service.ts`
-- Product errors: `src/products/product-errors.ts`
-- Product tests: `src/products/product-service.test.ts`
-- User service: `src/users/user-service.ts`
-- Authorization matrix: `src/auth/authorization.ts`
-
-## Notes
-
-- Keep domain behavior here when it should not live in Fastify, tRPC, or React.
-- Do not depend on browser code, Fastify setup, Better Auth handlers, or direct `process.env`.
-- When list/query results need related data, prefer shaping that related data in the owning service's
-  main query using Drizzle relational `with` where practical, instead of adding follow-up queries in
-  the router or API layer.
+Canonical examples: `src/products/product-service.ts`, `src/products/product-errors.ts`, `src/auth/authorization.ts`.

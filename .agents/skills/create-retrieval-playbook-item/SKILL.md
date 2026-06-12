@@ -11,8 +11,8 @@ Add one retrieval playbook item to Jedidiah's AI guidance without redesigning th
 
 ## Guardrails
 
-- Read `docs/adr/0011-code-owned-ai-guidance.md` before changing AI guidance.
-- Read `CONTEXT.md` for domain language, but do not scrape it into runtime prompts.
+- Read `docs/adr/0004-application-boundaries.md` before changing AI guidance.
+- Search `CONTEXT.md` for relevant domain language, but do not scrape it into runtime prompts.
 - Read `.sandcastle/CODING_STANDARDS.md` and `pkg/api/AGENTS.md` before code changes.
 - Treat `docs/research` as non-authoritative unless the user explicitly asks.
 - Keep runtime AI guidance under the AI API area. Do not move Jedidiah-specific prompt metadata into `@pkg/schema`.
@@ -90,7 +90,7 @@ For "How is the job for company ABC going?", encode the Customer/company → Quo
 - Find Quotes for that Customer.
 - Prefer Quotes with linked `jobId`/Job Code.
 - Fetch the relevant Job detail before summarizing progress.
-- Mention Job Lifecycle Status, Due Date when present, and the five Stage summaries.
+- Mention Job status, relevant delivery dates, and visible Bay schedule/Slot progress when present.
 - Ask the user to choose when multiple current Jobs match.
 - Use Markdown links only from link metadata returned by tools or code-owned route metadata.
 

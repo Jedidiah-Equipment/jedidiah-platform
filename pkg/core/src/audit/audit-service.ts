@@ -219,7 +219,7 @@ export async function recordAuditDelete<TInput>({
 /**
  * Emit the update event. The caller computes `changes` first (via {@link diffAuditUpdate}) so it can
  * run its own control flow between the diff and the write — the skip-on-no-change branch and, for
- * Quotes, the Locked Quote gate that reads the changed field set (ADR-0027).
+ * Quotes, the Locked Quote gate that reads the changed field set.
  */
 export async function recordAuditUpdate<TInput>({
   db,

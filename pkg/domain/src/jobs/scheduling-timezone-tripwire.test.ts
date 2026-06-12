@@ -7,7 +7,7 @@ import { projectJobSlots } from './job-slot-projection.js';
 
 const day = (value: string) => DateOnlyIso.parse(value);
 
-// Scheduling dates are plant business dates (ADR-0043): every derived value must be
+// Scheduling dates are plant business dates: every derived value must be
 // identical regardless of the timezone the server or viewer happens to run in. These
 // zones cover the plant itself, UTC, a negative offset with DST, and a far-positive
 // offset — a regression that leaks the ambient timezone into scheduling fails here.

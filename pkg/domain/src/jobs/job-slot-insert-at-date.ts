@@ -17,7 +17,7 @@ export type InsertAtDatePlacement<TSlot extends ProjectableJobSlot> =
   | { type: 'split'; targetSlot: ProjectedSlot<TSlot>; beforeDays: number; afterDays: number; startDate: DateOnlyIso };
 
 /**
- * Resolves an Insert-at-Date placement hint into a Bay Queue position (ADR-0042).
+ * Resolves an Insert-at-Date placement hint into a Bay Queue position.
  * The picked date is never stored: it is floored to tomorrow (the Slot projected
  * over today is never disturbed), normalized forward to a working day, and then
  * compared against the live projection — on or past the next available day it

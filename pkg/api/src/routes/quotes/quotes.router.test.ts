@@ -940,18 +940,148 @@ describe('quotes.summaryByStatus', () => {
   });
 });
 
-describe('quotes.createdByWeek', () => {
-  test('requires quote read access and returns the weekly series', async ({ context }) => {
+describe('quotes.pipelineSummary', () => {
+  test('requires quote read access and aggregates sent pipeline value with decision counts', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
 
-    await expect(productEditorCaller.quotes.createdByWeek()).rejects.toMatchObject({
+    await expect(productEditorCaller.quotes.pipelineSummary()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
-    const result = await salesCaller.quotes.createdByWeek();
+
+    await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Pipeline Sent Customer',
+      deliveryPrice: 100,
+      discountPercent: 10,
+      productId: context.product.id,
+      status: 'sent',
+    });
+    await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Pipeline Accepted Customer',
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Pipeline Cancelled Customer',
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'cancelled',
+    });
+    // An accepted decision older than the 90-day window stays out of the win-rate counts.
+    const staleDecision = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Pipeline Old Decision Customer',
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'rejected',
+    });
+    await context.db
+      .update(quotes)
+      .set({ statusChangedAt: daysAgo(91) })
+      .where(sql`${quotes.id} = ${staleDecision.id}`);
+
+    // Base 1000 + delivery 100 - 10% discount = 1000 for the single sent quote, freshly sent.
+    await expect(salesCaller.quotes.pipelineSummary()).resolves.toEqual({
+      accepted90dCount: 1,
+      newlySent30dValue: 1000,
+      openSentCount: 1,
+      openSentValue: 1000,
+      rejected90dCount: 0,
+    });
+
+    // Pushing the sent transition outside the 30-day window keeps the quote in the open pipeline only.
+    const [sentRow] = await context.db.select({ id: quotes.id }).from(quotes).where(sql`${quotes.status} = 'sent'`);
+    await context.db
+      .update(quotes)
+      .set({ statusChangedAt: daysAgo(31) })
+      .where(sql`${quotes.id} = ${sentRow?.id}`);
+
+    await expect(salesCaller.quotes.pipelineSummary()).resolves.toMatchObject({
+      newlySent30dValue: 0,
+      openSentCount: 1,
+      openSentValue: 1000,
+    });
+  });
+});
+
+describe('quotes.weeklyFlow', () => {
+  test('requires quote read access and returns created and accepted weekly series', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+
+    await expect(productEditorCaller.quotes.weeklyFlow()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+
+    await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Flow Created Customer',
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'draft',
+    });
+    await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Flow Accepted Customer',
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+
+    const result = await salesCaller.quotes.weeklyFlow();
 
     expect(result.items).toHaveLength(12);
-    expect(result.items).toEqual(expect.arrayContaining([expect.objectContaining({ count: 0 })]));
+    const createdTotal = result.items.reduce((total, item) => total + item.createdCount, 0);
+    const acceptedTotal = result.items.reduce((total, item) => total + item.acceptedCount, 0);
+    expect(createdTotal).toBe(2);
+    expect(acceptedTotal).toBe(1);
+  });
+});
+
+describe('quotes.staleSent', () => {
+  test('requires quote read access and lists sent quotes oldest-first with staleness', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+
+    await expect(productEditorCaller.quotes.staleSent()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+
+    const freshSent = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Fresh Sent Customer',
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'sent',
+    });
+    const oldSent = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Old Sent Customer',
+      deliveryPrice: 50,
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'sent',
+    });
+    await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Accepted Customer',
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    await context.db
+      .update(quotes)
+      .set({ statusChangedAt: daysAgo(14) })
+      .where(sql`${quotes.id} = ${oldSent.id}`);
+
+    const result = await salesCaller.quotes.staleSent();
+
+    expect(result.items.map((item) => item.id)).toEqual([oldSent.id, freshSent.id]);
+    expect(result.items[0]).toMatchObject({
+      customerCompanyName: 'Old Sent Customer',
+      sentDaysAgo: 14,
+      totalValue: 1050,
+    });
+    expect(result.items[1]).toMatchObject({
+      customerCompanyName: 'Fresh Sent Customer',
+      sentDaysAgo: 0,
+      totalValue: 1000,
+    });
   });
 });
 
@@ -1436,6 +1566,10 @@ function toUpdateInput(quote: QuoteDetail) {
     status: quote.status,
     validUntil: quote.validUntil,
   };
+}
+
+function daysAgo(days: number): Date {
+  return new Date(Date.now() - days * 86_400_000);
 }
 
 async function createActorUser(db: Db) {

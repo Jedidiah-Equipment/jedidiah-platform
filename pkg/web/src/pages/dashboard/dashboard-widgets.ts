@@ -9,6 +9,7 @@ import { QuotesByStatusWidget } from './widgets/QuotesByStatusWidget.js';
 import { RecentActivityWidget } from './widgets/RecentActivityWidget.js';
 import { ShopFloorTodayWidget } from './widgets/ShopFloorTodayWidget.js';
 import { StaleSentQuotesWidget } from './widgets/StaleSentQuotesWidget.js';
+import { UpcomingDeliveriesWidget } from './widgets/UpcomingDeliveriesWidget.js';
 import { WinRateWidget } from './widgets/WinRateWidget.js';
 
 export const dashboardWidgets = [
@@ -81,6 +82,13 @@ export const dashboardWidgets = [
     requires: 'quote:read',
     size: 'sm',
     title: 'Awaiting Job creation',
+  },
+  {
+    Component: UpcomingDeliveriesWidget,
+    id: 'upcoming-deliveries',
+    requires: 'quote:read',
+    size: 'sm',
+    title: 'Upcoming deliveries',
   },
   {
     Component: RecentActivityWidget,

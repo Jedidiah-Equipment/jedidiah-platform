@@ -8,6 +8,7 @@ import {
   getBayTodayOccupancy,
   getJobProjectedFinishDates,
   getOffDayLabel,
+  isJobDeliveryAtRisk,
   listEnabledBays,
 } from './bay-schedule-derivations.js';
 
@@ -345,6 +346,38 @@ describe('getJobProjectedFinishDates', () => {
     });
 
     expect(getJobProjectedFinishDates([bayA, bayB])).toEqual(new Map([[id('job-1'), day('2026-06-12')]]));
+  });
+});
+
+describe('isJobDeliveryAtRisk', () => {
+  it('flags jobs finishing after the planned delivery date', () => {
+    expect(
+      isJobDeliveryAtRisk({
+        finishDatesByJobId: new Map([[id('job-1'), day('2026-06-12')]]),
+        jobId: id('job-1'),
+        plannedDeliveryDate: day('2026-06-11'),
+      }),
+    ).toBe(true);
+  });
+
+  it('does not flag jobs finishing on the planned delivery date boundary', () => {
+    expect(
+      isJobDeliveryAtRisk({
+        finishDatesByJobId: new Map([[id('job-1'), day('2026-06-12')]]),
+        jobId: id('job-1'),
+        plannedDeliveryDate: day('2026-06-12'),
+      }),
+    ).toBe(false);
+  });
+
+  it('does not flag jobs missing from the cached bay projection', () => {
+    expect(
+      isJobDeliveryAtRisk({
+        finishDatesByJobId: new Map([[id('job-2'), day('2026-06-13')]]),
+        jobId: id('job-1'),
+        plannedDeliveryDate: day('2026-06-12'),
+      }),
+    ).toBe(false);
   });
 });
 

@@ -12,6 +12,7 @@ import {
   withPagination,
 } from '@pkg/db';
 import {
+  addDateOnlyDays,
   assertQuoteEditable,
   parseDateOnlyParts,
   parseJobCodeSearch,
@@ -38,6 +39,9 @@ import {
   type QuoteSortBy,
   type QuoteSummary,
   type QuoteUpdateInput,
+  type UpcomingDeliveryQuote,
+  UpcomingDeliveryQuotesResult,
+  type UpcomingDeliveryQuotesResult as UpcomingDeliveryQuotesResultType,
   type UserListResult,
   UserSummary,
   type UUID,
@@ -73,6 +77,7 @@ type QuoteRow = typeof quotes.$inferSelect;
 type QuoteAuditInput = { row: QuoteRow; selectedAssemblies: readonly QuoteSelectedAssemblyRow[] };
 
 const PRIORITY_QUOTE_WINDOW_MONTHS = 2;
+const UPCOMING_DELIVERY_WINDOW_DAYS = 30;
 
 // `code` is the summary label, not an audited field, so it lives in `label`. `selectedAssemblies` is
 // folded into one stable JSON field — the Quote Selected Assembly snapshot the audit log diffs against.
@@ -342,6 +347,61 @@ export async function listPriorityQuotes({
   );
 }
 
+export async function listUpcomingDeliveryQuotes({
+  clock = () => new Date(),
+  db,
+}: {
+  clock?: () => Date;
+  db: Db;
+}): Promise<UpcomingDeliveryQuotesResultType> {
+  const today = toPlantDateOnly(clock());
+  const windowEndDate = addDateOnlyDays(today, UPCOMING_DELIVERY_WINDOW_DAYS);
+
+  const rows = await db
+    .select({
+      quote: quotes,
+      customerCompanyName: customers.companyName,
+      customerThumbnailDataUrl: customers.thumbnailDataUrl,
+      productBuildTimeDays: products.buildTimeDays,
+      productCurrencyCode: products.currencyCode,
+      productModelCode: products.modelCode,
+      productName: products.name,
+      salesPersonEmail: user.email,
+      salesPersonName: user.name,
+      salesPersonThumbnailDataUrl: user.image,
+    })
+    .from(quotes)
+    .innerJoin(customers, eq(quotes.customerId, customers.id))
+    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(user, eq(quotes.salesPersonId, user.id))
+    .where(
+      and(
+        eq(quotes.status, 'accepted'),
+        sql`${quotes.plannedDeliveryDate} is not null`,
+        sql`${quotes.plannedDeliveryDate} <= ${windowEndDate}::date`,
+      ),
+    )
+    .orderBy(asc(quotes.plannedDeliveryDate), asc(quotes.code), asc(quotes.id));
+
+  const quoteIds = rows.map((row) => row.quote.id);
+  const [selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
+    getSelectedAssembliesByQuoteId({ db, quoteIds }),
+    getJobByQuoteId({ db, quoteIds }),
+  ]);
+
+  return UpcomingDeliveryQuotesResult.parse({
+    items: rows.map((row) =>
+      mapUpcomingDeliveryQuote(
+        row,
+        jobByQuoteId.get(row.quote.id) ?? null,
+        selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+      ),
+    ),
+    today,
+    windowEndDate,
+  });
+}
+
 export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<QuoteDetail> {
   const row = await db.query.quotes.findFirst({
     where: eq(quotes.id, id),
@@ -590,6 +650,19 @@ function mapPriorityQuote(
   return {
     ...mapQuoteSummary(row, job, selectedAssemblies),
     earliestDeliveryDate: DateOnlyIso.parse(row.earliestDeliveryDate),
+  };
+}
+
+function mapUpcomingDeliveryQuote(
+  row: QuoteListRow,
+  job: QuoteLinkedJobRow | null,
+  selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
+): UpcomingDeliveryQuote {
+  const summary = mapQuoteSummary(row, job, selectedAssemblies);
+
+  return {
+    ...summary,
+    plannedDeliveryDate: DateOnlyIso.parse(row.quote.plannedDeliveryDate),
   };
 }
 

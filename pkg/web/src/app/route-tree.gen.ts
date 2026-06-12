@@ -33,6 +33,7 @@ import { Route as AuthedCustomersIndexRouteImport } from './../routes/_authed.cu
 import { Route as AuthedJobsCalendarRouteImport } from './../routes/_authed.jobs.calendar'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
 import { Route as AuthedSuppliersIdEditRouteImport } from './../routes/_authed.suppliers.$id.edit'
+import { Route as AuthedQuotesIdStartJobRouteImport } from './../routes/_authed.quotes.$id_.start-job'
 import { Route as AuthedQuotesIdEditRouteImport } from './../routes/_authed.quotes.$id_.edit'
 import { Route as AuthedProductsIdEditRouteImport } from './../routes/_authed.products.$id.edit'
 import { Route as AuthedCustomersIdEditRouteImport } from './../routes/_authed.customers.$id.edit'
@@ -156,6 +157,11 @@ const AuthedSuppliersIdEditRoute = AuthedSuppliersIdEditRouteImport.update({
   path: '/$id/edit',
   getParentRoute: () => AuthedSuppliersRoute,
 } as any)
+const AuthedQuotesIdStartJobRoute = AuthedQuotesIdStartJobRouteImport.update({
+  id: '/$id_/start-job',
+  path: '/$id/start-job',
+  getParentRoute: () => AuthedQuotesRoute,
+} as any)
 const AuthedQuotesIdEditRoute = AuthedQuotesIdEditRouteImport.update({
   id: '/$id_/edit',
   path: '/$id/edit',
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
   '/quotes/$id/edit': typeof AuthedQuotesIdEditRoute
+  '/quotes/$id/start-job': typeof AuthedQuotesIdStartJobRoute
   '/suppliers/$id/edit': typeof AuthedSuppliersIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/customers/$id/edit': typeof AuthedCustomersIdEditRoute
   '/products/$id/edit': typeof AuthedProductsIdEditRoute
   '/quotes/$id/edit': typeof AuthedQuotesIdEditRoute
+  '/quotes/$id/start-job': typeof AuthedQuotesIdStartJobRoute
   '/suppliers/$id/edit': typeof AuthedSuppliersIdEditRoute
 }
 export interface FileRoutesById {
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/_authed/customers/$id/edit': typeof AuthedCustomersIdEditRoute
   '/_authed/products/$id/edit': typeof AuthedProductsIdEditRoute
   '/_authed/quotes/$id_/edit': typeof AuthedQuotesIdEditRoute
+  '/_authed/quotes/$id_/start-job': typeof AuthedQuotesIdStartJobRoute
   '/_authed/suppliers/$id/edit': typeof AuthedSuppliersIdEditRoute
 }
 export interface FileRouteTypes {
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/customers/$id/edit'
     | '/products/$id/edit'
     | '/quotes/$id/edit'
+    | '/quotes/$id/start-job'
     | '/suppliers/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/customers/$id/edit'
     | '/products/$id/edit'
     | '/quotes/$id/edit'
+    | '/quotes/$id/start-job'
     | '/suppliers/$id/edit'
   id:
     | '__root__'
@@ -333,6 +344,7 @@ export interface FileRouteTypes {
     | '/_authed/customers/$id/edit'
     | '/_authed/products/$id/edit'
     | '/_authed/quotes/$id_/edit'
+    | '/_authed/quotes/$id_/start-job'
     | '/_authed/suppliers/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -515,6 +527,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSuppliersIdEditRouteImport
       parentRoute: typeof AuthedSuppliersRoute
     }
+    '/_authed/quotes/$id_/start-job': {
+      id: '/_authed/quotes/$id_/start-job'
+      path: '/$id/start-job'
+      fullPath: '/quotes/$id/start-job'
+      preLoaderRoute: typeof AuthedQuotesIdStartJobRouteImport
+      parentRoute: typeof AuthedQuotesRoute
+    }
     '/_authed/quotes/$id_/edit': {
       id: '/_authed/quotes/$id_/edit'
       path: '/$id/edit'
@@ -586,11 +605,13 @@ const AuthedProductsRouteWithChildren = AuthedProductsRoute._addFileChildren(
 interface AuthedQuotesRouteChildren {
   AuthedQuotesIndexRoute: typeof AuthedQuotesIndexRoute
   AuthedQuotesIdEditRoute: typeof AuthedQuotesIdEditRoute
+  AuthedQuotesIdStartJobRoute: typeof AuthedQuotesIdStartJobRoute
 }
 
 const AuthedQuotesRouteChildren: AuthedQuotesRouteChildren = {
   AuthedQuotesIndexRoute: AuthedQuotesIndexRoute,
   AuthedQuotesIdEditRoute: AuthedQuotesIdEditRoute,
+  AuthedQuotesIdStartJobRoute: AuthedQuotesIdStartJobRoute,
 }
 
 const AuthedQuotesRouteWithChildren = AuthedQuotesRoute._addFileChildren(

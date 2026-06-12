@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { cn } from '@/lib/utils.js';
 import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
 import type { DisplayBaySlot } from './bay-schedule-ghosts.js';
@@ -184,154 +185,168 @@ export const BaySlotBar: React.FC<{
   };
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger
-        render={
-          <div
-            data-gantt-drag-scroll-ignore
-            className={cn(
-              'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm transition-opacity duration-200',
-              isIdle
-                ? 'rounded-sm border border-border bg-card px-2 py-1 text-muted-foreground'
-                : cn(
-                    'rounded-lg border bg-card px-2.5 py-1.5 text-card-foreground',
-                    isActive ? 'border-white/70 ring-1 ring-white/25' : 'border-border',
-                  ),
-              // Filtered-out slots fade back but stay interactive; hover restores them.
-              isDimmed && 'opacity-20 hover:opacity-100',
-            )}
-            style={{
-              height,
-              left,
-              top,
-              width,
-            }}
-            title={`${label}: ${formatDate(slot.startDate, 'PPP')} - ${formatDate(slot.endDate, 'PPP')}\n${dayBreakdown.workingDays} working day(s), ${dayBreakdown.closureDays} closure day(s), ${dayBreakdown.overtimeDays} overtime day(s)`}
-          />
-        }
-      >
-        {isIdle ? (
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{ backgroundImage: IDLE_SLOT_HATCH_BACKGROUND }}
-          />
-        ) : (
-          <BaySlotDayHatch segments={daySegments} slotStart={startDate} />
-        )}
-        {isIdle ? (
-          <span className="relative z-10 flex h-full items-center gap-1.5 pr-8">
-            <span className="min-w-0 truncate font-medium">{label}</span>
-            <span className="shrink-0 text-[0.65rem] tabular-nums opacity-80">{daySummary}</span>
-          </span>
-        ) : (
-          <button
-            className="relative z-10 block h-full w-full cursor-pointer pr-8 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            disabled={!job || slot.previewSplit !== undefined}
-            onClick={() => {
-              if (job) {
-                onSelectSlot?.(job.id, bayId);
+    <Tooltip>
+      <ContextMenu>
+        <ContextMenuTrigger
+          render={
+            <TooltipTrigger
+              render={
+                <div
+                  data-gantt-drag-scroll-ignore
+                  className={cn(
+                    'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm transition-opacity duration-200',
+                    isIdle
+                      ? 'rounded-sm border border-border bg-card px-2 py-1 text-muted-foreground'
+                      : cn(
+                          'rounded-lg border bg-card px-2.5 py-1.5 text-card-foreground',
+                          isActive ? 'border-white/70 ring-1 ring-white/25' : 'border-border',
+                        ),
+                    // Filtered-out slots fade back but stay interactive; hover restores them.
+                    isDimmed && 'opacity-20 hover:opacity-100',
+                  )}
+                  style={{
+                    height,
+                    left,
+                    top,
+                    width,
+                  }}
+                />
               }
-            }}
-            type="button"
-          >
-            <BaySlotJobCard dayBreakdown={dayBreakdown} job={job} jobCode={label} />
-          </button>
-        )}
-        {canEditSchedule ? (
-          <>
-            <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
-              <DialogTrigger
-                render={
-                  <button
-                    aria-label={`Remove ${label}`}
-                    className={cn(
-                      'absolute top-1/2 right-2 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
-                      'hover:bg-destructive hover:text-white focus-visible:ring-ring',
-                    )}
-                    disabled={isScheduleMutationPending || isRemoving}
-                    type="button"
-                  />
-                }
-              >
-                <IconTrash className="size-3.5" />
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Remove slot</DialogTitle>
-                  <DialogDescription>
-                    Remove {label} from the Bay schedule. Later Slots will move up to close the gap.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>
-                    Cancel
-                  </DialogClose>
-                  <Button
-                    disabled={isRemoving}
-                    onClick={async () => {
-                      setIsRemoving(true);
-                      try {
-                        await onRemove(slot.id);
-                        setIsRemoveDialogOpen(false);
-                      } catch {
-                        // The mutation hook owns the user-facing error toast.
-                      } finally {
-                        setIsRemoving(false);
-                      }
-                    }}
-                    type="button"
-                    variant="destructive"
-                  >
-                    {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-                    Remove
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <button
-              aria-label={`Resize ${label}`}
-              className={cn(
-                'absolute top-0 right-0 h-full w-2 cursor-ew-resize border-r-2 outline-none disabled:cursor-not-allowed disabled:opacity-50',
-                isIdle
-                  ? 'border-foreground/40 bg-foreground/10 hover:bg-foreground/15 focus-visible:ring-2 focus-visible:ring-foreground'
-                  : 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring',
-              )}
-              disabled={isScheduleMutationPending || isRemoving}
-              onPointerCancel={cancelResize}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={finishResize}
-              type="button"
             />
-          </>
-        ) : null}
-      </ContextMenuTrigger>
-      {canEditSchedule ? (
-        <ContextMenuContent>
-          <ContextMenuGroup>
-            <ContextMenuItem disabled={isScheduleMutationPending || slotIndex === 0} onClick={() => moveSlot('left')}>
-              <IconArrowLeft />
-              Move slot left
-            </ContextMenuItem>
-            <ContextMenuItem
-              disabled={isScheduleMutationPending || slotIndex === slotCount - 1}
-              onClick={() => moveSlot('right')}
+          }
+        >
+          {isIdle ? (
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ backgroundImage: IDLE_SLOT_HATCH_BACKGROUND }}
+            />
+          ) : (
+            <BaySlotDayHatch segments={daySegments} slotStart={startDate} />
+          )}
+          {isIdle ? (
+            <span className="relative z-10 flex h-full items-center gap-1.5 pr-8">
+              <span className="min-w-0 truncate font-medium">{label}</span>
+              <span className="shrink-0 text-[0.65rem] tabular-nums opacity-80">{daySummary}</span>
+            </span>
+          ) : (
+            <button
+              className="relative z-10 block h-full w-full cursor-pointer pr-8 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={!job || slot.previewSplit !== undefined}
+              onClick={() => {
+                if (job) {
+                  onSelectSlot?.(job.id, bayId);
+                }
+              }}
+              type="button"
             >
-              <IconArrowRight />
-              Move slot right
-            </ContextMenuItem>
-            <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'before')}>
-              <IconClockPlus />
-              Add idle slot before
-            </ContextMenuItem>
-            <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'after')}>
-              <IconClockPlus />
-              Add idle slot after
-            </ContextMenuItem>
-          </ContextMenuGroup>
-        </ContextMenuContent>
-      ) : null}
-    </ContextMenu>
+              <BaySlotJobCard dayBreakdown={dayBreakdown} job={job} jobCode={label} />
+            </button>
+          )}
+          {canEditSchedule ? (
+            <>
+              <Dialog onOpenChange={setIsRemoveDialogOpen} open={isRemoveDialogOpen}>
+                <DialogTrigger
+                  render={
+                    <button
+                      aria-label={`Remove ${label}`}
+                      className={cn(
+                        'absolute top-1/2 right-2 z-20 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm bg-card/80 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                        'hover:bg-destructive hover:text-white focus-visible:ring-ring',
+                      )}
+                      disabled={isScheduleMutationPending || isRemoving}
+                      type="button"
+                    />
+                  }
+                >
+                  <IconTrash className="size-3.5" />
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Remove slot</DialogTitle>
+                    <DialogDescription>
+                      Remove {label} from the Bay schedule. Later Slots will move up to close the gap.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose render={<Button disabled={isRemoving} type="button" variant="outline" />}>
+                      Cancel
+                    </DialogClose>
+                    <Button
+                      disabled={isRemoving}
+                      onClick={async () => {
+                        setIsRemoving(true);
+                        try {
+                          await onRemove(slot.id);
+                          setIsRemoveDialogOpen(false);
+                        } catch {
+                          // The mutation hook owns the user-facing error toast.
+                        } finally {
+                          setIsRemoving(false);
+                        }
+                      }}
+                      type="button"
+                      variant="destructive"
+                    >
+                      {isRemoving ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+                      Remove
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <button
+                aria-label={`Resize ${label}`}
+                className={cn(
+                  'absolute top-0 right-0 h-full w-2 cursor-ew-resize border-r-2 outline-none disabled:cursor-not-allowed disabled:opacity-50',
+                  isIdle
+                    ? 'border-foreground/40 bg-foreground/10 hover:bg-foreground/15 focus-visible:ring-2 focus-visible:ring-foreground'
+                    : 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring',
+                )}
+                disabled={isScheduleMutationPending || isRemoving}
+                onPointerCancel={cancelResize}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={finishResize}
+                type="button"
+              />
+            </>
+          ) : null}
+        </ContextMenuTrigger>
+        {canEditSchedule ? (
+          <ContextMenuContent>
+            <ContextMenuGroup>
+              <ContextMenuItem disabled={isScheduleMutationPending || slotIndex === 0} onClick={() => moveSlot('left')}>
+                <IconArrowLeft />
+                Move slot left
+              </ContextMenuItem>
+              <ContextMenuItem
+                disabled={isScheduleMutationPending || slotIndex === slotCount - 1}
+                onClick={() => moveSlot('right')}
+              >
+                <IconArrowRight />
+                Move slot right
+              </ContextMenuItem>
+              <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'before')}>
+                <IconClockPlus />
+                Add idle slot before
+              </ContextMenuItem>
+              <ContextMenuItem disabled={isScheduleMutationPending} onClick={() => onAddIdle(slot.id, 'after')}>
+                <IconClockPlus />
+                Add idle slot after
+              </ContextMenuItem>
+            </ContextMenuGroup>
+          </ContextMenuContent>
+        ) : null}
+      </ContextMenu>
+      <TooltipContent className="flex-col items-start gap-0.5">
+        <p className="font-medium">
+          {label}: {formatDate(slot.startDate, 'PPP')} - {formatDate(slot.endDate, 'PPP')}
+        </p>
+        <p>
+          {dayBreakdown.workingDays} working day(s), {dayBreakdown.closureDays} closure day(s),{' '}
+          {dayBreakdown.overtimeDays} overtime day(s)
+        </p>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 

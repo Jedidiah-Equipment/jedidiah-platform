@@ -2,6 +2,7 @@ import { departmentLabels } from '@pkg/domain';
 import type { Bay } from '@pkg/schema';
 import { IconTrash } from '@tabler/icons-react';
 import type React from 'react';
+import { BayOperatorIndicator } from '@/components/bays/BayOperatorIndicator.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent } from '@/components/ui/card.js';
@@ -12,6 +13,8 @@ type BayRowCardProps = {
   onRemove: () => void;
   removeDisabled?: boolean;
   removeLabel: string;
+  /** Show the Bay's current Operator avatar beside the name, as on the schedule Gantt. */
+  showOperator?: boolean;
   unavailableHint: string;
 };
 
@@ -21,19 +24,23 @@ export const BayRowCard: React.FC<BayRowCardProps> = ({
   onRemove,
   removeDisabled,
   removeLabel,
+  showOperator = false,
   unavailableHint,
 }) => (
   <Card size="sm">
     <CardContent>
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-        <div className="min-w-0 self-center">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="truncate font-medium">{bay?.name ?? 'Unavailable Bay'}</span>
-            {bay?.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+        <div className="flex min-w-0 items-center gap-3 self-center">
+          {showOperator ? <BayOperatorIndicator operator={bay?.currentOperator ?? null} /> : null}
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="truncate font-medium">{bay?.name ?? 'Unavailable Bay'}</span>
+              {bay?.disabledAt ? <Badge variant="outline">Disabled</Badge> : null}
+            </div>
+            <p className="text-muted-foreground text-xs font-mono">
+              {bay ? departmentLabels[bay.department] : unavailableHint}
+            </p>
           </div>
-          <p className="text-muted-foreground text-xs font-mono">
-            {bay ? departmentLabels[bay.department] : unavailableHint}
-          </p>
         </div>
         {children}
         <Button

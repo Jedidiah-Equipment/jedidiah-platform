@@ -41,10 +41,16 @@ Work one issue at a time. Never have two grind PRs open at once.
 2. Implement the slice end-to-end per its acceptance criteria.
 3. Run `pnpm verify`. Fix until green.
 4. UI-test the change with the `/verify` skill (run the app, observe the behavior described in the acceptance criteria). If UI changed, capture a proof screenshot that shows the accepted behavior.
-5. Local codex review:
-   ```
-   codex exec "Review the uncommitted changes and the diff against main in this repo for bugs, missed edge cases, and convention violations. Be specific."
-   ```
+5. Local review:
+   - If this skill is being run by Codex, use Claude as the reviewer to avoid nested Codex reviewing Codex's own work:
+     ```
+     claude --print --model claude-opus-4-8 --effort high "Review the uncommitted changes and the diff against main in this repo for bugs, missed edge cases, and convention violations. Be specific."
+     ```
+   - Otherwise, use Codex review with GPT-5.5 and high reasoning:
+     ```
+     codex exec review --base main --model gpt-5.5 -c 'model_reasoning_effort="high"'
+     ```
+     Keep this as a scoped review command: do not add `--uncommitted` or a prompt, because Codex review treats scoped targets and prompts as mutually exclusive.
    Apply fixes you judge correct (ignore stylistic noise), then re-run `pnpm verify` if you changed code.
 6. Publish with the `/blast-it` skill. Ensure the PR body contains `Closes #<issue-number>`. If UI changed, attach the proof screenshot to the PR before ending the pass.
 7. End the pass. Codex cloud review starts on its own; the next wake-up lands in Phase C.

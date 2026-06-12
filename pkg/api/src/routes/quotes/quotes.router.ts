@@ -1,5 +1,4 @@
 import {
-  countQuotesByWeek,
   createQuote,
   generateQuoteDocument,
   getQuote,
@@ -11,8 +10,11 @@ import {
   listProducts,
   listQuoteSalespeople,
   listQuotes,
+  listStaleSentQuotes,
   type QuoteCoreError,
+  summarizeQuotePipeline,
   summarizeQuotesByStatus,
+  summarizeQuoteWeeklyFlow,
   updateQuote,
 } from '@pkg/core';
 import { renderQuoteDocumentPdf } from '@pkg/pdf';
@@ -52,7 +54,11 @@ export const quotesRouter = router({
 
   summaryByStatus: authorizedProcedure('quote:read').query(({ ctx }) => summarizeQuotesByStatus({ db: ctx.db })),
 
-  createdByWeek: authorizedProcedure('quote:read').query(({ ctx }) => countQuotesByWeek({ db: ctx.db })),
+  pipelineSummary: authorizedProcedure('quote:read').query(({ ctx }) => summarizeQuotePipeline({ db: ctx.db })),
+
+  weeklyFlow: authorizedProcedure('quote:read').query(({ ctx }) => summarizeQuoteWeeklyFlow({ db: ctx.db })),
+
+  staleSent: authorizedProcedure('quote:read').query(({ ctx }) => listStaleSentQuotes({ db: ctx.db })),
 
   customers: authorizedProcedure('quote:read')
     .input(CustomerListInput)

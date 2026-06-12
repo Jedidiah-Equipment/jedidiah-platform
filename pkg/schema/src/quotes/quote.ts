@@ -260,13 +260,40 @@ export const QuoteStatusSummary = z.object({
   items: z.array(QuoteStatusCount),
 });
 
-export type QuoteCreatedByWeekCount = z.infer<typeof QuoteCreatedByWeekCount>;
-export const QuoteCreatedByWeekCount = z.object({
-  weekStartDate: DateOnlyIso,
-  count: z.number().int().min(0),
+export type QuotePipelineSummary = z.infer<typeof QuotePipelineSummary>;
+export const QuotePipelineSummary = z.object({
+  accepted90dCount: z.number().int().min(0),
+  newlySent30dValue: Price,
+  openSentCount: z.number().int().min(0),
+  openSentValue: Price,
+  rejected90dCount: z.number().int().min(0),
 });
 
-export type QuoteCreatedByWeekSummary = z.infer<typeof QuoteCreatedByWeekSummary>;
-export const QuoteCreatedByWeekSummary = z.object({
-  items: z.array(QuoteCreatedByWeekCount),
+export type QuoteWeeklyFlowPoint = z.infer<typeof QuoteWeeklyFlowPoint>;
+export const QuoteWeeklyFlowPoint = z.object({
+  weekStartDate: DateOnlyIso,
+  acceptedCount: z.number().int().min(0),
+  createdCount: z.number().int().min(0),
+});
+
+export type QuoteWeeklyFlowSummary = z.infer<typeof QuoteWeeklyFlowSummary>;
+export const QuoteWeeklyFlowSummary = z.object({
+  items: z.array(QuoteWeeklyFlowPoint),
+});
+
+export type StaleSentQuote = z.infer<typeof StaleSentQuote>;
+export const StaleSentQuote = z.object({
+  id: UUID,
+  code: QuoteCode,
+  customerCompanyName: z.string().trim().min(1),
+  customerThumbnailDataUrl: NullableThumbnailDataUrl,
+  currencyCode: ProductCurrencyCode,
+  sentDaysAgo: z.number().int().min(0),
+  statusChangedAt: DateIso,
+  totalValue: Price,
+});
+
+export type StaleSentQuoteList = z.infer<typeof StaleSentQuoteList>;
+export const StaleSentQuoteList = z.object({
+  items: z.array(StaleSentQuote),
 });

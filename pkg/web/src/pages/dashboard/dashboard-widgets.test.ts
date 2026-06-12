@@ -5,6 +5,10 @@ import type { DashboardWidget } from './dashboard-widget-types.js';
 import { filterDashboardWidgets } from './dashboard-widget-types.js';
 import { dashboardWidgets } from './dashboard-widgets.js';
 
+vi.mock('./widgets/ActiveJobsWidget.js', () => ({ ActiveJobsWidget: () => null }));
+vi.mock('./widgets/BayLoadTodayWidget.js', () => ({ BayLoadTodayWidget: () => null }));
+vi.mock('./widgets/BayRunwayWidget.js', () => ({ BayRunwayWidget: () => null }));
+vi.mock('./widgets/ShopFloorTodayWidget.js', () => ({ ShopFloorTodayWidget: () => null }));
 vi.mock('./widgets/RecentQuotesWidget.js', () => ({ RecentQuotesWidget: () => null }));
 vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
 vi.mock('./widgets/QuotesCreatedOverTimeWidget.js', () => ({ QuotesCreatedOverTimeWidget: () => null }));
@@ -159,6 +163,35 @@ describe('dashboardWidgets', () => {
 
     expect(widgetIds(filterDashboardWidgets(productEditorAccess, dashboardWidgets))).toContain('products');
     expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).not.toContain('products');
+  });
+
+  it('registers the shop-floor band behind job read access', () => {
+    const shopFloorWidget = dashboardWidgets.find((widget) => widget.id === 'shop-floor-today');
+    const bayRunwayWidget = dashboardWidgets.find((widget) => widget.id === 'bay-runway');
+    const activeJobsWidget = dashboardWidgets.find((widget) => widget.id === 'active-jobs');
+    const bayLoadWidget = dashboardWidgets.find((widget) => widget.id === 'bay-load-today');
+
+    expect(shopFloorWidget).toMatchObject({ requires: 'job:read', size: 'lg', title: 'Shop floor today' });
+    expect(bayRunwayWidget).toMatchObject({ requires: 'job:read', size: 'sm', title: 'Bay runway' });
+    expect(activeJobsWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Active jobs' });
+    expect(bayLoadWidget).toMatchObject({ requires: 'job:read', size: 'xs', title: 'Bay load today' });
+  });
+
+  it('shows the shop-floor band to job viewers and procurement managers and hides it from sales', () => {
+    const shopFloorWidgetIds = ['active-jobs', 'bay-load-today', 'shop-floor-today', 'bay-runway'];
+    const jobViewerAccess = createUserAccessSummary({ role: 'job-viewer', userId: 'user-1' });
+    const procurementAccess = createUserAccessSummary({ role: 'procurement-manager', userId: 'user-1' });
+    const salesAccess = createUserAccessSummary({ role: 'sales', userId: 'user-1' });
+
+    const jobViewerIds = widgetIds(filterDashboardWidgets(jobViewerAccess, dashboardWidgets));
+    const procurementIds = widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets));
+    const salesIds = widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets));
+
+    for (const widgetId of shopFloorWidgetIds) {
+      expect(jobViewerIds).toContain(widgetId);
+      expect(procurementIds).toContain(widgetId);
+      expect(salesIds).not.toContain(widgetId);
+    }
   });
 
   it('shows Recent activity only to admins', () => {

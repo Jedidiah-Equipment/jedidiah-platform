@@ -70,7 +70,7 @@ type FilterScrollRequest = {
 };
 
 export const BayScheduleGantt: React.FC<{
-  /** Dialog embedding: hides the page filter bar; zoom controls remain. */
+  /** Embedded in another surface (e.g. the Start Job page): hides the filter bar; zoom controls remain. */
   embedded?: boolean;
   fullscreen?: boolean;
   /** Bar label for ghost slots, e.g. the source Quote code. */

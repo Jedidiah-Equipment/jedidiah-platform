@@ -26,9 +26,8 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-
-import { GenerateJobFromQuoteDialog } from '../GenerateJobFromQuoteDialog.js';
 import { openQuoteEmailAssistant } from '../quote-email-assistant.js';
+import { StartJobLink } from '../StartJobLink.js';
 import type { SelectedAssemblySnapshot } from '../types.js';
 
 export type QuoteComputedSummary = {
@@ -280,7 +279,7 @@ function QuoteTotalCard({
           <IconMail data-icon="inline-start" />
           Generate Email
         </Button>
-        <GenerateJobFromQuoteDialog className="mt-2 w-full" quote={quote} />
+        <StartJobLink className="mt-2 w-full" quote={quote} />
       </CardContent>
     </Card>
   );

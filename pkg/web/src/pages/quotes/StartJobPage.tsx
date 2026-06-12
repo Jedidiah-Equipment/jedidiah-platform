@@ -216,7 +216,7 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
                     </Empty>
                   ) : (
                     // Responsive grid: equal-width seed cards align in columns, as many per row as fit.
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(38rem,1fr))] gap-3">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,38rem),1fr))] gap-3">
                       {baySeedsField.state.value.map((row, index) => (
                         <BayRowCard
                           bay={baysById.get(row.bayId)}

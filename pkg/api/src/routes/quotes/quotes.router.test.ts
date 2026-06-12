@@ -16,7 +16,7 @@ import {
   user,
 } from '@pkg/db';
 import type { QuoteDetail } from '@pkg/schema';
-import { describe, expect } from 'vitest';
+import { describe, expect, vi } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -917,6 +917,115 @@ describe('quotes.list', () => {
       quotedBasePrice: context.product.basePrice,
     });
     expect(result.items[0]).not.toHaveProperty('total');
+  });
+});
+
+describe('quotes.upcomingDeliveries', () => {
+  test('requires quote read access and returns accepted planned deliveries through the 30-day plant window', async ({
+    context,
+  }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-11T10:00:00.000+02:00'));
+
+    try {
+      await expect(productEditorCaller.quotes.upcomingDeliveries()).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+      });
+
+      const overdue = await createNamedQuote(salesCaller, {
+        customerCompanyName: 'Overdue Delivery',
+        discountPercent: 10,
+        plannedDeliveryDate: '2026-06-01',
+        preferredDeliveryDate: null,
+        productId: context.product.id,
+        status: 'accepted',
+      });
+      const linkedJobDelivery = await createNamedQuote(salesCaller, {
+        customerCompanyName: 'Linked Job Delivery',
+        discountPercent: 10,
+        plannedDeliveryDate: '2026-06-20',
+        preferredDeliveryDate: '2026-06-18',
+        productId: context.product.id,
+        status: 'accepted',
+      });
+      const boundary = await createNamedQuote(salesCaller, {
+        customerCompanyName: 'Boundary Delivery',
+        discountPercent: 10,
+        plannedDeliveryDate: '2026-07-11',
+        preferredDeliveryDate: null,
+        productId: context.product.id,
+        status: 'accepted',
+      });
+      const farFuture = await createNamedQuote(salesCaller, {
+        customerCompanyName: 'Far Future Delivery',
+        discountPercent: 10,
+        plannedDeliveryDate: '2026-07-12',
+        preferredDeliveryDate: null,
+        productId: context.product.id,
+        status: 'accepted',
+      });
+      const blankPlannedDate = await createNamedQuote(salesCaller, {
+        customerCompanyName: 'Blank Planned Delivery',
+        discountPercent: 10,
+        plannedDeliveryDate: null,
+        preferredDeliveryDate: '2026-06-15',
+        productId: context.product.id,
+        status: 'accepted',
+      });
+      const sent = await createNamedQuote(salesCaller, {
+        customerCompanyName: 'Sent Delivery',
+        discountPercent: 10,
+        plannedDeliveryDate: '2026-06-15',
+        preferredDeliveryDate: null,
+        productId: context.product.id,
+        status: 'sent',
+      });
+      const job = await adminCaller.jobs.create({
+        baySeeds: [],
+        quoteId: linkedJobDelivery.id,
+      });
+
+      const result = await salesCaller.quotes.upcomingDeliveries();
+
+      expect(result).toMatchObject({
+        today: '2026-06-11',
+        windowEndDate: '2026-07-11',
+      });
+      expect(result.items.map((quote) => quote.id)).toEqual([overdue.id, linkedJobDelivery.id, boundary.id]);
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          customerCompanyName: 'Overdue Delivery',
+          id: overdue.id,
+          job: null,
+          plannedDeliveryDate: '2026-06-01',
+          status: 'accepted',
+        }),
+        expect.objectContaining({
+          customerCompanyName: 'Linked Job Delivery',
+          id: linkedJobDelivery.id,
+          job: {
+            jobCode: job.code,
+            jobId: job.id,
+          },
+          plannedDeliveryDate: '2026-06-20',
+          productName: context.product.name,
+        }),
+        expect.objectContaining({
+          customerCompanyName: 'Boundary Delivery',
+          id: boundary.id,
+          plannedDeliveryDate: '2026-07-11',
+        }),
+      ]);
+      expect(result.items.map((quote) => quote.id)).not.toEqual(
+        expect.arrayContaining([blankPlannedDate.id, farFuture.id, sent.id]),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

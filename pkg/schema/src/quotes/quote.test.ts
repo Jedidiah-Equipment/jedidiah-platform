@@ -6,6 +6,7 @@ import {
   QuoteDetail,
   QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
+  UpcomingDeliveryQuotesResult,
 } from './quote.js';
 
 const baseCreateInput = {
@@ -199,6 +200,65 @@ describe('PriorityQuote', () => {
     ).toMatchObject({
       code: 'QUO-00001',
       earliestDeliveryDate: '2026-07-15',
+    });
+  });
+});
+
+describe('UpcomingDeliveryQuotesResult', () => {
+  it('parses a non-null planned delivery date with server window dates', () => {
+    const quoteSummary = {
+      code: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      customerCompanyName: 'Acme Mining',
+      customerId: '550e8400-e29b-41d4-a716-446655440001',
+      customerThumbnailDataUrl: null,
+      deliveryIncluded: true,
+      deliveryPrice: 0,
+      depositPercent: 0,
+      discountPercent: 0,
+      documentNotes: null,
+      id: '550e8400-e29b-41d4-a716-446655440010',
+      job: {
+        jobCode: 7,
+        jobId: '550e8400-e29b-41d4-a716-446655440020',
+      },
+      notes: null,
+      plannedDeliveryDate: '2026-06-20',
+      preferredDeliveryDate: null,
+      productBuildTimeDays: 14,
+      productCurrencyCode: 'ZAR',
+      productId: '550e8400-e29b-41d4-a716-446655440000',
+      productModelCode: 'WL-100',
+      productName: 'Wheel Loader',
+      quotedBasePrice: 1000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonEmail: null,
+      salesPersonId: 'auth-user-1',
+      salesPersonName: null,
+      salesPersonThumbnailDataUrl: null,
+      selectedAssemblies: [],
+      status: 'accepted',
+      statusChangedAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      validUntil: null,
+    };
+
+    expect(
+      UpcomingDeliveryQuotesResult.parse({
+        items: [quoteSummary],
+        today: '2026-06-05',
+        windowEndDate: '2026-07-05',
+      }),
+    ).toMatchObject({
+      items: [
+        {
+          code: 'QUO-00001',
+          job: {
+            jobCode: 'JOB-00007',
+          },
+          plannedDeliveryDate: '2026-06-20',
+        },
+      ],
     });
   });
 });

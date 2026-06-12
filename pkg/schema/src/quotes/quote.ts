@@ -118,6 +118,18 @@ export const PriorityQuote = QuoteSummary.extend({
   earliestDeliveryDate: DateOnlyIso,
 });
 
+export type UpcomingDeliveryQuote = z.infer<typeof UpcomingDeliveryQuote>;
+export const UpcomingDeliveryQuote = QuoteSummary.extend({
+  plannedDeliveryDate: DateOnlyIso,
+});
+
+export type UpcomingDeliveryQuotesResult = z.infer<typeof UpcomingDeliveryQuotesResult>;
+export const UpcomingDeliveryQuotesResult = z.object({
+  items: z.array(UpcomingDeliveryQuote),
+  today: DateOnlyIso,
+  windowEndDate: DateOnlyIso,
+});
+
 export type QuoteDetail = z.infer<typeof QuoteDetail>;
 export const QuoteDetail = QuoteSummary.extend({
   customerAddress: CustomerOptionalText,

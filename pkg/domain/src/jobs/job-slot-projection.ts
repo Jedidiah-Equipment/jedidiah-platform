@@ -1,6 +1,7 @@
 import type { DateOnlyIso } from '@pkg/schema';
 
 import { addDateOnlyDays } from '../formatting/date-only.js';
+import { firstWorkingDayOnOrAfter, isWorkingDay, type WorkingCalendar } from './working-calendar.js';
 
 export const DEFAULT_IDLE_SLOT_LABEL = 'Idle';
 
@@ -8,13 +9,6 @@ export type ProjectableJobSlot = {
   durationDays: number;
   id: string;
   sequence: number;
-};
-
-export type WorkingCalendarDayDirection = 'work' | 'off';
-
-export type WorkingCalendar = {
-  bayExceptions?: ReadonlyMap<string, WorkingCalendarDayDirection>;
-  orgOffDays?: ReadonlySet<string>;
 };
 
 export type ProjectedSlot<TSlot extends ProjectableJobSlot> = TSlot & {
@@ -77,25 +71,6 @@ export function addJobSlotDuration(
   }
 
   return cursor;
-}
-
-export function countWorkingDaysBetween(
-  startDate: DateOnlyIso,
-  endDate: DateOnlyIso,
-  workingCalendar: WorkingCalendar = {},
-): number {
-  let cursor = firstWorkingDayOnOrAfter(startDate, workingCalendar);
-  let count = 0;
-
-  while (cursor < endDate) {
-    if (isWorkingDay(cursor, workingCalendar)) {
-      count += 1;
-    }
-
-    cursor = addDateOnlyDays(cursor, 1);
-  }
-
-  return count;
 }
 
 export type SlotCalendarDays = {
@@ -190,24 +165,4 @@ export function segmentSlotCalendarDays(
   }
 
   return segments;
-}
-
-export function firstWorkingDayOnOrAfter(date: DateOnlyIso, workingCalendar: WorkingCalendar = {}): DateOnlyIso {
-  let cursor = date;
-
-  while (!isWorkingDay(cursor, workingCalendar)) {
-    cursor = addDateOnlyDays(cursor, 1);
-  }
-
-  return cursor;
-}
-
-export function isWorkingDay(date: DateOnlyIso, workingCalendar: WorkingCalendar = {}): boolean {
-  const bayException = workingCalendar.bayExceptions?.get(date);
-
-  if (bayException) {
-    return bayException === 'work';
-  }
-
-  return !workingCalendar.orgOffDays?.has(date);
 }

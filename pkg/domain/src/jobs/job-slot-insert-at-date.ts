@@ -1,14 +1,8 @@
 import type { DateOnlyIso } from '@pkg/schema';
 
 import { addDateOnlyDays, maxDateOnly } from '../formatting/date-only.js';
-import {
-  countWorkingDaysBetween,
-  firstWorkingDayOnOrAfter,
-  type ProjectableJobSlot,
-  type ProjectedSlot,
-  projectJobSlots,
-  type WorkingCalendar,
-} from './job-slot-projection.js';
+import { type ProjectableJobSlot, type ProjectedSlot, projectJobSlots } from './job-slot-projection.js';
+import { countWorkingDaysBetween, firstWorkingDayOnOrAfter, type WorkingCalendar } from './working-calendar.js';
 
 export type InsertAtDatePlacement<TSlot extends ProjectableJobSlot> =
   /** `idleGapDays` is the idle filler owed between a past queue end and the start (0 when the queue reaches today). */

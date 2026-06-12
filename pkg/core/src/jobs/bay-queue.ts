@@ -1,15 +1,10 @@
 import { type DatabaseTransaction, jobBays, jobSlots } from '@pkg/db';
-import { getPlantDateNow, resolveInsertAtDatePlacement, type WorkingCalendar } from '@pkg/domain';
+import { getPlantDateNow, resolveInsertAtDatePlacement } from '@pkg/domain';
 import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { and, asc, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
 
 import { JobBayNotFoundError, JobSlotBookingDeniedError, JobSlotNotFoundError } from './job-errors.js';
-import {
-  createBayWorkingCalendar,
-  createOrgWorkingCalendar,
-  listBayCalendarExceptions,
-  listWorkingCalendarOffDays,
-} from './job-read-service.js';
+import { loadBayWorkingCalendar } from './working-calendar-service.js';
 
 type JobBayRow = typeof jobBays.$inferSelect;
 type JobSlotRow = typeof jobSlots.$inferSelect;
@@ -210,13 +205,6 @@ function assertBayAcceptsBookings(bay: JobBayRow): void {
   if (bay.disabledAt) {
     throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
   }
-}
-
-async function loadBayWorkingCalendar(tx: DatabaseTransaction, bayId: UUID): Promise<WorkingCalendar> {
-  return createBayWorkingCalendar(
-    createOrgWorkingCalendar(await listWorkingCalendarOffDays(tx)),
-    await listBayCalendarExceptions(tx, bayId),
-  );
 }
 
 function secondSplitHalfSpec(targetSlot: JobSlotRow, durationDays: number): BayQueueSlotSpec {

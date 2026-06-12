@@ -36,6 +36,7 @@ export const quotes = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'restrict' }),
     status: text('status').notNull().default('draft').$type<QuoteStatus>(),
+    statusChangedAt: timestamp('status_changed_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     discountPercent: numeric('discount_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
     depositPercent: numeric('deposit_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
     deliveryIncluded: boolean('delivery_included').notNull().default(true),

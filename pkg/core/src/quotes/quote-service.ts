@@ -176,6 +176,7 @@ export function mapQuote(row: QuoteRow): Quote {
     quotedCurrencyCode: row.quotedCurrencyCode,
     salesPersonId: row.salesPersonId,
     status: row.status,
+    statusChangedAt: row.statusChangedAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     validUntil: row.validUntil,
   });
@@ -590,7 +591,11 @@ export async function updateQuote({
 
     const [row] = await tx
       .update(quotes)
-      .set({ ...patch, updatedAt: new Date() })
+      .set({
+        ...patch,
+        updatedAt: new Date(),
+        ...(input.status === before.status ? {} : { statusChangedAt: new Date() }),
+      })
       .where(eq(quotes.id, input.id))
       .returning();
 

@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 
 import { getJobProjectedFinishDates, isJobDeliveryAtRisk, listEnabledBays } from '../bay-schedule-derivations.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
@@ -61,8 +62,8 @@ export const UpcomingDeliveriesWidget: React.FC = () => {
             <li key={quote.id}>
               <UpcomingDeliveryRow
                 finishDatesByJobId={finishDatesByJobId}
+                canOpenJobs={jobAccess.can}
                 quote={quote}
-                showAtRisk={jobAccess.can}
                 today={result.today}
               />
             </li>
@@ -79,19 +80,19 @@ export const UpcomingDeliveriesWidget: React.FC = () => {
 };
 
 function UpcomingDeliveryRow({
+  canOpenJobs,
   finishDatesByJobId,
   quote,
-  showAtRisk,
   today,
 }: {
+  canOpenJobs: boolean;
   finishDatesByJobId: ReadonlyMap<UUID, DateOnlyIso>;
   quote: UpcomingDeliveryQuote;
-  showAtRisk: boolean;
   today: DateOnlyIso;
 }) {
   const isOverdue = quote.plannedDeliveryDate < today;
   const isAtRisk =
-    showAtRisk && quote.job
+    canOpenJobs && quote.job
       ? isJobDeliveryAtRisk({
           finishDatesByJobId,
           jobId: quote.job.jobId,
@@ -112,9 +113,7 @@ function UpcomingDeliveryRow({
           {quote.job ? (
             <>
               <span className="px-1">·</span>
-              <Link className="font-medium hover:underline" params={{ id: quote.job.jobId }} to="/jobs/$id">
-                {quote.job.jobCode}
-              </Link>
+              <JobCodeDisplay canOpenJob={canOpenJobs} jobCode={quote.job.jobCode} jobId={quote.job.jobId} />
             </>
           ) : null}
         </span>

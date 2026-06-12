@@ -39,6 +39,8 @@ def kind_for(rel_path: Path) -> str | None:
         return "ADR"
     if len(parts) >= 2 and parts[0] == "docs" and parts[1] == "agents" and rel_path.suffix in {".md", ".yaml", ".yml"}:
         return "docs/agents"
+    if len(parts) >= 3 and parts[0] == ".agents" and parts[1] == "skills" and rel_path.name == "SKILL.md":
+        return "repo skill instructions"
     if len(parts) >= 4 and parts[0] == ".agents" and parts[1] == "skills" and parts[-2] == "agents":
         return "repo skill metadata"
     return None

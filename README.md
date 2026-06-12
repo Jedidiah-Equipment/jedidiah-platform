@@ -110,25 +110,10 @@ ephemeral databases and keep those clone URLs in memory only. Recreate the templ
 Use `pnpm db:reset` to stop Docker Compose, delete the local Postgres volume, and start a fresh
 Postgres container. This wipes local database data.
 
-`pkg/db` contains Better Auth core tables and app-owned domain tables:
-
-- `user` (with a `role` column driving app authorization)
-- `session`
-- `account`
-- `verification`
-- `product`
-- `product_options`
-- `customers`
-- `supplier`
-- `quotes`
-- `job`
-- `job_stage`
-- `audit_events`
-- `user_department`
-
-Jobs use a stage-level production model: a `job` has five `job_stage` rows. Quote-to-Job is
-one-to-many: a Quote can source zero or more Jobs, and `job.quote_id` is indexed but no longer
-unique.
+`pkg/db` contains Better Auth core tables plus app-owned tables for Customers, Suppliers, Parts,
+Products, Quotes, Jobs, Documents, Bay scheduling, audit events, and descriptive User Departments.
+Jobs are created from accepted Quotes; each Job references exactly one Quote, and each Quote sources
+at most one Job. Production progress is represented by Bay Queues and Slots, not Job Stage rows.
 
 Those auth table IDs are Better Auth-owned string IDs. For app-owned domain tables, prefer UUID
 primary keys with database defaults unless there is a specific reason not to.
@@ -149,7 +134,7 @@ schema changes that produced them.
 - `products`, `customers`, `suppliers`, `quotes`, `jobs`, `audit`, and `users` tRPC procedures gated by
   permission-specific procedures
 
-App roles are `admin`, `product-editor`, `job-supervisor`, `job-stage-editor`, and `sales`.
+App roles are `admin`, `procurement-manager`, `job-viewer`, `sales`, and `bay-operator`.
 Role-to-permission mapping lives in `@pkg/domain/auth/authorization` and is shared between the
 Better Auth admin plugin, server procedures, and the web access hooks. Server-side procedures use
 `authorizedProcedure(permission)` in `pkg/api/src/trpc/init.ts`; clients use `useAccess` /
@@ -164,15 +149,13 @@ after migrations.
 
 ## Job workflow notes
 
-Jobs currently use a stage-level workflow:
+Jobs are scheduled through Bay Queues:
 
-- The production pipeline is five Stages: `procurement`, `supply`, `fabrication`, `paint`, and
-  `assembly`.
-- Job status is stored manually as `pending`, `active`, `paused`, `complete`, or `cancelled`.
-- Jobs have a single optional Job Due Date.
-- Pipeline order is advisory for planning and display. It is not a server-side gate.
-- A Quote may source multiple Jobs. Draft, sent, and accepted Quotes can source Jobs; rejected
-  Quotes cannot.
+- The visual pipeline groups Bays by Department: Procurement, Supply, Fabrication, Paint, Assembly.
+- A Job has no Stage rows; it appears in a Department while it has Slots on that Department's Bays.
+- Slots are whole-day Work or Idle planning blocks. Projected dates are derived plant business dates.
+- Job creation is allowed only from an accepted Quote with no existing Job.
+- Product Bays can seed initial Work Slots, but Jobs can also be scheduled later from the Gantt.
 
 ## Web notes
 

@@ -54,7 +54,7 @@ type WorkingEntry =
 
 /**
  * Projects pending Job seeds as client-only ghost Slots against the live Bay queues
- * (ADR-0042: the picked date is a placement hint, resolved with the shared domain
+ * (the picked date is a placement hint, resolved with the shared domain
  * resolver — this preview and the server booking resolve identically). Real slots
  * display at their reflowed post-insert positions; a split target renders as two
  * marked halves around the ghost. Bays without a valid seed pass through untouched,

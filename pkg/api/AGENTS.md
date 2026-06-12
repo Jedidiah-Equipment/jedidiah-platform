@@ -1,18 +1,8 @@
 # api (@pkg/api)
 
-## Copy These
+- Keep routers thin: auth, input parsing, transport mapping, and calls into `@pkg/core`.
+- Better Auth endpoints under `/api/auth/*` own auth mutations; do not reimplement them in tRPC.
+- Map expected core errors at the feature boundary with public messages and stable `appCode`s. Preserve the core error as `cause`.
+- List inputs use `pageSize: 0` for unpaged picker reads instead of exceeding shared caps.
 
-- Thin router: `src/routes/products/products.router.ts`
-- Safe full-list router: `src/routes/users/users.router.ts`
-- Procedure setup: `src/trpc/init.ts`
-- Router composition: `src/trpc/router.ts`
-- Direct caller test: `src/routes/products/products.router.test.ts`
-- Test harness: `src/test/create-tester.ts`
-- Better Auth access wiring: `src/auth/access-control.ts`
-
-## Notes
-
-- Better Auth HTTP endpoints under `/api/auth/*` own auth mutations.
-- Keep email mocked unless asked otherwise.
-- List inputs use `pageSize: 0` as the repo's unpaged/read-all convention. Prefer that over
-  exceeding the shared page-size cap when a UI legitimately needs all rows for a picker.
+Canonical examples: `src/routes/products/products.router.ts`, `src/trpc/init.ts`, `src/test/create-tester.ts`.

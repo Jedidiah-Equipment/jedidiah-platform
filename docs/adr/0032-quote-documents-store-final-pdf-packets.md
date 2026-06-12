@@ -1,3 +1,0 @@
-# Quote Documents store final PDF packets
-
-Quote Documents are generated as final customer-facing PDF packets and stored with the Product brochure already included, rather than storing only the quote page and appending brochure pages on download. This increases stored file size, but it makes every Quote Document revision a stable point-in-time customer artifact: the quote facts, live Customer details used at generation time, and latest PDF Product brochure used at generation time are married into one immutable Document. Future downloads of an older revision must return the same packet the customer received, even if the Product brochure or Customer profile changes later.

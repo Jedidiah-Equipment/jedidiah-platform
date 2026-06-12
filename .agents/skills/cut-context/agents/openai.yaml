@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cut Context"
+  short_description: "Analyze and aggressively compact repo context"
+  default_prompt: "Use $cut-context to analyze context size, recommend cuts, and execute an aggressive docs reset."

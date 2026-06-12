@@ -17,8 +17,8 @@ Read these first:
 
 - `.sandcastle/CODING_STANDARDS.md`
 - closest package `AGENTS.md` files for touched packages
-- `CONTEXT.md`
-- `docs/adr/0011-code-owned-ai-guidance.md`
+- targeted `CONTEXT.md` sections
+- `docs/adr/0004-application-boundaries.md`
 
 Then derive current AI truth from source files, not from this skill:
 
@@ -51,8 +51,8 @@ Then derive current AI truth from source files, not from this skill:
 
 3. Check domain alignment.
    - Compare prompt terms against `CONTEXT.md` language.
-   - Treat `_Avoid_:` lines in `CONTEXT.md` as drift detectors, not as a fixed list copied into this skill.
-   - Verify relationship guidance matches current domain rules, especially Customer -> Quote -> Job, Quote conversion, Job Lifecycle Status, Stage Summary, Stage Detail, and UUID/public-code boundaries.
+   - Treat naming guards in `CONTEXT.md` as drift detectors, not as a fixed list copied into this skill.
+   - Verify relationship guidance matches current domain rules, especially Customer -> Quote -> Job, Quote conversion, Job/Bay schedule language, and UUID/public-code boundaries.
    - If the prompt mentions a workflow, field, entity, or rule, verify the matching source in `pkg/schema`, `pkg/core`, or `pkg/domain`.
 
 4. Check legacy and invented concepts.

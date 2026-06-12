@@ -2,7 +2,7 @@ import type { DateOnlyIso } from '@pkg/schema';
 
 import { parseDateOnlyParts } from './date.js';
 
-// Scheduling computes on whole `yyyy-MM-dd` plant business dates (ADR-0043),
+// Scheduling computes on whole `yyyy-MM-dd` plant business dates,
 // branded as DateOnlyIso so unvalidated plain strings cannot sneak in. Date-only
 // values carry no time or timezone and compare correctly with plain string
 // comparison; these helpers are pure calendar arithmetic.

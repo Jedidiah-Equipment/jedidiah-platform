@@ -50,12 +50,14 @@ Work one issue at a time. Never have two grind PRs open at once.
 
 ## Phase C — PR babysitting
 
-1. Check whether codex is still reviewing — its 👀 reaction on the PR description:
+1. Read codex's reaction on the PR description — it is the review lifecycle signal:
    ```
-   gh api repos/{owner}/{repo}/issues/<pr-number>/reactions --jq '[.[] | select(.content == "eyes" and .user.login == "chatgpt-codex-connector[bot]")] | length'
+   gh api repos/{owner}/{repo}/issues/<pr-number>/reactions --jq '[.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .content]'
    ```
-   Non-zero → still reviewing. End the pass and reschedule (~270s).
-2. Eyes gone → fetch feedback: `gh pr view <pr-number> --comments` and
+   - `eyes` present → still reviewing. End the pass and reschedule (~270s).
+   - `+1` (👍, no eyes) → **review finished clean, no findings**. Do not wait another cycle; go straight to step 4 (after confirming step 2 turns up nothing).
+   - No codex reaction at all → review hasn't started (or won't). If the PR is older than ~10 minutes with no reaction, no review comments, and no codex review, treat the review as not coming and proceed to step 4 rather than polling forever.
+2. Fetch feedback regardless of the reaction state: `gh pr view <pr-number> --comments` and
    `gh api repos/{owner}/{repo}/pulls/<pr-number>/comments` for inline comments.
 3. Address actionable comments: fix, `pnpm verify`, commit, push, reply to each addressed comment. If a push retriggers codex (eyes return), end the pass and poll again.
 4. No unaddressed comments and checks pass → merge:

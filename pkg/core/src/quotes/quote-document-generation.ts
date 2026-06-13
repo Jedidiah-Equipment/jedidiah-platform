@@ -1,9 +1,8 @@
 import { type customers, type Db, documents, type products, quoteSelectedAssemblies, quotes, type user } from '@pkg/db';
 import {
-  computeQuoteDiscountAmount,
-  computeQuoteTotal,
   formatCurrency,
   formatPercent,
+  priceQuote,
   QUOTE_DOCUMENT_VAT_PERCENT,
   resolveEffectiveBom,
 } from '@pkg/domain';
@@ -145,12 +144,11 @@ export async function getQuoteDocumentModel({
     amount: selection.quotedPrice,
     label: selection.quotedName,
   }));
-  const selectedAssemblyPrices = selectedOptionalAssemblies.map((item) => item.amount);
-  const discountAmount = computeQuoteDiscountAmount({
-    discountPercent: quote.discountPercent,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices,
-  });
+  // Line items list the catalog-resolved Optional Assemblies in display order; the money comes from
+  // Quote Pricing, which owns the one stale-selection rule. For a persisted Quote the null-FK stale
+  // set equals the catalog-resolved stale set, so line items and subtotal cover the same selections.
+  const pricing = priceQuote(quote);
+  const discountAmount = pricing.discountAmount;
   const lineItems: QuoteDocumentLineItem[] = [
     {
       amount: quote.quotedBasePrice,
@@ -185,13 +183,7 @@ export async function getQuoteDocumentModel({
         ]
       : []),
   ];
-  const subtotal = computeQuoteTotal({
-    deliveryIncluded: quote.deliveryIncluded,
-    deliveryPrice: quote.deliveryPrice,
-    discountPercent: quote.discountPercent,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices,
-  });
+  const subtotal = pricing.total;
   const vatAmount = (subtotal * QUOTE_DOCUMENT_VAT_PERCENT) / 100;
 
   return {

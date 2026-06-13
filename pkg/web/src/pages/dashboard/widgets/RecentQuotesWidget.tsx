@@ -1,4 +1,4 @@
-import { computeQuoteTotal, formatCurrency, hasPermission } from '@pkg/domain';
+import { formatCurrency, hasPermission, priceQuote } from '@pkg/domain';
 import type { QuoteListInput, QuoteSummary } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -82,7 +82,7 @@ function RecentQuoteRowContent({ canUpdateQuote, quote }: { canUpdateQuote: bool
       </span>
       <span className="text-right">
         <span className="block font-medium tabular-nums">
-          {formatCurrency(getQuoteTotal(quote), quote.quotedCurrencyCode)}
+          {formatCurrency(priceQuote(quote).total, quote.quotedCurrencyCode)}
         </span>
         <span className="block text-muted-foreground text-xs">
           <DateDisplay date={quote.createdAt} />
@@ -109,17 +109,4 @@ function RecentQuotesWidgetSkeleton() {
       ))}
     </div>
   );
-}
-
-function getQuoteTotal(quote: QuoteSummary): number {
-  // Match the Quotes table: stale optional assemblies have a null catalog reference and are excluded.
-  const liveSelectedAssemblies = quote.selectedAssemblies.filter((assembly) => assembly.productAssemblyId !== null);
-
-  return computeQuoteTotal({
-    deliveryIncluded: quote.deliveryIncluded,
-    deliveryPrice: quote.deliveryPrice,
-    discountPercent: quote.discountPercent,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
-  });
 }

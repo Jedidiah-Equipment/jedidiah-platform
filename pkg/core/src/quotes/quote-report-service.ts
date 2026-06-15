@@ -1,9 +1,9 @@
 import { customers, type Db, quotes } from '@pkg/db';
 import {
   addDateOnlyDays,
-  computeQuoteTotal,
   JOHANNESBURG_TIME_ZONE,
   parseDateOnlyParts,
+  priceQuote,
   toPlantDateOnly,
   zonedDateStartToUtcInstant,
 } from '@pkg/domain';
@@ -18,7 +18,7 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 
-import { getSelectedAssembliesByQuoteId, type QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
+import { getSelectedAssembliesByQuoteId } from './quote-selected-assemblies.js';
 
 const QUOTE_WEEKLY_FLOW_WEEK_COUNT = 12;
 const QUOTE_NEWLY_SENT_WINDOW_DAYS = 30;
@@ -130,7 +130,10 @@ export async function summarizeQuotePipeline({
     quoteIds: sentRows.map((row) => row.id),
   });
   const totalsByQuoteId = new Map(
-    sentRows.map((row) => [row.id, computeSentQuoteTotal(row, selectedAssembliesByQuoteId.get(row.id) ?? [])]),
+    sentRows.map((row) => [
+      row.id,
+      priceQuote({ ...row, selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [] }).total,
+    ]),
   );
   const decisionCountsByStatus = new Map(decisionRows.map((row) => [row.status, Number(row.count)]));
 
@@ -188,7 +191,7 @@ export async function listStaleSentQuotes({
       id: row.id,
       sentDaysAgo: Math.max(0, diffDateOnlyDays(today, toPlantDateOnly(row.statusChangedAt))),
       statusChangedAt: row.statusChangedAt.toISOString(),
-      totalValue: computeSentQuoteTotal(row, selectedAssembliesByQuoteId.get(row.id) ?? []),
+      totalValue: priceQuote({ ...row, selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [] }).total,
     })),
   });
 }
@@ -225,27 +228,6 @@ function getPlantWindowStartInstant({ days, now }: { days: number; now: Date }):
   const windowStartDate = addDateOnlyDays(toPlantDateOnly(now), -(days - 1));
 
   return zonedDateStartToUtcInstant(windowStartDate, JOHANNESBURG_TIME_ZONE);
-}
-
-function computeSentQuoteTotal(
-  row: {
-    deliveryIncluded: boolean;
-    deliveryPrice: number;
-    discountPercent: number;
-    quotedBasePrice: number;
-  },
-  selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
-): number {
-  // Match the Quotes table: stale optional assemblies have a null catalog reference and are excluded.
-  const liveSelectedAssemblies = selectedAssemblies.filter((assembly) => assembly.productAssemblyId !== null);
-
-  return computeQuoteTotal({
-    deliveryIncluded: row.deliveryIncluded,
-    deliveryPrice: row.deliveryPrice,
-    discountPercent: row.discountPercent,
-    quotedBasePrice: row.quotedBasePrice,
-    selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
-  });
 }
 
 function sumQuoteTotals(rows: readonly { id: UUID }[], totalsByQuoteId: ReadonlyMap<UUID, number>): number {

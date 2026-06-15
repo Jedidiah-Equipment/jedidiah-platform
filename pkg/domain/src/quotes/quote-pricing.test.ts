@@ -1,6 +1,14 @@
+import type { OptionalAssembly } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { computeQuoteDiscountAmount, computeQuoteTotal, validateDiscount } from './quote-pricing.js';
+import { resolveEffectiveBom } from './effective-bom.js';
+import {
+  computeQuoteDiscountAmount,
+  computeQuoteTotal,
+  priceQuote,
+  priceQuoteFromLiveSelections,
+  validateDiscount,
+} from './quote-pricing.js';
 
 describe('validateDiscount', () => {
   it.each([0, 100])('allows discount percent %s', (discountPercent) => {
@@ -70,5 +78,83 @@ describe('computeQuoteTotal', () => {
     expect(
       computeQuoteTotal({ deliveryIncluded: true, deliveryPrice: 50, quotedBasePrice: 100, discountPercent: 100 }),
     ).toBe(50);
+  });
+});
+
+describe('priceQuoteFromLiveSelections', () => {
+  it('builds the breakdown from facts and a live selection set', () => {
+    const pricing = priceQuoteFromLiveSelections(
+      { deliveryIncluded: true, deliveryPrice: 350, discountPercent: 10, quotedBasePrice: 1250 },
+      [{ quotedPrice: 300 }, { quotedPrice: 150 }],
+    );
+
+    expect(pricing).toMatchObject({ discountAmount: 170, selectedAssemblyTotal: 450, total: 1880 });
+    expect(pricing.liveSelections).toHaveLength(2);
+  });
+
+  it('handles an empty selection set', () => {
+    expect(priceQuoteFromLiveSelections({ discountPercent: 0, quotedBasePrice: 1000 }, [])).toMatchObject({
+      discountAmount: 0,
+      selectedAssemblyTotal: 0,
+      total: 1000,
+    });
+  });
+});
+
+describe('priceQuote', () => {
+  it('excludes stale selections whose catalog reference is gone', () => {
+    const pricing = priceQuote({
+      discountPercent: 0,
+      quotedBasePrice: 1000,
+      selectedAssemblies: [
+        { productAssemblyId: 'opt-live', quotedPrice: 300 },
+        { productAssemblyId: null, quotedPrice: 999 },
+      ],
+    });
+
+    expect(pricing.total).toBe(1300);
+    expect(pricing.selectedAssemblyTotal).toBe(300);
+    expect(pricing.liveSelections).toHaveLength(1);
+  });
+
+  it('keeps delivery undiscounted under a full discount', () => {
+    expect(
+      priceQuote({
+        deliveryIncluded: true,
+        deliveryPrice: 50,
+        discountPercent: 100,
+        quotedBasePrice: 100,
+        selectedAssemblies: [],
+      }).total,
+    ).toBe(50);
+  });
+});
+
+describe('Quote Pricing agrees with the Effective Bill of Materials on the live set', () => {
+  it('totals the same selections the document line items resolve from the catalog', () => {
+    const liveSelection = { productAssemblyId: 'opt-live', quotedName: 'Heavy Axle', quotedPrice: 300 };
+    const staleSelection = { productAssemblyId: null, quotedName: 'Removed Winch', quotedPrice: 999 };
+    const quote = { discountPercent: 10, quotedBasePrice: 1250, selectedAssemblies: [liveSelection, staleSelection] };
+    const catalog: OptionalAssembly[] = [
+      {
+        id: 'opt-live',
+        kind: 'optional',
+        name: 'Heavy Axle',
+        overrideStandardAssemblyIds: [],
+        parts: [],
+        price: 300,
+        productId: 'prod-1',
+      },
+    ];
+
+    const pricing = priceQuote(quote);
+    const effectiveBom = resolveEffectiveBom({
+      catalogAssemblies: catalog,
+      selectedAssemblies: quote.selectedAssemblies,
+    });
+
+    expect(pricing.liveSelections).toEqual([liveSelection]);
+    expect(effectiveBom.selectedOptionalAssemblies.map(({ selection }) => selection)).toEqual([liveSelection]);
+    expect(effectiveBom.staleSelections).toEqual([staleSelection]);
   });
 });

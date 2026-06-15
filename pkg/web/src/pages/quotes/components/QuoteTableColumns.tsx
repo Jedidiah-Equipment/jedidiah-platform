@@ -1,4 +1,4 @@
-import { computeQuoteDiscountAmount, computeQuoteTotal, formatCurrency, formatPercent } from '@pkg/domain';
+import { formatCurrency, formatPercent, priceQuote } from '@pkg/domain';
 import { type PriorityQuote, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -246,16 +246,11 @@ function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteS
 }
 
 function CommercialCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {
-  const liveSelectedAssemblies = getLiveSelectedAssemblies(quote);
-  const discountAmount = computeQuoteDiscountAmount({
-    discountPercent: quote.discountPercent,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
-  });
+  const { discountAmount, total } = priceQuote(quote);
 
   return (
     <div className="flex flex-col items-end gap-0.5">
-      <span className="font-medium tabular-nums">{formatCurrency(getQuoteTotal(quote), quote.quotedCurrencyCode)}</span>
+      <span className="font-medium tabular-nums">{formatCurrency(total, quote.quotedCurrencyCode)}</span>
       {discountAmount > 0 ? (
         <span className={cn('text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
           {formatCurrency(discountAmount, quote.quotedCurrencyCode)} ({formatPercent(quote.discountPercent)}) discount
@@ -339,22 +334,6 @@ function PriorityQuoteJobCell() {
       <span className="font-semibold text-warning-foreground">No job</span>
     </div>
   );
-}
-
-function getQuoteTotal(quote: QuoteSummary): number {
-  // A stale selection is excluded from the total, matching the edit form's Effective Bill of
-  // Materials. The list has no product catalog to resolve against, but the selection FK is
-  // `on delete set null`, so a deleted catalog Optional Assembly leaves a null reference - which
-  // is the complete stale set for persisted selections.
-  const liveSelectedAssemblies = getLiveSelectedAssemblies(quote);
-
-  return computeQuoteTotal({
-    deliveryIncluded: quote.deliveryIncluded,
-    deliveryPrice: quote.deliveryPrice,
-    discountPercent: quote.discountPercent,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices: liveSelectedAssemblies.map((assembly) => assembly.quotedPrice),
-  });
 }
 
 function getLiveSelectedAssemblyCount(quote: QuoteSummary): number {

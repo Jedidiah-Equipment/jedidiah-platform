@@ -1,9 +1,8 @@
 import { type customers, type Db, documents, type products, quoteSelectedAssemblies, quotes, type user } from '@pkg/db';
 import {
-  computeQuoteDiscountAmount,
-  computeQuoteTotal,
   formatCurrency,
   formatPercent,
+  priceQuoteFromLiveSelections,
   QUOTE_DOCUMENT_VAT_PERCENT,
   resolveEffectiveBom,
 } from '@pkg/domain';
@@ -141,16 +140,16 @@ export async function getQuoteDocumentModel({
     catalogAssemblies: productAssemblies,
     selectedAssemblies: quote.selectedAssemblies,
   });
-  const selectedOptionalAssemblies = effectiveBom.selectedOptionalAssemblies.map(({ selection }) => ({
+  const liveSelections = effectiveBom.selectedOptionalAssemblies.map(({ selection }) => selection);
+  const selectedOptionalAssemblies = liveSelections.map((selection) => ({
     amount: selection.quotedPrice,
     label: selection.quotedName,
   }));
-  const selectedAssemblyPrices = selectedOptionalAssemblies.map((item) => item.amount);
-  const discountAmount = computeQuoteDiscountAmount({
-    discountPercent: quote.discountPercent,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices,
-  });
+  // Line items and the money both come from the catalog-resolved live set, so a selection that goes
+  // stale by any rule (null FK, deleted Assembly, or an Assembly flipped to Standard) drops from the
+  // line items and the subtotal together — the PDF total always matches its line items.
+  const pricing = priceQuoteFromLiveSelections(quote, liveSelections);
+  const discountAmount = pricing.discountAmount;
   const lineItems: QuoteDocumentLineItem[] = [
     {
       amount: quote.quotedBasePrice,
@@ -185,13 +184,7 @@ export async function getQuoteDocumentModel({
         ]
       : []),
   ];
-  const subtotal = computeQuoteTotal({
-    deliveryIncluded: quote.deliveryIncluded,
-    deliveryPrice: quote.deliveryPrice,
-    discountPercent: quote.discountPercent,
-    quotedBasePrice: quote.quotedBasePrice,
-    selectedAssemblyPrices,
-  });
+  const subtotal = pricing.total;
   const vatAmount = (subtotal * QUOTE_DOCUMENT_VAT_PERCENT) / 100;
 
   return {

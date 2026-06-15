@@ -265,7 +265,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     tool: listQuoteProductsTool,
     descriptor: {
       purpose: 'List Products available to Quote readers.',
-      useWhen: ['A quote-reader needs to find a Product by name, model code, UUID, or partial text.'],
+      useWhen: ['A quote-reader needs to find a Product by name, model code, description, UUID, or partial text.'],
       doNotUseWhen: ['The user needs Product-only catalog workflows outside quoting.'],
       searchableIdentifiers: ['Product UUID', 'Product name', 'model code', 'description'],
       resultIdentifiers: ['Product name', 'Product model code'],

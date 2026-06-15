@@ -1,4 +1,4 @@
-import { computeQuoteDiscountAmount, computeQuoteTotal, formatDate, resolveEffectiveBom } from '@pkg/domain';
+import { formatDate, priceQuoteFromLiveSelections, resolveEffectiveBom } from '@pkg/domain';
 import {
   type PriorityQuote,
   type QuoteDetail,
@@ -293,39 +293,29 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                 formSelections: state.values.selectedAssemblies,
                 initialSelections: quote.selectedAssemblies,
               });
-              // Stale selections (reference gone from the catalog) are excluded from the on-screen
-              // Quote Total so the figure reflects only assemblies that can still be produced.
+              // Stale selections (reference gone from the freshly loaded catalog) are excluded from
+              // the on-screen Quote Pricing so the figure reflects only assemblies still producible.
               const { staleSelections } = resolveEffectiveBom({
                 catalogAssemblies: selectedProduct.assemblies,
                 selectedAssemblies: selectedSnapshots,
               });
               const staleSnapshots = new Set(staleSelections);
               const selectedAssemblies = selectedSnapshots.filter((snapshot) => !staleSnapshots.has(snapshot));
-              const selectedAssemblyTotal = selectedAssemblies.reduce(
-                (total, assembly) => total + assembly.quotedPrice,
-                0,
+              const pricing = priceQuoteFromLiveSelections(
+                { deliveryIncluded, deliveryPrice, discountPercent, quotedBasePrice },
+                selectedAssemblies,
               );
 
               return {
                 deliveryIncluded,
                 deliveryPrice,
-                discountAmount: computeQuoteDiscountAmount({
-                  discountPercent,
-                  quotedBasePrice,
-                  selectedAssemblyPrices: selectedAssemblies.map((assembly) => assembly.quotedPrice),
-                }),
+                discountAmount: pricing.discountAmount,
                 discountPercent,
                 productPrice: quotedBasePrice,
                 currencyCode: selectedProduct.currencyCode,
                 selectedAssemblies,
-                selectedAssemblyTotal,
-                total: computeQuoteTotal({
-                  deliveryIncluded,
-                  deliveryPrice,
-                  discountPercent,
-                  quotedBasePrice,
-                  selectedAssemblyPrices: selectedAssemblies.map((assembly) => assembly.quotedPrice),
-                }),
+                selectedAssemblyTotal: pricing.selectedAssemblyTotal,
+                total: pricing.total,
               };
             }}
           >

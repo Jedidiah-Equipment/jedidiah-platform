@@ -1,3 +1,5 @@
+import type { UUID } from '@pkg/schema';
+
 export type QuotePricingResult =
   | {
       allowed: true;
@@ -53,6 +55,59 @@ export function computeQuoteTotal({
   const discountAmount = computeQuoteDiscountAmount({ discountPercent, quotedBasePrice, selectedAssemblyPrices });
 
   return Math.max(0, quotedBasePrice + selectedAssemblyTotal - discountAmount) + (deliveryIncluded ? deliveryPrice : 0);
+}
+
+/** A Quote's stored pricing facts, excluding its selected assemblies. */
+export type QuotePricingFacts = {
+  deliveryIncluded?: boolean;
+  deliveryPrice?: number;
+  discountPercent: number;
+  quotedBasePrice: number;
+};
+
+/**
+ * Quote Pricing: the computed breakdown projected from a Quote's stored pricing facts. Deposit (a
+ * payment term) and VAT (a Quote Document concern) are not inputs. `liveSelections` are the
+ * selections that contributed to the total, returned as the same objects the caller supplied so
+ * each layer keeps its own richer shape.
+ */
+export type QuotePricing<TSelection> = {
+  discountAmount: number;
+  liveSelections: readonly TSelection[];
+  selectedAssemblyTotal: number;
+  total: number;
+};
+
+/**
+ * Builds Quote Pricing from facts and an already-resolved live selection set. The Quote edit form
+ * resolves staleness against the freshly loaded catalog and supplies its live set here directly.
+ */
+export function priceQuoteFromLiveSelections<TSelection extends { quotedPrice: number }>(
+  facts: QuotePricingFacts,
+  liveSelections: readonly TSelection[],
+): QuotePricing<TSelection> {
+  const selectedAssemblyPrices = liveSelections.map((selection) => selection.quotedPrice);
+  const selectedAssemblyTotal = selectedAssemblyPrices.reduce((total, price) => total + price, 0);
+
+  return {
+    discountAmount: computeQuoteDiscountAmount({ ...facts, selectedAssemblyPrices }),
+    liveSelections,
+    selectedAssemblyTotal,
+    total: computeQuoteTotal({ ...facts, selectedAssemblyPrices }),
+  };
+}
+
+/**
+ * Builds Quote Pricing from a persisted Quote row. A selected Optional Assembly is live when its
+ * catalog reference survives: `on delete set null` makes a null `productAssemblyId` the complete
+ * stale set for persisted selections, so no product catalog is needed to total a stored Quote.
+ */
+export function priceQuote<TSelection extends { productAssemblyId: UUID | null; quotedPrice: number }>(
+  quote: QuotePricingFacts & { selectedAssemblies: readonly TSelection[] },
+): QuotePricing<TSelection> {
+  const liveSelections = quote.selectedAssemblies.filter((selection) => selection.productAssemblyId !== null);
+
+  return priceQuoteFromLiveSelections(quote, liveSelections);
 }
 
 function deny(reason: string): QuotePricingResult {

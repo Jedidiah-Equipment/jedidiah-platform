@@ -8,6 +8,7 @@ export * from './formatting/date.js';
 export * from './formatting/date-only.js';
 export * from './formatting/number.js';
 export * from './formatting/phone-number.js';
+export * from './jobs/bay-schedule-projection.js';
 export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';
 export * from './jobs/job-department-pipeline.js';

@@ -18,6 +18,7 @@ import {
   user,
 } from '@pkg/db';
 import {
+  bayWorkingCalendars,
   countWorkingDaysBetween,
   getPlantDateNow,
   JOB_DEPARTMENT_PIPELINE,
@@ -54,11 +55,7 @@ import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { getCurrentBayOperator, type OpenOperatorAssignmentsRow } from './job-bay-service.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
-import {
-  createBayWorkingCalendar,
-  createOrgWorkingCalendar,
-  listWorkingCalendarOffDays,
-} from './working-calendar-service.js';
+import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
@@ -136,9 +133,9 @@ function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
 }
 
 function toBaySchedules(rows: BayScheduleRow[], offDays: readonly OffDay[]): BaySchedule[] {
-  const orgWorkingCalendar = createOrgWorkingCalendar(offDays);
+  const workingCalendars = bayWorkingCalendars(rows, offDays);
 
-  return rows.map((row) => mapBaySchedule(row, createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions)));
+  return rows.map((row) => mapBaySchedule(row, workingCalendars.get(row.id) ?? {}));
 }
 
 export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promise<BayListResult> {
@@ -167,11 +164,11 @@ export async function listBayQueueAvailability({
     listWorkingCalendarOffDays(db),
     findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
   ]);
-  const orgWorkingCalendar = createOrgWorkingCalendar(offDays);
+  const workingCalendars = bayWorkingCalendars(rows, offDays);
   const today = getPlantDateNow();
 
   return rows.map((row) => {
-    const workingCalendar = createBayWorkingCalendar(orgWorkingCalendar, row.calendarExceptions);
+    const workingCalendar = workingCalendars.get(row.id) ?? {};
     const schedule = mapBaySchedule(row, workingCalendar);
 
     return {

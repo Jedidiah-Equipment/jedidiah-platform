@@ -1,4 +1,4 @@
-import { addDateOnlyDays, isWorkingDay, type WorkingCalendar } from '@pkg/domain';
+import { addDateOnlyDays, bayWorkingCalendars, isWorkingDay, type WorkingCalendar } from '@pkg/domain';
 import type {
   BaySchedule,
   DateOnlyIso,
@@ -8,8 +8,6 @@ import type {
   ProjectedWorkJobSlot,
   UUID,
 } from '@pkg/schema';
-
-import { createWorkingCalendarsByBayId } from '../jobs/components/bay-schedule-summary.js';
 
 // Pure derivations over the cached Bay list query shared by the shop-floor dashboard
 // widgets (and the deliveries at-risk join). Disabled Bays are excluded everywhere;
@@ -197,7 +195,7 @@ export function computeBayLoadToday({
   offDays: readonly OffDay[];
   today: DateOnlyIso;
 }): BayLoadToday {
-  const workingCalendarsByBayId = createWorkingCalendarsByBayId([...bays], [...offDays]);
+  const workingCalendarsByBayId = bayWorkingCalendars([...bays], [...offDays]);
   let workingCount = 0;
   let idleCount = 0;
   let offCount = 0;

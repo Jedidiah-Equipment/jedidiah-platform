@@ -2,7 +2,7 @@ import { type customers, type Db, documents, type products, quoteSelectedAssembl
 import {
   formatCurrency,
   formatPercent,
-  priceQuote,
+  priceQuoteFromLiveSelections,
   QUOTE_DOCUMENT_VAT_PERCENT,
   resolveEffectiveBom,
 } from '@pkg/domain';
@@ -140,14 +140,15 @@ export async function getQuoteDocumentModel({
     catalogAssemblies: productAssemblies,
     selectedAssemblies: quote.selectedAssemblies,
   });
-  const selectedOptionalAssemblies = effectiveBom.selectedOptionalAssemblies.map(({ selection }) => ({
+  const liveSelections = effectiveBom.selectedOptionalAssemblies.map(({ selection }) => selection);
+  const selectedOptionalAssemblies = liveSelections.map((selection) => ({
     amount: selection.quotedPrice,
     label: selection.quotedName,
   }));
-  // Line items list the catalog-resolved Optional Assemblies in display order; the money comes from
-  // Quote Pricing, which owns the one stale-selection rule. For a persisted Quote the null-FK stale
-  // set equals the catalog-resolved stale set, so line items and subtotal cover the same selections.
-  const pricing = priceQuote(quote);
+  // Line items and the money both come from the catalog-resolved live set, so a selection that goes
+  // stale by any rule (null FK, deleted Assembly, or an Assembly flipped to Standard) drops from the
+  // line items and the subtotal together — the PDF total always matches its line items.
+  const pricing = priceQuoteFromLiveSelections(quote, liveSelections);
   const discountAmount = pricing.discountAmount;
   const lineItems: QuoteDocumentLineItem[] = [
     {

@@ -3,7 +3,7 @@ import { createDomainGuidancePrompt } from './ai-domain-guidance.js';
 import type { AiToolName } from './ai-tools.js';
 
 const ASSISTANT_ROLE_PROMPT = [
-  'You are the Jedidah Ops assistant.',
+  'You are the Jedidiah Ops assistant.',
   'Help users understand Customers, Quotes, Jobs, Products, Parts, Users, and Audit Events using the tools available to you.',
   'Answer in the app language: Customer, Quote, Job, Pipeline, Department, Bay, Slot, Part, Assembly, App Role, and Audit Event.',
   'For user-facing Job progress, describe scheduled Work Slots on Bays grouped by Department: Procurement, Supply, Fabrication, Paint, and Assembly.',

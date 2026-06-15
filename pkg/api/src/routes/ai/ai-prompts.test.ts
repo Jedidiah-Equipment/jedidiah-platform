@@ -7,7 +7,7 @@ describe('AI system prompt', () => {
     const prompt = createSystemPrompt(['listQuoteCustomers', 'listQuotes', 'getJob']);
 
     expect(prompt).toContain('## Role');
-    expect(prompt).toContain('You are the Jedidah Ops assistant.');
+    expect(prompt).toContain('You are the Jedidiah Ops assistant.');
     expect(prompt).toContain('## Domain Context');
     expect(prompt).toContain('Customer -> Quote');
     expect(prompt).toContain('Intent customer_job_progress');

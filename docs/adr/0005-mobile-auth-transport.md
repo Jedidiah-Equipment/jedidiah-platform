@@ -1,0 +1,7 @@
+# Platform-Appropriate Auth Transports
+
+The mobile app (`pkg/mobile`, Expo/React Native) and the web app share one better-auth backend — one session model, one set of endpoints, one sign-in eligibility check — but use different session transports. Web keeps httpOnly cookies; mobile uses a bearer token stored in `expo-secure-store` via the `@better-auth/expo` client plugin and the server-side `expo()` plugin.
+
+We deliberately did not unify both clients on bearer auth. In a browser, an httpOnly cookie keeps the session token out of reach of JavaScript, so an XSS bug cannot exfiltrate it; a bearer token in browser-reachable storage can be stolen. On a device there is no httpOnly cookie protection, and the Keychain/Keystore-backed SecureStore is the correct home for the token. Unifying on bearer would have downgraded the more-exposed surface (the browser) to match a native-only constraint, while gaining little: adding the `expo()` plugin is additive and does not fork the auth system. This is one backend speaking each platform's native dialect, not two auth patterns.
+
+Adding the mobile app required registering its deep-link scheme in `AUTH_TRUSTED_ORIGINS` and adding the `expo()` plugin to the better-auth `plugins` array in `pkg/api/src/auth/auth.ts`. Sign-in eligibility is unchanged: phase-one mobile serves the same already-eligible roles as web (`bay-operator` remains not sign-in eligible).

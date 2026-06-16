@@ -74,6 +74,9 @@ export default defineConfig({
   },
   resolve: {
     tsconfigPaths: true,
+    // pkg/mobile pins a different React version than web. Without deduping, a second React copy can
+    // leak into the web bundle and break hooks ("Invalid hook call" / useRef of null). Pin to one copy.
+    dedupe: ['react', 'react-dom'],
   },
   plugins: [
     tanstackRouter({

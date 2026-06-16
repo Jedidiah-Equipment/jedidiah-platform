@@ -1,11 +1,46 @@
-import { APP_ROLES } from '@pkg/schema';
 import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
 
+import { signIn } from '../lib/auth';
 import { theme } from '../src/theme';
 
-const buttonColor = APP_ROLES.includes('sales') ? theme.colors.primary : theme.colors.ink;
-
 export default function LoginScreen() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [password, setPassword] = useState('');
+
+  async function handleSignIn() {
+    if (isSubmitting) return;
+
+    const nextEmail = email.trim().toLowerCase();
+
+    if (!nextEmail || !password) {
+      setError('Enter your email and password.');
+      return;
+    }
+
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await signIn({ email: nextEmail, password });
+
+      if (result.error) {
+        setError(result.error.message ?? 'Unable to sign in.');
+        return;
+      }
+
+      router.replace('/');
+    } catch {
+      setError('Unable to sign in.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
@@ -25,10 +60,13 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 autoComplete="email"
                 keyboardType="email-address"
+                onChangeText={setEmail}
                 placeholder="name@jedidiahequipment.co.za"
                 placeholderTextColor={theme.colors.muted}
+                returnKeyType="next"
                 style={styles.input}
                 textContentType="emailAddress"
+                value={email}
               />
             </View>
 
@@ -37,16 +75,35 @@ export default function LoginScreen() {
               <TextInput
                 autoCapitalize="none"
                 autoComplete="password"
+                onChangeText={setPassword}
+                onSubmitEditing={handleSignIn}
                 placeholder="Enter your password"
                 placeholderTextColor={theme.colors.muted}
+                returnKeyType="go"
                 secureTextEntry
                 style={styles.input}
                 textContentType="password"
+                value={password}
               />
             </View>
 
-            <Pressable accessibilityRole="button" style={[styles.button, { backgroundColor: buttonColor }]}>
-              <Text style={styles.buttonText}>Sign in</Text>
+            {error ? (
+              <View accessibilityRole="alert" style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSubmitting}
+              onPress={handleSignIn}
+              style={({ pressed }) => [
+                styles.button,
+                isSubmitting ? styles.buttonDisabled : null,
+                pressed && !isSubmitting ? styles.buttonPressed : null,
+              ]}
+            >
+              <Text style={styles.buttonText}>{isSubmitting ? 'Signing in' : 'Sign in'}</Text>
             </Pressable>
           </View>
         </View>
@@ -124,15 +181,34 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     borderRadius: 8,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     marginTop: theme.spacing.sm,
     minHeight: 52,
     paddingHorizontal: theme.spacing.md,
+  },
+  buttonDisabled: {
+    opacity: 0.65,
+  },
+  buttonPressed: {
+    opacity: 0.9,
   },
   buttonText: {
     color: theme.colors.onPrimary,
     fontSize: theme.typography.body,
     fontWeight: '700',
     lineHeight: 24,
+  },
+  errorBox: {
+    backgroundColor: theme.colors.dangerSoft,
+    borderColor: theme.colors.dangerBorder,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: theme.spacing.md,
+  },
+  errorText: {
+    color: theme.colors.danger,
+    fontSize: theme.typography.label,
+    lineHeight: 20,
   },
 });

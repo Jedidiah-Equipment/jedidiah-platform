@@ -52,6 +52,8 @@ export const BaySlotBar: React.FC<{
   bayId: UUID;
   canEditSchedule: boolean;
   isDimmed: boolean;
+  /** This slot is next off the line after the one running today — highlighted green. */
+  isNext: boolean;
   isScheduleMutationPending: boolean;
   job: JobSummary | null;
   onAddIdle: (targetSlotId: string, placement: JobSlotPlacement) => void;
@@ -70,6 +72,7 @@ export const BaySlotBar: React.FC<{
   bayId,
   canEditSchedule,
   isDimmed,
+  isNext,
   isScheduleMutationPending,
   job,
   onAddIdle,
@@ -196,10 +199,17 @@ export const BaySlotBar: React.FC<{
                   className={cn(
                     'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm transition-opacity duration-200',
                     isIdle
-                      ? 'rounded-sm border border-border bg-card px-2 py-1 text-muted-foreground'
+                      ? cn(
+                          'rounded-sm border bg-card px-2 py-1 text-muted-foreground',
+                          isNext ? 'border-emerald-500/70 ring-1 ring-emerald-500/25' : 'border-border',
+                        )
                       : cn(
                           'rounded-lg border bg-card px-2.5 py-1.5 text-card-foreground',
-                          isActive ? 'border-primary/60 ring-1 ring-primary/20' : 'border-border',
+                          isActive
+                            ? 'border-primary/60 ring-1 ring-primary/20'
+                            : isNext
+                              ? 'border-emerald-500/70 ring-1 ring-emerald-500/25'
+                              : 'border-border',
                         ),
                     // Filtered-out slots fade back but stay interactive; hover restores them.
                     isDimmed && 'opacity-20 hover:opacity-100',

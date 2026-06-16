@@ -1,29 +1,13 @@
 import {
+  bayWorkingCalendars,
   DEFAULT_IDLE_SLOT_LABEL,
   type SlotCalendarDays,
   summarizeSlotCalendarDays,
-  type WorkingCalendar,
 } from '@pkg/domain';
 import type { BaySchedule, DateOnlyIso, OffDay, ProjectedJobSlot } from '@pkg/schema';
 
 export function getSlotLabel(slot: ProjectedJobSlot): string {
   return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;
-}
-
-export function createWorkingCalendarsByBayId(bays: BaySchedule[], offDays: OffDay[]): Map<string, WorkingCalendar> {
-  const orgOffDays = new Set(offDays.map((offDay) => offDay.date));
-
-  return new Map(
-    bays.map((bay) => [
-      bay.id,
-      {
-        bayExceptions: new Map(
-          bay.calendarExceptions.map((exception) => [exception.date, exception.direction] as const),
-        ),
-        orgOffDays,
-      },
-    ]),
-  );
 }
 
 export type JobScheduleSummary = {
@@ -43,7 +27,7 @@ export function findJobScheduleSummary(
   jobId: string,
   bayId?: string | undefined,
 ): JobScheduleSummary | null {
-  const workingCalendarsByBayId = createWorkingCalendarsByBayId(bays, offDays);
+  const workingCalendarsByBayId = bayWorkingCalendars(bays, offDays);
 
   for (const bay of bays) {
     if (bayId !== undefined && bay.id !== bayId) {

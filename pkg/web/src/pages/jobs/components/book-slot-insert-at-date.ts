@@ -5,10 +5,10 @@ import {
   type InsertAtDatePlacement,
   isWorkingDay,
   maxDateOnly,
-  resolveInsertAtDatePlacement,
+  previewBaySchedule,
   type WorkingCalendar,
 } from '@pkg/domain';
-import { DateOnlyIso, type ProjectedJobSlot } from '@pkg/schema';
+import type { BaySchedule, DateOnlyIso, OffDay, ProjectedJobSlot } from '@pkg/schema';
 
 import { getSlotLabel } from './bay-schedule-summary.js';
 import { toJobCalendarDateKey } from './job-date-key.js';
@@ -43,23 +43,26 @@ export function createBayNonWorkingDateMatcher(workingCalendar: WorkingCalendar)
 
 export function resolveBookSlotPlacement({
   bay,
+  offDays,
   startDate,
   today,
-  workingCalendar,
 }: {
-  bay: { scheduleOrigin: DateOnlyIso; slots: readonly ProjectedJobSlot[] };
-  /** The DatePicker's raw value — validated here, where the unbranded string enters. */
+  bay: BaySchedule;
+  offDays: readonly OffDay[];
+  /** The DatePicker's raw value; an empty or unparsable value books a plain append. */
   startDate: string;
   today: DateOnlyIso;
-  workingCalendar: WorkingCalendar;
 }): BookSlotPlacement {
-  return resolveInsertAtDatePlacement({
-    currentDate: today,
-    pickedDate: DateOnlyIso.parse(startDate),
-    scheduleOrigin: bay.scheduleOrigin,
-    slots: bay.slots,
-    workingCalendar,
-  });
+  // A booking is a single-seed insert: it shares the one preview seam with the ghost preview and the
+  // server booking, so the placement they resolve is identical by construction. Seed duration does not
+  // affect placement, so a unit seed suffices.
+  const [placement] = previewBaySchedule(bay, offDays, {
+    kind: 'insertSeeds',
+    seeds: [{ durationDays: 1, startDate }],
+    today,
+  }).placements;
+
+  return placement as BookSlotPlacement;
 }
 
 export function describeInsertAtDatePlacement(placement: BookSlotPlacement): {

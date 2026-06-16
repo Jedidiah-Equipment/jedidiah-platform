@@ -1,4 +1,10 @@
-import { departmentLabels, formatDate, JOB_DEPARTMENT_PIPELINE, type WorkingCalendar } from '@pkg/domain';
+import {
+  bayWorkingCalendars,
+  departmentLabels,
+  formatDate,
+  JOB_DEPARTMENT_PIPELINE,
+  type WorkingCalendar,
+} from '@pkg/domain';
 import type { BaySchedule, DateOnlyIso, JobSummary, OffDay } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -12,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 import { allJobsInput } from '../../jobs/components/all-jobs-input.js';
-import { createWorkingCalendarsByBayId, getSlotLabel } from '../../jobs/components/bay-schedule-summary.js';
+import { getSlotLabel } from '../../jobs/components/bay-schedule-summary.js';
 import {
   type BayTodayOccupancy,
   getBayTodayOccupancy,
@@ -42,7 +48,7 @@ export const ShopFloorTodayWidget: React.FC = () => {
 
   const { items, offDays, today } = baysQuery.data;
   const enabledBays = listEnabledBays(items);
-  const workingCalendarsByBayId = createWorkingCalendarsByBayId(enabledBays, offDays);
+  const workingCalendarsByBayId = bayWorkingCalendars(enabledBays, offDays);
 
   if (enabledBays.length === 0) {
     return <DashboardWidgetEmpty>No enabled Bays.</DashboardWidgetEmpty>;

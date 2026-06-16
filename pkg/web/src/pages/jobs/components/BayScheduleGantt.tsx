@@ -1,4 +1,4 @@
-import { formatDate, hasPermission } from '@pkg/domain';
+import { bayWorkingCalendars, formatDate, hasPermission } from '@pkg/domain';
 import type {
   BaySchedule,
   DateOnlyIso,
@@ -56,7 +56,6 @@ import {
   deriveGhostBaySchedules,
   selectVisibleBaySchedules,
 } from './bay-schedule-ghosts.js';
-import { createWorkingCalendarsByBayId } from './bay-schedule-summary.js';
 import { useBayScheduleViewStore } from './bay-schedule-view-store.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
@@ -501,7 +500,7 @@ const BaySlotBars: React.FC<{
   today,
 }) => {
   const gantt = useGanttContext();
-  const workingCalendarsByBayId = useMemo(() => createWorkingCalendarsByBayId(bays, offDays), [bays, offDays]);
+  const workingCalendarsByBayId = useMemo(() => bayWorkingCalendars(bays, offDays), [bays, offDays]);
   const isFilterActive = hasActiveBayScheduleFilter(filter);
 
   return (

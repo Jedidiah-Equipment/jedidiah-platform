@@ -1,4 +1,5 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { expo } from '@better-auth/expo';
 import { type Db, db, schema } from '@pkg/db';
 import { betterAuth } from 'better-auth';
 import { admin as adminPlugin } from 'better-auth/plugins';
@@ -51,6 +52,7 @@ export function createAuth(database: Db) {
       }),
       adminUserSafetyPlugin(database),
       userPhoneValidationPlugin(),
+      expo(),
     ],
     emailAndPassword: {
       enabled: true,

@@ -26,6 +26,7 @@ import {
 } from '@/components/kibo-ui/gantt/index.js';
 import { PageLayoutFullscreenToggle } from '@/components/page-layout/PageLayoutFullscreenToggle.js';
 import { Card, CardContent, CardHeader, CardSeparator } from '@/components/ui/card.js';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -438,16 +439,27 @@ const BayScheduleSidebar: React.FC<{
 const MaintainedHorizonWarningBadge: React.FC<{
   warning: MaintainedHorizonWarning;
 }> = ({ warning }) => {
-  const message = `Unmaintained after ${formatDate(warning.maintainedThrough, 'MMM d')}; projected tail may be optimistic.`;
-
   return (
-    <div
-      className="flex max-w-48 shrink-0 items-center gap-1 rounded-sm bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300"
-      title={`Calendar ${message} Queue ends ${formatDate(warning.queueEndDate, 'MMM d')}.`}
-    >
-      <IconAlertTriangle className="size-3.5 shrink-0" />
-      <span className="whitespace-normal leading-tight">{message}</span>
-    </div>
+    <HoverCard>
+      <HoverCardTrigger
+        render={
+          <button
+            aria-label="Unmaintained calendar warning"
+            className="flex size-6 shrink-0 items-center justify-center rounded-sm bg-amber-500/15 text-amber-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300"
+            type="button"
+          />
+        }
+      >
+        <IconAlertTriangle className="size-3.5 shrink-0" />
+      </HoverCardTrigger>
+      <HoverCardContent align="end" className="flex flex-col gap-0.5">
+        <p className="font-medium">Unmaintained calendar</p>
+        <p className="text-muted-foreground">
+          Unmaintained after {formatDate(warning.maintainedThrough, 'MMM d')}; projected tail may be optimistic. Queue
+          ends {formatDate(warning.queueEndDate, 'MMM d')}.
+        </p>
+      </HoverCardContent>
+    </HoverCard>
   );
 };
 
@@ -469,6 +481,21 @@ const BayLaneRows: React.FC<{
 
 const getCurrentBaySlot = (slots: ProjectedJobSlot[], today: DateOnlyIso) =>
   slots.find((slot) => slot.startDate <= today && today < slot.endDate) ?? null;
+
+// The slot that follows the one running today (or the first upcoming slot when the bay is
+// between slots). Highlighted green so the floor sees what comes off the line next.
+const findNextBaySlotId = (
+  slots: readonly { endDate: DateOnlyIso; id: string; startDate: DateOnlyIso }[],
+  today: DateOnlyIso,
+): string | null => {
+  const currentIndex = slots.findIndex((slot) => slot.startDate <= today && today < slot.endDate);
+
+  if (currentIndex !== -1) {
+    return slots[currentIndex + 1]?.id ?? null;
+  }
+
+  return slots.find((slot) => slot.startDate > today)?.id ?? null;
+};
 
 const BaySlotBars: React.FC<{
   bays: DisplayBaySchedule[];
@@ -505,13 +532,16 @@ const BaySlotBars: React.FC<{
 
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-20">
-      {bays.flatMap((bay, bayIndex) =>
-        bay.slots.map((slot, slotIndex) => (
+      {bays.flatMap((bay, bayIndex) => {
+        const nextSlotId = findNextBaySlotId(bay.slots, today);
+
+        return bay.slots.map((slot, slotIndex) => (
           <BaySlotBar
             bayId={bay.id}
             // Split halves carry synthetic ids that must never reach a mutation.
             canEditSchedule={canEditScheduleByBayId.has(bay.id) && !slot.previewSplit}
             isDimmed={isFilterActive && !slotMatchesBayScheduleFilter({ bayId: bay.id, filter, jobsById, slot })}
+            isNext={slot.id === nextSlotId}
             isScheduleMutationPending={isScheduleMutationPending}
             job={slot.kind === 'work' ? (jobsById.get(slot.jobId) ?? null) : null}
             key={slot.id}
@@ -528,8 +558,8 @@ const BaySlotBars: React.FC<{
             today={today}
             workingCalendar={workingCalendarsByBayId.get(bay.id) ?? {}}
           />
-        )),
-      )}
+        ));
+      })}
     </div>
   );
 };

@@ -81,10 +81,12 @@ export function createQuoteTableColumns({
       header: 'Customer',
       id: 'customerCompanyName',
       meta: {
+        cellClassName: 'max-w-44 overflow-hidden',
         filterOptions: customerOptions,
         filterVariant: 'select',
-        headerClassName: 'min-w-52',
+        headerClassName: 'min-w-40 max-w-44',
       },
+      size: 176,
     },
     {
       accessorFn: (row) => row.quote.salesPersonName,
@@ -113,6 +115,17 @@ export function createQuoteTableColumns({
       },
     },
     {
+      accessorFn: (row) => row.quote.validUntil,
+      cell: ({ row }) => <QuoteDatesCell row={row.original} />,
+      enableColumnFilter: false,
+      enableSorting: false,
+      header: 'Dates',
+      id: 'validUntil',
+      meta: {
+        headerClassName: 'min-w-44',
+      },
+    },
+    {
       cell: ({ row }) => <CommercialCell isPriority={row.original.kind === 'priority'} quote={row.original.quote} />,
       enableColumnFilter: false,
       enableSorting: false,
@@ -131,17 +144,6 @@ export function createQuoteTableColumns({
       id: 'terms',
       meta: {
         headerClassName: 'min-w-36',
-      },
-    },
-    {
-      accessorFn: (row) => row.quote.validUntil,
-      cell: ({ row }) => <QuoteDatesCell row={row.original} />,
-      enableColumnFilter: false,
-      enableSorting: false,
-      header: 'Dates',
-      id: 'validUntil',
-      meta: {
-        headerClassName: 'min-w-44',
       },
     },
     {
@@ -274,52 +276,53 @@ function TermsCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSum
 }
 
 function QuoteDatesCell({ row }: { row: QuoteTableRow }) {
-  if (row.kind === 'priority') {
-    return (
-      <div className="flex flex-col gap-0.5">
-        <PriorityQuoteDeliveryDateLine
-          date={row.quote.preferredDeliveryDate}
-          isEarliest={row.quote.preferredDeliveryDate === row.quote.earliestDeliveryDate}
-          label="Preferred"
-        />
-        <PriorityQuoteDeliveryDateLine
-          date={row.quote.plannedDeliveryDate}
-          isEarliest={row.quote.plannedDeliveryDate === row.quote.earliestDeliveryDate}
-          label="Planned"
-        />
-      </div>
-    );
-  }
+  const isPriority = row.kind === 'priority';
+  // Only priority quotes carry the resolved earliest date used to highlight the binding line.
+  const earliestDeliveryDate = row.kind === 'priority' ? row.quote.earliestDeliveryDate : null;
 
   return (
     <div className="flex flex-col gap-0.5">
-      <span>
-        Valid <DateDisplay date={row.quote.validUntil} emptyValue="Not set" />
-      </span>
-      <span className="text-xs text-muted-foreground">
-        Preferred <DateDisplay date={row.quote.preferredDeliveryDate} emptyValue="not set" />
-      </span>
+      <QuoteDeliveryDateLine
+        date={row.quote.preferredDeliveryDate}
+        isEarliest={earliestDeliveryDate !== null && row.quote.preferredDeliveryDate === earliestDeliveryDate}
+        isPriority={isPriority}
+        label="Preferred"
+      />
+      <QuoteDeliveryDateLine
+        date={row.quote.plannedDeliveryDate}
+        isEarliest={earliestDeliveryDate !== null && row.quote.plannedDeliveryDate === earliestDeliveryDate}
+        isPriority={isPriority}
+        label="Planned"
+      />
     </div>
   );
 }
 
-function PriorityQuoteDeliveryDateLine({
+function QuoteDeliveryDateLine({
   date,
   isEarliest,
+  isPriority,
   label,
 }: {
   date: string | null;
   isEarliest: boolean;
+  isPriority: boolean;
   label: string;
 }) {
+  const isHighlighted = isPriority && isEarliest;
+
   return (
     <span
-      className={cn('text-xs text-warning-foreground/85', isEarliest ? 'font-semibold' : undefined)}
-      data-priority-date={isEarliest ? 'earliest' : undefined}
+      className={cn(
+        'text-xs',
+        isPriority ? 'text-warning-foreground/85' : 'text-muted-foreground',
+        isHighlighted ? 'font-semibold' : undefined,
+      )}
+      data-priority-date={isPriority && isEarliest ? 'earliest' : undefined}
     >
       {label}{' '}
       <DateDisplay
-        className={cn(isEarliest ? 'text-sm text-warning-foreground' : undefined)}
+        className={cn(isHighlighted ? 'text-sm text-warning-foreground' : 'text-foreground')}
         date={date}
         emptyValue="not set"
       />

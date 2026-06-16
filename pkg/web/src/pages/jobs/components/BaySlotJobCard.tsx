@@ -11,33 +11,31 @@ type BaySlotJobCardProps = {
   jobCode: string;
 };
 
-// Rich job cell for a booked Bay slot: product + customer thumbnails, the job's
-// identifying text, and a calendar-day breakdown. The slot bar clips this card to the
-// slot's duration width, so the most important fields lead and remaining fields gracefully clip.
+// Job cell for a booked Bay slot: a small product thumbnail, the job's identifying
+// text led by the all-important job code, and a calendar-day count. The slot bar clips
+// this card to the slot's duration width, so the job code leads and the rest clips gracefully.
 export const BaySlotJobCard: React.FC<BaySlotJobCardProps> = ({ dayBreakdown, job, jobCode }) => {
   const productName = job?.productName ?? '';
-  const customerName = job?.customerCompanyName ?? '';
 
   return (
-    <div className="flex h-full min-w-0 items-center gap-2.5">
+    <div className="@container flex h-full min-w-0 items-center gap-2.5">
       <EntityThumbnail
         className="shrink-0"
         label={productName || jobCode}
         size="lg"
         thumbnailDataUrl={job?.productThumbnailDataUrl}
       />
-      <EntityThumbnail className="shrink-0" label={customerName} thumbnailDataUrl={job?.customerThumbnailDataUrl} />
-      <div className="flex min-w-0 flex-col justify-center leading-tight">
-        <span className="truncate font-semibold text-sm font-mono">{jobCode}</span>
+      <div className="flex min-w-0 flex-1 flex-col justify-center leading-tight">
+        <span className="truncate font-mono font-semibold text-sm">{jobCode}</span>
         {job ? (
-          <span className="truncate text-muted-foreground text-xs font-mono">{job.productSerialNumber}</span>
+          <span className="truncate font-mono text-muted-foreground text-xs">{job.productSerialNumber}</span>
         ) : null}
-        {productName ? <span className="truncate text-xs">{productName}</span> : null}
+        {productName ? <span className="truncate text-muted-foreground text-xs">{productName}</span> : null}
       </div>
-      <div className="ml-auto flex shrink-0 flex-col items-end justify-center pl-2 text-right leading-tight">
-        {customerName ? <span className="max-w-40 truncate text-xs">{customerName}</span> : null}
-        <span className="font-medium text-sm tabular-nums">{dayBreakdown.workingDays} days</span>
-      </div>
+      {/* Job code wins tight slots: the day count only shows once the slot is wide enough. */}
+      <span className="ml-auto hidden shrink-0 pl-2 text-right font-medium text-muted-foreground text-sm tabular-nums @[14rem]:inline">
+        {dayBreakdown.workingDays} days
+      </span>
     </div>
   );
 };

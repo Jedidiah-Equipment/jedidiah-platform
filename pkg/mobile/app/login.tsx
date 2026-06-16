@@ -10,14 +10,13 @@ import {
   View,
 } from 'react-native';
 import { EmailAddress } from '@pkg/schema';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { signIn } from '../lib/auth';
+import { BrandHeader } from '../src/components/BrandHeader';
 import { theme } from '../src/theme';
 
 export default function LoginScreen() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,21 +48,15 @@ export default function LoginScreen() {
       return;
     }
 
-    router.replace('/');
-    setIsSubmitting(false);
+    // On success the root auth guard redirects away from /login once the session
+    // updates; keep the button in its submitting state until this screen unmounts.
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
         <View style={styles.container}>
-          <View style={styles.header}>
-            <View style={styles.brandMark}>
-              <Text style={styles.brandMarkText}>J</Text>
-            </View>
-            <Text style={styles.title}>Jedidah Ops</Text>
-            <Text style={styles.subtitle}>Sign in to continue</Text>
-          </View>
+          <BrandHeader subtitle="Sign in to continue" />
 
           <View style={styles.form}>
             <View style={styles.field}>
@@ -140,36 +133,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.xl,
     paddingVertical: theme.spacing.xxl,
-  },
-  header: {
-    alignItems: 'flex-start',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  brandMark: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: 8,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  brandMarkText: {
-    color: theme.colors.primary,
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 28,
-  },
-  title: {
-    color: theme.colors.ink,
-    fontSize: theme.typography.title,
-    fontWeight: '700',
-    lineHeight: 40,
-  },
-  subtitle: {
-    color: theme.colors.text,
-    fontSize: theme.typography.body,
-    lineHeight: 24,
   },
   form: {
     gap: theme.spacing.lg,

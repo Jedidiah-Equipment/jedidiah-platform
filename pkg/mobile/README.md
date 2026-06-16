@@ -4,7 +4,7 @@ Expo managed React Native app for Jedidah Ops.
 
 ## Scripts
 
-- `pnpm --filter @pkg/mobile start` starts Expo for the dev client.
+- `pnpm --filter @pkg/mobile start` starts Expo for the dev client on port `7003`.
 - `pnpm --filter @pkg/mobile android` builds and launches the Android dev client.
 - `pnpm --filter @pkg/mobile ios` builds and launches the iOS dev client.
 - `pnpm --filter @pkg/mobile check` runs TypeScript for the mobile package.
@@ -22,6 +22,8 @@ Expo managed React Native app for Jedidah Ops.
 Mobile auth calls the API root from `EXPO_PUBLIC_API_BASE_URL`. It defaults to
 `http://10.0.2.2:7002` on Android, which reaches the host machine from the Android
 emulator. On iOS simulator and web it defaults to `http://localhost:7002`.
+The local Expo dev server runs on `http://localhost:7003`, which must stay in the
+API's `AUTH_TRUSTED_ORIGINS` for browser-based mobile development.
 
 For a physical device, set `EXPO_PUBLIC_API_BASE_URL` to a LAN URL for the machine
 running the API, for example `http://192.168.1.20:7002`.

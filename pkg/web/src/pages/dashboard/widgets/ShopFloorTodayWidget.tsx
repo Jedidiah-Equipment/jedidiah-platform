@@ -1,10 +1,4 @@
-import {
-  bayWorkingCalendars,
-  departmentLabels,
-  formatDate,
-  JOB_DEPARTMENT_PIPELINE,
-  type WorkingCalendar,
-} from '@pkg/domain';
+import { departmentLabels, formatDate, JOB_DEPARTMENT_PIPELINE, type WorkingCalendar } from '@pkg/domain';
 import type { BaySchedule, DateOnlyIso, JobSummary, OffDay } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -19,36 +13,30 @@ import { useTRPC } from '@/lib/trpc.js';
 
 import { allJobsInput } from '../../jobs/components/all-jobs-input.js';
 import { getSlotLabel } from '../../jobs/components/bay-schedule-summary.js';
-import {
-  type BayTodayOccupancy,
-  getBayTodayOccupancy,
-  getOffDayLabel,
-  listEnabledBays,
-} from '../bay-schedule-derivations.js';
+import { type BayTodayOccupancy, getBayTodayOccupancy, getOffDayLabel } from '../bay-schedule-derivations.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
+import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
 const SHOP_FLOOR_SKELETON_ROWS = ['first', 'second', 'third', 'fourth'] as const;
 
 export const ShopFloorTodayWidget: React.FC = () => {
   const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const bays = useShopFloorBays();
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
   const jobsById = useMemo(
     () => new Map((jobsQuery.data?.items ?? []).map((job) => [job.id, job])),
     [jobsQuery.data?.items],
   );
 
-  if (baysQuery.error) {
-    return <DashboardWidgetError error={baysQuery.error} fallbackMessage="Unable to load the shop floor." />;
+  if (bays.status === 'error') {
+    return <DashboardWidgetError error={bays.error} fallbackMessage="Unable to load the shop floor." />;
   }
 
-  if (baysQuery.isPending) {
+  if (bays.status === 'pending') {
     return <ShopFloorTodayWidgetSkeleton />;
   }
 
-  const { items, offDays, today } = baysQuery.data;
-  const enabledBays = listEnabledBays(items);
-  const workingCalendarsByBayId = bayWorkingCalendars(enabledBays, offDays);
+  const { enabledBays, offDays, today, workingCalendarsByBayId } = bays;
 
   if (enabledBays.length === 0) {
     return <DashboardWidgetEmpty>No enabled Bays.</DashboardWidgetEmpty>;

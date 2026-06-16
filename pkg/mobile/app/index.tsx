@@ -1,19 +1,11 @@
-import { useRouter } from 'expo-router';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import { signOut, useSession } from '../lib/auth';
+import { BrandHeader } from '../src/components/BrandHeader';
 import { theme } from '../src/theme';
 
 export default function IndexRoute() {
-  const router = useRouter();
   const { data: session, isPending } = useSession();
-  const userName = session?.user.name ?? 'Signed in';
-  const userRole = getUserRole(session?.user);
-
-  async function handleSignOut() {
-    await signOut();
-    router.replace('/login');
-  }
 
   if (isPending || !session) {
     return (
@@ -25,20 +17,14 @@ export default function IndexRoute() {
     );
   }
 
+  const role = session.user.role ?? 'unknown';
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.brandMark}>
-            <Text style={styles.brandMarkText}>J</Text>
-          </View>
-          <Text style={styles.title}>Jedidah Ops</Text>
-          <Text style={styles.statusText}>
-            Signed in as {userName} · {userRole}
-          </Text>
-        </View>
+        <BrandHeader subtitle={`Signed in as ${session.user.name} · ${role}`} />
 
-        <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.button}>
+        <Pressable accessibilityRole="button" onPress={signOut} style={styles.button}>
           <Text style={styles.buttonText}>Sign out</Text>
         </Pressable>
       </View>
@@ -56,30 +42,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.xl,
     paddingVertical: theme.spacing.xxl,
-  },
-  header: {
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  brandMark: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: 8,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  brandMarkText: {
-    color: theme.colors.primary,
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 28,
-  },
-  title: {
-    color: theme.colors.ink,
-    fontSize: theme.typography.title,
-    fontWeight: '700',
-    lineHeight: 40,
   },
   statusText: {
     color: theme.colors.text,
@@ -102,13 +64,3 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 });
-
-function getUserRole(user: unknown) {
-  if (!user || typeof user !== 'object' || !('role' in user)) {
-    return 'unknown';
-  }
-
-  const role = user.role;
-
-  return typeof role === 'string' ? role : 'unknown';
-}

@@ -1,5 +1,6 @@
 import { expoClient } from '@better-auth/expo/client';
 import * as SecureStore from 'expo-secure-store';
+import { adminClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 import { Platform } from 'react-native';
 
@@ -20,8 +21,12 @@ const authClient = createAuthClient({
       storagePrefix: 'jedidiahops',
       storage: SecureStore,
     }),
+    // Mirror the server `admin` plugin so `session.user.role` is typed on device.
+    adminClient(),
   ],
 });
+
+type SignInError = NonNullable<Awaited<ReturnType<typeof authClient.signIn.email>>['error']>;
 
 export const useSession = authClient.useSession;
 export const getCookie = authClient.getCookie;
@@ -34,6 +39,7 @@ export async function signIn(input: { email: string; password: string }): Promis
       return { ok: false, message: getSignInErrorMessage(result.error) };
     }
 
+    // Refresh the session store so the root auth guard redirects away from /login.
     await authClient.getSession();
     return { ok: true };
   } catch {
@@ -45,40 +51,15 @@ export async function signOut() {
   await authClient.signOut();
 }
 
-function getSignInErrorMessage(error: unknown) {
-  const code = getStringProperty(error, 'code');
-  const status = getNumberProperty(error, 'status');
-  const message = getStringProperty(error, 'message');
-
-  if (code === 'ACCOUNT_SIGN_IN_DISABLED') {
-    return message || signInDisabledMessage;
+function getSignInErrorMessage(error: SignInError): string {
+  if (error.code === 'ACCOUNT_SIGN_IN_DISABLED') {
+    return error.message || signInDisabledMessage;
   }
 
-  if (code === 'EMAIL_NOT_VERIFIED' && message) {
-    return message;
-  }
-
-  if (code === 'INVALID_EMAIL_OR_PASSWORD' || status === 401) {
+  if (error.code === 'INVALID_EMAIL_OR_PASSWORD' || error.status === 401) {
     return invalidCredentialsMessage;
   }
 
-  return networkFailureMessage;
-}
-
-function getStringProperty(value: unknown, key: string) {
-  if (!value || typeof value !== 'object' || !(key in value)) {
-    return null;
-  }
-
-  const property = (value as Record<string, unknown>)[key];
-  return typeof property === 'string' ? property : null;
-}
-
-function getNumberProperty(value: unknown, key: string) {
-  if (!value || typeof value !== 'object' || !(key in value)) {
-    return null;
-  }
-
-  const property = (value as Record<string, unknown>)[key];
-  return typeof property === 'number' ? property : null;
+  // Surface any other server-provided message (e.g. unverified email); fall back when absent.
+  return error.message || networkFailureMessage;
 }

@@ -4,6 +4,7 @@ import { DateIso } from '../common/date.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { NullablePhoneNumber } from '../common/phone-number.js';
 import {
+  EmailAddress,
   nullableEmailInput,
   nullableTrimmedText,
   nullableTrimmedTextInput,
@@ -16,7 +17,7 @@ export type SupplierCompanyName = z.infer<typeof SupplierCompanyName>;
 export const SupplierCompanyName = requiredTrimmedText('Company name is required');
 
 export type SupplierEmail = z.infer<typeof SupplierEmail>;
-export const SupplierEmail = z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address'));
+export const SupplierEmail = EmailAddress;
 
 export type SupplierEmailInput = z.infer<typeof SupplierEmailInput>;
 export const SupplierEmailInput = nullableEmailInput();

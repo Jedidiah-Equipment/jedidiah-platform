@@ -1,4 +1,4 @@
-import { formatDate, hasPermission } from '@pkg/domain';
+import { bayWorkingCalendars, formatDate, hasPermission } from '@pkg/domain';
 import { IconAlertTriangle, IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -16,7 +16,6 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from './all-jobs-input.js';
-import { createWorkingCalendarsByBayId } from './bay-schedule-summary.js';
 import {
   createBayNonWorkingDateMatcher,
   describeInsertAtDatePlacement,
@@ -56,7 +55,7 @@ export const BookSlotDialog: React.FC = () => {
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
 
   const workingCalendarsByBayId = useMemo(
-    () => createWorkingCalendarsByBayId(baysQuery.data?.items ?? [], baysQuery.data?.offDays ?? []),
+    () => bayWorkingCalendars(baysQuery.data?.items ?? [], baysQuery.data?.offDays ?? []),
     [baysQuery.data],
   );
   const selectedBayCalendar = (selectedBay && workingCalendarsByBayId.get(selectedBay.id)) || {};
@@ -70,13 +69,13 @@ export const BookSlotDialog: React.FC = () => {
 
     const placement = resolveBookSlotPlacement({
       bay: selectedBay,
+      offDays: baysQuery.data?.offDays ?? [],
       startDate,
       today: plantToday,
-      workingCalendar: selectedBayCalendar,
     });
 
     return describeInsertAtDatePlacement(placement);
-  }, [plantToday, selectedBay, selectedBayCalendar, startDate]);
+  }, [baysQuery.data?.offDays, plantToday, selectedBay, startDate]);
 
   const bookSlotMutation = useMutation(
     trpc.jobs.bookSlot.mutationOptions({

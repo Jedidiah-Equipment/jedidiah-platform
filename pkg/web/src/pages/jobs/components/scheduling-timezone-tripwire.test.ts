@@ -1,4 +1,4 @@
-import { DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
+import { type BaySchedule, DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -63,10 +63,10 @@ describe('schedule UI timezone tripwire', () => {
     for (const feedback of inEveryTimeZone(() =>
       describeInsertAtDatePlacement(
         resolveBookSlotPlacement({
-          bay: { scheduleOrigin: day('2026-06-05'), slots: [slot] },
+          bay: { calendarExceptions: [], scheduleOrigin: day('2026-06-05'), slots: [slot] } as unknown as BaySchedule,
+          offDays: [],
           startDate: '2026-06-09',
           today: day('2026-06-05'),
-          workingCalendar: {},
         }),
       ),
     )) {

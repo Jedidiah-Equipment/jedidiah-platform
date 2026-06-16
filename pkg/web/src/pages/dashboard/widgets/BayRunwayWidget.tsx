@@ -1,3 +1,4 @@
+import { bayWorkingCalendars } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { Bar, BarChart, LabelList, XAxis, YAxis } from 'recharts';
@@ -6,7 +7,6 @@ import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } f
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { createWorkingCalendarsByBayId } from '../../jobs/components/bay-schedule-summary.js';
 import { BAY_RUNWAY_CAP_WORKING_DAYS, computeBayRunway, listEnabledBays } from '../bay-schedule-derivations.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
@@ -43,7 +43,7 @@ export const BayRunwayWidget: React.FC = () => {
     return <DashboardWidgetEmpty>No enabled Bays.</DashboardWidgetEmpty>;
   }
 
-  const workingCalendarsByBayId = createWorkingCalendarsByBayId(enabledBays, offDays);
+  const workingCalendarsByBayId = bayWorkingCalendars(enabledBays, offDays);
   // Recharts spreads data entries onto SVG shape elements, so keys must not collide with
   // real attributes (e.g. a boolean `overflow`).
   const chartData = enabledBays.map((bay) => {

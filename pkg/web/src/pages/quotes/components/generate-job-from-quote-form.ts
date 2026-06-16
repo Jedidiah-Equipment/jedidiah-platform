@@ -1,10 +1,11 @@
-import type { WorkingCalendar } from '@pkg/domain';
+import { bayWorkingCalendars, type WorkingCalendar } from '@pkg/domain';
 import {
   type Bay,
   type BayListResult,
   type BaySchedule,
   DateOnlyIsoString,
   JobCreateInput,
+  type OffDay,
   type ProductBay,
   type QuoteDetail,
   SlotDurationDays,
@@ -13,7 +14,6 @@ import {
 import { z } from 'zod';
 
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';
-import { createWorkingCalendarsByBayId } from '@/pages/jobs/components/bay-schedule-summary.js';
 import {
   describeInsertAtDatePlacement,
   getInsertAtDatePickerBounds,
@@ -35,6 +35,7 @@ export const JobCreateFormValues = z.object({
 
 /** Per-Bay scheduling context for seed rows, derived once from the Bay schedule read. */
 export type BaySeedScheduling = {
+  offDays: OffDay[];
   schedulesByBayId: Map<UUID, BaySchedule>;
   today: BayListResult['today'];
   workingCalendarsByBayId: Map<string, WorkingCalendar>;
@@ -42,9 +43,10 @@ export type BaySeedScheduling = {
 
 export function createBaySeedScheduling(result: Pick<BayListResult, 'items' | 'offDays' | 'today'>): BaySeedScheduling {
   return {
+    offDays: result.offDays,
     schedulesByBayId: new Map(result.items.map((bay) => [bay.id, bay])),
     today: result.today,
-    workingCalendarsByBayId: createWorkingCalendarsByBayId(result.items, result.offDays),
+    workingCalendarsByBayId: bayWorkingCalendars(result.items, result.offDays),
   };
 }
 
@@ -86,9 +88,9 @@ export function getBaySeedRowScheduling(
   const placement = DateOnlyIsoString.safeParse(row.startDate).success
     ? resolveBookSlotPlacement({
         bay,
+        offDays: scheduling.offDays,
         startDate: row.startDate,
         today: scheduling.today,
-        workingCalendar,
       })
     : null;
 

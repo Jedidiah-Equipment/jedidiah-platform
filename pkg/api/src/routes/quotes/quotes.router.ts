@@ -1,5 +1,6 @@
 import {
   createQuote,
+  draftQuoteEmail,
   generateQuoteDocument,
   getQuote,
   getQuoteProductBayAvailability,
@@ -24,6 +25,7 @@ import {
   ProductListInput,
   QuoteCreateInput,
   QuoteDocumentGenerationInput,
+  QuoteDraftEmailInput,
   QuoteListInput,
   QuoteProductBayAvailabilityInput,
   QuoteUpdateInput,
@@ -31,10 +33,12 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
+import { emailSender } from '@/email/index.js';
 import { log } from '@/logger.js';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
+import { generateQuoteEmailBody } from '../ai/actions/quote-email-body.js';
 
 export const quotesRouter = router({
   list: authorizedProcedure('quote:read')
@@ -100,6 +104,35 @@ export const quotesRouter = router({
         }),
       ),
     ),
+
+  draftEmail: authorizedProcedure('quote:update')
+    .input(QuoteDraftEmailInput)
+    .mutation(({ ctx, input }) =>
+      mapQuoteErrors(() =>
+        draftQuoteEmail({
+          actorUserId: ctx.session.user.id,
+          db: ctx.db,
+          generateEmailBody: (quote) =>
+            generateQuoteEmailBody({
+              aiContext: { access: ctx.access, db: ctx.db, session: ctx.session },
+              quote,
+            }),
+          input,
+          pdfRenderer: renderQuoteDocumentPdf,
+          recipientEmail: ctx.session.user.email,
+          sendEmail: (message) =>
+            emailSender.send({
+              attachments: message.attachments,
+              html: message.html,
+              subject: message.subject,
+              text: message.text,
+              to: message.to,
+              type: 'quote-draft',
+            }),
+          storage: ctx.storage,
+        }),
+      ),
+    ),
 });
 
 async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -128,6 +161,7 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
       };
     case 'quote.locked':
     case 'quote.document_generation_not_allowed':
+    case 'quote.draft_email_recipient_missing':
       return {
         appCode: error.code,
         code: 'BAD_REQUEST',

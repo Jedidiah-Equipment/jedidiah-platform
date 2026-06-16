@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils.js';
 import { openQuoteEmailAssistant } from '../quote-email-assistant.js';
 import { StartJobLink } from '../StartJobLink.js';
 import type { SelectedAssemblySnapshot } from '../types.js';
+import { DraftQuoteEmailDialog } from './DraftQuoteEmailDialog.js';
 
 export type QuoteComputedSummary = {
   currencyCode: string;
@@ -279,6 +280,7 @@ function QuoteTotalCard({
           <IconMail data-icon="inline-start" />
           Generate Email
         </Button>
+        <DraftQuoteEmailDialog className="mt-2 w-full" flushAutosave={flushAutosave} quote={quote} />
         <StartJobLink className="mt-2 w-full" quote={quote} />
       </CardContent>
     </Card>

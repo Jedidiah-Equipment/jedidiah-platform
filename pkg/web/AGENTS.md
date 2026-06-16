@@ -6,6 +6,7 @@
 - Route all React Query invalidation through `src/hooks/use-query-invalidation.ts`; invalidate whole affected tRPC root paths.
 - Use shared UI primitives for standard surfaces: `Card` composition from `src/components/ui/card.tsx` and `ScrollArea` for page/panel scrolling.
 - For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/use-app-form.ts`.
+- Keep `vite.config.ts` `resolve.dedupe: ['react', 'react-dom']`. `pkg/mobile` pins a different React version than web; without deduping a second React copy leaks into the bundle and breaks hooks ("Invalid hook call" / `useRef` of null). If you still see that error after a branch switch, clear the stale Vite cache (`rm -rf node_modules/.vite`) and restart the dev server.
 
 ## Entity Forms
 

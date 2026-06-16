@@ -78,6 +78,28 @@ export function shouldLogTRPCError(error: TRPCError): boolean {
   return error.code === 'INTERNAL_SERVER_ERROR';
 }
 
+/**
+ * Flattens an error and its `cause` chain into a plain, log-friendly object. pino serializes a bare
+ * `Error` (and especially a nested `cause`) to `{}`, which hides the real failure — e.g. an unmapped
+ * `INTERNAL_SERVER_ERROR` whose `cause` is the actual thrown error. Use this when logging caught errors.
+ */
+export function serializeError(error: unknown, depth = 0): unknown {
+  if (depth > 5) {
+    return { truncated: true };
+  }
+
+  if (!(error instanceof Error)) {
+    return error == null ? undefined : { value: String(error) };
+  }
+
+  return {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+    ...(error.cause === undefined ? {} : { cause: serializeError(error.cause, depth + 1) }),
+  };
+}
+
 export function assertNever(value: never): never {
   throw new Error(`Unhandled mapping: ${String(value)}`);
 }

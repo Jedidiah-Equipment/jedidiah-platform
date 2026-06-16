@@ -1,4 +1,10 @@
-export { createEmailSender, type EmailPayload, type EmailSender, type EmailType } from './email-sender.js';
+export {
+  createEmailSender,
+  type EmailAttachment,
+  type EmailPayload,
+  type EmailSender,
+  type EmailType,
+} from './email-sender.js';
 export {
   clearMockEmailMessages,
   getMockEmailMessages,

@@ -20,7 +20,8 @@ Expo managed React Native app for Jedidah Ops.
 ## Local API
 
 Mobile auth calls the API root from `EXPO_PUBLIC_API_BASE_URL`. It defaults to
-`http://10.0.2.2:7002`, which reaches the host machine from the Android emulator.
+`http://10.0.2.2:7002` on Android, which reaches the host machine from the Android
+emulator. On iOS simulator and web it defaults to `http://localhost:7002`.
 
 For a physical device, set `EXPO_PUBLIC_API_BASE_URL` to a LAN URL for the machine
 running the API, for example `http://192.168.1.20:7002`.

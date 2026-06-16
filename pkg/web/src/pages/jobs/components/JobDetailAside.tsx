@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { findJobScheduleSummary, type JobScheduleSummary } from './bay-schedule-summary.js';
+import { InfoList, InfoRow, SlotDayBreakdownRows } from './JobInfoList.js';
 
 type JobDetailAsideProps = {
   bayId?: UUID | undefined;
@@ -68,33 +69,14 @@ const Section: React.FC<{ children: React.ReactNode; title: string }> = ({ child
   </section>
 );
 
-const InfoList: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <dl className="divide-y rounded-lg border text-sm">{children}</dl>
-);
-
-const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="flex items-start justify-between gap-3 px-3 py-2">
-    <dt className="text-muted-foreground">{label}</dt>
-    <dd className="min-w-0 text-right">{value}</dd>
-  </div>
-);
-
 const SlotSection: React.FC<{ schedule: JobScheduleSummary }> = ({ schedule }) => {
   const { currentOperator, dayBreakdown, endDate, startDate } = schedule;
-  const totalDays = dayBreakdown.workingDays + dayBreakdown.closureDays;
 
   return (
     <Section title="Slot">
       <InfoList>
         {currentOperator ? <InfoRow label="Operator" value={<OperatorValue operator={currentOperator} />} /> : null}
-        <InfoRow label="Start" value={formatDate(startDate, 'short')} />
-        <InfoRow label="End" value={formatDate(endDate, 'short')} />
-        <InfoRow label="Total days" value={`${totalDays} (incl. off)`} />
-        <InfoRow label="Working days" value={dayBreakdown.workingDays} />
-        {dayBreakdown.overtimeDays > 0 ? (
-          <InfoRow label="Overtime" value={`${dayBreakdown.overtimeDays} day(s)`} />
-        ) : null}
-        {dayBreakdown.closureDays > 0 ? <InfoRow label="Closure" value={`${dayBreakdown.closureDays} day(s)`} /> : null}
+        <SlotDayBreakdownRows dayBreakdown={dayBreakdown} endDate={endDate} startDate={startDate} />
       </InfoList>
     </Section>
   );

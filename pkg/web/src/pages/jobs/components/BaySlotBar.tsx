@@ -1,6 +1,5 @@
 import {
   addJobSlotDuration,
-  formatDate,
   type SlotCalendarDays,
   segmentSlotCalendarDays,
   summarizeSlotCalendarDays,
@@ -29,15 +28,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { cn } from '@/lib/utils.js';
 import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
 import type { DisplayBaySlot } from './bay-schedule-ghosts.js';
 import { getSlotLabel } from './bay-schedule-summary.js';
+import { InfoList, SlotDayBreakdownRows } from './JobInfoList.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 
 // Slot card height, leaving a small inset above/below within the (taller) bay row.
 export const SLOT_CARD_HEIGHT = 60;
+// Trim each slot's width so contiguous slots leave a hairline gap instead of their
+// borders/rings butting into (and visually overlapping) the next slot.
+const SLOT_GAP = 3;
 const IDLE_SLOT_HATCH_BACKGROUND =
   'repeating-linear-gradient(45deg, rgb(113 113 122 / 0.18) 0 5px, transparent 5px 10px)';
 
@@ -113,10 +116,24 @@ export const BaySlotBar: React.FC<{
   );
   const daySummary = formatSlotDaySummary(dayBreakdown);
   const left = getJobGanttOffset(startDate, gantt);
-  const width = Math.max(getJobGanttWidth(startDate, previewEndDate, gantt), 28);
+  const width = Math.max(getJobGanttWidth(startDate, previewEndDate, gantt) - SLOT_GAP, 28);
   const isIdle = slot.kind === 'idle';
   // The "active" slot is the booked job in progress on the plant's current business day.
   const isActive = !isIdle && startDate <= today && today < previewEndDate;
+  // One tone drives both the slot border and its resize handle: today's job is blue (kept
+  // off the app's primary yellow), the next slot off the line is green, everything else is
+  // the neutral border.
+  const tone: 'active' | 'next' | 'default' = isActive ? 'active' : isNext ? 'next' : 'default';
+  const slotBorderClass = {
+    active: 'border-blue-500/60 ring-1 ring-blue-500/25',
+    default: 'border-border',
+    next: 'border-emerald-500/70 ring-1 ring-emerald-500/25',
+  }[tone];
+  const resizeHandleToneClass = {
+    active: 'border-blue-500/70 bg-blue-500/15 hover:bg-blue-500/25 focus-visible:ring-blue-500',
+    default: 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-ring',
+    next: 'border-emerald-500/70 bg-emerald-500/15 hover:bg-emerald-500/25 focus-visible:ring-emerald-500',
+  }[tone];
   const height = SLOT_CARD_HEIGHT;
   // Center the bar/card vertically within its (taller) bay row.
   const top = rowTop + (gantt.rowHeight - height) / 2;
@@ -188,29 +205,19 @@ export const BaySlotBar: React.FC<{
   };
 
   return (
-    <Tooltip>
+    <HoverCard>
       <ContextMenu>
         <ContextMenuTrigger
           render={
-            <TooltipTrigger
+            <HoverCardTrigger
               render={
                 <div
                   data-gantt-drag-scroll-ignore
                   className={cn(
                     'pointer-events-auto absolute cursor-default overflow-hidden text-xs shadow-sm transition-opacity duration-200',
                     isIdle
-                      ? cn(
-                          'rounded-sm border bg-card px-2 py-1 text-muted-foreground',
-                          isNext ? 'border-emerald-500/70 ring-1 ring-emerald-500/25' : 'border-border',
-                        )
-                      : cn(
-                          'rounded-lg border bg-card px-2.5 py-1.5 text-card-foreground',
-                          isActive
-                            ? 'border-primary/60 ring-1 ring-primary/20'
-                            : isNext
-                              ? 'border-emerald-500/70 ring-1 ring-emerald-500/25'
-                              : 'border-border',
-                        ),
+                      ? cn('rounded-sm border-2 bg-card px-2 py-1 text-muted-foreground', slotBorderClass)
+                      : cn('rounded-lg border-2 bg-card px-2.5 py-1.5 text-card-foreground', slotBorderClass),
                     // Filtered-out slots fade back but stay interactive; hover restores them.
                     isDimmed && 'opacity-20 hover:opacity-100',
                   )}
@@ -309,10 +316,8 @@ export const BaySlotBar: React.FC<{
               <button
                 aria-label={`Resize ${label}`}
                 className={cn(
-                  'absolute top-0 right-0 z-30 h-full w-3 cursor-ew-resize border-r-2 outline-none disabled:cursor-not-allowed disabled:opacity-50',
-                  isIdle
-                    ? 'border-foreground/40 bg-foreground/10 hover:bg-foreground/15 focus-visible:ring-2 focus-visible:ring-foreground'
-                    : 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring',
+                  'absolute top-0 right-0 z-30 h-full w-3 cursor-ew-resize border-r-2 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
+                  resizeHandleToneClass,
                 )}
                 disabled={isScheduleMutationPending || isRemoving}
                 onPointerCancel={cancelResize}
@@ -350,16 +355,13 @@ export const BaySlotBar: React.FC<{
           </ContextMenuContent>
         ) : null}
       </ContextMenu>
-      <TooltipContent className="flex-col items-start gap-0.5">
-        <p className="font-medium">
-          {label}: {formatDate(slot.startDate, 'PPP')} - {formatDate(slot.endDate, 'PPP')}
-        </p>
-        <p>
-          {dayBreakdown.workingDays} working day(s), {dayBreakdown.closureDays} closure day(s),{' '}
-          {dayBreakdown.overtimeDays} overtime day(s)
-        </p>
-      </TooltipContent>
-    </Tooltip>
+      <HoverCardContent align="start" className="flex w-64 flex-col gap-2" side="top">
+        <p className="font-mono font-semibold">{label}</p>
+        <InfoList>
+          <SlotDayBreakdownRows dayBreakdown={dayBreakdown} endDate={previewEndDate} startDate={startDate} />
+        </InfoList>
+      </HoverCardContent>
+    </HoverCard>
   );
 };
 

@@ -295,12 +295,23 @@ function spliceSeedEntry({
       // Splitting another ghost has no real Slot to halve; degrade to insert-before.
       next.splice(targetIndex, 0, ghostEntry);
     } else {
+      // Each half takes a unique id so a later seed targeting one half resolves to it, not its twin.
       next.splice(
         targetIndex,
         1,
-        { ...target, durationDays: placement.beforeDays, splitOf: { half: 'before', sourceSlotId: target.id } },
+        {
+          ...target,
+          durationDays: placement.beforeDays,
+          id: `${target.id}:before` as ProjectedJobSlot['id'],
+          splitOf: { half: 'before', sourceSlotId: target.id },
+        },
         ghostEntry,
-        { ...target, durationDays: placement.afterDays, splitOf: { half: 'after', sourceSlotId: target.id } },
+        {
+          ...target,
+          durationDays: placement.afterDays,
+          id: `${target.id}:after` as ProjectedJobSlot['id'],
+          splitOf: { half: 'after', sourceSlotId: target.id },
+        },
       );
     }
   }

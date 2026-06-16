@@ -138,6 +138,25 @@ describe('previewBaySchedule insertSeeds', () => {
     expect(result.ghosts[0]).toMatchObject({ placementType: 'split', seedIndex: 0, startDate: '2026-06-17' });
   });
 
+  it('resolves a second same-Bay seed against the correct split half', () => {
+    // Split a slot, then drop another seed inside the after half. With colliding half ids the second
+    // seed would target the wrong half; unique half ids keep it on the after half (durations 2+3+5=10).
+    const source = bay({ nextAvailableDate: '2026-06-25', scheduleOrigin: '2026-06-15', slots: [work('a', 1, 10)] });
+
+    const result = previewBaySchedule(source, [], {
+      kind: 'insertSeeds',
+      seeds: [
+        { durationDays: 2, startDate: '2026-06-17' },
+        { durationDays: 1, startDate: '2026-06-22' },
+      ],
+      today: TODAY,
+    });
+
+    expect(result.ghosts.map((ghost) => ghost.placementType)).toEqual(['split', 'split']);
+    expect(result.slots.map((slot) => slot.durationDays)).toEqual([2, 3, 5]);
+    expect(result.slots.map((slot) => slot.splitOf?.sourceSlotId)).toEqual(['a', 'a:after', 'a:after']);
+  });
+
   it('clamps a trailing append forward when the queue ended in the past', () => {
     const source = bay({ nextAvailableDate: '2026-06-03', scheduleOrigin: '2026-06-01', slots: [work('a', 1, 2)] });
 

@@ -7,6 +7,7 @@ import {
   getTRPCAppCode,
   getTRPCPublicMessage,
   mapKnownCoreError,
+  serializeError,
   shouldLogTRPCError,
   UNEXPECTED_ERROR_MESSAGE,
 } from './errors.js';
@@ -63,5 +64,21 @@ describe('tRPC error helpers', () => {
     expect(shouldLogTRPCError(validationError)).toBe(false);
     expect(shouldLogTRPCError(unexpectedError)).toBe(true);
     expect(getTRPCPublicMessage(unexpectedError, unexpectedError.message)).toBe(UNEXPECTED_ERROR_MESSAGE);
+  });
+
+  it('serializes an error and its cause chain so the real failure is not hidden', () => {
+    const rootCause = new Error('domain is not verified');
+    const wrapped = new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'draft failed', cause: rootCause });
+
+    expect(serializeError(wrapped)).toMatchObject({
+      name: 'TRPCError',
+      message: 'draft failed',
+      cause: { name: 'Error', message: 'domain is not verified' },
+    });
+  });
+
+  it('serializes non-Error throwables and undefined', () => {
+    expect(serializeError('boom')).toEqual({ value: 'boom' });
+    expect(serializeError(undefined)).toBeUndefined();
   });
 });

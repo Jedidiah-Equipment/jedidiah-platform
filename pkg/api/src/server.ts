@@ -14,7 +14,7 @@ import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
 import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContextFactory } from './trpc/context.js';
-import { shouldLogTRPCError } from './trpc/errors.js';
+import { serializeError, shouldLogTRPCError } from './trpc/errors.js';
 import { appRouter } from './trpc/router.js';
 
 export async function buildServer(
@@ -58,7 +58,7 @@ export async function buildServer(
     onError({ error, path, type }) {
       if (!shouldLogTRPCError(error)) return;
 
-      log.root.error({ error, path, type }, 'Unexpected tRPC error');
+      log.root.error({ error: serializeError(error), path, type }, 'Unexpected tRPC error');
       observability.captureException(error, { properties: { path, type, source: 'trpc' } });
     },
   } satisfies FastifyTRPCPluginOptions<typeof appRouter>['trpcOptions'];

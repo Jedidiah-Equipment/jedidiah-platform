@@ -9,6 +9,9 @@ export const theme = {
     primary: '#22694b',
     primarySoft: '#dcefe5',
     onPrimary: '#ffffff',
+    danger: '#9f1d1d',
+    dangerBorder: '#e8b9b9',
+    dangerSoft: '#fff1f1',
   },
   spacing: {
     xs: 6,

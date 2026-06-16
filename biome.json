@@ -10,6 +10,7 @@
       "!**/coverage",
       "!**/.sandcastle/worktrees",
       "!pkg/db/migrations",
+      "!pkg/mobile",
       "!pkg/web/src/app/route-tree.gen.ts",
       "!docs",
       "!scripts",

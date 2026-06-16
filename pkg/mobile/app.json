@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Jedidah Ops",
+    "slug": "jedidah-ops",
+    "scheme": "jedidiahops",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "android": {
+      "package": "za.co.jedidiahequipment.ops"
+    }
+  }
+}

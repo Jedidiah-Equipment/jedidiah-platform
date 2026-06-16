@@ -45,8 +45,18 @@ export class QuoteDocumentGenerationNotAllowedError extends Error {
   }
 }
 
+export class QuoteDraftEmailRecipientMissingError extends Error {
+  readonly code = 'quote.draft_email_recipient_missing';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteDraftEmailRecipientMissingError';
+  }
+}
+
 export type QuoteCoreError =
   | QuoteDocumentGenerationNotAllowedError
+  | QuoteDraftEmailRecipientMissingError
   | QuoteDiscountInvalidError
   | QuoteInvalidReferenceError
   | QuoteLockedError
@@ -55,6 +65,7 @@ export type QuoteCoreError =
 export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
     error instanceof QuoteDocumentGenerationNotAllowedError ||
+    error instanceof QuoteDraftEmailRecipientMissingError ||
     error instanceof QuoteDiscountInvalidError ||
     error instanceof QuoteInvalidReferenceError ||
     error instanceof QuoteLockedError ||

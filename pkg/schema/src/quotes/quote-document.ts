@@ -57,6 +57,11 @@ export type QuoteDocumentGenerationResult = {
   warnings: QuoteDocumentGenerationWarning[];
 };
 
+export type QuoteDraftEmailResult = {
+  recipientEmail: string;
+  warnings: QuoteDocumentGenerationWarning[];
+};
+
 export type QuoteDocumentPdfRenderer = (input: {
   document: QuoteDocumentModel;
   filename: string;

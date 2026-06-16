@@ -65,6 +65,25 @@ describe('createEmailSender', () => {
     expect(getMockEmailMessages()[0]).toMatchObject({ type: 'password-reset', token: 'reset-tok' });
   });
 
+  it('records mock emails with attachment filenames for quote drafts', async () => {
+    const sender = createEmailSender(mockConfig());
+    await sender.send({
+      to: 'user@example.com',
+      subject: 'Draft quote QUO-00001 — Acme Mining',
+      html: '<p>Draft</p>',
+      text: 'Draft',
+      type: 'quote-draft',
+      attachments: [
+        { content: new Uint8Array([1, 2, 3]), filename: 'QUO-00001-rev-1.pdf', contentType: 'application/pdf' },
+      ],
+    });
+    expect(getMockEmailMessages()[0]).toMatchObject({
+      to: 'user@example.com',
+      type: 'quote-draft',
+      attachmentFilenames: ['QUO-00001-rev-1.pdf'],
+    });
+  });
+
   it('returns Resend sender when EMAIL_PROVIDER is resend and key is present', () => {
     const sender = createEmailSender(mockConfig({ EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 're_test_key' }));
     expect(typeof sender.send).toBe('function');

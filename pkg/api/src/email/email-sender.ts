@@ -3,16 +3,23 @@ import type { ApiConfig } from '../env.js';
 import { log } from '../logger.js';
 import { recordMockEmail } from './mock-email.js';
 
-export type EmailType = 'email-verification' | 'password-reset';
+export type EmailType = 'email-verification' | 'password-reset' | 'quote-draft';
+
+export interface EmailAttachment {
+  content: Uint8Array;
+  filename: string;
+  contentType?: string;
+}
 
 export interface EmailPayload {
   to: string;
   subject: string;
   html: string;
   text: string;
-  url: string;
-  token: string;
+  url?: string;
+  token?: string;
   type: EmailType;
+  attachments?: EmailAttachment[];
 }
 
 export interface EmailSender {
@@ -32,12 +39,19 @@ function createResendSender(config: ApiConfig): EmailSender {
 
   return {
     send: async (payload) => {
+      const attachments = payload.attachments?.map((attachment) => ({
+        content: Buffer.from(attachment.content),
+        filename: attachment.filename,
+        ...(attachment.contentType === undefined ? {} : { contentType: attachment.contentType }),
+      }));
+
       const { data, error } = await resend.emails.send({
         from,
         to: payload.to,
         subject: payload.subject,
         html: payload.html,
         text: payload.text,
+        ...(attachments === undefined ? {} : { attachments }),
       });
 
       if (error) {
@@ -57,9 +71,10 @@ function createMockSender(config: ApiConfig): EmailSender {
           to: payload.to,
           subject: payload.subject,
           text: payload.text,
-          url: payload.url,
-          token: payload.token,
           type: payload.type,
+          attachmentFilenames: payload.attachments?.map((attachment) => attachment.filename) ?? [],
+          ...(payload.url === undefined ? {} : { url: payload.url }),
+          ...(payload.token === undefined ? {} : { token: payload.token }),
         },
         config,
       );

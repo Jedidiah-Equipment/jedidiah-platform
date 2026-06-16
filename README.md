@@ -180,6 +180,11 @@ Navigation entries and route guards are driven by the same permission set the AP
 There is intentionally no public registration UI yet; user provisioning stays admin-owned.
 Public browser config is served through `/env.js` and read from `window.__APP_CONFIG__`.
 
+`pkg/web/vite.config.ts` keeps `resolve.dedupe: ['react', 'react-dom']`. `pkg/mobile` pins a different
+React version than web, so without deduping a second React copy can leak into the web bundle and break
+hooks ("Invalid hook call" / `useRef` of null). If that error appears after switching branches, clear the
+stale Vite cache with `rm -rf node_modules/.vite` and restart the web dev server.
+
 ## Agent skills
 
 Agent skills are managed with the Vercel Labs skills CLI:

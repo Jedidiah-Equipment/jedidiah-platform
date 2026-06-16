@@ -21,7 +21,7 @@ const config: ApiConfig = {
   APP_BASE_URL: 'http://localhost:5173',
   API_BASE_URL: 'http://localhost:7002',
   AUTH_SECRET: 'a'.repeat(32),
-  AUTH_TRUSTED_ORIGINS: ['http://localhost:5173'],
+  AUTH_TRUSTED_ORIGINS: ['http://localhost:5173', 'http://localhost:7003'],
   EMAIL_PROVIDER: 'mock',
   EMAIL_FROM: 'noreply@jedidiahequipment.co.za',
   DOCUMENT_STORAGE_ACCESS_KEY_ID: 'minioadmin',
@@ -65,6 +65,25 @@ describe('API server', () => {
 
       expect(response.statusCode, response.body).toBe(200);
       expect(response.json()).toEqual(Array.from({ length: 10 }, () => ({ result: { data: null } })));
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('allows the local Expo dev server through CORS', async () => {
+    const app = await buildServer(config, observability, new MemoryStorage());
+
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/health',
+        headers: {
+          origin: 'http://localhost:7003',
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe('http://localhost:7003');
     } finally {
       await app.close();
     }

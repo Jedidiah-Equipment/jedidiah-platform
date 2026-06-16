@@ -75,6 +75,7 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
   const [leadTime, setLeadTime] = useState(defaultLeadTime);
   const [hasUserEditedLeadTime, setHasUserEditedLeadTime] = useState(false);
   const [confirmMissingBrochure, setConfirmMissingBrochure] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const canRunStatus = quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const canRun = canUpdateQuote && canRunStatus;
@@ -115,20 +116,29 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
     return null;
   }
 
+  // `isPending` only covers the mutation; the autosave flush happens before it, so track our own busy
+  // flag to keep the submit button disabled across the whole flow and prevent double submits.
+  const isBusy = isPending || isSubmitting;
+
   const handleSubmit = async () => {
-    const didSave = await flushAutosave();
-    if (!didSave) {
-      toast.error(unsavedErrorMessage);
+    if (isBusy) {
       return;
     }
 
-    // Server generation can omit the brochure, but sales must acknowledge that path explicitly.
-    if (isMissingBrochure && !confirmMissingBrochure) {
-      setConfirmMissingBrochure(true);
-      return;
-    }
-
+    setIsSubmitting(true);
     try {
+      const didSave = await flushAutosave();
+      if (!didSave) {
+        toast.error(unsavedErrorMessage);
+        return;
+      }
+
+      // Server generation can omit the brochure, but sales must acknowledge that path explicitly.
+      if (isMissingBrochure && !confirmMissingBrochure) {
+        setConfirmMissingBrochure(true);
+        return;
+      }
+
       const result = await onConfirm({ leadTime: trimmedLeadTime, quoteId: quote.id });
       await invalidateDocuments();
       toast.success(successMessage(result));
@@ -139,6 +149,8 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
       setIsOpen(false);
     } catch (error) {
       showMutationError(error, errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -158,7 +170,7 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
         <Field>
           <FieldLabel htmlFor="quote-document-action-lead-time">Lead Time</FieldLabel>
           <Input
-            disabled={isPending}
+            disabled={isBusy}
             id="quote-document-action-lead-time"
             onChange={(event) => {
               setHasUserEditedLeadTime(true);
@@ -205,13 +217,13 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
           </Alert>
         ) : null}
         <DialogFooter>
-          <DialogClose render={<Button disabled={isPending} type="button" variant="outline" />}>Cancel</DialogClose>
+          <DialogClose render={<Button disabled={isBusy} type="button" variant="outline" />}>Cancel</DialogClose>
           <Button
-            disabled={isPending || brochureQuery.isLoading || trimmedLeadTime.length === 0}
+            disabled={isBusy || brochureQuery.isLoading || trimmedLeadTime.length === 0}
             onClick={handleSubmit}
             type="button"
           >
-            {isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+            {isBusy ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
             {confirmMissingBrochure ? confirmWithoutBrochureLabel : submitLabel}
           </Button>
         </DialogFooter>

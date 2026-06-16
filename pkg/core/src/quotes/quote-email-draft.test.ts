@@ -139,4 +139,30 @@ describe('draftQuoteEmail', () => {
     const documents = await getQuoteDocuments({ db: context.db, quoteId: context.quote.id });
     expect(documents).toHaveLength(0);
   });
+
+  test('does not persist a revision or send when email body generation fails', async ({ context }) => {
+    const harness = createHarness();
+    const failure = new Error('AI body generation failed');
+    const generateEmailBody: QuoteDraftEmailBodyGenerator = async () => {
+      throw failure;
+    };
+
+    await expect(
+      draftQuoteEmail({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        generateEmailBody,
+        input: { leadTime: '14 working days', quoteId: context.quote.id },
+        pdfRenderer: harness.pdfRenderer,
+        recipientEmail: 'sales@example.com',
+        sendEmail: harness.sendEmail,
+        storage: harness.storage,
+      }),
+    ).rejects.toBe(failure);
+
+    // The Quote Document is persisted only after a successful send, so a failed draft leaves no revision.
+    expect(harness.sentMessages).toHaveLength(0);
+    const documents = await getQuoteDocuments({ db: context.db, quoteId: context.quote.id });
+    expect(documents).toHaveLength(0);
+  });
 });

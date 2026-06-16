@@ -7,10 +7,8 @@ import type {
   QuoteDraftEmailResult,
 } from '@pkg/schema';
 
-import { collectStoredObjectBytes } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { readQuoteDocument } from './quote-document.js';
-import { generateQuoteDocument } from './quote-document-generation.js';
+import { persistQuoteDocumentRevision, renderQuoteDocumentRevision } from './quote-document-generation.js';
 import { QuoteDraftEmailRecipientMissingError } from './quote-errors.js';
 import { getQuote } from './quote-service.js';
 
@@ -65,17 +63,11 @@ export async function draftQuoteEmail({
     );
   }
 
-  const generation = await generateQuoteDocument({ actorUserId, db, input, pdfRenderer, storage });
-  const { document, object } = await readQuoteDocument({
-    db,
-    documentId: generation.document.id,
-    quoteId: input.quoteId,
-    storage,
-  });
-  const pdfBytes = await collectStoredObjectBytes(object);
-
+  // Do the failure-prone work first (AI body, then render the PDF) and only persist the Quote Document
+  // revision after the email is delivered, so a failed generation or send leaves no orphan revision.
   const quote = await getQuote({ db, id: input.quoteId });
   const body = await generateEmailBody(quote);
+  const draft = await renderQuoteDocumentRevision({ db, input, pdfRenderer, storage });
 
   await sendEmail({
     to: trimmedRecipient,
@@ -84,16 +76,18 @@ export async function draftQuoteEmail({
     html: renderEmailBodyHtml(body),
     attachments: [
       {
-        content: pdfBytes,
+        content: draft.bytes,
         contentType: 'application/pdf',
-        filename: document.filename,
+        filename: draft.filename,
       },
     ],
   });
 
+  await persistQuoteDocumentRevision({ actorUserId, db, draft, quoteId: input.quoteId, storage });
+
   return {
     recipientEmail: trimmedRecipient,
-    warnings: generation.warnings,
+    warnings: draft.warnings,
   };
 }
 

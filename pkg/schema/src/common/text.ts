@@ -29,5 +29,8 @@ export function nullableEmailInput(message = 'Enter a valid email address') {
     .pipe(z.email(message).nullable());
 }
 
+export type EmailAddress = z.infer<typeof EmailAddress>;
+export const EmailAddress = z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address'));
+
 export type SearchText = z.infer<typeof SearchText>;
 export const SearchText = z.string().trim().default('');

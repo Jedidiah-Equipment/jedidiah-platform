@@ -1,4 +1,15 @@
-import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { EmailAddress } from '@pkg/schema';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
@@ -15,30 +26,31 @@ export default function LoginScreen() {
   async function handleSignIn() {
     if (isSubmitting) return;
 
-    const nextEmail = email.trim().toLowerCase();
-
-    if (!nextEmail || !password) {
+    if (!email.trim() || !password) {
       setError('Enter your email and password.');
+      return;
+    }
+
+    const emailResult = EmailAddress.safeParse(email);
+
+    if (!emailResult.success) {
+      setError('Enter a valid email address.');
       return;
     }
 
     setError(null);
     setIsSubmitting(true);
 
-    try {
-      const result = await signIn({ email: nextEmail, password });
+    const result = await signIn({ email: emailResult.data, password });
 
-      if (result.error) {
-        setError(result.error.message ?? 'Unable to sign in.');
-        return;
-      }
-
-      router.replace('/');
-    } catch {
-      setError('Unable to sign in.');
-    } finally {
+    if (!result.ok) {
+      setError(result.message);
       setIsSubmitting(false);
+      return;
     }
+
+    router.replace('/');
+    setIsSubmitting(false);
   }
 
   return (
@@ -59,6 +71,7 @@ export default function LoginScreen() {
               <TextInput
                 autoCapitalize="none"
                 autoComplete="email"
+                editable={!isSubmitting}
                 keyboardType="email-address"
                 onChangeText={setEmail}
                 placeholder="name@jedidiahequipment.co.za"
@@ -75,6 +88,7 @@ export default function LoginScreen() {
               <TextInput
                 autoCapitalize="none"
                 autoComplete="password"
+                editable={!isSubmitting}
                 onChangeText={setPassword}
                 onSubmitEditing={handleSignIn}
                 placeholder="Enter your password"
@@ -103,6 +117,7 @@ export default function LoginScreen() {
                 pressed && !isSubmitting ? styles.buttonPressed : null,
               ]}
             >
+              {isSubmitting ? <ActivityIndicator color={theme.colors.onPrimary} size="small" /> : null}
               <Text style={styles.buttonText}>{isSubmitting ? 'Signing in' : 'Sign in'}</Text>
             </Pressable>
           </View>
@@ -182,6 +197,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 8,
     backgroundColor: theme.colors.primary,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
     justifyContent: 'center',
     marginTop: theme.spacing.sm,
     minHeight: 52,

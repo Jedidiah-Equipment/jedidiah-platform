@@ -41,7 +41,6 @@ import {
   type QuoteUpdateInput,
   type UpcomingDeliveryQuote,
   UpcomingDeliveryQuotesResult,
-  type UpcomingDeliveryQuotesResult as UpcomingDeliveryQuotesResultType,
   type UserListResult,
   UserSummary,
   type UUID,
@@ -347,13 +346,15 @@ export async function listPriorityQuotes({
   );
 }
 
+// A dashboard read, but a QuoteSummary-shaped list like listQuotes/listPriorityQuotes, so it lives
+// here with the shared summary mapper rather than in quote-report-service (which owns aggregates).
 export async function listUpcomingDeliveryQuotes({
   clock = () => new Date(),
   db,
 }: {
   clock?: () => Date;
   db: Db;
-}): Promise<UpcomingDeliveryQuotesResultType> {
+}): Promise<UpcomingDeliveryQuotesResult> {
   const today = toPlantDateOnly(clock());
   const windowEndDate = addDateOnlyDays(today, UPCOMING_DELIVERY_WINDOW_DAYS);
 

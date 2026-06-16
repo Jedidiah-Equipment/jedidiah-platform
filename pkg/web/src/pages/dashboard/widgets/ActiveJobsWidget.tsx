@@ -1,26 +1,22 @@
-import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
-import { useTRPC } from '@/lib/trpc.js';
-
-import { countActiveJobs, listEnabledBays } from '../bay-schedule-derivations.js';
+import { countActiveJobs } from '../bay-schedule-derivations.js';
 import { DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { StatCard, StatCardSkeleton } from '../StatCard.js';
+import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
 export const ActiveJobsWidget: React.FC = () => {
-  const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const bays = useShopFloorBays();
 
-  if (baysQuery.error) {
-    return <DashboardWidgetError error={baysQuery.error} fallbackMessage="Unable to load active jobs." />;
+  if (bays.status === 'error') {
+    return <DashboardWidgetError error={bays.error} fallbackMessage="Unable to load active jobs." />;
   }
 
-  if (baysQuery.isPending) {
+  if (bays.status === 'pending') {
     return <StatCardSkeleton />;
   }
 
-  const { items, today } = baysQuery.data;
-  const { activeJobs, finishingThisWeek } = countActiveJobs({ bays: listEnabledBays(items), today });
+  const { activeJobs, finishingThisWeek } = countActiveJobs({ bays: bays.enabledBays, today: bays.today });
 
   return <StatCard sublabel={`${finishingThisWeek} finishing this week`} value={activeJobs} />;
 };

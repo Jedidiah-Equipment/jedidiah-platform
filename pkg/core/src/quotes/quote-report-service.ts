@@ -1,14 +1,14 @@
 import { customers, type Db, quotes } from '@pkg/db';
 import {
   addDateOnlyDays,
+  diffDateOnlyDays,
   JOHANNESBURG_TIME_ZONE,
-  parseDateOnlyParts,
   priceQuote,
+  startOfDateOnlyWeek,
   toPlantDateOnly,
   zonedDateStartToUtcInstant,
 } from '@pkg/domain';
 import {
-  type DateOnlyIso,
   QuotePipelineSummary,
   QuoteStatus,
   QuoteStatusSummary,
@@ -19,6 +19,10 @@ import {
 import { and, asc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 
 import { getSelectedAssembliesByQuoteId } from './quote-selected-assemblies.js';
+
+// Aggregate Quote reads for the dashboard: counts, sums, and week buckets that project to their own
+// summary shapes. QuoteSummary-shaped list reads (including upcoming deliveries) stay in
+// quote-service alongside the shared mapQuoteSummary / getJobByQuoteId machinery they reuse.
 
 const QUOTE_WEEKLY_FLOW_WEEK_COUNT = 12;
 const QUOTE_NEWLY_SENT_WINDOW_DAYS = 30;
@@ -197,11 +201,7 @@ export async function listStaleSentQuotes({
 }
 
 function getPlantWeekRange({ now, weekCount }: { now: Date; weekCount: number }) {
-  const currentPlantDate = toPlantDateOnly(now);
-  const currentWeekStartDate = addDateOnlyDays(
-    currentPlantDate,
-    -getMondayBasedWeekdayOffset(getDateOnlyWeekday(currentPlantDate)),
-  );
+  const currentWeekStartDate = startOfDateOnlyWeek(toPlantDateOnly(now));
   const rangeStartDate = addDateOnlyDays(currentWeekStartDate, -(weekCount - 1) * 7);
   const rangeEndDate = addDateOnlyDays(currentWeekStartDate, 7);
   const weekStartDates = Array.from({ length: weekCount }, (_, index) => addDateOnlyDays(rangeStartDate, index * 7));
@@ -213,16 +213,6 @@ function getPlantWeekRange({ now, weekCount }: { now: Date; weekCount: number })
   };
 }
 
-function getMondayBasedWeekdayOffset(weekday: number): number {
-  return (weekday + 6) % 7;
-}
-
-function getDateOnlyWeekday(date: DateOnlyIso): number {
-  const { day, month, year } = parseDateOnlyParts(date);
-
-  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-}
-
 // Windows cover exactly `days` plant days including plant today, anchored to Johannesburg day starts.
 function getPlantWindowStartInstant({ days, now }: { days: number; now: Date }): Date {
   const windowStartDate = addDateOnlyDays(toPlantDateOnly(now), -(days - 1));
@@ -232,13 +222,4 @@ function getPlantWindowStartInstant({ days, now }: { days: number; now: Date }):
 
 function sumQuoteTotals(rows: readonly { id: UUID }[], totalsByQuoteId: ReadonlyMap<UUID, number>): number {
   return rows.reduce((total, row) => total + (totalsByQuoteId.get(row.id) ?? 0), 0);
-}
-
-function diffDateOnlyDays(later: DateOnlyIso, earlier: DateOnlyIso): number {
-  const laterParts = parseDateOnlyParts(later);
-  const earlierParts = parseDateOnlyParts(earlier);
-  const laterUtc = Date.UTC(laterParts.year, laterParts.month - 1, laterParts.day);
-  const earlierUtc = Date.UTC(earlierParts.year, earlierParts.month - 1, earlierParts.day);
-
-  return Math.round((laterUtc - earlierUtc) / 86_400_000);
 }

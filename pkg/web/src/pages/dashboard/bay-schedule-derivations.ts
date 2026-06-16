@@ -1,4 +1,10 @@
-import { addDateOnlyDays, bayWorkingCalendars, isWorkingDay, type WorkingCalendar } from '@pkg/domain';
+import {
+  addDateOnlyDays,
+  bayWorkingCalendars,
+  endOfDateOnlyWeek,
+  isWorkingDay,
+  type WorkingCalendar,
+} from '@pkg/domain';
 import type {
   BaySchedule,
   DateOnlyIso,
@@ -154,7 +160,7 @@ export function countActiveJobs({
   bays: readonly BaySchedule[];
   today: DateOnlyIso;
 }): ActiveJobsSummary {
-  const weekEnd = getEndOfWeek(today);
+  const weekEnd = endOfDateOnlyWeek(today);
   let activeJobs = 0;
   let finishingThisWeek = 0;
 
@@ -195,7 +201,7 @@ export function computeBayLoadToday({
   offDays: readonly OffDay[];
   today: DateOnlyIso;
 }): BayLoadToday {
-  const workingCalendarsByBayId = bayWorkingCalendars([...bays], [...offDays]);
+  const workingCalendarsByBayId = bayWorkingCalendars(bays, offDays);
   let workingCount = 0;
   let idleCount = 0;
   let offCount = 0;
@@ -233,11 +239,4 @@ export function computeBayLoadToday({
 
 function findSlotCoveringDate(slots: readonly ProjectedJobSlot[], date: DateOnlyIso): ProjectedJobSlot | null {
   return slots.find((slot) => slot.startDate <= date && date < slot.endDate) ?? null;
-}
-
-/** The Sunday ending the Monday-start week containing the given plant date. */
-function getEndOfWeek(date: DateOnlyIso): DateOnlyIso {
-  const dayOfWeek = new Date(`${date}T00:00:00Z`).getUTCDay();
-
-  return addDateOnlyDays(date, dayOfWeek === 0 ? 0 : 7 - dayOfWeek);
 }

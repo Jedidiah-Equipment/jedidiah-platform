@@ -1,14 +1,12 @@
-import { bayWorkingCalendars } from '@pkg/domain';
-import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { Bar, BarChart, LabelList, XAxis, YAxis } from 'recharts';
 
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useTRPC } from '@/lib/trpc.js';
 
-import { BAY_RUNWAY_CAP_WORKING_DAYS, computeBayRunway, listEnabledBays } from '../bay-schedule-derivations.js';
+import { BAY_RUNWAY_CAP_WORKING_DAYS, computeBayRunway } from '../bay-schedule-derivations.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
+import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
 const BAY_RUNWAY_CHART_CONFIG = {
   idleDays: {
@@ -25,32 +23,27 @@ const BAY_RUNWAY_SKELETON_ROWS = ['first', 'second', 'third', 'fourth'] as const
 const BAY_RUNWAY_ROW_HEIGHT = 36;
 
 export const BayRunwayWidget: React.FC = () => {
-  const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const bays = useShopFloorBays();
 
-  if (baysQuery.error) {
-    return <DashboardWidgetError error={baysQuery.error} fallbackMessage="Unable to load the bay runway." />;
+  if (bays.status === 'error') {
+    return <DashboardWidgetError error={bays.error} fallbackMessage="Unable to load the bay runway." />;
   }
 
-  if (baysQuery.isPending) {
+  if (bays.status === 'pending') {
     return <BayRunwayWidgetSkeleton />;
   }
 
-  const { items, offDays, today } = baysQuery.data;
-  const enabledBays = listEnabledBays(items);
-
-  if (enabledBays.length === 0) {
+  if (bays.enabledBays.length === 0) {
     return <DashboardWidgetEmpty>No enabled Bays.</DashboardWidgetEmpty>;
   }
 
-  const workingCalendarsByBayId = bayWorkingCalendars(enabledBays, offDays);
   // Recharts spreads data entries onto SVG shape elements, so keys must not collide with
   // real attributes (e.g. a boolean `overflow`).
-  const chartData = enabledBays.map((bay) => {
+  const chartData = bays.enabledBays.map((bay) => {
     const runway = computeBayRunway({
       bay,
-      today,
-      workingCalendar: workingCalendarsByBayId.get(bay.id) ?? {},
+      today: bays.today,
+      workingCalendar: bays.workingCalendarsByBayId.get(bay.id) ?? {},
     });
 
     return {

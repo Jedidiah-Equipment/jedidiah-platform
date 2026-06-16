@@ -54,6 +54,10 @@ function getSignInErrorMessage(error: unknown) {
     return message || signInDisabledMessage;
   }
 
+  if (code === 'EMAIL_NOT_VERIFIED' && message) {
+    return message;
+  }
+
   if (code === 'INVALID_EMAIL_OR_PASSWORD' || status === 401) {
     return invalidCredentialsMessage;
   }

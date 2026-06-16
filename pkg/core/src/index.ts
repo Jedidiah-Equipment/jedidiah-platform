@@ -15,6 +15,7 @@ export * from './products/product-errors.js';
 export * from './products/product-service.js';
 export * from './quotes/quote-document.js';
 export * from './quotes/quote-document-generation.js';
+export * from './quotes/quote-email-draft.js';
 export * from './quotes/quote-errors.js';
 export * from './quotes/quote-report-service.js';
 export * from './quotes/quote-service.js';

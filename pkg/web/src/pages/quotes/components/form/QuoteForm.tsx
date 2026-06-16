@@ -264,8 +264,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
               </QuoteFormSection>
               <div className="mt-6 grid gap-6">
                 <QuoteDocumentsSection
+                  flushAutosave={autosave.flush}
                   generationWarnings={generationWarnings}
-                  hasUnsavedChanges={autosave.state.hasUnsavedChanges}
                   onGenerated={(warnings) => setGenerationWarnings(warnings)}
                   quote={quote}
                 />

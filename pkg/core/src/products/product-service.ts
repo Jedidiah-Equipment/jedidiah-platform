@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  type BrochureImageStore,
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   type DatabaseTransaction,
@@ -29,6 +30,8 @@ import type {
   UUID,
 } from '@pkg/schema';
 import {
+  BROCHURE_IMAGE_SLOTS,
+  BrochureImages,
   Product,
   ProductBay as ProductBaySchema,
   ProductCurrencyCode,
@@ -129,6 +132,7 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     assemblies: row.assemblies ?? [],
     basePrice: row.basePrice,
     brochureConfig: {
+      images: mapBrochureImages(row.brochureImages),
       keyFeatures: row.brochureKeyFeatures,
       subtitle: row.brochureSubtitle,
     },
@@ -146,6 +150,20 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
   });
 }
 
+// Projects the stored per-slot references into the client-facing read model, dropping the internal
+// storage key. Tolerates a row that predates the column (undefined) by treating every slot as empty.
+function mapBrochureImages(store: BrochureImageStore | undefined): BrochureImages {
+  const input: Record<string, unknown> = {};
+
+  for (const slot of BROCHURE_IMAGE_SLOTS) {
+    const ref = store?.[slot];
+
+    input[slot] = ref ? { byteSize: ref.byteSize, contentType: ref.contentType, updatedAt: ref.updatedAt } : null;
+  }
+
+  return BrochureImages.parse(input);
+}
+
 export async function listProducts({
   db,
   input,
@@ -161,6 +179,7 @@ export async function listProducts({
   const productsQuery = db.query.products.findMany({
     columns: {
       basePrice: true,
+      brochureImages: true,
       brochureKeyFeatures: true,
       brochureSubtitle: true,
       createdAt: true,

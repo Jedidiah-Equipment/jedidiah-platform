@@ -9,6 +9,7 @@ import {
   ProductAssembliesInput,
   ProductBaysInput,
   ProductCreateInput,
+  ProductListInput,
   ProductUpdateInput,
 } from './product.js';
 
@@ -197,6 +198,26 @@ describe('ProductUpdateInput', () => {
       rangeId: RANGE_ID,
       requiresVinNumber: true,
       thumbnailDataUrl: null,
+    });
+  });
+});
+
+describe('ProductListInput', () => {
+  it('accepts an optional Range filter', () => {
+    expect(
+      ProductListInput.parse({
+        columnFilters: {
+          rangeId: RANGE_ID,
+        },
+        pageSize: 20,
+      }),
+    ).toMatchObject({
+      columnFilters: {
+        rangeId: RANGE_ID,
+      },
+      pageSize: 20,
+      sortBy: 'name',
+      sortDirection: 'asc',
     });
   });
 });

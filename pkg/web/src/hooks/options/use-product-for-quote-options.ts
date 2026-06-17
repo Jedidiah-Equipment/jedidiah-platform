@@ -7,6 +7,7 @@ import { mergeSelectedOption, toSelectOptions } from './helpers.js';
 
 type UseProductForQuoteOptionsOptions = {
   pageSize?: number;
+  rangeId?: UUID | '';
   search?: string;
   value?: UUID | '';
 };
@@ -21,12 +22,15 @@ const defaultProductListInput = {
 
 export function useProductForQuoteOptions({
   pageSize = 20,
+  rangeId = '',
   search = '',
   value = '',
 }: UseProductForQuoteOptionsOptions = {}) {
   const trpc = useTRPC();
+  const rangeColumnFilter = rangeId ? { rangeId } : {};
   const input = {
     ...defaultProductListInput,
+    columnFilters: rangeColumnFilter,
     pageSize,
     search,
   };
@@ -34,7 +38,7 @@ export function useProductForQuoteOptions({
   const selectedProductQuery = useQuery({
     ...trpc.quotes.products.queryOptions({
       ...defaultProductListInput,
-      columnFilters: { id: value },
+      columnFilters: { id: value, ...rangeColumnFilter },
       pageSize: 1,
     }),
     enabled: Boolean(value),
@@ -56,5 +60,6 @@ export function useProductForQuoteOptions({
     isFetching: productsQuery.isFetching || selectedProductQuery.isFetching,
     isLoading: productsQuery.isLoading || selectedProductQuery.isLoading,
     isPending: productsQuery.isPending || selectedProductQuery.isPending,
+    isResolvingSelected: Boolean(value) && selectedProductQuery.isPending,
   };
 }

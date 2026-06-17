@@ -1,6 +1,6 @@
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
-import { customers, type Db, documents, jobs, products, quotes, user } from '@pkg/db';
+import { customers, type Db, documents, jobs, productAssemblies, products, quotes, user } from '@pkg/db';
 import type { UUID } from '@pkg/schema';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
@@ -243,6 +243,52 @@ describe('document HTTP routes', () => {
       },
       message: 'You do not have permission to upload Product documents.',
     });
+  });
+
+  test('streams an on-the-fly brochure preview when the brochure is complete', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+    const product = await createCompleteBrochureProduct({ db: context.db, storage });
+
+    const response = await app.inject(`/api/products/${product.id}/brochure-preview`);
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.headers['content-type']).toBe('application/pdf');
+    expect(response.headers['content-disposition']).toContain('inline');
+    expect(response.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
+    // Reads every brochure image slot from storage and persists nothing.
+    expect(storage.gets).toHaveLength(4);
+    await expect(context.db.select().from(documents)).resolves.toEqual([]);
+  });
+
+  test('returns 409 when the brochure is incomplete', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createDocumentApp(storage);
+
+    const response = await app.inject(`/api/products/${context.product.id}/brochure-preview`);
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ data: { appCode: 'product.brochure_incomplete' } });
+    expect(storage.gets).toEqual([]);
+  });
+
+  test('requires authentication to preview a brochure', async ({ context }) => {
+    routeTestState.session = null;
+    const app = await createDocumentApp(new MemoryStorage());
+
+    const response = await app.inject(`/api/products/${context.product.id}/brochure-preview`);
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  test('forbids previewing a brochure without product read access', async ({ context }) => {
+    routeTestState.session = mockSession('sales');
+    const app = await createDocumentApp(new MemoryStorage());
+
+    const response = await app.inject(`/api/products/${context.product.id}/brochure-preview`);
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ data: { appCode: 'document.forbidden' } });
   });
 
   test('does not register the generic document download route', async ({ context }) => {
@@ -519,8 +565,67 @@ async function createJobOwner(db: Db, productId: UUID) {
   return job;
 }
 
+// Inserts a product whose brochure is complete: subtitle, a key feature, all four images (stored as
+// decodable PNG bytes), a non-empty description, and one standard assembly. The base product stays
+// incomplete so the gate's negative path can be exercised separately.
+async function createCompleteBrochureProduct({ db, storage }: { db: Db; storage: MemoryStorage }) {
+  const rangeId = await createProductRangeFixture(db);
+  const slots = ['rangeLogo', 'hero', 'technicalDrawing', 'secondary'] as const;
+  const images: Record<string, { byteSize: number; contentType: string; storageKey: string; updatedAt: string }> = {};
+
+  for (const slot of slots) {
+    const storageKey = `brochure-images/product/brochure-preview/${slot}/image.png`;
+    await storage.put({
+      body: brochurePngBytes(),
+      byteSize: brochurePngBytes().byteLength,
+      contentType: 'image/png',
+      key: storageKey,
+    });
+    images[slot] = {
+      byteSize: brochurePngBytes().byteLength,
+      contentType: 'image/png',
+      storageKey,
+      updatedAt: '2026-06-17T00:00:00.000Z',
+    };
+  }
+
+  const [product] = await db
+    .insert(products)
+    .values({
+      basePrice: 1_000,
+      brochureImages: images,
+      brochureKeyFeatures: ['Heavy-duty steel construction'],
+      brochureSubtitle: 'Silage & Grain',
+      buildTimeDays: 14,
+      currencyCode: 'ZAR',
+      description: 'A rugged feed mixer built for daily use.',
+      modelCode: 'BRO-PREVIEW',
+      name: 'Brochure Preview Product',
+      rangeId,
+    })
+    .returning({ id: products.id });
+
+  if (!product) {
+    throw new Error('Product insert did not return a row');
+  }
+
+  await db
+    .insert(productAssemblies)
+    .values({ displayOrder: 0, kind: 'standard', name: 'Main chassis', productId: product.id });
+
+  return product;
+}
+
 function pdfBytes(): Uint8Array {
   return Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0x0a, 0x25, 0x00, 0xff, 0x10]);
+}
+
+// A tiny but valid 4x4 PNG so the renderer's image decode path runs against real bytes.
+function brochurePngBytes(): Uint8Array {
+  return Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGM4YaMBRwzEcQDxwxLBXOwG1wAAAABJRU5ErkJggg==',
+    'base64',
+  );
 }
 
 function pngBytes(): Uint8Array {

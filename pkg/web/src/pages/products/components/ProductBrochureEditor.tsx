@@ -23,9 +23,10 @@ import {
   type BrochureRequiredField,
   type UUID,
 } from '@pkg/schema';
-import { IconAlertTriangle, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconEye, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
@@ -46,6 +47,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { useCan } from '@/hooks/use-access.js';
 import { cn } from '@/lib/utils.js';
+import { previewProductBrochure } from '@/utils/brochure.js';
 import { BrochureImageSlotTile } from './BrochureImageSlotTile.js';
 import { emptyProductFormValues } from './types.js';
 
@@ -182,9 +184,14 @@ export const ProductBrochureEditor: React.FC<ProductBrochureEditorProps> = ({
           })
         }
       >
-        {(completeness) =>
-          completeness.complete ? null : <BrochureCompletenessAlert missingFields={completeness.missingFields} />
-        }
+        {(completeness) => (
+          <>
+            <div className="flex justify-end">
+              <BrochurePreviewButton disabled={!completeness.complete} productId={productId} />
+            </div>
+            {completeness.complete ? null : <BrochureCompletenessAlert missingFields={completeness.missingFields} />}
+          </>
+        )}
       </productForm.Subscribe>
       <Card>
         <CardHeader>
@@ -276,6 +283,36 @@ export const ProductBrochureEditor: React.FC<ProductBrochureEditorProps> = ({
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+type BrochurePreviewButtonProps = {
+  disabled: boolean;
+  productId: UUID;
+};
+
+// Generates and opens the on-the-fly brochure preview. Disabled while the brochure is incomplete (the
+// server gates the route on the same predicate), and while a preview is in flight.
+const BrochurePreviewButton: React.FC<BrochurePreviewButtonProps> = ({ disabled, productId }) => {
+  const [isPreviewing, setIsPreviewing] = useState(false);
+
+  const handlePreview = async () => {
+    setIsPreviewing(true);
+
+    try {
+      await previewProductBrochure(productId);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to generate the brochure preview.');
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  return (
+    <Button disabled={disabled || isPreviewing} onClick={handlePreview} type="button" variant="outline">
+      <IconEye data-icon="inline-start" />
+      {isPreviewing ? 'Generating preview…' : 'Preview brochure'}
+    </Button>
   );
 };
 

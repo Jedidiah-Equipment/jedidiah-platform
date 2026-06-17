@@ -248,7 +248,9 @@ const ProductRangeForm: React.FC<ProductRangeFormProps> = (props) => {
       </FieldGroup>
       {/* `isDefaultValue` is equality-to-defaults; unlike `isDirty` it returns to true when the user
           reverts a field, so reverting an edit re-disables Save instead of submitting a no-op update. */}
-      <form.Subscribe selector={(state) => ({ isDefaultValue: state.isDefaultValue, isSubmitting: state.isSubmitting })}>
+      <form.Subscribe
+        selector={(state) => ({ isDefaultValue: state.isDefaultValue, isSubmitting: state.isSubmitting })}
+      >
         {({ isDefaultValue, isSubmitting }) => (
           <DialogFooter className="mt-4">
             <Button disabled={isSubmitting} onClick={props.onClose} type="button" variant="outline">

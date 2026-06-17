@@ -8,7 +8,7 @@ export const PRODUCT_DOCUMENT_ACCEPT = getDocumentPolicy('product').allowedConte
 
 export type DocumentPreviewOwner = {
   id: UUID;
-  type: 'job' | 'product' | 'quote' | 'quote-product-brochure';
+  type: 'job' | 'product' | 'quote';
 };
 
 export type DocumentPreviewKind = 'image' | 'pdf';
@@ -139,10 +139,6 @@ export function createDocumentDownloadPath({
 
   if (owner.type === 'job') {
     return `/api/jobs/${encodedOwnerId}/documents/${encodedDocumentId}/download`;
-  }
-
-  if (owner.type === 'quote-product-brochure') {
-    return `/api/quotes/${encodedOwnerId}/product-brochure/${encodedDocumentId}/download`;
   }
 
   return `/api/quotes/${encodedOwnerId}/documents/${encodedDocumentId}/download`;

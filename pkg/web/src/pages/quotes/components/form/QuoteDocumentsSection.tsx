@@ -90,7 +90,6 @@ function GenerateQuoteDocumentDialog({
 
   return (
     <QuoteDocumentActionDialog<QuoteDocumentGenerationResult>
-      confirmWithoutBrochureLabel="Proceed without brochure"
       description="Create a saved PDF revision from the current saved Quote."
       errorMessage="Unable to generate Quote Document."
       flushAutosave={flushAutosave}

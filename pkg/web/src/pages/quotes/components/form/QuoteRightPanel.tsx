@@ -1,30 +1,16 @@
 import { formatCurrency, formatPercent } from '@pkg/domain';
-import type { ProductDocument, QuoteDetail } from '@pkg/schema';
-import {
-  IconAlertTriangle,
-  IconClock,
-  IconEye,
-  IconMail,
-  IconMapPin,
-  IconPackage,
-  IconPhone,
-  IconReceipt2,
-} from '@tabler/icons-react';
-import { useQuery } from '@tanstack/react-query';
+import type { QuoteDetail } from '@pkg/schema';
+import { IconClock, IconMail, IconMapPin, IconPackage, IconPhone, IconReceipt2 } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
-import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
-import { DocumentPreviewSheet } from '@/components/documents/DocumentPreviewSheet.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
-import { Alert, AlertDescription } from '@/components/ui/alert.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Separator } from '@/components/ui/separator.js';
-import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { openQuoteEmailAssistant } from '../quote-email-assistant.js';
 import { StartJobLink } from '../StartJobLink.js';
@@ -124,16 +110,8 @@ function QuoteCustomerCard({ quote }: { quote: QuoteDetail }) {
 }
 
 function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
-  const trpc = useTRPC();
-  const [previewDocument, setPreviewDocument] = useState<ProductDocument | null>(null);
-
-  const brochureQuery = useQuery(trpc.quotes.getProductBrochure.queryOptions({ quoteId: quote.id }));
-
   const standardCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'standard').length;
   const optionalCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'optional').length;
-  const brochure = brochureQuery.data ?? null;
-
-  const isMissingBrochure = brochureQuery.isSuccess && !brochure;
 
   return (
     <Card size="sm">
@@ -155,34 +133,6 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
         </CardAction>
       </CardHeader>
       <CardContent className="grid gap-3">
-        {!isMissingBrochure && (
-          <div className="flex justify-end">
-            <Button
-              aria-label={`View brochure for ${quote.productName}`}
-              disabled={brochureQuery.isLoading || !brochure}
-              size="xs"
-              type="button"
-              variant="outline"
-              onClick={() => {
-                if (!brochure) {
-                  toast.warning('No Product brochure is attached.');
-                  return;
-                }
-
-                setPreviewDocument(brochure);
-              }}
-            >
-              <IconEye data-icon="inline-start" />
-              View Brochure
-            </Button>
-          </div>
-        )}
-        {isMissingBrochure ? (
-          <Alert variant="destructive">
-            <IconAlertTriangle />
-            <AlertDescription>No Product brochure is attached.</AlertDescription>
-          </Alert>
-        ) : null}
         <div className="grid grid-cols-2 gap-2">
           <QuoteMiniMetric
             icon={<IconPackage />}
@@ -197,16 +147,6 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
         <p className={cn('max-h-20 overflow-hidden text-sm', quote.productDescription ? '' : 'text-muted-foreground')}>
           {quote.productDescription ?? 'No product description captured.'}
         </p>
-        <DocumentPreviewSheet
-          document={previewDocument}
-          onOpenChange={(open) => {
-            if (!open) {
-              setPreviewDocument(null);
-            }
-          }}
-          open={Boolean(previewDocument)}
-          owner={{ id: quote.id, type: 'quote-product-brochure' }}
-        />
       </CardContent>
     </Card>
   );

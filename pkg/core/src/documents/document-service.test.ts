@@ -1009,7 +1009,7 @@ function uploadPdf(
     contentType?: string;
     filename: string;
     productId: UUID;
-    type?: 'sop' | 'part_book' | 'brochure';
+    type?: 'sop' | 'part_book';
   },
 ) {
   return createProductDocument({

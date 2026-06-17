@@ -14,7 +14,13 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { BROCHURE_KEY_FEATURES_MAX_COUNT, BrochureKeyFeature } from '@pkg/schema';
+import {
+  BROCHURE_KEY_FEATURES_MAX_COUNT,
+  type BrochureImageSlot,
+  type BrochureImages,
+  BrochureKeyFeature,
+  type UUID,
+} from '@pkg/schema';
 import { IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
@@ -35,15 +41,38 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
+import { useCan } from '@/hooks/use-access.js';
 import { cn } from '@/lib/utils.js';
+import { BrochureImageSlotTile } from './BrochureImageSlotTile.js';
 import { emptyProductFormValues } from './types.js';
 
 const KEY_FEATURE_FIELD_VALIDATORS = validateStructuralFieldOnMount(BrochureKeyFeature);
 
 type ProductBrochureEditorProps = {
+  images: BrochureImages;
   keyFeaturesField: ArrayFieldApi<string>;
   onStructuralChange: () => void;
+  productId: UUID;
 };
+
+type BrochureImageSlotField = {
+  description: string;
+  label: string;
+  slot: BrochureImageSlot;
+};
+
+// Slot order, labels, and guidance copy for the form. Recommended dimensions and fit come from the
+// shared schema specs so the form and renderer stay in lockstep.
+const BROCHURE_IMAGE_SLOT_FIELDS: BrochureImageSlotField[] = [
+  { slot: 'rangeLogo', label: 'Range logo', description: 'Top-right sub-brand logo. Fits without cropping.' },
+  { slot: 'hero', label: 'Hero image', description: 'Main product photo. Center-cropped to fill its slot.' },
+  {
+    slot: 'technicalDrawing',
+    label: 'Technical drawing',
+    description: 'Dimensioned line drawing. Center-cropped to fill its slot.',
+  },
+  { slot: 'secondary', label: 'Secondary image', description: 'Additional product photo. Center-cropped to fill.' },
+];
 
 function useProductForm() {
   return useTypedAppFormContext({
@@ -52,10 +81,13 @@ function useProductForm() {
 }
 
 export const ProductBrochureEditor: React.FC<ProductBrochureEditorProps> = ({
+  images,
   keyFeaturesField,
   onStructuralChange,
+  productId,
 }) => {
   const productForm = useProductForm();
+  const canEdit = useCan('product:update').can;
   const keyFeatures = keyFeaturesField.state.value;
   const canAddFeature = keyFeatures.length < BROCHURE_KEY_FEATURES_MAX_COUNT;
 
@@ -187,6 +219,30 @@ export const ProductBrochureEditor: React.FC<ProductBrochureEditorProps> = ({
               </SortableContext>
             </DndContext>
           )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Brochure Images</CardTitle>
+          <CardDescription>
+            PNG or JPEG only. Each slot replaces in place, so there is always one current image per slot.
+          </CardDescription>
+        </CardHeader>
+        <CardSeparator />
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {BROCHURE_IMAGE_SLOT_FIELDS.map((field) => (
+              <BrochureImageSlotTile
+                canEdit={canEdit}
+                description={field.description}
+                image={images[field.slot]}
+                key={field.slot}
+                label={field.label}
+                productId={productId}
+                slot={field.slot}
+              />
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>

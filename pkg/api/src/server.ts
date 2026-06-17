@@ -12,6 +12,8 @@ import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
 import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
 import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
+import { registerEntityImageRoutes } from './routes/images/entity-image-http.route.js';
+import { createProductBrochureImageRouteConfig } from './routes/products/product-brochure-image-routes.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContextFactory } from './trpc/context.js';
 import { serializeError, shouldLogTRPCError } from './trpc/errors.js';
@@ -48,6 +50,7 @@ export async function buildServer(
   });
   await registerAiStreamRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
+  await registerEntityImageRoutes(app, [createProductBrochureImageRouteConfig(storage)]);
   await registerHealthRoutes(app, config);
 
   const trpcOptions = {

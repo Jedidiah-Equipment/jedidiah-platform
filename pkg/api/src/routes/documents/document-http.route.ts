@@ -1,5 +1,3 @@
-import { Readable } from 'node:stream';
-
 import {
   createProductDocument,
   isDocumentCoreError,
@@ -13,19 +11,24 @@ import {
   type StorageAdapter,
 } from '@pkg/core';
 import { db } from '@pkg/db';
-import { createUserAccessSummary, hasPermission, validateDocumentPolicy } from '@pkg/domain';
+import { validateDocumentPolicy } from '@pkg/domain';
 import {
-  type AppPermission,
   DocumentListByProductInput,
   ProductDocumentInput,
   QuoteDocumentInput,
   QuoteProductBrochureInput,
   UUID,
 } from '@pkg/schema';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
-import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../../auth/session.js';
+import {
+  RouteHttpError,
+  requirePermission,
+  requireRouteAuth,
+  sendHttpError,
+  streamObjectBody,
+} from '../http-route-helpers.js';
 import { mapDocumentCoreError } from './documents.router.js';
 
 const JobDocumentRouteInput = z.object({
@@ -33,18 +36,18 @@ const JobDocumentRouteInput = z.object({
   jobId: UUID,
 });
 
-type RouteAuthContext = {
-  access: ReturnType<typeof createUserAccessSummary>;
-  session: AppSession;
-};
-
 export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: StorageAdapter): Promise<void> {
   app.post('/api/products/:productId/documents', async (request, reply) => {
     const auth = await requireRouteAuth(request, reply);
     if (!auth) return;
 
     try {
-      requirePermission(auth, 'product:update', 'You do not have permission to upload Product documents.');
+      requirePermission(
+        auth,
+        'product:update',
+        'You do not have permission to upload Product documents.',
+        'document.forbidden',
+      );
       const params = DocumentListByProductInput.parse(request.params);
       const file = await request.file();
 
@@ -71,7 +74,7 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
 
       reply.status(201).send(document);
     } catch (error) {
-      sendHttpError(reply, error);
+      sendDocumentHttpError(reply, error);
     }
   });
 
@@ -80,7 +83,12 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     if (!auth) return;
 
     try {
-      requirePermission(auth, 'product:read', 'You do not have permission to download this document.');
+      requirePermission(
+        auth,
+        'product:read',
+        'You do not have permission to download this document.',
+        'document.forbidden',
+      );
       const params = ProductDocumentInput.parse(request.params);
       const result = await mapHttpDocumentErrors(() =>
         readProductDocument({
@@ -94,9 +102,9 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
-      return reply.send(createDocumentBodyStream(result.object.body));
+      return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendHttpError(reply, error);
+      sendDocumentHttpError(reply, error);
     }
   });
 
@@ -105,7 +113,12 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     if (!auth) return;
 
     try {
-      requirePermission(auth, 'job:read', 'You do not have permission to download this document.');
+      requirePermission(
+        auth,
+        'job:read',
+        'You do not have permission to download this document.',
+        'document.forbidden',
+      );
       const params = JobDocumentRouteInput.parse(request.params);
       const result = await mapHttpDocumentErrors(() =>
         readJobDocument({
@@ -119,9 +132,9 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
-      return reply.send(createDocumentBodyStream(result.object.body));
+      return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendHttpError(reply, error);
+      sendDocumentHttpError(reply, error);
     }
   });
 
@@ -130,7 +143,12 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     if (!auth) return;
 
     try {
-      requirePermission(auth, 'quote:read', 'You do not have permission to download this document.');
+      requirePermission(
+        auth,
+        'quote:read',
+        'You do not have permission to download this document.',
+        'document.forbidden',
+      );
       const params = QuoteDocumentInput.parse(request.params);
       const result = await mapHttpDocumentErrors(() =>
         readQuoteDocument({
@@ -144,9 +162,9 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
-      return reply.send(createDocumentBodyStream(result.object.body));
+      return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendHttpError(reply, error);
+      sendDocumentHttpError(reply, error);
     }
   });
 
@@ -155,7 +173,12 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
     if (!auth) return;
 
     try {
-      requirePermission(auth, 'quote:read', 'You do not have permission to download this document.');
+      requirePermission(
+        auth,
+        'quote:read',
+        'You do not have permission to download this document.',
+        'document.forbidden',
+      );
       const params = QuoteProductBrochureInput.parse(request.params);
       const result = await mapHttpDocumentErrors(() =>
         readQuoteProductBrochure({
@@ -169,9 +192,9 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
-      return reply.send(createDocumentBodyStream(result.object.body));
+      return reply.send(streamObjectBody(result.object.body));
     } catch (error) {
-      sendHttpError(reply, error);
+      sendDocumentHttpError(reply, error);
     }
   });
 }
@@ -182,63 +205,45 @@ function readMultipartTextField(field: unknown): string | undefined {
   return MultipartTextField.safeParse(Array.isArray(field) ? field[0] : field).data;
 }
 
-async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): Promise<RouteAuthContext | null> {
-  const session = await getSessionFromHeaders(request.headers);
-
-  if (!session) {
-    reply.status(401).send({ message: 'Please sign in to continue.' });
-    return null;
-  }
-
-  const access = createUserAccessSummary({
-    role: parseBetterAuthRole(session.user.role),
-    userId: session.user.id,
-  });
-
-  return { access, session };
-}
-
-function requirePermission(auth: RouteAuthContext, permission: AppPermission, message: string): void {
-  if (hasPermission(auth.access, permission)) {
-    return;
-  }
-
-  throw Object.assign(new Error(message), {
-    appCode: 'document.forbidden',
-    statusCode: 403,
-  });
-}
-
+// Maps a core error raised while serving documents into a {@link RouteHttpError} with a public message
+// and status; non-document/owner errors propagate for the shared sender to handle (or surface as a 500).
 async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
   try {
     return await action();
   } catch (error) {
     if (isDocumentCoreError(error)) {
       const mapped = mapDocumentCoreError(error);
-      throw Object.assign(new Error(mapped.message), {
+      throw new RouteHttpError({
         appCode: mapped.appCode,
+        message: mapped.message,
         statusCode: trpcCodeToHttpStatus(mapped.code),
       });
     }
 
     if (isProductCoreError(error)) {
-      throw Object.assign(new Error(error.code === 'product.not_found' ? 'Product not found.' : error.message), {
+      const notFound = error.code === 'product.not_found';
+      throw new RouteHttpError({
         appCode: error.code,
-        statusCode: error.code === 'product.not_found' ? 404 : 400,
+        message: notFound ? 'Product not found.' : error.message,
+        statusCode: notFound ? 404 : 400,
       });
     }
 
     if (isJobCoreError(error)) {
-      throw Object.assign(new Error(error.code === 'job.not_found' ? 'Job not found.' : error.message), {
+      const notFound = error.code === 'job.not_found';
+      throw new RouteHttpError({
         appCode: error.code,
-        statusCode: error.code === 'job.not_found' ? 404 : 403,
+        message: notFound ? 'Job not found.' : error.message,
+        statusCode: notFound ? 404 : 403,
       });
     }
 
     if (isQuoteCoreError(error)) {
-      throw Object.assign(new Error(error.code === 'quote.not_found' ? 'Quote not found.' : error.message), {
+      const notFound = error.code === 'quote.not_found';
+      throw new RouteHttpError({
         appCode: error.code,
-        statusCode: error.code === 'quote.not_found' ? 404 : 400,
+        message: notFound ? 'Quote not found.' : error.message,
+        statusCode: notFound ? 404 : 400,
       });
     }
 
@@ -246,39 +251,23 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
   }
 }
 
-function sendHttpError(reply: FastifyReply, error: unknown): void {
-  if (isMultipartFileTooLargeError(reply, error)) {
-    const result = validateDocumentPolicy({
-      byteSize: Number.MAX_SAFE_INTEGER,
-      contentType: 'application/pdf',
-      ownerType: 'product',
-    });
+function sendDocumentHttpError(reply: FastifyReply, error: unknown): void {
+  sendHttpError(reply, error, {
+    fallbackMessage: 'Document request failed.',
+    invalidRequestMessage: 'Invalid document request.',
+    onFileTooLarge: () => {
+      const result = validateDocumentPolicy({
+        byteSize: Number.MAX_SAFE_INTEGER,
+        contentType: 'application/pdf',
+        ownerType: 'product',
+      });
 
-    reply.status(400).send({
-      data: {
+      return {
         appCode: result.ok ? undefined : result.code,
-      },
-      message: result.ok ? 'Document is too large.' : result.message,
-    });
-    return;
-  }
-
-  if (error instanceof z.ZodError) {
-    reply.status(400).send({ message: 'Invalid document request.' });
-    return;
-  }
-
-  if (typeof error === 'object' && error !== null && 'statusCode' in error && typeof error.statusCode === 'number') {
-    reply.status(error.statusCode).send({
-      data: {
-        appCode: 'appCode' in error ? error.appCode : undefined,
-      },
-      message: error instanceof Error ? error.message : 'Document request failed.',
-    });
-    return;
-  }
-
-  throw error;
+        message: result.ok ? 'Document is too large.' : result.message,
+      };
+    },
+  });
 }
 
 function trpcCodeToHttpStatus(code: string): number {
@@ -295,12 +284,4 @@ function createContentDisposition(filename: string): string {
   const encoded = encodeURIComponent(filename).replace(/'/g, '%27');
 
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
-}
-
-function createDocumentBodyStream(body: AsyncIterable<Uint8Array>): Readable {
-  return Readable.from(body, { objectMode: false });
-}
-
-function isMultipartFileTooLargeError(reply: FastifyReply, error: unknown): boolean {
-  return error instanceof reply.server.multipartErrors.RequestFileTooLargeError;
 }

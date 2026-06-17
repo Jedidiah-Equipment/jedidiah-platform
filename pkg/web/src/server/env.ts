@@ -13,7 +13,9 @@ import { z } from 'zod';
 
 dotenv.config({ quiet: true });
 
-if (process.env.APP_ENV === 'development') {
+// `.env.dev` holds real local-dev service credentials. Tests must never load it,
+// or those live values leak into the test process via `override: true`.
+if (process.env.APP_ENV === 'development' && process.env.NODE_ENV !== 'test') {
   dotenv.config({ path: '.env.dev', override: true, quiet: true });
 }
 

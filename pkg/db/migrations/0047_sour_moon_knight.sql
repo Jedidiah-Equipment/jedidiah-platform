@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "brochure_images" jsonb DEFAULT '{}'::jsonb NOT NULL;

@@ -1,5 +1,5 @@
 import { auditEvents, type Db, jobBays, parts, sql, supplier, user } from '@pkg/db';
-import type { Product } from '@pkg/schema';
+import { EMPTY_BROCHURE_IMAGES, type Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
@@ -597,7 +597,7 @@ describe('products brochure config', () => {
     const caller = context.createCaller();
     const created = await createProduct(caller, 'Brochure Default Product');
 
-    expect(created.brochureConfig).toEqual({ keyFeatures: [], subtitle: null });
+    expect(created.brochureConfig).toEqual({ images: EMPTY_BROCHURE_IMAGES, keyFeatures: [], subtitle: null });
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
       brochureConfig: { keyFeatures: [], subtitle: null },
     });
@@ -623,6 +623,7 @@ describe('products brochure config', () => {
     });
 
     expect(updated.brochureConfig).toEqual({
+      images: EMPTY_BROCHURE_IMAGES,
       keyFeatures: ['Heavy duty', 'Low maintenance'],
       subtitle: 'Silage & Grain',
     });
@@ -696,7 +697,11 @@ describe('products brochure config', () => {
       requiresVinNumber: created.requiresVinNumber,
     });
 
-    expect(updatedWithoutBrochure.brochureConfig).toEqual({ keyFeatures: ['Stays put'], subtitle: 'Kept' });
+    expect(updatedWithoutBrochure.brochureConfig).toEqual({
+      images: EMPTY_BROCHURE_IMAGES,
+      keyFeatures: ['Stays put'],
+      subtitle: 'Kept',
+    });
   });
 
   test('rejects blank and over-long key feature lines', async ({ context }) => {

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { mapProduct } from './product-service.js';
 
+const RANGE_ID = '00000000-0000-4000-8000-000000000301';
+
 describe('mapProduct', () => {
   it('maps product rows to product DTOs', () => {
     const createdAt = new Date('2026-05-13T10:00:00.000Z');
@@ -27,7 +29,7 @@ describe('mapProduct', () => {
         buildTimeDays: 14,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
-        rangeId: '00000000-0000-4000-8000-000000000488',
+        rangeId: RANGE_ID,
         requiresVinNumber: true,
         thumbnailDataUrl: null,
         updatedAt,
@@ -53,7 +55,7 @@ describe('mapProduct', () => {
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       productBays: [],
-      rangeId: '00000000-0000-4000-8000-000000000488',
+      rangeId: RANGE_ID,
       requiresVinNumber: true,
       thumbnailDataUrl: null,
       updatedAt: updatedAt.toISOString(),

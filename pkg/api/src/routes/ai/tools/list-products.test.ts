@@ -8,19 +8,20 @@ import { z } from 'zod';
 import type { AiContext } from '@/routes/ai/ai-context.js';
 import { listProductsTool } from '@/routes/ai/tools/list-products.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
+  const rangeId = await createProductRangeFixture(db);
 
-  return { db };
+  return { db, rangeId };
 });
-
-const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
 
 async function createProduct(
   caller: AppRouterCaller,
   name: string,
+  rangeId: string,
   overrides: Partial<Parameters<AppRouterCaller['products']['create']>[0]> = {},
 ): Promise<Product> {
   return caller.products.create({
@@ -29,7 +30,7 @@ async function createProduct(
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
-    rangeId: LEGACY_PRODUCT_RANGE_ID,
+    rangeId,
     ...overrides,
   });
 }
@@ -69,11 +70,11 @@ describe('listProductsTool', () => {
   test('returns the same product list result shape as products.list', async ({ context }) => {
     const adminCaller = context.createCaller();
     const editorCaller = context.createCaller(mockSession('procurement-manager'));
-    await createProduct(adminCaller, 'Compact Loader', {
+    await createProduct(adminCaller, 'Compact Loader', context.rangeId, {
       modelCode: 'CL-100',
       thumbnailDataUrl: 'data:image/webp;base64,aaaa',
     });
-    await createProduct(adminCaller, 'Excavator Bucket', {
+    await createProduct(adminCaller, 'Excavator Bucket', context.rangeId, {
       modelCode: 'EX-200',
     });
 

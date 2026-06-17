@@ -2,6 +2,7 @@ import { auditEvents, customers, type Db, documents, products, quotes, sql, user
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
@@ -103,6 +104,7 @@ describe('documents.listByQuote', () => {
 });
 
 async function createProduct(db: Db) {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -112,7 +114,7 @@ async function createProduct(db: Db) {
       buildTimeDays: 14,
       modelCode: 'DOC-TRPC',
       name: 'Document TRPC Product',
-      rangeId: '00000000-0000-4000-8000-000000000488',
+      rangeId,
     })
     .returning({ id: products.id });
 

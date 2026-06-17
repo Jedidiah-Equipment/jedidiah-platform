@@ -3,6 +3,7 @@ import { describe, expect, vi } from 'vitest';
 
 import { emailSender } from '@/email/index.js';
 import { createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 // The route generates the email body via OpenAI; stub it so the test stays offline and deterministic.
@@ -21,6 +22,7 @@ const test = createTester(async ({ db }) => {
     role: 'sales',
     updatedAt: now,
   });
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -29,7 +31,7 @@ const test = createTester(async ({ db }) => {
       currencyCode: 'ZAR',
       modelCode: 'DRAFT-EMAIL-ROUTER-001',
       name: 'Draft Email Router Product',
-      rangeId: '00000000-0000-4000-8000-000000000488',
+      rangeId,
     })
     .returning();
 

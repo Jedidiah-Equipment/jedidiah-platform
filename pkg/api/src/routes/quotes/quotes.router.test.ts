@@ -19,6 +19,7 @@ import type { QuoteDetail } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
@@ -1725,6 +1726,7 @@ async function createSalesUser(
 }
 
 async function createProduct(db: Db, overrides: Partial<typeof products.$inferInsert> = {}) {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -1733,7 +1735,7 @@ async function createProduct(db: Db, overrides: Partial<typeof products.$inferIn
       buildTimeDays: 14,
       modelCode: 'QUOTE-001',
       name: 'Quote Test Product',
-      rangeId: '00000000-0000-4000-8000-000000000488',
+      rangeId,
       ...overrides,
     })
     .returning();

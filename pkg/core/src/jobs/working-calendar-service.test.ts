@@ -17,6 +17,7 @@ import {
 } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { createTester } from '../test/create-tester.js';
+import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listBays } from './job-read-service.js';
 import { bookJobSlot, createJob } from './job-service.js';
 import { addBayCalendarException, removeBayCalendarException, toggleOffDay } from './working-calendar-service.js';
@@ -307,6 +308,7 @@ async function createActorUser(db: Db) {
 }
 
 async function createProduct(db: Db) {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -316,7 +318,7 @@ async function createProduct(db: Db) {
       description: null,
       modelCode: 'CAL-001',
       name: 'Calendar Test Product',
-      rangeId: '00000000-0000-4000-8000-000000000488',
+      rangeId,
     })
     .returning();
 

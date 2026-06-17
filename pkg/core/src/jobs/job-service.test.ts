@@ -36,6 +36,7 @@ import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { createTester } from '../test/create-tester.js';
+import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
   assignJobBayOperator,
   createJobBay,
@@ -1994,6 +1995,7 @@ async function createCatalog(db: Db) {
 }
 
 async function createProduct(db: Db, { modelCode, name }: { modelCode: string; name: string }) {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -2003,7 +2005,7 @@ async function createProduct(db: Db, { modelCode, name }: { modelCode: string; n
       description: null,
       modelCode,
       name,
-      rangeId: '00000000-0000-4000-8000-000000000488',
+      rangeId,
     })
     .returning();
 

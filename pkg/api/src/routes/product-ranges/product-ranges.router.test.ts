@@ -99,7 +99,7 @@ describe('productRanges.list', () => {
     await createRange(caller, 'Balers');
 
     await expect(caller.productRanges.list()).resolves.toMatchObject({
-      ranges: [{ name: 'Balers' }, { name: 'Earthmoving' }, { name: 'Legacy' }],
+      ranges: [{ name: 'Balers' }, { name: 'Earthmoving' }],
     });
   });
 });

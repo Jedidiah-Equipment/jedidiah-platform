@@ -4,6 +4,7 @@ import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
+import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { getQuoteDocuments } from './quote-document.js';
 import { draftQuoteEmail, type QuoteDraftEmailMessage, type QuoteDraftEmailSender } from './quote-email-draft.js';
 import { QuoteDraftEmailRecipientMissingError } from './quote-errors.js';
@@ -12,6 +13,7 @@ const PDF_BYTES = new TextEncoder().encode('%PDF-1.4\n%fake quote document\n%%EO
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
+  const rangeId = await createProductRangeFixture(db);
   const [salesPerson] = await db
     .insert(user)
     .values({
@@ -33,7 +35,7 @@ const test = createTester(async ({ db }) => {
       currencyCode: 'ZAR',
       modelCode: 'DRAFT-EMAIL-001',
       name: 'Draft Email Product',
-      rangeId: '00000000-0000-4000-8000-000000000488',
+      rangeId,
     })
     .returning();
 

@@ -4,15 +4,16 @@ import { asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
+import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { createProduct, getProduct, updateProduct } from './product-service.js';
 
 const actorUserId = 'test-user-id';
-const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
+  const rangeId = await createProductRangeFixture(db);
 
-  return { db };
+  return { db, rangeId };
 });
 
 function standard(name: string): AssemblyInput {
@@ -23,7 +24,11 @@ function optional(name: string, price = 100): AssemblyInput {
   return { kind: 'optional', name, overrideStandardAssemblyIds: [], parts: [], price };
 }
 
-function productInput(assemblies: AssemblyInput[], overrides: Partial<ProductCreateInput> = {}): ProductCreateInput {
+function productInput(
+  rangeId: string,
+  assemblies: AssemblyInput[],
+  overrides: Partial<ProductCreateInput> = {},
+): ProductCreateInput {
   return {
     assemblies,
     basePrice: 1000,
@@ -34,7 +39,7 @@ function productInput(assemblies: AssemblyInput[], overrides: Partial<ProductCre
     modelCode: 'MODEL-1',
     name: 'Test Product',
     productBays: [],
-    rangeId: LEGACY_PRODUCT_RANGE_ID,
+    rangeId,
     requiresVinNumber: false,
     thumbnailDataUrl: null,
     ...overrides,
@@ -61,7 +66,7 @@ describe('assembly display order', () => {
     const product = await createProduct({
       actorUserId,
       db: context.db,
-      input: productInput([standard('Zebra'), standard('Alpha'), optional('Yak'), optional('Beta')]),
+      input: productInput(context.rangeId, [standard('Zebra'), standard('Alpha'), optional('Yak'), optional('Beta')]),
     });
 
     const rows = await selectDisplayOrders(context.db, product.id);
@@ -82,7 +87,7 @@ describe('assembly display order', () => {
     const created = await createProduct({
       actorUserId,
       db: context.db,
-      input: productInput([standard('Zebra'), standard('Alpha'), optional('Yak'), optional('Beta')]),
+      input: productInput(context.rangeId, [standard('Zebra'), standard('Alpha'), optional('Yak'), optional('Beta')]),
     });
 
     const product = await getProduct({ db: context.db, id: created.id });
@@ -94,7 +99,7 @@ describe('assembly display order', () => {
     const created = await createProduct({
       actorUserId,
       db: context.db,
-      input: productInput([standard('Zebra'), standard('Alpha'), optional('Yak'), optional('Beta')]),
+      input: productInput(context.rangeId, [standard('Zebra'), standard('Alpha'), optional('Yak'), optional('Beta')]),
     });
 
     const standards = created.assemblies.filter((assembly) => assembly.kind === 'standard');
@@ -113,7 +118,7 @@ describe('assembly display order', () => {
         modelCode: 'MODEL-1',
         name: 'Test Product',
         productBays: [],
-        rangeId: LEGACY_PRODUCT_RANGE_ID,
+        rangeId: context.rangeId,
         requiresVinNumber: false,
         thumbnailDataUrl: null,
         assemblies: [

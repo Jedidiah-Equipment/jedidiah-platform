@@ -7,22 +7,22 @@ import { z } from 'zod';
 import { listQuoteProductsTool } from '@/routes/ai/tools/list-quote-products.js';
 import { createActorUser, createAiContext, createModelCode } from '@/test/ai-tools.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db, 'sales');
+  const rangeId = await createProductRangeFixture(db);
 
-  return { db };
+  return { db, rangeId };
 });
-
-const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
 
 describe('listQuoteProductsTool', () => {
   test('returns the same product list result shape as quotes.products', async ({ context }) => {
     const adminCaller = context.createCaller();
     const salesCaller = context.createCaller(mockSession('sales'));
-    await createProduct(adminCaller, 'Compact Loader', { modelCode: 'CL-100' });
-    await createProduct(adminCaller, 'Excavator Bucket', { modelCode: 'EX-200' });
+    await createProduct(adminCaller, 'Compact Loader', context.rangeId, { modelCode: 'CL-100' });
+    await createProduct(adminCaller, 'Excavator Bucket', context.rangeId, { modelCode: 'EX-200' });
 
     const input: ProductListInput = {
       page: 1,
@@ -97,6 +97,7 @@ describe('listQuoteProductsTool', () => {
 async function createProduct(
   caller: AppRouterCaller,
   name: string,
+  rangeId: string,
   overrides: Partial<Parameters<AppRouterCaller['products']['create']>[0]> = {},
 ): Promise<Product> {
   return caller.products.create({
@@ -105,7 +106,7 @@ async function createProduct(
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
-    rangeId: LEGACY_PRODUCT_RANGE_ID,
+    rangeId,
     ...overrides,
   });
 }

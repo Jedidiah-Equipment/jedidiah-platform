@@ -5,14 +5,13 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const routeTestState = vi.hoisted(() => ({
   db: null as unknown,
   session: null as unknown,
 }));
-
-const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
 
 vi.mock('@pkg/db', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@pkg/db')>();
@@ -200,6 +199,7 @@ async function createApp(storage: StorageAdapter) {
 }
 
 async function createProduct(db: Db) {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -209,7 +209,7 @@ async function createProduct(db: Db) {
       buildTimeDays: 14,
       modelCode: 'BROCHURE-IMG-HTTP',
       name: 'Brochure Image HTTP Product',
-      rangeId: LEGACY_PRODUCT_RANGE_ID,
+      rangeId,
     })
     .returning({ id: products.id });
 

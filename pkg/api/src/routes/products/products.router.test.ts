@@ -3,20 +3,22 @@ import { EMPTY_BROCHURE_IMAGES, type Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { expectIsoDatetime, mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
+  const rangeId = await createProductRangeFixture(db);
 
-  return { db };
+  return { db, rangeId };
 });
 
 const THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';
-const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
 
 async function createProduct(
   caller: AppRouterCaller,
   name: string,
+  rangeId: string,
   overrides: Partial<Parameters<AppRouterCaller['products']['create']>[0]> = {},
 ): Promise<Product> {
   return caller.products.create({
@@ -25,7 +27,7 @@ async function createProduct(
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
-    rangeId: LEGACY_PRODUCT_RANGE_ID,
+    rangeId,
     ...overrides,
   });
 }
@@ -41,7 +43,7 @@ function createModelCode(name: string): string {
 describe('products.create', () => {
   test('creates products', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Wheel Loader');
+    const created = await createProduct(caller, 'Wheel Loader', context.rangeId);
 
     expect(created).toMatchObject({
       basePrice: 1_000,
@@ -51,7 +53,7 @@ describe('products.create', () => {
       modelCode: 'WHEEL-LOADER',
       name: 'Wheel Loader',
       productBays: [],
-      rangeId: LEGACY_PRODUCT_RANGE_ID,
+      rangeId: context.rangeId,
       requiresVinNumber: false,
     });
     expectIsoDatetime(created.createdAt);
@@ -79,7 +81,7 @@ describe('products.create', () => {
       name: 'Earthmoving',
     });
 
-    const created = await createProduct(caller, 'Wheel Loader Range', { rangeId: range.id });
+    const created = await createProduct(caller, 'Wheel Loader Range', context.rangeId, { rangeId: range.id });
 
     expect(created).toMatchObject({
       name: 'Wheel Loader Range',
@@ -98,7 +100,7 @@ describe('products.create', () => {
         buildTimeDays: -1,
         modelCode: 'NEGATIVE-LEAD-TIME',
         name: 'Negative Lead Time',
-        rangeId: LEGACY_PRODUCT_RANGE_ID,
+        rangeId: context.rangeId,
       }),
     ).rejects.toThrow();
   });
@@ -108,7 +110,7 @@ describe('products.create', () => {
     const partIds = await createParts(context.db);
     const standardAssemblyId = '00000000-0000-4000-8000-000000000201';
 
-    const created = await createProduct(caller, 'Wheel Loader Assemblies', {
+    const created = await createProduct(caller, 'Wheel Loader Assemblies', context.rangeId, {
       assemblies: [
         {
           id: standardAssemblyId,
@@ -158,7 +160,7 @@ describe('products.create', () => {
       name: 'Fabrication Bay 1',
     });
 
-    const created = await createProduct(caller, 'Wheel Loader Product Bays', {
+    const created = await createProduct(caller, 'Wheel Loader Product Bays', context.rangeId, {
       buildTimeDays: 1,
       productBays: [
         { bayId: assemblyBayId, defaultWorkingDays: 7 },
@@ -195,7 +197,7 @@ describe('products.create', () => {
     });
 
     await expect(
-      createProduct(caller, 'Wheel Loader Duplicate Product Bay', {
+      createProduct(caller, 'Wheel Loader Duplicate Product Bay', context.rangeId, {
         productBays: [
           { bayId, defaultWorkingDays: 5 },
           { bayId, defaultWorkingDays: 7 },
@@ -204,7 +206,7 @@ describe('products.create', () => {
     ).rejects.toThrow('Bay can only be added once per product');
 
     await expect(
-      createProduct(caller, 'Wheel Loader Disabled Product Bay', {
+      createProduct(caller, 'Wheel Loader Disabled Product Bay', context.rangeId, {
         productBays: [{ bayId: disabledBayId, defaultWorkingDays: 5 }],
       }),
     ).rejects.toThrow('Only enabled Bays can be added to Product Bays.');
@@ -228,7 +230,10 @@ describe('products.read', () => {
 
   test('returns build time days and VIN requirement on get and list', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Wheel Loader Read', { buildTimeDays: 21, requiresVinNumber: true });
+    const created = await createProduct(caller, 'Wheel Loader Read', context.rangeId, {
+      buildTimeDays: 21,
+      requiresVinNumber: true,
+    });
 
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
       id: created.id,
@@ -249,7 +254,7 @@ describe('products.read', () => {
   test('returns assemblies on get and list', async ({ context }) => {
     const caller = context.createCaller();
     const partIds = await createParts(context.db);
-    const created = await createProduct(caller, 'Wheel Loader Assembly Read', {
+    const created = await createProduct(caller, 'Wheel Loader Assembly Read', context.rangeId, {
       assemblies: [
         {
           id: '00000000-0000-4000-8000-000000000211',
@@ -291,7 +296,9 @@ describe('products.read', () => {
 
   test('returns product thumbnails on get and list', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Thumbnail Product', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
+    const created = await createProduct(caller, 'Thumbnail Product', context.rangeId, {
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
+    });
 
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
       id: created.id,
@@ -315,7 +322,7 @@ describe('products.read', () => {
       id: '00000000-0000-4000-8000-000000000405',
       name: 'Supply Bay 1',
     });
-    const created = await createProduct(caller, 'Wheel Loader Product Bay Read', {
+    const created = await createProduct(caller, 'Wheel Loader Product Bay Read', context.rangeId, {
       productBays: [{ bayId, defaultWorkingDays: 3 }],
     });
 
@@ -333,7 +340,7 @@ describe('products.read', () => {
 describe('products.update', () => {
   test('updates product catalog fields', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Wheel Loader Update');
+    const created = await createProduct(caller, 'Wheel Loader Update', context.rangeId);
 
     const updated = await caller.products.update({
       id: created.id,
@@ -380,7 +387,7 @@ describe('products.update', () => {
       id: '00000000-0000-4000-8000-000000000503',
       name: 'Earthmoving',
     });
-    const created = await createProduct(adminCaller, 'Wheel Loader Range Update');
+    const created = await createProduct(adminCaller, 'Wheel Loader Range Update', context.rangeId);
 
     const updated = await procurementCaller.products.update({
       id: created.id,
@@ -400,7 +407,9 @@ describe('products.update', () => {
 
   test('updates and removes product thumbnails with audit changes', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Thumbnail Audit Product', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
+    const created = await createProduct(caller, 'Thumbnail Audit Product', context.rangeId, {
+      thumbnailDataUrl: THUMBNAIL_DATA_URL,
+    });
 
     const updated = await caller.products.update({
       assemblies: created.assemblies,
@@ -436,7 +445,7 @@ describe('products.update', () => {
     const caller = context.createCaller();
     const partIds = await createParts(context.db);
     const standardAssemblyId = '00000000-0000-4000-8000-000000000221';
-    const created = await createProduct(caller, 'Wheel Loader Assembly Update', {
+    const created = await createProduct(caller, 'Wheel Loader Assembly Update', context.rangeId, {
       assemblies: [
         {
           id: standardAssemblyId,
@@ -497,7 +506,7 @@ describe('products.update', () => {
       id: '00000000-0000-4000-8000-000000000407',
       name: 'Assembly Bay 2',
     });
-    const created = await createProduct(caller, 'Wheel Loader Product Bay Update', {
+    const created = await createProduct(caller, 'Wheel Loader Product Bay Update', context.rangeId, {
       productBays: [{ bayId: firstBayId, defaultWorkingDays: 5 }],
     });
 
@@ -579,7 +588,7 @@ describe('products.update', () => {
       id: '00000000-0000-4000-8000-000000000408',
       name: 'Fabrication Bay Preserve',
     });
-    const created = await createProduct(caller, 'Wheel Loader Preserve Assemblies', {
+    const created = await createProduct(caller, 'Wheel Loader Preserve Assemblies', context.rangeId, {
       assemblies: [
         {
           id: '00000000-0000-4000-8000-000000000231',
@@ -613,7 +622,7 @@ describe('products.update', () => {
     const standardAssemblyId = '00000000-0000-4000-8000-000000000241';
 
     await expect(
-      createProduct(caller, 'Wheel Loader Duplicate Overrides', {
+      createProduct(caller, 'Wheel Loader Duplicate Overrides', context.rangeId, {
         assemblies: [
           {
             id: standardAssemblyId,
@@ -638,7 +647,7 @@ describe('products.update', () => {
     const caller = context.createCaller();
     const partIds = await createParts(context.db);
     const foreignAssemblyId = '00000000-0000-4000-8000-000000000251';
-    await createProduct(caller, 'Wheel Loader Foreign Source', {
+    await createProduct(caller, 'Wheel Loader Foreign Source', context.rangeId, {
       assemblies: [
         {
           id: foreignAssemblyId,
@@ -648,7 +657,7 @@ describe('products.update', () => {
         },
       ],
     });
-    const target = await createProduct(caller, 'Wheel Loader Foreign Target');
+    const target = await createProduct(caller, 'Wheel Loader Foreign Target', context.rangeId);
 
     await expect(
       caller.products.update({
@@ -677,7 +686,7 @@ describe('products.update', () => {
 describe('products brochure config', () => {
   test('defaults to an empty brochure config on create and read', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Default Product');
+    const created = await createProduct(caller, 'Brochure Default Product', context.rangeId);
 
     expect(created.brochureConfig).toEqual({ images: EMPTY_BROCHURE_IMAGES, keyFeatures: [], subtitle: null });
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
@@ -687,7 +696,7 @@ describe('products brochure config', () => {
 
   test('persists brochure subtitle and key features through update and read', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Text Product');
+    const created = await createProduct(caller, 'Brochure Text Product', context.rangeId);
 
     const updated = await caller.products.update({
       id: created.id,
@@ -728,7 +737,7 @@ describe('products brochure config', () => {
 
   test('reorders and removes key feature lines', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Reorder Product');
+    const created = await createProduct(caller, 'Brochure Reorder Product', context.rangeId);
     const baseInput = {
       id: created.id,
       basePrice: created.basePrice,
@@ -756,7 +765,7 @@ describe('products brochure config', () => {
 
   test('preserves brochure config when the update omits it', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Preserve Product');
+    const created = await createProduct(caller, 'Brochure Preserve Product', context.rangeId);
 
     await caller.products.update({
       id: created.id,
@@ -792,7 +801,7 @@ describe('products brochure config', () => {
 
   test('rejects blank and over-long key feature lines', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Validation Product');
+    const created = await createProduct(caller, 'Brochure Validation Product', context.rangeId);
     const baseInput = {
       id: created.id,
       basePrice: created.basePrice,

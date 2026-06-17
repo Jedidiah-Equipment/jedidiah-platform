@@ -403,6 +403,9 @@ export type AiToolMap = {
 export const AI_TOOL_NAMES = AI_TOOL_REGISTRY.map((record) => record.tool.name) as unknown as AiToolNames<
   typeof AI_TOOL_REGISTRY
 >;
+export const AI_WRITE_TOOL_NAMES: ReadonlySet<AiToolName> = new Set(
+  AI_TOOL_REGISTRY.filter((record) => record.kind === 'write').map((record) => record.tool.name as AiToolName),
+);
 export const aiToolDescriptors = createAiToolDescriptorMap(AI_TOOL_REGISTRY);
 export const aiTools = createAiToolMap(AI_TOOL_REGISTRY, aiToolDescriptors);
 

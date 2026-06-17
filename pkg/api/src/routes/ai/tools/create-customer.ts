@@ -1,13 +1,20 @@
 import * as core from '@pkg/core';
-import { type AiToolBase, type Customer, CustomerCreateInput, NullableThumbnailDataUrl } from '@pkg/schema';
+import {
+  type AiToolBase,
+  type Customer,
+  CustomerCompanyName,
+  CustomerCreateInput,
+  NullableThumbnailDataUrl,
+} from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
+import { requireActorSession } from './actor.js';
 import { toAiToolJsonSchema } from './json-schema.js';
 
 const CreateCustomerInput = z.strictObject({
   address: z.string().nullable().optional(),
-  companyName: z.string().min(1),
+  companyName: CustomerCompanyName,
   contactPerson: z.string().nullable().optional(),
   email: z.email().nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -37,16 +44,7 @@ export const createCustomerTool: CreateCustomerTool = {
       thumbnailDataUrl: rawInput.thumbnailDataUrl ?? null,
       vatNumber: rawInput.vatNumber ?? null,
     });
-    const actorUserId = getActorUserId(ctx);
 
-    return core.createCustomer({ actorUserId, db: ctx.db, input });
+    return core.createCustomer({ actorUserId: requireActorSession(ctx).user.id, db: ctx.db, input });
   },
 };
-
-function getActorUserId(ctx: AiContext): string {
-  if (!ctx.session) {
-    throw new Error('AI write tools require an authenticated user.');
-  }
-
-  return ctx.session.user.id;
-}

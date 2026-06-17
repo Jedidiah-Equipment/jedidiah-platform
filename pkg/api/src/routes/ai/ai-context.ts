@@ -6,9 +6,7 @@ import type { FastifyRequest } from 'fastify';
 
 import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '@/auth/session.js';
 
-export type AiContext = AiContextSchema<typeof db, AppSession> & {
-  storage: StorageAdapter;
-};
+export type AiContext = AiContextSchema<typeof db, AppSession, StorageAdapter>;
 
 export type AiContextDependencies = {
   storage: StorageAdapter;

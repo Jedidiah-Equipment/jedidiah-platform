@@ -1,10 +1,9 @@
-import * as core from '@pkg/core';
-import { renderQuoteDocumentPdf } from '@pkg/pdf';
 import { type AiToolBase, QuoteDraftEmailInput, type QuoteDraftEmailResult } from '@pkg/schema';
 import { z } from 'zod';
 
-import { emailSender } from '@/email/index.js';
+import { deliverQuoteDraftEmail } from '@/routes/quotes/quote-draft-email.js';
 import type { AiContext } from '../ai-context.js';
+import { requireActorSession } from './actor.js';
 import { toAiToolJsonSchema } from './json-schema.js';
 
 export type SendDraftQuoteEmailInput = z.infer<typeof SendDraftQuoteEmailInput>;
@@ -26,33 +25,15 @@ export const sendDraftQuoteEmailTool: SendDraftQuoteEmailTool = {
   requiredPermission: 'quote:update',
   async handler(args: unknown, ctx: AiContext) {
     const { emailBody, ...input } = SendDraftQuoteEmailInput.parse(args);
-    const session = getActorSession(ctx);
+    const session = requireActorSession(ctx);
 
-    return core.draftQuoteEmail({
+    return deliverQuoteDraftEmail({
       actorUserId: session.user.id,
       db: ctx.db,
       emailBody,
       input,
-      pdfRenderer: renderQuoteDocumentPdf,
       recipientEmail: session.user.email,
-      sendEmail: (message) =>
-        emailSender.send({
-          attachments: message.attachments,
-          html: message.html,
-          subject: message.subject,
-          text: message.text,
-          to: message.to,
-          type: 'quote-draft',
-        }),
       storage: ctx.storage,
     });
   },
 };
-
-function getActorSession(ctx: AiContext): NonNullable<AiContext['session']> {
-  if (!ctx.session) {
-    throw new Error('AI write tools require an authenticated user.');
-  }
-
-  return ctx.session;
-}

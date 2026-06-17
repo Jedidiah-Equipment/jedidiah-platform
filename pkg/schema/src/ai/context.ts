@@ -1,8 +1,8 @@
 import type { UserAccessSummary } from '../auth/authorization.js';
 
-export type AiContext<TDb = unknown, TSession = unknown> = {
+export type AiContext<TDb = unknown, TSession = unknown, TStorage = unknown> = {
   access: UserAccessSummary | null;
   db: TDb;
   session: TSession | null;
-  storage: unknown;
+  storage: TStorage;
 };

@@ -1,6 +1,5 @@
 import {
   createQuote,
-  draftQuoteEmail,
   generateQuoteDocument,
   getQuote,
   getQuoteProductBayAvailability,
@@ -33,13 +32,12 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { emailSender } from '@/email/index.js';
 import { log } from '@/logger.js';
 import type { Context } from '@/trpc/context.js';
-
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
 import { generateQuoteEmailBody } from '../ai/actions/quote-email-body.js';
+import { deliverQuoteDraftEmail } from './quote-draft-email.js';
 
 export const quotesRouter = router({
   list: authorizedProcedure('quote:read')
@@ -146,24 +144,7 @@ async function draftQuoteEmailWithGeneratedBody({
     quote,
   });
 
-  return draftQuoteEmail({
-    actorUserId,
-    db,
-    emailBody,
-    input,
-    pdfRenderer: renderQuoteDocumentPdf,
-    recipientEmail,
-    sendEmail: (message) =>
-      emailSender.send({
-        attachments: message.attachments,
-        html: message.html,
-        subject: message.subject,
-        text: message.text,
-        to: message.to,
-        type: 'quote-draft',
-      }),
-    storage,
-  });
+  return deliverQuoteDraftEmail({ actorUserId, db, emailBody, input, recipientEmail, storage });
 }
 
 async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {

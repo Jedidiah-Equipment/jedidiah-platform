@@ -7,38 +7,19 @@ import {
   Price,
   type QuoteCreateInput,
   QuoteCreateInput as QuoteCreateInputSchema,
+  QuoteCustomerInput,
   QuoteDepositPercent,
   type QuoteDetail,
   QuoteDiscountPercent,
+  QuoteSelectedAssemblyInput,
   QuoteStatus,
   UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
 
 import type { AiContext } from '../ai-context.js';
+import { requireActorSession } from './actor.js';
 import { toAiToolJsonSchema } from './json-schema.js';
-
-const QuoteCustomerInput = z.discriminatedUnion('type', [
-  z.strictObject({
-    customerId: UUID,
-    type: z.literal('existing'),
-  }),
-  z.strictObject({
-    companyName: z.string().min(1),
-    type: z.literal('inline'),
-  }),
-]);
-
-const QuoteSelectedAssemblyInput = z.discriminatedUnion('type', [
-  z.strictObject({
-    id: UUID,
-    type: z.literal('existing'),
-  }),
-  z.strictObject({
-    productAssemblyId: UUID,
-    type: z.literal('catalog'),
-  }),
-]);
 
 const CreateQuoteInput = z.strictObject({
   customer: QuoteCustomerInput,
@@ -68,7 +49,7 @@ export const createQuoteTool: CreateQuoteTool = {
   requiredPermission: 'quote:create',
   async handler(args: unknown, ctx: AiContext) {
     const parsedInput = CreateQuoteInput.parse(args);
-    const actorUserId = getActorUserId(ctx);
+    const actorUserId = requireActorSession(ctx).user.id;
     const input: QuoteCreateInput = QuoteCreateInputSchema.parse({
       ...parsedInput,
       documentNotes: parsedInput.documentNotes ?? null,
@@ -79,11 +60,3 @@ export const createQuoteTool: CreateQuoteTool = {
     return core.createQuote({ actorUserId, db: ctx.db, input });
   },
 };
-
-function getActorUserId(ctx: AiContext): string {
-  if (!ctx.session) {
-    throw new Error('AI write tools require an authenticated user.');
-  }
-
-  return ctx.session.user.id;
-}

@@ -1,5 +1,6 @@
 import { formatCurrency } from '@pkg/domain';
 import { createDomainGuidancePrompt } from './ai-domain-guidance.js';
+import { AI_WRITE_TOOL_NAMES } from './ai-tool-registry.js';
 import type { AiToolName } from './ai-tools.js';
 
 const ASSISTANT_ROLE_PROMPT = [
@@ -16,8 +17,6 @@ const TOOL_USE_PROMPT = [
   'If the available tools or permissions do not expose the data needed, say what is missing instead of inventing an answer.',
   'When results are ambiguous, ask the user to choose rather than pretending one record is the obvious match.',
 ];
-
-const WRITE_TOOL_NAMES = new Set<AiToolName>(['createCustomer', 'createQuote', 'sendDraftQuoteEmail']);
 
 const RESPONSE_STYLE_PROMPT = [
   'Be concise and operational. Start with the direct answer, then add the supporting details that matter.',
@@ -43,7 +42,7 @@ export function createSystemPrompt(toolNames: readonly AiToolName[]): string {
 
 function createToolUsePrompt(toolNames: readonly AiToolName[]): string[] {
   const lines = [...TOOL_USE_PROMPT];
-  const writeToolNames = toolNames.filter((toolName) => WRITE_TOOL_NAMES.has(toolName));
+  const writeToolNames = toolNames.filter((toolName) => AI_WRITE_TOOL_NAMES.has(toolName));
 
   if (writeToolNames.length > 0) {
     lines.push(

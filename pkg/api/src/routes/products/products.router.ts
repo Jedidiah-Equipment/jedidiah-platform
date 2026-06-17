@@ -86,6 +86,12 @@ function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductC
         code: 'NOT_FOUND',
         message: 'Bay not found.',
       };
+    case 'product.brochure_incomplete':
+      return {
+        appCode: error.code,
+        code: 'CONFLICT',
+        message: 'Complete the required brochure fields before previewing the brochure.',
+      };
     case 'product.duplicate_name':
       return {
         appCode: error.code,

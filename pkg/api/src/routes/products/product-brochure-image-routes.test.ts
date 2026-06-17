@@ -1,7 +1,6 @@
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
 import { type Db, products, user } from '@pkg/db';
-import { CROSSHAUL_PRODUCT_RANGE_ID } from '@pkg/schema';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
@@ -12,6 +11,8 @@ const routeTestState = vi.hoisted(() => ({
   db: null as unknown,
   session: null as unknown,
 }));
+
+const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
 
 vi.mock('@pkg/db', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@pkg/db')>();
@@ -208,7 +209,7 @@ async function createProduct(db: Db) {
       buildTimeDays: 14,
       modelCode: 'BROCHURE-IMG-HTTP',
       name: 'Brochure Image HTTP Product',
-      rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
+      rangeId: LEGACY_PRODUCT_RANGE_ID,
     })
     .returning({ id: products.id });
 

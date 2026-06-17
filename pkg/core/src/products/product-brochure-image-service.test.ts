@@ -1,5 +1,5 @@
 import { auditEvents, products, user } from '@pkg/db';
-import { BROCHURE_IMAGE_MAX_BYTES, CROSSHAUL_PRODUCT_RANGE_ID } from '@pkg/schema';
+import { BROCHURE_IMAGE_MAX_BYTES } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -11,6 +11,7 @@ import { ProductNotFoundError } from './product-errors.js';
 
 const ACTOR_USER_ID = 'test-user-id';
 const UNKNOWN_ID = '11111111-1111-4111-8111-111111111111';
+const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
 
 const test = createTester(async ({ db }) => {
   await db.insert(user).values({
@@ -32,7 +33,7 @@ const test = createTester(async ({ db }) => {
       buildTimeDays: 14,
       modelCode: 'BROCHURE-IMG',
       name: 'Brochure Image Product',
-      rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
+      rangeId: LEGACY_PRODUCT_RANGE_ID,
     })
     .returning({ id: products.id });
 

@@ -5,8 +5,6 @@ import { requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 
 export const RANGE_IMAGE_DATA_URL_MAX_BYTES = 512 * 1024;
-export const CROSSHAUL_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
-export const CROSSHAUL_PRODUCT_RANGE_NAME = 'Crosshaul';
 
 const RANGE_IMAGE_DATA_URL_PATTERN = /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/;
 

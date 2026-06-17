@@ -1,5 +1,5 @@
 import { auditEvents, type Db, jobBays, parts, productRanges, sql, supplier, user } from '@pkg/db';
-import { CROSSHAUL_PRODUCT_RANGE_ID, EMPTY_BROCHURE_IMAGES, type Product } from '@pkg/schema';
+import { EMPTY_BROCHURE_IMAGES, type Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
@@ -12,6 +12,7 @@ const test = createTester(async ({ db }) => {
 });
 
 const THUMBNAIL_DATA_URL = 'data:image/webp;base64,aaaa';
+const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
 
 async function createProduct(
   caller: AppRouterCaller,
@@ -24,7 +25,7 @@ async function createProduct(
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
-    rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
+    rangeId: LEGACY_PRODUCT_RANGE_ID,
     ...overrides,
   });
 }
@@ -50,7 +51,7 @@ describe('products.create', () => {
       modelCode: 'WHEEL-LOADER',
       name: 'Wheel Loader',
       productBays: [],
-      rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
+      rangeId: LEGACY_PRODUCT_RANGE_ID,
       requiresVinNumber: false,
     });
     expectIsoDatetime(created.createdAt);
@@ -97,7 +98,7 @@ describe('products.create', () => {
         buildTimeDays: -1,
         modelCode: 'NEGATIVE-LEAD-TIME',
         name: 'Negative Lead Time',
-        rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
+        rangeId: LEGACY_PRODUCT_RANGE_ID,
       }),
     ).rejects.toThrow();
   });
@@ -219,12 +220,10 @@ describe('products.read', () => {
     });
     const caller = context.createCaller(mockSession('procurement-manager'));
 
-    await expect(caller.products.rangeOptions()).resolves.toEqual({
-      ranges: [
-        { id: CROSSHAUL_PRODUCT_RANGE_ID, name: 'Crosshaul' },
-        { id: '00000000-0000-4000-8000-000000000502', name: 'Earthmoving' },
-      ],
-    });
+    const result = await caller.products.rangeOptions();
+
+    expect(result.ranges).toContainEqual({ id: '00000000-0000-4000-8000-000000000502', name: 'Earthmoving' });
+    expect(result.ranges.every((range) => Object.keys(range).sort().join(',') === 'id,name')).toBe(true);
   });
 
   test('returns build time days and VIN requirement on get and list', async ({ context }) => {

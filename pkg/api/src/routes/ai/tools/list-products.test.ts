@@ -1,7 +1,7 @@
 import * as productsCore from '@pkg/core';
 import { type Db, user } from '@pkg/db';
 import { createUserAccessSummary } from '@pkg/domain';
-import { CROSSHAUL_PRODUCT_RANGE_ID, type Product, type ProductListInput, type UserAccessSummary } from '@pkg/schema';
+import type { Product, ProductListInput, UserAccessSummary } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -16,6 +16,8 @@ const test = createTester(async ({ db }) => {
   return { db };
 });
 
+const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
+
 async function createProduct(
   caller: AppRouterCaller,
   name: string,
@@ -27,7 +29,7 @@ async function createProduct(
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
-    rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
+    rangeId: LEGACY_PRODUCT_RANGE_ID,
     ...overrides,
   });
 }

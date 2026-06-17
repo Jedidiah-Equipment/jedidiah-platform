@@ -1,6 +1,6 @@
 import * as core from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
-import { CROSSHAUL_PRODUCT_RANGE_ID, type Product, type ProductListInput } from '@pkg/schema';
+import type { Product, ProductListInput } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -14,6 +14,8 @@ const test = createTester(async ({ db }) => {
 
   return { db };
 });
+
+const LEGACY_PRODUCT_RANGE_ID = '00000000-0000-4000-8000-000000000488';
 
 describe('listQuoteProductsTool', () => {
   test('returns the same product list result shape as quotes.products', async ({ context }) => {
@@ -103,7 +105,7 @@ async function createProduct(
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
-    rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
+    rangeId: LEGACY_PRODUCT_RANGE_ID,
     ...overrides,
   });
 }

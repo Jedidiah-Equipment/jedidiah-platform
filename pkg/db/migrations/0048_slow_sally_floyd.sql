@@ -1,23 +1,23 @@
 ALTER TABLE "products" ADD COLUMN "range_id" uuid;--> statement-breakpoint
 DO $$
 DECLARE
-	v_crosshaul_range_id uuid;
+	v_legacy_range_id uuid;
 BEGIN
-	SELECT "id" INTO v_crosshaul_range_id
+	SELECT "id" INTO v_legacy_range_id
 	FROM "product_ranges"
-	WHERE lower("name") = lower('Crosshaul')
+	WHERE lower("name") = lower('Legacy')
 	ORDER BY "created_at", "id"
 	LIMIT 1;
 
-	IF v_crosshaul_range_id IS NULL THEN
-		v_crosshaul_range_id := '00000000-0000-4000-8000-000000000488';
+	IF v_legacy_range_id IS NULL THEN
+		v_legacy_range_id := '00000000-0000-4000-8000-000000000488';
 
 		INSERT INTO "product_ranges" ("id", "name", "image_data_url")
-		VALUES (v_crosshaul_range_id, 'Crosshaul', NULL);
+		VALUES (v_legacy_range_id, 'Legacy', NULL);
 	END IF;
 
 	UPDATE "products"
-	SET "range_id" = v_crosshaul_range_id
+	SET "range_id" = v_legacy_range_id
 	WHERE "range_id" IS NULL;
 END $$;--> statement-breakpoint
 ALTER TABLE "products" ALTER COLUMN "range_id" SET NOT NULL;--> statement-breakpoint

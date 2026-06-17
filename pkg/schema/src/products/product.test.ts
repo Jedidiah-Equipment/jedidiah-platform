@@ -11,10 +11,9 @@ import {
   ProductCreateInput,
   ProductUpdateInput,
 } from './product.js';
-import { CROSSHAUL_PRODUCT_RANGE_ID } from './product-range.js';
 
 const BAY_ID = '00000000-0000-4000-8000-000000000201';
-const RANGE_ID = CROSSHAUL_PRODUCT_RANGE_ID;
+const RANGE_ID = '00000000-0000-4000-8000-000000000301';
 
 describe('ProductCreateInput', () => {
   it('normalizes product catalog fields', () => {

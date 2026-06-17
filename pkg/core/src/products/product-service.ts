@@ -40,7 +40,7 @@ import {
   ProductDocumentMetadata,
   ProductDocument as ProductDocumentSchema,
 } from '@pkg/schema';
-import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
 
 import {
@@ -343,19 +343,6 @@ export async function getProductDocuments({ db, productId }: { db: Db; productId
   return rows.map(mapProductDocumentSummary);
 }
 
-export async function getProductBrochure({
-  db,
-  productId,
-}: {
-  db: Db;
-  productId: UUID;
-}): Promise<ProductDocument | null> {
-  await assertProductExists({ db, productId });
-  const row = await getProductBrochureSummaryRow({ db, productId });
-
-  return row ? mapProductDocumentSummary(row) : null;
-}
-
 export async function createProductDocument({
   actorUserId,
   db,
@@ -426,30 +413,6 @@ export async function readProductDocument({
 
   return {
     document: mapDocumentSummary(document),
-    object: await storage.get(document.storageKey),
-  };
-}
-
-export async function readProductBrochure({
-  db,
-  documentId,
-  productId,
-  storage,
-}: {
-  db: Db;
-  documentId: UUID;
-  productId: UUID;
-  storage: StorageAdapter;
-}): Promise<ReadDocumentResult> {
-  const document = await getProductBrochureSummaryRow({ db, documentId, productId });
-
-  if (!document) {
-    await assertProductExists({ db, productId });
-    throw new DocumentNotFoundError(documentId);
-  }
-
-  return {
-    document: mapProductDocumentSummary(document),
     object: await storage.get(document.storageKey),
   };
 }
@@ -528,29 +491,6 @@ async function findProductDocumentSummaryRow({
 }): Promise<DocumentSummaryRow | null> {
   const [row] = await selectProductDocumentSummary(db)
     .where(and(eq(documents.productId, productId), eq(documents.id, documentId)))
-    .limit(1);
-
-  return row ?? null;
-}
-
-async function getProductBrochureSummaryRow({
-  db,
-  documentId,
-  productId,
-}: {
-  db: Db;
-  documentId?: UUID;
-  productId: UUID;
-}): Promise<DocumentSummaryRow | null> {
-  const filters = [eq(documents.productId, productId), sql`${documents.metadata}->>'type' = 'brochure'`];
-
-  if (documentId) {
-    filters.push(eq(documents.id, documentId));
-  }
-
-  const [row] = await selectProductDocumentSummary(db)
-    .where(and(...filters))
-    .orderBy(desc(documents.createdAt), desc(documents.id))
     .limit(1);
 
   return row ?? null;

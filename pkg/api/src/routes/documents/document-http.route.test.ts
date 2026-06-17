@@ -134,26 +134,6 @@ describe('document HTTP routes', () => {
     expect(storage.gets).toEqual([`documents/quote/${quote.id}/quote.pdf`]);
   });
 
-  test('downloads quote Product brochures through quote read access', async ({ context }) => {
-    routeTestState.session = mockSession('sales');
-    const storage = new MemoryStorage();
-    const app = await createDocumentApp(storage);
-    const quote = await createQuoteOwner(context.db, context.product.id);
-    const document = await createProductBrochureRow({
-      db: context.db,
-      productId: context.product.id,
-      storage,
-    });
-
-    const response = await app.inject(`/api/quotes/${quote.id}/product-brochure/${document.id}/download`);
-
-    expect(response.statusCode, response.body).toBe(200);
-    expect(response.headers['content-type']).toBe('application/pdf');
-    expect(response.headers['content-length']).toBe(String(pdfBytes().byteLength));
-    expect(response.rawPayload).toEqual(Buffer.from(pdfBytes()));
-    expect(storage.gets).toEqual([`documents/product/${context.product.id}/brochure.pdf`]);
-  });
-
   test('uploads a product document with its type and returns the persisted metadata', async ({ context }) => {
     const storage = new MemoryStorage();
     const app = await createDocumentApp(storage);
@@ -380,43 +360,6 @@ async function createProductDocumentRow({
       contentType: 'application/pdf',
       filename: 'Part Book.pdf',
       metadata: { type: 'part_book' },
-      ownerType: 'product',
-      productId,
-      storageKey,
-      uploaderUserId: 'test-user-id',
-    })
-    .returning({ id: documents.id });
-
-  if (!document) {
-    throw new Error('Document insert did not return a row');
-  }
-
-  return document;
-}
-
-async function createProductBrochureRow({
-  db,
-  productId,
-  storage,
-}: {
-  db: Db;
-  productId: UUID;
-  storage: MemoryStorage;
-}) {
-  const storageKey = `documents/product/${productId}/brochure.pdf`;
-  await storage.put({
-    body: pdfBytes(),
-    byteSize: pdfBytes().byteLength,
-    contentType: 'application/pdf',
-    key: storageKey,
-  });
-  const [document] = await db
-    .insert(documents)
-    .values({
-      byteSize: pdfBytes().byteLength,
-      contentType: 'application/pdf',
-      filename: 'Brochure.pdf',
-      metadata: { type: 'brochure' },
       ownerType: 'product',
       productId,
       storageKey,

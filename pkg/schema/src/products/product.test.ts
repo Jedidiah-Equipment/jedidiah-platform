@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import {
+  BROCHURE_KEY_FEATURE_MAX_LENGTH,
+  BROCHURE_KEY_FEATURES_MAX_COUNT,
+  BrochureConfigInput,
   Product,
   ProductAssembliesInput,
   ProductBaysInput,
@@ -24,6 +27,7 @@ describe('ProductCreateInput', () => {
     ).toEqual({
       assemblies: [],
       basePrice: 1234.56,
+      brochureConfig: { keyFeatures: [], subtitle: null },
       currencyCode: 'ZAR',
       description: 'Earthmoving equipment',
       buildTimeDays: 14,
@@ -178,5 +182,40 @@ describe('ProductUpdateInput', () => {
 describe('Product', () => {
   it('can be represented as JSON Schema', () => {
     expect(() => z.toJSONSchema(Product)).not.toThrow();
+  });
+});
+
+describe('BrochureConfigInput', () => {
+  it('defaults to an empty config', () => {
+    expect(BrochureConfigInput.parse({})).toEqual({ keyFeatures: [], subtitle: null });
+  });
+
+  it('trims the subtitle and treats blank as null', () => {
+    expect(BrochureConfigInput.parse({ subtitle: '  Silage & Grain  ' }).subtitle).toBe('Silage & Grain');
+    expect(BrochureConfigInput.parse({ subtitle: '   ' }).subtitle).toBeNull();
+  });
+
+  it('trims key-feature lines and rejects blank ones', () => {
+    expect(BrochureConfigInput.parse({ keyFeatures: ['  Heavy duty  ', 'Low maintenance'] }).keyFeatures).toEqual([
+      'Heavy duty',
+      'Low maintenance',
+    ]);
+    expect(() => BrochureConfigInput.parse({ keyFeatures: ['   '] })).toThrow();
+  });
+
+  it('enforces the key-feature line length cap', () => {
+    expect(() =>
+      BrochureConfigInput.parse({ keyFeatures: ['x'.repeat(BROCHURE_KEY_FEATURE_MAX_LENGTH + 1)] }),
+    ).toThrow();
+  });
+
+  it('enforces the key-feature count cap', () => {
+    const tooMany = Array.from({ length: BROCHURE_KEY_FEATURES_MAX_COUNT + 1 }, (_, index) => `Feature ${index}`);
+
+    expect(() => BrochureConfigInput.parse({ keyFeatures: tooMany })).toThrow();
+  });
+
+  it('rejects unknown keys', () => {
+    expect(() => BrochureConfigInput.parse({ subtitle: 'x', extra: true })).toThrow();
   });
 });

@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card.js';
 import { TabsContent } from '@/components/ui/tabs.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductBaysEditor } from './ProductBaysEditor.js';
+import { ProductBrochureEditor } from './ProductBrochureEditor.js';
 import { ProductFormValues, toProductFormValues, toProductUpdateInput } from './types.js';
 
 type ProductFormProps = {
@@ -116,6 +117,16 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                   currencyCode={defaultValues.currencyCode}
                   onStructuralChange={saveCommittedField}
                 />
+              )}
+            </form.Field>
+          </div>
+        </TabsContent>
+        <TabsContent className="pt-4" value="brochure">
+          <div className="flex flex-col gap-4">
+            <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
+            <form.Field name="brochureConfig.keyFeatures" mode="array">
+              {(keyFeaturesField) => (
+                <ProductBrochureEditor keyFeaturesField={keyFeaturesField} onStructuralChange={saveCommittedField} />
               )}
             </form.Field>
           </div>

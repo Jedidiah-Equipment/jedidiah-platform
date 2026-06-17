@@ -104,6 +104,8 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
   toRecord: (input) => ({
     assemblies: JSON.stringify(toAuditAssemblies(input.assemblies)),
     basePrice: input.basePrice,
+    brochureKeyFeatures: JSON.stringify(input.brochureKeyFeatures),
+    brochureSubtitle: input.brochureSubtitle,
     currencyCode: input.currencyCode,
     description: input.description,
     buildTimeDays: input.buildTimeDays,
@@ -126,6 +128,10 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
   return Product.parse({
     assemblies: row.assemblies ?? [],
     basePrice: row.basePrice,
+    brochureConfig: {
+      keyFeatures: row.brochureKeyFeatures,
+      subtitle: row.brochureSubtitle,
+    },
     createdAt: row.createdAt.toISOString(),
     currencyCode: ProductCurrencyCode.parse(row.currencyCode),
     description: row.description,
@@ -155,6 +161,8 @@ export async function listProducts({
   const productsQuery = db.query.products.findMany({
     columns: {
       basePrice: true,
+      brochureKeyFeatures: true,
+      brochureSubtitle: true,
       createdAt: true,
       currencyCode: true,
       description: true,
@@ -523,8 +531,15 @@ export async function createProduct({
 }): Promise<Product> {
   try {
     return await db.transaction(async (tx) => {
-      const { assemblies: desiredAssemblies, productBays: desiredProductBays, ...productInput } = input;
-      const [row] = await tx.insert(products).values(productInput).returning();
+      const { assemblies: desiredAssemblies, productBays: desiredProductBays, brochureConfig, ...productInput } = input;
+      const [row] = await tx
+        .insert(products)
+        .values({
+          ...productInput,
+          brochureKeyFeatures: brochureConfig.keyFeatures,
+          brochureSubtitle: brochureConfig.subtitle,
+        })
+        .returning();
 
       if (!row) {
         throw new Error('Product insert did not return a row');
@@ -574,6 +589,10 @@ export async function updateProduct({
       const desiredProductBays = input.productBays ?? beforeProductBays;
       const patch = {
         basePrice: input.basePrice,
+        // Brochure Config text fields fold into the Product update; omitting them preserves the
+        // stored config, mirroring how assemblies and product bays are preserved when absent.
+        brochureKeyFeatures: input.brochureConfig?.keyFeatures ?? before.brochureKeyFeatures,
+        brochureSubtitle: input.brochureConfig ? input.brochureConfig.subtitle : before.brochureSubtitle,
         currencyCode: input.currencyCode,
         description: input.description,
         buildTimeDays: input.buildTimeDays,

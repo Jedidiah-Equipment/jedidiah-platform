@@ -4,6 +4,7 @@ import {
   check,
   foreignKey,
   integer,
+  jsonb,
   numeric,
   pgTable,
   primaryKey,
@@ -19,6 +20,8 @@ export const products = pgTable(
   'products',
   {
     basePrice: numeric('base_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
+    brochureKeyFeatures: jsonb('brochure_key_features').$type<string[]>().notNull().default([]),
+    brochureSubtitle: text('brochure_subtitle'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     currencyCode: text('currency_code').notNull().default('ZAR'),
     description: text('description'),

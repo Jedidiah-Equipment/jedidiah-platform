@@ -316,6 +316,13 @@
       "when": 1781261650204,
       "tag": "0044_third_maddog",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1781687369290,
+      "tag": "0045_regular_james_howlett",
+      "breakpoints": true
     }
   ]
 }

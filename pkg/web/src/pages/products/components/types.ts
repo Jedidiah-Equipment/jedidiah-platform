@@ -1,6 +1,8 @@
 import {
   AssemblyName,
   AssemblyPart,
+  BrochureKeyFeatures,
+  BrochureSubtitle,
   NullableThumbnailDataUrl,
   Price,
   type Product,
@@ -52,6 +54,14 @@ export const ProductBayFormInput = ProductBayInput.extend({
   defaultWorkingDays: ProductBayDefaultWorkingDays,
 });
 
+// Form representation of the Brochure Config text fields. The subtitle holds `''` for "no value"
+// like other nullable text inputs; key-feature lines reuse the schema-owned content + cap rules.
+export type BrochureConfigFormValues = z.infer<typeof BrochureConfigFormValues>;
+export const BrochureConfigFormValues = z.object({
+  keyFeatures: BrochureKeyFeatures,
+  subtitle: emptyStringOr(BrochureSubtitle),
+});
+
 const ProductFormFields = z.object({
   basePrice: Price,
   currencyCode: z.literal('ZAR'),
@@ -66,6 +76,7 @@ const ProductFormFields = z.object({
 export type ProductFormValues = z.infer<typeof ProductFormValues>;
 export const ProductFormValues = ProductFormFields.extend({
   assemblies: z.array(ProductAssemblyFormInput).superRefine(refineProductAssemblies),
+  brochureConfig: BrochureConfigFormValues,
   productBays: z.array(ProductBayFormInput).superRefine(refineProductBays),
 });
 
@@ -80,6 +91,7 @@ export const ProductCreateFormValues = ProductFormFields.pick({
 export const emptyProductFormValues: ProductFormValues = {
   assemblies: [],
   basePrice: NaN,
+  brochureConfig: { keyFeatures: [], subtitle: '' },
   currencyCode: 'ZAR',
   description: '',
   buildTimeDays: NaN,
@@ -95,6 +107,7 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
   return {
     assemblies: toProductAssemblyInputs(initialProduct),
     basePrice: initialProduct?.basePrice ?? NaN,
+    brochureConfig: toBrochureConfigFormValues(initialProduct),
     currencyCode: initialProduct?.currencyCode ?? 'ZAR',
     description: initialProduct?.description ?? '',
     buildTimeDays: initialProduct?.buildTimeDays ?? NaN,
@@ -103,6 +116,14 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     productBays: toProductBayInputs(initialProduct),
     requiresVinNumber: initialProduct?.requiresVinNumber ?? false,
     thumbnailDataUrl: initialProduct?.thumbnailDataUrl ?? null,
+  };
+}
+
+/** Maps a product's stored Brochure Config text fields into the editor's input shape. */
+export function toBrochureConfigFormValues(initialProduct?: Product): BrochureConfigFormValues {
+  return {
+    keyFeatures: initialProduct?.brochureConfig?.keyFeatures ?? [],
+    subtitle: initialProduct?.brochureConfig?.subtitle ?? '',
   };
 }
 

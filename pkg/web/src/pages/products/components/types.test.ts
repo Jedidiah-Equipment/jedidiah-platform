@@ -2,6 +2,7 @@ import type { Product } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
+  toBrochureConfigFormValues,
   toProductAssemblyInputs,
   toProductBayInputs,
   toProductCreateInput,
@@ -94,6 +95,25 @@ describe('toProductFormValues', () => {
   });
 });
 
+describe('toBrochureConfigFormValues', () => {
+  it('returns blank defaults when there is no product', () => {
+    expect(toBrochureConfigFormValues()).toEqual({ keyFeatures: [], subtitle: '' });
+  });
+
+  it('maps stored brochure config and collapses a null subtitle to an empty string', () => {
+    expect(
+      toBrochureConfigFormValues(
+        buildProduct({ brochureConfig: { keyFeatures: ['Heavy duty', 'Low maintenance'], subtitle: null } }),
+      ),
+    ).toEqual({ keyFeatures: ['Heavy duty', 'Low maintenance'], subtitle: '' });
+
+    expect(
+      toBrochureConfigFormValues(buildProduct({ brochureConfig: { keyFeatures: [], subtitle: 'Silage & Grain' } }))
+        .subtitle,
+    ).toBe('Silage & Grain');
+  });
+});
+
 describe('toProductAssemblyInputs', () => {
   it('maps standard and optional assemblies into editor inputs', () => {
     expect(toProductAssemblyInputs(buildProduct())).toEqual([
@@ -139,6 +159,7 @@ describe('toProductCreateInput', () => {
         },
       ],
       basePrice: 1000,
+      brochureConfig: { keyFeatures: [], subtitle: null },
       buildTimeDays: 14,
       currencyCode: 'ZAR',
       description: null,
@@ -163,6 +184,7 @@ describe('toProductMinimalCreateInput', () => {
     ).toEqual({
       assemblies: [],
       basePrice: 120_000,
+      brochureConfig: { keyFeatures: [], subtitle: null },
       buildTimeDays: 14,
       currencyCode: 'ZAR',
       description: null,

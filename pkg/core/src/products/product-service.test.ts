@@ -10,6 +10,8 @@ describe('mapProduct', () => {
     expect(
       mapProduct({
         basePrice: 1234.56,
+        brochureKeyFeatures: ['Heavy duty', 'Low maintenance'],
+        brochureSubtitle: 'Silage & Grain',
         createdAt,
         currencyCode: 'ZAR',
         description: 'Earthmoving equipment',
@@ -24,6 +26,7 @@ describe('mapProduct', () => {
     ).toEqual({
       assemblies: [],
       basePrice: 1234.56,
+      brochureConfig: { keyFeatures: ['Heavy duty', 'Low maintenance'], subtitle: 'Silage & Grain' },
       createdAt: createdAt.toISOString(),
       currencyCode: 'ZAR',
       description: 'Earthmoving equipment',

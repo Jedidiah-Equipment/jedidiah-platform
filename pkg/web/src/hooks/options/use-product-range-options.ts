@@ -1,11 +1,10 @@
-import type { ProductRange } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useTRPC } from '@/lib/trpc.js';
 import { toSelectOptions } from './helpers.js';
 
-export type ProductRangeOption = Pick<ProductRange, 'id' | 'name'>;
+export type { ProductRangeOption } from '@pkg/schema';
 
 export function useProductRangeOptions() {
   const trpc = useTRPC();

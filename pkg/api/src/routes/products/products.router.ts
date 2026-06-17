@@ -2,7 +2,7 @@ import {
   createProduct,
   getProduct,
   isProductCoreError,
-  listProductRanges,
+  listProductRangeOptions,
   listProducts,
   type ProductCoreError,
   updateProduct,
@@ -24,7 +24,7 @@ export const productsRouter = router({
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapProductErrors(() => getProduct({ db: ctx.db, id: input.id }))),
 
-  rangeOptions: authorizedProcedure('product:read').query(({ ctx }) => listProductRanges({ db: ctx.db })),
+  rangeOptions: authorizedProcedure('product:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
 
   create: authorizedProcedure('product:create')
     .input(ProductCreateInput)

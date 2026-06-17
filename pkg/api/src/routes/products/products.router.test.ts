@@ -214,12 +214,16 @@ describe('products.read', () => {
   test('lists Range options through Product read access', async ({ context }) => {
     await createRange(context.db, {
       id: '00000000-0000-4000-8000-000000000502',
+      imageDataUrl: 'data:image/png;base64,aaaa',
       name: 'Earthmoving',
     });
     const caller = context.createCaller(mockSession('procurement-manager'));
 
-    await expect(caller.products.rangeOptions()).resolves.toMatchObject({
-      ranges: [{ id: CROSSHAUL_PRODUCT_RANGE_ID, name: 'Crosshaul' }, { name: 'Earthmoving' }],
+    await expect(caller.products.rangeOptions()).resolves.toEqual({
+      ranges: [
+        { id: CROSSHAUL_PRODUCT_RANGE_ID, name: 'Crosshaul' },
+        { id: '00000000-0000-4000-8000-000000000502', name: 'Earthmoving' },
+      ],
     });
   });
 
@@ -822,12 +826,12 @@ async function createActorUser(db: Db): Promise<void> {
     .onConflictDoNothing();
 }
 
-async function createRange(db: Db, input: { id: string; name: string }) {
+async function createRange(db: Db, input: { id: string; imageDataUrl?: string | null; name: string }) {
   const [range] = await db
     .insert(productRanges)
     .values({
       id: input.id,
-      imageDataUrl: null,
+      imageDataUrl: input.imageDataUrl ?? null,
       name: input.name,
     })
     .returning();

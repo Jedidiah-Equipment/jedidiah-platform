@@ -132,6 +132,12 @@ export function sniffDocumentContentType(bytes: Uint8Array): string | null {
 }
 
 export function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    const kilobytes = bytes / 1024;
+
+    return `${Number.isInteger(kilobytes) ? kilobytes : kilobytes.toFixed(1)} KB`;
+  }
+
   const megabytes = bytes / (1024 * 1024);
 
   return `${Number.isInteger(megabytes) ? megabytes : megabytes.toFixed(1)} MB`;

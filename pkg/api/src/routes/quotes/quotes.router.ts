@@ -19,7 +19,7 @@ import {
   summarizeQuoteWeeklyFlow,
   updateQuote,
 } from '@pkg/core';
-import { renderQuoteDocumentPdf } from '@pkg/pdf';
+import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf';
 import {
   CustomerListInput,
   ProductListInput,
@@ -99,6 +99,7 @@ export const quotesRouter = router({
       mapQuoteErrors(() =>
         generateQuoteDocument({
           actorUserId: ctx.session.user.id,
+          brochureRenderer: renderBrochurePdf,
           db: ctx.db,
           input,
           pdfRenderer: renderQuoteDocumentPdf,

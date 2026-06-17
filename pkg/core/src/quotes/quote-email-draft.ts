@@ -1,5 +1,11 @@
 import type { Db } from '@pkg/db';
-import type { AuthId, QuoteDocumentPdfRenderer, QuoteDraftEmailInput, QuoteDraftEmailResult } from '@pkg/schema';
+import type {
+  AuthId,
+  BrochurePdfRenderer,
+  QuoteDocumentPdfRenderer,
+  QuoteDraftEmailInput,
+  QuoteDraftEmailResult,
+} from '@pkg/schema';
 
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { persistQuoteDocumentRevision, renderQuoteDocumentRevision } from './quote-document-generation.js';
@@ -28,6 +34,7 @@ export type QuoteDraftEmailSender = (message: QuoteDraftEmailMessage) => Promise
  */
 export async function draftQuoteEmail({
   actorUserId,
+  brochureRenderer,
   db,
   emailBody,
   input,
@@ -37,6 +44,7 @@ export async function draftQuoteEmail({
   storage,
 }: {
   actorUserId: AuthId;
+  brochureRenderer: BrochurePdfRenderer;
   db: Db;
   emailBody: string;
   input: QuoteDraftEmailInput;
@@ -56,7 +64,7 @@ export async function draftQuoteEmail({
   // Do the failure-prone work first and only persist the Quote Document revision after the email is
   // delivered, so a failed render or send leaves no orphan revision.
   const quote = await getQuote({ db, id: input.quoteId });
-  const draft = await renderQuoteDocumentRevision({ db, input, pdfRenderer, storage });
+  const draft = await renderQuoteDocumentRevision({ brochureRenderer, db, input, pdfRenderer, storage });
 
   await sendEmail({
     to: trimmedRecipient,

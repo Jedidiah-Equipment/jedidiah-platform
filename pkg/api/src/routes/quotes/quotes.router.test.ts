@@ -1403,9 +1403,9 @@ describe('quotes.generateDocument', () => {
       },
       warnings: [
         {
-          code: 'quote_document.product_brochure_missing',
+          code: 'quote_document.brochure_config_incomplete',
           message:
-            'No PDF brochure is attached to this Quote Product, so the Quote Document was generated without one.',
+            "This Quote Product's Brochure is not fully configured, so the Quote Document was generated without one.",
         },
       ],
     });

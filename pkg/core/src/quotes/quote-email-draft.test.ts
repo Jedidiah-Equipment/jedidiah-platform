@@ -1,5 +1,5 @@
 import { customers, products, quotes, user } from '@pkg/db';
-import type { QuoteDocumentPdfRenderer } from '@pkg/schema';
+import type { BrochurePdfRenderer, QuoteDocumentPdfRenderer } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
@@ -67,11 +67,12 @@ function createHarness() {
   const sentMessages: QuoteDraftEmailMessage[] = [];
 
   const pdfRenderer: QuoteDocumentPdfRenderer = async () => PDF_BYTES;
+  const brochureRenderer: BrochurePdfRenderer = async () => PDF_BYTES;
   const sendEmail: QuoteDraftEmailSender = async (message) => {
     sentMessages.push(message);
   };
 
-  return { pdfRenderer, sendEmail, sentMessages, storage };
+  return { brochureRenderer, pdfRenderer, sendEmail, sentMessages, storage };
 }
 
 describe('draftQuoteEmail', () => {
@@ -80,6 +81,7 @@ describe('draftQuoteEmail', () => {
 
     const result = await draftQuoteEmail({
       actorUserId: context.salesPerson.id,
+      brochureRenderer: harness.brochureRenderer,
       db: context.db,
       emailBody: 'Hi Acme,\n\nHere is your quote.',
       input: { leadTime: '14 working days', quoteId: context.quote.id },
@@ -90,9 +92,9 @@ describe('draftQuoteEmail', () => {
     });
 
     expect(result.recipientEmail).toBe('sales@example.com');
-    // No brochure is attached to the test Product, so generation reports the missing-brochure warning.
+    // The test Product's brochure config is incomplete, so generation reports the incomplete warning.
     expect(result.warnings).toContainEqual(
-      expect.objectContaining({ code: 'quote_document.product_brochure_missing' }),
+      expect.objectContaining({ code: 'quote_document.brochure_config_incomplete' }),
     );
 
     expect(harness.sentMessages).toHaveLength(1);
@@ -115,6 +117,7 @@ describe('draftQuoteEmail', () => {
     await expect(
       draftQuoteEmail({
         actorUserId: context.salesPerson.id,
+        brochureRenderer: harness.brochureRenderer,
         db: context.db,
         emailBody: 'Hi Acme,\n\nHere is your quote.',
         input: { leadTime: '14 working days', quoteId: context.quote.id },
@@ -140,6 +143,7 @@ describe('draftQuoteEmail', () => {
     await expect(
       draftQuoteEmail({
         actorUserId: context.salesPerson.id,
+        brochureRenderer: harness.brochureRenderer,
         db: context.db,
         emailBody: 'Hi Acme,\n\nHere is your quote.',
         input: { leadTime: '14 working days', quoteId: context.quote.id },

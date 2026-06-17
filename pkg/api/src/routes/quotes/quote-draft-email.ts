@@ -1,6 +1,6 @@
 import { draftQuoteEmail, type StorageAdapter } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { renderQuoteDocumentPdf } from '@pkg/pdf';
+import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf';
 import type { AuthId, QuoteDraftEmailInput, QuoteDraftEmailResult } from '@pkg/schema';
 
 import { emailSender } from '@/email/index.js';
@@ -27,6 +27,7 @@ export function deliverQuoteDraftEmail({
 }): Promise<QuoteDraftEmailResult> {
   return draftQuoteEmail({
     actorUserId,
+    brochureRenderer: renderBrochurePdf,
     db,
     emailBody,
     input,

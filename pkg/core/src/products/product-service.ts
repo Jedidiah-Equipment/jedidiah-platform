@@ -290,6 +290,10 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
     conditions.push(createEscapedContainsSearchCondition(sql`${products.id}::text`, listInput.columnFilters.id));
   }
 
+  if (listInput.columnFilters.rangeId) {
+    conditions.push(eq(products.rangeId, listInput.columnFilters.rangeId));
+  }
+
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 

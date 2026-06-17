@@ -397,6 +397,7 @@ export const ProductColumnFilters = z
     id: z.string().trim().optional(),
     modelCode: z.string().trim().optional(),
     name: z.string().trim().optional(),
+    rangeId: UUID.optional(),
   })
   .default({});
 

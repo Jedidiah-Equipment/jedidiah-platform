@@ -1,12 +1,20 @@
 import { hasPermission } from '@pkg/domain';
-import { type ProductRange, RANGE_IMAGE_DATA_URL_MAX_BYTES } from '@pkg/schema';
-import { IconLoader2, IconPencil, IconPhoto, IconPlus, IconTrash, IconUpload } from '@tabler/icons-react';
+import {
+  IMAGE_CONTENT_TYPES,
+  NullableRangeImageDataUrl,
+  type ProductRange,
+  ProductRangeName,
+  RANGE_IMAGE_DATA_URL_MAX_BYTES,
+} from '@pkg/schema';
+import { IconLoader2, IconPencil, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { useId, useRef, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { useAppForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
@@ -19,8 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog.js';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
+import { FieldGroup } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -28,10 +35,13 @@ import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { productRangesPageDescription } from '@/utils/page-descriptions.js';
 
-type ProductRangeFormValue = {
-  imageDataUrl: string | null;
-  name: string;
-};
+// Browser form shape for a Range. Per-field rules defer to the `@pkg/schema` scalars; the server
+// re-validates the same constraints on create/update.
+const ProductRangeFormValues = z.object({
+  imageDataUrl: NullableRangeImageDataUrl,
+  name: ProductRangeName,
+});
+type ProductRangeFormValues = z.infer<typeof ProductRangeFormValues>;
 
 export const ProductRangesPage: React.FC = () => {
   const trpc = useTRPC();
@@ -173,11 +183,6 @@ const ProductRangeForm: React.FC<ProductRangeFormProps> = (props) => {
   const trpc = useTRPC();
   const showMutationError = useApiMutationErrorToast();
   const { invalidateProductRanges } = useQueryInvalidation();
-  const initialValue: ProductRangeFormValue =
-    props.mode === 'edit'
-      ? { imageDataUrl: props.range.imageDataUrl, name: props.range.name }
-      : { imageDataUrl: null, name: '' };
-  const [value, setValue] = useState<ProductRangeFormValue>(initialValue);
 
   const createMutation = useMutation(
     trpc.productRanges.create.mutationOptions({
@@ -190,181 +195,72 @@ const ProductRangeForm: React.FC<ProductRangeFormProps> = (props) => {
     }),
   );
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
-  const canSubmit = Boolean(value.name.trim());
-  const formId = props.mode === 'edit' ? `edit-product-range-form-${props.range.id}` : 'create-product-range-form';
+  const defaultValues: ProductRangeFormValues =
+    props.mode === 'edit'
+      ? { imageDataUrl: props.range.imageDataUrl, name: props.range.name }
+      : { imageDataUrl: null, name: '' };
 
-  const save = async () => {
-    const input = {
-      imageDataUrl: value.imageDataUrl,
-      name: value.name,
-    };
+  const form = useAppForm({
+    defaultValues,
+    validators: { onSubmit: ProductRangeFormValues },
+    onSubmit: async ({ value }) => {
+      const input = { imageDataUrl: value.imageDataUrl, name: value.name.trim() };
 
-    if (props.mode === 'create') {
-      await createMutation.mutateAsync(input);
+      if (props.mode === 'create') {
+        await createMutation.mutateAsync(input);
+        await invalidateProductRanges();
+        props.onClose();
+        toast.success('Product Range created');
+        return;
+      }
+
+      await updateMutation.mutateAsync({ ...input, id: props.range.id });
       await invalidateProductRanges();
       props.onClose();
-      toast.success('Product Range created');
-      return;
-    }
-
-    if (value.name.trim() === props.range.name && value.imageDataUrl === props.range.imageDataUrl) {
-      toast.info('No Product Range changes to save');
-      return;
-    }
-
-    await updateMutation.mutateAsync({ ...input, id: props.range.id });
-    await invalidateProductRanges();
-    props.onClose();
-    toast.success('Product Range updated');
-  };
-
-  return (
-    <>
-      <form
-        id={formId}
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save().catch(() => undefined);
-        }}
-      >
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor={`${formId}-name`}>Name</FieldLabel>
-            <Input
-              autoComplete="off"
-              disabled={isPending}
-              id={`${formId}-name`}
-              onChange={(event) => setValue((current) => ({ ...current, name: event.currentTarget.value }))}
-              value={value.name}
-            />
-          </Field>
-          <ProductRangeImagePicker
-            disabled={isPending}
-            id={`${formId}-image`}
-            imageDataUrl={value.imageDataUrl}
-            label={value.name || 'Product Range'}
-            onChange={(imageDataUrl) => setValue((current) => ({ ...current, imageDataUrl }))}
-          />
-        </FieldGroup>
-      </form>
-      <DialogFooter>
-        <Button disabled={isPending} onClick={props.onClose} type="button" variant="outline">
-          Cancel
-        </Button>
-        <Button disabled={isPending || !canSubmit} form={formId} type="submit">
-          {isPending ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-          Save
-        </Button>
-      </DialogFooter>
-    </>
-  );
-};
-
-type ProductRangeImagePickerProps = {
-  disabled: boolean;
-  id?: string;
-  imageDataUrl: string | null;
-  label: string;
-  onChange: (imageDataUrl: string | null) => void;
-};
-
-const ProductRangeImagePicker: React.FC<ProductRangeImagePickerProps> = ({
-  disabled,
-  id,
-  imageDataUrl,
-  label,
-  onChange,
-}) => {
-  const generatedId = useId();
-  const inputId = id ?? generatedId;
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-
-    if (!file) {
-      return;
-    }
-
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      toast.error('Product Range image must be a JPEG or PNG.');
-      return;
-    }
-
-    if (file.size > RANGE_IMAGE_DATA_URL_MAX_BYTES) {
-      toast.error('Product Range image must be 512 KB or smaller.');
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      onChange(await readFileAsDataUrl(file));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to read Product Range image.');
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-
-  return (
-    <Field>
-      <FieldLabel htmlFor={inputId}>Image</FieldLabel>
-      <div className="flex items-center gap-3">
-        <EntityThumbnail label={label} size="lg" thumbnailDataUrl={imageDataUrl} />
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Input
-            accept="image/jpeg,image/png"
-            className="sr-only"
-            disabled={disabled || isProcessing}
-            id={inputId}
-            onChange={handleFileChange}
-            ref={inputRef}
-            type="file"
-          />
-          <Button
-            disabled={disabled || isProcessing}
-            onClick={() => inputRef.current?.click()}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            {imageDataUrl ? <IconPhoto data-icon="inline-start" /> : <IconUpload data-icon="inline-start" />}
-            {imageDataUrl ? 'Replace' : 'Upload'}
-          </Button>
-          {imageDataUrl ? (
-            <Button
-              aria-label="Remove Product Range image"
-              disabled={disabled || isProcessing}
-              onClick={() => onChange(null)}
-              size="icon-sm"
-              type="button"
-              variant="outline"
-            >
-              <IconTrash />
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    </Field>
-  );
-};
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.addEventListener('load', () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Unable to read Product Range image.'));
-      }
-    });
-    reader.addEventListener('error', () => reject(new Error('Unable to read Product Range image.')));
-    reader.readAsDataURL(file);
+      toast.success('Product Range updated');
+    },
   });
-}
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <FieldGroup>
+        <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
+        <form.Subscribe selector={(state) => state.values.name}>
+          {(name) => (
+            <form.AppField name="imageDataUrl">
+              {(field) => (
+                <field.ImageField
+                  contentTypes={IMAGE_CONTENT_TYPES}
+                  fallbackLabel={name || 'Product Range'}
+                  label="Image"
+                  maxBytes={RANGE_IMAGE_DATA_URL_MAX_BYTES}
+                />
+              )}
+            </form.AppField>
+          )}
+        </form.Subscribe>
+      </FieldGroup>
+      {/* `isDefaultValue` is equality-to-defaults; unlike `isDirty` it returns to true when the user
+          reverts a field, so reverting an edit re-disables Save instead of submitting a no-op update. */}
+      <form.Subscribe selector={(state) => ({ isDefaultValue: state.isDefaultValue, isSubmitting: state.isSubmitting })}>
+        {({ isDefaultValue, isSubmitting }) => (
+          <DialogFooter className="mt-4">
+            <Button disabled={isSubmitting} onClick={props.onClose} type="button" variant="outline">
+              Cancel
+            </Button>
+            <Button disabled={isSubmitting || (props.mode === 'edit' && isDefaultValue)} type="submit">
+              {isSubmitting ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        )}
+      </form.Subscribe>
+    </form>
+  );
+};

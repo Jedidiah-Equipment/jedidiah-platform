@@ -46,9 +46,13 @@ Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from
 
 **Thumbnail** is separate: a small inline display image for quick recognition.
 
-**Job Document Snapshot** copies the Product's current Documents onto the Job at Job creation, pointing to the same immutable stored files and freezing metadata. Product display names may still read live.
+**Job Document Snapshot** copies the Product's current uploaded Documents onto the Job at Job creation, pointing to the same immutable stored files and freezing metadata. The Brochure is not copied but generated fresh and saved as its own Job Document. Product display names may still read live.
 
-**Quote Document** is a generated customer-facing PDF packet owned by a Quote. The newest created Quote Document is treated as the latest.
+**Quote Document** is a generated customer-facing PDF packet owned by a Quote. The newest created Quote Document is treated as the latest. The Product's Brochure is merged into the packet at generation time.
+
+**Brochure** is a generated customer-facing product marketing PDF produced from a Product's Brochure Config, not an uploaded file. It is generated from live config every time: streamed unsaved when viewed from the Product screen, merged into the Quote Document packet at Quote generation, and saved as a standalone Job Document at Job creation. A saved Brochure is immutable and reflects the config as it was at generation time.
+
+**Brochure Config** is the Product-owned configuration the Brochure is generated from: subtitle, key features (an ordered list of freeform lines), and the range logo, hero, technical drawing, and secondary image slots. The title comes from the Product name, the assembly lists from the Product's Standard and Optional Assemblies, and the body copy from the Product description.
 
 ## Access
 

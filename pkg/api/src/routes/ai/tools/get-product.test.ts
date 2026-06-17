@@ -6,17 +6,19 @@ import { z } from 'zod';
 import { getProductTool } from '@/routes/ai/tools/get-product.js';
 import { createActorUser, createAiContext, createModelCode } from '@/test/ai-tools.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
+  const rangeId = await createProductRangeFixture(db);
 
-  return { db };
+  return { db, rangeId };
 });
 
 describe('getProductTool', () => {
   test('returns the same product result shape as products.get', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Compact Loader');
+    const created = await createProduct(caller, 'Compact Loader', context.rangeId);
     const access = createUserAccessSummary({
       role: 'procurement-manager',
       userId: 'test-user-id',
@@ -58,12 +60,13 @@ describe('getProductTool', () => {
   });
 });
 
-async function createProduct(caller: AppRouterCaller, name: string): Promise<Product> {
+async function createProduct(caller: AppRouterCaller, name: string, rangeId: string): Promise<Product> {
   return caller.products.create({
     basePrice: 1_000,
     description: null,
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
+    rangeId,
   });
 }

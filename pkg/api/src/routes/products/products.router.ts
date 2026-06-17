@@ -2,6 +2,7 @@ import {
   createProduct,
   getProduct,
   isProductCoreError,
+  listProductRangeOptions,
   listProducts,
   type ProductCoreError,
   updateProduct,
@@ -22,6 +23,8 @@ export const productsRouter = router({
   get: authorizedProcedure('product:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapProductErrors(() => getProduct({ db: ctx.db, id: input.id }))),
+
+  rangeOptions: authorizedProcedure('product:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
 
   create: authorizedProcedure('product:create')
     .input(ProductCreateInput)
@@ -109,6 +112,12 @@ function mapProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductC
         appCode: error.code,
         code: 'NOT_FOUND',
         message: 'Product not found.',
+      };
+    case 'product.range.not_found':
+      return {
+        appCode: error.code,
+        code: 'NOT_FOUND',
+        message: 'Product Range not found.',
       };
     default:
       return assertNever(error);

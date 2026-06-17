@@ -32,6 +32,12 @@ export const ProductRange = z.object({
   updatedAt: DateIso,
 });
 
+export type ProductRangeOption = z.infer<typeof ProductRangeOption>;
+export const ProductRangeOption = ProductRange.pick({
+  id: true,
+  name: true,
+});
+
 export type ProductRangeCreateInput = z.infer<typeof ProductRangeCreateInput>;
 export const ProductRangeCreateInput = z
   .object({
@@ -52,6 +58,11 @@ export const ProductRangeUpdateInput = z
 export type ProductRangeListResult = z.infer<typeof ProductRangeListResult>;
 export const ProductRangeListResult = z.object({
   ranges: z.array(ProductRange),
+});
+
+export type ProductRangeOptionsResult = z.infer<typeof ProductRangeOptionsResult>;
+export const ProductRangeOptionsResult = z.object({
+  ranges: z.array(ProductRangeOption),
 });
 
 function getBase64Payload(value: string): string | null {

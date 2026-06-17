@@ -6,6 +6,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const routeTestState = vi.hoisted(() => ({
@@ -335,6 +336,7 @@ async function createDocumentApp(storage: StorageAdapter) {
 }
 
 async function createProduct(db: Db) {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -344,6 +346,7 @@ async function createProduct(db: Db) {
       buildTimeDays: 14,
       modelCode: 'DOC-HTTP',
       name: 'Document HTTP Product',
+      rangeId,
     })
     .returning({ id: products.id });
 
@@ -566,6 +569,7 @@ async function createJobOwner(db: Db, productId: UUID) {
 // decodable PNG bytes), a non-empty description, and one standard assembly. The base product stays
 // incomplete so the gate's negative path can be exercised separately.
 async function createCompleteBrochureProduct({ db, storage }: { db: Db; storage: MemoryStorage }) {
+  const rangeId = await createProductRangeFixture(db);
   const slots = ['rangeLogo', 'hero', 'technicalDrawing', 'secondary'] as const;
   const images: Record<string, { byteSize: number; contentType: string; storageKey: string; updatedAt: string }> = {};
 
@@ -597,6 +601,7 @@ async function createCompleteBrochureProduct({ db, storage }: { db: Db; storage:
       description: 'A rugged feed mixer built for daily use.',
       modelCode: 'BRO-PREVIEW',
       name: 'Brochure Preview Product',
+      rangeId,
     })
     .returning({ id: products.id });
 

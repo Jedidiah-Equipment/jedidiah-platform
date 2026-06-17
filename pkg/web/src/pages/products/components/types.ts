@@ -22,7 +22,7 @@ import {
 } from '@pkg/schema';
 import { z } from 'zod';
 
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
+import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
 
 // Form representation of an assembly: like the API `AssemblyInput` but without its coercion
 // and defaults, so the controlled value shape matches what the editor holds. Field rules still
@@ -69,6 +69,7 @@ const ProductFormFields = z.object({
   buildTimeDays: ProductBuildTimeDays,
   modelCode: ProductModelCode,
   name: ProductName,
+  rangeId: requiredSelection(UUID, 'Select a range'),
   requiresVinNumber: ProductRequiresVinNumber,
   thumbnailDataUrl: NullableThumbnailDataUrl,
 });
@@ -86,6 +87,7 @@ export const ProductCreateFormValues = ProductFormFields.pick({
   buildTimeDays: true,
   modelCode: true,
   name: true,
+  rangeId: true,
 });
 
 export const emptyProductFormValues: ProductFormValues = {
@@ -98,6 +100,7 @@ export const emptyProductFormValues: ProductFormValues = {
   modelCode: '',
   name: '',
   productBays: [],
+  rangeId: '',
   requiresVinNumber: false,
   thumbnailDataUrl: null,
 };
@@ -114,6 +117,7 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     modelCode: initialProduct?.modelCode ?? '',
     name: initialProduct?.name ?? '',
     productBays: toProductBayInputs(initialProduct),
+    rangeId: initialProduct?.rangeId ?? '',
     requiresVinNumber: initialProduct?.requiresVinNumber ?? false,
     thumbnailDataUrl: initialProduct?.thumbnailDataUrl ?? null,
   };

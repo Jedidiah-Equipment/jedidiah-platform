@@ -21,6 +21,7 @@ type QuoteProductComboboxProps = {
   disabled: boolean;
   notifyResolvedSelection?: boolean;
   onSelected: (product: QuoteProductChoice | null) => void;
+  rangeId?: UUID | '';
   value: UUID | '';
 };
 
@@ -28,6 +29,7 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
   disabled,
   notifyResolvedSelection = true,
   onSelected,
+  rangeId = '',
   value,
 }) => {
   const onSelectedRef = useRef(onSelected);
@@ -35,6 +37,7 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
   const [debouncedSearch] = useDebouncedValue(search, 250);
   const products = useProductForQuoteOptions({
     pageSize: 20,
+    rangeId,
     search: debouncedSearch,
     value,
   });
@@ -49,12 +52,12 @@ export const QuoteProductCombobox: React.FC<QuoteProductComboboxProps> = ({
       return;
     }
 
-    if (value && !valueProduct) {
+    if (value && !valueProduct && products.isResolvingSelected) {
       return;
     }
 
     onSelectedRef.current(valueProduct);
-  }, [notifyResolvedSelection, value, valueProduct]);
+  }, [notifyResolvedSelection, products.isResolvingSelected, value, valueProduct]);
 
   return (
     <EntityCombobox

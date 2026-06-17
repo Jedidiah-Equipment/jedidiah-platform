@@ -44,7 +44,7 @@ describe('core error codes and guards', () => {
   });
 
   it('identifies product range core errors', () => {
-    expect(new DuplicateProductRangeNameError('Crosshaul').code).toBe('product_range.duplicate_name');
+    expect(new DuplicateProductRangeNameError('Example Range').code).toBe('product_range.duplicate_name');
     expect(new ProductRangeNotFoundError('range-id').code).toBe('product_range.not_found');
     expect(isProductRangeCoreError(new ProductRangeNotFoundError('range-id'))).toBe(true);
     expect(isProductRangeCoreError(new Error('product_range.not_found'))).toBe(false);

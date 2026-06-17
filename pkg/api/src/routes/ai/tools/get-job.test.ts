@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { getJobTool } from '@/routes/ai/tools/get-job.js';
 import { createActorUser, createAiContext } from '@/test/ai-tools.js';
 import { createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 import { createAppRouterCaller } from '@/trpc/router.js';
 
@@ -123,6 +124,7 @@ async function createAcceptedQuote(db: Db, productId: Product['id']) {
 }
 
 async function createProduct(db: Db): Promise<Product> {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -131,6 +133,7 @@ async function createProduct(db: Db): Promise<Product> {
       buildTimeDays: 14,
       modelCode: 'JOB-GET-001',
       name: 'Job Get Product',
+      rangeId,
     })
     .returning();
 
@@ -142,6 +145,7 @@ async function createProduct(db: Db): Promise<Product> {
     ...product,
     createdAt: product.createdAt.toISOString(),
     options: [],
+    rangeId: product.rangeId,
     updatedAt: product.updatedAt.toISOString(),
   });
 }

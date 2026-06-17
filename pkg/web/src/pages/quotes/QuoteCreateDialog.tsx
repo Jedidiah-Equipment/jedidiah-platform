@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
-import { useSalesPersonOptions } from '@/hooks/options/index.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+import { useProductRangeForQuoteOptions, useSalesPersonOptions } from '@/hooks/options/index.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -16,6 +17,8 @@ import { QuoteCustomerCombobox } from './components/QuoteCustomerCombobox.js';
 import { QuoteProductCombobox } from './components/QuoteProductCombobox.js';
 import { quoteStatusLabels } from './components/QuoteStatusBadge.js';
 import { QUOTE_CREATE_DEFAULT_VALUES, QuoteCreateFormValues, toQuoteCreateInput } from './components/types.js';
+
+const ALL_RANGES_SELECT_VALUE = 'all-ranges';
 
 type QuoteCreateDialogProps = {
   onOpenChange: (open: boolean) => void;
@@ -27,6 +30,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
   const navigate = useNavigate();
   const { invalidateQuotes } = useQueryInvalidation();
   const currentUserQuery = useQuery(trpc.auth.me.queryOptions());
+  const productRangeOptions = useProductRangeForQuoteOptions();
   const salespeopleOptions = useSalesPersonOptions();
   const showMutationError = useApiMutationErrorToast();
 
@@ -114,24 +118,63 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
               );
             }}
           </form.Field>
-          <form.Field name="productId">
+          <form.Field name="rangeId">
             {(field) => {
-              const fieldErrors = getFieldErrors(field.state.meta.errors);
-              const isInvalid = fieldErrors.length > 0;
+              const selectedRange = productRangeOptions.items.find((range) => range.id === field.state.value);
 
               return (
-                <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>Product</FieldLabel>
-                  <QuoteProductCombobox
-                    disabled={false}
-                    onSelected={(product) => field.handleChange(product?.id ?? '')}
-                    value={field.state.value}
-                  />
-                  <FieldError errors={fieldErrors} />
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Range</FieldLabel>
+                  <Select
+                    disabled={productRangeOptions.isPending}
+                    onValueChange={(value) => {
+                      field.handleChange(value === ALL_RANGES_SELECT_VALUE ? '' : (value ?? ''));
+                    }}
+                    value={field.state.value || ALL_RANGES_SELECT_VALUE}
+                  >
+                    <SelectTrigger id={field.name} className="w-full">
+                      <SelectValue placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'All ranges'}>
+                        {field.state.value ? selectedRange?.name : 'All ranges'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value={ALL_RANGES_SELECT_VALUE}>All ranges</SelectItem>
+                        {productRangeOptions.items.map((range) => (
+                          <SelectItem key={range.id} value={range.id}>
+                            {range.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </Field>
               );
             }}
           </form.Field>
+          <form.Subscribe selector={(state) => state.values.rangeId}>
+            {(rangeId) => (
+              <form.Field name="productId">
+                {(field) => {
+                  const fieldErrors = getFieldErrors(field.state.meta.errors);
+                  const isInvalid = fieldErrors.length > 0;
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Product</FieldLabel>
+                      <QuoteProductCombobox
+                        disabled={false}
+                        onSelected={(product) => field.handleChange(product?.id ?? '')}
+                        rangeId={rangeId}
+                        value={field.state.value}
+                      />
+                      <FieldError errors={fieldErrors} />
+                    </Field>
+                  );
+                }}
+              </form.Field>
+            )}
+          </form.Subscribe>
           <form.AppField name="salesPersonId">
             {(field) => (
               <field.SelectField

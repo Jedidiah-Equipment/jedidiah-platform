@@ -19,6 +19,7 @@ import type { QuoteDetail } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
@@ -528,6 +529,65 @@ describe('quotes.update', () => {
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
     });
+  });
+});
+
+describe('quotes.products', () => {
+  test('returns all quote Product options when rangeId is omitted and narrows when it is present', async ({
+    context,
+  }) => {
+    const caller = context.createCaller(mockSession('sales'));
+    const loadersRangeId = await createProductRangeFixture(context.db, 'Quote Loaders');
+    const crushersRangeId = await createProductRangeFixture(context.db, 'Quote Crushers');
+    const loader = await createProduct(context.db, {
+      modelCode: 'QUOTE-RANGE-LOAD',
+      name: 'Quote Range Loader',
+      rangeId: loadersRangeId,
+    });
+    const crusher = await createProduct(context.db, {
+      modelCode: 'QUOTE-RANGE-CRUSH',
+      name: 'Quote Range Crusher',
+      rangeId: crushersRangeId,
+    });
+
+    const baseInput = {
+      pageSize: 0,
+      search: 'Quote Range',
+      sortBy: 'name' as const,
+      sortDirection: 'asc' as const,
+    };
+
+    await expect(caller.quotes.products(baseInput)).resolves.toMatchObject({
+      total: 2,
+      items: [
+        expect.objectContaining({ id: crusher.id, name: 'Quote Range Crusher' }),
+        expect.objectContaining({ id: loader.id, name: 'Quote Range Loader' }),
+      ],
+    });
+    await expect(
+      caller.quotes.products({ ...baseInput, columnFilters: { rangeId: loadersRangeId } }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ id: loader.id, rangeId: loadersRangeId })],
+    });
+  });
+
+  test('lists quote Range options through quote read access instead of Product Range admin access', async ({
+    context,
+  }) => {
+    const rangeId = await createProductRangeFixture(context.db, 'Quote Filter Range');
+    const adminCaller = context.createCaller(mockSession('admin'));
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const productEditorCaller = context.createCaller(mockSession('procurement-manager'));
+
+    await expect(salesCaller.products.rangeOptions()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(salesCaller.quotes.rangeOptions()).resolves.toMatchObject({
+      ranges: expect.arrayContaining([{ id: rangeId, name: 'Quote Filter Range' }]),
+    });
+    await expect(adminCaller.quotes.rangeOptions()).resolves.toMatchObject({
+      ranges: expect.arrayContaining([{ id: rangeId, name: 'Quote Filter Range' }]),
+    });
+    await expect(productEditorCaller.quotes.rangeOptions()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
 
@@ -1725,6 +1785,7 @@ async function createSalesUser(
 }
 
 async function createProduct(db: Db, overrides: Partial<typeof products.$inferInsert> = {}) {
+  const rangeId = overrides.rangeId ?? (await createProductRangeFixture(db));
   const [product] = await db
     .insert(products)
     .values({
@@ -1733,6 +1794,7 @@ async function createProduct(db: Db, overrides: Partial<typeof products.$inferIn
       buildTimeDays: 14,
       modelCode: 'QUOTE-001',
       name: 'Quote Test Product',
+      rangeId,
       ...overrides,
     })
     .returning();

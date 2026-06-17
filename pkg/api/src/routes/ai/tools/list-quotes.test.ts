@@ -119,6 +119,7 @@ async function createProduct(db: Db) {
       buildTimeDays: 14,
       modelCode: 'QUOTE-LIST-001',
       name: 'Quote List Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning();
 

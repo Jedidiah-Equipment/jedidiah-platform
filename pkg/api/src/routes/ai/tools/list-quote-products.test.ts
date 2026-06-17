@@ -1,6 +1,6 @@
 import * as core from '@pkg/core';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { Product, ProductListInput } from '@pkg/schema';
+import { CROSSHAUL_PRODUCT_RANGE_ID, type Product, type ProductListInput } from '@pkg/schema';
 import { describe, expect, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -103,6 +103,7 @@ async function createProduct(
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
+    rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
     ...overrides,
   });
 }

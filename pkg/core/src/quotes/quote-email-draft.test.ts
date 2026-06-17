@@ -33,6 +33,7 @@ const test = createTester(async ({ db }) => {
       currencyCode: 'ZAR',
       modelCode: 'DRAFT-EMAIL-001',
       name: 'Draft Email Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning();
 

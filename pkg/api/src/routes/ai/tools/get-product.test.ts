@@ -1,5 +1,5 @@
 import { createUserAccessSummary } from '@pkg/domain';
-import type { Product } from '@pkg/schema';
+import { CROSSHAUL_PRODUCT_RANGE_ID, type Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 import { z } from 'zod';
 
@@ -65,5 +65,6 @@ async function createProduct(caller: AppRouterCaller, name: string): Promise<Pro
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
+    rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
   });
 }

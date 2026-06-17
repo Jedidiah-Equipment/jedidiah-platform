@@ -41,6 +41,7 @@ const test = createTester(async ({ db }) => {
       currencyCode: 'ZAR',
       modelCode: 'QUOTE-SUMMARY-001',
       name: 'Quote Summary Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning();
 

@@ -1,0 +1,24 @@
+import type { ProductRange } from '@pkg/schema';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+
+import { useTRPC } from '@/lib/trpc.js';
+import { toSelectOptions } from './helpers.js';
+
+export type ProductRangeOption = Pick<ProductRange, 'id' | 'name'>;
+
+export function useProductRangeOptions() {
+  const trpc = useTRPC();
+  const productRangesQuery = useQuery(trpc.products.rangeOptions.queryOptions());
+  const items = productRangesQuery.data?.ranges ?? [];
+  const selectOptions = useMemo(() => toSelectOptions(items, (range) => range.name), [items]);
+
+  return {
+    items,
+    query: productRangesQuery,
+    selectOptions,
+    isFetching: productRangesQuery.isFetching,
+    isLoading: productRangesQuery.isLoading,
+    isPending: productRangesQuery.isPending,
+  };
+}

@@ -4,6 +4,7 @@ import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { TabsContent } from '@/components/ui/tabs.js';
+import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductBaysEditor } from './ProductBaysEditor.js';
 import { ProductBrochureEditor } from './ProductBrochureEditor.js';
@@ -16,6 +17,7 @@ type ProductFormProps = {
 
 export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => {
   const defaultValues = toProductFormValues(product);
+  const productRangeOptions = useProductRangeOptions();
 
   const { autosave, form, formProps } = useAutosaveForm({
     defaultValues,
@@ -59,6 +61,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                   </form.AppField>
                   <form.AppField name="modelCode">
                     {(field) => <field.TextField autoComplete="off" label="Model code" />}
+                  </form.AppField>
+                  <form.AppField name="rangeId">
+                    {(field) => (
+                      <field.SelectField
+                        disabled={productRangeOptions.isPending}
+                        label="Range"
+                        onValueCommit={saveCommittedField}
+                        options={productRangeOptions.selectOptions}
+                        placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'Select range'}
+                      />
+                    )}
                   </form.AppField>
                   <form.AppField name="basePrice">
                     {(field) => (

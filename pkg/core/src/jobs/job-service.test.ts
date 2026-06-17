@@ -2003,6 +2003,7 @@ async function createProduct(db: Db, { modelCode, name }: { modelCode: string; n
       description: null,
       modelCode,
       name,
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning();
 

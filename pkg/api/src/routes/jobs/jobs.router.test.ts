@@ -1693,6 +1693,7 @@ async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
       buildTimeDays: 14,
       modelCode: 'JOB-TEST',
       name: 'Job Test Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning({ id: products.id });
 

@@ -1733,6 +1733,7 @@ async function createProduct(db: Db, overrides: Partial<typeof products.$inferIn
       buildTimeDays: 14,
       modelCode: 'QUOTE-001',
       name: 'Quote Test Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
       ...overrides,
     })
     .returning();

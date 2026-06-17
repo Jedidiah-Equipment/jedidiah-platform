@@ -1,9 +1,9 @@
-import { auditEvents, type Db, jobBays, parts, sql, supplier, user } from '@pkg/db';
-import type { Product } from '@pkg/schema';
+import { auditEvents, type Db, jobBays, parts, productRanges, sql, supplier, user } from '@pkg/db';
+import { CROSSHAUL_PRODUCT_RANGE_ID, type Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
-import { expectIsoDatetime } from '@/test/test-utils.js';
+import { expectIsoDatetime, mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
@@ -24,6 +24,7 @@ async function createProduct(
     buildTimeDays: 14,
     modelCode: createModelCode(name),
     name,
+    rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
     ...overrides,
   });
 }
@@ -49,11 +50,43 @@ describe('products.create', () => {
       modelCode: 'WHEEL-LOADER',
       name: 'Wheel Loader',
       productBays: [],
+      rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
       requiresVinNumber: false,
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
   });
+
+  test('rejects creating products without a Range', async ({ context }) => {
+    const caller = context.createCaller();
+
+    await expect(
+      caller.products.create({
+        basePrice: 1_000,
+        description: null,
+        buildTimeDays: 14,
+        modelCode: 'NO-RANGE',
+        name: 'No Range',
+      } as Parameters<AppRouterCaller['products']['create']>[0]),
+    ).rejects.toThrow();
+  });
+
+  test('creates products with a selected Range', async ({ context }) => {
+    const caller = context.createCaller();
+    const range = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-000000000501',
+      name: 'Earthmoving',
+    });
+
+    const created = await createProduct(caller, 'Wheel Loader Range', { rangeId: range.id });
+
+    expect(created).toMatchObject({
+      name: 'Wheel Loader Range',
+      rangeId: range.id,
+    });
+    await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({ rangeId: range.id });
+  });
+
   test('rejects negative build time days', async ({ context }) => {
     const caller = context.createCaller();
 
@@ -64,6 +97,7 @@ describe('products.create', () => {
         buildTimeDays: -1,
         modelCode: 'NEGATIVE-LEAD-TIME',
         name: 'Negative Lead Time',
+        rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
       }),
     ).rejects.toThrow();
   });
@@ -177,6 +211,18 @@ describe('products.create', () => {
 });
 
 describe('products.read', () => {
+  test('lists Range options through Product read access', async ({ context }) => {
+    await createRange(context.db, {
+      id: '00000000-0000-4000-8000-000000000502',
+      name: 'Earthmoving',
+    });
+    const caller = context.createCaller(mockSession('procurement-manager'));
+
+    await expect(caller.products.rangeOptions()).resolves.toMatchObject({
+      ranges: [{ id: CROSSHAUL_PRODUCT_RANGE_ID, name: 'Crosshaul' }, { name: 'Earthmoving' }],
+    });
+  });
+
   test('returns build time days and VIN requirement on get and list', async ({ context }) => {
     const caller = context.createCaller();
     const created = await createProduct(caller, 'Wheel Loader Read', { buildTimeDays: 21, requiresVinNumber: true });
@@ -294,6 +340,7 @@ describe('products.update', () => {
       buildTimeDays: 30,
       modelCode: 'WHEEL-LOADER-UPDATED',
       name: 'Wheel Loader Updated',
+      rangeId: created.rangeId,
       requiresVinNumber: true,
     });
 
@@ -323,6 +370,31 @@ describe('products.update', () => {
     );
   });
 
+  test('updates product Range', async ({ context }) => {
+    const adminCaller = context.createCaller();
+    const procurementCaller = context.createCaller(mockSession('procurement-manager'));
+    const range = await createRange(context.db, {
+      id: '00000000-0000-4000-8000-000000000503',
+      name: 'Earthmoving',
+    });
+    const created = await createProduct(adminCaller, 'Wheel Loader Range Update');
+
+    const updated = await procurementCaller.products.update({
+      id: created.id,
+      basePrice: created.basePrice,
+      currencyCode: created.currencyCode,
+      description: created.description,
+      buildTimeDays: created.buildTimeDays,
+      modelCode: created.modelCode,
+      name: created.name,
+      rangeId: range.id,
+      requiresVinNumber: created.requiresVinNumber,
+    });
+
+    expect(updated.rangeId).toBe(range.id);
+    await expect(adminCaller.products.get({ id: created.id })).resolves.toMatchObject({ rangeId: range.id });
+  });
+
   test('updates and removes product thumbnails with audit changes', async ({ context }) => {
     const caller = context.createCaller();
     const created = await createProduct(caller, 'Thumbnail Audit Product', { thumbnailDataUrl: THUMBNAIL_DATA_URL });
@@ -336,6 +408,7 @@ describe('products.update', () => {
       id: created.id,
       modelCode: created.modelCode,
       name: created.name,
+      rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
       thumbnailDataUrl: null,
     });
@@ -387,6 +460,7 @@ describe('products.update', () => {
       buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: created.name,
+      rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
     });
 
@@ -436,6 +510,7 @@ describe('products.update', () => {
       modelCode: created.modelCode,
       name: created.name,
       productBays: productBayInputs(created),
+      rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
       thumbnailDataUrl: created.thumbnailDataUrl,
     });
@@ -458,6 +533,7 @@ describe('products.update', () => {
       modelCode: retainedDisabled.modelCode,
       name: retainedDisabled.name,
       productBays: [{ bayId: secondBayId, defaultWorkingDays: 8 }],
+      rangeId: retainedDisabled.rangeId,
       requiresVinNumber: retainedDisabled.requiresVinNumber,
       thumbnailDataUrl: retainedDisabled.thumbnailDataUrl,
     });
@@ -475,6 +551,7 @@ describe('products.update', () => {
       modelCode: replaced.modelCode,
       name: replaced.name,
       productBays: [],
+      rangeId: replaced.rangeId,
       requiresVinNumber: replaced.requiresVinNumber,
       thumbnailDataUrl: replaced.thumbnailDataUrl,
     });
@@ -519,6 +596,7 @@ describe('products.update', () => {
       buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: 'Wheel Loader Preserve Assemblies Updated',
+      rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
     });
 
@@ -586,6 +664,7 @@ describe('products.update', () => {
         buildTimeDays: target.buildTimeDays,
         modelCode: target.modelCode,
         name: target.name,
+        rangeId: target.rangeId,
         requiresVinNumber: target.requiresVinNumber,
       }),
     ).rejects.toThrow('Assemblies must belong to the product being updated.');
@@ -619,6 +698,7 @@ describe('products brochure config', () => {
       buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: created.name,
+      rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
     });
 
@@ -653,6 +733,7 @@ describe('products brochure config', () => {
       buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: created.name,
+      rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
     };
 
@@ -682,6 +763,7 @@ describe('products brochure config', () => {
       buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: created.name,
+      rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
     });
 
@@ -693,6 +775,7 @@ describe('products brochure config', () => {
       buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: created.name,
+      rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
     });
 
@@ -710,6 +793,7 @@ describe('products brochure config', () => {
       buildTimeDays: created.buildTimeDays,
       modelCode: created.modelCode,
       name: created.name,
+      rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
     };
 
@@ -736,6 +820,23 @@ async function createActorUser(db: Db): Promise<void> {
       updatedAt: new Date(),
     })
     .onConflictDoNothing();
+}
+
+async function createRange(db: Db, input: { id: string; name: string }) {
+  const [range] = await db
+    .insert(productRanges)
+    .values({
+      id: input.id,
+      imageDataUrl: null,
+      name: input.name,
+    })
+    .returning();
+
+  if (!range) {
+    throw new Error('Product Range insert did not return a row');
+  }
+
+  return range;
 }
 
 async function createParts(db: Db): Promise<{ bucket: string; hose: string; rockBucket: string }> {

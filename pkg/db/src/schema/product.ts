@@ -15,6 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { parts } from './part.js';
+import { productRanges } from './product-range.js';
 
 export const products = pgTable(
   'products',
@@ -29,6 +30,9 @@ export const products = pgTable(
     buildTimeDays: integer('build_time_days').notNull(),
     modelCode: text('model_code').notNull(),
     name: text('name').notNull(),
+    rangeId: uuid('range_id')
+      .notNull()
+      .references(() => productRanges.id, { onDelete: 'restrict' }),
     requiresVinNumber: boolean('requires_vin_number').notNull().default(false),
     thumbnailDataUrl: text('thumbnail_data_url'),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
@@ -111,8 +115,12 @@ export const assemblyOverrides = pgTable(
   ],
 );
 
-export const productsRelations = relations(products, ({ many }) => ({
+export const productsRelations = relations(products, ({ many, one }) => ({
   assemblies: many(productAssemblies),
+  range: one(productRanges, {
+    fields: [products.rangeId],
+    references: [productRanges.id],
+  }),
 }));
 
 export const productAssembliesRelations = relations(productAssemblies, ({ many, one }) => ({

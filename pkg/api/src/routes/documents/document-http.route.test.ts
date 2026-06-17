@@ -298,6 +298,7 @@ async function createProduct(db: Db) {
       buildTimeDays: 14,
       modelCode: 'DOC-HTTP',
       name: 'Document HTTP Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning({ id: products.id });
 

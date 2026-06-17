@@ -291,6 +291,7 @@ export const Product = z.object({
   basePrice: ProductBasePrice,
   buildTimeDays: ProductBuildTimeDays,
   currencyCode: ProductCurrencyCode,
+  rangeId: UUID,
   requiresVinNumber: ProductRequiresVinNumber,
   assemblies: z.array(Assembly).default([]),
   productBays: z.array(ProductBay).default([]),
@@ -319,6 +320,7 @@ export const ProductCreateInput = z
     description: ProductDescriptionInput,
     modelCode: ProductModelCode,
     basePrice: ProductBasePrice,
+    rangeId: UUID,
     assemblies: ProductAssembliesInput,
     productBays: ProductBaysInput,
     brochureConfig: BrochureConfigInput.default(EMPTY_BROCHURE_CONFIG),
@@ -342,6 +344,7 @@ export const ProductUpdateInput = z
     buildTimeDays: ProductBuildTimeDaysInput,
     modelCode: ProductModelCode,
     name: ProductName,
+    rangeId: UUID,
     requiresVinNumber: ProductRequiresVinNumber,
     thumbnailDataUrl: NullableThumbnailDataUrl.default(null),
   })

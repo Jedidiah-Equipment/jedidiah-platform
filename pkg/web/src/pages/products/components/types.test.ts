@@ -15,6 +15,7 @@ const PRODUCT_ID = '550e8400-e29b-41d4-a716-446655440000';
 const STANDARD_ID = '550e8400-e29b-41d4-a716-446655440001';
 const OPTIONAL_ID = '550e8400-e29b-41d4-a716-446655440002';
 const BAY_ID = '550e8400-e29b-41d4-a716-446655440003';
+const RANGE_ID = '550e8400-e29b-41d4-a716-446655440004';
 
 function buildProduct(overrides: Record<string, unknown> = {}): Product {
   return {
@@ -25,6 +26,7 @@ function buildProduct(overrides: Record<string, unknown> = {}): Product {
     basePrice: 1000,
     buildTimeDays: 14,
     currencyCode: 'ZAR',
+    rangeId: RANGE_ID,
     requiresVinNumber: false,
     assemblies: [
       { id: STANDARD_ID, productId: PRODUCT_ID, kind: 'standard', name: 'Base', parts: [] },
@@ -68,6 +70,7 @@ describe('toProductFormValues', () => {
     expect(values.modelCode).toBe('');
     expect(values.description).toBe('');
     expect(values.currencyCode).toBe('ZAR');
+    expect(values.rangeId).toBe('');
     expect(values.requiresVinNumber).toBe(false);
     expect(values.assemblies).toEqual([]);
     expect(values.productBays).toEqual([]);
@@ -81,6 +84,7 @@ describe('toProductFormValues', () => {
     expect(values.name).toBe('Widget');
     expect(values.basePrice).toBe(1000);
     expect(values.buildTimeDays).toBe(14);
+    expect(values.rangeId).toBe(RANGE_ID);
     expect(values.requiresVinNumber).toBe(false);
     expect(values.assemblies).toHaveLength(2);
     expect(values.productBays).toEqual([{ bayId: BAY_ID, defaultWorkingDays: 5 }]);
@@ -166,6 +170,7 @@ describe('toProductCreateInput', () => {
       modelCode: 'MOD-1',
       name: 'Widget',
       productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
+      rangeId: RANGE_ID,
       requiresVinNumber: false,
       thumbnailDataUrl: null,
     });
@@ -180,6 +185,7 @@ describe('toProductMinimalCreateInput', () => {
         buildTimeDays: 14,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
+        rangeId: RANGE_ID,
       }),
     ).toEqual({
       assemblies: [],
@@ -191,6 +197,7 @@ describe('toProductMinimalCreateInput', () => {
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       productBays: [],
+      rangeId: RANGE_ID,
       requiresVinNumber: false,
       thumbnailDataUrl: null,
     });
@@ -218,6 +225,7 @@ describe('toProductUpdateInput', () => {
       modelCode: 'MOD-1',
       name: 'Widget',
       productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
+      rangeId: RANGE_ID,
     });
   });
 });

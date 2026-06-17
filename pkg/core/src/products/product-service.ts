@@ -11,6 +11,7 @@ import {
   getUniqueViolationConstraint,
   jobBays,
   productBays,
+  productRanges,
   products,
   user,
 } from '@pkg/db';
@@ -74,6 +75,7 @@ import {
   ProductBayDisabledError,
   ProductBayNotFoundError,
   ProductNotFoundError,
+  ProductRangeReferenceNotFoundError,
 } from './product-errors.js';
 
 const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
@@ -112,6 +114,7 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
     modelCode: input.modelCode,
     name: input.name,
     productBays: JSON.stringify(toAuditProductBays(input.productBays)),
+    rangeId: input.rangeId,
     requiresVinNumber: input.requiresVinNumber,
     thumbnailDataUrl: input.thumbnailDataUrl,
   }),
@@ -140,6 +143,7 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     modelCode: row.modelCode,
     name: row.name,
     productBays: row.productBays ?? [],
+    rangeId: row.rangeId,
     requiresVinNumber: row.requiresVinNumber,
     thumbnailDataUrl: row.thumbnailDataUrl,
     updatedAt: row.updatedAt.toISOString(),
@@ -170,6 +174,7 @@ export async function listProducts({
       buildTimeDays: true,
       modelCode: true,
       name: true,
+      rangeId: true,
       requiresVinNumber: true,
       thumbnailDataUrl: true,
       updatedAt: true,
@@ -532,6 +537,7 @@ export async function createProduct({
   try {
     return await db.transaction(async (tx) => {
       const { assemblies: desiredAssemblies, productBays: desiredProductBays, brochureConfig, ...productInput } = input;
+      await assertProductRangeExists({ db: tx, rangeId: productInput.rangeId });
       const [row] = await tx
         .insert(products)
         .values({
@@ -587,6 +593,7 @@ export async function updateProduct({
       const beforeProductBays = await listProductBays({ db: tx, productId: input.id });
       const desiredAssemblies = input.assemblies ?? beforeAssemblies;
       const desiredProductBays = input.productBays ?? beforeProductBays;
+      await assertProductRangeExists({ db: tx, rangeId: input.rangeId });
       const patch = {
         basePrice: input.basePrice,
         // Brochure Config text fields fold into the Product update; omitting them preserves the
@@ -598,6 +605,7 @@ export async function updateProduct({
         buildTimeDays: input.buildTimeDays,
         modelCode: input.modelCode,
         name: input.name,
+        rangeId: input.rangeId,
         requiresVinNumber: input.requiresVinNumber,
         thumbnailDataUrl: input.thumbnailDataUrl,
       };
@@ -820,6 +828,26 @@ async function assertProductExists({ db, productId }: { db: Db; productId: UUID 
 
   if (!product) {
     throw new ProductNotFoundError(productId);
+  }
+}
+
+async function assertProductRangeExists({
+  db,
+  rangeId,
+}: {
+  db: Db | DatabaseTransaction;
+  rangeId: UUID;
+}): Promise<void> {
+  const [range] = await db
+    .select({
+      id: productRanges.id,
+    })
+    .from(productRanges)
+    .where(eq(productRanges.id, rangeId))
+    .limit(1);
+
+  if (!range) {
+    throw new ProductRangeReferenceNotFoundError(rangeId);
   }
 }
 

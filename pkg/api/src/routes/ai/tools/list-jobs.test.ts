@@ -142,6 +142,7 @@ async function createProduct(db: Db): Promise<Product> {
       buildTimeDays: 14,
       modelCode: 'JOB-TOOL-001',
       name: 'Job Tool Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning();
 
@@ -153,6 +154,7 @@ async function createProduct(db: Db): Promise<Product> {
     ...product,
     createdAt: product.createdAt.toISOString(),
     options: [],
+    rangeId: product.rangeId,
     updatedAt: product.updatedAt.toISOString(),
   });
 }

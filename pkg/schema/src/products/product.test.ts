@@ -11,8 +11,10 @@ import {
   ProductCreateInput,
   ProductUpdateInput,
 } from './product.js';
+import { CROSSHAUL_PRODUCT_RANGE_ID } from './product-range.js';
 
 const BAY_ID = '00000000-0000-4000-8000-000000000201';
+const RANGE_ID = CROSSHAUL_PRODUCT_RANGE_ID;
 
 describe('ProductCreateInput', () => {
   it('normalizes product catalog fields', () => {
@@ -23,6 +25,7 @@ describe('ProductCreateInput', () => {
         buildTimeDays: '14',
         modelCode: '  WL-100  ',
         name: '  Wheel Loader  ',
+        rangeId: RANGE_ID,
       }),
     ).toEqual({
       assemblies: [],
@@ -34,6 +37,7 @@ describe('ProductCreateInput', () => {
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       productBays: [],
+      rangeId: RANGE_ID,
       requiresVinNumber: false,
       thumbnailDataUrl: null,
     });
@@ -47,6 +51,7 @@ describe('ProductCreateInput', () => {
         buildTimeDays: 0,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
+        rangeId: RANGE_ID,
       }).description,
     ).toBeNull();
   });
@@ -58,6 +63,7 @@ describe('ProductCreateInput', () => {
         buildTimeDays: 14,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
+        rangeId: RANGE_ID,
       }),
     ).toMatchObject({ assemblies: [], productBays: [] });
   });
@@ -69,6 +75,7 @@ describe('ProductCreateInput', () => {
         buildTimeDays: 1,
         modelCode: '  ',
         name: 'Wheel Loader',
+        rangeId: RANGE_ID,
       }),
     ).toThrow();
   });
@@ -80,6 +87,7 @@ describe('ProductCreateInput', () => {
         buildTimeDays: -1,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
+        rangeId: RANGE_ID,
       }),
     ).toThrow();
 
@@ -89,6 +97,7 @@ describe('ProductCreateInput', () => {
         buildTimeDays: 1.5,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
+        rangeId: RANGE_ID,
       }),
     ).toThrow();
   });
@@ -97,6 +106,18 @@ describe('ProductCreateInput', () => {
     expect(() =>
       ProductCreateInput.parse({
         basePrice: NaN,
+        buildTimeDays: 1,
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+        rangeId: RANGE_ID,
+      }),
+    ).toThrow();
+  });
+
+  it('requires a range', () => {
+    expect(() =>
+      ProductCreateInput.parse({
+        basePrice: 1,
         buildTimeDays: 1,
         modelCode: 'WL-100',
         name: 'Wheel Loader',
@@ -163,6 +184,7 @@ describe('ProductUpdateInput', () => {
         buildTimeDays: '14',
         modelCode: 'WL-100',
         name: 'Wheel Loader',
+        rangeId: RANGE_ID,
         requiresVinNumber: true,
       }),
     ).toEqual({
@@ -173,6 +195,7 @@ describe('ProductUpdateInput', () => {
       buildTimeDays: 14,
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      rangeId: RANGE_ID,
       requiresVinNumber: true,
       thumbnailDataUrl: null,
     });

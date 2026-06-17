@@ -330,6 +330,13 @@
       "when": 1781699645202,
       "tag": "0046_fancy_thunderbolts",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1781702073432,
+      "tag": "0047_purple_richard_fisk",
+      "breakpoints": true
     }
   ]
 }

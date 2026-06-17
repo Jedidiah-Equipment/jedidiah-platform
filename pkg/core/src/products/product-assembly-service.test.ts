@@ -1,5 +1,5 @@
 import { type Db, productAssemblies, user } from '@pkg/db';
-import type { AssemblyInput, ProductCreateInput } from '@pkg/schema';
+import { type AssemblyInput, CROSSHAUL_PRODUCT_RANGE_ID, type ProductCreateInput } from '@pkg/schema';
 import { asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -33,6 +33,7 @@ function productInput(assemblies: AssemblyInput[], overrides: Partial<ProductCre
     modelCode: 'MODEL-1',
     name: 'Test Product',
     productBays: [],
+    rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
     requiresVinNumber: false,
     thumbnailDataUrl: null,
     ...overrides,
@@ -111,6 +112,7 @@ describe('assembly display order', () => {
         modelCode: 'MODEL-1',
         name: 'Test Product',
         productBays: [],
+        rangeId: CROSSHAUL_PRODUCT_RANGE_ID,
         requiresVinNumber: false,
         thumbnailDataUrl: null,
         assemblies: [

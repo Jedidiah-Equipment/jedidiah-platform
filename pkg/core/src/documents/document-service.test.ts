@@ -58,6 +58,7 @@ const test = createTester(async ({ db }) => {
       buildTimeDays: 14,
       modelCode: 'DOC-TEST',
       name: 'Document Test Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning({ id: products.id });
 
@@ -70,6 +71,7 @@ const test = createTester(async ({ db }) => {
       buildTimeDays: 14,
       modelCode: 'DOC-OTHER',
       name: 'Other Document Test Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning({ id: products.id });
 

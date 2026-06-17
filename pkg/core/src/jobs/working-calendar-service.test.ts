@@ -316,6 +316,7 @@ async function createProduct(db: Db) {
       description: null,
       modelCode: 'CAL-001',
       name: 'Calendar Test Product',
+      rangeId: '00000000-0000-4000-8000-000000000488',
     })
     .returning();
 

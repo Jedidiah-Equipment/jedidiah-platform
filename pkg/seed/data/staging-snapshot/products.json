@@ -8,6 +8,7 @@
     "buildTimeDays": 21,
     "modelCode": "SG1836",
     "name": "Silage Grain 18 36",
+    "rangeId": "00000000-0000-4000-8000-000000000488",
     "updatedAt": "2026-05-27T14:09:27.569Z"
   },
   {
@@ -19,6 +20,7 @@
     "buildTimeDays": 15,
     "modelCode": "LR7F",
     "name": "Land Roller 7m Folding",
+    "rangeId": "00000000-0000-4000-8000-000000000488",
     "updatedAt": "2026-05-27T14:34:25.969Z"
   }
 ]

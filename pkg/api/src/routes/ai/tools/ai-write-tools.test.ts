@@ -1,13 +1,21 @@
 import * as core from '@pkg/core';
 import { Customer, QuoteDetail, type UserAccessSummary } from '@pkg/schema';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { z } from 'zod';
 
 import type { AiContext } from '@/routes/ai/ai-context.js';
 import { aiTools, dispatchToolCall } from '@/routes/ai/ai-tools.js';
 import { mockSession } from '@/test/test-utils.js';
+import { generateQuoteEmailBody } from '../actions/quote-email-body.js';
 import { createCustomerTool } from './create-customer.js';
 import { createQuoteTool } from './create-quote.js';
 import { sendDraftQuoteEmailTool } from './send-draft-quote-email.js';
+
+vi.mock('../actions/quote-email-body.js', () => ({
+  generateQuoteEmailBody: vi.fn(async () => {
+    throw new Error('sendDraftQuoteEmailTool should use the provided emailBody.');
+  }),
+}));
 
 function createAiContext(access: UserAccessSummary | null = null): AiContext {
   return {
@@ -139,6 +147,7 @@ describe('AI write tools', () => {
     await expect(
       sendDraftQuoteEmailTool.handler(
         {
+          emailBody: 'Hello Acme,\n\nPlease find your draft quote attached.',
           leadTime: '14 working days',
           quoteId: '00000000-0000-4000-8000-000000000301',
         },
@@ -161,6 +170,35 @@ describe('AI write tools', () => {
         storage: ctx.storage,
       }),
     );
+    const draftQuoteEmailArgs = draftQuoteEmailSpy.mock.calls[0]?.[0];
+
+    await expect(draftQuoteEmailArgs?.generateEmailBody(createQuoteDetail())).resolves.toBe(
+      'Hello Acme,\n\nPlease find your draft quote attached.',
+    );
+    expect(generateQuoteEmailBody).not.toHaveBeenCalled();
+  });
+
+  test('sendDraftQuoteEmail requires the AI-authored email body', async () => {
+    await expect(
+      sendDraftQuoteEmailTool.handler(
+        {
+          leadTime: '14 working days',
+          quoteId: '00000000-0000-4000-8000-000000000301',
+        },
+        createAiContext(),
+      ),
+    ).rejects.toBeInstanceOf(z.ZodError);
+
+    await expect(
+      sendDraftQuoteEmailTool.handler(
+        {
+          emailBody: '   ',
+          leadTime: '14 working days',
+          quoteId: '00000000-0000-4000-8000-000000000301',
+        },
+        createAiContext(),
+      ),
+    ).rejects.toBeInstanceOf(z.ZodError);
   });
 
   test('dispatch projects write tool failures as tool errors', async () => {

@@ -1,3 +1,4 @@
+import { describeImageContentTypes, imageTooLargeMessage } from '@pkg/domain';
 import type * as React from 'react';
 import { useId } from 'react';
 
@@ -5,13 +6,6 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
 import { ImageUploadControl } from './ImageUploadControl.js';
-
-const FORMAT_LABELS: Record<string, string> = {
-  'image/gif': 'GIF',
-  'image/jpeg': 'JPEG',
-  'image/png': 'PNG',
-  'image/webp': 'WebP',
-};
 
 export type ImageFieldProps = {
   // Accepted MIME types, e.g. `@pkg/schema`'s `IMAGE_CONTENT_TYPES`. Drives both the `<input accept>`
@@ -69,11 +63,11 @@ export function ImageField({
 
 async function readImageFileAsDataUrl(file: File, contentTypes: readonly string[], maxBytes: number): Promise<string> {
   if (contentTypes.length > 0 && !contentTypes.includes(file.type)) {
-    throw new Error(`Image must be a ${describeImageFormats(contentTypes)}.`);
+    throw new Error(`Image must be a ${describeImageContentTypes(contentTypes)}.`);
   }
 
   if (file.size > maxBytes) {
-    throw new Error(`Image must be ${formatByteCap(maxBytes)} or smaller.`);
+    throw new Error(imageTooLargeMessage(maxBytes));
   }
 
   return await new Promise((resolve, reject) => {
@@ -89,14 +83,4 @@ async function readImageFileAsDataUrl(file: File, contentTypes: readonly string[
     reader.addEventListener('error', () => reject(new Error('Unable to read image.')));
     reader.readAsDataURL(file);
   });
-}
-
-function describeImageFormats(types: readonly string[]): string {
-  return types.map((type) => FORMAT_LABELS[type] ?? type).join(' or ');
-}
-
-function formatByteCap(bytes: number): string {
-  const kilobytes = bytes / 1024;
-
-  return kilobytes >= 1024 ? `${Math.round(kilobytes / 1024)} MB` : `${Math.round(kilobytes)} KB`;
 }

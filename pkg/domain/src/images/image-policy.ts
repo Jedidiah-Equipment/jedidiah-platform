@@ -37,7 +37,7 @@ export function validateImage(bytes: Uint8Array, policy: ImagePolicy): ImageVali
     return {
       ok: false,
       code: 'image.content_type_not_allowed',
-      message: `Only ${formatAllowedFormats(policy.allowedContentTypes)} images can be uploaded.`,
+      message: imageContentTypeRejectedMessage(policy.allowedContentTypes),
     };
   }
 
@@ -45,15 +45,25 @@ export function validateImage(bytes: Uint8Array, policy: ImagePolicy): ImageVali
     return {
       ok: false,
       code: 'image.file_too_large',
-      message: `Image must be ${formatBytes(policy.maxBytes)} or smaller.`,
+      message: imageTooLargeMessage(policy.maxBytes),
     };
   }
 
   return { ok: true, byteSize: bytes.byteLength, contentType: sniffed };
 }
 
-// Comma/`or`-joined human label for the allowed formats, e.g. "PNG or JPEG".
-function formatAllowedFormats(contentTypes: readonly string[]): string {
+// Canonical user-facing rejection messages, shared by `validateImage` (server, sniffed bytes) and the
+// browser-side pre-upload guards so a rejected file reads identically wherever it is caught.
+export function imageContentTypeRejectedMessage(contentTypes: readonly string[]): string {
+  return `Only ${describeImageContentTypes(contentTypes)} images can be uploaded.`;
+}
+
+export function imageTooLargeMessage(maxBytes: number): string {
+  return `Image must be ${formatBytes(maxBytes)} or smaller.`;
+}
+
+// Comma/`or`-joined human label for a set of image content types, e.g. "PNG or JPEG".
+export function describeImageContentTypes(contentTypes: readonly string[]): string {
   const labels = contentTypes.map((contentType) => CONTENT_TYPE_LABELS[contentType] ?? contentType);
 
   if (labels.length <= 1) {

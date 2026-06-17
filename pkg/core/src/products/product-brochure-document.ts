@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { type BrochureImageStore, type DatabaseTransaction, type Db, products } from '@pkg/db';
+import { type BrochureImageStore, type DatabaseTransaction, type Db } from '@pkg/db';
 import { evaluateBrochureCompleteness } from '@pkg/domain';
 import {
   type AuthId,
@@ -12,7 +12,6 @@ import {
   type Product,
   type UUID,
 } from '@pkg/schema';
-import { eq } from 'drizzle-orm';
 
 import {
   createDocumentRecord,
@@ -20,8 +19,8 @@ import {
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { ProductBrochureIncompleteError, ProductNotFoundError } from './product-errors.js';
-import { getProduct } from './product-service.js';
+import { ProductBrochureIncompleteError } from './product-errors.js';
+import { getProductBrochureSource } from './product-service.js';
 
 export type BrochurePreviewResult = {
   bytes: Uint8Array;
@@ -44,14 +43,14 @@ export async function renderProductBrochurePreview({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
-  const product = await getProduct({ db, id: productId });
+  const { brochureImages, product } = await getProductBrochureSource({ db, id: productId });
 
   if (!isBrochureComplete(product)) {
     const completeness = evaluateBrochureCompleteness(brochureCompletenessInput(product));
     throw new ProductBrochureIncompleteError(productId, completeness.missingFields);
   }
 
-  return renderBrochureForProduct({ db, pdfRenderer, product, storage });
+  return renderBrochureForProduct({ brochureImages, pdfRenderer, product, storage });
 }
 
 /**
@@ -71,13 +70,13 @@ export async function generateProductBrochureIfComplete({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult | null> {
-  const product = await getProduct({ db, id: productId });
+  const { brochureImages, product } = await getProductBrochureSource({ db, id: productId });
 
   if (!isBrochureComplete(product)) {
     return null;
   }
 
-  return renderBrochureForProduct({ db, pdfRenderer, product, storage });
+  return renderBrochureForProduct({ brochureImages, pdfRenderer, product, storage });
 }
 
 /**
@@ -131,17 +130,17 @@ export async function snapshotJobBrochureDocument({
 }
 
 async function renderBrochureForProduct({
-  db,
+  brochureImages,
   pdfRenderer,
   product,
   storage,
 }: {
-  db: Db;
+  brochureImages: BrochureImageStore;
   pdfRenderer: BrochurePdfRenderer;
   product: Product;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
-  const document = await getBrochureDocumentModel({ db, product, storage });
+  const document = await getBrochureDocumentModel({ brochureImages, product, storage });
   const filename = `${product.modelCode}-brochure.pdf`;
   const bytes = await pdfRenderer({ document, filename });
 
@@ -169,15 +168,15 @@ function brochureCompletenessInput(product: Product) {
  * and inlined as data URIs so the renderer stays a pure function over the model.
  */
 export async function getBrochureDocumentModel({
-  db,
+  brochureImages,
   product,
   storage,
 }: {
-  db: Db;
+  brochureImages: BrochureImageStore;
   product: Product;
   storage: StorageAdapter;
 }): Promise<BrochureDocumentModel> {
-  const images = await resolveBrochureImages({ db, productId: product.id, storage });
+  const images = await resolveBrochureImages({ store: brochureImages, storage });
 
   return {
     bodyCopy: toDisplayLines(product.description),
@@ -196,25 +195,12 @@ export async function getBrochureDocumentModel({
 }
 
 async function resolveBrochureImages({
-  db,
-  productId,
+  store,
   storage,
 }: {
-  db: Db;
-  productId: UUID;
+  store: BrochureImageStore;
   storage: StorageAdapter;
 }): Promise<BrochureDocumentImages> {
-  const [row] = await db
-    .select({ brochureImages: products.brochureImages })
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
-
-  if (!row) {
-    throw new ProductNotFoundError(productId);
-  }
-
-  const store: BrochureImageStore = row.brochureImages;
   const entries = await Promise.all(
     BROCHURE_IMAGE_SLOTS.map(async (slot) => {
       const ref = store[slot];

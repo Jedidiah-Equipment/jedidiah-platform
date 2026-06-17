@@ -19,5 +19,6 @@
 - `@pkg/schema` owns field rules. Form-value schemas may define browser shape and messages, but per-field constraints must reference schema exports.
 - Use helpers from `src/components/form/form-schema.ts` for UI/API shape bridges such as nullable strings and required selections.
 - Keep complex form mappers in a nearby `types.ts` with unit tests.
+- Image uploads have two paths: small images that ride the entity payload use `ImageField`/`ThumbnailField` (inline data URL, autosaved); large replace-in-place images use the object-storage upload routes (see `BrochureImageSlotTile`). Reuse `@pkg/domain` image-policy message helpers in both rather than re-typing format/size copy.
 
 Canonical examples: `src/pages/products/ProductsPage.tsx`, `src/pages/suppliers/SupplierCreateDialog.tsx`, `src/pages/suppliers/SupplierEditPage.tsx`, `src/pages/suppliers/components/types.ts`.

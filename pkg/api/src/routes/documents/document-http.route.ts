@@ -224,34 +224,34 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
         });
       }
 
-      const notFound = error.code === 'product.not_found';
-      throw new RouteHttpError({
-        appCode: error.code,
-        message: notFound ? 'Product not found.' : error.message,
-        statusCode: notFound ? 404 : 400,
-      });
+      throw mapOwnerNotFound(error, { notFoundCode: 'product.not_found', label: 'Product', otherStatus: 400 });
     }
 
     if (isJobCoreError(error)) {
-      const notFound = error.code === 'job.not_found';
-      throw new RouteHttpError({
-        appCode: error.code,
-        message: notFound ? 'Job not found.' : error.message,
-        statusCode: notFound ? 404 : 403,
-      });
+      throw mapOwnerNotFound(error, { notFoundCode: 'job.not_found', label: 'Job', otherStatus: 403 });
     }
 
     if (isQuoteCoreError(error)) {
-      const notFound = error.code === 'quote.not_found';
-      throw new RouteHttpError({
-        appCode: error.code,
-        message: notFound ? 'Quote not found.' : error.message,
-        statusCode: notFound ? 404 : 400,
-      });
+      throw mapOwnerNotFound(error, { notFoundCode: 'quote.not_found', label: 'Quote', otherStatus: 400 });
     }
 
     throw error;
   }
+}
+
+// Owner reads share one shape: the owner's not-found code becomes a 404 with a public label, and every
+// other owner error keeps its message at the owner's fallback status.
+function mapOwnerNotFound(
+  error: { code: string; message: string },
+  { label, notFoundCode, otherStatus }: { label: string; notFoundCode: string; otherStatus: number },
+): RouteHttpError {
+  const notFound = error.code === notFoundCode;
+
+  return new RouteHttpError({
+    appCode: error.code,
+    message: notFound ? `${label} not found.` : error.message,
+    statusCode: notFound ? 404 : otherStatus,
+  });
 }
 
 function sendDocumentHttpError(reply: FastifyReply, error: unknown): void {

@@ -47,16 +47,28 @@ export function withPagination<TQuery extends PgSelect>(query: TQuery, paginatio
   return query.limit(pagination.pageSize).offset(getPaginationOffset(pagination));
 }
 
+// PostgreSQL SQLSTATE codes for the integrity violations we translate into domain errors.
+const UNIQUE_VIOLATION_CODE = '23505';
+const FOREIGN_KEY_VIOLATION_CODE = '23503';
+
 export function isUniqueViolation(error: unknown): boolean {
   return getUniqueViolationConstraint(error) !== null;
 }
 
 export function getUniqueViolationConstraint(error: unknown): string | null {
+  return getConstraintViolation(error, UNIQUE_VIOLATION_CODE);
+}
+
+export function getForeignKeyViolationConstraint(error: unknown): string | null {
+  return getConstraintViolation(error, FOREIGN_KEY_VIOLATION_CODE);
+}
+
+function getConstraintViolation(error: unknown, code: string): string | null {
   if (typeof error !== 'object' || error === null) {
     return null;
   }
 
-  if ('code' in error && error.code === '23505') {
+  if ('code' in error && error.code === code) {
     // node-postgres reports `constraint`; postgres-js reports the wire-protocol `constraint_name`.
     const constraint = getStringProperty(error, 'constraint') ?? getStringProperty(error, 'constraint_name');
 
@@ -64,12 +76,12 @@ export function getUniqueViolationConstraint(error: unknown): string | null {
       return constraint;
     }
 
-    const causeConstraint = 'cause' in error ? getUniqueViolationConstraint(error.cause) : null;
+    const causeConstraint = 'cause' in error ? getConstraintViolation(error.cause, code) : null;
 
     return causeConstraint ?? getStringProperty(error, 'detail') ?? getStringProperty(error, 'message') ?? '';
   }
 
-  return 'cause' in error ? getUniqueViolationConstraint(error.cause) : null;
+  return 'cause' in error ? getConstraintViolation(error.cause, code) : null;
 }
 
 function getStringProperty(error: object, property: string): string | null {

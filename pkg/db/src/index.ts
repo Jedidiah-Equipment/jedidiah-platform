@@ -6,6 +6,7 @@ export {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   createLikeSearchPattern,
+  getForeignKeyViolationConstraint,
   getPaginationOffset,
   getPaginationQueryOptions,
   getSortOrder,

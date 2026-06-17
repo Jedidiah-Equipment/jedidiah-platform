@@ -7,12 +7,12 @@ import {
   type DatabaseTransaction,
   type Db,
   documents,
+  getForeignKeyViolationConstraint,
   getPaginationQueryOptions,
   getSortOrder,
   getUniqueViolationConstraint,
   jobBays,
   productBays,
-  productRanges,
   products,
   type StoredImageRef,
   user,
@@ -83,6 +83,7 @@ import {
 } from './product-errors.js';
 
 const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
+const PRODUCT_RANGE_FOREIGN_KEY = 'products_range_id_product_ranges_id_fk';
 
 type ProductRow = typeof products.$inferSelect;
 type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
@@ -567,7 +568,6 @@ export async function createProduct({
   try {
     return await db.transaction(async (tx) => {
       const { assemblies: desiredAssemblies, productBays: desiredProductBays, brochureConfig, ...productInput } = input;
-      await assertProductRangeExists({ db: tx, rangeId: productInput.rangeId });
       const [row] = await tx
         .insert(products)
         .values({
@@ -598,7 +598,7 @@ export async function createProduct({
       return mapProduct(after);
     });
   } catch (error) {
-    throw mapProductUniqueViolation(error, input);
+    throw mapProductConstraintViolation(error, input);
   }
 }
 
@@ -623,7 +623,6 @@ export async function updateProduct({
       const beforeProductBays = await listProductBays({ db: tx, productId: input.id });
       const desiredAssemblies = input.assemblies ?? beforeAssemblies;
       const desiredProductBays = input.productBays ?? beforeProductBays;
-      await assertProductRangeExists({ db: tx, rangeId: input.rangeId });
       const patch = {
         basePrice: input.basePrice,
         // Brochure Config text fields fold into the Product update; omitting them preserves the
@@ -688,7 +687,7 @@ export async function updateProduct({
       return mapProduct(afterWithChildren);
     });
   } catch (error) {
-    throw mapProductUniqueViolation(error, input);
+    throw mapProductConstraintViolation(error, input);
   }
 }
 
@@ -861,26 +860,6 @@ async function assertProductExists({ db, productId }: { db: Db; productId: UUID 
   }
 }
 
-async function assertProductRangeExists({
-  db,
-  rangeId,
-}: {
-  db: Db | DatabaseTransaction;
-  rangeId: UUID;
-}): Promise<void> {
-  const [range] = await db
-    .select({
-      id: productRanges.id,
-    })
-    .from(productRanges)
-    .where(eq(productRanges.id, rangeId))
-    .limit(1);
-
-  if (!range) {
-    throw new ProductRangeReferenceNotFoundError(rangeId);
-  }
-}
-
 function toAuditAssemblies(
   assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>,
 ): NonNullable<ProductUpdateInput['assemblies']> {
@@ -938,7 +917,18 @@ function getProductSortColumn(sortBy: ProductListInput['sortBy']) {
   return products.name;
 }
 
-function mapProductUniqueViolation(error: unknown, input: Pick<ProductCreateInput, 'modelCode' | 'name'>): Error {
+function mapProductConstraintViolation(
+  error: unknown,
+  input: Pick<ProductCreateInput, 'modelCode' | 'name' | 'rangeId'>,
+): Error {
+  // The `range_id` FK (NOT NULL, ON DELETE RESTRICT) is the source of truth for the Product → Range
+  // relationship; a bad reference surfaces as a constraint violation we translate into a domain error.
+  const foreignKey = getForeignKeyViolationConstraint(error);
+
+  if (foreignKey?.includes(PRODUCT_RANGE_FOREIGN_KEY) || foreignKey?.includes('range_id')) {
+    return new ProductRangeReferenceNotFoundError(input.rangeId);
+  }
+
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint?.includes('products_model_code_unique') || constraint?.includes('model_code')) {

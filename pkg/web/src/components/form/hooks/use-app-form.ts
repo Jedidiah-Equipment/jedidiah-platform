@@ -3,6 +3,7 @@ import { CheckboxField } from '../fields/CheckboxField.js';
 import { CreatableComboboxField } from '../fields/CreatableComboboxField.js';
 import { CurrencyField } from '../fields/CurrencyField.js';
 import { DatePickerField } from '../fields/DatePickerField.js';
+import { ImageField } from '../fields/ImageField.js';
 import { NumberField } from '../fields/NumberField.js';
 import { PasswordField } from '../fields/PasswordField.js';
 import { PhoneNumberField } from '../fields/PhoneNumberField.js';
@@ -18,6 +19,7 @@ export const { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } = 
     CreatableComboboxField,
     CurrencyField,
     DatePickerField,
+    ImageField,
     NumberField,
     PasswordField,
     PhoneNumberField,

@@ -1,12 +1,17 @@
 import { z } from 'zod';
 
 import { DateIso } from '../common/date.js';
+import {
+  buildImageDataUrlPattern,
+  decodedBase64ByteLength,
+  hasAlignedBase64Payload,
+} from '../common/image-data-url.js';
 import { requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 
 export const RANGE_IMAGE_DATA_URL_MAX_BYTES = 512 * 1024;
 
-const RANGE_IMAGE_DATA_URL_PATTERN = /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/;
+const RANGE_IMAGE_DATA_URL_PATTERN = buildImageDataUrlPattern(['jpeg', 'png']);
 
 export type ProductRangeName = z.infer<typeof ProductRangeName>;
 export const ProductRangeName = requiredTrimmedText('Range name is required');
@@ -16,7 +21,7 @@ export const RangeImageDataUrl = z
   .string()
   .refine((value) => RANGE_IMAGE_DATA_URL_PATTERN.test(value), 'Range image must be a JPEG or PNG data URL')
   .refine(hasAlignedBase64Payload, 'Range image data URL is malformed')
-  .refine((value) => getDecodedBase64ByteLength(value) <= RANGE_IMAGE_DATA_URL_MAX_BYTES, {
+  .refine((value) => decodedBase64ByteLength(value) <= RANGE_IMAGE_DATA_URL_MAX_BYTES, {
     message: 'Range image must be 512 KB or smaller',
   });
 
@@ -64,25 +69,3 @@ export type ProductRangeOptionsResult = z.infer<typeof ProductRangeOptionsResult
 export const ProductRangeOptionsResult = z.object({
   ranges: z.array(ProductRangeOption),
 });
-
-function getBase64Payload(value: string): string | null {
-  return value.split(',', 2)[1] ?? null;
-}
-
-function hasAlignedBase64Payload(value: string): boolean {
-  const payload = getBase64Payload(value);
-
-  return payload !== null && payload.length % 4 === 0;
-}
-
-function getDecodedBase64ByteLength(value: string): number {
-  const payload = getBase64Payload(value);
-
-  if (!payload || payload.length % 4 !== 0) {
-    return Number.POSITIVE_INFINITY;
-  }
-
-  const paddingBytes = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0;
-
-  return (payload.length / 4) * 3 - paddingBytes;
-}

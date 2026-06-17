@@ -14,20 +14,23 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { evaluateBrochureCompleteness } from '@pkg/domain';
 import {
   BROCHURE_KEY_FEATURES_MAX_COUNT,
   type BrochureImageSlot,
   type BrochureImages,
   BrochureKeyFeature,
+  type BrochureRequiredField,
   type UUID,
 } from '@pkg/schema';
-import { IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { validateStructuralFieldOnMount } from '@/components/form/utils/field-validators.js';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Card,
@@ -73,6 +76,18 @@ const BROCHURE_IMAGE_SLOT_FIELDS: BrochureImageSlotField[] = [
   },
   { slot: 'secondary', label: 'Secondary image', description: 'Additional product photo. Center-cropped to fill.' },
 ];
+
+// Human labels for the brochure-completeness alert, keyed by the schema's required-field vocabulary.
+const BROCHURE_REQUIRED_FIELD_LABELS: Record<BrochureRequiredField, string> = {
+  subtitle: 'Subtitle',
+  keyFeatures: 'At least one key feature',
+  rangeLogo: 'Range logo image',
+  hero: 'Hero image',
+  technicalDrawing: 'Technical drawing image',
+  secondary: 'Secondary image',
+  description: 'Product description',
+  assemblies: 'At least one assembly',
+};
 
 function useProductForm() {
   return useTypedAppFormContext({
@@ -156,6 +171,21 @@ export const ProductBrochureEditor: React.FC<ProductBrochureEditorProps> = ({
 
   return (
     <div className="flex flex-col gap-5">
+      <productForm.Subscribe
+        selector={(state) =>
+          evaluateBrochureCompleteness({
+            assemblyCount: state.values.assemblies.length,
+            description: state.values.description,
+            images,
+            keyFeatures: state.values.brochureConfig.keyFeatures,
+            subtitle: state.values.brochureConfig.subtitle,
+          })
+        }
+      >
+        {(completeness) =>
+          completeness.complete ? null : <BrochureCompletenessAlert missingFields={completeness.missingFields} />
+        }
+      </productForm.Subscribe>
       <Card>
         <CardHeader>
           <CardTitle>Brochure Details</CardTitle>
@@ -248,6 +278,28 @@ export const ProductBrochureEditor: React.FC<ProductBrochureEditorProps> = ({
     </div>
   );
 };
+
+type BrochureCompletenessAlertProps = {
+  missingFields: BrochureRequiredField[];
+};
+
+// Surfaces the still-missing required fields so the brochure can be completed before preview/generation.
+// The verdict comes from the shared `evaluateBrochureCompleteness` predicate, so this list stays in lockstep
+// with the server-side gates that consume the same predicate.
+const BrochureCompletenessAlert: React.FC<BrochureCompletenessAlertProps> = ({ missingFields }) => (
+  <Alert>
+    <IconAlertTriangle />
+    <AlertTitle>Brochure incomplete</AlertTitle>
+    <AlertDescription>
+      <p>Fill in the following before this brochure can be previewed or generated:</p>
+      <ul className="list-disc pl-5">
+        {missingFields.map((field) => (
+          <li key={field}>{BROCHURE_REQUIRED_FIELD_LABELS[field]}</li>
+        ))}
+      </ul>
+    </AlertDescription>
+  </Alert>
+);
 
 type KeyFeatureRowProps = {
   id: string;

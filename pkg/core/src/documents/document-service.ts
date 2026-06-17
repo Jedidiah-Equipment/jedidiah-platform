@@ -97,7 +97,9 @@ export async function createDocumentRecord({
   storage,
 }: {
   actorUserId: AuthId;
-  db: Db;
+  // Accepts an active transaction so callers mid-transaction (e.g. the Job document snapshot) create
+  // documents through this canonical path; the insert + audit then run as a savepoint on that tx.
+  db: DocumentDb;
   input: DocumentRecordCreateInput;
   mapInsertError?: (error: unknown) => Error;
   storage: StorageAdapter;

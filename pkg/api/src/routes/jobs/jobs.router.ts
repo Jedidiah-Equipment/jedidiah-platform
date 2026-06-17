@@ -22,6 +22,7 @@ import {
   toggleOffDay,
   unassignJobBayOperator,
 } from '@pkg/core';
+import { renderBrochurePdf } from '@pkg/pdf';
 import {
   AddBayCalendarExceptionInput,
   AddIdleJobSlotInput,
@@ -105,7 +106,15 @@ export const jobsRouter = router({
   create: authorizedProcedure('job:create')
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => createJob({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+      mapJobErrors(() =>
+        createJob({
+          actorUserId: ctx.session.user.id,
+          brochureRenderer: renderBrochurePdf,
+          db: ctx.db,
+          input,
+          storage: ctx.storage,
+        }),
+      ),
     ),
 
   bookSlot: authorizedProcedure('job:schedule')

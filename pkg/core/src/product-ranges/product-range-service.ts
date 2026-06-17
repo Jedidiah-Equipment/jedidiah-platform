@@ -3,15 +3,18 @@ import type {
   ProductRange,
   ProductRangeCreateInput,
   ProductRangeListResult,
+  ProductRangeOption,
+  ProductRangeOptionsResult,
   ProductRangeUpdateInput,
   UUID,
 } from '@pkg/schema';
-import { ProductRange as ProductRangeSchema } from '@pkg/schema';
+import { ProductRangeOption as ProductRangeOptionSchema, ProductRange as ProductRangeSchema } from '@pkg/schema';
 import { asc, eq, sql } from 'drizzle-orm';
 
 import { DuplicateProductRangeNameError, ProductRangeNotFoundError } from './product-range-errors.js';
 
 type ProductRangeRow = typeof productRanges.$inferSelect;
+type ProductRangeOptionRow = Pick<ProductRangeRow, 'id' | 'name'>;
 
 export function mapProductRange(row: ProductRangeRow): ProductRange {
   return ProductRangeSchema.parse({
@@ -23,6 +26,13 @@ export function mapProductRange(row: ProductRangeRow): ProductRange {
   });
 }
 
+export function mapProductRangeOption(row: ProductRangeOptionRow): ProductRangeOption {
+  return ProductRangeOptionSchema.parse({
+    id: row.id,
+    name: row.name,
+  });
+}
+
 export async function listProductRanges({ db }: { db: Db }): Promise<ProductRangeListResult> {
   const rows = await db.query.productRanges.findMany({
     orderBy: [asc(sql`lower(${productRanges.name})`), asc(productRanges.id)],
@@ -30,6 +40,20 @@ export async function listProductRanges({ db }: { db: Db }): Promise<ProductRang
 
   return {
     ranges: rows.map(mapProductRange),
+  };
+}
+
+export async function listProductRangeOptions({ db }: { db: Db }): Promise<ProductRangeOptionsResult> {
+  const rows = await db
+    .select({
+      id: productRanges.id,
+      name: productRanges.name,
+    })
+    .from(productRanges)
+    .orderBy(asc(sql`lower(${productRanges.name})`), asc(productRanges.id));
+
+  return {
+    ranges: rows.map(mapProductRangeOption),
   };
 }
 

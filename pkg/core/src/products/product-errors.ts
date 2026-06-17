@@ -31,6 +31,17 @@ export class ProductNotFoundError extends Error {
   }
 }
 
+export class ProductRangeReferenceNotFoundError extends Error {
+  readonly code = 'product.range.not_found';
+  readonly metadata: { rangeId: string };
+
+  constructor(rangeId: string) {
+    super(`Product Range not found: ${rangeId}`);
+    this.name = 'ProductRangeReferenceNotFoundError';
+    this.metadata = { rangeId };
+  }
+}
+
 export class DuplicateProductBayError extends Error {
   readonly code = 'product.bay.duplicate';
   readonly metadata: { bayId: string };
@@ -142,7 +153,8 @@ export type ProductCoreError =
   | DuplicateProductNameError
   | ProductBayDisabledError
   | ProductBayNotFoundError
-  | ProductNotFoundError;
+  | ProductNotFoundError
+  | ProductRangeReferenceNotFoundError;
 
 export function isProductCoreError(error: unknown): error is ProductCoreError {
   return (
@@ -157,6 +169,7 @@ export function isProductCoreError(error: unknown): error is ProductCoreError {
     error instanceof DuplicateProductNameError ||
     error instanceof ProductBayDisabledError ||
     error instanceof ProductBayNotFoundError ||
-    error instanceof ProductNotFoundError
+    error instanceof ProductNotFoundError ||
+    error instanceof ProductRangeReferenceNotFoundError
   );
 }

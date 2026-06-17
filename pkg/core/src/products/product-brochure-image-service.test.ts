@@ -6,6 +6,7 @@ import { describe, expect } from 'vitest';
 import { ImageNotFoundError, ImagePolicyViolationError } from '../images/image-errors.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
+import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { readProductBrochureImage, replaceProductBrochureImage } from './product-brochure-image-service.js';
 import { ProductNotFoundError } from './product-errors.js';
 
@@ -13,6 +14,8 @@ const ACTOR_USER_ID = 'test-user-id';
 const UNKNOWN_ID = '11111111-1111-4111-8111-111111111111';
 
 const test = createTester(async ({ db }) => {
+  const rangeId = await createProductRangeFixture(db);
+
   await db.insert(user).values({
     id: ACTOR_USER_ID,
     name: 'Test User',
@@ -32,6 +35,7 @@ const test = createTester(async ({ db }) => {
       buildTimeDays: 14,
       modelCode: 'BROCHURE-IMG',
       name: 'Brochure Image Product',
+      rangeId,
     })
     .returning({ id: products.id });
 

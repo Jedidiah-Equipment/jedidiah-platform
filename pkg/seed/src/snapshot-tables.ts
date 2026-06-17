@@ -6,6 +6,7 @@ import {
   jobBays,
   parts,
   productAssemblies,
+  productRanges,
   products,
   supplier,
   user,
@@ -75,6 +76,12 @@ export const snapshotTables = [
     table: parts,
     tableName: 'parts',
     timestampColumns: [],
+  },
+  {
+    fileName: 'product_ranges.json',
+    table: productRanges,
+    tableName: 'product_ranges',
+    timestampColumns: standardTimestampColumns,
   },
   {
     fileName: 'products.json',

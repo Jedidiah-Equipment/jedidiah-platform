@@ -47,15 +47,15 @@ function payloadForBytes(byteLength: number): string {
 
 describe('ProductRange inputs', () => {
   it('defaults create images to null but requires update image intent', () => {
-    expect(ProductRangeCreateInput.parse({ name: 'Crosshaul' })).toEqual({
+    expect(ProductRangeCreateInput.parse({ name: 'Example Range' })).toEqual({
       imageDataUrl: null,
-      name: 'Crosshaul',
+      name: 'Example Range',
     });
 
     expect(() =>
       ProductRangeUpdateInput.parse({
         id: '00000000-0000-4000-8000-000000000001',
-        name: 'Crosshaul',
+        name: 'Example Range',
       }),
     ).toThrow();
 
@@ -63,12 +63,12 @@ describe('ProductRange inputs', () => {
       ProductRangeUpdateInput.parse({
         id: '00000000-0000-4000-8000-000000000001',
         imageDataUrl: null,
-        name: 'Crosshaul',
+        name: 'Example Range',
       }),
     ).toEqual({
       id: '00000000-0000-4000-8000-000000000001',
       imageDataUrl: null,
-      name: 'Crosshaul',
+      name: 'Example Range',
     });
   });
 });

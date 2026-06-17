@@ -39,6 +39,9 @@ describe('AppPermission', () => {
     expect(AppPermission.parse('job:update-calendar')).toBe('job:update-calendar');
     expect(AppPermission.parse('part:read')).toBe('part:read');
     expect(AppPermission.parse('part:update')).toBe('part:update');
+    expect(AppPermission.parse('product_range:read')).toBe('product_range:read');
+    expect(AppPermission.parse('product_range:create')).toBe('product_range:create');
+    expect(AppPermission.parse('product_range:update')).toBe('product_range:update');
     expect(AppPermission.parse('supplier:read')).toBe('supplier:read');
     expect(AppPermission.parse('supplier:update')).toBe('supplier:update');
   });

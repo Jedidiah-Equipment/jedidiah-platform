@@ -10,7 +10,7 @@ Compact domain map for implementation and planning. Search this file first for n
 
 **Customer** means the company buying or receiving the product. Avoid Client or Buyer in code and docs.
 
-**Product Range** is a catalog grouping of Products for marketing and selection. Every Product belongs to exactly one Range. A Range carries a name and a presentation image used on customer-facing documents. Avoid Category, Line, or Family. Range management (create, update, and the management list) is admin-only; reading a Range in the context of a Product or Quote rides on those entities' read permissions.
+**Product Range** is an admin-managed catalog grouping intended for Product marketing and selection. In the current standalone slice, Products are not yet linked to Ranges. A Range carries a name and an optional presentation image for customer-facing documents. Avoid Category, Line, or Family. Range management (create, update, and the management list) is admin-only.
 
 **Supplier** is currently a standalone procurement directory record. **Part** is the reusable purchasable item layer. **Assembly** is a Product-owned grouping of Parts, either Standard or Optional. Optional Assemblies carry an upgrade-delta price, may replace whole Standard Assemblies, and are selected on Quotes.
 

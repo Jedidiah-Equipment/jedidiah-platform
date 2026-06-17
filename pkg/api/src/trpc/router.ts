@@ -6,6 +6,7 @@ import { customersRouter } from '../routes/customers/customers.router.js';
 import { documentsRouter } from '../routes/documents/documents.router.js';
 import { jobsRouter } from '../routes/jobs/jobs.router.js';
 import { partsRouter } from '../routes/parts/parts.router.js';
+import { productRangesRouter } from '../routes/product-ranges/product-ranges.router.js';
 import { productsRouter } from '../routes/products/products.router.js';
 import { quotesRouter } from '../routes/quotes/quotes.router.js';
 import { suppliersRouter } from '../routes/suppliers/suppliers.router.js';
@@ -21,6 +22,7 @@ type AppRouterRecord = {
   documents: (typeof documentsRouter)['_def']['record'];
   jobs: (typeof jobsRouter)['_def']['record'];
   parts: (typeof partsRouter)['_def']['record'];
+  productRanges: (typeof productRangesRouter)['_def']['record'];
   products: (typeof productsRouter)['_def']['record'];
   quotes: (typeof quotesRouter)['_def']['record'];
   suppliers: (typeof suppliersRouter)['_def']['record'];
@@ -38,6 +40,7 @@ function createAppRouter(): AppRouter {
     documents: documentsRouter,
     jobs: jobsRouter,
     parts: partsRouter,
+    productRanges: productRangesRouter,
     products: productsRouter,
     quotes: quotesRouter,
     suppliers: suppliersRouter,

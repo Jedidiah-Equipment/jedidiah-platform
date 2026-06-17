@@ -5,6 +5,7 @@ export const APP_CODE_PREFIXES = [
   'job',
   'part',
   'product',
+  'product_range',
   'quote',
   'supplier',
   'user',

@@ -41,9 +41,13 @@ export const ProductRangeCreateInput = z
   .strict();
 
 export type ProductRangeUpdateInput = z.infer<typeof ProductRangeUpdateInput>;
-export const ProductRangeUpdateInput = ProductRangeCreateInput.extend({
-  id: UUID,
-});
+export const ProductRangeUpdateInput = z
+  .object({
+    id: UUID,
+    name: ProductRangeName,
+    imageDataUrl: NullableRangeImageDataUrl,
+  })
+  .strict();
 
 export type ProductRangeListResult = z.infer<typeof ProductRangeListResult>;
 export const ProductRangeListResult = z.object({

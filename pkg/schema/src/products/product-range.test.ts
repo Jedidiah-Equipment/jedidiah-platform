@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { NullableRangeImageDataUrl, RANGE_IMAGE_DATA_URL_MAX_BYTES, RangeImageDataUrl } from './product-range.js';
+import {
+  NullableRangeImageDataUrl,
+  ProductRangeCreateInput,
+  ProductRangeUpdateInput,
+  RANGE_IMAGE_DATA_URL_MAX_BYTES,
+  RangeImageDataUrl,
+} from './product-range.js';
 
 const VALID_JPEG = `data:image/jpeg;base64,${'a'.repeat(16)}`;
 const VALID_PNG = `data:image/png;base64,${'a'.repeat(16)}`;
@@ -38,3 +44,31 @@ function payloadForBytes(byteLength: number): string {
 
   return 'a'.repeat(fullTriplets * 4);
 }
+
+describe('ProductRange inputs', () => {
+  it('defaults create images to null but requires update image intent', () => {
+    expect(ProductRangeCreateInput.parse({ name: 'Crosshaul' })).toEqual({
+      imageDataUrl: null,
+      name: 'Crosshaul',
+    });
+
+    expect(() =>
+      ProductRangeUpdateInput.parse({
+        id: '00000000-0000-4000-8000-000000000001',
+        name: 'Crosshaul',
+      }),
+    ).toThrow();
+
+    expect(
+      ProductRangeUpdateInput.parse({
+        id: '00000000-0000-4000-8000-000000000001',
+        imageDataUrl: null,
+        name: 'Crosshaul',
+      }),
+    ).toEqual({
+      id: '00000000-0000-4000-8000-000000000001',
+      imageDataUrl: null,
+      name: 'Crosshaul',
+    });
+  });
+});

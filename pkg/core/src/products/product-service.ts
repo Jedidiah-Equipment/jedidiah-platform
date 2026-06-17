@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  type BrochureImageStore,
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   type DatabaseTransaction,
@@ -13,12 +14,14 @@ import {
   productBays,
   productRanges,
   products,
+  type StoredImageRef,
   user,
 } from '@pkg/db';
 import { JOB_DEPARTMENT_PIPELINE, validateDocumentMetadata } from '@pkg/domain';
 import type {
   Assembly,
   AuthId,
+  BrochureImageSlot,
   Logger,
   ProductBay,
   ProductBayInput,
@@ -30,6 +33,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import {
+  BrochureImages,
   Product,
   ProductBay as ProductBaySchema,
   ProductCurrencyCode,
@@ -132,6 +136,7 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     assemblies: row.assemblies ?? [],
     basePrice: row.basePrice,
     brochureConfig: {
+      images: mapBrochureImages(row.brochureImages),
       keyFeatures: row.brochureKeyFeatures,
       subtitle: row.brochureSubtitle,
     },
@@ -150,6 +155,26 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
   });
 }
 
+// Plain per-slot shape fed to the schema, which brands the strings (content type, ISO date) on parse.
+type BrochureImageInput = { byteSize: number; contentType: string; updatedAt: string } | null;
+
+// Projects the stored per-slot references into the client-facing read model, dropping the internal
+// storage key. The `satisfies` pins slot completeness (a new slot is a compile error here, not a silent
+// gap), and the single parse brands the values. Tolerates a row that predates the column (undefined) by
+// treating every slot as empty.
+function mapBrochureImages(store: BrochureImageStore | undefined): BrochureImages {
+  return BrochureImages.parse({
+    hero: toBrochureImageInput(store?.hero),
+    rangeLogo: toBrochureImageInput(store?.rangeLogo),
+    secondary: toBrochureImageInput(store?.secondary),
+    technicalDrawing: toBrochureImageInput(store?.technicalDrawing),
+  } satisfies Record<BrochureImageSlot, BrochureImageInput>);
+}
+
+function toBrochureImageInput(ref: StoredImageRef | undefined): BrochureImageInput {
+  return ref ? { byteSize: ref.byteSize, contentType: ref.contentType, updatedAt: ref.updatedAt } : null;
+}
+
 export async function listProducts({
   db,
   input,
@@ -165,6 +190,7 @@ export async function listProducts({
   const productsQuery = db.query.products.findMany({
     columns: {
       basePrice: true,
+      brochureImages: true,
       brochureKeyFeatures: true,
       brochureSubtitle: true,
       createdAt: true,

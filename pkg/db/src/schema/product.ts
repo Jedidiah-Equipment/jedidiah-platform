@@ -14,13 +14,26 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+import type { StoredImageRef } from './image.js';
 import { parts } from './part.js';
 import { productRanges } from './product-range.js';
+
+// Brochure images are keyed by slot; each value is a shared {@link StoredImageRef}. Slots replace in
+// place, so a missing key means "no current image".
+export type BrochureImageStore = Partial<Record<string, StoredImageRef>>;
 
 export const products = pgTable(
   'products',
   {
     basePrice: numeric('base_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
+    // Inline structural type (rather than the BrochureImageStore alias) so the inferred Drizzle row type
+    // stays portable into @pkg/api's emitted declarations (avoids TS2883 on the tRPC procedure types).
+    brochureImages: jsonb('brochure_images')
+      .$type<
+        Partial<Record<string, { byteSize: number; contentType: string; storageKey: string; updatedAt: string }>>
+      >()
+      .notNull()
+      .default({}),
     brochureKeyFeatures: jsonb('brochure_key_features').$type<string[]>().notNull().default([]),
     brochureSubtitle: text('brochure_subtitle'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),

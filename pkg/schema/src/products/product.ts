@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DateIso } from '../common/date.js';
+import { EntityImage } from '../common/image.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
@@ -266,8 +267,55 @@ export const BrochureKeyFeatures = z
   .array(BrochureKeyFeature)
   .max(BROCHURE_KEY_FEATURES_MAX_COUNT, `Add at most ${BROCHURE_KEY_FEATURES_MAX_COUNT} key features`);
 
+// The four Brochure image slots. Each replaces in place, so a Product holds at most one current image
+// per slot. Order is the brochure's visual order and drives the form's slot list.
+export const BROCHURE_IMAGE_SLOTS = ['rangeLogo', 'hero', 'technicalDrawing', 'secondary'] as const;
+
+export type BrochureImageSlot = z.infer<typeof BrochureImageSlot>;
+export const BrochureImageSlot = z.enum(BROCHURE_IMAGE_SLOTS);
+
+// Per-image size cap for Brochure slots. Allowed formats come from the shared {@link IMAGE_CONTENT_TYPES}.
+export const BROCHURE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+// Recommended source dimensions and render fit per slot, shown on the form as upload guidance.
+// `cover` photos/drawings center-crop to fill their slot; the `contain` range logo fits without cropping.
+export type BrochureImageSlotSpec = {
+  fit: 'contain' | 'cover';
+  recommendedHeight: number;
+  recommendedWidth: number;
+};
+
+export const BROCHURE_IMAGE_SLOT_SPECS = {
+  rangeLogo: { fit: 'contain', recommendedHeight: 400, recommendedWidth: 600 },
+  hero: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
+  technicalDrawing: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
+  secondary: { fit: 'cover', recommendedHeight: 900, recommendedWidth: 1200 },
+} as const satisfies Record<BrochureImageSlot, BrochureImageSlotSpec>;
+
+// Each slot exposes the shared {@link EntityImage} read shape (or null when empty).
+export type BrochureImage = EntityImage;
+export const BrochureImage = EntityImage;
+
+export type BrochureImages = z.infer<typeof BrochureImages>;
+export const BrochureImages = z.object({
+  rangeLogo: BrochureImage.nullable().default(null),
+  hero: BrochureImage.nullable().default(null),
+  technicalDrawing: BrochureImage.nullable().default(null),
+  secondary: BrochureImage.nullable().default(null),
+});
+
+export const EMPTY_BROCHURE_IMAGES: BrochureImages = {
+  rangeLogo: null,
+  hero: null,
+  technicalDrawing: null,
+  secondary: null,
+};
+
 export type BrochureConfig = z.infer<typeof BrochureConfig>;
 export const BrochureConfig = z.object({
+  // Images replace in place through their own upload endpoint, so they are read-only here and are not
+  // part of {@link BrochureConfigInput} (the text-only autosave payload).
+  images: BrochureImages.default(EMPTY_BROCHURE_IMAGES),
   keyFeatures: BrochureKeyFeatures,
   subtitle: BrochureSubtitle,
 });
@@ -280,7 +328,22 @@ export const BrochureConfigInput = z
   })
   .strict();
 
-export const EMPTY_BROCHURE_CONFIG: BrochureConfig = { keyFeatures: [], subtitle: null };
+export const EMPTY_BROCHURE_CONFIG: BrochureConfig = {
+  images: EMPTY_BROCHURE_IMAGES,
+  keyFeatures: [],
+  subtitle: null,
+};
+
+// The text-only default for the create/update payload. Kept separate from {@link EMPTY_BROCHURE_CONFIG}
+// because the strict input schema rejects the read model's `images` field.
+const EMPTY_BROCHURE_CONFIG_INPUT: BrochureConfigInput = { keyFeatures: [], subtitle: null };
+
+// Identifies a single Product image slot for the replace-in-place upload and download routes.
+export type BrochureImageSlotParams = z.infer<typeof BrochureImageSlotParams>;
+export const BrochureImageSlotParams = z.object({
+  productId: UUID,
+  slot: BrochureImageSlot,
+});
 
 export type Product = z.infer<typeof Product>;
 export const Product = z.object({
@@ -323,7 +386,7 @@ export const ProductCreateInput = z
     rangeId: UUID,
     assemblies: ProductAssembliesInput,
     productBays: ProductBaysInput,
-    brochureConfig: BrochureConfigInput.default(EMPTY_BROCHURE_CONFIG),
+    brochureConfig: BrochureConfigInput.default(EMPTY_BROCHURE_CONFIG_INPUT),
     buildTimeDays: ProductBuildTimeDaysInput,
     currencyCode: ProductCurrencyCode,
     requiresVinNumber: ProductRequiresVinNumber.default(false),

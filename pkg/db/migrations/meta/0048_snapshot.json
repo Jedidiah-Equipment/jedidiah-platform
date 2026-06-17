@@ -1,6 +1,6 @@
 {
-  "id": "48b3e505-ebfe-4bf8-a3df-4a23fad932aa",
-  "prevId": "f0b9b2c4-8b04-4a6f-b9ed-c5e74d3b3e7f",
+  "id": "31c30665-2873-4bd0-9f7c-1d2126790654",
+  "prevId": "48b3e505-ebfe-4bf8-a3df-4a23fad932aa",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2440,6 +2440,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "range_id": {
+          "name": "range_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "requires_vin_number": {
           "name": "requires_vin_number",
           "type": "boolean",
@@ -2493,7 +2499,21 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "products_range_id_product_ranges_id_fk": {
+          "name": "products_range_id_product_ranges_id_fk",
+          "tableFrom": "products",
+          "tableTo": "product_ranges",
+          "columnsFrom": [
+            "range_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

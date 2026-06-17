@@ -334,8 +334,15 @@
     {
       "idx": 47,
       "version": "7",
-      "when": 1781702073432,
-      "tag": "0047_purple_richard_fisk",
+      "when": 1781701854749,
+      "tag": "0047_sour_moon_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1781703818724,
+      "tag": "0048_slow_sally_floyd",
       "breakpoints": true
     }
   ]

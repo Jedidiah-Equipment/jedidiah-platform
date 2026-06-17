@@ -139,7 +139,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
             <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
             <form.Field name="brochureConfig.keyFeatures" mode="array">
               {(keyFeaturesField) => (
-                <ProductBrochureEditor keyFeaturesField={keyFeaturesField} onStructuralChange={saveCommittedField} />
+                <ProductBrochureEditor
+                  images={product.brochureConfig.images}
+                  keyFeaturesField={keyFeaturesField}
+                  onStructuralChange={saveCommittedField}
+                  productId={product.id}
+                />
               )}
             </form.Field>
           </div>

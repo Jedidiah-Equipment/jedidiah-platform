@@ -299,9 +299,33 @@ function buildProductListWhere(listInput: ProductListInput): SQL | undefined {
 }
 
 export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Product> {
+  const { row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id });
+
+  return mapProductListRow(row, productBaysForProduct);
+}
+
+// Reads the Product detail row plus the stored Brochure image references in a single pass, so the
+// brochure render path can both build the read model (with images projected key-free) and resolve the
+// internal storage keys without a second query against the same row.
+export async function getProductBrochureSource({
+  db,
+  id,
+}: {
+  db: Db;
+  id: UUID;
+}): Promise<{ brochureImages: BrochureImageStore; product: Product }> {
+  const { row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id });
+
+  return { brochureImages: row.brochureImages, product: mapProductListRow(row, productBaysForProduct) };
+}
+
+async function loadProductDetailRow({ db, id }: { db: Db; id: UUID }): Promise<{
+  productBays: ProductBay[];
+  row: ProductListRow;
+}> {
   // The Product's Bays key off the same id as the main read, so load both in parallel rather than
   // waiting on the Product row before fetching its Bays.
-  const [row, productBaysForProduct] = await Promise.all([
+  const [row, productBays] = await Promise.all([
     db.query.products.findFirst({
       where: eq(products.id, id),
       with: {
@@ -330,7 +354,7 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
     throw new ProductNotFoundError(id);
   }
 
-  return mapProductListRow(row, productBaysForProduct);
+  return { productBays, row };
 }
 
 export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<ProductDocument[]> {

@@ -17,6 +17,8 @@ const TOOL_USE_PROMPT = [
   'When results are ambiguous, ask the user to choose rather than pretending one record is the obvious match.',
 ];
 
+const WRITE_TOOL_NAMES = new Set<AiToolName>(['createCustomer', 'createQuote', 'sendDraftQuoteEmail']);
+
 const RESPONSE_STYLE_PROMPT = [
   'Be concise and operational. Start with the direct answer, then add the supporting details that matter.',
   'Use public identifiers in prose: Job Code, Quote Code, Customer company name, Product name, or User name/email.',
@@ -30,17 +32,29 @@ const RESPONSE_STYLE_PROMPT = [
   'Use tables when they make comparisons or lists easier to scan; otherwise prefer short paragraphs or bullets.',
 ];
 
-const PROMPT_SECTIONS = [
-  ['Tool Use', TOOL_USE_PROMPT],
-  ['Response Style', RESPONSE_STYLE_PROMPT],
-] as const;
-
 export function createSystemPrompt(toolNames: readonly AiToolName[]): string {
   return [
     renderSection('Role', ASSISTANT_ROLE_PROMPT),
     createDomainGuidancePrompt(toolNames),
-    ...PROMPT_SECTIONS.map(([title, lines]) => renderSection(title, lines)),
+    renderSection('Tool Use', createToolUsePrompt(toolNames)),
+    renderSection('Response Style', RESPONSE_STYLE_PROMPT),
   ].join('\n\n');
+}
+
+function createToolUsePrompt(toolNames: readonly AiToolName[]): string[] {
+  const lines = [...TOOL_USE_PROMPT];
+  const writeToolNames = toolNames.filter((toolName) => WRITE_TOOL_NAMES.has(toolName));
+
+  if (writeToolNames.length > 0) {
+    lines.push(
+      `Write tools mutate records immediately when called: ${writeToolNames.join(', ')}.`,
+      'Use write tools only when the user explicitly asks to create, add, generate, or send the matching record/action.',
+      'For new Quote companies, prefer createQuote with an inline Customer company name when standalone customer:create permission is not available.',
+      'sendDraftQuoteEmail sends the draft to the signed-in user only, not directly to the Customer.',
+    );
+  }
+
+  return lines;
 }
 
 function renderSection(title: string, lines: readonly string[]): string {

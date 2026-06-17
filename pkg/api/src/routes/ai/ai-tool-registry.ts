@@ -2,6 +2,8 @@ import type { AiToolBase } from '@pkg/schema';
 
 import type { AiContext } from './ai-context.js';
 import { type AiLink, type AiLinkMetadata, aiLinkMetadata, createAiLink } from './ai-link-metadata.js';
+import { createCustomerTool } from './tools/create-customer.js';
+import { createQuoteTool } from './tools/create-quote.js';
 import { getCustomerTool } from './tools/get-customer.js';
 import { getJobTool } from './tools/get-job.js';
 import { getPartTool } from './tools/get-part.js';
@@ -17,6 +19,7 @@ import { listQuoteProductsTool } from './tools/list-quote-products.js';
 import { listQuoteSalespeopleTool } from './tools/list-quote-salespeople.js';
 import { listQuotesTool } from './tools/list-quotes.js';
 import { listUsersTool } from './tools/list-users.js';
+import { sendDraftQuoteEmailTool } from './tools/send-draft-quote-email.js';
 
 type LinkableRecord = Record<string, unknown> & {
   id: string;
@@ -34,6 +37,7 @@ type AiToolDescriptorInput = {
 type AnyAiTool = AiToolBase<string, unknown, unknown, AiContext>;
 
 type AiToolRegistryRecord<TTool extends AnyAiTool = AnyAiTool> = {
+  kind: AiToolKind;
   tool: TTool;
   descriptor: AiToolDescriptorInput;
   projectResult: ProjectResult<TTool>;
@@ -52,8 +56,11 @@ export type AiToolDescriptor = AiToolDescriptorInput & {
   name: AiToolName;
 };
 
+export type AiToolKind = 'read' | 'write';
+
 export const AI_TOOL_REGISTRY = createAiToolRegistry([
   {
+    kind: 'read',
     tool: listProductsTool,
     descriptor: {
       purpose: 'List Products visible to Product readers.',
@@ -66,6 +73,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: (result) => projectPagedItems(result, projectProduct),
   },
   {
+    kind: 'read',
     tool: getProductTool,
     descriptor: {
       purpose: 'Get one Product by UUID.',
@@ -80,6 +88,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: projectProduct,
   },
   {
+    kind: 'read',
     tool: listPartsTool,
     descriptor: {
       purpose: 'List Parts visible to Part readers.',
@@ -102,6 +111,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: identityProjection,
   },
   {
+    kind: 'read',
     tool: getPartTool,
     descriptor: {
       purpose: 'Get one Part by UUID, including its Supplier, unitOfMeasure, and isInternallyFabricated.',
@@ -115,6 +125,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: identityProjection,
   },
   {
+    kind: 'read',
     tool: listCustomersTool,
     descriptor: {
       purpose: 'List Customers visible to Customer readers.',
@@ -127,6 +138,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: (result) => projectPagedItems(result, projectCustomer),
   },
   {
+    kind: 'read',
     tool: getCustomerTool,
     descriptor: {
       purpose: 'Get one Customer by UUID.',
@@ -139,6 +151,23 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: projectCustomer,
   },
   {
+    kind: 'write',
+    tool: createCustomerTool,
+    descriptor: {
+      purpose: 'Create one standalone Customer record.',
+      useWhen: ['The user explicitly asks to create or add a Customer record outside a Quote workflow.'],
+      doNotUseWhen: [
+        'A sales user is creating a Quote for a new company; use createQuote with an inline customer instead.',
+        'The user only needs to search existing Customers; use listCustomers or listQuoteCustomers first.',
+      ],
+      searchableIdentifiers: ['companyName', 'email', 'VAT number'],
+      resultIdentifiers: ['Customer company name', 'Customer UUID', 'VAT number'],
+      linkTarget: aiLinkMetadata.Customer,
+    },
+    projectResult: projectCustomer,
+  },
+  {
+    kind: 'read',
     tool: listJobsTool,
     descriptor: {
       purpose: 'List Jobs visible to Job readers.',
@@ -166,6 +195,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: (result) => projectPagedItems(result, projectJob),
   },
   {
+    kind: 'read',
     tool: getJobTool,
     descriptor: {
       purpose: 'Get one Job by UUID, including Bay schedule detail, CFO part quantities, and Documents.',
@@ -189,6 +219,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: projectJob,
   },
   {
+    kind: 'read',
     tool: listQuotesTool,
     descriptor: {
       purpose: 'List Quotes visible to Quote readers.',
@@ -224,6 +255,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: (result) => projectPagedItems(result, projectQuote),
   },
   {
+    kind: 'read',
     tool: getQuoteTool,
     descriptor: {
       purpose: 'Get one Quote by UUID.',
@@ -250,6 +282,46 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: projectQuote,
   },
   {
+    kind: 'write',
+    tool: createQuoteTool,
+    descriptor: {
+      purpose: 'Create one Quote and snapshot its Product price/currency and selected Optional Assemblies.',
+      useWhen: [
+        'The user explicitly asks to create a Quote for an existing Customer or for a new inline Customer company name.',
+      ],
+      doNotUseWhen: [
+        'The user only needs to search or inspect Quotes; use listQuotes or getQuote.',
+        'The user asks for standalone Customer creation; use createCustomer only when customer:create is available.',
+      ],
+      searchableIdentifiers: ['Customer UUID or inline companyName', 'Product UUID', 'salesPersonId User ID'],
+      resultIdentifiers: [
+        'Quote Code',
+        'Customer company name',
+        'Product name',
+        'quotedBasePrice',
+        'quotedCurrencyCode',
+      ],
+      linkTarget: aiLinkMetadata.Quote,
+    },
+    projectResult: projectQuote,
+  },
+  {
+    kind: 'write',
+    tool: sendDraftQuoteEmailTool,
+    descriptor: {
+      purpose: 'Send a draft Quote email with generated Quote PDF to the signed-in user.',
+      useWhen: ['The user explicitly asks to send or generate a draft email for a known Quote.'],
+      doNotUseWhen: [
+        'The user asks to email the Customer directly; this tool only sends the draft to the signed-in user.',
+        'The user only needs Quote details; use getQuote.',
+      ],
+      searchableIdentifiers: ['Quote UUID', 'leadTime'],
+      resultIdentifiers: ['recipientEmail', 'Quote Document generation warnings'],
+    },
+    projectResult: identityProjection,
+  },
+  {
+    kind: 'read',
     tool: listQuoteCustomersTool,
     descriptor: {
       purpose: 'List Customers available to Quote readers.',
@@ -262,6 +334,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: (result) => projectPagedItems(result, projectCustomer),
   },
   {
+    kind: 'read',
     tool: listQuoteProductsTool,
     descriptor: {
       purpose: 'List Products available to Quote readers.',
@@ -274,6 +347,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: (result) => projectPagedItems(result, projectProduct),
   },
   {
+    kind: 'read',
     tool: listQuoteSalespeopleTool,
     descriptor: {
       purpose: 'List Users who can be assigned as Quote Salespeople.',
@@ -285,6 +359,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: identityProjection,
   },
   {
+    kind: 'read',
     tool: listAuditEventsTool,
     descriptor: {
       purpose: 'List targeted Audit Events.',
@@ -299,6 +374,7 @@ export const AI_TOOL_REGISTRY = createAiToolRegistry([
     projectResult: identityProjection,
   },
   {
+    kind: 'read',
     tool: listUsersTool,
     descriptor: {
       purpose: 'List all Users as safe summaries.',
@@ -315,6 +391,7 @@ export type AiTool = (typeof AI_TOOL_REGISTRY)[number]['tool'];
 export type AiToolName = (typeof AI_TOOL_REGISTRY)[number]['tool']['name'];
 export type RegisteredAiTool<TTool extends AnyAiTool = AiTool> = TTool & {
   description: string;
+  kind: AiToolKind;
 };
 export type AiToolMap = {
   [Name in AiToolName]: RegisteredAiTool<Extract<AiTool, { name: Name }>>;
@@ -381,6 +458,7 @@ function createAiToolMap<const TRegistry extends readonly AiToolRegistryRecord[]
     tools[name] = {
       ...record.tool,
       description: createToolDescription(descriptors[name]),
+      kind: record.kind,
     } as RegisteredAiTool;
   }
 

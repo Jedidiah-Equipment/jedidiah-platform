@@ -28,7 +28,7 @@ export async function generateQuoteEmailBody({
   quote: Pick<QuoteDetail, 'code' | 'id'>;
 }): Promise<string> {
   const config = getApiConfig();
-  const authorizedTools = getAuthorizedTools(aiContext.access);
+  const authorizedTools = getAuthorizedTools(aiContext.access, { includeWriteTools: false });
   const authorizedToolNames = getAuthorizedToolNames(authorizedTools);
 
   const agent = new Agent<AiContext>({

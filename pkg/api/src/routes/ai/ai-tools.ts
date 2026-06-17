@@ -13,6 +13,9 @@ export type { AiToolName } from './ai-tool-registry.js';
 export { AI_TOOL_NAMES, aiTools } from './ai-tool-registry.js';
 
 export type AuthorizedAiTools = Partial<Record<AiToolName, RegisteredAiTool>>;
+export type GetAuthorizedToolsOptions = {
+  includeWriteTools?: boolean;
+};
 type StrictJsonObjectParameters = Extract<ToolInputParameters, { additionalProperties: false }>;
 type JsonSchemaObject = Record<string, unknown>;
 
@@ -28,11 +31,19 @@ type InternalToolResult =
       error: string;
     };
 
-export function getAuthorizedTools(access: UserAccessSummary | null): AuthorizedAiTools {
+export function getAuthorizedTools(
+  access: UserAccessSummary | null,
+  options: GetAuthorizedToolsOptions = {},
+): AuthorizedAiTools {
   const authorizedTools: AuthorizedAiTools = {};
+  const includeWriteTools = options.includeWriteTools ?? true;
 
   for (const name of AI_TOOL_NAMES) {
     const tool = aiTools[name];
+    if (tool.kind === 'write' && !includeWriteTools) {
+      continue;
+    }
+
     if (hasPermission(access, tool.requiredPermission)) {
       authorizedTools[name] = tool;
     }

@@ -114,7 +114,7 @@ export const quotesRouter = router({
           db: ctx.db,
           generateEmailBody: (quote) =>
             generateQuoteEmailBody({
-              aiContext: { access: ctx.access, db: ctx.db, session: ctx.session },
+              aiContext: { access: ctx.access, db: ctx.db, session: ctx.session, storage: ctx.storage },
               quote,
             }),
           input,

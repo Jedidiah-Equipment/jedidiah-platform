@@ -31,6 +31,7 @@ export const QuoteCreateFormValues = z
     customerMode: CustomerMode,
     inlineCompanyName: z.string(),
     productId: requiredSelection(UUID, 'Select a product'),
+    rangeId: emptyStringOr(UUID),
     salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
     status: QuoteStatus,
   })
@@ -59,6 +60,7 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   customerMode: 'existing',
   inlineCompanyName: '',
   productId: '',
+  rangeId: '',
   salesPersonId: '',
   status: 'draft',
 };
@@ -88,8 +90,9 @@ export function toQuoteFormValues(initialQuote: QuoteDetail): QuoteFormValues {
 
 /**
  * Form → schema. Assembles the API request from form state: the customer discriminated union
- * from the mode flags. Parsing through `QuoteCreateInput` applies the schema defaults for every
- * full-edit field that is intentionally absent from the create modal.
+ * from the mode flags. The create-only Range filter is intentionally ignored because Quotes only
+ * persist the selected Product. Parsing through `QuoteCreateInput` applies the schema defaults for
+ * every full-edit field that is intentionally absent from the create modal.
  */
 export function toQuoteCreateInput(value: QuoteCreateFormValues): QuoteCreateInput {
   return QuoteCreateInput.parse({

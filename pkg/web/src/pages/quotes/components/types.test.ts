@@ -18,6 +18,7 @@ const QUOTE_ID = '550e8400-e29b-41d4-a716-446655440000';
 const CUSTOMER_ID = '550e8400-e29b-41d4-a716-446655440001';
 const PRODUCT_ID = '550e8400-e29b-41d4-a716-446655440002';
 const BAY_ID = '550e8400-e29b-41d4-a716-446655440003';
+const RANGE_ID = '550e8400-e29b-41d4-a716-446655440004';
 const SELECTION_ID = '550e8400-e29b-41d4-a716-446655440010';
 const PRODUCT_ASSEMBLY_ID = '550e8400-e29b-41d4-a716-446655440011';
 
@@ -99,6 +100,7 @@ function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): 
     customerMode: 'existing',
     inlineCompanyName: '',
     productId: PRODUCT_ID,
+    rangeId: '',
     salesPersonId: 'auth-user-1',
     status: 'sent',
     ...overrides,
@@ -161,6 +163,7 @@ describe('QuoteCreateFormValues', () => {
       customerMode: 'existing',
       inlineCompanyName: '',
       productId: '',
+      rangeId: '',
       salesPersonId: '',
       status: 'draft',
     });
@@ -240,6 +243,13 @@ describe('toQuoteCreateInput', () => {
     const input = toQuoteCreateInput(buildCreateFormValues({ status: 'cancelled' }));
 
     expect(input.status).toBe('cancelled');
+  });
+
+  it('ignores the create-dialog Range filter in create submissions', () => {
+    const input = toQuoteCreateInput(buildCreateFormValues({ rangeId: RANGE_ID }));
+
+    expect(input.productId).toBe(PRODUCT_ID);
+    expect(input).not.toHaveProperty('rangeId');
   });
 });
 

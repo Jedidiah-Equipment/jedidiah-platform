@@ -5,6 +5,7 @@ export { usePartCategoryOptions } from './use-part-category-options.js';
 export { usePartOptions } from './use-part-options.js';
 export { useProductForQuoteOptions } from './use-product-for-quote-options.js';
 export { type ProductOption, useProductOptions } from './use-product-options.js';
+export { useProductRangeForQuoteOptions } from './use-product-range-for-quote-options.js';
 export { useSalesPersonOptions } from './use-sales-person-options.js';
 export { useSupplierOptions } from './use-supplier-options.js';
 export { useUserOptions } from './use-user-options.js';

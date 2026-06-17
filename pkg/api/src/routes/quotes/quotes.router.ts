@@ -7,6 +7,7 @@ import {
   isQuoteCoreError,
   listCustomers,
   listPriorityQuotes,
+  listProductRangeOptions,
   listProducts,
   listQuoteSalespeople,
   listQuotes,
@@ -73,6 +74,8 @@ export const quotesRouter = router({
   products: authorizedProcedure('quote:read')
     .input(ProductListInput)
     .query(({ ctx, input }) => listProducts({ db: ctx.db, input, log })),
+
+  rangeOptions: authorizedProcedure('quote:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
 
   productBayAvailability: authorizedProcedure('quote:read')
     .input(QuoteProductBayAvailabilityInput)

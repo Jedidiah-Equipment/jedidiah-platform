@@ -1,14 +1,10 @@
-import { IconPhoto, IconTrash, IconUpload } from '@tabler/icons-react';
 import type * as React from 'react';
-import { useId, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { useId } from 'react';
 
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
-import { Button } from '@/components/ui/button.js';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
-import { Input } from '@/components/ui/input.js';
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
+import { ImageUploadControl } from './ImageUploadControl.js';
 
 const THUMBNAIL_SIZE = 256;
 const THUMBNAIL_TYPE = 'image/webp';
@@ -31,74 +27,28 @@ export function ThumbnailField({
 }: ThumbnailFieldProps) {
   const field = useFieldContext<string | null>();
   const inputId = useId();
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
-
-  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-
-    if (!file) {
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      field.handleChange(await createThumbnailDataUrl(file));
-      onValueCommit?.();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to process thumbnail.');
-    } finally {
-      setIsProcessing(false);
-    }
-  }
 
   return (
     <Field data-invalid={isInvalid}>
       <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
-      <div className="flex items-center gap-3">
-        <EntityThumbnail label={fallbackLabel} size="lg" thumbnailDataUrl={field.state.value} />
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Input
-            accept="image/png,image/jpeg,image/webp"
-            aria-invalid={isInvalid}
-            className="sr-only"
-            disabled={disabled || isProcessing}
-            id={inputId}
-            onBlur={field.handleBlur}
-            onChange={handleFileChange}
-            ref={inputRef}
-            type="file"
-          />
-          <Button
-            disabled={disabled || isProcessing}
-            onClick={() => inputRef.current?.click()}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            {field.state.value ? <IconPhoto data-icon="inline-start" /> : <IconUpload data-icon="inline-start" />}
-            {field.state.value ? 'Replace' : 'Upload'}
-          </Button>
-          {field.state.value ? (
-            <Button
-              disabled={disabled || isProcessing}
-              onClick={() => {
-                field.handleChange(null);
-                onValueCommit?.();
-              }}
-              size="icon-sm"
-              type="button"
-              variant="outline"
-            >
-              <IconTrash />
-              <span className="sr-only">Remove thumbnail</span>
-            </Button>
-          ) : null}
-        </div>
-      </div>
+      <ImageUploadControl
+        accept="image/png,image/jpeg,image/webp"
+        disabled={disabled}
+        errorFallbackMessage="Unable to process thumbnail."
+        fallbackLabel={fallbackLabel}
+        inputId={inputId}
+        isInvalid={isInvalid}
+        onBlur={field.handleBlur}
+        onChange={(value) => {
+          field.handleChange(value);
+          onValueCommit?.();
+        }}
+        removeLabel="Remove thumbnail"
+        transform={createThumbnailDataUrl}
+        value={field.state.value}
+      />
       {description ? <FieldDescription>{description}</FieldDescription> : null}
       <FieldError errors={fieldErrors} />
     </Field>

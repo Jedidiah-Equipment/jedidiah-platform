@@ -3,7 +3,6 @@ import {
   generateQuoteDocument,
   getQuote,
   getQuoteProductBayAvailability,
-  getQuoteProductBrochure,
   isQuoteCoreError,
   listCustomers,
   listPriorityQuotes,
@@ -52,10 +51,6 @@ export const quotesRouter = router({
   get: authorizedProcedure('quote:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) => mapQuoteErrors(() => getQuote({ db: ctx.db, id: input.id }))),
-
-  getProductBrochure: authorizedProcedure('quote:read')
-    .input(z.object({ quoteId: UUID }))
-    .query(({ ctx, input }) => mapQuoteErrors(() => getQuoteProductBrochure({ db: ctx.db, quoteId: input.quoteId }))),
 
   salespeople: authorizedProcedure('quote:read').query(({ ctx }) => listQuoteSalespeople({ db: ctx.db })),
 

@@ -25,7 +25,6 @@ export function DraftQuoteEmailDialog({
   return (
     <QuoteDocumentActionDialog<QuoteDraftEmailResult>
       className={className}
-      confirmWithoutBrochureLabel="Draft without brochure"
       description="Generate the email copy and a Quote Document PDF, then send them to your own inbox to review before forwarding to the customer."
       errorMessage="Unable to draft the quote email."
       flushAutosave={flushAutosave}

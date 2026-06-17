@@ -525,7 +525,7 @@ describe('createJob', () => {
       {
         filename: 'Part Book.pdf',
         storageKey: 'documents/product/source/replacement-part-book.pdf',
-        type: 'brochure',
+        type: 'sop',
       },
     ]);
 
@@ -546,7 +546,7 @@ describe('createJob', () => {
     expect(liveProductRows).toEqual([
       expect.objectContaining({
         filename: 'Part Book.pdf',
-        metadata: { type: 'brochure' },
+        metadata: { type: 'sop' },
         ownerType: 'product',
         storageKey: 'documents/product/source/replacement-part-book.pdf',
       }),

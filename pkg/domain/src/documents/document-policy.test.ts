@@ -87,9 +87,16 @@ describe('validateDocumentPolicy', () => {
 
 describe('validateDocumentMetadata', () => {
   it('accepts each valid product document type', () => {
-    for (const type of ['sop', 'part_book', 'brochure'] as const) {
+    for (const type of ['sop', 'part_book'] as const) {
       expect(validateDocumentMetadata({ metadata: { type }, ownerType: 'product' })).toEqual({ ok: true });
     }
+  });
+
+  it('rejects the generated brochure type for product uploads', () => {
+    expect(validateDocumentMetadata({ metadata: { type: 'brochure' }, ownerType: 'product' })).toMatchObject({
+      ok: false,
+      code: 'document.metadata_invalid',
+    });
   });
 
   it('rejects product metadata with a missing type', () => {

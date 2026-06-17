@@ -17,12 +17,22 @@ export const DocumentContentType = requiredTrimmedText('Content type is required
 export type DocumentByteSize = z.infer<typeof DocumentByteSize>;
 export const DocumentByteSize = z.int().min(0);
 
+// Uploadable Product document types. The Brochure is generated, never uploaded, so it lives in
+// JobDocumentType instead.
 export type ProductDocumentType = z.infer<typeof ProductDocumentType>;
-export const ProductDocumentType = z.enum(['sop', 'part_book', 'brochure']);
+export const ProductDocumentType = z.enum(['sop', 'part_book']);
 
 export type ProductDocumentMetadata = z.infer<typeof ProductDocumentMetadata>;
 export const ProductDocumentMetadata = z.object({
   type: ProductDocumentType,
+});
+
+export type JobDocumentType = z.infer<typeof JobDocumentType>;
+export const JobDocumentType = z.enum(['sop', 'part_book', 'brochure']);
+
+export type JobDocumentMetadata = z.infer<typeof JobDocumentMetadata>;
+export const JobDocumentMetadata = z.object({
+  type: JobDocumentType,
 });
 
 export type QuoteDocumentMetadata = z.infer<typeof QuoteDocumentMetadata>;
@@ -31,7 +41,7 @@ export const QuoteDocumentMetadata = z.object({
 });
 
 export type DocumentMetadata = z.infer<typeof DocumentMetadata>;
-export const DocumentMetadata = z.union([ProductDocumentMetadata, QuoteDocumentMetadata]);
+export const DocumentMetadata = z.union([JobDocumentMetadata, QuoteDocumentMetadata]);
 
 export type DocumentSummary = z.infer<typeof DocumentSummary>;
 export const DocumentSummary = z.object({
@@ -59,7 +69,7 @@ export const JobDocument = DocumentSummary.extend({
   quoteId: z.null(),
   sourceProductId: UUID,
   sourceProductName: z.string().trim().min(1),
-  metadata: ProductDocumentMetadata,
+  metadata: JobDocumentMetadata,
 });
 
 export type ProductDocument = z.infer<typeof ProductDocument>;
@@ -100,12 +110,6 @@ export const ProductDocumentInput = z.object({
 
 export type QuoteDocumentInput = z.infer<typeof QuoteDocumentInput>;
 export const QuoteDocumentInput = z.object({
-  documentId: UUID,
-  quoteId: UUID,
-});
-
-export type QuoteProductBrochureInput = z.infer<typeof QuoteProductBrochureInput>;
-export const QuoteProductBrochureInput = z.object({
   documentId: UUID,
   quoteId: UUID,
 });

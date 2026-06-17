@@ -1,12 +1,11 @@
 import { departmentLabels, hasPermission } from '@pkg/domain';
 import type { QuoteDetail, QuoteDocumentGenerationWarning, UUID } from '@pkg/schema';
-import { IconAlertTriangle, IconLoader2 } from '@tabler/icons-react';
+import { IconLoader2 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -32,12 +31,11 @@ export type QuoteDocumentActionResult = { warnings: QuoteDocumentGenerationWarni
 /**
  * Shared dialog for actions that generate a Quote Document PDF from the saved Quote — currently
  * "Generate Quote Document" and "Draft Email". It owns the lead-time field, bay-availability hints,
- * brochure-missing acknowledgement, autosave flush, and warning toasts; callers supply the trigger,
- * copy, and the mutation to run via `onConfirm`.
+ * autosave flush, and warning toasts; callers supply the trigger, copy, and the mutation to run via
+ * `onConfirm`.
  */
 export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
   className,
-  confirmWithoutBrochureLabel,
   description,
   errorMessage,
   flushAutosave,
@@ -52,7 +50,6 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
   unsavedErrorMessage,
 }: {
   className?: string | undefined;
-  confirmWithoutBrochureLabel: string;
   description: string;
   errorMessage: string;
   flushAutosave: () => Promise<boolean>;
@@ -74,25 +71,21 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
   const [isOpen, setIsOpen] = useState(false);
   const [leadTime, setLeadTime] = useState(defaultLeadTime);
   const [hasUserEditedLeadTime, setHasUserEditedLeadTime] = useState(false);
-  const [confirmMissingBrochure, setConfirmMissingBrochure] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const canRunStatus = quote.status === 'draft' || quote.status === 'sent' || quote.status === 'accepted';
   const canUpdateQuote = hasPermission(accessQuery.data, 'quote:update');
   const canRun = canUpdateQuote && canRunStatus;
   const trimmedLeadTime = leadTime.trim();
-  const brochureQuery = useQuery(trpc.quotes.getProductBrochure.queryOptions({ quoteId: quote.id }));
   const availabilityQuery = useQuery({
     ...trpc.quotes.productBayAvailability.queryOptions({ quoteId: quote.id }),
     enabled: isOpen,
   });
   const availability = availabilityQuery.data;
-  const isMissingBrochure = brochureQuery.isSuccess && !brochureQuery.data;
 
   useEffect(() => {
     if (isOpen) {
       setLeadTime(defaultLeadTime);
       setHasUserEditedLeadTime(false);
-      setConfirmMissingBrochure(false);
     }
   }, [defaultLeadTime, isOpen]);
 
@@ -133,12 +126,6 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
         return;
       }
 
-      // Server generation can omit the brochure, but sales must acknowledge that path explicitly.
-      if (isMissingBrochure && !confirmMissingBrochure) {
-        setConfirmMissingBrochure(true);
-        return;
-      }
-
       const result = await onConfirm({ leadTime: trimmedLeadTime, quoteId: quote.id });
       await invalidateDocuments();
       toast.success(successMessage(result));
@@ -175,7 +162,6 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
             onChange={(event) => {
               setHasUserEditedLeadTime(true);
               setLeadTime(event.target.value);
-              setConfirmMissingBrochure(false);
             }}
             value={leadTime}
           />
@@ -207,24 +193,11 @@ export function QuoteDocumentActionDialog<R extends QuoteDocumentActionResult>({
             <span className="text-muted-foreground">Loading bay availability...</span>
           ) : null}
         </div>
-        {confirmMissingBrochure ? (
-          <Alert variant="destructive">
-            <IconAlertTriangle />
-            <AlertTitle>No Product brochure attached</AlertTitle>
-            <AlertDescription>
-              This Quote Document will be generated without a Product brochure. Proceed only if that is intentional.
-            </AlertDescription>
-          </Alert>
-        ) : null}
         <DialogFooter>
           <DialogClose render={<Button disabled={isBusy} type="button" variant="outline" />}>Cancel</DialogClose>
-          <Button
-            disabled={isBusy || brochureQuery.isLoading || trimmedLeadTime.length === 0}
-            onClick={handleSubmit}
-            type="button"
-          >
+          <Button disabled={isBusy || trimmedLeadTime.length === 0} onClick={handleSubmit} type="button">
             {isBusy ? <IconLoader2 className="animate-spin" data-icon="inline-start" /> : null}
-            {confirmMissingBrochure ? confirmWithoutBrochureLabel : submitLabel}
+            {submitLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

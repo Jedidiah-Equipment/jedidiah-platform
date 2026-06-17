@@ -1,25 +1,29 @@
-import { Readable } from 'node:stream';
-
-import { ImageNotFoundError, ImagePolicyViolationError, isProductCoreError, type StoredObject } from '@pkg/core';
-import { createUserAccessSummary, hasPermission } from '@pkg/domain';
+import { ImageNotFoundError, ImagePolicyViolationError, type StoredObject } from '@pkg/core';
 import type { AppPermission } from '@pkg/schema';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { z } from 'zod';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 
-import { type AppSession, getSessionFromHeaders, parseBetterAuthRole } from '../../auth/session.js';
+import {
+  RouteHttpError,
+  requirePermission,
+  requireRouteAuth,
+  sendHttpError,
+  streamObjectBody,
+} from '../http-route-helpers.js';
 
-type RouteAuthContext = {
-  access: ReturnType<typeof createUserAccessSummary>;
-  session: AppSession;
-};
+// Re-exported so an entity's route config can build its owner-error mapping from one import.
+export { RouteHttpError } from '../http-route-helpers.js';
 
 // Describes one entity's replace-in-place image routes. The registrar owns the shared transport
 // concerns (auth, permission gating, multipart read, streaming, error mapping); the config supplies the
-// entity-specific paths, permissions, and the core service calls. Each config parses the raw route
-// params itself (it owns its param shape); a parse failure surfaces as a 400 through the shared mapper.
-// Reuse for any entity that stores uploaded images in private object storage.
+// entity-specific paths, permissions, core service calls, and how to map its own owner errors (e.g. a
+// missing Product). Each config parses the raw route params itself (it owns its param shape); a parse
+// failure surfaces as a 400 through the shared mapper. Reuse for any entity that stores uploaded images
+// in private object storage.
 export type EntityImageRouteConfig = {
   downloadPath: string;
+  // Maps an owner error raised by the binding (e.g. ProductNotFoundError) to a route response, or returns
+  // undefined to let it propagate. Keeps entity-specific error knowledge out of this generic registrar.
+  mapOwnerError: (error: unknown) => RouteHttpError | undefined;
   noFileMessage: string;
   read: (args: { rawParams: unknown }) => Promise<StoredObject>;
   readForbiddenMessage: string;
@@ -46,7 +50,7 @@ function registerEntityImageConfig(app: FastifyInstance, config: EntityImageRout
     if (!auth) return;
 
     try {
-      requirePermission(auth, config.uploadPermission, config.uploadForbiddenMessage);
+      requirePermission(auth, config.uploadPermission, config.uploadForbiddenMessage, 'image.forbidden');
       const file = await request.file();
 
       if (!file) {
@@ -59,7 +63,7 @@ function registerEntityImageConfig(app: FastifyInstance, config: EntityImageRout
 
       reply.status(200).send(body);
     } catch (error) {
-      sendImageHttpError(reply, error);
+      sendImageHttpError(reply, error, config);
     }
   });
 
@@ -68,90 +72,35 @@ function registerEntityImageConfig(app: FastifyInstance, config: EntityImageRout
     if (!auth) return;
 
     try {
-      requirePermission(auth, config.readPermission, config.readForbiddenMessage);
+      requirePermission(auth, config.readPermission, config.readForbiddenMessage, 'image.forbidden');
       const object = await config.read({ rawParams: request.params });
 
       reply.header('Content-Type', object.contentType);
       reply.header('Content-Length', object.byteSize);
-      return reply.send(Readable.from(object.body, { objectMode: false }));
+      return reply.send(streamObjectBody(object.body));
     } catch (error) {
-      sendImageHttpError(reply, error);
+      sendImageHttpError(reply, error, config);
     }
   });
 }
 
-async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): Promise<RouteAuthContext | null> {
-  const session = await getSessionFromHeaders(request.headers);
-
-  if (!session) {
-    reply.status(401).send({ message: 'Please sign in to continue.' });
-    return null;
-  }
-
-  const access = createUserAccessSummary({
-    role: parseBetterAuthRole(session.user.role),
-    userId: session.user.id,
-  });
-
-  return { access, session };
-}
-
-function requirePermission(auth: RouteAuthContext, permission: AppPermission, message: string): void {
-  if (hasPermission(auth.access, permission)) {
-    return;
-  }
-
-  throw Object.assign(new Error(message), {
-    appCode: 'image.forbidden',
-    statusCode: 403,
+function sendImageHttpError(reply: FastifyReply, error: unknown, config: EntityImageRouteConfig): void {
+  sendHttpError(reply, toImageRouteError(error, config) ?? error, {
+    fallbackMessage: 'Image request failed.',
+    invalidRequestMessage: 'Invalid image request.',
+    onFileTooLarge: () => ({ appCode: 'image.file_too_large', message: 'Image is too large.' }),
   });
 }
 
-function sendImageHttpError(reply: FastifyReply, error: unknown): void {
-  if (isMultipartFileTooLargeError(reply, error)) {
-    reply.status(400).send({
-      data: { appCode: 'image.file_too_large' },
-      message: 'Image is too large.',
-    });
-    return;
-  }
-
+// Maps the generic image errors this layer owns, then defers owner-not-found and the like to the config.
+function toImageRouteError(error: unknown, config: EntityImageRouteConfig): RouteHttpError | undefined {
   if (error instanceof ImagePolicyViolationError) {
-    reply.status(400).send({ data: { appCode: error.code }, message: error.message });
-    return;
+    return new RouteHttpError({ appCode: error.code, message: error.message, statusCode: 400 });
   }
 
   if (error instanceof ImageNotFoundError) {
-    reply.status(404).send({ data: { appCode: error.code }, message: 'Image not found.' });
-    return;
+    return new RouteHttpError({ appCode: error.code, message: 'Image not found.', statusCode: 404 });
   }
 
-  // Owner-not-found (e.g. a missing Product) surfaces as the owner's core error.
-  if (isProductCoreError(error)) {
-    const notFound = error.code === 'product.not_found';
-    reply.status(notFound ? 404 : 400).send({
-      data: { appCode: error.code },
-      message: notFound ? 'Product not found.' : error.message,
-    });
-    return;
-  }
-
-  if (error instanceof z.ZodError) {
-    reply.status(400).send({ message: 'Invalid image request.' });
-    return;
-  }
-
-  if (typeof error === 'object' && error !== null && 'statusCode' in error && typeof error.statusCode === 'number') {
-    reply.status(error.statusCode).send({
-      data: { appCode: 'appCode' in error ? error.appCode : undefined },
-      message: error instanceof Error ? error.message : 'Image request failed.',
-    });
-    return;
-  }
-
-  throw error;
-}
-
-function isMultipartFileTooLargeError(reply: FastifyReply, error: unknown): boolean {
-  return error instanceof reply.server.multipartErrors.RequestFileTooLargeError;
+  return config.mapOwnerError(error);
 }

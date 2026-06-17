@@ -1,8 +1,8 @@
 import type { DatabaseTransaction, Db, StoredImageRef } from '@pkg/db';
 import { type ImagePolicy, validateImage } from '@pkg/domain';
 
-import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
-import { type ImageNotFoundError, ImagePolicyViolationError } from './image-errors.js';
+import type { StorageAdapter } from '../documents/storage-adapter.js';
+import { ImagePolicyViolationError } from './image-errors.js';
 
 // Persists a new image reference for one owner/target inside the replace transaction and reports the
 // object it superseded. The binding owns everything entity-specific: locking and checking the owner
@@ -72,23 +72,6 @@ export async function replaceImage({
   }
 
   return nextRef;
-}
-
-// Streams a stored image, raising {@link ImageNotFoundError} when the target has no current image.
-export async function readImage({
-  notFound,
-  ref,
-  storage,
-}: {
-  notFound: () => ImageNotFoundError;
-  ref: StoredImageRef | null;
-  storage: StorageAdapter;
-}): Promise<StoredObject> {
-  if (!ref) {
-    throw notFound();
-  }
-
-  return storage.get(ref.storageKey);
 }
 
 async function cleanUpOrphanedObject(storage: StorageAdapter, storageKey: string, cause: unknown): Promise<void> {

@@ -8,7 +8,7 @@ import { eq } from 'drizzle-orm';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
 import { ImageNotFoundError } from '../images/image-errors.js';
-import { readImage, replaceImage } from '../images/image-service.js';
+import { replaceImage } from '../images/image-service.js';
 import { ProductNotFoundError } from './product-errors.js';
 import { getProduct, productAuditDescriptor } from './product-service.js';
 
@@ -104,15 +104,16 @@ export async function readProductBrochureImage({
     throw new ProductNotFoundError(productId);
   }
 
-  return readImage({
-    ref: row.brochureImages[slot] ?? null,
-    storage,
-    notFound: () =>
-      new ImageNotFoundError(`Brochure image not found for slot ${slot} on product ${productId}`, {
-        productId,
-        slot,
-      }),
-  });
+  const ref = row.brochureImages[slot];
+
+  if (!ref) {
+    throw new ImageNotFoundError(`Brochure image not found for slot ${slot} on product ${productId}`, {
+      productId,
+      slot,
+    });
+  }
+
+  return storage.get(ref.storageKey);
 }
 
 function extensionFor(contentType: string): string {

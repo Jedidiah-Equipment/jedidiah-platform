@@ -10,6 +10,7 @@ import {
 } from '@pkg/db';
 import {
   AddBayCalendarExceptionInput,
+  type BrochurePdfRenderer,
   type Department,
   type JobDetail,
   RemoveBayCalendarExceptionInput,
@@ -17,6 +18,7 @@ import {
 } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { createTester } from '../test/create-tester.js';
+import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { listBays } from './job-read-service.js';
 import { bookJobSlot, createJob } from './job-service.js';
@@ -398,9 +400,13 @@ async function createAcceptedJob(db: Db, productId: string): Promise<JobDetail> 
     .returning();
   if (!quote) throw new Error('Quote insert did not return a row');
 
+  const brochureRenderer: BrochurePdfRenderer = async () => new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+
   return createJob({
     actorUserId,
+    brochureRenderer,
     db,
+    storage: new InMemoryStorageAdapter(),
     input: { baySeeds: [], quoteId: quote.id },
   });
 }

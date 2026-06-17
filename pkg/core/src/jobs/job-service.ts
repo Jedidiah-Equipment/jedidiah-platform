@@ -19,6 +19,7 @@ import {
   type AuthId,
   type BookJobSlotInput,
   BookJobSlotResult,
+  type BrochurePdfRenderer,
   type DateOnlyIso,
   formatJobCode,
   formatProductSerialNumber,
@@ -40,7 +41,9 @@ import { asc, eq, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../audit/audit-service.js';
 import { documentBaseSelect } from '../documents/document-service.js';
+import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
+import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
 import { JobCreateFromQuoteDeniedError, JobNotFoundError, JobSlotNotFoundError } from './job-errors.js';
@@ -72,13 +75,17 @@ function formatJobAuditLabel(value: unknown): string {
 }
 
 export async function createJob({
+  actorUserId,
+  brochureRenderer,
   db,
   input,
-  actorUserId,
+  storage,
 }: {
+  actorUserId: AuthId;
+  brochureRenderer: BrochurePdfRenderer;
   db: Db;
   input: JobCreateInput;
-  actorUserId: AuthId;
+  storage: StorageAdapter;
 }): Promise<JobDetail> {
   return db.transaction(async (tx) => {
     const quote = await validateJobQuoteForCreate({ quoteId: input.quoteId, tx });
@@ -107,11 +114,6 @@ export async function createJob({
     }
 
     await insertJobCfo({ cfo, jobId: job.id, tx });
-    await snapshotJobDocuments({
-      jobId: job.id,
-      productId: quote.productId,
-      tx,
-    });
     // Canonical lock order: concurrent creates seeding the same Bays must not deadlock.
     const seeds = [...input.baySeeds].sort((left, right) => left.bayId.localeCompare(right.bayId));
 
@@ -120,6 +122,18 @@ export async function createJob({
 
       await queue.book({ durationDays: seed.durationDays, jobId: job.id, kind: 'work' }, { startDate: seed.startDate });
     }
+
+    // Snapshot documents only after the abort-prone bay seeding succeeds: generating the Brochure
+    // writes a PDF to (non-transactional) storage, so a later rollback would orphan that object.
+    await snapshotJobDocuments({
+      actorUserId,
+      brochureRenderer,
+      db,
+      jobId: job.id,
+      productId: quote.productId,
+      storage,
+      tx,
+    });
 
     await recordAuditCreate({ db: tx, descriptor: jobAuditDescriptor, actorUserId, input: job });
 
@@ -425,7 +439,36 @@ async function insertJobCfo({
   }
 }
 
+/**
+ * Freezes a Job's documents at creation time. The uploaded Product Documents (sop/part_book) are
+ * snapshot-copied as immutable job-owned rows that point at the same stored object, while the Brochure
+ * is generated fresh from the Product's live config (via the injected {@link BrochurePdfRenderer}) and
+ * saved as a standalone immutable Job Document. A later edit to the Product's brochure config never
+ * changes an already-saved Job Document; when the config is incomplete, no Brochure Job Document is
+ * created — consistent with the shared completeness gate.
+ */
 export async function snapshotJobDocuments({
+  actorUserId,
+  brochureRenderer,
+  db,
+  jobId,
+  productId,
+  storage,
+  tx,
+}: {
+  actorUserId: AuthId;
+  brochureRenderer: BrochurePdfRenderer;
+  db: Db;
+  jobId: UUID;
+  productId: UUID;
+  storage: StorageAdapter;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  await copyUploadedProductDocuments({ jobId, productId, tx });
+  await snapshotJobBrochureDocument({ actorUserId, db, jobId, pdfRenderer: brochureRenderer, productId, storage, tx });
+}
+
+async function copyUploadedProductDocuments({
   jobId,
   productId,
   tx,

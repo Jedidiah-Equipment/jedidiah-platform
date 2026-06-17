@@ -1,6 +1,9 @@
-import { type BrochureImageStore, type Db, products } from '@pkg/db';
+import { randomUUID } from 'node:crypto';
+
+import { type BrochureImageStore, type DatabaseTransaction, type Db, products } from '@pkg/db';
 import { evaluateBrochureCompleteness } from '@pkg/domain';
 import {
+  type AuthId,
   BROCHURE_IMAGE_SLOT_SPECS,
   BROCHURE_IMAGE_SLOTS,
   type BrochureDocumentImages,
@@ -11,7 +14,11 @@ import {
 } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
-import { readStoredObjectBytes } from '../documents/document-service.js';
+import {
+  createDocumentRecord,
+  readStoredObjectBytes,
+  sanitizeDocumentStorageKeySuffix,
+} from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { ProductBrochureIncompleteError, ProductNotFoundError } from './product-errors.js';
 import { getProduct } from './product-service.js';
@@ -71,6 +78,56 @@ export async function generateProductBrochureIfComplete({
   }
 
   return renderBrochureForProduct({ db, pdfRenderer, product, storage });
+}
+
+/**
+ * Generates the Brochure from a Product's live config and saves it as a standalone immutable Job
+ * Document. When the config is incomplete, nothing is created — consistent with the shared completeness
+ * gate, so a job with an unconfigured brochure simply has no brochure document. The PDF is generated
+ * fresh and persisted at creation time, so a later edit to the Product's brochure config never changes
+ * an already-saved Job Document.
+ *
+ * The config read uses `db` (the Product and its images are untouched by the job-create transaction),
+ * while the document row is inserted on `tx` so it commits atomically with the rest of job creation.
+ */
+export async function snapshotJobBrochureDocument({
+  actorUserId,
+  db,
+  jobId,
+  pdfRenderer,
+  productId,
+  storage,
+  tx,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  jobId: UUID;
+  pdfRenderer: BrochurePdfRenderer;
+  productId: UUID;
+  storage: StorageAdapter;
+  tx: DatabaseTransaction;
+}): Promise<void> {
+  const brochure = await generateProductBrochureIfComplete({ db, pdfRenderer, productId, storage });
+
+  if (!brochure) {
+    return;
+  }
+
+  const storageKey = `documents/job/${jobId}/${randomUUID()}-${sanitizeDocumentStorageKeySuffix(brochure.filename)}`;
+  await createDocumentRecord({
+    actorUserId,
+    db: tx,
+    input: {
+      bytes: brochure.bytes,
+      filename: brochure.filename,
+      jobId,
+      metadata: { type: 'brochure' },
+      ownerType: 'job',
+      sourceProductId: productId,
+      storageKey,
+    },
+    storage,
+  });
 }
 
 async function renderBrochureForProduct({

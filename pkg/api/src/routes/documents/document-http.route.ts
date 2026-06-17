@@ -8,10 +8,12 @@ import {
   readProductDocument,
   readQuoteDocument,
   readQuoteProductBrochure,
+  renderProductBrochurePreview,
   type StorageAdapter,
 } from '@pkg/core';
 import { db } from '@pkg/db';
 import { validateDocumentPolicy } from '@pkg/domain';
+import { renderBrochurePdf } from '@pkg/pdf';
 import {
   DocumentListByProductInput,
   ProductDocumentInput,
@@ -103,6 +105,36 @@ export async function registerDocumentHttpRoutes(app: FastifyInstance, storage: 
       reply.header('Content-Length', result.document.byteSize);
       reply.header('Content-Disposition', createContentDisposition(result.document.filename));
       return reply.send(streamObjectBody(result.object.body));
+    } catch (error) {
+      sendDocumentHttpError(reply, error);
+    }
+  });
+
+  app.get('/api/products/:productId/brochure-preview', async (request, reply) => {
+    const auth = await requireRouteAuth(request, reply);
+    if (!auth) return;
+
+    try {
+      requirePermission(
+        auth,
+        'product:read',
+        'You do not have permission to preview this brochure.',
+        'document.forbidden',
+      );
+      const params = DocumentListByProductInput.parse(request.params);
+      const preview = await mapHttpDocumentErrors(() =>
+        renderProductBrochurePreview({
+          db,
+          pdfRenderer: renderBrochurePdf,
+          productId: params.productId,
+          storage,
+        }),
+      );
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Length', preview.bytes.byteLength);
+      reply.header('Content-Disposition', createContentDisposition(preview.filename, 'inline'));
+      return reply.send(Buffer.from(preview.bytes));
     } catch (error) {
       sendDocumentHttpError(reply, error);
     }
@@ -221,6 +253,14 @@ async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
     }
 
     if (isProductCoreError(error)) {
+      if (error.code === 'product.brochure_incomplete') {
+        throw new RouteHttpError({
+          appCode: error.code,
+          message: 'This brochure is incomplete, so a preview is not available yet.',
+          statusCode: 409,
+        });
+      }
+
       const notFound = error.code === 'product.not_found';
       throw new RouteHttpError({
         appCode: error.code,
@@ -279,9 +319,9 @@ function trpcCodeToHttpStatus(code: string): number {
   return 500;
 }
 
-function createContentDisposition(filename: string): string {
+function createContentDisposition(filename: string, disposition: 'attachment' | 'inline' = 'attachment'): string {
   const fallback = filename.replace(/["\\\r\n]/g, '_');
   const encoded = encodeURIComponent(filename).replace(/'/g, '%27');
 
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
 }

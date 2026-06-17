@@ -1,3 +1,5 @@
+import type { BrochureRequiredField } from '@pkg/schema';
+
 export class DuplicateProductNameError extends Error {
   readonly code = 'product.duplicate_name';
   readonly metadata: { name: string };
@@ -28,6 +30,17 @@ export class ProductNotFoundError extends Error {
     super(`Product not found: ${id}`);
     this.name = 'ProductNotFoundError';
     this.metadata = { id };
+  }
+}
+
+export class ProductBrochureIncompleteError extends Error {
+  readonly code = 'product.brochure_incomplete';
+  readonly metadata: { missingFields: BrochureRequiredField[]; productId: string };
+
+  constructor(productId: string, missingFields: BrochureRequiredField[]) {
+    super(`Product Brochure is incomplete: ${productId}`);
+    this.name = 'ProductBrochureIncompleteError';
+    this.metadata = { missingFields, productId };
   }
 }
 
@@ -153,6 +166,7 @@ export type ProductCoreError =
   | DuplicateProductNameError
   | ProductBayDisabledError
   | ProductBayNotFoundError
+  | ProductBrochureIncompleteError
   | ProductNotFoundError
   | ProductRangeReferenceNotFoundError;
 
@@ -169,6 +183,7 @@ export function isProductCoreError(error: unknown): error is ProductCoreError {
     error instanceof DuplicateProductNameError ||
     error instanceof ProductBayDisabledError ||
     error instanceof ProductBayNotFoundError ||
+    error instanceof ProductBrochureIncompleteError ||
     error instanceof ProductNotFoundError ||
     error instanceof ProductRangeReferenceNotFoundError
   );

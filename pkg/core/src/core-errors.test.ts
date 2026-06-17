@@ -15,6 +15,11 @@ import {
   PartSupplierNotFoundError,
 } from './parts/part-errors.js';
 import {
+  DuplicateProductRangeNameError,
+  isProductRangeCoreError,
+  ProductRangeNotFoundError,
+} from './product-ranges/product-range-errors.js';
+import {
   DuplicateProductModelCodeError,
   DuplicateProductNameError,
   isProductCoreError,
@@ -36,6 +41,13 @@ describe('core error codes and guards', () => {
     expect(new ProductNotFoundError('product-id').code).toBe('product.not_found');
     expect(isProductCoreError(new ProductNotFoundError('product-id'))).toBe(true);
     expect(isProductCoreError(new Error('product.not_found'))).toBe(false);
+  });
+
+  it('identifies product range core errors', () => {
+    expect(new DuplicateProductRangeNameError('Crosshaul').code).toBe('product_range.duplicate_name');
+    expect(new ProductRangeNotFoundError('range-id').code).toBe('product_range.not_found');
+    expect(isProductRangeCoreError(new ProductRangeNotFoundError('range-id'))).toBe(true);
+    expect(isProductRangeCoreError(new Error('product_range.not_found'))).toBe(false);
   });
 
   it('identifies part core errors', () => {

@@ -5,7 +5,10 @@ import { z } from 'zod';
 
 dotenv.config({ quiet: true });
 
-if (process.env.APP_ENV === 'development') {
+// `.env.dev` holds real local-dev service credentials (Resend, OpenAI) and flips
+// EMAIL_PROVIDER to `resend`. Tests must never load it, otherwise the email sender
+// becomes a live Resend client and the mock-email harness records nothing.
+if (process.env.APP_ENV === 'development' && process.env.NODE_ENV !== 'test') {
   dotenv.config({ path: '.env.dev', override: true, quiet: true });
 }
 

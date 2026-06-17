@@ -327,8 +327,15 @@
     {
       "idx": 46,
       "version": "7",
-      "when": 1781697517256,
-      "tag": "0046_overrated_boom_boom",
+      "when": 1781699645202,
+      "tag": "0046_fancy_thunderbolts",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1781701854749,
+      "tag": "0047_sour_moon_knight",
       "breakpoints": true
     }
   ]

@@ -12,6 +12,8 @@ export * from './jobs/job-service.js';
 export * from './jobs/working-calendar-service.js';
 export * from './parts/part-errors.js';
 export * from './parts/part-service.js';
+export * from './product-ranges/product-range-errors.js';
+export * from './product-ranges/product-range-service.js';
 export * from './products/product-assembly-service.js';
 export * from './products/product-brochure-image-service.js';
 export * from './products/product-errors.js';

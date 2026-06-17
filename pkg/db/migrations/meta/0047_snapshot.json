@@ -1,6 +1,6 @@
 {
-  "id": "f0b9b2c4-8b04-4a6f-b9ed-c5e74d3b3e7f",
-  "prevId": "ec111d8f-0351-42cb-b6dc-3abb91c1f547",
+  "id": "48b3e505-ebfe-4bf8-a3df-4a23fad932aa",
+  "prevId": "f0b9b2c4-8b04-4a6f-b9ed-c5e74d3b3e7f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2374,6 +2374,13 @@
           "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": true
+        },
+        "brochure_images": {
+          "name": "brochure_images",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
         },
         "brochure_key_features": {
           "name": "brochure_key_features",

@@ -19,6 +19,7 @@ import { Route as AuthedUsersRouteImport } from './../routes/_authed.users'
 import { Route as AuthedSuppliersRouteImport } from './../routes/_authed.suppliers'
 import { Route as AuthedQuotesRouteImport } from './../routes/_authed.quotes'
 import { Route as AuthedProductsRouteImport } from './../routes/_authed.products'
+import { Route as AuthedProductRangesRouteImport } from './../routes/_authed.product-ranges'
 import { Route as AuthedJobsRouteImport } from './../routes/_authed.jobs'
 import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboard'
 import { Route as AuthedCustomersRouteImport } from './../routes/_authed.customers'
@@ -85,6 +86,11 @@ const AuthedQuotesRoute = AuthedQuotesRouteImport.update({
 const AuthedProductsRoute = AuthedProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedProductRangesRoute = AuthedProductRangesRouteImport.update({
+  id: '/product-ranges',
+  path: '/product-ranges',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedJobsRoute = AuthedJobsRouteImport.update({
@@ -190,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/customers': typeof AuthedCustomersRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
   '/jobs': typeof AuthedJobsRouteWithChildren
+  '/product-ranges': typeof AuthedProductRangesRoute
   '/products': typeof AuthedProductsRouteWithChildren
   '/quotes': typeof AuthedQuotesRouteWithChildren
   '/suppliers': typeof AuthedSuppliersRouteWithChildren
@@ -217,6 +224,7 @@ export interface FileRoutesByTo {
   '/audit': typeof AuthedAuditRoute
   '/bays': typeof AuthedBaysRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/product-ranges': typeof AuthedProductRangesRoute
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/_authed/customers': typeof AuthedCustomersRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/jobs': typeof AuthedJobsRouteWithChildren
+  '/_authed/product-ranges': typeof AuthedProductRangesRoute
   '/_authed/products': typeof AuthedProductsRouteWithChildren
   '/_authed/quotes': typeof AuthedQuotesRouteWithChildren
   '/_authed/suppliers': typeof AuthedSuppliersRouteWithChildren
@@ -276,6 +285,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/jobs'
+    | '/product-ranges'
     | '/products'
     | '/quotes'
     | '/suppliers'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/bays'
     | '/dashboard'
+    | '/product-ranges'
     | '/users'
     | '/jobs/$id'
     | '/jobs/calendar'
@@ -330,6 +341,7 @@ export interface FileRouteTypes {
     | '/_authed/customers'
     | '/_authed/dashboard'
     | '/_authed/jobs'
+    | '/_authed/product-ranges'
     | '/_authed/products'
     | '/_authed/quotes'
     | '/_authed/suppliers'
@@ -427,6 +439,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/products'
       preLoaderRoute: typeof AuthedProductsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/product-ranges': {
+      id: '/_authed/product-ranges'
+      path: '/product-ranges'
+      fullPath: '/product-ranges'
+      preLoaderRoute: typeof AuthedProductRangesRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/jobs': {
@@ -639,6 +658,7 @@ interface AuthedRouteChildren {
   AuthedCustomersRoute: typeof AuthedCustomersRouteWithChildren
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedJobsRoute: typeof AuthedJobsRouteWithChildren
+  AuthedProductRangesRoute: typeof AuthedProductRangesRoute
   AuthedProductsRoute: typeof AuthedProductsRouteWithChildren
   AuthedQuotesRoute: typeof AuthedQuotesRouteWithChildren
   AuthedSuppliersRoute: typeof AuthedSuppliersRouteWithChildren
@@ -652,6 +672,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedCustomersRoute: AuthedCustomersRouteWithChildren,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedJobsRoute: AuthedJobsRouteWithChildren,
+  AuthedProductRangesRoute: AuthedProductRangesRoute,
   AuthedProductsRoute: AuthedProductsRouteWithChildren,
   AuthedQuotesRoute: AuthedQuotesRouteWithChildren,
   AuthedSuppliersRoute: AuthedSuppliersRouteWithChildren,

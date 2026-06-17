@@ -11,7 +11,13 @@ import {
 } from '@pkg/db';
 import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
 import { createPdfBytesWithPageSizes, getPdfPageSizes } from '@pkg/pdf';
-import { formatQuoteCode, type UUID } from '@pkg/schema';
+import {
+  BROCHURE_IMAGE_SLOTS,
+  type BrochureImageSlot,
+  type BrochurePdfRenderer,
+  formatQuoteCode,
+  type UUID,
+} from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -458,6 +464,7 @@ describe('generateQuoteDocument', () => {
 
     const result = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
+      brochureRenderer: stubBrochureRenderer,
       db: context.db,
       input: {
         leadTime: '14 working days',
@@ -485,8 +492,9 @@ describe('generateQuoteDocument', () => {
     });
     expect(result.warnings).toEqual([
       {
-        code: 'quote_document.product_brochure_missing',
-        message: 'No PDF brochure is attached to this Quote Product, so the Quote Document was generated without one.',
+        code: 'quote_document.brochure_config_incomplete',
+        message:
+          "This Quote Product's Brochure is not fully configured, so the Quote Document was generated without one.",
       },
     ]);
     expect(rendered.filename).toBe(`${quoteCode}-rev-2.pdf`);
@@ -537,31 +545,14 @@ describe('generateQuoteDocument', () => {
     });
   });
 
-  test('appends the latest Product brochure after all rendered quote pages', async ({ context }) => {
-    const olderBrochure = await uploadPdf(context, {
-      bytes: await realPdfBytes([[320, 320]]),
-      filename: 'Older Brochure.pdf',
-      productId: context.productId,
-      type: 'brochure',
-    });
-    const latestPartBook = await uploadPdf(context, {
-      bytes: await realPdfBytes([[500, 500]]),
-      filename: 'Latest Part Book.pdf',
-      productId: context.productId,
-      type: 'part_book',
-    });
-    const latestPdfBrochure = await uploadPdf(context, {
-      bytes: await realPdfBytes([[420, 420]]),
-      filename: 'Latest Brochure.pdf',
-      productId: context.productId,
-      type: 'brochure',
-    });
-    await setDocumentCreatedAt(context.db, olderBrochure.id, new Date('2026-01-01T00:00:00.000Z'));
-    await setDocumentCreatedAt(context.db, latestPdfBrochure.id, new Date('2026-01-03T00:00:00.000Z'));
-    await setDocumentCreatedAt(context.db, latestPartBook.id, new Date('2026-01-05T00:00:00.000Z'));
+  test('generates the Product brochure from live config and appends it after all rendered quote pages', async ({
+    context,
+  }) => {
+    await seedCompleteBrochureConfig(context, context.productId);
 
     const result = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
+      brochureRenderer: async () => realPdfBytes([[420, 420]]),
       db: context.db,
       input: {
         leadTime: '14 working days',
@@ -591,9 +582,10 @@ describe('generateQuoteDocument', () => {
     ]);
   });
 
-  test('generates a quote-only PDF with a warning when no Product brochure exists', async ({ context }) => {
+  test('generates a quote-only PDF with a warning when the brochure config is incomplete', async ({ context }) => {
     const result = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
+      brochureRenderer: stubBrochureRenderer,
       db: context.db,
       input: {
         leadTime: '14 working days',
@@ -613,25 +605,22 @@ describe('generateQuoteDocument', () => {
 
     expect(result.warnings).toEqual([
       {
-        code: 'quote_document.product_brochure_missing',
-        message: 'No PDF brochure is attached to this Quote Product, so the Quote Document was generated without one.',
+        code: 'quote_document.brochure_config_incomplete',
+        message:
+          "This Quote Product's Brochure is not fully configured, so the Quote Document was generated without one.",
       },
     ]);
     expect(pageSizes).toEqual([{ height: 300, width: 200 }]);
   });
 
-  test('generates a quote-only PDF with a warning when the latest Product PDF brochure is unreadable', async ({
-    context,
-  }) => {
-    await uploadPdf(context, {
-      bytes: pdfBytes(),
-      filename: 'Malformed Brochure.pdf',
-      productId: context.productId,
-      type: 'brochure',
-    });
+  test('skips the brochure and warns when only some required fields are configured', async ({ context }) => {
+    // Everything except the hero image is configured, so the completeness gate fails and the brochure
+    // is skipped without blocking the quote.
+    await seedCompleteBrochureConfig(context, context.productId, { omitSlots: ['hero'] });
 
     const result = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
+      brochureRenderer: stubBrochureRenderer,
       db: context.db,
       input: {
         leadTime: '14 working days',
@@ -651,23 +640,24 @@ describe('generateQuoteDocument', () => {
 
     expect(result.warnings).toEqual([
       {
-        code: 'quote_document.product_brochure_unavailable',
-        message: 'The latest PDF brochure could not be appended, so the Quote Document was generated without one.',
+        code: 'quote_document.brochure_config_incomplete',
+        message:
+          "This Quote Product's Brochure is not fully configured, so the Quote Document was generated without one.",
       },
     ]);
     expect(pageSizes).toEqual([{ height: 300, width: 200 }]);
   });
 
   test('keeps older Quote Document packets frozen when customer details and brochures change', async ({ context }) => {
-    const firstBrochure = await uploadPdf(context, {
-      bytes: await realPdfBytes([[300, 300]]),
-      filename: 'First Brochure.pdf',
-      productId: context.productId,
-      type: 'brochure',
-    });
-    await setDocumentCreatedAt(context.db, firstBrochure.id, new Date('2026-01-01T00:00:00.000Z'));
+    await seedCompleteBrochureConfig(context, context.productId);
+    // The brochure regenerates from live config on each generation, so a later config change must not
+    // alter an already-saved packet. A stateful fake stands in for that config drift.
+    let brochurePageSize: [number, number] = [300, 300];
+    const brochureRenderer = async () => realPdfBytes([brochurePageSize]);
+
     const first = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
+      brochureRenderer,
       db: context.db,
       input: {
         leadTime: '14 working days',
@@ -681,15 +671,10 @@ describe('generateQuoteDocument', () => {
       .update(customers)
       .set({ companyName: 'Updated Customer Details' })
       .where(eq(customers.id, context.customerId));
-    const secondBrochure = await uploadPdf(context, {
-      bytes: await realPdfBytes([[400, 400]]),
-      filename: 'Second Brochure.pdf',
-      productId: context.productId,
-      type: 'brochure',
-    });
-    await setDocumentCreatedAt(context.db, secondBrochure.id, new Date('2026-01-02T00:00:00.000Z'));
+    brochurePageSize = [400, 400];
     const second = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
+      brochureRenderer,
       db: context.db,
       input: {
         leadTime: '14 working days',
@@ -736,6 +721,7 @@ describe('generateQuoteDocument', () => {
       await expect(
         generateQuoteDocument({
           actorUserId: ACTOR_USER_ID,
+          brochureRenderer: stubBrochureRenderer,
           db: context.db,
           input: {
             leadTime: '14 working days',
@@ -1040,12 +1026,50 @@ function uploadPdf(
   });
 }
 
-async function setDocumentCreatedAt(
-  db: Parameters<typeof createProductDocument>[0]['db'],
-  documentId: UUID,
-  createdAt: Date,
-) {
-  await db.update(documents).set({ createdAt }).where(eq(documents.id, documentId));
+// A fake brochure renderer for tests that do not exercise the brochure-merge path (incomplete config or
+// blocked generation): it returns canned bytes and must never be reached when the config is incomplete.
+const stubBrochureRenderer: BrochurePdfRenderer = async () => realPdfBytes([[420, 420]]);
+
+// Configures every field the completeness gate requires (subtitle, key features, the four image slots,
+// a non-empty description) on a Product that already has at least one assembly, so the brochure
+// generates from live config. Pass `omitSlots` to leave specific image slots empty and force an
+// incomplete verdict.
+async function seedCompleteBrochureConfig(
+  context: { db: Parameters<typeof createProductDocument>[0]['db']; storage: InMemoryStorageAdapter },
+  productId: UUID,
+  options: { omitSlots?: BrochureImageSlot[] } = {},
+): Promise<void> {
+  const omit = new Set(options.omitSlots ?? []);
+  const brochureImages: Record<
+    string,
+    { byteSize: number; contentType: string; storageKey: string; updatedAt: string }
+  > = {};
+
+  for (const slot of BROCHURE_IMAGE_SLOTS) {
+    if (omit.has(slot)) {
+      continue;
+    }
+
+    const body = pngBytes();
+    const storageKey = `brochure-images/product/${productId}/${slot}/seed.png`;
+    await context.storage.put({ body, byteSize: body.byteLength, contentType: 'image/png', key: storageKey });
+    brochureImages[slot] = {
+      byteSize: body.byteLength,
+      contentType: 'image/png',
+      storageKey,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  await context.db
+    .update(products)
+    .set({
+      brochureImages,
+      brochureKeyFeatures: ['Rugged build', 'Low maintenance'],
+      brochureSubtitle: 'Silage & Grain',
+      description: 'A dependable workhorse for the toughest jobs.',
+    })
+    .where(eq(products.id, productId));
 }
 
 function uploadQuotePdf(

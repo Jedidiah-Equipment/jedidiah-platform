@@ -1,4 +1,4 @@
-import { type customers, type Db, documents, type products, quoteSelectedAssemblies, quotes, type user } from '@pkg/db';
+import { type customers, type Db, type products, quoteSelectedAssemblies, quotes, type user } from '@pkg/db';
 import {
   formatCurrency,
   formatPercent,
@@ -9,6 +9,7 @@ import {
 import { mergePdfBytes } from '@pkg/pdf';
 import {
   type AuthId,
+  type BrochurePdfRenderer,
   formatQuoteCode,
   type QuoteDocument,
   type QuoteDocumentGenerationInput,
@@ -19,11 +20,11 @@ import {
   type QuoteDocumentPdfRenderer,
   type UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
-import { type DocumentBaseRow, readStoredObjectBytes, selectDocumentBase } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
+import { generateProductBrochureIfComplete } from '../products/product-brochure-document.js';
 import { createQuoteDocument, getQuoteDocuments } from './quote-document.js';
 import { QuoteDocumentGenerationNotAllowedError, QuoteNotFoundError } from './quote-errors.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
@@ -54,11 +55,13 @@ export type QuoteDocumentRevisionDraft = {
  * `persistQuoteDocumentRevision` once the dependent work is done.
  */
 export async function renderQuoteDocumentRevision({
+  brochureRenderer,
   db,
   input,
   pdfRenderer,
   storage,
 }: {
+  brochureRenderer: BrochurePdfRenderer;
   db: Db;
   input: QuoteDocumentGenerationInput;
   pdfRenderer: QuoteDocumentPdfRenderer;
@@ -73,12 +76,13 @@ export async function renderQuoteDocumentRevision({
   const filename = `${formatQuoteCode(quote.code)}-rev-${revision}.pdf`;
   const document = await getQuoteDocumentModel({ db, input, quote });
   const renderedQuoteBytes = await pdfRenderer({ document, filename });
-  const brochure = await getLatestProductPdfBrochure({ db, productId: quote.productId });
-  const packet = await buildQuoteDocumentPacket({
-    brochure,
-    renderedQuoteBytes,
+  const brochure = await generateProductBrochureIfComplete({
+    db,
+    pdfRenderer: brochureRenderer,
+    productId: quote.productId,
     storage,
   });
+  const packet = await buildQuoteDocumentPacket({ brochure, renderedQuoteBytes });
 
   return {
     bytes: packet.bytes,
@@ -116,18 +120,20 @@ export async function persistQuoteDocumentRevision({
 
 export async function generateQuoteDocument({
   actorUserId,
+  brochureRenderer,
   db,
   input,
   pdfRenderer,
   storage,
 }: {
   actorUserId: AuthId;
+  brochureRenderer: BrochurePdfRenderer;
   db: Db;
   input: QuoteDocumentGenerationInput;
   pdfRenderer: QuoteDocumentPdfRenderer;
   storage: StorageAdapter;
 }): Promise<QuoteDocumentGenerationResult> {
-  const draft = await renderQuoteDocumentRevision({ db, input, pdfRenderer, storage });
+  const draft = await renderQuoteDocumentRevision({ brochureRenderer, db, input, pdfRenderer, storage });
   const document = await persistQuoteDocumentRevision({ actorUserId, db, draft, quoteId: input.quoteId, storage });
 
   return {
@@ -139,41 +145,27 @@ export async function generateQuoteDocument({
 async function buildQuoteDocumentPacket({
   brochure,
   renderedQuoteBytes,
-  storage,
 }: {
-  brochure: Pick<DocumentBaseRow, 'storageKey'> | null;
+  brochure: { bytes: Uint8Array } | null;
   renderedQuoteBytes: Uint8Array;
-  storage: StorageAdapter;
 }): Promise<{ bytes: Uint8Array; warnings: QuoteDocumentGenerationWarning[] }> {
   if (!brochure) {
     return {
       bytes: renderedQuoteBytes,
       warnings: [
         {
-          code: 'quote_document.product_brochure_missing',
+          code: 'quote_document.brochure_config_incomplete',
           message:
-            'No PDF brochure is attached to this Quote Product, so the Quote Document was generated without one.',
+            "This Quote Product's Brochure is not fully configured, so the Quote Document was generated without one.",
         },
       ],
     };
   }
 
-  try {
-    return {
-      bytes: await mergePdfBytes([renderedQuoteBytes, await readStoredObjectBytes(storage, brochure.storageKey)]),
-      warnings: [],
-    };
-  } catch {
-    return {
-      bytes: renderedQuoteBytes,
-      warnings: [
-        {
-          code: 'quote_document.product_brochure_unavailable',
-          message: 'The latest PDF brochure could not be appended, so the Quote Document was generated without one.',
-        },
-      ],
-    };
-  }
+  return {
+    bytes: await mergePdfBytes([renderedQuoteBytes, brochure.bytes]),
+    warnings: [],
+  };
 }
 
 export async function getQuoteDocumentModel({
@@ -264,28 +256,6 @@ function toDisplayLines(value: string | null | undefined): string[] {
         .map((line) => line.trim())
         .filter(Boolean)
     : [];
-}
-
-async function getLatestProductPdfBrochure({
-  db,
-  productId,
-}: {
-  db: Db;
-  productId: UUID;
-}): Promise<Pick<DocumentBaseRow, 'storageKey'> | null> {
-  const [row] = await selectDocumentBase(db)
-    .where(
-      and(
-        eq(documents.ownerType, 'product'),
-        eq(documents.productId, productId),
-        eq(documents.contentType, 'application/pdf'),
-        sql`${documents.metadata}->>'type' = 'brochure'`,
-      ),
-    )
-    .orderBy(desc(documents.createdAt), desc(documents.id))
-    .limit(1);
-
-  return row ?? null;
 }
 
 async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId: UUID }) {

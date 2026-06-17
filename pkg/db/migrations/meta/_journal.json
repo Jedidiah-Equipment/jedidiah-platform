@@ -344,6 +344,13 @@
       "when": 1781703818724,
       "tag": "0048_slow_sally_floyd",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1781720310180,
+      "tag": "0049_delete_uploaded_product_brochures",
+      "breakpoints": true
     }
   ]
 }

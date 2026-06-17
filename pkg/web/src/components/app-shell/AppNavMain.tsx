@@ -3,6 +3,7 @@ import type { AppPermission } from '@pkg/schema';
 import {
   IconBriefcase2,
   IconBuilding,
+  IconCategory2,
   IconChevronRight,
   IconClipboardList,
   IconFileText,
@@ -130,6 +131,12 @@ const navSections = [
         permission: 'user:list',
         link: linkOptions({ to: '/users' }),
         icon: IconUsers,
+      },
+      {
+        title: 'Product Ranges',
+        permission: 'product_range:read',
+        link: linkOptions({ to: '/product-ranges' }),
+        icon: IconCategory2,
       },
       {
         title: 'Audit',

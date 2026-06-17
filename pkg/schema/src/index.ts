@@ -23,6 +23,7 @@ export * from './domain/logger.js';
 export * from './jobs/job.js';
 export * from './parts/part.js';
 export * from './products/product.js';
+export * from './products/product-range.js';
 export * from './quotes/quote.js';
 export * from './quotes/quote-document.js';
 export * from './suppliers/supplier.js';

@@ -338,6 +338,30 @@ export const EMPTY_BROCHURE_CONFIG: BrochureConfig = {
 // because the strict input schema rejects the read model's `images` field.
 const EMPTY_BROCHURE_CONFIG_INPUT: BrochureConfigInput = { keyFeatures: [], subtitle: null };
 
+// The required fields a Product Brochure must fill before it can be previewed or generated. This is the
+// vocabulary the completeness predicate (`evaluateBrochureCompleteness` in @pkg/domain) reports against;
+// the order is the order missing fields surface in the form alert. The four image entries reuse the
+// {@link BROCHURE_IMAGE_SLOTS} keys so consumers can map them straight to slot labels.
+export const BROCHURE_REQUIRED_FIELDS = [
+  'subtitle',
+  'keyFeatures',
+  ...BROCHURE_IMAGE_SLOTS,
+  'description',
+  'assemblies',
+] as const;
+
+export type BrochureRequiredField = z.infer<typeof BrochureRequiredField>;
+export const BrochureRequiredField = z.enum(BROCHURE_REQUIRED_FIELDS);
+
+// The brochure-completeness verdict: whether the brochure has everything it needs, plus the exact
+// still-missing required fields. Computed by `evaluateBrochureCompleteness` (@pkg/domain); a single
+// source of truth reused by the form alert and, later, the preview and quote/job generation gates.
+export type BrochureCompleteness = z.infer<typeof BrochureCompleteness>;
+export const BrochureCompleteness = z.object({
+  complete: z.boolean(),
+  missingFields: z.array(BrochureRequiredField),
+});
+
 // Identifies a single Product image slot for the replace-in-place upload and download routes.
 export type BrochureImageSlotParams = z.infer<typeof BrochureImageSlotParams>;
 export const BrochureImageSlotParams = z.object({

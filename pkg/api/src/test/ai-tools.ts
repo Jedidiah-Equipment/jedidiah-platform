@@ -9,6 +9,7 @@ export function createAiContext(db: Db, access: UserAccessSummary): AiContext {
     access,
     db,
     session: mockSession(access.role),
+    storage: {} as AiContext['storage'],
   };
 }
 

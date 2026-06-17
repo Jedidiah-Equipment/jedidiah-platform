@@ -1,5 +1,6 @@
 import { formatCurrency } from '@pkg/domain';
 import { createDomainGuidancePrompt } from './ai-domain-guidance.js';
+import { AI_WRITE_TOOL_NAMES } from './ai-tool-registry.js';
 import type { AiToolName } from './ai-tools.js';
 
 const ASSISTANT_ROLE_PROMPT = [
@@ -30,17 +31,30 @@ const RESPONSE_STYLE_PROMPT = [
   'Use tables when they make comparisons or lists easier to scan; otherwise prefer short paragraphs or bullets.',
 ];
 
-const PROMPT_SECTIONS = [
-  ['Tool Use', TOOL_USE_PROMPT],
-  ['Response Style', RESPONSE_STYLE_PROMPT],
-] as const;
-
 export function createSystemPrompt(toolNames: readonly AiToolName[]): string {
   return [
     renderSection('Role', ASSISTANT_ROLE_PROMPT),
     createDomainGuidancePrompt(toolNames),
-    ...PROMPT_SECTIONS.map(([title, lines]) => renderSection(title, lines)),
+    renderSection('Tool Use', createToolUsePrompt(toolNames)),
+    renderSection('Response Style', RESPONSE_STYLE_PROMPT),
   ].join('\n\n');
+}
+
+function createToolUsePrompt(toolNames: readonly AiToolName[]): string[] {
+  const lines = [...TOOL_USE_PROMPT];
+  const writeToolNames = toolNames.filter((toolName) => AI_WRITE_TOOL_NAMES.has(toolName));
+
+  if (writeToolNames.length > 0) {
+    lines.push(
+      `Write tools mutate records immediately when called: ${writeToolNames.join(', ')}.`,
+      'Use write tools only when the user explicitly asks to create, add, generate, or send the matching record/action.',
+      'For new Quote companies, prefer createQuote with an inline Customer company name when standalone customer:create permission is not available.',
+      'Before sendDraftQuoteEmail, use Quote tools to inspect the Quote, write the complete customer-ready email body yourself, then pass that body as emailBody.',
+      'sendDraftQuoteEmail sends the draft to the signed-in user only, not directly to the Customer.',
+    );
+  }
+
+  return lines;
 }
 
 function renderSection(title: string, lines: readonly string[]): string {

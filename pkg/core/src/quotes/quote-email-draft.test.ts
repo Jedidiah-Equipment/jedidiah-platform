@@ -5,12 +5,7 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { getQuoteDocuments } from './quote-document.js';
-import {
-  draftQuoteEmail,
-  type QuoteDraftEmailBodyGenerator,
-  type QuoteDraftEmailMessage,
-  type QuoteDraftEmailSender,
-} from './quote-email-draft.js';
+import { draftQuoteEmail, type QuoteDraftEmailMessage, type QuoteDraftEmailSender } from './quote-email-draft.js';
 import { QuoteDraftEmailRecipientMissingError } from './quote-errors.js';
 
 const PDF_BYTES = new TextEncoder().encode('%PDF-1.4\n%fake quote document\n%%EOF\n');
@@ -67,28 +62,23 @@ const test = createTester(async ({ db }) => {
 function createHarness() {
   const storage = new InMemoryStorageAdapter();
   const sentMessages: QuoteDraftEmailMessage[] = [];
-  const receivedBodyQuotes: string[] = [];
 
   const pdfRenderer: QuoteDocumentPdfRenderer = async () => PDF_BYTES;
-  const generateEmailBody: QuoteDraftEmailBodyGenerator = async (quote) => {
-    receivedBodyQuotes.push(quote.code);
-    return 'Hi Acme,\n\nHere is your quote.';
-  };
   const sendEmail: QuoteDraftEmailSender = async (message) => {
     sentMessages.push(message);
   };
 
-  return { generateEmailBody, pdfRenderer, receivedBodyQuotes, sendEmail, sentMessages, storage };
+  return { pdfRenderer, sendEmail, sentMessages, storage };
 }
 
 describe('draftQuoteEmail', () => {
-  test('emails the generated body with the quote PDF attached and saves a revision', async ({ context }) => {
+  test('emails the provided body with the quote PDF attached and saves a revision', async ({ context }) => {
     const harness = createHarness();
 
     const result = await draftQuoteEmail({
       actorUserId: context.salesPerson.id,
       db: context.db,
-      generateEmailBody: harness.generateEmailBody,
+      emailBody: 'Hi Acme,\n\nHere is your quote.',
       input: { leadTime: '14 working days', quoteId: context.quote.id },
       pdfRenderer: harness.pdfRenderer,
       recipientEmail: 'sales@example.com',
@@ -111,9 +101,6 @@ describe('draftQuoteEmail', () => {
     expect(message?.attachments[0]?.filename).toMatch(/\.pdf$/);
     expect(message?.attachments[0]?.content).toEqual(PDF_BYTES);
 
-    // The generator receives the resolved Quote (formatted code), and a Quote Document revision is stored.
-    expect(harness.receivedBodyQuotes).toHaveLength(1);
-    expect(harness.receivedBodyQuotes[0]).toMatch(/^QUO-\d{5,}$/);
     const documents = await getQuoteDocuments({ db: context.db, quoteId: context.quote.id });
     expect(documents).toHaveLength(1);
     expect(documents[0]?.metadata.revision).toBe(1);
@@ -126,7 +113,7 @@ describe('draftQuoteEmail', () => {
       draftQuoteEmail({
         actorUserId: context.salesPerson.id,
         db: context.db,
-        generateEmailBody: harness.generateEmailBody,
+        emailBody: 'Hi Acme,\n\nHere is your quote.',
         input: { leadTime: '14 working days', quoteId: context.quote.id },
         pdfRenderer: harness.pdfRenderer,
         recipientEmail: '  ',
@@ -140,10 +127,10 @@ describe('draftQuoteEmail', () => {
     expect(documents).toHaveLength(0);
   });
 
-  test('does not persist a revision or send when email body generation fails', async ({ context }) => {
+  test('does not persist a revision when sending fails', async ({ context }) => {
     const harness = createHarness();
-    const failure = new Error('AI body generation failed');
-    const generateEmailBody: QuoteDraftEmailBodyGenerator = async () => {
+    const failure = new Error('Email delivery failed');
+    const sendEmail: QuoteDraftEmailSender = async () => {
       throw failure;
     };
 
@@ -151,17 +138,15 @@ describe('draftQuoteEmail', () => {
       draftQuoteEmail({
         actorUserId: context.salesPerson.id,
         db: context.db,
-        generateEmailBody,
+        emailBody: 'Hi Acme,\n\nHere is your quote.',
         input: { leadTime: '14 working days', quoteId: context.quote.id },
         pdfRenderer: harness.pdfRenderer,
         recipientEmail: 'sales@example.com',
-        sendEmail: harness.sendEmail,
+        sendEmail,
         storage: harness.storage,
       }),
     ).rejects.toBe(failure);
 
-    // The Quote Document is persisted only after a successful send, so a failed draft leaves no revision.
-    expect(harness.sentMessages).toHaveLength(0);
     const documents = await getQuoteDocuments({ db: context.db, quoteId: context.quote.id });
     expect(documents).toHaveLength(0);
   });

@@ -27,6 +27,7 @@ function createAiContext({
     access,
     db,
     session,
+    storage: {} as AiContext['storage'],
   };
 }
 
@@ -356,6 +357,51 @@ describe('POST /ai/chat-stream', () => {
     expect(exposedToolNames).toEqual([]);
     expect(reasoningEffort).toBe('minimal');
     expect(systemPrompt).not.toContain('listProducts');
+  });
+
+  test('exposes quote write tools but not standalone Customer create for sales users', async () => {
+    const app = Fastify();
+    let exposedToolNames: string[] | null = null;
+    let systemPrompt: string | null = null;
+    const stream = new StubAgentTextStream((input) => {
+      exposedToolNames = input.agent.tools.map((tool) => tool.name);
+      systemPrompt = typeof input.agent.instructions === 'string' ? input.agent.instructions : null;
+      return textDeltas();
+    });
+
+    await registerAiStreamRoute(app, {
+      buildContext: async () =>
+        createAiContext({
+          access: createUserAccessSummary({
+            role: 'sales',
+            userId: 'test-user-id',
+          }),
+        }),
+      createAgentRunner: () => createRunner(stream),
+      model: 'test-model',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      payload: {
+        messages: [{ role: 'user', content: 'Create a quote for Acme Mining' }],
+      },
+      url: '/ai/chat-stream',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(exposedToolNames).toEqual([
+      'listQuotes',
+      'getQuote',
+      'createQuote',
+      'sendDraftQuoteEmail',
+      'listQuoteCustomers',
+      'listQuoteProducts',
+      'listQuoteSalespeople',
+    ]);
+    expect(systemPrompt).toContain('Write tools mutate records immediately');
+    expect(systemPrompt).toContain('createQuote');
+    expect(systemPrompt).not.toContain('createCustomer');
   });
 
   test('returns 400 for oversized authenticated payloads', async () => {

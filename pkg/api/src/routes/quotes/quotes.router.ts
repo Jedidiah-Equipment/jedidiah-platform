@@ -35,6 +35,7 @@ import { z } from 'zod';
 
 import { emailSender } from '@/email/index.js';
 import { log } from '@/logger.js';
+import type { Context } from '@/trpc/context.js';
 
 import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../trpc/init.js';
@@ -109,31 +110,61 @@ export const quotesRouter = router({
     .input(QuoteDraftEmailInput)
     .mutation(({ ctx, input }) =>
       mapQuoteErrors(() =>
-        draftQuoteEmail({
+        draftQuoteEmailWithGeneratedBody({
+          access: ctx.access,
           actorUserId: ctx.session.user.id,
           db: ctx.db,
-          generateEmailBody: (quote) =>
-            generateQuoteEmailBody({
-              aiContext: { access: ctx.access, db: ctx.db, session: ctx.session, storage: ctx.storage },
-              quote,
-            }),
           input,
-          pdfRenderer: renderQuoteDocumentPdf,
           recipientEmail: ctx.session.user.email,
-          sendEmail: (message) =>
-            emailSender.send({
-              attachments: message.attachments,
-              html: message.html,
-              subject: message.subject,
-              text: message.text,
-              to: message.to,
-              type: 'quote-draft',
-            }),
+          session: ctx.session,
           storage: ctx.storage,
         }),
       ),
     ),
 });
+
+async function draftQuoteEmailWithGeneratedBody({
+  access,
+  actorUserId,
+  db,
+  input,
+  recipientEmail,
+  session,
+  storage,
+}: {
+  access: Context['access'];
+  actorUserId: NonNullable<Context['session']>['user']['id'];
+  db: Context['db'];
+  input: QuoteDraftEmailInput;
+  recipientEmail: string;
+  session: NonNullable<Context['session']>;
+  storage: Context['storage'];
+}) {
+  const quote = await getQuote({ db, id: input.quoteId });
+  const emailBody = await generateQuoteEmailBody({
+    aiContext: { access, db, session, storage },
+    quote,
+  });
+
+  return draftQuoteEmail({
+    actorUserId,
+    db,
+    emailBody,
+    input,
+    pdfRenderer: renderQuoteDocumentPdf,
+    recipientEmail,
+    sendEmail: (message) =>
+      emailSender.send({
+        attachments: message.attachments,
+        html: message.html,
+        subject: message.subject,
+        text: message.text,
+        to: message.to,
+        type: 'quote-draft',
+      }),
+    storage,
+  });
+}
 
 async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapKnownCoreError(action, isQuoteCoreError, mapQuoteCoreError);

@@ -31,7 +31,7 @@ export const sendDraftQuoteEmailTool: SendDraftQuoteEmailTool = {
     return core.draftQuoteEmail({
       actorUserId: session.user.id,
       db: ctx.db,
-      generateEmailBody: async () => emailBody,
+      emailBody,
       input,
       pdfRenderer: renderQuoteDocumentPdf,
       recipientEmail: session.user.email,

@@ -162,6 +162,7 @@ describe('AI write tools', () => {
       expect.objectContaining({
         actorUserId: 'test-user-id',
         db: ctx.db,
+        emailBody: 'Hello Acme,\n\nPlease find your draft quote attached.',
         input: {
           leadTime: '14 working days',
           quoteId: '00000000-0000-4000-8000-000000000301',
@@ -169,11 +170,6 @@ describe('AI write tools', () => {
         recipientEmail: 'sales@example.com',
         storage: ctx.storage,
       }),
-    );
-    const draftQuoteEmailArgs = draftQuoteEmailSpy.mock.calls[0]?.[0];
-
-    await expect(draftQuoteEmailArgs?.generateEmailBody(createQuoteDetail())).resolves.toBe(
-      'Hello Acme,\n\nPlease find your draft quote attached.',
     );
     expect(generateQuoteEmailBody).not.toHaveBeenCalled();
   });

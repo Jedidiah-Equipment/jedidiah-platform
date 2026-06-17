@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { listQuotesTool } from '@/routes/ai/tools/list-quotes.js';
 import { createActorUser, createAiContext } from '@/test/ai-tools.js';
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
@@ -111,6 +112,7 @@ async function createQuote(caller: AppRouterCaller, productId: string) {
 }
 
 async function createProduct(db: Db) {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -119,6 +121,7 @@ async function createProduct(db: Db) {
       buildTimeDays: 14,
       modelCode: 'QUOTE-LIST-001',
       name: 'Quote List Product',
+      rangeId,
     })
     .returning();
 

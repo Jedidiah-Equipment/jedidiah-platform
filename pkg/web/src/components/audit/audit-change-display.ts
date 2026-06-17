@@ -48,6 +48,7 @@ const auditFieldLabels: Record<string, string> = {
   quoteId: 'Quote',
   quotedBasePrice: 'Quoted base price',
   quotedCurrencyCode: 'Quoted currency',
+  rangeId: 'Product Range',
   requiresVinNumber: 'Requires VIN number',
   salesPersonId: 'Salesperson',
   scheduleOrigin: 'Schedule origin',

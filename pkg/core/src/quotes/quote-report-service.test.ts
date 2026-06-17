@@ -3,6 +3,7 @@ import type { QuoteStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
+import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
   listStaleSentQuotes,
   summarizeQuotePipeline,
@@ -12,6 +13,7 @@ import {
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
+  const rangeId = await createProductRangeFixture(db);
   const [salesPerson] = await db
     .insert(user)
     .values({
@@ -33,6 +35,7 @@ const test = createTester(async ({ db }) => {
       currencyCode: 'ZAR',
       modelCode: 'QUOTE-REPORT-001',
       name: 'Quote Report Product',
+      rangeId,
     })
     .returning();
 

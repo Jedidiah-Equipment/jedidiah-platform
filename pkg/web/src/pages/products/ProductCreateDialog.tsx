@@ -5,6 +5,7 @@ import type React from 'react';
 import { toast } from 'sonner';
 
 import { CreateEntityDialog } from '@/components/form/index.js';
+import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -20,12 +21,14 @@ const PRODUCT_CREATE_DEFAULT_VALUES: ProductCreateFormValues = {
   buildTimeDays: NaN,
   modelCode: '',
   name: '',
+  rangeId: '',
 };
 
 export const ProductCreateDialog: React.FC<ProductCreateDialogProps> = ({ onOpenChange, open }) => {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const { invalidateProducts } = useQueryInvalidation();
+  const productRangeOptions = useProductRangeOptions();
 
   const showMutationError = useApiMutationErrorToast();
 
@@ -59,6 +62,16 @@ export const ProductCreateDialog: React.FC<ProductCreateDialogProps> = ({ onOpen
           <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
           <form.AppField name="modelCode">
             {(field) => <field.TextField autoComplete="off" label="Model code" />}
+          </form.AppField>
+          <form.AppField name="rangeId">
+            {(field) => (
+              <field.SelectField
+                disabled={productRangeOptions.isPending}
+                label="Range"
+                options={productRangeOptions.selectOptions}
+                placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'Select range'}
+              />
+            )}
           </form.AppField>
           <form.AppField name="basePrice">
             {(field) => (

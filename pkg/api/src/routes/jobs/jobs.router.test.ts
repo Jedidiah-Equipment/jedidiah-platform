@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import { createActorUser } from '@/test/ai-tools.js';
 import { createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 beforeEach(() => {
@@ -1684,6 +1685,7 @@ describe('jobs.removeSlot', () => {
 });
 
 async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -1693,6 +1695,7 @@ async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
       buildTimeDays: 14,
       modelCode: 'JOB-TEST',
       name: 'Job Test Product',
+      rangeId,
     })
     .returning({ id: products.id });
 

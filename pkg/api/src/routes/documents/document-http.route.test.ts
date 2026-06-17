@@ -6,6 +6,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
+import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
 const routeTestState = vi.hoisted(() => ({
@@ -289,6 +290,7 @@ async function createDocumentApp(storage: StorageAdapter) {
 }
 
 async function createProduct(db: Db) {
+  const rangeId = await createProductRangeFixture(db);
   const [product] = await db
     .insert(products)
     .values({
@@ -298,6 +300,7 @@ async function createProduct(db: Db) {
       buildTimeDays: 14,
       modelCode: 'DOC-HTTP',
       name: 'Document HTTP Product',
+      rangeId,
     })
     .returning({ id: products.id });
 

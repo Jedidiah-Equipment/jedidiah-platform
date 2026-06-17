@@ -28,6 +28,7 @@ import { createQuoteDocument, getQuoteDocuments, readQuoteDocument } from '../qu
 import { generateQuoteDocument } from '../quotes/quote-document-generation.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
+import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
   DocumentNotFoundError,
   DocumentPolicyViolationError,
@@ -38,6 +39,8 @@ const ACTOR_USER_ID = 'test-user-id';
 const UNKNOWN_ID = '11111111-1111-4111-8111-111111111111';
 
 const test = createTester(async ({ db }) => {
+  const rangeId = await createProductRangeFixture(db);
+
   await db.insert(user).values({
     id: ACTOR_USER_ID,
     name: 'Test User',
@@ -58,6 +61,7 @@ const test = createTester(async ({ db }) => {
       buildTimeDays: 14,
       modelCode: 'DOC-TEST',
       name: 'Document Test Product',
+      rangeId,
     })
     .returning({ id: products.id });
 
@@ -70,6 +74,7 @@ const test = createTester(async ({ db }) => {
       buildTimeDays: 14,
       modelCode: 'DOC-OTHER',
       name: 'Other Document Test Product',
+      rangeId,
     })
     .returning({ id: products.id });
 

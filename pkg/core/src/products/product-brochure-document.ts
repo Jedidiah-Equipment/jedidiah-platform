@@ -38,23 +38,71 @@ export async function renderProductBrochurePreview({
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
   const product = await getProduct({ db, id: productId });
-  const completeness = evaluateBrochureCompleteness({
-    assemblyCount: product.assemblies.length,
-    description: product.description,
-    images: product.brochureConfig.images,
-    keyFeatures: product.brochureConfig.keyFeatures,
-    subtitle: product.brochureConfig.subtitle,
-  });
 
-  if (!completeness.complete) {
+  if (!isBrochureComplete(product)) {
+    const completeness = evaluateBrochureCompleteness(brochureCompletenessInput(product));
     throw new ProductBrochureIncompleteError(productId, completeness.missingFields);
   }
 
+  return renderBrochureForProduct({ db, pdfRenderer, product, storage });
+}
+
+/**
+ * Generates the Brochure PDF from a Product's live config when the completeness gate is met, or returns
+ * null when it is not. Unlike {@link renderProductBrochurePreview}, an incomplete config is not an error
+ * here: callers that fold the brochure into a larger packet (the Quote Document) treat an absent brochure
+ * as a non-blocking skip and surface a warning instead of failing the whole generation.
+ */
+export async function generateProductBrochureIfComplete({
+  db,
+  pdfRenderer,
+  productId,
+  storage,
+}: {
+  db: Db;
+  pdfRenderer: BrochurePdfRenderer;
+  productId: UUID;
+  storage: StorageAdapter;
+}): Promise<BrochurePreviewResult | null> {
+  const product = await getProduct({ db, id: productId });
+
+  if (!isBrochureComplete(product)) {
+    return null;
+  }
+
+  return renderBrochureForProduct({ db, pdfRenderer, product, storage });
+}
+
+async function renderBrochureForProduct({
+  db,
+  pdfRenderer,
+  product,
+  storage,
+}: {
+  db: Db;
+  pdfRenderer: BrochurePdfRenderer;
+  product: Product;
+  storage: StorageAdapter;
+}): Promise<BrochurePreviewResult> {
   const document = await getBrochureDocumentModel({ db, product, storage });
   const filename = `${product.modelCode}-brochure.pdf`;
   const bytes = await pdfRenderer({ document, filename });
 
   return { bytes, filename };
+}
+
+function isBrochureComplete(product: Product): boolean {
+  return evaluateBrochureCompleteness(brochureCompletenessInput(product)).complete;
+}
+
+function brochureCompletenessInput(product: Product) {
+  return {
+    assemblyCount: product.assemblies.length,
+    description: product.description,
+    images: product.brochureConfig.images,
+    keyFeatures: product.brochureConfig.keyFeatures,
+    subtitle: product.brochureConfig.subtitle,
+  };
 }
 
 /**

@@ -46,7 +46,7 @@ export async function buildServer(
       fileSize: PRODUCT_DOCUMENT_MAX_BYTES,
     },
   });
-  await registerAiStreamRoute(app);
+  await registerAiStreamRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
   await registerHealthRoutes(app, config);
 

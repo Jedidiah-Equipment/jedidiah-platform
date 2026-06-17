@@ -1,6 +1,7 @@
 import type { OutgoingHttpHeaders } from 'node:http';
 
 import { Agent, type AgentInputItem } from '@openai/agents';
+import type { StorageAdapter } from '@pkg/core';
 import { ChatStreamInput, type ChatStreamMessage } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -23,6 +24,7 @@ export type RegisterAiStreamRouteOptions = {
   createAgentRunner?: () => AiAgentRunner;
   model?: string;
   reasoningEffort?: AiReasoningEffort;
+  storage?: StorageAdapter;
 };
 
 export async function registerAiStreamRoute(
@@ -33,7 +35,7 @@ export async function registerAiStreamRoute(
   const createRunner = options.createAgentRunner ?? createAiAgentRunner;
   const model = config.model;
   const reasoningEffort = config.reasoningEffort;
-  const createContext = options.buildContext ?? buildAiContext;
+  const createContext = options.buildContext ?? ((req) => buildAiContext(req, { storage: getAiStorage(options) }));
 
   app.post('/ai/chat-stream', async (request, reply) => {
     const ctx = await createContext(request);
@@ -63,6 +65,14 @@ export async function registerAiStreamRoute(
       request,
     });
   });
+}
+
+function getAiStorage(options: RegisterAiStreamRouteOptions): StorageAdapter {
+  if (!options.storage) {
+    throw new Error('AI stream route requires document storage.');
+  }
+
+  return options.storage;
 }
 
 async function streamChatCompletion({

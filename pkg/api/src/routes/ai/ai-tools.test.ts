@@ -21,6 +21,7 @@ function createAiContext(access: UserAccessSummary | null = null): AiContext {
     access,
     db: {} as AiContext['db'],
     session: mockSession(access?.role ?? 'sales'),
+    storage: {} as AiContext['storage'],
   };
 }
 
@@ -38,6 +39,7 @@ describe('aiTools', () => {
 
     for (const record of AI_TOOL_REGISTRY) {
       expect(aiTools[record.tool.name]).toMatchObject({
+        kind: record.kind,
         name: record.tool.name,
         requiredPermission: record.tool.requiredPermission,
       });
@@ -98,6 +100,8 @@ describe('aiTools', () => {
     expect(aiTools.getPart.requiredPermission).toBe('part:read');
     expect(aiTools.getProduct.requiredPermission).toBe('product:read');
     expect(aiTools.getQuote.requiredPermission).toBe('quote:read');
+    expect(aiTools.createCustomer.requiredPermission).toBe('customer:create');
+    expect(aiTools.createQuote.requiredPermission).toBe('quote:create');
     expect(aiTools.listAuditEvents.requiredPermission).toBe('audit:read');
     expect(aiTools.listCustomers.requiredPermission).toBe('customer:read');
     expect(aiTools.listJobs.requiredPermission).toBe('job:read');
@@ -108,6 +112,7 @@ describe('aiTools', () => {
     expect(aiTools.listQuoteSalespeople.requiredPermission).toBe('quote:read');
     expect(aiTools.listQuotes.requiredPermission).toBe('quote:read');
     expect(aiTools.listUsers.requiredPermission).toBe('user:list');
+    expect(aiTools.sendDraftQuoteEmail.requiredPermission).toBe('quote:update');
   });
 
   test('returns procurement tools for procurement managers', () => {
@@ -125,6 +130,7 @@ describe('aiTools', () => {
       'getPart',
       'listCustomers',
       'getCustomer',
+      'createCustomer',
       'listJobs',
       'getJob',
     ]);
@@ -151,6 +157,8 @@ describe('aiTools', () => {
     expect(getAuthorizedToolNames(tools)).toEqual([
       'listQuotes',
       'getQuote',
+      'createQuote',
+      'sendDraftQuoteEmail',
       'listQuoteCustomers',
       'listQuoteProducts',
       'listQuoteSalespeople',
@@ -202,10 +210,13 @@ describe('aiTools', () => {
       'getPart',
       'listCustomers',
       'getCustomer',
+      'createCustomer',
       'listJobs',
       'getJob',
       'listQuotes',
       'getQuote',
+      'createQuote',
+      'sendDraftQuoteEmail',
       'listQuoteCustomers',
       'listQuoteProducts',
       'listQuoteSalespeople',
@@ -217,6 +228,24 @@ describe('aiTools', () => {
   test('hides tools when the user lacks the required permission', () => {
     expect(getAuthorizedTools(createAccessWithNoProductRead())).toEqual({});
     expect(getAuthorizedTools(null)).toEqual({});
+  });
+
+  test('can filter authorized tools down to read-only tools', () => {
+    const tools = getAuthorizedTools(
+      createUserAccessSummary({
+        role: 'sales',
+        userId: 'test-user-id',
+      }),
+      { includeWriteTools: false },
+    );
+
+    expect(getAuthorizedToolNames(tools)).toEqual([
+      'listQuotes',
+      'getQuote',
+      'listQuoteCustomers',
+      'listQuoteProducts',
+      'listQuoteSalespeople',
+    ]);
   });
 
   test('dispatches only against the supplied tool map', async () => {

@@ -17,6 +17,7 @@ function createAiContext(db: Db, access: UserAccessSummary): AiContext {
     access,
     db,
     session: mockSession(access.role ?? 'admin'),
+    storage: {} as AiContext['storage'],
   };
 }
 

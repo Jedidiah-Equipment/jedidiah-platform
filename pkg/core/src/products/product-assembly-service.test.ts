@@ -26,6 +26,7 @@ function productInput(assemblies: AssemblyInput[], overrides: Partial<ProductCre
   return {
     assemblies,
     basePrice: 1000,
+    brochureConfig: { keyFeatures: [], subtitle: null },
     buildTimeDays: 14,
     currencyCode: 'ZAR',
     description: null,

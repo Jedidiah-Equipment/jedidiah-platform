@@ -244,6 +244,44 @@ const ProductBays = z.array(ProductBayInput).superRefine(refineProductBays);
 export type ProductBaysInput = z.infer<typeof ProductBaysInput>;
 export const ProductBaysInput = ProductBays.default([]);
 
+// Soft caps on the freeform Brochure key-feature list. Tuned so a typical brochure stays within its
+// "Key Features" block; the renderer reflows rather than clips, so these are guardrails, not hard limits.
+export const BROCHURE_KEY_FEATURE_MAX_LENGTH = 120;
+export const BROCHURE_KEY_FEATURES_MAX_COUNT = 12;
+
+export type BrochureSubtitle = z.infer<typeof BrochureSubtitle>;
+export const BrochureSubtitle = nullableTrimmedText();
+
+export type BrochureSubtitleInput = z.infer<typeof BrochureSubtitleInput>;
+export const BrochureSubtitleInput = nullableTrimmedTextInput();
+
+export type BrochureKeyFeature = z.infer<typeof BrochureKeyFeature>;
+export const BrochureKeyFeature = requiredTrimmedText('Key feature cannot be empty').max(
+  BROCHURE_KEY_FEATURE_MAX_LENGTH,
+  `Key feature must be ${BROCHURE_KEY_FEATURE_MAX_LENGTH} characters or fewer`,
+);
+
+export type BrochureKeyFeatures = z.infer<typeof BrochureKeyFeatures>;
+export const BrochureKeyFeatures = z
+  .array(BrochureKeyFeature)
+  .max(BROCHURE_KEY_FEATURES_MAX_COUNT, `Add at most ${BROCHURE_KEY_FEATURES_MAX_COUNT} key features`);
+
+export type BrochureConfig = z.infer<typeof BrochureConfig>;
+export const BrochureConfig = z.object({
+  keyFeatures: BrochureKeyFeatures,
+  subtitle: BrochureSubtitle,
+});
+
+export type BrochureConfigInput = z.infer<typeof BrochureConfigInput>;
+export const BrochureConfigInput = z
+  .object({
+    keyFeatures: BrochureKeyFeatures.default([]),
+    subtitle: BrochureSubtitleInput,
+  })
+  .strict();
+
+export const EMPTY_BROCHURE_CONFIG: BrochureConfig = { keyFeatures: [], subtitle: null };
+
 export type Product = z.infer<typeof Product>;
 export const Product = z.object({
   id: UUID,
@@ -256,6 +294,7 @@ export const Product = z.object({
   requiresVinNumber: ProductRequiresVinNumber,
   assemblies: z.array(Assembly).default([]),
   productBays: z.array(ProductBay).default([]),
+  brochureConfig: BrochureConfig.default(EMPTY_BROCHURE_CONFIG),
   thumbnailDataUrl: NullableThumbnailDataUrl,
   createdAt: DateIso,
   updatedAt: DateIso,
@@ -282,6 +321,7 @@ export const ProductCreateInput = z
     basePrice: ProductBasePrice,
     assemblies: ProductAssembliesInput,
     productBays: ProductBaysInput,
+    brochureConfig: BrochureConfigInput.default(EMPTY_BROCHURE_CONFIG),
     buildTimeDays: ProductBuildTimeDaysInput,
     currencyCode: ProductCurrencyCode,
     requiresVinNumber: ProductRequiresVinNumber.default(false),
@@ -295,6 +335,7 @@ export const ProductUpdateInput = z
     id: UUID,
     assemblies: ProductAssemblies.optional(),
     productBays: ProductBays.optional(),
+    brochureConfig: BrochureConfigInput.optional(),
     basePrice: ProductBasePrice,
     currencyCode: ProductCurrencyCode,
     description: ProductDescriptionInput,

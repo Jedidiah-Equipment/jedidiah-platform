@@ -69,6 +69,7 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, produc
         <TabsTrigger value="details">Details</TabsTrigger>
         <ProductBaysTabTrigger productId={product.id} />
         <ProductAssembliesTabTrigger productId={product.id} />
+        <TabsTrigger value="brochure">Brochure</TabsTrigger>
         <ProductDocumentsTabTrigger productId={product.id} />
         {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
       </TabsList>

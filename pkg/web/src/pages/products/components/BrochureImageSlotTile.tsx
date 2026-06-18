@@ -1,12 +1,13 @@
 import { BROCHURE_IMAGE_SLOT_SPECS, type BrochureImage, type BrochureImageSlot, type UUID } from '@pkg/schema';
 import { IconLoader2, IconPhoto, IconUpload } from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useCredentialedImagePreview } from '@/hooks/use-credentialed-image-preview.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { cn } from '@/lib/utils.js';
 import {
@@ -129,27 +130,9 @@ function useBrochureImagePreview({
   productId: UUID;
   slot: BrochureImageSlot;
 }): string | null {
-  const previewQuery = useQuery({
+  return useCredentialedImagePreview({
     enabled: image !== null,
-    queryFn: ({ signal }) => fetchProductBrochureImageBlob({ productId, signal, slot }),
+    fetchBlob: ({ signal }) => fetchProductBrochureImageBlob({ productId, signal, slot }),
     queryKey: ['brochure-image-preview', productId, slot, image?.updatedAt ?? null],
-    staleTime: Number.POSITIVE_INFINITY,
   });
-
-  const blob = previewQuery.data ?? null;
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!blob) {
-      setObjectUrl(null);
-      return;
-    }
-
-    const url = URL.createObjectURL(blob);
-    setObjectUrl(url);
-
-    return () => URL.revokeObjectURL(url);
-  }, [blob]);
-
-  return objectUrl;
 }

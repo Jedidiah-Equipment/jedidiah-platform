@@ -351,6 +351,13 @@
       "when": 1781720310180,
       "tag": "0049_delete_uploaded_product_brochures",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1781765248845,
+      "tag": "0050_many_tomorrow_man",
+      "breakpoints": true
     }
   ]
 }

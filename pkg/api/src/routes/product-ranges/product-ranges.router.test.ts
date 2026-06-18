@@ -6,8 +6,6 @@ import { expectIsoDatetime, mockSession } from '@/test/test-utils.js';
 
 const test = createTester();
 
-const RANGE_IMAGE_DATA_URL = 'data:image/png;base64,aaaa';
-
 async function createRange(
   caller: AppRouterCaller,
   name: string,
@@ -20,21 +18,16 @@ async function createRange(
 }
 
 describe('productRanges.create', () => {
-  test('creates Product Ranges with nullable and present images', async ({ context }) => {
+  test('creates a Product Range with no image', async ({ context }) => {
     const caller = context.createCaller();
-    const withoutImage = await createRange(caller, 'Lowbed');
-    const withImage = await createRange(caller, 'Earthmoving', { imageDataUrl: RANGE_IMAGE_DATA_URL });
+    const created = await createRange(caller, 'Lowbed');
 
-    expect(withoutImage).toMatchObject({
-      imageDataUrl: null,
+    expect(created).toMatchObject({
+      image: null,
       name: 'Lowbed',
     });
-    expect(withImage).toMatchObject({
-      imageDataUrl: RANGE_IMAGE_DATA_URL,
-      name: 'Earthmoving',
-    });
-    expectIsoDatetime(withoutImage.createdAt);
-    expectIsoDatetime(withoutImage.updatedAt);
+    expectIsoDatetime(created.createdAt);
+    expectIsoDatetime(created.updatedAt);
   });
 
   test('rejects case-insensitive duplicate names', async ({ context }) => {
@@ -49,29 +42,20 @@ describe('productRanges.create', () => {
 });
 
 describe('productRanges.update', () => {
-  test('updates Product Range names and images', async ({ context }) => {
+  test('updates Product Range names without touching the image', async ({ context }) => {
     const caller = context.createCaller();
     const created = await createRange(caller, 'Lowbed');
 
     const updated = await caller.productRanges.update({
       id: created.id,
-      imageDataUrl: RANGE_IMAGE_DATA_URL,
       name: 'Lowbed Pro',
     });
 
     expect(updated).toMatchObject({
       id: created.id,
-      imageDataUrl: RANGE_IMAGE_DATA_URL,
+      image: null,
       name: 'Lowbed Pro',
     });
-
-    const withoutImage = await caller.productRanges.update({
-      id: created.id,
-      imageDataUrl: null,
-      name: 'Lowbed Pro',
-    });
-
-    expect(withoutImage.imageDataUrl).toBeNull();
   });
 
   test('rejects case-insensitive duplicate renames', async ({ context }) => {
@@ -82,7 +66,6 @@ describe('productRanges.update', () => {
     await expect(
       caller.productRanges.update({
         id: earthmoving.id,
-        imageDataUrl: null,
         name: 'lowbed',
       }),
     ).rejects.toMatchObject({
@@ -123,7 +106,6 @@ describe('productRanges permissions', () => {
       await expect(
         caller.productRanges.update({
           id: range.id,
-          imageDataUrl: null,
           name: `Denied ${role}`,
         }),
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });

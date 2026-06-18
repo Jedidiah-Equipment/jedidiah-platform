@@ -20,7 +20,11 @@ export function mapProductRange(row: ProductRangeRow): ProductRange {
   return ProductRangeSchema.parse({
     createdAt: row.createdAt.toISOString(),
     id: row.id,
-    imageDataUrl: row.imageDataUrl,
+    // Drop the internal storage key; the schema brands the remaining values on parse. A row that predates
+    // the column (null) reads as no image.
+    image: row.image
+      ? { byteSize: row.image.byteSize, contentType: row.image.contentType, updatedAt: row.image.updatedAt }
+      : null,
     name: row.name,
     updatedAt: row.updatedAt.toISOString(),
   });
@@ -88,7 +92,6 @@ export async function updateProductRange({
     const [row] = await db
       .update(productRanges)
       .set({
-        imageDataUrl: input.imageDataUrl,
         name: input.name,
         updatedAt: new Date(),
       })

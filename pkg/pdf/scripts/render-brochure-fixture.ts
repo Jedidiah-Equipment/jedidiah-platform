@@ -1,28 +1,33 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { BrochureDocumentImage, BrochureDocumentModel } from '@pkg/schema';
+import { BROCHURE_KEY_FEATURES_MAX_COUNT, type BrochureDocumentImage, type BrochureDocumentModel } from '@pkg/schema';
 
 import { renderBrochurePdf } from '../src/brochure/brochure-pdf-renderer.js';
 
-const DEFAULT_OUTPUT_PATH = fileURLToPath(new URL('../../../tmp/pdfs/brochure-fixture.pdf', import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
+const DEFAULT_OUTPUT_PATH = path.join(REPO_ROOT, 'tmp/pdfs/brochure-fixture.pdf');
 
 const PLACEHOLDER_PNG_DATA_URI =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGM4YaMBRwzEcQDxwxLBXOwG1wAAAABJRU5ErkJggg==';
 
+type FixtureVariant = 'dense' | 'reference' | 'sparse';
+type ImageFit = NonNullable<BrochureDocumentImage>['fit'];
+
 async function main() {
-  const outputPath = path.resolve(process.argv[2] ?? DEFAULT_OUTPUT_PATH);
-  const document = await fixtureDocument();
+  const outputPath = outputPathFromArg(process.argv[2]);
+  const variant = fixtureVariant();
+  const document = await fixtureDocument(variant);
   const bytes = await renderBrochurePdf({ document, filename: path.basename(outputPath) });
 
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, bytes);
 
-  console.log(`Rendered ${bytes.byteLength} bytes to ${outputPath}`);
+  console.log(`Rendered ${variant} fixture (${bytes.byteLength} bytes) to ${outputPath}`);
 }
 
-async function fixtureDocument(): Promise<BrochureDocumentModel> {
-  return {
+async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumentModel> {
+  const document: BrochureDocumentModel = {
     bodyCopy: [
       "1836 Plus Crosshaul Silage and Grain trailers feature a robust construction designed and developed to work in any demanding conditions. Whether you're moving grain at high speed or silage in uneven fields, these trailers are perfectly balanced and every detail carefully considered.",
       "Years of rigorous testing in extremely harsh conditions ensure dependable service. With various additional options and the flexibility to customize any part to meet our customers' needs, these trailers are leaders in their field.",
@@ -69,11 +74,37 @@ async function fixtureDocument(): Promise<BrochureDocumentModel> {
     subtitle: 'Silage & Grain',
     title: 'SG1836 Plus',
   };
+
+  if (variant === 'sparse') {
+    return {
+      ...document,
+      bodyCopy: ['Built for high productivity and reliability in demanding field conditions.'],
+      keyFeatures: ['Pay load : 18 tons'],
+      optionalAssemblies: ['BKT tyres'],
+      standardAssemblies: ['Walking beam suspension'],
+    };
+  }
+
+  if (variant === 'dense') {
+    return {
+      ...document,
+      bodyCopy: denseDescription(),
+      keyFeatures: Array.from(
+        { length: BROCHURE_KEY_FEATURES_MAX_COUNT },
+        (_, index) =>
+          `High capacity field feature ${index + 1} with operating detail that may wrap in the brochure preview`,
+      ),
+      optionalAssemblies: denseAssemblies('Optional', 20),
+      standardAssemblies: denseAssemblies('Standard', 18),
+    };
+  }
+
+  return document;
 }
 
 async function imageFromEnv(
   envName: 'BROCHURE_HERO_IMAGE' | 'BROCHURE_SECONDARY_IMAGE' | 'BROCHURE_TECHNICAL_IMAGE',
-  fit: BrochureDocumentImage['fit'],
+  fit: ImageFit,
 ): Promise<BrochureDocumentImage> {
   const imagePath = process.env[envName];
 
@@ -101,6 +132,40 @@ function mimeType(filePath: string): string {
   }
 
   throw new Error(`Unsupported brochure fixture image type: ${extension}`);
+}
+
+function fixtureVariant(): FixtureVariant {
+  const value = process.env.BROCHURE_FIXTURE_VARIANT ?? 'reference';
+
+  if (value === 'dense' || value === 'reference' || value === 'sparse') {
+    return value;
+  }
+
+  throw new Error(`Unsupported brochure fixture variant: ${value}`);
+}
+
+function denseAssemblies(prefix: string, count: number): string[] {
+  return Array.from(
+    { length: count },
+    (_, index) => `${prefix} assembly ${index + 1} with extended field-ready equipment description`,
+  );
+}
+
+function denseDescription(): string[] {
+  return [
+    '1836 Plus Crosshaul Silage and Grain trailers feature a robust construction designed and developed to work in demanding conditions with dependable field performance.',
+    'Whether moving grain at speed or silage in uneven fields, these trailers remain balanced and every detail is carefully considered for long working days.',
+    'Years of rigorous testing in harsh conditions ensure dependable service, practical maintenance, and reliable productivity across varied farming operations.',
+    'Additional options and flexible customization let customers configure the trailer around their operating needs while keeping the brochure to two pages.',
+  ];
+}
+
+function outputPathFromArg(value: string | undefined): string {
+  if (!value) {
+    return DEFAULT_OUTPUT_PATH;
+  }
+
+  return path.isAbsolute(value) ? value : path.join(REPO_ROOT, value);
 }
 
 await main();

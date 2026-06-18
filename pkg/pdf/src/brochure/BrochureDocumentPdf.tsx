@@ -11,6 +11,8 @@ type BrochureDocumentPdfProps = {
   document: BrochureDocumentModel;
 };
 
+type ImageFit = NonNullable<BrochureDocumentImage>['fit'];
+
 const layout = {
   pagePaddingX: 18,
   coverPaddingTop: 38,
@@ -110,7 +112,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   headingAccent: {
-    color: pdfColors.yellow,
+    color: pdfColors.yellowLight,
     fontSize: 20,
     fontWeight: pdfFontWeight.bold,
     textTransform: 'uppercase',
@@ -185,10 +187,6 @@ const styles = StyleSheet.create({
     lineHeight: 1.18,
     textTransform: 'uppercase',
   },
-  bulletTextDense: {
-    fontSize: 6.6,
-    lineHeight: 1.15,
-  },
   techImageBox: {
     height: layout.techImageHeight,
     marginBottom: 2,
@@ -219,10 +217,10 @@ const styles = StyleSheet.create({
     borderTopColor: pdfColors.black,
   },
   optionalColumn: {
-    borderBottomColor: pdfColors.yellow,
-    borderLeftColor: pdfColors.yellow,
-    borderRightColor: pdfColors.yellow,
-    borderTopColor: pdfColors.yellow,
+    borderBottomColor: pdfColors.yellowLight,
+    borderLeftColor: pdfColors.yellowLight,
+    borderRightColor: pdfColors.yellowLight,
+    borderTopColor: pdfColors.yellowLight,
   },
   columnHeading: {
     fontSize: 7.3,
@@ -239,7 +237,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   yellowRule: {
-    backgroundColor: pdfColors.yellow,
+    backgroundColor: pdfColors.yellowLight,
     height: 2.4,
     marginBottom: 6,
     marginHorizontal: 15,
@@ -260,6 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: layout.footerHeight,
     justifyContent: 'space-between',
+    marginBottom: layout.pagePaddingX,
     marginHorizontal: layout.pagePaddingX,
     marginTop: 16,
     paddingHorizontal: 11,
@@ -315,6 +314,7 @@ const styles = StyleSheet.create({
 export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
   const coverLayout = getCoverLayout(document.keyFeatures.length);
+  const detailLayout = getDetailLayout(document);
 
   return (
     <Document
@@ -368,9 +368,19 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
           ) : null}
 
           {hasColumns ? (
-            <View style={styles.columns}>
-              <SpecColumn accent="standard" heading="Standard" items={document.standardAssemblies} />
-              <SpecColumn accent="optional" heading="Optional Extras" items={document.optionalAssemblies} />
+            <View style={[styles.columns, { marginBottom: detailLayout.assembly.columnsMarginBottom }]}>
+              <SpecColumn
+                accent="standard"
+                heading="Standard"
+                items={document.standardAssemblies}
+                layout={detailLayout.assembly}
+              />
+              <SpecColumn
+                accent="optional"
+                heading="Optional Extras"
+                items={document.optionalAssemblies}
+                layout={detailLayout.assembly}
+              />
             </View>
           ) : null}
 
@@ -380,7 +390,7 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
 
           {document.bodyCopy.length > 0 ? <View style={styles.yellowRule} /> : null}
           {document.bodyCopy.map((paragraph) => (
-            <Text key={paragraph} style={styles.bodyCopy}>
+            <Text key={paragraph} style={[styles.bodyCopy, detailLayout.bodyCopy]}>
               {paragraph}
             </Text>
           ))}
@@ -413,6 +423,31 @@ type CoverLayout = {
   heroHeight: number;
   rowMarginBottom: number;
   sectionMarginTop: number;
+};
+
+type DetailLayout = {
+  assembly: AssemblyLayout;
+  bodyCopy: BodyCopyLayout;
+};
+
+type AssemblyLayout = {
+  bulletDotSize: number;
+  bulletDotTop: number;
+  bulletMarginBottom: number;
+  bulletTextFontSize: number;
+  bulletTextLineHeight: number;
+  columnHeadingFontSize: number;
+  columnHeadingMarginBottom: number;
+  columnPaddingBottom: number;
+  columnPaddingX: number;
+  columnPaddingTop: number;
+  columnsMarginBottom: number;
+};
+
+type BodyCopyLayout = {
+  fontSize: number;
+  lineHeight: number;
+  marginBottom: number;
 };
 
 function getCoverLayout(featureCount: number): CoverLayout {
@@ -454,6 +489,104 @@ function getCoverLayout(featureCount: number): CoverLayout {
   };
 }
 
+function getDetailLayout(document: BrochureDocumentModel): DetailLayout {
+  return {
+    assembly: getAssemblyLayout(document.standardAssemblies, document.optionalAssemblies),
+    bodyCopy: getBodyCopyLayout(document.bodyCopy),
+  };
+}
+
+function getAssemblyLayout(standardItems: string[], optionalItems: string[]): AssemblyLayout {
+  const pressure = Math.max(estimateAssemblyPressure(standardItems), estimateAssemblyPressure(optionalItems));
+
+  if (pressure <= 18) {
+    return {
+      bulletDotSize: 4,
+      bulletDotTop: 3.3,
+      bulletMarginBottom: 1.7,
+      bulletTextFontSize: 6.8,
+      bulletTextLineHeight: 1.18,
+      columnHeadingFontSize: 7.3,
+      columnHeadingMarginBottom: 8,
+      columnPaddingBottom: 6,
+      columnPaddingX: 18,
+      columnPaddingTop: 7,
+      columnsMarginBottom: 18,
+    };
+  }
+
+  if (pressure <= 26) {
+    return {
+      bulletDotSize: 3.4,
+      bulletDotTop: 2.8,
+      bulletMarginBottom: 0.9,
+      bulletTextFontSize: 6,
+      bulletTextLineHeight: 1.1,
+      columnHeadingFontSize: 6.8,
+      columnHeadingMarginBottom: 6,
+      columnPaddingBottom: 5,
+      columnPaddingX: 16,
+      columnPaddingTop: 6,
+      columnsMarginBottom: 15,
+    };
+  }
+
+  if (pressure <= 34) {
+    return {
+      bulletDotSize: 2.9,
+      bulletDotTop: 2.4,
+      bulletMarginBottom: 0.4,
+      bulletTextFontSize: 5,
+      bulletTextLineHeight: 1.04,
+      columnHeadingFontSize: 6.2,
+      columnHeadingMarginBottom: 4,
+      columnPaddingBottom: 4,
+      columnPaddingX: 14,
+      columnPaddingTop: 5,
+      columnsMarginBottom: 12,
+    };
+  }
+
+  return {
+    bulletDotSize: 2.4,
+    bulletDotTop: 2,
+    bulletMarginBottom: 0.1,
+    bulletTextFontSize: 4,
+    bulletTextLineHeight: 1,
+    columnHeadingFontSize: 5.2,
+    columnHeadingMarginBottom: 3,
+    columnPaddingBottom: 3,
+    columnPaddingX: 12,
+    columnPaddingTop: 4,
+    columnsMarginBottom: 8,
+  };
+}
+
+function estimateAssemblyPressure(items: string[]): number {
+  return items.reduce((total, item) => total + Math.max(1, Math.ceil(item.length / 38)), 0);
+}
+
+function getBodyCopyLayout(paragraphs: string[]): BodyCopyLayout {
+  const estimatedLines = paragraphs.reduce(
+    (total, paragraph) => total + Math.max(1, Math.ceil(paragraph.length / 105)),
+    0,
+  );
+
+  if (estimatedLines <= 5) {
+    return { fontSize: 7.4, lineHeight: 1.43, marginBottom: 2 };
+  }
+
+  if (estimatedLines <= 7) {
+    return { fontSize: 6.8, lineHeight: 1.34, marginBottom: 1.5 };
+  }
+
+  if (estimatedLines <= 10) {
+    return { fontSize: 6.1, lineHeight: 1.24, marginBottom: 1 };
+  }
+
+  return { fontSize: 5.4, lineHeight: 1.16, marginBottom: 0.6 };
+}
+
 function KeyFeatureItem({ label, layout }: { label: string; layout: CoverLayout }) {
   return (
     <View style={[styles.keyFeatureRow, { marginBottom: layout.rowMarginBottom }]}>
@@ -472,23 +605,62 @@ function KeyFeatureItem({ label, layout }: { label: string; layout: CoverLayout 
   );
 }
 
-function BulletItem({ dense, label }: { dense: boolean; label: string }) {
+function BulletItem({ label, layout }: { label: string; layout: AssemblyLayout }) {
   return (
-    <View style={styles.bulletRow}>
-      <View style={styles.bulletDot} />
-      <Text style={dense ? [styles.bulletText, styles.bulletTextDense] : styles.bulletText}>{label}</Text>
+    <View style={[styles.bulletRow, { marginBottom: layout.bulletMarginBottom }]}>
+      <View
+        style={[
+          styles.bulletDot,
+          {
+            borderRadius: layout.bulletDotSize / 2,
+            height: layout.bulletDotSize,
+            marginTop: layout.bulletDotTop,
+            width: layout.bulletDotSize,
+          },
+        ]}
+      />
+      <Text
+        style={[styles.bulletText, { fontSize: layout.bulletTextFontSize, lineHeight: layout.bulletTextLineHeight }]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
 
-function SpecColumn({ accent, heading, items }: { accent: 'optional' | 'standard'; heading: string; items: string[] }) {
-  const dense = items.length >= 12;
-
+function SpecColumn({
+  accent,
+  heading,
+  items,
+  layout,
+}: {
+  accent: 'optional' | 'standard';
+  heading: string;
+  items: string[];
+  layout: AssemblyLayout;
+}) {
   return (
-    <View style={[styles.assemblyColumn, accent === 'standard' ? styles.standardColumn : styles.optionalColumn]}>
-      <Text style={styles.columnHeading}>{heading}</Text>
+    <View
+      style={[
+        styles.assemblyColumn,
+        {
+          paddingBottom: layout.columnPaddingBottom,
+          paddingHorizontal: layout.columnPaddingX,
+          paddingTop: layout.columnPaddingTop,
+        },
+        accent === 'standard' ? styles.standardColumn : styles.optionalColumn,
+      ]}
+    >
+      <Text
+        style={[
+          styles.columnHeading,
+          { fontSize: layout.columnHeadingFontSize, marginBottom: layout.columnHeadingMarginBottom },
+        ]}
+      >
+        {heading}
+      </Text>
       {items.map((item) => (
-        <BulletItem dense={dense} key={item} label={item} />
+        <BulletItem key={item} label={item} layout={layout} />
       ))}
     </View>
   );
@@ -525,14 +697,14 @@ function Footer() {
   );
 }
 
-function CoverImage({ image, style }: { image: BrochureDocumentImage; style: Style | Style[] }) {
+function CoverImage({ fit, image, style }: { fit?: ImageFit; image: BrochureDocumentImage; style: Style | Style[] }) {
   if (!image) {
     return null;
   }
 
   return (
     <View style={style}>
-      <Image src={image.dataUri} style={[styles.coverImage, { objectFit: image.fit }]} />
+      <Image src={image.dataUri} style={[styles.coverImage, { objectFit: fit ?? image.fit }]} />
     </View>
   );
 }

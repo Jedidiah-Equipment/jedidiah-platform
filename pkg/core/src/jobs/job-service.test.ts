@@ -2176,7 +2176,7 @@ function brochurePngBytes(): Uint8Array {
 }
 
 async function makeBrochureComplete(db: Db, storage: InMemoryStorageAdapter, productId: string) {
-  const slots = ['rangeLogo', 'hero', 'technicalDrawing', 'secondary'] as const;
+  const slots = ['hero', 'technicalDrawing', 'secondary'] as const;
   const images: Record<string, { byteSize: number; contentType: string; storageKey: string; updatedAt: string }> = {};
 
   for (const slot of slots) {

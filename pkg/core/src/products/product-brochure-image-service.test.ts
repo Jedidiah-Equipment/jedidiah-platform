@@ -76,7 +76,7 @@ describe('replaceProductBrochureImage', () => {
     });
 
     expect(product.brochureConfig.images.hero).toMatchObject({ byteSize: 64, contentType: 'image/png' });
-    expect(product.brochureConfig.images.rangeLogo).toBeNull();
+    expect(product.brochureConfig.images.secondary).toBeNull();
     expect(storage.objects.size).toBe(1);
 
     const [row] = await context.db
@@ -124,12 +124,12 @@ describe('replaceProductBrochureImage', () => {
     const product = await replaceProductBrochureImage({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
-      input: { bytes: jpegBytes(), productId: context.product.id, slot: 'rangeLogo' },
+      input: { bytes: jpegBytes(), productId: context.product.id, slot: 'secondary' },
       storage,
     });
 
     expect(product.brochureConfig.images.hero).toMatchObject({ contentType: 'image/png' });
-    expect(product.brochureConfig.images.rangeLogo).toMatchObject({ contentType: 'image/jpeg' });
+    expect(product.brochureConfig.images.secondary).toMatchObject({ contentType: 'image/jpeg' });
     expect(storage.objects.size).toBe(2);
   });
 

@@ -329,8 +329,8 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
         <View style={styles.coverContent}>
           <View style={styles.brandRow}>
             <Image src={JEDIDIAH_LOGO_DATA_URI} style={styles.brandLogo} />
-            {document.images.rangeLogo ? (
-              <Image src={document.images.rangeLogo.dataUri} style={styles.rangeLogo} />
+            {document.rangeLogo ? (
+              <Image src={document.rangeLogo.dataUri} style={styles.rangeLogo} />
             ) : (
               <View style={styles.rangeLogoFallback} />
             )}

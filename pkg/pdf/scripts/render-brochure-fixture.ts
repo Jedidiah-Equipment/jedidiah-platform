@@ -34,12 +34,12 @@ async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumen
     ],
     images: {
       hero: await imageFromEnv('BROCHURE_HERO_IMAGE', 'cover'),
-      rangeLogo: null,
       secondary: await imageFromEnv('BROCHURE_SECONDARY_IMAGE', 'cover'),
       technicalDrawing: await imageFromEnv('BROCHURE_TECHNICAL_IMAGE', 'contain'),
     },
     keyFeatures: ['Pay load : 18 tons', 'Volume standard : 25 cubes', 'Volume with extensions: 36 cubes'],
     modelCode: 'SG1836',
+    rangeLogo: await imageFromEnv('BROCHURE_RANGE_LOGO_IMAGE', 'contain'),
     optionalAssemblies: [
       'Air brakes',
       'Multi hitch with 32mm articulating ball hitch',
@@ -103,7 +103,11 @@ async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumen
 }
 
 async function imageFromEnv(
-  envName: 'BROCHURE_HERO_IMAGE' | 'BROCHURE_SECONDARY_IMAGE' | 'BROCHURE_TECHNICAL_IMAGE',
+  envName:
+    | 'BROCHURE_HERO_IMAGE'
+    | 'BROCHURE_RANGE_LOGO_IMAGE'
+    | 'BROCHURE_SECONDARY_IMAGE'
+    | 'BROCHURE_TECHNICAL_IMAGE',
   fit: ImageFit,
 ): Promise<BrochureDocumentImage> {
   const imagePath = process.env[envName];

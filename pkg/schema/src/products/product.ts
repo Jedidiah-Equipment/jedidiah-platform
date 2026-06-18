@@ -267,9 +267,10 @@ export const BrochureKeyFeatures = z
   .array(BrochureKeyFeature)
   .max(BROCHURE_KEY_FEATURES_MAX_COUNT, `Add at most ${BROCHURE_KEY_FEATURES_MAX_COUNT} key features`);
 
-// The four Brochure image slots. Each replaces in place, so a Product holds at most one current image
-// per slot. Order is the brochure's visual order and drives the form's slot list.
-export const BROCHURE_IMAGE_SLOTS = ['rangeLogo', 'hero', 'technicalDrawing', 'secondary'] as const;
+// The Brochure image slots. Each replaces in place, so a Product holds at most one current image
+// per slot. Order is the brochure's visual order and drives the form's slot list. The top-right logo
+// is not a slot here — it comes from the owning Product Range's image at render time.
+export const BROCHURE_IMAGE_SLOTS = ['hero', 'technicalDrawing', 'secondary'] as const;
 
 export type BrochureImageSlot = z.infer<typeof BrochureImageSlot>;
 export const BrochureImageSlot = z.enum(BROCHURE_IMAGE_SLOTS);
@@ -278,7 +279,7 @@ export const BrochureImageSlot = z.enum(BROCHURE_IMAGE_SLOTS);
 export const BROCHURE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 // Recommended source dimensions and render fit per slot, shown on the form as upload guidance.
-// `cover` photos fill their slot; `contain` logos and drawings preserve the whole image.
+// `cover` photos fill their slot; the `contain` technical drawing preserves the whole image.
 export type BrochureImageSlotSpec = {
   fit: 'contain' | 'cover';
   recommendedHeight: number;
@@ -286,7 +287,6 @@ export type BrochureImageSlotSpec = {
 };
 
 export const BROCHURE_IMAGE_SLOT_SPECS = {
-  rangeLogo: { fit: 'contain', recommendedHeight: 400, recommendedWidth: 600 },
   hero: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
   technicalDrawing: { fit: 'contain', recommendedHeight: 1200, recommendedWidth: 1600 },
   secondary: { fit: 'cover', recommendedHeight: 900, recommendedWidth: 1200 },
@@ -298,14 +298,12 @@ export const BrochureImage = EntityImage;
 
 export type BrochureImages = z.infer<typeof BrochureImages>;
 export const BrochureImages = z.object({
-  rangeLogo: BrochureImage.nullable().default(null),
   hero: BrochureImage.nullable().default(null),
   technicalDrawing: BrochureImage.nullable().default(null),
   secondary: BrochureImage.nullable().default(null),
 });
 
 export const EMPTY_BROCHURE_IMAGES: BrochureImages = {
-  rangeLogo: null,
   hero: null,
   technicalDrawing: null,
   secondary: null,
@@ -340,7 +338,7 @@ const EMPTY_BROCHURE_CONFIG_INPUT: BrochureConfigInput = { keyFeatures: [], subt
 
 // The required fields a Product Brochure must fill before it can be previewed or generated. This is the
 // vocabulary the completeness predicate (`evaluateBrochureCompleteness` in @pkg/domain) reports against;
-// the order is the order missing fields surface in the form alert. The four image entries reuse the
+// the order is the order missing fields surface in the form alert. The image entries reuse the
 // {@link BROCHURE_IMAGE_SLOTS} keys so consumers can map them straight to slot labels.
 export const BROCHURE_REQUIRED_FIELDS = [
   'subtitle',

@@ -1,6 +1,7 @@
 import type { QuoteDocumentModel } from '@pkg/schema';
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
+import { pdfFontFamily } from '../pdf-fonts.js';
 import { pdfBorder, pdfColors, pdfLineHeight, pdfSpacing } from './pdf-theme.js';
 import { QuoteDocumentBottomBlock } from './QuoteDocumentBottomBlock.js';
 import { QuoteDocumentHeader } from './QuoteDocumentHeader.js';
@@ -15,7 +16,7 @@ const styles = StyleSheet.create({
   page: {
     backgroundColor: pdfColors.white,
     color: pdfColors.black,
-    fontFamily: 'Helvetica',
+    fontFamily: pdfFontFamily,
     fontSize: 8,
     lineHeight: pdfLineHeight.page,
     padding: pdfSpacing.pagePadding,

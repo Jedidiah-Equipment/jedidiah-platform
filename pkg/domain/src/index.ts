@@ -4,6 +4,7 @@ export * from './demo.js';
 export * from './departments.js';
 export * from './documents/document-policy.js';
 export * from './environment.js';
+export * from './fonts.js';
 export * from './formatting/date.js';
 export * from './formatting/date-only.js';
 export * from './formatting/number.js';

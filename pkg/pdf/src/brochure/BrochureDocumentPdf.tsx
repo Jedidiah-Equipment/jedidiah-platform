@@ -1,6 +1,7 @@
-import type { BrochureDocumentImage, BrochureDocumentModel } from '@pkg/schema';
+import { BROCHURE_KEY_FEATURES_MAX_COUNT, type BrochureDocumentImage, type BrochureDocumentModel } from '@pkg/schema';
 import { Document, Image, Page, StyleSheet, type Styles, Text, View } from '@react-pdf/renderer';
 
+import { pdfFontFamily } from '../pdf-fonts.js';
 import { JEDIDIAH_LOGO_DATA_URI } from '../quote-document/jedidiah-logo.js';
 import { pdfColors, pdfFontSize, pdfFontWeight, pdfLineHeight } from '../quote-document/pdf-theme.js';
 
@@ -11,47 +12,51 @@ type BrochureDocumentPdfProps = {
 };
 
 const layout = {
-  pagePadding: 28,
-  brandLogoHeight: 34,
-  rangeLogoHeight: 34,
-  rangeLogoWidth: 150,
-  heroHeight: 320,
-  techImageHeight: 150,
-  secondaryHeight: 230,
-  footerLogoHeight: 30,
-  footerLogoWidth: 104,
+  pagePaddingX: 18,
+  coverPaddingTop: 38,
+  detailPaddingTop: 24,
+  brandLogoHeight: 36,
+  brandLogoWidth: 126,
+  rangeLogoHeight: 44,
+  rangeLogoWidth: 166,
+  heroHeight: 400,
+  techImageHeight: 142,
+  secondaryHeight: 225,
+  footerHeight: 98,
+  footerLogoHeight: 34,
+  footerLogoWidth: 120,
 } as const;
 
 const styles = StyleSheet.create({
   page: {
     backgroundColor: pdfColors.white,
     color: pdfColors.black,
-    fontFamily: 'Helvetica',
+    fontFamily: pdfFontFamily,
     fontSize: pdfFontSize.body,
     lineHeight: pdfLineHeight.body,
   },
-  content: {
-    paddingHorizontal: layout.pagePadding,
-    paddingTop: layout.pagePadding,
+  coverContent: {
+    paddingHorizontal: layout.pagePaddingX,
+    paddingTop: layout.coverPaddingTop,
   },
-  // The second page is a full-height column so the footer band can pin to the bottom of the page.
-  secondPage: {
+  detailPage: {
     flexDirection: 'column',
     minHeight: '100%',
   },
-  spacer: {
-    flexGrow: 1,
+  detailContent: {
+    paddingHorizontal: layout.pagePaddingX,
+    paddingTop: layout.detailPaddingTop,
   },
   brandRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    marginBottom: 38,
   },
   brandLogo: {
     height: layout.brandLogoHeight,
     objectFit: 'contain',
-    width: 150,
+    width: layout.brandLogoWidth,
   },
   rangeLogo: {
     height: layout.rangeLogoHeight,
@@ -64,26 +69,24 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 17,
   },
   eyebrow: {
-    color: pdfColors.mutedDark,
-    fontSize: pdfFontSize.bodyLg,
-    fontWeight: pdfFontWeight.semibold,
-    letterSpacing: 3,
-    marginBottom: 4,
+    color: pdfColors.black,
+    fontSize: 18,
+    fontWeight: pdfFontWeight.bold,
+    marginBottom: 14,
     textTransform: 'uppercase',
   },
   title: {
     color: pdfColors.black,
-    fontSize: 30,
+    fontSize: 48,
     fontWeight: pdfFontWeight.bold,
-    letterSpacing: 1,
+    lineHeight: 1,
     textAlign: 'center',
     textTransform: 'uppercase',
   },
-  imageRounded: {
-    borderRadius: 8,
+  imageBox: {
     overflow: 'hidden',
     width: '100%',
   },
@@ -94,135 +97,224 @@ const styles = StyleSheet.create({
   },
   sectionCentered: {
     alignItems: 'center',
-    marginTop: 22,
+    marginTop: 86,
   },
   centerHeadingRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 18,
   },
   headingDark: {
-    fontSize: pdfFontSize.title,
+    fontSize: 20,
     fontWeight: pdfFontWeight.bold,
-    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   headingAccent: {
     color: pdfColors.yellow,
-    fontSize: pdfFontSize.title,
+    fontSize: 20,
     fontWeight: pdfFontWeight.bold,
-    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   featureList: {
     alignSelf: 'center',
-    width: '70%',
+    width: 260,
   },
-  checkRow: {
+  detailSpacer: {
+    flexGrow: 1,
+  },
+  keyFeatureRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    marginBottom: 7,
+    marginBottom: 9,
   },
-  checkBox: {
-    alignItems: 'center',
+  keyFeatureIcon: {
+    height: 9,
+    marginRight: 13,
+    width: 21,
+  },
+  trailerBed: {
+    backgroundColor: pdfColors.black,
+    height: 6,
+    width: 18,
+  },
+  trailerTow: {
+    backgroundColor: pdfColors.black,
+    height: 2,
+    marginLeft: 15,
+    marginTop: -2,
+    width: 6,
+  },
+  trailerWheels: {
+    flexDirection: 'row',
+    gap: 5,
+    marginLeft: 3,
+    marginTop: -1,
+  },
+  trailerWheel: {
     backgroundColor: pdfColors.black,
     borderRadius: 2,
-    height: 12,
-    justifyContent: 'center',
-    marginRight: 8,
-    width: 12,
+    height: 4,
+    width: 4,
   },
-  checkMark: {
-    color: pdfColors.white,
-    fontSize: 8,
-    fontWeight: pdfFontWeight.bold,
-    lineHeight: 1,
-  },
-  checkText: {
-    color: pdfColors.mutedDark,
+  keyFeatureText: {
+    color: pdfColors.black,
     flex: 1,
-    fontSize: pdfFontSize.body,
-    fontWeight: pdfFontWeight.medium,
-    letterSpacing: 0.3,
+    fontSize: 10.5,
+    fontWeight: pdfFontWeight.bold,
+    lineHeight: 1.15,
     textTransform: 'uppercase',
   },
+  bulletRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    marginBottom: 1.7,
+  },
+  bulletDot: {
+    backgroundColor: pdfColors.black,
+    borderRadius: 2,
+    height: 4,
+    marginRight: 9,
+    marginTop: 3.3,
+    width: 4,
+  },
+  bulletText: {
+    color: pdfColors.black,
+    flex: 1,
+    fontSize: 6.8,
+    fontWeight: pdfFontWeight.bold,
+    lineHeight: 1.18,
+    textTransform: 'uppercase',
+  },
+  bulletTextDense: {
+    fontSize: 6.6,
+    lineHeight: 1.15,
+  },
   techImageBox: {
-    borderRadius: 8,
     height: layout.techImageHeight,
-    marginBottom: 20,
+    marginBottom: 2,
     overflow: 'hidden',
     width: '100%',
   },
   columns: {
     flexDirection: 'row',
-    gap: 28,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    marginBottom: 18,
+    marginLeft: 32,
+    width: 473,
   },
-  column: {
-    flex: 1,
+  assemblyColumn: {
+    borderBottomWidth: 2.5,
+    borderLeftWidth: 2.5,
+    borderRightWidth: 2.5,
+    borderTopWidth: 2.5,
+    paddingBottom: 6,
+    paddingHorizontal: 18,
+    paddingTop: 7,
+    width: 198,
+  },
+  standardColumn: {
+    borderBottomColor: pdfColors.black,
+    borderLeftColor: pdfColors.black,
+    borderRightColor: pdfColors.black,
+    borderTopColor: pdfColors.black,
+  },
+  optionalColumn: {
+    borderBottomColor: pdfColors.yellow,
+    borderLeftColor: pdfColors.yellow,
+    borderRightColor: pdfColors.yellow,
+    borderTopColor: pdfColors.yellow,
   },
   columnHeading: {
-    borderBottomColor: pdfColors.yellow,
-    borderBottomWidth: 2,
-    fontSize: pdfFontSize.bodyLg,
+    fontSize: 7.3,
     fontWeight: pdfFontWeight.bold,
-    letterSpacing: 1,
-    marginBottom: 10,
-    paddingBottom: 4,
+    lineHeight: 1,
+    marginBottom: 8,
+    textAlign: 'center',
     textTransform: 'uppercase',
   },
   secondaryBox: {
-    borderRadius: 8,
     height: layout.secondaryHeight,
-    marginBottom: 16,
+    marginBottom: 7,
     overflow: 'hidden',
     width: '100%',
   },
+  yellowRule: {
+    backgroundColor: pdfColors.yellow,
+    height: 2.4,
+    marginBottom: 6,
+    marginHorizontal: 15,
+  },
   bodyCopy: {
-    color: pdfColors.mutedDark,
-    fontSize: pdfFontSize.body,
-    marginBottom: 4,
+    color: pdfColors.black,
+    fontSize: 7.4,
+    fontWeight: pdfFontWeight.bold,
+    lineHeight: 1.43,
+    marginBottom: 2,
+    paddingHorizontal: 20,
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
   footer: {
     alignItems: 'center',
     backgroundColor: pdfColors.black,
     flexDirection: 'row',
+    height: layout.footerHeight,
     justifyContent: 'space-between',
-    marginTop: 18,
-    paddingHorizontal: layout.pagePadding,
-    paddingVertical: 16,
+    marginHorizontal: layout.pagePaddingX,
+    marginTop: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
+  },
+  footerContactBlock: {
+    flexGrow: 0,
+    width: 178,
+  },
+  footerContactGroup: {
+    marginBottom: 9,
   },
   footerContact: {
-    color: pdfColors.mutedOnDark,
-    fontSize: pdfFontSize.bodyXs,
-    lineHeight: 1.5,
+    color: pdfColors.white,
+    fontSize: 6.2,
+    fontWeight: pdfFontWeight.bold,
+    lineHeight: 1.35,
+    textTransform: 'uppercase',
+  },
+  footerWebsite: {
+    textDecoration: 'underline',
+    textTransform: 'none',
   },
   footerRight: {
     alignItems: 'flex-end',
+    flex: 1,
+  },
+  footerLogoRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 10,
+    width: '100%',
   },
   footerTagline: {
     color: pdfColors.white,
-    fontSize: pdfFontSize.body,
+    fontSize: 12.5,
     fontWeight: pdfFontWeight.bold,
-    letterSpacing: 0.5,
-    marginBottom: 3,
-    marginTop: 6,
+    lineHeight: 1,
+    marginBottom: 9,
+    textAlign: 'right',
     textTransform: 'uppercase',
   },
   footerAddress: {
-    color: pdfColors.mutedOnDark,
-    fontSize: pdfFontSize.bodyXs,
+    color: pdfColors.white,
+    fontSize: 6.8,
+    fontWeight: pdfFontWeight.bold,
+    textAlign: 'right',
+    textTransform: 'uppercase',
   },
 });
 
 export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
-  const hasSecondPage =
-    hasColumns ||
-    Boolean(document.images.technicalDrawing) ||
-    Boolean(document.images.secondary) ||
-    document.bodyCopy.length > 0;
+  const coverLayout = getCoverLayout(document.keyFeatures.length);
 
   return (
     <Document
@@ -234,7 +326,7 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
       title={document.title}
     >
       <Page size="A4" style={styles.page}>
-        <View style={styles.content}>
+        <View style={styles.coverContent}>
           <View style={styles.brandRow}>
             <Image src={JEDIDIAH_LOGO_DATA_URI} style={styles.brandLogo} />
             {document.images.rangeLogo ? (
@@ -246,105 +338,187 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
 
           <View style={styles.titleBlock}>
             {document.subtitle ? <Text style={styles.eyebrow}>{document.subtitle}</Text> : null}
-            <Text style={styles.title} wrap={false}>
-              {document.title}
-            </Text>
+            <TitleText title={document.title} />
           </View>
 
           {document.images.hero ? (
-            <CoverImage image={document.images.hero} style={[styles.imageRounded, { height: layout.heroHeight }]} />
+            <CoverImage image={document.images.hero} style={[styles.imageBox, { height: coverLayout.heroHeight }]} />
           ) : null}
 
           {document.keyFeatures.length > 0 ? (
-            <View style={styles.sectionCentered}>
-              <View style={styles.centerHeadingRow}>
-                <Text style={styles.headingDark}>Key </Text>
-                <Text style={styles.headingAccent}>Features</Text>
+            <View style={[styles.sectionCentered, { marginTop: coverLayout.sectionMarginTop }]}>
+              <View style={[styles.centerHeadingRow, { marginBottom: coverLayout.headingMarginBottom }]}>
+                <Text style={[styles.headingDark, { fontSize: coverLayout.headingFontSize }]}>Key </Text>
+                <Text style={[styles.headingAccent, { fontSize: coverLayout.headingFontSize }]}>Features</Text>
               </View>
-              <View style={styles.featureList}>
+              <View style={[styles.featureList, { width: coverLayout.featureListWidth }]}>
                 {document.keyFeatures.map((feature) => (
-                  <CheckItem key={feature} label={feature} />
+                  <KeyFeatureItem key={feature} label={feature} layout={coverLayout} />
                 ))}
               </View>
             </View>
           ) : null}
         </View>
+      </Page>
 
-        {hasSecondPage ? (
-          <View break style={styles.secondPage}>
-            <View style={styles.content}>
-              {document.images.technicalDrawing ? (
-                <CoverImage image={document.images.technicalDrawing} style={styles.techImageBox} />
-              ) : null}
+      <Page size="A4" style={[styles.page, styles.detailPage]}>
+        <View style={styles.detailContent}>
+          {document.images.technicalDrawing ? (
+            <CoverImage image={document.images.technicalDrawing} style={styles.techImageBox} />
+          ) : null}
 
-              {hasColumns ? (
-                <View style={styles.columns}>
-                  {document.standardAssemblies.length > 0 ? (
-                    <SpecColumn heading="Standard" items={document.standardAssemblies} />
-                  ) : null}
-                  {document.optionalAssemblies.length > 0 ? (
-                    <SpecColumn heading="Optional Extras" items={document.optionalAssemblies} />
-                  ) : null}
-                </View>
-              ) : null}
-
-              {document.images.secondary ? (
-                <CoverImage image={document.images.secondary} style={styles.secondaryBox} />
-              ) : null}
-
-              {document.bodyCopy.map((paragraph) => (
-                <Text key={paragraph} style={styles.bodyCopy}>
-                  {paragraph}
-                </Text>
-              ))}
+          {hasColumns ? (
+            <View style={styles.columns}>
+              <SpecColumn accent="standard" heading="Standard" items={document.standardAssemblies} />
+              <SpecColumn accent="optional" heading="Optional Extras" items={document.optionalAssemblies} />
             </View>
-            <View style={styles.spacer} />
-            <Footer document={document} />
-          </View>
-        ) : (
-          <Footer document={document} />
-        )}
+          ) : null}
+
+          {document.images.secondary ? (
+            <CoverImage image={document.images.secondary} style={styles.secondaryBox} />
+          ) : null}
+
+          {document.bodyCopy.length > 0 ? <View style={styles.yellowRule} /> : null}
+          {document.bodyCopy.map((paragraph) => (
+            <Text key={paragraph} style={styles.bodyCopy}>
+              {paragraph}
+            </Text>
+          ))}
+        </View>
+        <View style={styles.detailSpacer} />
+        <Footer />
       </Page>
     </Document>
   );
 }
 
-function CheckItem({ label }: { label: string }) {
+function TitleText({ title }: { title: string }) {
+  const upperTitle = title.toUpperCase();
+
+  // Accent spans should come from brochure config later; avoid hardcoding product-specific regex here.
+
   return (
-    <View style={styles.checkRow}>
-      <View style={styles.checkBox}>
-        <Text style={styles.checkMark}>✓</Text>
+    <Text style={styles.title} wrap={false}>
+      {upperTitle}
+    </Text>
+  );
+}
+
+type CoverLayout = {
+  featureFontSize: number;
+  featureLineHeight: number;
+  featureListWidth: number;
+  headingFontSize: number;
+  headingMarginBottom: number;
+  heroHeight: number;
+  rowMarginBottom: number;
+  sectionMarginTop: number;
+};
+
+function getCoverLayout(featureCount: number): CoverLayout {
+  if (featureCount <= 3) {
+    return {
+      featureFontSize: 10.5,
+      featureLineHeight: 1.15,
+      featureListWidth: 260,
+      headingFontSize: 20,
+      headingMarginBottom: 18,
+      heroHeight: layout.heroHeight,
+      rowMarginBottom: 9,
+      sectionMarginTop: 86,
+    };
+  }
+
+  if (featureCount <= 6) {
+    return {
+      featureFontSize: 9,
+      featureLineHeight: 1.1,
+      featureListWidth: 310,
+      headingFontSize: 18,
+      headingMarginBottom: 12,
+      heroHeight: 360,
+      rowMarginBottom: 5,
+      sectionMarginTop: 48,
+    };
+  }
+
+  return {
+    featureFontSize: 7.2,
+    featureLineHeight: 1.05,
+    featureListWidth: 340,
+    headingFontSize: 16,
+    headingMarginBottom: 8,
+    heroHeight: 318,
+    rowMarginBottom: featureCount >= BROCHURE_KEY_FEATURES_MAX_COUNT ? 2 : 3,
+    sectionMarginTop: 30,
+  };
+}
+
+function KeyFeatureItem({ label, layout }: { label: string; layout: CoverLayout }) {
+  return (
+    <View style={[styles.keyFeatureRow, { marginBottom: layout.rowMarginBottom }]}>
+      <View style={styles.keyFeatureIcon}>
+        <View style={styles.trailerBed} />
+        <View style={styles.trailerTow} />
+        <View style={styles.trailerWheels}>
+          <View style={styles.trailerWheel} />
+          <View style={styles.trailerWheel} />
+        </View>
       </View>
-      <Text style={styles.checkText}>{label}</Text>
+      <Text style={[styles.keyFeatureText, { fontSize: layout.featureFontSize, lineHeight: layout.featureLineHeight }]}>
+        {label}
+      </Text>
     </View>
   );
 }
 
-function SpecColumn({ heading, items }: { heading: string; items: string[] }) {
+function BulletItem({ dense, label }: { dense: boolean; label: string }) {
   return (
-    <View style={styles.column}>
+    <View style={styles.bulletRow}>
+      <View style={styles.bulletDot} />
+      <Text style={dense ? [styles.bulletText, styles.bulletTextDense] : styles.bulletText}>{label}</Text>
+    </View>
+  );
+}
+
+function SpecColumn({ accent, heading, items }: { accent: 'optional' | 'standard'; heading: string; items: string[] }) {
+  const dense = items.length >= 12;
+
+  return (
+    <View style={[styles.assemblyColumn, accent === 'standard' ? styles.standardColumn : styles.optionalColumn]}>
       <Text style={styles.columnHeading}>{heading}</Text>
       {items.map((item) => (
-        <CheckItem key={item} label={item} />
+        <BulletItem dense={dense} key={item} label={item} />
       ))}
     </View>
   );
 }
 
-function Footer({ document }: { document: BrochureDocumentModel }) {
+function Footer() {
   return (
     <View style={styles.footer}>
-      <View>
-        <Text style={styles.footerContact}>Jedidiah Equipment</Text>
-        <Text style={styles.footerContact}>sales@jedidiahequipment.co.za</Text>
-        <Text style={styles.footerContact}>{document.modelCode}</Text>
+      <View style={styles.footerContactBlock}>
+        <View style={styles.footerContactGroup}>
+          <Text style={styles.footerContact}>Phone: 045 050 0545</Text>
+          <Text style={[styles.footerContact, styles.footerWebsite]}>www.jedidiahequipment.co.za</Text>
+        </View>
+        <View style={styles.footerContactGroup}>
+          <Text style={styles.footerContact}>Dewald Van Niekerk 083 331 9183,</Text>
+          <Text style={styles.footerContact}>factory@jedidiahequipment.co.za</Text>
+        </View>
+        <View>
+          <Text style={styles.footerContact}>Jed Van Niekerk 082 419 4464,</Text>
+          <Text style={styles.footerContact}>jed@jedidiahequipment.co.za</Text>
+        </View>
       </View>
       <View style={styles.footerRight}>
-        <Image
-          src={JEDIDIAH_LOGO_DATA_URI}
-          style={{ height: layout.footerLogoHeight, width: layout.footerLogoWidth }}
-        />
-        <Text style={styles.footerTagline}>Built for high productivity &amp; reliability</Text>
+        <View style={styles.footerLogoRow}>
+          <Image
+            src={JEDIDIAH_LOGO_DATA_URI}
+            style={{ height: layout.footerLogoHeight, width: layout.footerLogoWidth }}
+          />
+        </View>
+        <Text style={styles.footerTagline}>Built for high productivity and reliability</Text>
         <Text style={styles.footerAddress}>Stoneybrook Farm, Kokstad, KwaZulu-Natal, South Africa</Text>
       </View>
     </View>

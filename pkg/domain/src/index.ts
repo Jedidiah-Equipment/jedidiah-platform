@@ -18,6 +18,7 @@ export * from './jobs/job-slot-projection.js';
 export * from './jobs/working-calendar.js';
 export * from './products/brochure-completeness.js';
 export * from './products/brochure-image-policy.js';
+export * from './products/product-range-image-policy.js';
 export * from './quotes/effective-bom.js';
 export * from './quotes/quote-email-prompt.js';
 export * from './quotes/quote-lock.js';

@@ -217,7 +217,6 @@ describe('products.read', () => {
   test('lists Range options through Product read access', async ({ context }) => {
     await createRange(context.db, {
       id: '00000000-0000-4000-8000-000000000502',
-      imageDataUrl: 'data:image/png;base64,aaaa',
       name: 'Earthmoving',
     });
     const caller = context.createCaller(mockSession('procurement-manager'));
@@ -839,12 +838,11 @@ async function createActorUser(db: Db): Promise<void> {
     .onConflictDoNothing();
 }
 
-async function createRange(db: Db, input: { id: string; imageDataUrl?: string | null; name: string }) {
+async function createRange(db: Db, input: { id: string; name: string }) {
   const [range] = await db
     .insert(productRanges)
     .values({
       id: input.id,
-      imageDataUrl: input.imageDataUrl ?? null,
       name: input.name,
     })
     .returning();

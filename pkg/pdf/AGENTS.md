@@ -15,6 +15,7 @@
 - If Poppler is unavailable, open `tmp/pdfs/brochure-fixture.pdf` locally and state that PNG rendering was skipped.
 - Use real product images when needed without committing them:
   `BROCHURE_HERO_IMAGE=/path/to/hero.jpg BROCHURE_TECHNICAL_IMAGE=/path/to/technical.png BROCHURE_SECONDARY_IMAGE=/path/to/secondary.jpg pnpm --filter @pkg/pdf render:brochure-fixture`
+- Use `BROCHURE_FIXTURE_VARIANT=sparse|reference|dense` to check how the brochure behaves with different key-feature, assembly, and description sizes.
 - Remove generated `tmp/pdfs/` artifacts before finishing unless the user asks to keep them.
 
 ## Verification

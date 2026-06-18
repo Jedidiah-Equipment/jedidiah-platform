@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
-import { type BrochureImageStore, type DatabaseTransaction, type Db } from '@pkg/db';
+import type { BrochureImageStore, DatabaseTransaction, Db, StoredImageRef } from '@pkg/db';
 import { evaluateBrochureCompleteness } from '@pkg/domain';
 import {
   type AuthId,
   BROCHURE_IMAGE_SLOT_SPECS,
   BROCHURE_IMAGE_SLOTS,
+  type BrochureDocumentImage,
   type BrochureDocumentImages,
   type BrochureDocumentModel,
   type BrochurePdfRenderer,
@@ -43,14 +44,14 @@ export async function renderProductBrochurePreview({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
-  const { brochureImages, product } = await getProductBrochureSource({ db, id: productId });
+  const { brochureImages, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
 
   if (!isBrochureComplete(product)) {
     const completeness = evaluateBrochureCompleteness(brochureCompletenessInput(product));
     throw new ProductBrochureIncompleteError(productId, completeness.missingFields);
   }
 
-  return renderBrochureForProduct({ brochureImages, pdfRenderer, product, storage });
+  return renderBrochureForProduct({ brochureImages, pdfRenderer, product, rangeImage, storage });
 }
 
 /**
@@ -70,13 +71,13 @@ export async function generateProductBrochureIfComplete({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult | null> {
-  const { brochureImages, product } = await getProductBrochureSource({ db, id: productId });
+  const { brochureImages, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
 
   if (!isBrochureComplete(product)) {
     return null;
   }
 
-  return renderBrochureForProduct({ brochureImages, pdfRenderer, product, storage });
+  return renderBrochureForProduct({ brochureImages, pdfRenderer, product, rangeImage, storage });
 }
 
 /**
@@ -133,14 +134,16 @@ async function renderBrochureForProduct({
   brochureImages,
   pdfRenderer,
   product,
+  rangeImage,
   storage,
 }: {
   brochureImages: BrochureImageStore;
   pdfRenderer: BrochurePdfRenderer;
   product: Product;
+  rangeImage: StoredImageRef | null;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
-  const document = await getBrochureDocumentModel({ brochureImages, product, storage });
+  const document = await getBrochureDocumentModel({ brochureImages, product, rangeImage, storage });
   const filename = `${product.modelCode}-brochure.pdf`;
   const bytes = await pdfRenderer({ document, filename });
 
@@ -162,21 +165,28 @@ function brochureCompletenessInput(product: Product) {
 }
 
 /**
- * Assembles the renderer input model from a Product read plus its stored Brochure images. The title
- * comes from the product name, body copy from the description (one paragraph per non-empty line), and
- * the Standard/Optional columns from the product's assemblies. Image bytes are read from object storage
- * and inlined as data URIs so the renderer stays a pure function over the model.
+ * Assembles the renderer input model from a Product read plus its stored Brochure images and the owning
+ * Range's image. The title comes from the product name, body copy from the description (one paragraph per
+ * non-empty line), the Standard/Optional columns from the product's assemblies, and the top-right logo
+ * from the Range image. Image bytes are read from object storage and inlined as data URIs so the renderer
+ * stays a pure function over the model.
  */
 export async function getBrochureDocumentModel({
   brochureImages,
   product,
+  rangeImage,
   storage,
 }: {
   brochureImages: BrochureImageStore;
   product: Product;
+  rangeImage: StoredImageRef | null;
   storage: StorageAdapter;
 }): Promise<BrochureDocumentModel> {
-  const images = await resolveBrochureImages({ store: brochureImages, storage });
+  const [images, rangeLogo] = await Promise.all([
+    resolveBrochureImages({ store: brochureImages, storage }),
+    // The Range logo fits without cropping, matching the old per-product range-logo slot.
+    resolveStoredImage({ fit: 'contain', ref: rangeImage, storage }),
+  ]);
 
   return {
     bodyCopy: toDisplayLines(product.description),
@@ -186,6 +196,7 @@ export async function getBrochureDocumentModel({
     optionalAssemblies: product.assemblies
       .filter((assembly) => assembly.kind === 'optional')
       .map((assembly) => assembly.name),
+    rangeLogo,
     standardAssemblies: product.assemblies
       .filter((assembly) => assembly.kind === 'standard')
       .map((assembly) => assembly.name),
@@ -202,21 +213,37 @@ async function resolveBrochureImages({
   storage: StorageAdapter;
 }): Promise<BrochureDocumentImages> {
   const entries = await Promise.all(
-    BROCHURE_IMAGE_SLOTS.map(async (slot) => {
-      const ref = store[slot];
-
-      if (!ref) {
-        return [slot, null] as const;
-      }
-
-      const bytes = await readStoredObjectBytes(storage, ref.storageKey);
-      const dataUri = `data:${ref.contentType};base64,${Buffer.from(bytes).toString('base64')}`;
-
-      return [slot, { dataUri, fit: BROCHURE_IMAGE_SLOT_SPECS[slot].fit }] as const;
-    }),
+    BROCHURE_IMAGE_SLOTS.map(
+      async (slot) =>
+        [
+          slot,
+          await resolveStoredImage({ fit: BROCHURE_IMAGE_SLOT_SPECS[slot].fit, ref: store[slot], storage }),
+        ] as const,
+    ),
   );
 
   return Object.fromEntries(entries) as BrochureDocumentImages;
+}
+
+// Reads a stored image's bytes and inlines them as a base64 data URI with the given render fit, or
+// returns null when there is no image. Shared by the Brochure slots and the Range logo.
+async function resolveStoredImage({
+  fit,
+  ref,
+  storage,
+}: {
+  fit: 'contain' | 'cover';
+  ref: StoredImageRef | undefined | null;
+  storage: StorageAdapter;
+}): Promise<BrochureDocumentImage> {
+  if (!ref) {
+    return null;
+  }
+
+  const bytes = await readStoredObjectBytes(storage, ref.storageKey);
+  const dataUri = `data:${ref.contentType};base64,${Buffer.from(bytes).toString('base64')}`;
+
+  return { dataUri, fit };
 }
 
 function toDisplayLines(value: string | null | undefined): string[] {

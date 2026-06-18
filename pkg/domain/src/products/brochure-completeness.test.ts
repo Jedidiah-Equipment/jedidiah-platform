@@ -10,14 +10,12 @@ const IMAGE = EntityImage.parse({
 });
 
 const FULL_IMAGES: BrochureImages = {
-  rangeLogo: IMAGE,
   hero: IMAGE,
   technicalDrawing: IMAGE,
   secondary: IMAGE,
 };
 
 const EMPTY_IMAGES: BrochureImages = {
-  rangeLogo: null,
   hero: null,
   technicalDrawing: null,
   secondary: null,
@@ -51,16 +49,7 @@ describe('evaluateBrochureCompleteness', () => {
       }),
     ).toEqual({
       complete: false,
-      missingFields: [
-        'subtitle',
-        'keyFeatures',
-        'rangeLogo',
-        'hero',
-        'technicalDrawing',
-        'secondary',
-        'description',
-        'assemblies',
-      ],
+      missingFields: ['subtitle', 'keyFeatures', 'hero', 'technicalDrawing', 'secondary', 'description', 'assemblies'],
     });
   });
 

@@ -19,6 +19,8 @@ export type BrochureDocumentModel = {
   keyFeatures: string[];
   modelCode: string;
   optionalAssemblies: string[];
+  // The top-right logo, resolved from the owning Product Range's image. Null when the Range has no image.
+  rangeLogo: BrochureDocumentImage;
   standardAssemblies: string[];
   subtitle: string | null;
   title: string;

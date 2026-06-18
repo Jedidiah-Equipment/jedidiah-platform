@@ -24,7 +24,6 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@fastify/http-proxy": "^11.5.0",
     "@fastify/static": "^9.1.3",
-    "@fontsource-variable/geist": "^5.2.9",
     "@mantine/hooks": "^9.3.0",
     "@pkg/api": "workspace:*",
     "@pkg/domain": "workspace:*",

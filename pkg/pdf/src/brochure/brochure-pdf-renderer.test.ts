@@ -39,7 +39,7 @@ describe('renderBrochurePdf', () => {
     expect(await getPdfPageSizes(bytes)).toHaveLength(2);
   });
 
-  test('omits absent optional sections and still renders valid bytes on a single page', async () => {
+  test('omits absent optional sections and still renders valid bytes across two pages', async () => {
     const bytes = await renderBrochurePdf({
       document: {
         bodyCopy: [],
@@ -56,7 +56,6 @@ describe('renderBrochurePdf', () => {
 
     expect(bytes.byteLength).toBeGreaterThan(1_000);
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
-    // With no assemblies or spec images there is no lower block, so no forced page break.
-    expect(await getPdfPageSizes(bytes)).toHaveLength(1);
+    expect(await getPdfPageSizes(bytes)).toHaveLength(2);
   });
 });

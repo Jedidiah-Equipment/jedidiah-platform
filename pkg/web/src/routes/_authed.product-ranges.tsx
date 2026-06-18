@@ -1,10 +1,12 @@
-import { createFileRoute } from '@tanstack/react-router';
-
-import { ProductRangesPage } from '@/pages/product-ranges/ProductRangesPage.js';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_authed/product-ranges')({
   staticData: {
     pageLabel: 'Product Ranges',
   },
-  component: ProductRangesPage,
+  component: ProductRangesRoute,
 });
+
+function ProductRangesRoute() {
+  return <Outlet />;
+}

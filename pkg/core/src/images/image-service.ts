@@ -4,6 +4,17 @@ import { type ImagePolicy, validateImage } from '@pkg/domain';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { ImagePolicyViolationError } from './image-errors.js';
 
+const CONTENT_TYPE_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+};
+
+// The storage-key file extension for an accepted image content type, for bindings building their key.
+// Falls back to `bin` for anything the policy somehow let through unmapped.
+export function imageExtensionFor(contentType: string): string {
+  return CONTENT_TYPE_EXTENSIONS[contentType] ?? 'bin';
+}
+
 // Persists a new image reference for one owner/target inside the replace transaction and reports the
 // object it superseded. The binding owns everything entity-specific: locking and checking the owner
 // exists (throwing the owner's not-found error), where the reference lives (a column or a jsonb slot),

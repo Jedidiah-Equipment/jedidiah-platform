@@ -236,7 +236,7 @@ describe('document HTTP routes', () => {
     expect(response.headers['content-type']).toBe('application/pdf');
     expect(response.headers['content-disposition']).toContain('inline');
     expect(response.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
-    // Reads every brochure image slot from storage and persists nothing.
+    // Reads the three brochure image slots plus the Range logo from storage and persists nothing.
     expect(storage.gets).toHaveLength(4);
     await expect(context.db.select().from(documents)).resolves.toEqual([]);
   });
@@ -508,12 +508,25 @@ async function createJobOwner(db: Db, productId: UUID) {
   return job;
 }
 
-// Inserts a product whose brochure is complete: subtitle, a key feature, all four images (stored as
-// decodable PNG bytes), a non-empty description, and one standard assembly. The base product stays
-// incomplete so the gate's negative path can be exercised separately.
+// Inserts a product whose brochure is complete: subtitle, a key feature, all three brochure images
+// (stored as decodable PNG bytes), a non-empty description, and one standard assembly. The owning Range
+// is given an image so the top-right logo render path is exercised too. The base product stays incomplete
+// so the gate's negative path can be exercised separately.
 async function createCompleteBrochureProduct({ db, storage }: { db: Db; storage: MemoryStorage }) {
-  const rangeId = await createProductRangeFixture(db);
-  const slots = ['rangeLogo', 'hero', 'technicalDrawing', 'secondary'] as const;
+  const rangeLogoStorageKey = `range-images/product-range/brochure-preview/logo.png`;
+  await storage.put({
+    body: brochurePngBytes(),
+    byteSize: brochurePngBytes().byteLength,
+    contentType: 'image/png',
+    key: rangeLogoStorageKey,
+  });
+  const rangeId = await createProductRangeFixture(db, undefined, {
+    byteSize: brochurePngBytes().byteLength,
+    contentType: 'image/png',
+    storageKey: rangeLogoStorageKey,
+    updatedAt: '2026-06-17T00:00:00.000Z',
+  });
+  const slots = ['hero', 'technicalDrawing', 'secondary'] as const;
   const images: Record<string, { byteSize: number; contentType: string; storageKey: string; updatedAt: string }> = {};
 
   for (const slot of slots) {

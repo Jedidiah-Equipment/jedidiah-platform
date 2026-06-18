@@ -73,7 +73,6 @@ type BrochureImageSlotField = {
 // Slot order, labels, and guidance copy for the form. Recommended dimensions and fit come from the
 // shared schema specs so the form and renderer stay in lockstep.
 const BROCHURE_IMAGE_SLOT_FIELDS: BrochureImageSlotField[] = [
-  { slot: 'rangeLogo', label: 'Range logo', description: 'Top-right sub-brand logo. Fits without cropping.' },
   { slot: 'hero', label: 'Hero image', description: 'Main product photo. Center-cropped to fill its slot.' },
   {
     slot: 'technicalDrawing',
@@ -87,7 +86,6 @@ const BROCHURE_IMAGE_SLOT_FIELDS: BrochureImageSlotField[] = [
 const BROCHURE_REQUIRED_FIELD_LABELS: Record<BrochureRequiredField, string> = {
   subtitle: 'Subtitle',
   keyFeatures: 'At least one key feature',
-  rangeLogo: 'Range logo image',
   hero: 'Hero image',
   technicalDrawing: 'Technical drawing image',
   secondary: 'Secondary image',

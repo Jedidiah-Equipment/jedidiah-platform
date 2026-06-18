@@ -40,7 +40,6 @@ describe('mapProduct', () => {
       brochureConfig: {
         images: {
           hero: { byteSize: 2048, contentType: 'image/png', updatedAt: '2026-05-13T11:30:00.000Z' },
-          rangeLogo: null,
           secondary: null,
           technicalDrawing: null,
         },

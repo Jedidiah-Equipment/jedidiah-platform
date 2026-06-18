@@ -16,7 +16,6 @@ function fullBrochure(): BrochureDocumentModel {
   return {
     bodyCopy: ['A rugged feed mixer built for daily use.', 'Engineered for high productivity and reliability.'],
     images: {
-      rangeLogo: image('contain'),
       hero: image('cover'),
       technicalDrawing: image('contain'),
       secondary: image('cover'),
@@ -24,6 +23,7 @@ function fullBrochure(): BrochureDocumentModel {
     keyFeatures: ['Heavy-duty steel construction', 'Low maintenance', 'Hydraulic drive'],
     modelCode: 'SG1836',
     optionalAssemblies: ['Side working lights', 'BKT tyres'],
+    rangeLogo: image('contain'),
     standardAssemblies: ['Main chassis', 'Auger assembly'],
     subtitle: 'Silage & Grain',
     title: 'Silage Grain 18 36',
@@ -46,10 +46,11 @@ describe('renderBrochurePdf', () => {
   test('omits absent optional sections and still renders valid bytes across two pages', async () => {
     await expectTwoPageBrochure({
       bodyCopy: [],
-      images: { rangeLogo: null, hero: null, technicalDrawing: null, secondary: null },
+      images: { hero: null, technicalDrawing: null, secondary: null },
       keyFeatures: [],
       modelCode: 'SG1836',
       optionalAssemblies: [],
+      rangeLogo: null,
       standardAssemblies: [],
       subtitle: null,
       title: 'Silage Grain 18 36',

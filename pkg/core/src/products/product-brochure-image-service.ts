@@ -8,14 +8,9 @@ import { eq } from 'drizzle-orm';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
 import { ImageNotFoundError } from '../images/image-errors.js';
-import { replaceImage } from '../images/image-service.js';
+import { imageExtensionFor, replaceImage } from '../images/image-service.js';
 import { ProductNotFoundError } from './product-errors.js';
 import { getProduct, productAuditDescriptor } from './product-service.js';
-
-const CONTENT_TYPE_EXTENSIONS: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-};
 
 export type ReplaceProductBrochureImageInput = {
   bytes: Uint8Array;
@@ -45,7 +40,7 @@ export async function replaceProductBrochureImage({
     storage,
     binding: {
       buildStorageKey: ({ contentType }) =>
-        `brochure-images/product/${input.productId}/${input.slot}/${randomUUID()}.${extensionFor(contentType)}`,
+        `brochure-images/product/${input.productId}/${input.slot}/${randomUUID()}.${imageExtensionFor(contentType)}`,
       apply: async ({ nextRef, tx }) => {
         const [before] = await tx.select().from(products).where(eq(products.id, input.productId)).for('update');
 
@@ -114,8 +109,4 @@ export async function readProductBrochureImage({
   }
 
   return storage.get(ref.storageKey);
-}
-
-function extensionFor(contentType: string): string {
-  return CONTENT_TYPE_EXTENSIONS[contentType] ?? 'bin';
 }

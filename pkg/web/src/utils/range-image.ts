@@ -1,67 +1,28 @@
-import { IMAGE_ACCEPT, imageContentTypeRejectedMessage, imageTooLargeMessage } from '@pkg/domain';
-import { IMAGE_CONTENT_TYPES, ProductRange, RANGE_IMAGE_MAX_BYTES, type UUID } from '@pkg/schema';
-import { toast } from 'sonner';
+import { IMAGE_ACCEPT } from '@pkg/domain';
+import { ProductRange, RANGE_IMAGE_MAX_BYTES, type UUID } from '@pkg/schema';
 
 import { getClientConfig } from '@/lib/app-config.js';
 
-import { readApiErrorMessage } from './document.js';
+import { fetchCredentialedImageBlob, uploadImageMultipart, validateSelectedImage } from './entity-image.js';
 
 export { IMAGE_ACCEPT };
 
-const ALLOWED_CONTENT_TYPES = new Set<string>(IMAGE_CONTENT_TYPES);
-
-// Client-side guard mirroring the server policy so an obviously wrong file is rejected before upload.
-// The server re-validates by sniffing the bytes, so this is UX only.
 export function validateSelectedRangeImage(file: File | null): File | null {
-  if (!file) return null;
-
-  if (!ALLOWED_CONTENT_TYPES.has(file.type)) {
-    toast.error(imageContentTypeRejectedMessage(IMAGE_CONTENT_TYPES));
-    return null;
-  }
-
-  if (file.size > RANGE_IMAGE_MAX_BYTES) {
-    toast.error(imageTooLargeMessage(RANGE_IMAGE_MAX_BYTES));
-    return null;
-  }
-
-  return file;
+  return validateSelectedImage(file, RANGE_IMAGE_MAX_BYTES);
 }
 
 export async function uploadProductRangeImage(rangeId: UUID, file: File): Promise<ProductRange> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await fetch(rangeImageUrl(rangeId), {
-    body: formData,
-    credentials: 'include',
-    method: 'POST',
-  });
-
-  if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, 'Unable to upload image.'));
-  }
-
-  return ProductRange.parse(await response.json());
+  return ProductRange.parse(await uploadImageMultipart(rangeImageUrl(rangeId), file));
 }
 
-export async function fetchProductRangeImageBlob({
+export function fetchProductRangeImageBlob({
   rangeId,
   signal,
 }: {
   rangeId: UUID;
   signal?: AbortSignal;
 }): Promise<Blob> {
-  const response = await fetch(`${rangeImageUrl(rangeId)}/download`, {
-    credentials: 'include',
-    ...(signal ? { signal } : {}),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, 'Unable to load image.'));
-  }
-
-  return response.blob();
+  return fetchCredentialedImageBlob(`${rangeImageUrl(rangeId)}/download`, signal);
 }
 
 function rangeImageUrl(rangeId: UUID): string {

@@ -7,14 +7,9 @@ import { eq } from 'drizzle-orm';
 
 import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
 import { ImageNotFoundError } from '../images/image-errors.js';
-import { replaceImage } from '../images/image-service.js';
+import { imageExtensionFor, replaceImage } from '../images/image-service.js';
 import { ProductRangeNotFoundError } from './product-range-errors.js';
 import { getProductRange } from './product-range-service.js';
-
-const CONTENT_TYPE_EXTENSIONS: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-};
 
 export type ReplaceProductRangeImageInput = {
   bytes: Uint8Array;
@@ -41,7 +36,7 @@ export async function replaceProductRangeImage({
     storage,
     binding: {
       buildStorageKey: ({ contentType }) =>
-        `range-images/product-range/${input.rangeId}/${randomUUID()}.${extensionFor(contentType)}`,
+        `range-images/product-range/${input.rangeId}/${randomUUID()}.${imageExtensionFor(contentType)}`,
       apply: async ({ nextRef, tx }) => {
         const [before] = await tx.select().from(productRanges).where(eq(productRanges.id, input.rangeId)).for('update');
 
@@ -86,8 +81,4 @@ export async function readProductRangeImage({
   }
 
   return storage.get(row.image.storageKey);
-}
-
-function extensionFor(contentType: string): string {
-  return CONTENT_TYPE_EXTENSIONS[contentType] ?? 'bin';
 }

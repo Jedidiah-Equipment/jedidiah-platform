@@ -1,4 +1,4 @@
-import type { BrochureDocumentModel } from '@pkg/schema';
+import { BROCHURE_KEY_FEATURES_MAX_COUNT, type BrochureDocumentModel } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../bytes/pdf-bytes.js';
@@ -56,6 +56,22 @@ describe('renderBrochurePdf', () => {
 
     expect(bytes.byteLength).toBeGreaterThan(1_000);
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
+    expect(await getPdfPageSizes(bytes)).toHaveLength(2);
+  });
+
+  test('keeps the maximum configured key features on the two-page brochure', async () => {
+    const bytes = await renderBrochurePdf({
+      document: {
+        ...fullBrochure(),
+        keyFeatures: Array.from(
+          { length: BROCHURE_KEY_FEATURES_MAX_COUNT },
+          (_, index) =>
+            `Extended feature ${index + 1} with enough copy to exercise wrapping without flowing onto a third page`,
+        ),
+      },
+      filename: 'SG1836-brochure.pdf',
+    });
+
     expect(await getPdfPageSizes(bytes)).toHaveLength(2);
   });
 });

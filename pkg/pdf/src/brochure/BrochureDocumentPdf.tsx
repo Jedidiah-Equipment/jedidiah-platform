@@ -1,4 +1,4 @@
-import type { BrochureDocumentImage, BrochureDocumentModel } from '@pkg/schema';
+import { BROCHURE_KEY_FEATURES_MAX_COUNT, type BrochureDocumentImage, type BrochureDocumentModel } from '@pkg/schema';
 import { Document, Image, Page, StyleSheet, type Styles, Text, View } from '@react-pdf/renderer';
 
 import { pdfFontFamily } from '../pdf-fonts.js';
@@ -118,6 +118,9 @@ const styles = StyleSheet.create({
   featureList: {
     alignSelf: 'center',
     width: 260,
+  },
+  detailSpacer: {
+    flexGrow: 1,
   },
   keyFeatureRow: {
     alignItems: 'center',
@@ -311,6 +314,7 @@ const styles = StyleSheet.create({
 
 export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
   const hasColumns = document.standardAssemblies.length > 0 || document.optionalAssemblies.length > 0;
+  const coverLayout = getCoverLayout(document.keyFeatures.length);
 
   return (
     <Document
@@ -338,18 +342,18 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
           </View>
 
           {document.images.hero ? (
-            <CoverImage image={document.images.hero} style={[styles.imageBox, { height: layout.heroHeight }]} />
+            <CoverImage image={document.images.hero} style={[styles.imageBox, { height: coverLayout.heroHeight }]} />
           ) : null}
 
           {document.keyFeatures.length > 0 ? (
-            <View style={styles.sectionCentered}>
-              <View style={styles.centerHeadingRow}>
-                <Text style={styles.headingDark}>Key </Text>
-                <Text style={styles.headingAccent}>Features</Text>
+            <View style={[styles.sectionCentered, { marginTop: coverLayout.sectionMarginTop }]}>
+              <View style={[styles.centerHeadingRow, { marginBottom: coverLayout.headingMarginBottom }]}>
+                <Text style={[styles.headingDark, { fontSize: coverLayout.headingFontSize }]}>Key </Text>
+                <Text style={[styles.headingAccent, { fontSize: coverLayout.headingFontSize }]}>Features</Text>
               </View>
-              <View style={styles.featureList}>
+              <View style={[styles.featureList, { width: coverLayout.featureListWidth }]}>
                 {document.keyFeatures.map((feature) => (
-                  <KeyFeatureItem key={feature} label={feature} />
+                  <KeyFeatureItem key={feature} label={feature} layout={coverLayout} />
                 ))}
               </View>
             </View>
@@ -381,6 +385,7 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
             </Text>
           ))}
         </View>
+        <View style={styles.detailSpacer} />
         <Footer />
       </Page>
     </Document>
@@ -399,9 +404,59 @@ function TitleText({ title }: { title: string }) {
   );
 }
 
-function KeyFeatureItem({ label }: { label: string }) {
+type CoverLayout = {
+  featureFontSize: number;
+  featureLineHeight: number;
+  featureListWidth: number;
+  headingFontSize: number;
+  headingMarginBottom: number;
+  heroHeight: number;
+  rowMarginBottom: number;
+  sectionMarginTop: number;
+};
+
+function getCoverLayout(featureCount: number): CoverLayout {
+  if (featureCount <= 3) {
+    return {
+      featureFontSize: 10.5,
+      featureLineHeight: 1.15,
+      featureListWidth: 260,
+      headingFontSize: 20,
+      headingMarginBottom: 18,
+      heroHeight: layout.heroHeight,
+      rowMarginBottom: 9,
+      sectionMarginTop: 86,
+    };
+  }
+
+  if (featureCount <= 6) {
+    return {
+      featureFontSize: 9,
+      featureLineHeight: 1.1,
+      featureListWidth: 310,
+      headingFontSize: 18,
+      headingMarginBottom: 12,
+      heroHeight: 360,
+      rowMarginBottom: 5,
+      sectionMarginTop: 48,
+    };
+  }
+
+  return {
+    featureFontSize: 7.2,
+    featureLineHeight: 1.05,
+    featureListWidth: 340,
+    headingFontSize: 16,
+    headingMarginBottom: 8,
+    heroHeight: 318,
+    rowMarginBottom: featureCount >= BROCHURE_KEY_FEATURES_MAX_COUNT ? 2 : 3,
+    sectionMarginTop: 30,
+  };
+}
+
+function KeyFeatureItem({ label, layout }: { label: string; layout: CoverLayout }) {
   return (
-    <View style={styles.keyFeatureRow}>
+    <View style={[styles.keyFeatureRow, { marginBottom: layout.rowMarginBottom }]}>
       <View style={styles.keyFeatureIcon}>
         <View style={styles.trailerBed} />
         <View style={styles.trailerTow} />
@@ -410,7 +465,9 @@ function KeyFeatureItem({ label }: { label: string }) {
           <View style={styles.trailerWheel} />
         </View>
       </View>
-      <Text style={styles.keyFeatureText}>{label}</Text>
+      <Text style={[styles.keyFeatureText, { fontSize: layout.featureFontSize, lineHeight: layout.featureLineHeight }]}>
+        {label}
+      </Text>
     </View>
   );
 }

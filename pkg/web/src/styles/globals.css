@@ -80,7 +80,7 @@ body {
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #bfa800;
+  --primary: #f8d300;
   --primary-foreground: #0a0a0a;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -102,7 +102,7 @@ body {
   --radius: 0.625rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #bfa800;
+  --sidebar-primary: #f8d300;
   --sidebar-primary-foreground: #0a0a0a;
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);

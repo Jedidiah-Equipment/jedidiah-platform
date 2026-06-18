@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import {
+  BROCHURE_IMAGE_SLOT_SPECS,
   BROCHURE_KEY_FEATURE_MAX_LENGTH,
   BROCHURE_KEY_FEATURES_MAX_COUNT,
   BrochureConfigInput,
@@ -260,5 +261,11 @@ describe('BrochureConfigInput', () => {
 
   it('rejects unknown keys', () => {
     expect(() => BrochureConfigInput.parse({ subtitle: 'x', extra: true })).toThrow();
+  });
+});
+
+describe('BROCHURE_IMAGE_SLOT_SPECS', () => {
+  it('keeps technical drawings uncropped for editor preview and PDF output', () => {
+    expect(BROCHURE_IMAGE_SLOT_SPECS.technicalDrawing.fit).toBe('contain');
   });
 });

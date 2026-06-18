@@ -278,7 +278,7 @@ export const BrochureImageSlot = z.enum(BROCHURE_IMAGE_SLOTS);
 export const BROCHURE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 // Recommended source dimensions and render fit per slot, shown on the form as upload guidance.
-// `cover` photos/drawings center-crop to fill their slot; the `contain` range logo fits without cropping.
+// `cover` photos fill their slot; `contain` logos and drawings preserve the whole image.
 export type BrochureImageSlotSpec = {
   fit: 'contain' | 'cover';
   recommendedHeight: number;
@@ -288,7 +288,7 @@ export type BrochureImageSlotSpec = {
 export const BROCHURE_IMAGE_SLOT_SPECS = {
   rangeLogo: { fit: 'contain', recommendedHeight: 400, recommendedWidth: 600 },
   hero: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
-  technicalDrawing: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
+  technicalDrawing: { fit: 'contain', recommendedHeight: 1200, recommendedWidth: 1600 },
   secondary: { fit: 'cover', recommendedHeight: 900, recommendedWidth: 1200 },
 } as const satisfies Record<BrochureImageSlot, BrochureImageSlotSpec>;
 

@@ -78,7 +78,7 @@ const BROCHURE_IMAGE_SLOT_FIELDS: BrochureImageSlotField[] = [
   {
     slot: 'technicalDrawing',
     label: 'Technical drawing',
-    description: 'Dimensioned line drawing. Center-cropped to fill its slot.',
+    description: 'Dimensioned line drawing. Fits without cropping.',
   },
   { slot: 'secondary', label: 'Secondary image', description: 'Additional product photo. Center-cropped to fill.' },
 ];

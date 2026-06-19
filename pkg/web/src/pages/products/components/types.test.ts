@@ -2,6 +2,7 @@ import type { Product } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
+  getAssemblyNameSuggestions,
   toBrochureConfigFormValues,
   toProductAssemblyInputs,
   toProductBayInputs,
@@ -201,6 +202,20 @@ describe('toProductMinimalCreateInput', () => {
       requiresVinNumber: false,
       thumbnailDataUrl: null,
     });
+  });
+});
+
+describe('getAssemblyNameSuggestions', () => {
+  it('matches case-insensitively by substring', () => {
+    expect(getAssemblyNameSuggestions(['Hydraulics', 'Canopy', 'Front Bucket'], 'CK')).toEqual(['Front Bucket']);
+  });
+
+  it('returns the full de-duped list for an empty query', () => {
+    expect(getAssemblyNameSuggestions(['Canopy', 'canopy', 'Bucket'], '   ')).toEqual(['Bucket', 'Canopy']);
+  });
+
+  it('returns an empty list when nothing matches', () => {
+    expect(getAssemblyNameSuggestions(['Hydraulics', 'Canopy'], 'zzz')).toEqual([]);
   });
 });
 

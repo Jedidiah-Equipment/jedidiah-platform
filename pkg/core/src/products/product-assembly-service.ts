@@ -6,7 +6,7 @@ import {
   type parts,
   productAssemblies,
 } from '@pkg/db';
-import type { Assembly, AssemblyInput, UUID } from '@pkg/schema';
+import type { Assembly, AssemblyInput, AssemblyNameListResult, UUID } from '@pkg/schema';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
@@ -101,6 +101,23 @@ export async function syncAssemblies({
   }
 
   return listAssemblies({ tx, productId });
+}
+
+/**
+ * Distinct assembly names across every product, for both standard and optional kinds. De-duped
+ * case-insensitively (one entry per name regardless of casing) and ordered alphabetically; mirrors
+ * the distinct-values read used for part categories (`listPartCategories`).
+ */
+export async function listAssemblyNames({ db }: { db: Db }): Promise<AssemblyNameListResult> {
+  const lowerName = sql`lower(${productAssemblies.name})`;
+  const rows = await db
+    .selectDistinctOn([lowerName], { name: productAssemblies.name })
+    .from(productAssemblies)
+    .orderBy(lowerName, asc(productAssemblies.name));
+
+  return {
+    names: rows.map((row) => row.name),
+  };
 }
 
 export const productAssemblyOrderBy = [

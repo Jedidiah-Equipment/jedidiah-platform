@@ -43,10 +43,10 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table.js';
-import { usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
+import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
-import { emptyProductFormValues } from './types.js';
+import { emptyProductFormValues, getAssemblyNameSuggestions } from './types.js';
 
 const ALL_CATEGORIES = '__all__';
 const AssemblyPartSelection = requiredSelection(UUID, 'Select a part');
@@ -82,8 +82,10 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
 
   const partOptions = usePartOptions({ pageSize: 0, sortBy: 'category', sortDirection: 'asc' });
   const categoryOptions = usePartCategoryOptions();
+  const assemblyNameOptions = useAssemblyNameOptions();
   const parts = partOptions.items;
   const categories = categoryOptions.items;
+  const assemblyNames = assemblyNameOptions.items;
   const indexedAssemblies = assembliesField.state.value.map((assembly, index) => ({ assembly, index }));
   const standardAssemblies = getAssembliesByKind(indexedAssemblies, 'standard');
   const optionalAssemblies = getAssembliesByKind(indexedAssemblies, 'optional');
@@ -132,6 +134,7 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
     <div className="flex flex-col gap-5">
       <AssemblyGroup
         assemblies={standardAssemblies}
+        assemblyNames={assemblyNames}
         categories={categories}
         expandedAssemblyIds={expandedAssemblyIds}
         kind="standard"
@@ -150,6 +153,7 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
       />
       <AssemblyGroup
         assemblies={optionalAssemblies}
+        assemblyNames={assemblyNames}
         categories={categories}
         expandedAssemblyIds={expandedAssemblyIds}
         kind="optional"
@@ -172,6 +176,7 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
 
 type AssemblyGroupProps = {
   assemblies: IndexedAssembly[];
+  assemblyNames: string[];
   categories: string[];
   expandedAssemblyIds: Set<string>;
   currencyCode: string;
@@ -188,6 +193,7 @@ type AssemblyGroupProps = {
 
 const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
   assemblies,
+  assemblyNames,
   categories,
   currencyCode,
   expandedAssemblyIds,
@@ -263,6 +269,7 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
                 {assemblies.map(({ assembly, index }) => (
                   <AssemblyRow
                     assembly={assembly}
+                    assemblyNames={assemblyNames}
                     categories={categories}
                     index={index}
                     key={assembly.id}
@@ -286,6 +293,7 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
 
 type AssemblyRowProps = {
   assembly: AssemblyInput;
+  assemblyNames: string[];
   categories: string[];
   currencyCode: string;
   index: number;
@@ -299,6 +307,7 @@ type AssemblyRowProps = {
 
 const AssemblyRow: React.FC<AssemblyRowProps> = ({
   assembly,
+  assemblyNames,
   categories,
   currencyCode,
   index,
@@ -383,7 +392,14 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                       const errors = getFieldErrors(field.state.meta.errors);
                       const isInvalid = errors.length > 0;
 
-                      return <AssemblyNameField errors={errors} field={field} isInvalid={isInvalid} />;
+                      return (
+                        <AssemblyNameField
+                          assemblyNames={assemblyNames}
+                          errors={errors}
+                          field={field}
+                          isInvalid={isInvalid}
+                        />
+                      );
                     }}
                   </FormField>
                   {assembly.kind === 'optional' ? (
@@ -424,23 +440,53 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
 };
 
 type AssemblyNameFieldProps = {
+  assemblyNames: string[];
   errors: ReturnType<typeof getFieldErrors>;
   field: FieldApi<string>;
   isInvalid: boolean;
 };
 
-const AssemblyNameField: React.FC<AssemblyNameFieldProps> = ({ errors, field, isInvalid }) => (
-  <Field data-invalid={isInvalid}>
-    <FieldLabel>Name</FieldLabel>
-    <Input
-      aria-invalid={isInvalid}
-      value={field.state.value}
-      onBlur={field.handleBlur}
-      onChange={(event) => field.handleChange(event.target.value)}
-    />
-    <FieldError errors={errors} />
-  </Field>
-);
+// Free-text autocomplete: the typed text *is* the field value. Existing catalogue names are offered
+// as suggestions (filtered by `getAssemblyNameSuggestions`), but a name matching nothing is accepted
+// as typed. `filter={null}` disables Base UI's built-in matching so the helper owns the suggestions.
+const AssemblyNameField: React.FC<AssemblyNameFieldProps> = ({ assemblyNames, errors, field, isInvalid }) => {
+  const suggestions = useMemo(
+    () => getAssemblyNameSuggestions(assemblyNames, field.state.value),
+    [assemblyNames, field.state.value],
+  );
+
+  return (
+    <Field data-invalid={isInvalid}>
+      <FieldLabel>Name</FieldLabel>
+      <Combobox
+        filter={null}
+        inputValue={field.state.value}
+        items={suggestions}
+        onInputValueChange={(nextInputValue) => field.handleChange(nextInputValue)}
+        onValueChange={(nextValue) => field.handleChange(nextValue ?? '')}
+        value={field.state.value || null}
+      >
+        <ComboboxInput
+          aria-invalid={isInvalid}
+          className="w-full"
+          onBlur={field.handleBlur}
+          placeholder="Assembly name"
+        />
+        <ComboboxContent>
+          <ComboboxEmpty>No matching assembly names.</ComboboxEmpty>
+          <ComboboxList>
+            {(name: string) => (
+              <ComboboxItem key={name} value={name}>
+                {name}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+      <FieldError errors={errors} />
+    </Field>
+  );
+};
 
 type AssemblySummaryProps = {
   assembly: AssemblyInput;

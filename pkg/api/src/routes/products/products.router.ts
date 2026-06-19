@@ -2,6 +2,7 @@ import {
   createProduct,
   getProduct,
   isProductCoreError,
+  listAssemblyNames,
   listProductRangeOptions,
   listProducts,
   type ProductCoreError,
@@ -25,6 +26,8 @@ export const productsRouter = router({
     .query(({ ctx, input }) => mapProductErrors(() => getProduct({ db: ctx.db, id: input.id }))),
 
   rangeOptions: authorizedProcedure('product:read').query(({ ctx }) => listProductRangeOptions({ db: ctx.db })),
+
+  assemblyNames: authorizedProcedure('product:read').query(({ ctx }) => listAssemblyNames({ db: ctx.db })),
 
   create: authorizedProcedure('product:create')
     .input(ProductCreateInput)

@@ -397,6 +397,7 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                           assemblyNames={assemblyNames}
                           errors={errors}
                           field={field}
+                          index={index}
                           isInvalid={isInvalid}
                         />
                       );
@@ -443,48 +444,56 @@ type AssemblyNameFieldProps = {
   assemblyNames: string[];
   errors: ReturnType<typeof getFieldErrors>;
   field: FieldApi<string>;
+  index: number;
   isInvalid: boolean;
 };
 
 // Free-text autocomplete: the typed text *is* the field value. Existing catalogue names are offered
 // as suggestions (filtered by `getAssemblyNameSuggestions`), but a name matching nothing is accepted
 // as typed. `filter={null}` disables Base UI's built-in matching so the helper owns the suggestions.
-const AssemblyNameField: React.FC<AssemblyNameFieldProps> = ({ assemblyNames, errors, field, isInvalid }) => {
-  const suggestions = useMemo(
-    () => getAssemblyNameSuggestions(assemblyNames, field.state.value),
-    [assemblyNames, field.state.value],
-  );
+// Names already used by the product's other assemblies are excluded from the suggestions using live
+// form state, so the user can't pick a name that the within-product duplicate check would reject.
+const AssemblyNameField: React.FC<AssemblyNameFieldProps> = ({ assemblyNames, errors, field, index, isInvalid }) => {
+  const productForm = useProductForm();
 
   return (
-    <Field data-invalid={isInvalid}>
-      <FieldLabel>Name</FieldLabel>
-      <Combobox
-        filter={null}
-        inputValue={field.state.value}
-        items={suggestions}
-        onInputValueChange={(nextInputValue) => field.handleChange(nextInputValue)}
-        onValueChange={(nextValue) => field.handleChange(nextValue ?? '')}
-        value={field.state.value || null}
-      >
-        <ComboboxInput
-          aria-invalid={isInvalid}
-          className="w-full"
-          onBlur={field.handleBlur}
-          placeholder="Assembly name"
-        />
-        <ComboboxContent>
-          <ComboboxEmpty>No matching assembly names.</ComboboxEmpty>
-          <ComboboxList>
-            {(name: string) => (
-              <ComboboxItem key={name} value={name}>
-                {name}
-              </ComboboxItem>
-            )}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
-      <FieldError errors={errors} />
-    </Field>
+    <productForm.Subscribe selector={(state) => getOtherAssemblyNames(state.values.assemblies, index)}>
+      {(excludedNames) => {
+        const suggestions = getAssemblyNameSuggestions(assemblyNames, field.state.value, excludedNames);
+
+        return (
+          <Field data-invalid={isInvalid}>
+            <FieldLabel>Name</FieldLabel>
+            <Combobox
+              filter={null}
+              inputValue={field.state.value}
+              items={suggestions}
+              onInputValueChange={(nextInputValue) => field.handleChange(nextInputValue)}
+              onValueChange={(nextValue) => field.handleChange(nextValue ?? '')}
+              value={field.state.value || null}
+            >
+              <ComboboxInput
+                aria-invalid={isInvalid}
+                className="w-full"
+                onBlur={field.handleBlur}
+                placeholder="Assembly name"
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>No matching assembly names.</ComboboxEmpty>
+                <ComboboxList>
+                  {(name: string) => (
+                    <ComboboxItem key={name} value={name}>
+                      {name}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            <FieldError errors={errors} />
+          </Field>
+        );
+      }}
+    </productForm.Subscribe>
   );
 };
 
@@ -897,6 +906,13 @@ const PartQuantityField: React.FC<PartQuantityFieldProps> = ({
     </productForm.Subscribe>
   );
 };
+
+// Names belonging to the product's *other* assemblies (live form state), used to exclude
+// already-taken names from the current row's suggestions. The current row is skipped so its own
+// typed name never filters its dropdown.
+function getOtherAssemblyNames(assemblies: { name: string }[], currentIndex: number): string[] {
+  return assemblies.filter((_, index) => index !== currentIndex).map((assembly) => assembly.name);
+}
 
 function getAssembliesByKind(assemblies: IndexedAssembly[], kind: AssemblyInput['kind']): IndexedAssembly[] {
   // Render in persisted array order; the server owns ordering via display_order.

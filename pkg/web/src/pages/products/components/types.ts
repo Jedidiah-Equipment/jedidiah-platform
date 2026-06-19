@@ -176,11 +176,18 @@ export function toProductUpdateInput(id: UUIDType, value: ProductFormValues): Pr
 
 /**
  * Suggestions for the assembly-name autocomplete. De-dupes the catalogue names case-insensitively
- * (keeping the first casing seen), orders them alphabetically, then narrows to case-insensitive
- * substring matches of the typed query. An empty query returns the full de-duped list; a query that
- * matches nothing returns an empty list. The Combobox JSX is a thin shell over this helper.
+ * (keeping the first casing seen), drops any name already used by another assembly on the product
+ * being edited (`excludedNames`, matched case-insensitively against live form state), orders the
+ * rest alphabetically, then narrows to case-insensitive substring matches of the typed query. An
+ * empty query returns the full de-duped list; a query that matches nothing returns an empty list.
+ * The Combobox JSX is a thin shell over this helper.
  */
-export function getAssemblyNameSuggestions(names: readonly string[], query: string): string[] {
+export function getAssemblyNameSuggestions(
+  names: readonly string[],
+  query: string,
+  excludedNames: readonly string[] = [],
+): string[] {
+  const excluded = new Set(excludedNames.map((name) => name.trim().toLowerCase()).filter(Boolean));
   const seen = new Set<string>();
   const deduped: string[] = [];
 
@@ -188,7 +195,7 @@ export function getAssemblyNameSuggestions(names: readonly string[], query: stri
     const trimmed = name.trim();
     const key = trimmed.toLowerCase();
 
-    if (!trimmed || seen.has(key)) {
+    if (!trimmed || seen.has(key) || excluded.has(key)) {
       continue;
     }
 

@@ -217,6 +217,18 @@ describe('getAssemblyNameSuggestions', () => {
   it('returns an empty list when nothing matches', () => {
     expect(getAssemblyNameSuggestions(['Hydraulics', 'Canopy'], 'zzz')).toEqual([]);
   });
+
+  it('excludes names already used by the current product, matching case-insensitively', () => {
+    expect(getAssemblyNameSuggestions(['Hydraulics', 'Canopy', 'Bucket'], '', ['hydraulics', 'CANOPY'])).toEqual([
+      'Bucket',
+    ]);
+  });
+
+  it('excludes a name added to another assembly in the same session', () => {
+    // 'Bucket' exists in the catalogue and was just added to another assembly this session, so live
+    // form state excludes it; 'Loader Arm' in form state is irrelevant since it is not a suggestion.
+    expect(getAssemblyNameSuggestions(['Hydraulics', 'Bucket'], '', ['Bucket', 'Loader Arm'])).toEqual(['Hydraulics']);
+  });
 });
 
 describe('toProductUpdateInput', () => {

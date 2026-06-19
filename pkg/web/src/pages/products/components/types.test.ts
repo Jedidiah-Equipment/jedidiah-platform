@@ -2,7 +2,7 @@ import type { Product } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
-  getAssemblyNameSuggestions,
+  getEligibleAssemblyNames,
   toBrochureConfigFormValues,
   toProductAssemblyInputs,
   toProductBayInputs,
@@ -205,29 +205,23 @@ describe('toProductMinimalCreateInput', () => {
   });
 });
 
-describe('getAssemblyNameSuggestions', () => {
-  it('matches case-insensitively by substring', () => {
-    expect(getAssemblyNameSuggestions(['Hydraulics', 'Canopy', 'Front Bucket'], 'CK')).toEqual(['Front Bucket']);
-  });
-
-  it('returns the full de-duped list for an empty query', () => {
-    expect(getAssemblyNameSuggestions(['Canopy', 'canopy', 'Bucket'], '   ')).toEqual(['Bucket', 'Canopy']);
-  });
-
-  it('returns an empty list when nothing matches', () => {
-    expect(getAssemblyNameSuggestions(['Hydraulics', 'Canopy'], 'zzz')).toEqual([]);
-  });
-
-  it('excludes names already used by the current product, matching case-insensitively', () => {
-    expect(getAssemblyNameSuggestions(['Hydraulics', 'Canopy', 'Bucket'], '', ['hydraulics', 'CANOPY'])).toEqual([
+describe('getEligibleAssemblyNames', () => {
+  it('returns every catalogue name when nothing is excluded', () => {
+    expect(getEligibleAssemblyNames(['Hydraulics', 'Canopy', 'Bucket'], [])).toEqual([
+      'Hydraulics',
+      'Canopy',
       'Bucket',
     ]);
   });
 
+  it('excludes names already used by the current product, matching case-insensitively', () => {
+    expect(getEligibleAssemblyNames(['Hydraulics', 'Canopy', 'Bucket'], ['hydraulics', 'CANOPY'])).toEqual(['Bucket']);
+  });
+
   it('excludes a name added to another assembly in the same session', () => {
     // 'Bucket' exists in the catalogue and was just added to another assembly this session, so live
-    // form state excludes it; 'Loader Arm' in form state is irrelevant since it is not a suggestion.
-    expect(getAssemblyNameSuggestions(['Hydraulics', 'Bucket'], '', ['Bucket', 'Loader Arm'])).toEqual(['Hydraulics']);
+    // form state excludes it; 'Loader Arm' in form state is irrelevant since it is not a catalogue name.
+    expect(getEligibleAssemblyNames(['Hydraulics', 'Bucket'], ['Bucket', 'Loader Arm'])).toEqual(['Hydraulics']);
   });
 });
 

@@ -14,6 +14,9 @@ import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
 
 export type CreatableComboboxFieldProps = {
+  // When false, a novel typed value is accepted as-is but never offered as a "Use X" row; the input
+  // simply keeps what was typed. Defaults to true (the create affordance is shown).
+  creatable?: boolean;
   description?: React.ReactNode;
   disabled?: boolean;
   emptyMessage?: string;
@@ -23,6 +26,7 @@ export type CreatableComboboxFieldProps = {
 };
 
 export function CreatableComboboxField({
+  creatable = true,
   description,
   disabled = false,
   emptyMessage = 'No options found.',
@@ -36,7 +40,8 @@ export function CreatableComboboxField({
   const trimmedValue = field.state.value.trim();
   const normalizedOptions = useMemo(() => createNormalizedOptions(options), [options]);
   const hasExactOption = normalizedOptions.some((option) => option.toLowerCase() === trimmedValue.toLowerCase());
-  const items = trimmedValue && !hasExactOption ? [...normalizedOptions, trimmedValue] : normalizedOptions;
+  const showCreateOption = creatable && Boolean(trimmedValue) && !hasExactOption;
+  const items = showCreateOption ? [...normalizedOptions, trimmedValue] : normalizedOptions;
 
   return (
     <Field data-invalid={isInvalid}>
@@ -63,7 +68,7 @@ export function CreatableComboboxField({
           <ComboboxList>
             {(option: string) => (
               <ComboboxItem key={option} value={option}>
-                {option === trimmedValue && !hasExactOption ? (
+                {showCreateOption && option === trimmedValue ? (
                   <>
                     <IconPlus data-icon="inline-start" />
                     Use "{option}"

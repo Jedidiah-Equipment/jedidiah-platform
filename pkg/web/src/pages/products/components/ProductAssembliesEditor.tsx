@@ -6,7 +6,7 @@ import { type AssemblyInput, AssemblyName, type Part, Price, UUID } from '@pkg/s
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
-import { CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
+import { CreatableComboboxField, CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { validateStructuralFieldOnMount } from '@/components/form/utils/field-validators.js';
@@ -46,7 +46,7 @@ import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table.js'
 import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
-import { emptyProductFormValues, getAssemblyNameSuggestions } from './types.js';
+import { emptyProductFormValues, getEligibleAssemblyNames } from './types.js';
 
 const ALL_CATEGORIES = '__all__';
 const AssemblyPartSelection = requiredSelection(UUID, 'Select a part');
@@ -388,20 +388,11 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
                   }
                 >
                   <FormField name={`assemblies[${index}].name`} validators={ASSEMBLY_NAME_FIELD_VALIDATORS}>
-                    {(field: FieldApi<string>) => {
-                      const errors = getFieldErrors(field.state.meta.errors);
-                      const isInvalid = errors.length > 0;
-
-                      return (
-                        <AssemblyNameField
-                          assemblyNames={assemblyNames}
-                          errors={errors}
-                          field={field}
-                          index={index}
-                          isInvalid={isInvalid}
-                        />
-                      );
-                    }}
+                    {(field) => (
+                      <fieldContext.Provider value={field}>
+                        <AssemblyNameField assemblyNames={assemblyNames} index={index} />
+                      </fieldContext.Provider>
+                    )}
                   </FormField>
                   {assembly.kind === 'optional' ? (
                     <FormField name={`assemblies[${index}].price`} validators={ASSEMBLY_PRICE_FIELD_VALIDATORS}>
@@ -442,57 +433,28 @@ const AssemblyRow: React.FC<AssemblyRowProps> = ({
 
 type AssemblyNameFieldProps = {
   assemblyNames: string[];
-  errors: ReturnType<typeof getFieldErrors>;
-  field: FieldApi<string>;
   index: number;
-  isInvalid: boolean;
 };
 
-// Free-text autocomplete: the typed text *is* the field value. Existing catalogue names are offered
-// as suggestions (filtered by `getAssemblyNameSuggestions`), but a name matching nothing is accepted
-// as typed. `filter={null}` disables Base UI's built-in matching so the helper owns the suggestions.
-// Names already used by the product's other assemblies are excluded from the suggestions using live
-// form state, so the user can't pick a name that the within-product duplicate check would reject.
-const AssemblyNameField: React.FC<AssemblyNameFieldProps> = ({ assemblyNames, errors, field, index, isInvalid }) => {
+// Free-text autocomplete over the shared CreatableComboboxField: the typed text *is* the field
+// value, and a name matching nothing is accepted as typed (`creatable={false}` keeps the novel name
+// without offering a "Use X" row). Names already used by the product's other assemblies are dropped
+// from the options using live form state, so the user can't pick a name the within-product duplicate
+// check would reject.
+const AssemblyNameField: React.FC<AssemblyNameFieldProps> = ({ assemblyNames, index }) => {
   const productForm = useProductForm();
 
   return (
     <productForm.Subscribe selector={(state) => getOtherAssemblyNames(state.values.assemblies, index)}>
-      {(excludedNames) => {
-        const suggestions = getAssemblyNameSuggestions(assemblyNames, field.state.value, excludedNames);
-
-        return (
-          <Field data-invalid={isInvalid}>
-            <FieldLabel>Name</FieldLabel>
-            <Combobox
-              filter={null}
-              inputValue={field.state.value}
-              items={suggestions}
-              onInputValueChange={(nextInputValue) => field.handleChange(nextInputValue)}
-              onValueChange={(nextValue) => field.handleChange(nextValue ?? '')}
-              value={field.state.value || null}
-            >
-              <ComboboxInput
-                aria-invalid={isInvalid}
-                className="w-full"
-                onBlur={field.handleBlur}
-                placeholder="Assembly name"
-              />
-              <ComboboxContent>
-                <ComboboxEmpty>No matching assembly names.</ComboboxEmpty>
-                <ComboboxList>
-                  {(name: string) => (
-                    <ComboboxItem key={name} value={name}>
-                      {name}
-                    </ComboboxItem>
-                  )}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-            <FieldError errors={errors} />
-          </Field>
-        );
-      }}
+      {(excludedNames) => (
+        <CreatableComboboxField
+          creatable={false}
+          emptyMessage="No matching assembly names."
+          label="Name"
+          options={getEligibleAssemblyNames(assemblyNames, excludedNames)}
+          placeholder="Assembly name"
+        />
+      )}
     </productForm.Subscribe>
   );
 };

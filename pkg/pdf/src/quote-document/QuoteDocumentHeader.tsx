@@ -2,6 +2,7 @@ import { formatDate, formatPhoneNumber } from '@pkg/domain';
 import type { QuoteDocumentModel } from '@pkg/schema';
 import { Image, StyleSheet, Text, View } from '@react-pdf/renderer';
 
+import { pdfTitleFontFamily } from '../pdf-fonts.js';
 import { JEDIDIAH_LOGO_DATA_URI } from './jedidiah-logo.js';
 import { pdfStyles } from './pdf-styles.js';
 
@@ -55,7 +56,11 @@ const styles = StyleSheet.create({
   documentPanelTitle: {
     alignItems: 'flex-end',
   },
+  documentTitleText: {
+    fontFamily: pdfTitleFontFamily,
+  },
   quoteCode: {
+    fontFamily: pdfTitleFontFamily,
     marginTop: 12,
   },
   headerMeta: {
@@ -111,7 +116,10 @@ export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
         ]}
       >
         <View style={styles.documentPanelTitle}>
-          <Text style={[pdfStyles.fontBold, pdfStyles.textTitle, pdfStyles.uppercase]} wrap={false}>
+          <Text
+            style={[pdfStyles.fontBold, pdfStyles.textTitle, pdfStyles.uppercase, styles.documentTitleText]}
+            wrap={false}
+          >
             Quotation
           </Text>
           <Text style={[pdfStyles.fontSemibold, pdfStyles.textHeading, styles.quoteCode]} wrap={false}>

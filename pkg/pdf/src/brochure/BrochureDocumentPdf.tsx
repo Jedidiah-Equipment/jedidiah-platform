@@ -1,7 +1,7 @@
 import { BROCHURE_KEY_FEATURES_MAX_COUNT, type BrochureDocumentImage, type BrochureDocumentModel } from '@pkg/schema';
 import { Document, Image, Page, StyleSheet, type Styles, Text, View } from '@react-pdf/renderer';
 
-import { pdfFontFamily } from '../pdf-fonts.js';
+import { pdfFontFamily, pdfTitleFontFamily } from '../pdf-fonts.js';
 import { JEDIDIAH_LOGO_DATA_URI } from '../quote-document/jedidiah-logo.js';
 import { pdfColors, pdfFontSize, pdfFontWeight, pdfLineHeight } from '../quote-document/pdf-theme.js';
 
@@ -82,6 +82,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: pdfColors.black,
+    fontFamily: pdfTitleFontFamily,
     fontSize: 48,
     fontWeight: pdfFontWeight.bold,
     lineHeight: 1,
@@ -107,12 +108,14 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   headingDark: {
+    fontFamily: pdfTitleFontFamily,
     fontSize: 20,
     fontWeight: pdfFontWeight.bold,
     textTransform: 'uppercase',
   },
   headingAccent: {
     color: pdfColors.yellowLight,
+    fontFamily: pdfTitleFontFamily,
     fontSize: 20,
     fontWeight: pdfFontWeight.bold,
     textTransform: 'uppercase',

@@ -175,41 +175,13 @@ export function toProductUpdateInput(id: UUIDType, value: ProductFormValues): Pr
 }
 
 /**
- * Suggestions for the assembly-name autocomplete. De-dupes the catalogue names case-insensitively
- * (keeping the first casing seen), drops any name already used by another assembly on the product
- * being edited (`excludedNames`, matched case-insensitively against live form state), orders the
- * rest alphabetically, then narrows to case-insensitive substring matches of the typed query. An
- * empty query returns the full de-duped list; a query that matches nothing returns an empty list.
- * The Combobox JSX is a thin shell over this helper.
+ * Catalogue assembly names eligible to suggest for one assembly's name field: every catalogue name
+ * except those already used by the product's other assemblies (`excludedNames`, matched
+ * case-insensitively against live form state). De-duping, alphabetical ordering, and substring
+ * filtering are left to the shared `CreatableComboboxField` that renders these options.
  */
-export function getAssemblyNameSuggestions(
-  names: readonly string[],
-  query: string,
-  excludedNames: readonly string[] = [],
-): string[] {
+export function getEligibleAssemblyNames(names: readonly string[], excludedNames: readonly string[]): string[] {
   const excluded = new Set(excludedNames.map((name) => name.trim().toLowerCase()).filter(Boolean));
-  const seen = new Set<string>();
-  const deduped: string[] = [];
 
-  for (const name of names) {
-    const trimmed = name.trim();
-    const key = trimmed.toLowerCase();
-
-    if (!trimmed || seen.has(key) || excluded.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    deduped.push(trimmed);
-  }
-
-  deduped.sort((left, right) => left.localeCompare(right));
-
-  const normalizedQuery = query.trim().toLowerCase();
-
-  if (!normalizedQuery) {
-    return deduped;
-  }
-
-  return deduped.filter((name) => name.toLowerCase().includes(normalizedQuery));
+  return names.filter((name) => !excluded.has(name.trim().toLowerCase()));
 }

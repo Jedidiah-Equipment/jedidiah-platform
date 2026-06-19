@@ -104,9 +104,10 @@ export async function syncAssemblies({
 }
 
 /**
- * Distinct assembly names across every product, for both standard and optional kinds. De-duped
- * case-insensitively (one entry per name regardless of casing) and ordered alphabetically; mirrors
- * the distinct-values read used for part categories (`listPartCategories`).
+ * Distinct assembly names across every product, for both standard and optional kinds, ordered
+ * alphabetically. Like the part-categories distinct-values read (`listPartCategories`), but
+ * de-dupes case-insensitively at the source (one entry per name regardless of casing) so the
+ * returned set is a clean naming pool for any consumer.
  */
 export async function listAssemblyNames({ db }: { db: Db }): Promise<AssemblyNameListResult> {
   const lowerName = sql`lower(${productAssemblies.name})`;

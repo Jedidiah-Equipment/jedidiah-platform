@@ -1,4 +1,5 @@
 export { mergeSelectedOption, type SelectOption, stringsToSelectOptions, toSelectOptions } from './helpers.js';
+export { useAssemblyNameOptions } from './use-assembly-name-options.js';
 export { useCustomerForQuoteOptions } from './use-customer-for-quote-options.js';
 export { type CustomerOption, useCustomerOptions } from './use-customer-options.js';
 export { usePartCategoryOptions } from './use-part-category-options.js';

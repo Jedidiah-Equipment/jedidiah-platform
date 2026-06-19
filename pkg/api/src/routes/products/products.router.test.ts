@@ -227,6 +227,33 @@ describe('products.read', () => {
     expect(result.ranges.every((range) => Object.keys(range).sort().join(',') === 'id,name')).toBe(true);
   });
 
+  test('returns distinct assembly names through Product read access', async ({ context }) => {
+    const caller = context.createCaller();
+    await createProduct(caller, 'Assembly Names A', context.rangeId, {
+      assemblies: [
+        { kind: 'standard', name: 'Hydraulics', parts: [] },
+        { kind: 'optional', name: 'Canopy', overrideStandardAssemblyIds: [], parts: [], price: 100 },
+      ],
+    });
+    await createProduct(caller, 'Assembly Names B', context.rangeId, {
+      assemblies: [
+        { kind: 'standard', name: 'hydraulics', parts: [] },
+        { kind: 'standard', name: 'Bucket', parts: [] },
+      ],
+    });
+
+    const result = await caller.products.assemblyNames();
+
+    expect(result.names).toHaveLength(3);
+    expect(result.names.map((name) => name.toLowerCase())).toEqual(['bucket', 'canopy', 'hydraulics']);
+  });
+
+  test('rejects unauthorized assembly name reads', async ({ context }) => {
+    await expect(context.createCaller(mockSession('sales')).products.assemblyNames()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
   test('returns build time days and VIN requirement on get and list', async ({ context }) => {
     const caller = context.createCaller();
     const created = await createProduct(caller, 'Wheel Loader Read', context.rangeId, {

@@ -446,3 +446,8 @@ export const ProductListInput = createSearchedSortedPagedQueryInput({
 
 export type ProductListResult = z.infer<typeof ProductListResult>;
 export const ProductListResult = createSortedPagedQueryResult(Product, ProductSortBy);
+
+export type AssemblyNameListResult = z.infer<typeof AssemblyNameListResult>;
+export const AssemblyNameListResult = z.object({
+  names: z.array(AssemblyName),
+});

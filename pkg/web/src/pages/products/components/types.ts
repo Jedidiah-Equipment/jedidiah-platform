@@ -173,3 +173,36 @@ export function toProductUpdateInput(id: UUIDType, value: ProductFormValues): Pr
     id,
   });
 }
+
+/**
+ * Suggestions for the assembly-name autocomplete. De-dupes the catalogue names case-insensitively
+ * (keeping the first casing seen), orders them alphabetically, then narrows to case-insensitive
+ * substring matches of the typed query. An empty query returns the full de-duped list; a query that
+ * matches nothing returns an empty list. The Combobox JSX is a thin shell over this helper.
+ */
+export function getAssemblyNameSuggestions(names: readonly string[], query: string): string[] {
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+
+  for (const name of names) {
+    const trimmed = name.trim();
+    const key = trimmed.toLowerCase();
+
+    if (!trimmed || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    deduped.push(trimmed);
+  }
+
+  deduped.sort((left, right) => left.localeCompare(right));
+
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return deduped;
+  }
+
+  return deduped.filter((name) => name.toLowerCase().includes(normalizedQuery));
+}

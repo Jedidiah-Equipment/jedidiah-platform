@@ -5,6 +5,7 @@ import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
+import { listAssemblyNames } from './product-assembly-service.js';
 import { createProduct, getProduct, updateProduct } from './product-service.js';
 
 const actorUserId = 'test-user-id';
@@ -157,6 +158,43 @@ describe('assembly display order', () => {
         { displayOrder: 1, kind: 'optional', name: 'Yak' },
       ]),
     );
+  });
+});
+
+describe('listAssemblyNames', () => {
+  test('returns distinct names across products and kinds, case-insensitively de-duped and alphabetical', async ({
+    context,
+  }) => {
+    await createProduct({
+      actorUserId,
+      db: context.db,
+      input: productInput(context.rangeId, [standard('Hydraulics'), optional('Canopy')], {
+        modelCode: 'MODEL-A',
+        name: 'Product A',
+      }),
+    });
+    await createProduct({
+      actorUserId,
+      db: context.db,
+      // `hydraulics` collides case-insensitively with Product A's `Hydraulics`; `Bucket` is new.
+      input: productInput(context.rangeId, [standard('hydraulics'), standard('Bucket')], {
+        modelCode: 'MODEL-B',
+        name: 'Product B',
+      }),
+    });
+
+    const result = await listAssemblyNames({ db: context.db });
+
+    // Four assemblies collapse to three distinct names; which casing of "hydraulics" wins is left to
+    // the DB, so compare case-insensitively while still asserting the alphabetical order.
+    expect(result.names).toHaveLength(3);
+    expect(result.names.map((name) => name.toLowerCase())).toEqual(['bucket', 'canopy', 'hydraulics']);
+  });
+
+  test('returns an empty list when no assemblies exist', async ({ context }) => {
+    const result = await listAssemblyNames({ db: context.db });
+
+    expect(result.names).toEqual([]);
   });
 });
 

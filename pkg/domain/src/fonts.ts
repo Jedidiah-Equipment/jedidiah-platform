@@ -1,4 +1,5 @@
 export const JEDIDIAH_APP_FONT_FAMILY = 'Geist';
+export const JEDIDIAH_PDF_TITLE_FONT_FAMILY = 'Saira Condensed';
 
 export type JedidiahPdfFontFace = {
   filename: string;
@@ -13,4 +14,9 @@ export const JEDIDIAH_PDF_FONT_FACES = [
   { filename: 'Geist-Bold.ttf', fontStyle: 'normal', fontWeight: 700 },
   { filename: 'Geist-Italic.ttf', fontStyle: 'italic', fontWeight: 400 },
   { filename: 'Geist-BoldItalic.ttf', fontStyle: 'italic', fontWeight: 700 },
+] as const satisfies readonly JedidiahPdfFontFace[];
+
+export const JEDIDIAH_PDF_TITLE_FONT_FACES = [
+  { filename: 'SairaCondensed-SemiBold.ttf', fontStyle: 'normal', fontWeight: 600 },
+  { filename: 'SairaCondensed-Bold.ttf', fontStyle: 'normal', fontWeight: 700 },
 ] as const satisfies readonly JedidiahPdfFontFace[];

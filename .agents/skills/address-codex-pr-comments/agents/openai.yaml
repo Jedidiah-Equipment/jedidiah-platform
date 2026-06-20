@@ -1,0 +1,4 @@
+interface:
+  display_name: "Address Codex PR Comments"
+  short_description: "Poll and fix Codex PR review comments"
+  default_prompt: "Use $address-codex-pr-comments to watch this PR for Codex review feedback and address any comments."

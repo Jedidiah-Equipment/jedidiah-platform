@@ -2,6 +2,7 @@ import {
   type ActiveJobProgress,
   bayWorkingCalendars,
   deriveActiveJobProgress,
+  isWorkingDay,
   JOB_DEPARTMENT_PIPELINE,
 } from '@pkg/domain';
 import type { BayOperator, BaySchedule, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
@@ -73,10 +74,16 @@ export function useBayList(): BayListState {
     const jobsById = new Map(jobsQuery.data.items.map((job) => [job.id, job] as const));
 
     const cards = enabledBays.map<BayListCard>((bay) => {
-      const slot = bay.slots.find(
-        (candidate): candidate is ProjectedWorkJobSlot =>
-          candidate.kind === 'work' && candidate.startDate <= today && today < candidate.endDate,
-      );
+      const workingCalendar = calendars.get(bay.id);
+      // Projected work slots span closure days too, so a slot can cover an off-day
+      // today; gate on the bay calendar (mirrors web's getBayTodayOccupancy) so the
+      // card never shows ACTIVE + a countdown on a day the bay is actually off.
+      const slot = isWorkingDay(today, workingCalendar)
+        ? bay.slots.find(
+            (candidate): candidate is ProjectedWorkJobSlot =>
+              candidate.kind === 'work' && candidate.startDate <= today && today < candidate.endDate,
+          )
+        : undefined;
       const job = slot ? jobsById.get(slot.jobId) : undefined;
 
       return {
@@ -86,7 +93,7 @@ export function useBayList(): BayListState {
         active:
           slot && job
             ? {
-                ...deriveActiveJobProgress({ slot, today, workingCalendar: calendars.get(bay.id) }),
+                ...deriveActiveJobProgress({ slot, today, workingCalendar }),
                 jobCode: slot.jobCode,
                 productName: job.productName,
                 productThumbnailDataUrl: job.productThumbnailDataUrl,

@@ -4,9 +4,9 @@ import { createAuthClient } from 'better-auth/react';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const defaultApiBaseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:7002' : 'http://localhost:7002';
-const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? defaultApiBaseUrl;
-const authBaseUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/auth`;
+import { apiBaseUrl } from './api-base-url';
+
+const authBaseUrl = `${apiBaseUrl}/api/auth`;
 const invalidCredentialsMessage = 'Email or password is incorrect.';
 const networkFailureMessage = 'Unable to reach the API. Check your connection and try again.';
 const signInDisabledMessage = 'This account is not enabled for sign-in.';
@@ -29,7 +29,20 @@ const authClient = createAuthClient({
 type SignInError = NonNullable<Awaited<ReturnType<typeof authClient.signIn.email>>['error']>;
 
 export const useSession = authClient.useSession;
-export const getCookie = authClient.getCookie;
+
+/**
+ * Session cookie value for a manual `Cookie` header on native, where there is no
+ * cookie jar. Returns null on web: the browser attaches the cookie itself (via
+ * `credentials: 'include'`), and better-auth's SecureStore-backed `getCookie()`
+ * reads storage synchronously, which `react-native-web` does not support.
+ */
+export function sessionCookieHeader(): string | null {
+  if (Platform.OS === 'web') {
+    return null;
+  }
+
+  return authClient.getCookie() || null;
+}
 
 /** A resolved (non-null) session, as guaranteed inside the protected route tree. */
 export type AuthSession = NonNullable<ReturnType<typeof useSession>['data']>;

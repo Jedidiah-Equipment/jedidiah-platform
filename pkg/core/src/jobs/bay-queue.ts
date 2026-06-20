@@ -26,6 +26,7 @@ export type BayQueue = {
   /** Books a Slot via Insert at Date; without a start date the placement is a plain append. */
   book(spec: BayQueueSlotSpec, options?: { startDate?: DateOnlyIso | undefined }): Promise<JobSlotRow>;
   insertRelative(targetSlotId: UUID, placement: 'before' | 'after', spec: BayQueueSlotSpec): Promise<JobSlotRow>;
+  resize(slotId: UUID, durationDays: number): Promise<JobSlotRow>;
   swap(slotId: UUID, direction: 'left' | 'right'): Promise<BayQueueSwapResult>;
   remove(slotId: UUID): Promise<JobSlotRow>;
 };
@@ -122,6 +123,24 @@ function createBayQueue(tx: DatabaseTransaction, bay: JobBayRow, plantToday: Dat
       const insertionSequence = placement === 'before' ? targetSlot.sequence : targetSlot.sequence + 1;
 
       return insertSlotRowAtSequence(tx, bay.id, insertionSequence, spec);
+    },
+
+    async resize(slotId, durationDays) {
+      const slot = await getQueueSlot(tx, bay.id, slotId);
+      const [resizedSlot] = await tx
+        .update(jobSlots)
+        .set({
+          durationDays,
+          updatedAt: new Date(),
+        })
+        .where(eq(jobSlots.id, slot.id))
+        .returning();
+
+      if (!resizedSlot) {
+        throw new Error('Job slot resize did not return a row');
+      }
+
+      return resizedSlot;
     },
 
     async swap(slotId, direction) {

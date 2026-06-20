@@ -4,8 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BaySchedule } from '@/components/bays/BaySchedule';
 
 /**
- * Bay schedule route: the ACTIVE NOW + UP NEXT list pane (#519) for the selected
- * Bay. The detail pane a Slot drives lands in #520.
+ * Bay schedule route: the responsive master–detail screen for the selected Bay —
+ * the ACTIVE NOW + UP NEXT list pane (#519) and the Job Slot detail pane (#520).
  */
 export default function BayScheduleRoute() {
   const router = useRouter();

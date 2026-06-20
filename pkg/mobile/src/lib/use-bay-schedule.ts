@@ -24,6 +24,30 @@ export type BayScheduleActiveJob = ActiveJobProgress & {
   startDate: DateOnlyIso;
 };
 
+/**
+ * One selectable Work Slot projected for the detail pane (#520): the status chip,
+ * product card, SLOT grid, and JOB grid. Documents are fetched separately via
+ * `jobs.get`, since the schedule join carries only Slot + Job summary fields.
+ */
+export type BaySlotDetail = {
+  jobId: string;
+  jobCode: string;
+  quoteCode: string;
+  productName: string;
+  productThumbnailDataUrl: string | null;
+  productSerialNumber: string;
+  customerCompanyName: string | null;
+  bayName: string;
+  /** 'in-progress' for the Slot running today, else 'scheduled'. */
+  status: 'in-progress' | 'scheduled';
+  /** Working days left — only the in-progress Slot has one. */
+  remainingWorkDays: number | null;
+  startDate: DateOnlyIso;
+  /** Inclusive last working day (endDate − 1), matching the list pane's range labels. */
+  lastWorkDay: DateOnlyIso;
+  workDays: number;
+};
+
 /** A future Work Slot in the UP NEXT timeline. */
 export type BayScheduleUpcomingSlot = {
   slotId: string;
@@ -47,6 +71,8 @@ export type BayScheduleState =
       bay: { id: string; name: string; operator: BayOperator | null };
       active: BayScheduleActiveJob | null;
       upcoming: BayScheduleUpcomingSlot[];
+      /** Detail-pane projection for every selectable Slot, keyed by Slot id. */
+      slotsById: Record<string, BaySlotDetail>;
       today: DateOnlyIso;
     };
 
@@ -108,28 +134,52 @@ export function useBaySchedule(bayId: string): BayScheduleState {
 
     // Everything still ahead: future Work Slots, plus a Slot covering today that the
     // off-day gate excluded from `active` (so it is never silently dropped).
-    const upcoming = workSlots
-      .filter((slot) => slot.id !== activeSlot?.id && slot.endDate > today)
-      .map<BayScheduleUpcomingSlot>((slot, index) => {
-        const job = jobsById.get(slot.jobId);
+    const upcomingSlots = workSlots.filter((slot) => slot.id !== activeSlot?.id && slot.endDate > today);
+    const upcoming = upcomingSlots.map<BayScheduleUpcomingSlot>((slot, index) => {
+      const job = jobsById.get(slot.jobId);
 
-        return {
-          slotId: slot.id,
-          jobCode: slot.jobCode,
-          productName: job?.productName ?? slot.jobCode,
-          productThumbnailDataUrl: job?.productThumbnailDataUrl ?? null,
-          startDate: slot.startDate,
-          lastWorkDay: addDateOnlyDays(slot.endDate, -1),
-          workDays: countWorkingDaysBetween(slot.startDate, slot.endDate, workingCalendar),
-          isNext: index === 0,
-        };
-      });
+      return {
+        slotId: slot.id,
+        jobCode: slot.jobCode,
+        productName: job?.productName ?? slot.jobCode,
+        productThumbnailDataUrl: job?.productThumbnailDataUrl ?? null,
+        startDate: slot.startDate,
+        lastWorkDay: addDateOnlyDays(slot.endDate, -1),
+        workDays: countWorkingDaysBetween(slot.startDate, slot.endDate, workingCalendar),
+        isNext: index === 0,
+      };
+    });
+
+    // Detail-pane projection for the in-progress Slot and every upcoming one — the
+    // Slots the list pane lets you select.
+    const slotsById: Record<string, BaySlotDetail> = {};
+    const addSlotDetail = (slot: ProjectedWorkJobSlot, status: BaySlotDetail['status'], remaining: number | null) => {
+      const job = jobsById.get(slot.jobId);
+      slotsById[slot.id] = {
+        jobId: slot.jobId,
+        jobCode: slot.jobCode,
+        quoteCode: job?.quoteCode ?? '—',
+        productName: job?.productName ?? slot.jobCode,
+        productThumbnailDataUrl: job?.productThumbnailDataUrl ?? null,
+        productSerialNumber: job?.productSerialNumber ?? '—',
+        customerCompanyName: job?.customerCompanyName ?? null,
+        bayName: bay.name,
+        status,
+        remainingWorkDays: remaining,
+        startDate: slot.startDate,
+        lastWorkDay: addDateOnlyDays(slot.endDate, -1),
+        workDays: countWorkingDaysBetween(slot.startDate, slot.endDate, workingCalendar),
+      };
+    };
+    if (activeSlot && active) addSlotDetail(activeSlot, 'in-progress', active.remainingWorkDays);
+    for (const slot of upcomingSlots) addSlotDetail(slot, 'scheduled', null);
 
     return {
       status: 'ready',
       bay: { id: bay.id, name: bay.name, operator: bay.currentOperator },
       active,
       upcoming,
+      slotsById,
       today,
     };
   }, [

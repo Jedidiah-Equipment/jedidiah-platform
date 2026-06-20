@@ -1,9 +1,10 @@
 import { formatDate } from '@pkg/domain';
 import type { BayOperator } from '@pkg/schema';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, View } from 'react-native';
+import { Animated, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
 import { Text } from '@/components/ui/text';
 import {
@@ -13,14 +14,18 @@ import {
   useBaySchedule,
 } from '@/lib/use-bay-schedule';
 
+/** Tablet breakpoint: at/above this width the list and detail panes sit side by side. */
+const WIDE_BREAKPOINT = 760;
+
 /**
- * A Bay's schedule list pane: the shared top bar over the ACTIVE NOW hero (the
- * in-progress Job) and the UP NEXT timeline of upcoming Work Slots. Selecting a
- * Slot highlights it — the detail pane it drives lands in #520. Owns the
- * loading, empty, error, and bay-not-found states.
+ * A Bay's schedule as one responsive master–detail screen: the shared top bar
+ * over the ACTIVE NOW + UP NEXT list pane and the Job Slot detail pane. Wide
+ * (≥760px) shows them side by side; narrow pushes the detail over the list and
+ * back returns to it. Owns the loading, empty, error, and bay-not-found states.
  */
 export function BaySchedule({ bayId, onBack }: { bayId: string; onBack: () => void }) {
   const state = useBaySchedule(bayId);
+  const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
 
   if (state.status === 'pending') {
     return (
@@ -52,53 +57,121 @@ export function BaySchedule({ bayId, onBack }: { bayId: string; onBack: () => vo
     );
   }
 
-  return <Ready onBack={onBack} state={state} />;
+  return <Ready isWide={isWide} onBack={onBack} state={state} />;
 }
 
-function Ready({ state, onBack }: { state: Extract<BayScheduleState, { status: 'ready' }>; onBack: () => void }) {
-  const { bay, active, upcoming } = state;
+function Ready({
+  state,
+  isWide,
+  onBack,
+}: {
+  state: Extract<BayScheduleState, { status: 'ready' }>;
+  isWide: boolean;
+  onBack: () => void;
+}) {
+  const { bay, slotsById } = state;
   // Default selection follows the prototype: the active Job, else the soonest Slot.
-  const [selectedId, setSelectedId] = useState<string | null>(active?.slotId ?? upcoming.at(0)?.slotId ?? null);
-  const isEmpty = !active && upcoming.length === 0;
+  const [selectedId, setSelectedId] = useState<string | null>(
+    state.active?.slotId ?? state.upcoming.at(0)?.slotId ?? null,
+  );
+  // Narrow only: which pane is on top. Wide shows both regardless.
+  const [detailOpen, setDetailOpen] = useState(false);
+  const selected = selectedId ? (slotsById[selectedId] ?? null) : null;
+
+  const select = (slotId: string) => {
+    setSelectedId(slotId);
+    if (!isWide) setDetailOpen(true);
+  };
+  const handleBack = () => {
+    if (!isWide && detailOpen) setDetailOpen(false);
+    else onBack();
+  };
+
+  const showList = isWide || !detailOpen;
+  const showDetail = isWide || detailOpen;
+  const onDetail = !isWide && detailOpen;
 
   return (
-    <Frame onBack={onBack} operator={bay.operator} title={bay.name}>
-      {isEmpty ? (
-        <View className="rounded-2xl border border-dashed border-border px-4 py-10">
-          <Text className="text-center text-sm text-foreground" weight="semibold">
-            No jobs scheduled
-          </Text>
-          <Text className="mt-1 text-center text-sm text-muted-foreground">
-            This bay has no active or upcoming work.
-          </Text>
-        </View>
-      ) : (
-        <>
-          <SectionLabel className="mb-2.5">ACTIVE NOW</SectionLabel>
-          {active ? (
-            <ActiveHero
-              active={active}
-              onSelect={() => setSelectedId(active.slotId)}
-              selected={selectedId === active.slotId}
-            />
-          ) : (
-            <View className="rounded-2xl border border-dashed border-border px-4 py-6">
-              <Text className="text-sm text-muted-foreground" weight="semibold">
-                No active job
-              </Text>
-              <Text className="mt-0.5 text-xs text-muted-foreground">Nothing running today.</Text>
-            </View>
-          )}
+    <>
+      <ScheduleHeader
+        onBack={handleBack}
+        operator={bay.operator}
+        subtitle={onDetail ? 'Job slot' : 'Bay schedule'}
+        title={onDetail && selected ? selected.jobCode : bay.name}
+      />
+      <View className="flex-1 flex-row">
+        {showList ? (
+          <ScrollView
+            className="border-border"
+            contentContainerClassName="mx-auto w-full max-w-[640px] px-4 pb-10 pt-4"
+            style={isWide ? { flex: 2, borderRightWidth: 1 } : { flex: 1 }}
+          >
+            <ListPane onSelect={select} selectedId={selectedId} state={state} />
+          </ScrollView>
+        ) : null}
+        {showDetail ? (
+          <ScrollView
+            contentContainerClassName="w-full max-w-[680px] px-4 pb-10 pt-4"
+            style={isWide ? { flex: 3 } : { flex: 1 }}
+          >
+            {selected ? (
+              <SlotDetailPane slot={selected} />
+            ) : (
+              <View className="rounded-2xl border border-dashed border-border px-4 py-10">
+                <Text className="text-center text-sm text-muted-foreground">Select a slot to see its details.</Text>
+              </View>
+            )}
+          </ScrollView>
+        ) : null}
+      </View>
+    </>
+  );
+}
 
-          {upcoming.length > 0 ? (
-            <>
-              <SectionLabel className="mb-3 mt-6">UP NEXT</SectionLabel>
-              <Timeline onSelect={setSelectedId} selectedId={selectedId} slots={upcoming} />
-            </>
-          ) : null}
-        </>
+function ListPane({
+  state,
+  selectedId,
+  onSelect,
+}: {
+  state: Extract<BayScheduleState, { status: 'ready' }>;
+  selectedId: string | null;
+  onSelect: (slotId: string) => void;
+}) {
+  const { active, upcoming } = state;
+  const isEmpty = !active && upcoming.length === 0;
+
+  if (isEmpty) {
+    return (
+      <View className="rounded-2xl border border-dashed border-border px-4 py-10">
+        <Text className="text-center text-sm text-foreground" weight="semibold">
+          No jobs scheduled
+        </Text>
+        <Text className="mt-1 text-center text-sm text-muted-foreground">This bay has no active or upcoming work.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <SectionLabel className="mb-2.5">ACTIVE NOW</SectionLabel>
+      {active ? (
+        <ActiveHero active={active} onSelect={() => onSelect(active.slotId)} selected={selectedId === active.slotId} />
+      ) : (
+        <View className="rounded-2xl border border-dashed border-border px-4 py-6">
+          <Text className="text-sm text-muted-foreground" weight="semibold">
+            No active job
+          </Text>
+          <Text className="mt-0.5 text-xs text-muted-foreground">Nothing running today.</Text>
+        </View>
       )}
-    </Frame>
+
+      {upcoming.length > 0 ? (
+        <>
+          <SectionLabel className="mb-3 mt-6">UP NEXT</SectionLabel>
+          <Timeline onSelect={onSelect} selectedId={selectedId} slots={upcoming} />
+        </>
+      ) : null}
+    </>
   );
 }
 

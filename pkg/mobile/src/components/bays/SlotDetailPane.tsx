@@ -1,9 +1,11 @@
 import { formatBytes, formatDate, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDocument } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { DocumentViewer } from '@/components/documents/DocumentViewer';
 import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
@@ -62,7 +64,7 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
       </View>
 
       {/* DOCUMENTS — opens the in-app viewer (#521); read-only here. */}
-      <Documents jobId={slot.jobId} />
+      <Documents context={`${slot.jobCode} · ${slot.productName}`} jobId={slot.jobId} />
 
       {/* SLOT grid. */}
       <Card title="SLOT">
@@ -96,10 +98,11 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
   );
 }
 
-function Documents({ jobId }: { jobId: string }) {
+function Documents({ jobId, context }: { jobId: string; context: string }) {
   const trpc = useTRPC();
   const query = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const documents = query.data?.documents ?? [];
+  const [openDocument, setOpenDocument] = useState<JobDocument | null>(null);
 
   return (
     <Card title={query.isSuccess ? `DOCUMENTS · ${documents.length}` : 'DOCUMENTS'}>
@@ -110,17 +113,28 @@ function Documents({ jobId }: { jobId: string }) {
       ) : documents.length === 0 ? (
         <Text className="py-2 text-sm text-muted-foreground">No documents for this job.</Text>
       ) : (
-        documents.map((document) => <DocumentRow document={document} key={document.id} />)
+        documents.map((document) => (
+          <DocumentRow document={document} key={document.id} onOpen={() => setOpenDocument(document)} />
+        ))
       )}
+
+      {openDocument ? (
+        <DocumentViewer context={context} document={openDocument} jobId={jobId} onClose={() => setOpenDocument(null)} />
+      ) : null}
     </Card>
   );
 }
 
-function DocumentRow({ document }: { document: JobDocument }) {
+function DocumentRow({ document, onOpen }: { document: JobDocument; onOpen: () => void }) {
   const meta = `${PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type]} · ${formatBytes(document.byteSize)}`;
 
   return (
-    <View className="flex-row items-center gap-3 border-t border-border py-3">
+    <Pressable
+      accessibilityHint="Opens the document viewer"
+      accessibilityRole="button"
+      className="flex-row items-center gap-3 border-t border-border py-3 active:opacity-70"
+      onPress={onOpen}
+    >
       <View className="h-10 w-10 items-center justify-center rounded-lg border border-primary/25 bg-primary/10">
         <Text className="text-base text-primary" weight="bold">
           ⤓
@@ -133,7 +147,7 @@ function DocumentRow({ document }: { document: JobDocument }) {
         <Text className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">{meta}</Text>
       </View>
       <Text className="text-base text-muted-foreground">›</Text>
-    </View>
+    </Pressable>
   );
 }
 

@@ -4,8 +4,14 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev"],
-      "port": 7011
+      "runtimeArgs": ["--filter", "@pkg/web", "dev"],
+      "port": 7001
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@pkg/api", "dev"],
+      "port": 7002
     },
     {
       "name": "mobile-web",

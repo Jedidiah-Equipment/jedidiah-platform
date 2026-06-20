@@ -1,5 +1,6 @@
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BaysSmokeList } from '@/components/BaysSmokeList';
 import { BrandHeader } from '@/components/BrandHeader';
 import { Text } from '@/components/ui/text';
 import { signOut } from '@/lib/auth';
@@ -12,8 +13,10 @@ export default function IndexRoute() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="flex-1 justify-center px-7 py-10">
+      <View className="flex-1 justify-center gap-6 px-7 py-10">
         <BrandHeader subtitle={`Signed in as ${session.user.name} · ${role}`} />
+
+        <BaysSmokeList />
 
         <Pressable
           accessibilityRole="button"

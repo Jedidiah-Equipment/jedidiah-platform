@@ -185,6 +185,9 @@ importers:
       '@gluestack-ui/toast':
         specifier: 1.0.9
         version: 1.0.9(@react-spectrum/provider@3.11.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3)
+      '@pkg/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@pkg/schema':
         specifier: workspace:*
         version: link:../schema

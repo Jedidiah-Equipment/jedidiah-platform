@@ -1,7 +1,7 @@
 import { expoClient } from '@better-auth/expo/client';
-import * as SecureStore from 'expo-secure-store';
 import { adminClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 const defaultApiBaseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:7002' : 'http://localhost:7002';

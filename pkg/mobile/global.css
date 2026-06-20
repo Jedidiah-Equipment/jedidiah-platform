@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Theme tokens as CSS variables. NativeWind flips `:root` -> `.dark:root` via the
+ * color scheme (`darkMode: 'class'`), so every component just uses semantic classes
+ * (bg-background, text-foreground, ...) and restyles automatically — no JS branching.
+ *
+ * Colours are space-separated RGB channels so Tailwind's `<alpha-value>` opacity
+ * modifiers work (e.g. bg-primary/50). `--color-border` is a full colour because the
+ * dark value is translucent. Palette mirrors web's globals.css and the Bay Operator
+ * mockup (brand yellow #f8d300 light / #fff000 dark).
+ */
+@layer base {
+  :root {
+    --color-background: 247 247 247;
+    --color-foreground: 10 10 10;
+    --color-surface: 255 255 255;
+    --color-surface-foreground: 10 10 10;
+    --color-muted: 245 245 245;
+    --color-muted-foreground: 115 115 115;
+    --color-primary: 248 211 0;
+    --color-primary-foreground: 10 10 10;
+    --color-border: rgb(229 229 229);
+    --color-status-in-progress: 59 130 246;
+    --color-status-scheduled: 251 191 36;
+    --color-status-next: 34 197 94;
+    --color-status-next-soft: 95 207 135;
+    --color-danger: 248 113 113;
+  }
+
+  .dark:root {
+    --color-background: 10 10 11;
+    --color-foreground: 250 250 250;
+    --color-surface: 20 20 22;
+    --color-surface-foreground: 250 250 250;
+    --color-muted: 27 27 31;
+    --color-muted-foreground: 122 122 130;
+    --color-primary: 255 240 0;
+    --color-primary-foreground: 10 10 10;
+    --color-border: rgba(255, 255, 255, 0.08);
+    --color-status-in-progress: 96 165 250;
+    --color-status-scheduled: 251 191 36;
+    --color-status-next: 34 197 94;
+    --color-status-next-soft: 95 207 135;
+    --color-danger: 248 113 113;
+  }
+}

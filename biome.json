@@ -10,7 +10,8 @@
       "!**/coverage",
       "!**/.sandcastle/worktrees",
       "!pkg/db/migrations",
-      "!pkg/mobile",
+      "!**/.expo",
+      "!pkg/mobile/expo-env.d.ts",
       "!pkg/web/src/app/route-tree.gen.ts",
       "!docs",
       "!scripts",
@@ -65,5 +66,17 @@
       "semicolons": "always",
       "quoteStyle": "single"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["pkg/mobile/**/*.css"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnknownAtRules": "off"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -1,20 +1,16 @@
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
 import { EmailAddress } from '@pkg/schema';
+import { cssInterop } from 'nativewind';
 import { useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BrandHeader } from '@/components/BrandHeader';
+import { Text } from '@/components/ui/text';
+import { signIn } from '@/lib/auth';
 
-import { signIn } from '../lib/auth';
-import { BrandHeader } from '../src/components/BrandHeader';
-import { theme } from '../src/theme';
+// Let the spinner take its colour from a NativeWind class (e.g. text-primary-foreground).
+cssInterop(ActivityIndicator, {
+  className: { target: false, nativeStyleToProp: { color: true } },
+});
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -53,142 +49,73 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
-        <View style={styles.container}>
-          <BrandHeader subtitle="Sign in to continue" />
+    <SafeAreaView className="flex-1 bg-background">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+        <View className="flex-1 items-center justify-center px-7 py-10">
+          <View className="w-full max-w-[430px]">
+            <BrandHeader centered subtitle="Sign in to continue" />
 
-          <View style={styles.form}>
-            <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoComplete="email"
-                editable={!isSubmitting}
-                keyboardType="email-address"
-                onChangeText={setEmail}
-                placeholder="name@jedidiahequipment.co.za"
-                placeholderTextColor={theme.colors.muted}
-                returnKeyType="next"
-                style={styles.input}
-                textContentType="emailAddress"
-                value={email}
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoComplete="password"
-                editable={!isSubmitting}
-                onChangeText={setPassword}
-                onSubmitEditing={handleSignIn}
-                placeholder="Enter your password"
-                placeholderTextColor={theme.colors.muted}
-                returnKeyType="go"
-                secureTextEntry
-                style={styles.input}
-                textContentType="password"
-                value={password}
-              />
-            </View>
-
-            {error ? (
-              <View accessibilityRole="alert" style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
+            <View className="gap-5">
+              <View className="gap-1.5">
+                <Text className="text-sm leading-5 text-foreground" weight="semibold">
+                  Email
+                </Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  className="min-h-[52px] rounded-lg border border-border bg-surface px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
+                  editable={!isSubmitting}
+                  keyboardType="email-address"
+                  onChangeText={setEmail}
+                  placeholder="name@jedidiahequipment.co.za"
+                  returnKeyType="next"
+                  textContentType="emailAddress"
+                  value={email}
+                />
               </View>
-            ) : null}
 
-            <Pressable
-              accessibilityRole="button"
-              disabled={isSubmitting}
-              onPress={handleSignIn}
-              style={({ pressed }) => [
-                styles.button,
-                isSubmitting ? styles.buttonDisabled : null,
-                pressed && !isSubmitting ? styles.buttonPressed : null,
-              ]}
-            >
-              {isSubmitting ? <ActivityIndicator color={theme.colors.onPrimary} size="small" /> : null}
-              <Text style={styles.buttonText}>{isSubmitting ? 'Signing in' : 'Sign in'}</Text>
-            </Pressable>
+              <View className="gap-1.5">
+                <Text className="text-sm leading-5 text-foreground" weight="semibold">
+                  Password
+                </Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  className="min-h-[52px] rounded-lg border border-border bg-surface px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
+                  editable={!isSubmitting}
+                  onChangeText={setPassword}
+                  onSubmitEditing={handleSignIn}
+                  placeholder="Enter your password"
+                  returnKeyType="go"
+                  secureTextEntry
+                  textContentType="password"
+                  value={password}
+                />
+              </View>
+
+              {error ? (
+                <View accessibilityRole="alert" className="rounded-lg border border-danger bg-surface p-4">
+                  <Text className="text-sm leading-5 text-danger">{error}</Text>
+                </View>
+              ) : null}
+
+              <Pressable
+                accessibilityRole="button"
+                className={`mt-2 min-h-[52px] flex-row items-center justify-center gap-2 rounded-lg bg-primary px-4 ${
+                  isSubmitting ? 'opacity-60' : ''
+                }`}
+                disabled={isSubmitting}
+                onPress={handleSignIn}
+              >
+                {isSubmitting ? <ActivityIndicator className="text-primary-foreground" size="small" /> : null}
+                <Text className="text-base leading-6 text-primary-foreground" weight="bold">
+                  {isSubmitting ? 'Signing in' : 'Sign in'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.xxl,
-  },
-  form: {
-    gap: theme.spacing.lg,
-  },
-  field: {
-    gap: theme.spacing.xs,
-  },
-  label: {
-    color: theme.colors.ink,
-    fontSize: theme.typography.label,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-  input: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    color: theme.colors.ink,
-    fontSize: theme.typography.body,
-    minHeight: 52,
-    paddingHorizontal: theme.spacing.md,
-  },
-  button: {
-    alignItems: 'center',
-    borderRadius: 8,
-    backgroundColor: theme.colors.primary,
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    justifyContent: 'center',
-    marginTop: theme.spacing.sm,
-    minHeight: 52,
-    paddingHorizontal: theme.spacing.md,
-  },
-  buttonDisabled: {
-    opacity: 0.65,
-  },
-  buttonPressed: {
-    opacity: 0.9,
-  },
-  buttonText: {
-    color: theme.colors.onPrimary,
-    fontSize: theme.typography.body,
-    fontWeight: '700',
-    lineHeight: 24,
-  },
-  errorBox: {
-    backgroundColor: theme.colors.dangerSoft,
-    borderColor: theme.colors.dangerBorder,
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: theme.spacing.md,
-  },
-  errorText: {
-    color: theme.colors.danger,
-    fontSize: theme.typography.label,
-    lineHeight: 20,
-  },
-});

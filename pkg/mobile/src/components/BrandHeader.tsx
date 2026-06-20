@@ -1,48 +1,22 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, View } from 'react-native';
 
-import { theme } from '../theme';
+import { Text } from './ui/text';
 
-export function BrandHeader({ subtitle }: { subtitle: string }) {
+// Same mark as the web app's <AppBrand> (pkg/web/src/components/common/AppBrand.tsx).
+const logo = require('../../assets/logo_small.png');
+
+export function BrandHeader({ centered = false, subtitle }: { centered?: boolean; subtitle: string }) {
   return (
-    <View style={styles.header}>
-      <View style={styles.brandMark}>
-        <Text style={styles.brandMarkText}>J</Text>
-      </View>
-      <Text style={styles.title}>Jedidah Ops</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
+    <View className={`mb-7 gap-2 ${centered ? 'items-center' : 'items-start'}`}>
+      {/* Explicit style: NativeWind doesn't size/round bare <Image> via className. */}
+      <Image resizeMode="cover" source={logo} style={{ borderRadius: 16, height: 64, width: 64 }} />
+      <Text className={`text-[34px] leading-10 text-foreground ${centered ? 'text-center' : ''}`} weight="bold">
+        Jedidiah
+        <Text className="text-primary" weight="bold">
+          Ops
+        </Text>
+      </Text>
+      <Text className={`text-base leading-6 text-muted-foreground ${centered ? 'text-center' : ''}`}>{subtitle}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    alignItems: 'flex-start',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
-  },
-  brandMark: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: 8,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  brandMarkText: {
-    color: theme.colors.primary,
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 28,
-  },
-  title: {
-    color: theme.colors.ink,
-    fontSize: theme.typography.title,
-    fontWeight: '700',
-    lineHeight: 40,
-  },
-  subtitle: {
-    color: theme.colors.text,
-    fontSize: theme.typography.body,
-    lineHeight: 24,
-  },
-});

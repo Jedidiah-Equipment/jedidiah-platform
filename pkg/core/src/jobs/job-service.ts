@@ -2,10 +2,8 @@ import {
   type DatabaseTransaction,
   type Db,
   documents,
-  jobBays,
   jobCfoAssemblies,
   jobCfoParts,
-  jobSlots,
   jobs,
   productSerialSequences,
   products,
@@ -46,7 +44,7 @@ import { listAssemblies } from '../products/product-assembly-service.js';
 import { snapshotJobBrochureDocument } from '../products/product-brochure-document.js';
 import { lockBayQueue, lockBayQueueBySlot } from './bay-queue.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
-import { JobCreateFromQuoteDeniedError, JobNotFoundError, JobSlotNotFoundError } from './job-errors.js';
+import { JobCreateFromQuoteDeniedError, JobNotFoundError } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
 import { getJob } from './job-read-service.js';
 
@@ -192,32 +190,8 @@ export async function resizeJobSlot({
   input: ResizeJobSlotInput;
 }): Promise<ResizeJobSlotResult> {
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        bay: jobBays,
-        slot: jobSlots,
-      })
-      .from(jobSlots)
-      .innerJoin(jobBays, eq(jobSlots.bayId, jobBays.id))
-      .where(eq(jobSlots.id, input.slotId))
-      .for('update');
-
-    if (!row) {
-      throw new JobSlotNotFoundError(input.slotId);
-    }
-
-    const [slot] = await tx
-      .update(jobSlots)
-      .set({
-        durationDays: input.durationDays,
-        updatedAt: new Date(),
-      })
-      .where(eq(jobSlots.id, row.slot.id))
-      .returning();
-
-    if (!slot) {
-      throw new Error('Job slot update did not return a row');
-    }
+    const queue = await lockBayQueueBySlot(tx, input.slotId);
+    const slot = await queue.resize(input.slotId, input.durationDays);
 
     return ResizeJobSlotResult.parse({ slot });
   });

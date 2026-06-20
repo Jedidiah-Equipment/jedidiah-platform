@@ -1612,6 +1612,36 @@ describe('resizeJobSlot', () => {
     ).rejects.toThrow('Job slot not found');
   });
 
+  test('resizes existing slots in disabled Bays', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const slot = await bookJobSlot({
+      db: context.db,
+      input: { bayId: bay.id, durationDays: 1, jobId: job.id },
+    });
+
+    await setJobBayDisabled({
+      actorUserId,
+      db: context.db,
+      input: { disabled: true, id: bay.id },
+    });
+
+    await expect(
+      resizeJobSlot({
+        db: context.db,
+        input: { durationDays: 2, slotId: slot.slot.id },
+      }),
+    ).resolves.toMatchObject({ slot: { durationDays: 2, id: slot.slot.id } });
+
+    const schedule = await listBays({ db: context.db });
+    expect(getBaySchedule(schedule, bay.id)).toEqual(
+      expect.objectContaining({
+        disabledAt: expect.any(String),
+        slots: [expect.objectContaining({ durationDays: 2, id: slot.slot.id })],
+      }),
+    );
+  });
+
   test('resizes idle slots and reflows later work', async ({ context }) => {
     const bay = await createBay(context.db, { department: 'fabrication' });
     const job = await createAcceptedJob(context.db, context.catalog.product.id);

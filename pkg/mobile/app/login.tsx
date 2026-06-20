@@ -1,18 +1,14 @@
 import { EmailAddress } from '@pkg/schema';
-import { cssInterop } from 'nativewind';
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '@/components/BrandHeader';
 import { Text } from '@/components/ui/text';
-import { signIn } from '@/lib/auth';
-
-// Let the spinner take its colour from a NativeWind class (e.g. text-primary-foreground).
-cssInterop(ActivityIndicator, {
-  className: { target: false, nativeStyleToProp: { color: true } },
-});
+import { signIn, useSession } from '@/lib/auth';
 
 export default function LoginScreen() {
+  const { data: session } = useSession();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,8 +40,13 @@ export default function LoginScreen() {
       return;
     }
 
-    // On success the root auth guard redirects away from /login once the session
-    // updates; keep the button in its submitting state until this screen unmounts.
+    // On success the session updates and the redirect below sends us to `/`; keep
+    // the button in its submitting state until this screen unmounts.
+  }
+
+  // Already signed in (including right after a successful sign-in): leave /login.
+  if (session) {
+    return <Redirect href="/" />;
   }
 
   return (

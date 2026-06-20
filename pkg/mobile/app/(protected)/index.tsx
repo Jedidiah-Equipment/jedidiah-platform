@@ -2,21 +2,12 @@ import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '@/components/BrandHeader';
 import { Text } from '@/components/ui/text';
-import { signOut, useSession } from '@/lib/auth';
+import { signOut } from '@/lib/auth';
+import { useAuthSession } from '@/lib/auth-session';
 
 export default function IndexRoute() {
-  const { data: session, isPending } = useSession();
-
-  if (isPending || !session) {
-    return (
-      <SafeAreaView className="flex-1 bg-background">
-        <View className="flex-1 justify-center px-7 py-10">
-          <Text className="text-base leading-6 text-muted-foreground">Checking session</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
+  // The protected layout guarantees a resolved session by the time we render.
+  const session = useAuthSession();
   const role = session.user.role ?? 'unknown';
 
   return (

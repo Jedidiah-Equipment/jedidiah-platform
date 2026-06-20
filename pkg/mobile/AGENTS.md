@@ -1,7 +1,7 @@
 # mobile (@pkg/mobile)
 
 - This package is an Expo managed React Native app using Expo Router and `expo-dev-client`.
-- Keep routing file-based under `app/`; the initial app should open through `app/index.tsx` to `/login`.
+- Keep routing file-based under `app/`. Protected screens live in the `app/(protected)/` group, whose `_layout.tsx` owns the loading/redirect-to-`/login` gate and exposes the session via `useAuthSession` (`src/lib/auth-session.tsx`); screens there assume a session rather than re-guarding. `login` is the public route. An unauthenticated launch lands on `/` and the gate redirects it to `/login`.
 - All non-route source lives under `src/` (the repo-wide convention); only `app/` and top-level config/assets sit outside it. Import source via the `@/*` alias (`@/components/...`, `@/lib/...`, `@/theme/...`), not deep relative paths. Do not reintroduce a top-level `components/` even though the gluestack CLI scaffolds there.
 - Style with NativeWind v4 + gluestack-ui v2 via `className`; do not branch on the color scheme in JS to pick colours. Use semantic classes (`bg-background`, `text-foreground`, `border-border`, `text-primary-foreground`, ...). For props that need a concrete colour (e.g. a spinner), use `cssInterop` to drive them from a class rather than reading a scheme.
 - Theme tokens live as CSS variables in `global.css` (`:root` light, `.dark:root` dark); `tailwind.config.js` maps semantic class names to them. Add or change colours there, then reference them by class. Keep the palette aligned with web `pkg/web/src/styles/globals.css`.

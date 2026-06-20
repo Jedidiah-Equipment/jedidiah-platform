@@ -8,8 +8,7 @@ const logo = require('../../assets/logo_small.png');
 export function BrandHeader({ centered = false, subtitle }: { centered?: boolean; subtitle: string }) {
   return (
     <View className={`mb-7 gap-2 ${centered ? 'items-center' : 'items-start'}`}>
-      {/* Explicit style: NativeWind doesn't size/round bare <Image> via className. */}
-      <Image resizeMode="cover" source={logo} style={{ borderRadius: 16, height: 64, width: 64 }} />
+      <Image className="h-16 w-16 rounded-2xl" resizeMode="cover" source={logo} />
       <Text className={`text-[34px] leading-10 text-foreground ${centered ? 'text-center' : ''}`} weight="bold">
         Jedidiah
         <Text className="text-primary" weight="bold">

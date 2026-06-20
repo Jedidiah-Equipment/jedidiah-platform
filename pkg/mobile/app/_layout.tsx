@@ -1,13 +1,11 @@
 import '../global.css';
 
 import { useFonts } from 'expo-font';
-import { Stack, usePathname, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
-import { useSession } from '@/lib/auth';
 import { ColorModeProvider } from '@/theme/ColorModeProvider';
 
 // Geist app font (same faces as web's @pkg/domain/fonts/geist-sans; vendored here
@@ -30,7 +28,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ColorModeProvider>
         <GluestackUIProvider>
-          <AuthRedirect />
+          {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
           <Stack screenOptions={{ headerShown: false }} />
           {/* `auto` tracks the OS bar style; the #518 override hook can drive this later. */}
           <StatusBar style="auto" />
@@ -38,27 +36,4 @@ export default function RootLayout() {
       </ColorModeProvider>
     </SafeAreaProvider>
   );
-}
-
-function AuthRedirect() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { data: session, isPending } = useSession();
-
-  useEffect(() => {
-    if (isPending) return;
-
-    const isLoginRoute = pathname === '/login';
-
-    if (!session && !isLoginRoute) {
-      router.replace('/login');
-      return;
-    }
-
-    if (session && isLoginRoute) {
-      router.replace('/');
-    }
-  }, [isPending, pathname, router, session]);
-
-  return null;
 }

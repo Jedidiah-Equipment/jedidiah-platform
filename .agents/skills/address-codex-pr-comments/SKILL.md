@@ -10,9 +10,13 @@ Monitor one GitHub PR until Codex review reaches a terminal state, then fix acti
 ## State Detection
 
 1. Identify the target PR:
-   - If the user gave a PR number or URL, use it.
+   - If the user gave a PR number or URL, use it and read its head branch:
+     ```
+     gh pr view <pr-number-or-url> --json number,url,headRefName,title,createdAt
+     ```
    - Otherwise run `gh pr view --json number,url,headRefName,title,createdAt` from the current branch.
    - If there is no current-branch PR, ask the user for the PR number.
+   - Before editing, check out the PR head branch if the current branch differs.
 2. Resolve the repository slug:
    ```
    gh repo view --json owner,name --jq '"\(.owner.login)/\(.name)"'
@@ -25,8 +29,9 @@ Monitor one GitHub PR until Codex review reaches a terminal state, then fix acti
 4. Fetch comments every pass, even while `eyes` is present:
    ```
    gh pr view <pr-number> --comments
-   gh api repos/<owner>/<repo>/pulls/<pr-number>/comments
+   gh api --paginate repos/<owner>/<repo>/pulls/<pr-number>/comments
    ```
+   Always paginate inline review comments; completion depends on not missing later pages.
 
 ## Polling Loop
 

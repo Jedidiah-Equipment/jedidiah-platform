@@ -70,13 +70,16 @@ function Ready({
   onBack: () => void;
 }) {
   const { bay, slotsById } = state;
-  // Default selection follows the prototype: the active Job, else the soonest Slot.
-  const [selectedId, setSelectedId] = useState<string | null>(
-    state.active?.slotId ?? state.upcoming.at(0)?.slotId ?? null,
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   // Narrow only: which pane is on top. Wide shows both regardless.
   const [detailOpen, setDetailOpen] = useState(false);
-  const selected = selectedId ? (slotsById[selectedId] ?? null) : null;
+
+  // Default selection follows the prototype: the active Job, else the soonest Slot.
+  // Derived (not stored) so a schedule refetch or bayId change that drops the picked
+  // Slot falls back to the default instead of stranding the detail pane on a stale id.
+  const defaultId = state.active?.slotId ?? state.upcoming.at(0)?.slotId ?? null;
+  const effectiveId = selectedId && slotsById[selectedId] ? selectedId : defaultId;
+  const selected = effectiveId ? (slotsById[effectiveId] ?? null) : null;
 
   const select = (slotId: string) => {
     setSelectedId(slotId);
@@ -106,7 +109,7 @@ function Ready({
             contentContainerClassName="mx-auto w-full max-w-[640px] px-4 pb-10 pt-4"
             style={isWide ? { flex: 2, borderRightWidth: 1 } : { flex: 1 }}
           >
-            <ListPane onSelect={select} selectedId={selectedId} state={state} />
+            <ListPane onSelect={select} selectedId={effectiveId} state={state} />
           </ScrollView>
         ) : null}
         {showDetail ? (

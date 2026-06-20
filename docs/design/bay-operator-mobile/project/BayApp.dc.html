@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  ::-webkit-scrollbar { width: 7px; height: 7px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+</style>
+</helmet>
+
+<div ref="{{ setRoot }}" style="position:relative;height:100%;width:100%;overflow:hidden;background:#0A0A0B;color:#FAFAFA;font-family:'Space Grotesk',system-ui,sans-serif;">
+
+  <!-- ===================== LOGIN ===================== -->
+  <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Login" style="height:100%;overflow-y:auto;display:flex;justify-content:center;">
+      <div style="width:100%;max-width:430px;display:flex;flex-direction:column;padding:40px 28px 26px;">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-height:200px;">
+          <div style="width:66px;height:66px;border-radius:17px;border:1.5px solid #F2E40A;display:flex;align-items:center;justify-content:center;margin-bottom:8px;">
+            <svg width="32" height="32" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#F2E40A" stroke-width="1.5"></circle><circle cx="12" cy="12" r="3" fill="#F2E40A"></circle></svg>
+          </div>
+          <div style="font-size:27px;font-weight:700;letter-spacing:-0.6px;">Jedidiah<span style="color:#F2E40A;">Ops</span></div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2.5px;color:#6B6B73;">DEPARTMENT MANAGER</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9A9AA2;margin-bottom:7px;letter-spacing:0.5px;">EMAIL</div>
+            <div style="height:52px;border-radius:12px;background:#1A1A1E;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;padding:0 16px;font-size:15px;color:#E5E5E8;">johan@vanniekerk.online</div>
+          </div>
+          <div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9A9AA2;margin-bottom:7px;letter-spacing:0.5px;">PASSWORD</div>
+            <div style="height:52px;border-radius:12px;background:#1A1A1E;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;justify-content:space-between;padding:0 16px;">
+              <span style="font-size:18px;letter-spacing:3px;color:#E5E5E8;">••••••••••</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </div>
+          </div>
+          <div style="text-align:right;"><span style="font-size:13px;color:#F2E40A;font-weight:500;">Forgot password?</span></div>
+          <button onClick="{{ login }}" style="height:54px;border:none;border-radius:12px;background:#F2E40A;color:#0A0A0B;font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;margin-top:2px;">Log in <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+        </div>
+        <div style="text-align:center;margin-top:26px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#46464D;letter-spacing:1px;">JEDIDIAHOPS · v1.0.0</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== BAY LIST ===================== -->
+  <sc-if value="{{ isBayList }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Bay List" style="height:100%;overflow-y:auto;">
+      <div style="max-width:1180px;margin:0 auto;padding:18px 18px 32px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;position:relative;">
+          <img src="{{ managerImg }}" alt="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:17px;font-weight:700;line-height:1.2;">{{ managerName }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:2px;">Department Manager</div>
+          </div>
+          <div onClick="{{ toggleMenu }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#9A9AA2"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+          </div>
+          <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:48px;right:0;width:212px;background:#1B1B1F;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.65);overflow:hidden;z-index:50;">
+              <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                <img src="{{ managerImg }}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                <div style="min-width:0;"><div style="font-size:13px;font-weight:600;line-height:1.2;">{{ managerName }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ managerEmail }}</div></div>
+              </div>
+              <div style="padding:6px;">
+                <div onClick="{{ logout }}" style="display:flex;align-items:center;gap:11px;padding:11px;border-radius:9px;font-size:14px;font-weight:500;color:#F87171;cursor:pointer;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+                  Log out
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.4px;">Bays</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;letter-spacing:0.5px;">{{ bayCount }}</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:14px;">
+          <sc-for list="{{ bays }}" as="b" hint-placeholder-count="6">
+            <div onClick="{{ b.open }}" style="background:#141416;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;cursor:pointer;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <img src="{{ b.operatorImg }}" alt="" style="width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:15.5px;font-weight:700;letter-spacing:-0.2px;line-height:1.15;">{{ b.name }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ b.operatorName }}</div>
+                </div>
+                <span style="display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.5px;color:#60A5FA;flex-shrink:0;"><span style="width:6px;height:6px;border-radius:50%;background:#60A5FA;box-shadow:0 0 7px #60A5FA;"></span>ACTIVE</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px;">
+                <img src="{{ b.productImg }}" alt="" style="width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
+                <div style="min-width:0;">
+                  <div style="font-size:12.5px;color:#9A9AA2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ b.product }}</div>
+                  <div style="font-size:16.5px;font-weight:700;color:#EDEDEF;margin-top:1px;">{{ b.code }}</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:16px;">
+                <div style="display:flex;align-items:baseline;gap:6px;">
+                  <span style="font-size:34px;font-weight:700;line-height:0.85;color:{{ b.dayColor }};">{{ b.daysLeft }}</span>
+                  <span style="font-size:12.5px;color:#9A9AA2;font-weight:500;">days left</span>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;text-align:right;">ends<br><span style="color:#C9C9CE;">{{ b.endShort }}</span></div>
+              </div>
+              <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);margin-top:13px;overflow:hidden;"><div style="height:100%;width:{{ b.pct }}%;background:#3B82F6;border-radius:3px;"></div></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== JOBS (responsive master-detail) ===================== -->
+  <sc-if value="{{ isJobs }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Bay Jobs" style="height:100%;display:flex;flex-direction:column;">
+      <!-- shared top bar -->
+      <div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.07);background:#0A0A0B;position:relative;flex-shrink:0;">
+        <div onClick="{{ headerBack }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E5E5E8" stroke-width="2"><path d="M15 6l-6 6 6 6"></path></svg>
+        </div>
+        <img src="{{ bayOperatorImg }}" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+        <div style="flex:1;min-width:0;"><div style="font-size:17px;font-weight:700;">{{ headerTitle }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:1px;">{{ headerSub }}</div></div>
+        <div onClick="{{ toggleMenu }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#9A9AA2"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+        </div>
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:54px;right:14px;width:212px;background:#1B1B1F;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.65);overflow:hidden;z-index:50;">
+            <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.07);">
+              <img src="{{ managerImg }}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+              <div style="min-width:0;"><div style="font-size:13px;font-weight:600;line-height:1.2;">{{ managerName }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ managerEmail }}</div></div>
+            </div>
+            <div style="padding:6px;">
+              <div onClick="{{ logout }}" style="display:flex;align-items:center;gap:11px;padding:11px;border-radius:9px;font-size:14px;font-weight:500;color:#F87171;cursor:pointer;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+                Log out
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="flex:1;display:flex;min-height:0;overflow:hidden;">
+
+        <!-- LIST PANE -->
+        <div style="display:{{ listDisplay }};width:{{ listWidth }};flex-direction:column;border-right:{{ listBorderRight }};overflow-y:auto;padding:18px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#7A7A82;margin-bottom:10px;">ACTIVE NOW</div>
+          <div onClick="{{ active.select }}" style="background:#121319;border:{{ active.heroBorder }};border-radius:18px;padding:18px;cursor:pointer;">
+            <div style="display:flex;align-items:flex-start;gap:14px;">
+              <img src="{{ active.img }}" alt="" style="width:52px;height:52px;border-radius:11px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
+                  <span style="width:7px;height:7px;border-radius:50%;background:#60A5FA;box-shadow:0 0 8px #60A5FA;"></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.5px;color:#60A5FA;">IN PROGRESS</span>
+                </div>
+                <div style="font-size:20px;font-weight:700;letter-spacing:-0.3px;">{{ active.code }}</div>
+                <div style="font-size:13.5px;color:#C9C9CE;margin-top:2px;">{{ active.product }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:3px;">{{ active.heroSub }}</div>
+              </div>
+            </div>
+            <div style="height:1px;background:rgba(255,255,255,0.08);margin:16px 0 14px;"></div>
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;">
+              <div style="display:flex;align-items:baseline;gap:8px;">
+                <span style="font-size:52px;font-weight:700;line-height:0.85;color:#FAFAFA;">{{ active.daysLeft }}</span>
+                <span style="font-size:15px;color:#9A9AA2;font-weight:500;">days left</span>
+              </div>
+              <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;line-height:1.5;">ends<br><span style="color:#C9C9CE;">{{ active.endShort }}</span></div>
+            </div>
+            <div style="height:7px;border-radius:4px;background:rgba(255,255,255,0.08);margin-top:14px;overflow:hidden;"><div style="height:100%;width:{{ active.pct }}%;background:#3B82F6;border-radius:4px;"></div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:7px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#56565D;"><span>{{ active.startMonth }}</span><span>{{ active.workProgressLabel }}</span></div>
+          </div>
+
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#7A7A82;margin:24px 0 12px;">UP NEXT</div>
+          <div style="position:relative;padding-left:26px;">
+            <div style="position:absolute;left:6px;top:8px;bottom:8px;width:2px;background:rgba(255,255,255,0.09);"></div>
+            <sc-for list="{{ upcoming }}" as="item" hint-placeholder-count="3">
+              <div onClick="{{ item.select }}" style="position:relative;margin-bottom:12px;cursor:pointer;">
+                <div style="position:absolute;left:-26px;top:16px;width:14px;height:14px;border-radius:50%;background:#0A0A0B;border:2px solid {{ item.nodeColor }};"></div>
+                <div style="background:#141416;border:{{ item.borderColor }};border-radius:14px;padding:13px;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:{{ item.labelColor }};margin-bottom:9px;">{{ item.rangeLabel }}</div>
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <img src="{{ item.img }}" alt="" style="width:42px;height:42px;border-radius:9px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
+                    <div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;">{{ item.code }}</div><div style="font-size:12.5px;color:#9A9AA2;margin-top:1px;">{{ item.product }}</div></div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#56565D" stroke-width="2"><path d="M9 6l6 6-6 6"></path></svg>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- DETAIL PANE -->
+        <div style="display:{{ detailDisplay }};width:{{ detailWidth }};overflow-y:auto;padding:18px 18px 28px;">
+          <div style="display:flex;flex-direction:column;gap:16px;max-width:680px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.5px;color:{{ job.statusColor }};background:{{ job.statusBg }};border:1px solid {{ job.statusBorder }};padding:5px 9px;border-radius:20px;"><span style="width:6px;height:6px;border-radius:50%;background:{{ job.statusColor }};"></span>{{ job.statusUpper }}</span>
+              <sc-if value="{{ job.hasDaysLeft }}" hint-placeholder-val="{{ false }}">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.5px;color:#F2E40A;background:rgba(242,228,10,0.1);border:1px solid rgba(242,228,10,0.3);padding:5px 9px;border-radius:20px;">{{ job.daysLeftLabel }}</span>
+              </sc-if>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:14px;background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;">
+              <img src="{{ job.img }}" alt="" style="width:54px;height:54px;border-radius:11px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
+              <div style="min-width:0;"><div style="font-size:16px;font-weight:700;">{{ job.product }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:2px;">{{ job.serial }}</div><div style="font-size:12.5px;color:#9A9AA2;margin-top:3px;">{{ job.customer }}</div></div>
+            </div>
+
+            <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:6px;">{{ job.docsLabel }}</div>
+              <sc-for list="{{ docs }}" as="d" hint-placeholder-count="3">
+                <div onClick="{{ d.open }}" style="display:flex;align-items:center;gap:13px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.06);cursor:pointer;">
+                  <div style="width:40px;height:40px;border-radius:9px;background:rgba(242,228,10,0.1);border:1px solid rgba(242,228,10,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></div>
+                  <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;">{{ d.name }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#7A7A82;margin-top:2px;">{{ d.meta }}</div></div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#56565D" stroke-width="2"><path d="M9 6l6 6-6 6"></path></svg>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:14px;">SLOT</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">SLOT START</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ job.start }}</div></div>
+                <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">SLOT END</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ job.end }}</div></div>
+                <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">WORK DAYS</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ job.workDays }}</div></div>
+                <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">BAY</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ job.bay }}</div></div>
+              </div>
+            </div>
+
+            <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:14px;">JOB</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">JOB CODE</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ job.code }}</div></div>
+                <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">QUOTE CODE</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ job.quote }}</div></div>
+                <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">PRODUCT</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ job.product }}</div></div>
+                <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">PRODUCT SERIAL</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ job.serial }}</div></div>
+                <div style="grid-column:1 / -1;"><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">CUSTOMER</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ job.customer }}</div></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===================== DOCUMENT VIEWER (overlay) ===================== -->
+  <sc-if value="{{ docOpen }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Document Viewer" style="position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:{{ docPad }};background:#0A0A0B;">
+      <div style="width:{{ docW }};height:{{ docH }};border-radius:{{ docR }};overflow:hidden;display:flex;flex-direction:column;background:#0A0A0B;">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px;background:#121214;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
+          <svg onClick="{{ closeDoc }}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E5E5E8" stroke-width="2" style="cursor:pointer;"><path d="M15 6l-6 6 6 6"></path></svg>
+          <div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ doc.name }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#7A7A82;">{{ doc.context }}</div></div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9C9CE" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9C9CE" stroke-width="1.8"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"></path></svg>
+        </div>
+
+        <div style="flex:1;background:#1A1A1D;padding:20px;display:flex;flex-direction:column;align-items:center;overflow:auto;min-height:0;">
+          <div style="width:100%;max-width:560px;background:#F6F6F4;border-radius:5px;box-shadow:0 10px 34px rgba(0,0,0,0.55);padding:24px;color:#1A1A1A;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1A1A1A;padding-bottom:9px;margin-bottom:16px;">
+              <div style="font-weight:700;font-size:13px;letter-spacing:0.3px;">{{ doc.pageTitle }}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#666;">{{ doc.pageTag }}</div>
+            </div>
+            <div style="height:180px;border-radius:4px;background:repeating-linear-gradient(135deg,#E2E2DC 0 8px,#EDEDE8 8px 16px);border:1px solid #D2D2CC;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:#9A9A92;letter-spacing:1px;">{{ doc.pagePlaceholder }}</div>
+            <div style="margin-top:18px;display:flex;flex-direction:column;gap:11px;">
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#888;width:18px;flex-shrink:0;">01</span><div style="height:8px;border-radius:2px;background:#DBDBD4;flex:1;"></div><div style="height:8px;border-radius:2px;background:#E6E6E0;width:44px;flex-shrink:0;"></div></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#888;width:18px;flex-shrink:0;">02</span><div style="height:8px;border-radius:2px;background:#DBDBD4;flex:1;"></div><div style="height:8px;border-radius:2px;background:#E6E6E0;width:44px;flex-shrink:0;"></div></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#888;width:18px;flex-shrink:0;">03</span><div style="height:8px;border-radius:2px;background:#DBDBD4;flex:1;"></div><div style="height:8px;border-radius:2px;background:#E6E6E0;width:44px;flex-shrink:0;"></div></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#888;width:18px;flex-shrink:0;">04</span><div style="height:8px;border-radius:2px;background:#DBDBD4;flex:1;"></div><div style="height:8px;border-radius:2px;background:#E6E6E0;width:44px;flex-shrink:0;"></div></div>
+            </div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6B73;margin-top:14px;letter-spacing:1px;">PAGE 1 OF 12</div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#121214;border-top:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
+          <div style="width:38px;height:38px;border-radius:10px;background:#1F1F23;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6B73" stroke-width="2"><path d="M15 6l-6 6 6 6"></path></svg></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#C9C9CE;">1 / 12</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:#1F1F23;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C9C9CE" stroke-width="2"><path d="M5 12h14"></path></svg></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9A9AA2;">100%</span>
+            <div style="width:34px;height:34px;border-radius:9px;background:#1F1F23;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C9C9CE" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg></div>
+          </div>
+          <div style="width:38px;height:38px;border-radius:10px;background:#1F1F23;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C9C9CE" stroke-width="2"><path d="M9 6l6 6-6 6"></path></svg></div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 412, &quot;height&quot;: 880}, &quot;startScreen&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;login&quot;, &quot;bayList&quot;, &quot;jobs&quot;], &quot;default&quot;: &quot;login&quot;, &quot;tsType&quot;: &quot;string&quot;}, &quot;startBay&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 0, &quot;min&quot;: 0, &quot;max&quot;: 5, &quot;tsType&quot;: &quot;number&quot;}}">
+class Component extends DCLogic {
+  setRoot = (el) => {
+    this.rootEl = el;
+    if (!el) { if (this.ro) { this.ro.disconnect(); this.ro = null; } return; }
+    const measure = () => {
+      const w = el.getBoundingClientRect().width;
+      const wide = w >= 760;
+      if (wide !== this.state.isWide) this.setState({ isWide: wide });
+    };
+    measure();
+    if (window.ResizeObserver) {
+      this.ro = new ResizeObserver(measure);
+      this.ro.observe(el);
+    }
+  };
+
+  state = {
+    screen: this.props.startScreen || 'login',
+    isWide: false,
+    bayIndex: Number(this.props.startBay) || 0,
+    jobIndex: 0,
+    jobDetailOpen: false,
+    docOpen: false,
+    docIndex: 0,
+    menuOpen: false
+  };
+
+  operators = [
+    { name: 'Pieter Botha', img: 'assets/operators/operator.jpg' },
+    { name: 'Thabo Nkosi', img: 'assets/operators/operator.jpg' },
+    { name: 'Johan Pretorius', img: 'assets/operators/operator.jpg' },
+    { name: 'Sipho Dlamini', img: 'assets/operators/operator.jpg' },
+    { name: 'Werner Smit', img: 'assets/operators/operator.jpg' },
+    { name: 'Anele Mokoena', img: 'assets/operators/operator.jpg' }
+  ];
+
+  bays = this.makeBays();
+
+  docs(tag) {
+    return [
+      { name: 'Parts Book', meta: 'PDF · 2.4 MB', pagePlaceholder: 'EXPLODED ASSEMBLY DIAGRAM', pageTag: 'PARTS BOOK · ' + tag },
+      { name: 'Bill of Materials', meta: 'PDF · 188 KB', pagePlaceholder: 'COMPONENT SCHEDULE', pageTag: 'BOM · ' + tag },
+      { name: 'Product Brochure', meta: 'PDF · 5.1 MB', pagePlaceholder: 'PRODUCT PHOTOGRAPH', pageTag: 'BROCHURE · ' + tag }
+    ];
+  }
+
+  productImg(product) {
+    return 'assets/products/trailer.jpg';
+  }
+
+  makeBays() {
+    const C = 'Nampo Agri Logistics (Pty) Ltd', C2 = 'AgriMech (Pty) Ltd', C3 = 'Karoo Harvest Co.';
+    const A = (o) => Object.assign({ status: 'In progress', statusType: 'active', hasDaysLeft: true, customer: C }, o);
+    const N = (o, next) => Object.assign({ status: 'Scheduled', statusType: next ? 'next' : 'normal', hasDaysLeft: false, customer: C }, o);
+    const bays = [
+      { name: 'Fabrication Bay 1', jobs: [
+        A({ code: 'JOB-00009', quote: 'QUO-00009', product: 'Silage Grain 18 36', serial: 'SG1836260008', start: '16 Jun 2026', end: '07 Jul 2026', endShort: 'Tue 7 Jul', startMonth: '16 Jun', workDays: '21 days', daysLeft: 4, pct: 81, workProgressLabel: '17 of 21 work days' }),
+        N({ code: 'JOB-00012', quote: 'QUO-00012', product: 'Land Roller 7m Folding', serial: 'LR7F260012', start: '21 Jul 2026', end: '11 Aug 2026', rangeLabel: '21 JUL – 11 AUG · 15 WORK DAYS', workDays: '15 days' }, true),
+        N({ code: 'JOB-00015', quote: 'QUO-00015', product: 'Silage Grain 18 36', serial: 'SG1836260015', start: '12 Aug 2026', end: '02 Sep 2026', rangeLabel: '12 AUG – 02 SEP · 15 WORK DAYS', workDays: '15 days' }),
+        N({ code: 'JOB-00021', quote: 'QUO-00021', product: 'Tipper Body 6m', serial: 'TB6M260021', start: '04 Sep 2026', end: '18 Sep 2026', rangeLabel: '04 SEP – 18 SEP · 11 WORK DAYS', workDays: '11 days' })
+      ]},
+      { name: 'Fabrication Bay 2', jobs: [
+        A({ code: 'JOB-00031', quote: 'QUO-00031', product: 'Tipper Body 8m', serial: 'TB8M260031', start: '09 Jun 2026', end: '03 Jul 2026', endShort: 'Fri 3 Jul', startMonth: '09 Jun', workDays: '18 days', daysLeft: 9, pct: 50, workProgressLabel: '9 of 18 work days', customer: C2 }),
+        N({ code: 'JOB-00034', quote: 'QUO-00034', product: 'Silage Grain 18 36', serial: 'SG1836260034', start: '06 Jul 2026', end: '24 Jul 2026', rangeLabel: '06 JUL – 24 JUL · 14 WORK DAYS', workDays: '14 days', customer: C2 }, true),
+        N({ code: 'JOB-00038', quote: 'QUO-00038', product: 'Land Roller 9m Folding', serial: 'LR9F260038', start: '27 Jul 2026', end: '14 Aug 2026', rangeLabel: '27 JUL – 14 AUG · 14 WORK DAYS', workDays: '14 days', customer: C2 })
+      ]},
+      { name: 'Assembly Bay 1', jobs: [
+        A({ code: 'JOB-00027', quote: 'QUO-00027', product: 'Land Roller 9m Folding', serial: 'LR9F260027', start: '12 Jun 2026', end: '19 Jun 2026', endShort: 'Fri 19 Jun', startMonth: '12 Jun', workDays: '6 days', daysLeft: 2, pct: 67, workProgressLabel: '4 of 6 work days' }),
+        N({ code: 'JOB-00029', quote: 'QUO-00029', product: 'Tipper Body 6m', serial: 'TB6M260029', start: '22 Jun 2026', end: '01 Jul 2026', rangeLabel: '22 JUN – 01 JUL · 8 WORK DAYS', workDays: '8 days' }, true),
+        N({ code: 'JOB-00033', quote: 'QUO-00033', product: 'Silage Grain 24 48', serial: 'SG2448260033', start: '02 Jul 2026', end: '16 Jul 2026', rangeLabel: '02 JUL – 16 JUL · 11 WORK DAYS', workDays: '11 days' })
+      ]},
+      { name: 'Assembly Bay 2', jobs: [
+        A({ code: 'JOB-00040', quote: 'QUO-00040', product: 'Silage Grain 24 48', serial: 'SG2448260040', start: '02 Jun 2026', end: '30 Jun 2026', endShort: 'Tue 30 Jun', startMonth: '02 Jun', workDays: '20 days', daysLeft: 12, pct: 40, workProgressLabel: '8 of 20 work days', customer: C3 }),
+        N({ code: 'JOB-00043', quote: 'QUO-00043', product: 'Tipper Body 8m', serial: 'TB8M260043', start: '01 Jul 2026', end: '17 Jul 2026', rangeLabel: '01 JUL – 17 JUL · 13 WORK DAYS', workDays: '13 days', customer: C3 }, true),
+        N({ code: 'JOB-00048', quote: 'QUO-00048', product: 'Land Roller 7m Folding', serial: 'LR7F260048', start: '20 Jul 2026', end: '05 Aug 2026', rangeLabel: '20 JUL – 05 AUG · 13 WORK DAYS', workDays: '13 days', customer: C3 })
+      ]},
+      { name: 'Paint Bay 1', jobs: [
+        A({ code: 'JOB-00019', quote: 'QUO-00019', product: 'Tipper Body 6m', serial: 'TB6M260019', start: '11 Jun 2026', end: '25 Jun 2026', endShort: 'Thu 25 Jun', startMonth: '11 Jun', workDays: '11 days', daysLeft: 6, pct: 45, workProgressLabel: '5 of 11 work days' }),
+        N({ code: 'JOB-00024', quote: 'QUO-00024', product: 'Silage Grain 18 36', serial: 'SG1836260024', start: '26 Jun 2026', end: '08 Jul 2026', rangeLabel: '26 JUN – 08 JUL · 9 WORK DAYS', workDays: '9 days' }, true),
+        N({ code: 'JOB-00030', quote: 'QUO-00030', product: 'Land Roller 9m Folding', serial: 'LR9F260030', start: '09 Jul 2026', end: '21 Jul 2026', rangeLabel: '09 JUL – 21 JUL · 9 WORK DAYS', workDays: '9 days' })
+      ]},
+      { name: 'Weld Bay 3', jobs: [
+        A({ code: 'JOB-00046', quote: 'QUO-00046', product: 'Land Roller 7m Folding', serial: 'LR7F260046', start: '13 Jun 2026', end: '18 Jun 2026', endShort: 'Thu 18 Jun', startMonth: '13 Jun', workDays: '4 days', daysLeft: 1, pct: 75, workProgressLabel: '3 of 4 work days', customer: C2 }),
+        N({ code: 'JOB-00051', quote: 'QUO-00051', product: 'Tipper Body 8m', serial: 'TB8M260051', start: '22 Jun 2026', end: '03 Jul 2026', rangeLabel: '22 JUN – 03 JUL · 10 WORK DAYS', workDays: '10 days', customer: C2 }, true),
+        N({ code: 'JOB-00055', quote: 'QUO-00055', product: 'Silage Grain 24 48', serial: 'SG2448260055', start: '06 Jul 2026', end: '20 Jul 2026', rangeLabel: '06 JUL – 20 JUL · 11 WORK DAYS', workDays: '11 days', customer: C2 })
+      ]}
+    ];
+    bays.forEach((b, i) => {
+      b.operator = this.operators[i % this.operators.length];
+      b.jobs.forEach(j => { j.bay = b.name; j.docs = this.docs(j.serial); j.img = this.productImg(j.product); });
+    });
+    return bays;
+  }
+
+  componentWillUnmount() { if (this.ro) this.ro.disconnect(); }
+
+  go(screen) { this.setState({ screen, menuOpen: false, docOpen: false }); }
+  openBay(i) { this.setState({ screen: 'jobs', bayIndex: i, jobIndex: 0, jobDetailOpen: false, docOpen: false, menuOpen: false }); }
+  selectJob(i) { this.setState(st => ({ jobIndex: i, jobDetailOpen: st.isWide ? st.jobDetailOpen : true, docOpen: false })); }
+  openDoc(i) { this.setState({ docOpen: true, docIndex: i }); }
+
+  shortCust(c) { return c.replace(/ \(Pty\) Ltd$/, ''); }
+  dayColor(d) { return d <= 2 ? '#F87171' : (d <= 5 ? '#FBBF24' : '#5FCF87'); }
+
+  renderVals() {
+    const s = this.state, bays = this.bays, wide = s.isWide;
+    const bay = bays[s.bayIndex] || bays[0];
+    const jobs = bay.jobs;
+    const activeJob = jobs[0];
+    const selJob = jobs[s.jobIndex] || activeJob;
+
+    const bayList = bays.map((b, i) => {
+      const aj = b.jobs[0];
+      return {
+        name: b.name, code: aj.code, product: aj.product, productImg: aj.img,
+        operatorName: b.operator.name, operatorImg: b.operator.img,
+        daysLeft: aj.daysLeft, dayColor: this.dayColor(aj.daysLeft),
+        endShort: aj.endShort, pct: aj.pct,
+        open: () => this.openBay(i)
+      };
+    });
+
+    const active = {
+      code: activeJob.code, product: activeJob.product, img: activeJob.img,
+      heroSub: activeJob.serial + ' · ' + this.shortCust(activeJob.customer),
+      daysLeft: activeJob.daysLeft, endShort: activeJob.endShort,
+      startMonth: activeJob.startMonth, workProgressLabel: activeJob.workProgressLabel, pct: activeJob.pct,
+      heroBorder: s.jobIndex === 0 ? '1.5px solid rgba(96,165,250,0.9)' : '1.5px solid rgba(59,130,246,0.5)',
+      select: () => this.selectJob(0)
+    };
+
+    const upcoming = jobs.slice(1).map((j, idx) => {
+      const gi = idx + 1, isNext = idx === 0, sel = s.jobIndex === gi;
+      return {
+        code: j.code, product: j.product, rangeLabel: j.rangeLabel, img: j.img,
+        select: () => this.selectJob(gi),
+        borderColor: sel ? '1.5px solid rgba(242,228,10,0.6)' : (isNext ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(255,255,255,0.07)'),
+        nodeColor: isNext ? '#22C55E' : '#4A4A52',
+        labelColor: sel ? '#F2E40A' : (isNext ? '#5FCF87' : '#7A7A82')
+      };
+    });
+
+    const isActive = selJob.statusType === 'active';
+    const job = Object.assign({}, selJob, {
+      statusUpper: selJob.status.toUpperCase(),
+      daysLeftLabel: selJob.daysLeft ? (selJob.daysLeft + ' DAYS LEFT') : '',
+      docsLabel: 'DOCUMENTS · ' + selJob.docs.length,
+      statusColor: isActive ? '#60A5FA' : '#FBBF24',
+      statusBg: isActive ? 'rgba(59,130,246,0.13)' : 'rgba(251,191,36,0.1)',
+      statusBorder: isActive ? 'rgba(59,130,246,0.3)' : 'rgba(251,191,36,0.3)'
+    });
+
+    const docs = selJob.docs.map((dd, idx) => Object.assign({}, dd, { open: () => this.openDoc(idx) }));
+    const rawDoc = selJob.docs[s.docIndex] || selJob.docs[0];
+    const doc = Object.assign({}, rawDoc, { context: selJob.code + ' · ' + selJob.product, pageTitle: selJob.product.toUpperCase() });
+
+    const detailOpen = s.jobDetailOpen;
+    const headerTitle = wide ? bay.name : (detailOpen ? selJob.code : bay.name);
+    const headerSub = wide ? 'Bay schedule' : (detailOpen ? 'Job slot' : 'Bay schedule');
+    const headerBack = wide ? (() => this.go('bayList')) : (detailOpen ? (() => this.setState({ jobDetailOpen: false })) : (() => this.go('bayList')));
+
+    return {
+      setRoot: this.setRoot,
+      isLogin: s.screen === 'login', isBayList: s.screen === 'bayList', isJobs: s.screen === 'jobs',
+      menuOpen: s.menuOpen, toggleMenu: () => this.setState(st => ({ menuOpen: !st.menuOpen })),
+      login: () => this.go('bayList'), logout: () => this.go('login'),
+      managerName: 'Johan Steyn', managerEmail: 'johan@vanniekerk.online', managerInit: 'JS', managerImg: 'assets/operators/operator.jpg',
+      bayCount: bays.length + ' bays', bays: bayList, bayName: bay.name,
+      bayOperatorImg: bay.operator.img, bayOperatorName: bay.operator.name,
+      listDisplay: (wide || !detailOpen) ? 'flex' : 'none',
+      listWidth: wide ? '40%' : '100%',
+      listBorderRight: wide ? '1px solid rgba(255,255,255,0.07)' : 'none',
+      detailDisplay: (wide || detailOpen) ? 'block' : 'none',
+      detailWidth: wide ? '60%' : '100%',
+      active, upcoming, job, docs, doc,
+      headerTitle, headerSub, headerBack,
+      docOpen: s.docOpen, closeDoc: () => this.setState({ docOpen: false }),
+      docPad: '0px', docW: '100%', docH: '100%', docR: '0px'
+    };
+  }
+}
+</script>
+</body>
+</html>

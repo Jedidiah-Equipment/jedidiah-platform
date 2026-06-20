@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#E8E8EB;padding:48px 56px 80px;font-family:'Space Grotesk',system-ui,sans-serif;color:#18181B;">
+
+  <div style="margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;border-radius:9px;background:#18181B;display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#F2E40A" stroke-width="1.7"></circle><circle cx="12" cy="12" r="3" fill="#F2E40A"></circle></svg>
+      </div>
+      <span style="font-size:16px;font-weight:700;">Jedidiah<span style="color:#9A8C00;">Ops</span> — Department Manager</span>
+    </div>
+    <div style="font-size:30px;font-weight:700;letter-spacing:-0.8px;">Responsive app — phone &amp; tablet</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6B6B73;margin-top:8px;letter-spacing:0.3px;max-width:760px;line-height:1.6;">LOGIN → BAY LIST → BAY JOBS → DOCUMENT · Both frames are live and independently clickable. The same component drives both — it switches to a side-by-side master&ndash;detail layout when it has the room.</div>
+  </div>
+
+  <div style="display:flex;gap:56px;flex-wrap:wrap;align-items:flex-start;margin-top:40px;">
+
+    <!-- ===== PHONE ===== -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:#9A8C00;">MOBILE · ANDROID</div>
+        <div style="font-size:15px;font-weight:600;margin-top:4px;color:#3A3A40;">One screen at a time — list, then detail</div>
+      </div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="{{ true }}" bg="#0A0A0B" hint-size="428px,908px">
+        <div style="height:100%;width:100%;background:#0A0A0B;">
+          <dc-import name="BayApp" start-screen="login" start-bay="0" style="width:100%;height:100%;" hint-size="100%,100%"></dc-import>
+        </div>
+      </x-import>
+    </div>
+
+    <!-- ===== TABLET ===== -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:#9A8C00;">TABLET · LANDSCAPE</div>
+        <div style="font-size:15px;font-weight:600;margin-top:4px;color:#3A3A40;">Bay jobs + job detail, side by side</div>
+      </div>
+      <div style="background:#0B0B0C;border-radius:30px;padding:15px;box-shadow:0 40px 90px rgba(0,0,0,0.28),0 0 0 1px rgba(0,0,0,0.04);position:relative;">
+        <div style="position:absolute;top:50%;left:7px;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:#1E1E22;"></div>
+        <div style="position:relative;width:1024px;height:712px;border-radius:15px;overflow:hidden;background:#0A0A0B;">
+          <dc-import name="BayApp" start-screen="jobs" start-bay="0" style="width:100%;height:100%;" hint-size="100%,100%"></dc-import>
+        </div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#7A7A82;max-width:1024px;line-height:1.6;">Tap a job on the left to load it on the right. Documents open as a centered reader. Back returns to the bay grid.</div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

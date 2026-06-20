@@ -4,7 +4,7 @@ import { EmailAddress } from './text.js';
 
 describe('EmailAddress', () => {
   it('normalizes valid email addresses', () => {
-    expect(EmailAddress.parse('  DEAN@VANNIEKERK.ONLINE  ')).toBe('dean@vanniekerk.online');
+    expect(EmailAddress.parse('  DEAN@JEDIDIAHEQUIPMENT.CO.ZA  ')).toBe('dean@jedidiahequipment.co.za');
   });
 
   it('rejects malformed email addresses', () => {

@@ -16,7 +16,7 @@ export const demoUsers = [
     departments: [],
     id: 'seed-dean-user',
     name: 'Dean van Niekerk',
-    email: 'dean@vanniekerk.online',
+    email: 'dean@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
     role: 'admin',
   },

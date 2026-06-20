@@ -1,5 +1,7 @@
+import { formatDate } from '@pkg/domain';
 import { PriorityQuote, type PriorityQuote as PriorityQuoteType } from '@pkg/schema';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { addDays, format as formatDateFns } from 'date-fns';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
@@ -15,13 +17,17 @@ import {
 
 describe('Quote table priority rows', () => {
   it('renders warning copy, both delivery dates, and emphasizes the earliest date', () => {
+    // Use future dates so the delivery lines always render as absolute dates;
+    // a date that lands on "today" renders relatively (e.g. "Today at 00:00").
+    const preferred = toDateOnly(addDays(new Date(), 30));
+    const planned = toDateOnly(addDays(new Date(), 60));
     const html = renderQuoteTableRows([
       createPriorityQuoteTableRow(
         buildPriorityQuote({
           code: 'QUO-00001',
-          earliestDeliveryDate: '2026-06-20',
-          plannedDeliveryDate: '2026-07-10',
-          preferredDeliveryDate: '2026-06-20',
+          earliestDeliveryDate: preferred,
+          plannedDeliveryDate: planned,
+          preferredDeliveryDate: preferred,
         }),
       ),
     ]);
@@ -29,9 +35,9 @@ describe('Quote table priority rows', () => {
     expect(html).toContain('Needs job');
     expect(html).toContain('No job');
     expect(html).toContain('Preferred');
-    expect(html).toContain('Jun 20, 2026');
+    expect(html).toContain(formatDate(preferred, 'short'));
     expect(html).toContain('Planned');
-    expect(html).toContain('Jul 10, 2026');
+    expect(html).toContain(formatDate(planned, 'short'));
     expect(html).toContain('data-priority-date="earliest"');
   });
 
@@ -68,6 +74,10 @@ describe('Quote table priority rows', () => {
     expect(html.match(/sticky/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
   });
 });
+
+function toDateOnly(date: Date): string {
+  return formatDateFns(date, 'yyyy-MM-dd');
+}
 
 function renderQuoteTableRows(rows: QuoteTableRow[]) {
   return renderToStaticMarkup(<TestQuoteTable rows={rows} />);

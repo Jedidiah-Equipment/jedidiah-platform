@@ -1,16 +1,13 @@
 {
   "expo": {
-    "name": "Jedidah Ops",
-    "slug": "jedidah-ops",
+    "name": "Jedidiah Ops",
+    "slug": "jedidiah-ops",
     "scheme": "jedidiahops",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "plugins": [
-      "expo-router",
-      "expo-font"
-    ],
+    "plugins": ["expo-router", "expo-font"],
     "experiments": {
       "typedRoutes": true
     },

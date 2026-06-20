@@ -6,9 +6,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { GluestackUIProvider } from '../components/ui/gluestack-ui-provider';
-import { useSession } from '../lib/auth';
-import { ColorModeProvider } from '../src/theme/ColorModeProvider';
+import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
+import { useSession } from '@/lib/auth';
+import { ColorModeProvider } from '@/theme/ColorModeProvider';
 
 // Geist app font (same faces as web's @pkg/domain/fonts/geist-sans; vendored here
 // because Metro can't resolve a workspace package's asset subpath). Each weight is

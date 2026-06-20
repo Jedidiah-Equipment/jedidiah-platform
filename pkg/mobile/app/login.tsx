@@ -3,10 +3,9 @@ import { cssInterop } from 'nativewind';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { signIn } from '../lib/auth';
-import { BrandHeader } from '../src/components/BrandHeader';
-import { Text } from '../src/components/ui/text';
+import { BrandHeader } from '@/components/BrandHeader';
+import { Text } from '@/components/ui/text';
+import { signIn } from '@/lib/auth';
 
 // Let the spinner take its colour from a NativeWind class (e.g. text-primary-foreground).
 cssInterop(ActivityIndicator, {
@@ -57,62 +56,62 @@ export default function LoginScreen() {
             <BrandHeader centered subtitle="Sign in to continue" />
 
             <View className="gap-5">
-            <View className="gap-1.5">
-              <Text className="text-sm leading-5 text-foreground" weight="semibold">
-                Email
-              </Text>
-              <TextInput
-                autoCapitalize="none"
-                autoComplete="email"
-                className="min-h-[52px] rounded-lg border border-border bg-surface px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
-                editable={!isSubmitting}
-                keyboardType="email-address"
-                onChangeText={setEmail}
-                placeholder="name@jedidiahequipment.co.za"
-                returnKeyType="next"
-                textContentType="emailAddress"
-                value={email}
-              />
-            </View>
-
-            <View className="gap-1.5">
-              <Text className="text-sm leading-5 text-foreground" weight="semibold">
-                Password
-              </Text>
-              <TextInput
-                autoCapitalize="none"
-                autoComplete="password"
-                className="min-h-[52px] rounded-lg border border-border bg-surface px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
-                editable={!isSubmitting}
-                onChangeText={setPassword}
-                onSubmitEditing={handleSignIn}
-                placeholder="Enter your password"
-                returnKeyType="go"
-                secureTextEntry
-                textContentType="password"
-                value={password}
-              />
-            </View>
-
-            {error ? (
-              <View accessibilityRole="alert" className="rounded-lg border border-danger bg-surface p-4">
-                <Text className="text-sm leading-5 text-danger">{error}</Text>
+              <View className="gap-1.5">
+                <Text className="text-sm leading-5 text-foreground" weight="semibold">
+                  Email
+                </Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  className="min-h-[52px] rounded-lg border border-border bg-surface px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
+                  editable={!isSubmitting}
+                  keyboardType="email-address"
+                  onChangeText={setEmail}
+                  placeholder="name@jedidiahequipment.co.za"
+                  returnKeyType="next"
+                  textContentType="emailAddress"
+                  value={email}
+                />
               </View>
-            ) : null}
 
-            <Pressable
-              accessibilityRole="button"
-              className={`mt-2 min-h-[52px] flex-row items-center justify-center gap-2 rounded-lg bg-primary px-4 ${
-                isSubmitting ? 'opacity-60' : ''
-              }`}
-              disabled={isSubmitting}
-              onPress={handleSignIn}
-            >
-              {isSubmitting ? <ActivityIndicator className="text-primary-foreground" size="small" /> : null}
-              <Text className="text-base leading-6 text-primary-foreground" weight="bold">
-                {isSubmitting ? 'Signing in' : 'Sign in'}
-              </Text>
-            </Pressable>
+              <View className="gap-1.5">
+                <Text className="text-sm leading-5 text-foreground" weight="semibold">
+                  Password
+                </Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  className="min-h-[52px] rounded-lg border border-border bg-surface px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
+                  editable={!isSubmitting}
+                  onChangeText={setPassword}
+                  onSubmitEditing={handleSignIn}
+                  placeholder="Enter your password"
+                  returnKeyType="go"
+                  secureTextEntry
+                  textContentType="password"
+                  value={password}
+                />
+              </View>
+
+              {error ? (
+                <View accessibilityRole="alert" className="rounded-lg border border-danger bg-surface p-4">
+                  <Text className="text-sm leading-5 text-danger">{error}</Text>
+                </View>
+              ) : null}
+
+              <Pressable
+                accessibilityRole="button"
+                className={`mt-2 min-h-[52px] flex-row items-center justify-center gap-2 rounded-lg bg-primary px-4 ${
+                  isSubmitting ? 'opacity-60' : ''
+                }`}
+                disabled={isSubmitting}
+                onPress={handleSignIn}
+              >
+                {isSubmitting ? <ActivityIndicator className="text-primary-foreground" size="small" /> : null}
+                <Text className="text-base leading-6 text-primary-foreground" weight="bold">
+                  {isSubmitting ? 'Signing in' : 'Sign in'}
+                </Text>
+              </Pressable>
             </View>
           </View>
         </View>

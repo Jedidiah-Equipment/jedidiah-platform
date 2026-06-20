@@ -1,9 +1,8 @@
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { signOut, useSession } from '../lib/auth';
-import { BrandHeader } from '../src/components/BrandHeader';
-import { Text } from '../src/components/ui/text';
+import { BrandHeader } from '@/components/BrandHeader';
+import { Text } from '@/components/ui/text';
+import { signOut, useSession } from '@/lib/auth';
 
 export default function IndexRoute() {
   const { data: session, isPending } = useSession();

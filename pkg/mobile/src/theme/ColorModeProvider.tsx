@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from 'nativewind';
-import { createContext, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 
 export type ColorModePreference = 'dark' | 'light' | 'system';
@@ -33,26 +33,33 @@ function isPreference(value: string | null): value is ColorModePreference {
 export function ColorModeProvider({ children }: { children: ReactNode }) {
   const { colorScheme, setColorScheme } = useColorScheme();
   const [preference, setPreferenceState] = useState<ColorModePreference>('system');
+  const [hydrated, setHydrated] = useState(false);
 
-  // Restore the persisted override once on mount.
+  // NativeWind already follows the OS before any setColorScheme call, so applying
+  // the preference is the only place that touches the scheme — no separate effect.
+  const applyPreference = useCallback(
+    (next: ColorModePreference) => {
+      setPreferenceState(next);
+      setColorScheme(next);
+    },
+    [setColorScheme],
+  );
+
+  // Restore the persisted override once on mount. Gate the tree on this read so a
+  // saved `dark` user never flashes the default scheme for a frame on cold start.
   useEffect(() => {
     let active = true;
 
     void AsyncStorage.getItem(STORAGE_KEY).then((stored) => {
-      if (active && isPreference(stored)) {
-        setPreferenceState(stored);
-      }
+      if (!active) return;
+      if (isPreference(stored)) applyPreference(stored);
+      setHydrated(true);
     });
 
     return () => {
       active = false;
     };
-  }, []);
-
-  // NativeWind resolves `system` against the OS itself, restyling utility classes.
-  useEffect(() => {
-    setColorScheme(preference);
-  }, [preference, setColorScheme]);
+  }, [applyPreference]);
 
   const resolved: ResolvedColorScheme = colorScheme ?? 'light';
 
@@ -70,12 +77,15 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
       preference,
       resolved,
       setPreference: (next) => {
-        setPreferenceState(next);
+        applyPreference(next);
         void AsyncStorage.setItem(STORAGE_KEY, next);
       },
     }),
-    [preference, resolved],
+    [applyPreference, preference, resolved],
   );
+
+  // Hold first paint until the persisted preference is applied (see above).
+  if (!hydrated) return null;
 
   return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>;
 }

@@ -1,17 +1,17 @@
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-
-import { signOut, useSession } from '../lib/auth';
-import { BrandHeader } from '../src/components/BrandHeader';
-import { theme } from '../src/theme';
+import { Pressable, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BrandHeader } from '@/components/BrandHeader';
+import { Text } from '@/components/ui/text';
+import { signOut, useSession } from '@/lib/auth';
 
 export default function IndexRoute() {
   const { data: session, isPending } = useSession();
 
   if (isPending || !session) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <Text style={styles.statusText}>Checking session</Text>
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="flex-1 justify-center px-7 py-10">
+          <Text className="text-base leading-6 text-muted-foreground">Checking session</Text>
         </View>
       </SafeAreaView>
     );
@@ -20,47 +20,20 @@ export default function IndexRoute() {
   const role = session.user.role ?? 'unknown';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView className="flex-1 bg-background">
+      <View className="flex-1 justify-center px-7 py-10">
         <BrandHeader subtitle={`Signed in as ${session.user.name} · ${role}`} />
 
-        <Pressable accessibilityRole="button" onPress={signOut} style={styles.button}>
-          <Text style={styles.buttonText}>Sign out</Text>
+        <Pressable
+          accessibilityRole="button"
+          className="min-h-[52px] items-center justify-center self-start rounded-lg bg-primary px-5"
+          onPress={signOut}
+        >
+          <Text className="text-base leading-6 text-primary-foreground" weight="bold">
+            Sign out
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.xxl,
-  },
-  statusText: {
-    color: theme.colors.text,
-    fontSize: theme.typography.body,
-    lineHeight: 24,
-  },
-  button: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: theme.colors.primary,
-    borderRadius: 8,
-    justifyContent: 'center',
-    minHeight: 52,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  buttonText: {
-    color: theme.colors.onPrimary,
-    fontSize: theme.typography.body,
-    fontWeight: '700',
-    lineHeight: 24,
-  },
-});

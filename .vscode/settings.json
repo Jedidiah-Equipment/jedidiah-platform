@@ -31,6 +31,7 @@
   "typescript.updateImportsOnFileMove.enabled": "always",
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
+  "tailwindCSS.lint.cssConflict": "ignore",
   "files.watcherExclude": {
     "**/routeTree.gen.ts": true
   },

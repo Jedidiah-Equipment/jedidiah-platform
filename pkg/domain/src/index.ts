@@ -24,3 +24,4 @@ export * from './quotes/effective-bom.js';
 export * from './quotes/quote-email-prompt.js';
 export * from './quotes/quote-lock.js';
 export * from './quotes/quote-pricing.js';
+export * from './theme/index.js';

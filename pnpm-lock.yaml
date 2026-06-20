@@ -285,6 +285,12 @@ importers:
         specifier: 0.8.3
         version: 0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3)
     devDependencies:
+      '@config-plugins/react-native-blob-util':
+        specifier: ~14.0.1
+        version: 14.0.1(expo@56.0.11)
+      '@config-plugins/react-native-pdf':
+        specifier: ~14.0.1
+        version: 14.0.1(expo@56.0.11)
       '@pkg/api':
         specifier: workspace:*
         version: link:../api
@@ -1369,6 +1375,16 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@config-plugins/react-native-blob-util@14.0.1':
+    resolution: {integrity: sha512-nMg3R1qOkizdmf2dZ2Jm7jPxxDACygPMYQvciycTPVakbnMq0gdVps71HrKAzqijYsDUW/zrsfMOueaxcyjJyQ==}
+    peerDependencies:
+      expo: ^56
+
+  '@config-plugins/react-native-pdf@14.0.1':
+    resolution: {integrity: sha512-qBGvZA9cXK4oZgsW+VUV5QNmuh35qMGpEPiIoFpF6zukcgYw7FORSdUWocilopH7kBssEDwzlumzjVkwMNm9rQ==}
+    peerDependencies:
+      expo: ^56
 
   '@date-fns/tz@1.5.0':
     resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
@@ -9530,6 +9546,14 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.4.16':
     optional: true
+
+  '@config-plugins/react-native-blob-util@14.0.1(expo@56.0.11)':
+    dependencies:
+      expo: 56.0.11(@babel/core@7.29.0)(@expo/dom-webview@56.0.5)(@expo/metro-runtime@56.0.15)(expo-router@56.2.10)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
+
+  '@config-plugins/react-native-pdf@14.0.1(expo@56.0.11)':
+    dependencies:
+      expo: 56.0.11(@babel/core@7.29.0)(@expo/dom-webview@56.0.5)(@expo/metro-runtime@56.0.15)(expo-router@56.2.10)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
 
   '@date-fns/tz@1.5.0': {}
 

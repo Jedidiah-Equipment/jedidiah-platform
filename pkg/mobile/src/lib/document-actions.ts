@@ -1,0 +1,76 @@
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
+
+import { apiBaseUrl } from './api-base-url';
+import { sessionCookieHeader } from './auth';
+
+/**
+ * Download and share actions for the in-app document viewer (#521). This is the
+ * native implementation (the `.web` sibling overrides it for the browser). Both
+ * fetch with the same authed session cookie the tRPC client uses; the header is
+ * passed straight to the platform downloader and never logged.
+ */
+export type DocumentAction = {
+  /** Authed download route, e.g. `/api/jobs/:jobId/documents/:documentId/download`. */
+  path: string;
+  filename: string;
+};
+
+const PDF_MIME = 'application/pdf';
+
+// Fetch the document to the app cache with the session cookie, returning its file:// URI.
+async function downloadToCache({ path, filename }: DocumentAction): Promise<string> {
+  const cookie = sessionCookieHeader();
+  const target = `${FileSystem.cacheDirectory}${encodeURIComponent(filename)}`;
+  const result = await FileSystem.downloadAsync(`${apiBaseUrl}${path}`, target, {
+    headers: cookie ? { Cookie: cookie } : undefined,
+  });
+
+  if (result.status !== 200) {
+    throw new Error(`Couldn’t download the document (${result.status}).`);
+  }
+
+  return result.uri;
+}
+
+/** Open the OS share sheet for the document (downloads it with auth first). */
+export async function shareDocument(action: DocumentAction): Promise<void> {
+  const uri = await downloadToCache(action);
+
+  if (!(await Sharing.isAvailableAsync())) {
+    throw new Error('Sharing isn’t available on this device.');
+  }
+
+  await Sharing.shareAsync(uri, { mimeType: PDF_MIME, UTI: 'com.adobe.pdf', dialogTitle: action.filename });
+}
+
+/**
+ * Save the document to the device. On Android the user picks a folder via the
+ * Storage Access Framework and the bytes are written there; elsewhere there is no
+ * public Downloads concept, so we fall back to the share sheet ("Save to Files").
+ */
+export async function saveDocument(action: DocumentAction): Promise<void> {
+  const uri = await downloadToCache(action);
+
+  if (Platform.OS !== 'android') {
+    if (!(await Sharing.isAvailableAsync())) {
+      throw new Error('Saving isn’t available on this device.');
+    }
+    await Sharing.shareAsync(uri, { mimeType: PDF_MIME, UTI: 'com.adobe.pdf', dialogTitle: action.filename });
+    return;
+  }
+
+  const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+  if (!permission.granted) {
+    return; // User dismissed the folder picker — nothing to save.
+  }
+
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+  const destination = await FileSystem.StorageAccessFramework.createFileAsync(
+    permission.directoryUri,
+    action.filename,
+    PDF_MIME,
+  );
+  await FileSystem.writeAsStringAsync(destination, base64, { encoding: 'base64' });
+}

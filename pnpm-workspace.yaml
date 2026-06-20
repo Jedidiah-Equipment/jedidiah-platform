@@ -7,3 +7,6 @@ allowBuilds:
   core-js: false
   esbuild: false
   msw: false
+
+minimumReleaseAgeExclude:
+  - react-native-blob-util@0.24.10

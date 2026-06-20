@@ -14,10 +14,13 @@ import { useAuthSession } from '@/lib/auth-session';
  */
 export function ScheduleHeader({
   title,
+  subtitle = 'Bay schedule',
   operator,
   onBack,
 }: {
   title: string;
+  /** Caption under the title — switches to 'Job slot' when a phone shows the detail pane (#520). */
+  subtitle?: string;
   operator: BayOperator | null;
   onBack: () => void;
 }) {
@@ -48,7 +51,7 @@ export function ScheduleHeader({
         <Text className="text-base leading-5 text-foreground" numberOfLines={1} weight="bold">
           {title}
         </Text>
-        <Text className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">Bay schedule</Text>
+        <Text className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">{subtitle}</Text>
       </View>
 
       <Pressable

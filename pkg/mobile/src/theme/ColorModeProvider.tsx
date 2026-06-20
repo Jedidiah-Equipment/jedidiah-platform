@@ -50,11 +50,15 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    void AsyncStorage.getItem(STORAGE_KEY).then((stored) => {
-      if (!active) return;
-      if (isPreference(stored)) applyPreference(stored);
-      setHydrated(true);
-    });
+    void AsyncStorage.getItem(STORAGE_KEY)
+      .then((stored) => {
+        if (active && isPreference(stored)) applyPreference(stored);
+      })
+      // A failed read just means we keep following the OS — never let it block boot.
+      .catch(() => {})
+      .finally(() => {
+        if (active) setHydrated(true);
+      });
 
     return () => {
       active = false;

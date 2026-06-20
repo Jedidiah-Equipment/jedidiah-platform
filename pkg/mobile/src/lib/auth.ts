@@ -31,6 +31,9 @@ type SignInError = NonNullable<Awaited<ReturnType<typeof authClient.signIn.email
 export const useSession = authClient.useSession;
 export const getCookie = authClient.getCookie;
 
+/** A resolved (non-null) session, as guaranteed inside the protected route tree. */
+export type AuthSession = NonNullable<ReturnType<typeof useSession>['data']>;
+
 export async function signIn(input: { email: string; password: string }): Promise<SignInResult> {
   try {
     const result = await authClient.signIn.email(input);

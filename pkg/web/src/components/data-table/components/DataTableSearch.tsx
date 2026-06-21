@@ -1,13 +1,15 @@
 import { useDebouncedValue } from '@mantine/hooks';
-import { IconSearch } from '@tabler/icons-react';
+import { IconFilterOff, IconSearch } from '@tabler/icons-react';
 import type { Table } from '@tanstack/react-table';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button.js';
 import { Input } from '@/components/ui/input.js';
 
 type DataTableSearchProps<TData> = {
   debounceMs: number;
   placeholder: string;
   rightSection?: React.ReactNode;
+  showResetFilters?: boolean;
   showSearch?: boolean;
   table: Table<TData>;
 };
@@ -16,12 +18,15 @@ export function DataTableSearch<TData>({
   debounceMs,
   placeholder,
   rightSection,
+  showResetFilters = false,
   showSearch = true,
   table,
 }: DataTableSearchProps<TData>) {
   const globalFilter = String(table.getState().globalFilter ?? '');
   const [globalFilterDraft, setGlobalFilterDraft] = useState(globalFilter);
   const [debouncedGlobalFilter] = useDebouncedValue(globalFilterDraft, debounceMs);
+  const showResetButton = showResetFilters || (showSearch && globalFilterDraft.length > 0);
+  const showRightSection = showResetButton || rightSection;
 
   useEffect(() => {
     setGlobalFilterDraft(globalFilter);
@@ -32,6 +37,12 @@ export function DataTableSearch<TData>({
       table.setGlobalFilter(debouncedGlobalFilter);
     }
   }, [debouncedGlobalFilter, globalFilter, globalFilterDraft, table]);
+
+  const handleResetFilters = () => {
+    setGlobalFilterDraft('');
+    table.setGlobalFilter('');
+    table.setColumnFilters([]);
+  };
 
   return (
     <div className="flex min-h-10 flex-col gap-3 border-b bg-muted/20 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
@@ -46,7 +57,23 @@ export function DataTableSearch<TData>({
           />
         </div>
       ) : null}
-      {rightSection ? <div className="flex items-center justify-end gap-2 sm:ml-auto">{rightSection}</div> : null}
+      {showRightSection ? (
+        <div className="flex items-center justify-end gap-2 sm:ml-auto">
+          {showResetButton ? (
+            <Button
+              className="border-primary/50 text-primary hover:border-primary hover:bg-primary/10 hover:text-primary"
+              onClick={handleResetFilters}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <IconFilterOff data-icon="inline-start" />
+              Reset filters
+            </Button>
+          ) : null}
+          {rightSection}
+        </div>
+      ) : null}
     </div>
   );
 }

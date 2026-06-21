@@ -21,20 +21,24 @@ export default function DocumentViewerRoute() {
   const query = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const document = query.data?.documents.find((candidate) => candidate.id === documentId);
 
+  // Opened as a deep link / initial route, there's no entry to pop, so fall back
+  // to the Bay List rather than leaving `router.back()` a dead-end no-op.
+  const handleBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
       {query.isPending ? (
         <Message text="Loading document…" />
       ) : query.isError ? (
-        <Message onBack={() => router.back()} text="Couldn’t load this document." />
+        <Message onBack={handleBack} text="Couldn’t load this document." />
       ) : !document ? (
-        <Message onBack={() => router.back()} text="This document is no longer available." />
+        <Message onBack={handleBack} text="This document is no longer available." />
       ) : (
         <DocumentViewer
           context={`${query.data.code} · ${query.data.productName}`}
           document={document}
           jobId={jobId}
-          onBack={() => router.back()}
+          onBack={handleBack}
         />
       )}
     </SafeAreaView>

@@ -1,4 +1,5 @@
-import { type AppRole, roleLabels } from '@pkg/domain';
+import { roleLabels } from '@pkg/domain';
+import type { AppRole } from '@pkg/schema';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';

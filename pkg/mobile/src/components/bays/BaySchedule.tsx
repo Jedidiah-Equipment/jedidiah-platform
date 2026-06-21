@@ -193,13 +193,13 @@ function ActiveHero({
   const heroSub = [active.productSerialNumber, active.customerCompanyName].filter(Boolean).join(' · ');
 
   return (
+    // Border is a constant 2px (faded when unselected, full-strength when selected) so the
+    // selected border reads thicker without changing the box geometry — i.e. no content shift.
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className={`rounded-2xl border py-4 pr-4 active:opacity-90 ${
-        selected
-          ? 'border-status-in-progress/40 border-l-4 border-l-status-in-progress bg-status-in-progress/10 pl-[13px]'
-          : 'border-status-in-progress/50 bg-surface pl-4'
+      className={`rounded-2xl border-2 p-4 active:opacity-90 ${
+        selected ? 'border-status-in-progress bg-status-in-progress/10' : 'border-status-in-progress/40 bg-surface'
       }`}
       onPress={onSelect}
     >
@@ -335,15 +335,17 @@ function TimelineItem({
         }`}
         style={{ left: -24 }}
       />
+      {/* Border is a constant 2px (faded when unselected, full-strength when selected) so the
+          selected border reads thicker without changing the box geometry — i.e. no content shift. */}
       <View
-        className={`rounded-2xl border py-3.5 pr-3.5 active:opacity-90 ${
+        className={`rounded-2xl border-2 p-3.5 active:opacity-90 ${
           selected
             ? slot.isNext
-              ? 'border-status-next/40 border-l-4 border-l-status-next bg-status-next/10 pl-[11px]'
-              : 'border-muted-foreground/60 border-l-4 border-l-muted-foreground bg-muted pl-[11px]'
+              ? 'border-status-next bg-status-next/10'
+              : 'border-muted-foreground bg-muted'
             : slot.isNext
-              ? 'border-status-next/50 bg-surface pl-3.5'
-              : 'border-border bg-surface pl-3.5'
+              ? 'border-status-next/40 bg-surface'
+              : 'border-border bg-surface'
         }`}
       >
         <Text className={`text-[10px] tracking-wide ${labelClass}`} weight="semibold">

@@ -1,15 +1,13 @@
 import type { BayOperator } from '@pkg/schema';
-import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { ProfileMenu } from '@/components/ProfileMenu';
+import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { Text } from '@/components/ui/text';
-import { useAuthSession } from '@/lib/auth-session';
 
 /**
  * Shared top bar for a Bay's schedule: a back button, the Bay operator's avatar,
- * the Bay name over a 'Bay schedule' caption, and the overflow {@link ProfileMenu}
+ * the Bay name over a 'Bay schedule' caption, and the overflow {@link ProfileMenuButton}
  * (theme toggle + Log out). Mirrors the Bay List's {@link ProfileHeader} layout.
  */
 export function ScheduleHeader({
@@ -24,10 +22,6 @@ export function ScheduleHeader({
   operator: BayOperator | null;
   onBack: () => void;
 }) {
-  const session = useAuthSession();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const user = { name: session.user.name, email: session.user.email, image: session.user.image };
-
   return (
     <View className="flex-row items-center gap-2 border-b border-border bg-background px-4 py-3">
       <Pressable
@@ -54,19 +48,7 @@ export function ScheduleHeader({
         <Text className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">{subtitle}</Text>
       </View>
 
-      <Pressable
-        accessibilityLabel="Open menu"
-        accessibilityRole="button"
-        className="h-10 w-10 items-center justify-center gap-1 rounded-xl border border-border bg-surface active:bg-muted"
-        onPress={() => setMenuOpen(true)}
-      >
-        {/* Vertical three-dot overflow glyph drawn from View dots (theme-aware fill). */}
-        {[0, 1, 2].map((dot) => (
-          <View className="h-1 w-1 rounded-full bg-muted-foreground" key={dot} />
-        ))}
-      </Pressable>
-
-      {menuOpen ? <ProfileMenu onClose={() => setMenuOpen(false)} user={user} /> : null}
+      <ProfileMenuButton />
     </View>
   );
 }

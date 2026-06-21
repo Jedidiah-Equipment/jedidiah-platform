@@ -1,11 +1,12 @@
 import { formatDate } from '@pkg/domain';
 import type { BayOperator } from '@pkg/schema';
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
+import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import {
   type BayScheduleActiveJob,
@@ -394,22 +395,4 @@ function ScheduleSkeleton() {
       ))}
     </View>
   );
-}
-
-function Pulse({ className }: { className: string }) {
-  const opacity = useRef(new Animated.Value(0.4)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.8, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-
-    return () => loop.stop();
-  }, [opacity]);
-
-  return <Animated.View className={`bg-muted ${className}`} style={{ opacity }} />;
 }

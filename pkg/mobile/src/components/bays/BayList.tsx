@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Animated, type LayoutChangeEvent, View } from 'react-native';
+import { type ReactNode, useState } from 'react';
+import { type LayoutChangeEvent, View } from 'react-native';
 
+import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import { useBayList } from '@/lib/use-bay-list';
 
@@ -130,22 +131,4 @@ function SkeletonCard() {
       </View>
     </View>
   );
-}
-
-function Pulse({ className }: { className: string }) {
-  const opacity = useRef(new Animated.Value(0.4)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.8, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-
-    return () => loop.stop();
-  }, [opacity]);
-
-  return <Animated.View className={`bg-muted ${className}`} style={{ opacity }} />;
 }

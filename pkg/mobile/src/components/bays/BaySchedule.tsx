@@ -332,7 +332,7 @@ function TimelineItem({
               {slot.productName}
             </Text>
           </View>
-          <Icon color="muted-foreground" icon={IconChevronRight} size={18} />
+          <Icon className="text-muted-foreground" icon={IconChevronRight} size={18} />
         </View>
       </View>
     </Pressable>

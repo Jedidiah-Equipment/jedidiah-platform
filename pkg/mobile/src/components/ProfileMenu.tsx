@@ -67,7 +67,7 @@ export function ProfileMenu({ user, onClose }: { user: ProfileUser; onClose: () 
                   void signOut();
                 }}
               >
-                <Icon color="danger" icon={IconLogout} size={18} />
+                <Icon className="text-danger" icon={IconLogout} size={18} />
                 <Text className="text-sm text-danger" weight="semibold">
                   Log out
                 </Text>

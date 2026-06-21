@@ -23,7 +23,7 @@ export function ProfileMenuButton() {
         className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
         onPress={() => setMenuOpen(true)}
       >
-        <Icon color="muted-foreground" icon={IconDots} size={20} />
+        <Icon className="text-muted-foreground" icon={IconDots} size={20} />
       </Pressable>
 
       {menuOpen ? <ProfileMenu onClose={() => setMenuOpen(false)} user={user} /> : null}

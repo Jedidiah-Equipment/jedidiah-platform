@@ -141,7 +141,7 @@ function DocumentRow({ document, onOpen }: { document: JobDocument; onOpen: () =
       onPress={onOpen}
     >
       <View className="h-10 w-10 items-center justify-center rounded-lg border border-primary/25 bg-primary/10">
-        <Icon color="primary" icon={IconDownload} size={18} />
+        <Icon className="text-primary" icon={IconDownload} size={18} />
       </View>
       <View className="min-w-0 flex-1">
         <Text className="text-sm text-surface-foreground" weight="semibold" numberOfLines={1}>
@@ -149,7 +149,7 @@ function DocumentRow({ document, onOpen }: { document: JobDocument; onOpen: () =
         </Text>
         <Text className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">{meta}</Text>
       </View>
-      <Icon color="muted-foreground" icon={IconChevronRight} size={18} />
+      <Icon className="text-muted-foreground" icon={IconChevronRight} size={18} />
     </Pressable>
   );
 }

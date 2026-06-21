@@ -1,34 +1,41 @@
 import type { Icon as TablerIcon } from '@tabler/icons-react-native';
-
-import { useColorMode } from '@/theme/use-color-mode';
+import { cssInterop } from 'nativewind';
 
 /**
- * Renders a Tabler icon (same set as web's `@tabler/icons-react`) with a themed
- * stroke colour. Tabler RN icons draw with `currentColor`, but react-native-svg
- * can't resolve that from a NativeWind class, so the colour is passed explicitly
- * here — the values mirror the semantic tokens in `global.css` per scheme.
+ * Renders a Tabler icon (same set as web's `@tabler/icons-react`) themed by a
+ * NativeWind class. Tabler RN icons paint from their `color` prop, so `cssInterop`
+ * moves the class's resolved colour onto that prop — keeping icons on the semantic
+ * tokens in `global.css` (and dark mode) without branching on the scheme in JS
+ * (see pkg/mobile/AGENTS.md).
  */
-const ICON_COLORS = {
-  foreground: { light: '#0a0a0a', dark: '#fafafa' },
-  'muted-foreground': { light: '#737373', dark: '#7a7a82' },
-  primary: { light: '#f8d300', dark: '#fff000' },
-  danger: { light: '#f87171', dark: '#f87171' },
-} as const;
 
-export type IconColor = keyof typeof ICON_COLORS;
+// `cssInterop` returns a wrapped component; register each Tabler icon once.
+const styledIcons = new WeakMap<TablerIcon, TablerIcon>();
+
+function styledIcon(icon: TablerIcon): TablerIcon {
+  const cached = styledIcons.get(icon);
+  if (cached) return cached;
+
+  const styled = cssInterop(icon, {
+    className: { target: 'style', nativeStyleToProp: { color: true } },
+  }) as unknown as TablerIcon;
+  styledIcons.set(icon, styled);
+  return styled;
+}
 
 export function Icon({
-  icon: TablerComponent,
+  icon,
+  className = 'text-foreground',
   size = 20,
-  color = 'foreground',
   strokeWidth = 2,
 }: {
   icon: TablerIcon;
+  /** NativeWind text colour class, e.g. `text-muted-foreground`. */
+  className?: string;
   size?: number;
-  color?: IconColor;
   strokeWidth?: number;
 }) {
-  const { resolved } = useColorMode();
+  const Styled = styledIcon(icon);
 
-  return <TablerComponent color={ICON_COLORS[color][resolved]} size={size} strokeWidth={strokeWidth} />;
+  return <Styled className={className} size={size} strokeWidth={strokeWidth} />;
 }

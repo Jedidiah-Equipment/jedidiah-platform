@@ -158,6 +158,10 @@ function isUuid(jobId: string | null): jobId is UUID {
   return jobId !== null;
 }
 
+// Cap the IN list per query so a long-lived board with many historical slotted Jobs never binds past
+// PostgreSQL's parameter limit (~65k) — which would fail the whole `listBays` read, not just enlarge it.
+const JOB_SUMMARY_LOOKUP_BATCH_SIZE = 1000;
+
 async function listJobSummariesByIds({
   db,
   jobIds,
@@ -165,51 +169,56 @@ async function listJobSummariesByIds({
   db: Db | DatabaseTransaction;
   jobIds: readonly UUID[];
 }): Promise<JobSummary[]> {
-  if (jobIds.length === 0) {
-    return [];
-  }
+  const summaries: JobSummary[] = [];
 
-  const rows = await db.query.jobs.findMany({
-    columns: {
-      createdAt: true,
-      id: true,
-      code: true,
-      productId: true,
-      productSerialNumber: true,
-      productSerialPrefix: true,
-      productSerialSequence: true,
-      productSerialYear: true,
-      quoteId: true,
-      updatedAt: true,
-      vinNumber: true,
-    },
-    where: inArray(jobs.id, jobIds),
-    with: {
-      product: {
-        columns: {
-          modelCode: true,
-          name: true,
-          thumbnailDataUrl: true,
-        },
+  for (let start = 0; start < jobIds.length; start += JOB_SUMMARY_LOOKUP_BATCH_SIZE) {
+    const batch = jobIds.slice(start, start + JOB_SUMMARY_LOOKUP_BATCH_SIZE);
+    const rows = await db.query.jobs.findMany({
+      columns: {
+        createdAt: true,
+        id: true,
+        code: true,
+        productId: true,
+        productSerialNumber: true,
+        productSerialPrefix: true,
+        productSerialSequence: true,
+        productSerialYear: true,
+        quoteId: true,
+        updatedAt: true,
+        vinNumber: true,
       },
-      quote: {
-        columns: {
-          code: true,
+      where: inArray(jobs.id, batch),
+      with: {
+        product: {
+          columns: {
+            modelCode: true,
+            name: true,
+            thumbnailDataUrl: true,
+          },
         },
-        with: {
-          customer: {
-            columns: {
-              companyName: true,
-              id: true,
-              thumbnailDataUrl: true,
+        quote: {
+          columns: {
+            code: true,
+          },
+          with: {
+            customer: {
+              columns: {
+                companyName: true,
+                id: true,
+                thumbnailDataUrl: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    });
 
-  return rows.map(mapJobSummary);
+    for (const row of rows) {
+      summaries.push(mapJobSummary(row));
+    }
+  }
+
+  return summaries;
 }
 
 export async function listBayQueueAvailability({

@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
-import { refreshSession, useSession } from '@/lib/auth';
+import { useSession } from '@/lib/auth';
 import { AuthSessionProvider } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 
@@ -18,15 +18,18 @@ import { useIsOffline } from '@/lib/connectivity';
  * to /login, and re-resolve the session the moment connectivity returns.
  */
 export default function ProtectedLayout() {
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending, refetch } = useSession();
   const isOffline = useIsOffline();
   const wasOffline = useRef(isOffline);
 
   useEffect(() => {
     const reconnected = wasOffline.current && !isOffline;
     wasOffline.current = isOffline;
-    if (reconnected) void refreshSession();
-  }, [isOffline]);
+    // Refetch through the hook (not a standalone authClient.getSession(), which doesn't
+    // update useSession's store) so a recovered session actually re-renders this gate
+    // instead of leaving `session` null and redirecting a valid operator to /login.
+    if (reconnected) void refetch();
+  }, [isOffline, refetch]);
 
   // Still resolving, or offline with no resolved session: hold (behind the OfflineScreen
   // cover) rather than redirecting on a session fetch we can't trust until we reconnect.

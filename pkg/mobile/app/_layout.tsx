@@ -4,7 +4,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { OfflineBanner } from '@/components/OfflineNotice';
+import { OfflineScreen } from '@/components/OfflineScreen';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { ApiProvider } from '@/lib/ApiProvider';
 import { ConnectivityProvider } from '@/lib/connectivity';
@@ -34,7 +34,8 @@ export default function RootLayout() {
             <ApiProvider>
               {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
               <Stack screenOptions={{ headerShown: false }} />
-              <OfflineBanner />
+              {/* Single offline gate: covers the whole app while offline, so no screen checks connectivity. */}
+              <OfflineScreen />
               {/* `auto` tracks the OS bar style; the #518 override hook can drive this later. */}
               <StatusBar style="auto" />
             </ApiProvider>

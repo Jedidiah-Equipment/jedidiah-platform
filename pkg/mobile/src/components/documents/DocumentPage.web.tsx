@@ -1,10 +1,8 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { View } from 'react-native';
 
-import { OfflineState, RetryLoadState } from '@/components/OfflineNotice';
 import { Text } from '@/components/ui/text';
 import { authedFetch } from '@/lib/authed-fetch';
-import { useConnectivity } from '@/lib/connectivity';
 
 import type { DocumentPageHandle, DocumentPageProps } from './DocumentPage';
 
@@ -20,16 +18,8 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
   { path, filename, onMetrics, onZoom },
   ref,
 ) {
-  const connectivity = useConnectivity();
-  const wasOffline = useRef(connectivity.isOffline);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  const [retryKey, setRetryKey] = useState(0);
-  const request = useMemo(() => ({ path, retryKey }), [path, retryKey]);
-  const retry = useCallback(() => {
-    setFailed(false);
-    void connectivity.refresh().finally(() => setRetryKey((key) => key + 1));
-  }, [connectivity]);
 
   useImperativeHandle(ref, () => ({ zoomIn: () => {}, zoomOut: () => {} }));
 
@@ -39,7 +29,7 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
     setFailed(false);
     setBlobUrl(null);
 
-    authedFetch(request.path)
+    authedFetch(path)
       .then(async (response) => {
         if (!response.ok) {
           throw new Error(String(response.status));
@@ -59,33 +49,17 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
       cancelled = true;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
-  }, [request, onMetrics, onZoom]);
-
-  useEffect(() => {
-    const reconnected = wasOffline.current && !connectivity.isOffline;
-    wasOffline.current = connectivity.isOffline;
-
-    if (reconnected && failed && !blobUrl) {
-      setRetryKey((key) => key + 1);
-    }
-  }, [blobUrl, connectivity.isOffline, failed]);
-
-  if (connectivity.isOffline && !blobUrl) {
-    return (
-      <Centered>
-        <OfflineState onRetry={retry} />
-      </Centered>
-    );
-  }
+  }, [path, onMetrics, onZoom]);
 
   if (failed) {
     return (
       <Centered>
-        <RetryLoadState
-          message="Go back and try again, or check your connection."
-          onRetry={retry}
-          title="Couldn’t open this document."
-        />
+        <Text className="text-sm text-foreground" weight="semibold">
+          Couldn’t open this document.
+        </Text>
+        <Text className="mt-1 text-center text-xs text-muted-foreground">
+          Go back and try again, or check your connection.
+        </Text>
       </Centered>
     );
   }

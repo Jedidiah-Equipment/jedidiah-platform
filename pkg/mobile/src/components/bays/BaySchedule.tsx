@@ -6,7 +6,6 @@ import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
-import { OfflineState, RetryLoadState } from '@/components/OfflineNotice';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
@@ -42,19 +41,10 @@ export function BaySchedule({ bayId, onBack }: { bayId: string; onBack: () => vo
   if (state.status === 'error') {
     return (
       <Frame onBack={onBack} operator={null} title="Bay schedule">
-        <RetryLoadState
-          message="Try again, or check your connection."
-          onRetry={state.retry}
-          title="Couldn’t load this bay’s schedule."
-        />
-      </Frame>
-    );
-  }
-
-  if (state.status === 'offline') {
-    return (
-      <Frame onBack={onBack} operator={null} title="Bay schedule">
-        <OfflineState onRetry={state.retry} />
+        <Text className="text-sm text-danger" weight="semibold">
+          Couldn’t load this bay’s schedule.
+        </Text>
+        <Text className="mt-1 text-sm text-muted-foreground">Go back and try again, or check your connection.</Text>
       </Frame>
     );
   }
@@ -156,29 +146,19 @@ function ListPane({
   const { active, upcoming } = state;
   const isEmpty = !active && upcoming.length === 0;
 
-  const offlineCopy = state.isOffline ? (
-    <Text className="mb-3 text-xs text-muted-foreground">Offline. Showing the last loaded schedule.</Text>
-  ) : null;
-
   if (isEmpty) {
     return (
-      <>
-        {offlineCopy}
-        <View className="rounded-2xl border border-dashed border-border px-4 py-10">
-          <Text className="text-center text-sm text-foreground" weight="semibold">
-            No jobs scheduled
-          </Text>
-          <Text className="mt-1 text-center text-sm text-muted-foreground">
-            This bay has no active or upcoming work.
-          </Text>
-        </View>
-      </>
+      <View className="rounded-2xl border border-dashed border-border px-4 py-10">
+        <Text className="text-center text-sm text-foreground" weight="semibold">
+          No jobs scheduled
+        </Text>
+        <Text className="mt-1 text-center text-sm text-muted-foreground">This bay has no active or upcoming work.</Text>
+      </View>
     );
   }
 
   return (
     <>
-      {offlineCopy}
       <SectionLabel className="mb-2.5">ACTIVE NOW</SectionLabel>
       {active ? (
         <ActiveHero active={active} onSelect={() => onSelect(active.slotId)} selected={selectedId === active.slotId} />
@@ -216,8 +196,10 @@ function ActiveHero({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className={`rounded-2xl border bg-surface p-4 active:opacity-90 ${
-        selected ? 'border-primary' : 'border-status-in-progress/50'
+      className={`rounded-2xl border p-4 active:opacity-90 ${
+        selected
+          ? 'border-status-in-progress/40 border-l-4 border-l-status-in-progress bg-status-in-progress/10'
+          : 'border-status-in-progress/50 bg-surface'
       }`}
       onPress={onSelect}
     >
@@ -318,7 +300,13 @@ function TimelineItem({
     `${formatDate(slot.startDate, 'd MMM')} – ${formatDate(slot.lastWorkDay, 'd MMM')} · ${slot.workDays} work ${
       slot.workDays === 1 ? 'day' : 'days'
     }`.toUpperCase();
-  const labelClass = selected ? 'text-primary' : slot.isNext ? 'text-status-next-soft' : 'text-muted-foreground';
+  const labelClass = selected
+    ? slot.isNext
+      ? 'text-status-next'
+      : 'text-status-scheduled'
+    : slot.isNext
+      ? 'text-status-next-soft'
+      : 'text-muted-foreground';
 
   return (
     <Pressable
@@ -327,16 +315,28 @@ function TimelineItem({
       className="relative mb-3"
       onPress={onSelect}
     >
-      {/* Node on the spine — solid for 'next', muted otherwise. */}
+      {/* Node on the spine — filled in the accent colour when selected, solid ring for 'next', muted otherwise. */}
       <View
-        className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 bg-background ${
-          slot.isNext ? 'border-status-next' : 'border-muted-foreground'
+        className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 ${
+          selected
+            ? slot.isNext
+              ? 'border-status-next bg-status-next'
+              : 'border-status-scheduled bg-status-scheduled'
+            : slot.isNext
+              ? 'border-status-next bg-background'
+              : 'border-muted-foreground bg-background'
         }`}
         style={{ left: -24 }}
       />
       <View
-        className={`rounded-2xl border bg-surface p-3.5 active:opacity-90 ${
-          selected ? 'border-primary' : slot.isNext ? 'border-status-next/50' : 'border-border'
+        className={`rounded-2xl border p-3.5 active:opacity-90 ${
+          selected
+            ? slot.isNext
+              ? 'border-status-next/40 border-l-4 border-l-status-next bg-status-next/10'
+              : 'border-status-scheduled/40 border-l-4 border-l-status-scheduled bg-status-scheduled/10'
+            : slot.isNext
+              ? 'border-status-next/50 bg-surface'
+              : 'border-border bg-surface'
         }`}
       >
         <Text className={`text-[10px] tracking-wide ${labelClass}`} weight="semibold">

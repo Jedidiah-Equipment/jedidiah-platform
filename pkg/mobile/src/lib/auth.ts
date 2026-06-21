@@ -5,7 +5,6 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 import { apiBaseUrl } from './api-base-url';
-import { assertOnline, isOfflineError, offlineActionMessage } from './connectivity';
 
 const authBaseUrl = `${apiBaseUrl}/api/auth`;
 const invalidCredentialsMessage = 'Email or password is incorrect.';
@@ -50,7 +49,6 @@ export type AuthSession = NonNullable<ReturnType<typeof useSession>['data']>;
 
 export async function signIn(input: { email: string; password: string }): Promise<SignInResult> {
   try {
-    assertOnline();
     const result = await authClient.signIn.email(input);
 
     if (result.error) {
@@ -60,8 +58,8 @@ export async function signIn(input: { email: string; password: string }): Promis
     // Refresh the session store so the root auth guard redirects away from /login.
     await authClient.getSession();
     return { ok: true };
-  } catch (error) {
-    return { ok: false, message: isOfflineError(error) ? offlineActionMessage : networkFailureMessage };
+  } catch {
+    return { ok: false, message: networkFailureMessage };
   }
 }
 

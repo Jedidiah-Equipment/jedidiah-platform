@@ -8,9 +8,8 @@ import {
 } from '@pkg/domain';
 import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 
-import { useConnectivity } from './connectivity';
 import { useTRPC } from './trpc';
 
 /** The in-progress Work Slot a Bay is running today, projected for the ACTIVE NOW hero. */
@@ -64,16 +63,13 @@ export type BayScheduleUpcomingSlot = {
 };
 
 export type BayScheduleState =
-  | { status: 'error'; error: unknown; retry: () => void }
-  | { status: 'offline'; retry: () => void }
+  | { status: 'error'; error: unknown }
   | { status: 'pending' }
   | { status: 'not-found' }
   | {
       status: 'ready';
       bay: { id: string; name: string; operator: BayOperator | null };
       active: BayScheduleActiveJob | null;
-      isOffline: boolean;
-      retry: () => void;
       upcoming: BayScheduleUpcomingSlot[];
       /** Detail-pane projection for every selectable Slot, keyed by Slot id. */
       slotsById: Record<string, BaySlotDetail>;
@@ -99,30 +95,13 @@ const allJobsInput = {
  */
 export function useBaySchedule(bayId: string): BayScheduleState {
   const trpc = useTRPC();
-  const connectivity = useConnectivity();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
-  const retry = useCallback(() => {
-    void connectivity.refresh();
-    void baysQuery.refetch();
-    void jobsQuery.refetch();
-  }, [baysQuery, connectivity, jobsQuery]);
 
   return useMemo<BayScheduleState>(() => {
-    const hasAllData = Boolean(baysQuery.data && jobsQuery.data);
-
-    if (!hasAllData) {
-      if (connectivity.isOffline || baysQuery.fetchStatus === 'paused' || jobsQuery.fetchStatus === 'paused') {
-        return { status: 'offline', retry };
-      }
-      if (baysQuery.error) return { status: 'error', error: baysQuery.error, retry };
-      if (jobsQuery.error) return { status: 'error', error: jobsQuery.error, retry };
-      if (baysQuery.isPending || jobsQuery.isPending) return { status: 'pending' };
-    }
-
-    if (!baysQuery.data || !jobsQuery.data) {
-      return { status: 'pending' };
-    }
+    if (baysQuery.error) return { status: 'error', error: baysQuery.error };
+    if (jobsQuery.error) return { status: 'error', error: jobsQuery.error };
+    if (baysQuery.isPending || jobsQuery.isPending) return { status: 'pending' };
 
     const { items: bays, offDays, today } = baysQuery.data;
     const bay = bays.find((candidate) => candidate.id === bayId && candidate.disabledAt === null);
@@ -208,8 +187,6 @@ export function useBaySchedule(bayId: string): BayScheduleState {
       status: 'ready',
       bay: { id: bay.id, name: bay.name, operator: bay.currentOperator },
       active,
-      isOffline: connectivity.isOffline,
-      retry,
       upcoming,
       slotsById,
       today,
@@ -218,13 +195,9 @@ export function useBaySchedule(bayId: string): BayScheduleState {
     bayId,
     baysQuery.data,
     baysQuery.error,
-    baysQuery.fetchStatus,
     baysQuery.isPending,
-    connectivity.isOffline,
     jobsQuery.data,
     jobsQuery.error,
-    jobsQuery.fetchStatus,
     jobsQuery.isPending,
-    retry,
   ]);
 }

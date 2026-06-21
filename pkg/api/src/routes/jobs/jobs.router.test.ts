@@ -1017,6 +1017,31 @@ describe('jobs.bookSlot', () => {
     );
   });
 
+  test('listBays returns product/customer detail only for Jobs on the board', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const scheduledJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const idleQuote = await createAcceptedQuote(context.db, context.product.id);
+    const unscheduledJob = await caller.jobs.create({ quoteId: idleQuote.id });
+
+    await caller.jobs.bookSlot({
+      bayId: '00000000-0000-4000-8000-000000000b02',
+      durationDays: 2,
+      jobId: scheduledJob.id,
+    });
+
+    const schedule = await caller.jobs.listBays();
+
+    expect(schedule.jobs).toEqual([
+      expect.objectContaining({
+        id: scheduledJob.id,
+        productName: 'Job Test Product',
+        customerCompanyName: 'Job Test Customer',
+        quoteCode: scheduledJob.quoteCode,
+      }),
+    ]);
+    expect(schedule.jobs.map((job) => job.id)).not.toContain(unscheduledJob.id);
+  });
+
   test('bookSlot auto-inserts a projected idle gap when the bay queue ended in the past', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({

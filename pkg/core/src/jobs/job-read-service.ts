@@ -141,12 +141,75 @@ function toBaySchedules(rows: BayScheduleRow[], offDays: readonly OffDay[]): Bay
 export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promise<BayListResult> {
   const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBayScheduleRows(db)]);
 
+  // Resolve product/customer detail only for the Jobs actually on the board (one summary per Job, even
+  // when it spans several Bays), so clients label Slots without an unpaged full-Jobs read.
+  const scheduledJobIds = [...new Set(rows.flatMap((row) => row.slots.map((slot) => slot.jobId)).filter(isUuid))];
+
   return {
     items: toBaySchedules(rows, offDays),
+    jobs: await listJobSummariesByIds({ db, jobIds: scheduledJobIds }),
     offDays,
     // Plant "today" enters here, at the server boundary — the client never derives it.
     today: getPlantDateNow(),
   };
+}
+
+function isUuid(jobId: string | null): jobId is UUID {
+  return jobId !== null;
+}
+
+async function listJobSummariesByIds({
+  db,
+  jobIds,
+}: {
+  db: Db | DatabaseTransaction;
+  jobIds: readonly UUID[];
+}): Promise<JobSummary[]> {
+  if (jobIds.length === 0) {
+    return [];
+  }
+
+  const rows = await db.query.jobs.findMany({
+    columns: {
+      createdAt: true,
+      id: true,
+      code: true,
+      productId: true,
+      productSerialNumber: true,
+      productSerialPrefix: true,
+      productSerialSequence: true,
+      productSerialYear: true,
+      quoteId: true,
+      updatedAt: true,
+      vinNumber: true,
+    },
+    where: inArray(jobs.id, jobIds),
+    with: {
+      product: {
+        columns: {
+          modelCode: true,
+          name: true,
+          thumbnailDataUrl: true,
+        },
+      },
+      quote: {
+        columns: {
+          code: true,
+        },
+        with: {
+          customer: {
+            columns: {
+              companyName: true,
+              id: true,
+              thumbnailDataUrl: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return rows.map(mapJobSummary);
 }
 
 export async function listBayQueueAvailability({

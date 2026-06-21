@@ -7,7 +7,7 @@ Expo managed React Native app for Jedidiah Ops.
 - `pnpm --filter @pkg/mobile dev` starts Expo for the dev client on port `7003`.
 - `pnpm --filter @pkg/mobile android` builds and launches the Android dev client.
 - `pnpm --filter @pkg/mobile ios` builds and launches the iOS dev client.
-- `pnpm --filter @pkg/mobile check` runs TypeScript for the mobile package.
+- `pnpm --filter @pkg/mobile typecheck` runs TypeScript for the mobile package.
 
 ## Notes
 

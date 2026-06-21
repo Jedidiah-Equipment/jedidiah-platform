@@ -1,10 +1,10 @@
+import { BAY_RUNWAY_CAP_WORKING_DAYS, computeBayRunway } from '@pkg/domain';
 import type React from 'react';
 import { Bar, BarChart, LabelList, XAxis, YAxis } from 'recharts';
 
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 
-import { BAY_RUNWAY_CAP_WORKING_DAYS, computeBayRunway } from '../bay-schedule-derivations.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 

@@ -1,10 +1,3 @@
-import {
-  addDateOnlyDays,
-  bayWorkingCalendars,
-  endOfDateOnlyWeek,
-  isWorkingDay,
-  type WorkingCalendar,
-} from '@pkg/domain';
 import type {
   BaySchedule,
   DateOnlyIso,
@@ -15,14 +8,30 @@ import type {
   UUID,
 } from '@pkg/schema';
 
-// Pure derivations over the cached Bay list query shared by the shop-floor dashboard
-// widgets (and the deliveries at-risk join). Disabled Bays are excluded everywhere;
-// callers filter through listEnabledBays before deriving.
+import { addDateOnlyDays, endOfDateOnlyWeek } from '../formatting/date-only.js';
+import { bayWorkingCalendars } from './bay-schedule-projection.js';
+import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';
+import { countWorkingDaysBetween, isWorkingDay, type WorkingCalendar } from './working-calendar.js';
+
+// Pure derivations over a projected Bay schedule (`jobs.listBays`), shared by the web shop-floor
+// dashboard widgets and the mobile Bay screens. Disabled Bays are excluded everywhere; callers filter
+// through listEnabledBays before deriving.
 
 export const BAY_RUNWAY_CAP_WORKING_DAYS = 30;
 
 export function listEnabledBays(bays: readonly BaySchedule[]): BaySchedule[] {
   return bays.filter((bay) => bay.disabledAt === null);
+}
+
+const bayDepartmentOrder = new Map(JOB_DEPARTMENT_PIPELINE.map((step, index) => [step.department, index] as const));
+
+/** Bay ordering shared across viewers: department pipeline order, then Bay name within a department. */
+export function byBayDepartmentPipeline(left: BaySchedule, right: BaySchedule): number {
+  const order =
+    (bayDepartmentOrder.get(left.department) ?? Number.MAX_SAFE_INTEGER) -
+    (bayDepartmentOrder.get(right.department) ?? Number.MAX_SAFE_INTEGER);
+
+  return order !== 0 ? order : left.name.localeCompare(right.name);
 }
 
 export type BayTodayOccupancy =
@@ -55,6 +64,65 @@ export function getBayTodayOccupancy({
   }
 
   return slot.kind === 'work' ? { kind: 'work', slot } : { kind: 'idle', slot };
+}
+
+/**
+ * The Work Slot a Bay is actively running today, or null when the Bay is idle, free, or off. Projected
+ * Work Slots span closure days, so this gates on the Bay's working calendar (mirrors the off-day branch
+ * of {@link getBayTodayOccupancy}) — a Slot covering an off-day today is not active.
+ */
+export function findActiveWorkSlot({
+  bay,
+  today,
+  workingCalendar,
+}: {
+  bay: BaySchedule;
+  today: DateOnlyIso;
+  workingCalendar: WorkingCalendar;
+}): ProjectedWorkJobSlot | null {
+  const occupancy = getBayTodayOccupancy({ bay, today, workingCalendar });
+
+  return occupancy.kind === 'work' ? occupancy.slot : null;
+}
+
+/**
+ * Future Work Slots in queue order — everything still ahead of today (half-open `endDate > today`),
+ * optionally excluding the active Slot. A Slot covering today that the off-day gate excluded from
+ * "active" still appears here, so it is never silently dropped.
+ */
+export function listUpcomingWorkSlots({
+  bay,
+  excludeSlotId,
+  today,
+}: {
+  bay: BaySchedule;
+  excludeSlotId?: string;
+  today: DateOnlyIso;
+}): ProjectedWorkJobSlot[] {
+  return bay.slots.filter(
+    (slot): slot is ProjectedWorkJobSlot => slot.kind === 'work' && slot.id !== excludeSlotId && slot.endDate > today,
+  );
+}
+
+export type WorkSlotSpan = {
+  /** Inclusive last working day — the day before the half-open `endDate`. */
+  lastWorkDay: DateOnlyIso;
+  /** Working days the Slot spans, excluding closures. */
+  workDays: number;
+};
+
+/** A projected Slot's calendar span: its inclusive last working day and total working days. */
+export function summarizeWorkSlotSpan({
+  slot,
+  workingCalendar,
+}: {
+  slot: ProjectedJobSlot;
+  workingCalendar: WorkingCalendar;
+}): WorkSlotSpan {
+  return {
+    lastWorkDay: addDateOnlyDays(slot.endDate, -1),
+    workDays: countWorkingDaysBetween(slot.startDate, slot.endDate, workingCalendar),
+  };
 }
 
 export function getOffDayLabel(offDays: readonly OffDay[], date: DateOnlyIso): string | null {

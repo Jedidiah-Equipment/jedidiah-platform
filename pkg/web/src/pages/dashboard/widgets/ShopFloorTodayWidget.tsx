@@ -1,32 +1,29 @@
-import { departmentLabels, formatDate, JOB_DEPARTMENT_PIPELINE, type WorkingCalendar } from '@pkg/domain';
+import {
+  type BayTodayOccupancy,
+  departmentLabels,
+  formatDate,
+  getBayTodayOccupancy,
+  getOffDayLabel,
+  JOB_DEPARTMENT_PIPELINE,
+  type WorkingCalendar,
+} from '@pkg/domain';
 import type { BaySchedule, DateOnlyIso, JobSummary, OffDay } from '@pkg/schema';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-import { useMemo } from 'react';
 
 import { BayOperatorIndicator } from '@/components/bays/index.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { useTRPC } from '@/lib/trpc.js';
 
-import { allJobsInput } from '../../jobs/components/all-jobs-input.js';
 import { getSlotLabel } from '../../jobs/components/bay-schedule-summary.js';
-import { type BayTodayOccupancy, getBayTodayOccupancy, getOffDayLabel } from '../bay-schedule-derivations.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
 const SHOP_FLOOR_SKELETON_ROWS = ['first', 'second', 'third', 'fourth'] as const;
 
 export const ShopFloorTodayWidget: React.FC = () => {
-  const trpc = useTRPC();
   const bays = useShopFloorBays();
-  const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
-  const jobsById = useMemo(
-    () => new Map((jobsQuery.data?.items ?? []).map((job) => [job.id, job])),
-    [jobsQuery.data?.items],
-  );
 
   if (bays.status === 'error') {
     return <DashboardWidgetError error={bays.error} fallbackMessage="Unable to load the shop floor." />;
@@ -36,7 +33,7 @@ export const ShopFloorTodayWidget: React.FC = () => {
     return <ShopFloorTodayWidgetSkeleton />;
   }
 
-  const { enabledBays, offDays, today, workingCalendarsByBayId } = bays;
+  const { enabledBays, jobsById, offDays, today, workingCalendarsByBayId } = bays;
 
   if (enabledBays.length === 0) {
     return <DashboardWidgetEmpty>No enabled Bays.</DashboardWidgetEmpty>;

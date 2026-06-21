@@ -1,11 +1,10 @@
 import { formatBytes, formatDate, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDocument } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { DocumentViewer } from '@/components/documents/DocumentViewer';
 import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
@@ -64,7 +63,7 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
       </View>
 
       {/* DOCUMENTS — opens the in-app viewer (#521); read-only here. */}
-      <Documents context={`${slot.jobCode} · ${slot.productName}`} jobId={slot.jobId} />
+      <Documents jobId={slot.jobId} />
 
       {/* SLOT grid. */}
       <Card title="SLOT">
@@ -98,11 +97,11 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
   );
 }
 
-function Documents({ jobId, context }: { jobId: string; context: string }) {
+function Documents({ jobId }: { jobId: string }) {
+  const router = useRouter();
   const trpc = useTRPC();
   const query = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const documents = query.data?.documents ?? [];
-  const [openDocument, setOpenDocument] = useState<JobDocument | null>(null);
 
   return (
     <Card title={query.isSuccess ? `DOCUMENTS · ${documents.length}` : 'DOCUMENTS'}>
@@ -114,13 +113,15 @@ function Documents({ jobId, context }: { jobId: string; context: string }) {
         <Text className="py-2 text-sm text-muted-foreground">No documents for this job.</Text>
       ) : (
         documents.map((document) => (
-          <DocumentRow document={document} key={document.id} onOpen={() => setOpenDocument(document)} />
+          <DocumentRow
+            document={document}
+            key={document.id}
+            onOpen={() =>
+              router.push({ pathname: '/documents/[documentId]', params: { documentId: document.id, jobId } })
+            }
+          />
         ))
       )}
-
-      {openDocument ? (
-        <DocumentViewer context={context} document={openDocument} jobId={jobId} onClose={() => setOpenDocument(null)} />
-      ) : null}
     </Card>
   );
 }

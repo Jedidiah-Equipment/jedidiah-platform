@@ -1,10 +1,12 @@
 import { formatBytes, formatDate, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDocument } from '@pkg/schema';
+import { IconChevronRight, IconDownload } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useTRPC } from '@/lib/trpc';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
@@ -53,7 +55,9 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
           <Text className="text-base text-surface-foreground" weight="bold" numberOfLines={1}>
             {slot.productName}
           </Text>
-          <Text className="mt-0.5 text-xs text-muted-foreground">{slot.productSerialNumber}</Text>
+          <Text className="mt-0.5 text-xs text-muted-foreground" mono>
+            {slot.productSerialNumber}
+          </Text>
           {slot.customerCompanyName ? (
             <Text className="mt-1 text-sm text-surface-foreground" numberOfLines={1}>
               {slot.customerCompanyName}
@@ -83,12 +87,12 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
       <Card title="JOB">
         <Grid>
           <Row>
-            <Field label="JOB CODE" value={slot.jobCode} />
-            <Field label="QUOTE CODE" value={slot.quoteCode} />
+            <Field label="JOB CODE" mono value={slot.jobCode} />
+            <Field label="QUOTE CODE" mono value={slot.quoteCode} />
           </Row>
           <Row>
             <Field label="PRODUCT" value={slot.productName} />
-            <Field label="PRODUCT SERIAL" value={slot.productSerialNumber} />
+            <Field label="PRODUCT SERIAL" mono value={slot.productSerialNumber} />
           </Row>
           <Field label="CUSTOMER" value={slot.customerCompanyName ?? '—'} />
         </Grid>
@@ -137,9 +141,7 @@ function DocumentRow({ document, onOpen }: { document: JobDocument; onOpen: () =
       onPress={onOpen}
     >
       <View className="h-10 w-10 items-center justify-center rounded-lg border border-primary/25 bg-primary/10">
-        <Text className="text-base text-primary" weight="bold">
-          ⤓
-        </Text>
+        <Icon color="primary" icon={IconDownload} size={18} />
       </View>
       <View className="min-w-0 flex-1">
         <Text className="text-sm text-surface-foreground" weight="semibold" numberOfLines={1}>
@@ -147,7 +149,7 @@ function DocumentRow({ document, onOpen }: { document: JobDocument; onOpen: () =
         </Text>
         <Text className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">{meta}</Text>
       </View>
-      <Text className="text-base text-muted-foreground">›</Text>
+      <Icon color="muted-foreground" icon={IconChevronRight} size={18} />
     </Pressable>
   );
 }
@@ -172,11 +174,11 @@ function Row({ children }: { children: React.ReactNode }) {
   return <View className="flex-row gap-4">{children}</View>;
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <View className="min-w-0 flex-1">
       <Text className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Text>
-      <Text className="text-sm text-surface-foreground" weight="semibold">
+      <Text className="text-sm text-surface-foreground" mono={mono} weight="semibold">
         {value}
       </Text>
     </View>

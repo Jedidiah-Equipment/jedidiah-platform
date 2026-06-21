@@ -1,7 +1,9 @@
+import { IconLogout } from '@tabler/icons-react-native';
 import { Modal, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { signOut } from '@/lib/auth';
 import type { ColorModePreference } from '@/theme/ColorModeProvider';
@@ -65,9 +67,7 @@ export function ProfileMenu({ user, onClose }: { user: ProfileUser; onClose: () 
                   void signOut();
                 }}
               >
-                <Text className="text-base text-danger" weight="semibold">
-                  ⏻
-                </Text>
+                <Icon color="danger" icon={IconLogout} size={18} />
                 <Text className="text-sm text-danger" weight="semibold">
                   Log out
                 </Text>

@@ -1,8 +1,10 @@
 import type { BayOperator } from '@pkg/schema';
+import { IconChevronLeft } from '@tabler/icons-react-native';
 import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { ProfileMenuButton } from '@/components/ProfileMenuButton';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
 /**
@@ -30,9 +32,7 @@ export function ScheduleHeader({
         className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
         onPress={onBack}
       >
-        <Text className="text-lg leading-5 text-foreground" weight="semibold">
-          ‹
-        </Text>
+        <Icon icon={IconChevronLeft} size={20} />
       </Pressable>
 
       <Avatar

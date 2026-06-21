@@ -194,6 +194,9 @@ importers:
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))
+      '@tabler/icons-react-native':
+        specifier: 3.44.0
+        version: 3.44.0(react-native-svg@15.15.5(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@tanstack/react-query':
         specifier: 5.101.0
         version: 5.101.0(react@19.2.3)
@@ -3670,6 +3673,12 @@ packages:
 
   '@swc/helpers@0.5.23':
     resolution: {integrity: sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==}
+
+  '@tabler/icons-react-native@3.44.0':
+    resolution: {integrity: sha512-/Ppp68bpl9vQQsI/c+YiDC9dnLq4JUo0YI5qP72OQMC1WmCaRzdYn3CU79q01M2L3MfXO9a8WctWN8ay1Odkow==}
+    peerDependencies:
+      react: '>= 16.5.1'
+      react-native-svg: '>= 13.0.0'
 
   '@tabler/icons-react@3.44.0':
     resolution: {integrity: sha512-8+rvzBbVm/1Z3sG3x7GUNAaxIKxwgz8xaMhRs23nrCnMTKRFAhEC+82zAIFeAA0seXdrAGX5HFCkaLpGK2rVHg==}
@@ -12417,6 +12426,12 @@ snapshots:
   '@swc/helpers@0.5.23':
     dependencies:
       tslib: 2.8.1
+
+  '@tabler/icons-react-native@3.44.0(react-native-svg@15.15.5(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@tabler/icons': 3.44.0
+      react: 19.2.3
+      react-native-svg: 15.15.5(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3)
 
   '@tabler/icons-react@3.44.0(react@19.2.7)':
     dependencies:

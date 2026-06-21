@@ -196,10 +196,10 @@ function ActiveHero({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className={`rounded-2xl border p-4 active:opacity-90 ${
+      className={`rounded-2xl border py-4 pr-4 active:opacity-90 ${
         selected
-          ? 'border-status-in-progress/40 border-l-4 border-l-status-in-progress bg-status-in-progress/10'
-          : 'border-status-in-progress/50 bg-surface'
+          ? 'border-status-in-progress/40 border-l-4 border-l-status-in-progress bg-status-in-progress/10 pl-[13px]'
+          : 'border-status-in-progress/50 bg-surface pl-4'
       }`}
       onPress={onSelect}
     >
@@ -329,14 +329,14 @@ function TimelineItem({
         style={{ left: -24 }}
       />
       <View
-        className={`rounded-2xl border p-3.5 active:opacity-90 ${
+        className={`rounded-2xl border py-3.5 pr-3.5 active:opacity-90 ${
           selected
             ? slot.isNext
-              ? 'border-status-next/40 border-l-4 border-l-status-next bg-status-next/10'
-              : 'border-muted-foreground/40 border-l-4 border-l-muted-foreground bg-muted'
+              ? 'border-status-next/40 border-l-4 border-l-status-next bg-status-next/10 pl-[11px]'
+              : 'border-muted-foreground/60 border-l-4 border-l-muted-foreground bg-muted pl-[11px]'
             : slot.isNext
-              ? 'border-status-next/50 bg-surface'
-              : 'border-border bg-surface'
+              ? 'border-status-next/50 bg-surface pl-3.5'
+              : 'border-border bg-surface pl-3.5'
         }`}
       >
         <Text className={`text-[10px] tracking-wide ${labelClass}`} weight="semibold">

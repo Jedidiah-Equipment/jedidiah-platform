@@ -1,9 +1,9 @@
 import { Redirect, Stack } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
-import { refreshSession, useSession } from '@/lib/auth';
+import { useSession } from '@/lib/auth';
 import { AuthSessionProvider } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
 
@@ -15,22 +15,40 @@ import { useIsOffline } from '@/lib/connectivity';
  *
  * Offline-aware so the app-wide OfflineScreen cover can't hide a wrong auth decision:
  * `useSession`'s fetch fails offline, so we hold rather than bounce a signed-in operator
- * to /login, and re-resolve the session the moment connectivity returns.
+ * to /login, and keep holding through the reconnect until the session refetch resolves.
  */
 export default function ProtectedLayout() {
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending, refetch } = useSession();
   const isOffline = useIsOffline();
-  const wasOffline = useRef(isOffline);
+
+  // Track offline→online transitions in render-safe state (not a ref-in-effect) so the hold
+  // below engages on the very render that would otherwise fall through to <Redirect>: an effect
+  // runs only after Redirect has mounted and Expo Router has already navigated to /login.
+  const [prevOffline, setPrevOffline] = useState(isOffline);
+  const [reconnecting, setReconnecting] = useState(false);
+  if (prevOffline !== isOffline) {
+    setPrevOffline(isOffline);
+    // Back online without a resolved session: hold and refetch instead of bouncing to /login.
+    if (prevOffline && !isOffline && !session) setReconnecting(true);
+  }
 
   useEffect(() => {
-    const reconnected = wasOffline.current && !isOffline;
-    wasOffline.current = isOffline;
-    if (reconnected) void refreshSession();
-  }, [isOffline]);
+    if (!reconnecting) return;
+    let active = true;
+    // Refetch through the hook (not a standalone authClient.getSession(), which doesn't update
+    // useSession's store) so the recovered session re-renders this gate; release the hold only
+    // once it settles — whether it restored a session or confirmed there genuinely is none.
+    void refetch().finally(() => {
+      if (active) setReconnecting(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [reconnecting, refetch]);
 
-  // Still resolving, or offline with no resolved session: hold (behind the OfflineScreen
-  // cover) rather than redirecting on a session fetch we can't trust until we reconnect.
-  if (isPending || (!session && isOffline)) {
+  // Still resolving, offline with no resolved session, or reconnecting after coming back online:
+  // hold (behind the OfflineScreen cover) rather than redirecting on a session we can't yet trust.
+  if (isPending || reconnecting || (!session && isOffline)) {
     return (
       <SafeAreaView className="flex-1 bg-background">
         <View className="flex-1 justify-center px-7 py-10">

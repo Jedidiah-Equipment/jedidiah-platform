@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
-import { getColumnLabel } from '../utils.js';
+import { getColumnLabel, hasActiveFilterValue } from '../utils.js';
 
 type DataTableHeaderProps<TData> = {
   debounceMs: number;
@@ -375,22 +375,6 @@ function getFilterValueFromDate(date: Date): string {
   const day = `${date.getDate()}`.padStart(2, '0');
 
   return `${year}-${month}-${day}`;
-}
-
-function hasActiveFilterValue(value: unknown): boolean {
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-
-  if (typeof value === 'string') {
-    return value.length > 0;
-  }
-
-  if (value && typeof value === 'object') {
-    return Object.values(value).some((item) => typeof item === 'string' && item.length > 0);
-  }
-
-  return false;
 }
 
 function isRightAligned<TData>(header: Header<TData, unknown>): boolean {

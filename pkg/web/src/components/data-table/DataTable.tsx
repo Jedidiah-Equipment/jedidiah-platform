@@ -7,7 +7,7 @@ import { DataTableHeader } from './components/DataTableHeader.js';
 import { DataTablePagination } from './components/DataTablePagination.js';
 import { DataTableSearch } from './components/DataTableSearch.js';
 import { DataTableSkeletonRows } from './components/DataTableSkeletonRows.js';
-import { getCellClassName } from './utils.js';
+import { getCellClassName, hasActiveFilterValue } from './utils.js';
 
 declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -56,6 +56,11 @@ export function DataTable<TData>({
   totalLabel = (value) => `${value} ${value === 1 ? 'row' : 'rows'}`,
 }: DataTableProps<TData>) {
   const visibleColumns = table.getVisibleLeafColumns();
+  const tableState = table.getState();
+  const hasActiveFilters =
+    hasActiveFilterValue(tableState.globalFilter) ||
+    tableState.columnFilters.some((filter) => hasActiveFilterValue(filter.value));
+  const showToolbar = !hideGlobalFilter || rightSection || hasActiveFilters;
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,11 +71,12 @@ export function DataTable<TData>({
       ) : null}
 
       <div className="overflow-hidden rounded-lg border border-border/70 bg-card text-card-foreground">
-        {!hideGlobalFilter || rightSection ? (
+        {showToolbar ? (
           <DataTableSearch
             debounceMs={filterDebounceMs}
             placeholder={globalFilterPlaceholder}
             rightSection={rightSection}
+            showResetFilters={hasActiveFilters}
             showSearch={!hideGlobalFilter}
             table={table}
           />

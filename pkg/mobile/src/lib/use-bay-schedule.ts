@@ -135,27 +135,17 @@ export function useBaySchedule(bayId: string): BayScheduleState {
     // Everything still ahead: future Work Slots, plus a Slot covering today that the
     // off-day gate excluded from `active` (so it is never silently dropped).
     const upcomingSlots = workSlots.filter((slot) => slot.id !== activeSlot?.id && slot.endDate > today);
-    const upcoming = upcomingSlots.map<BayScheduleUpcomingSlot>((slot, index) => {
-      const job = jobsById.get(slot.jobId);
-
-      return {
-        slotId: slot.id,
-        jobCode: slot.jobCode,
-        productName: job?.productName ?? slot.jobCode,
-        productThumbnailDataUrl: job?.productThumbnailDataUrl ?? null,
-        startDate: slot.startDate,
-        lastWorkDay: addDateOnlyDays(slot.endDate, -1),
-        workDays: countWorkingDaysBetween(slot.startDate, slot.endDate, workingCalendar),
-        isNext: index === 0,
-      };
-    });
 
     // Detail-pane projection for the in-progress Slot and every upcoming one — the
     // Slots the list pane lets you select.
     const slotsById: Record<string, BaySlotDetail> = {};
-    const addSlotDetail = (slot: ProjectedWorkJobSlot, status: BaySlotDetail['status'], remaining: number | null) => {
+    const addSlotDetail = (
+      slot: ProjectedWorkJobSlot,
+      status: BaySlotDetail['status'],
+      remaining: number | null,
+    ): BaySlotDetail => {
       const job = jobsById.get(slot.jobId);
-      slotsById[slot.id] = {
+      const detail: BaySlotDetail = {
         jobId: slot.jobId,
         jobCode: slot.jobCode,
         quoteCode: job?.quoteCode ?? '—',
@@ -170,9 +160,28 @@ export function useBaySchedule(bayId: string): BayScheduleState {
         lastWorkDay: addDateOnlyDays(slot.endDate, -1),
         workDays: countWorkingDaysBetween(slot.startDate, slot.endDate, workingCalendar),
       };
+      slotsById[slot.id] = detail;
+
+      return detail;
     };
     if (activeSlot && active) addSlotDetail(activeSlot, 'in-progress', active.remainingWorkDays);
-    for (const slot of upcomingSlots) addSlotDetail(slot, 'scheduled', null);
+
+    // The UP NEXT list reuses each Slot's detail projection, so the working-day
+    // span is derived exactly once per Slot.
+    const upcoming = upcomingSlots.map<BayScheduleUpcomingSlot>((slot, index) => {
+      const detail = addSlotDetail(slot, 'scheduled', null);
+
+      return {
+        slotId: slot.id,
+        jobCode: detail.jobCode,
+        productName: detail.productName,
+        productThumbnailDataUrl: detail.productThumbnailDataUrl,
+        startDate: detail.startDate,
+        lastWorkDay: detail.lastWorkDay,
+        workDays: detail.workDays,
+        isNext: index === 0,
+      };
+    });
 
     return {
       status: 'ready',

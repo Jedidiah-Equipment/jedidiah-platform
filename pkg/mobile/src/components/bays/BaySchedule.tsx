@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { daysLeftColor, formatDate } from '@pkg/domain';
 import type { BayOperator } from '@pkg/schema';
 import { IconChevronRight } from '@tabler/icons-react-native';
 import { useState } from 'react';
@@ -232,7 +232,11 @@ function ActiveHero({
 
       <View className="flex-row items-end justify-between">
         <View className="flex-row items-baseline gap-2">
-          <Text className="text-5xl leading-[48px] text-foreground" weight="bold">
+          <Text
+            className="text-5xl leading-[48px]"
+            style={{ color: daysLeftColor(active.remainingWorkDays) }}
+            weight="bold"
+          >
             {active.remainingWorkDays}
           </Text>
           <Text className="text-sm text-muted-foreground" weight="semibold">
@@ -248,7 +252,10 @@ function ActiveHero({
       </View>
 
       <View className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-muted">
-        <View className="h-full rounded-full bg-status-in-progress" style={{ width: `${active.progressPercent}%` }} />
+        <View
+          className="h-full rounded-full"
+          style={{ backgroundColor: daysLeftColor(active.remainingWorkDays), width: `${active.progressPercent}%` }}
+        />
       </View>
       <View className="mt-2 flex-row justify-between">
         <Text className="text-[10px] text-muted-foreground">{formatDate(active.startDate, 'd MMM')}</Text>

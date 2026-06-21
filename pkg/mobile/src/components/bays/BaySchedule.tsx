@@ -303,7 +303,7 @@ function TimelineItem({
   const labelClass = selected
     ? slot.isNext
       ? 'text-status-next'
-      : 'text-status-scheduled'
+      : 'text-foreground'
     : slot.isNext
       ? 'text-status-next-soft'
       : 'text-muted-foreground';
@@ -321,7 +321,7 @@ function TimelineItem({
           selected
             ? slot.isNext
               ? 'border-status-next bg-status-next'
-              : 'border-status-scheduled bg-status-scheduled'
+              : 'border-muted-foreground bg-muted-foreground'
             : slot.isNext
               ? 'border-status-next bg-background'
               : 'border-muted-foreground bg-background'
@@ -333,7 +333,7 @@ function TimelineItem({
           selected
             ? slot.isNext
               ? 'border-status-next/40 border-l-4 border-l-status-next bg-status-next/10'
-              : 'border-status-scheduled/40 border-l-4 border-l-status-scheduled bg-status-scheduled/10'
+              : 'border-muted-foreground/40 border-l-4 border-l-muted-foreground bg-muted'
             : slot.isNext
               ? 'border-status-next/50 bg-surface'
               : 'border-border bg-surface'

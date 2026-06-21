@@ -1,35 +1,30 @@
 import type { JobDocument } from '@pkg/schema';
 import { useCallback, useRef, useState } from 'react';
-import { Modal, Pressable, useWindowDimensions, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, View } from 'react-native';
 
 import { DocumentPage, type DocumentPageHandle, type DocumentPageMetrics } from '@/components/documents/DocumentPage';
 import { Text } from '@/components/ui/text';
 import { jobDocumentDownloadPath } from '@/lib/authed-fetch';
 import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document-actions';
 
-/** At/above this width the reader floats as a centered card; below, it's full screen. */
-const WIDE_BREAKPOINT = 760;
-
 /**
- * In-app document reader (#521): the DOCUMENT VIEWER overlay from the mockup —
+ * In-app document reader (#521): the DOCUMENT VIEWER screen from the mockup —
  * header (back, name + context, download, share), the PDF page area, and a footer
- * with the page counter and zoom controls. Full screen on phones; a centered card
- * on tablets. The page itself is rendered by the platform {@link DocumentPage}.
+ * with the page counter and zoom controls. Full screen; rendered as its own route.
+ * The page itself is rendered by the platform {@link DocumentPage}.
  */
 export function DocumentViewer({
   jobId,
   document,
   context,
-  onClose,
+  onBack,
 }: {
   jobId: string;
   document: JobDocument;
   /** Sub-label under the title, e.g. `JOB-00009 · Silage Grain 18 36`. */
   context: string;
-  onClose: () => void;
+  onBack: () => void;
 }) {
-  const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
   const pageRef = useRef<DocumentPageHandle>(null);
 
   const [page, setPage] = useState(1);
@@ -65,11 +60,11 @@ export function DocumentViewer({
     }
   };
 
-  const reader = (
+  return (
     <View className="flex-1 overflow-hidden bg-background">
       {/* Header: back, name + context, download, share. */}
       <View className="flex-row items-center gap-2.5 border-b border-border bg-surface px-3.5 py-3">
-        <IconButton glyph="‹" label="Close document" onPress={onClose} />
+        <IconButton glyph="‹" label="Back" onPress={onBack} />
         <View className="min-w-0 flex-1">
           <Text className="text-[15px] text-foreground" numberOfLines={1} weight="semibold">
             {document.filename}
@@ -128,43 +123,6 @@ export function DocumentViewer({
         <IconButton disabled={atLast} glyph="›" label="Next page" onPress={goNext} />
       </View>
     </View>
-  );
-
-  return (
-    <Modal animationType={isWide ? 'fade' : 'slide'} onRequestClose={onClose} statusBarTranslucent transparent visible>
-      {isWide ? (
-        // Tablet: a centered reader card over a dimmed backdrop. Layout-critical
-        // sizing is inline (concrete values) rather than arbitrary NativeWind classes,
-        // which don't reliably compile inside a portaled Modal subtree.
-        <View
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: 24,
-          }}
-        >
-          <View
-            style={{
-              width: '100%',
-              maxWidth: 720,
-              height: '92%',
-              maxHeight: 960,
-              borderRadius: 16,
-              overflow: 'hidden',
-            }}
-          >
-            {reader}
-          </View>
-        </View>
-      ) : (
-        // Phone: full screen.
-        <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
-          {reader}
-        </SafeAreaView>
-      )}
-    </Modal>
   );
 }
 

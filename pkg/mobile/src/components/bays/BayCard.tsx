@@ -79,7 +79,10 @@ function ActiveBody({ active }: { active: NonNullable<BayListCard['active']> }) 
       </View>
 
       <View className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-        <View className="h-full rounded-full bg-status-in-progress" style={{ width: `${active.progressPercent}%` }} />
+        <View
+          className="h-full rounded-full"
+          style={{ backgroundColor: daysLeftColor(active.remainingWorkDays), width: `${active.progressPercent}%` }}
+        />
       </View>
     </>
   );

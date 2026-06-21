@@ -1,7 +1,7 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
-import { OfflineState } from '@/components/OfflineNotice';
+import { OfflineState, RetryLoadState } from '@/components/OfflineNotice';
 import { Text } from '@/components/ui/text';
 import { authedFetch } from '@/lib/authed-fetch';
 import { useConnectivity } from '@/lib/connectivity';
@@ -21,14 +21,14 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
   ref,
 ) {
   const connectivity = useConnectivity();
+  const wasOffline = useRef(connectivity.isOffline);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const request = useMemo(() => ({ path, retryKey }), [path, retryKey]);
   const retry = useCallback(() => {
-    void connectivity.refresh();
     setFailed(false);
-    setRetryKey((key) => key + 1);
+    void connectivity.refresh().finally(() => setRetryKey((key) => key + 1));
   }, [connectivity]);
 
   useImperativeHandle(ref, () => ({ zoomIn: () => {}, zoomOut: () => {} }));
@@ -61,6 +61,15 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
     };
   }, [request, onMetrics, onZoom]);
 
+  useEffect(() => {
+    const reconnected = wasOffline.current && !connectivity.isOffline;
+    wasOffline.current = connectivity.isOffline;
+
+    if (reconnected && failed && !blobUrl) {
+      setRetryKey((key) => key + 1);
+    }
+  }, [blobUrl, connectivity.isOffline, failed]);
+
   if (connectivity.isOffline && !blobUrl) {
     return (
       <Centered>
@@ -72,12 +81,11 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
   if (failed) {
     return (
       <Centered>
-        <Text className="text-sm text-foreground" weight="semibold">
-          Couldn’t open this document.
-        </Text>
-        <Text className="mt-1 text-center text-xs text-muted-foreground">
-          Go back and try again, or check your connection.
-        </Text>
+        <RetryLoadState
+          message="Go back and try again, or check your connection."
+          onRetry={retry}
+          title="Couldn’t open this document."
+        />
       </Centered>
     );
   }

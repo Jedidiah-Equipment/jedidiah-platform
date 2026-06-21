@@ -10,9 +10,13 @@ export const offlineMessage = 'Check your connection and try again.';
  * the single offline signal the whole app gates on. If Expo can't report connectivity we
  * stay online so the app is never wedged behind the offline gate.
  */
+function applyNetworkState(state: Network.NetworkState): void {
+  onlineManager.setOnline(!isNetworkStateOffline(state));
+}
+
 export async function refreshConnectivity(): Promise<void> {
   try {
-    onlineManager.setOnline(!isNetworkStateOffline(await Network.getNetworkStateAsync()));
+    applyNetworkState(await Network.getNetworkStateAsync());
   } catch {
     onlineManager.setOnline(true);
   }
@@ -26,9 +30,7 @@ export async function refreshConnectivity(): Promise<void> {
 export function ConnectivityProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refreshConnectivity();
-    const subscription = Network.addNetworkStateListener((state) => {
-      onlineManager.setOnline(!isNetworkStateOffline(state));
-    });
+    const subscription = Network.addNetworkStateListener(applyNetworkState);
 
     return () => subscription.remove();
   }, []);

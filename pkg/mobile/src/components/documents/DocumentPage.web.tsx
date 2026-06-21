@@ -1,8 +1,10 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
+import { OfflineState } from '@/components/OfflineNotice';
 import { Text } from '@/components/ui/text';
 import { authedFetch } from '@/lib/authed-fetch';
+import { useConnectivity } from '@/lib/connectivity';
 
 import type { DocumentPageHandle, DocumentPageProps } from './DocumentPage';
 
@@ -18,8 +20,16 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
   { path, filename, onMetrics, onZoom },
   ref,
 ) {
+  const connectivity = useConnectivity();
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  const request = useMemo(() => ({ path, retryKey }), [path, retryKey]);
+  const retry = useCallback(() => {
+    void connectivity.refresh();
+    setFailed(false);
+    setRetryKey((key) => key + 1);
+  }, [connectivity]);
 
   useImperativeHandle(ref, () => ({ zoomIn: () => {}, zoomOut: () => {} }));
 
@@ -29,7 +39,7 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
     setFailed(false);
     setBlobUrl(null);
 
-    authedFetch(path)
+    authedFetch(request.path)
       .then(async (response) => {
         if (!response.ok) {
           throw new Error(String(response.status));
@@ -49,7 +59,15 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
       cancelled = true;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
-  }, [path, onMetrics, onZoom]);
+  }, [request, onMetrics, onZoom]);
+
+  if (connectivity.isOffline && !blobUrl) {
+    return (
+      <Centered>
+        <OfflineState onRetry={retry} />
+      </Centered>
+    );
+  }
 
   if (failed) {
     return (

@@ -6,9 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '@/components/BrandHeader';
 import { Text } from '@/components/ui/text';
 import { signIn, useSession } from '@/lib/auth';
+import { offlineActionMessage, useConnectivity } from '@/lib/connectivity';
 
 export default function LoginScreen() {
   const { data: session } = useSession();
+  const { isOffline } = useConnectivity();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +28,11 @@ export default function LoginScreen() {
 
     if (!emailResult.success) {
       setError('Enter a valid email address.');
+      return;
+    }
+
+    if (isOffline) {
+      setError(offlineActionMessage);
       return;
     }
 

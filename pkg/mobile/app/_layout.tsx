@@ -4,9 +4,10 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
+import { OfflineBanner } from '@/components/OfflineNotice';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { ApiProvider } from '@/lib/ApiProvider';
+import { ConnectivityProvider } from '@/lib/connectivity';
 import { ColorModeProvider } from '@/theme/ColorModeProvider';
 
 // Geist app font (same faces as web's @pkg/domain/fonts/geist-sans; vendored here
@@ -29,12 +30,15 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ColorModeProvider>
         <GluestackUIProvider>
-          <ApiProvider>
-            {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
-            <Stack screenOptions={{ headerShown: false }} />
-            {/* `auto` tracks the OS bar style; the #518 override hook can drive this later. */}
-            <StatusBar style="auto" />
-          </ApiProvider>
+          <ConnectivityProvider>
+            <ApiProvider>
+              {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
+              <Stack screenOptions={{ headerShown: false }} />
+              <OfflineBanner />
+              {/* `auto` tracks the OS bar style; the #518 override hook can drive this later. */}
+              <StatusBar style="auto" />
+            </ApiProvider>
+          </ConnectivityProvider>
         </GluestackUIProvider>
       </ColorModeProvider>
     </SafeAreaProvider>

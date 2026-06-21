@@ -6,6 +6,7 @@ import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
+import { OfflineState, RetryLoadState } from '@/components/OfflineNotice';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
 import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
@@ -41,10 +42,19 @@ export function BaySchedule({ bayId, onBack }: { bayId: string; onBack: () => vo
   if (state.status === 'error') {
     return (
       <Frame onBack={onBack} operator={null} title="Bay schedule">
-        <Text className="text-sm text-danger" weight="semibold">
-          Couldn’t load this bay’s schedule.
-        </Text>
-        <Text className="mt-1 text-sm text-muted-foreground">Go back and try again, or check your connection.</Text>
+        <RetryLoadState
+          message="Try again, or check your connection."
+          onRetry={state.retry}
+          title="Couldn’t load this bay’s schedule."
+        />
+      </Frame>
+    );
+  }
+
+  if (state.status === 'offline') {
+    return (
+      <Frame onBack={onBack} operator={null} title="Bay schedule">
+        <OfflineState onRetry={state.retry} />
       </Frame>
     );
   }
@@ -146,19 +156,29 @@ function ListPane({
   const { active, upcoming } = state;
   const isEmpty = !active && upcoming.length === 0;
 
+  const offlineCopy = state.isOffline ? (
+    <Text className="mb-3 text-xs text-muted-foreground">Offline. Showing the last loaded schedule.</Text>
+  ) : null;
+
   if (isEmpty) {
     return (
-      <View className="rounded-2xl border border-dashed border-border px-4 py-10">
-        <Text className="text-center text-sm text-foreground" weight="semibold">
-          No jobs scheduled
-        </Text>
-        <Text className="mt-1 text-center text-sm text-muted-foreground">This bay has no active or upcoming work.</Text>
-      </View>
+      <>
+        {offlineCopy}
+        <View className="rounded-2xl border border-dashed border-border px-4 py-10">
+          <Text className="text-center text-sm text-foreground" weight="semibold">
+            No jobs scheduled
+          </Text>
+          <Text className="mt-1 text-center text-sm text-muted-foreground">
+            This bay has no active or upcoming work.
+          </Text>
+        </View>
+      </>
     );
   }
 
   return (
     <>
+      {offlineCopy}
       <SectionLabel className="mb-2.5">ACTIVE NOW</SectionLabel>
       {active ? (
         <ActiveHero active={active} onSelect={() => onSelect(active.slotId)} selected={selectedId === active.slotId} />

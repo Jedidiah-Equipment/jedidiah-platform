@@ -15,6 +15,7 @@ import { DocumentPage, type DocumentPageHandle, type DocumentPageMetrics } from 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { jobDocumentDownloadPath } from '@/lib/authed-fetch';
+import { getOfflineAwareErrorMessage } from '@/lib/connectivity';
 import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document-actions';
 
 /**
@@ -64,7 +65,9 @@ export function DocumentViewer({
     try {
       await act(action);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Something went wrong.');
+      setActionError(
+        getOfflineAwareErrorMessage(error, error instanceof Error ? error.message : 'Something went wrong.'),
+      );
     } finally {
       setBusy(null);
     }

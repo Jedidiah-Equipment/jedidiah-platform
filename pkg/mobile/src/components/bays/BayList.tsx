@@ -1,7 +1,8 @@
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { type LayoutChangeEvent, View } from 'react-native';
 
+import { OfflineState, RetryLoadState } from '@/components/OfflineNotice';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import { useBayList } from '@/lib/use-bay-list';
@@ -34,10 +35,19 @@ export function BayList() {
   if (state.status === 'error') {
     return (
       <Section count={null}>
-        <Text className="text-sm text-danger" weight="semibold">
-          Couldn’t load bays.
-        </Text>
-        <Text className="mt-1 text-sm text-muted-foreground">Pull to retry, or check your connection.</Text>
+        <RetryLoadState
+          message="Try again, or check your connection."
+          onRetry={state.retry}
+          title="Couldn’t load bays."
+        />
+      </Section>
+    );
+  }
+
+  if (state.status === 'offline') {
+    return (
+      <Section count={null}>
+        <OfflineState onRetry={state.retry} />
       </Section>
     );
   }
@@ -66,10 +76,16 @@ export function BayList() {
 
   return (
     <Section count={`${state.cards.length} ${state.cards.length === 1 ? 'bay' : 'bays'}`}>
+      {state.isOffline ? (
+        <Text className="mb-3 text-xs text-muted-foreground">Offline. Showing the last loaded bay list.</Text>
+      ) : null}
       <Grid width={width} onLayout={onLayout}>
         {state.cards.map((bay) => (
           <Cell key={bay.id} width={width}>
-            <BayCard bay={bay} onPress={() => router.push({ pathname: '/bays/[bayId]', params: { bayId: bay.id } })} />
+            <BayCard
+              bay={bay}
+              onPress={() => router.push({ pathname: '/bays/[bayId]', params: { bayId: bay.id } } as unknown as Href)}
+            />
           </Cell>
         ))}
       </Grid>

@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 import { apiBaseUrl } from './api-base-url';
 import { sessionCookieHeader } from './auth';
+import { assertOnline, isKnownOffline, OfflineError } from './connectivity';
 
 /**
  * Download and share actions for the in-app document viewer (#521). This is the
@@ -21,11 +22,20 @@ const PDF_MIME = 'application/pdf';
 
 // Fetch the document to the app cache with the session cookie, returning its file:// URI.
 async function downloadToCache({ path, filename }: DocumentAction): Promise<string> {
+  assertOnline();
   const cookie = sessionCookieHeader();
   const target = `${FileSystem.cacheDirectory}${encodeURIComponent(filename)}`;
-  const result = await FileSystem.downloadAsync(`${apiBaseUrl}${path}`, target, {
-    headers: cookie ? { Cookie: cookie } : undefined,
-  });
+  let result: FileSystem.FileSystemDownloadResult;
+  try {
+    result = await FileSystem.downloadAsync(`${apiBaseUrl}${path}`, target, {
+      headers: cookie ? { Cookie: cookie } : undefined,
+    });
+  } catch (error) {
+    if (isKnownOffline()) {
+      throw new OfflineError();
+    }
+    throw error;
+  }
 
   if (result.status !== 200) {
     throw new Error(`Couldn’t download the document (${result.status}).`);

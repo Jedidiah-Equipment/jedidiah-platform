@@ -1,13 +1,15 @@
 import { formatBytes, formatDate, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDocument } from '@pkg/schema';
-import { IconChevronRight, IconDownload } from '@tabler/icons-react-native';
+import { IconChevronRight, IconDownload, IconRefresh } from '@tabler/icons-react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { offlineMessage, offlineTitle, useConnectivity } from '@/lib/connectivity';
 import { useTRPC } from '@/lib/trpc';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
 
@@ -104,29 +106,72 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
 function Documents({ jobId }: { jobId: string }) {
   const router = useRouter();
   const trpc = useTRPC();
+  const connectivity = useConnectivity();
   const query = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const documents = query.data?.documents ?? [];
+  const retry = useCallback(() => {
+    void connectivity.refresh();
+    void query.refetch();
+  }, [connectivity, query]);
+  const isOfflineWithoutData = !query.data && (connectivity.isOffline || query.fetchStatus === 'paused');
 
   return (
     <Card title={query.isSuccess ? `DOCUMENTS · ${documents.length}` : 'DOCUMENTS'}>
-      {query.isPending ? (
+      {query.data ? (
+        <>
+          {connectivity.isOffline ? (
+            <Text className="pb-2 text-xs text-muted-foreground">Offline. Showing the last loaded documents.</Text>
+          ) : null}
+          {documents.length === 0 ? (
+            <Text className="py-2 text-sm text-muted-foreground">No documents for this job.</Text>
+          ) : (
+            documents.map((document) => (
+              <DocumentRow
+                document={document}
+                key={document.id}
+                onOpen={() =>
+                  router.push({
+                    pathname: '/documents/[documentId]',
+                    params: { documentId: document.id, jobId },
+                  } as unknown as Href)
+                }
+              />
+            ))
+          )}
+        </>
+      ) : isOfflineWithoutData ? (
+        <DocumentLoadMessage message={offlineMessage} onRetry={retry} title={offlineTitle} />
+      ) : query.isPending ? (
         <Text className="py-2 text-sm text-muted-foreground">Loading documents…</Text>
       ) : query.isError ? (
-        <Text className="py-2 text-sm text-danger">Couldn’t load documents.</Text>
-      ) : documents.length === 0 ? (
-        <Text className="py-2 text-sm text-muted-foreground">No documents for this job.</Text>
-      ) : (
-        documents.map((document) => (
-          <DocumentRow
-            document={document}
-            key={document.id}
-            onOpen={() =>
-              router.push({ pathname: '/documents/[documentId]', params: { documentId: document.id, jobId } })
-            }
-          />
-        ))
-      )}
+        <DocumentLoadMessage
+          message="Try again, or check your connection."
+          onRetry={retry}
+          title="Couldn’t load documents."
+        />
+      ) : null}
     </Card>
+  );
+}
+
+function DocumentLoadMessage({ title, message, onRetry }: { title: string; message: string; onRetry: () => void }) {
+  return (
+    <View className="py-2">
+      <Text className="text-sm text-danger" weight="semibold">
+        {title}
+      </Text>
+      <Text className="mt-1 text-sm text-muted-foreground">{message}</Text>
+      <Pressable
+        accessibilityRole="button"
+        className="mt-3 flex-row items-center gap-2 self-start rounded-xl border border-border bg-background px-3 py-2 active:bg-muted"
+        onPress={onRetry}
+      >
+        <Icon className="text-foreground" icon={IconRefresh} size={15} />
+        <Text className="text-xs text-foreground" weight="semibold">
+          Retry
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 

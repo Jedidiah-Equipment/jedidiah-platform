@@ -1,10 +1,12 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Pdf from 'react-native-pdf';
 
+import { OfflineState } from '@/components/OfflineNotice';
 import { Text } from '@/components/ui/text';
 import { apiBaseUrl } from '@/lib/api-base-url';
 import { sessionCookieHeader } from '@/lib/auth';
+import { useConnectivity } from '@/lib/connectivity';
 
 /** Current page (1-based) and total page count, surfaced to the viewer footer. */
 export type DocumentPageMetrics = { page: number; pageCount: number | null };
@@ -38,10 +40,16 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
   ref,
 ) {
   const cookie = sessionCookieHeader();
+  const connectivity = useConnectivity();
   const [scale, setScale] = useState(MIN_SCALE);
   const liveScale = useRef(MIN_SCALE);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const retry = useCallback(() => {
+    void connectivity.refresh();
+    setFailed(false);
+    setLoading(true);
+  }, [connectivity]);
 
   useImperativeHandle(ref, () => ({
     zoomIn: () => setScale(clampScale(liveScale.current + SCALE_STEP)),
@@ -52,6 +60,21 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
     () => ({ uri: `${apiBaseUrl}${path}`, headers: cookie ? { Cookie: cookie } : undefined, cache: true }),
     [path, cookie],
   );
+
+  useEffect(() => {
+    if (!connectivity.isOffline && failed) {
+      setFailed(false);
+      setLoading(true);
+    }
+  }, [connectivity.isOffline, failed]);
+
+  if (connectivity.isOffline && (loading || failed)) {
+    return (
+      <Centered>
+        <OfflineState onRetry={retry} />
+      </Centered>
+    );
+  }
 
   if (failed) {
     return (

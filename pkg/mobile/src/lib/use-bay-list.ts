@@ -7,8 +7,9 @@ import {
 } from '@pkg/domain';
 import type { BayOperator, BaySchedule, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
+import { useConnectivity } from './connectivity';
 import { useTRPC } from './trpc';
 
 /** A Bay card's active Job, joined from `jobs.list` and projected for days-left. */
@@ -27,9 +28,10 @@ export type BayListCard = {
 };
 
 export type BayListState =
-  | { status: 'error'; error: unknown }
+  | { status: 'error'; error: unknown; retry: () => void }
+  | { status: 'offline'; retry: () => void }
   | { status: 'pending' }
-  | { status: 'ready'; cards: BayListCard[]; today: DateOnlyIso };
+  | { status: 'ready'; cards: BayListCard[]; isOffline: boolean; retry: () => void; today: DateOnlyIso };
 
 const departmentOrder = new Map(JOB_DEPARTMENT_PIPELINE.map((step, index) => [step.department, index]));
 
@@ -60,13 +62,30 @@ const allJobsInput = {
  */
 export function useBayList(): BayListState {
   const trpc = useTRPC();
+  const connectivity = useConnectivity();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
+  const retry = useCallback(() => {
+    void connectivity.refresh();
+    void baysQuery.refetch();
+    void jobsQuery.refetch();
+  }, [baysQuery, connectivity, jobsQuery]);
 
   return useMemo<BayListState>(() => {
-    if (baysQuery.error) return { status: 'error', error: baysQuery.error };
-    if (jobsQuery.error) return { status: 'error', error: jobsQuery.error };
-    if (baysQuery.isPending || jobsQuery.isPending) return { status: 'pending' };
+    const hasAllData = Boolean(baysQuery.data && jobsQuery.data);
+
+    if (!hasAllData) {
+      if (connectivity.isOffline || baysQuery.fetchStatus === 'paused' || jobsQuery.fetchStatus === 'paused') {
+        return { status: 'offline', retry };
+      }
+      if (baysQuery.error) return { status: 'error', error: baysQuery.error, retry };
+      if (jobsQuery.error) return { status: 'error', error: jobsQuery.error, retry };
+      if (baysQuery.isPending || jobsQuery.isPending) return { status: 'pending' };
+    }
+
+    if (!baysQuery.data || !jobsQuery.data) {
+      return { status: 'pending' };
+    }
 
     const { items: bays, offDays, today } = baysQuery.data;
     const enabledBays = bays.filter((bay) => bay.disabledAt === null).sort(byDepartmentPipeline);
@@ -102,6 +121,17 @@ export function useBayList(): BayListState {
       };
     });
 
-    return { status: 'ready', cards, today };
-  }, [baysQuery.data, baysQuery.error, baysQuery.isPending, jobsQuery.data, jobsQuery.error, jobsQuery.isPending]);
+    return { status: 'ready', cards, isOffline: connectivity.isOffline, retry, today };
+  }, [
+    baysQuery.data,
+    baysQuery.error,
+    baysQuery.fetchStatus,
+    baysQuery.isPending,
+    connectivity.isOffline,
+    jobsQuery.data,
+    jobsQuery.error,
+    jobsQuery.fetchStatus,
+    jobsQuery.isPending,
+    retry,
+  ]);
 }

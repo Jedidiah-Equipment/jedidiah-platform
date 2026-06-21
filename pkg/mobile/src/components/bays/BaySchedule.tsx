@@ -196,8 +196,10 @@ function ActiveHero({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className={`rounded-2xl border bg-surface p-4 active:opacity-90 ${
-        selected ? 'border-primary' : 'border-status-in-progress/50'
+      className={`rounded-2xl border py-4 pr-4 active:opacity-90 ${
+        selected
+          ? 'border-status-in-progress/40 border-l-4 border-l-status-in-progress bg-status-in-progress/10 pl-[13px]'
+          : 'border-status-in-progress/50 bg-surface pl-4'
       }`}
       onPress={onSelect}
     >
@@ -305,7 +307,13 @@ function TimelineItem({
     `${formatDate(slot.startDate, 'd MMM')} – ${formatDate(slot.lastWorkDay, 'd MMM')} · ${slot.workDays} work ${
       slot.workDays === 1 ? 'day' : 'days'
     }`.toUpperCase();
-  const labelClass = selected ? 'text-primary' : slot.isNext ? 'text-status-next-soft' : 'text-muted-foreground';
+  const labelClass = selected
+    ? slot.isNext
+      ? 'text-status-next'
+      : 'text-foreground'
+    : slot.isNext
+      ? 'text-status-next-soft'
+      : 'text-muted-foreground';
 
   return (
     <Pressable
@@ -314,16 +322,28 @@ function TimelineItem({
       className="relative mb-3"
       onPress={onSelect}
     >
-      {/* Node on the spine — solid for 'next', muted otherwise. */}
+      {/* Node on the spine — filled in the accent colour when selected, solid ring for 'next', muted otherwise. */}
       <View
-        className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 bg-background ${
-          slot.isNext ? 'border-status-next' : 'border-muted-foreground'
+        className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 ${
+          selected
+            ? slot.isNext
+              ? 'border-status-next bg-status-next'
+              : 'border-muted-foreground bg-muted-foreground'
+            : slot.isNext
+              ? 'border-status-next bg-background'
+              : 'border-muted-foreground bg-background'
         }`}
         style={{ left: -24 }}
       />
       <View
-        className={`rounded-2xl border bg-surface p-3.5 active:opacity-90 ${
-          selected ? 'border-primary' : slot.isNext ? 'border-status-next/50' : 'border-border'
+        className={`rounded-2xl border py-3.5 pr-3.5 active:opacity-90 ${
+          selected
+            ? slot.isNext
+              ? 'border-status-next/40 border-l-4 border-l-status-next bg-status-next/10 pl-[11px]'
+              : 'border-muted-foreground/60 border-l-4 border-l-muted-foreground bg-muted pl-[11px]'
+            : slot.isNext
+              ? 'border-status-next/50 bg-surface pl-3.5'
+              : 'border-border bg-surface pl-3.5'
         }`}
       >
         <Text className={`text-[10px] tracking-wide ${labelClass}`} weight="semibold">

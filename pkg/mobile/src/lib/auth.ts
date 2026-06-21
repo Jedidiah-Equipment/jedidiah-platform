@@ -67,6 +67,19 @@ export async function signOut() {
   await authClient.signOut();
 }
 
+/**
+ * Force-refresh the cached session, updating `useSession` subscribers. Used by the protected
+ * gate on reconnect: `useSession`'s own fetch fails while offline and nothing else retriggers
+ * it, so without this a reconnect could strand a signed-in operator on /login.
+ */
+export async function refreshSession(): Promise<void> {
+  try {
+    await authClient.getSession();
+  } catch {
+    // Still unreachable; the session store keeps its last value and we retry on the next reconnect.
+  }
+}
+
 function getSignInErrorMessage(error: SignInError): string {
   if (error.code === 'ACCOUNT_SIGN_IN_DISABLED') {
     return error.message || signInDisabledMessage;

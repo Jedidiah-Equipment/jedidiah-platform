@@ -1,8 +1,18 @@
 import type { JobDocument } from '@pkg/schema';
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconDownload,
+  IconMinus,
+  IconPlus,
+  IconShare,
+  type Icon as TablerIcon,
+} from '@tabler/icons-react-native';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { DocumentPage, type DocumentPageHandle, type DocumentPageMetrics } from '@/components/documents/DocumentPage';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { jobDocumentDownloadPath } from '@/lib/authed-fetch';
 import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document-actions';
@@ -64,7 +74,7 @@ export function DocumentViewer({
     <View className="flex-1 overflow-hidden bg-background">
       {/* Header: back, name + context, download, share. */}
       <View className="flex-row items-center gap-2.5 border-b border-border bg-surface px-3.5 py-3">
-        <IconButton glyph="‹" label="Back" onPress={onBack} />
+        <IconButton icon={IconChevronLeft} label="Back" onPress={onBack} />
         <View className="min-w-0 flex-1">
           <Text className="text-[15px] text-foreground" numberOfLines={1} weight="semibold">
             {document.filename}
@@ -76,14 +86,14 @@ export function DocumentViewer({
         <IconButton
           busy={busy === 'save'}
           disabled={busy !== null}
-          glyph="⤓"
+          icon={IconDownload}
           label="Download document"
           onPress={run('save', saveDocument)}
         />
         <IconButton
           busy={busy === 'share'}
           disabled={busy !== null}
-          glyph="⤴"
+          icon={IconShare}
           label="Share document"
           onPress={run('share', shareDocument)}
         />
@@ -111,30 +121,30 @@ export function DocumentViewer({
 
       {/* Footer: page counter + zoom controls. */}
       <View className="flex-row items-center justify-between border-t border-border bg-surface px-4 py-3">
-        <IconButton disabled={atFirst} glyph="‹" label="Previous page" onPress={goPrev} />
+        <IconButton disabled={atFirst} icon={IconChevronLeft} label="Previous page" onPress={goPrev} />
         <Text className="text-xs text-foreground" weight="semibold">
           {page} / {pageCount ?? '–'}
         </Text>
         <View className="flex-row items-center gap-2">
-          <IconButton glyph="−" label="Zoom out" onPress={() => pageRef.current?.zoomOut()} small />
+          <IconButton icon={IconMinus} label="Zoom out" onPress={() => pageRef.current?.zoomOut()} small />
           <Text className="w-11 text-center text-[11px] text-muted-foreground">{zoomPercent}%</Text>
-          <IconButton glyph="+" label="Zoom in" onPress={() => pageRef.current?.zoomIn()} small />
+          <IconButton icon={IconPlus} label="Zoom in" onPress={() => pageRef.current?.zoomIn()} small />
         </View>
-        <IconButton disabled={atLast} glyph="›" label="Next page" onPress={goNext} />
+        <IconButton disabled={atLast} icon={IconChevronRight} label="Next page" onPress={goNext} />
       </View>
     </View>
   );
 }
 
 function IconButton({
-  glyph,
+  icon,
   label,
   onPress,
   disabled = false,
   busy = false,
   small = false,
 }: {
-  glyph: string;
+  icon: TablerIcon;
   label: string;
   onPress: () => void;
   disabled?: boolean;
@@ -154,9 +164,11 @@ function IconButton({
       disabled={disabled || busy}
       onPress={onPress}
     >
-      <Text className="text-base leading-5 text-foreground" weight="semibold">
-        {busy ? '…' : glyph}
-      </Text>
+      {busy ? (
+        <ActivityIndicator className="text-foreground" size="small" />
+      ) : (
+        <Icon icon={icon} size={small ? 18 : 20} />
+      )}
     </Pressable>
   );
 }

@@ -55,7 +55,7 @@ function ActiveBody({ active }: { active: NonNullable<BayListCard['active']> }) 
           <Text className="text-xs text-muted-foreground" numberOfLines={1}>
             {active.productName}
           </Text>
-          <Text className="mt-0.5 text-base text-surface-foreground" weight="bold">
+          <Text className="mt-0.5 text-base text-surface-foreground" mono weight="bold">
             {active.jobCode}
           </Text>
         </View>

@@ -21,6 +21,10 @@ module.exports = {
         sans: ['Geist'],
         'geist-semibold': ['Geist-SemiBold'],
         'geist-bold': ['Geist-Bold'],
+        // Codes use the system monospace (matching web's `font-mono`). The actual
+        // per-platform face is applied via the `mono` prop on the Text primitive,
+        // since RN can't resolve `monospace` on iOS; this keeps the class for parity.
+        mono: ['monospace'],
       },
       colors: {
         background: 'rgb(var(--color-background) / <alpha-value>)',

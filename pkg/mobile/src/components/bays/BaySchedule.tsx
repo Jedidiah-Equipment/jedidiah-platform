@@ -1,11 +1,13 @@
 import { formatDate } from '@pkg/domain';
 import type { BayOperator } from '@pkg/schema';
+import { IconChevronRight } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { SlotDetailPane } from '@/components/bays/SlotDetailPane';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
+import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import {
@@ -212,7 +214,7 @@ function ActiveHero({
               IN PROGRESS
             </Text>
           </View>
-          <Text className="mt-1 text-xl text-surface-foreground" weight="bold">
+          <Text className="mt-1 text-xl text-surface-foreground" mono weight="bold">
             {active.jobCode}
           </Text>
           <Text className="mt-0.5 text-sm text-surface-foreground" numberOfLines={1}>
@@ -323,14 +325,14 @@ function TimelineItem({
         <View className="mt-2.5 flex-row items-center gap-3">
           <Avatar className="h-10 w-10 rounded-lg" name={slot.productName} uri={slot.productThumbnailDataUrl} />
           <View className="min-w-0 flex-1">
-            <Text className="text-sm text-surface-foreground" weight="semibold">
+            <Text className="text-sm text-surface-foreground" mono weight="semibold">
               {slot.jobCode}
             </Text>
             <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
               {slot.productName}
             </Text>
           </View>
-          <Text className="text-base text-muted-foreground">›</Text>
+          <Icon className="text-muted-foreground" icon={IconChevronRight} size={18} />
         </View>
       </View>
     </Pressable>

@@ -7,6 +7,8 @@ Expo managed React Native app for Jedidiah Ops.
 - `pnpm --filter @pkg/mobile dev` starts Expo for the dev client on port `7003`.
 - `pnpm --filter @pkg/mobile android` builds and launches the Android dev client.
 - `pnpm --filter @pkg/mobile ios` builds and launches the iOS dev client.
+- `pnpm --filter @pkg/mobile eas-build-staging` starts an Android EAS staging build.
+- `pnpm --filter @pkg/mobile eas-submit-staging` submits the latest Android staging build.
 - `pnpm --filter @pkg/mobile typecheck` runs TypeScript for the mobile package.
 
 The `dev`, `android`, and `ios` scripts set `APP_VARIANT=staging`, which `app.config.ts` requires to
@@ -15,9 +17,10 @@ same var, e.g. `APP_VARIANT=staging pnpm --filter @pkg/mobile exec expo config`.
 
 ## Cloud builds & OTA updates (EAS)
 
-`eas.json` defines the reproducible cloud build/submit pipeline. `eas-cli` is pinned as a dev
-dependency and enforced via `cli.version`. All commands run from `pkg/mobile`. Builds are manual —
-there is no CI/build-on-push.
+`eas.json` defines the reproducible cloud build/submit pipeline. EAS CLI is not vendored in this
+package; use a global `eas` CLI (or run commands through `pnpm dlx eas-cli` if needed).
+`eas.json` enforces the minimum CLI version. All commands run from `pkg/mobile`. Builds are
+manual — there is no CI/build-on-push.
 
 - **Build profiles** — `staging` is active; `production` is dormant (the production API isn't live).
   Both set `distribution: store`, an Android `app-bundle`, the matching update `channel`, and inject
@@ -26,14 +29,15 @@ there is no CI/build-on-push.
   `versionCode`. The human-facing `version` string stays manual in `app.config.ts`.
 - **OTA updates** — `app.config.ts` sets `runtimeVersion: { policy: 'fingerprint' }`, so an OTA bundle
   only reaches a binary with a matching native fingerprint. Push JS-only fixes with
-  `eas update --branch staging` (the `staging` branch maps to the build profile's `staging` channel).
+  `eas update --branch staging` (the `staging` branch maps to the build profile's `staging`
+  channel).
 - **Signing** — Android uses the **EAS-managed keystore**, generated on the first `eas build`.
   **Back this keystore up off-Expo** (`eas credentials`) — losing it means you can no longer ship
   updates to the same Play listing.
 - **Play submission** — `submit.staging` targets the Play **internal** track. The Play service-account
-  JSON key is **never committed**: store it as an EAS file environment variable / secret named
-  `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` (`eas env:create --scope project --type file ...`), which the
-  `serviceAccountKeyPath: "$GOOGLE_SERVICE_ACCOUNT_KEY_PATH"` reference resolves at submit time.
+  JSON key is **never committed**: upload it to the Android application identifier's
+  **Google service account key for EAS Submit** service credential in Expo, then EAS Submit reuses
+  that stored credential.
 
 ### First-time owner setup
 
@@ -41,13 +45,14 @@ These steps run once against the Expo/EAS account (owner-side) and populate conf
 
 1. `eas init` — creates the EAS project and writes `extra.eas.projectId` into the Expo config.
 2. `eas update:configure` — writes the `updates.url` for the EAS Update endpoint.
-3. `eas env:create` — adds the `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` file secret for Play submission.
+3. `eas credentials --platform android` — uploads the Google Play service-account key under the
+   Android application identifier's EAS Submit service credentials.
 
 ### Ship a staging build
 
 ```sh
-APP_VARIANT=staging eas build --profile staging --platform android
-eas submit --profile staging --platform android
+pnpm --filter @pkg/mobile eas-build-staging
+pnpm --filter @pkg/mobile eas-submit-staging
 eas update --branch staging --message "…"   # JS-only OTA fix
 ```
 

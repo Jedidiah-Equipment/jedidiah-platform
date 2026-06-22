@@ -1,16 +1,20 @@
 # mobile (@pkg/mobile)
 
-- This package is an Expo managed React Native app using Expo Router and `expo-dev-client`.
-- App identity is a build variant: the dynamic `app.config.ts` overlays per-variant values (name, scheme, `android.package`, icon) from the pure `resolveAppVariant(env)` resolver in `src/lib/app-variant.ts`, selected by `APP_VARIANT` (`staging` is active; `production` is reserved/dormant). Keep `app.config.ts` a thin shell and the testable logic in the resolver (colocated `app-variant.test.ts`); an unknown/missing `APP_VARIANT` throws so a misconfigured build fails loudly. Expo loads the config via Node type-stripping, so the resolver import must keep its explicit `.ts` extension (`allowImportingTsExtensions` is set for tsc) — extensionless requires don't resolve `.ts`.
-- Keep routing file-based under `app/`. Protected screens live in the `app/(protected)/` group, whose `_layout.tsx` owns the loading/redirect-to-`/login` gate and exposes the session via `useAuthSession` (`src/lib/auth-session.tsx`); screens there assume a session rather than re-guarding. `login` is the public route. An unauthenticated launch lands on `/` and the gate redirects it to `/login`.
-- All non-route source lives under `src/` (the repo-wide convention); only `app/` and top-level config/assets sit outside it. Import source via the `@/*` alias (`@/components/...`, `@/lib/...`, `@/theme/...`), not deep relative paths. Do not reintroduce a top-level `components/` even though the gluestack CLI scaffolds there.
-- Style with NativeWind v4 + gluestack-ui v2 via `className`; do not branch on the color scheme in JS to pick colours. Use semantic classes (`bg-background`, `text-foreground`, `border-border`, `text-primary-foreground`, ...). For props that need a concrete colour (e.g. a spinner), use `cssInterop` to drive them from a class rather than reading a scheme.
-- Theme tokens live as CSS variables in `global.css` (`:root` light, `.dark:root` dark); `tailwind.config.js` maps semantic class names to them. Add or change colours there, then reference them by class. Keep the palette aligned with web `pkg/web/src/styles/globals.css`.
-- Color mode follows the OS via NativeWind, with a persisted light/dark/system override in `src/theme/ColorModeProvider.tsx` (AsyncStorage — works on native and web; `expo-secure-store` has no web support) that calls `setColorScheme`. `GluestackUIProvider` is mounted in `app/_layout.tsx`; screens get styles through the `import '../global.css'` there.
-- Placeholder colour uses NativeWind's `placeholder:text-*` variant; it moves `color` to `placeholderTextColor` at runtime, so the Tailwind IntelliSense "cssConflict" warning against a sibling `text-*` is a false positive (the repo sets that lint to `ignore`).
-- Keep `metro.config.js` thin: `expo/metro-config` wrapped once with `withNativeWind`. Expo owns pnpm workspace resolution in current SDKs. `babel.config.js` must keep `babel-preset-expo` (it auto-adds the Reanimated worklets plugin) — do not add that plugin manually.
-- Workspace imports are allowed, but prefer lightweight, framework-independent packages such as `@pkg/schema`. `@pkg/api` is a **type-only** dependency: import only `AppRouter` from it (`import type`) so the server package is erased at build time and never bundled by Metro.
-- Server data goes through the typed tRPC client in `src/lib/trpc.ts` (`useTRPC()` + React Query, mirroring web). It is wired app-wide by `ApiProvider` (`src/lib/ApiProvider.tsx`) in `app/_layout.tsx`. Native has no cookie jar, so the tRPC link and `authedFetch` (`src/lib/authed-fetch.ts`, for binary document downloads) both attach the better-auth session cookie via `getCookie()`. The API base URL is shared from `src/lib/api-base-url.ts`.
-- The in-app document viewer (`src/components/documents/`) renders job PDFs. Native uses `react-native-pdf` over the authed download URL (session cookie as a request header); web (`DocumentPage.web.tsx`, `document-actions.web.ts`) overrides it with an `authedFetch` blob in an `<iframe>` and browser download. This native-base + `.web`-override split is the convention for browser-incompatible native modules: the base `.ts(x)` is the native impl (so tsc and native both use it) and the `.web` sibling replaces it for web — don't reach for `Platform.OS` branching there. Modal layout that must be exact (centered tablet card / dimmed backdrop) uses inline `style`, not arbitrary NativeWind classes, which don't reliably compile inside a portaled `Modal`.
-- `@pkg/mobile` runs in the root `pnpm lint`, `pnpm typecheck`, and `pnpm test` (turbo) like every other package. `test` (Vitest) covers node-runnable unit tests only — keep React/native/Expo imports out of tested modules; extract pure helpers into their own file, e.g. `src/lib/bay-sort.ts`. `typecheck` is plain `tsc`; its `pretypecheck` builds `@pkg/api` so a standalone `pnpm --filter @pkg/mobile typecheck` works (under turbo the task's `^build` covers it). There is no `build` script — the Expo bundle and native launches stay outside `pnpm verify` and run via Expo commands. Biome skips the Expo-generated `.expo/` and `expo-env.d.ts`; Tailwind 3's `@tailwind` directives are allowed in `*.css` via a `biome.json` override.
+- Expo managed app using Expo Router and `expo-dev-client`.
+- `APP_VARIANT` is required. Variant identity lives in `src/lib/app-variant.ts`; keep
+  `app.config.ts` thin and keep its explicit `.ts` resolver import.
+- Routes live under `app/`; all other source lives under `src/` and imports through `@/*`.
+  Protected routes stay in `app/(protected)/`; `/login` is public.
+- Style with NativeWind v4 + gluestack-ui v2 semantic classes. Theme tokens live in `global.css`
+  and `tailwind.config.js`; use `cssInterop` for native props that need concrete colors.
+- Keep `metro.config.js` and `babel.config.js` thin. `babel-preset-expo` owns the Reanimated
+  worklets plugin; do not add that plugin manually.
+- Workspace imports should stay lightweight. `@pkg/api` is type-only: import only `AppRouter` with
+  `import type` so Metro never bundles the server.
+- API reads go through `useTRPC()` / React Query. Native requests attach the better-auth session
+  cookie via `getCookie()` in the tRPC link and `authedFetch`.
+- Document viewing uses native base files plus `.web` overrides. Native renders PDFs with
+  `react-native-pdf`; web fetches authed blobs for iframe/download behavior.
+- Root `pnpm verify` covers lint/typecheck/test. Expo release checks are explicit package commands
+  such as `pnpm --filter @pkg/mobile doctor` and the Android EAS scripts.
 - Native Android launch requires a local Android SDK and Java runtime.

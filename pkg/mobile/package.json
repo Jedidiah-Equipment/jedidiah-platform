@@ -16,8 +16,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ios": "APP_VARIANT=staging expo run:ios --port 7003",
     "ios:test-page": "APP_VARIANT=staging EXPO_PUBLIC_MOBILE_TEST_PAGE=1 expo run:ios --port 7003",
+    "ios:test-nativewind": "APP_VARIANT=staging EXPO_PUBLIC_MOBILE_TEST_PAGE=nativewind expo run:ios --port 7003",
+    "ios:test-providers": "APP_VARIANT=staging EXPO_PUBLIC_MOBILE_TEST_PAGE=providers expo run:ios --port 7003",
     "dev": "APP_VARIANT=staging expo start --dev-client --port 7003",
     "dev:test-page": "APP_VARIANT=staging EXPO_PUBLIC_MOBILE_TEST_PAGE=1 expo start --dev-client --port 7003 --clear",
+    "dev:test-nativewind": "APP_VARIANT=staging EXPO_PUBLIC_MOBILE_TEST_PAGE=nativewind expo start --dev-client --port 7003 --clear",
+    "dev:test-providers": "APP_VARIANT=staging EXPO_PUBLIC_MOBILE_TEST_PAGE=providers expo start --dev-client --port 7003 --clear",
     "test": "vitest run"
   },
   "dependencies": {

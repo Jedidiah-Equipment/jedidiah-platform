@@ -6,9 +6,13 @@ Expo managed React Native app for Jedidiah Ops.
 
 - `pnpm --filter @pkg/mobile dev` starts Expo for the dev client on port `7003`.
 - `pnpm --filter @pkg/mobile dev:test-page` starts Expo with a plain startup test screen.
+- `pnpm --filter @pkg/mobile dev:test-nativewind` starts Expo with a NativeWind startup test screen.
+- `pnpm --filter @pkg/mobile dev:test-providers` starts Expo with the provider stack test screen.
 - `pnpm --filter @pkg/mobile android` builds and launches the Android dev client.
 - `pnpm --filter @pkg/mobile ios` builds and launches the iOS dev client.
 - `pnpm --filter @pkg/mobile ios:test-page` builds and launches iOS with the startup test screen.
+- `pnpm --filter @pkg/mobile ios:test-nativewind` builds and launches iOS with the NativeWind test screen.
+- `pnpm --filter @pkg/mobile ios:test-providers` builds and launches iOS with the provider stack test screen.
 - `pnpm --filter @pkg/mobile doctor` runs Expo Doctor for the staging variant.
 - `pnpm --filter @pkg/mobile typecheck` runs TypeScript for the mobile package.
 - `pnpm --filter @pkg/mobile test` runs mobile unit tests.
@@ -47,3 +51,13 @@ pnpm --filter @pkg/mobile ios:test-page
 
 The test page bypasses router, auth, theme, and API providers. If it renders, the native shell and JS
 bundle are alive and the blank screen is inside the app provider/router stack.
+
+Next probes:
+
+```sh
+pnpm --filter @pkg/mobile ios:test-nativewind
+pnpm --filter @pkg/mobile ios:test-providers
+```
+
+`ios:test-nativewind` verifies className styling before providers. `ios:test-providers` mounts the
+app providers without the router/auth route tree and prints the resolved API base URL.

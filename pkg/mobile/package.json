@@ -8,10 +8,10 @@
     "pretypecheck": "turbo run build --filter=@pkg/api",
     "preios": "turbo run build --filter=@pkg/api",
     "predev": "turbo run build --filter=@pkg/api",
-    "android": "expo run:android --port 7003",
+    "android": "APP_VARIANT=staging expo run:android --port 7003",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "ios": "expo run:ios --port 7003",
-    "dev": "expo start --dev-client --port 7003",
+    "ios": "APP_VARIANT=staging expo run:ios --port 7003",
+    "dev": "APP_VARIANT=staging expo start --dev-client --port 7003",
     "test": "vitest run"
   },
   "dependencies": {

@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useColorScheme as useNativeWindColorScheme } from 'nativewind';
 import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Appearance, Platform, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 
-export type ColorModePreference = 'dark' | 'light';
+export type ColorModePreference = 'dark' | 'light' | 'system';
 
 export type ResolvedColorScheme = 'dark' | 'light';
 
@@ -17,21 +18,26 @@ const STORAGE_KEY = 'jedidiah-color-mode';
 export const ColorModeContext = createContext<ColorModeContextValue | null>(null);
 
 function isPreference(value: string | null): value is ColorModePreference {
-  return value === 'light' || value === 'dark';
+  return value === 'light' || value === 'dark' || value === 'system';
 }
 
 /**
- * Keeps the app on an explicit light/dark mode, defaulting to dark to match the
- * web app. Legacy `system` values are treated as missing and migrate to dark.
+ * Keeps the app theme in sync with NativeWind's colour-scheme runtime while
+ * persisting the user's preference. System is the default, matching OS changes
+ * until the user explicitly chooses light or dark.
  */
 export function ColorModeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreferenceState] = useState<ColorModePreference>('dark');
+  const { colorScheme, setColorScheme } = useNativeWindColorScheme();
+  const [preference, setPreferenceState] = useState<ColorModePreference>('system');
   const [hydrated, setHydrated] = useState(false);
 
-  const applyPreference = useCallback((next: ColorModePreference) => {
-    setPreferenceState(next);
-    Appearance.setColorScheme(next);
-  }, []);
+  const applyPreference = useCallback(
+    (next: ColorModePreference) => {
+      setPreferenceState(next);
+      setColorScheme(next);
+    },
+    [setColorScheme],
+  );
 
   // Restore the persisted override once on mount. Gate the tree on this read so
   // legacy or saved preferences never flash the wrong scheme on cold start.
@@ -42,12 +48,11 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
       .then((stored) => {
         if (!active) return;
 
-        const next = isPreference(stored) ? stored : 'dark';
+        const next = isPreference(stored) ? stored : 'system';
         applyPreference(next);
-        if (stored && stored !== next) void AsyncStorage.setItem(STORAGE_KEY, next);
       })
       .catch(() => {
-        if (active) applyPreference('dark');
+        if (active) applyPreference('system');
       })
       .finally(() => {
         if (active) setHydrated(true);
@@ -58,7 +63,7 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     };
   }, [applyPreference]);
 
-  const resolved: ResolvedColorScheme = preference;
+  const resolved: ResolvedColorScheme = colorScheme ?? 'light';
 
   // The theme CSS variables live under `.dark:root`; mirror NativeWind's resolved
   // scheme onto <html> for Expo web (native resolves variables at runtime).

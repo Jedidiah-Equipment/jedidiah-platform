@@ -10,6 +10,7 @@ import type { ColorModePreference } from '@/theme/ColorModeProvider';
 import { useColorMode } from '@/theme/use-color-mode';
 
 const THEME_OPTIONS: { label: string; value: ColorModePreference }[] = [
+  { label: 'System', value: 'system' },
   { label: 'Dark', value: 'dark' },
   { label: 'Light', value: 'light' },
 ];
@@ -22,7 +23,7 @@ type ProfileUser = {
 
 /**
  * Overflow menu shared across screens: a dropdown anchored top-right with the
- * light/dark theme toggle and Log out. Rendered in a Modal so it floats
+ * system/light/dark theme toggle and Log out. Rendered in a Modal so it floats
  * above scrolling content on every platform; tapping the backdrop dismisses it.
  */
 export function ProfileMenu({ user, onClose }: { user: ProfileUser; onClose: () => void }) {

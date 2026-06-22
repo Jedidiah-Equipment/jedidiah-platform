@@ -3,7 +3,7 @@ import '../global.css';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { OfflineScreen } from '@/components/OfflineScreen';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
@@ -21,8 +21,14 @@ const geistFonts = {
   'Geist-Bold': require('../assets/fonts/Geist-Bold.ttf'),
 };
 
+const showStartupTestScreen = process.env.EXPO_PUBLIC_MOBILE_TEST_PAGE === '1';
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(geistFonts);
+
+  if (showStartupTestScreen) {
+    return <StartupTestScreen />;
+  }
 
   if (!fontsLoaded && !fontError) {
     return <StartupLoader />;
@@ -57,6 +63,30 @@ function StartupLoader() {
   return (
     <View className="flex-1 items-center justify-center bg-background">
       <ActivityIndicator accessibilityLabel="Loading app" className="text-primary" size="large" />
+    </View>
+  );
+}
+
+function StartupTestScreen() {
+  return (
+    <View
+      style={{
+        alignItems: 'center',
+        backgroundColor: '#0a0a0b',
+        flex: 1,
+        justifyContent: 'center',
+        paddingHorizontal: 28,
+      }}
+    >
+      <Text style={{ color: '#fff000', fontSize: 30, fontWeight: '800', marginBottom: 12, textAlign: 'center' }}>
+        Jedidiah Mobile Test
+      </Text>
+      <Text style={{ color: '#fafafa', fontSize: 16, lineHeight: 24, marginBottom: 8, textAlign: 'center' }}>
+        Root layout is rendering before router, auth, theme, and API providers.
+      </Text>
+      <Text style={{ color: '#7a7a82', fontSize: 13, lineHeight: 20, textAlign: 'center' }}>
+        Disable EXPO_PUBLIC_MOBILE_TEST_PAGE to return to the normal app.
+      </Text>
     </View>
   );
 }

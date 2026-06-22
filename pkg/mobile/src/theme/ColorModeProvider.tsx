@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useColorScheme } from 'nativewind';
 import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
+// NativeWind's wrapper throws if called before the compiled CSS dark-mode flag registers.
+import { useColorScheme } from 'react-native-css-interop';
 
 export type ColorModePreference = 'dark' | 'light';
 

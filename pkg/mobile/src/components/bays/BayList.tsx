@@ -17,6 +17,9 @@ const SORT_OPTIONS: readonly { label: string; value: BaySort }[] = [
 
 // Mirrors the mockup grid `repeat(auto-fill, minmax(232px, 1fr))` with a 14px gap.
 const MIN_CARD_WIDTH = 232;
+// The page fills its container, but a single card never stretches past this — it keeps
+// the tile readable when only one column fits a wide-ish viewport.
+const MAX_CARD_WIDTH = 420;
 const GAP = 14;
 const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
 
@@ -154,7 +157,7 @@ function Grid({
 /** Wraps a child to the computed column width so the row fills the grid evenly. */
 function Cell({ width, children }: { width: number; children: ReactNode }) {
   const columns = columnsForWidth(width);
-  const cellWidth = (width - GAP * (columns - 1)) / columns;
+  const cellWidth = Math.min((width - GAP * (columns - 1)) / columns, MAX_CARD_WIDTH);
 
   return <View style={{ width: cellWidth }}>{children}</View>;
 }

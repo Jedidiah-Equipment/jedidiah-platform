@@ -2,13 +2,17 @@ import { Image, View } from 'react-native';
 
 import { Text } from './ui/text';
 
-// Same mark as the web app's <AppBrand> (pkg/web/src/components/common/AppBrand.tsx).
-const logo = require('../../assets/logo_small.png');
+// Expo needs local static asset paths; these mirror the shared source in @pkg/domain/assets/brand.
+const logoMarkBlack = require('../../assets/brand/jedidiah-mark-black.png');
+const logoMarkWhite = require('../../assets/brand/jedidiah-mark-white.png');
 
 export function BrandHeader({ centered = false, subtitle }: { centered?: boolean; subtitle: string }) {
   return (
     <View className={`mb-7 gap-2 ${centered ? 'items-center' : 'items-start'}`}>
-      <Image className="h-16 w-16 rounded-2xl" resizeMode="cover" source={logo} />
+      <View className="h-16 w-16">
+        <Image className="h-16 w-16 dark:hidden" resizeMode="contain" source={logoMarkBlack} />
+        <Image className="hidden h-16 w-16 dark:flex" resizeMode="contain" source={logoMarkWhite} />
+      </View>
       <Text className={`text-[34px] leading-10 text-foreground ${centered ? 'text-center' : ''}`} weight="bold">
         Jedidiah
         <Text className="text-primary" weight="bold">

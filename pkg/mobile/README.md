@@ -13,6 +13,46 @@ The `dev`, `android`, and `ios` scripts set `APP_VARIANT=staging`, which `app.co
 resolve the build variant (name, scheme, Android package, icon). Running `expo` directly needs the
 same var, e.g. `APP_VARIANT=staging pnpm --filter @pkg/mobile exec expo config`. See `AGENTS.md`.
 
+## Cloud builds & OTA updates (EAS)
+
+`eas.json` defines the reproducible cloud build/submit pipeline. `eas-cli` is pinned as a dev
+dependency and enforced via `cli.version`. All commands run from `pkg/mobile`. Builds are manual —
+there is no CI/build-on-push.
+
+- **Build profiles** — `staging` is active; `production` is dormant (the production API isn't live).
+  Both set `distribution: store`, an Android `app-bundle`, the matching update `channel`, and inject
+  `APP_VARIANT` plus the public `EXPO_PUBLIC_API_BASE_URL` via `env` (a public base URL is not a secret).
+- **Versioning** — `cli.appVersionSource: remote` + per-profile `autoIncrement` let EAS own the Android
+  `versionCode`. The human-facing `version` string stays manual in `app.config.ts`.
+- **OTA updates** — `app.config.ts` sets `runtimeVersion: { policy: 'fingerprint' }`, so an OTA bundle
+  only reaches a binary with a matching native fingerprint. Push JS-only fixes with
+  `eas update --branch staging` (the `staging` branch maps to the build profile's `staging` channel).
+- **Signing** — Android uses the **EAS-managed keystore**, generated on the first `eas build`.
+  **Back this keystore up off-Expo** (`eas credentials`) — losing it means you can no longer ship
+  updates to the same Play listing.
+- **Play submission** — `submit.staging` targets the Play **internal** track. The Play service-account
+  JSON key is **never committed**: store it as an EAS file environment variable / secret named
+  `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` (`eas env:create --scope project --type file ...`), which the
+  `serviceAccountKeyPath: "$GOOGLE_SERVICE_ACCOUNT_KEY_PATH"` reference resolves at submit time.
+
+### First-time owner setup
+
+These steps run once against the Expo/EAS account (owner-side) and populate config the repo can't carry:
+
+1. `eas init` — creates the EAS project and writes `extra.eas.projectId` into the Expo config.
+2. `eas update:configure` — writes the `updates.url` for the EAS Update endpoint.
+3. `eas env:create` — adds the `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` file secret for Play submission.
+
+### Ship a staging build
+
+```sh
+APP_VARIANT=staging eas build --profile staging --platform android
+eas submit --profile staging --platform android
+eas update --branch staging --message "…"   # JS-only OTA fix
+```
+
+`eas.json` and the Expo bundle/native build stay outside `pnpm verify` (per `AGENTS.md`).
+
 ## Notes
 
 - Expo Router owns navigation under `app/`. Source lives under `src/` and is imported via the `@/*` alias.

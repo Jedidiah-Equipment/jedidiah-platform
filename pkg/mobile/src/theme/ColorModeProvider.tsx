@@ -1,8 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
-// NativeWind's wrapper throws if called before the compiled CSS dark-mode flag registers.
-import { useColorScheme } from 'react-native-css-interop';
+import { ActivityIndicator, Appearance, Platform, View } from 'react-native';
 
 export type ColorModePreference = 'dark' | 'light';
 
@@ -27,17 +25,13 @@ function isPreference(value: string | null): value is ColorModePreference {
  * web app. Legacy `system` values are treated as missing and migrate to dark.
  */
 export function ColorModeProvider({ children }: { children: ReactNode }) {
-  const { colorScheme, setColorScheme } = useColorScheme();
   const [preference, setPreferenceState] = useState<ColorModePreference>('dark');
   const [hydrated, setHydrated] = useState(false);
 
-  const applyPreference = useCallback(
-    (next: ColorModePreference) => {
-      setPreferenceState(next);
-      setColorScheme(next);
-    },
-    [setColorScheme],
-  );
+  const applyPreference = useCallback((next: ColorModePreference) => {
+    setPreferenceState(next);
+    Appearance.setColorScheme(next);
+  }, []);
 
   // Restore the persisted override once on mount. Gate the tree on this read so
   // legacy or saved preferences never flash the wrong scheme on cold start.
@@ -64,7 +58,7 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     };
   }, [applyPreference]);
 
-  const resolved: ResolvedColorScheme = colorScheme ?? preference;
+  const resolved: ResolvedColorScheme = preference;
 
   // The theme CSS variables live under `.dark:root`; mirror NativeWind's resolved
   // scheme onto <html> for Expo web (native resolves variables at runtime).
@@ -86,7 +80,13 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
   );
 
   // Hold first paint until the persisted preference is applied (see above).
-  if (!hydrated) return null;
+  if (!hydrated) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator accessibilityLabel="Loading theme" className="text-primary" size="large" />
+      </View>
+    );
+  }
 
   return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>;
 }

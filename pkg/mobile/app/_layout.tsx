@@ -3,6 +3,7 @@ import '../global.css';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { OfflineScreen } from '@/components/OfflineScreen';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
@@ -24,7 +25,7 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(geistFonts);
 
   if (!fontsLoaded && !fontError) {
-    return null;
+    return <StartupLoader />;
   }
 
   return (
@@ -50,4 +51,12 @@ function ThemedStatusBar() {
   const { resolved } = useColorMode();
 
   return <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />;
+}
+
+function StartupLoader() {
+  return (
+    <View className="flex-1 items-center justify-center bg-background">
+      <ActivityIndicator accessibilityLabel="Loading app" className="text-primary" size="large" />
+    </View>
+  );
 }

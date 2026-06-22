@@ -11,7 +11,7 @@
     "android": "APP_VARIANT=staging expo run:android --port 7003",
     "doctor": "APP_VARIANT=staging pnpm dlx expo-doctor",
     "eas-build-staging": "APP_VARIANT=staging eas build --profile staging --platform android",
-    "eas-submit-staging": "APP_VARIANT=staging eas submit --profile staging --platform android --latest",
+    "eas-submit-staging": "APP_VARIANT=staging eas build --profile staging --platform android --auto-submit",
     "eas-build-post-install": "pnpm --workspace-root turbo run build --filter=@pkg/schema --filter=@pkg/domain",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ios": "APP_VARIANT=staging expo run:ios --port 7003",

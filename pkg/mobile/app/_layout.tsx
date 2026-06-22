@@ -36,8 +36,7 @@ export default function RootLayout() {
               <Stack screenOptions={{ headerShown: false }} />
               {/* Single offline gate: covers the whole app while offline, so no screen checks connectivity. */}
               <OfflineScreen />
-              {/* `auto` tracks the OS bar style; the #518 override hook can drive this later. */}
-              <StatusBar style="auto" />
+              <StatusBar style="light" />
             </ApiProvider>
           </ConnectivityProvider>
         </GluestackUIProvider>

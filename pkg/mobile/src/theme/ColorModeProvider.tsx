@@ -3,15 +3,12 @@ import { useColorScheme } from 'nativewind';
 import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 
-export type ColorModePreference = 'dark' | 'light' | 'system';
+export type ColorModePreference = 'dark' | 'light';
 
-/** The concrete scheme after resolving `system` against the OS. */
 export type ResolvedColorScheme = 'dark' | 'light';
 
 export type ColorModeContextValue = {
-  /** The user's saved override; `system` follows the OS appearance. */
   preference: ColorModePreference;
-  /** The concrete scheme after resolving `system` against the OS. */
   resolved: ResolvedColorScheme;
   setPreference: (preference: ColorModePreference) => void;
 };
@@ -21,22 +18,18 @@ const STORAGE_KEY = 'jedidiah-color-mode';
 export const ColorModeContext = createContext<ColorModeContextValue | null>(null);
 
 function isPreference(value: string | null): value is ColorModePreference {
-  return value === 'light' || value === 'dark' || value === 'system';
+  return value === 'light' || value === 'dark';
 }
 
 /**
- * Mirrors web's three-way `ThemeProvider`: color mode follows the OS by default
- * via NativeWind's `useColorScheme`, with a light/dark/system override persisted
- * across launches in AsyncStorage (works on native and web; the preference is not
- * sensitive). The control surface lands in #518.
+ * Keeps the app on an explicit light/dark mode, defaulting to dark to match the
+ * web app. Legacy `system` values are treated as missing and migrate to dark.
  */
 export function ColorModeProvider({ children }: { children: ReactNode }) {
   const { colorScheme, setColorScheme } = useColorScheme();
-  const [preference, setPreferenceState] = useState<ColorModePreference>('system');
+  const [preference, setPreferenceState] = useState<ColorModePreference>('dark');
   const [hydrated, setHydrated] = useState(false);
 
-  // NativeWind already follows the OS before any setColorScheme call, so applying
-  // the preference is the only place that touches the scheme — no separate effect.
   const applyPreference = useCallback(
     (next: ColorModePreference) => {
       setPreferenceState(next);
@@ -45,17 +38,22 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     [setColorScheme],
   );
 
-  // Restore the persisted override once on mount. Gate the tree on this read so a
-  // saved `dark` user never flashes the default scheme for a frame on cold start.
+  // Restore the persisted override once on mount. Gate the tree on this read so
+  // legacy or saved preferences never flash the wrong scheme on cold start.
   useEffect(() => {
     let active = true;
 
     void AsyncStorage.getItem(STORAGE_KEY)
       .then((stored) => {
-        if (active && isPreference(stored)) applyPreference(stored);
+        if (!active) return;
+
+        const next = isPreference(stored) ? stored : 'dark';
+        applyPreference(next);
+        if (stored && stored !== next) void AsyncStorage.setItem(STORAGE_KEY, next);
       })
-      // A failed read just means we keep following the OS — never let it block boot.
-      .catch(() => {})
+      .catch(() => {
+        if (active) applyPreference('dark');
+      })
       .finally(() => {
         if (active) setHydrated(true);
       });
@@ -65,12 +63,10 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     };
   }, [applyPreference]);
 
-  const resolved: ResolvedColorScheme = colorScheme ?? 'light';
+  const resolved: ResolvedColorScheme = colorScheme ?? preference;
 
-  // The theme CSS variables live under `.dark:root`. On web NativeWind only
-  // toggles that class for an explicit `dark`/`light`, not for `system`, so the
-  // variables would never flip when following the OS. Mirror the resolved scheme
-  // onto <html> ourselves (native resolves variables at runtime, no DOM needed).
+  // The theme CSS variables live under `.dark:root`; mirror NativeWind's resolved
+  // scheme onto <html> for Expo web (native resolves variables at runtime).
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     globalThis.document?.documentElement.classList.toggle('dark', resolved === 'dark');

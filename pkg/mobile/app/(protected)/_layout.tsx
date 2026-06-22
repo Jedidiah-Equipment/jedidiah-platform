@@ -1,8 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '@/components/ui/text';
 import { useSession } from '@/lib/auth';
 import { AuthSessionProvider } from '@/lib/auth-session';
 import { useIsOffline } from '@/lib/connectivity';
@@ -51,8 +50,8 @@ export default function ProtectedLayout() {
   if (isPending || reconnecting || (!session && isOffline)) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <View className="flex-1 justify-center px-7 py-10">
-          <Text className="text-base leading-6 text-muted-foreground">Checking session</Text>
+        <View className="flex-1 items-center justify-center px-7 py-10">
+          <ActivityIndicator accessibilityLabel="Checking session" className="text-primary" size="large" />
         </View>
       </SafeAreaView>
     );

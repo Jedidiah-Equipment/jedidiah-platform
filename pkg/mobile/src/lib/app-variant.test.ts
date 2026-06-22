@@ -3,16 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { resolveAppVariant } from './app-variant';
 
 describe('resolveAppVariant', () => {
-  it('resolves the staging variant to its package, scheme, name, and badged icon', () => {
+  it('resolves the staging variant to its package, scheme, name, and yellow Android icon', () => {
     const config = resolveAppVariant({ APP_VARIANT: 'staging' });
 
     expect(config.variant).toBe('staging');
     expect(config.androidPackage).toBe('za.co.jedidiahequipment.ops.staging');
     expect(config.scheme).toBe('jedidiahopsstaging');
     expect(config.displayName).toBe('Jedidiah Ops (Staging)');
-    expect(config.iconConfig.icon).toBe('./assets/icon.png');
+    expect(config.iconConfig.icon).toBe('./assets/icon-staging.png');
     expect(config.iconConfig.adaptiveIcon.foregroundImage).toBe('./assets/adaptive-icon.png');
-    expect(config.iconConfig.adaptiveIcon.backgroundColor).toBe('#FF6B00');
+    expect(config.iconConfig.adaptiveIcon.backgroundColor).toBe('#FFF000');
   });
 
   it('resolves the production variant to the clean package, scheme, name, and icon', () => {
@@ -24,7 +24,7 @@ describe('resolveAppVariant', () => {
     expect(config.displayName).toBe('Jedidiah Ops');
     expect(config.iconConfig.icon).toBe('./assets/icon.png');
     expect(config.iconConfig.adaptiveIcon.foregroundImage).toBe('./assets/adaptive-icon.png');
-    expect(config.iconConfig.adaptiveIcon.backgroundColor).toBe('#F8D300');
+    expect(config.iconConfig.adaptiveIcon.backgroundColor).toBe('#FFF000');
   });
 
   it('gives staging and production distinct package names so they install side by side', () => {

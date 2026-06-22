@@ -11,7 +11,7 @@ Expo managed React Native app for Jedidiah Ops.
 - `pnpm --filter @pkg/mobile typecheck` runs TypeScript for the mobile package.
 - `pnpm --filter @pkg/mobile test` runs mobile unit tests.
 - `pnpm --filter @pkg/mobile eas-build-staging` starts the Android EAS staging build.
-- `pnpm --filter @pkg/mobile eas-submit-staging` submits the latest Android staging build.
+- `pnpm --filter @pkg/mobile eas-submit-staging` builds and submits that Android EAS staging build.
 
 ## Release
 

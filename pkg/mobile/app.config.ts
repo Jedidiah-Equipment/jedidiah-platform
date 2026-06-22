@@ -20,10 +20,17 @@ export default ({ config }: ConfigContext): AppConfig => {
     name: variant.displayName,
     slug: 'jedidiah-ops',
     scheme: variant.scheme,
+    // `version` is the human-facing string; EAS owns the Android `versionCode` remotely
+    // (`cli.appVersionSource: remote` + per-profile `autoIncrement` in eas.json).
     version: '1.0.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
+    // Fingerprint runtime version: EAS Update only delivers an OTA bundle to a binary whose native
+    // fingerprint matches, so JS-only fixes never land on an incompatible build. The update channel
+    // (`staging`/`production`) is set per build profile in eas.json. `eas init` / `eas update:configure`
+    // populate `extra.eas.projectId` and `updates.url` on first owner-side setup (see README).
+    runtimeVersion: { policy: 'fingerprint' },
     icon: variant.iconConfig.icon,
     plugins: ['expo-router', 'expo-font', '@config-plugins/react-native-pdf', '@config-plugins/react-native-blob-util'],
     experiments: {

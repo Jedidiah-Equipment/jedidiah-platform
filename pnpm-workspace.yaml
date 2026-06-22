@@ -5,6 +5,7 @@ packages:
 allowBuilds:
   "@posthog/cli": true
   core-js: false
+  dtrace-provider: false
   esbuild: false
   msw: false
 

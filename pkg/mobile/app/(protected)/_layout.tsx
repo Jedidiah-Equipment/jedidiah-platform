@@ -1,6 +1,6 @@
 import { Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth';
 import { AuthSessionProvider } from '@/lib/auth-session';
@@ -49,9 +49,15 @@ export default function ProtectedLayout() {
   // hold (behind the OfflineScreen cover) rather than redirecting on a session we can't yet trust.
   if (isPending || reconnecting || (!session && isOffline)) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: '#0a0a0b' }}>
         <View className="flex-1 items-center justify-center px-7 py-10">
-          <ActivityIndicator accessibilityLabel="Checking session" className="text-primary" size="large" />
+          <ActivityIndicator accessibilityLabel="Checking session" color="#fff000" size="large" />
+          <Text style={{ color: '#fafafa', fontSize: 16, lineHeight: 24, marginTop: 16, textAlign: 'center' }}>
+            Checking session
+          </Text>
+          <Text style={{ color: '#7a7a82', fontSize: 13, lineHeight: 20, marginTop: 6, textAlign: 'center' }}>
+            Verifying your saved login before opening the app.
+          </Text>
         </View>
       </SafeAreaView>
     );

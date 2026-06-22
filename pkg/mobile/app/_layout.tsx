@@ -1,8 +1,9 @@
 import '../global.css';
 
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { OfflineScreen } from '@/components/OfflineScreen';
@@ -22,7 +23,7 @@ const geistFonts = {
   'Geist-Bold': require('../assets/fonts/Geist-Bold.ttf'),
 };
 
-type StartupTestMode = 'nativewind' | 'providers' | 'root' | null;
+type StartupTestMode = 'fonts' | 'nativewind' | 'providers' | 'root' | 'router' | null;
 
 function getStartupTestMode(): StartupTestMode {
   const value = process.env.EXPO_PUBLIC_MOBILE_TEST_PAGE;
@@ -37,6 +38,14 @@ function getStartupTestMode(): StartupTestMode {
 
   if (value === '3' || value === 'providers') {
     return 'providers';
+  }
+
+  if (value === '4' || value === 'fonts') {
+    return 'fonts';
+  }
+
+  if (value === '5' || value === 'router') {
+    return 'router';
   }
 
   return null;
@@ -86,6 +95,35 @@ export default function RootLayout() {
     return <StartupLoader />;
   }
 
+  if (startupTestMode === 'fonts') {
+    return (
+      <StartupTestScreen
+        body="Font gate resolved before providers and router mounted."
+        footnote={fontError ? `Font error: ${fontError.message}` : 'EXPO_PUBLIC_MOBILE_TEST_PAGE=fonts'}
+        title="Font Test"
+      />
+    );
+  }
+
+  if (startupTestMode === 'router') {
+    return (
+      <SafeAreaProvider>
+        <ColorModeProvider>
+          <GluestackUIProvider>
+            <ConnectivityProvider>
+              <ApiProvider>
+                <Stack screenOptions={{ headerShown: false }} />
+                <RouterTestRedirect />
+                <OfflineScreen />
+                <ThemedStatusBar />
+              </ApiProvider>
+            </ConnectivityProvider>
+          </GluestackUIProvider>
+        </ColorModeProvider>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <ColorModeProvider>
@@ -111,10 +149,34 @@ function ThemedStatusBar() {
   return <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />;
 }
 
+function RouterTestRedirect() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/router-test');
+  }, [router]);
+
+  return null;
+}
+
 function StartupLoader() {
   return (
-    <View className="flex-1 items-center justify-center bg-background">
-      <ActivityIndicator accessibilityLabel="Loading app" className="text-primary" size="large" />
+    <View
+      style={{
+        alignItems: 'center',
+        backgroundColor: '#0a0a0b',
+        flex: 1,
+        justifyContent: 'center',
+        paddingHorizontal: 28,
+      }}
+    >
+      <ActivityIndicator accessibilityLabel="Loading app" color="#fff000" size="large" />
+      <Text style={{ color: '#fafafa', fontSize: 16, lineHeight: 24, marginTop: 16, textAlign: 'center' }}>
+        Loading app
+      </Text>
+      <Text style={{ color: '#7a7a82', fontSize: 13, lineHeight: 20, marginTop: 6, textAlign: 'center' }}>
+        Loading fonts before startup.
+      </Text>
     </View>
   );
 }

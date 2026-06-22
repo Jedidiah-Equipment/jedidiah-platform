@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Appearance, Platform, View } from 'react-native';
+import { ActivityIndicator, Appearance, Platform, Text, View } from 'react-native';
 
 export type ColorModePreference = 'dark' | 'light';
 
@@ -82,8 +82,19 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
   // Hold first paint until the persisted preference is applied (see above).
   if (!hydrated) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator accessibilityLabel="Loading theme" className="text-primary" size="large" />
+      <View
+        style={{
+          alignItems: 'center',
+          backgroundColor: '#0a0a0b',
+          flex: 1,
+          justifyContent: 'center',
+          paddingHorizontal: 28,
+        }}
+      >
+        <ActivityIndicator accessibilityLabel="Loading theme" color="#fff000" size="large" />
+        <Text style={{ color: '#fafafa', fontSize: 16, lineHeight: 24, marginTop: 16, textAlign: 'center' }}>
+          Loading theme
+        </Text>
       </View>
     );
   }

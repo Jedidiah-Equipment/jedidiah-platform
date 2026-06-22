@@ -1,12 +1,19 @@
 import { useRouter } from 'expo-router';
 import { type ReactNode, useState } from 'react';
-import { type LayoutChangeEvent, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, View } from 'react-native';
 
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
+import { type BaySort, isBaySort, sortBayCards } from '@/lib/bay-sort';
 import { useBayList } from '@/lib/use-bay-list';
+import { usePersistedState } from '@/lib/use-persisted-state';
 
 import { BayCard } from './BayCard';
+
+const SORT_OPTIONS: readonly { label: string; value: BaySort }[] = [
+  { label: 'DAYS LEFT', value: 'days-left' },
+  { label: 'BAY NAME', value: 'name' },
+];
 
 // Mirrors the mockup grid `repeat(auto-fill, minmax(232px, 1fr))` with a 14px gap.
 const MIN_CARD_WIDTH = 232;
@@ -29,11 +36,12 @@ export function BayList() {
   const router = useRouter();
   const state = useBayList();
   const [width, setWidth] = useState(0);
+  const [sort, setSort] = usePersistedState<BaySort>('jedidiah-bay-sort', 'days-left', isBaySort);
   const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
 
   if (state.status === 'error') {
     return (
-      <Section count={null}>
+      <Section>
         <Text className="text-sm text-danger" weight="semibold">
           Couldn’t load bays.
         </Text>
@@ -44,7 +52,7 @@ export function BayList() {
 
   if (state.status === 'pending') {
     return (
-      <Section count={null}>
+      <Section>
         <Grid width={width} onLayout={onLayout}>
           {SKELETON_KEYS.map((key) => (
             <Cell key={key} width={width}>
@@ -58,16 +66,18 @@ export function BayList() {
 
   if (state.cards.length === 0) {
     return (
-      <Section count="0 bays">
+      <Section>
         <Text className="text-sm text-muted-foreground">No enabled bays yet.</Text>
       </Section>
     );
   }
 
+  const cards = sortBayCards(state.cards, sort);
+
   return (
-    <Section count={`${state.cards.length} ${state.cards.length === 1 ? 'bay' : 'bays'}`}>
+    <Section trailing={<SortControl sort={sort} onChange={setSort} />}>
       <Grid width={width} onLayout={onLayout}>
-        {state.cards.map((bay) => (
+        {cards.map((bay) => (
           <Cell key={bay.id} width={width}>
             <BayCard bay={bay} onPress={() => router.push({ pathname: '/bays/[bayId]', params: { bayId: bay.id } })} />
           </Cell>
@@ -77,14 +87,48 @@ export function BayList() {
   );
 }
 
-function Section({ count, children }: { count: string | null; children: ReactNode }) {
+/** SORT segmented control: orders the grid by days-left (default) or Bay name. */
+function SortControl({ sort, onChange }: { sort: BaySort; onChange: (sort: BaySort) => void }) {
+  return (
+    <View className="flex-row items-center gap-3">
+      <Text className="text-[11px] tracking-widest text-muted-foreground" mono weight="semibold">
+        SORT
+      </Text>
+      <View className="flex-row rounded-xl border border-border bg-surface p-1">
+        {SORT_OPTIONS.map((option) => {
+          const selected = option.value === sort;
+
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              className={`rounded-lg border px-3 py-1.5 ${selected ? 'border-border bg-elevated' : 'border-transparent'}`}
+              onPress={() => onChange(option.value)}
+            >
+              <Text
+                className={`text-[11px] tracking-wider ${selected ? 'text-foreground' : 'text-muted-foreground'}`}
+                mono
+                weight="semibold"
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function Section({ trailing, children }: { trailing?: ReactNode; children: ReactNode }) {
   return (
     <View>
-      <View className="mb-3.5 flex-row items-baseline justify-between">
+      <View className="mb-3.5 flex-row items-center justify-between gap-3">
         <Text className="text-2xl text-foreground" weight="bold">
           Bays
         </Text>
-        {count ? <Text className="text-xs text-muted-foreground tracking-wide">{count}</Text> : null}
+        {trailing}
       </View>
       {children}
     </View>

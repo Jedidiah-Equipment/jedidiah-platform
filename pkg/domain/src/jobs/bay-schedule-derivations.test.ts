@@ -2,14 +2,18 @@ import type { BaySchedule, DateOnlyIso, Department, ProjectedJobSlot, UUID } fro
 import { describe, expect, it } from 'vitest';
 
 import {
+  byBayDepartmentPipeline,
   computeBayLoadToday,
   computeBayRunway,
   countActiveJobs,
+  findActiveWorkSlot,
   getBayTodayOccupancy,
   getJobProjectedFinishDates,
   getOffDayLabel,
   isJobDeliveryAtRisk,
   listEnabledBays,
+  listUpcomingWorkSlots,
+  summarizeWorkSlotSpan,
 } from './bay-schedule-derivations.js';
 
 const id = (value: string) => value as UUID;
@@ -99,6 +103,125 @@ describe('listEnabledBays', () => {
     const disabled = buildBay({ disabledAt: timestamp, id: 'bay-2' });
 
     expect(listEnabledBays([enabled, disabled])).toEqual([enabled]);
+  });
+});
+
+describe('byBayDepartmentPipeline', () => {
+  it('orders by department pipeline then bay name', () => {
+    // 'procurement' precedes 'fabrication' in the pipeline; names tiebreak within a department.
+    const fabB = buildBay({ department: 'fabrication', id: 'bay-1', name: 'Bay B' });
+    const fabA = buildBay({ department: 'fabrication', id: 'bay-2', name: 'Bay A' });
+    const procurement = buildBay({ department: 'procurement', id: 'bay-3', name: 'Bay Z' });
+
+    expect([fabB, fabA, procurement].sort(byBayDepartmentPipeline)).toEqual([procurement, fabA, fabB]);
+  });
+});
+
+describe('findActiveWorkSlot', () => {
+  const bayId = id('bay-1');
+
+  it('returns the work slot covering today on a working day', () => {
+    const slot = buildWorkSlot(bayId, {
+      durationDays: 3,
+      endDate: '2026-06-08',
+      id: 'slot-a',
+      sequence: 1,
+      startDate: '2026-06-05',
+    });
+    const bay = buildBay({ id: 'bay-1', slots: [slot] });
+
+    expect(findActiveWorkSlot({ bay, today, workingCalendar: {} })).toEqual(slot);
+  });
+
+  it('returns null when today is an off-day even if a slot spans it', () => {
+    const slot = buildWorkSlot(bayId, {
+      durationDays: 3,
+      endDate: '2026-06-08',
+      id: 'slot-a',
+      sequence: 1,
+      startDate: '2026-06-05',
+    });
+    const bay = buildBay({ id: 'bay-1', slots: [slot] });
+    const workingCalendar = { orgOffDays: new Set([today as string]) };
+
+    expect(findActiveWorkSlot({ bay, today, workingCalendar })).toBeNull();
+  });
+
+  it('returns null when an idle slot covers today', () => {
+    const slot = buildIdleSlot(bayId, {
+      durationDays: 2,
+      endDate: '2026-06-06',
+      id: 'slot-a',
+      sequence: 1,
+      startDate: '2026-06-04',
+    });
+    const bay = buildBay({ id: 'bay-1', slots: [slot] });
+
+    expect(findActiveWorkSlot({ bay, today, workingCalendar: {} })).toBeNull();
+  });
+});
+
+describe('listUpcomingWorkSlots', () => {
+  const bayId = id('bay-1');
+
+  it('returns future work slots in queue order, excluding idle and the active slot', () => {
+    const active = buildWorkSlot(bayId, {
+      durationDays: 1,
+      endDate: '2026-06-06',
+      id: 'slot-active',
+      sequence: 1,
+      startDate: '2026-06-05',
+    });
+    const idle = buildIdleSlot(bayId, {
+      durationDays: 1,
+      endDate: '2026-06-07',
+      id: 'slot-idle',
+      sequence: 2,
+      startDate: '2026-06-06',
+    });
+    const next = buildWorkSlot(bayId, {
+      durationDays: 2,
+      endDate: '2026-06-09',
+      id: 'slot-next',
+      sequence: 3,
+      startDate: '2026-06-07',
+    });
+    const bay = buildBay({ id: 'bay-1', slots: [active, idle, next] });
+
+    expect(listUpcomingWorkSlots({ bay, excludeSlotId: active.id, today })).toEqual([next]);
+  });
+
+  it('keeps a work slot covering today when it is not the excluded active slot', () => {
+    const covering = buildWorkSlot(bayId, {
+      durationDays: 3,
+      endDate: '2026-06-08',
+      id: 'slot-a',
+      sequence: 1,
+      startDate: '2026-06-05',
+    });
+    const bay = buildBay({ id: 'bay-1', slots: [covering] });
+
+    // No active slot excluded (e.g. today is an off-day), so the covering slot stays in the list.
+    expect(listUpcomingWorkSlots({ bay, today })).toEqual([covering]);
+  });
+});
+
+describe('summarizeWorkSlotSpan', () => {
+  it('returns the inclusive last work day and working-day count', () => {
+    const slot = buildWorkSlot(id('bay-1'), {
+      durationDays: 3,
+      endDate: '2026-06-10',
+      id: 'slot-a',
+      sequence: 1,
+      startDate: '2026-06-05',
+    });
+    // 06-06 and 06-07 are off, so the half-open span 06-05..06-10 has 3 working days.
+    const workingCalendar = { orgOffDays: new Set(['2026-06-06', '2026-06-07']) };
+
+    expect(summarizeWorkSlotSpan({ slot, workingCalendar })).toEqual({
+      lastWorkDay: day('2026-06-09'),
+      workDays: 3,
+    });
   });
 });
 

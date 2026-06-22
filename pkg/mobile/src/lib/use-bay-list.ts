@@ -1,17 +1,18 @@
 import {
   type ActiveJobProgress,
   bayWorkingCalendars,
+  byBayDepartmentPipeline,
   deriveActiveJobProgress,
-  isWorkingDay,
-  JOB_DEPARTMENT_PIPELINE,
+  findActiveWorkSlot,
+  listEnabledBays,
 } from '@pkg/domain';
-import type { BayOperator, BaySchedule, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
+import type { BayOperator, DateOnlyIso } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useTRPC } from './trpc';
 
-/** A Bay card's active Job, joined from `jobs.list` and projected for days-left. */
+/** A Bay card's active Job, joined from `jobs.listBays` detail and projected for days-left. */
 export type BayListActiveJob = ActiveJobProgress & {
   jobCode: string;
   productName: string;
@@ -31,59 +32,27 @@ export type BayListState =
   | { status: 'pending' }
   | { status: 'ready'; cards: BayListCard[]; today: DateOnlyIso };
 
-const departmentOrder = new Map(JOB_DEPARTMENT_PIPELINE.map((step, index) => [step.department, index]));
-
-// Same Bay ordering as web: department pipeline, then name within a department.
-function byDepartmentPipeline(left: BaySchedule, right: BaySchedule): number {
-  const order =
-    (departmentOrder.get(left.department) ?? Number.MAX_SAFE_INTEGER) -
-    (departmentOrder.get(right.department) ?? Number.MAX_SAFE_INTEGER);
-
-  return order !== 0 ? order : left.name.localeCompare(right.name);
-}
-
-// Unpaged read so every active Job resolves to a product name in one cached query
-// (mirrors web's `allJobsInput`; tRPC batches it with the Bay list round-trip).
-const allJobsInput = {
-  filters: {},
-  page: 1,
-  pageSize: 0,
-  search: '',
-  sortBy: 'createdAt',
-  sortDirection: 'desc',
-} as const;
-
 /**
- * Loads the Bay List: the cached Bay schedule (`jobs.listBays`) joined with the
- * Job list (`jobs.list`) for product names, deriving each Bay's active Job and
- * days-left. Mirrors web's `useShopFloorBays` + `ShopFloorTodayWidget` join.
+ * Loads the Bay List from the cached Bay schedule (`jobs.listBays`), whose `jobs`
+ * carry each scheduled Job's product detail, deriving each Bay's active Job and
+ * days-left. Mirrors web's `useShopFloorBays` + `ShopFloorTodayWidget`.
  */
 export function useBayList(): BayListState {
   const trpc = useTRPC();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
-  const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
 
   return useMemo<BayListState>(() => {
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
-    if (jobsQuery.error) return { status: 'error', error: jobsQuery.error };
-    if (baysQuery.isPending || jobsQuery.isPending) return { status: 'pending' };
+    if (baysQuery.isPending) return { status: 'pending' };
 
-    const { items: bays, offDays, today } = baysQuery.data;
-    const enabledBays = bays.filter((bay) => bay.disabledAt === null).sort(byDepartmentPipeline);
+    const { items: bays, jobs, offDays, today } = baysQuery.data;
+    const enabledBays = listEnabledBays(bays).sort(byBayDepartmentPipeline);
     const calendars = bayWorkingCalendars(enabledBays, offDays);
-    const jobsById = new Map(jobsQuery.data.items.map((job) => [job.id, job] as const));
+    const jobsById = new Map(jobs.map((job) => [job.id, job] as const));
 
     const cards = enabledBays.map<BayListCard>((bay) => {
-      const workingCalendar = calendars.get(bay.id);
-      // Projected work slots span closure days too, so a slot can cover an off-day
-      // today; gate on the bay calendar (mirrors web's getBayTodayOccupancy) so the
-      // card never shows ACTIVE + a countdown on a day the bay is actually off.
-      const slot = isWorkingDay(today, workingCalendar)
-        ? bay.slots.find(
-            (candidate): candidate is ProjectedWorkJobSlot =>
-              candidate.kind === 'work' && candidate.startDate <= today && today < candidate.endDate,
-          )
-        : undefined;
+      const workingCalendar = calendars.get(bay.id) ?? {};
+      const slot = findActiveWorkSlot({ bay, today, workingCalendar });
       const job = slot ? jobsById.get(slot.jobId) : undefined;
 
       return {
@@ -103,5 +72,5 @@ export function useBayList(): BayListState {
     });
 
     return { status: 'ready', cards, today };
-  }, [baysQuery.data, baysQuery.error, baysQuery.isPending, jobsQuery.data, jobsQuery.error, jobsQuery.isPending]);
+  }, [baysQuery.data, baysQuery.error, baysQuery.isPending]);
 }

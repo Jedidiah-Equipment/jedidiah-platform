@@ -182,6 +182,7 @@ describe('Working Calendar schemas', () => {
             updatedAt: '2026-06-01T00:00:00.000Z',
           },
         ],
+        jobs: [],
         offDays: [
           {
             date: '2026-06-16',
@@ -206,6 +207,7 @@ describe('Working Calendar schemas', () => {
           updatedAt: '2026-06-01T00:00:00.000Z',
         },
       ],
+      jobs: [],
       offDays: [
         {
           date: '2026-06-16',

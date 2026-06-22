@@ -2,84 +2,35 @@
 
 Expo managed React Native app for Jedidiah Ops.
 
-## Scripts
+## Commands
 
 - `pnpm --filter @pkg/mobile dev` starts Expo for the dev client on port `7003`.
 - `pnpm --filter @pkg/mobile android` builds and launches the Android dev client.
 - `pnpm --filter @pkg/mobile ios` builds and launches the iOS dev client.
+- `pnpm --filter @pkg/mobile doctor` runs Expo Doctor for the staging variant.
 - `pnpm --filter @pkg/mobile typecheck` runs TypeScript for the mobile package.
+- `pnpm --filter @pkg/mobile test` runs mobile unit tests.
+- `pnpm --filter @pkg/mobile eas-build-staging` starts the Android EAS staging build.
+- `pnpm --filter @pkg/mobile eas-submit-staging` submits the latest Android staging build.
 
-The `dev`, `android`, and `ios` scripts set `APP_VARIANT=staging`, which `app.config.ts` requires to
-resolve the build variant (name, scheme, Android package, icon). Running `expo` directly needs the
-same var, e.g. `APP_VARIANT=staging pnpm --filter @pkg/mobile exec expo config`. See `AGENTS.md`.
+## Release
 
-## Cloud builds & OTA updates (EAS)
+Staging builds use `APP_VARIANT=staging`, Android package `za.co.jedidiahequipment.ops.staging`,
+the EAS `staging` channel, and the Play internal track. EAS Submit uses the Google service account
+credential stored in Expo for this Android application identifier.
 
-`eas.json` defines the reproducible cloud build/submit pipeline. `eas-cli` is pinned as a dev
-dependency and enforced via `cli.version`. All commands run from `pkg/mobile`. Builds are manual —
-there is no CI/build-on-push.
-
-- **Build profiles** — `staging` is active; `production` is dormant (the production API isn't live).
-  Both set `distribution: store`, an Android `app-bundle`, the matching update `channel`, and inject
-  `APP_VARIANT` plus the public `EXPO_PUBLIC_API_BASE_URL` via `env` (a public base URL is not a secret).
-- **Versioning** — `cli.appVersionSource: remote` + per-profile `autoIncrement` let EAS own the Android
-  `versionCode`. The human-facing `version` string stays manual in `app.config.ts`.
-- **OTA updates** — `app.config.ts` sets `runtimeVersion: { policy: 'fingerprint' }`, so an OTA bundle
-  only reaches a binary with a matching native fingerprint. Push JS-only fixes with
-  `eas update --branch staging` (the `staging` branch maps to the build profile's `staging` channel).
-- **Signing** — Android uses the **EAS-managed keystore**, generated on the first `eas build`.
-  **Back this keystore up off-Expo** (`eas credentials`) — losing it means you can no longer ship
-  updates to the same Play listing.
-- **Play submission** — `submit.staging` targets the Play **internal** track. The Play service-account
-  JSON key is **never committed**: store it as an EAS file environment variable / secret named
-  `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` (`eas env:create --scope project --type file ...`), which the
-  `serviceAccountKeyPath: "$GOOGLE_SERVICE_ACCOUNT_KEY_PATH"` reference resolves at submit time.
-
-### First-time owner setup
-
-These steps run once against the Expo/EAS account (owner-side) and populate config the repo can't carry:
-
-1. `eas init` — creates the EAS project and writes `extra.eas.projectId` into the Expo config.
-2. `eas update:configure` — writes the `updates.url` for the EAS Update endpoint.
-3. `eas env:create` — adds the `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` file secret for Play submission.
-
-### Ship a staging build
+For JS-only OTA fixes:
 
 ```sh
-APP_VARIANT=staging eas build --profile staging --platform android
-eas submit --profile staging --platform android
-eas update --branch staging --message "…"   # JS-only OTA fix
+cd pkg/mobile
+APP_VARIANT=staging eas update --branch staging --message "..."
 ```
-
-`eas.json` and the Expo bundle/native build stay outside `pnpm verify` (per `AGENTS.md`).
-
-## Notes
-
-- Expo Router owns navigation under `app/`. Source lives under `src/` and is imported via the `@/*` alias.
-- Auth is gated once in `app/(protected)/_layout.tsx`: it shows a loading state while the
-  session resolves, redirects to `/login` when there is none, and exposes the resolved
-  session via `useAuthSession` so protected screens can assume it. `login` is the public route.
-- Styling uses NativeWind v4 + gluestack-ui v2 via `className`. Theme tokens are CSS variables
-  in `global.css` mapped to semantic classes in `tailwind.config.js`; color mode follows the OS
-  with a persisted override in `src/theme/ColorModeProvider.tsx`. See `AGENTS.md` for the rules.
-- Metro uses Expo's default pnpm monorepo support through `expo/metro-config`.
-- Linted/formatted by root Biome (`pnpm lint`), but outside the heavy `pnpm verify` steps
-  (typecheck/build/test) because those need the Expo/native toolchain.
 
 ## Local API
 
-Mobile auth calls the API root from `EXPO_PUBLIC_API_BASE_URL`. It defaults to
-`http://10.0.2.2:7002` on Android, which reaches the host machine from the Android
-emulator. On iOS simulator and web it defaults to `http://localhost:7002`.
-The local Expo dev server runs on `http://localhost:7003`, which must stay in the
-API's `AUTH_TRUSTED_ORIGINS` for browser-based mobile development.
+`EXPO_PUBLIC_API_BASE_URL` defaults to `http://10.0.2.2:7002` on Android emulator and
+`http://localhost:7002` on iOS simulator/web. For a physical device, point it at the API machine's
+LAN URL.
 
-For a physical device, set `EXPO_PUBLIC_API_BASE_URL` to a LAN URL for the machine
-running the API, for example `http://192.168.1.20:7002`.
-
-To exercise the seeded happy path locally, run:
-
-```sh
-pnpm db:up && pnpm db:migrate && pnpm db:seed
-pnpm --filter @pkg/api dev
-```
+The local Expo dev server runs on `http://localhost:7003`, which must stay in the API's
+`AUTH_TRUSTED_ORIGINS`.

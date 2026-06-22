@@ -2,6 +2,11 @@ packages:
   - "pkg/*"
   - "pkg/solidworks/*"
 
+packageExtensions:
+  "@config-plugins/react-native-pdf@*":
+    dependencies:
+      "@expo/config-plugins": "^56"
+
 allowBuilds:
   "@posthog/cli": true
   core-js: false

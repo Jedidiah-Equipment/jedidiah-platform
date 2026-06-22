@@ -3,14 +3,13 @@
 @tailwind utilities;
 
 /*
- * Theme tokens as CSS variables. NativeWind flips `:root` -> `.dark:root` via the
- * color scheme (`darkMode: 'class'`), so every component just uses semantic classes
- * (bg-background, text-foreground, ...) and restyles automatically — no JS branching.
+ * CSS-variable fallback for Tailwind's semantic colour classes. Native runtime
+ * theming is driven by `src/theme/gluestack-config.ts`; these root values keep
+ * web exports and portal-style surfaces from depending on inherited native vars.
  *
- * Colours are space-separated RGB channels so Tailwind's `<alpha-value>` opacity
- * modifiers work (e.g. bg-primary/50). `--color-border` is a full colour because the
- * dark value is translucent. Palette mirrors web's globals.css and the Bay Operator
- * mockup (brand yellow #f8d300 light / #fff000 dark).
+ * Colours are space-separated RGB channels so Tailwind opacity modifiers work
+ * (e.g. bg-primary/50). `--color-border` is a full colour because the dark value
+ * is translucent.
  */
 @layer base {
   :root {

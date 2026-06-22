@@ -5,8 +5,9 @@
   `app.config.ts` thin and keep its explicit `.ts` resolver import.
 - Routes live under `app/`; all other source lives under `src/` and imports through `@/*`.
   Protected routes stay in `app/(protected)/`; `/login` is public.
-- Style with NativeWind v4 + gluestack-ui v2 semantic classes. Theme tokens live in `global.css`
-  and `tailwind.config.js`; use `cssInterop` for native props that need concrete colors.
+- Style with NativeWind v4 + gluestack-ui v2 semantic classes. Runtime theme tokens live in
+  `src/theme/gluestack-config.ts`; `global.css` keeps Tailwind directives and web/root CSS variable
+  fallbacks. Use `cssInterop` for native props that need concrete colors.
 - Keep `metro.config.js` and `babel.config.js` thin. `babel-preset-expo` owns the Reanimated
   worklets plugin; do not add that plugin manually.
 - Workspace imports should stay lightweight. `@pkg/api` is type-only: import only `AppRouter` with

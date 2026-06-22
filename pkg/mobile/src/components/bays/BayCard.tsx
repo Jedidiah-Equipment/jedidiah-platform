@@ -24,21 +24,13 @@ export function BayCard({ bay, onPress }: { bay: BayListCard; onPress: () => voi
           uri={bay.operator?.thumbnailDataUrl}
         />
         <View className="min-w-0 flex-1">
-          <Text className="text-base leading-5 text-surface-foreground" numberOfLines={2} weight="bold">
+          <Text className="text-base leading-5 text-surface-foreground" numberOfLines={1} weight="bold">
             {bay.name}
           </Text>
           <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
             {bay.operator?.name ?? 'No operator'}
           </Text>
         </View>
-        {bay.active ? (
-          <View className="flex-row items-center gap-1.5">
-            <View className="h-1.5 w-1.5 rounded-full bg-status-in-progress" />
-            <Text className="text-[10px] tracking-wide text-status-in-progress" weight="semibold">
-              ACTIVE
-            </Text>
-          </View>
-        ) : null}
       </View>
 
       {bay.active ? <ActiveBody active={bay.active} /> : <IdleBody />}
@@ -55,24 +47,24 @@ function ActiveBody({ active }: { active: NonNullable<BayListCard['active']> }) 
           <Text className="text-xs text-muted-foreground" numberOfLines={1}>
             {active.productName}
           </Text>
-          <Text className="mt-0.5 text-base text-surface-foreground" mono weight="bold">
+          <Text className="mt-0.5 text-base text-surface-foreground" mono numberOfLines={1} weight="bold">
             {active.jobCode}
           </Text>
         </View>
       </View>
 
       <View className="mt-4 flex-row items-end justify-between">
-        <View className="flex-row items-baseline gap-1.5">
+        <View className="min-w-0 flex-row items-baseline gap-1.5">
           <Text className="text-3xl leading-8" style={{ color: daysLeftColor(active.remainingWorkDays) }} weight="bold">
             {active.remainingWorkDays}
           </Text>
-          <Text className="text-xs text-muted-foreground" weight="semibold">
+          <Text className="text-xs text-muted-foreground" numberOfLines={1} weight="semibold">
             days left
           </Text>
         </View>
         <View className="items-end">
           <Text className="text-[10px] uppercase tracking-wide text-muted-foreground">ends</Text>
-          <Text className="text-xs text-surface-foreground" weight="semibold">
+          <Text className="text-xs text-surface-foreground" numberOfLines={1} weight="semibold">
             {formatDate(active.lastWorkDay, 'EEE d MMM')}
           </Text>
         </View>
@@ -90,7 +82,7 @@ function ActiveBody({ active }: { active: NonNullable<BayListCard['active']> }) 
 
 function IdleBody() {
   return (
-    <View className="mt-3.5 h-[104px] justify-center rounded-xl border border-dashed border-border px-3">
+    <View className="mt-3.5 h-[108px] justify-center rounded-xl border border-dashed border-border px-3">
       <Text className="text-sm text-muted-foreground" weight="semibold">
         No active job
       </Text>

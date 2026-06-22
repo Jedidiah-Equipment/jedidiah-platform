@@ -109,17 +109,14 @@ function Ready({
         {showList ? (
           <ScrollView
             className="border-border"
-            contentContainerClassName="mx-auto w-full max-w-[640px] px-4 pb-10 pt-4"
+            contentContainerClassName="w-full px-4 pb-10 pt-4"
             style={isWide ? { flex: 2, borderRightWidth: 1 } : { flex: 1 }}
           >
             <ListPane onSelect={select} selectedId={effectiveId} state={state} />
           </ScrollView>
         ) : null}
         {showDetail ? (
-          <ScrollView
-            contentContainerClassName="w-full max-w-[680px] px-4 pb-10 pt-4"
-            style={isWide ? { flex: 3 } : { flex: 1 }}
-          >
+          <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4" style={isWide ? { flex: 3 } : { flex: 1 }}>
             {selected ? (
               <SlotDetailPane slot={selected} />
             ) : (
@@ -390,7 +387,7 @@ function Frame({
   return (
     <>
       <ScheduleHeader onBack={onBack} operator={operator} title={title} />
-      <ScrollView contentContainerClassName="mx-auto w-full max-w-[640px] px-4 pb-10 pt-4">{children}</ScrollView>
+      <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4">{children}</ScrollView>
     </>
   );
 }

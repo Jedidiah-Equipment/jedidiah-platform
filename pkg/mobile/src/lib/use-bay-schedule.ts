@@ -40,6 +40,8 @@ export type BaySlotDetail = {
   bayName: string;
   /** 'in-progress' for the Slot running today, else 'scheduled'. */
   status: 'in-progress' | 'scheduled';
+  /** The soonest upcoming Slot — its chip and timeline card share the 'next' accent. */
+  isNext: boolean;
   /** Working days left — only the in-progress Slot has one. */
   remainingWorkDays: number | null;
   startDate: DateOnlyIso;
@@ -124,6 +126,7 @@ export function useBaySchedule(bayId: string): BayScheduleState {
       slot: ProjectedWorkJobSlot,
       status: BaySlotDetail['status'],
       remaining: number | null,
+      isNext: boolean,
     ): BaySlotDetail => {
       const job = jobsById.get(slot.jobId);
       const { lastWorkDay, workDays } = summarizeWorkSlotSpan({ slot, workingCalendar });
@@ -137,6 +140,7 @@ export function useBaySchedule(bayId: string): BayScheduleState {
         customerCompanyName: job?.customerCompanyName ?? null,
         bayName: bay.name,
         status,
+        isNext,
         remainingWorkDays: remaining,
         startDate: slot.startDate,
         lastWorkDay,
@@ -146,12 +150,12 @@ export function useBaySchedule(bayId: string): BayScheduleState {
 
       return detail;
     };
-    if (activeSlot && active) addSlotDetail(activeSlot, 'in-progress', active.remainingWorkDays);
+    if (activeSlot && active) addSlotDetail(activeSlot, 'in-progress', active.remainingWorkDays, false);
 
     // The UP NEXT list reuses each Slot's detail projection, so the working-day
     // span is derived exactly once per Slot.
     const upcoming = upcomingSlots.map<BayScheduleUpcomingSlot>((slot, index) => {
-      const detail = addSlotDetail(slot, 'scheduled', null);
+      const detail = addSlotDetail(slot, 'scheduled', null, index === 0);
 
       return {
         slotId: slot.id,

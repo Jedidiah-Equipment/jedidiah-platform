@@ -11,7 +11,7 @@ import { ProfileHeader } from '@/components/ProfileHeader';
 export default function IndexRoute() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerClassName="mx-auto w-full max-w-[1180px] gap-6 px-4 pb-8 pt-4">
+      <ScrollView contentContainerClassName="w-full gap-6 px-4 pb-8 pt-4">
         <ProfileHeader />
         <BayList />
       </ScrollView>

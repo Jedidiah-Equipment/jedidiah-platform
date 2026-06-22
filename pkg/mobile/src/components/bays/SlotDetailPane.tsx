@@ -22,18 +22,27 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
 
   return (
     <View className="gap-4">
-      {/* Status chip(s): IN PROGRESS / SCHEDULED, plus 'N DAYS LEFT' while running. */}
+      {/* Status chip(s): IN PROGRESS / SCHEDULED, plus 'N DAYS LEFT' while running. The
+          SCHEDULED chip matches its timeline card — green for the 'next' Slot, grey otherwise. */}
       <View className="flex-row items-center gap-2">
         <View
           className={`flex-row items-center gap-1.5 rounded-full border px-2.5 py-1 ${
             isActive
               ? 'border-status-in-progress/30 bg-status-in-progress/10'
-              : 'border-status-scheduled/30 bg-status-scheduled/10'
+              : slot.isNext
+                ? 'border-status-next/30 bg-status-next/10'
+                : 'border-muted-foreground/30 bg-muted-foreground/10'
           }`}
         >
-          <View className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-status-in-progress' : 'bg-status-scheduled'}`} />
+          <View
+            className={`h-1.5 w-1.5 rounded-full ${
+              isActive ? 'bg-status-in-progress' : slot.isNext ? 'bg-status-next' : 'bg-muted-foreground'
+            }`}
+          />
           <Text
-            className={`text-[10px] tracking-wide ${isActive ? 'text-status-in-progress' : 'text-status-scheduled'}`}
+            className={`text-[10px] tracking-wide ${
+              isActive ? 'text-status-in-progress' : slot.isNext ? 'text-status-next' : 'text-muted-foreground'
+            }`}
             weight="semibold"
           >
             {isActive ? 'IN PROGRESS' : 'SCHEDULED'}

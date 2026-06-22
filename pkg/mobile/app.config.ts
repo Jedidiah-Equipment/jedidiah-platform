@@ -40,5 +40,14 @@ export default ({ config }: ConfigContext): AppConfig => {
       package: variant.androidPackage,
       adaptiveIcon: variant.iconConfig.adaptiveIcon,
     },
+    extra: {
+      eas: {
+        projectId: 'f99a92bd-b14d-49ae-8c27-6d19c09dddcc',
+      },
+    },
+    updates: {
+      url: 'https://u.expo.dev/f99a92bd-b14d-49ae-8c27-6d19c09dddcc',
+    },
+    owner: 'deanvanniekerk',
   };
 };

@@ -32,14 +32,12 @@
   "submit": {
     "staging": {
       "android": {
-        "track": "internal",
-        "serviceAccountKeyPath": "$GOOGLE_SERVICE_ACCOUNT_KEY_PATH"
+        "track": "internal"
       }
     },
     "production": {
       "android": {
-        "track": "internal",
-        "serviceAccountKeyPath": "$GOOGLE_SERVICE_ACCOUNT_KEY_PATH"
+        "track": "internal"
       }
     }
   }

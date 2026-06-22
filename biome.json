@@ -11,6 +11,7 @@
       "!**/.sandcastle/worktrees",
       "!pkg/db/migrations",
       "!**/.expo",
+      "!pkg/mobile/ios",
       "!pkg/mobile/expo-env.d.ts",
       "!pkg/web/src/app/route-tree.gen.ts",
       "!docs",

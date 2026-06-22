@@ -9,6 +9,7 @@ import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { ApiProvider } from '@/lib/ApiProvider';
 import { ConnectivityProvider } from '@/lib/connectivity';
 import { ColorModeProvider } from '@/theme/ColorModeProvider';
+import { useColorMode } from '@/theme/use-color-mode';
 
 // Geist app font (same faces as web's @pkg/domain/fonts/geist-sans; vendored here
 // because Metro can't resolve a workspace package's asset subpath). Each weight is
@@ -36,11 +37,17 @@ export default function RootLayout() {
               <Stack screenOptions={{ headerShown: false }} />
               {/* Single offline gate: covers the whole app while offline, so no screen checks connectivity. */}
               <OfflineScreen />
-              <StatusBar style="light" />
+              <ThemedStatusBar />
             </ApiProvider>
           </ConnectivityProvider>
         </GluestackUIProvider>
       </ColorModeProvider>
     </SafeAreaProvider>
   );
+}
+
+function ThemedStatusBar() {
+  const { resolved } = useColorMode();
+
+  return <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />;
 }

@@ -18,8 +18,8 @@ export function AppLogo({ centered = false, compact = false }: { centered?: bool
         accessibilityRole="image"
         className="min-w-0 flex-row items-center gap-2.5"
       >
-        <Image className="h-10 w-10" resizeMode="contain" source={logoMark} />
-        <LogoText className="shrink text-[24px] leading-8" />
+        <Image className="h-9 w-9" resizeMode="contain" source={logoMark} />
+        <LogoText className="shrink text-[20px] leading-8" />
       </View>
     );
   }

@@ -25,7 +25,7 @@ export default ({ config }: ConfigContext): AppConfig => {
     // (`cli.appVersionSource: remote` + per-profile `autoIncrement` in eas.json).
     version: '1.0.0',
     orientation: 'portrait',
-    userInterfaceStyle: 'dark',
+    userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     // Fingerprint runtime version: EAS Update only delivers an OTA bundle to a binary whose native
     // fingerprint matches, so JS-only fixes never land on an incompatible build. The update channel

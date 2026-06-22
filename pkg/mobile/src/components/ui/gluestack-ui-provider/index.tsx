@@ -2,8 +2,8 @@ import { OverlayProvider } from '@gluestack-ui/overlay';
 import { ToastProvider } from '@gluestack-ui/toast';
 import { vars } from 'nativewind';
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
-import { useColorMode } from '@/theme/use-color-mode';
+import { useColorScheme as useNativeColorScheme, View } from 'react-native';
+import { type ColorModePreference, type ResolvedColorScheme, resolveColorModePreference } from '@/theme/color-mode';
 
 const lightThemeVars = vars({
   '--color-background': '247 247 247',
@@ -41,20 +41,33 @@ const darkThemeVars = vars({
   '--color-surface-foreground': '250 250 250',
 });
 
+const themeVars: Record<ResolvedColorScheme, ReturnType<typeof vars>> = {
+  dark: darkThemeVars,
+  light: lightThemeVars,
+};
+
 /**
  * Hosts the gluestack overlay/toast contexts and the app-wide themed background.
- * NativeWind resolves semantic classes from variables in the nearest native
- * style context, so the root view swaps the token map whenever the resolved
- * colour mode changes.
+ * gluestack's documented `mode` prop selects the variable set; the nested view
+ * lets semantic classes resolve against that variable context on native.
  */
-export function GluestackUIProvider({ children }: { children: ReactNode }) {
-  const { resolved } = useColorMode();
+export function GluestackUIProvider({
+  children,
+  mode = 'system',
+}: {
+  children: ReactNode;
+  mode?: ColorModePreference;
+}) {
+  const systemColorScheme = useNativeColorScheme();
+  const resolved = resolveColorModePreference(mode, systemColorScheme);
 
   return (
-    <View className="flex-1 bg-background" style={resolved === 'dark' ? darkThemeVars : lightThemeVars}>
-      <OverlayProvider>
-        <ToastProvider>{children}</ToastProvider>
-      </OverlayProvider>
+    <View className="flex-1" style={themeVars[resolved]}>
+      <View className="flex-1 bg-background">
+        <OverlayProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </OverlayProvider>
+      </View>
     </View>
   );
 }

@@ -31,19 +31,27 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ColorModeProvider>
-        <GluestackUIProvider>
-          <ConnectivityProvider>
-            <ApiProvider>
-              {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
-              <Stack screenOptions={{ headerShown: false }} />
-              {/* Single offline gate: covers the whole app while offline, so no screen checks connectivity. */}
-              <OfflineScreen />
-              <ThemedStatusBar />
-            </ApiProvider>
-          </ConnectivityProvider>
-        </GluestackUIProvider>
+        <ThemedAppShell />
       </ColorModeProvider>
     </SafeAreaProvider>
+  );
+}
+
+function ThemedAppShell() {
+  const { preference } = useColorMode();
+
+  return (
+    <GluestackUIProvider mode={preference}>
+      <ConnectivityProvider>
+        <ApiProvider>
+          {/* Auth gating lives in app/(protected)/_layout.tsx; login is the public route. */}
+          <Stack screenOptions={{ headerShown: false }} />
+          {/* Single offline gate: covers the whole app while offline, so no screen checks connectivity. */}
+          <OfflineScreen />
+          <ThemedStatusBar />
+        </ApiProvider>
+      </ConnectivityProvider>
+    </GluestackUIProvider>
   );
 }
 

@@ -15,7 +15,7 @@ This skill is also responsible for keeping itself useful. If repo structure or A
 
 Read these first:
 
-- `.sandcastle/CODING_STANDARDS.md`
+- root `AGENTS.md`
 - closest package `AGENTS.md` files for touched packages
 - targeted `CONTEXT.md` sections
 - `docs/adr/0004-application-boundaries.md`

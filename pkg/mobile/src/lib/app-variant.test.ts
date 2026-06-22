@@ -8,6 +8,7 @@ describe('resolveAppVariant', () => {
 
     expect(config.variant).toBe('staging');
     expect(config.androidPackage).toBe('za.co.jedidiahequipment.ops.staging');
+    expect(config.iosBundleIdentifier).toBe('za.co.jedidiahequipment.ops.staging');
     expect(config.scheme).toBe('jedidiahopsstaging');
     expect(config.displayName).toBe('Jedidiah Ops (Staging)');
     expect(config.iconConfig.icon).toBe('./assets/icon-staging.png');
@@ -20,6 +21,7 @@ describe('resolveAppVariant', () => {
 
     expect(config.variant).toBe('production');
     expect(config.androidPackage).toBe('za.co.jedidiahequipment.ops');
+    expect(config.iosBundleIdentifier).toBe('za.co.jedidiahequipment.ops');
     expect(config.scheme).toBe('jedidiahops');
     expect(config.displayName).toBe('Jedidiah Ops');
     expect(config.iconConfig.icon).toBe('./assets/icon.png');
@@ -32,6 +34,7 @@ describe('resolveAppVariant', () => {
     const production = resolveAppVariant({ APP_VARIANT: 'production' });
 
     expect(staging.androidPackage).not.toBe(production.androidPackage);
+    expect(staging.iosBundleIdentifier).not.toBe(production.iosBundleIdentifier);
     expect(staging.scheme).not.toBe(production.scheme);
   });
 

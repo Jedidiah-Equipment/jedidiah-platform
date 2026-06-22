@@ -23,6 +23,7 @@ export interface IconConfig {
 export interface AppVariantConfig {
   variant: AppVariant;
   androidPackage: string;
+  iosBundleIdentifier: string;
   scheme: string;
   displayName: string;
   iconConfig: IconConfig;
@@ -39,6 +40,7 @@ const VARIANTS: Record<AppVariant, AppVariantConfig> = {
   staging: {
     variant: 'staging',
     androidPackage: 'za.co.jedidiahequipment.ops.staging',
+    iosBundleIdentifier: 'za.co.jedidiahequipment.ops.staging',
     scheme: 'jedidiahopsstaging',
     displayName: 'Jedidiah Ops (Staging)',
     iconConfig: {
@@ -49,6 +51,7 @@ const VARIANTS: Record<AppVariant, AppVariantConfig> = {
   production: {
     variant: 'production',
     androidPackage: 'za.co.jedidiahequipment.ops',
+    iosBundleIdentifier: 'za.co.jedidiahequipment.ops',
     scheme: 'jedidiahops',
     displayName: 'Jedidiah Ops',
     iconConfig: {

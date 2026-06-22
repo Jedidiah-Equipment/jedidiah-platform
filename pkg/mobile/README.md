@@ -9,6 +9,10 @@ Expo managed React Native app for Jedidiah Ops.
 - `pnpm --filter @pkg/mobile ios` builds and launches the iOS dev client.
 - `pnpm --filter @pkg/mobile typecheck` runs TypeScript for the mobile package.
 
+The `dev`, `android`, and `ios` scripts set `APP_VARIANT=staging`, which `app.config.ts` requires to
+resolve the build variant (name, scheme, Android package, icon). Running `expo` directly needs the
+same var, e.g. `APP_VARIANT=staging pnpm --filter @pkg/mobile exec expo config`. See `AGENTS.md`.
+
 ## Notes
 
 - Expo Router owns navigation under `app/`. Source lives under `src/` and is imported via the `@/*` alias.

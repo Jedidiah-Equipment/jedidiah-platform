@@ -11,6 +11,7 @@ export * from './formatting/number.js';
 export * from './formatting/phone-number.js';
 export * from './images/image-policy.js';
 export * from './jobs/bay-active-job.js';
+export * from './jobs/bay-schedule-derivations.js';
 export * from './jobs/bay-schedule-projection.js';
 export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';

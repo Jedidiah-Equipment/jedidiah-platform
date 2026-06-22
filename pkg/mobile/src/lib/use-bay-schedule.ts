@@ -1,10 +1,10 @@
 import {
   type ActiveJobProgress,
-  addDateOnlyDays,
   bayWorkingCalendar,
-  countWorkingDaysBetween,
   deriveActiveJobProgress,
-  isWorkingDay,
+  findActiveWorkSlot,
+  listUpcomingWorkSlots,
+  summarizeWorkSlotSpan,
 } from '@pkg/domain';
 import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
@@ -76,47 +76,28 @@ export type BayScheduleState =
       today: DateOnlyIso;
     };
 
-// Unpaged read so every Slot's Job resolves to a product/customer in one cached query
-// (mirrors `useBayList`; tRPC batches it with the Bay list round-trip).
-const allJobsInput = {
-  filters: {},
-  page: 1,
-  pageSize: 0,
-  search: '',
-  sortBy: 'createdAt',
-  sortDirection: 'desc',
-} as const;
-
 /**
- * Loads one Bay's schedule for the ACTIVE NOW + UP NEXT panes: the cached Bay
- * schedule (`jobs.listBays`) joined with the Job list (`jobs.list`) for product
- * and customer detail, deriving the in-progress Slot's days-left and each
- * upcoming Work Slot's working-day span. Mirrors {@link useBayList}'s join.
+ * Loads one Bay's schedule for the ACTIVE NOW + UP NEXT panes from the cached Bay
+ * schedule (`jobs.listBays`), whose `jobs` carry each scheduled Job's product and
+ * customer detail, deriving the in-progress Slot's days-left and each upcoming
+ * Work Slot's working-day span. Mirrors {@link useBayList}.
  */
 export function useBaySchedule(bayId: string): BayScheduleState {
   const trpc = useTRPC();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
-  const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
 
   return useMemo<BayScheduleState>(() => {
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
-    if (jobsQuery.error) return { status: 'error', error: jobsQuery.error };
-    if (baysQuery.isPending || jobsQuery.isPending) return { status: 'pending' };
+    if (baysQuery.isPending) return { status: 'pending' };
 
-    const { items: bays, offDays, today } = baysQuery.data;
+    const { items: bays, jobs, offDays, today } = baysQuery.data;
     const bay = bays.find((candidate) => candidate.id === bayId && candidate.disabledAt === null);
     if (!bay) return { status: 'not-found' };
 
     const workingCalendar = bayWorkingCalendar(new Set(offDays.map((offDay) => offDay.date)), bay.calendarExceptions);
-    const jobsById = new Map(jobsQuery.data.items.map((job) => [job.id, job] as const));
-    const workSlots = bay.slots.filter((slot): slot is ProjectedWorkJobSlot => slot.kind === 'work');
+    const jobsById = new Map(jobs.map((job) => [job.id, job] as const));
 
-    // The in-progress Slot covers today, but only counts as active on a day the Bay
-    // actually works (projected Slots span closure days), mirroring `useBayList`.
-    const activeSlot = isWorkingDay(today, workingCalendar)
-      ? workSlots.find((slot) => slot.startDate <= today && today < slot.endDate)
-      : undefined;
-
+    const activeSlot = findActiveWorkSlot({ bay, today, workingCalendar });
     const activeJob = activeSlot ? jobsById.get(activeSlot.jobId) : undefined;
     const active: BayScheduleActiveJob | null =
       activeSlot && activeJob
@@ -134,7 +115,7 @@ export function useBaySchedule(bayId: string): BayScheduleState {
 
     // Everything still ahead: future Work Slots, plus a Slot covering today that the
     // off-day gate excluded from `active` (so it is never silently dropped).
-    const upcomingSlots = workSlots.filter((slot) => slot.id !== activeSlot?.id && slot.endDate > today);
+    const upcomingSlots = listUpcomingWorkSlots({ bay, excludeSlotId: activeSlot?.id, today });
 
     // Detail-pane projection for the in-progress Slot and every upcoming one — the
     // Slots the list pane lets you select.
@@ -145,6 +126,7 @@ export function useBaySchedule(bayId: string): BayScheduleState {
       remaining: number | null,
     ): BaySlotDetail => {
       const job = jobsById.get(slot.jobId);
+      const { lastWorkDay, workDays } = summarizeWorkSlotSpan({ slot, workingCalendar });
       const detail: BaySlotDetail = {
         jobId: slot.jobId,
         jobCode: slot.jobCode,
@@ -157,8 +139,8 @@ export function useBaySchedule(bayId: string): BayScheduleState {
         status,
         remainingWorkDays: remaining,
         startDate: slot.startDate,
-        lastWorkDay: addDateOnlyDays(slot.endDate, -1),
-        workDays: countWorkingDaysBetween(slot.startDate, slot.endDate, workingCalendar),
+        lastWorkDay,
+        workDays,
       };
       slotsById[slot.id] = detail;
 
@@ -191,13 +173,5 @@ export function useBaySchedule(bayId: string): BayScheduleState {
       slotsById,
       today,
     };
-  }, [
-    bayId,
-    baysQuery.data,
-    baysQuery.error,
-    baysQuery.isPending,
-    jobsQuery.data,
-    jobsQuery.error,
-    jobsQuery.isPending,
-  ]);
+  }, [bayId, baysQuery.data, baysQuery.error, baysQuery.isPending]);
 }

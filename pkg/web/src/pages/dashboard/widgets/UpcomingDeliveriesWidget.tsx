@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, getJobProjectedFinishDates, isJobDeliveryAtRisk, listEnabledBays } from '@pkg/domain';
 import type { DateOnlyIso, UpcomingDeliveryQuote, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -13,7 +13,6 @@ import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { JobCodeDisplay } from '@/pages/jobs/components/JobCodeDisplay.js';
 
-import { getJobProjectedFinishDates, isJobDeliveryAtRisk, listEnabledBays } from '../bay-schedule-derivations.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 
 const UPCOMING_DELIVERIES_MAX_ROWS = 8;

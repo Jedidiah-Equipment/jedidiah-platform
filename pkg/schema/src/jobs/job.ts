@@ -168,14 +168,6 @@ export const BaySchedule = Bay.extend({
   slots: z.array(ProjectedJobSlot),
 });
 
-export type BayListResult = z.infer<typeof BayListResult>;
-export const BayListResult = z.object({
-  items: z.array(BaySchedule),
-  offDays: z.array(OffDay),
-  /** Plant "today" as an Africa/Johannesburg business date, derived once at the server boundary. */
-  today: DateOnlyIso,
-});
-
 export type JobBayListResult = z.infer<typeof JobBayListResult>;
 export const JobBayListResult = z.object({
   items: z.array(Bay),
@@ -425,6 +417,20 @@ export const JobSummary = Job.extend({
   productName: z.string().trim().min(1),
   productThumbnailDataUrl: NullableThumbnailDataUrl,
   quoteCode: QuoteCode,
+});
+
+export type BayListResult = z.infer<typeof BayListResult>;
+export const BayListResult = z.object({
+  items: z.array(BaySchedule),
+  /**
+   * Product/customer detail for every Job referenced by a Work Slot, deduplicated so a Job that
+   * spans multiple Bays carries its thumbnail once. Lets clients label the board without a separate
+   * unpaged `jobs.list` read.
+   */
+  jobs: z.array(JobSummary),
+  offDays: z.array(OffDay),
+  /** Plant "today" as an Africa/Johannesburg business date, derived once at the server boundary. */
+  today: DateOnlyIso,
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;

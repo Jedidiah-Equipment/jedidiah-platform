@@ -1,6 +1,6 @@
+import { countActiveJobs } from '@pkg/domain';
 import type React from 'react';
 
-import { countActiveJobs } from '../bay-schedule-derivations.js';
 import { DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { StatCard, StatCardSkeleton } from '../StatCard.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';

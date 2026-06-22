@@ -5,13 +5,14 @@
   "main": "expo-router/entry",
   "scripts": {
     "preandroid": "turbo run build --filter=@pkg/api",
-    "precheck": "turbo run build --filter=@pkg/api",
+    "pretypecheck": "turbo run build --filter=@pkg/api",
     "preios": "turbo run build --filter=@pkg/api",
     "predev": "turbo run build --filter=@pkg/api",
     "android": "expo run:android --port 7003",
-    "check": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "ios": "expo run:ios --port 7003",
-    "dev": "expo start --dev-client --port 7003"
+    "dev": "expo start --dev-client --port 7003",
+    "test": "vitest run"
   },
   "dependencies": {
     "@better-auth/expo": "1.6.14",

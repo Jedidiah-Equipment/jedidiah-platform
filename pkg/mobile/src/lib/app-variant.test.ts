@@ -10,7 +10,7 @@ describe('resolveAppVariant', () => {
     expect(config.androidPackage).toBe('za.co.jedidiahequipment.ops.staging');
     expect(config.iosBundleIdentifier).toBe('za.co.jedidiahequipment.ops.staging');
     expect(config.scheme).toBe('jedidiahopsstaging');
-    expect(config.displayName).toBe('Jedidiah Ops (Staging)');
+    expect(config.displayName).toBe('JedidiahOps (Staging)');
     expect(config.iconConfig.icon).toBe('./assets/icon-staging.png');
     expect(config.iconConfig.adaptiveIcon.foregroundImage).toBe('./assets/adaptive-icon.png');
     expect(config.iconConfig.adaptiveIcon.backgroundColor).toBe('#FFF000');
@@ -23,7 +23,7 @@ describe('resolveAppVariant', () => {
     expect(config.androidPackage).toBe('za.co.jedidiahequipment.ops');
     expect(config.iosBundleIdentifier).toBe('za.co.jedidiahequipment.ops');
     expect(config.scheme).toBe('jedidiahops');
-    expect(config.displayName).toBe('Jedidiah Ops');
+    expect(config.displayName).toBe('JedidiahOps');
     expect(config.iconConfig.icon).toBe('./assets/icon.png');
     expect(config.iconConfig.adaptiveIcon.foregroundImage).toBe('./assets/adaptive-icon.png');
     expect(config.iconConfig.adaptiveIcon.backgroundColor).toBe('#FFF000');

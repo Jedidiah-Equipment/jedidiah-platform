@@ -42,7 +42,7 @@ const VARIANTS: Record<AppVariant, AppVariantConfig> = {
     androidPackage: 'za.co.jedidiahequipment.ops.staging',
     iosBundleIdentifier: 'za.co.jedidiahequipment.ops.staging',
     scheme: 'jedidiahopsstaging',
-    displayName: 'Jedidiah Ops (Staging)',
+    displayName: 'JedidiahOps (Staging)',
     iconConfig: {
       icon: STAGING_ICON,
       adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: ICON_BACKGROUND },
@@ -53,7 +53,7 @@ const VARIANTS: Record<AppVariant, AppVariantConfig> = {
     androidPackage: 'za.co.jedidiahequipment.ops',
     iosBundleIdentifier: 'za.co.jedidiahequipment.ops',
     scheme: 'jedidiahops',
-    displayName: 'Jedidiah Ops',
+    displayName: 'JedidiahOps',
     iconConfig: {
       icon: PRODUCTION_ICON,
       adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: ICON_BACKGROUND },

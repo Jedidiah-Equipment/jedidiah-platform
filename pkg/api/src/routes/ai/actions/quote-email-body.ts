@@ -35,7 +35,7 @@ export async function generateQuoteEmailBody({
     instructions: createSystemPrompt(authorizedToolNames),
     model: config.OPENAI_MODEL,
     modelSettings: { reasoning: { effort: config.OPENAI_REASONING_EFFORT } },
-    name: 'Jedidiah Ops assistant',
+    name: 'JedidiahOps assistant',
     tools: createAgentTools(authorizedTools, noop, noop),
   });
 

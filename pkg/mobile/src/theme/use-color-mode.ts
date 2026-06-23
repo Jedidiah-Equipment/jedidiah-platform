@@ -2,7 +2,7 @@ import { useContext } from 'react';
 
 import { ColorModeContext } from './ColorModeProvider';
 
-// Read/override the persisted theme preference (system, light, or dark).
+// Read/override the persisted explicit theme preference.
 export function useColorMode() {
   const context = useContext(ColorModeContext);
 

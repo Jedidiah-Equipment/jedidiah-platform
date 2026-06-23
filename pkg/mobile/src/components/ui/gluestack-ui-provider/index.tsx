@@ -1,8 +1,8 @@
 import { OverlayProvider } from '@gluestack-ui/overlay';
 import { ToastProvider } from '@gluestack-ui/toast';
 import type { ReactNode } from 'react';
-import { useColorScheme as useNativeColorScheme, View } from 'react-native';
-import { type ColorModePreference, resolveColorModePreference } from '@/theme/color-mode';
+import { View } from 'react-native';
+import { type ColorModePreference, DEFAULT_COLOR_MODE, resolveColorModePreference } from '@/theme/color-mode';
 import { gluestackConfig } from '@/theme/gluestack-config';
 
 /**
@@ -12,13 +12,12 @@ import { gluestackConfig } from '@/theme/gluestack-config';
  */
 export function GluestackUIProvider({
   children,
-  mode = 'system',
+  mode = DEFAULT_COLOR_MODE,
 }: {
   children: ReactNode;
   mode?: ColorModePreference;
 }) {
-  const systemColorScheme = useNativeColorScheme();
-  const resolved = resolveColorModePreference(mode, systemColorScheme);
+  const resolved = resolveColorModePreference(mode);
 
   return (
     <View className="flex-1" style={gluestackConfig[resolved]}>

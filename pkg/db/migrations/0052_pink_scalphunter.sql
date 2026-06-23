@@ -1,0 +1,1 @@
+ALTER TABLE "product_ranges" ADD COLUMN "description" text;

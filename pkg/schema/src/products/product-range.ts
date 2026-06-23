@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { DateIso } from '../common/date.js';
 import { EntityImage } from '../common/image.js';
-import { requiredTrimmedText } from '../common/text.js';
+import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 
 // Cap for an uploaded Product Range image. The bytes live in private object storage (not inline in the
@@ -12,10 +12,17 @@ export const RANGE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 export type ProductRangeName = z.infer<typeof ProductRangeName>;
 export const ProductRangeName = requiredTrimmedText('Range name is required');
 
+export type ProductRangeDescription = z.infer<typeof ProductRangeDescription>;
+export const ProductRangeDescription = nullableTrimmedText();
+
+export type ProductRangeDescriptionInput = z.infer<typeof ProductRangeDescriptionInput>;
+export const ProductRangeDescriptionInput = nullableTrimmedTextInput();
+
 export type ProductRange = z.infer<typeof ProductRange>;
 export const ProductRange = z.object({
   id: UUID,
   name: ProductRangeName,
+  description: ProductRangeDescription,
   // The Range's single presentation image, exposed as a client-safe reference (no storage key). Replaced
   // in place through the dedicated image route, never carried on the create/update payload.
   image: EntityImage.nullable(),
@@ -33,6 +40,7 @@ export type ProductRangeCreateInput = z.infer<typeof ProductRangeCreateInput>;
 export const ProductRangeCreateInput = z
   .object({
     name: ProductRangeName,
+    description: ProductRangeDescriptionInput,
   })
   .strict();
 
@@ -41,6 +49,7 @@ export const ProductRangeUpdateInput = z
   .object({
     id: UUID,
     name: ProductRangeName,
+    description: ProductRangeDescriptionInput,
   })
   .strict();
 

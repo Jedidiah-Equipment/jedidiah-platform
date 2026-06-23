@@ -29,6 +29,18 @@ export const ProductRangeForm: React.FC<ProductRangeFormProps> = ({ canEdit, onS
           {(field) => <field.TextField autoComplete="off" disabled={!canEdit} label="Name" />}
         </form.AppField>
         <EditFormFullWidth>
+          <form.AppField name="description">
+            {(field) => (
+              <field.TextareaField
+                disabled={!canEdit}
+                label="Description"
+                placeholder="Short marketing blurb shown on the public site."
+                rows={4}
+              />
+            )}
+          </form.AppField>
+        </EditFormFullWidth>
+        <EditFormFullWidth>
           <RangeImageUpload canEdit={canEdit} image={range.image} rangeId={range.id} />
         </EditFormFullWidth>
       </EditFormGrid>

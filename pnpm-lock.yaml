@@ -185,6 +185,9 @@ importers:
 
   pkg/lander:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.1062.0
+        version: 3.1062.0
       '@pkg/core':
         specifier: workspace:*
         version: link:../core

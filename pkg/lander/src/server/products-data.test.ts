@@ -55,7 +55,7 @@ test('loadProductsCatalog groups Products under their Range with a model count',
     name: product.name,
     modelCode: product.modelCode,
     description: 'Flagship 14-ton tipping trailer.',
-    href: `/products/${product.id}`,
+    href: `/products/${encodeURIComponent(product.modelCode)}`,
     imageUrl: `/images/products/${product.id}`,
   });
 });

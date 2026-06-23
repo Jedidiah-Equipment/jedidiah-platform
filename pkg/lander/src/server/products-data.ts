@@ -62,7 +62,8 @@ export async function loadProductsCatalog(db: Db): Promise<ProductsCatalog> {
       name: row.name,
       modelCode: row.modelCode,
       description: row.description ?? '',
-      href: `/products/${row.id}`,
+      // The detail page is keyed by modelCode (`/products/:modelCode`); the image route is keyed by id.
+      href: `/products/${encodeURIComponent(row.modelCode)}`,
       imageUrl: `/images/products/${row.id}`,
     });
     productsByRange.set(row.rangeId, list);

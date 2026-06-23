@@ -13,12 +13,16 @@ const FULL_IMAGES: ProductImages = {
   primary: IMAGE,
   technicalDrawing: IMAGE,
   banner: IMAGE,
+  secondary1: IMAGE,
+  secondary2: IMAGE,
 };
 
 const EMPTY_IMAGES: ProductImages = {
   primary: null,
   technicalDrawing: null,
   banner: null,
+  secondary1: null,
+  secondary2: null,
 };
 
 // A brochure with every required field present. Each test peels one field away to assert the verdict.

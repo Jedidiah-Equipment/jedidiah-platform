@@ -165,6 +165,8 @@ function mapProductImages(store: ProductImageStore | undefined): ProductImages {
   return ProductImages.parse({
     banner: toProductImageInput(store?.banner),
     primary: toProductImageInput(store?.primary),
+    secondary1: toProductImageInput(store?.secondary1),
+    secondary2: toProductImageInput(store?.secondary2),
     technicalDrawing: toProductImageInput(store?.technicalDrawing),
   } satisfies Record<ProductImageSlot, ProductImageInput>);
 }

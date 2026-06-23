@@ -42,6 +42,8 @@ describe('mapProduct', () => {
         primary: { byteSize: 2048, contentType: 'image/png', updatedAt: '2026-05-13T11:30:00.000Z' },
         banner: null,
         technicalDrawing: null,
+        secondary1: null,
+        secondary2: null,
       },
       keyFeatures: ['Heavy duty', 'Low maintenance'],
       createdAt: createdAt.toISOString(),

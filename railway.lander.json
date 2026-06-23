@@ -1,0 +1,34 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "pnpm --filter @pkg/lander... build",
+    "watchPatterns": [
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "turbo.json",
+      "tsconfig.base.json",
+      "pkg/core/**",
+      "pkg/db/**",
+      "pkg/domain/**",
+      "pkg/lander/**",
+      "pkg/pdf/**",
+      "pkg/schema/**"
+    ]
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter @pkg/lander start",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 30,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "environments": {
+    "staging": {
+      "deploy": {
+        "numReplicas": 1
+      }
+    }
+  }
+}

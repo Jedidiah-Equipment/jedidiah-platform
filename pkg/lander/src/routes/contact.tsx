@@ -152,7 +152,8 @@ function EnquiryForm() {
             <label htmlFor="contact-equipment" className={LABEL_CLASS}>
               Equipment of Interest
             </label>
-            <select id="contact-equipment" name="equipment" defaultValue={EQUIPMENT_OPTIONS[0]} className={FIELD_CLASS}>
+            <select id="contact-equipment" name="equipment" defaultValue="" className={FIELD_CLASS}>
+              <option value="">Select equipment (optional)</option>
               {EQUIPMENT_OPTIONS.map((option) => (
                 <option key={option}>{option}</option>
               ))}

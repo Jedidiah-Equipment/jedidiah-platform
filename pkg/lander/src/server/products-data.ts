@@ -38,6 +38,25 @@ function toRangeLabel(name: string): string {
   return name.replace(/\s+Range$/i, '');
 }
 
+// Shared Product -> card view model. The detail page is keyed by modelCode (`/products/:modelCode`); the
+// image route is keyed by id and streams the brochure hero or a neutral placeholder. Used by the catalog
+// grouping and the detail page's "More in {Range}" strip so both speak the same card shape.
+export function toCatalogProduct(row: {
+  id: string;
+  name: string;
+  modelCode: string;
+  description: string | null;
+}): CatalogProduct {
+  return {
+    id: row.id,
+    name: row.name,
+    modelCode: row.modelCode,
+    description: row.description ?? '',
+    href: `/products/${encodeURIComponent(row.modelCode)}`,
+    imageUrl: `/images/products/${row.id}`,
+  };
+}
+
 // Loads the whole public catalog in one pass: every Range plus every Product, grouped by Range. Each card
 // points at the public Product image route, which streams the brochure hero or the neutral placeholder, so
 // the view model carries no image-presence flag. Pricing, assemblies and bays are intentionally not read —
@@ -57,15 +76,7 @@ export async function loadProductsCatalog(db: Db): Promise<ProductsCatalog> {
   const productsByRange = new Map<string, CatalogProduct[]>();
   for (const row of rows) {
     const list = productsByRange.get(row.rangeId) ?? [];
-    list.push({
-      id: row.id,
-      name: row.name,
-      modelCode: row.modelCode,
-      description: row.description ?? '',
-      // The detail page is keyed by modelCode (`/products/:modelCode`); the image route is keyed by id.
-      href: `/products/${encodeURIComponent(row.modelCode)}`,
-      imageUrl: `/images/products/${row.id}`,
-    });
+    list.push(toCatalogProduct(row));
     productsByRange.set(row.rangeId, list);
   }
 

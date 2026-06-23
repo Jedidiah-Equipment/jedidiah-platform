@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsIndexRouteImport } from './routes/products/index'
+import { Route as ProductsModelCodeRouteImport } from './routes/products/$modelCode'
 import { Route as ImagesRangesRangeIdRouteImport } from './routes/images/ranges/$rangeId'
 import { Route as ImagesProductsProductIdRouteImport } from './routes/images/products/$productId'
 
@@ -30,6 +31,11 @@ const ProductsIndexRoute = ProductsIndexRouteImport.update({
   path: '/products/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProductsModelCodeRoute = ProductsModelCodeRouteImport.update({
+  id: '/products/$modelCode',
+  path: '/products/$modelCode',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ImagesRangesRangeIdRoute = ImagesRangesRangeIdRouteImport.update({
   id: '/images/ranges/$rangeId',
   path: '/images/ranges/$rangeId',
@@ -44,6 +50,7 @@ const ImagesProductsProductIdRoute = ImagesProductsProductIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
+  '/products/$modelCode': typeof ProductsModelCodeRoute
   '/products/': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
+  '/products/$modelCode': typeof ProductsModelCodeRoute
   '/products': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
+  '/products/$modelCode': typeof ProductsModelCodeRoute
   '/products/': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
@@ -68,6 +77,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/health'
+    | '/products/$modelCode'
     | '/products/'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
@@ -75,6 +85,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/health'
+    | '/products/$modelCode'
     | '/products'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
@@ -82,6 +93,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/health'
+    | '/products/$modelCode'
     | '/products/'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
@@ -90,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HealthRoute: typeof HealthRoute
+  ProductsModelCodeRoute: typeof ProductsModelCodeRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
   ImagesProductsProductIdRoute: typeof ImagesProductsProductIdRoute
   ImagesRangesRangeIdRoute: typeof ImagesRangesRangeIdRoute
@@ -118,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/products/$modelCode': {
+      id: '/products/$modelCode'
+      path: '/products/$modelCode'
+      fullPath: '/products/$modelCode'
+      preLoaderRoute: typeof ProductsModelCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/images/ranges/$rangeId': {
       id: '/images/ranges/$rangeId'
       path: '/images/ranges/$rangeId'
@@ -138,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HealthRoute: HealthRoute,
+  ProductsModelCodeRoute: ProductsModelCodeRoute,
   ProductsIndexRoute: ProductsIndexRoute,
   ImagesProductsProductIdRoute: ImagesProductsProductIdRoute,
   ImagesRangesRangeIdRoute: ImagesRangesRangeIdRoute,

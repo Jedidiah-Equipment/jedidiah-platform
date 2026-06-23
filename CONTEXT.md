@@ -1,4 +1,4 @@
-# Jedidiah Ops Context
+# JedidiahOps Context
 
 Compact domain map for implementation and planning. Search this file first for names and invariants; read only the sections relevant to the work.
 

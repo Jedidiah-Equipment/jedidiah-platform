@@ -179,7 +179,7 @@ async function streamChatCompletion({
           effort: reasoningEffort,
         },
       },
-      name: 'Jedidiah Ops assistant',
+      name: 'JedidiahOps assistant',
       tools,
     });
 

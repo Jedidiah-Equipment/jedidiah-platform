@@ -2,6 +2,7 @@ import { formatDate } from '@pkg/domain';
 import type { BaySchedule } from '@pkg/schema';
 import { IconLoader2, IconMoon, IconSun, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
+import { bayOperatorName } from '@/components/bays/bay-label.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
@@ -80,13 +81,18 @@ export const BayExceptionDialog: React.FC<BayExceptionDialogProps> = ({
               value={state?.bayId ?? ''}
             >
               <SelectTrigger id="bay-exception-bay" className="w-full">
-                <SelectValue placeholder="Select bay">{selectedBay?.name ?? null}</SelectValue>
+                <SelectValue placeholder="Select bay">
+                  {selectedBay
+                    ? `${selectedBay.name}${bayOperatorName(selectedBay) ? ` - ${bayOperatorName(selectedBay)}` : ''}`
+                    : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent align="start">
                 <SelectGroup>
                   {bays.map((bay) => (
                     <SelectItem key={bay.id} value={bay.id}>
                       {bay.name}
+                      {bayOperatorName(bay) ? ` - ${bayOperatorName(bay)}` : ''}
                     </SelectItem>
                   ))}
                 </SelectGroup>

@@ -1,6 +1,6 @@
 import { getProduct, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { evaluateBrochureCompleteness } from '@pkg/domain';
+import { evaluateProductBrochureCompleteness } from '@pkg/domain';
 import { UUID } from '@pkg/schema';
 
 import { type CatalogProduct, toCatalogProduct, toRangeSlug } from './products-data.js';
@@ -55,13 +55,7 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
     getProduct({ db, id: UUID.parse(product.id) }),
   ]);
 
-  const brochureComplete = evaluateBrochureCompleteness({
-    assemblyCount: fullProduct.assemblies.length,
-    category: fullProduct.category,
-    description: fullProduct.description,
-    images: fullProduct.images,
-    keyFeatures: fullProduct.keyFeatures,
-  }).complete;
+  const brochureComplete = evaluateProductBrochureCompleteness(fullProduct).complete;
 
   const range = ranges.find((candidate) => candidate.id === product.rangeId);
   const rangeName = range?.name ?? '';

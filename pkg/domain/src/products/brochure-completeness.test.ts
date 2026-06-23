@@ -1,7 +1,11 @@
-import { EntityImage, type ProductImages } from '@pkg/schema';
+import { EntityImage, Product, type ProductImages } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { type BrochureCompletenessInput, evaluateBrochureCompleteness } from './brochure-completeness.js';
+import {
+  type BrochureCompletenessInput,
+  evaluateBrochureCompleteness,
+  evaluateProductBrochureCompleteness,
+} from './brochure-completeness.js';
 
 const IMAGE = EntityImage.parse({
   byteSize: 1_024,
@@ -95,6 +99,46 @@ describe('evaluateBrochureCompleteness', () => {
     expect(evaluateBrochureCompleteness(completeInput({ keyFeatures: ['  ', 'Low maintenance'] }))).toEqual({
       complete: true,
       missingFields: [],
+    });
+  });
+});
+
+const PRODUCT_ID = '11111111-1111-4111-8111-111111111111';
+
+function completeProduct(overrides: Partial<Product> = {}): Product {
+  return Product.parse({
+    id: PRODUCT_ID,
+    name: 'Feed Mixer',
+    description: 'A rugged feed mixer built for daily use.',
+    modelCode: 'FM-100',
+    basePrice: 1000,
+    buildTimeDays: 5,
+    currencyCode: 'ZAR',
+    rangeId: '22222222-2222-4222-8222-222222222222',
+    requiresVinNumber: false,
+    assemblies: [
+      { id: '33333333-3333-4333-8333-333333333333', productId: PRODUCT_ID, kind: 'standard', name: 'Frame', parts: [] },
+    ],
+    productBays: [],
+    category: 'Silage & Grain',
+    keyFeatures: ['Heavy-duty steel construction'],
+    images: FULL_IMAGES,
+    thumbnailDataUrl: null,
+    createdAt: '2026-06-17T00:00:00.000Z',
+    updatedAt: '2026-06-17T00:00:00.000Z',
+    ...overrides,
+  });
+}
+
+describe('evaluateProductBrochureCompleteness', () => {
+  it('maps a complete persisted Product through to a complete verdict', () => {
+    expect(evaluateProductBrochureCompleteness(completeProduct())).toEqual({ complete: true, missingFields: [] });
+  });
+
+  it('reports the missing fields drawn from the Product', () => {
+    expect(evaluateProductBrochureCompleteness(completeProduct({ category: null, assemblies: [] }))).toEqual({
+      complete: false,
+      missingFields: ['category', 'assemblies'],
     });
   });
 });

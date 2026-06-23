@@ -2,6 +2,7 @@ import {
   BROCHURE_IMAGE_SLOTS,
   type BrochureCompleteness,
   type BrochureRequiredField,
+  type Product,
   type ProductImages,
 } from '@pkg/schema';
 
@@ -48,6 +49,19 @@ export function evaluateBrochureCompleteness(input: BrochureCompletenessInput): 
   }
 
   return { complete: missingFields.length === 0, missingFields };
+}
+
+// Adapts a persisted Product into the completeness verdict. The single home for the Product → input
+// mapping so the preview gate, the quote/job generation gate, and the Lander stay in lockstep when the
+// required-field shape changes.
+export function evaluateProductBrochureCompleteness(product: Product): BrochureCompleteness {
+  return evaluateBrochureCompleteness({
+    assemblyCount: product.assemblies.length,
+    category: product.category,
+    description: product.description,
+    images: product.images,
+    keyFeatures: product.keyFeatures,
+  });
 }
 
 function hasText(value: string | null | undefined): boolean {

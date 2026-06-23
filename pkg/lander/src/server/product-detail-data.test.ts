@@ -13,7 +13,7 @@ async function insertRange(db: Db, name: string) {
   return range;
 }
 
-type BrochureImageRef = { byteSize: number; contentType: string; storageKey: string; updatedAt: string };
+type ProductImageRef = { byteSize: number; contentType: string; storageKey: string; updatedAt: string };
 
 async function insertProduct(
   db: Db,
@@ -24,7 +24,7 @@ async function insertProduct(
     description?: string | null;
     category?: string | null;
     keyFeatures?: string[];
-    images?: Partial<Record<string, BrochureImageRef>>;
+    images?: Partial<Record<string, ProductImageRef>>;
   },
 ) {
   const [product] = await db
@@ -38,8 +38,8 @@ async function insertProduct(
 
 // A full set of stored brochure image refs (every slot present) — one half of what the completeness gate
 // requires alongside a subtitle, a key feature, a description, and at least one assembly.
-function completeBrochureImages(): Record<string, BrochureImageRef> {
-  const ref = (slot: string): BrochureImageRef => ({
+function completeProductImages(): Record<string, ProductImageRef> {
+  const ref = (slot: string): ProductImageRef => ({
     byteSize: 1024,
     contentType: 'image/png',
     storageKey: `products/brochure/${slot}-${crypto.randomUUID()}.png`,
@@ -164,7 +164,7 @@ test('loadProductDetail exposes the brochure download link only when the brochur
     description: 'Flagship 14-ton tipping trailer.',
     category: 'Built for high-volume haulage.',
     keyFeatures: ['Heavy-duty monocoque body'],
-    images: completeBrochureImages(),
+    images: completeProductImages(),
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 

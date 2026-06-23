@@ -35,8 +35,9 @@ export async function readRangeImage(storage: StorageAdapter, db: Db, rangeId: s
   }
 }
 
-// Read a Product's `primary` image, or null when there is nothing to show (see readRangeImage).
-export async function readProductHeroImage(
+// Read a Product's `primary` image, the lead image the Lander shows, or null when there is nothing to
+// show (see readRangeImage).
+export async function readProductLeadImage(
   storage: StorageAdapter,
   db: Db,
   productId: string,

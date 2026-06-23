@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { DatabaseTransaction, Db, ProductImageStore, StoredImageRef } from '@pkg/db';
-import { evaluateBrochureCompleteness } from '@pkg/domain';
+import { evaluateProductBrochureCompleteness } from '@pkg/domain';
 import {
   type AuthId,
   BROCHURE_IMAGE_SLOTS,
@@ -46,8 +46,9 @@ export async function renderProductBrochurePreview({
 }): Promise<BrochurePreviewResult> {
   const { images, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
 
-  if (!isBrochureComplete(product)) {
-    const completeness = evaluateBrochureCompleteness(brochureCompletenessInput(product));
+  const completeness = evaluateProductBrochureCompleteness(product);
+
+  if (!completeness.complete) {
     throw new ProductBrochureIncompleteError(productId, completeness.missingFields);
   }
 
@@ -73,7 +74,7 @@ export async function generateProductBrochureIfComplete({
 }): Promise<BrochurePreviewResult | null> {
   const { images, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
 
-  if (!isBrochureComplete(product)) {
+  if (!evaluateProductBrochureCompleteness(product).complete) {
     return null;
   }
 
@@ -148,20 +149,6 @@ async function renderBrochureForProduct({
   const bytes = await pdfRenderer({ document, filename });
 
   return { bytes, filename };
-}
-
-function isBrochureComplete(product: Product): boolean {
-  return evaluateBrochureCompleteness(brochureCompletenessInput(product)).complete;
-}
-
-function brochureCompletenessInput(product: Product) {
-  return {
-    assemblyCount: product.assemblies.length,
-    category: product.category,
-    description: product.description,
-    images: product.images,
-    keyFeatures: product.keyFeatures,
-  };
 }
 
 /**

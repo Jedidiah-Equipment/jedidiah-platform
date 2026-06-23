@@ -1,4 +1,4 @@
-import { evaluateBrochureCompleteness, formatBytes } from '@pkg/domain';
+import { evaluateProductBrochureCompleteness, formatBytes } from '@pkg/domain';
 import type { BrochureRequiredField, Product } from '@pkg/schema';
 import { IconAlertTriangle, IconDownload, IconEye } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -31,13 +31,7 @@ type ProductBrochurePreviewProps = {
 // lives outside the autosave form, so there is no live form subscription) via the shared predicate, so the
 // missing-field list stays in lockstep with the server-side preview/generation gates.
 export const ProductBrochurePreview: React.FC<ProductBrochurePreviewProps> = ({ product }) => {
-  const completeness = evaluateBrochureCompleteness({
-    assemblyCount: product.assemblies.length,
-    category: product.category,
-    description: product.description,
-    images: product.images,
-    keyFeatures: product.keyFeatures,
-  });
+  const completeness = evaluateProductBrochureCompleteness(product);
 
   return (
     <div className="flex flex-col gap-4">

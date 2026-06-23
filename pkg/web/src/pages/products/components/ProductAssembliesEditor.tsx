@@ -98,7 +98,12 @@ export const ProductAssembliesEditor: React.FC<ProductAssembliesEditorProps> = (
     if (firstOfKindIndex === undefined) {
       assembliesField.pushValue(assembly);
     } else {
-      assembliesField.insertValue(firstOfKindIndex, assembly);
+      // `dontValidate` keeps the insert synchronous. TanStack's async insert awaits a
+      // field validation before it shifts field meta, which lets React remount the
+      // shifted (id-keyed) rows first; the meta shift then copies the new empty row's
+      // onMount error onto the next assembly, marking a valid row invalid. The new
+      // row's own onMount and the whole-form autosave flush still surface validation.
+      assembliesField.insertValue(firstOfKindIndex, assembly, { dontValidate: true });
     }
 
     setExpandedAssemblyIds((current) => new Set(current).add(assembly.id ?? ''));

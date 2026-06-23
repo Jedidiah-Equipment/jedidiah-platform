@@ -81,12 +81,18 @@ export const BaysPage: React.FC = () => {
     [bays],
   );
 
-  // Operator -> the Bay they are currently assigned to, so selection dropdowns can surface "who's where".
+  // Operator -> every Bay they are currently assigned to, so selection dropdowns can surface "who's where".
+  // An operator can be the current operator on multiple bays, so accumulate names rather than overwriting.
   const operatorBayNames = useMemo(() => {
-    const map = new Map<AuthId, string>();
+    const map = new Map<AuthId, string[]>();
     for (const bay of bays) {
       if (bay.currentOperator) {
-        map.set(bay.currentOperator.id, bay.name);
+        const names = map.get(bay.currentOperator.id);
+        if (names) {
+          names.push(bay.name);
+        } else {
+          map.set(bay.currentOperator.id, [bay.name]);
+        }
       }
     }
     return map;
@@ -235,7 +241,7 @@ export const BaysPage: React.FC = () => {
 
 type CreateBayDialogProps = {
   open: boolean;
-  operatorBayNames: Map<AuthId, string>;
+  operatorBayNames: Map<AuthId, string[]>;
   operators: BayOperator[];
   operatorsLoading: boolean;
   onClose: () => void;
@@ -387,7 +393,7 @@ const CreateBayForm: React.FC<Omit<CreateBayDialogProps, 'open'>> = ({
 
 type EditBayDialogProps = {
   bay: Bay | null;
-  operatorBayNames: Map<AuthId, string>;
+  operatorBayNames: Map<AuthId, string[]>;
   operators: BayOperator[];
   operatorsLoading: boolean;
   onClose: () => void;
@@ -601,7 +607,7 @@ const EditBayForm: React.FC<Omit<EditBayDialogProps, 'bay'> & { bay: Bay }> = ({
 type BayOperatorSelectProps = {
   disabled: boolean;
   id: string;
-  operatorBayNames: Map<AuthId, string>;
+  operatorBayNames: Map<AuthId, string[]>;
   operators: BayOperator[];
   operatorsLoading: boolean;
   value: AuthId | null;
@@ -619,8 +625,8 @@ const BayOperatorSelect: React.FC<BayOperatorSelectProps> = ({
 }) => {
   const selectedOperator = value ? (operators.find((operator) => operator.id === value) ?? null) : null;
   const operatorLabel = (operator: BayOperator) => {
-    const bayName = operatorBayNames.get(operator.id);
-    return bayName ? `${operator.name} - ${bayName}` : operator.name;
+    const bayNames = operatorBayNames.get(operator.id);
+    return bayNames && bayNames.length > 0 ? `${operator.name} - ${bayNames.join(', ')}` : operator.name;
   };
 
   return (

@@ -20,6 +20,16 @@ const PRODUCT_IMAGE_SLOT_FIELDS: ProductImageSlotField[] = [
     description: 'Dimensioned line drawing. Fits without cropping.',
   },
   { slot: 'banner', label: 'Banner image', description: 'Additional product photo. Center-cropped to fill.' },
+  {
+    slot: 'secondary1',
+    label: 'Secondary image 1',
+    description: 'Extra product photo for the Lander. Center-cropped to fill.',
+  },
+  {
+    slot: 'secondary2',
+    label: 'Secondary image 2',
+    description: 'Extra product photo for the Lander. Center-cropped to fill.',
+  },
 ];
 
 type ProductImagesSectionProps = {

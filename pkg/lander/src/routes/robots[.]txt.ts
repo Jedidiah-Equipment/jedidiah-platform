@@ -1,19 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { SITE_URL } from '../lib/seo.js';
-
-// Allow every crawler everywhere and point them at the generated sitemap. No server-only deps, so the body
-// is built inline rather than behind a dynamic import.
-const ROBOTS_BODY = `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`;
-
+// Allows or disallows crawling depending on the environment (production crawls, everything else is blocked).
+// The handler is dynamically imported so the config/env deps stay off the client route-tree bundle.
 export const Route = createFileRoute('/robots.txt')({
   server: {
     handlers: {
-      GET: () =>
-        new Response(ROBOTS_BODY, {
-          status: 200,
-          headers: { 'content-type': 'text/plain; charset=utf-8' },
-        }),
+      GET: async () => {
+        const { serveRobots } = await import('../server/robots.js');
+
+        return serveRobots();
+      },
     },
   },
 });

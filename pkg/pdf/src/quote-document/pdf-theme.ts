@@ -10,6 +10,7 @@ export const pdfColors = {
   mutedDark: '#333333',
   mutedOnDark: '#EDEDED',
   panel: '#f7f7f7',
+  priceCell: '#ededed',
   staleNoticeBackground: '#fff8e5',
   staleNoticeText: '#5f4300',
   white: '#ffffff',

@@ -13,7 +13,7 @@ export const pdfStyles = StyleSheet.create({
     backgroundColor: pdfColors.panel,
   },
   bgPriceCell: {
-    backgroundColor: pdfColors.yellowLight,
+    backgroundColor: pdfColors.priceCell,
   },
   borderDefault: {
     borderColor: pdfColors.border,

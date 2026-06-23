@@ -2,12 +2,15 @@ import {
   type ProductRange,
   type ProductRangeCreateInput,
   ProductRangeCreateInput as ProductRangeCreateInputSchema,
+  ProductRangeDescription,
   ProductRangeName,
   type ProductRangeUpdateInput,
   ProductRangeUpdateInput as ProductRangeUpdateInputSchema,
   type UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
+
+import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 // Browser form shape for a Range. Per-field rules defer to the `@pkg/schema` scalars; the server
 // re-validates the same constraints on create/update. The image is never part of this payload — it is
@@ -16,7 +19,7 @@ import { z } from 'zod';
 export type ProductRangeFormValues = z.infer<typeof ProductRangeFormValues>;
 export const ProductRangeFormValues = z.object({
   name: ProductRangeName,
-  description: z.string(),
+  description: emptyStringOr(ProductRangeDescription),
 });
 
 export function toProductRangeFormValues(range?: ProductRange): ProductRangeFormValues {

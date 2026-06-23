@@ -15,7 +15,9 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsIndexRouteImport } from './routes/products/index'
 import { Route as ProductsModelCodeRouteImport } from './routes/products/$modelCode'
+import { Route as InfoSplatRouteImport } from './routes/info/$'
 import { Route as ApiContactRouteImport } from './routes/api/contact'
+import { Route as InfoStaticSplatRouteImport } from './routes/info/static/$'
 import { Route as ImagesRangesRangeIdRouteImport } from './routes/images/ranges/$rangeId'
 import { Route as ImagesProductsProductIdRouteImport } from './routes/images/products/$productId'
 import { Route as DownloadsProductsProductIdBrochureRouteImport } from './routes/downloads/products/$productId/brochure'
@@ -50,9 +52,19 @@ const ProductsModelCodeRoute = ProductsModelCodeRouteImport.update({
   path: '/products/$modelCode',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InfoSplatRoute = InfoSplatRouteImport.update({
+  id: '/info/$',
+  path: '/info/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiContactRoute = ApiContactRouteImport.update({
   id: '/api/contact',
   path: '/api/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InfoStaticSplatRoute = InfoStaticSplatRouteImport.update({
+  id: '/info/static/$',
+  path: '/info/static/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImagesRangesRangeIdRoute = ImagesRangesRangeIdRouteImport.update({
@@ -78,10 +90,12 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
   '/api/contact': typeof ApiContactRoute
+  '/info/$': typeof InfoSplatRoute
   '/products/$modelCode': typeof ProductsModelCodeRoute
   '/products/': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
+  '/info/static/$': typeof InfoStaticSplatRoute
   '/downloads/products/$productId/brochure': typeof DownloadsProductsProductIdBrochureRoute
 }
 export interface FileRoutesByTo {
@@ -90,10 +104,12 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
   '/api/contact': typeof ApiContactRoute
+  '/info/$': typeof InfoSplatRoute
   '/products/$modelCode': typeof ProductsModelCodeRoute
   '/products': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
+  '/info/static/$': typeof InfoStaticSplatRoute
   '/downloads/products/$productId/brochure': typeof DownloadsProductsProductIdBrochureRoute
 }
 export interface FileRoutesById {
@@ -103,10 +119,12 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
   '/api/contact': typeof ApiContactRoute
+  '/info/$': typeof InfoSplatRoute
   '/products/$modelCode': typeof ProductsModelCodeRoute
   '/products/': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
+  '/info/static/$': typeof InfoStaticSplatRoute
   '/downloads/products/$productId/brochure': typeof DownloadsProductsProductIdBrochureRoute
 }
 export interface FileRouteTypes {
@@ -117,10 +135,12 @@ export interface FileRouteTypes {
     | '/contact'
     | '/health'
     | '/api/contact'
+    | '/info/$'
     | '/products/$modelCode'
     | '/products/'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
+    | '/info/static/$'
     | '/downloads/products/$productId/brochure'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -129,10 +149,12 @@ export interface FileRouteTypes {
     | '/contact'
     | '/health'
     | '/api/contact'
+    | '/info/$'
     | '/products/$modelCode'
     | '/products'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
+    | '/info/static/$'
     | '/downloads/products/$productId/brochure'
   id:
     | '__root__'
@@ -141,10 +163,12 @@ export interface FileRouteTypes {
     | '/contact'
     | '/health'
     | '/api/contact'
+    | '/info/$'
     | '/products/$modelCode'
     | '/products/'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
+    | '/info/static/$'
     | '/downloads/products/$productId/brochure'
   fileRoutesById: FileRoutesById
 }
@@ -154,10 +178,12 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   HealthRoute: typeof HealthRoute
   ApiContactRoute: typeof ApiContactRoute
+  InfoSplatRoute: typeof InfoSplatRoute
   ProductsModelCodeRoute: typeof ProductsModelCodeRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
   ImagesProductsProductIdRoute: typeof ImagesProductsProductIdRoute
   ImagesRangesRangeIdRoute: typeof ImagesRangesRangeIdRoute
+  InfoStaticSplatRoute: typeof InfoStaticSplatRoute
   DownloadsProductsProductIdBrochureRoute: typeof DownloadsProductsProductIdBrochureRoute
 }
 
@@ -205,11 +231,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsModelCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/info/$': {
+      id: '/info/$'
+      path: '/info/$'
+      fullPath: '/info/$'
+      preLoaderRoute: typeof InfoSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/contact': {
       id: '/api/contact'
       path: '/api/contact'
       fullPath: '/api/contact'
       preLoaderRoute: typeof ApiContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/info/static/$': {
+      id: '/info/static/$'
+      path: '/info/static/$'
+      fullPath: '/info/static/$'
+      preLoaderRoute: typeof InfoStaticSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/images/ranges/$rangeId': {
@@ -242,10 +282,12 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   HealthRoute: HealthRoute,
   ApiContactRoute: ApiContactRoute,
+  InfoSplatRoute: InfoSplatRoute,
   ProductsModelCodeRoute: ProductsModelCodeRoute,
   ProductsIndexRoute: ProductsIndexRoute,
   ImagesProductsProductIdRoute: ImagesProductsProductIdRoute,
   ImagesRangesRangeIdRoute: ImagesRangesRangeIdRoute,
+  InfoStaticSplatRoute: InfoStaticSplatRoute,
   DownloadsProductsProductIdBrochureRoute:
     DownloadsProductsProductIdBrochureRoute,
 }

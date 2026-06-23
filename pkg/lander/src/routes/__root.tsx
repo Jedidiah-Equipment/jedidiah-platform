@@ -1,7 +1,9 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
+import { useEffect } from 'react';
 
 import { Footer } from '../components/footer.js';
 import { Nav } from '../components/nav.js';
+import { initAnalytics } from '../lib/analytics.js';
 import appCss from '../styles/app.css?url';
 
 export const Route = createRootRoute({
@@ -35,6 +37,17 @@ export const Route = createRootRoute({
   component: RootDocument,
 });
 
+// Initialises PostHog on mount. Pageviews — including SPA route changes — are captured by posthog-js itself
+// via `capture_pageview: 'history_change'` (set by the `defaults` snapshot), so no manual wiring is needed.
+// No-ops entirely when PostHog is unset.
+function AnalyticsTracker() {
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
+  return null;
+}
+
 function RootDocument() {
   return (
     <html lang="en">
@@ -42,6 +55,7 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
+        <AnalyticsTracker />
         <Nav />
         <Outlet />
         <Footer />

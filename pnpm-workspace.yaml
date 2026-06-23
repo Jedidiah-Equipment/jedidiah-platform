@@ -1,6 +1,5 @@
 packages:
   - "pkg/*"
-  - "pkg/solidworks/*"
 
 packageExtensions:
   "@config-plugins/react-native-pdf@*":
@@ -10,22 +9,15 @@ packageExtensions:
 allowBuilds:
   "@posthog/cli": true
   core-js: false
-  dtrace-provider: false
   esbuild: false
   msw: false
 
 overrides:
-  "@babel/core": 7.29.6
   esbuild: 0.28.1
-  hono: 4.12.26
-  dompurify: 3.4.11
-  js-yaml: 4.2.0
   tmp: 0.2.7
-  undici: 7.28.0
   uuid: 11.1.1
 
 minimumReleaseAgeExclude:
-  - react-native-blob-util@0.24.10
-  - '@posthog/core@1.36.0'
-  - '@posthog/types@1.391.0'
+  - "@posthog/core@1.36.0"
+  - "@posthog/types@1.391.0"
   - posthog-js@1.393.0

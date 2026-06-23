@@ -197,6 +197,9 @@ importers:
       '@pkg/domain':
         specifier: workspace:*
         version: link:../domain
+      '@pkg/pdf':
+        specifier: workspace:*
+        version: link:../pdf
       '@pkg/schema':
         specifier: workspace:*
         version: link:../schema

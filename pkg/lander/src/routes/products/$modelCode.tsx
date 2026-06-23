@@ -190,6 +190,43 @@ function ItemList({ items, icon }: { items: string[]; icon: () => React.JSX.Elem
   );
 }
 
+function DownloadIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden="true">
+      <path
+        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"
+        stroke="#f8d300"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14 2v6h6M12 12v6M9 15l3 3 3-3"
+        stroke="#f8d300"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function Downloads({ brochureHref }: { brochureHref: string }) {
+  return (
+    <div className="mt-10">
+      <h3 className="m-0 mb-4 font-display text-[20px] font-bold uppercase tracking-[1px] text-ink">Downloads</h3>
+      <div className="flex flex-col gap-3">
+        <a
+          href={brochureHref}
+          className="flex items-center gap-3.5 border border-[#e2e0da] bg-white px-[18px] py-3.5 no-underline transition-colors hover:border-ink"
+        >
+          <DownloadIcon />
+          <span className="flex-1 font-body text-[15px] font-semibold text-ink">Product Brochure (PDF)</span>
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
   const { standardAssemblies, optionalAssemblies, keyFeatures } = detail;
 
@@ -212,17 +249,22 @@ function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
         ) : null}
       </div>
 
-      {keyFeatures.length > 0 ? (
+      {keyFeatures.length > 0 || detail.brochureHref ? (
         <div>
-          <SectionHeading>Key Features</SectionHeading>
-          <div className="flex flex-col gap-4">
-            {keyFeatures.map((feature) => (
-              <div key={feature} className="flex items-start gap-3.5">
-                <FeatureIcon />
-                <span className="font-body text-[16px] leading-[1.5] text-[#444]">{feature}</span>
+          {keyFeatures.length > 0 ? (
+            <>
+              <SectionHeading>Key Features</SectionHeading>
+              <div className="flex flex-col gap-4">
+                {keyFeatures.map((feature) => (
+                  <div key={feature} className="flex items-start gap-3.5">
+                    <FeatureIcon />
+                    <span className="font-body text-[16px] leading-[1.5] text-[#444]">{feature}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : null}
+          {detail.brochureHref ? <Downloads brochureHref={detail.brochureHref} /> : null}
         </div>
       ) : null}
     </section>

@@ -15,6 +15,7 @@ import { Route as ProductsIndexRouteImport } from './routes/products/index'
 import { Route as ProductsModelCodeRouteImport } from './routes/products/$modelCode'
 import { Route as ImagesRangesRangeIdRouteImport } from './routes/images/ranges/$rangeId'
 import { Route as ImagesProductsProductIdRouteImport } from './routes/images/products/$productId'
+import { Route as DownloadsProductsProductIdBrochureRouteImport } from './routes/downloads/products/$productId/brochure'
 
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
@@ -46,6 +47,12 @@ const ImagesProductsProductIdRoute = ImagesProductsProductIdRouteImport.update({
   path: '/images/products/$productId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DownloadsProductsProductIdBrochureRoute =
+  DownloadsProductsProductIdBrochureRouteImport.update({
+    id: '/downloads/products/$productId/brochure',
+    path: '/downloads/products/$productId/brochure',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/products/': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
+  '/downloads/products/$productId/brochure': typeof DownloadsProductsProductIdBrochureRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +70,7 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
+  '/downloads/products/$productId/brochure': typeof DownloadsProductsProductIdBrochureRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +80,7 @@ export interface FileRoutesById {
   '/products/': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
   '/images/ranges/$rangeId': typeof ImagesRangesRangeIdRoute
+  '/downloads/products/$productId/brochure': typeof DownloadsProductsProductIdBrochureRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +91,7 @@ export interface FileRouteTypes {
     | '/products/'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
+    | '/downloads/products/$productId/brochure'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +100,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
+    | '/downloads/products/$productId/brochure'
   id:
     | '__root__'
     | '/'
@@ -97,6 +109,7 @@ export interface FileRouteTypes {
     | '/products/'
     | '/images/products/$productId'
     | '/images/ranges/$rangeId'
+    | '/downloads/products/$productId/brochure'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +119,7 @@ export interface RootRouteChildren {
   ProductsIndexRoute: typeof ProductsIndexRoute
   ImagesProductsProductIdRoute: typeof ImagesProductsProductIdRoute
   ImagesRangesRangeIdRoute: typeof ImagesRangesRangeIdRoute
+  DownloadsProductsProductIdBrochureRoute: typeof DownloadsProductsProductIdBrochureRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -152,6 +166,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImagesProductsProductIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/downloads/products/$productId/brochure': {
+      id: '/downloads/products/$productId/brochure'
+      path: '/downloads/products/$productId/brochure'
+      fullPath: '/downloads/products/$productId/brochure'
+      preLoaderRoute: typeof DownloadsProductsProductIdBrochureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -162,6 +183,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsIndexRoute: ProductsIndexRoute,
   ImagesProductsProductIdRoute: ImagesProductsProductIdRoute,
   ImagesRangesRangeIdRoute: ImagesRangesRangeIdRoute,
+  DownloadsProductsProductIdBrochureRoute:
+    DownloadsProductsProductIdBrochureRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -13,6 +13,8 @@ async function insertRange(db: Db, name: string) {
   return range;
 }
 
+type BrochureImageRef = { byteSize: number; contentType: string; storageKey: string; updatedAt: string };
+
 async function insertProduct(
   db: Db,
   rangeId: string,
@@ -22,6 +24,7 @@ async function insertProduct(
     description?: string | null;
     brochureSubtitle?: string | null;
     brochureKeyFeatures?: string[];
+    brochureImages?: Partial<Record<string, BrochureImageRef>>;
   },
 ) {
   const [product] = await db
@@ -31,6 +34,19 @@ async function insertProduct(
   if (!product) throw new Error('product insert did not return a row');
 
   return product;
+}
+
+// A full set of stored brochure image refs (every slot present) — one half of what the completeness gate
+// requires alongside a subtitle, a key feature, a description, and at least one assembly.
+function completeBrochureImages(): Record<string, BrochureImageRef> {
+  const ref = (slot: string): BrochureImageRef => ({
+    byteSize: 1024,
+    contentType: 'image/png',
+    storageKey: `products/brochure/${slot}-${crypto.randomUUID()}.png`,
+    updatedAt: new Date().toISOString(),
+  });
+
+  return { hero: ref('hero'), technicalDrawing: ref('technicalDrawing'), secondary: ref('secondary') };
 }
 
 async function insertAssembly(
@@ -134,4 +150,43 @@ test('loadProductDetail renders missing brochure copy as empty', async ({ db }) 
   expect(detail?.standardAssemblies).toEqual([]);
   expect(detail?.optionalAssemblies).toEqual([]);
   expect(detail?.related).toEqual([]);
+  expect(detail?.brochureHref).toBeNull();
+});
+
+test('loadProductDetail exposes the brochure download link only when the brochure config is complete', async ({
+  db,
+}) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Crosshaul ${suffix} Range`);
+  const product = await insertProduct(db, range.id, {
+    name: `CH14 Tipping Trailer ${suffix}`,
+    modelCode: `CH14-${suffix}`,
+    description: 'Flagship 14-ton tipping trailer.',
+    brochureSubtitle: 'Built for high-volume haulage.',
+    brochureKeyFeatures: ['Heavy-duty monocoque body'],
+    brochureImages: completeBrochureImages(),
+  });
+  await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
+
+  const detail = await loadProductDetail(db, product.modelCode);
+
+  expect(detail?.brochureHref).toBe(`/downloads/products/${product.id}/brochure`);
+});
+
+test('loadProductDetail hides the brochure link when a required brochure field is missing', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Crosshaul ${suffix} Range`);
+  // Everything is present except the brochure images, so the completeness gate fails and the link hides.
+  const product = await insertProduct(db, range.id, {
+    name: `CH12 Tipping Trailer ${suffix}`,
+    modelCode: `CH12-${suffix}`,
+    description: 'Compact tipping trailer.',
+    brochureSubtitle: 'Built for the mixed farm.',
+    brochureKeyFeatures: ['Twin-ram hydraulic tipping'],
+  });
+  await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
+
+  const detail = await loadProductDetail(db, product.modelCode);
+
+  expect(detail?.brochureHref).toBeNull();
 });

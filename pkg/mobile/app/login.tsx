@@ -1,9 +1,19 @@
 import { EmailAddress } from '@pkg/schema';
+import { IconEye, IconEyeOff } from '@tabler/icons-react-native';
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '@/components/BrandHeader';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { signIn, useSession } from '@/lib/auth';
 
@@ -13,6 +23,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSignIn() {
     if (isSubmitting) return;
@@ -52,7 +63,11 @@ export default function LoginScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-        <View className="flex-1 items-center justify-center px-7 py-10">
+        <ScrollView
+          contentContainerClassName="grow items-center justify-center px-7 py-10"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View className="w-full max-w-[430px]">
             <BrandHeader centered subtitle="Sign in to continue" />
 
@@ -79,19 +94,30 @@ export default function LoginScreen() {
                 <Text className="text-sm leading-5 text-foreground" weight="semibold">
                   Password
                 </Text>
-                <TextInput
-                  autoCapitalize="none"
-                  autoComplete="password"
-                  className="min-h-[52px] rounded-lg border border-border bg-surface px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
-                  editable={!isSubmitting}
-                  onChangeText={setPassword}
-                  onSubmitEditing={handleSignIn}
-                  placeholder="Enter your password"
-                  returnKeyType="go"
-                  secureTextEntry
-                  textContentType="password"
-                  value={password}
-                />
+                <View className="flex-row items-center rounded-lg border border-border bg-surface">
+                  <TextInput
+                    autoCapitalize="none"
+                    autoComplete="password"
+                    className="min-h-[52px] flex-1 px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
+                    editable={!isSubmitting}
+                    onChangeText={setPassword}
+                    onSubmitEditing={handleSignIn}
+                    placeholder="Enter your password"
+                    returnKeyType="go"
+                    secureTextEntry={!showPassword}
+                    textContentType="password"
+                    value={password}
+                  />
+                  <Pressable
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                    accessibilityRole="button"
+                    className="h-full justify-center px-4"
+                    hitSlop={8}
+                    onPress={() => setShowPassword((shown) => !shown)}
+                  >
+                    <Icon className="text-muted-foreground" icon={showPassword ? IconEyeOff : IconEye} size={20} />
+                  </Pressable>
+                </View>
               </View>
 
               {error ? (
@@ -115,7 +141,7 @@ export default function LoginScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

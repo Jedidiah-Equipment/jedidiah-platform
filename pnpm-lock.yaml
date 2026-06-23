@@ -215,6 +215,9 @@ importers:
       react-dom:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
+      resend:
+        specifier: ^6.12.4
+        version: 6.12.4
       srvx:
         specifier: ^0.11.17
         version: 0.11.17

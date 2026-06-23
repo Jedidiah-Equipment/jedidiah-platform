@@ -24,6 +24,12 @@ export const LanderConfig = z.object({
   DOCUMENT_STORAGE_FORCE_PATH_STYLE: EnvBoolean,
   DOCUMENT_STORAGE_REGION: z.string().min(1),
   DOCUMENT_STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
+  // Resend powers the Contact enquiry form. The API key is optional so the site still boots and every page
+  // (including Contact) renders without it — a missing key only fails a form submission, not page load
+  // (issue #568). The from/to default to the company addresses but can be overridden per environment.
+  RESEND_API_KEY: z.string().min(1).optional(),
+  CONTACT_EMAIL_FROM: z.string().min(1).default('noreply@jedidiahequipment.co.za'),
+  CONTACT_EMAIL_TO: z.string().min(1).default('info@jedidiahequipment.co.za'),
 });
 
 export function getLanderConfig(env: NodeJS.ProcessEnv = process.env): LanderConfig {

@@ -22,9 +22,9 @@ async function insertProduct(
     name: string;
     modelCode: string;
     description?: string | null;
-    brochureSubtitle?: string | null;
-    brochureKeyFeatures?: string[];
-    brochureImages?: Partial<Record<string, BrochureImageRef>>;
+    category?: string | null;
+    keyFeatures?: string[];
+    images?: Partial<Record<string, BrochureImageRef>>;
   },
 ) {
   const [product] = await db
@@ -46,7 +46,7 @@ function completeBrochureImages(): Record<string, BrochureImageRef> {
     updatedAt: new Date().toISOString(),
   });
 
-  return { hero: ref('hero'), technicalDrawing: ref('technicalDrawing'), secondary: ref('secondary') };
+  return { primary: ref('primary'), technicalDrawing: ref('technicalDrawing'), banner: ref('banner') };
 }
 
 async function insertAssembly(
@@ -64,8 +64,8 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
     name: `CH14 Tipping Trailer ${suffix}`,
     modelCode: `CH14-${suffix}`,
     description: 'Flagship 14-ton tipping trailer.',
-    brochureSubtitle: 'Built for high-volume haulage.',
-    brochureKeyFeatures: ['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping'],
+    category: 'Built for high-volume haulage.',
+    keyFeatures: ['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping'],
   });
 
   const detail = await loadProductDetail(db, product.modelCode);
@@ -139,7 +139,7 @@ test('loadProductDetail renders missing brochure copy as empty', async ({ db }) 
     name: `ST300 Strip Till ${suffix}`,
     modelCode: `ST300-${suffix}`,
     description: null,
-    brochureSubtitle: null,
+    category: null,
   });
 
   const detail = await loadProductDetail(db, product.modelCode);
@@ -162,9 +162,9 @@ test('loadProductDetail exposes the brochure download link only when the brochur
     name: `CH14 Tipping Trailer ${suffix}`,
     modelCode: `CH14-${suffix}`,
     description: 'Flagship 14-ton tipping trailer.',
-    brochureSubtitle: 'Built for high-volume haulage.',
-    brochureKeyFeatures: ['Heavy-duty monocoque body'],
-    brochureImages: completeBrochureImages(),
+    category: 'Built for high-volume haulage.',
+    keyFeatures: ['Heavy-duty monocoque body'],
+    images: completeBrochureImages(),
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 
@@ -181,8 +181,8 @@ test('loadProductDetail hides the brochure link when a required brochure field i
     name: `CH12 Tipping Trailer ${suffix}`,
     modelCode: `CH12-${suffix}`,
     description: 'Compact tipping trailer.',
-    brochureSubtitle: 'Built for the mixed farm.',
-    brochureKeyFeatures: ['Twin-ram hydraulic tipping'],
+    category: 'Built for the mixed farm.',
+    keyFeatures: ['Twin-ram hydraulic tipping'],
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 

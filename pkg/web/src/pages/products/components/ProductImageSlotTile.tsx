@@ -1,4 +1,4 @@
-import { BROCHURE_IMAGE_SLOT_SPECS, type BrochureImage, type BrochureImageSlot, type UUID } from '@pkg/schema';
+import { PRODUCT_IMAGE_SLOT_SPECS, type ProductImage, type ProductImageSlot, type UUID } from '@pkg/schema';
 import { IconLoader2, IconPhoto, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
@@ -11,24 +11,24 @@ import { useCredentialedImagePreview } from '@/hooks/use-credentialed-image-prev
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { cn } from '@/lib/utils.js';
 import {
-  fetchProductBrochureImageBlob,
+  fetchProductImageBlob,
   IMAGE_ACCEPT,
-  uploadProductBrochureImage,
-  validateSelectedBrochureImage,
-} from '@/utils/brochure-image.js';
+  uploadProductImage,
+  validateSelectedProductImage,
+} from '@/utils/product-image.js';
 
-type BrochureImageSlotTileProps = {
+type ProductImageSlotTileProps = {
   canEdit: boolean;
   description: string;
-  image: BrochureImage | null;
+  image: ProductImage | null;
   label: string;
   productId: UUID;
-  slot: BrochureImageSlot;
+  slot: ProductImageSlot;
 };
 
-// One brochure image slot: a credentialed preview plus an upload-in-place button. The upload replaces the
+// One product image slot: a credentialed preview plus an upload-in-place button. The upload replaces the
 // slot's current image immediately and invalidates the product query so the new image streams back.
-export const BrochureImageSlotTile: React.FC<BrochureImageSlotTileProps> = ({
+export const ProductImageSlotTile: React.FC<ProductImageSlotTileProps> = ({
   canEdit,
   description,
   image,
@@ -36,15 +36,15 @@ export const BrochureImageSlotTile: React.FC<BrochureImageSlotTileProps> = ({
   productId,
   slot,
 }) => {
-  const spec = BROCHURE_IMAGE_SLOT_SPECS[slot];
+  const spec = PRODUCT_IMAGE_SLOT_SPECS[slot];
   const { invalidateProducts } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const previewUrl = useBrochureImagePreview({ image, productId, slot });
+  const previewUrl = useProductImagePreview({ image, productId, slot });
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => uploadProductBrochureImage(productId, slot, file),
+    mutationFn: (file: File) => uploadProductImage(productId, slot, file),
     onSuccess: async () => {
       await invalidateProducts();
       toast.success(`${label} updated`);
@@ -91,7 +91,7 @@ export const BrochureImageSlotTile: React.FC<BrochureImageSlotTileProps> = ({
         className="sr-only"
         disabled={!canEdit || uploadMutation.isPending}
         onChange={(event) => {
-          const file = validateSelectedBrochureImage(event.currentTarget.files?.[0] ?? null);
+          const file = validateSelectedProductImage(event.currentTarget.files?.[0] ?? null);
           if (file) {
             void uploadMutation.mutateAsync(file);
           } else if (event.currentTarget.files?.[0]) {
@@ -121,18 +121,18 @@ export const BrochureImageSlotTile: React.FC<BrochureImageSlotTileProps> = ({
 
 // Fetches the slot's image as a credentialed blob and exposes a temporary object URL for preview.
 // Keyed by `updatedAt` so a replace busts the cache and revokes the superseded object URL.
-function useBrochureImagePreview({
+function useProductImagePreview({
   image,
   productId,
   slot,
 }: {
-  image: BrochureImage | null;
+  image: ProductImage | null;
   productId: UUID;
-  slot: BrochureImageSlot;
+  slot: ProductImageSlot;
 }): string | null {
   return useCredentialedImagePreview({
     enabled: image !== null,
-    fetchBlob: ({ signal }) => fetchProductBrochureImageBlob({ productId, signal, slot }),
-    queryKey: ['brochure-image-preview', productId, slot, image?.updatedAt ?? null],
+    fetchBlob: ({ signal }) => fetchProductImageBlob({ productId, signal, slot }),
+    queryKey: ['product-image-preview', productId, slot, image?.updatedAt ?? null],
   });
 }

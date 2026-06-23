@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getEligibleAssemblyNames,
-  toBrochureConfigFormValues,
   toProductAssemblyInputs,
   toProductBayInputs,
   toProductCreateInput,
@@ -100,22 +99,20 @@ describe('toProductFormValues', () => {
   });
 });
 
-describe('toBrochureConfigFormValues', () => {
-  it('returns blank defaults when there is no product', () => {
-    expect(toBrochureConfigFormValues()).toEqual({ keyFeatures: [], subtitle: '' });
+describe('toProductFormValues marketing fields', () => {
+  it('returns blank category and empty key features when there is no product', () => {
+    const values = toProductFormValues();
+
+    expect(values.category).toBe('');
+    expect(values.keyFeatures).toEqual([]);
   });
 
-  it('maps stored brochure config and collapses a null subtitle to an empty string', () => {
+  it('maps stored category and key features, collapsing a null category to an empty string', () => {
     expect(
-      toBrochureConfigFormValues(
-        buildProduct({ brochureConfig: { keyFeatures: ['Heavy duty', 'Low maintenance'], subtitle: null } }),
-      ),
-    ).toEqual({ keyFeatures: ['Heavy duty', 'Low maintenance'], subtitle: '' });
+      toProductFormValues(buildProduct({ keyFeatures: ['Heavy duty', 'Low maintenance'], category: null })),
+    ).toMatchObject({ category: '', keyFeatures: ['Heavy duty', 'Low maintenance'] });
 
-    expect(
-      toBrochureConfigFormValues(buildProduct({ brochureConfig: { keyFeatures: [], subtitle: 'Silage & Grain' } }))
-        .subtitle,
-    ).toBe('Silage & Grain');
+    expect(toProductFormValues(buildProduct({ category: 'Silage & Grain' })).category).toBe('Silage & Grain');
   });
 });
 
@@ -164,10 +161,11 @@ describe('toProductCreateInput', () => {
         },
       ],
       basePrice: 1000,
-      brochureConfig: { keyFeatures: [], subtitle: null },
+      category: null,
       buildTimeDays: 14,
       currencyCode: 'ZAR',
       description: null,
+      keyFeatures: [],
       modelCode: 'MOD-1',
       name: 'Widget',
       productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
@@ -191,10 +189,11 @@ describe('toProductMinimalCreateInput', () => {
     ).toEqual({
       assemblies: [],
       basePrice: 120_000,
-      brochureConfig: { keyFeatures: [], subtitle: null },
+      category: null,
       buildTimeDays: 14,
       currencyCode: 'ZAR',
       description: null,
+      keyFeatures: [],
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       productBays: [],

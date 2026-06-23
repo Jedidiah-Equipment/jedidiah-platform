@@ -1,32 +1,32 @@
 import {
   BROCHURE_IMAGE_SLOTS,
   type BrochureCompleteness,
-  type BrochureImages,
   type BrochureRequiredField,
+  type ProductImages,
 } from '@pkg/schema';
 
-// The inputs the brochure-completeness verdict is computed from: the Brochure Config (subtitle, key
-// features, the four image slots) plus the owning Product's description and assembly count. Kept as a
-// flat, framework-free shape so the same predicate runs on the server (Product read assembly) and in
+// The inputs the brochure-completeness verdict is computed from: the Product marketing fields (category,
+// key features, the brochure image slots) plus the owning Product's description and assembly count. Kept
+// as a flat, framework-free shape so the same predicate runs on the server (Product read assembly) and in
 // the browser (live form alert).
 export type BrochureCompletenessInput = {
   assemblyCount: number;
+  category: string | null;
   description: string | null;
-  images: BrochureImages;
+  images: ProductImages;
   keyFeatures: readonly string[];
-  subtitle: string | null;
 };
 
-// Pure single source of truth for whether a Product Brochure is ready. Required = all six Brochure
-// Config fields (subtitle, at least one key feature, the four images) + a non-empty Product description
-// + at least one assembly. Returns the complete/incomplete verdict and the exact still-missing fields,
-// reported in {@link BROCHURE_REQUIRED_FIELDS} order. Reused by the form alert, the preview gate, and the
-// quote/job generation gate.
+// Pure single source of truth for whether a Product Brochure is ready. Required = the marketing fields
+// (category, at least one key feature, the brochure image slots) + a non-empty Product description + at
+// least one assembly. Returns the complete/incomplete verdict and the exact still-missing fields, reported
+// in {@link BROCHURE_REQUIRED_FIELDS} order. Reused by the form alert, the preview gate, and the quote/job
+// generation gate.
 export function evaluateBrochureCompleteness(input: BrochureCompletenessInput): BrochureCompleteness {
   const missingFields: BrochureRequiredField[] = [];
 
-  if (!hasText(input.subtitle)) {
-    missingFields.push('subtitle');
+  if (!hasText(input.category)) {
+    missingFields.push('category');
   }
 
   if (!input.keyFeatures.some(hasText)) {

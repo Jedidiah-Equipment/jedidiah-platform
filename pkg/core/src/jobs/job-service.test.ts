@@ -662,7 +662,7 @@ describe('createJob', () => {
     // Edit the product's brochure config after the job is created.
     await context.db
       .update(products)
-      .set({ brochureSubtitle: 'A Completely Different Subtitle', brochureKeyFeatures: ['New feature copy'] })
+      .set({ category: 'A Completely Different Category', keyFeatures: ['New feature copy'] })
       .where(eq(products.id, context.catalog.product.id));
 
     const after = await readJobBrochure(context.db, storage, job.id);
@@ -2206,11 +2206,11 @@ function brochurePngBytes(): Uint8Array {
 }
 
 async function makeBrochureComplete(db: Db, storage: InMemoryStorageAdapter, productId: string) {
-  const slots = ['hero', 'technicalDrawing', 'secondary'] as const;
+  const slots = ['primary', 'technicalDrawing', 'banner'] as const;
   const images: Record<string, { byteSize: number; contentType: string; storageKey: string; updatedAt: string }> = {};
 
   for (const slot of slots) {
-    const storageKey = `brochure-images/product/${productId}/${slot}/image.png`;
+    const storageKey = `product-images/product/${productId}/${slot}/image.png`;
     const bytes = brochurePngBytes();
     await storage.put({ body: bytes, byteSize: bytes.byteLength, contentType: 'image/png', key: storageKey });
     images[slot] = {
@@ -2224,9 +2224,9 @@ async function makeBrochureComplete(db: Db, storage: InMemoryStorageAdapter, pro
   await db
     .update(products)
     .set({
-      brochureImages: images,
-      brochureKeyFeatures: ['Heavy-duty steel construction'],
-      brochureSubtitle: 'Silage & Grain',
+      images,
+      keyFeatures: ['Heavy-duty steel construction'],
+      category: 'Silage & Grain',
       description: 'A rugged feed mixer built for daily use.',
     })
     .where(eq(products.id, productId));

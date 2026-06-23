@@ -1,4 +1,4 @@
-import { type BrochureImages, EntityImage } from '@pkg/schema';
+import { EntityImage, type ProductImages } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { type BrochureCompletenessInput, evaluateBrochureCompleteness } from './brochure-completeness.js';
@@ -9,26 +9,26 @@ const IMAGE = EntityImage.parse({
   updatedAt: '2026-06-17T00:00:00.000Z',
 });
 
-const FULL_IMAGES: BrochureImages = {
-  hero: IMAGE,
+const FULL_IMAGES: ProductImages = {
+  primary: IMAGE,
   technicalDrawing: IMAGE,
-  secondary: IMAGE,
+  banner: IMAGE,
 };
 
-const EMPTY_IMAGES: BrochureImages = {
-  hero: null,
+const EMPTY_IMAGES: ProductImages = {
+  primary: null,
   technicalDrawing: null,
-  secondary: null,
+  banner: null,
 };
 
 // A brochure with every required field present. Each test peels one field away to assert the verdict.
 function completeInput(overrides: Partial<BrochureCompletenessInput> = {}): BrochureCompletenessInput {
   return {
     assemblyCount: 1,
+    category: 'Silage & Grain',
     description: 'A rugged feed mixer built for daily use.',
     images: FULL_IMAGES,
     keyFeatures: ['Heavy-duty steel construction'],
-    subtitle: 'Silage & Grain',
     ...overrides,
   };
 }
@@ -42,21 +42,21 @@ describe('evaluateBrochureCompleteness', () => {
     expect(
       evaluateBrochureCompleteness({
         assemblyCount: 0,
+        category: null,
         description: null,
         images: EMPTY_IMAGES,
         keyFeatures: [],
-        subtitle: null,
       }),
     ).toEqual({
       complete: false,
-      missingFields: ['subtitle', 'keyFeatures', 'hero', 'technicalDrawing', 'secondary', 'description', 'assemblies'],
+      missingFields: ['category', 'keyFeatures', 'primary', 'technicalDrawing', 'banner', 'description', 'assemblies'],
     });
   });
 
   it('flags only the single field that is absent', () => {
-    expect(evaluateBrochureCompleteness(completeInput({ subtitle: null }))).toEqual({
+    expect(evaluateBrochureCompleteness(completeInput({ category: null }))).toEqual({
       complete: false,
-      missingFields: ['subtitle'],
+      missingFields: ['category'],
     });
     expect(evaluateBrochureCompleteness(completeInput({ keyFeatures: [] }))).toEqual({
       complete: false,
@@ -74,16 +74,16 @@ describe('evaluateBrochureCompleteness', () => {
 
   it('flags each empty image slot independently', () => {
     expect(
-      evaluateBrochureCompleteness(completeInput({ images: { ...FULL_IMAGES, hero: null, secondary: null } })),
-    ).toEqual({ complete: false, missingFields: ['hero', 'secondary'] });
+      evaluateBrochureCompleteness(completeInput({ images: { ...FULL_IMAGES, primary: null, banner: null } })),
+    ).toEqual({ complete: false, missingFields: ['primary', 'banner'] });
   });
 
   it('treats blank text as missing', () => {
     expect(
-      evaluateBrochureCompleteness(completeInput({ subtitle: '   ', description: '\n\t', keyFeatures: ['', '  '] })),
+      evaluateBrochureCompleteness(completeInput({ category: '   ', description: '\n\t', keyFeatures: ['', '  '] })),
     ).toEqual({
       complete: false,
-      missingFields: ['subtitle', 'keyFeatures', 'description'],
+      missingFields: ['category', 'keyFeatures', 'description'],
     });
   });
 

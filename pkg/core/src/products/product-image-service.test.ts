@@ -1,5 +1,5 @@
 import { auditEvents, products, user } from '@pkg/db';
-import { BROCHURE_IMAGE_MAX_BYTES } from '@pkg/schema';
+import { PRODUCT_IMAGE_MAX_BYTES } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
@@ -7,8 +7,8 @@ import { ImageNotFoundError, ImagePolicyViolationError } from '../images/image-e
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
-import { readProductBrochureImage, replaceProductBrochureImage } from './product-brochure-image-service.js';
 import { ProductNotFoundError } from './product-errors.js';
+import { readProductImage, replaceProductImage } from './product-image-service.js';
 
 const ACTOR_USER_ID = 'test-user-id';
 const UNKNOWN_ID = '11111111-1111-4111-8111-111111111111';
@@ -64,79 +64,79 @@ function pdfBytes(): Uint8Array {
   return new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
 }
 
-describe('replaceProductBrochureImage', () => {
+describe('replaceProductImage', () => {
   test('uploads an image into a slot and exposes it on the product', async ({ context }) => {
     const storage = new InMemoryStorageAdapter();
 
-    const product = await replaceProductBrochureImage({
+    const product = await replaceProductImage({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
-      input: { bytes: pngBytes(64), productId: context.product.id, slot: 'hero' },
+      input: { bytes: pngBytes(64), productId: context.product.id, slot: 'primary' },
       storage,
     });
 
-    expect(product.brochureConfig.images.hero).toMatchObject({ byteSize: 64, contentType: 'image/png' });
-    expect(product.brochureConfig.images.secondary).toBeNull();
+    expect(product.images.primary).toMatchObject({ byteSize: 64, contentType: 'image/png' });
+    expect(product.images.banner).toBeNull();
     expect(storage.objects.size).toBe(1);
 
     const [row] = await context.db
-      .select({ brochureImages: products.brochureImages })
+      .select({ images: products.images })
       .from(products)
       .where(eq(products.id, context.product.id));
-    const storageKey = row?.brochureImages.hero?.storageKey;
-    expect(storageKey).toMatch(new RegExp(`^brochure-images/product/${context.product.id}/hero/`));
+    const storageKey = row?.images.primary?.storageKey;
+    expect(storageKey).toMatch(new RegExp(`^product-images/product/${context.product.id}/primary/`));
     expect(storage.objects.has(storageKey ?? '')).toBe(true);
   });
 
   test('replaces a slot in place, keeping exactly one current object and deleting the old one', async ({ context }) => {
     const storage = new InMemoryStorageAdapter();
 
-    const first = await replaceProductBrochureImage({
+    const first = await replaceProductImage({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
-      input: { bytes: pngBytes(64), productId: context.product.id, slot: 'hero' },
+      input: { bytes: pngBytes(64), productId: context.product.id, slot: 'primary' },
       storage,
     });
-    const firstUpdatedAt = first.brochureConfig.images.hero?.updatedAt;
+    const firstUpdatedAt = first.images.primary?.updatedAt;
 
-    const second = await replaceProductBrochureImage({
+    const second = await replaceProductImage({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
-      input: { bytes: jpegBytes(128), productId: context.product.id, slot: 'hero' },
+      input: { bytes: jpegBytes(128), productId: context.product.id, slot: 'primary' },
       storage,
     });
 
-    expect(second.brochureConfig.images.hero).toMatchObject({ byteSize: 128, contentType: 'image/jpeg' });
+    expect(second.images.primary).toMatchObject({ byteSize: 128, contentType: 'image/jpeg' });
     // Replace-in-place keeps a single stored object for the slot.
     expect(storage.objects.size).toBe(1);
-    expect(second.brochureConfig.images.hero?.updatedAt).not.toBe(firstUpdatedAt);
+    expect(second.images.primary?.updatedAt).not.toBe(firstUpdatedAt);
   });
 
   test('keeps slots independent', async ({ context }) => {
     const storage = new InMemoryStorageAdapter();
 
-    await replaceProductBrochureImage({
+    await replaceProductImage({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
-      input: { bytes: pngBytes(), productId: context.product.id, slot: 'hero' },
+      input: { bytes: pngBytes(), productId: context.product.id, slot: 'primary' },
       storage,
     });
-    const product = await replaceProductBrochureImage({
+    const product = await replaceProductImage({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
-      input: { bytes: jpegBytes(), productId: context.product.id, slot: 'secondary' },
+      input: { bytes: jpegBytes(), productId: context.product.id, slot: 'banner' },
       storage,
     });
 
-    expect(product.brochureConfig.images.hero).toMatchObject({ contentType: 'image/png' });
-    expect(product.brochureConfig.images.secondary).toMatchObject({ contentType: 'image/jpeg' });
+    expect(product.images.primary).toMatchObject({ contentType: 'image/png' });
+    expect(product.images.banner).toMatchObject({ contentType: 'image/jpeg' });
     expect(storage.objects.size).toBe(2);
   });
 
   test('records each replacement as a product audit change-of-fact', async ({ context }) => {
     const storage = new InMemoryStorageAdapter();
 
-    await replaceProductBrochureImage({
+    await replaceProductImage({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
       input: { bytes: pngBytes(), productId: context.product.id, slot: 'technicalDrawing' },
@@ -149,18 +149,18 @@ describe('replaceProductBrochureImage', () => {
     expect(updateEvent).toBeDefined();
     expect(updateEvent?.entityType).toBe('product');
     const changes = updateEvent?.changes as Record<string, { from: unknown; to: unknown }> | null;
-    expect(changes?.['brochureImage:technicalDrawing']).toMatchObject({ from: null });
-    expect(typeof changes?.['brochureImage:technicalDrawing']?.to).toBe('string');
+    expect(changes?.['image:technicalDrawing']).toMatchObject({ from: null });
+    expect(typeof changes?.['image:technicalDrawing']?.to).toBe('string');
   });
 
   test('rejects a non PNG/JPEG upload and stores nothing', async ({ context }) => {
     const storage = new InMemoryStorageAdapter();
 
     await expect(
-      replaceProductBrochureImage({
+      replaceProductImage({
         actorUserId: ACTOR_USER_ID,
         db: context.db,
-        input: { bytes: pdfBytes(), productId: context.product.id, slot: 'hero' },
+        input: { bytes: pdfBytes(), productId: context.product.id, slot: 'primary' },
         storage,
       }),
     ).rejects.toBeInstanceOf(ImagePolicyViolationError);
@@ -171,10 +171,10 @@ describe('replaceProductBrochureImage', () => {
     const storage = new InMemoryStorageAdapter();
 
     await expect(
-      replaceProductBrochureImage({
+      replaceProductImage({
         actorUserId: ACTOR_USER_ID,
         db: context.db,
-        input: { bytes: pngBytes(BROCHURE_IMAGE_MAX_BYTES + 1), productId: context.product.id, slot: 'hero' },
+        input: { bytes: pngBytes(PRODUCT_IMAGE_MAX_BYTES + 1), productId: context.product.id, slot: 'primary' },
         storage,
       }),
     ).rejects.toMatchObject({ code: 'image.file_too_large' });
@@ -185,10 +185,10 @@ describe('replaceProductBrochureImage', () => {
     const storage = new InMemoryStorageAdapter();
 
     await expect(
-      replaceProductBrochureImage({
+      replaceProductImage({
         actorUserId: ACTOR_USER_ID,
         db: context.db,
-        input: { bytes: pngBytes(), productId: UNKNOWN_ID, slot: 'hero' },
+        input: { bytes: pngBytes(), productId: UNKNOWN_ID, slot: 'primary' },
         storage,
       }),
     ).rejects.toBeInstanceOf(ProductNotFoundError);
@@ -196,20 +196,20 @@ describe('replaceProductBrochureImage', () => {
   });
 });
 
-describe('readProductBrochureImage', () => {
+describe('readProductImage', () => {
   test('returns the stored object for a populated slot', async ({ context }) => {
     const storage = new InMemoryStorageAdapter();
-    await replaceProductBrochureImage({
+    await replaceProductImage({
       actorUserId: ACTOR_USER_ID,
       db: context.db,
-      input: { bytes: pngBytes(48), productId: context.product.id, slot: 'secondary' },
+      input: { bytes: pngBytes(48), productId: context.product.id, slot: 'banner' },
       storage,
     });
 
-    const object = await readProductBrochureImage({
+    const object = await readProductImage({
       db: context.db,
       productId: context.product.id,
-      slot: 'secondary',
+      slot: 'banner',
       storage,
     });
 
@@ -221,7 +221,7 @@ describe('readProductBrochureImage', () => {
     const storage = new InMemoryStorageAdapter();
 
     await expect(
-      readProductBrochureImage({ db: context.db, productId: context.product.id, slot: 'hero', storage }),
+      readProductImage({ db: context.db, productId: context.product.id, slot: 'primary', storage }),
     ).rejects.toBeInstanceOf(ImageNotFoundError);
   });
 
@@ -229,7 +229,7 @@ describe('readProductBrochureImage', () => {
     const storage = new InMemoryStorageAdapter();
 
     await expect(
-      readProductBrochureImage({ db: context.db, productId: UNKNOWN_ID, slot: 'hero', storage }),
+      readProductImage({ db: context.db, productId: UNKNOWN_ID, slot: 'primary', storage }),
     ).rejects.toBeInstanceOf(ProductNotFoundError);
   });
 });

@@ -1,4 +1,4 @@
-import { BROCHURE_KEY_FEATURES_MAX_COUNT, type BrochureDocumentImage, type BrochureDocumentModel } from '@pkg/schema';
+import { type BrochureDocumentImage, type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
 import { Document, Image, Page, StyleSheet, type Styles, Text, View } from '@react-pdf/renderer';
 
 import { pdfFontFamily, pdfTitleFontFamily } from '../pdf-fonts.js';
@@ -363,8 +363,8 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
             <TitleText title={document.title} />
           </View>
 
-          {document.images.hero ? (
-            <CoverImage image={document.images.hero} style={[styles.imageBox, { height: coverLayout.heroHeight }]} />
+          {document.images.primary ? (
+            <CoverImage image={document.images.primary} style={[styles.imageBox, { height: coverLayout.heroHeight }]} />
           ) : null}
 
           {document.keyFeatures.length > 0 ? (
@@ -406,9 +406,7 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
             </View>
           ) : null}
 
-          {document.images.secondary ? (
-            <CoverImage image={document.images.secondary} style={styles.secondaryBox} />
-          ) : null}
+          {document.images.banner ? <CoverImage image={document.images.banner} style={styles.secondaryBox} /> : null}
 
           {document.bodyCopy.length > 0 ? <View style={styles.yellowRule} /> : null}
           {document.bodyCopy.map((paragraph) => (
@@ -506,7 +504,7 @@ function getCoverLayout(featureCount: number): CoverLayout {
     headingFontSize: 16,
     headingMarginBottom: 8,
     heroHeight: 318,
-    rowMarginBottom: featureCount >= BROCHURE_KEY_FEATURES_MAX_COUNT ? 2 : 3,
+    rowMarginBottom: featureCount >= PRODUCT_KEY_FEATURES_MAX_COUNT ? 2 : 3,
     sectionMarginTop: 30,
   };
 }

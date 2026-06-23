@@ -13,9 +13,9 @@ import { PRODUCT_DOCUMENT_MAX_BYTES } from '@pkg/domain';
 import { createPdfBytesWithPageSizes, getPdfPageSizes } from '@pkg/pdf';
 import {
   BROCHURE_IMAGE_SLOTS,
-  type BrochureImageSlot,
   type BrochurePdfRenderer,
   formatQuoteCode,
+  type ProductImageSlot,
   type UUID,
 } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
@@ -614,9 +614,9 @@ describe('generateQuoteDocument', () => {
   });
 
   test('skips the brochure and warns when only some required fields are configured', async ({ context }) => {
-    // Everything except the hero image is configured, so the completeness gate fails and the brochure
+    // Everything except the primary image is configured, so the completeness gate fails and the brochure
     // is skipped without blocking the quote.
-    await seedCompleteBrochureConfig(context, context.productId, { omitSlots: ['hero'] });
+    await seedCompleteBrochureConfig(context, context.productId, { omitSlots: ['primary'] });
 
     const result = await generateQuoteDocument({
       actorUserId: ACTOR_USER_ID,
@@ -1037,13 +1037,10 @@ const stubBrochureRenderer: BrochurePdfRenderer = async () => realPdfBytes([[420
 async function seedCompleteBrochureConfig(
   context: { db: Parameters<typeof createProductDocument>[0]['db']; storage: InMemoryStorageAdapter },
   productId: UUID,
-  options: { omitSlots?: BrochureImageSlot[] } = {},
+  options: { omitSlots?: ProductImageSlot[] } = {},
 ): Promise<void> {
   const omit = new Set(options.omitSlots ?? []);
-  const brochureImages: Record<
-    string,
-    { byteSize: number; contentType: string; storageKey: string; updatedAt: string }
-  > = {};
+  const images: Record<string, { byteSize: number; contentType: string; storageKey: string; updatedAt: string }> = {};
 
   for (const slot of BROCHURE_IMAGE_SLOTS) {
     if (omit.has(slot)) {
@@ -1051,9 +1048,9 @@ async function seedCompleteBrochureConfig(
     }
 
     const body = pngBytes();
-    const storageKey = `brochure-images/product/${productId}/${slot}/seed.png`;
+    const storageKey = `product-images/product/${productId}/${slot}/seed.png`;
     await context.storage.put({ body, byteSize: body.byteLength, contentType: 'image/png', key: storageKey });
-    brochureImages[slot] = {
+    images[slot] = {
       byteSize: body.byteLength,
       contentType: 'image/png',
       storageKey,
@@ -1064,9 +1061,9 @@ async function seedCompleteBrochureConfig(
   await context.db
     .update(products)
     .set({
-      brochureImages,
-      brochureKeyFeatures: ['Rugged build', 'Low maintenance'],
-      brochureSubtitle: 'Silage & Grain',
+      images,
+      keyFeatures: ['Rugged build', 'Low maintenance'],
+      category: 'Silage & Grain',
       description: 'A dependable workhorse for the toughest jobs.',
     })
     .where(eq(products.id, productId));

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Footer } from '../components/footer.js';
 import { Nav } from '../components/nav.js';
 import { initAnalytics } from '../lib/analytics.js';
+import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
 import appCss from '../styles/app.css?url';
 
 export const Route = createRootRoute({
@@ -17,12 +18,18 @@ export const Route = createRootRoute({
         content:
           'Heavy-duty agricultural equipment engineered to perform in South African conditions. Browse the Jedidiah Equipment range.',
       },
+      // Site-wide Open Graph / Twitter defaults. Per-page heads override title, description, image and url
+      // (matched by name/property), so these act as the fallback for any page that doesn't set its own.
       { property: 'og:type', content: 'website' },
+      { property: 'og:site_name', content: 'Jedidiah Equipment' },
       { property: 'og:title', content: 'Jedidiah Equipment' },
       {
         property: 'og:description',
         content: 'Heavy-duty agricultural equipment engineered to perform in South African conditions.',
       },
+      { property: 'og:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
     ],
     links: [
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },

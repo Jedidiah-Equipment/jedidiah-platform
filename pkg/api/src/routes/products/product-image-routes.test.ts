@@ -77,13 +77,13 @@ describe('product brochure image HTTP routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/products/${context.product.id}/brochure-images/hero`,
-      ...buildMultipartUpload({ bytes: pngBytes(64), filename: 'hero.png' }),
+      url: `/api/products/${context.product.id}/images/primary`,
+      ...buildMultipartUpload({ bytes: pngBytes(64), filename: 'primary.png' }),
     });
 
     expect(response.statusCode, response.body).toBe(200);
     expect(response.json()).toMatchObject({
-      brochureConfig: { images: { hero: { byteSize: 64, contentType: 'image/png' } } },
+      images: { primary: { byteSize: 64, contentType: 'image/png' } },
       id: context.product.id,
     });
     expect(storage.objects.size).toBe(1);
@@ -95,18 +95,18 @@ describe('product brochure image HTTP routes', () => {
 
     await app.inject({
       method: 'POST',
-      url: `/api/products/${context.product.id}/brochure-images/hero`,
-      ...buildMultipartUpload({ bytes: pngBytes(64), filename: 'hero.png' }),
+      url: `/api/products/${context.product.id}/images/primary`,
+      ...buildMultipartUpload({ bytes: pngBytes(64), filename: 'primary.png' }),
     });
     const response = await app.inject({
       method: 'POST',
-      url: `/api/products/${context.product.id}/brochure-images/hero`,
-      ...buildMultipartUpload({ bytes: jpegBytes(96), filename: 'hero.jpg' }),
+      url: `/api/products/${context.product.id}/images/primary`,
+      ...buildMultipartUpload({ bytes: jpegBytes(96), filename: 'primary.jpg' }),
     });
 
     expect(response.statusCode, response.body).toBe(200);
     expect(response.json()).toMatchObject({
-      brochureConfig: { images: { hero: { byteSize: 96, contentType: 'image/jpeg' } } },
+      images: { primary: { byteSize: 96, contentType: 'image/jpeg' } },
     });
     expect(storage.objects.size).toBe(1);
   });
@@ -117,7 +117,7 @@ describe('product brochure image HTTP routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/products/${context.product.id}/brochure-images/hero`,
+      url: `/api/products/${context.product.id}/images/primary`,
       ...buildMultipartUpload({ bytes: pdfBytes(), filename: 'spec.pdf' }),
     });
 
@@ -135,8 +135,8 @@ describe('product brochure image HTTP routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/products/${context.product.id}/brochure-images/banner`,
-      ...buildMultipartUpload({ bytes: pngBytes(), filename: 'banner.png' }),
+      url: `/api/products/${context.product.id}/images/gallery`,
+      ...buildMultipartUpload({ bytes: pngBytes(), filename: 'gallery.png' }),
     });
 
     expect(response.statusCode).toBe(400);
@@ -149,13 +149,13 @@ describe('product brochure image HTTP routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/products/${context.product.id}/brochure-images/hero`,
+      url: `/api/products/${context.product.id}/images/primary`,
     });
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({
       data: { appCode: 'image.forbidden' },
-      message: 'You do not have permission to update Product brochure images.',
+      message: 'You do not have permission to update Product images.',
     });
   });
 
@@ -164,11 +164,11 @@ describe('product brochure image HTTP routes', () => {
     const app = await createApp(storage);
     await app.inject({
       method: 'POST',
-      url: `/api/products/${context.product.id}/brochure-images/secondary`,
-      ...buildMultipartUpload({ bytes: pngBytes(48), filename: 'secondary.png' }),
+      url: `/api/products/${context.product.id}/images/banner`,
+      ...buildMultipartUpload({ bytes: pngBytes(48), filename: 'banner.png' }),
     });
 
-    const response = await app.inject(`/api/products/${context.product.id}/brochure-images/secondary/download`);
+    const response = await app.inject(`/api/products/${context.product.id}/images/banner/download`);
 
     expect(response.statusCode, response.body).toBe(200);
     expect(response.headers['content-type']).toBe('image/png');
@@ -178,7 +178,7 @@ describe('product brochure image HTTP routes', () => {
   test('returns 404 when downloading an empty slot', async ({ context }) => {
     const app = await createApp(new MemoryStorage());
 
-    const response = await app.inject(`/api/products/${context.product.id}/brochure-images/hero/download`);
+    const response = await app.inject(`/api/products/${context.product.id}/images/primary/download`);
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ data: { appCode: 'image.not_found' } });
@@ -187,11 +187,11 @@ describe('product brochure image HTTP routes', () => {
 
 async function createApp(storage: StorageAdapter) {
   const { registerEntityImageRoutes } = await import('../images/entity-image-http.route.js');
-  const { createProductBrochureImageRouteConfig } = await import('./product-brochure-image-routes.js');
+  const { createProductImageRouteConfig } = await import('./product-image-routes.js');
   const app = Fastify();
 
   await app.register(fastifyMultipart);
-  await registerEntityImageRoutes(app, [createProductBrochureImageRouteConfig(storage)]);
+  await registerEntityImageRoutes(app, [createProductImageRouteConfig(storage)]);
   await app.ready();
   openApps.push(app);
 

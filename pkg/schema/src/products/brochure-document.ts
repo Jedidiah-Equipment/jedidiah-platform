@@ -1,4 +1,4 @@
-import type { BrochureImageSlot } from './product.js';
+import type { BROCHURE_IMAGE_SLOTS } from './product.js';
 
 // A single Brochure image slot rendered into the PDF: a base64 data URI of the stored image bytes plus
 // the fit the renderer should apply. Null when the slot is empty, so the renderer can omit it and reflow.
@@ -7,7 +7,9 @@ export type BrochureDocumentImage = {
   fit: 'contain' | 'cover';
 } | null;
 
-export type BrochureDocumentImages = Record<BrochureImageSlot, BrochureDocumentImage>;
+// Keyed by the brochure subset of Product image slots ({@link BROCHURE_IMAGE_SLOTS}); the extra Product
+// image slots never reach the brochure model.
+export type BrochureDocumentImages = Record<(typeof BROCHURE_IMAGE_SLOTS)[number], BrochureDocumentImage>;
 
 // The fully resolved input model for the Brochure PDF renderer. Derived from a Product (title from the
 // product name, body copy from its description, Standard/Optional assembly columns from its assemblies)

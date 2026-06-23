@@ -57,10 +57,10 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
 
   const brochureComplete = evaluateBrochureCompleteness({
     assemblyCount: fullProduct.assemblies.length,
+    category: fullProduct.category,
     description: fullProduct.description,
-    images: fullProduct.brochureConfig.images,
-    keyFeatures: fullProduct.brochureConfig.keyFeatures,
-    subtitle: fullProduct.brochureConfig.subtitle,
+    images: fullProduct.images,
+    keyFeatures: fullProduct.keyFeatures,
   }).complete;
 
   const range = ranges.find((candidate) => candidate.id === product.rangeId);
@@ -80,13 +80,13 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
     modelCode: fullProduct.modelCode,
     rangeName,
     rangeSlug: toRangeSlug(rangeName),
-    tagline: fullProduct.brochureConfig.subtitle ?? '',
+    tagline: fullProduct.category ?? '',
     description: fullProduct.description ?? '',
     imageUrl: `/images/products/${fullProduct.id}`,
     highlights: HIGHLIGHT_PLACEHOLDERS,
     standardAssemblies: fullProduct.assemblies.filter((a) => a.kind === 'standard').map((a) => a.name),
     optionalAssemblies: fullProduct.assemblies.filter((a) => a.kind === 'optional').map((a) => a.name),
-    keyFeatures: fullProduct.brochureConfig.keyFeatures,
+    keyFeatures: fullProduct.keyFeatures,
     brochureHref: brochureComplete ? `/downloads/products/${fullProduct.id}/brochure` : null,
     related,
   };

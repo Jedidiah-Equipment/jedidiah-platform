@@ -1,5 +1,5 @@
 import { hasPermission, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
-import { type ProductDocument, ProductDocumentType, type UUID } from '@pkg/schema';
+import { type Product, type ProductDocument, ProductDocumentType } from '@pkg/schema';
 import { IconLoader2, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useMemo, useRef, useState } from 'react';
@@ -22,16 +22,19 @@ import {
   validateSelectedFile,
 } from '@/utils/document.js';
 
+import { ProductBrochurePreview } from './ProductBrochurePreview.js';
+
 const PRODUCT_DOCUMENT_TYPE_OPTIONS = ProductDocumentType.options.map((type) => ({
   label: PRODUCT_DOCUMENT_TYPE_LABELS[type],
   value: type,
 }));
 
 type ProductDocumentsSectionProps = {
-  productId: UUID;
+  product: Product;
 };
 
-export function ProductDocumentsSection({ productId }: ProductDocumentsSectionProps) {
+export function ProductDocumentsSection({ product }: ProductDocumentsSectionProps) {
+  const productId = product.id;
   const trpc = useTRPC();
   const { invalidateDocuments, invalidateQuotes } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
@@ -81,32 +84,35 @@ export function ProductDocumentsSection({ productId }: ProductDocumentsSectionPr
   );
 
   return (
-    <DocumentCardList
-      canDelete={canDeleteDocuments}
-      documents={documentsQuery.data ?? []}
-      emptyActionMessage="Choose a file and type, then upload the first Product document."
-      emptyMessage="No Product documents yet."
-      errorMessage={getApiQueryErrorMessage(documentsQuery.error, 'Unable to load documents.') ?? null}
-      isLoading={documentsQuery.isLoading}
-      metadata={productDocumentMetadata}
-      owner={{ id: productId, type: 'product' }}
-      rightSection={
-        <DocumentUploadForm
-          fileInputRef={fileInputRef}
-          isPending={uploadMutation.isPending}
-          onFileChange={setSelectedFile}
-          onSubmit={() => {
-            const upload = getReadyProductDocumentUpload({ file: selectedFile, type: selectedType });
-            if (!upload) return;
-            void uploadMutation.mutateAsync(upload);
-          }}
-          onTypeChange={setSelectedType}
-          selectedFile={selectedFile}
-          selectedType={selectedType}
-        />
-      }
-      onDelete={(document) => deleteMutation.mutateAsync({ documentId: document.id, productId })}
-    />
+    <div className="flex flex-col gap-4">
+      <ProductBrochurePreview product={product} />
+      <DocumentCardList
+        canDelete={canDeleteDocuments}
+        documents={documentsQuery.data ?? []}
+        emptyActionMessage="Choose a file and type, then upload the first Product document."
+        emptyMessage="No Product documents yet."
+        errorMessage={getApiQueryErrorMessage(documentsQuery.error, 'Unable to load documents.') ?? null}
+        isLoading={documentsQuery.isLoading}
+        metadata={productDocumentMetadata}
+        owner={{ id: productId, type: 'product' }}
+        rightSection={
+          <DocumentUploadForm
+            fileInputRef={fileInputRef}
+            isPending={uploadMutation.isPending}
+            onFileChange={setSelectedFile}
+            onSubmit={() => {
+              const upload = getReadyProductDocumentUpload({ file: selectedFile, type: selectedType });
+              if (!upload) return;
+              void uploadMutation.mutateAsync(upload);
+            }}
+            onTypeChange={setSelectedType}
+            selectedFile={selectedFile}
+            selectedType={selectedType}
+          />
+        }
+        onDelete={(document) => deleteMutation.mutateAsync({ documentId: document.id, productId })}
+      />
+    </div>
   );
 }
 

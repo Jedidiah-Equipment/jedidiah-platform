@@ -15,6 +15,7 @@ import { ProductBaysTabTrigger } from './components/ProductBaysTabTrigger.js';
 import { ProductDocumentsSection } from './components/ProductDocumentsSection.js';
 import { ProductDocumentsTabTrigger } from './components/ProductDocumentsTabTrigger.js';
 import { ProductForm } from './components/ProductForm.js';
+import { ProductImagesSection } from './components/ProductImagesSection.js';
 
 type ProductEditPageProps = {
   productId: UUID;
@@ -69,13 +70,16 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, produc
         <TabsTrigger value="details">Details</TabsTrigger>
         <ProductBaysTabTrigger productId={product.id} />
         <ProductAssembliesTabTrigger productId={product.id} />
-        <TabsTrigger value="brochure">Brochure</TabsTrigger>
+        <TabsTrigger value="images">Images</TabsTrigger>
         <ProductDocumentsTabTrigger productId={product.id} />
         {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
       </TabsList>
       <ProductForm key={product.id} onSave={onProductSave} product={product} />
+      <TabsContent className="pt-4" value="images">
+        <ProductImagesSection product={product} />
+      </TabsContent>
       <TabsContent className="pt-4" value="documents">
-        <ProductDocumentsSection productId={product.id} />
+        <ProductDocumentsSection product={product} />
       </TabsContent>
       {auditAccess.can ? (
         <TabsContent className="pt-4" value="audit">

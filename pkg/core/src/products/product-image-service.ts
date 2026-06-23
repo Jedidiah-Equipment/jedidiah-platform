@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { type Db, products } from '@pkg/db';
-import { BROCHURE_IMAGE_POLICY } from '@pkg/domain';
-import type { AuthId, BrochureImageSlot, Product, UUID } from '@pkg/schema';
+import { PRODUCT_IMAGE_POLICY } from '@pkg/domain';
+import type { AuthId, Product, ProductImageSlot, UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';
@@ -12,17 +12,17 @@ import { imageExtensionFor, replaceImage } from '../images/image-service.js';
 import { ProductNotFoundError } from './product-errors.js';
 import { getProduct, productAuditDescriptor } from './product-service.js';
 
-export type ReplaceProductBrochureImageInput = {
+export type ReplaceProductImageInput = {
   bytes: Uint8Array;
   productId: UUID;
-  slot: BrochureImageSlot;
+  slot: ProductImageSlot;
 };
 
-// Replace a single Brochure image slot in place, then return the updated Product. The generic image
+// Replace a single Product image slot in place, then return the updated Product. The generic image
 // service owns validation, storage, and old-object cleanup; this binding owns the Product specifics:
 // locking the row, swapping the slot's reference, and recording the replacement as a change-of-fact in
 // the Product audit trail (image bytes are never diffed — the storage-key swap is the recorded change).
-export async function replaceProductBrochureImage({
+export async function replaceProductImage({
   actorUserId,
   db,
   input,
@@ -30,17 +30,17 @@ export async function replaceProductBrochureImage({
 }: {
   actorUserId: AuthId;
   db: Db;
-  input: ReplaceProductBrochureImageInput;
+  input: ReplaceProductImageInput;
   storage: StorageAdapter;
 }): Promise<Product> {
   await replaceImage({
     bytes: input.bytes,
     db,
-    policy: BROCHURE_IMAGE_POLICY,
+    policy: PRODUCT_IMAGE_POLICY,
     storage,
     binding: {
       buildStorageKey: ({ contentType }) =>
-        `brochure-images/product/${input.productId}/${input.slot}/${randomUUID()}.${imageExtensionFor(contentType)}`,
+        `product-images/product/${input.productId}/${input.slot}/${randomUUID()}.${imageExtensionFor(contentType)}`,
       apply: async ({ nextRef, tx }) => {
         const [before] = await tx.select().from(products).where(eq(products.id, input.productId)).for('update');
 
@@ -48,12 +48,12 @@ export async function replaceProductBrochureImage({
           throw new ProductNotFoundError(input.productId);
         }
 
-        const priorRef = before.brochureImages[input.slot];
+        const priorRef = before.images[input.slot];
 
         await tx
           .update(products)
           .set({
-            brochureImages: { ...before.brochureImages, [input.slot]: nextRef },
+            images: { ...before.images, [input.slot]: nextRef },
             updatedAt: new Date(),
           })
           .where(eq(products.id, input.productId));
@@ -65,7 +65,7 @@ export async function replaceProductBrochureImage({
           actorUserId,
           entityId: input.productId,
           changes: {
-            [`brochureImage:${input.slot}`]: { from: priorRef?.storageKey ?? null, to: nextRef.storageKey },
+            [`image:${input.slot}`]: { from: priorRef?.storageKey ?? null, to: nextRef.storageKey },
           },
           record: { name: before.name },
         });
@@ -78,7 +78,7 @@ export async function replaceProductBrochureImage({
   return getProduct({ db, id: input.productId });
 }
 
-export async function readProductBrochureImage({
+export async function readProductImage({
   db,
   productId,
   slot,
@@ -86,23 +86,19 @@ export async function readProductBrochureImage({
 }: {
   db: Db;
   productId: UUID;
-  slot: BrochureImageSlot;
+  slot: ProductImageSlot;
   storage: StorageAdapter;
 }): Promise<StoredObject> {
-  const [row] = await db
-    .select({ brochureImages: products.brochureImages })
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
+  const [row] = await db.select({ images: products.images }).from(products).where(eq(products.id, productId)).limit(1);
 
   if (!row) {
     throw new ProductNotFoundError(productId);
   }
 
-  const ref = row.brochureImages[slot];
+  const ref = row.images[slot];
 
   if (!ref) {
-    throw new ImageNotFoundError(`Brochure image not found for slot ${slot} on product ${productId}`, {
+    throw new ImageNotFoundError(`Product image not found for slot ${slot} on product ${productId}`, {
       productId,
       slot,
     });

@@ -33,7 +33,8 @@ function productInput(
   return {
     assemblies,
     basePrice: 1000,
-    brochureConfig: { keyFeatures: [], subtitle: null },
+    category: null,
+    keyFeatures: [],
     buildTimeDays: 14,
     currencyCode: 'ZAR',
     description: null,

@@ -1,15 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import type { BrochureImageStore, DatabaseTransaction, Db, StoredImageRef } from '@pkg/db';
+import type { DatabaseTransaction, Db, ProductImageStore, StoredImageRef } from '@pkg/db';
 import { evaluateBrochureCompleteness } from '@pkg/domain';
 import {
   type AuthId,
-  BROCHURE_IMAGE_SLOT_SPECS,
   BROCHURE_IMAGE_SLOTS,
   type BrochureDocumentImage,
   type BrochureDocumentImages,
   type BrochureDocumentModel,
   type BrochurePdfRenderer,
+  PRODUCT_IMAGE_SLOT_SPECS,
   type Product,
   type UUID,
 } from '@pkg/schema';
@@ -44,14 +44,14 @@ export async function renderProductBrochurePreview({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
-  const { brochureImages, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
+  const { images, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
 
   if (!isBrochureComplete(product)) {
     const completeness = evaluateBrochureCompleteness(brochureCompletenessInput(product));
     throw new ProductBrochureIncompleteError(productId, completeness.missingFields);
   }
 
-  return renderBrochureForProduct({ brochureImages, pdfRenderer, product, rangeImage, storage });
+  return renderBrochureForProduct({ images, pdfRenderer, product, rangeImage, storage });
 }
 
 /**
@@ -71,13 +71,13 @@ export async function generateProductBrochureIfComplete({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult | null> {
-  const { brochureImages, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
+  const { images, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
 
   if (!isBrochureComplete(product)) {
     return null;
   }
 
-  return renderBrochureForProduct({ brochureImages, pdfRenderer, product, rangeImage, storage });
+  return renderBrochureForProduct({ images, pdfRenderer, product, rangeImage, storage });
 }
 
 /**
@@ -131,19 +131,19 @@ export async function snapshotJobBrochureDocument({
 }
 
 async function renderBrochureForProduct({
-  brochureImages,
+  images,
   pdfRenderer,
   product,
   rangeImage,
   storage,
 }: {
-  brochureImages: BrochureImageStore;
+  images: ProductImageStore;
   pdfRenderer: BrochurePdfRenderer;
   product: Product;
   rangeImage: StoredImageRef | null;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
-  const document = await getBrochureDocumentModel({ brochureImages, product, rangeImage, storage });
+  const document = await getBrochureDocumentModel({ images, product, rangeImage, storage });
   const filename = `${product.modelCode}-brochure.pdf`;
   const bytes = await pdfRenderer({ document, filename });
 
@@ -157,10 +157,10 @@ function isBrochureComplete(product: Product): boolean {
 function brochureCompletenessInput(product: Product) {
   return {
     assemblyCount: product.assemblies.length,
+    category: product.category,
     description: product.description,
-    images: product.brochureConfig.images,
-    keyFeatures: product.brochureConfig.keyFeatures,
-    subtitle: product.brochureConfig.subtitle,
+    images: product.images,
+    keyFeatures: product.keyFeatures,
   };
 }
 
@@ -172,26 +172,26 @@ function brochureCompletenessInput(product: Product) {
  * stays a pure function over the model.
  */
 export async function getBrochureDocumentModel({
-  brochureImages,
+  images,
   product,
   rangeImage,
   storage,
 }: {
-  brochureImages: BrochureImageStore;
+  images: ProductImageStore;
   product: Product;
   rangeImage: StoredImageRef | null;
   storage: StorageAdapter;
 }): Promise<BrochureDocumentModel> {
-  const [images, rangeLogo] = await Promise.all([
-    resolveBrochureImages({ store: brochureImages, storage }),
+  const [resolvedImages, rangeLogo] = await Promise.all([
+    resolveBrochureImages({ store: images, storage }),
     // The Range logo fits without cropping, matching the old per-product range-logo slot.
     resolveStoredImage({ fit: 'contain', ref: rangeImage, storage }),
   ]);
 
   return {
     bodyCopy: toDisplayLines(product.description),
-    images,
-    keyFeatures: product.brochureConfig.keyFeatures,
+    images: resolvedImages,
+    keyFeatures: product.keyFeatures,
     modelCode: product.modelCode,
     optionalAssemblies: product.assemblies
       .filter((assembly) => assembly.kind === 'optional')
@@ -200,7 +200,7 @@ export async function getBrochureDocumentModel({
     standardAssemblies: product.assemblies
       .filter((assembly) => assembly.kind === 'standard')
       .map((assembly) => assembly.name),
-    subtitle: product.brochureConfig.subtitle,
+    subtitle: product.category,
     title: product.name,
   };
 }
@@ -209,7 +209,7 @@ async function resolveBrochureImages({
   store,
   storage,
 }: {
-  store: BrochureImageStore;
+  store: ProductImageStore;
   storage: StorageAdapter;
 }): Promise<BrochureDocumentImages> {
   const entries = await Promise.all(
@@ -217,7 +217,7 @@ async function resolveBrochureImages({
       async (slot) =>
         [
           slot,
-          await resolveStoredImage({ fit: BROCHURE_IMAGE_SLOT_SPECS[slot].fit, ref: store[slot], storage }),
+          await resolveStoredImage({ fit: PRODUCT_IMAGE_SLOT_SPECS[slot].fit, ref: store[slot], storage }),
         ] as const,
     ),
   );

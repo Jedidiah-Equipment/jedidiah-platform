@@ -1,4 +1,4 @@
-import { BROCHURE_KEY_FEATURES_MAX_COUNT, type BrochureDocumentModel } from '@pkg/schema';
+import { type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 
 import { getPdfPageSizes } from '../bytes/pdf-bytes.js';
@@ -16,9 +16,9 @@ function fullBrochure(): BrochureDocumentModel {
   return {
     bodyCopy: ['A rugged feed mixer built for daily use.', 'Engineered for high productivity and reliability.'],
     images: {
-      hero: image('cover'),
+      primary: image('cover'),
       technicalDrawing: image('contain'),
-      secondary: image('cover'),
+      banner: image('cover'),
     },
     keyFeatures: ['Heavy-duty steel construction', 'Low maintenance', 'Hydraulic drive'],
     modelCode: 'SG1836',
@@ -46,7 +46,7 @@ describe('renderBrochurePdf', () => {
   test('omits absent optional sections and still renders valid bytes across two pages', async () => {
     await expectTwoPageBrochure({
       bodyCopy: [],
-      images: { hero: null, technicalDrawing: null, secondary: null },
+      images: { primary: null, technicalDrawing: null, banner: null },
       keyFeatures: [],
       modelCode: 'SG1836',
       optionalAssemblies: [],
@@ -61,7 +61,7 @@ describe('renderBrochurePdf', () => {
     await expectTwoPageBrochure({
       ...fullBrochure(),
       keyFeatures: Array.from(
-        { length: BROCHURE_KEY_FEATURES_MAX_COUNT },
+        { length: PRODUCT_KEY_FEATURES_MAX_COUNT },
         (_, index) =>
           `Extended feature ${index + 1} with enough copy to exercise wrapping without flowing onto a third page`,
       ),
@@ -88,7 +88,7 @@ describe('renderBrochurePdf', () => {
       ...fullBrochure(),
       bodyCopy: denseDescription(),
       keyFeatures: Array.from(
-        { length: BROCHURE_KEY_FEATURES_MAX_COUNT },
+        { length: PRODUCT_KEY_FEATURES_MAX_COUNT },
         (_, index) =>
           `High capacity field feature ${index + 1} with operating detail that may wrap in the brochure preview`,
       ),

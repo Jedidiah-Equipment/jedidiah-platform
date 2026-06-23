@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BROCHURE_KEY_FEATURES_MAX_COUNT, type BrochureDocumentImage, type BrochureDocumentModel } from '@pkg/schema';
+import { type BrochureDocumentImage, type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
 
 import { renderBrochurePdf } from '../src/brochure/brochure-pdf-renderer.js';
 
@@ -33,8 +33,8 @@ async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumen
       "Years of rigorous testing in extremely harsh conditions ensure dependable service. With various additional options and the flexibility to customize any part to meet our customers' needs, these trailers are leaders in their field.",
     ],
     images: {
-      hero: await imageFromEnv('BROCHURE_HERO_IMAGE', 'cover'),
-      secondary: await imageFromEnv('BROCHURE_SECONDARY_IMAGE', 'cover'),
+      primary: await imageFromEnv('BROCHURE_HERO_IMAGE', 'cover'),
+      banner: await imageFromEnv('BROCHURE_SECONDARY_IMAGE', 'cover'),
       technicalDrawing: await imageFromEnv('BROCHURE_TECHNICAL_IMAGE', 'contain'),
     },
     keyFeatures: ['Pay load : 18 tons', 'Volume standard : 25 cubes', 'Volume with extensions: 36 cubes'],
@@ -90,7 +90,7 @@ async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumen
       ...document,
       bodyCopy: denseDescription(),
       keyFeatures: Array.from(
-        { length: BROCHURE_KEY_FEATURES_MAX_COUNT },
+        { length: PRODUCT_KEY_FEATURES_MAX_COUNT },
         (_, index) =>
           `High capacity field feature ${index + 1} with operating detail that may wrap in the brochure preview`,
       ),

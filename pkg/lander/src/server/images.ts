@@ -2,7 +2,7 @@ import {
   ImageNotFoundError,
   ProductNotFoundError,
   ProductRangeNotFoundError,
-  readProductBrochureImage,
+  readProductImage,
   readProductRangeImage,
   type StorageAdapter,
   StorageObjectNotFoundError,
@@ -11,9 +11,9 @@ import {
 import type { Db } from '@pkg/db';
 import { UUID } from '@pkg/schema';
 
-// The brochure slot the Lander surfaces as a Product's lead image. The other slots are detail imagery
+// The Product image slot the Lander surfaces as a Product's lead image. The other slots are detail imagery
 // that this public site does not render.
-const HERO_SLOT = 'hero' as const;
+const LEAD_IMAGE_SLOT = 'primary' as const;
 
 // Read a Range's presentation image, or null when there is nothing to show. "Nothing to show" covers an
 // unknown/malformed id, a Range with no image set, and a stored reference whose object is gone — all of
@@ -35,7 +35,7 @@ export async function readRangeImage(storage: StorageAdapter, db: Db, rangeId: s
   }
 }
 
-// Read a Product's brochure `hero` image, or null when there is nothing to show (see readRangeImage).
+// Read a Product's `primary` image, or null when there is nothing to show (see readRangeImage).
 export async function readProductHeroImage(
   storage: StorageAdapter,
   db: Db,
@@ -47,7 +47,7 @@ export async function readProductHeroImage(
   }
 
   try {
-    return await readProductBrochureImage({ db, productId: parsed.data, slot: HERO_SLOT, storage });
+    return await readProductImage({ db, productId: parsed.data, slot: LEAD_IMAGE_SLOT, storage });
   } catch (error) {
     if (isMissingImageError(error)) {
       return null;

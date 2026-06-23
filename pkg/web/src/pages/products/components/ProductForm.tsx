@@ -7,7 +7,7 @@ import { TabsContent } from '@/components/ui/tabs.js';
 import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductBaysEditor } from './ProductBaysEditor.js';
-import { ProductBrochureEditor } from './ProductBrochureEditor.js';
+import { ProductKeyFeaturesEditor } from './ProductKeyFeaturesEditor.js';
 import { ProductFormValues, toProductFormValues, toProductUpdateInput } from './types.js';
 
 type ProductFormProps = {
@@ -101,9 +101,24 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                       {(field) => <field.TextareaField label="Description" rows={4} />}
                     </form.AppField>
                   </EditFormFullWidth>
+                  <form.AppField name="category">
+                    {(field) => (
+                      <field.TextField
+                        autoComplete="off"
+                        description="The category line shown under the title, e.g. “Silage & Grain”."
+                        label="Category"
+                        placeholder="Silage & Grain"
+                      />
+                    )}
+                  </form.AppField>
                 </EditFormGrid>
               </CardContent>
             </Card>
+            <form.Field name="keyFeatures" mode="array">
+              {(keyFeaturesField) => (
+                <ProductKeyFeaturesEditor keyFeaturesField={keyFeaturesField} onStructuralChange={saveCommittedField} />
+              )}
+            </form.Field>
           </div>
         </TabsContent>
         <TabsContent className="pt-4" value="bays">
@@ -129,21 +144,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                   assembliesField={assembliesField}
                   currencyCode={defaultValues.currencyCode}
                   onStructuralChange={saveCommittedField}
-                />
-              )}
-            </form.Field>
-          </div>
-        </TabsContent>
-        <TabsContent className="pt-4" value="brochure">
-          <div className="flex flex-col gap-4">
-            <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
-            <form.Field name="brochureConfig.keyFeatures" mode="array">
-              {(keyFeaturesField) => (
-                <ProductBrochureEditor
-                  images={product.brochureConfig.images}
-                  keyFeaturesField={keyFeaturesField}
-                  onStructuralChange={saveCommittedField}
-                  productId={product.id}
                 />
               )}
             </form.Field>

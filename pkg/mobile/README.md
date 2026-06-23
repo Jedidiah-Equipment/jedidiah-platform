@@ -1,6 +1,6 @@
 # @pkg/mobile
 
-Expo managed React Native app for Jedidiah Ops.
+Expo managed React Native app for JedidiahOps.
 
 ## Commands
 

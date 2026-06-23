@@ -1,4 +1,9 @@
-import { type BrochurePreviewResult, generateProductBrochureIfComplete, ProductNotFoundError } from '@pkg/core';
+import {
+  type BrochurePreviewResult,
+  generateProductBrochureIfComplete,
+  ProductNotFoundError,
+  StorageObjectNotFoundError,
+} from '@pkg/core';
 import { renderBrochurePdf } from '@pkg/pdf';
 import { UUID } from '@pkg/schema';
 
@@ -48,7 +53,10 @@ export async function serveProductBrochure(productId: string): Promise<Response>
 
     return brochureResponse(brochure);
   } catch (error) {
-    if (error instanceof ProductNotFoundError) {
+    // The completeness gate only checks that image refs exist in the DB, not that the S3 objects are
+    // still present. A missing Product or a missing stored asset both mean "no real PDF to serve", so
+    // both hide behind a 404 rather than surfacing a 500 — matching how the image routes treat them.
+    if (error instanceof ProductNotFoundError || error instanceof StorageObjectNotFoundError) {
       return brochureResponse(null);
     }
 

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  [data-m="burger"]{display:none;}
+  @media (max-width:860px){
+    [data-m="nav-inner"]{padding:0 20px !important; height:64px !important;}
+    [data-m="nav-links"]{display:none !important;}
+    [data-m="nav-contact"]{display:none !important;}
+    [data-m="burger"]{display:flex !important;}
+    [data-m="logo-name"]{font-size:24px !important;}
+    [data-m="logo-sub"]{font-size:11px !important; letter-spacing:5px !important;}
+  }
+  @media (min-width:861px){
+    [data-m="mobile-menu"]{display:none !important;}
+  }
+</style>
+</helmet>
+<header style="position:sticky; top:0; z-index:50; background:#161616; border-bottom:1px solid #2a2a2a;">
+  <div data-m="nav-inner" style="max-width:1320px; margin:0 auto; padding:0 48px; height:76px; display:flex; align-items:center; justify-content:space-between; gap:24px;">
+    <a href="{{ homeHref }}" style="display:flex; align-items:center; gap:12px; text-decoration:none; flex:none;">
+      <span style="display:flex; flex-direction:column; gap:5px;">
+        <span style="width:34px; height:6px; background:#fff000; transform:skewX(-20deg);"></span>
+        <span style="width:22px; height:6px; background:#fff000; transform:skewX(-20deg);"></span>
+      </span>
+      <span style="display:flex; flex-direction:column; line-height:0.86;">
+        <span data-m="logo-name" style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-style:italic; font-size:30px; color:#fff; letter-spacing:0.5px;">JEDIDIAH</span>
+        <span data-m="logo-sub" style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:13px; color:#9a9a9a; letter-spacing:7px; text-align:right;">EQUIPMENT</span>
+      </span>
+    </a>
+
+    <nav data-m="nav-links" style="display:flex; align-items:center; gap:40px; flex:none;">
+      <a href="{{ homeHref }}" style="position:relative; font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:18px; letter-spacing:1px; text-transform:uppercase; color:{{ homeColor }}; text-decoration:none; padding:6px 0;">Home<sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}"><span style="position:absolute; left:0; right:0; bottom:-2px; height:3px; background:#fff000;"></span></sc-if></a>
+      <a href="{{ aboutHref }}" style="position:relative; font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:18px; letter-spacing:1px; text-transform:uppercase; color:{{ aboutColor }}; text-decoration:none; padding:6px 0;">About Us<sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}"><span style="position:absolute; left:0; right:0; bottom:-2px; height:3px; background:#fff000;"></span></sc-if></a>
+      <a href="{{ productsHref }}" style="position:relative; display:flex; align-items:center; gap:6px; font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:18px; letter-spacing:1px; text-transform:uppercase; color:{{ productsColor }}; text-decoration:none; padding:6px 0;">Products<svg width="11" height="7" viewBox="0 0 11 7" fill="none"><path d="M1 1l4.5 4L10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><sc-if value="{{ isProducts }}" hint-placeholder-val="{{ false }}"><span style="position:absolute; left:0; right:0; bottom:-2px; height:3px; background:#fff000;"></span></sc-if></a>
+      <a href="{{ contactHref }}" style="position:relative; font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:18px; letter-spacing:1px; text-transform:uppercase; color:{{ contactColor }}; text-decoration:none; padding:6px 0;">Contact Us<sc-if value="{{ isContact }}" hint-placeholder-val="{{ false }}"><span style="position:absolute; left:0; right:0; bottom:-2px; height:3px; background:#fff000;"></span></sc-if></a>
+    </nav>
+
+    <div data-m="nav-contact" style="display:flex; align-items:center; gap:28px; flex:none;">
+      <a href="tel:+27128190131" style="display:flex; align-items:center; gap:9px; text-decoration:none;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" stroke="#fff000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-family:'Barlow',sans-serif; font-weight:600; font-size:15px; color:#e8e8e8;">+27 12 819 0131</span>
+      </a>
+      <span style="display:flex; align-items:center; gap:9px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="#fff000" stroke-width="2"/><circle cx="12" cy="10" r="3" stroke="#fff000" stroke-width="2"/></svg>
+        <span style="font-family:'Barlow',sans-serif; font-weight:600; font-size:15px; color:#e8e8e8;">Bapsfontein, South Africa</span>
+      </span>
+    </div>
+
+    <button data-m="burger" onClick="{{ toggle }}" aria-label="Menu" style="display:none; align-items:center; justify-content:center; width:46px; height:46px; padding:0; background:transparent; border:1.5px solid #3a3a3a; cursor:pointer; flex:none;">
+      <sc-if value="{{ open }}" hint-placeholder-val="{{ false }}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5L5 19" stroke="#fff000" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </sc-if>
+      <sc-if value="{{ closed }}" hint-placeholder-val="{{ true }}">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="#fff000" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </sc-if>
+    </button>
+  </div>
+
+  <!-- MOBILE MENU -->
+  <div data-m="mobile-menu" style="display:{{ menuDisplay }}; background:#1b1b1b; border-top:1px solid #2a2a2a;">
+    <nav style="display:flex; flex-direction:column; padding:8px 20px 18px;">
+      <a href="{{ homeHref }}" style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:20px; letter-spacing:1px; text-transform:uppercase; color:{{ homeColor }}; text-decoration:none; padding:15px 0; border-bottom:1px solid #2a2a2a;">Home</a>
+      <a href="{{ aboutHref }}" style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:20px; letter-spacing:1px; text-transform:uppercase; color:{{ aboutColor }}; text-decoration:none; padding:15px 0; border-bottom:1px solid #2a2a2a;">About Us</a>
+      <a href="{{ productsHref }}" style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:20px; letter-spacing:1px; text-transform:uppercase; color:{{ productsColor }}; text-decoration:none; padding:15px 0; border-bottom:1px solid #2a2a2a;">Products</a>
+      <a href="{{ contactHref }}" style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:20px; letter-spacing:1px; text-transform:uppercase; color:{{ contactColor }}; text-decoration:none; padding:15px 0; border-bottom:1px solid #2a2a2a;">Contact Us</a>
+      <div style="display:flex; flex-direction:column; gap:14px; padding-top:18px;">
+        <a href="tel:+27128190131" style="display:flex; align-items:center; gap:11px; text-decoration:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" stroke="#fff000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span style="font-family:'Barlow',sans-serif; font-weight:600; font-size:16px; color:#e8e8e8;">+27 12 819 0131</span>
+        </a>
+        <span style="display:flex; align-items:center; gap:11px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="#fff000" stroke-width="2"/><circle cx="12" cy="10" r="3" stroke="#fff000" stroke-width="2"/></svg>
+          <span style="font-family:'Barlow',sans-serif; font-weight:600; font-size:16px; color:#e8e8e8;">Bapsfontein, South Africa</span>
+        </span>
+      </div>
+    </nav>
+  </div>
+</header>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;about&quot;,&quot;products&quot;,&quot;contact&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { open: false };
+  renderVals() {
+    const a = this.props.active || 'home';
+    const onYellow = '#fff000', off = '#cfcfcf';
+    const B = (typeof window !== 'undefined') && window.__bundler_pages;
+    const link = (base) => B ? ('#/' + base + '.dc') : (base + '.dc.html');
+    return {
+      homeHref: link('Home'), aboutHref: link('About'), productsHref: link('Products'), contactHref: link('Contact'),
+      isHome: a === 'home', isAbout: a === 'about', isProducts: a === 'products', isContact: a === 'contact',
+      homeColor: a === 'home' ? onYellow : off,
+      aboutColor: a === 'about' ? onYellow : off,
+      productsColor: a === 'products' ? onYellow : off,
+      contactColor: a === 'contact' ? onYellow : off,
+      open: this.state.open,
+      closed: !this.state.open,
+      menuDisplay: this.state.open ? 'block' : 'none',
+      toggle: () => this.setState(s => ({ open: !s.open })),
+    };
+  }
+}
+</script>
+</body>
+</html>

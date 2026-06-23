@@ -18,6 +18,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@pkg/mobile", "exec", "expo", "start", "--web", "--port", "7003"],
       "port": 7003
+    },
+    {
+      "name": "lander",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@pkg/lander", "dev"],
+      "port": 7004
     }
   ]
 }

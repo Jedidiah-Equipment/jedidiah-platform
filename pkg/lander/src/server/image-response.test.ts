@@ -19,7 +19,7 @@ describe('imageResponse', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/png');
     expect(response.headers.get('content-length')).toBe('4');
-    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+    expect(response.headers.get('cache-control')).toBe('public, max-age=3600, stale-while-revalidate=86400');
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(payload);
   });
 

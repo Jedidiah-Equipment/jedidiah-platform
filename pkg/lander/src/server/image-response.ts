@@ -2,10 +2,12 @@ import type { StoredObject } from '@pkg/core';
 
 import { PLACEHOLDER_CONTENT_TYPE, PLACEHOLDER_SVG } from './placeholder.js';
 
-// Stored imagery rarely changes and is safe to cache hard. A missing image is transient — an upload may
-// follow — so its placeholder is cached only briefly, letting newly-added imagery appear without waiting
-// out a long cache.
-const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+// These routes are keyed by entity id, not by content, so an image replacement reuses the same URL. The
+// cache is therefore long-but-revalidating rather than `immutable`: caches may serve a cached image for an
+// hour, then refresh in the background, so a replaced image converges within ~an hour instead of being
+// pinned to stale bytes for up to a year. A missing image is transient — an upload may follow — so its
+// placeholder is cached only briefly, letting newly-added imagery appear quickly.
+const IMAGE_CACHE_CONTROL = 'public, max-age=3600, stale-while-revalidate=86400';
 const PLACEHOLDER_CACHE_CONTROL = 'public, max-age=60';
 
 // Turn a stored object (or its absence) into an HTTP image response. A null object yields the neutral

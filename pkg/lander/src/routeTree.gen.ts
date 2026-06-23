@@ -10,9 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as HealthRouteImport } from './routes/health'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsIndexRouteImport } from './routes/products/index'
 import { Route as ProductsModelCodeRouteImport } from './routes/products/$modelCode'
+import { Route as ApiContactRouteImport } from './routes/api/contact'
 import { Route as ImagesRangesRangeIdRouteImport } from './routes/images/ranges/$rangeId'
 import { Route as ImagesProductsProductIdRouteImport } from './routes/images/products/$productId'
 import { Route as DownloadsProductsProductIdBrochureRouteImport } from './routes/downloads/products/$productId/brochure'
@@ -20,6 +23,16 @@ import { Route as DownloadsProductsProductIdBrochureRouteImport } from './routes
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +48,11 @@ const ProductsIndexRoute = ProductsIndexRouteImport.update({
 const ProductsModelCodeRoute = ProductsModelCodeRouteImport.update({
   id: '/products/$modelCode',
   path: '/products/$modelCode',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiContactRoute = ApiContactRouteImport.update({
+  id: '/api/contact',
+  path: '/api/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImagesRangesRangeIdRoute = ImagesRangesRangeIdRouteImport.update({
@@ -56,7 +74,10 @@ const DownloadsProductsProductIdBrochureRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
+  '/api/contact': typeof ApiContactRoute
   '/products/$modelCode': typeof ProductsModelCodeRoute
   '/products/': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
@@ -65,7 +86,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
+  '/api/contact': typeof ApiContactRoute
   '/products/$modelCode': typeof ProductsModelCodeRoute
   '/products': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
@@ -75,7 +99,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
+  '/api/contact': typeof ApiContactRoute
   '/products/$modelCode': typeof ProductsModelCodeRoute
   '/products/': typeof ProductsIndexRoute
   '/images/products/$productId': typeof ImagesProductsProductIdRoute
@@ -86,7 +113,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
+    | '/contact'
     | '/health'
+    | '/api/contact'
     | '/products/$modelCode'
     | '/products/'
     | '/images/products/$productId'
@@ -95,7 +125,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
+    | '/contact'
     | '/health'
+    | '/api/contact'
     | '/products/$modelCode'
     | '/products'
     | '/images/products/$productId'
@@ -104,7 +137,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/about'
+    | '/contact'
     | '/health'
+    | '/api/contact'
     | '/products/$modelCode'
     | '/products/'
     | '/images/products/$productId'
@@ -114,7 +150,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  ContactRoute: typeof ContactRoute
   HealthRoute: typeof HealthRoute
+  ApiContactRoute: typeof ApiContactRoute
   ProductsModelCodeRoute: typeof ProductsModelCodeRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
   ImagesProductsProductIdRoute: typeof ImagesProductsProductIdRoute
@@ -129,6 +168,20 @@ declare module '@tanstack/react-router' {
       path: '/health'
       fullPath: '/health'
       preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -150,6 +203,13 @@ declare module '@tanstack/react-router' {
       path: '/products/$modelCode'
       fullPath: '/products/$modelCode'
       preLoaderRoute: typeof ProductsModelCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/contact': {
+      id: '/api/contact'
+      path: '/api/contact'
+      fullPath: '/api/contact'
+      preLoaderRoute: typeof ApiContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/images/ranges/$rangeId': {
@@ -178,7 +238,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  ContactRoute: ContactRoute,
   HealthRoute: HealthRoute,
+  ApiContactRoute: ApiContactRoute,
   ProductsModelCodeRoute: ProductsModelCodeRoute,
   ProductsIndexRoute: ProductsIndexRoute,
   ImagesProductsProductIdRoute: ImagesProductsProductIdRoute,

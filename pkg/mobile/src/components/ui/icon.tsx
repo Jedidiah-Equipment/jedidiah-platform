@@ -5,7 +5,7 @@ import { cssInterop } from 'nativewind';
  * Renders a Tabler icon (same set as web's `@tabler/icons-react`) themed by a
  * NativeWind class. Tabler RN icons paint from their `color` prop, so `cssInterop`
  * moves the class's resolved colour onto that prop — keeping icons on the semantic
- * tokens in `global.css` (and dark mode) without branching on the scheme in JS
+ * theme tokens without branching on the scheme in each call site
  * (see pkg/mobile/AGENTS.md).
  */
 

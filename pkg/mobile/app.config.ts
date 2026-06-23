@@ -9,8 +9,9 @@ type AppConfig = ExpoConfig & { newArchEnabled?: boolean };
 
 /**
  * Dynamic Expo config. The static shape (plugins, new arch, typed routes, fonts) lives here; the
- * per-build identity (name, scheme, Android package, icon) is overlaid from {@link resolveAppVariant},
- * selected by `APP_VARIANT`. Keep this a thin shell — the testable logic lives in the resolver.
+ * per-build identity (name, scheme, native package identifiers, icon) is overlaid from
+ * {@link resolveAppVariant}, selected by `APP_VARIANT`. Keep this a thin shell — the testable
+ * logic lives in the resolver.
  */
 export default ({ config }: ConfigContext): AppConfig => {
   const variant = resolveAppVariant({ APP_VARIANT: process.env.APP_VARIANT });
@@ -39,6 +40,9 @@ export default ({ config }: ConfigContext): AppConfig => {
     android: {
       package: variant.androidPackage,
       adaptiveIcon: variant.iconConfig.adaptiveIcon,
+    },
+    ios: {
+      bundleIdentifier: variant.iosBundleIdentifier,
     },
     extra: {
       eas: {

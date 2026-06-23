@@ -19,6 +19,7 @@ type ProductRangeOptionRow = Pick<ProductRangeRow, 'id' | 'name'>;
 export function mapProductRange(row: ProductRangeRow): ProductRange {
   return ProductRangeSchema.parse({
     createdAt: row.createdAt.toISOString(),
+    description: row.description,
     id: row.id,
     // Drop the internal storage key; the schema brands the remaining values on parse. A row that predates
     // the column (null) reads as no image.
@@ -93,6 +94,7 @@ export async function updateProductRange({
       .update(productRanges)
       .set({
         name: input.name,
+        description: input.description,
         updatedAt: new Date(),
       })
       .where(eq(productRanges.id, input.id))

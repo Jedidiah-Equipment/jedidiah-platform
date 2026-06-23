@@ -2,9 +2,17 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import { FeatureBar } from '../components/feature-bar.js';
 import { RangeCard } from '../components/range-card.js';
+import { seoHead } from '../lib/seo.js';
 import { getHomeRanges } from '../server/ranges.js';
 
 export const Route = createFileRoute('/')({
+  head: () =>
+    seoHead({
+      title: 'Jedidiah Equipment — South African Built. Farmer Proven.',
+      description:
+        'Heavy-duty agricultural equipment engineered to perform in South African conditions. Browse the Jedidiah Equipment range.',
+      path: '/',
+    }),
   loader: async () => ({ ranges: await getHomeRanges() }),
   component: HomePage,
 });

@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AboutRouteImport } from './routes/about'
@@ -22,6 +24,16 @@ import { Route as ImagesRangesRangeIdRouteImport } from './routes/images/ranges/
 import { Route as ImagesProductsProductIdRouteImport } from './routes/images/products/$productId'
 import { Route as DownloadsProductsProductIdBrochureRouteImport } from './routes/downloads/products/$productId/brochure'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
@@ -89,6 +101,8 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/contact': typeof ApiContactRoute
   '/info/$': typeof InfoSplatRoute
   '/products/$modelCode': typeof ProductsModelCodeRoute
@@ -103,6 +117,8 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/contact': typeof ApiContactRoute
   '/info/$': typeof InfoSplatRoute
   '/products/$modelCode': typeof ProductsModelCodeRoute
@@ -118,6 +134,8 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
   '/health': typeof HealthRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/contact': typeof ApiContactRoute
   '/info/$': typeof InfoSplatRoute
   '/products/$modelCode': typeof ProductsModelCodeRoute
@@ -134,6 +152,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/contact'
     | '/health'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/api/contact'
     | '/info/$'
     | '/products/$modelCode'
@@ -148,6 +168,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/contact'
     | '/health'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/api/contact'
     | '/info/$'
     | '/products/$modelCode'
@@ -162,6 +184,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/contact'
     | '/health'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/api/contact'
     | '/info/$'
     | '/products/$modelCode'
@@ -177,6 +201,8 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ContactRoute: typeof ContactRoute
   HealthRoute: typeof HealthRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiContactRoute: typeof ApiContactRoute
   InfoSplatRoute: typeof InfoSplatRoute
   ProductsModelCodeRoute: typeof ProductsModelCodeRoute
@@ -189,6 +215,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/health': {
       id: '/health'
       path: '/health'
@@ -281,6 +321,8 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ContactRoute: ContactRoute,
   HealthRoute: HealthRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiContactRoute: ApiContactRoute,
   InfoSplatRoute: InfoSplatRoute,
   ProductsModelCodeRoute: ProductsModelCodeRoute,

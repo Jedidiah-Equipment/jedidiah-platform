@@ -1,12 +1,20 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 
 import { ProductCard } from '../../components/product-card.js';
+import { seoHead } from '../../lib/seo.js';
 import { getProductsCatalog } from '../../server/products.js';
 import type { CatalogGroup } from '../../server/products-data.js';
 
 type ProductsSearch = { range?: string };
 
 export const Route = createFileRoute('/products/')({
+  head: () =>
+    seoHead({
+      title: 'Products — Jedidiah Equipment',
+      description:
+        'Trailers, tanks, tillage and planting equipment — engineered and built in South Africa for the toughest conditions.',
+      path: '/products',
+    }),
   validateSearch: (search: Record<string, unknown>): ProductsSearch =>
     typeof search.range === 'string' ? { range: search.range } : {},
   loader: async () => ({ catalog: await getProductsCatalog() }),

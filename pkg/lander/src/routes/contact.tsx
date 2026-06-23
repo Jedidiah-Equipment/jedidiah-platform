@@ -2,18 +2,16 @@ import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
 import { captureEvent } from '../lib/analytics.js';
+import { seoHead } from '../lib/seo.js';
 
 export const Route = createFileRoute('/contact')({
-  head: () => ({
-    meta: [
-      { title: 'Contact — Jedidiah Equipment' },
-      {
-        name: 'description',
-        content:
-          'Get in touch with Jedidiah Equipment. Call, email or WhatsApp us, or send an enquiry and our team will get back to you.',
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: 'Contact — Jedidiah Equipment',
+      description:
+        'Get in touch with Jedidiah Equipment. Call, email or WhatsApp us, or send an enquiry and our team will get back to you.',
+      path: '/contact',
+    }),
   component: ContactPage,
 });
 

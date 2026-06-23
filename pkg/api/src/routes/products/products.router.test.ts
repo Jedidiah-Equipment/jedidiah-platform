@@ -1,5 +1,5 @@
 import { auditEvents, type Db, jobBays, parts, productRanges, sql, supplier, user } from '@pkg/db';
-import { EMPTY_BROCHURE_IMAGES, type Product } from '@pkg/schema';
+import { EMPTY_PRODUCT_IMAGES, type Product } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
 import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
@@ -709,28 +709,27 @@ describe('products.update', () => {
   });
 });
 
-describe('products brochure config', () => {
-  test('defaults to an empty brochure config on create and read', async ({ context }) => {
+describe('products marketing fields', () => {
+  test('defaults to empty marketing fields on create and read', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Default Product', context.rangeId);
+    const created = await createProduct(caller, 'Marketing Default Product', context.rangeId);
 
-    expect(created.brochureConfig).toEqual({ images: EMPTY_BROCHURE_IMAGES, keyFeatures: [], subtitle: null });
+    expect(created).toMatchObject({ category: null, images: EMPTY_PRODUCT_IMAGES, keyFeatures: [] });
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
-      brochureConfig: { keyFeatures: [], subtitle: null },
+      category: null,
+      keyFeatures: [],
     });
   });
 
-  test('persists brochure subtitle and key features through update and read', async ({ context }) => {
+  test('persists category and key features through update and read', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Text Product', context.rangeId);
+    const created = await createProduct(caller, 'Marketing Text Product', context.rangeId);
 
     const updated = await caller.products.update({
       id: created.id,
       basePrice: created.basePrice,
-      brochureConfig: {
-        keyFeatures: ['  Heavy duty  ', 'Low maintenance'],
-        subtitle: '  Silage & Grain  ',
-      },
+      category: '  Silage & Grain  ',
+      keyFeatures: ['  Heavy duty  ', 'Low maintenance'],
       currencyCode: 'ZAR',
       description: created.description,
       buildTimeDays: created.buildTimeDays,
@@ -740,21 +739,22 @@ describe('products brochure config', () => {
       requiresVinNumber: created.requiresVinNumber,
     });
 
-    expect(updated.brochureConfig).toEqual({
-      images: EMPTY_BROCHURE_IMAGES,
+    expect(updated).toMatchObject({
+      category: 'Silage & Grain',
+      images: EMPTY_PRODUCT_IMAGES,
       keyFeatures: ['Heavy duty', 'Low maintenance'],
-      subtitle: 'Silage & Grain',
     });
     await expect(caller.products.get({ id: created.id })).resolves.toMatchObject({
-      brochureConfig: { keyFeatures: ['Heavy duty', 'Low maintenance'], subtitle: 'Silage & Grain' },
+      category: 'Silage & Grain',
+      keyFeatures: ['Heavy duty', 'Low maintenance'],
     });
 
     const events = await context.db.select().from(auditEvents);
     expect(events).toContainEqual(
       expect.objectContaining({
         changes: expect.objectContaining({
-          brochureKeyFeatures: { from: '[]', to: JSON.stringify(['Heavy duty', 'Low maintenance']) },
-          brochureSubtitle: { from: null, to: 'Silage & Grain' },
+          category: { from: null, to: 'Silage & Grain' },
+          keyFeatures: { from: '[]', to: JSON.stringify(['Heavy duty', 'Low maintenance']) },
         }),
         entityType: 'product',
       }),
@@ -763,7 +763,7 @@ describe('products brochure config', () => {
 
   test('reorders and removes key feature lines', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Reorder Product', context.rangeId);
+    const created = await createProduct(caller, 'Marketing Reorder Product', context.rangeId);
     const baseInput = {
       id: created.id,
       basePrice: created.basePrice,
@@ -776,27 +776,22 @@ describe('products brochure config', () => {
       requiresVinNumber: created.requiresVinNumber,
     };
 
-    const seeded = await caller.products.update({
-      ...baseInput,
-      brochureConfig: { keyFeatures: ['One', 'Two', 'Three'], subtitle: null },
-    });
-    expect(seeded.brochureConfig.keyFeatures).toEqual(['One', 'Two', 'Three']);
+    const seeded = await caller.products.update({ ...baseInput, keyFeatures: ['One', 'Two', 'Three'] });
+    expect(seeded.keyFeatures).toEqual(['One', 'Two', 'Three']);
 
-    const reordered = await caller.products.update({
-      ...baseInput,
-      brochureConfig: { keyFeatures: ['Three', 'One'], subtitle: null },
-    });
-    expect(reordered.brochureConfig.keyFeatures).toEqual(['Three', 'One']);
+    const reordered = await caller.products.update({ ...baseInput, keyFeatures: ['Three', 'One'] });
+    expect(reordered.keyFeatures).toEqual(['Three', 'One']);
   });
 
-  test('preserves brochure config when the update omits it', async ({ context }) => {
+  test('preserves category and key features when the update omits them', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Preserve Product', context.rangeId);
+    const created = await createProduct(caller, 'Marketing Preserve Product', context.rangeId);
 
     await caller.products.update({
       id: created.id,
       basePrice: created.basePrice,
-      brochureConfig: { keyFeatures: ['Stays put'], subtitle: 'Kept' },
+      category: 'Kept',
+      keyFeatures: ['Stays put'],
       currencyCode: 'ZAR',
       description: created.description,
       buildTimeDays: created.buildTimeDays,
@@ -806,7 +801,7 @@ describe('products brochure config', () => {
       requiresVinNumber: created.requiresVinNumber,
     });
 
-    const updatedWithoutBrochure = await caller.products.update({
+    const updatedWithoutMarketing = await caller.products.update({
       id: created.id,
       basePrice: 2_000,
       currencyCode: 'ZAR',
@@ -818,16 +813,16 @@ describe('products brochure config', () => {
       requiresVinNumber: created.requiresVinNumber,
     });
 
-    expect(updatedWithoutBrochure.brochureConfig).toEqual({
-      images: EMPTY_BROCHURE_IMAGES,
+    expect(updatedWithoutMarketing).toMatchObject({
+      category: 'Kept',
+      images: EMPTY_PRODUCT_IMAGES,
       keyFeatures: ['Stays put'],
-      subtitle: 'Kept',
     });
   });
 
   test('rejects blank and over-long key feature lines', async ({ context }) => {
     const caller = context.createCaller();
-    const created = await createProduct(caller, 'Brochure Validation Product', context.rangeId);
+    const created = await createProduct(caller, 'Marketing Validation Product', context.rangeId);
     const baseInput = {
       id: created.id,
       basePrice: created.basePrice,
@@ -840,13 +835,9 @@ describe('products brochure config', () => {
       requiresVinNumber: created.requiresVinNumber,
     };
 
-    await expect(
-      caller.products.update({ ...baseInput, brochureConfig: { keyFeatures: ['   '], subtitle: null } }),
-    ).rejects.toThrow();
+    await expect(caller.products.update({ ...baseInput, keyFeatures: ['   '] })).rejects.toThrow();
 
-    await expect(
-      caller.products.update({ ...baseInput, brochureConfig: { keyFeatures: ['x'.repeat(121)], subtitle: null } }),
-    ).rejects.toThrow();
+    await expect(caller.products.update({ ...baseInput, keyFeatures: ['x'.repeat(121)] })).rejects.toThrow();
   });
 });
 

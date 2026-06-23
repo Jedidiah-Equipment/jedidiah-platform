@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import {
-  BROCHURE_IMAGE_SLOT_SPECS,
-  BROCHURE_KEY_FEATURE_MAX_LENGTH,
-  BROCHURE_KEY_FEATURES_MAX_COUNT,
-  BrochureConfigInput,
+  PRODUCT_IMAGE_SLOT_SPECS,
+  PRODUCT_KEY_FEATURE_MAX_LENGTH,
+  PRODUCT_KEY_FEATURES_MAX_COUNT,
   Product,
   ProductAssembliesInput,
   ProductBaysInput,
+  ProductCategoryInput,
   ProductCreateInput,
+  ProductKeyFeatures,
   ProductListInput,
   ProductUpdateInput,
 } from './product.js';
@@ -31,10 +32,11 @@ describe('ProductCreateInput', () => {
     ).toEqual({
       assemblies: [],
       basePrice: 1234.56,
-      brochureConfig: { keyFeatures: [], subtitle: null },
+      category: null,
       currencyCode: 'ZAR',
       description: 'Earthmoving equipment',
       buildTimeDays: 14,
+      keyFeatures: [],
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       productBays: [],
@@ -229,43 +231,53 @@ describe('Product', () => {
   });
 });
 
-describe('BrochureConfigInput', () => {
-  it('defaults to an empty config', () => {
-    expect(BrochureConfigInput.parse({})).toEqual({ keyFeatures: [], subtitle: null });
+describe('ProductCategoryInput', () => {
+  it('defaults a missing category to null', () => {
+    expect(ProductCategoryInput.parse(undefined)).toBeNull();
   });
 
-  it('trims the subtitle and treats blank as null', () => {
-    expect(BrochureConfigInput.parse({ subtitle: '  Silage & Grain  ' }).subtitle).toBe('Silage & Grain');
-    expect(BrochureConfigInput.parse({ subtitle: '   ' }).subtitle).toBeNull();
-  });
-
-  it('trims key-feature lines and rejects blank ones', () => {
-    expect(BrochureConfigInput.parse({ keyFeatures: ['  Heavy duty  ', 'Low maintenance'] }).keyFeatures).toEqual([
-      'Heavy duty',
-      'Low maintenance',
-    ]);
-    expect(() => BrochureConfigInput.parse({ keyFeatures: ['   '] })).toThrow();
-  });
-
-  it('enforces the key-feature line length cap', () => {
-    expect(() =>
-      BrochureConfigInput.parse({ keyFeatures: ['x'.repeat(BROCHURE_KEY_FEATURE_MAX_LENGTH + 1)] }),
-    ).toThrow();
-  });
-
-  it('enforces the key-feature count cap', () => {
-    const tooMany = Array.from({ length: BROCHURE_KEY_FEATURES_MAX_COUNT + 1 }, (_, index) => `Feature ${index}`);
-
-    expect(() => BrochureConfigInput.parse({ keyFeatures: tooMany })).toThrow();
-  });
-
-  it('rejects unknown keys', () => {
-    expect(() => BrochureConfigInput.parse({ subtitle: 'x', extra: true })).toThrow();
+  it('trims the category and treats blank as null', () => {
+    expect(ProductCategoryInput.parse('  Silage & Grain  ')).toBe('Silage & Grain');
+    expect(ProductCategoryInput.parse('   ')).toBeNull();
   });
 });
 
-describe('BROCHURE_IMAGE_SLOT_SPECS', () => {
+describe('ProductKeyFeatures', () => {
+  it('trims key-feature lines and rejects blank ones', () => {
+    expect(ProductKeyFeatures.parse(['  Heavy duty  ', 'Low maintenance'])).toEqual(['Heavy duty', 'Low maintenance']);
+    expect(() => ProductKeyFeatures.parse(['   '])).toThrow();
+  });
+
+  it('enforces the key-feature line length cap', () => {
+    expect(() => ProductKeyFeatures.parse(['x'.repeat(PRODUCT_KEY_FEATURE_MAX_LENGTH + 1)])).toThrow();
+  });
+
+  it('enforces the key-feature count cap', () => {
+    const tooMany = Array.from({ length: PRODUCT_KEY_FEATURES_MAX_COUNT + 1 }, (_, index) => `Feature ${index}`);
+
+    expect(() => ProductKeyFeatures.parse(tooMany)).toThrow();
+  });
+});
+
+describe('ProductCreateInput marketing fields', () => {
+  it('flattens category and key features to the top level', () => {
+    const parsed = ProductCreateInput.parse({
+      basePrice: 1,
+      buildTimeDays: 1,
+      category: '  Silage & Grain  ',
+      keyFeatures: ['  Heavy duty  '],
+      modelCode: 'WL-100',
+      name: 'Wheel Loader',
+      rangeId: RANGE_ID,
+    });
+
+    expect(parsed.category).toBe('Silage & Grain');
+    expect(parsed.keyFeatures).toEqual(['Heavy duty']);
+  });
+});
+
+describe('PRODUCT_IMAGE_SLOT_SPECS', () => {
   it('keeps technical drawings uncropped for editor preview and PDF output', () => {
-    expect(BROCHURE_IMAGE_SLOT_SPECS.technicalDrawing.fit).toBe('contain');
+    expect(PRODUCT_IMAGE_SLOT_SPECS.technicalDrawing.fit).toBe('contain');
   });
 });

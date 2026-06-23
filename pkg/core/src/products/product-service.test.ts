@@ -12,16 +12,16 @@ describe('mapProduct', () => {
     expect(
       mapProduct({
         basePrice: 1234.56,
-        brochureImages: {
-          hero: {
+        category: 'Silage & Grain',
+        images: {
+          primary: {
             byteSize: 2048,
             contentType: 'image/png',
-            storageKey: 'brochure-images/product/00000000-0000-4000-8000-000000000001/hero/abc.png',
+            storageKey: 'product-images/product/00000000-0000-4000-8000-000000000001/primary/abc.png',
             updatedAt: '2026-05-13T11:30:00.000Z',
           },
         },
-        brochureKeyFeatures: ['Heavy duty', 'Low maintenance'],
-        brochureSubtitle: 'Silage & Grain',
+        keyFeatures: ['Heavy duty', 'Low maintenance'],
         createdAt,
         currencyCode: 'ZAR',
         description: 'Earthmoving equipment',
@@ -37,15 +37,13 @@ describe('mapProduct', () => {
     ).toEqual({
       assemblies: [],
       basePrice: 1234.56,
-      brochureConfig: {
-        images: {
-          hero: { byteSize: 2048, contentType: 'image/png', updatedAt: '2026-05-13T11:30:00.000Z' },
-          secondary: null,
-          technicalDrawing: null,
-        },
-        keyFeatures: ['Heavy duty', 'Low maintenance'],
-        subtitle: 'Silage & Grain',
+      category: 'Silage & Grain',
+      images: {
+        primary: { byteSize: 2048, contentType: 'image/png', updatedAt: '2026-05-13T11:30:00.000Z' },
+        banner: null,
+        technicalDrawing: null,
       },
+      keyFeatures: ['Heavy duty', 'Low maintenance'],
       createdAt: createdAt.toISOString(),
       currencyCode: 'ZAR',
       description: 'Earthmoving equipment',

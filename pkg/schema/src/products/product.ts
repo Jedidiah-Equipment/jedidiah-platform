@@ -3,7 +3,12 @@ import { DateIso } from '../common/date.js';
 import { EntityImage } from '../common/image.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
-import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
+import {
+  nullableTrimmedText,
+  nullableTrimmedTextInput,
+  nullableTrimmedTextInputOptional,
+  requiredTrimmedText,
+} from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { Bay } from '../jobs/job.js';
@@ -245,103 +250,86 @@ const ProductBays = z.array(ProductBayInput).superRefine(refineProductBays);
 export type ProductBaysInput = z.infer<typeof ProductBaysInput>;
 export const ProductBaysInput = ProductBays.default([]);
 
-// Soft caps on the freeform Brochure key-feature list. Tuned so a typical brochure stays within its
-// "Key Features" block; the renderer reflows rather than clips, so these are guardrails, not hard limits.
-export const BROCHURE_KEY_FEATURE_MAX_LENGTH = 120;
-export const BROCHURE_KEY_FEATURES_MAX_COUNT = 12;
+// Soft caps on the freeform key-feature list. Tuned so a typical brochure stays within its "Key Features"
+// block; the renderer reflows rather than clips, so these are guardrails, not hard limits.
+export const PRODUCT_KEY_FEATURE_MAX_LENGTH = 120;
+export const PRODUCT_KEY_FEATURES_MAX_COUNT = 12;
 
-export type BrochureSubtitle = z.infer<typeof BrochureSubtitle>;
-export const BrochureSubtitle = nullableTrimmedText();
+// The freeform category line shown under the Product title (e.g. “Silage & Grain”). A plain nullable text
+// field used across surfaces — the brochure eyebrow and the Lander tagline — not a taxonomy/enum/FK.
+export type ProductCategory = z.infer<typeof ProductCategory>;
+export const ProductCategory = nullableTrimmedText();
 
-export type BrochureSubtitleInput = z.infer<typeof BrochureSubtitleInput>;
-export const BrochureSubtitleInput = nullableTrimmedTextInput();
+export type ProductCategoryInput = z.infer<typeof ProductCategoryInput>;
+export const ProductCategoryInput = nullableTrimmedTextInput();
 
-export type BrochureKeyFeature = z.infer<typeof BrochureKeyFeature>;
-export const BrochureKeyFeature = requiredTrimmedText('Key feature cannot be empty').max(
-  BROCHURE_KEY_FEATURE_MAX_LENGTH,
-  `Key feature must be ${BROCHURE_KEY_FEATURE_MAX_LENGTH} characters or fewer`,
+export type ProductKeyFeature = z.infer<typeof ProductKeyFeature>;
+export const ProductKeyFeature = requiredTrimmedText('Key feature cannot be empty').max(
+  PRODUCT_KEY_FEATURE_MAX_LENGTH,
+  `Key feature must be ${PRODUCT_KEY_FEATURE_MAX_LENGTH} characters or fewer`,
 );
 
-export type BrochureKeyFeatures = z.infer<typeof BrochureKeyFeatures>;
-export const BrochureKeyFeatures = z
-  .array(BrochureKeyFeature)
-  .max(BROCHURE_KEY_FEATURES_MAX_COUNT, `Add at most ${BROCHURE_KEY_FEATURES_MAX_COUNT} key features`);
+export type ProductKeyFeatures = z.infer<typeof ProductKeyFeatures>;
+export const ProductKeyFeatures = z
+  .array(ProductKeyFeature)
+  .max(PRODUCT_KEY_FEATURES_MAX_COUNT, `Add at most ${PRODUCT_KEY_FEATURES_MAX_COUNT} key features`);
 
-// The Brochure image slots. Each replaces in place, so a Product holds at most one current image
-// per slot. Order is the brochure's visual order and drives the form's slot list. The top-right logo
-// is not a slot here — it comes from the owning Product Range's image at render time.
-export const BROCHURE_IMAGE_SLOTS = ['hero', 'technicalDrawing', 'secondary'] as const;
+// The canonical Product image slots. Each replaces in place, so a Product holds at most one current image
+// per slot. Order is the visual order and drives the form's slot grid, the upload/download routes, and
+// storage. The top-right brochure logo is not a slot here — it comes from the owning Product Range's image.
+export const PRODUCT_IMAGE_SLOTS = ['primary', 'technicalDrawing', 'banner'] as const;
 
-export type BrochureImageSlot = z.infer<typeof BrochureImageSlot>;
-export const BrochureImageSlot = z.enum(BROCHURE_IMAGE_SLOTS);
+export type ProductImageSlot = z.infer<typeof ProductImageSlot>;
+export const ProductImageSlot = z.enum(PRODUCT_IMAGE_SLOTS);
 
-// Per-image size cap for Brochure slots. Allowed formats come from the shared {@link IMAGE_CONTENT_TYPES}.
-export const BROCHURE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+// The subset of Product image slots the Brochure PDF renders and the completeness predicate gates on.
+// Identical to the canonical set today; the two diverge only once non-brochure slots are added.
+export const BROCHURE_IMAGE_SLOTS = [
+  'primary',
+  'technicalDrawing',
+  'banner',
+] as const satisfies readonly ProductImageSlot[];
+
+// Per-image size cap for Product image slots. Allowed formats come from the shared {@link IMAGE_CONTENT_TYPES}.
+export const PRODUCT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 // Recommended source dimensions and render fit per slot, shown on the form as upload guidance.
 // `cover` photos fill their slot; the `contain` technical drawing preserves the whole image.
-export type BrochureImageSlotSpec = {
+export type ProductImageSlotSpec = {
   fit: 'contain' | 'cover';
   recommendedHeight: number;
   recommendedWidth: number;
 };
 
-export const BROCHURE_IMAGE_SLOT_SPECS = {
-  hero: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
+export const PRODUCT_IMAGE_SLOT_SPECS = {
+  primary: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
   technicalDrawing: { fit: 'contain', recommendedHeight: 1200, recommendedWidth: 1600 },
-  secondary: { fit: 'cover', recommendedHeight: 900, recommendedWidth: 1200 },
-} as const satisfies Record<BrochureImageSlot, BrochureImageSlotSpec>;
+  banner: { fit: 'cover', recommendedHeight: 900, recommendedWidth: 1200 },
+} as const satisfies Record<ProductImageSlot, ProductImageSlotSpec>;
 
 // Each slot exposes the shared {@link EntityImage} read shape (or null when empty).
-export type BrochureImage = EntityImage;
-export const BrochureImage = EntityImage;
+export type ProductImage = EntityImage;
+export const ProductImage = EntityImage;
 
-export type BrochureImages = z.infer<typeof BrochureImages>;
-export const BrochureImages = z.object({
-  hero: BrochureImage.nullable().default(null),
-  technicalDrawing: BrochureImage.nullable().default(null),
-  secondary: BrochureImage.nullable().default(null),
+export type ProductImages = z.infer<typeof ProductImages>;
+export const ProductImages = z.object({
+  primary: ProductImage.nullable().default(null),
+  technicalDrawing: ProductImage.nullable().default(null),
+  banner: ProductImage.nullable().default(null),
 });
 
-export const EMPTY_BROCHURE_IMAGES: BrochureImages = {
-  hero: null,
+export const EMPTY_PRODUCT_IMAGES: ProductImages = {
+  primary: null,
   technicalDrawing: null,
-  secondary: null,
+  banner: null,
 };
-
-export type BrochureConfig = z.infer<typeof BrochureConfig>;
-export const BrochureConfig = z.object({
-  // Images replace in place through their own upload endpoint, so they are read-only here and are not
-  // part of {@link BrochureConfigInput} (the text-only autosave payload).
-  images: BrochureImages.default(EMPTY_BROCHURE_IMAGES),
-  keyFeatures: BrochureKeyFeatures,
-  subtitle: BrochureSubtitle,
-});
-
-export type BrochureConfigInput = z.infer<typeof BrochureConfigInput>;
-export const BrochureConfigInput = z
-  .object({
-    keyFeatures: BrochureKeyFeatures.default([]),
-    subtitle: BrochureSubtitleInput,
-  })
-  .strict();
-
-export const EMPTY_BROCHURE_CONFIG: BrochureConfig = {
-  images: EMPTY_BROCHURE_IMAGES,
-  keyFeatures: [],
-  subtitle: null,
-};
-
-// The text-only default for the create/update payload. Kept separate from {@link EMPTY_BROCHURE_CONFIG}
-// because the strict input schema rejects the read model's `images` field.
-const EMPTY_BROCHURE_CONFIG_INPUT: BrochureConfigInput = { keyFeatures: [], subtitle: null };
 
 // The required fields a Product Brochure must fill before it can be previewed or generated. This is the
 // vocabulary the completeness predicate (`evaluateBrochureCompleteness` in @pkg/domain) reports against;
 // the order is the order missing fields surface in the form alert. The image entries reuse the
 // {@link BROCHURE_IMAGE_SLOTS} keys so consumers can map them straight to slot labels.
 export const BROCHURE_REQUIRED_FIELDS = [
-  'subtitle',
+  'category',
   'keyFeatures',
   ...BROCHURE_IMAGE_SLOTS,
   'description',
@@ -361,10 +349,10 @@ export const BrochureCompleteness = z.object({
 });
 
 // Identifies a single Product image slot for the replace-in-place upload and download routes.
-export type BrochureImageSlotParams = z.infer<typeof BrochureImageSlotParams>;
-export const BrochureImageSlotParams = z.object({
+export type ProductImageSlotParams = z.infer<typeof ProductImageSlotParams>;
+export const ProductImageSlotParams = z.object({
   productId: UUID,
-  slot: BrochureImageSlot,
+  slot: ProductImageSlot,
 });
 
 export type Product = z.infer<typeof Product>;
@@ -380,7 +368,11 @@ export const Product = z.object({
   requiresVinNumber: ProductRequiresVinNumber,
   assemblies: z.array(Assembly).default([]),
   productBays: z.array(ProductBay).default([]),
-  brochureConfig: BrochureConfig.default(EMPTY_BROCHURE_CONFIG),
+  category: ProductCategory.default(null),
+  keyFeatures: ProductKeyFeatures.default([]),
+  // Images replace in place through their own upload endpoint, so they are read-only here and stay out of
+  // the create/update inputs (the text-only autosave payload).
+  images: ProductImages.default(EMPTY_PRODUCT_IMAGES),
   thumbnailDataUrl: NullableThumbnailDataUrl,
   createdAt: DateIso,
   updatedAt: DateIso,
@@ -409,7 +401,8 @@ export const ProductCreateInput = z
     rangeId: UUID,
     assemblies: ProductAssembliesInput,
     productBays: ProductBaysInput,
-    brochureConfig: BrochureConfigInput.default(EMPTY_BROCHURE_CONFIG_INPUT),
+    category: ProductCategoryInput,
+    keyFeatures: ProductKeyFeatures.default([]),
     buildTimeDays: ProductBuildTimeDaysInput,
     currencyCode: ProductCurrencyCode,
     requiresVinNumber: ProductRequiresVinNumber.default(false),
@@ -423,7 +416,10 @@ export const ProductUpdateInput = z
     id: UUID,
     assemblies: ProductAssemblies.optional(),
     productBays: ProductBays.optional(),
-    brochureConfig: BrochureConfigInput.optional(),
+    // Text marketing fields fold into the Product update; omitting them preserves the stored value,
+    // mirroring how assemblies and product bays are preserved when absent.
+    category: nullableTrimmedTextInputOptional(),
+    keyFeatures: ProductKeyFeatures.optional(),
     basePrice: ProductBasePrice,
     currencyCode: ProductCurrencyCode,
     description: ProductDescriptionInput,

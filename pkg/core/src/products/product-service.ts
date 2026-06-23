@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  type BrochureImageStore,
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   type DatabaseTransaction,
@@ -12,6 +11,7 @@ import {
   getSortOrder,
   getUniqueViolationConstraint,
   jobBays,
+  type ProductImageStore,
   productBays,
   products,
   type StoredImageRef,
@@ -21,24 +21,24 @@ import { JOB_DEPARTMENT_PIPELINE, validateDocumentMetadata } from '@pkg/domain';
 import type {
   Assembly,
   AuthId,
-  BrochureImageSlot,
   Logger,
   ProductBay,
   ProductBayInput,
   ProductCreateInput,
   ProductDocument,
+  ProductImageSlot,
   ProductListInput,
   ProductListResult,
   ProductUpdateInput,
   UUID,
 } from '@pkg/schema';
 import {
-  BrochureImages,
   Product,
   ProductBay as ProductBaySchema,
   ProductCurrencyCode,
   ProductDocumentMetadata,
   ProductDocument as ProductDocumentSchema,
+  ProductImages,
 } from '@pkg/schema';
 import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { format } from 'sql-formatter';
@@ -111,10 +111,10 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
   toRecord: (input) => ({
     assemblies: JSON.stringify(toAuditAssemblies(input.assemblies)),
     basePrice: input.basePrice,
-    brochureKeyFeatures: JSON.stringify(input.brochureKeyFeatures),
-    brochureSubtitle: input.brochureSubtitle,
+    category: input.category,
     currencyCode: input.currencyCode,
     description: input.description,
+    keyFeatures: JSON.stringify(input.keyFeatures),
     buildTimeDays: input.buildTimeDays,
     modelCode: input.modelCode,
     name: input.name,
@@ -136,15 +136,13 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
   return Product.parse({
     assemblies: row.assemblies ?? [],
     basePrice: row.basePrice,
-    brochureConfig: {
-      images: mapBrochureImages(row.brochureImages),
-      keyFeatures: row.brochureKeyFeatures,
-      subtitle: row.brochureSubtitle,
-    },
+    category: row.category,
     createdAt: row.createdAt.toISOString(),
     currencyCode: ProductCurrencyCode.parse(row.currencyCode),
     description: row.description,
     id: row.id,
+    images: mapProductImages(row.images),
+    keyFeatures: row.keyFeatures,
     buildTimeDays: row.buildTimeDays,
     modelCode: row.modelCode,
     name: row.name,
@@ -157,21 +155,21 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
 }
 
 // Plain per-slot shape fed to the schema, which brands the strings (content type, ISO date) on parse.
-type BrochureImageInput = { byteSize: number; contentType: string; updatedAt: string } | null;
+type ProductImageInput = { byteSize: number; contentType: string; updatedAt: string } | null;
 
 // Projects the stored per-slot references into the client-facing read model, dropping the internal
 // storage key. The `satisfies` pins slot completeness (a new slot is a compile error here, not a silent
 // gap), and the single parse brands the values. Tolerates a row that predates the column (undefined) by
 // treating every slot as empty.
-function mapBrochureImages(store: BrochureImageStore | undefined): BrochureImages {
-  return BrochureImages.parse({
-    hero: toBrochureImageInput(store?.hero),
-    secondary: toBrochureImageInput(store?.secondary),
-    technicalDrawing: toBrochureImageInput(store?.technicalDrawing),
-  } satisfies Record<BrochureImageSlot, BrochureImageInput>);
+function mapProductImages(store: ProductImageStore | undefined): ProductImages {
+  return ProductImages.parse({
+    banner: toProductImageInput(store?.banner),
+    primary: toProductImageInput(store?.primary),
+    technicalDrawing: toProductImageInput(store?.technicalDrawing),
+  } satisfies Record<ProductImageSlot, ProductImageInput>);
 }
 
-function toBrochureImageInput(ref: StoredImageRef | undefined): BrochureImageInput {
+function toProductImageInput(ref: StoredImageRef | undefined): ProductImageInput {
   return ref ? { byteSize: ref.byteSize, contentType: ref.contentType, updatedAt: ref.updatedAt } : null;
 }
 
@@ -190,13 +188,13 @@ export async function listProducts({
   const productsQuery = db.query.products.findMany({
     columns: {
       basePrice: true,
-      brochureImages: true,
-      brochureKeyFeatures: true,
-      brochureSubtitle: true,
+      category: true,
       createdAt: true,
       currencyCode: true,
       description: true,
       id: true,
+      images: true,
+      keyFeatures: true,
       buildTimeDays: true,
       modelCode: true,
       name: true,
@@ -303,7 +301,7 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
   return mapProductListRow(row, productBaysForProduct);
 }
 
-// Reads the Product detail row plus the stored Brochure image references and the owning Range's image in
+// Reads the Product detail row plus the stored Product image references and the owning Range's image in
 // a single pass, so the brochure render path can build the read model (with images projected key-free)
 // and resolve the internal storage keys — including the top-right Range logo — without follow-up queries.
 export async function getProductBrochureSource({
@@ -312,11 +310,11 @@ export async function getProductBrochureSource({
 }: {
   db: Db;
   id: UUID;
-}): Promise<{ brochureImages: BrochureImageStore; product: Product; rangeImage: StoredImageRef | null }> {
+}): Promise<{ images: ProductImageStore; product: Product; rangeImage: StoredImageRef | null }> {
   const { rangeImage, row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id });
 
   return {
-    brochureImages: row.brochureImages,
+    images: row.images,
     product: mapProductListRow(row, productBaysForProduct),
     rangeImage,
   };
@@ -538,15 +536,8 @@ export async function createProduct({
 }): Promise<Product> {
   try {
     return await db.transaction(async (tx) => {
-      const { assemblies: desiredAssemblies, productBays: desiredProductBays, brochureConfig, ...productInput } = input;
-      const [row] = await tx
-        .insert(products)
-        .values({
-          ...productInput,
-          brochureKeyFeatures: brochureConfig.keyFeatures,
-          brochureSubtitle: brochureConfig.subtitle,
-        })
-        .returning();
+      const { assemblies: desiredAssemblies, productBays: desiredProductBays, ...productInput } = input;
+      const [row] = await tx.insert(products).values(productInput).returning();
 
       if (!row) {
         throw new Error('Product insert did not return a row');
@@ -596,12 +587,11 @@ export async function updateProduct({
       const desiredProductBays = input.productBays ?? beforeProductBays;
       const patch = {
         basePrice: input.basePrice,
-        // Brochure Config text fields fold into the Product update; omitting them preserves the
-        // stored config, mirroring how assemblies and product bays are preserved when absent.
-        brochureKeyFeatures: input.brochureConfig?.keyFeatures ?? before.brochureKeyFeatures,
-        brochureSubtitle: input.brochureConfig ? input.brochureConfig.subtitle : before.brochureSubtitle,
+        // Marketing text fields fold into the Product update; omitting them preserves the stored value.
+        category: input.category === undefined ? before.category : input.category,
         currencyCode: input.currencyCode,
         description: input.description,
+        keyFeatures: input.keyFeatures ?? before.keyFeatures,
         buildTimeDays: input.buildTimeDays,
         modelCode: input.modelCode,
         name: input.name,

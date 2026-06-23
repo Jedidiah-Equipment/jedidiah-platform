@@ -526,11 +526,11 @@ async function createCompleteBrochureProduct({ db, storage }: { db: Db; storage:
     storageKey: rangeLogoStorageKey,
     updatedAt: '2026-06-17T00:00:00.000Z',
   });
-  const slots = ['hero', 'technicalDrawing', 'secondary'] as const;
+  const slots = ['primary', 'technicalDrawing', 'banner'] as const;
   const images: Record<string, { byteSize: number; contentType: string; storageKey: string; updatedAt: string }> = {};
 
   for (const slot of slots) {
-    const storageKey = `brochure-images/product/brochure-preview/${slot}/image.png`;
+    const storageKey = `product-images/product/brochure-preview/${slot}/image.png`;
     await storage.put({
       body: brochurePngBytes(),
       byteSize: brochurePngBytes().byteLength,
@@ -549,9 +549,9 @@ async function createCompleteBrochureProduct({ db, storage }: { db: Db; storage:
     .insert(products)
     .values({
       basePrice: 1_000,
-      brochureImages: images,
-      brochureKeyFeatures: ['Heavy-duty steel construction'],
-      brochureSubtitle: 'Silage & Grain',
+      images,
+      keyFeatures: ['Heavy-duty steel construction'],
+      category: 'Silage & Grain',
       buildTimeDays: 14,
       currencyCode: 'ZAR',
       description: 'A rugged feed mixer built for daily use.',

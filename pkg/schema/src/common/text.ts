@@ -18,6 +18,17 @@ export function nullableTrimmedTextInput() {
     .default(null);
 }
 
+// Like {@link nullableTrimmedTextInput} but omittable: an absent key stays `undefined` (so callers can
+// distinguish "not provided / preserve" from an explicit `null`/blank that clears the value).
+export function nullableTrimmedTextInputOptional() {
+  return z
+    .string()
+    .trim()
+    .transform((value) => (value === '' ? null : value))
+    .nullable()
+    .optional();
+}
+
 export function nullableEmailInput(message = 'Enter a valid email address') {
   return z
     .string()

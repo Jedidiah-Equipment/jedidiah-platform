@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { bayOperatorName } from '@/components/bays/bay-label.js';
 import { DatePicker } from '@/components/common/DatePicker.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
@@ -161,7 +162,10 @@ export const BookSlotDialog: React.FC = () => {
                     <SelectValue placeholder="Select bay">
                       {selectedBay ? (
                         <>
-                          <span className="truncate">{selectedBay.name}</span>
+                          <span className="truncate">
+                            {selectedBay.name}
+                            {bayOperatorName(selectedBay) ? ` - ${bayOperatorName(selectedBay)}` : ''}
+                          </span>
                           <span className="shrink-0 text-muted-foreground">
                             {formatDate(selectedBay.nextAvailableDate, 'MMM d')}
                           </span>
@@ -174,6 +178,7 @@ export const BookSlotDialog: React.FC = () => {
                       {schedulableBays.map((bay) => (
                         <SelectItem key={bay.id} value={bay.id}>
                           {bay.name}
+                          {bayOperatorName(bay) ? ` - ${bayOperatorName(bay)}` : ''}
                           <span className="text-muted-foreground">{formatDate(bay.nextAvailableDate, 'MMM d')}</span>
                         </SelectItem>
                       ))}

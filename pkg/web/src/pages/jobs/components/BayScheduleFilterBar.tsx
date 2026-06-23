@@ -1,8 +1,9 @@
-import type { JobSummary, UUID } from '@pkg/schema';
+import type { Bay, JobSummary, UUID } from '@pkg/schema';
 import { IconFilterOff } from '@tabler/icons-react';
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
+import { bayOperatorName } from '@/components/bays/bay-label.js';
 import { Button } from '@/components/ui/button.js';
 import {
   Combobox,
@@ -21,7 +22,7 @@ type FilterOption<TId extends string> = {
 };
 
 type BayScheduleFilterBarProps = {
-  bays: ReadonlyArray<{ id: UUID; name: string }>;
+  bays: ReadonlyArray<Pick<Bay, 'id' | 'name' | 'currentOperator'>>;
   filter: BayScheduleFilter;
   jobs: ReadonlyArray<Pick<JobSummary, 'id' | 'code' | 'customerCompanyName' | 'customerId' | 'productSerialNumber'>>;
   noMatches: boolean;
@@ -52,7 +53,14 @@ export const BayScheduleFilterBar: React.FC<BayScheduleFilterBarProps> = ({
 
     return [...labelsByCustomerId].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label));
   }, [jobs]);
-  const bayOptions = useMemo<FilterOption<UUID>[]>(() => bays.map((bay) => ({ id: bay.id, label: bay.name })), [bays]);
+  const bayOptions = useMemo<FilterOption<UUID>[]>(
+    () =>
+      bays.map((bay) => {
+        const operator = bayOperatorName(bay);
+        return { id: bay.id, label: operator ? `${bay.name} - ${operator}` : bay.name };
+      }),
+    [bays],
+  );
   const isActive = hasActiveBayScheduleFilter(filter);
 
   return (

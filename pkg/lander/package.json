@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1062.0",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",

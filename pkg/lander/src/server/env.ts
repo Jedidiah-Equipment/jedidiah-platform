@@ -1,4 +1,4 @@
-import { AppEnv, NodeEnv } from '@pkg/schema';
+import { AppEnv, EnvBoolean, NodeEnv } from '@pkg/schema';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
@@ -16,6 +16,14 @@ export const LanderConfig = z.object({
   APP_ENV: AppEnv,
   DATABASE_URL: z.url(),
   PORT: z.coerce.number().int().positive().default(7004),
+  // S3 object storage holding Range and Product imagery. The Lander reads these objects directly (ADR
+  // 0007) with its own adapter; it shares the environment's bucket with the API but never writes to it.
+  DOCUMENT_STORAGE_ACCESS_KEY_ID: z.string().min(1),
+  DOCUMENT_STORAGE_BUCKET: z.string().min(1),
+  DOCUMENT_STORAGE_ENDPOINT: z.url(),
+  DOCUMENT_STORAGE_FORCE_PATH_STYLE: EnvBoolean,
+  DOCUMENT_STORAGE_REGION: z.string().min(1),
+  DOCUMENT_STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
 });
 
 export function getLanderConfig(env: NodeJS.ProcessEnv = process.env): LanderConfig {

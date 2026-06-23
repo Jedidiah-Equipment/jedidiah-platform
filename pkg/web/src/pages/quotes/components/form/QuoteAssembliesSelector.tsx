@@ -66,12 +66,12 @@ export const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = (
   return (
     <div className="grid gap-4">
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <div className="grid auto-rows-min gap-2">
+        <div className="grid min-w-0 grid-cols-1 auto-rows-min gap-2">
           <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-normal">Standard</h4>
           {standardAssemblies.length === 0 ? (
             <p className="text-muted-foreground text-sm">No standard assemblies.</p>
           ) : (
-            <div className="grid gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {standardAssemblies.map((assembly) => {
                 const isOverridden = overriddenStandardAssemblyIds.has(assembly.id);
 
@@ -90,12 +90,12 @@ export const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = (
             </div>
           )}
         </div>
-        <div className="grid auto-rows-min gap-2">
+        <div className="grid min-w-0 grid-cols-1 auto-rows-min gap-2">
           <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-normal">Optional</h4>
           {optionalAssemblies.length === 0 && staleSelections.length === 0 ? (
             <p className="text-muted-foreground text-sm">No optional assemblies.</p>
           ) : (
-            <div className="grid gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {optionalAssemblies.map((assembly) => {
                 const snapshot = selectedSnapshotByCatalogId.get(assembly.id);
                 const isSelected = Boolean(snapshot);
@@ -115,10 +115,11 @@ export const QuoteAssembliesSelector: React.FC<QuoteAssembliesSelectorProps> = (
                     <span className="flex min-w-0 items-center gap-2">
                       <Checkbox
                         checked={isSelected}
+                        className="shrink-0"
                         disabled={readOnly}
                         onCheckedChange={(checked) => setCatalogSelected(assembly.id, checked === true)}
                       />
-                      <span className="truncate">{displayName}</span>
+                      <span className="min-w-0 truncate">{displayName}</span>
                     </span>
                     <span className="shrink-0 text-muted-foreground">{formatCurrency(displayPrice, currencyCode)}</span>
                   </div>

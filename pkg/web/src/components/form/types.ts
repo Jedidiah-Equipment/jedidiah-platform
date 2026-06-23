@@ -13,8 +13,12 @@ export type FieldApi<TValue> = {
   };
 };
 
+export type ArrayFieldMutationOptions = {
+  dontValidate?: boolean;
+};
+
 export type ArrayFieldApi<TValue> = {
-  insertValue: (index: number, value: TValue) => void;
+  insertValue: (index: number, value: TValue, options?: ArrayFieldMutationOptions) => void;
   moveValue: (fromIndex: number, toIndex: number) => void;
   pushValue: (value: TValue) => void;
   removeValue: (index: number) => void;

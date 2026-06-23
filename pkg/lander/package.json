@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1062.0",
+    "@aws-sdk/client-s3": "^3.1073.0",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
@@ -22,16 +22,16 @@
     "posthog-js": "^1.393.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "resend": "^6.12.4",
+    "resend": "^6.14.0",
     "srvx": "^0.11.17"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.0",
-    "@types/react": "^19.2.16",
+    "@tailwindcss/vite": "^4.3.1",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
-    "tailwindcss": "^4.3.0",
+    "tailwindcss": "^4.3.1",
     "vite": "^8.0.16",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   }
 }

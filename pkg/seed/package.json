@@ -23,7 +23,7 @@
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "better-auth": "^1.6.14",
+    "better-auth": "^1.6.20",
     "date-fns": "^4.4.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",

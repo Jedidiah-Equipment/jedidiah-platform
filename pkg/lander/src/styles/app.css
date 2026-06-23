@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+/* Prototype palette + fonts lifted into theme tokens (docs/design/lander). */
+@theme {
+  --color-ink: #161616;
+  --color-ink-soft: #101010;
+  --color-yellow: #fff000;
+  --color-gold: #f8d300;
+  --color-sand: #f4f3f0;
+  --color-cream: #faf9f6;
+  --color-line: #e7e5e0;
+
+  --font-display: "Saira Condensed", ui-sans-serif, sans-serif;
+  --font-body: "Barlow", ui-sans-serif, sans-serif;
+
+  /* Prototype breakpoints: nav/layout collapse at 860px, single-column at 520px. */
+  --breakpoint-xs: 520px;
+  --breakpoint-nav: 860px;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--color-sand);
+  font-family: var(--font-body);
+  color: var(--color-ink);
+}

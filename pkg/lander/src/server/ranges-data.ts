@@ -6,11 +6,12 @@ export type HomeRange = {
   name: string;
   description: string;
   href: string;
+  imageUrl: string;
 };
 
 // Equipment Ranges for the Home grid. Real data only: a Range with no marketing blurb renders an empty
-// description rather than fabricated copy. Range imagery is a neutral placeholder until the image-routes
-// slice lands, so the view model carries no image URL yet.
+// description rather than fabricated copy. Every card points at the public Range image route, which streams
+// the real image or falls back to the neutral placeholder, so the view model needs no image presence flag.
 export async function loadHomeRanges(db: Db): Promise<HomeRange[]> {
   const { ranges } = await listProductRanges({ db });
 
@@ -19,5 +20,6 @@ export async function loadHomeRanges(db: Db): Promise<HomeRange[]> {
     name: range.name,
     description: range.description ?? '',
     href: '/products',
+    imageUrl: `/images/ranges/${range.id}`,
   }));
 }

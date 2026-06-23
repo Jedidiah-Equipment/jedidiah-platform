@@ -3,7 +3,7 @@ import { productRanges } from '@pkg/db';
 import { expect } from 'vitest';
 
 import { test } from '../test/tester.js';
-import { readProductHeroImage, readRangeImage } from './images.js';
+import { readProductLeadImage, readRangeImage } from './images.js';
 
 async function* bytesOf(payload: Uint8Array): AsyncIterable<Uint8Array> {
   yield payload;
@@ -67,6 +67,6 @@ test('readRangeImage returns null for a malformed id rather than querying', asyn
   expect(await readRangeImage(fakeStorage(), db, 'not-a-uuid')).toBeNull();
 });
 
-test('readProductHeroImage returns null for an unknown Product id', async ({ db }) => {
-  expect(await readProductHeroImage(fakeStorage(), db, crypto.randomUUID())).toBeNull();
+test('readProductLeadImage returns null for an unknown Product id', async ({ db }) => {
+  expect(await readProductLeadImage(fakeStorage(), db, crypto.randomUUID())).toBeNull();
 });

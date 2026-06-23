@@ -1,6 +1,6 @@
 import { getDb } from './db.js';
 import { imageResponse } from './image-response.js';
-import { readProductHeroImage, readRangeImage } from './images.js';
+import { readProductLeadImage, readRangeImage } from './images.js';
 import { getStorage } from './storage.js';
 
 // Server-only orchestration shared by the public image routes: resolve the lazy DB + storage clients,
@@ -11,6 +11,6 @@ export async function serveRangeImage(rangeId: string): Promise<Response> {
   return imageResponse(await readRangeImage(getStorage(), getDb(), rangeId));
 }
 
-export async function serveProductHeroImage(productId: string): Promise<Response> {
-  return imageResponse(await readProductHeroImage(getStorage(), getDb(), productId));
+export async function serveProductLeadImage(productId: string): Promise<Response> {
+  return imageResponse(await readProductLeadImage(getStorage(), getDb(), productId));
 }

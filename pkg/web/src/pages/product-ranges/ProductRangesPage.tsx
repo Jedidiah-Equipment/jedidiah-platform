@@ -154,7 +154,7 @@ const CreateProductRangeForm: React.FC<CreateProductRangeFormProps> = ({ onClose
   );
 
   const form = useAppForm({
-    defaultValues: { name: '' } satisfies ProductRangeFormValues,
+    defaultValues: { name: '', description: '' } satisfies ProductRangeFormValues,
     validators: { onSubmit: ProductRangeFormValues },
     onSubmit: async ({ value }) => {
       const created = await createMutation.mutateAsync(toProductRangeCreateInput(value));
@@ -175,6 +175,15 @@ const CreateProductRangeForm: React.FC<CreateProductRangeFormProps> = ({ onClose
     >
       <FieldGroup>
         <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
+        <form.AppField name="description">
+          {(field) => (
+            <field.TextareaField
+              label="Description"
+              placeholder="Short marketing blurb shown on the public site."
+              rows={4}
+            />
+          )}
+        </form.AppField>
       </FieldGroup>
       <form.Subscribe selector={(state) => state.isSubmitting}>
         {(isSubmitting) => (

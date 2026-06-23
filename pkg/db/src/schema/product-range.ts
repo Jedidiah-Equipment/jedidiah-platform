@@ -6,6 +6,7 @@ export const productRanges = pgTable(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     name: text('name').notNull(),
+    description: text('description'),
     // The Range's single presentation image, stored as a {@link StoredImageRef} (bytes live in object
     // storage). Inline structural type rather than the alias so the inferred row type stays portable into
     // @pkg/api's emitted declarations (avoids TS2883). Null means no current image.

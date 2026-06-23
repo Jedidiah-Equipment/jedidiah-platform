@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
+import { bayOperatorName } from './bay-label.js';
 import { sortBaysByDepartmentPipeline } from './sort-bays.js';
 
 type AddBaySelectProps = {
@@ -37,14 +38,16 @@ export const AddBaySelect: React.FC<AddBaySelectProps> = ({ bays, className, dis
       <Select disabled={disabled} onValueChange={(value) => setSelectedAddBayId(value ?? '')} value={selectedAddBayId}>
         <SelectTrigger className="w-full sm:w-72">
           <SelectValue placeholder={availableBays.length === 0 ? 'No Bays available' : 'Select Bay'}>
-            {selectedAddBay ? `${selectedAddBay.name} - ${departmentLabels[selectedAddBay.department]}` : null}
+            {selectedAddBay
+              ? `${selectedAddBay.name} - ${bayOperatorName(selectedAddBay) ?? departmentLabels[selectedAddBay.department]}`
+              : null}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
             {availableBays.map((bay) => (
               <SelectItem key={bay.id} value={bay.id}>
-                {bay.name} - {departmentLabels[bay.department]}
+                {bay.name} - {bayOperatorName(bay) ?? departmentLabels[bay.department]}
               </SelectItem>
             ))}
           </SelectGroup>

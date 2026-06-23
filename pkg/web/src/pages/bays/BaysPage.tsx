@@ -81,6 +81,23 @@ export const BaysPage: React.FC = () => {
     [bays],
   );
 
+  // Operator -> every Bay they are currently assigned to, so selection dropdowns can surface "who's where".
+  // An operator can be the current operator on multiple bays, so accumulate names rather than overwriting.
+  const operatorBayNames = useMemo(() => {
+    const map = new Map<AuthId, string[]>();
+    for (const bay of bays) {
+      if (bay.currentOperator) {
+        const names = map.get(bay.currentOperator.id);
+        if (names) {
+          names.push(bay.name);
+        } else {
+          map.set(bay.currentOperator.id, [bay.name]);
+        }
+      }
+    }
+    return map;
+  }, [bays]);
+
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [editingBayId, setEditingBayId] = useState<string | null>(null);
   const [historyBay, setHistoryBay] = useState<Bay | null>(null);
@@ -205,6 +222,7 @@ export const BaysPage: React.FC = () => {
         onClose={() => setCreateOpen(false)}
         onSaved={refreshBayData}
         open={isCreateOpen}
+        operatorBayNames={operatorBayNames}
         operators={operators}
         operatorsLoading={operatorsQuery.isLoading}
       />
@@ -212,6 +230,7 @@ export const BaysPage: React.FC = () => {
         bay={editingBay}
         onClose={() => setEditingBayId(null)}
         onSaved={refreshBayData}
+        operatorBayNames={operatorBayNames}
         operators={operators}
         operatorsLoading={operatorsQuery.isLoading}
       />
@@ -222,13 +241,21 @@ export const BaysPage: React.FC = () => {
 
 type CreateBayDialogProps = {
   open: boolean;
+  operatorBayNames: Map<AuthId, string[]>;
   operators: BayOperator[];
   operatorsLoading: boolean;
   onClose: () => void;
   onSaved: () => Promise<void>;
 };
 
-const CreateBayDialog: React.FC<CreateBayDialogProps> = ({ open, operators, operatorsLoading, onClose, onSaved }) => (
+const CreateBayDialog: React.FC<CreateBayDialogProps> = ({
+  open,
+  operatorBayNames,
+  operators,
+  operatorsLoading,
+  onClose,
+  onSaved,
+}) => (
   <Dialog onOpenChange={(nextOpen) => !nextOpen && onClose()} open={open}>
     <DialogContent className="sm:max-w-[480px]">
       <DialogHeader>
@@ -236,13 +263,20 @@ const CreateBayDialog: React.FC<CreateBayDialogProps> = ({ open, operators, oper
         <DialogDescription>Create a durable Bay configuration.</DialogDescription>
       </DialogHeader>
       {open ? (
-        <CreateBayForm onClose={onClose} onSaved={onSaved} operators={operators} operatorsLoading={operatorsLoading} />
+        <CreateBayForm
+          onClose={onClose}
+          onSaved={onSaved}
+          operatorBayNames={operatorBayNames}
+          operators={operators}
+          operatorsLoading={operatorsLoading}
+        />
       ) : null}
     </DialogContent>
   </Dialog>
 );
 
 const CreateBayForm: React.FC<Omit<CreateBayDialogProps, 'open'>> = ({
+  operatorBayNames,
   operators,
   operatorsLoading,
   onClose,
@@ -330,6 +364,7 @@ const CreateBayForm: React.FC<Omit<CreateBayDialogProps, 'open'>> = ({
             <BayOperatorSelect
               disabled={isPending}
               id="create-bay-operator"
+              operatorBayNames={operatorBayNames}
               operators={operators}
               operatorsLoading={operatorsLoading}
               onValueChange={setOperatorUserId}
@@ -358,13 +393,21 @@ const CreateBayForm: React.FC<Omit<CreateBayDialogProps, 'open'>> = ({
 
 type EditBayDialogProps = {
   bay: Bay | null;
+  operatorBayNames: Map<AuthId, string[]>;
   operators: BayOperator[];
   operatorsLoading: boolean;
   onClose: () => void;
   onSaved: () => Promise<void>;
 };
 
-const EditBayDialog: React.FC<EditBayDialogProps> = ({ bay, operators, operatorsLoading, onClose, onSaved }) => (
+const EditBayDialog: React.FC<EditBayDialogProps> = ({
+  bay,
+  operatorBayNames,
+  operators,
+  operatorsLoading,
+  onClose,
+  onSaved,
+}) => (
   <Dialog onOpenChange={(open) => !open && onClose()} open={bay !== null}>
     <DialogContent className="sm:max-w-[480px]">
       <DialogHeader>
@@ -377,6 +420,7 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({ bay, operators, operators
           key={bay.id}
           onClose={onClose}
           onSaved={onSaved}
+          operatorBayNames={operatorBayNames}
           operators={operators}
           operatorsLoading={operatorsLoading}
         />
@@ -387,6 +431,7 @@ const EditBayDialog: React.FC<EditBayDialogProps> = ({ bay, operators, operators
 
 const EditBayForm: React.FC<Omit<EditBayDialogProps, 'bay'> & { bay: Bay }> = ({
   bay,
+  operatorBayNames,
   operators,
   operatorsLoading,
   onClose,
@@ -531,6 +576,7 @@ const EditBayForm: React.FC<Omit<EditBayDialogProps, 'bay'> & { bay: Bay }> = ({
               <BayOperatorSelect
                 disabled={isPending}
                 id="edit-bay-operator"
+                operatorBayNames={operatorBayNames}
                 operators={operators}
                 operatorsLoading={operatorsLoading}
                 onValueChange={(operatorUserId) => setOperatorAction({ kind: 'assign', operatorUserId })}
@@ -561,6 +607,7 @@ const EditBayForm: React.FC<Omit<EditBayDialogProps, 'bay'> & { bay: Bay }> = ({
 type BayOperatorSelectProps = {
   disabled: boolean;
   id: string;
+  operatorBayNames: Map<AuthId, string[]>;
   operators: BayOperator[];
   operatorsLoading: boolean;
   value: AuthId | null;
@@ -570,12 +617,17 @@ type BayOperatorSelectProps = {
 const BayOperatorSelect: React.FC<BayOperatorSelectProps> = ({
   disabled,
   id,
+  operatorBayNames,
   operators,
   operatorsLoading,
   value,
   onValueChange,
 }) => {
   const selectedOperator = value ? (operators.find((operator) => operator.id === value) ?? null) : null;
+  const operatorLabel = (operator: BayOperator) => {
+    const bayNames = operatorBayNames.get(operator.id);
+    return bayNames && bayNames.length > 0 ? `${operator.name} - ${bayNames.join(', ')}` : operator.name;
+  };
 
   return (
     <Select
@@ -585,14 +637,14 @@ const BayOperatorSelect: React.FC<BayOperatorSelectProps> = ({
     >
       <SelectTrigger id={id} className="w-full">
         <SelectValue placeholder={operatorsLoading ? 'Loading Bay Operators...' : 'No Operator assigned'}>
-          {selectedOperator?.name ?? null}
+          {selectedOperator ? operatorLabel(selectedOperator) : null}
         </SelectValue>
       </SelectTrigger>
       <SelectContent align="start">
         <SelectGroup>
           {operators.map((operator) => (
             <SelectItem key={operator.id} value={operator.id}>
-              {operator.name}
+              {operatorLabel(operator)}
             </SelectItem>
           ))}
         </SelectGroup>

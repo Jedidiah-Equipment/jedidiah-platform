@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;} body{margin:0; background:#F4F3F0;}
+  @media (max-width:860px){
+    [data-m="wrap"]{padding-left:20px !important; padding-right:20px !important;}
+    [data-m="hdr"]{padding:48px 20px 52px !important;}
+    [data-m="hdr-img"]{width:100% !important; opacity:0.22 !important;}
+    [data-m="h1-72"]{font-size:44px !important;}
+    [data-m="story"]{grid-template-columns:1fr !important; padding:56px 20px !important; gap:36px !important;}
+    [data-m="sec-pad"]{padding:56px 20px !important;}
+    [data-m="h2-46"]{font-size:34px !important;}
+    [data-m="stats-grid"]{grid-template-columns:1fr !important;}
+    [data-m="stats-grid"]>div{border-right:none !important; border-bottom:1px solid #2a2a2a !important; padding:30px !important;}
+    [data-m="stats-grid"]>div:last-child{border-bottom:none !important;}
+    [data-m="grid3"]{grid-template-columns:1fr !important;}
+    [data-m="grid4"]{grid-template-columns:1fr 1fr !important; gap:28px !important;}
+    [data-m="cta-row"]{flex-direction:column !important; align-items:flex-start !important; padding:56px 20px !important; gap:22px !important;}
+    [data-m="h2-50"]{font-size:34px !important;}
+  }
+  @media (max-width:520px){
+    [data-m="grid4"]{grid-template-columns:1fr !important;}
+  }
+</style>
+</helmet>
+<div style="font-family:'Barlow',sans-serif; background:#F4F3F0;">
+  <dc-import name="Nav" active="about" hint-size="100%,76px"></dc-import>
+
+  <!-- HEADER -->
+  <section style="position:relative; background:#161616; overflow:hidden;">
+    <img data-m="hdr-img" src="assets/hero-trailer.jpg" alt="" style="position:absolute; right:0; top:0; height:100%; width:55%; object-fit:cover; opacity:0.4;">
+    <div style="position:absolute; inset:0; background:linear-gradient(90deg,#161616 38%, rgba(22,22,22,0.3) 100%);"></div>
+    <div data-m="hdr" style="position:relative; max-width:1320px; margin:0 auto; padding:72px 48px 64px;">
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+        <span style="width:42px; height:4px; background:#fff000;"></span>
+        <span style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:15px; letter-spacing:3px; text-transform:uppercase; color:#fff000;">Who we are</span>
+      </div>
+      <h1 data-m="h1-72" style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:72px; line-height:0.94; letter-spacing:0.5px; text-transform:uppercase; color:#fff; margin:0 0 16px; max-width:760px;">Farmers Building for Farmers</h1>
+      <p style="font-family:'Barlow',sans-serif; font-size:20px; line-height:1.55; color:#cfcfcf; max-width:600px; margin:0;">From a single bulldozer to a full range of farm-built equipment — Jedidiah Equipment is rooted in real agricultural experience.</p>
+    </div>
+  </section>
+
+  <!-- STORY -->
+  <section data-m="story" style="max-width:1320px; margin:0 auto; padding:88px 48px; display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center;">
+    <div>
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:18px;">
+        <span style="width:42px; height:4px; background:#fff000;"></span>
+        <span style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:15px; letter-spacing:3px; text-transform:uppercase; color:#8a7a2a;">Our Story</span>
+      </div>
+      <h2 data-m="h2-46" style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:46px; line-height:0.98; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:0 0 24px;">Born on the farm, proven in the field</h2>
+      <p style="font-family:'Barlow',sans-serif; font-size:17px; line-height:1.75; color:#555; margin:0 0 18px;">Jedidiah began in 2008 with a single bulldozer and a willingness to take on the work others wouldn't. Earthworks led to land preparation, slurry spreading, silage harvesting and planting — and with every season came a deeper understanding of what farm equipment actually needs to survive.</p>
+      <p style="font-family:'Barlow',sans-serif; font-size:17px; line-height:1.75; color:#555; margin:0 0 18px;">When the implements on the market couldn't keep up, we started building our own. What began as repairs and modifications grew into purpose-built machines designed around the realities of South African farming.</p>
+      <p style="font-family:'Barlow',sans-serif; font-size:17px; line-height:1.75; color:#555; margin:0;">Today we design and manufacture a complete range of trailers, tanks, tillage and planting equipment — engineered for strength, durability and long-term performance, and backed by people who farm.</p>
+    </div>
+    <div style="position:relative;">
+      <div style="aspect-ratio:4/5; overflow:hidden; background:#dcdcd6; border:1px solid #e7e5e0;"><img src="assets/range-tank.jpg" alt="Jedidiah equipment in the field" style="width:100%; height:100%; object-fit:cover;"></div>
+      <div style="position:absolute; bottom:-1px; left:-1px; background:#f8d300; padding:22px 28px;">
+        <div style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:46px; line-height:0.9; color:#161616;">2008</div>
+        <div style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#161616;">Where it started</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS BAND -->
+  <section style="background:#161616;">
+    <div data-m="wrap" style="max-width:1320px; margin:0 auto; padding:0 48px;">
+      <div data-m="stats-grid" style="display:grid; grid-template-columns:repeat(3,1fr);">
+        <sc-for list="{{ stats }}" as="s" hint-placeholder-count="3">
+          <div style="padding:52px 32px; text-align:center; border-right:1px solid #2a2a2a;">
+            <div style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:58px; line-height:0.9; color:#fff000;">{{ s.value }}</div>
+            <div style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:15px; letter-spacing:2px; text-transform:uppercase; color:#cfcfcf; margin-top:10px;">{{ s.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- VALUES -->
+  <section data-m="sec-pad" style="max-width:1320px; margin:0 auto; padding:88px 48px;">
+    <div style="display:flex; align-items:center; gap:14px; margin-bottom:14px;">
+      <span style="width:42px; height:4px; background:#fff000;"></span>
+      <span style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:15px; letter-spacing:3px; text-transform:uppercase; color:#8a7a2a;">What sets us apart</span>
+    </div>
+    <h2 data-m="h2-46" style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:46px; line-height:0.98; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:0 0 44px;">Built different on purpose</h2>
+    <div data-m="grid3" style="display:grid; grid-template-columns:repeat(3,1fr); gap:24px;">
+      <sc-for list="{{ values }}" as="v" hint-placeholder-count="3">
+        <div style="background:#fff; border:1px solid #e7e5e0; padding:34px 30px;">
+          <div style="width:56px; height:56px; background:#161616; display:flex; align-items:center; justify-content:center; margin-bottom:22px;">
+            <span style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:26px; color:#fff000;">{{ v.num }}</span>
+          </div>
+          <h3 style="font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:24px; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:0 0 12px;">{{ v.title }}</h3>
+          <p style="font-family:'Barlow',sans-serif; font-size:15.5px; line-height:1.65; color:#666; margin:0;">{{ v.body }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section style="background:#ececea; padding:80px 0;">
+    <div data-m="wrap" style="max-width:1320px; margin:0 auto; padding:0 48px;">
+      <h2 data-m="h2-46" style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:46px; line-height:0.98; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:0 0 44px;">The road so far</h2>
+      <div data-m="grid4" style="display:grid; grid-template-columns:repeat(4,1fr); gap:24px;">
+        <sc-for list="{{ milestones }}" as="m" hint-placeholder-count="4">
+          <div style="border-top:4px solid #f8d300; padding-top:22px;">
+            <div style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:34px; color:#161616; margin-bottom:10px;">{{ m.year }}</div>
+            <p style="font-family:'Barlow',sans-serif; font-size:15.5px; line-height:1.6; color:#555; margin:0;">{{ m.text }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="background:#161616;">
+    <div data-m="cta-row" style="max-width:1320px; margin:0 auto; padding:72px 48px; display:flex; align-items:center; justify-content:space-between; gap:40px; flex-wrap:wrap;">
+      <div>
+        <h2 style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:50px; line-height:0.98; letter-spacing:0.5px; text-transform:uppercase; color:#fff; margin:0 0 12px;" data-m="h2-50">Let's talk equipment</h2>
+        <p style="font-family:'Barlow',sans-serif; font-size:19px; color:#bdbdbd; margin:0; max-width:560px;">Whatever your operation looks like, we'll help you find the right machine for it.</p>
+      </div>
+      <a href="Contact.dc.html" style="display:flex; align-items:center; gap:14px; background:#fff000; color:#161616; font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:20px; letter-spacing:1.5px; text-transform:uppercase; padding:20px 38px; text-decoration:none; flex:none;" style-hover="background:#f8d300;">Contact Us <svg width="20" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7h19M14 1l6 6-6 6" stroke="#161616" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </section>
+
+  <dc-import name="FontSwitcher" hint-size="1px,1px"></dc-import>
+  <dc-import name="Footer" hint-size="100%,420px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1320,&quot;height&quot;:1000}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      stats: [
+        { value: 'Est. 2008', label: 'On the land' },
+        { value: '100%', label: 'South African built' },
+        { value: '4', label: 'Equipment ranges' },
+      ],
+      values: [
+        { num: '01', title: 'Farm-Tested', body: 'Every machine is designed by people who farm and proven in real working conditions before it carries our name.' },
+        { num: '02', title: 'Built to Last', body: 'Heavy-gauge materials, hard-faced wearing parts and protective finishes mean our equipment keeps working, season after season.' },
+        { num: '03', title: 'Locally Backed', body: 'Designed and manufactured in South Africa, with parts and support close at hand when you need them.' },
+      ],
+      milestones: [
+        { year: '2008', text: 'Started out with a single bulldozer, taking on earthworks and land preparation.' },
+        { year: '2011', text: 'Expanded into silage harvesting, slurry spreading and contract planting.' },
+        { year: '2015', text: 'Began modifying and building our own implements to outperform the market.' },
+        { year: 'Today', text: 'A full range of trailers, tanks, tillage and planting equipment, built in SA.' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @media (max-width:860px){
+    [data-m="feat-grid"]{grid-template-columns:1fr !important;}
+    [data-m="feat-grid"]>div{border-right:none !important; border-bottom:1px solid rgba(255,255,255,0.12) !important; padding:22px 24px !important;}
+    [data-m="feat-grid"]>div:last-child{border-bottom:none !important;}
+  }
+</style>
+</helmet>
+<div data-m="feat-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; background:rgba(18,18,18,0.78); backdrop-filter:blur(2px);">
+  <div style="display:flex; align-items:flex-start; gap:18px; padding:28px 32px; border-right:1px solid rgba(255,255,255,0.12);">
+    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" style="flex:none;"><path d="M3 9.5l9-6 9 6M5 8.5V20h14V8.5M9.5 20v-5h5v5" stroke="#fff000" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    <div>
+      <h4 style="font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:20px; letter-spacing:1px; text-transform:uppercase; color:#fff; margin:0 0 6px;">South African Built</h4>
+      <p style="font-family:'Barlow',sans-serif; font-size:14.5px; line-height:1.5; color:#b5b5b5; margin:0;">Proudly designed and manufactured in South Africa.</p>
+    </div>
+  </div>
+  <div style="display:flex; align-items:flex-start; gap:18px; padding:28px 32px; border-right:1px solid rgba(255,255,255,0.12);">
+    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" style="flex:none;"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z" stroke="#fff000" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="#fff000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>
+      <h4 style="font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:20px; letter-spacing:1px; text-transform:uppercase; color:#fff; margin:0 0 6px;">Heavy-Duty Equipment</h4>
+      <p style="font-family:'Barlow',sans-serif; font-size:14.5px; line-height:1.5; color:#b5b5b5; margin:0;">Engineered for strength, durability and long-term performance.</p>
+    </div>
+  </div>
+  <div style="display:flex; align-items:flex-start; gap:18px; padding:28px 32px;">
+    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" style="flex:none;"><path d="M2 16h2l1.5-5h9l2.5 5h3a2 2 0 0 1 2 2v0H2v-2z" stroke="#fff000" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7" cy="19" r="1.6" stroke="#fff000" stroke-width="1.6"/><circle cx="17" cy="19" r="1.6" stroke="#fff000" stroke-width="1.6"/></svg>
+    <div>
+      <h4 style="font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:20px; letter-spacing:1px; text-transform:uppercase; color:#fff; margin:0 0 6px;">Trailer · Tillage · Tanker</h4>
+      <p style="font-family:'Barlow',sans-serif; font-size:14.5px; line-height:1.5; color:#b5b5b5; margin:0;">A complete range of equipment for modern farming operations.</p>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

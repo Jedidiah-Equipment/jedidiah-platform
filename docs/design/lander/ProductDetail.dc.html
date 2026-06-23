@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;} body{margin:0; background:#F4F3F0;}
+  @media (max-width:860px){
+    [data-m="bc"]{padding:14px 20px !important; flex-wrap:wrap !important; gap:6px !important;}
+    [data-m="hero"]{padding:32px 20px 40px !important; grid-template-columns:1fr !important; gap:32px !important;}
+    [data-m="pd-h1"]{font-size:40px !important;}
+    [data-m="asm"]{padding:48px 20px !important; grid-template-columns:1fr !important; gap:44px !important;}
+    [data-m="rel-wrap"]{padding:0 20px !important;}
+    [data-m="rel-sec"]{padding:56px 0 !important;}
+    [data-m="grid3"]{grid-template-columns:1fr 1fr !important;}
+  }
+  @media (max-width:520px){
+    [data-m="grid3"]{grid-template-columns:1fr !important;}
+  }
+</style>
+</helmet>
+<div style="font-family:'Barlow',sans-serif; background:#F4F3F0;">
+  <dc-import name="Nav" active="products" hint-size="100%,76px"></dc-import>
+
+  <!-- BREADCRUMB -->
+  <div style="background:#161616; border-bottom:1px solid #2a2a2a;">
+    <div data-m="bc" style="max-width:1320px; margin:0 auto; padding:16px 48px; display:flex; align-items:center; gap:10px; font-family:'Barlow',sans-serif; font-size:14px; color:#8a8a8a;">
+      <a href="{{ homeHref }}" style="color:#8a8a8a; text-decoration:none;">Home</a><span>/</span>
+      <a href="{{ productsHref }}" style="color:#8a8a8a; text-decoration:none;">Products</a><span>/</span>
+      <span style="color:#fff000;">{{ rangeName }}</span><span>/</span>
+      <span style="color:#fff;">{{ name }}</span>
+    </div>
+  </div>
+
+  <!-- HERO / GALLERY -->
+  <section style="background:#fff; border-bottom:1px solid #e7e5e0;">
+    <div data-m="hero" style="max-width:1320px; margin:0 auto; padding:48px 48px 56px; display:grid; grid-template-columns:1.05fr 1fr; gap:56px;">
+      <div>
+        <div style="aspect-ratio:16/11; background:#dcdcd6; overflow:hidden; border:1px solid #e7e5e0;">
+          <div style="width:100%; height:100%; background-size:cover; background-position:center; background-image:url({{ mainImg }});"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px;">
+          <sc-for list="{{ thumbs }}" as="t">
+            <button onClick="{{ t.onClick }}" style="aspect-ratio:16/11; padding:0; background:#dcdcd6; overflow:hidden; cursor:pointer; border:2px solid {{ t.border }};">
+              <div style="width:100%; height:100%; background-size:cover; background-position:center; background-image:url({{ t.img }});"></div>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column;">
+        <span style="align-self:flex-start; background:#f8d300; color:#161616; font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:2px; text-transform:uppercase; padding:6px 14px; margin-bottom:18px;">{{ rangeName }}</span>
+        <h1 data-m="pd-h1" style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:56px; line-height:0.94; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:0 0 16px;">{{ name }}</h1>
+        <p style="font-family:'Barlow',sans-serif; font-size:19px; line-height:1.6; color:#555; margin:0 0 28px;">{{ tagline }}</p>
+
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:#e7e5e0; border:1px solid #e7e5e0; margin-bottom:30px;">
+          <sc-for list="{{ highlights }}" as="h" hint-placeholder-count="3">
+            <div style="background:#faf9f6; padding:18px 16px;">
+              <div style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:28px; line-height:1; color:#161616;">{{ h.value }}</div>
+              <div style="font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:#999; margin-top:6px;">{{ h.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <p style="font-family:'Barlow',sans-serif; font-size:16px; line-height:1.7; color:#555; margin:0 0 32px;">{{ description }}</p>
+
+        <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:auto;">
+          <a href="Contact.dc.html" style="display:flex; align-items:center; gap:12px; background:#f8d300; color:#161616; font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:18px; letter-spacing:1.5px; text-transform:uppercase; padding:17px 30px; text-decoration:none;" style-hover="background:#e6c200;">Contact Us <svg width="20" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7h19M14 1l6 6-6 6" stroke="#161616" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          <a href="tel:+27128190131" style="display:flex; align-items:center; gap:12px; background:transparent; color:#161616; border:2px solid #161616; font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:18px; letter-spacing:1.5px; text-transform:uppercase; padding:17px 30px; text-decoration:none;" style-hover="background:#161616; color:#fff;">Call Us</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ASSEMBLIES + FEATURES -->
+  <section data-m="asm" style="max-width:1320px; margin:0 auto; padding:72px 48px; display:grid; grid-template-columns:1.15fr 1fr; gap:64px; align-items:start;">
+    <div>
+      <h2 style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:34px; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:0 0 24px; padding-bottom:14px; border-bottom:2px solid #161616;">Standard Assemblies</h2>
+      <div style="display:flex; flex-direction:column; gap:13px;">
+        <sc-for list="{{ standard }}" as="s" hint-placeholder-count="8">
+          <div style="display:flex; align-items:flex-start; gap:14px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="flex:none; margin-top:1px;"><rect width="24" height="24" fill="#f8d300"/><path d="M6 12.5l4 4 8-8.5" stroke="#161616" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span style="font-family:'Barlow',sans-serif; font-size:16px; line-height:1.5; color:#333;">{{ s }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <h2 style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:34px; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:44px 0 24px; padding-bottom:14px; border-bottom:2px solid #161616;">Optional Assemblies</h2>
+      <div style="display:flex; flex-direction:column; gap:13px;">
+        <sc-for list="{{ optional }}" as="o" hint-placeholder-count="6">
+          <div style="display:flex; align-items:flex-start; gap:14px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="flex:none; margin-top:1px;"><rect x="1" y="1" width="22" height="22" fill="none" stroke="#161616" stroke-width="2"/><path d="M12 7v10M7 12h10" stroke="#161616" stroke-width="2.2" stroke-linecap="round"/></svg>
+            <span style="font-family:'Barlow',sans-serif; font-size:16px; line-height:1.5; color:#333;">{{ o }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div>
+      <h2 style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:34px; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:0 0 24px; padding-bottom:14px; border-bottom:2px solid #161616;">Key Features</h2>
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <sc-for list="{{ features }}" as="f" hint-placeholder-count="5">
+          <div style="display:flex; align-items:flex-start; gap:14px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="flex:none; margin-top:1px;"><rect width="24" height="24" fill="#f8d300"/><path d="M12 5.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L12 14.2l-3.8 2 .72-4.23-3.07-3 4.25-.62L12 5.5z" fill="#161616"/></svg>
+            <span style="font-family:'Barlow',sans-serif; font-size:16px; line-height:1.5; color:#444;">{{ f }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <h3 style="font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:20px; letter-spacing:1px; text-transform:uppercase; color:#161616; margin:40px 0 16px;">Downloads</h3>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <sc-for list="{{ downloads }}" as="d" hint-placeholder-count="2">
+          <a href="#" style="display:flex; align-items:center; gap:14px; padding:14px 18px; background:#fff; border:1px solid #e2e0da; text-decoration:none;" style-hover="border-color:#161616;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="flex:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="#f8d300" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 2v6h6M12 12v6M9 15l3 3 3-3" stroke="#f8d300" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span style="flex:1; font-family:'Barlow',sans-serif; font-weight:600; font-size:15px; color:#161616;">{{ d.name }}</span>
+            <span style="font-family:'Barlow',sans-serif; font-size:13px; color:#999;">{{ d.size }}</span>
+          </a>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- RELATED -->
+  <section data-m="rel-sec" style="background:#ececea; padding:72px 0;">
+    <div data-m="rel-wrap" style="max-width:1320px; margin:0 auto; padding:0 48px;">
+      <h2 style="font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:40px; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:0 0 32px;">More in {{ rangeName }}</h2>
+      <div data-m="grid3" style="display:grid; grid-template-columns:repeat(3,1fr); gap:24px;">
+        <sc-for list="{{ related }}" as="p">
+          <a href="{{ p.href }}" style="display:flex; flex-direction:column; background:#fff; text-decoration:none; border:1px solid #e0ded8; box-shadow:0 1px 3px rgba(0,0,0,0.07);" style-hover="box-shadow:0 14px 34px rgba(0,0,0,0.14);">
+            <div style="aspect-ratio:16/10; overflow:hidden; background:#dcdcd6;"><div style="width:100%; height:100%; background-size:cover; background-position:center; background-image:url({{ p.img }});"></div></div>
+            <div style="padding:20px 22px 22px;">
+              <h3 style="font-family:'Saira Condensed',sans-serif; font-weight:700; font-size:22px; letter-spacing:0.5px; text-transform:uppercase; color:#161616; margin:0 0 6px;">{{ p.name }}</h3>
+              <p style="font-family:'Barlow',sans-serif; font-size:14.5px; line-height:1.5; color:#666; margin:0;">{{ p.tagline }}</p>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <dc-import name="FontSwitcher" hint-size="1px,1px"></dc-import>
+  <dc-import name="Footer" hint-size="100%,420px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1320,&quot;height&quot;:1000}}">
+class Component extends DCLogic {
+  state = { activeImg: 0 };
+
+  catalog() {
+    const RN = { crosshaul:'Crosshaul Range', recharge:'Recharge Range', silage:'Silage & Grain Range', planting:'Planting Range' };
+    const FEAT = {
+      crosshaul:['Heavy-duty monocoque body resists denting and twisting','Twin-ram hydraulic tipping for fast, stable offload','Sprung drawbar and flotation tyres protect the soil','Reinforced tailgate with grain-shoot option','Hot-dip galvanised and two-pack coated finish'],
+      recharge:['UV-stable, corrosion-proof tank construction','High-flow pump for fast fill and even discharge','Tandem flotation axles minimise compaction','Baffled tank reduces surge for safer transport','Galvanised chassis built for a long service life'],
+      silage:['Precision depth control for consistent results','Heavy wearing parts for extended field life','Low-draft design reduces fuel and power needs','Quick-change components for fast servicing','Built to handle high-residue conditions'],
+      planting:['Deep working action breaks compaction layers','Shear-bolt protection guards against hidden obstacles','Adjustable spacing and depth across the frame','Hard-faced points for extended wear life','Robust frame engineered for high-horsepower tractors'],
+    };
+    const DL = [{ name:'Specification Sheet (PDF)', size:'1.2 MB' },{ name:'Product Brochure (PDF)', size:'3.4 MB' }];
+    const ASM = {
+      ch14:{
+        standard:['Walking beam suspension with Henred axles','Bugle eye hitch','Sprung drawbar','Trunnion tip cylinder','Hydraulic brakes','Park jack','Side marker lights','Rear brake & indicator lights','560-60 R22.5 flotation tyres','Front and rear mudflaps','Hydraulic rear door with ladder','Grain chute','Jedidiah yellow paint finish','Tare 6 260 kg · GVM 24 000 kg'],
+        optional:['Air brakes','Multi-hitch with 32 mm articulating ball hitch','Quickturn cup drawbar for hauler tractor','Rigid cup drawbar for hauler tractor','Silage extensions','Easy grease system','Secondary trailer light plug','Tractor spray mudflaps','2 side work lights','1 rear work light','Black rims','BKT tyres','Custom paint colour'],
+      },
+    };
+    const ASM_FALLBACK = {
+      crosshaul:{ standard:['Walking beam suspension with Henred axles','Bugle eye hitch','Sprung drawbar','Trunnion tip cylinder','Hydraulic brakes','Park jack','Side marker, brake & indicator lights','Flotation tyres','Front and rear mudflaps','Hydraulic rear door with grain chute','Jedidiah yellow paint finish'], optional:['Air brakes','Multi-hitch with 32 mm articulating ball hitch','Cup drawbar for hauler tractor','Silage extensions','Easy grease system','Work light kit','Black rims','BKT tyres','Custom paint colour'] },
+      recharge:{ standard:['Galvanised steel chassis','UV-stable composite tank','High-flow pump','Tandem flotation axles','Baffled tank','Hydraulic brakes','Side marker & rear lights','Park jack','Jedidiah yellow paint finish'], optional:['Auto-fill arm','Dribble bar / splash plate','Easy grease system','Hose reel & nozzle','Flow meter','Work light kit','BKT tyres','Custom paint colour'] },
+      silage:{ standard:['Heavy box-section frame','Hard-faced wearing parts','Adjustable depth control','Greasable pivot points','Road transport lighting','Park stands','Jedidiah yellow paint finish'], optional:['Hydraulic depth adjustment','Spare wearing-part set','Easy grease system','Rear crumbler roller','Work light kit','Custom paint colour'] },
+      planting:{ standard:['Heavy box-section frame','Hard-faced replaceable points','Shear-bolt protection','Adjustable spacing and depth','Greasable pivot points','Road transport lighting','Jedidiah yellow paint finish'], optional:['Hydraulic fold','Rear packer roller','Spare points & shear-bolt kit','Easy grease system','Work light kit','Custom paint colour'] },
+    };
+    const P = {
+      ch14:{ range:'crosshaul', name:'CH14 Tipping Trailer', tagline:'Our flagship 14-ton tipping trailer, built for high-volume haulage across the toughest terrain.', img:'assets/range-crosshaul.jpg', gallery:['assets/range-crosshaul.jpg','assets/hero-trailer.jpg','assets/range-crosshaul.jpg'], highlights:[['14 t','Payload'],['12 m³','Body Volume'],['50°','Tip Angle']], specs:[['Rated payload','14 000 kg'],['Body volume','12 m³'],['Tipping angle','50°'],['Hydraulics','Twin-ram telescopic'],['Axles','Tandem, sprung'],['Tyres','600/50-22.5 flotation'],['Drawbar','Sprung, K80 / ring'],['Tare weight','4 850 kg']] },
+      ch12:{ range:'crosshaul', name:'CH12 Tipping Trailer', tagline:'A versatile 12-ton hauler that balances carrying capacity with a lighter footprint.', img:'assets/hero-trailer.jpg', gallery:['assets/hero-trailer.jpg','assets/range-crosshaul.jpg','assets/hero-trailer.jpg'], highlights:[['12 t','Payload'],['10 m³','Body Volume'],['50°','Tip Angle']], specs:[['Rated payload','12 000 kg'],['Body volume','10 m³'],['Tipping angle','50°'],['Hydraulics','Single-ram front'],['Axles','Tandem, sprung'],['Tyres','550/45-22.5 flotation'],['Drawbar','Sprung, K80 / ring'],['Tare weight','4 200 kg']] },
+      ch10:{ range:'crosshaul', name:'CH10 Tipping Trailer', tagline:'An agile 10-ton trailer ideal for mixed operations and tighter yard access.', img:'assets/range-crosshaul.jpg', gallery:['assets/range-crosshaul.jpg','assets/hero-trailer.jpg','assets/range-crosshaul.jpg'], highlights:[['10 t','Payload'],['8 m³','Body Volume'],['48°','Tip Angle']], specs:[['Rated payload','10 000 kg'],['Body volume','8 m³'],['Tipping angle','48°'],['Hydraulics','Single-ram front'],['Axles','Tandem'],['Tyres','500/45-22.5'],['Drawbar','Fixed, ring'],['Tare weight','3 600 kg']] },
+      rc10000:{ range:'recharge', name:'Recharge 10 000L Slurry Tank', tagline:'High-capacity slurry tanker engineered for fast, even spreading at scale.', img:'assets/range-tank.jpg', gallery:['assets/range-tank.jpg','assets/range-tank.jpg','assets/range-tank.jpg'], highlights:[['10 000 L','Capacity'],['Tandem','Axle'],['Vacuum','Pump']], specs:[['Tank capacity','10 000 L'],['Pump type','Vacuum, high-flow'],['Axles','Tandem flotation'],['Tyres','650/55-26.5'],['Fill','Auto-fill arm'],['Discharge','Splash plate / dribble bar ready'],['Construction','UV-stable composite'],['Chassis','Hot-dip galvanised']] },
+      rc6000:{ range:'recharge', name:'Recharge 6 000L Water Tank', tagline:'Tandem-axle water tank for irrigation top-up, spraying and dust control.', img:'assets/range-tank.jpg', gallery:['assets/range-tank.jpg','assets/range-tank.jpg','assets/range-tank.jpg'], highlights:[['6 000 L','Capacity'],['Tandem','Axle'],['Baffled','Tank']], specs:[['Tank capacity','6 000 L'],['Pump type','PTO centrifugal'],['Axles','Tandem'],['Tyres','550/45-22.5'],['Fill','Top hatch + suction'],['Discharge','Rear spray bar'],['Construction','UV-stable composite'],['Chassis','Galvanised steel']] },
+      rc3000:{ range:'recharge', name:'Recharge 3 000L Field Bowser', tagline:'Compact, single-axle field bowser for refuelling and water supply on the move.', img:'assets/range-tank.jpg', gallery:['assets/range-tank.jpg','assets/range-tank.jpg','assets/range-tank.jpg'], highlights:[['3 000 L','Capacity'],['Single','Axle'],['12 V','Pump']], specs:[['Tank capacity','3 000 L'],['Pump type','12 V transfer pump'],['Axles','Single'],['Tyres','400/60-15.5'],['Fill','Top hatch'],['Discharge','Hose reel + nozzle'],['Construction','UV-stable composite'],['Chassis','Galvanised steel']] },
+      st300:{ range:'silage', name:'ST300 Strip Till', tagline:'Precision strip tillage that builds soil health while cutting fuel and passes.', img:'assets/range-strip-till.jpg', gallery:['assets/range-strip-till.jpg','assets/range-strip-till.jpg','assets/range-strip-till.jpg'], highlights:[['3.0 m','Working Width'],['6','Rows'],['300 mm','Max Depth']], specs:[['Working width','3.0 m'],['Number of rows','6'],['Working depth','up to 300 mm'],['Power requirement','120–160 hp'],['Coulters','Cut-through, adjustable'],['Tines','Hard-faced, shear-protected'],['Weight','2 100 kg'],['Transport','Hydraulic fold']] },
+      sgcart:{ range:'silage', name:'Silage & Grain Cart', tagline:'High-throughput cart for rapid silage and grain transfer in the field.', img:'assets/range-strip-till.jpg', gallery:['assets/range-strip-till.jpg','assets/range-strip-till.jpg','assets/range-strip-till.jpg'], highlights:[['18 m³','Capacity'],['Auger','Unload'],['Tandem','Axle']], specs:[['Capacity','18 m³'],['Unload','Side auger, 500 mm'],['Unload rate','9 m³/min'],['Axles','Tandem flotation'],['Tyres','650/55-26.5'],['Power requirement','140 hp+'],['Weight','5 400 kg'],['Drive','PTO 1000']] },
+      defacer:{ range:'silage', name:'Silage Defacer', tagline:'Clean, even removal of the silage face to reduce spoilage and heating.', img:'assets/range-strip-till.jpg', gallery:['assets/range-strip-till.jpg','assets/range-strip-till.jpg','assets/range-strip-till.jpg'], highlights:[['2.0 m','Cut Width'],['Loader','Mount'],['Hyd.','Drive']], specs:[['Cut width','2.0 m'],['Mounting','Front loader / telehandler'],['Drive','Hydraulic motor'],['Rotor','Replaceable tines'],['Reach','Full face height'],['Flow requirement','60–90 L/min'],['Weight','680 kg'],['Couplers','Universal']] },
+      hd2020:{ range:'planting', name:'HD2020 In-Line Ripper', tagline:'Deep, effective ripping for soil loosening and root-zone improvement.', img:'assets/range-ripper.jpg', gallery:['assets/range-ripper.jpg','assets/range-ripper.jpg','assets/range-ripper.jpg'], highlights:[['600 mm','Work Depth'],['7','Tines'],['200+ hp','Power']], specs:[['Working depth','up to 600 mm'],['Number of tines','7'],['Tine spacing','600 mm'],['Power requirement','200–280 hp'],['Points','Hard-faced, replaceable'],['Protection','Shear-bolt'],['Frame','Heavy box-section'],['Weight','2 850 kg']] },
+      subplus:{ range:'planting', name:'Subsoiler Plus', tagline:'Breaks deep compaction layers to restore drainage, aeration and growth.', img:'assets/range-ripper.jpg', gallery:['assets/range-ripper.jpg','assets/range-ripper.jpg','assets/range-ripper.jpg'], highlights:[['500 mm','Work Depth'],['5','Legs'],['180 hp','Power']], specs:[['Working depth','up to 500 mm'],['Number of legs','5'],['Leg spacing','750 mm'],['Power requirement','160–200 hp'],['Points','Winged, replaceable'],['Protection','Shear-bolt'],['Rear roller','Optional'],['Weight','1 950 kg']] },
+      pp8:{ range:'planting', name:'Precision Planter 8-Row', tagline:'Accurate seed placement across eight rows at field speed.', img:'assets/range-ripper.jpg', gallery:['assets/range-ripper.jpg','assets/range-ripper.jpg','assets/range-ripper.jpg'], highlights:[['8','Rows'],['760 mm','Spacing'],['Vacuum','Metering']], specs:[['Number of rows','8'],['Row spacing','760 mm'],['Metering','Vacuum, seed-specific discs'],['Down-force','Pneumatic'],['Fertiliser','In-row coulter'],['Power requirement','140 hp+'],['Transport','Hydraulic fold'],['Weight','3 200 kg']] },
+    };
+    const order = ['ch14','ch12','ch10','rc10000','rc6000','rc3000','st300','sgcart','defacer','hd2020','subplus','pp8'];
+    return { RN, FEAT, DL, P, order, ASM, ASM_FALLBACK };
+  }
+
+  componentDidMount() {
+    this.__onHash = () => this.forceUpdate();
+    window.addEventListener('hashchange', this.__onHash);
+  }
+  componentWillUnmount() {
+    if (this.__onHash) window.removeEventListener('hashchange', this.__onHash);
+  }
+  currentId() {
+    let id = null;
+    try {
+      id = new URLSearchParams(window.location.search).get('id');
+      if (!id && window.location.hash.indexOf('?') >= 0) {
+        id = new URLSearchParams(window.location.hash.slice(window.location.hash.indexOf('?') + 1)).get('id');
+      }
+    } catch(e) {}
+    const { P } = this.catalog();
+    return (id && P[id]) ? id : 'ch14';
+  }
+
+  renderVals() {
+    const { RN, FEAT, DL, P, order, ASM, ASM_FALLBACK } = this.catalog();
+    const id = this.currentId();
+    const p = P[id];
+    const asm = ASM[id] || ASM_FALLBACK[p.range];
+    const active = Math.min(this.state.activeImg, p.gallery.length - 1);
+    const A = window.__asset || function (x) { return x; };
+
+    const thumbs = p.gallery.map((img, i) => ({
+      img: A(img), border: i === active ? '#f8d300' : '#e7e5e0',
+      onClick: () => this.setState({ activeImg: i }),
+    }));
+
+    const B = (typeof window !== 'undefined') && window.__bundler_pages;
+    const detail = (pid) => B ? ('#/ProductDetail.dc?id=' + pid) : ('ProductDetail.dc.html?id=' + pid);
+    const link = (base) => B ? ('#/' + base + '.dc') : (base + '.dc.html');
+    const related = order.filter(x => P[x].range === p.range && x !== id).map(x => ({
+      name: P[x].name, tagline: P[x].tagline, img: A(P[x].img), href: detail(x),
+    }));
+
+    return {
+      name: p.name, tagline: p.tagline, rangeName: RN[p.range],
+      homeHref: link('Home'), productsHref: link('Products'),
+      mainImg: A(p.gallery[active]), thumbs,
+      highlights: p.highlights.map(h => ({ value: h[0], label: h[1] })),
+      description: `The ${p.name} is designed, built and tested in South Africa to deliver dependable performance season after season. Every unit is constructed from heavy-gauge materials and finished to resist the wear, dust and load that local operations demand.`,
+      standard: asm.standard,
+      optional: asm.optional,
+      features: FEAT[p.range],
+      downloads: DL,
+      related,
+    };
+  }
+}
+</script>
+</body>
+</html>

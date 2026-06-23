@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Archivo:wght@600;700;800;900&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</helmet>
+<div style="position:fixed; right:20px; bottom:20px; z-index:99999; width:226px; background:#161616; border:1px solid #333; box-shadow:0 12px 34px rgba(0,0,0,0.45); font-family:system-ui,-apple-system,sans-serif;">
+  <div style="display:flex; align-items:center; gap:8px; padding:13px 16px 11px; border-bottom:1px solid #2a2a2a;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 7V5h16v2M9 19h6M12 5v14" stroke="#fff000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span style="color:#fff; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; font-weight:700;">Font Preview</span>
+  </div>
+  <div style="padding:14px 16px 16px;">
+    <div style="color:#7d7d7d; font-size:10px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:8px;">Titles</div>
+    <div style="display:flex; gap:7px; margin-bottom:16px;">
+      <sc-for list="{{ titleOpts }}" as="o" hint-placeholder-count="2">
+        <button onClick="{{ o.onClick }}" style="flex:1; padding:9px 6px; cursor:pointer; border:1px solid {{ o.border }}; background:{{ o.bg }}; color:{{ o.color }}; font-family:system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:0.3px;">{{ o.label }}</button>
+      </sc-for>
+    </div>
+    <div style="color:#7d7d7d; font-size:10px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:8px;">Body</div>
+    <div style="display:flex; gap:7px;">
+      <sc-for list="{{ bodyOpts }}" as="o" hint-placeholder-count="2">
+        <button onClick="{{ o.onClick }}" style="flex:1; padding:9px 6px; cursor:pointer; border:1px solid {{ o.border }}; background:{{ o.bg }}; color:{{ o.color }}; font-family:system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:0.3px;">{{ o.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:260,&quot;height&quot;:180}}">
+class Component extends DCLogic {
+  state = { title: 'Saira Condensed', body: 'Geist' };
+
+  componentDidMount() {
+    let t = 'Saira Condensed', b = 'Geist';
+    try {
+      t = localStorage.getItem('je-title-font') || t;
+      b = localStorage.getItem('je-body-font') || b;
+    } catch (e) {}
+    this.setState({ title: t, body: b });
+    this.apply(t, b);
+  }
+
+  apply(t, b) {
+    t = t || this.state.title; b = b || this.state.body;
+    let el = document.getElementById('je-font-override');
+    if (!el) { el = document.createElement('style'); el.id = 'je-font-override'; document.head.appendChild(el); }
+    el.textContent =
+      `[style*="Saira Condensed"]{font-family:'${t}',sans-serif !important;}` +
+      `[style*="Barlow"]{font-family:'${b}',sans-serif !important;}`;
+  }
+
+  setTitle(t) { try { localStorage.setItem('je-title-font', t); } catch (e) {} this.setState({ title: t }); this.apply(t, this.state.body); }
+  setBody(b) { try { localStorage.setItem('je-body-font', b); } catch (e) {} this.setState({ body: b }); this.apply(this.state.title, b); }
+
+  renderVals() {
+    const T = ['Saira Condensed', 'Archivo', 'Oswald'];
+    const B = ['Geist', 'Inter', 'Manrope'];
+    const labels = { 'Saira Condensed': 'Saira' };
+    const labelOf = (x) => labels[x] || x;
+    const mk = (list, cur, fn) => list.map(x => {
+      const on = cur === x;
+      return { label: labelOf(x), onClick: () => fn(x), bg: on ? '#fff000' : 'transparent', color: on ? '#161616' : '#cfcfcf', border: on ? '#fff000' : '#444' };
+    });
+    return {
+      titleOpts: mk(T, this.state.title, (x) => this.setTitle(x)),
+      bodyOpts: mk(B, this.state.body, (x) => this.setBody(x)),
+    };
+  }
+}
+</script>
+</body>
+</html>

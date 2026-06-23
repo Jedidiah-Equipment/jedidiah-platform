@@ -1,5 +1,7 @@
-import { listProductRanges } from '@pkg/core';
+import { getProduct, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
+import { evaluateBrochureCompleteness } from '@pkg/domain';
+import { UUID } from '@pkg/schema';
 
 import { type CatalogProduct, toCatalogProduct, toRangeSlug } from './products-data.js';
 
@@ -18,6 +20,9 @@ export type ProductDetail = {
   standardAssemblies: string[];
   optionalAssemblies: string[];
   keyFeatures: string[];
+  // The brochure PDF download URL, or null when the Product's brochure config is incomplete — gating the
+  // link so the detail page never exposes a brochure that cannot produce a real PDF (issue #567).
+  brochureHref: string | null;
   related: CatalogProduct[];
 };
 
@@ -51,12 +56,23 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
     return null;
   }
 
-  const [{ ranges }, assemblies] = await Promise.all([
+  // The full Product read (typed @pkg/core service) backs the brochure-completeness gate: it carries the
+  // brochure config images/subtitle/key features the proven-safe column reads here cannot resolve cleanly.
+  const [{ ranges }, assemblies, fullProduct] = await Promise.all([
     listProductRanges({ db }),
     db.query.productAssemblies.findMany({
       columns: { productId: true, kind: true, name: true, displayOrder: true },
     }),
+    getProduct({ db, id: UUID.parse(product.id) }),
   ]);
+
+  const brochureComplete = evaluateBrochureCompleteness({
+    assemblyCount: fullProduct.assemblies.length,
+    description: fullProduct.description,
+    images: fullProduct.brochureConfig.images,
+    keyFeatures: fullProduct.brochureConfig.keyFeatures,
+    subtitle: fullProduct.brochureConfig.subtitle,
+  }).complete;
 
   const range = ranges.find((candidate) => candidate.id === product.rangeId);
   const rangeName = range?.name ?? '';
@@ -84,6 +100,7 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
     standardAssemblies: productAssemblies.filter((a) => a.kind === 'standard').map((a) => a.name),
     optionalAssemblies: productAssemblies.filter((a) => a.kind === 'optional').map((a) => a.name),
     keyFeatures: product.brochureKeyFeatures,
+    brochureHref: brochureComplete ? `/downloads/products/${product.id}/brochure` : null,
     related,
   };
 }

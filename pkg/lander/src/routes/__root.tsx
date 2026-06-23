@@ -4,10 +4,13 @@ import { useEffect } from 'react';
 import { Footer } from '../components/footer.js';
 import { Nav } from '../components/nav.js';
 import { initAnalytics } from '../lib/analytics.js';
+import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
+import { getSiteMeta } from '../server/site-meta.js';
 import appCss from '../styles/app.css?url';
 
 export const Route = createRootRoute({
-  head: () => ({
+  loader: () => getSiteMeta(),
+  head: ({ loaderData }) => ({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
@@ -17,12 +20,21 @@ export const Route = createRootRoute({
         content:
           'Heavy-duty agricultural equipment engineered to perform in South African conditions. Browse the Jedidiah Equipment range.',
       },
+      // Keep non-production environments (staging, development) out of search results. The robots.txt route
+      // already disallows crawling there; this adds a defence-in-depth noindex for any page fetched directly.
+      ...(loaderData?.indexable === false ? [{ name: 'robots', content: 'noindex, nofollow' }] : []),
+      // Site-wide Open Graph / Twitter defaults. Per-page heads override title, description, image and url
+      // (matched by name/property), so these act as the fallback for any page that doesn't set its own.
       { property: 'og:type', content: 'website' },
+      { property: 'og:site_name', content: 'Jedidiah Equipment' },
       { property: 'og:title', content: 'Jedidiah Equipment' },
       {
         property: 'og:description',
         content: 'Heavy-duty agricultural equipment engineered to perform in South African conditions.',
       },
+      { property: 'og:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
     ],
     links: [
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },

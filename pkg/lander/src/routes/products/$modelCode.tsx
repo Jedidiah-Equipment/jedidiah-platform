@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 
 import { ProductCard } from '../../components/product-card.js';
 import { captureEvent } from '../../lib/analytics.js';
+import { seoHead, truncateDescription } from '../../lib/seo.js';
 import { getProductDetail } from '../../server/product-detail.js';
 import type { ProductDetail, ProductHighlight } from '../../server/product-detail-data.js';
 
@@ -14,6 +15,29 @@ export const Route = createFileRoute('/products/$modelCode')({
     }
 
     return { detail };
+  },
+  head: ({ loaderData, params }) => {
+    const detail = loaderData?.detail;
+    if (!detail) {
+      // The loader throws notFound() for unknown model codes, so there's no detail to describe. Emit a
+      // sensible head pointing back at the catalog rather than leaking a half-built title.
+      return seoHead({
+        title: 'Product not found — Jedidiah Equipment',
+        description: 'Browse the full Jedidiah Equipment range to find the right machine for your operation.',
+        path: `/products/${encodeURIComponent(params.modelCode)}`,
+      });
+    }
+
+    const description = truncateDescription(
+      detail.description || `${detail.name} from the ${detail.rangeName} by Jedidiah Equipment.`,
+    );
+
+    return seoHead({
+      title: `${detail.name} — ${detail.rangeName} | Jedidiah Equipment`,
+      description,
+      path: `/products/${encodeURIComponent(detail.modelCode)}`,
+      image: detail.imageUrl,
+    });
   },
   notFoundComponent: ProductNotFound,
   component: ProductDetailPage,

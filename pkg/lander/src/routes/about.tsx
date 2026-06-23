@@ -1,16 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
 
+import { seoHead } from '../lib/seo.js';
+
 export const Route = createFileRoute('/about')({
-  head: () => ({
-    meta: [
-      { title: 'About — Jedidiah Equipment' },
-      {
-        name: 'description',
-        content:
-          'Jedidiah Equipment is rooted in real agricultural experience — farmers building heavy-duty, farm-tested equipment in South Africa since 2008.',
-      },
-    ],
-  }),
+  head: () =>
+    seoHead({
+      title: 'About — Jedidiah Equipment',
+      description:
+        'Jedidiah Equipment is rooted in real agricultural experience — farmers building heavy-duty, farm-tested equipment in South Africa since 2008.',
+      path: '/about',
+    }),
   component: AboutPage,
 });
 

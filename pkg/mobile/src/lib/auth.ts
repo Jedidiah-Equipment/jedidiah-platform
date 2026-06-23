@@ -1,12 +1,15 @@
 import { expoClient } from '@better-auth/expo/client';
 import { adminClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
+import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 import { apiBaseUrl } from './api-base-url';
+import { resolveRuntimeScheme } from './runtime-app-identity';
 
 const authBaseUrl = `${apiBaseUrl}/api/auth`;
+const authScheme = resolveRuntimeScheme(Constants.expoConfig);
 const invalidCredentialsMessage = 'Email or password is incorrect.';
 const networkFailureMessage = 'Unable to reach the API. Check your connection and try again.';
 const signInDisabledMessage = 'This account is not enabled for sign-in.';
@@ -17,8 +20,8 @@ const authClient = createAuthClient({
   baseURL: authBaseUrl,
   plugins: [
     expoClient({
-      scheme: 'jedidiahops',
-      storagePrefix: 'jedidiahops',
+      scheme: authScheme,
+      storagePrefix: authScheme,
       storage: SecureStore,
     }),
     // Mirror the server `admin` plugin so `session.user.role` is typed on device.

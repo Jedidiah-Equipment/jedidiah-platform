@@ -1,10 +1,10 @@
 const gluestackPlugin = require('@gluestack-ui/nativewind-utils/tailwind-plugin');
 
 /**
- * Colours resolve from the CSS variables defined in `global.css` (`:root` light,
- * `.dark:root` dark), which NativeWind flips by color scheme. RGB-channel vars
- * carry `<alpha-value>` so opacity utilities work; `border` is a full colour
- * because the dark value is translucent.
+ * Semantic colours resolve from CSS variables supplied by
+ * `src/theme/gluestack-config.ts` at runtime. RGB-channel vars carry
+ * `<alpha-value>` so opacity utilities work; `border` is a full colour because
+ * the dark value is translucent.
  *
  * @type {import('tailwindcss').Config}
  */

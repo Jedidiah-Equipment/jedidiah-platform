@@ -8,9 +8,7 @@
 /** The build flavours we can ship. `production` is defined but not built in this epic. */
 export type AppVariant = 'staging' | 'production';
 
-/** Android adaptive + 1024² icon for a variant. Both flavours share the owner-supplied master
- * artwork; the staging "badge" is the distinct adaptive `backgroundColor`, so no separately
- * designed icon is required. */
+/** Android adaptive + 1024² icon for a variant. */
 export interface IconConfig {
   /** 1024² app icon (iOS / web / fallback). */
   icon: string;
@@ -25,38 +23,40 @@ export interface IconConfig {
 export interface AppVariantConfig {
   variant: AppVariant;
   androidPackage: string;
+  iosBundleIdentifier: string;
   scheme: string;
   displayName: string;
   iconConfig: IconConfig;
 }
 
-// Shared master artwork. Staging reuses the same images; only the adaptive backgroundColor differs.
-const ICON = './assets/icon.png';
+const PRODUCTION_ICON = './assets/icon.png';
+const STAGING_ICON = './assets/icon-staging.png';
 const ADAPTIVE_FOREGROUND = './assets/adaptive-icon.png';
 
-// Brand yellow (global.css `--color-primary`) backs production; a distinct tint badges staging.
-const PRODUCTION_ICON_BACKGROUND = '#F8D300';
-const STAGING_ICON_BACKGROUND = '#FF6B00';
+// Launcher icons use the bright web/favicon brand yellow.
+const ICON_BACKGROUND = '#FFF000';
 
 const VARIANTS: Record<AppVariant, AppVariantConfig> = {
   staging: {
     variant: 'staging',
     androidPackage: 'za.co.jedidiahequipment.ops.staging',
+    iosBundleIdentifier: 'za.co.jedidiahequipment.ops.staging',
     scheme: 'jedidiahopsstaging',
     displayName: 'Jedidiah Ops (Staging)',
     iconConfig: {
-      icon: ICON,
-      adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: STAGING_ICON_BACKGROUND },
+      icon: STAGING_ICON,
+      adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: ICON_BACKGROUND },
     },
   },
   production: {
     variant: 'production',
     androidPackage: 'za.co.jedidiahequipment.ops',
+    iosBundleIdentifier: 'za.co.jedidiahequipment.ops',
     scheme: 'jedidiahops',
     displayName: 'Jedidiah Ops',
     iconConfig: {
-      icon: ICON,
-      adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: PRODUCTION_ICON_BACKGROUND },
+      icon: PRODUCTION_ICON,
+      adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: ICON_BACKGROUND },
     },
   },
 };

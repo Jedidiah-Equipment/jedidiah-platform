@@ -2,8 +2,7 @@ import { useContext } from 'react';
 
 import { ColorModeContext } from './ColorModeProvider';
 
-// Read/override the light/dark/system preference. The control surface that
-// consumes this (a settings toggle) lands in #518.
+// Read/override the persisted theme preference (system, light, or dark).
 export function useColorMode() {
   const context = useContext(ColorModeContext);
 

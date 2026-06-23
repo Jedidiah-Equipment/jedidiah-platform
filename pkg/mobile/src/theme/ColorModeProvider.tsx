@@ -1,17 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useColorScheme } from 'nativewind';
 import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
+import { ActivityIndicator, Platform, Text, useColorScheme as useNativeColorScheme, View } from 'react-native';
 
-export type ColorModePreference = 'dark' | 'light' | 'system';
+import {
+  type ColorModePreference,
+  isColorModePreference,
+  type ResolvedColorScheme,
+  resolveColorModePreference,
+} from './color-mode';
 
-/** The concrete scheme after resolving `system` against the OS. */
-export type ResolvedColorScheme = 'dark' | 'light';
+export type { ColorModePreference, ResolvedColorScheme } from './color-mode';
+export { resolveColorModePreference } from './color-mode';
 
 export type ColorModeContextValue = {
-  /** The user's saved override; `system` follows the OS appearance. */
   preference: ColorModePreference;
-  /** The concrete scheme after resolving `system` against the OS. */
   resolved: ResolvedColorScheme;
   setPreference: (preference: ColorModePreference) => void;
 };
@@ -20,42 +22,35 @@ const STORAGE_KEY = 'jedidiah-color-mode';
 
 export const ColorModeContext = createContext<ColorModeContextValue | null>(null);
 
-function isPreference(value: string | null): value is ColorModePreference {
-  return value === 'light' || value === 'dark' || value === 'system';
-}
-
 /**
- * Mirrors web's three-way `ThemeProvider`: color mode follows the OS by default
- * via NativeWind's `useColorScheme`, with a light/dark/system override persisted
- * across launches in AsyncStorage (works on native and web; the preference is not
- * sensitive). The control surface lands in #518.
+ * Persists the user's color-mode preference. The gluestack provider consumes the
+ * preference directly via its documented `mode` prop and resolves system mode to
+ * the current native appearance.
  */
 export function ColorModeProvider({ children }: { children: ReactNode }) {
-  const { colorScheme, setColorScheme } = useColorScheme();
+  const systemColorScheme = useNativeColorScheme();
   const [preference, setPreferenceState] = useState<ColorModePreference>('system');
   const [hydrated, setHydrated] = useState(false);
 
-  // NativeWind already follows the OS before any setColorScheme call, so applying
-  // the preference is the only place that touches the scheme — no separate effect.
-  const applyPreference = useCallback(
-    (next: ColorModePreference) => {
-      setPreferenceState(next);
-      setColorScheme(next);
-    },
-    [setColorScheme],
-  );
+  const applyPreference = useCallback((next: ColorModePreference) => {
+    setPreferenceState(next);
+  }, []);
 
-  // Restore the persisted override once on mount. Gate the tree on this read so a
-  // saved `dark` user never flashes the default scheme for a frame on cold start.
+  // Restore the persisted override once on mount. Gate the tree on this read so
+  // legacy or saved preferences never flash the wrong scheme on cold start.
   useEffect(() => {
     let active = true;
 
     void AsyncStorage.getItem(STORAGE_KEY)
       .then((stored) => {
-        if (active && isPreference(stored)) applyPreference(stored);
+        if (!active) return;
+
+        const next = isColorModePreference(stored) ? stored : 'system';
+        applyPreference(next);
       })
-      // A failed read just means we keep following the OS — never let it block boot.
-      .catch(() => {})
+      .catch(() => {
+        if (active) applyPreference('system');
+      })
       .finally(() => {
         if (active) setHydrated(true);
       });
@@ -65,12 +60,10 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     };
   }, [applyPreference]);
 
-  const resolved: ResolvedColorScheme = colorScheme ?? 'light';
+  const resolved = resolveColorModePreference(preference, systemColorScheme);
 
-  // The theme CSS variables live under `.dark:root`. On web NativeWind only
-  // toggles that class for an explicit `dark`/`light`, not for `system`, so the
-  // variables would never flip when following the OS. Mirror the resolved scheme
-  // onto <html> ourselves (native resolves variables at runtime, no DOM needed).
+  // Mirror the resolved scheme onto <html> for Expo web. Native receives the
+  // same preference through GluestackUIProvider.mode.
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     globalThis.document?.documentElement.classList.toggle('dark', resolved === 'dark');
@@ -89,7 +82,24 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
   );
 
   // Hold first paint until the persisted preference is applied (see above).
-  if (!hydrated) return null;
+  if (!hydrated) {
+    return (
+      <View
+        style={{
+          alignItems: 'center',
+          backgroundColor: '#0a0a0b',
+          flex: 1,
+          justifyContent: 'center',
+          paddingHorizontal: 28,
+        }}
+      >
+        <ActivityIndicator accessibilityLabel="Loading theme" color="#fff000" size="large" />
+        <Text style={{ color: '#fafafa', fontSize: 16, lineHeight: 24, marginTop: 16, textAlign: 'center' }}>
+          Loading theme
+        </Text>
+      </View>
+    );
+  }
 
   return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>;
 }

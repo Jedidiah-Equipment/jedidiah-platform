@@ -277,13 +277,13 @@ export const ProductKeyFeatures = z
 // The canonical Product image slots. Each replaces in place, so a Product holds at most one current image
 // per slot. Order is the visual order and drives the form's slot grid, the upload/download routes, and
 // storage. The top-right brochure logo is not a slot here — it comes from the owning Product Range's image.
-export const PRODUCT_IMAGE_SLOTS = ['primary', 'technicalDrawing', 'banner'] as const;
+export const PRODUCT_IMAGE_SLOTS = ['primary', 'technicalDrawing', 'banner', 'secondary1', 'secondary2'] as const;
 
 export type ProductImageSlot = z.infer<typeof ProductImageSlot>;
 export const ProductImageSlot = z.enum(PRODUCT_IMAGE_SLOTS);
 
 // The subset of Product image slots the Brochure PDF renders and the completeness predicate gates on.
-// Identical to the canonical set today; the two diverge only once non-brochure slots are added.
+// The extra `secondary1`/`secondary2` slots are Lander-only detail imagery and never reach the brochure.
 export const BROCHURE_IMAGE_SLOTS = [
   'primary',
   'technicalDrawing',
@@ -305,6 +305,8 @@ export const PRODUCT_IMAGE_SLOT_SPECS = {
   primary: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
   technicalDrawing: { fit: 'contain', recommendedHeight: 1200, recommendedWidth: 1600 },
   banner: { fit: 'cover', recommendedHeight: 900, recommendedWidth: 1200 },
+  secondary1: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
+  secondary2: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
 } as const satisfies Record<ProductImageSlot, ProductImageSlotSpec>;
 
 // Each slot exposes the shared {@link EntityImage} read shape (or null when empty).
@@ -316,12 +318,16 @@ export const ProductImages = z.object({
   primary: ProductImage.nullable().default(null),
   technicalDrawing: ProductImage.nullable().default(null),
   banner: ProductImage.nullable().default(null),
+  secondary1: ProductImage.nullable().default(null),
+  secondary2: ProductImage.nullable().default(null),
 });
 
 export const EMPTY_PRODUCT_IMAGES: ProductImages = {
   primary: null,
   technicalDrawing: null,
   banner: null,
+  secondary1: null,
+  secondary2: null,
 };
 
 // The required fields a Product Brochure must fill before it can be previewed or generated. This is the

@@ -4,13 +4,15 @@ import {
   byBayDepartmentPipeline,
   deriveActiveJobProgress,
   findActiveWorkSlot,
+  hasPermission,
   listEnabledBays,
 } from '@pkg/domain';
 import type { BayOperator, DateOnlyIso } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useTRPC } from './trpc';
+import { useAccess } from './use-access';
 
 /** A Bay card's active Job, joined from `jobs.listBays` detail and projected for days-left. */
 export type BayListActiveJob = ActiveJobProgress & {
@@ -29,19 +31,39 @@ export type BayListCard = {
 
 export type BayListState =
   | { status: 'error'; error: unknown }
+  | { status: 'forbidden' }
   | { status: 'pending' }
   | { status: 'ready'; cards: BayListCard[]; today: DateOnlyIso };
+
+export type BayListResult = {
+  state: BayListState;
+  /** Refetch access + the Bay schedule, e.g. from pull-to-refresh. */
+  refresh: () => void;
+  isRefreshing: boolean;
+};
 
 /**
  * Loads the Bay List from the cached Bay schedule (`jobs.listBays`), whose `jobs`
  * carry each scheduled Job's product detail, deriving each Bay's active Job and
  * days-left. Mirrors web's `useShopFloorBays` + `ShopFloorTodayWidget`.
+ *
+ * `jobs.listBays` requires `job:read`, so we gate it on the user's access summary
+ * and surface a `forbidden` state rather than firing a request that 403s and reads
+ * as a connection error (mirrors web gating shop-floor widgets with `hasPermission`).
  */
-export function useBayList(): BayListState {
+export function useBayList(): BayListResult {
   const trpc = useTRPC();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const accessQuery = useAccess();
+  const canReadJobs = hasPermission(accessQuery.data, 'job:read');
+  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
 
-  return useMemo<BayListState>(() => {
+  const state = useMemo<BayListState>(() => {
+    if (accessQuery.isPending) return { status: 'pending' };
+    // Access genuinely failed to load (e.g. offline first open) — distinct from a resolved
+    // summary that simply lacks `job:read`, which is `forbidden` below.
+    if (accessQuery.error && accessQuery.data === undefined) return { status: 'error', error: accessQuery.error };
+    if (!canReadJobs) return { status: 'forbidden' };
+
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
     if (baysQuery.isPending) return { status: 'pending' };
 
@@ -72,5 +94,24 @@ export function useBayList(): BayListState {
     });
 
     return { status: 'ready', cards, today };
-  }, [baysQuery.data, baysQuery.error, baysQuery.isPending]);
+  }, [
+    accessQuery.data,
+    accessQuery.error,
+    accessQuery.isPending,
+    baysQuery.data,
+    baysQuery.error,
+    baysQuery.isPending,
+    canReadJobs,
+  ]);
+
+  const refresh = useCallback(() => {
+    void accessQuery.refetch();
+    if (canReadJobs) void baysQuery.refetch();
+  }, [accessQuery, baysQuery, canReadJobs]);
+
+  return {
+    state,
+    refresh,
+    isRefreshing: accessQuery.isRefetching || baysQuery.isRefetching,
+  };
 }

@@ -5,7 +5,7 @@ import { type LayoutChangeEvent, Pressable, View } from 'react-native';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import { type BaySort, isBaySort, sortBayCards } from '@/lib/bay-sort';
-import { useBayList } from '@/lib/use-bay-list';
+import type { BayListState } from '@/lib/use-bay-list';
 import { usePersistedState } from '@/lib/use-persisted-state';
 
 import { BayCard } from './BayCard';
@@ -33,14 +33,27 @@ function columnsForWidth(width: number): number {
 /**
  * The 'Bays' section: a count and a responsive grid of {@link BayCard}s that
  * reflows phone → tablet by measuring its own width. Owns the loading skeleton,
- * empty, and error states.
+ * empty, forbidden, and error states. The data + pull-to-refresh live in the
+ * screen ({@link useBayList}); this stays a pure render of {@link BayListState}.
  */
-export function BayList() {
+export function BayList({ state }: { state: BayListState }) {
   const router = useRouter();
-  const state = useBayList();
   const [width, setWidth] = useState(0);
   const [sort, setSort] = usePersistedState<BaySort>('jedidiah-bay-sort', 'days-left', isBaySort);
   const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
+
+  if (state.status === 'forbidden') {
+    return (
+      <Section>
+        <Text className="text-sm text-foreground" weight="semibold">
+          You don’t have access to the shop floor.
+        </Text>
+        <Text className="mt-1 text-sm text-muted-foreground">
+          Your account doesn’t have Job access. Ask an administrator to update your permissions.
+        </Text>
+      </Section>
+    );
+  }
 
   if (state.status === 'error') {
     return (

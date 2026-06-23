@@ -1,20 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveColorModePreference } from './color-mode';
+import { parseColorModePreference, resolveColorModePreference } from './color-mode';
 
 describe('resolveColorModePreference', () => {
-  it('uses explicit light and dark preferences instead of the system scheme', () => {
-    expect(resolveColorModePreference('light', 'dark')).toBe('light');
-    expect(resolveColorModePreference('dark', 'light')).toBe('dark');
+  it('uses explicit light and dark preferences', () => {
+    expect(resolveColorModePreference('light')).toBe('light');
+    expect(resolveColorModePreference('dark')).toBe('dark');
+  });
+});
+
+describe('parseColorModePreference', () => {
+  it('accepts only explicit light and dark preferences', () => {
+    expect(parseColorModePreference('light')).toBe('light');
+    expect(parseColorModePreference('dark')).toBe('dark');
   });
 
-  it('falls back to light when the system scheme is absent or unspecified', () => {
-    expect(resolveColorModePreference('system', null)).toBe('light');
-    expect(resolveColorModePreference('system', 'unspecified')).toBe('light');
-  });
-
-  it('follows the system scheme for system mode', () => {
-    expect(resolveColorModePreference('system', 'dark')).toBe('dark');
-    expect(resolveColorModePreference('system', 'light')).toBe('light');
+  it('defaults missing, invalid, and legacy system values to dark', () => {
+    expect(parseColorModePreference(null)).toBe('dark');
+    expect(parseColorModePreference('system')).toBe('dark');
+    expect(parseColorModePreference('unknown')).toBe('dark');
   });
 });

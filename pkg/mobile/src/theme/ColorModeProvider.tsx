@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, Text, useColorScheme as useNativeColorScheme, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 
 import {
   type ColorModePreference,
-  isColorModePreference,
+  DEFAULT_COLOR_MODE,
+  parseColorModePreference,
   type ResolvedColorScheme,
   resolveColorModePreference,
 } from './color-mode';
@@ -23,13 +24,11 @@ const STORAGE_KEY = 'jedidiah-color-mode';
 export const ColorModeContext = createContext<ColorModeContextValue | null>(null);
 
 /**
- * Persists the user's color-mode preference. The gluestack provider consumes the
- * preference directly via its documented `mode` prop and resolves system mode to
- * the current native appearance.
+ * Persists the user's explicit color-mode preference. Invalid and legacy values
+ * fall back to dark so the profile menu never opens with an unselectable state.
  */
 export function ColorModeProvider({ children }: { children: ReactNode }) {
-  const systemColorScheme = useNativeColorScheme();
-  const [preference, setPreferenceState] = useState<ColorModePreference>('system');
+  const [preference, setPreferenceState] = useState<ColorModePreference>(DEFAULT_COLOR_MODE);
   const [hydrated, setHydrated] = useState(false);
 
   const applyPreference = useCallback((next: ColorModePreference) => {
@@ -45,11 +44,10 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
       .then((stored) => {
         if (!active) return;
 
-        const next = isColorModePreference(stored) ? stored : 'system';
-        applyPreference(next);
+        applyPreference(parseColorModePreference(stored));
       })
       .catch(() => {
-        if (active) applyPreference('system');
+        if (active) applyPreference(DEFAULT_COLOR_MODE);
       })
       .finally(() => {
         if (active) setHydrated(true);
@@ -60,7 +58,7 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     };
   }, [applyPreference]);
 
-  const resolved = resolveColorModePreference(preference, systemColorScheme);
+  const resolved = resolveColorModePreference(preference);
 
   // Mirror the resolved scheme onto <html> for Expo web. Native receives the
   // same preference through GluestackUIProvider.mode.

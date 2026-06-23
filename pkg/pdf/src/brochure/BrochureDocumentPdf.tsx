@@ -2,7 +2,7 @@ import { BROCHURE_KEY_FEATURES_MAX_COUNT, type BrochureDocumentImage, type Broch
 import { Document, Image, Page, StyleSheet, type Styles, Text, View } from '@react-pdf/renderer';
 
 import { pdfFontFamily, pdfTitleFontFamily } from '../pdf-fonts.js';
-import { JEDIDIAH_LOGO_DATA_URI } from '../quote-document/jedidiah-logo.js';
+import { jedidiahFooterBannerSrc, jedidiahLogoSrc } from '../pdf-logo.js';
 import { pdfColors, pdfFontSize, pdfFontWeight, pdfLineHeight } from '../quote-document/pdf-theme.js';
 
 type Style = Styles[string];
@@ -54,6 +54,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 38,
+  },
+  brandLogoFrame: {
+    backgroundColor: pdfColors.black,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
   },
   brandLogo: {
     height: layout.brandLogoHeight,
@@ -264,8 +269,20 @@ const styles = StyleSheet.create({
     marginBottom: layout.pagePaddingX,
     marginHorizontal: layout.pagePaddingX,
     marginTop: 16,
+    overflow: 'hidden',
     paddingHorizontal: 11,
     paddingVertical: 10,
+    position: 'relative',
+  },
+  footerBackground: {
+    bottom: 0,
+    height: '100%',
+    left: 0,
+    objectFit: 'cover',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: '100%',
   },
   footerContactBlock: {
     flexGrow: 0,
@@ -331,7 +348,9 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
       <Page size="A4" style={styles.page}>
         <View style={styles.coverContent}>
           <View style={styles.brandRow}>
-            <Image src={JEDIDIAH_LOGO_DATA_URI} style={styles.brandLogo} />
+            <View style={styles.brandLogoFrame}>
+              <Image src={jedidiahLogoSrc} style={styles.brandLogo} />
+            </View>
             {document.rangeLogo ? (
               <Image src={document.rangeLogo.dataUri} style={styles.rangeLogo} />
             ) : (
@@ -672,6 +691,7 @@ function SpecColumn({
 function Footer() {
   return (
     <View style={styles.footer}>
+      <Image src={jedidiahFooterBannerSrc} style={styles.footerBackground} />
       <View style={styles.footerContactBlock}>
         <View style={styles.footerContactGroup}>
           <Text style={styles.footerContact}>Phone: 045 050 0545</Text>
@@ -689,8 +709,8 @@ function Footer() {
       <View style={styles.footerRight}>
         <View style={styles.footerLogoRow}>
           <Image
-            src={JEDIDIAH_LOGO_DATA_URI}
-            style={{ height: layout.footerLogoHeight, width: layout.footerLogoWidth }}
+            src={jedidiahLogoSrc}
+            style={{ height: layout.footerLogoHeight, objectFit: 'contain', width: layout.footerLogoWidth }}
           />
         </View>
         <Text style={styles.footerTagline}>Built for high productivity and reliability</Text>

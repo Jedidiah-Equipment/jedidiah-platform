@@ -3,7 +3,7 @@ import type { QuoteDocumentModel } from '@pkg/schema';
 import { Image, StyleSheet, Text, View } from '@react-pdf/renderer';
 
 import { pdfTitleFontFamily } from '../pdf-fonts.js';
-import { JEDIDIAH_LOGO_DATA_URI } from './jedidiah-logo.js';
+import { jedidiahLogoSrc } from '../pdf-logo.js';
 import { pdfStyles } from './pdf-styles.js';
 
 type QuoteDocumentHeaderProps = {
@@ -12,9 +12,7 @@ type QuoteDocumentHeaderProps = {
 
 const layout = {
   documentPanelWidth: 210,
-  logoFrameHeight: 42,
-  logoFrameWidth: 172,
-  logoHeight: 50,
+  logoHeight: 46,
   logoWidth: 178,
 } as const;
 
@@ -30,19 +28,18 @@ const styles = StyleSheet.create({
     right: 0,
   },
   logoFrame: {
-    height: layout.logoFrameHeight,
+    height: layout.logoHeight,
     marginBottom: 4,
-    overflow: 'hidden',
-    width: layout.logoFrameWidth,
+    width: layout.logoWidth,
   },
   logo: {
     height: layout.logoHeight,
-    marginLeft: -2,
-    marginTop: -3,
+    objectFit: 'contain',
     width: layout.logoWidth,
   },
   tagline: {
-    fontStyle: 'italic',
+    fontFamily: pdfTitleFontFamily,
+    fontSize: 12,
     marginBottom: 13,
   },
   brandLine: {
@@ -81,7 +78,7 @@ export function QuoteDocumentHeader({ document }: QuoteDocumentHeaderProps) {
         style={[pdfStyles.bgBlack, pdfStyles.colorWhite, pdfStyles.flex1, pdfStyles.panelPadding, styles.brandPanel]}
       >
         <View style={styles.logoFrame}>
-          <Image src={JEDIDIAH_LOGO_DATA_URI} style={styles.logo} />
+          <Image src={jedidiahLogoSrc} style={styles.logo} />
         </View>
         <Text
           style={[

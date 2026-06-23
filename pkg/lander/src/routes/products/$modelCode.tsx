@@ -1,7 +1,8 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ProductCard } from '../../components/product-card.js';
+import { captureEvent } from '../../lib/analytics.js';
 import { getProductDetail } from '../../server/product-detail.js';
 import type { ProductDetail, ProductHighlight } from '../../server/product-detail-data.js';
 
@@ -210,13 +211,14 @@ function DownloadIcon() {
   );
 }
 
-function Downloads({ brochureHref }: { brochureHref: string }) {
+function Downloads({ brochureHref, modelCode }: { brochureHref: string; modelCode: string }) {
   return (
     <div className="mt-10">
       <h3 className="m-0 mb-4 font-display text-[20px] font-bold uppercase tracking-[1px] text-ink">Downloads</h3>
       <div className="flex flex-col gap-3">
         <a
           href={brochureHref}
+          onClick={() => captureEvent('brochure_downloaded', { modelCode })}
           className="flex items-center gap-3.5 border border-[#e2e0da] bg-white px-[18px] py-3.5 no-underline transition-colors hover:border-ink"
         >
           <DownloadIcon />
@@ -264,7 +266,7 @@ function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
               </div>
             </>
           ) : null}
-          {detail.brochureHref ? <Downloads brochureHref={detail.brochureHref} /> : null}
+          {detail.brochureHref ? <Downloads brochureHref={detail.brochureHref} modelCode={detail.modelCode} /> : null}
         </div>
       ) : null}
     </section>
@@ -294,6 +296,10 @@ function Related({ rangeName, related }: { rangeName: string; related: ProductDe
 
 function ProductDetailPage() {
   const { detail } = Route.useLoaderData();
+
+  useEffect(() => {
+    captureEvent('product_viewed', { modelCode: detail.modelCode, range: detail.rangeName });
+  }, [detail.modelCode, detail.rangeName]);
 
   return (
     <main className="bg-sand">

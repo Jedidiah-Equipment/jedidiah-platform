@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
+import { captureEvent } from '../lib/analytics.js';
+
 export const Route = createFileRoute('/contact')({
   head: () => ({
     meta: [
@@ -105,6 +107,7 @@ function EnquiryForm() {
 
       form.reset();
       setStatus('sent');
+      captureEvent('contact_submitted', { equipment: String(data.get('equipment') ?? '') || 'Not specified' });
     } catch {
       setStatus('error');
     }

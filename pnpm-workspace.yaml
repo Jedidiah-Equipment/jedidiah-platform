@@ -26,3 +26,6 @@ overrides:
 
 minimumReleaseAgeExclude:
   - react-native-blob-util@0.24.10
+  - '@posthog/core@1.36.0'
+  - '@posthog/types@1.391.0'
+  - posthog-js@1.393.0

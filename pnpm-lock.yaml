@@ -198,6 +198,9 @@ importers:
       '@pkg/schema':
         specifier: workspace:*
         version: link:../schema
+      '@tabler/icons-react':
+        specifier: 3.44.0
+        version: 3.44.0(react@19.2.7)
       '@tanstack/react-router':
         specifier: ^1.170.16
         version: 1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

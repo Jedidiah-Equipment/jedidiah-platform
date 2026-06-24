@@ -1,3 +1,4 @@
+import { IconArrowRight } from '@tabler/icons-react';
 import { createFileRoute } from '@tanstack/react-router';
 
 import { FeatureBar } from '../components/feature-bar.js';
@@ -17,12 +18,8 @@ export const Route = createFileRoute('/')({
   component: HomePage,
 });
 
-function ArrowIcon({ stroke }: { stroke: string }) {
-  return (
-    <svg width="20" height="14" viewBox="0 0 22 14" fill="none" aria-hidden="true">
-      <path d="M1 7h19M14 1l6 6-6 6" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+function ArrowIcon({ className }: { className: string }) {
+  return <IconArrowRight className={className} size={20} stroke={2.4} aria-hidden="true" />;
 }
 
 function Hero() {
@@ -55,7 +52,7 @@ function Hero() {
               href="/contact"
               className="flex items-center gap-3.5 bg-yellow px-8 py-[18px] font-display text-[19px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
             >
-              Contact Us <ArrowIcon stroke="#161616" />
+              Contact Us <ArrowIcon className="text-ink" />
             </a>
             <a
               href="/products"
@@ -93,7 +90,7 @@ function EquipmentRanges({ ranges }: { ranges: Awaited<ReturnType<typeof getHome
             href="/products"
             className="flex items-center gap-3.5 bg-ink px-[26px] py-[15px] font-display text-[16px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:bg-black"
           >
-            View All Products <ArrowIcon stroke="#fff000" />
+            View All Products <ArrowIcon className="text-yellow" />
           </a>
         </div>
 
@@ -125,7 +122,7 @@ function CtaBand() {
           href="/contact"
           className="flex flex-none items-center gap-3.5 bg-yellow px-[38px] py-5 font-display text-[20px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
         >
-          Contact Us <ArrowIcon stroke="#161616" />
+          Contact Us <ArrowIcon className="text-ink" />
         </a>
       </div>
     </section>

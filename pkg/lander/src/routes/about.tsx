@@ -1,3 +1,4 @@
+import { IconArrowRight } from '@tabler/icons-react';
 import { createFileRoute } from '@tanstack/react-router';
 
 import { seoHead } from '../lib/seo.js';
@@ -45,11 +46,7 @@ const MILESTONES = [
 ];
 
 function ArrowIcon() {
-  return (
-    <svg width="20" height="14" viewBox="0 0 22 14" fill="none" aria-hidden="true">
-      <path d="M1 7h19M14 1l6 6-6 6" stroke="#161616" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />;
 }
 
 function Eyebrow({ label, color }: { label: string; color: string }) {

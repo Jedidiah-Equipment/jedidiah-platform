@@ -17,6 +17,7 @@
     "@pkg/domain": "workspace:*",
     "@pkg/pdf": "workspace:*",
     "@pkg/schema": "workspace:*",
+    "@tabler/icons-react": "3.44.0",
     "@tanstack/react-router": "^1.170.16",
     "@tanstack/react-start": "^1.168.26",
     "posthog-js": "^1.393.0",

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parallel Up"
+  short_description: "Set up an isolated parallel slot"
+  default_prompt: "Use $parallel-up to prepare an isolated local parallel slot."

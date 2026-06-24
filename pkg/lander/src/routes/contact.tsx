@@ -1,4 +1,4 @@
-import { IconArrowRight, IconCheck, IconMail, IconMapPin, IconPhone } from '@tabler/icons-react';
+import { IconArrowRight, IconCheck, IconChevronDown, IconMail, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
@@ -142,13 +142,26 @@ function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
             <label htmlFor="contact-equipment" className={LABEL_CLASS}>
               Equipment of Interest
             </label>
-            <select id="contact-equipment" name="equipment" defaultValue="" className={FIELD_CLASS}>
-              <option value="">Select equipment (optional)</option>
-              {equipmentOptions.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-              <option>Not sure yet</option>
-            </select>
+            <div className="relative">
+              <select
+                id="contact-equipment"
+                name="equipment"
+                defaultValue=""
+                className={`${FIELD_CLASS} appearance-none pr-11`}
+              >
+                <option value="">Select equipment (optional)</option>
+                {equipmentOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+                <option>Not sure yet</option>
+              </select>
+              <IconChevronDown
+                className="pointer-events-none absolute top-1/2 right-[15px] -translate-y-1/2 text-[#888]"
+                size={18}
+                stroke={2}
+                aria-hidden="true"
+              />
+            </div>
           </div>
         </div>
         <div className="mb-7">

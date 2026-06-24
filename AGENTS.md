@@ -1,7 +1,6 @@
 # AGENTS.md
 
 - Read the closest `pkg/*/AGENTS.md` before changing code.
-- Treat `docs/research` as non-authoritative unless explicitly asked.
 - Use pnpm scripts. Normal verification is `pnpm verify`.
 - Do not add CI, deployment, or production infrastructure unless explicitly asked.
 
@@ -9,14 +8,17 @@
 
 - Schema changes: run `pnpm db:generate`, review and commit generated SQL in `pkg/db/migrations`, then run `pnpm db:migrate`.
 - Run `pnpm db:up:template` after schema or seed changes, or when DB-backed tests fail with stale-schema errors.
-- `pnpm db:reset` drops Docker volumes. Confirm before running it unless the user explicitly approved a full reset.
+- `pnpm db:up` drops Docker volumes and rebuilds the local database.
 - `pnpm db:seed` loads `pkg/seed/data/staging-snapshot`; every seeded user logs in with the shared password `test123` (see `pkg/seed/AGENTS.md`). Regenerate the snapshot from staging with `STAGING_DATABASE_URL=… pnpm --filter @pkg/seed seed:read`.
 
-## Parallel worktrees
+## Parallel slot environments
 
-- Create worktrees under `~/_worktrees` (e.g. `git worktree add ~/_worktrees/<name>`), not inside this repo.
-- From inside the worktree, run `sh scripts/worktree-setup.sh [slot]` to avoid port clashes. Omit `slot` to auto-assign the lowest free one (it reads sibling worktrees' configured slots); pass an integer >= 1 to request a specific slot, and it suggests a free one if that is taken. It refuses to run on the primary checkout (slot 0, committed defaults). It writes gitignored env files only (`.env.dev` at the repo root, `<pkg>/.env.dev`, `<pkg>/.env.test`, `pkg/mobile/.env.local` — no shell sourcing) plus a skip-worktree patch to `.claude/launch.json`. The worktree gets its own dev ports (`7N01`-`7N04`) and its **own** Docker stack (`COMPOSE_PROJECT_NAME=jedidiah_wt<N>`) — Postgres on `7N05`, MinIO on `7N06`/`7N07` — so the database names stay the static `jedidiah` / `jedidiah_template` defaults and storage is fully isolated (its own bucket).
-- After setup: `pnpm db:up` (brings up this worktree's own stack), then `pnpm db:up:template` and `pnpm db:migrate && pnpm db:seed`. `pnpm dev`, `pnpm test`, and mobile pick up the slot automatically.
+- Run `pnpm parallel:up` to configure this checkout with the lowest Docker-free slot, start its Docker stack, build the template database, migrate, and seed. Pass a positive integer after `--` to request a slot: `pnpm parallel:up -- 2`.
+- If this checkout is a git worktree or any non-default local checkout, run `pnpm parallel:up` before starting dev services so it gets its own Docker-backed slot.
+- Slot 0 is the committed/default local environment. Generated slots use `COMPOSE_PROJECT_NAME=jedidiah_slot<N>` with ports `7N01`-`7N07`: web, API, Expo, lander, Postgres, MinIO API, MinIO console.
+- Slot availability comes from Docker state, not git worktrees or running services. Existing `jedidiah_slot<N>` and legacy `jedidiah_wt<N>` compose projects, containers, or volumes make a slot unavailable.
+- `pnpm parallel:down` stops this checkout's dev services, removes the configured slot's Docker stack and volumes, then strips generated env blocks. Hand-written ignored env lines such as local secrets and staging URLs are preserved; env files are deleted only when empty.
+- Generated env files are gitignored (`.env.dev`, `<pkg>/.env.dev`, `<pkg>/.env.test`, `pkg/mobile/.env.local`) and are read directly by the apps. No shell sourcing or tracked launch-file patching is needed.
 
 ## Publishing
 

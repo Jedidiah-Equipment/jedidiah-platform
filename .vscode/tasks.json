@@ -13,6 +13,17 @@
       "problemMatcher": []
     },
     {
+      "label": "Dev",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["dev"],
+      "icon": {
+        "id": "browser",
+        "color": "terminal.ansiGreen"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Build All",
       "type": "shell",
       "command": "pnpm",
@@ -136,10 +147,43 @@
       "problemMatcher": []
     },
     {
-      "label": "Kill Dev Services",
+      "label": "Parallel Up",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["parallel:up"],
+      "icon": {
+        "id": "server-process",
+        "color": "terminal.ansiGreen"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Parallel Down",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["parallel:down"],
+      "icon": {
+        "id": "server-process",
+        "color": "terminal.ansiRed"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Kill Services",
       "type": "shell",
       "command": "pnpm",
       "args": ["dev:kill"],
+      "icon": {
+        "id": "debug-stop",
+        "color": "terminal.ansiRed"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Kill All Services",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["dev:kill:all"],
       "icon": {
         "id": "debug-stop",
         "color": "terminal.ansiRed"
@@ -169,10 +213,10 @@
       "problemMatcher": []
     },
     {
-      "label": "Database Reset",
+      "label": "Database Up",
       "type": "shell",
       "command": "pnpm",
-      "args": ["db:reset"],
+      "args": ["db:up"],
       "icon": {
         "id": "database",
         "color": "terminal.ansiYellow"

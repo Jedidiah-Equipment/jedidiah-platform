@@ -1,4 +1,0 @@
-interface:
-  display_name: "WT Down"
-  short_description: "Tear down the local worktree Docker stack"
-  default_prompt: "Use $wt-down to run the repo worktree teardown command."

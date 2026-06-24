@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { useRef } from 'react';
 import { toast } from 'sonner';
-
+import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/components/catalog/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -58,7 +58,9 @@ export const RangeImageUpload: React.FC<RangeImageUploadProps> = ({ canEdit, ima
   return (
     <Field className="rounded-lg border p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <FieldLabel>Image</FieldLabel>
+        <FieldLabel>
+          <FieldUsageLabel usage={PRODUCT_RANGE_FIELD_USAGE.image}>Image</FieldUsageLabel>
+        </FieldLabel>
         <span className="text-muted-foreground text-xs">
           {secondaryImageSpec.recommendedWidth}×{secondaryImageSpec.recommendedHeight}px
         </span>

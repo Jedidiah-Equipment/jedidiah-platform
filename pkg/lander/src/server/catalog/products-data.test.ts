@@ -1,7 +1,7 @@
 import { productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
 
-import { test } from '../test/tester.js';
+import { test } from '../../test/tester.js';
 import { loadProductsCatalog, toRangeSlug } from './products-data.js';
 
 async function insertRange(db: Parameters<typeof loadProductsCatalog>[0], name: string, description: string | null) {

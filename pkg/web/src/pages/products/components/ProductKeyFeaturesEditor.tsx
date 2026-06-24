@@ -18,6 +18,7 @@ import { PRODUCT_KEY_FEATURES_MAX_COUNT, ProductKeyFeature } from '@pkg/schema';
 import { IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
@@ -124,7 +125,9 @@ export const ProductKeyFeaturesEditor: React.FC<ProductKeyFeaturesEditorProps> =
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Key Features</CardTitle>
+        <CardTitle>
+          <FieldUsageLabel usage={PRODUCT_FIELD_USAGE.keyFeatures}>Key Features</FieldUsageLabel>
+        </CardTitle>
         <CardDescription>
           Freeform lines shown as a checkmark list. Drag to reorder; up to {PRODUCT_KEY_FEATURES_MAX_COUNT} lines.
         </CardDescription>

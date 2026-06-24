@@ -1,6 +1,6 @@
 import { IconArrowRight } from '@tabler/icons-react';
 
-import type { CatalogProduct } from '../server/products-data.js';
+import type { CatalogProduct } from '../server/catalog/products-data.js';
 
 // Reusable Product card shared by the Products page (and, later, related-Product strips). The image route
 // streams the brochure hero or a neutral brand placeholder, so the image never renders broken.

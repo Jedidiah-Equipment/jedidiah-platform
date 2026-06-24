@@ -6,7 +6,7 @@ export const Route = createFileRoute('/robots.txt')({
   server: {
     handlers: {
       GET: async () => {
-        const { serveRobots } = await import('../server/robots.js');
+        const { serveRobots } = await import('../server/site/robots.js');
 
         return serveRobots();
       },

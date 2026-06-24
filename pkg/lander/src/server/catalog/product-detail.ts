@@ -12,7 +12,7 @@ export const getProductDetail = createServerFn({ method: 'GET' })
   .handler(async ({ data }): Promise<ProductDetail | null> => {
     const [{ loadProductDetail }, { getDb }] = await Promise.all([
       import('./product-detail-data.js'),
-      import('./db.js'),
+      import('../runtime/db.js'),
     ]);
 
     return loadProductDetail(getDb(), data);

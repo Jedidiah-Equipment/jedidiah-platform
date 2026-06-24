@@ -7,7 +7,7 @@ export const Route = createFileRoute('/images/ranges/$rangeId')({
   server: {
     handlers: {
       GET: async ({ params }) => {
-        const { serveRangeImage } = await import('../../../server/image-handlers.js');
+        const { serveRangeImage } = await import('../../../server/media/image-handlers.js');
 
         return serveRangeImage(params.rangeId);
       },

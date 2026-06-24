@@ -11,8 +11,8 @@ import { useEffect, useState } from 'react';
 import { ProductCard } from '../../components/product-card.js';
 import { captureEvent } from '../../lib/analytics.js';
 import { seoHead, truncateDescription } from '../../lib/seo.js';
-import { getProductDetail } from '../../server/product-detail.js';
-import type { ProductDetail, ProductHighlight } from '../../server/product-detail-data.js';
+import { getProductDetail } from '../../server/catalog/product-detail.js';
+import type { ProductDetail, ProductHighlight } from '../../server/catalog/product-detail-data.js';
 
 export const Route = createFileRoute('/products/$modelCode')({
   loader: async ({ params }) => {
@@ -70,21 +70,19 @@ function Breadcrumb({ rangeName, name }: { rangeName: string; name: string }) {
   );
 }
 
-function Gallery({ imageUrl, name }: { imageUrl: string; name: string }) {
-  // Secondary/technical images are out of scope, so every slot reuses the single brochure hero. The
-  // thumbnails stay interactive for parity with the prototype even though they resolve the same image.
+function Gallery({ images, name }: { images: ProductDetail['galleryImages']; name: string }) {
   const [active, setActive] = useState(0);
-  const thumbs = [0, 1, 2];
+  const activeImage = images[active] ?? images[0];
 
   return (
     <div>
       <div className="aspect-[16/11] overflow-hidden border border-line bg-[#dcdcd6]">
-        <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+        <img src={activeImage.imageUrl} alt={name} className="h-full w-full object-cover" />
       </div>
       <div className="mt-3.5 grid grid-cols-3 gap-3.5">
-        {thumbs.map((index) => (
+        {images.map((image, index) => (
           <button
-            key={index}
+            key={image.slot}
             type="button"
             onClick={() => setActive(index)}
             aria-label={`View image ${index + 1}`}
@@ -92,7 +90,7 @@ function Gallery({ imageUrl, name }: { imageUrl: string; name: string }) {
               index === active ? 'border-2 border-gold' : 'border-2 border-line'
             }`}
           >
-            <img src={imageUrl} alt="" aria-hidden="true" className="h-full w-full object-cover" />
+            <img src={image.imageUrl} alt="" aria-hidden="true" className="h-full w-full object-cover" />
           </button>
         ))}
       </div>
@@ -119,7 +117,7 @@ function Hero({ detail }: { detail: ProductDetail }) {
   return (
     <section className="border-b border-line bg-white">
       <div className="mx-auto grid max-w-[1320px] grid-cols-[1.05fr_1fr] gap-14 px-12 pt-12 pb-14 max-nav:grid-cols-1 max-nav:gap-8 max-nav:px-5 max-nav:pt-8 max-nav:pb-10">
-        <Gallery imageUrl={detail.imageUrl} name={detail.name} />
+        <Gallery images={detail.galleryImages} name={detail.name} />
 
         <div className="flex flex-col">
           <span className="self-start bg-gold px-3.5 py-1.5 font-display text-[13px] font-bold uppercase tracking-[2px] text-ink">

@@ -1,11 +1,13 @@
 import { getProduct, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { evaluateProductBrochureCompleteness } from '@pkg/domain';
-import { UUID } from '@pkg/schema';
+import { type ProductImageSlot, UUID } from '@pkg/schema';
 
 import { type CatalogProduct, toCatalogProduct, toRangeSlug } from './products-data.js';
 
 export type ProductHighlight = { value: string; label: string };
+export type ProductGalleryImage = { imageUrl: string; slot: ProductImageSlot };
+export type ProductGalleryImages = [ProductGalleryImage, ProductGalleryImage, ProductGalleryImage];
 
 export type ProductDetail = {
   id: string;
@@ -16,6 +18,7 @@ export type ProductDetail = {
   tagline: string;
   description: string;
   imageUrl: string;
+  galleryImages: ProductGalleryImages;
   highlights: ProductHighlight[];
   standardAssemblies: string[];
   optionalAssemblies: string[];
@@ -33,6 +36,8 @@ export const HIGHLIGHT_PLACEHOLDERS: ProductHighlight[] = [
   { value: 'Heavy', label: 'Duty Build' },
   { value: '2-Pack', label: 'Coated Finish' },
 ];
+
+const DETAIL_IMAGE_SLOTS = ['primary', 'secondary1', 'secondary2'] as const satisfies readonly ProductImageSlot[];
 
 // Loads the Product detail view model by model code, or null when none matches (the route turns null into
 // a 404). A plain `findMany` column read of every Product (the marketing catalog is small) resolves the
@@ -77,6 +82,10 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
     tagline: fullProduct.category ?? '',
     description: fullProduct.description ?? '',
     imageUrl: `/images/products/${fullProduct.id}`,
+    galleryImages: DETAIL_IMAGE_SLOTS.map((slot) => ({
+      slot,
+      imageUrl: productImageUrl(fullProduct.id, slot),
+    })) as ProductGalleryImages,
     highlights: HIGHLIGHT_PLACEHOLDERS,
     standardAssemblies: fullProduct.assemblies.filter((a) => a.kind === 'standard').map((a) => a.name),
     optionalAssemblies: fullProduct.assemblies.filter((a) => a.kind === 'optional').map((a) => a.name),
@@ -84,4 +93,10 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
     brochureHref: brochureComplete ? `/downloads/products/${fullProduct.id}/brochure` : null,
     related,
   };
+}
+
+function productImageUrl(productId: string, slot: ProductImageSlot): string {
+  return slot === 'primary'
+    ? `/images/products/${productId}`
+    : `/images/products/${productId}?slot=${encodeURIComponent(slot)}`;
 }

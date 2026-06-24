@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { toast } from 'sonner';
-
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -59,15 +59,27 @@ export const ProductCreateDialog: React.FC<ProductCreateDialogProps> = ({ onOpen
     >
       {(form) => (
         <>
-          <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
+          <form.AppField name="name">
+            {(field) => (
+              <field.TextField
+                autoComplete="off"
+                label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.name}>Name</FieldUsageLabel>}
+              />
+            )}
+          </form.AppField>
           <form.AppField name="modelCode">
-            {(field) => <field.TextField autoComplete="off" label="Model code" />}
+            {(field) => (
+              <field.TextField
+                autoComplete="off"
+                label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.modelCode}>Model code</FieldUsageLabel>}
+              />
+            )}
           </form.AppField>
           <form.AppField name="rangeId">
             {(field) => (
               <field.SelectField
                 disabled={productRangeOptions.isPending}
-                label="Range"
+                label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.rangeId}>Range</FieldUsageLabel>}
                 options={productRangeOptions.selectOptions}
                 placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'Select range'}
               />

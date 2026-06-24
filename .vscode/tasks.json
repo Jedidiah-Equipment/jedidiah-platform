@@ -213,10 +213,10 @@
       "problemMatcher": []
     },
     {
-      "label": "Database Reset",
+      "label": "Database Up",
       "type": "shell",
       "command": "pnpm",
-      "args": ["db:reset"],
+      "args": ["db:up"],
       "icon": {
         "id": "database",
         "color": "terminal.ansiYellow"

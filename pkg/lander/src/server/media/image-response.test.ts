@@ -29,6 +29,10 @@ describe('imageResponse', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/svg+xml');
     expect(response.headers.get('cache-control')).toBe('public, max-age=60');
-    expect(await response.text()).toContain('JEDIDIAH');
+    const body = await response.text();
+    expect(body).toContain('<svg');
+    expect(body).toContain('aria-label="Jedidiah Equipment"');
+    // The neutral placeholder centres the white brand mark, inlined as a data URI.
+    expect(body).toContain('<image href="data:image/png;base64,');
   });
 });

@@ -54,13 +54,13 @@ function Breadcrumb({ rangeName, name }: { rangeName: string; name: string }) {
   return (
     <div className="bg-ink border-b border-[#2a2a2a]">
       <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-4 font-body text-[14px] text-[#8a8a8a] max-nav:px-5 max-nav:py-3.5">
-        <a href="/" className="text-[#8a8a8a] no-underline hover:text-white">
+        <Link to="/" className="text-[#8a8a8a] no-underline hover:text-white">
           Home
-        </a>
+        </Link>
         <span>/</span>
-        <a href="/products" className="text-[#8a8a8a] no-underline hover:text-white">
+        <Link to="/products" className="text-[#8a8a8a] no-underline hover:text-white">
           Products
-        </a>
+        </Link>
         <span>/</span>
         <span className="text-yellow">{rangeName}</span>
         <span>/</span>
@@ -137,13 +137,13 @@ function Hero({ detail }: { detail: ProductDetail }) {
           ) : null}
 
           <div className="mt-auto flex flex-wrap gap-3.5">
-            <a
-              href="/contact"
+            <Link
+              to="/contact"
               className="flex items-center gap-3 bg-gold px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-yellow"
             >
               Contact Us
               <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />
-            </a>
+            </Link>
             <a
               href="tel:+27128190131"
               className="flex items-center border-2 border-ink bg-transparent px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-ink hover:text-white"

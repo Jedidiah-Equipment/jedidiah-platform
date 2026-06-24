@@ -55,7 +55,7 @@ function FilterChip({ active, label, search }: { active: boolean; label: string;
     <Link
       to="/products"
       search={search}
-      className={`border-[1.5px] px-5 py-[9px] font-display text-[15px] font-semibold uppercase tracking-[1px] no-underline transition-colors ${
+      className={`border-[1.5px] px-3.5 py-[9px] font-display text-[15px] font-semibold uppercase tracking-[1px] no-underline transition-colors ${
         active ? 'border-ink bg-ink text-white' : 'border-[#d6d4ce] bg-white text-ink hover:border-ink'
       }`}
     >
@@ -67,7 +67,7 @@ function FilterChip({ active, label, search }: { active: boolean; label: string;
 function FilterBar({ activeSlug, groups }: { activeSlug: string | undefined; groups: CatalogGroup[] }) {
   return (
     <div className="sticky top-[76px] z-30 border-b border-line bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] max-nav:top-16">
-      <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-3.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
+      <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2.5 px-12 py-[18px] max-nav:px-5 max-nav:py-3.5">
         <span className="mr-1.5 font-display text-[13px] font-semibold uppercase tracking-[2px] text-[#999]">
           Filter by range
         </span>

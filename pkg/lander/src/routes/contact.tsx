@@ -1,9 +1,10 @@
-import { IconArrowRight, IconCheck, IconMail, IconMapPin, IconPhone } from '@tabler/icons-react';
+import { IconArrowRight, IconCheck, IconChevronDown, IconMail, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
 import { captureEvent } from '../lib/analytics.js';
 import { seoHead } from '../lib/seo.js';
+import { getRangeOptions } from '../server/catalog/ranges.js';
 
 export const Route = createFileRoute('/contact')({
   head: () =>
@@ -13,10 +14,9 @@ export const Route = createFileRoute('/contact')({
         'Get in touch with Jedidiah Equipment. Call, email or WhatsApp us, or send an enquiry and our team will get back to you.',
       path: '/contact',
     }),
+  loader: async () => ({ equipmentOptions: await getRangeOptions() }),
   component: ContactPage,
 });
-
-const EQUIPMENT_OPTIONS = ['Crosshaul (Trailers)', 'Recharge (Tanks)', 'Silage & Grain', 'Planting', 'Not sure yet'];
 
 const FIELD_CLASS =
   'w-full border-[1.5px] border-[#d9d7d1] bg-cream px-[15px] py-[13px] font-body text-[16px] text-ink outline-none focus:border-gold';
@@ -65,7 +65,7 @@ function SentState() {
   );
 }
 
-function EnquiryForm() {
+function EnquiryForm({ equipmentOptions }: { equipmentOptions: string[] }) {
   const [status, setStatus] = useState<FormStatus>('idle');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -142,12 +142,26 @@ function EnquiryForm() {
             <label htmlFor="contact-equipment" className={LABEL_CLASS}>
               Equipment of Interest
             </label>
-            <select id="contact-equipment" name="equipment" defaultValue="" className={FIELD_CLASS}>
-              <option value="">Select equipment (optional)</option>
-              {EQUIPMENT_OPTIONS.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id="contact-equipment"
+                name="equipment"
+                defaultValue=""
+                className={`${FIELD_CLASS} appearance-none pr-11`}
+              >
+                <option value="">Select equipment (optional)</option>
+                {equipmentOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+                <option>Not sure yet</option>
+              </select>
+              <IconChevronDown
+                className="pointer-events-none absolute top-1/2 right-[15px] -translate-y-1/2 text-[#888]"
+                size={18}
+                stroke={2}
+                aria-hidden="true"
+              />
+            </div>
           </div>
         </div>
         <div className="mb-7">
@@ -286,12 +300,14 @@ function MapStrip() {
 }
 
 function ContactPage() {
+  const { equipmentOptions } = Route.useLoaderData();
+
   return (
     <main className="bg-sand">
       <Header />
       <section className="mx-auto grid max-w-[1320px] grid-cols-[1.25fr_1fr] items-start gap-14 px-12 pt-18 pb-22 max-nav:grid-cols-1 max-nav:gap-7 max-nav:px-5 max-nav:py-11">
         <div className="border border-line bg-white px-11 pt-11 pb-12 shadow-[0_1px_3px_rgba(0,0,0,0.06)] max-nav:px-[22px] max-nav:pt-7 max-nav:pb-8">
-          <EnquiryForm />
+          <EnquiryForm equipmentOptions={equipmentOptions} />
         </div>
         <ContactInfo />
       </section>

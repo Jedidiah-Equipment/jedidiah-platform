@@ -9,7 +9,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-
+import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/components/catalog/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { useAppForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -285,11 +285,18 @@ const CreateProductRangeForm: React.FC<CreateProductRangeFormProps> = ({ onClose
       }}
     >
       <FieldGroup>
-        <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
+        <form.AppField name="name">
+          {(field) => (
+            <field.TextField
+              autoComplete="off"
+              label={<FieldUsageLabel usage={PRODUCT_RANGE_FIELD_USAGE.name}>Name</FieldUsageLabel>}
+            />
+          )}
+        </form.AppField>
         <form.AppField name="description">
           {(field) => (
             <field.TextareaField
-              label="Description"
+              label={<FieldUsageLabel usage={PRODUCT_RANGE_FIELD_USAGE.description}>Description</FieldUsageLabel>}
               placeholder="Short marketing blurb shown on the public site."
               rows={4}
             />

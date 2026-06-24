@@ -1,7 +1,7 @@
 import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
 
-import { test } from '../test/tester.js';
+import { test } from '../../test/tester.js';
 import { HIGHLIGHT_PLACEHOLDERS, loadProductDetail } from './product-detail-data.js';
 
 type Db = Parameters<typeof loadProductDetail>[0];
@@ -83,6 +83,11 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
   expect(detail?.tagline).toBe('Built for high-volume haulage.');
   expect(detail?.description).toBe('Flagship 14-ton tipping trailer.');
   expect(detail?.imageUrl).toBe(`/images/products/${product.id}`);
+  expect(detail?.galleryImages).toEqual([
+    { slot: 'primary', imageUrl: `/images/products/${product.id}` },
+    { slot: 'secondary1', imageUrl: `/images/products/${product.id}?slot=secondary1` },
+    { slot: 'secondary2', imageUrl: `/images/products/${product.id}?slot=secondary2` },
+  ]);
   expect(detail?.keyFeatures).toEqual(['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping']);
   expect(detail?.highlights).toEqual(HIGHLIGHT_PLACEHOLDERS);
 });

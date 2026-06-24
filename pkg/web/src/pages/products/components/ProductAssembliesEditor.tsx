@@ -5,6 +5,7 @@ import { formatCurrency } from '@pkg/domain';
 import { type AssemblyInput, AssemblyName, type Part, Price, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import { CreatableComboboxField, CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
@@ -243,7 +244,9 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle>
+          <FieldUsageLabel usage={PRODUCT_FIELD_USAGE.assemblies}>{title}</FieldUsageLabel>
+        </CardTitle>
         <CardDescription>{description}</CardDescription>
         <CardAction>
           <Button type="button" variant="outline" onClick={onAdd}>
@@ -455,7 +458,7 @@ const AssemblyNameField: React.FC<AssemblyNameFieldProps> = ({ assemblyNames, in
         <CreatableComboboxField
           creatable={false}
           emptyMessage="No matching assembly names."
-          label="Name"
+          label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.assemblies}>Name</FieldUsageLabel>}
           options={getEligibleAssemblyNames(assemblyNames, excludedNames)}
           placeholder="Assembly name"
         />

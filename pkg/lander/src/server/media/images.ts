@@ -9,11 +9,9 @@ import {
   type StoredObject,
 } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { UUID } from '@pkg/schema';
+import { ProductImageSlot, type ProductImageSlot as ProductImageSlotName, UUID } from '@pkg/schema';
 
-// The Product image slot the Lander surfaces as a Product's lead image. The other slots are detail imagery
-// that this public site does not render.
-const LEAD_IMAGE_SLOT = 'primary' as const;
+const DEFAULT_PRODUCT_IMAGE_SLOT: ProductImageSlotName = 'primary';
 
 // Read a Range's presentation image, or null when there is nothing to show. "Nothing to show" covers an
 // unknown/malformed id, a Range with no image set, and a stored reference whose object is gone — all of
@@ -35,20 +33,23 @@ export async function readRangeImage(storage: StorageAdapter, db: Db, rangeId: s
   }
 }
 
-// Read a Product's `primary` image, the lead image the Lander shows, or null when there is nothing to
-// show (see readRangeImage).
-export async function readProductLeadImage(
+// Read a Product image slot, or null when there is nothing to show (see readRangeImage). Invalid slot
+// input falls back to `primary` so the public image endpoint remains forgiving for crawlers and caches.
+export async function readProductImageSlot(
   storage: StorageAdapter,
   db: Db,
   productId: string,
+  requestedSlot?: string | null,
 ): Promise<StoredObject | null> {
   const parsed = UUID.safeParse(productId);
   if (!parsed.success) {
     return null;
   }
 
+  const slot = parseProductImageSlot(requestedSlot);
+
   try {
-    return await readProductImage({ db, productId: parsed.data, slot: LEAD_IMAGE_SLOT, storage });
+    return await readProductImage({ db, productId: parsed.data, slot, storage });
   } catch (error) {
     if (isMissingImageError(error)) {
       return null;
@@ -56,6 +57,12 @@ export async function readProductLeadImage(
 
     throw error;
   }
+}
+
+function parseProductImageSlot(requestedSlot: string | null | undefined): ProductImageSlotName {
+  const parsed = ProductImageSlot.safeParse(requestedSlot);
+
+  return parsed.success ? parsed.data : DEFAULT_PRODUCT_IMAGE_SLOT;
 }
 
 function isMissingImageError(error: unknown): boolean {

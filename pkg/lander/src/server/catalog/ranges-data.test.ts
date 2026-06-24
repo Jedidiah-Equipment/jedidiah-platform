@@ -1,7 +1,7 @@
 import { productRanges } from '@pkg/db';
 import { expect } from 'vitest';
 
-import { test } from '../test/tester.js';
+import { test } from '../../test/tester.js';
 import { loadHomeRanges } from './ranges-data.js';
 
 test('loadHomeRanges returns Range name, blurb, and Products href from the database', async ({ db }) => {

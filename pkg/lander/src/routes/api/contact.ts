@@ -6,7 +6,7 @@ export const Route = createFileRoute('/api/contact')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { handleContactRequest } = await import('../../server/contact-handlers.js');
+        const { handleContactRequest } = await import('../../server/contact/contact-handlers.js');
 
         return handleContactRequest(request);
       },

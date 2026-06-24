@@ -1,4 +1,4 @@
-import { getDb } from './db.js';
+import { getDb } from '../runtime/db.js';
 import { listSitemapPaths, renderSitemap } from './sitemap-data.js';
 
 // A generated sitemap converges quickly after a catalog change, so a short shared cache softens repeat

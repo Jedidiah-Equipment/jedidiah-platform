@@ -1,8 +1,8 @@
 import { productRanges, products } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
-import { SITE_URL } from '../lib/seo.js';
-import { test } from '../test/tester.js';
+import { SITE_URL } from '../../lib/seo.js';
+import { test } from '../../test/tester.js';
 import { listSitemapPaths, renderSitemap, SITEMAP_STATIC_PATHS } from './sitemap-data.js';
 
 test('listSitemapPaths returns the static pages plus every Product detail URL', async ({ db }) => {

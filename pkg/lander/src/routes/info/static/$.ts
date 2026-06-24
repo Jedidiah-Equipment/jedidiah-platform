@@ -6,7 +6,7 @@ export const Route = createFileRoute('/info/static/$')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const { proxyPosthogAssets } = await import('../../../server/posthog-proxy.js');
+        const { proxyPosthogAssets } = await import('../../../server/analytics/posthog-proxy.js');
 
         return proxyPosthogAssets(request);
       },

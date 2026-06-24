@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { useRef } from 'react';
 import { toast } from 'sonner';
+import { type FieldUsage, FieldUsageLabel } from '@/components/catalog/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Field, FieldLabel } from '@/components/ui/field.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -24,6 +25,7 @@ type ProductImageSlotTileProps = {
   label: string;
   productId: UUID;
   slot: ProductImageSlot;
+  usage: FieldUsage;
 };
 
 // One product image slot: a credentialed preview plus an upload-in-place button. The upload replaces the
@@ -35,6 +37,7 @@ export const ProductImageSlotTile: React.FC<ProductImageSlotTileProps> = ({
   label,
   productId,
   slot,
+  usage,
 }) => {
   const spec = PRODUCT_IMAGE_SLOT_SPECS[slot];
   const { invalidateProducts } = useQueryInvalidation();
@@ -62,7 +65,9 @@ export const ProductImageSlotTile: React.FC<ProductImageSlotTileProps> = ({
   return (
     <Field className="rounded-lg border p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <FieldLabel>{label}</FieldLabel>
+        <FieldLabel>
+          <FieldUsageLabel usage={usage}>{label}</FieldUsageLabel>
+        </FieldLabel>
         <span className="text-muted-foreground text-xs">
           {spec.recommendedWidth}×{spec.recommendedHeight}px
         </span>

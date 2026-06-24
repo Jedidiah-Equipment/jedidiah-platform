@@ -2,7 +2,7 @@ import { EmailAddress, requiredTrimmedText } from '@pkg/schema';
 import { Resend } from 'resend';
 import { z } from 'zod';
 
-import { getLanderConfig } from './env.js';
+import { getLanderConfig } from '../runtime/env.js';
 
 // The enquiry form payload. Name, email, and message are required; phone and equipment are optional
 // context. Lengths are capped so a malformed or abusive body is rejected before any Resend call.

@@ -3,7 +3,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-import { getLanderConfig } from './src/server/env.js';
+import { getLanderConfig } from './src/server/runtime/env.js';
 
 export default defineConfig({
   resolve: {

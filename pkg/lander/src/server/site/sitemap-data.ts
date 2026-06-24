@@ -1,6 +1,6 @@
 import type { Db } from '@pkg/db';
 
-import { SITE_URL } from '../lib/seo.js';
+import { SITE_URL } from '../../lib/seo.js';
 
 // The crawlable static pages, in nav order. Product detail URLs are appended from live data.
 export const SITEMAP_STATIC_PATHS = ['/', '/products', '/about', '/contact'] as const;

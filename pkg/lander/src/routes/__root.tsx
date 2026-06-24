@@ -1,3 +1,4 @@
+import faviconUrl from '@pkg/domain/assets/brand/jedidiah-favicon-yellow.png';
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
@@ -37,6 +38,7 @@ export const Route = createRootRoute({
       { name: 'twitter:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
     ],
     links: [
+      { rel: 'icon', type: 'image/png', href: faviconUrl },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
       {

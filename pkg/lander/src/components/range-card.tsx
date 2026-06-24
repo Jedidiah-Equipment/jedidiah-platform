@@ -1,11 +1,12 @@
 import { IconArrowRight } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 
 import type { HomeRange } from '../server/catalog/ranges-data.js';
 
 export function RangeCard({ range }: { range: HomeRange }) {
   return (
-    <a
-      href={range.href}
+    <Link
+      to={range.href}
       className="group flex flex-col border border-line bg-white no-underline shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1.5 hover:border-gold hover:shadow-[0_18px_40px_rgba(0,0,0,0.16)]"
     >
       <div className="relative aspect-[16/11] overflow-hidden bg-ink">
@@ -31,6 +32,6 @@ export function RangeCard({ range }: { range: HomeRange }) {
           aria-hidden="true"
         />
       </div>
-    </a>
+    </Link>
   );
 }

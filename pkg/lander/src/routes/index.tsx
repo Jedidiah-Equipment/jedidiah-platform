@@ -1,5 +1,5 @@
 import { IconArrowRight } from '@tabler/icons-react';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 
 import { FeatureBar } from '../components/feature-bar.js';
 import { RangeCard } from '../components/range-card.js';
@@ -48,18 +48,18 @@ function Hero() {
             Heavy-duty agricultural equipment engineered to perform in South African conditions.
           </p>
           <div className="flex flex-wrap gap-4">
-            <a
-              href="/contact"
+            <Link
+              to="/contact"
               className="flex items-center gap-3.5 bg-yellow px-8 py-[18px] font-display text-[19px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
             >
               Contact Us <ArrowIcon className="text-ink" />
-            </a>
-            <a
-              href="/products"
+            </Link>
+            <Link
+              to="/products"
               className="flex items-center border-2 border-white/[0.55] bg-transparent px-8 py-[18px] font-display text-[19px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:border-yellow hover:text-yellow"
             >
               View Equipment Range
-            </a>
+            </Link>
           </div>
         </div>
         <div className="mt-[88px] max-nav:mt-12">
@@ -86,12 +86,12 @@ function EquipmentRanges({ ranges }: { ranges: Awaited<ReturnType<typeof getHome
               Our Equipment Ranges
             </h2>
           </div>
-          <a
-            href="/products"
+          <Link
+            to="/products"
             className="flex items-center gap-3.5 bg-ink px-[26px] py-[15px] font-display text-[16px] font-bold uppercase tracking-[1.5px] text-white no-underline transition-colors hover:bg-black"
           >
             View All Products <ArrowIcon className="text-yellow" />
-          </a>
+          </Link>
         </div>
 
         {ranges.length > 0 ? (
@@ -118,12 +118,12 @@ function CtaBand() {
             Tell us about your operation and we'll match you with the right equipment.
           </p>
         </div>
-        <a
-          href="/contact"
+        <Link
+          to="/contact"
           className="flex flex-none items-center gap-3.5 bg-yellow px-[38px] py-5 font-display text-[20px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
         >
           Contact Us <ArrowIcon className="text-ink" />
-        </a>
+        </Link>
       </div>
     </section>
   );

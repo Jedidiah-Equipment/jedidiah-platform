@@ -1,4 +1,5 @@
 import { IconArrowRight } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 
 import type { CatalogProduct } from '../server/catalog/products-data.js';
 
@@ -6,8 +7,9 @@ import type { CatalogProduct } from '../server/catalog/products-data.js';
 // streams the brochure hero or a neutral brand placeholder, so the image never renders broken.
 export function ProductCard({ product }: { product: CatalogProduct }) {
   return (
-    <a
-      href={product.href}
+    <Link
+      to="/products/$modelCode"
+      params={{ modelCode: product.modelCode }}
       className="group flex flex-col border border-line bg-white no-underline shadow-[0_1px_3px_rgba(0,0,0,0.07)] transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1.5 hover:border-gold hover:shadow-[0_14px_34px_rgba(0,0,0,0.14)]"
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-ink">
@@ -38,6 +40,6 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
           />
         </span>
       </div>
-    </a>
+    </Link>
   );
 }

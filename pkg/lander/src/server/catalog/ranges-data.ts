@@ -5,7 +5,8 @@ export type HomeRange = {
   id: string;
   name: string;
   description: string;
-  href: string;
+  // Typed as the literal route so range cards can navigate via the router's <Link> with full type safety.
+  href: '/products';
   imageUrl: string;
 };
 

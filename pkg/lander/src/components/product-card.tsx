@@ -10,7 +10,7 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
     // The <Link> is the (stationary) hover target; the lift lives on the inner card. Transforming the link
     // itself would slide its bottom edge out from under the cursor and flicker the hover on/off.
     <Link to="/products/$modelCode" params={{ modelCode: product.modelCode }} className="group block no-underline">
-      <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07)] transition-[transform,box-shadow,border-color] duration-[450ms] ease-in-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_14px_34px_rgba(0,0,0,0.14)]">
+      <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07)] transition-[translate,box-shadow,border-color] duration-[450ms] ease-in-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_14px_34px_rgba(0,0,0,0.14)]">
         <div className="relative aspect-[16/10] overflow-hidden bg-ink">
           <img
             src={product.imageUrl}

@@ -8,7 +8,7 @@ export function RangeCard({ range }: { range: HomeRange }) {
     // The <Link> is the (stationary) hover target; the lift lives on the inner card so its moving edge never
     // slides out from under the cursor and flickers the hover on/off.
     <Link to={range.href} className="group block no-underline">
-      <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[transform,box-shadow,border-color] duration-[450ms] ease-in-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
+      <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[translate,box-shadow,border-color] duration-[450ms] ease-in-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_18px_40px_rgba(0,0,0,0.16)]">
         <div className="relative aspect-[16/11] overflow-hidden bg-ink">
           {/* The image route streams the real Range image or a neutral brand placeholder, so this never
               renders broken. */}

@@ -268,8 +268,8 @@ run_up() {
 
   write_env_files "$slot"
   echo
-  pnpm db:up
-  pnpm db:up:template
+  pnpm compose:up
+  pnpm --filter @pkg/db db:up:template
   pnpm db:migrate
   pnpm db:seed
 }

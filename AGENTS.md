@@ -9,7 +9,7 @@
 
 - Schema changes: run `pnpm db:generate`, review and commit generated SQL in `pkg/db/migrations`, then run `pnpm db:migrate`.
 - Run `pnpm db:up:template` after schema or seed changes, or when DB-backed tests fail with stale-schema errors.
-- `pnpm db:reset` drops Docker volumes. Confirm before running it unless the user explicitly approved a full reset.
+- `pnpm db:up` drops Docker volumes. Confirm before running it unless the user explicitly approved a full reset.
 - `pnpm db:seed` loads `pkg/seed/data/staging-snapshot`; every seeded user logs in with the shared password `test123` (see `pkg/seed/AGENTS.md`). Regenerate the snapshot from staging with `STAGING_DATABASE_URL=… pnpm --filter @pkg/seed seed:read`.
 
 ## Parallel slot environments

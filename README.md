@@ -43,7 +43,6 @@ The repo is strict about Node 24 through `.node-version`, `.nvmrc`, and `package
 ```sh
 pnpm install
 pnpm db:up
-pnpm db:migrate
 pnpm db:up:template
 ```
 
@@ -91,7 +90,6 @@ Database commands:
 
 ```sh
 pnpm db:up
-pnpm db:reset
 pnpm db:up:template
 pnpm db:generate
 pnpm db:migrate
@@ -109,8 +107,8 @@ database is `jedidiah_template`. Integration tests clone `jedidiah_template` int
 ephemeral databases and keep those clone URLs in memory only. Recreate the template with
 `pnpm db:up:template`.
 
-Use `pnpm db:reset` to stop Docker Compose, delete the local Postgres volume, and start a fresh
-Postgres container. This wipes local database data.
+Use `pnpm db:up` to stop Docker Compose, delete the local Postgres volume, start a fresh Postgres
+container, migrate, and seed. This wipes local database data.
 
 Use `pnpm parallel:up` when this checkout needs an isolated local slot. It writes generated ignored
 env blocks for the next Docker-free slot, starts that slot's Docker stack, migrates, and seeds it.

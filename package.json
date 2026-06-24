@@ -7,7 +7,8 @@
   },
   "scripts": {
     "dev": "turbo run dev",
-    "dev:kill": "sh scripts/kill-dev-services.sh",
+    "dev:kill": "sh scripts/kill-dev-services.sh --current",
+    "dev:kill:all": "sh scripts/kill-dev-services.sh",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
@@ -25,7 +26,7 @@
     "update-package-versions": "pnpm up --recursive --interactive",
     "verify": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
     "wt:up": "sh scripts/worktree-setup.sh",
-    "wt:down": "sh -c 'if [ -f .env.dev ]; then docker compose --env-file .env.dev down -v; else docker compose down -v; fi'"
+    "wt:down": "pnpm dev:kill && sh -c 'if [ -f .env.dev ]; then docker compose --env-file .env.dev down -v; else docker compose down -v; fi'"
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",

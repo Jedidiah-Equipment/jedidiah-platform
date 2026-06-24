@@ -136,10 +136,21 @@
       "problemMatcher": []
     },
     {
-      "label": "Kill Dev Services",
+      "label": "Kill Services",
       "type": "shell",
       "command": "pnpm",
       "args": ["dev:kill"],
+      "icon": {
+        "id": "debug-stop",
+        "color": "terminal.ansiRed"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Kill All Services",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["dev:kill:all"],
       "icon": {
         "id": "debug-stop",
         "color": "terminal.ansiRed"

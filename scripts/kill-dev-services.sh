@@ -8,28 +8,33 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 DRY_RUN=0
+CURRENT_ONLY=0
 
 if [ "${1:-}" = "--" ]; then
   shift
 fi
 
-case "${1:-}" in
-  "" ) ;;
-  --dry-run ) DRY_RUN=1 ;;
-  -h | --help )
-    cat <<EOF
-Usage: sh scripts/kill-dev-services.sh [--dry-run]
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --current ) CURRENT_ONLY=1 ;;
+    --dry-run ) DRY_RUN=1 ;;
+    -h | --help )
+      cat <<EOF
+Usage: sh scripts/kill-dev-services.sh [--current] [--dry-run]
 
 Stops pnpm dev services across the main checkout and all linked worktrees.
+Use --current to target only this checkout.
 EOF
-    exit 0
-    ;;
-  * )
-    echo "Unknown option: $1" >&2
-    echo "Usage: sh scripts/kill-dev-services.sh [--dry-run]" >&2
-    exit 2
-    ;;
-esac
+      exit 0
+      ;;
+    * )
+      echo "Unknown option: $1" >&2
+      echo "Usage: sh scripts/kill-dev-services.sh [--current] [--dry-run]" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
 
 WORKTREES=$(mktemp)
 PORTS=$(mktemp)
@@ -37,7 +42,9 @@ MATCHED=$(mktemp)
 PGIDS=$(mktemp)
 trap 'rm -f "$WORKTREES" "$PORTS" "$MATCHED" "$PGIDS"' EXIT INT HUP TERM
 
-if git -C "$ROOT" worktree list --porcelain >/dev/null 2>&1; then
+if [ "$CURRENT_ONLY" -eq 1 ]; then
+  printf '%s\n' "$ROOT" > "$WORKTREES"
+elif git -C "$ROOT" worktree list --porcelain >/dev/null 2>&1; then
   git -C "$ROOT" worktree list --porcelain | awk '/^worktree / { print substr($0, 10) }' > "$WORKTREES"
 else
   printf '%s\n' "$ROOT" > "$WORKTREES"
@@ -125,7 +132,11 @@ sort -un "$PGIDS" | awk -v self="$self_pgid" '$1 != "" && $1 != self' > "$PGIDS.
 mv "$PGIDS.sorted" "$PGIDS"
 
 if [ ! -s "$PGIDS" ]; then
-  echo "No pnpm dev services found for this repo's main checkout or worktrees."
+  if [ "$CURRENT_ONLY" -eq 1 ]; then
+    echo "No pnpm dev services found for this checkout."
+  else
+    echo "No pnpm dev services found for this repo's main checkout or worktrees."
+  fi
   exit 0
 fi
 
@@ -152,4 +163,8 @@ while IFS= read -r pgid; do
   fi
 done < "$PGIDS"
 
-echo "Stopped pnpm dev services across main and linked worktrees."
+if [ "$CURRENT_ONLY" -eq 1 ]; then
+  echo "Stopped pnpm dev services for this checkout."
+else
+  echo "Stopped pnpm dev services across main and linked worktrees."
+fi

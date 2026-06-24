@@ -7,7 +7,7 @@ export const Route = createFileRoute('/images/products/$productId')({
   server: {
     handlers: {
       GET: async ({ params, request }) => {
-        const { serveProductImage } = await import('../../../server/image-handlers.js');
+        const { serveProductImage } = await import('../../../server/media/image-handlers.js');
         const slot = new URL(request.url).searchParams.get('slot');
 
         return serveProductImage(params.productId, slot);

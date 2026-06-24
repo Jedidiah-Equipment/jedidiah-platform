@@ -1,7 +1,7 @@
-import { getDb } from './db.js';
+import { getDb } from '../runtime/db.js';
+import { getStorage } from '../runtime/storage.js';
 import { imageResponse } from './image-response.js';
 import { readProductImageSlot, readRangeImage } from './images.js';
-import { getStorage } from './storage.js';
 
 // Server-only orchestration shared by the public image routes: resolve the lazy DB + storage clients,
 // read the bytes through the core services, and stream them (or the placeholder) back. Kept out of the

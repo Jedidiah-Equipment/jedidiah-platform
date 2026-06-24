@@ -1,6 +1,6 @@
 import { IconArrowRight } from '@tabler/icons-react';
 
-import type { HomeRange } from '../server/ranges-data.js';
+import type { HomeRange } from '../server/catalog/ranges-data.js';
 
 export function RangeCard({ range }: { range: HomeRange }) {
   return (

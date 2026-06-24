@@ -2,8 +2,8 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 
 import { ProductCard } from '../../components/product-card.js';
 import { seoHead } from '../../lib/seo.js';
-import { getProductsCatalog } from '../../server/products.js';
-import type { CatalogGroup } from '../../server/products-data.js';
+import { getProductsCatalog } from '../../server/catalog/products.js';
+import type { CatalogGroup } from '../../server/catalog/products-data.js';
 
 type ProductsSearch = { range?: string };
 

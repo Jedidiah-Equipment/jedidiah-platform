@@ -7,12 +7,12 @@ export const Route = createFileRoute('/info/$')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const { proxyPosthogIngest } = await import('../../server/posthog-proxy.js');
+        const { proxyPosthogIngest } = await import('../../server/analytics/posthog-proxy.js');
 
         return proxyPosthogIngest(request);
       },
       POST: async ({ request }) => {
-        const { proxyPosthogIngest } = await import('../../server/posthog-proxy.js');
+        const { proxyPosthogIngest } = await import('../../server/analytics/posthog-proxy.js');
 
         return proxyPosthogIngest(request);
       },

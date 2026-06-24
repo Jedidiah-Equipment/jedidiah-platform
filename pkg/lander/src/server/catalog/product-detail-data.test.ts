@@ -1,7 +1,7 @@
 import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
 
-import { test } from '../test/tester.js';
+import { test } from '../../test/tester.js';
 import { HIGHLIGHT_PLACEHOLDERS, loadProductDetail } from './product-detail-data.js';
 
 type Db = Parameters<typeof loadProductDetail>[0];

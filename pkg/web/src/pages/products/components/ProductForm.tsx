@@ -84,6 +84,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                       />
                     )}
                   </form.AppField>
+                  <form.AppField name="category">
+                    {(field) => (
+                      <field.TextField
+                        autoComplete="off"
+                        label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.category}>Category</FieldUsageLabel>}
+                        placeholder="Silage & Grain"
+                      />
+                    )}
+                  </form.AppField>
                   <form.AppField name="basePrice">
                     {(field) => (
                       <field.CurrencyField
@@ -117,16 +126,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                       )}
                     </form.AppField>
                   </EditFormFullWidth>
-                  <form.AppField name="category">
-                    {(field) => (
-                      <field.TextField
-                        autoComplete="off"
-                        description="The category line shown under the title, e.g. “Silage & Grain”."
-                        label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.category}>Category</FieldUsageLabel>}
-                        placeholder="Silage & Grain"
-                      />
-                    )}
-                  </form.AppField>
                 </EditFormGrid>
               </CardContent>
             </Card>

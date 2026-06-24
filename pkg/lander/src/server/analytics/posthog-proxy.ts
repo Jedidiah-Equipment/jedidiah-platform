@@ -1,6 +1,6 @@
 import { POSTHOG_ASSET_HOST, POSTHOG_INGEST_HOST } from '@pkg/schema';
 
-import { resolvePosthogToken } from '../lib/analytics-config.js';
+import { resolvePosthogToken } from '../../lib/analytics-config.js';
 
 // The Lander reverse-proxies PostHog under a same-origin `/info` prefix (mirroring @pkg/web): ingestion
 // traffic (`/info/e/`, `/info/flags/`, `/info/array/<token>/config`) forwards to the ingest host, and

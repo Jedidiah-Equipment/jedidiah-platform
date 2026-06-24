@@ -136,6 +136,17 @@
       "problemMatcher": []
     },
     {
+      "label": "Kill Dev Services",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["dev:kill"],
+      "icon": {
+        "id": "debug-stop",
+        "color": "terminal.ansiRed"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Database Seed",
       "type": "shell",
       "command": "pnpm",

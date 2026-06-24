@@ -2,7 +2,7 @@ import { type StorageAdapter, StorageObjectNotFoundError, type StoredObject } fr
 import { productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
 
-import { test } from '../test/tester.js';
+import { test } from '../../test/tester.js';
 import { readProductImageSlot, readRangeImage } from './images.js';
 
 async function* bytesOf(payload: Uint8Array): AsyncIterable<Uint8Array> {

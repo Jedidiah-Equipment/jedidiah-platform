@@ -7,8 +7,8 @@ import {
 import { renderBrochurePdf } from '@pkg/pdf';
 import { UUID } from '@pkg/schema';
 
-import { getDb } from './db.js';
-import { getStorage } from './storage.js';
+import { getDb } from '../runtime/db.js';
+import { getStorage } from '../runtime/storage.js';
 
 // The brochure PDF is generated on demand from the Product's live config, so a config edit converges
 // quickly. A short shared cache softens repeat hits without pinning stale bytes.

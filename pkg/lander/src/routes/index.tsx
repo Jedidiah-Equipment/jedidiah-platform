@@ -4,7 +4,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { FeatureBar } from '../components/feature-bar.js';
 import { RangeCard } from '../components/range-card.js';
 import { seoHead } from '../lib/seo.js';
-import { getHomeRanges } from '../server/ranges.js';
+import { getHomeRanges } from '../server/catalog/ranges.js';
 
 export const Route = createFileRoute('/')({
   head: () =>

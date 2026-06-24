@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { SITE_URL } from '../lib/seo.js';
+import { SITE_URL } from '../../lib/seo.js';
 import { renderRobots } from './robots.js';
 import { isSiteIndexable } from './site-indexable.js';
 

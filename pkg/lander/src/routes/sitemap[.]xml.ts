@@ -6,7 +6,7 @@ export const Route = createFileRoute('/sitemap.xml')({
   server: {
     handlers: {
       GET: async () => {
-        const { serveSitemap } = await import('../server/sitemap.js');
+        const { serveSitemap } = await import('../server/site/sitemap.js');
 
         return serveSitemap();
       },

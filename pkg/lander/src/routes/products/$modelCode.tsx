@@ -11,8 +11,8 @@ import { useEffect, useState } from 'react';
 import { ProductCard } from '../../components/product-card.js';
 import { captureEvent } from '../../lib/analytics.js';
 import { seoHead, truncateDescription } from '../../lib/seo.js';
-import { getProductDetail } from '../../server/product-detail.js';
-import type { ProductDetail, ProductHighlight } from '../../server/product-detail-data.js';
+import { getProductDetail } from '../../server/catalog/product-detail.js';
+import type { ProductDetail, ProductHighlight } from '../../server/catalog/product-detail-data.js';
 
 export const Route = createFileRoute('/products/$modelCode')({
   loader: async ({ params }) => {

@@ -1,4 +1,4 @@
-import { SITE_URL } from '../lib/seo.js';
+import { SITE_URL } from '../../lib/seo.js';
 import { isSiteIndexable } from './site-indexable.js';
 
 // Production invites every crawler and advertises the sitemap. Every other environment (staging,

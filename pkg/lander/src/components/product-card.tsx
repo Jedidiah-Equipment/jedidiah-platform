@@ -10,13 +10,13 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
     // The <Link> is the (stationary) hover target; the lift lives on the inner card. Transforming the link
     // itself would slide its bottom edge out from under the cursor and flicker the hover on/off.
     <Link to="/products/$modelCode" params={{ modelCode: product.modelCode }} className="group block no-underline">
-      <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07)] transition-[transform,box-shadow,border-color] duration-[450ms] ease-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_14px_34px_rgba(0,0,0,0.14)]">
+      <div className="flex h-full flex-col border border-line bg-white shadow-[0_1px_3px_rgba(0,0,0,0.07)] transition-[transform,box-shadow,border-color] duration-[450ms] ease-in-out group-hover:-translate-y-1.5 group-hover:border-gold group-hover:shadow-[0_14px_34px_rgba(0,0,0,0.14)]">
         <div className="relative aspect-[16/10] overflow-hidden bg-ink">
           <img
             src={product.imageUrl}
             alt={product.name}
             loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-[450ms] ease-in-out group-hover:scale-[1.05]"
           />
           <span className="absolute top-3.5 left-3.5 bg-yellow px-3 py-[5px] font-display text-[12px] font-bold uppercase tracking-[1.5px] text-ink">
             {product.modelCode}

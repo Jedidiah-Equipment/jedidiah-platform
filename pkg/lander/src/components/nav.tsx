@@ -1,5 +1,6 @@
+import logoUrl from '@pkg/domain/assets/brand/jedidiah-logo.png';
 import { IconMapPin, IconMenu2, IconPhone, IconX } from '@tabler/icons-react';
-import { useRouterState } from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 
 const LINKS = [
@@ -21,22 +22,11 @@ function PinIcon() {
   return <IconMapPin className="text-yellow" size={16} aria-hidden="true" />;
 }
 
-function Logo() {
+function Logo({ onNavigate }: { onNavigate: () => void }) {
   return (
-    <a href="/" className="flex flex-none items-center gap-3 no-underline">
-      <span className="flex flex-col gap-[5px]">
-        <span className="h-[6px] w-[34px] -skew-x-[20deg] bg-yellow" />
-        <span className="h-[6px] w-[22px] -skew-x-[20deg] bg-yellow" />
-      </span>
-      <span className="flex flex-col leading-[0.86]">
-        <span className="font-display text-[30px] font-extrabold italic tracking-[0.5px] text-white max-nav:text-[24px]">
-          JEDIDIAH
-        </span>
-        <span className="text-right font-display text-[13px] font-semibold tracking-[7px] text-[#9a9a9a] max-nav:text-[11px] max-nav:tracking-[5px]">
-          EQUIPMENT
-        </span>
-      </span>
-    </a>
+    <Link to="/" onClick={onNavigate} className="flex flex-none items-center no-underline">
+      <img src={logoUrl} alt="Jedidiah Equipment" className="h-11 w-auto max-nav:h-9" />
+    </Link>
   );
 }
 
@@ -47,22 +37,22 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#2a2a2a] bg-ink">
       <div className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between gap-6 px-12 max-nav:h-16 max-nav:px-5">
-        <Logo />
+        <Logo onNavigate={() => setOpen(false)} />
 
         <nav className="flex flex-none items-center gap-10 max-nav:hidden">
           {LINKS.map((link) => {
             const active = isActive(pathname, link.href);
             return (
-              <a
+              <Link
                 key={link.href}
-                href={link.href}
+                to={link.href}
                 className={`relative py-1.5 font-display text-[18px] font-semibold uppercase tracking-[1px] no-underline transition-colors ${
                   active ? 'text-yellow' : 'text-[#cfcfcf] hover:text-white'
                 }`}
               >
                 {link.label}
                 {active ? <span className="absolute right-0 -bottom-0.5 left-0 h-[3px] bg-yellow" /> : null}
-              </a>
+              </Link>
             );
           })}
         </nav>
@@ -99,15 +89,16 @@ export function Nav() {
             {LINKS.map((link) => {
               const active = isActive(pathname, link.href);
               return (
-                <a
+                <Link
                   key={link.href}
-                  href={link.href}
+                  to={link.href}
+                  onClick={() => setOpen(false)}
                   className={`border-b border-[#2a2a2a] py-[15px] font-display text-[20px] font-semibold uppercase tracking-[1px] no-underline ${
                     active ? 'text-yellow' : 'text-[#cfcfcf]'
                   }`}
                 >
                   {link.label}
-                </a>
+                </Link>
               );
             })}
             <div className="flex flex-col gap-[14px] pt-[18px]">

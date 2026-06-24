@@ -1,5 +1,5 @@
 import { IconArrowRight } from '@tabler/icons-react';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 
 import { seoHead } from '../lib/seo.js';
 
@@ -201,12 +201,12 @@ function CtaBand() {
             Whatever your operation looks like, we'll help you find the right machine for it.
           </p>
         </div>
-        <a
-          href="/contact"
+        <Link
+          to="/contact"
           className="flex flex-none items-center gap-3.5 bg-yellow px-[38px] py-5 font-display text-[20px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
         >
           Contact Us <ArrowIcon />
-        </a>
+        </Link>
       </div>
     </section>
   );

@@ -1,0 +1,4 @@
+interface:
+  display_name: "WT Up"
+  short_description: "Set up an isolated worktree environment"
+  default_prompt: "Use $wt-up to run the repo worktree setup command."

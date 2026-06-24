@@ -9,13 +9,17 @@
 #   A slot is "taken" when another worktree's pkg/db/.env.dev already names its
 #   jedidiah_wt<slot> database; requesting a taken slot suggests a free one.
 #
-# Design (shared Postgres, per-worktree database names):
-#   - One Docker stack (Postgres + MinIO) is shared across all worktrees; run
-#     `pnpm db:up` once from any checkout.
-#   - Each worktree gets its own dev-server ports, its own dev + template
-#     databases, and its own storage bucket prefix.
+# Design (own Docker stack per worktree, static database names):
+#   - Each worktree brings up its OWN Docker stack (Postgres + MinIO) on
+#     slot-specific host ports; run `pnpm db:up` once per worktree. The stack is
+#     namespaced by COMPOSE_PROJECT_NAME, so containers, volumes, and storage
+#     bucket are isolated from every other worktree and the primary checkout.
+#   - Because the stack is private, the database names stay the committed static
+#     defaults (`jedidiah` / `jedidiah_template`); only the host ports differ.
+#   - Each worktree gets its own dev-server ports too.
 #   - Everything lives in gitignored env files the processes read themselves —
 #     no shell sourcing:
+#       * `.env.dev` (repo root)  docker compose stack vars (read by `db:up` via --env-file)
 #       * `<pkg>/.env.dev`   dev/runtime overrides (loaded with override:true in development)
 #       * `<pkg>/.env.test`  test-only TEST_DATABASE_URL (loaded only under NODE_ENV=test)
 #       * `pkg/mobile/.env.local`  Expo Metro port (RCT_METRO_PORT, read by @expo/env)
@@ -27,9 +31,6 @@ set -eu
 # Repo root = parent of this script's directory.
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
-# Shared infra host port (override WT_PG_PORT for a fully isolated per-worktree stack).
-PG_PORT="${WT_PG_PORT:-5432}"
-
 # Refuse to run on the primary checkout — it is slot 0 and keeps committed defaults.
 PRIMARY=$(git -C "$ROOT" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')
 if [ "$ROOT" = "$PRIMARY" ]; then
@@ -39,11 +40,12 @@ if [ "$ROOT" = "$PRIMARY" ]; then
   exit 2
 fi
 
-# Slot a worktree is configured for, read from its pkg/db/.env.dev DB name (empty if none).
+# Slot a worktree is configured for, read from its root .env.dev compose project
+# name (COMPOSE_PROJECT_NAME=jedidiah_wt<slot>); empty if not configured.
 slot_of() {
-  envf="$1/pkg/db/.env.dev"
+  envf="$1/.env.dev"
   [ -f "$envf" ] || return 0
-  sed -n 's#.*jedidiah_wt\([0-9][0-9]*\)_template.*#\1#p' "$envf" | head -1
+  sed -n 's#^COMPOSE_PROJECT_NAME=jedidiah_wt\([0-9][0-9]*\).*#\1#p' "$envf" | head -1
 }
 
 # Slots already claimed by OTHER worktrees (this worktree's own slot stays reusable).
@@ -92,9 +94,14 @@ WEB_PORT=$((BASE + 1))
 API_PORT=$((BASE + 2))
 EXPO_PORT=$((BASE + 3))
 LANDER_PORT=$((BASE + 4))
+PG_PORT=$((BASE + 5))
+MINIO_API_PORT=$((BASE + 6))
+MINIO_CONSOLE_PORT=$((BASE + 7))
 
-DB="jedidiah_wt${SLOT}"
-TEMPLATE="jedidiah_wt${SLOT}_template"
+# Static names: each worktree has its own private Postgres, so the dev + template
+# databases keep the committed defaults; only the host port differs per slot.
+DB="jedidiah"
+TEMPLATE="jedidiah_template"
 DB_HOST="postgres://postgres:postgres@localhost:${PG_PORT}"
 
 BEGIN="# >>> worktree-setup (slot ${SLOT}) — managed, regenerate with scripts/worktree-setup.sh"
@@ -143,7 +150,8 @@ EOF
 
 echo "Configuring worktree as slot ${SLOT}:"
 echo "  web=${WEB_PORT} api=${API_PORT} expo=${EXPO_PORT} lander=${LANDER_PORT}"
-echo "  db=${DB} template=${TEMPLATE} pg=localhost:${PG_PORT} (storage: shared default bucket)"
+echo "  db=${DB} template=${TEMPLATE} pg=localhost:${PG_PORT}"
+echo "  stack=jedidiah_wt${SLOT} minio-api=localhost:${MINIO_API_PORT} minio-console=localhost:${MINIO_CONSOLE_PORT}"
 
 # Best-effort: warn if any of this slot's dev ports are already in use right now.
 if command -v lsof >/dev/null 2>&1; then
@@ -155,6 +163,15 @@ if command -v lsof >/dev/null 2>&1; then
 fi
 echo
 
+# --- docker stack vars (read by `pnpm db:up` via `docker compose --env-file`) -
+# COMPOSE_PROJECT_NAME namespaces this worktree's containers/volumes/bucket;
+# the host-port vars match the placeholders in docker-compose.yml. Existing
+# hand-written lines are preserved.
+write_managed_block "$ROOT/.env.dev" "COMPOSE_PROJECT_NAME=jedidiah_wt${SLOT}
+POSTGRES_HOST_PORT=${PG_PORT}
+MINIO_API_HOST_PORT=${MINIO_API_PORT}
+MINIO_CONSOLE_HOST_PORT=${MINIO_CONSOLE_PORT}"
+
 # --- dev/runtime overrides (loaded by each package in development) -----------
 # web: dev-server port + base URLs (no DB access).
 write_managed_block "$ROOT/pkg/web/.env.dev" "PORT=${WEB_PORT}
@@ -163,17 +180,20 @@ API_BASE_URL=http://localhost:${API_PORT}
 AUTH_BASE_URL=http://localhost:${API_PORT}/api/auth"
 
 # api: port, base URLs, trusted origins (web + api + mobile-web Expo port +
-# native scheme), and dev DB. Storage uses the shared committed default bucket.
-# Existing hand-written lines (real OPENAI/RESEND keys etc.) are preserved.
+# native scheme), dev DB, and this worktree's MinIO endpoint (overrides the
+# committed default of :9000). Existing hand-written lines (real OPENAI/RESEND
+# keys etc.) are preserved.
 write_managed_block "$ROOT/pkg/api/.env.dev" "PORT=${API_PORT}
 APP_BASE_URL=http://localhost:${WEB_PORT}
 API_BASE_URL=http://localhost:${API_PORT}
 AUTH_TRUSTED_ORIGINS=http://localhost:${WEB_PORT},http://localhost:${API_PORT},http://localhost:${EXPO_PORT},jedidiahops://
-DATABASE_URL=${DB_HOST}/${DB}"
+DATABASE_URL=${DB_HOST}/${DB}
+DOCUMENT_STORAGE_ENDPOINT=http://localhost:${MINIO_API_PORT}"
 
-# lander: port + direct DB access (shared default storage bucket).
+# lander: port + direct DB access + this worktree's MinIO endpoint.
 write_managed_block "$ROOT/pkg/lander/.env.dev" "PORT=${LANDER_PORT}
-DATABASE_URL=${DB_HOST}/${DB}"
+DATABASE_URL=${DB_HOST}/${DB}
+DOCUMENT_STORAGE_ENDPOINT=http://localhost:${MINIO_API_PORT}"
 
 # db: dev DB for migrate + seed (seed reads pkg/db/.env.dev), plus the template
 # URL that `db:up:template` reads in development mode (NODE_ENV is unset there, so
@@ -222,9 +242,8 @@ cat <<EOF
 
 Done — no shell sourcing needed. Next steps in this worktree:
 
-  pnpm db:up                            # shared stack — only needed once per machine
+  pnpm db:up                            # bring up THIS worktree's own Docker stack (jedidiah_wt${SLOT})
   pnpm db:up:template                   # build ${TEMPLATE} for this branch's migrations
-  pnpm db:create                        # create the ${DB} dev database
   pnpm db:migrate && pnpm db:seed       # migrate + seed the ${DB} dev database
 
 Then \`pnpm dev\`, \`pnpm test\`, and \`pnpm --filter @pkg/mobile dev\` use slot ${SLOT}'s

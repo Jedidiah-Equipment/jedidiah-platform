@@ -147,6 +147,28 @@
       "problemMatcher": []
     },
     {
+      "label": "Parallel Up",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["parallel:up"],
+      "icon": {
+        "id": "server-process",
+        "color": "terminal.ansiGreen"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Parallel Down",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["parallel:down"],
+      "icon": {
+        "id": "server-process",
+        "color": "terminal.ansiRed"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Kill Services",
       "type": "shell",
       "command": "pnpm",

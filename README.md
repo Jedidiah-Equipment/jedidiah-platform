@@ -98,6 +98,8 @@ pnpm db:migrate
 pnpm db:migrate:test
 pnpm db:seed
 pnpm db:studio
+pnpm parallel:up
+pnpm parallel:down
 ```
 
 ## Database notes
@@ -109,6 +111,11 @@ ephemeral databases and keep those clone URLs in memory only. Recreate the templ
 
 Use `pnpm db:reset` to stop Docker Compose, delete the local Postgres volume, and start a fresh
 Postgres container. This wipes local database data.
+
+Use `pnpm parallel:up` when this checkout needs an isolated local slot. It writes generated ignored
+env blocks for the next Docker-free slot, starts that slot's Docker stack, migrates, and seeds it.
+Use `pnpm parallel:down` to stop this checkout's dev services, remove that slot's Docker stack and
+volumes, and strip generated env blocks while preserving hand-written local env values.
 
 `pkg/db` contains Better Auth core tables plus app-owned tables for Customers, Suppliers, Parts,
 Products, Quotes, Jobs, Documents, Bay scheduling, audit events, and descriptive User Departments.

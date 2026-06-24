@@ -10,6 +10,12 @@ if (process.env.APP_ENV === 'development' && process.env.NODE_ENV !== 'test') {
   dotenv.config({ path: '.env.dev', override: true, quiet: true });
 }
 
+// `.env.test` is a gitignored, test-only override (per-worktree TEST_DATABASE_URL).
+// It is loaded only under NODE_ENV=test and must carry no real-service credentials.
+if (process.env.NODE_ENV === 'test') {
+  dotenv.config({ path: '.env.test', override: true, quiet: true });
+}
+
 export type LanderConfig = z.infer<typeof LanderConfig>;
 export const LanderConfig = z.object({
   NODE_ENV: NodeEnv.default('development'),

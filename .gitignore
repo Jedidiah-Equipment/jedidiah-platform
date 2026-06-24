@@ -8,5 +8,6 @@ tmp/
 *.tsbuildinfo
 .env.local
 .env.dev
+.env.test
 *.log
 .claude/worktrees/

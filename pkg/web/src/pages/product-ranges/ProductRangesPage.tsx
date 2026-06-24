@@ -30,6 +30,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
+import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { productRangesPageDescription } from '@/utils/page-descriptions.js';
 import { RangeThumbnail } from './components/RangeThumbnail.js';
 import { ProductRangeFormValues, toProductRangeCreateInput } from './components/types.js';
@@ -285,11 +286,18 @@ const CreateProductRangeForm: React.FC<CreateProductRangeFormProps> = ({ onClose
       }}
     >
       <FieldGroup>
-        <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
+        <form.AppField name="name">
+          {(field) => (
+            <field.TextField
+              autoComplete="off"
+              label={<FieldUsageLabel usage={PRODUCT_RANGE_FIELD_USAGE.name}>Name</FieldUsageLabel>}
+            />
+          )}
+        </form.AppField>
         <form.AppField name="description">
           {(field) => (
             <field.TextareaField
-              label="Description"
+              label={<FieldUsageLabel usage={PRODUCT_RANGE_FIELD_USAGE.description}>Description</FieldUsageLabel>}
               placeholder="Short marketing blurb shown on the public site."
               rows={4}
             />

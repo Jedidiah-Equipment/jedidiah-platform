@@ -1,0 +1,39 @@
+import { expect, test } from 'vitest';
+
+import { PRODUCT_FIELD_USAGE, PRODUCT_IMAGE_SLOT_USAGE, PRODUCT_RANGE_FIELD_USAGE } from './catalog-content-usage.js';
+
+test('product form usage metadata marks the lander and brochure fields', () => {
+  expect(PRODUCT_FIELD_USAGE).toEqual({
+    assemblies: ['lander', 'brochure'],
+    category: ['lander', 'brochure'],
+    description: ['lander', 'brochure'],
+    keyFeatures: ['lander', 'brochure'],
+    modelCode: ['lander', 'brochure'],
+    name: ['lander', 'brochure'],
+    rangeId: ['lander', 'brochure'],
+  });
+
+  expect(PRODUCT_FIELD_USAGE).not.toHaveProperty('basePrice');
+  expect(PRODUCT_FIELD_USAGE).not.toHaveProperty('buildTimeDays');
+  expect(PRODUCT_FIELD_USAGE).not.toHaveProperty('requiresVinNumber');
+  expect(PRODUCT_FIELD_USAGE).not.toHaveProperty('thumbnailDataUrl');
+});
+
+test('product image slot usage metadata matches brochure and lander consumers', () => {
+  expect(PRODUCT_IMAGE_SLOT_USAGE).toEqual({
+    banner: ['brochure'],
+    primary: ['lander', 'brochure'],
+    secondary1: ['lander'],
+    secondary2: ['lander'],
+    technicalDrawing: ['brochure'],
+  });
+});
+
+test('product range usage metadata marks public site and brochure-only fields', () => {
+  expect(PRODUCT_RANGE_FIELD_USAGE).toEqual({
+    description: ['lander'],
+    image: ['lander'],
+    logo: ['brochure'],
+    name: ['lander'],
+  });
+});

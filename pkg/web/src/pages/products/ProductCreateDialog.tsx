@@ -9,6 +9,7 @@ import { useProductRangeOptions } from '@/hooks/options/use-product-range-option
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { ProductCreateFormValues, toProductMinimalCreateInput } from './components/types.js';
 
 type ProductCreateDialogProps = {
@@ -59,15 +60,27 @@ export const ProductCreateDialog: React.FC<ProductCreateDialogProps> = ({ onOpen
     >
       {(form) => (
         <>
-          <form.AppField name="name">{(field) => <field.TextField autoComplete="off" label="Name" />}</form.AppField>
+          <form.AppField name="name">
+            {(field) => (
+              <field.TextField
+                autoComplete="off"
+                label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.name}>Name</FieldUsageLabel>}
+              />
+            )}
+          </form.AppField>
           <form.AppField name="modelCode">
-            {(field) => <field.TextField autoComplete="off" label="Model code" />}
+            {(field) => (
+              <field.TextField
+                autoComplete="off"
+                label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.modelCode}>Model code</FieldUsageLabel>}
+              />
+            )}
           </form.AppField>
           <form.AppField name="rangeId">
             {(field) => (
               <field.SelectField
                 disabled={productRangeOptions.isPending}
-                label="Range"
+                label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.rangeId}>Range</FieldUsageLabel>}
                 options={productRangeOptions.selectOptions}
                 placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'Select range'}
               />

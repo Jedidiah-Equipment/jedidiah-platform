@@ -11,27 +11,17 @@ Use this skill to run the repo-owned worktree setup flow instead of hand-editing
 
 ## Workflow
 
-1. Confirm the current directory is inside the Jedidiah Platform checkout:
-   ```bash
-   pwd
-   git rev-parse --show-toplevel
-   ```
-2. Check whether this is the primary checkout or a worktree:
-   ```bash
-   git worktree list
-   git status --short
-   ```
-3. Run the setup command from the repo root:
+1. Run the setup command from the repo root:
    ```bash
    pnpm wt:up
    ```
-4. If `pnpm wt:up` succeeds, run the database bootstrap commands from the repo root:
+2. If `pnpm wt:up` succeeds, run the database bootstrap commands from the repo root:
    ```bash
    pnpm db:up
    pnpm db:up:template
    pnpm db:migrate && pnpm db:seed
    ```
-5. Report the assigned slot, configured ports, and whether each database bootstrap command succeeded. If any command fails, stop and report the failing command plus the relevant error output.
+3. Report the assigned slot, configured ports, and whether each database bootstrap command succeeded. If any command fails, stop and report the failing command plus the relevant error output.
 
 ## Guardrails
 

@@ -4,6 +4,7 @@ import type React from 'react';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { Card, CardContent } from '@/components/ui/card.js';
+import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { RangeImageUpload } from './RangeImageUpload.js';
 import { RangeLogoUpload } from './RangeLogoUpload.js';
 import { ProductRangeFormValues, toProductRangeFormValues, toProductRangeUpdateInput } from './types.js';
@@ -30,14 +31,20 @@ export const ProductRangeForm: React.FC<ProductRangeFormProps> = ({ canEdit, onS
         <CardContent>
           <EditFormGrid>
             <form.AppField name="name">
-              {(field) => <field.TextField autoComplete="off" disabled={!canEdit} label="Name" />}
+              {(field) => (
+                <field.TextField
+                  autoComplete="off"
+                  disabled={!canEdit}
+                  label={<FieldUsageLabel usage={PRODUCT_RANGE_FIELD_USAGE.name}>Name</FieldUsageLabel>}
+                />
+              )}
             </form.AppField>
             <EditFormFullWidth>
               <form.AppField name="description">
                 {(field) => (
                   <field.TextareaField
                     disabled={!canEdit}
-                    label="Description"
+                    label={<FieldUsageLabel usage={PRODUCT_RANGE_FIELD_USAGE.description}>Description</FieldUsageLabel>}
                     placeholder="Short marketing blurb shown on the public site."
                     rows={4}
                   />

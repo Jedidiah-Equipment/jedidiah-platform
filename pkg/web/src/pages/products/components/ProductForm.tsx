@@ -5,6 +5,7 @@ import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFo
 import { Card, CardContent } from '@/components/ui/card.js';
 import { TabsContent } from '@/components/ui/tabs.js';
 import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductBaysEditor } from './ProductBaysEditor.js';
 import { ProductKeyFeaturesEditor } from './ProductKeyFeaturesEditor.js';
@@ -57,16 +58,26 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                     </form.AppField>
                   </EditFormFullWidth>
                   <form.AppField name="name">
-                    {(field) => <field.TextField autoComplete="off" label="Name" />}
+                    {(field) => (
+                      <field.TextField
+                        autoComplete="off"
+                        label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.name}>Name</FieldUsageLabel>}
+                      />
+                    )}
                   </form.AppField>
                   <form.AppField name="modelCode">
-                    {(field) => <field.TextField autoComplete="off" label="Model code" />}
+                    {(field) => (
+                      <field.TextField
+                        autoComplete="off"
+                        label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.modelCode}>Model code</FieldUsageLabel>}
+                      />
+                    )}
                   </form.AppField>
                   <form.AppField name="rangeId">
                     {(field) => (
                       <field.SelectField
                         disabled={productRangeOptions.isPending}
-                        label="Range"
+                        label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.rangeId}>Range</FieldUsageLabel>}
                         onValueCommit={saveCommittedField}
                         options={productRangeOptions.selectOptions}
                         placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'Select range'}
@@ -98,7 +109,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                   </form.AppField>
                   <EditFormFullWidth>
                     <form.AppField name="description">
-                      {(field) => <field.TextareaField label="Description" rows={4} />}
+                      {(field) => (
+                        <field.TextareaField
+                          label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.description}>Description</FieldUsageLabel>}
+                          rows={4}
+                        />
+                      )}
                     </form.AppField>
                   </EditFormFullWidth>
                   <form.AppField name="category">
@@ -106,7 +122,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                       <field.TextField
                         autoComplete="off"
                         description="The category line shown under the title, e.g. “Silage & Grain”."
-                        label="Category"
+                        label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.category}>Category</FieldUsageLabel>}
                         placeholder="Silage & Grain"
                       />
                     )}

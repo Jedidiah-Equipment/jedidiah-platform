@@ -11,6 +11,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useCredentialedImagePreview } from '@/hooks/use-credentialed-image-preview.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { cn } from '@/lib/utils.js';
+import { FieldUsageLabel, PRODUCT_RANGE_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import {
   fetchProductRangeLogoBlob,
   IMAGE_ACCEPT,
@@ -56,7 +57,9 @@ export const RangeLogoUpload: React.FC<RangeLogoUploadProps> = ({ canEdit, logo,
 
   return (
     <Field className="rounded-lg border p-3">
-      <FieldLabel>Logo</FieldLabel>
+      <FieldLabel>
+        <FieldUsageLabel usage={PRODUCT_RANGE_FIELD_USAGE.logo}>Logo</FieldUsageLabel>
+      </FieldLabel>
       <FieldDescription>The logo shown in the top-right of this Range's Product brochures.</FieldDescription>
       <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border bg-muted/40">
         {previewUrl ? (

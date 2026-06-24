@@ -36,6 +36,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/c
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { cn } from '@/lib/utils.js';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { emptyProductFormValues } from './types.js';
 
 const KEY_FEATURE_FIELD_VALIDATORS = validateStructuralFieldOnMount(ProductKeyFeature);
@@ -124,7 +125,9 @@ export const ProductKeyFeaturesEditor: React.FC<ProductKeyFeaturesEditorProps> =
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Key Features</CardTitle>
+        <CardTitle>
+          <FieldUsageLabel usage={PRODUCT_FIELD_USAGE.keyFeatures}>Key Features</FieldUsageLabel>
+        </CardTitle>
         <CardDescription>
           Freeform lines shown as a checkmark list. Drag to reorder; up to {PRODUCT_KEY_FEATURES_MAX_COUNT} lines.
         </CardDescription>

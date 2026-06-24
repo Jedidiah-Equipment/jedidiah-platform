@@ -45,6 +45,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table.js';
 import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 import { emptyProductFormValues, getEligibleAssemblyNames } from './types.js';
 
@@ -243,7 +244,9 @@ const AssemblyGroup: React.FC<AssemblyGroupProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle>
+          <FieldUsageLabel usage={PRODUCT_FIELD_USAGE.assemblies}>{title}</FieldUsageLabel>
+        </CardTitle>
         <CardDescription>{description}</CardDescription>
         <CardAction>
           <Button type="button" variant="outline" onClick={onAdd}>
@@ -455,7 +458,7 @@ const AssemblyNameField: React.FC<AssemblyNameFieldProps> = ({ assemblyNames, in
         <CreatableComboboxField
           creatable={false}
           emptyMessage="No matching assembly names."
-          label="Name"
+          label={<FieldUsageLabel usage={PRODUCT_FIELD_USAGE.assemblies}>Name</FieldUsageLabel>}
           options={getEligibleAssemblyNames(assemblyNames, excludedNames)}
           placeholder="Assembly name"
         />

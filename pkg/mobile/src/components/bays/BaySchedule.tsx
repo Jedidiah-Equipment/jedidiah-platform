@@ -316,7 +316,7 @@ function TimelineItem({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className="relative mb-3"
+      className="relative mb-3 active:opacity-90"
       onPress={onSelect}
     >
       {/* Node on the spine — filled in the accent colour when selected, solid ring for 'next', muted otherwise. */}
@@ -335,7 +335,7 @@ function TimelineItem({
       {/* Border is a constant 2px (faded when unselected, full-strength when selected) so the
           selected border reads thicker without changing the box geometry — i.e. no content shift. */}
       <View
-        className={`rounded-2xl border-2 p-3.5 active:opacity-90 ${
+        className={`rounded-2xl border-2 p-3.5 ${
           selected
             ? slot.isNext
               ? 'border-status-next bg-status-next/10'

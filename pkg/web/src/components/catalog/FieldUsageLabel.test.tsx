@@ -1,6 +1,12 @@
+import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 
-import { PRODUCT_FIELD_USAGE, PRODUCT_IMAGE_SLOT_USAGE, PRODUCT_RANGE_FIELD_USAGE } from './catalog-content-usage.js';
+import {
+  FieldUsageLabel,
+  PRODUCT_FIELD_USAGE,
+  PRODUCT_IMAGE_SLOT_USAGE,
+  PRODUCT_RANGE_FIELD_USAGE,
+} from './FieldUsageLabel.js';
 
 test('product form usage metadata marks the lander and brochure fields', () => {
   expect(PRODUCT_FIELD_USAGE).toEqual({
@@ -36,4 +42,11 @@ test('product range usage metadata marks public site and brochure-only fields', 
     logo: ['brochure'],
     name: ['lander'],
   });
+});
+
+test('field usage icons use the surface color classes', () => {
+  const markup = renderToStaticMarkup(<FieldUsageLabel usage={['lander', 'brochure']}>Name</FieldUsageLabel>);
+
+  expect(markup).toContain('text-purple-600');
+  expect(markup).toContain('text-blue-600');
 });

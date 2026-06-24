@@ -1,11 +1,11 @@
 import type { Product, ProductUpdateInput } from '@pkg/schema';
 import type React from 'react';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { TabsContent } from '@/components/ui/tabs.js';
 import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
-import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
 import { ProductBaysEditor } from './ProductBaysEditor.js';
 import { ProductKeyFeaturesEditor } from './ProductKeyFeaturesEditor.js';

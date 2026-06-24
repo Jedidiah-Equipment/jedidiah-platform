@@ -1,8 +1,8 @@
 import { PRODUCT_IMAGE_SLOT_SPECS, type Product, type ProductImageSlot } from '@pkg/schema';
 import type React from 'react';
+import { PRODUCT_IMAGE_SLOT_USAGE } from '@/components/catalog/index.js';
 import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { useCan } from '@/hooks/use-access.js';
-import { PRODUCT_IMAGE_SLOT_USAGE } from '@/pages/catalog-content-usage.js';
 import { ProductImageSlotTile } from './ProductImageSlotTile.js';
 
 type ProductImageSlotField = {

@@ -18,6 +18,7 @@ import { PRODUCT_KEY_FEATURES_MAX_COUNT, ProductKeyFeature } from '@pkg/schema';
 import { IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
@@ -36,7 +37,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/c
 import { Field, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { Input } from '@/components/ui/input.js';
 import { cn } from '@/lib/utils.js';
-import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { emptyProductFormValues } from './types.js';
 
 const KEY_FEATURE_FIELD_VALIDATORS = validateStructuralFieldOnMount(ProductKeyFeature);

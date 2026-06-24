@@ -5,6 +5,7 @@ import { formatCurrency } from '@pkg/domain';
 import { type AssemblyInput, AssemblyName, type Part, Price, UUID } from '@pkg/schema';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { fieldContext } from '@/components/form/hooks/form-context.js';
 import { CreatableComboboxField, CurrencyField, useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
@@ -45,7 +46,6 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table.js';
 import { useAssemblyNameOptions, usePartCategoryOptions, usePartOptions } from '@/hooks/options/index.js';
 import { cn } from '@/lib/utils.js';
-import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { getPartQuantityUnitDisplay } from '@/utils/part-quantity-format.js';
 import { emptyProductFormValues, getEligibleAssemblyNames } from './types.js';
 

@@ -2,6 +2,7 @@ import { IconFileText, IconWorld } from '@tabler/icons-react';
 import type React from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
+import { cn } from '@/lib/utils.js';
 
 export const FIELD_USAGE_SURFACES = ['lander', 'brochure'] as const;
 
@@ -50,7 +51,7 @@ export function FieldUsageLabel({ children, usage = [] }: FieldUsageLabelProps) 
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
       <span className="truncate">{children}</span>
-      <span className="inline-flex items-center gap-1 text-muted-foreground">
+      <span className="inline-flex items-center gap-1">
         {usage.map((surface) => (
           <FieldUsageIcon key={surface} surface={surface} />
         ))}
@@ -69,7 +70,10 @@ function FieldUsageIcon({ surface }: { surface: FieldUsageSurface }) {
         render={
           <span
             aria-label={label}
-            className="inline-flex size-4 items-center justify-center rounded-sm text-muted-foreground"
+            className={cn(
+              'inline-flex size-4 items-center justify-center rounded-sm',
+              surface === 'lander' ? 'text-purple-600 dark:text-purple-400' : 'text-blue-600 dark:text-blue-400',
+            )}
             role="img"
           />
         }

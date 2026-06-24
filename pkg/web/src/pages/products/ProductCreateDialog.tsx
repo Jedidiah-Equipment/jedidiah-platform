@@ -3,13 +3,12 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { toast } from 'sonner';
-
+import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/pages/catalog-content-usage.js';
 import { ProductCreateFormValues, toProductMinimalCreateInput } from './components/types.js';
 
 type ProductCreateDialogProps = {

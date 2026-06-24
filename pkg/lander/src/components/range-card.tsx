@@ -1,3 +1,5 @@
+import { IconArrowRight } from '@tabler/icons-react';
+
 import type { HomeRange } from '../server/ranges-data.js';
 
 export function RangeCard({ range }: { range: HomeRange }) {
@@ -22,22 +24,12 @@ export function RangeCard({ range }: { range: HomeRange }) {
           {range.name}
         </h3>
         <p className="m-0 mb-5 flex-1 font-body text-[15px] leading-[1.55] text-[#666]">{range.description}</p>
-        <svg
-          width="26"
-          height="14"
-          viewBox="0 0 26 14"
-          fill="none"
-          className="transition-transform duration-300 ease-out group-hover:translate-x-2"
+        <IconArrowRight
+          className="text-gold transition-transform duration-300 ease-out group-hover:translate-x-2"
+          size={24}
+          stroke={2.4}
           aria-hidden="true"
-        >
-          <path
-            d="M1 7h23M18 1l6 6-6 6"
-            stroke="#f8d300"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        />
       </div>
     </a>
   );

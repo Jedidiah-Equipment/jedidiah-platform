@@ -12,7 +12,6 @@
     "test": "turbo run test",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "kill:web-api": "sh scripts/kill-web-api.sh",
     "db:up": "sh -c 'if [ -f .env.dev ]; then docker compose --env-file .env.dev up -d --wait; else docker compose up -d --wait; fi'",
     "db:reset": "docker compose down -v && pnpm db:up && pnpm db:migrate && pnpm db:seed",
     "db:up:template": "pnpm db:up && pnpm --filter @pkg/db db:up:template",
@@ -23,7 +22,8 @@
     "db:seed": "pnpm --filter @pkg/seed db:seed",
     "db:studio": "pnpm --filter @pkg/db db:studio",
     "update-package-versions": "pnpm up --recursive --interactive",
-    "verify": "pnpm lint && pnpm typecheck && pnpm build && pnpm test"
+    "verify": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+    "ws:setup": "sh scripts/worktree-setup.sh"
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",

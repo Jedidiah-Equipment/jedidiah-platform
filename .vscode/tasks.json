@@ -167,17 +167,6 @@
         "color": "terminal.ansiYellow"
       },
       "problemMatcher": []
-    },
-    {
-      "label": "Kill Web And Api",
-      "type": "shell",
-      "command": "pnpm",
-      "args": ["kill:web-api"],
-      "icon": {
-        "id": "debug-stop",
-        "color": "terminal.ansiRed"
-      },
-      "problemMatcher": []
     }
   ]
 }

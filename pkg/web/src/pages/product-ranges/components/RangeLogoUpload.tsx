@@ -58,7 +58,7 @@ export const RangeLogoUpload: React.FC<RangeLogoUploadProps> = ({ canEdit, logo,
     <Field className="rounded-lg border p-3">
       <FieldLabel>Logo</FieldLabel>
       <FieldDescription>The logo shown in the top-right of this Range's Product brochures.</FieldDescription>
-      <div className="flex aspect-video w-full max-w-sm items-center justify-center overflow-hidden rounded-md border bg-muted/40">
+      <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border bg-muted/40">
         {previewUrl ? (
           <img alt="Range logo preview" className={cn('h-full w-full object-contain')} src={previewUrl} />
         ) : (
@@ -84,7 +84,7 @@ export const RangeLogoUpload: React.FC<RangeLogoUploadProps> = ({ canEdit, logo,
         type="file"
       />
       <Button
-        className="w-full max-w-sm"
+        className="w-full"
         disabled={!canEdit || uploadMutation.isPending}
         onClick={() => fileInputRef.current?.click()}
         type="button"

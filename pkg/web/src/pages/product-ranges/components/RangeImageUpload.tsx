@@ -1,4 +1,4 @@
-import type { EntityImage, UUID } from '@pkg/schema';
+import { type EntityImage, PRODUCT_IMAGE_SLOT_SPECS, type UUID } from '@pkg/schema';
 import { IconLoader2, IconPhoto, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
@@ -28,6 +28,7 @@ type RangeImageUploadProps = {
 // The upload replaces the current image immediately and invalidates the Range query so the new image
 // streams back.
 export const RangeImageUpload: React.FC<RangeImageUploadProps> = ({ canEdit, image, rangeId }) => {
+  const secondaryImageSpec = PRODUCT_IMAGE_SLOT_SPECS.secondary1;
   const { invalidateProductRanges } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,9 +57,14 @@ export const RangeImageUpload: React.FC<RangeImageUploadProps> = ({ canEdit, ima
 
   return (
     <Field className="rounded-lg border p-3">
-      <FieldLabel>Image</FieldLabel>
+      <div className="flex items-baseline justify-between gap-2">
+        <FieldLabel>Image</FieldLabel>
+        <span className="text-muted-foreground text-xs">
+          {secondaryImageSpec.recommendedWidth}×{secondaryImageSpec.recommendedHeight}px
+        </span>
+      </div>
       <FieldDescription>The presentation image shown for this Range.</FieldDescription>
-      <div className="flex aspect-video w-full max-w-sm items-center justify-center overflow-hidden rounded-md border bg-muted/40">
+      <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border bg-muted/40">
         {previewUrl ? (
           <img alt="Range preview" className={cn('h-full w-full object-contain')} src={previewUrl} />
         ) : (
@@ -84,7 +90,7 @@ export const RangeImageUpload: React.FC<RangeImageUploadProps> = ({ canEdit, ima
         type="file"
       />
       <Button
-        className="w-full max-w-sm"
+        className="w-full"
         disabled={!canEdit || uploadMutation.isPending}
         onClick={() => fileInputRef.current?.click()}
         type="button"

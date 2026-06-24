@@ -23,7 +23,8 @@
     "db:studio": "pnpm --filter @pkg/db db:studio",
     "update-package-versions": "pnpm up --recursive --interactive",
     "verify": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
-    "ws:setup": "sh scripts/worktree-setup.sh"
+    "wt:up": "sh scripts/worktree-setup.sh",
+    "wt:down": "sh -c 'if [ -f .env.dev ]; then docker compose --env-file .env.dev down -v; else docker compose down -v; fi'"
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",

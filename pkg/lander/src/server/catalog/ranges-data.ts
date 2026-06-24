@@ -40,3 +40,11 @@ export async function loadFooterRanges(db: Db): Promise<FooterRange[]> {
     slug: toRangeSlug(range.name),
   }));
 }
+
+// Every Range label, in display order — the "Equipment of interest" options on the Contact form. Uses the
+// same chip-bar label helper so the names read consistently across the site.
+export async function loadRangeOptions(db: Db): Promise<string[]> {
+  const { ranges } = await listProductRanges({ db });
+
+  return ranges.map((range) => toRangeLabel(range.name));
+}

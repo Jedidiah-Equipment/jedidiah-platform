@@ -19,3 +19,10 @@ export const getFooterRanges = createServerFn({ method: 'GET' }).handler(async (
 
   return loadFooterRanges(getDb());
 });
+
+// SSR loader source for the Contact form's "Equipment of interest" options.
+export const getRangeOptions = createServerFn({ method: 'GET' }).handler(async (): Promise<string[]> => {
+  const [{ loadRangeOptions }, { getDb }] = await Promise.all([import('./ranges-data.js'), import('../runtime/db.js')]);
+
+  return loadRangeOptions(getDb());
+});

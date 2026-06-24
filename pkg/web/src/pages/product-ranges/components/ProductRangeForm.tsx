@@ -4,6 +4,7 @@ import type React from 'react';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
 import { RangeImageUpload } from './RangeImageUpload.js';
+import { RangeLogoUpload } from './RangeLogoUpload.js';
 import { ProductRangeFormValues, toProductRangeFormValues, toProductRangeUpdateInput } from './types.js';
 
 type ProductRangeFormProps = {
@@ -42,6 +43,9 @@ export const ProductRangeForm: React.FC<ProductRangeFormProps> = ({ canEdit, onS
         </EditFormFullWidth>
         <EditFormFullWidth>
           <RangeImageUpload canEdit={canEdit} image={range.image} rangeId={range.id} />
+        </EditFormFullWidth>
+        <EditFormFullWidth>
+          <RangeLogoUpload canEdit={canEdit} logo={range.logo} rangeId={range.id} />
         </EditFormFullWidth>
       </EditFormGrid>
     </form>

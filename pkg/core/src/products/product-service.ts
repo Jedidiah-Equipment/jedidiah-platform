@@ -303,28 +303,28 @@ export async function getProduct({ db, id }: { db: Db; id: UUID }): Promise<Prod
   return mapProductListRow(row, productBaysForProduct);
 }
 
-// Reads the Product detail row plus the stored Product image references and the owning Range's image in
-// a single pass, so the brochure render path can build the read model (with images projected key-free)
-// and resolve the internal storage keys — including the top-right Range logo — without follow-up queries.
+// Reads the Product detail row plus the stored Product image references and the owning Range's logo in a
+// single pass, so the brochure render path can build the read model (with images projected key-free) and
+// resolve the internal storage keys — including the top-right Range logo — without follow-up queries.
 export async function getProductBrochureSource({
   db,
   id,
 }: {
   db: Db;
   id: UUID;
-}): Promise<{ images: ProductImageStore; product: Product; rangeImage: StoredImageRef | null }> {
-  const { rangeImage, row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id });
+}): Promise<{ images: ProductImageStore; product: Product; rangeLogo: StoredImageRef | null }> {
+  const { rangeLogo, row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id });
 
   return {
     images: row.images,
     product: mapProductListRow(row, productBaysForProduct),
-    rangeImage,
+    rangeLogo,
   };
 }
 
 async function loadProductDetailRow({ db, id }: { db: Db; id: UUID }): Promise<{
   productBays: ProductBay[];
-  rangeImage: StoredImageRef | null;
+  rangeLogo: StoredImageRef | null;
   row: ProductListRow;
 }> {
   // The Product's Bays key off the same id as the main read, so load both in parallel rather than
@@ -349,9 +349,9 @@ async function loadProductDetailRow({ db, id }: { db: Db; id: UUID }): Promise<{
             optionalOverrides: true,
           },
         },
-        // The brochure's top-right logo is the owning Range's image; load it here so the brochure
-        // source resolves it from the same read. Other callers (getProduct) ignore it.
-        range: { columns: { image: true } },
+        // The brochure's top-right logo is the owning Range's logo; load it here so the brochure source
+        // resolves it from the same read. Other callers (getProduct) ignore it.
+        range: { columns: { logo: true } },
       },
     }),
     listProductBays({ db, productId: id }),
@@ -361,7 +361,7 @@ async function loadProductDetailRow({ db, id }: { db: Db; id: UUID }): Promise<{
     throw new ProductNotFoundError(id);
   }
 
-  return { productBays, rangeImage: row.range?.image ?? null, row };
+  return { productBays, rangeLogo: row.range?.logo ?? null, row };
 }
 
 export async function getProductDocuments({ db, productId }: { db: Db; productId: UUID }): Promise<ProductDocument[]> {

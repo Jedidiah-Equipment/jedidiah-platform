@@ -857,11 +857,13 @@ async function createActorUser(db: Db): Promise<void> {
 }
 
 async function createRange(db: Db, input: { id: string; name: string }) {
+  const existing = await db.select({ id: productRanges.id }).from(productRanges);
   const [range] = await db
     .insert(productRanges)
     .values({
       id: input.id,
       name: input.name,
+      displayOrder: existing.length,
     })
     .returning();
 

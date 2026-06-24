@@ -510,17 +510,17 @@ async function createJobOwner(db: Db, productId: UUID) {
 
 // Inserts a product whose brochure is complete: subtitle, a key feature, all three brochure images
 // (stored as decodable PNG bytes), a non-empty description, and one standard assembly. The owning Range
-// is given an image so the top-right logo render path is exercised too. The base product stays incomplete
+// is given a logo so the top-right logo render path is exercised too. The base product stays incomplete
 // so the gate's negative path can be exercised separately.
 async function createCompleteBrochureProduct({ db, storage }: { db: Db; storage: MemoryStorage }) {
-  const rangeLogoStorageKey = `range-images/product-range/brochure-preview/logo.png`;
+  const rangeLogoStorageKey = `range-logos/product-range/brochure-preview/logo.png`;
   await storage.put({
     body: brochurePngBytes(),
     byteSize: brochurePngBytes().byteLength,
     contentType: 'image/png',
     key: rangeLogoStorageKey,
   });
-  const rangeId = await createProductRangeFixture(db, undefined, {
+  const rangeId = await createProductRangeFixture(db, undefined, null, {
     byteSize: brochurePngBytes().byteLength,
     contentType: 'image/png',
     storageKey: rangeLogoStorageKey,

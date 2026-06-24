@@ -53,12 +53,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
             </h4>
             <div className="flex flex-col gap-[13px]">
               {ranges.map((range) => (
-                <Link
-                  key={range.slug}
-                  to="/products"
-                  search={{ range: range.slug }}
-                  className={footerLinkClass}
-                >
+                <Link key={range.slug} to="/products" search={{ range: range.slug }} className={footerLinkClass}>
                   {range.label}
                 </Link>
               ))}

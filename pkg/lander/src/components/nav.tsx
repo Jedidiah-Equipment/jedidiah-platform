@@ -22,9 +22,9 @@ function PinIcon() {
   return <IconMapPin className="text-yellow" size={16} aria-hidden="true" />;
 }
 
-function Logo() {
+function Logo({ onNavigate }: { onNavigate: () => void }) {
   return (
-    <Link to="/" className="flex flex-none items-center no-underline">
+    <Link to="/" onClick={onNavigate} className="flex flex-none items-center no-underline">
       <img src={logoUrl} alt="Jedidiah Equipment" className="h-11 w-auto max-nav:h-9" />
     </Link>
   );
@@ -37,7 +37,7 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#2a2a2a] bg-ink">
       <div className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between gap-6 px-12 max-nav:h-16 max-nav:px-5">
-        <Logo />
+        <Logo onNavigate={() => setOpen(false)} />
 
         <nav className="flex flex-none items-center gap-10 max-nav:hidden">
           {LINKS.map((link) => {

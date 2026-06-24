@@ -49,5 +49,7 @@ test('loadFooterRanges returns the top four Ranges as chip-matching label/slug l
   // Footer teaser: the first four Ranges by display order, mapped through the same label/slug helpers the
   // Products chip bar and `?range=` filter use, so the links land on the matching filter.
   expect(footer).toHaveLength(Math.min(4, ranges.length));
-  expect(footer).toEqual(ranges.slice(0, 4).map((range) => ({ label: toRangeLabel(range.name), slug: toRangeSlug(range.name) })));
+  expect(footer).toEqual(
+    ranges.slice(0, 4).map((range) => ({ label: toRangeLabel(range.name), slug: toRangeSlug(range.name) })),
+  );
 });

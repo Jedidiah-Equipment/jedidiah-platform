@@ -1,3 +1,4 @@
+import { IconArrowRight, IconCheck, IconMail, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
@@ -24,11 +25,7 @@ const LABEL_CLASS = 'mb-2 block font-display text-[13px] font-semibold uppercase
 type FormStatus = 'idle' | 'submitting' | 'sent' | 'error';
 
 function ArrowIcon() {
-  return (
-    <svg width="20" height="14" viewBox="0 0 22 14" fill="none" aria-hidden="true">
-      <path d="M1 7h19M14 1l6 6-6 6" stroke="#161616" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />;
 }
 
 function Header() {
@@ -56,15 +53,7 @@ function SentState() {
   return (
     <div className="px-2.5 py-10 text-center">
       <div className="mx-auto mb-6 flex h-18 w-18 items-center justify-center bg-gold">
-        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M5 12.5l4.5 4.5L19 7"
-            stroke="#161616"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <IconCheck className="text-ink" size={38} stroke={2.6} aria-hidden="true" />
       </div>
       <h2 className="m-0 mb-3 font-display text-[34px] font-extrabold uppercase tracking-[0.5px] text-ink">
         Thank You
@@ -192,35 +181,15 @@ function EnquiryForm() {
 }
 
 function PhoneIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden="true">
-      <path
-        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"
-        stroke="#fff000"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <IconPhone className="flex-none text-yellow" size={24} aria-hidden="true" />;
 }
 
 function MailIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden="true">
-      <rect x="2" y="4" width="20" height="16" rx="1.5" stroke="#fff000" strokeWidth="2" />
-      <path d="M3 6l9 7 9-7" stroke="#fff000" strokeWidth="2" />
-    </svg>
-  );
+  return <IconMail className="flex-none text-yellow" size={24} aria-hidden="true" />;
 }
 
 function PinIcon({ className }: { className?: string }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="#fff000" strokeWidth="2" />
-      <circle cx="12" cy="10" r="3" stroke="#fff000" strokeWidth="2" />
-    </svg>
-  );
+  return <IconMapPin className={`text-yellow ${className ?? ''}`} size={24} aria-hidden="true" />;
 }
 
 function ContactMethodLabel({ label }: { label: string }) {

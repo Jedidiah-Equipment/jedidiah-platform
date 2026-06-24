@@ -1,52 +1,24 @@
-import type { ReactNode } from 'react';
+import { IconHome, IconShieldCheck, IconTruck, type Icon as TablerIcon } from '@tabler/icons-react';
 
 type Feature = {
-  icon: ReactNode;
+  Icon: TablerIcon;
   title: string;
   body: string;
 };
 
 const FEATURES: Feature[] = [
   {
-    icon: (
-      <path
-        d="M3 9.5l9-6 9 6M5 8.5V20h14V8.5M9.5 20v-5h5v5"
-        stroke="#fff000"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-    ),
+    Icon: IconHome,
     title: 'South African Built',
     body: 'Proudly designed and manufactured in South Africa.',
   },
   {
-    icon: (
-      <>
-        <path
-          d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"
-          stroke="#fff000"
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-        />
-        <path d="M9 12l2 2 4-4" stroke="#fff000" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      </>
-    ),
+    Icon: IconShieldCheck,
     title: 'Heavy-Duty Equipment',
     body: 'Engineered for strength, durability and long-term performance.',
   },
   {
-    icon: (
-      <>
-        <path
-          d="M2 16h2l1.5-5h9l2.5 5h3a2 2 0 0 1 2 2v0H2v-2z"
-          stroke="#fff000"
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-        />
-        <circle cx="7" cy="19" r="1.6" stroke="#fff000" strokeWidth="1.6" />
-        <circle cx="17" cy="19" r="1.6" stroke="#fff000" strokeWidth="1.6" />
-      </>
-    ),
+    Icon: IconTruck,
     title: 'Trailer · Tillage · Tanker',
     body: 'A complete range of equipment for modern farming operations.',
   },
@@ -62,9 +34,7 @@ export function FeatureBar() {
             index < FEATURES.length - 1 ? 'border-r border-white/[0.12] max-nav:border-r-0 max-nav:border-b' : ''
           }`}
         >
-          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden="true">
-            {feature.icon}
-          </svg>
+          <feature.Icon className="flex-none text-yellow" size={38} stroke={1.6} aria-hidden="true" />
           <div>
             <h4 className="m-0 mb-1.5 font-display text-[20px] font-bold uppercase tracking-[1px] text-white">
               {feature.title}

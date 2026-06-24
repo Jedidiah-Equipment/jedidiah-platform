@@ -1,3 +1,4 @@
+import { IconMapPin, IconMenu2, IconPhone, IconX } from '@tabler/icons-react';
 import { useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -13,26 +14,11 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 function PhoneIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"
-        stroke="#fff000"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <IconPhone className="text-yellow" size={17} aria-hidden="true" />;
 }
 
 function PinIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="#fff000" strokeWidth="2" />
-      <circle cx="12" cy="10" r="3" stroke="#fff000" strokeWidth="2" />
-    </svg>
-  );
+  return <IconMapPin className="text-yellow" size={16} aria-hidden="true" />;
 }
 
 function Logo() {
@@ -100,13 +86,9 @@ export function Nav() {
           className="hidden h-[46px] w-[46px] flex-none items-center justify-center border-[1.5px] border-[#3a3a3a] bg-transparent max-nav:flex"
         >
           {open ? (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M5 5l14 14M19 5L5 19" stroke="#fff000" strokeWidth="2.2" strokeLinecap="round" />
-            </svg>
+            <IconX className="text-yellow" size={22} stroke={2.2} aria-hidden="true" />
           ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M4 7h16M4 12h16M4 17h16" stroke="#fff000" strokeWidth="2.2" strokeLinecap="round" />
-            </svg>
+            <IconMenu2 className="text-yellow" size={24} stroke={2.2} aria-hidden="true" />
           )}
         </button>
       </div>

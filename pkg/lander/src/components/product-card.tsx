@@ -1,3 +1,5 @@
+import { IconArrowRight } from '@tabler/icons-react';
+
 import type { CatalogProduct } from '../server/products-data.js';
 
 // Reusable Product card shared by the Products page (and, later, related-Product strips). The image route
@@ -28,22 +30,12 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
         </p>
         <span className="flex items-center gap-3 font-display text-[15px] font-bold uppercase tracking-[1.5px] text-ink">
           View Details
-          <svg
-            width="26"
-            height="14"
-            viewBox="0 0 26 14"
-            fill="none"
-            className="transition-transform duration-300 ease-out group-hover:translate-x-2"
+          <IconArrowRight
+            className="text-gold transition-transform duration-300 ease-out group-hover:translate-x-2"
+            size={24}
+            stroke={2.4}
             aria-hidden="true"
-          >
-            <path
-              d="M1 7h23M18 1l6 6-6 6"
-              stroke="#f8d300"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          />
         </span>
       </div>
     </a>

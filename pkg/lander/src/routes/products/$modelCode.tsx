@@ -1,3 +1,10 @@
+import {
+  IconArrowRight,
+  IconDownload,
+  IconSquareCheckFilled,
+  IconSquarePlus,
+  IconStarFilled,
+} from '@tabler/icons-react';
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
@@ -137,15 +144,7 @@ function Hero({ detail }: { detail: ProductDetail }) {
               className="flex items-center gap-3 bg-gold px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-yellow"
             >
               Contact Us
-              <svg width="20" height="14" viewBox="0 0 22 14" fill="none" aria-hidden="true">
-                <path
-                  d="M1 7h19M14 1l6 6-6 6"
-                  stroke="#161616"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />
             </a>
             <a
               href="tel:+27128190131"
@@ -173,33 +172,15 @@ function SectionHeading({ children, className }: { children: string; className?:
 }
 
 function StandardIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="mt-px flex-none" aria-hidden="true">
-      <rect width="24" height="24" fill="#f8d300" />
-      <path d="M6 12.5l4 4 8-8.5" stroke="#161616" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <IconSquareCheckFilled className="mt-px flex-none text-gold" size={22} aria-hidden="true" />;
 }
 
 function OptionalIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="mt-px flex-none" aria-hidden="true">
-      <rect x="1" y="1" width="22" height="22" fill="none" stroke="#161616" strokeWidth="2" />
-      <path d="M12 7v10M7 12h10" stroke="#161616" strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
-  );
+  return <IconSquarePlus className="mt-px flex-none text-ink" size={22} aria-hidden="true" />;
 }
 
 function FeatureIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="mt-px flex-none" aria-hidden="true">
-      <rect width="24" height="24" fill="#f8d300" />
-      <path
-        d="M12 5.5l1.9 3.85 4.25.62-3.07 3 .72 4.23L12 14.2l-3.8 2 .72-4.23-3.07-3 4.25-.62L12 5.5z"
-        fill="#161616"
-      />
-    </svg>
-  );
+  return <IconStarFilled className="mt-px flex-none text-gold" size={24} aria-hidden="true" />;
 }
 
 function ItemList({ items, icon }: { items: string[]; icon: () => React.JSX.Element }) {
@@ -216,23 +197,7 @@ function ItemList({ items, icon }: { items: string[]; icon: () => React.JSX.Elem
 }
 
 function DownloadIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="flex-none" aria-hidden="true">
-      <path
-        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"
-        stroke="#f8d300"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M14 2v6h6M12 12v6M9 15l3 3 3-3"
-        stroke="#f8d300"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <IconDownload className="flex-none text-gold" size={22} stroke={1.8} aria-hidden="true" />;
 }
 
 function Downloads({ brochureHref, modelCode }: { brochureHref: string; modelCode: string }) {

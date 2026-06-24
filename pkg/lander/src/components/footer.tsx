@@ -1,3 +1,5 @@
+import { IconMapPin, IconPhone } from '@tabler/icons-react';
+
 const EXPLORE = [
   { label: 'Home', href: '/' },
   { label: 'About Us', href: '/about' },
@@ -69,22 +71,11 @@ export function Footer() {
             </h4>
             <div className="flex flex-col gap-[15px]">
               <a href="tel:+27128190131" className="flex items-center gap-[11px] no-underline">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path
-                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"
-                    stroke="#fff000"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <IconPhone className="flex-none text-yellow" size={17} aria-hidden="true" />
                 <span className="font-body text-[15px] text-[#cfcfcf]">+27 12 819 0131</span>
               </a>
               <span className="flex items-start gap-[11px]">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" className="mt-0.5" aria-hidden="true">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="#fff000" strokeWidth="2" />
-                  <circle cx="12" cy="10" r="3" stroke="#fff000" strokeWidth="2" />
-                </svg>
+                <IconMapPin className="mt-0.5 flex-none text-yellow" size={17} aria-hidden="true" />
                 <span className="font-body text-[15px] leading-[1.5] text-[#cfcfcf]">
                   Bapsfontein,
                   <br />

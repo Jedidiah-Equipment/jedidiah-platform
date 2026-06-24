@@ -13,7 +13,7 @@
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "db:up": "sh -c 'if [ -f .env.dev ]; then docker compose --env-file .env.dev up -d --wait; else docker compose up -d --wait; fi'",
-    "db:reset": "docker compose down -v && pnpm db:up && pnpm db:migrate && pnpm db:seed",
+    "db:reset": "pnpm wt:down && pnpm db:up && pnpm db:migrate && pnpm db:seed",
     "db:up:template": "pnpm db:up && pnpm --filter @pkg/db db:up:template",
     "db:create": "pnpm --filter @pkg/db db:create",
     "db:generate": "pnpm --filter @pkg/db db:generate",
@@ -23,7 +23,8 @@
     "db:studio": "pnpm --filter @pkg/db db:studio",
     "update-package-versions": "pnpm up --recursive --interactive",
     "verify": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
-    "ws:setup": "sh scripts/worktree-setup.sh"
+    "wt:up": "sh scripts/worktree-setup.sh",
+    "wt:down": "sh -c 'if [ -f .env.dev ]; then docker compose --env-file .env.dev down -v; else docker compose down -v; fi'"
   },
   "dependencies": {
     "@pkg/schema": "workspace:*",

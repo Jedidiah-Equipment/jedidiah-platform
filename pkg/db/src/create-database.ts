@@ -3,8 +3,8 @@ import postgres from 'postgres';
 import { getDatabaseUrl } from './env.js';
 
 // Ensures the database named in DATABASE_URL exists, creating it if missing.
-// Used by parallel worktrees whose dev database (jedidiah_wt<N>) is not created
-// by docker-compose; idempotent, so it is a no-op on the primary checkout.
+// Idempotent: a no-op when docker-compose already provisioned the dev database
+// (it creates POSTGRES_DB on init), so it is safe to run from any checkout.
 
 function getDatabaseName(databaseUrl: string): string {
   const databaseName = new URL(databaseUrl).pathname.slice(1);

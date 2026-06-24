@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parallel Down"
+  short_description: "Tear down the current parallel slot"
+  default_prompt: "Use $parallel-down to tear down the current local parallel slot."

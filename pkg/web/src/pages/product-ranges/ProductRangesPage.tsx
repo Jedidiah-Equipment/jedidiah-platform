@@ -74,6 +74,13 @@ export const ProductRangesPage: React.FC = () => {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const handleDragEnd = (event: DragEndEvent) => {
+    // Ignore drops while a reorder is still in flight: the server treats each payload as authoritative, so
+    // overlapping requests could land out of order and persist a stale sequence. Dragging is also disabled
+    // below while pending; this is the matching guard.
+    if (reorderMutation.isPending) {
+      return;
+    }
+
     const { active, over } = event;
     if (!over || active.id === over.id) {
       return;
@@ -142,6 +149,7 @@ export const ProductRangesPage: React.FC = () => {
                   <SortableRangeCard
                     canReorder={canUpdateRanges}
                     canUpdate={canUpdateRanges}
+                    dragDisabled={reorderMutation.isPending}
                     key={range.id}
                     onEdit={() => navigate({ to: '/product-ranges/$id/edit', params: { id: range.id } })}
                     range={range}
@@ -161,14 +169,22 @@ export const ProductRangesPage: React.FC = () => {
 type SortableRangeCardProps = {
   canReorder: boolean;
   canUpdate: boolean;
+  dragDisabled: boolean;
   onEdit: () => void;
   range: ProductRange;
 };
 
-const SortableRangeCard: React.FC<SortableRangeCardProps> = ({ canReorder, canUpdate, onEdit, range }) => {
+const SortableRangeCard: React.FC<SortableRangeCardProps> = ({
+  canReorder,
+  canUpdate,
+  dragDisabled,
+  onEdit,
+  range,
+}) => {
   const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     id: range.id,
-    disabled: !canReorder,
+    // Block new drags while a reorder request is in flight so overlapping reorders can't race.
+    disabled: !canReorder || dragDisabled,
   });
 
   return (
@@ -182,7 +198,11 @@ const SortableRangeCard: React.FC<SortableRangeCardProps> = ({ canReorder, canUp
           {canReorder ? (
             <button
               aria-label={`Reorder ${range.name}`}
-              className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+              className={cn(
+                'touch-none text-muted-foreground',
+                dragDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-grab active:cursor-grabbing',
+              )}
+              disabled={dragDisabled}
               type="button"
               {...attributes}
               {...listeners}

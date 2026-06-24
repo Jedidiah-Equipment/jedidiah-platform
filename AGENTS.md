@@ -12,6 +12,12 @@
 - Run `pnpm db:up:template` after schema or seed changes, or when DB-backed tests fail with stale-schema errors.
 - `pnpm db:reset` drops Docker volumes. Confirm before running it unless the user explicitly approved a full reset.
 
+## Parallel worktrees
+
+- Create worktrees under `~/_worktrees` (e.g. `git worktree add ~/_worktrees/<name>`), not inside this repo.
+- From inside the worktree, run `sh scripts/worktree-setup.sh [slot]` to avoid port/DB clashes. Omit `slot` to auto-assign the lowest free one (it reads sibling worktrees' configured slots); pass an integer >= 1 to request a specific slot, and it suggests a free one if that is taken. It refuses to run on the primary checkout (slot 0, committed defaults). It writes gitignored env files only (`<pkg>/.env.dev`, `<pkg>/.env.test`, `pkg/mobile/.env.local` — no shell sourcing) plus a skip-worktree patch to `.claude/launch.json`, giving the worktree its own dev ports (`7N01`-`7N04`), `jedidiah_wt<N>` + `_template` databases, and storage bucket on the one shared Postgres/MinIO stack.
+- After setup: `pnpm db:up` (once per machine), then `pnpm db:up:template` and `pnpm db:migrate && pnpm db:seed`. `pnpm dev`, `pnpm test`, and mobile pick up the slot automatically.
+
 ## Publishing
 
 - Assume the `gh` CLI is installed and authenticated.

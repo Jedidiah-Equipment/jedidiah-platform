@@ -5,25 +5,29 @@
       "name": "web",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@pkg/web", "dev"],
-      "port": 7001
+      "port": 7001,
+      "autoPort": false
     },
     {
       "name": "api",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@pkg/api", "dev"],
-      "port": 7002
+      "port": 7002,
+      "autoPort": false
     },
     {
       "name": "mobile-web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@pkg/mobile", "exec", "expo", "start", "--web", "--port", "7003"],
-      "port": 7003
+      "runtimeArgs": ["--filter", "@pkg/mobile", "exec", "expo", "start", "--web"],
+      "port": 7003,
+      "autoPort": true
     },
     {
       "name": "lander",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@pkg/lander", "dev"],
-      "port": 7004
+      "port": 7004,
+      "autoPort": false
     }
   ]
 }

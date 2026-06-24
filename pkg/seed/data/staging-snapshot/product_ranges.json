@@ -1,10 +1,112 @@
 [
   {
-    "createdAt": "2026-05-27T10:35:03.013Z",
-    "description": "Our founding range of proven, field-tested equipment — the dependable machines Jedidiah built its name on.",
-    "id": "00000000-0000-4000-8000-000000000488",
+    "id": "e3d83679-18ec-4491-9f3d-8a2b02a26fbf",
+    "name": "Bale spike",
+    "description": null,
+    "image": {
+      "byteSize": 248505,
+      "updatedAt": "2026-06-23T11:15:28.426Z",
+      "storageKey": "range-images/product-range/e3d83679-18ec-4491-9f3d-8a2b02a26fbf/717e5f68-11e7-4ed3-9018-19f3d5c3363f.jpg",
+      "contentType": "image/jpeg"
+    },
+    "createdAt": "2026-06-23T11:15:09.334Z",
+    "updatedAt": "2026-06-23T11:15:28.528Z",
+    "displayOrder": 0,
+    "logo": null
+  },
+  {
+    "id": "a62ced56-cd4e-4939-ade2-e2ac29a01d05",
+    "name": "Cane",
+    "description": null,
+    "image": {
+      "byteSize": 188963,
+      "updatedAt": "2026-06-23T11:29:50.691Z",
+      "storageKey": "range-images/product-range/a62ced56-cd4e-4939-ade2-e2ac29a01d05/79a563bb-f44c-4e51-9508-25d366c237cf.png",
+      "contentType": "image/png"
+    },
+    "createdAt": "2026-06-23T11:29:36.823Z",
+    "updatedAt": "2026-06-23T11:29:50.827Z",
+    "displayOrder": 1,
+    "logo": null
+  },
+  {
+    "id": "1f7ca853-af1e-4391-965c-467a106b92fb",
+    "name": "Crosshaul",
+    "description": null,
+    "image": {
+      "byteSize": 2879843,
+      "updatedAt": "2026-06-23T10:55:55.679Z",
+      "storageKey": "range-images/product-range/1f7ca853-af1e-4391-965c-467a106b92fb/62e8fcd3-cd33-4af1-8849-b03033781107.jpg",
+      "contentType": "image/jpeg"
+    },
+    "createdAt": "2026-06-17T14:13:56.525Z",
+    "updatedAt": "2026-06-23T10:55:55.874Z",
+    "displayOrder": 2,
+    "logo": null
+  },
+  {
+    "id": "6a90f0e0-ffd1-4ca3-9b5f-b2e9068196f1",
+    "name": "Land roller",
+    "description": null,
+    "image": {
+      "byteSize": 1316316,
+      "updatedAt": "2026-06-23T10:55:26.090Z",
+      "storageKey": "range-images/product-range/6a90f0e0-ffd1-4ca3-9b5f-b2e9068196f1/298c1263-bc96-4760-babe-e434d8304fc7.jpg",
+      "contentType": "image/jpeg"
+    },
+    "createdAt": "2026-06-23T10:55:01.162Z",
+    "updatedAt": "2026-06-23T10:55:26.181Z",
+    "displayOrder": 3,
+    "logo": null
+  },
+  {
+    "id": "00bc19e6-217d-448b-9a64-71201532d9c7",
+    "name": "Recharge tankers",
+    "description": null,
+    "image": {
+      "byteSize": 41553,
+      "updatedAt": "2026-06-23T11:24:57.508Z",
+      "storageKey": "range-images/product-range/00bc19e6-217d-448b-9a64-71201532d9c7/6e163b34-029c-4d5d-ba3f-945041d5aaaf.png",
+      "contentType": "image/png"
+    },
+    "createdAt": "2026-06-23T11:23:15.550Z",
+    "updatedAt": "2026-06-23T11:26:15.827Z",
+    "displayOrder": 4,
+    "logo": null
+  },
+  {
+    "id": "0e28ad23-58a0-4a95-b268-672b79b4c4f4",
+    "name": "Seed drill",
+    "description": null,
     "image": null,
-    "name": "Legacy",
-    "updatedAt": "2026-05-27T10:35:03.013Z"
+    "createdAt": "2026-06-23T11:26:36.145Z",
+    "updatedAt": "2026-06-23T11:26:36.145Z",
+    "displayOrder": 5,
+    "logo": null
+  },
+  {
+    "id": "64bc83ab-3159-4e5c-b5ac-7979b3cd8467",
+    "name": "Slope Deck",
+    "description": null,
+    "image": {
+      "byteSize": 2248152,
+      "updatedAt": "2026-06-23T11:12:43.480Z",
+      "storageKey": "range-images/product-range/64bc83ab-3159-4e5c-b5ac-7979b3cd8467/eae44903-ebe1-4675-ab6f-21df0c2705da.jpg",
+      "contentType": "image/jpeg"
+    },
+    "createdAt": "2026-06-23T11:12:34.411Z",
+    "updatedAt": "2026-06-23T11:12:43.663Z",
+    "displayOrder": 6,
+    "logo": null
+  },
+  {
+    "id": "cc5cd1c4-5692-4392-ab41-2aa7994cc4e3",
+    "name": "Trailed maize auger",
+    "description": null,
+    "image": null,
+    "createdAt": "2026-06-23T13:25:01.230Z",
+    "updatedAt": "2026-06-23T13:25:01.230Z",
+    "displayOrder": 7,
+    "logo": null
   }
 ]

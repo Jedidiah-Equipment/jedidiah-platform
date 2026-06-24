@@ -44,7 +44,7 @@ export async function renderProductBrochurePreview({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
-  const { images, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
+  const { images, product, rangeLogo } = await getProductBrochureSource({ db, id: productId });
 
   const completeness = evaluateProductBrochureCompleteness(product);
 
@@ -52,7 +52,7 @@ export async function renderProductBrochurePreview({
     throw new ProductBrochureIncompleteError(productId, completeness.missingFields);
   }
 
-  return renderBrochureForProduct({ images, pdfRenderer, product, rangeImage, storage });
+  return renderBrochureForProduct({ images, pdfRenderer, product, rangeLogo, storage });
 }
 
 /**
@@ -72,13 +72,13 @@ export async function generateProductBrochureIfComplete({
   productId: UUID;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult | null> {
-  const { images, product, rangeImage } = await getProductBrochureSource({ db, id: productId });
+  const { images, product, rangeLogo } = await getProductBrochureSource({ db, id: productId });
 
   if (!evaluateProductBrochureCompleteness(product).complete) {
     return null;
   }
 
-  return renderBrochureForProduct({ images, pdfRenderer, product, rangeImage, storage });
+  return renderBrochureForProduct({ images, pdfRenderer, product, rangeLogo, storage });
 }
 
 /**
@@ -135,16 +135,16 @@ async function renderBrochureForProduct({
   images,
   pdfRenderer,
   product,
-  rangeImage,
+  rangeLogo,
   storage,
 }: {
   images: ProductImageStore;
   pdfRenderer: BrochurePdfRenderer;
   product: Product;
-  rangeImage: StoredImageRef | null;
+  rangeLogo: StoredImageRef | null;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
-  const document = await getBrochureDocumentModel({ images, product, rangeImage, storage });
+  const document = await getBrochureDocumentModel({ images, product, rangeLogo, storage });
   const filename = `${product.modelCode}-brochure.pdf`;
   const bytes = await pdfRenderer({ document, filename });
 
@@ -161,18 +161,18 @@ async function renderBrochureForProduct({
 export async function getBrochureDocumentModel({
   images,
   product,
-  rangeImage,
+  rangeLogo: rangeLogoRef,
   storage,
 }: {
   images: ProductImageStore;
   product: Product;
-  rangeImage: StoredImageRef | null;
+  rangeLogo: StoredImageRef | null;
   storage: StorageAdapter;
 }): Promise<BrochureDocumentModel> {
   const [resolvedImages, rangeLogo] = await Promise.all([
     resolveBrochureImages({ store: images, storage }),
     // The Range logo fits without cropping, matching the old per-product range-logo slot.
-    resolveStoredImage({ fit: 'contain', ref: rangeImage, storage }),
+    resolveStoredImage({ fit: 'contain', ref: rangeLogoRef, storage }),
   ]);
 
   return {

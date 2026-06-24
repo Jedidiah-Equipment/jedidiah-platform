@@ -1,52 +1,842 @@
 [
   {
-    "createdAt": "2026-05-27T10:43:55.710Z",
-    "displayOrder": 0,
-    "id": "c5ce7e9a-acb1-44c9-9f8c-c2bf9dd03ea3",
+    "createdAt": "2026-06-10T10:51:57.796Z",
+    "displayOrder": 5,
+    "id": "f814f455-a7c5-459d-9217-876cd5c5b19e",
     "kind": "standard",
-    "name": "Ceat 560-60 R22.5 Floatation Tyres",
+    "name": "Walking beam suspension with Henred axles",
     "price": null,
-    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
-    "updatedAt": "2026-05-27T14:09:27.581Z"
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.265Z"
   },
   {
-    "createdAt": "2026-05-27T10:35:03.013Z",
-    "displayOrder": 1,
-    "id": "52d73129-374b-4bdc-9750-d7176e937693",
-    "kind": "standard",
-    "name": "Rear brake indicator lights",
-    "price": null,
-    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
-    "updatedAt": "2026-05-27T14:09:27.589Z"
-  },
-  {
-    "createdAt": "2026-05-27T10:41:17.722Z",
+    "createdAt": "2026-06-10T10:18:38.379Z",
     "displayOrder": 0,
-    "id": "c7252c06-a34d-4b82-ac0d-d5ecd0340d7b",
-    "kind": "optional",
-    "name": "2 Side working lights",
-    "price": 5000,
-    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
-    "updatedAt": "2026-05-27T14:09:27.598Z"
+    "id": "0518c61d-d2c1-40e4-9b97-7a9ed6b8a615",
+    "kind": "standard",
+    "name": "4 inch bugle eye hitch",
+    "price": null,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.596Z"
   },
   {
-    "createdAt": "2026-05-27T10:43:55.710Z",
+    "createdAt": "2026-06-10T10:18:22.647Z",
     "displayOrder": 1,
-    "id": "70148dc1-8f3e-4f47-b465-9a4a69cfff90",
-    "kind": "optional",
-    "name": "Bkt Tyres",
-    "price": 15000,
-    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
-    "updatedAt": "2026-05-27T14:09:27.609Z"
+    "id": "ebb902fa-2503-47aa-ab6c-6c1fa83b4534",
+    "kind": "standard",
+    "name": "Park Jack",
+    "price": null,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.605Z"
   },
   {
-    "createdAt": "2026-05-27T10:41:17.722Z",
+    "createdAt": "2026-06-10T10:51:40.122Z",
+    "displayOrder": 6,
+    "id": "3a603679-c74f-43fc-b020-72cf49cff2e2",
+    "kind": "standard",
+    "name": "Trunnion tip cylinder",
+    "price": null,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.275Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:18:10.794Z",
     "displayOrder": 2,
-    "id": "d2ab0f61-029a-4e40-8a99-9722897a4f81",
+    "id": "e66e0c46-617c-4295-b9c5-d53bd45853ec",
+    "kind": "standard",
+    "name": "Single telescopic tipping cylinder",
+    "price": null,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.614Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:51:27.728Z",
+    "displayOrder": 7,
+    "id": "d9ba71ec-e807-4b70-b923-c85617db0242",
+    "kind": "standard",
+    "name": "Rear brake & indicator lights",
+    "price": null,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.286Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:44:40.142Z",
+    "displayOrder": 9,
+    "id": "140b1b39-6836-4d43-a0ce-649a31687638",
+    "kind": "standard",
+    "name": "Jedidiah yellow paint finish",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.880Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:20:10.558Z",
+    "displayOrder": 9,
+    "id": "356e4fc2-f220-4445-805f-bc82f1435590",
+    "kind": "standard",
+    "name": "Front & rear mudflaps",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.609Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:48:22.113Z",
+    "displayOrder": 0,
+    "id": "8417eada-5162-44b6-91b1-66569a5a1f07",
     "kind": "optional",
-    "name": "Secondary hydraulic brake cable",
-    "price": 4000,
-    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
-    "updatedAt": "2026-05-27T14:09:27.617Z"
+    "name": "Hydraulic folding ramps",
+    "price": 1,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.883Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:21:13.620Z",
+    "displayOrder": 10,
+    "id": "e11c35f6-4664-4e2f-b5a7-686f7ceb81dd",
+    "kind": "standard",
+    "name": "Hydraulic rear door & ladder",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.620Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:48:05.065Z",
+    "displayOrder": 1,
+    "id": "83f9145e-d0ee-48c5-b03d-e5afdca44c42",
+    "kind": "optional",
+    "name": "Custom paint color",
+    "price": 1,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.890Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:17:55.560Z",
+    "displayOrder": 3,
+    "id": "76a53049-d40a-4917-98f6-92065414cc42",
+    "kind": "standard",
+    "name": "12.5 - 80/18 BKT tyre",
+    "price": null,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.623Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:17:03.978Z",
+    "displayOrder": 4,
+    "id": "256b4944-b3e0-4339-b74c-186fbe5c8319",
+    "kind": "standard",
+    "name": "70mm square unbraked 6 stud axle",
+    "price": null,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.631Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:25:35.688Z",
+    "displayOrder": 0,
+    "id": "942dcc16-3fb9-46f3-881e-e13f0e71364d",
+    "kind": "standard",
+    "name": "Jedidiah yellow paint finish",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.795Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:16:50.036Z",
+    "displayOrder": 5,
+    "id": "f3a81ad7-ebd7-4627-82db-0cb7b5dba1f2",
+    "kind": "standard",
+    "name": "6mm mild steel bin",
+    "price": null,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.638Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:16:18.568Z",
+    "displayOrder": 6,
+    "id": "3f0759e4-b16b-4b12-b3b7-4fd2b6f15a93",
+    "kind": "standard",
+    "name": "Rear brake light & indicator",
+    "price": null,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.645Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:25:05.211Z",
+    "displayOrder": 2,
+    "id": "b68bcf87-c79f-4b06-92ff-9e019b495b97",
+    "kind": "standard",
+    "name": "Rear brake & indicator lights",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.805Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:23:56.992Z",
+    "displayOrder": 6,
+    "id": "4a3de35f-ad37-4770-8749-ed776f653d1b",
+    "kind": "standard",
+    "name": "Hydraulic brakes",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.823Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:16:00.771Z",
+    "displayOrder": 7,
+    "id": "8aa0b721-9956-45d3-ba7e-a90574408f24",
+    "kind": "standard",
+    "name": "Jedidiah yellow paint finish",
+    "price": null,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.662Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:30:40.092Z",
+    "displayOrder": 2,
+    "id": "1b13fa76-c828-48ca-8670-eac60202c7e1",
+    "kind": "optional",
+    "name": "Black rims",
+    "price": 1,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.860Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:21:33.284Z",
+    "displayOrder": 0,
+    "id": "66705f38-c137-4e07-9949-7f0ad85fab2a",
+    "kind": "standard",
+    "name": "Grain",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.509Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:10:02.963Z",
+    "displayOrder": 1,
+    "id": "c9229f94-d9a7-4a02-a816-8a02d0171bd2",
+    "kind": "standard",
+    "name": "Bugle eye hitch",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.519Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:10:17.812Z",
+    "displayOrder": 2,
+    "id": "65a8aee9-a334-43cf-8152-268a4ae79f6e",
+    "kind": "standard",
+    "name": "Park jack",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.529Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:10:55.860Z",
+    "displayOrder": 3,
+    "id": "e4a6d1a9-1f21-481b-b343-e6c29969c9aa",
+    "kind": "standard",
+    "name": "Sprung drawbar",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.540Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:11:17.058Z",
+    "displayOrder": 4,
+    "id": "ad112e00-0181-4d61-bc00-aad692ada0b3",
+    "kind": "standard",
+    "name": "Hydraulic brakes",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.552Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:11:56.025Z",
+    "displayOrder": 5,
+    "id": "00f0c448-dd5a-4435-ac20-8cf58e3d3c02",
+    "kind": "standard",
+    "name": "560-60 R22.5 Floatation tyres",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.562Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:12:31.843Z",
+    "displayOrder": 6,
+    "id": "3ce36e1c-db46-4ad1-9687-4c9dcb604610",
+    "kind": "standard",
+    "name": "Walking beam suspension with Henred axles",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.575Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:19:26.367Z",
+    "displayOrder": 7,
+    "id": "86fc8d17-7b43-42aa-a11b-c39f7ecc80c8",
+    "kind": "standard",
+    "name": "Trunnion tip cylinder",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.585Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:19:52.249Z",
+    "displayOrder": 8,
+    "id": "4f87832c-4e1b-43d0-bca1-af5b38a2089d",
+    "kind": "standard",
+    "name": "Rear brake & indicator lights",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.596Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:47:51.307Z",
+    "displayOrder": 0,
+    "id": "0a17dc59-f3b2-4129-91f9-8392fb74c85e",
+    "kind": "standard",
+    "name": "Bugle eye hitch",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.833Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:47:40.283Z",
+    "displayOrder": 1,
+    "id": "9d1351d5-ada1-459e-9e03-3af2acc7a1ff",
+    "kind": "standard",
+    "name": "Park Jack",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.838Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:47:30.065Z",
+    "displayOrder": 2,
+    "id": "4e5eb2d4-cc16-4229-93f6-585105a5eb62",
+    "kind": "standard",
+    "name": "Storage box",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.844Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:47:21.086Z",
+    "displayOrder": 3,
+    "id": "6ffe221e-e996-4fc2-8c89-e60f64932229",
+    "kind": "standard",
+    "name": "Hydraulic brakes",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.848Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:47:06.957Z",
+    "displayOrder": 4,
+    "id": "6333b795-3343-4c5e-a77a-2cb283a83ed1",
+    "kind": "standard",
+    "name": "Tie down points",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.852Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:46:56.983Z",
+    "displayOrder": 5,
+    "id": "f7586c0d-3275-4f81-bfb4-ec9772eb4c85",
+    "kind": "standard",
+    "name": "6mm Deck",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.857Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:53:00.320Z",
+    "displayOrder": 0,
+    "id": "29b3392c-b51e-4845-89d6-c65e457ac9ad",
+    "kind": "standard",
+    "name": "Bugle eye hitch",
+    "price": null,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.214Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:46:35.899Z",
+    "displayOrder": 6,
+    "id": "96a73ba6-42f0-438f-9f65-e6e591e28da5",
+    "kind": "standard",
+    "name": "Standard with BKT tyres",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.866Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:52:52.582Z",
+    "displayOrder": 1,
+    "id": "48dc4c6b-96b8-4685-af40-a2fcc400d351",
+    "kind": "standard",
+    "name": "Park jack",
+    "price": null,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.225Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:52:41.152Z",
+    "displayOrder": 2,
+    "id": "403c4f57-ec46-4118-92e1-16780d736ae1",
+    "kind": "standard",
+    "name": "Sprung drawbar",
+    "price": null,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.235Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:52:32.554Z",
+    "displayOrder": 3,
+    "id": "de32ca61-a40a-4a64-bca4-85a46a0cfaca",
+    "kind": "standard",
+    "name": "Hydraulic brakes",
+    "price": null,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.244Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:52:18.641Z",
+    "displayOrder": 4,
+    "id": "ff347b57-b701-4792-83ec-e28b880e7247",
+    "kind": "standard",
+    "name": "560-60 R22.5 Flotation tyres",
+    "price": null,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.254Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:46:05.795Z",
+    "displayOrder": 7,
+    "id": "dc9ca19b-5b89-41ea-ac3c-92a3b6456020",
+    "kind": "standard",
+    "name": "Manual fold ramps",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.871Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:45:01.393Z",
+    "displayOrder": 8,
+    "id": "82456cd1-6f25-490c-aa83-80184e4b4b77",
+    "kind": "standard",
+    "name": "Rear brake & indicator lights",
+    "price": null,
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "updatedAt": "2026-06-23T11:13:35.875Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:19:27.698Z",
+    "displayOrder": 0,
+    "id": "fad1e6c8-e0ed-4f09-94c9-47d5edc8e3ad",
+    "kind": "optional",
+    "name": "Hydraulic brakes",
+    "price": 1,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.669Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:19:08.558Z",
+    "displayOrder": 1,
+    "id": "5b8ebd8c-35b4-4a29-9d1f-580fba2c1e77",
+    "kind": "optional",
+    "name": "Grain extensions",
+    "price": 1,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.676Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:18:54.885Z",
+    "displayOrder": 2,
+    "id": "914f7127-7a93-4674-873c-23c5551b7da9",
+    "kind": "optional",
+    "name": "Custom paint color",
+    "price": 1,
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "updatedAt": "2026-06-10T10:57:00.685Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:50:57.810Z",
+    "displayOrder": 9,
+    "id": "7f8d0856-2f6c-4a62-be00-464704eea156",
+    "kind": "standard",
+    "name": "Jedidiah yellow paint finish",
+    "price": null,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.306Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:53:28.831Z",
+    "displayOrder": 5,
+    "id": "d11bc91e-6adf-4411-baf2-fcc3ab006851",
+    "kind": "optional",
+    "name": "Easy grease system",
+    "price": 1,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.401Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:25:26.046Z",
+    "displayOrder": 1,
+    "id": "f8e56243-8fc5-449e-b1a5-a57c1943dd47",
+    "kind": "standard",
+    "name": "Rear mudflaps",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.801Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:24:25.859Z",
+    "displayOrder": 5,
+    "id": "8a66a630-49df-4dc1-868b-14ca90752ef1",
+    "kind": "standard",
+    "name": "385 X 65 super single tyres",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.818Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:22:47.922Z",
+    "displayOrder": 9,
+    "id": "d6b1070a-8d73-4eee-9388-a61d47510842",
+    "kind": "standard",
+    "name": "4 inch bugle eye hitch",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.840Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:30:54.883Z",
+    "displayOrder": 1,
+    "id": "c117eea5-daf3-4054-b7ba-67a0319dd9a7",
+    "kind": "optional",
+    "name": "Easy grease system",
+    "price": 1,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.854Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:29:21.686Z",
+    "displayOrder": 5,
+    "id": "794563ec-c089-40fc-914c-4a7fdf8c7623",
+    "kind": "optional",
+    "name": "Rigid cup drawbar for hauler tractor",
+    "price": 1,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.874Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:29:21.686Z",
+    "displayOrder": 6,
+    "id": "207c909b-2a85-4d05-a137-475b8f4334a3",
+    "kind": "optional",
+    "name": "Quickturn cup drawbar for hauler tractor",
+    "price": 1,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.881Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:29:21.686Z",
+    "displayOrder": 7,
+    "id": "a2389af6-8972-4985-8dc6-dc67555f7633",
+    "kind": "optional",
+    "name": "Multi hitch with 32mm articulating ball hitch",
+    "price": 1,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.886Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:51:11.222Z",
+    "displayOrder": 8,
+    "id": "00159425-ebd7-42e8-95dd-7b2c05a995ea",
+    "kind": "standard",
+    "name": "Front and rear mudflaps",
+    "price": null,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.296Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:24:41.844Z",
+    "displayOrder": 4,
+    "id": "f865fe79-60b4-42e8-b9fe-c04513b1d139",
+    "kind": "standard",
+    "name": "Walking beam suspension with Henred axles",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.813Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:23:14.749Z",
+    "displayOrder": 8,
+    "id": "ecb9e319-6c85-4aee-817e-c68023cfa7d3",
+    "kind": "standard",
+    "name": "Park jack",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.833Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:31:06.523Z",
+    "displayOrder": 0,
+    "id": "6e722b46-eab8-47d4-a9b2-5d8a1a296e9b",
+    "kind": "optional",
+    "name": "Custom paint color",
+    "price": 1,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.847Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:29:47.022Z",
+    "displayOrder": 4,
+    "id": "7e131eef-f97f-4804-be97-c8177f2be103",
+    "kind": "optional",
+    "name": "Silage extensions, rear door & grain chute",
+    "price": 1,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.870Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:22:00.840Z",
+    "displayOrder": 11,
+    "id": "7e1291a4-8752-4443-983f-0286f9efc71a",
+    "kind": "standard",
+    "name": "Jedidiah yellow paint finish",
+    "price": null,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.631Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:10:52.189Z",
+    "displayOrder": 0,
+    "id": "f1780e16-cdb8-4d0a-8aa3-f0933fa0fb79",
+    "kind": "optional",
+    "name": "Multi hitch with 32mm articulating ball hitch",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.642Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:10:21.378Z",
+    "displayOrder": 1,
+    "id": "fdac33fb-3165-4c03-a4e7-0ffaccea7fa4",
+    "kind": "optional",
+    "name": "Quick turn cup drawbar for hauler tractor",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.656Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:03:02.841Z",
+    "displayOrder": 2,
+    "id": "ec044c16-733b-4146-80e9-8cb25bcb5cf0",
+    "kind": "optional",
+    "name": "Rigid cup drawbar",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.670Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:02:41.316Z",
+    "displayOrder": 3,
+    "id": "fe533f68-b913-4fc1-b591-f356bfb45659",
+    "kind": "optional",
+    "name": "Silage extensions",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.684Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:29:24.120Z",
+    "displayOrder": 4,
+    "id": "4ee92857-ea5e-48af-be77-e19ed74b1ecc",
+    "kind": "optional",
+    "name": "Tractor spray mudflaps",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.695Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:28:58.505Z",
+    "displayOrder": 5,
+    "id": "e296d94f-cd38-4cec-acf2-d6eb9c118315",
+    "kind": "optional",
+    "name": "Air brakes",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.705Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:28:41.993Z",
+    "displayOrder": 6,
+    "id": "fe2e65bb-12d2-45f9-98f1-57853dae03f0",
+    "kind": "optional",
+    "name": "Black rims",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.720Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:28:21.618Z",
+    "displayOrder": 7,
+    "id": "7880791a-76d3-41f7-9705-1510584e5aea",
+    "kind": "optional",
+    "name": "Bkt tyres",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.734Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:28:04.255Z",
+    "displayOrder": 8,
+    "id": "a4f86f3a-b8b1-4790-8527-749bd08b34a8",
+    "kind": "optional",
+    "name": "2 side work lights",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.748Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:27:22.730Z",
+    "displayOrder": 9,
+    "id": "6311d210-0c42-4076-a578-a9b2b8139f38",
+    "kind": "optional",
+    "name": "Secondary trailer light plug",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.758Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:26:59.221Z",
+    "displayOrder": 10,
+    "id": "6a8bc5fb-8be2-4759-a033-6f668f3cd694",
+    "kind": "optional",
+    "name": "Secondary trailer hydraulic brake line",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.769Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:26:45.880Z",
+    "displayOrder": 11,
+    "id": "6d7125b1-c82c-4471-b3d4-a7c22b32f2f2",
+    "kind": "optional",
+    "name": "1 Rear work light",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.782Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:26:45.880Z",
+    "displayOrder": 12,
+    "id": "dd04d02f-bcb6-4261-8138-8991cce6806b",
+    "kind": "optional",
+    "name": "Easy grease system",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.793Z"
+  },
+  {
+    "createdAt": "2026-06-10T09:22:47.917Z",
+    "displayOrder": 13,
+    "id": "954192fd-2f12-46af-b5cb-73644975a02c",
+    "kind": "optional",
+    "name": "Custom paint color",
+    "price": 1,
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "updatedAt": "2026-06-20T13:02:51.805Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:24:50.346Z",
+    "displayOrder": 3,
+    "id": "92987b33-de6d-498d-92f0-b978aec7e9d1",
+    "kind": "standard",
+    "name": "Trunnion tip cylinder",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.809Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:55:01.985Z",
+    "displayOrder": 0,
+    "id": "8ef8fe9a-b569-42f7-8e3a-20c56a3fcaea",
+    "kind": "optional",
+    "name": "Quickturn cup drawbar for hauler tractor",
+    "price": 1,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.317Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:54:34.899Z",
+    "displayOrder": 1,
+    "id": "4e955183-05e8-43b7-947d-eac439e42b28",
+    "kind": "optional",
+    "name": "Rigid cup drawbar for hauler tractor",
+    "price": 1,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.330Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:54:09.281Z",
+    "displayOrder": 2,
+    "id": "9b323c97-1081-4710-b0e9-ea59b724ffa7",
+    "kind": "optional",
+    "name": "Air brakes",
+    "price": 1,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.343Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:53:53.185Z",
+    "displayOrder": 3,
+    "id": "ef32d429-c9b2-4fbd-956a-c4511b4f480b",
+    "kind": "optional",
+    "name": "Black rims",
+    "price": 1,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.356Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:53:38.953Z",
+    "displayOrder": 4,
+    "id": "b80ecb05-5a6e-42e4-ad67-ff76acb44ef3",
+    "kind": "optional",
+    "name": "BKT tyres",
+    "price": 1,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.381Z"
+  },
+  {
+    "createdAt": "2026-06-10T10:53:17.941Z",
+    "displayOrder": 6,
+    "id": "97aaa501-88fb-4977-b2d9-f629743a95d2",
+    "kind": "optional",
+    "name": "Custom paint color",
+    "price": 1,
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "updatedAt": "2026-06-10T12:52:17.411Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:23:48.322Z",
+    "displayOrder": 7,
+    "id": "c9ae5c35-f0a9-43d5-90ce-41885681563c",
+    "kind": "standard",
+    "name": "Sprung drawbar",
+    "price": null,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.829Z"
+  },
+  {
+    "createdAt": "2026-06-23T10:30:27.597Z",
+    "displayOrder": 3,
+    "id": "17aad6fd-4d1c-46ac-ada7-758a5b9d2746",
+    "kind": "optional",
+    "name": "Air brakes",
+    "price": 1,
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "updatedAt": "2026-06-23T11:09:47.864Z"
   }
 ]

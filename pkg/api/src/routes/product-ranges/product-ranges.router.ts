@@ -4,9 +4,10 @@ import {
   isProductRangeCoreError,
   listProductRanges,
   type ProductRangeCoreError,
+  reorderProductRanges,
   updateProductRange,
 } from '@pkg/core';
-import { ProductRangeCreateInput, ProductRangeUpdateInput, UUID } from '@pkg/schema';
+import { ProductRangeCreateInput, ProductRangeReorderInput, ProductRangeUpdateInput, UUID } from '@pkg/schema';
 import { z } from 'zod';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -26,6 +27,10 @@ export const productRangesRouter = router({
   update: authorizedProcedure('product_range:update')
     .input(ProductRangeUpdateInput)
     .mutation(({ ctx, input }) => mapProductRangeErrors(() => updateProductRange({ db: ctx.db, input }))),
+
+  reorder: authorizedProcedure('product_range:update')
+    .input(ProductRangeReorderInput)
+    .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRanges({ db: ctx.db, input }))),
 });
 
 async function mapProductRangeErrors<T>(action: () => Promise<T>): Promise<T> {

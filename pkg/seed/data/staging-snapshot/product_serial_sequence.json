@@ -1,0 +1,32 @@
+[
+  {
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "lastSequence": 2,
+    "updatedAt": "2026-06-23T13:06:33.127Z"
+  },
+  {
+    "productId": "322b3bdb-4212-4406-bf58-561e82f91b91",
+    "lastSequence": 1,
+    "updatedAt": "2026-06-23T13:22:15.660Z"
+  },
+  {
+    "productId": "83ae1bba-5bce-4242-a6b7-ec9ead2ff739",
+    "lastSequence": 1,
+    "updatedAt": "2026-06-23T13:28:52.054Z"
+  },
+  {
+    "productId": "196dcc99-f80e-46d1-8413-5a16112d98a2",
+    "lastSequence": 2,
+    "updatedAt": "2026-06-23T13:47:47.242Z"
+  },
+  {
+    "productId": "f215844d-8369-4eb3-9c67-24cad609149a",
+    "lastSequence": 1,
+    "updatedAt": "2026-06-23T13:51:14.409Z"
+  },
+  {
+    "productId": "0d78d293-dbc7-410b-abe3-f5ee9ff60a88",
+    "lastSequence": 1,
+    "updatedAt": "2026-06-23T13:53:13.788Z"
+  }
+]

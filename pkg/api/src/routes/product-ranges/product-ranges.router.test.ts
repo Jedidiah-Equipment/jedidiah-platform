@@ -18,16 +18,27 @@ async function createRange(
 }
 
 describe('productRanges.create', () => {
-  test('creates a Product Range with no image', async ({ context }) => {
+  test('creates a Product Range with no image or logo', async ({ context }) => {
     const caller = context.createCaller();
     const created = await createRange(caller, 'Lowbed');
 
     expect(created).toMatchObject({
       image: null,
+      logo: null,
       name: 'Lowbed',
+      displayOrder: 0,
     });
     expectIsoDatetime(created.createdAt);
     expectIsoDatetime(created.updatedAt);
+  });
+
+  test('assigns an incrementing displayOrder so new Ranges append to the end', async ({ context }) => {
+    const caller = context.createCaller();
+    const first = await createRange(caller, 'Lowbed');
+    const second = await createRange(caller, 'Earthmoving');
+
+    expect(first.displayOrder).toBe(0);
+    expect(second.displayOrder).toBe(1);
   });
 
   test('rejects case-insensitive duplicate names', async ({ context }) => {
@@ -76,14 +87,47 @@ describe('productRanges.update', () => {
 });
 
 describe('productRanges.list', () => {
-  test('lists Product Ranges sorted by name', async ({ context }) => {
+  test('lists Product Ranges in displayOrder (creation order by default)', async ({ context }) => {
     const caller = context.createCaller();
     await createRange(caller, 'Earthmoving');
     await createRange(caller, 'Balers');
 
     await expect(caller.productRanges.list()).resolves.toMatchObject({
-      ranges: [{ name: 'Balers' }, { name: 'Earthmoving' }],
+      ranges: [{ name: 'Earthmoving' }, { name: 'Balers' }],
     });
+  });
+});
+
+describe('productRanges.reorder', () => {
+  test('rewrites displayOrder to match the supplied id order', async ({ context }) => {
+    const caller = context.createCaller();
+    const earthmoving = await createRange(caller, 'Earthmoving');
+    const balers = await createRange(caller, 'Balers');
+    const lowbed = await createRange(caller, 'Lowbed');
+
+    const result = await caller.productRanges.reorder({
+      orderedIds: [lowbed.id, earthmoving.id, balers.id],
+    });
+
+    expect(result.ranges.map((range) => range.name)).toEqual(['Lowbed', 'Earthmoving', 'Balers']);
+    expect(result.ranges.map((range) => range.displayOrder)).toEqual([0, 1, 2]);
+  });
+
+  test('rejects an order that does not cover every Range', async ({ context }) => {
+    const caller = context.createCaller();
+    const earthmoving = await createRange(caller, 'Earthmoving');
+    await createRange(caller, 'Balers');
+
+    await expect(caller.productRanges.reorder({ orderedIds: [earthmoving.id] })).rejects.toBeDefined();
+  });
+
+  test('rejects an unknown Range id', async ({ context }) => {
+    const caller = context.createCaller();
+    const earthmoving = await createRange(caller, 'Earthmoving');
+
+    await expect(
+      caller.productRanges.reorder({ orderedIds: [earthmoving.id, '00000000-0000-4000-8000-0000000000ff'] }),
+    ).rejects.toMatchObject({ appCode: 'product_range.not_found' });
   });
 });
 

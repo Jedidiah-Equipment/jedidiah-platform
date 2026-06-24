@@ -1,37 +1,56 @@
 [
   {
-    "department": "fabrication",
-    "disabledAt": null,
     "id": "00000000-0000-4000-8000-000000000b01",
+    "department": "fabrication",
     "name": "Fabrication Bay 1",
-    "scheduleOrigin": "2026-06-05"
+    "scheduleOrigin": "2026-06-05",
+    "disabledAt": null,
+    "createdAt": "2026-06-05T14:54:15.392Z",
+    "updatedAt": "2026-06-05T14:54:15.392Z"
   },
   {
-    "department": "fabrication",
-    "disabledAt": null,
     "id": "00000000-0000-4000-8000-000000000b02",
+    "department": "fabrication",
     "name": "Fabrication Bay 2",
-    "scheduleOrigin": "2026-06-05"
+    "scheduleOrigin": "2026-06-05",
+    "disabledAt": null,
+    "createdAt": "2026-06-05T14:54:15.392Z",
+    "updatedAt": "2026-06-05T14:54:15.392Z"
   },
   {
-    "department": "fabrication",
-    "disabledAt": null,
     "id": "00000000-0000-4000-8000-000000000b03",
+    "department": "fabrication",
     "name": "Fabrication Bay 3",
-    "scheduleOrigin": "2026-06-05"
+    "scheduleOrigin": "2026-06-05",
+    "disabledAt": null,
+    "createdAt": "2026-06-05T14:54:15.392Z",
+    "updatedAt": "2026-06-05T14:54:15.392Z"
   },
   {
-    "department": "fabrication",
-    "disabledAt": null,
     "id": "00000000-0000-4000-8000-000000000b04",
+    "department": "fabrication",
     "name": "Fabrication Bay 4",
-    "scheduleOrigin": "2026-06-05"
+    "scheduleOrigin": "2026-06-05",
+    "disabledAt": null,
+    "createdAt": "2026-06-05T14:54:15.392Z",
+    "updatedAt": "2026-06-05T14:54:15.392Z"
   },
   {
-    "department": "fabrication",
-    "disabledAt": null,
     "id": "00000000-0000-4000-8000-000000000b05",
+    "department": "fabrication",
     "name": "Fabrication Bay 5",
-    "scheduleOrigin": "2026-06-05"
+    "scheduleOrigin": "2026-06-05",
+    "disabledAt": null,
+    "createdAt": "2026-06-05T14:54:15.392Z",
+    "updatedAt": "2026-06-05T14:54:15.392Z"
+  },
+  {
+    "id": "1256bac8-975f-4cb1-9a99-df04aeb133b1",
+    "department": "fabrication",
+    "name": "Fabrication Bay 6",
+    "scheduleOrigin": "2026-06-23",
+    "disabledAt": null,
+    "createdAt": "2026-06-23T13:39:53.213Z",
+    "updatedAt": "2026-06-23T13:40:51.095Z"
   }
 ]

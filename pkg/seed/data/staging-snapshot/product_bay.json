@@ -1,0 +1,65 @@
+[
+  {
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "bayId": "00000000-0000-4000-8000-000000000b01",
+    "defaultWorkingDays": 1,
+    "createdAt": "2026-06-10T12:52:17.177Z",
+    "updatedAt": "2026-06-10T12:52:17.177Z"
+  },
+  {
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "bayId": "00000000-0000-4000-8000-000000000b01",
+    "defaultWorkingDays": 18,
+    "createdAt": "2026-06-20T13:02:51.468Z",
+    "updatedAt": "2026-06-20T13:02:51.468Z"
+  },
+  {
+    "productId": "0d78d293-dbc7-410b-abe3-f5ee9ff60a88",
+    "bayId": "00000000-0000-4000-8000-000000000b01",
+    "defaultWorkingDays": 5,
+    "createdAt": "2026-06-23T11:09:30.401Z",
+    "updatedAt": "2026-06-23T11:09:30.401Z"
+  },
+  {
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "bayId": "00000000-0000-4000-8000-000000000b03",
+    "defaultWorkingDays": 5,
+    "createdAt": "2026-06-23T11:09:47.777Z",
+    "updatedAt": "2026-06-23T11:09:47.777Z"
+  },
+  {
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "bayId": "00000000-0000-4000-8000-000000000b03",
+    "defaultWorkingDays": 5,
+    "createdAt": "2026-06-23T11:13:35.817Z",
+    "updatedAt": "2026-06-23T11:13:35.817Z"
+  },
+  {
+    "productId": "f215844d-8369-4eb3-9c67-24cad609149a",
+    "bayId": "00000000-0000-4000-8000-000000000b02",
+    "defaultWorkingDays": 5,
+    "createdAt": "2026-06-23T11:16:25.416Z",
+    "updatedAt": "2026-06-23T11:16:25.416Z"
+  },
+  {
+    "productId": "42e585fb-3c28-4434-9099-b22cf5a2d902",
+    "bayId": "00000000-0000-4000-8000-000000000b02",
+    "defaultWorkingDays": 5,
+    "createdAt": "2026-06-23T11:26:00.893Z",
+    "updatedAt": "2026-06-23T11:26:00.893Z"
+  },
+  {
+    "productId": "322b3bdb-4212-4406-bf58-561e82f91b91",
+    "bayId": "00000000-0000-4000-8000-000000000b02",
+    "defaultWorkingDays": 5,
+    "createdAt": "2026-06-23T11:31:12.212Z",
+    "updatedAt": "2026-06-23T11:31:12.212Z"
+  },
+  {
+    "productId": "5e6b7d9f-bef6-4ec0-a352-b5030ba6a26f",
+    "bayId": "00000000-0000-4000-8000-000000000b05",
+    "defaultWorkingDays": 5,
+    "createdAt": "2026-06-23T12:12:58.692Z",
+    "updatedAt": "2026-06-23T12:12:58.692Z"
+  }
+]

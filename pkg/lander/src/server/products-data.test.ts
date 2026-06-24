@@ -5,7 +5,11 @@ import { test } from '../test/tester.js';
 import { loadProductsCatalog, toRangeSlug } from './products-data.js';
 
 async function insertRange(db: Parameters<typeof loadProductsCatalog>[0], name: string, description: string | null) {
-  const [range] = await db.insert(productRanges).values({ name, description }).returning();
+  const existing = await db.select({ id: productRanges.id }).from(productRanges);
+  const [range] = await db
+    .insert(productRanges)
+    .values({ name, description, displayOrder: existing.length })
+    .returning();
   if (!range) throw new Error('range insert did not return a row');
 
   return range;

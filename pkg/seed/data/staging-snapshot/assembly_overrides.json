@@ -1,9 +1,142 @@
 [
   {
-    "optionalAssemblyId": "70148dc1-8f3e-4f47-b465-9a4a69cfff90",
+    "optionalAssemblyId": "914f7127-7a93-4674-873c-23c5551b7da9",
     "optionalKind": "optional",
-    "productId": "2827e9bb-743f-43c7-b38a-92ca421889d1",
-    "standardAssemblyId": "c5ce7e9a-acb1-44c9-9f8c-c2bf9dd03ea3",
+    "productId": "aa49a474-087c-4e71-8977-ba1285032722",
+    "standardAssemblyId": "8aa0b721-9956-45d3-ba7e-a90574408f24",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "8ef8fe9a-b569-42f7-8e3a-20c56a3fcaea",
+    "optionalKind": "optional",
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "standardAssemblyId": "403c4f57-ec46-4118-92e1-16780d736ae1",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "4e955183-05e8-43b7-947d-eac439e42b28",
+    "optionalKind": "optional",
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "standardAssemblyId": "403c4f57-ec46-4118-92e1-16780d736ae1",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "9b323c97-1081-4710-b0e9-ea59b724ffa7",
+    "optionalKind": "optional",
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "standardAssemblyId": "de32ca61-a40a-4a64-bca4-85a46a0cfaca",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "b80ecb05-5a6e-42e4-ad67-ff76acb44ef3",
+    "optionalKind": "optional",
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "standardAssemblyId": "ff347b57-b701-4792-83ec-e28b880e7247",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "97aaa501-88fb-4977-b2d9-f629743a95d2",
+    "optionalKind": "optional",
+    "productId": "97ce9777-8970-4939-b6de-2dd2a5459782",
+    "standardAssemblyId": "7f8d0856-2f6c-4a62-be00-464704eea156",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "6e722b46-eab8-47d4-a9b2-5d8a1a296e9b",
+    "optionalKind": "optional",
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "standardAssemblyId": "942dcc16-3fb9-46f3-881e-e13f0e71364d",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "17aad6fd-4d1c-46ac-ada7-758a5b9d2746",
+    "optionalKind": "optional",
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "standardAssemblyId": "4a3de35f-ad37-4770-8749-ed776f653d1b",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "794563ec-c089-40fc-914c-4a7fdf8c7623",
+    "optionalKind": "optional",
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "standardAssemblyId": "d6b1070a-8d73-4eee-9388-a61d47510842",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "207c909b-2a85-4d05-a137-475b8f4334a3",
+    "optionalKind": "optional",
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "standardAssemblyId": "d6b1070a-8d73-4eee-9388-a61d47510842",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "a2389af6-8972-4985-8dc6-dc67555f7633",
+    "optionalKind": "optional",
+    "productId": "e1b53448-3eeb-4229-b0bd-d5838b114b88",
+    "standardAssemblyId": "d6b1070a-8d73-4eee-9388-a61d47510842",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "8417eada-5162-44b6-91b1-66569a5a1f07",
+    "optionalKind": "optional",
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "standardAssemblyId": "dc9ca19b-5b89-41ea-ac3c-92a3b6456020",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "83f9145e-d0ee-48c5-b03d-e5afdca44c42",
+    "optionalKind": "optional",
+    "productId": "4bbac1e3-d5c7-4ea5-827a-a80ddea164cb",
+    "standardAssemblyId": "140b1b39-6836-4d43-a0ce-649a31687638",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "f1780e16-cdb8-4d0a-8aa3-f0933fa0fb79",
+    "optionalKind": "optional",
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "standardAssemblyId": "c9229f94-d9a7-4a02-a816-8a02d0171bd2",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "fdac33fb-3165-4c03-a4e7-0ffaccea7fa4",
+    "optionalKind": "optional",
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "standardAssemblyId": "e4a6d1a9-1f21-481b-b343-e6c29969c9aa",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "ec044c16-733b-4146-80e9-8cb25bcb5cf0",
+    "optionalKind": "optional",
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "standardAssemblyId": "c9229f94-d9a7-4a02-a816-8a02d0171bd2",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "ec044c16-733b-4146-80e9-8cb25bcb5cf0",
+    "optionalKind": "optional",
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "standardAssemblyId": "e4a6d1a9-1f21-481b-b343-e6c29969c9aa",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "e296d94f-cd38-4cec-acf2-d6eb9c118315",
+    "optionalKind": "optional",
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "standardAssemblyId": "ad112e00-0181-4d61-bc00-aad692ada0b3",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "7880791a-76d3-41f7-9705-1510584e5aea",
+    "optionalKind": "optional",
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "standardAssemblyId": "00f0c448-dd5a-4435-ac20-8cf58e3d3c02",
+    "standardKind": "standard"
+  },
+  {
+    "optionalAssemblyId": "954192fd-2f12-46af-b5cb-73644975a02c",
+    "optionalKind": "optional",
+    "productId": "49931a72-ee83-44f4-92a0-f73295ec73c0",
+    "standardAssemblyId": "7e1291a4-8752-4443-983f-0286f9efc71a",
     "standardKind": "standard"
   }
 ]

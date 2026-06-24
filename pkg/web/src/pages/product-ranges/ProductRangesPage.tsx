@@ -1,9 +1,13 @@
+import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { hasPermission } from '@pkg/domain';
-import { IconLoader2, IconPencil, IconPlus } from '@tabler/icons-react';
+import type { ProductRange } from '@pkg/schema';
+import { IconGripVertical, IconLoader2, IconPencil, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -25,6 +29,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 import { productRangesPageDescription } from '@/utils/page-descriptions.js';
 import { RangeThumbnail } from './components/RangeThumbnail.js';
 import { ProductRangeFormValues, toProductRangeCreateInput } from './components/types.js';
@@ -37,10 +42,53 @@ export const ProductRangesPage: React.FC = () => {
   const canCreateRanges = hasPermission(access, 'product_range:create');
   const canUpdateRanges = hasPermission(access, 'product_range:update');
 
+  const showMutationError = useApiMutationErrorToast();
+  const { invalidateProductRanges } = useQueryInvalidation();
+
   const rangesQuery = useQuery(trpc.productRanges.list.queryOptions());
-  const ranges = rangesQuery.data?.ranges ?? [];
 
   const [isCreateOpen, setCreateOpen] = useState(false);
+
+  // Local copy of the list so a drag reorders the cards immediately; it resyncs whenever the query
+  // returns (initial load, invalidation after a successful reorder, or a create).
+  const [orderedRanges, setOrderedRanges] = useState<ProductRange[]>([]);
+  useEffect(() => {
+    if (rangesQuery.data) {
+      setOrderedRanges(rangesQuery.data.ranges);
+    }
+  }, [rangesQuery.data]);
+
+  const reorderMutation = useMutation(
+    trpc.productRanges.reorder.mutationOptions({
+      onSuccess: () => invalidateProductRanges(),
+      onError: (error) => {
+        // Roll back to the server order on failure.
+        if (rangesQuery.data) {
+          setOrderedRanges(rangesQuery.data.ranges);
+        }
+        showMutationError(error, 'Unable to reorder Product Ranges.');
+      },
+    }),
+  );
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = orderedRanges.findIndex((range) => range.id === active.id);
+    const newIndex = orderedRanges.findIndex((range) => range.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    const next = arrayMove(orderedRanges, oldIndex, newIndex);
+    setOrderedRanges(next);
+    reorderMutation.mutate({ orderedIds: next.map((range) => range.id) });
+  };
 
   if (rangesQuery.isLoading) {
     return (
@@ -77,44 +125,86 @@ export const ProductRangesPage: React.FC = () => {
         size="lg"
         title="Product Ranges"
       >
-        {ranges.length === 0 ? (
+        {orderedRanges.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
             No Product Ranges yet.
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {ranges.map((range) => (
-              <Card key={range.id} className="min-w-0">
-                <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto] gap-0">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <RangeThumbnail image={range.image} name={range.name} rangeId={range.id} />
-                    <div className="min-w-0 space-y-0.5">
-                      <CardTitle className="truncate">{range.name}</CardTitle>
-                      <CardDescription>{range.image ? 'Image attached' : 'No image'}</CardDescription>
-                    </div>
-                  </div>
-                  {canUpdateRanges ? (
-                    <CardAction span="header">
-                      <Button
-                        aria-label={`Edit ${range.name}`}
-                        onClick={() => navigate({ to: '/product-ranges/$id/edit', params: { id: range.id } })}
-                        size="icon-sm"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <IconPencil />
-                      </Button>
-                    </CardAction>
-                  ) : null}
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
+          <DndContext
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+            onDragEnd={handleDragEnd}
+            sensors={sensors}
+          >
+            <SortableContext items={orderedRanges.map((range) => range.id)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-3">
+                {orderedRanges.map((range) => (
+                  <SortableRangeCard
+                    canReorder={canUpdateRanges}
+                    canUpdate={canUpdateRanges}
+                    key={range.id}
+                    onEdit={() => navigate({ to: '/product-ranges/$id/edit', params: { id: range.id } })}
+                    range={range}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </PageLayout>
 
       <CreateProductRangeDialog onClose={() => setCreateOpen(false)} open={isCreateOpen} />
     </>
+  );
+};
+
+type SortableRangeCardProps = {
+  canReorder: boolean;
+  canUpdate: boolean;
+  onEdit: () => void;
+  range: ProductRange;
+};
+
+const SortableRangeCard: React.FC<SortableRangeCardProps> = ({ canReorder, canUpdate, onEdit, range }) => {
+  const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
+    id: range.id,
+    disabled: !canReorder,
+  });
+
+  return (
+    <Card
+      className={cn('min-w-0', isDragging && 'z-10 opacity-80 shadow-lg')}
+      ref={setNodeRef}
+      style={{ transform: transform ? `translate3d(0, ${transform.y}px, 0)` : undefined, transition }}
+    >
+      <CardHeader className="min-w-0 has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto] gap-0">
+        <div className="flex min-w-0 items-center gap-3">
+          {canReorder ? (
+            <button
+              aria-label={`Reorder ${range.name}`}
+              className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+              type="button"
+              {...attributes}
+              {...listeners}
+            >
+              <IconGripVertical />
+            </button>
+          ) : null}
+          <RangeThumbnail image={range.image} name={range.name} rangeId={range.id} />
+          <div className="min-w-0 space-y-0.5">
+            <CardTitle className="truncate">{range.name}</CardTitle>
+            <CardDescription>{range.image ? 'Image attached' : 'No image'}</CardDescription>
+          </div>
+        </div>
+        {canUpdate ? (
+          <CardAction span="header">
+            <Button aria-label={`Edit ${range.name}`} onClick={onEdit} size="icon-sm" type="button" variant="ghost">
+              <IconPencil />
+            </Button>
+          </CardAction>
+        ) : null}
+      </CardHeader>
+    </Card>
   );
 };
 

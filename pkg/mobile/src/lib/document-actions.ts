@@ -15,14 +15,19 @@ export type DocumentAction = {
   /** Authed download route, e.g. `/api/jobs/:jobId/documents/:documentId/download`. */
   path: string;
   filename: string;
+  /** Optional discriminator for callers that need more than the display name to identify cache bytes. */
+  cacheKey?: string;
 };
 
 const PDF_MIME = 'application/pdf';
 
 // Fetch the document to the app cache with the session cookie, returning its file:// URI.
-export async function downloadDocumentToCache({ path, filename }: DocumentAction): Promise<string> {
+export async function downloadDocumentToCache({ path, filename, cacheKey }: DocumentAction): Promise<string> {
   const cookie = sessionCookieHeader();
-  const target = `${FileSystem.cacheDirectory}${encodeURIComponent(filename)}`;
+  const cacheName = cacheKey
+    ? `${encodeURIComponent(cacheKey)}-${encodeURIComponent(filename)}`
+    : encodeURIComponent(filename);
+  const target = `${FileSystem.cacheDirectory}${cacheName}`;
   const result = await FileSystem.downloadAsync(`${apiBaseUrl}${path}`, target, {
     headers: cookie ? { Cookie: cookie } : undefined,
   });

@@ -15,14 +15,19 @@ export type DocumentAction = {
   /** Authed download route, e.g. `/api/jobs/:jobId/documents/:documentId/download`. */
   path: string;
   filename: string;
+  /** Optional discriminator for callers that need more than the display name to identify cache bytes. */
+  cacheKey?: string;
 };
 
 const PDF_MIME = 'application/pdf';
 
 // Fetch the document to the app cache with the session cookie, returning its file:// URI.
-async function downloadToCache({ path, filename }: DocumentAction): Promise<string> {
+export async function downloadDocumentToCache({ path, filename, cacheKey }: DocumentAction): Promise<string> {
   const cookie = sessionCookieHeader();
-  const target = `${FileSystem.cacheDirectory}${encodeURIComponent(filename)}`;
+  const cacheName = cacheKey
+    ? `${encodeURIComponent(cacheKey)}-${encodeURIComponent(filename)}`
+    : encodeURIComponent(filename);
+  const target = `${FileSystem.cacheDirectory}${cacheName}`;
   const result = await FileSystem.downloadAsync(`${apiBaseUrl}${path}`, target, {
     headers: cookie ? { Cookie: cookie } : undefined,
   });
@@ -36,7 +41,7 @@ async function downloadToCache({ path, filename }: DocumentAction): Promise<stri
 
 /** Open the OS share sheet for the document (downloads it with auth first). */
 export async function shareDocument(action: DocumentAction): Promise<void> {
-  const uri = await downloadToCache(action);
+  const uri = await downloadDocumentToCache(action);
 
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('Sharing isn’t available on this device.');
@@ -51,7 +56,7 @@ export async function shareDocument(action: DocumentAction): Promise<void> {
  * public Downloads concept, so we fall back to the share sheet ("Save to Files").
  */
 export async function saveDocument(action: DocumentAction): Promise<void> {
-  const uri = await downloadToCache(action);
+  const uri = await downloadDocumentToCache(action);
 
   if (Platform.OS !== 'android') {
     if (!(await Sharing.isAvailableAsync())) {

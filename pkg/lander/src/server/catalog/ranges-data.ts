@@ -1,6 +1,8 @@
 import { listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
 
+import { toRangeLabel, toRangeSlug } from './products-data.js';
+
 export type HomeRange = {
   id: string;
   name: string;
@@ -22,5 +24,19 @@ export async function loadHomeRanges(db: Db): Promise<HomeRange[]> {
     description: range.description ?? '',
     href: '/products',
     imageUrl: `/images/ranges/${range.id}`,
+  }));
+}
+
+// Footer "Ranges" links. The slug feeds the Products page `?range=` filter (same helpers as the chip bar),
+// and the label matches the chip text. Top four by Range display order — the footer is a teaser, not the
+// full list, which lives on the Products page.
+export type FooterRange = { label: string; slug: string };
+
+export async function loadFooterRanges(db: Db): Promise<FooterRange[]> {
+  const { ranges } = await listProductRanges({ db });
+
+  return ranges.slice(0, 4).map((range) => ({
+    label: toRangeLabel(range.name),
+    slug: toRangeSlug(range.name),
   }));
 }

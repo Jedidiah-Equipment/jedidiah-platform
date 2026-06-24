@@ -6,11 +6,16 @@ import { Footer } from '../components/footer.js';
 import { Nav } from '../components/nav.js';
 import { initAnalytics } from '../lib/analytics.js';
 import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
+import { getFooterRanges } from '../server/catalog/ranges.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
 import appCss from '../styles/app.css?url';
 
 export const Route = createRootRoute({
-  loader: () => getSiteMeta(),
+  loader: async () => {
+    const [meta, footerRanges] = await Promise.all([getSiteMeta(), getFooterRanges()]);
+
+    return { ...meta, footerRanges };
+  },
   head: ({ loaderData }) => ({
     meta: [
       { charSet: 'utf-8' },
@@ -63,6 +68,8 @@ function AnalyticsTracker() {
 }
 
 function RootDocument() {
+  const { footerRanges } = Route.useLoaderData();
+
   return (
     <html lang="en">
       <head>
@@ -72,7 +79,7 @@ function RootDocument() {
         <AnalyticsTracker />
         <Nav />
         <Outlet />
-        <Footer />
+        <Footer ranges={footerRanges} />
         <Scripts />
       </body>
     </html>

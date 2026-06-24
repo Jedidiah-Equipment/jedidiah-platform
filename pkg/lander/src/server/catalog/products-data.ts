@@ -34,7 +34,7 @@ export function toRangeSlug(name: string): string {
 }
 
 // Chip labels drop a trailing " Range" so the bar reads "Crosshaul", "Recharge", ... like the prototype.
-function toRangeLabel(name: string): string {
+export function toRangeLabel(name: string): string {
   return name.replace(/\s+Range$/i, '');
 }
 

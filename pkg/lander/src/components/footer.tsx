@@ -2,6 +2,8 @@ import logoFullUrl from '@pkg/domain/assets/brand/jedidiah-logo-full.png';
 import { IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
+import type { FooterRange } from '../server/catalog/ranges.js';
+
 const EXPLORE = [
   { label: 'Home', href: '/' },
   { label: 'About Us', href: '/about' },
@@ -9,17 +11,17 @@ const EXPLORE = [
   { label: 'Contact Us', href: '/contact' },
 ] as const;
 
-const RANGES = ['Crosshaul', 'Recharge', 'Silage & Grain', 'Planting'];
+const footerLinkClass = 'font-body text-[15px] text-[#a8a8a8] no-underline transition-colors hover:text-yellow';
 
 function FooterLink({ label, href }: { label: string; href: (typeof EXPLORE)[number]['href'] }) {
   return (
-    <Link to={href} className="font-body text-[15px] text-[#a8a8a8] no-underline transition-colors hover:text-yellow">
+    <Link to={href} className={footerLinkClass}>
       {label}
     </Link>
   );
 }
 
-export function Footer() {
+export function Footer({ ranges }: { ranges: FooterRange[] }) {
   return (
     <footer className="bg-ink-soft text-white">
       <div className="mx-auto max-w-[1320px] px-12 pt-[72px] max-nav:px-5 max-nav:pt-12">
@@ -50,8 +52,15 @@ export function Footer() {
               Ranges
             </h4>
             <div className="flex flex-col gap-[13px]">
-              {RANGES.map((label) => (
-                <FooterLink key={label} label={label} href="/products" />
+              {ranges.map((range) => (
+                <Link
+                  key={range.slug}
+                  to="/products"
+                  search={{ range: range.slug }}
+                  className={footerLinkClass}
+                >
+                  {range.label}
+                </Link>
               ))}
             </div>
           </div>

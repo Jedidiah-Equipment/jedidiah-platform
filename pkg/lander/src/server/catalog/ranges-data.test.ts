@@ -1,8 +1,10 @@
+import { listProductRanges } from '@pkg/core';
 import { productRanges } from '@pkg/db';
 import { expect } from 'vitest';
 
 import { test } from '../../test/tester.js';
-import { loadHomeRanges } from './ranges-data.js';
+import { toRangeLabel, toRangeSlug } from './products-data.js';
+import { loadFooterRanges, loadHomeRanges } from './ranges-data.js';
 
 test('loadHomeRanges returns Range name, blurb, and Products href from the database', async ({ db }) => {
   const [withBlurb] = await db
@@ -38,4 +40,14 @@ test('loadHomeRanges renders a missing blurb as empty rather than fabricating co
   const found = ranges.find((range) => range.id === withoutBlurb.id);
 
   expect(found?.description).toBe('');
+});
+
+test('loadFooterRanges returns the top four Ranges as chip-matching label/slug links', async ({ db }) => {
+  const { ranges } = await listProductRanges({ db });
+  const footer = await loadFooterRanges(db);
+
+  // Footer teaser: the first four Ranges by display order, mapped through the same label/slug helpers the
+  // Products chip bar and `?range=` filter use, so the links land on the matching filter.
+  expect(footer).toHaveLength(Math.min(4, ranges.length));
+  expect(footer).toEqual(ranges.slice(0, 4).map((range) => ({ label: toRangeLabel(range.name), slug: toRangeSlug(range.name) })));
 });

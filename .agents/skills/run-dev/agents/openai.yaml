@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run Dev"
+  short_description: "Run the local worktree dev server"
+  default_prompt: "Use $run-dev to start the repo dev server."

@@ -210,10 +210,11 @@ const SortableRangeCard: React.FC<SortableRangeCardProps> = ({
               <IconGripVertical />
             </button>
           ) : null}
-          <RangeThumbnail image={range.image} name={range.name} rangeId={range.id} />
+          <RangeThumbnail asset="logo" image={range.logo} name={range.name} rangeId={range.id} />
+          <RangeThumbnail asset="image" image={range.image} name={range.name} rangeId={range.id} />
           <div className="min-w-0 space-y-0.5">
             <CardTitle className="truncate">{range.name}</CardTitle>
-            <CardDescription>{range.image ? 'Image attached' : 'No image'}</CardDescription>
+            <CardDescription className="truncate">{range.description || 'No description'}</CardDescription>
           </div>
         </div>
         {canUpdate ? (

@@ -114,6 +114,17 @@
       "problemMatcher": []
     },
     {
+      "label": "Mobile iOS Staging API",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "@pkg/mobile", "ios:staging-api"],
+      "icon": {
+        "id": "device-mobile",
+        "color": "terminal.ansiGreen"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Start Studio",
       "type": "shell",
       "command": "pnpm",

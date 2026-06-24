@@ -1,1 +1,67 @@
-[]
+[
+  {
+    "id": "4a7075e4-3e14-4bf0-a19e-7b506473cf17",
+    "companyName": "Craig Stokes",
+    "email": null,
+    "vatNumber": null,
+    "address": null,
+    "contactPerson": "Craig Stokes",
+    "phone": null,
+    "notes": null,
+    "thumbnailDataUrl": null,
+    "createdAt": "2026-06-23T12:56:30.898Z",
+    "updatedAt": "2026-06-23T12:56:46.946Z"
+  },
+  {
+    "id": "5c32124d-9b97-49f9-8529-3d5d4679c392",
+    "companyName": "Jed Fab",
+    "email": null,
+    "vatNumber": null,
+    "address": null,
+    "contactPerson": "Jed Van Niekerk",
+    "phone": null,
+    "notes": null,
+    "thumbnailDataUrl": null,
+    "createdAt": "2026-06-23T12:57:29.001Z",
+    "updatedAt": "2026-06-23T12:57:47.381Z"
+  },
+  {
+    "id": "9b489117-7148-47aa-8912-6121da11a4d5",
+    "companyName": "Brett Green",
+    "email": null,
+    "vatNumber": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "thumbnailDataUrl": null,
+    "createdAt": "2026-06-23T12:58:07.980Z",
+    "updatedAt": "2026-06-23T12:58:07.980Z"
+  },
+  {
+    "id": "d94484cc-c345-40f0-a4ad-329776cfbe09",
+    "companyName": "MRB Farming",
+    "email": null,
+    "vatNumber": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "thumbnailDataUrl": null,
+    "createdAt": "2026-06-23T12:58:21.926Z",
+    "updatedAt": "2026-06-23T12:58:21.926Z"
+  },
+  {
+    "id": "27a5897b-c994-462a-9b8e-08cd552bd87c",
+    "companyName": "Andile Mdzunga",
+    "email": null,
+    "vatNumber": null,
+    "address": null,
+    "contactPerson": null,
+    "phone": null,
+    "notes": null,
+    "thumbnailDataUrl": null,
+    "createdAt": "2026-06-23T12:58:46.665Z",
+    "updatedAt": "2026-06-23T12:58:46.665Z"
+  }
+]

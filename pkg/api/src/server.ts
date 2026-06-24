@@ -13,7 +13,10 @@ import { createObservability, type Observability } from './observability.js';
 import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
 import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
 import { registerEntityImageRoutes } from './routes/images/entity-image-http.route.js';
-import { createProductRangeImageRouteConfig } from './routes/product-ranges/product-range-image-routes.js';
+import {
+  createProductRangeImageRouteConfig,
+  createProductRangeLogoRouteConfig,
+} from './routes/product-ranges/product-range-image-routes.js';
 import { createProductImageRouteConfig } from './routes/products/product-image-routes.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
 import { createContextFactory } from './trpc/context.js';
@@ -54,6 +57,7 @@ export async function buildServer(
   await registerEntityImageRoutes(app, [
     createProductImageRouteConfig(storage),
     createProductRangeImageRouteConfig(storage),
+    createProductRangeLogoRouteConfig(storage),
   ]);
   await registerHealthRoutes(app, config);
 

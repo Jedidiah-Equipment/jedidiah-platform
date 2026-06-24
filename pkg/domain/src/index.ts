@@ -22,6 +22,7 @@ export * from './jobs/working-calendar.js';
 export * from './products/brochure-completeness.js';
 export * from './products/product-image-policy.js';
 export * from './products/product-range-image-policy.js';
+export * from './products/product-range-logo-policy.js';
 export * from './quotes/effective-bom.js';
 export * from './quotes/quote-email-prompt.js';
 export * from './quotes/quote-lock.js';

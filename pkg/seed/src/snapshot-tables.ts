@@ -3,14 +3,18 @@ import {
   assemblyOverrides,
   assemblyParts,
   customers,
+  jobBayOperatorAssignments,
   jobBays,
   parts,
   productAssemblies,
+  productBays,
   productRanges,
+  productSerialSequences,
   products,
   supplier,
   user,
   userDepartment,
+  workingCalendarOffDays,
 } from '@pkg/db';
 import type { PgTable } from 'drizzle-orm/pg-core';
 
@@ -22,6 +26,16 @@ export type SnapshotTableConfig = {
   tableName: string;
   timestampColumns: readonly string[];
   writableColumns?: readonly string[];
+  // Columns present in the local schema but absent from the staging source (e.g. a not-yet-deployed
+  // migration); excluded from the staging read so seed:read does not select non-existent columns.
+  omitReadColumns?: readonly string[];
+  // Column (property name) to order the staging read by, so positional seed defaults are deterministic.
+  readOrderColumn?: string;
+  // Values merged into each row after reading, keyed by index — used to populate columns omitted above.
+  seedRowDefaults?: (row: SnapshotRow, index: number) => SnapshotRow;
+  // When true, the writer overwrites each `credential`-provider row's `password` with a hash of the
+  // shared local seed password, so every snapshot-seeded user logs in with the same known credential.
+  seedCredentialPassword?: boolean;
 };
 
 const authTimestampColumns = [
@@ -54,10 +68,28 @@ export const snapshotTables = [
     timestampColumns: ['createdAt', 'disabledAt', 'updatedAt'],
   },
   {
+    fileName: 'job_bay_operator_assignment.json',
+    table: jobBayOperatorAssignments,
+    tableName: 'job_bay_operator_assignment',
+    timestampColumns: ['assignedAt', 'unassignedAt'],
+  },
+  {
+    // `date` is a calendar-date string column, so it stays a string rather than a revived Date.
+    fileName: 'working_calendar_off_day.json',
+    table: workingCalendarOffDays,
+    tableName: 'working_calendar_off_day',
+    timestampColumns: ['createdAt', 'updatedAt'],
+  },
+  {
+    // Never dump staging password hashes into the committed snapshot. The reader omits the column and
+    // stores null; the writer fills credential accounts with the shared local seed password on insert.
     fileName: 'account.json',
     table: account,
     tableName: 'account',
     timestampColumns: authTimestampColumns,
+    omitReadColumns: ['password'],
+    seedRowDefaults: () => ({ password: null }),
+    seedCredentialPassword: true,
   },
   {
     fileName: 'customers.json',
@@ -78,16 +110,33 @@ export const snapshotTables = [
     timestampColumns: [],
   },
   {
+    // `logo` and `displayOrder` are added by migration 0054, not yet on staging. Omit them from the read
+    // and seed deterministic values: displayOrder by name order (matching the migration backfill), no logo.
     fileName: 'product_ranges.json',
     table: productRanges,
     tableName: 'product_ranges',
     timestampColumns: standardTimestampColumns,
+    omitReadColumns: ['logo', 'displayOrder'],
+    readOrderColumn: 'name',
+    seedRowDefaults: (_row, index) => ({ displayOrder: index, logo: null }),
   },
   {
     fileName: 'products.json',
     table: products,
     tableName: 'products',
     timestampColumns: standardTimestampColumns,
+  },
+  {
+    fileName: 'product_bay.json',
+    table: productBays,
+    tableName: 'product_bay',
+    timestampColumns: ['createdAt', 'updatedAt'],
+  },
+  {
+    fileName: 'product_serial_sequence.json',
+    table: productSerialSequences,
+    tableName: 'product_serial_sequence',
+    timestampColumns: ['updatedAt'],
   },
   {
     fileName: 'product_assemblies.json',

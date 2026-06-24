@@ -1,0 +1,44 @@
+[
+  {
+    "id": "0a76acbf-72d1-42c0-a775-cd11b560a723",
+    "bayId": "00000000-0000-4000-8000-000000000b01",
+    "operatorUserId": "BefB474uCm4Jt6GwViAW81Z9tbAZ1yGw",
+    "assignedAt": "2026-06-23T12:08:00.128Z",
+    "unassignedAt": null
+  },
+  {
+    "id": "a432365a-4f44-4168-83f9-8eba9416d911",
+    "bayId": "00000000-0000-4000-8000-000000000b02",
+    "operatorUserId": "rFljpEBlRlbFzOCe6AzxjN3Ez365cQJ1",
+    "assignedAt": "2026-06-23T12:08:05.680Z",
+    "unassignedAt": null
+  },
+  {
+    "id": "1d8df3f6-5fcb-47fe-aca3-76f0fb34d16e",
+    "bayId": "00000000-0000-4000-8000-000000000b03",
+    "operatorUserId": "rJF7Fh9ESKcvRdvkFUT4C3tdfpcQs31e",
+    "assignedAt": "2026-06-23T12:11:41.963Z",
+    "unassignedAt": null
+  },
+  {
+    "id": "6423f6bd-2201-4fce-a544-66ce4f5d64c9",
+    "bayId": "00000000-0000-4000-8000-000000000b04",
+    "operatorUserId": "G4mw3WTWhCpH1VCQDwaqk8de509oAAQB",
+    "assignedAt": "2026-06-23T12:11:46.842Z",
+    "unassignedAt": null
+  },
+  {
+    "id": "441354ec-7b29-4254-9750-f274a0f5fc2d",
+    "bayId": "00000000-0000-4000-8000-000000000b05",
+    "operatorUserId": "vP4ZDbKagnYvPtW0FdL1XnXPm0ugZh5Z",
+    "assignedAt": "2026-06-23T12:11:52.466Z",
+    "unassignedAt": null
+  },
+  {
+    "id": "0f5099b2-78cb-4326-b7a9-a8a2fdfcb97b",
+    "bayId": "1256bac8-975f-4cb1-9a99-df04aeb133b1",
+    "operatorUserId": "1IMOXQJwWTtCwfY26AerlMK9DVUc9nfj",
+    "assignedAt": "2026-06-23T13:41:44.437Z",
+    "unassignedAt": null
+  }
+]

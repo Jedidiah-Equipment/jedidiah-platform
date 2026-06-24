@@ -185,13 +185,100 @@ describe('product range image HTTP routes', () => {
   });
 });
 
+describe('product range logo HTTP routes', () => {
+  test('uploads the logo and returns the updated range', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createApp(storage);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/product-ranges/${context.rangeId}/logo`,
+      ...buildMultipartUpload({ bytes: pngBytes(64), filename: 'logo.png' }),
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: context.rangeId,
+      logo: { byteSize: 64, contentType: 'image/png' },
+      image: null,
+    });
+    expect(storage.objects.size).toBe(1);
+  });
+
+  test('replaces the logo in place across uploads', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createApp(storage);
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/product-ranges/${context.rangeId}/logo`,
+      ...buildMultipartUpload({ bytes: pngBytes(64), filename: 'logo.png' }),
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/product-ranges/${context.rangeId}/logo`,
+      ...buildMultipartUpload({ bytes: jpegBytes(96), filename: 'logo.jpg' }),
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json()).toMatchObject({ logo: { byteSize: 96, contentType: 'image/jpeg' } });
+    expect(storage.objects.size).toBe(1);
+  });
+
+  test('forbids logo writes without update permission', async ({ context }) => {
+    routeTestState.session = mockSession('sales');
+    const app = await createApp(new MemoryStorage());
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/product-ranges/${context.rangeId}/logo`,
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      data: { appCode: 'image.forbidden' },
+      message: 'You do not have permission to update Product Range logos.',
+    });
+  });
+
+  test('downloads a populated logo with read access', async ({ context }) => {
+    const storage = new MemoryStorage();
+    const app = await createApp(storage);
+    await app.inject({
+      method: 'POST',
+      url: `/api/product-ranges/${context.rangeId}/logo`,
+      ...buildMultipartUpload({ bytes: pngBytes(48), filename: 'logo.png' }),
+    });
+
+    const response = await app.inject(`/api/product-ranges/${context.rangeId}/logo/download`);
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.headers['content-type']).toBe('image/png');
+    expect(response.headers['content-length']).toBe('48');
+  });
+
+  test('returns 404 when downloading a range with no logo', async ({ context }) => {
+    const app = await createApp(new MemoryStorage());
+
+    const response = await app.inject(`/api/product-ranges/${context.rangeId}/logo/download`);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ data: { appCode: 'image.not_found' } });
+  });
+});
+
 async function createApp(storage: StorageAdapter) {
   const { registerEntityImageRoutes } = await import('../images/entity-image-http.route.js');
-  const { createProductRangeImageRouteConfig } = await import('./product-range-image-routes.js');
+  const { createProductRangeImageRouteConfig, createProductRangeLogoRouteConfig } = await import(
+    './product-range-image-routes.js'
+  );
   const app = Fastify();
 
   await app.register(fastifyMultipart);
-  await registerEntityImageRoutes(app, [createProductRangeImageRouteConfig(storage)]);
+  await registerEntityImageRoutes(app, [
+    createProductRangeImageRouteConfig(storage),
+    createProductRangeLogoRouteConfig(storage),
+  ]);
   await app.ready();
   openApps.push(app);
 

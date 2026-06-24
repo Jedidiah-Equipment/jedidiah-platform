@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import './load-db-env.js';
 import { createDatabaseClient, type DatabaseTransaction, type Db, getDatabaseUrl } from '@pkg/db';
+import { hashPassword } from 'better-auth/crypto';
 import { deserializeSnapshotRows } from './snapshot-json.js';
 import { snapshotDirectory } from './snapshot-paths.js';
 import {
@@ -13,6 +14,10 @@ import {
 } from './snapshot-tables.js';
 
 const insertBatchSize = 500;
+
+// Shared local login for every snapshot-seeded user. Staging password hashes are never dumped (see the
+// account config); the seeder fills credential accounts with this on insert so any seeded user can log in.
+export const SEED_USER_PASSWORD = 'test123';
 
 function assertLocalDatabaseIsNotStaging(localDatabaseUrl: string): void {
   const stagingDatabaseUrl = process.env.STAGING_DATABASE_URL;
@@ -57,18 +62,29 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
     throw new Error('Unable to create local seed database client.');
   }
 
+  const seedPasswordHash = await hashPassword(SEED_USER_PASSWORD);
+
   try {
     await writableDb.transaction(async (tx) => {
       await clearSnapshotTables(tx);
 
       for (const { config, rows } of snapshots) {
-        await insertSnapshotRows(tx, config, rows);
-        console.info(`[db:seed] Imported ${rows.length} ${config.tableName} row(s)`);
+        const seedRows = (config as SnapshotTableConfig).seedCredentialPassword
+          ? withSeedPassword(rows, seedPasswordHash)
+          : rows;
+        await insertSnapshotRows(tx, config, seedRows);
+        console.info(`[db:seed] Imported ${seedRows.length} ${config.tableName} row(s)`);
       }
     });
   } finally {
     await localClient?.close();
   }
+}
+
+// Give every credential account the shared known password so any seeded user can log in locally. The same
+// hash is reused across rows — better-auth embeds the salt in the hash, so a single value is sufficient.
+function withSeedPassword(rows: readonly SnapshotRow[], passwordHash: string): SnapshotRow[] {
+  return rows.map((row) => (row.providerId === 'credential' ? { ...row, password: passwordHash } : row));
 }
 
 async function clearSnapshotTables(tx: DatabaseTransaction): Promise<void> {

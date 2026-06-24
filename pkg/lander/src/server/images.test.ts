@@ -33,6 +33,7 @@ test('readRangeImage streams the stored object for a Range that has an image', a
     .insert(productRanges)
     .values({
       name: `Lander Image Range ${crypto.randomUUID()}`,
+      displayOrder: 0,
       image: {
         byteSize: payload.byteLength,
         contentType: 'image/webp',
@@ -52,7 +53,7 @@ test('readRangeImage streams the stored object for a Range that has an image', a
 test('readRangeImage returns null for a Range with no image', async ({ db }) => {
   const [range] = await db
     .insert(productRanges)
-    .values({ name: `Lander Blank Image Range ${crypto.randomUUID()}`, image: null })
+    .values({ name: `Lander Blank Image Range ${crypto.randomUUID()}`, image: null, displayOrder: 0 })
     .returning();
   if (!range) throw new Error('insert did not return a row');
 

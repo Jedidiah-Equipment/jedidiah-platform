@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "userId": "yupGbXPipEj7vpxtcUqegSPJtXlvC8Hh",
+    "department": "procurement"
+  },
+  {
+    "userId": "KCKnQvYzbHy44cmOXtoQMbQApdFeSPdU",
+    "department": "supply"
+  },
+  {
+    "userId": "MPbDA0bgmy3NPziQNgUEbCnZ0vljZLZ7",
+    "department": "fabrication"
+  },
+  {
+    "userId": "iKiwjl05KOR120AVKmghbCH1D7Z1vmw3",
+    "department": "supply"
+  },
+  {
+    "userId": "rFljpEBlRlbFzOCe6AzxjN3Ez365cQJ1",
+    "department": "fabrication"
+  },
+  {
+    "userId": "BefB474uCm4Jt6GwViAW81Z9tbAZ1yGw",
+    "department": "fabrication"
+  },
+  {
+    "userId": "vP4ZDbKagnYvPtW0FdL1XnXPm0ugZh5Z",
+    "department": "fabrication"
+  },
+  {
+    "userId": "rJF7Fh9ESKcvRdvkFUT4C3tdfpcQs31e",
+    "department": "fabrication"
+  },
+  {
+    "userId": "G4mw3WTWhCpH1VCQDwaqk8de509oAAQB",
+    "department": "fabrication"
+  },
+  {
+    "userId": "1IMOXQJwWTtCwfY26AerlMK9DVUc9nfj",
+    "department": "fabrication"
+  }
+]

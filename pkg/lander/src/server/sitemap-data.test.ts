@@ -9,7 +9,7 @@ test('listSitemapPaths returns the static pages plus every Product detail URL', 
   const suffix = crypto.randomUUID();
   const [range] = await db
     .insert(productRanges)
-    .values({ name: `Crosshaul ${suffix} Range` })
+    .values({ name: `Crosshaul ${suffix} Range`, displayOrder: 0 })
     .returning();
   if (!range) throw new Error('range insert did not return a row');
 

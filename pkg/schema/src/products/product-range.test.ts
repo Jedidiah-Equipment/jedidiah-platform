@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { ProductRange, ProductRangeCreateInput, ProductRangeUpdateInput } from './product-range.js';
+import {
+  ProductRange,
+  ProductRangeCreateInput,
+  ProductRangeReorderInput,
+  ProductRangeUpdateInput,
+} from './product-range.js';
 
 const RANGE_ID = '00000000-0000-4000-8000-000000000001';
 const IMAGE = {
@@ -10,24 +15,28 @@ const IMAGE = {
 };
 
 describe('ProductRange', () => {
-  it('exposes a client-safe image reference and allows it to be null', () => {
+  it('exposes client-safe image and logo references, each allowing null', () => {
     const base = {
       id: RANGE_ID,
       name: 'Example Range',
       description: null,
+      displayOrder: 0,
       createdAt: '2026-05-27T10:35:03.013Z',
       updatedAt: '2026-05-27T10:35:03.013Z',
     };
 
-    expect(ProductRange.parse({ ...base, image: IMAGE }).image).toEqual(IMAGE);
-    expect(ProductRange.parse({ ...base, image: null }).image).toBeNull();
+    expect(ProductRange.parse({ ...base, image: IMAGE, logo: IMAGE }).image).toEqual(IMAGE);
+    expect(ProductRange.parse({ ...base, image: IMAGE, logo: IMAGE }).logo).toEqual(IMAGE);
+    expect(ProductRange.parse({ ...base, image: null, logo: null }).logo).toBeNull();
   });
 
-  it('carries an optional marketing description', () => {
+  it('carries an optional marketing description and a displayOrder', () => {
     const base = {
       id: RANGE_ID,
       name: 'Example Range',
       image: null,
+      logo: null,
+      displayOrder: 3,
       createdAt: '2026-05-27T10:35:03.013Z',
       updatedAt: '2026-05-27T10:35:03.013Z',
     };
@@ -36,6 +45,7 @@ describe('ProductRange', () => {
       'Built for the field.',
     );
     expect(ProductRange.parse({ ...base, description: null }).description).toBeNull();
+    expect(ProductRange.parse({ ...base, description: null }).displayOrder).toBe(3);
   });
 });
 
@@ -60,5 +70,17 @@ describe('ProductRange inputs', () => {
     expect(
       ProductRangeUpdateInput.parse({ id: RANGE_ID, name: 'Example Range', description: '  Tough kit.  ' }).description,
     ).toBe('Tough kit.');
+  });
+
+  it('rejects create/update payloads carrying logo or displayOrder', () => {
+    expect(() => ProductRangeCreateInput.parse({ name: 'Example Range', logo: IMAGE })).toThrow();
+    expect(() => ProductRangeCreateInput.parse({ name: 'Example Range', displayOrder: 2 })).toThrow();
+  });
+});
+
+describe('ProductRangeReorderInput', () => {
+  it('accepts a non-empty list of ids and rejects an empty one', () => {
+    expect(ProductRangeReorderInput.parse({ orderedIds: [RANGE_ID] })).toEqual({ orderedIds: [RANGE_ID] });
+    expect(() => ProductRangeReorderInput.parse({ orderedIds: [] })).toThrow();
   });
 });

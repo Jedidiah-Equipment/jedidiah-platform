@@ -7,7 +7,11 @@ import { HIGHLIGHT_PLACEHOLDERS, loadProductDetail } from './product-detail-data
 type Db = Parameters<typeof loadProductDetail>[0];
 
 async function insertRange(db: Db, name: string) {
-  const [range] = await db.insert(productRanges).values({ name, description: null }).returning();
+  const existing = await db.select({ id: productRanges.id }).from(productRanges);
+  const [range] = await db
+    .insert(productRanges)
+    .values({ name, description: null, displayOrder: existing.length })
+    .returning();
   if (!range) throw new Error('range insert did not return a row');
 
   return range;

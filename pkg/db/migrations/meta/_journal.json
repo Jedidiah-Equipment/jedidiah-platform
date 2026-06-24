@@ -379,6 +379,13 @@
       "when": 1782204153645,
       "tag": "0053_restructure_product_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1782286974751,
+      "tag": "0054_short_naoko",
+      "breakpoints": true
     }
   ]
 }

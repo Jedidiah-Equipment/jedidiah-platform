@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { type Db, productRanges } from '@pkg/db';
-import { RANGE_IMAGE_POLICY } from '@pkg/domain';
+import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain';
 import type { ProductRange, UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
@@ -81,4 +81,75 @@ export async function readProductRangeImage({
   }
 
   return storage.get(row.image.storageKey);
+}
+
+export type ReplaceProductRangeLogoInput = {
+  bytes: Uint8Array;
+  rangeId: UUID;
+};
+
+// Replace the Range's brochure logo in place, then return the updated Range. Mirrors
+// {@link replaceProductRangeImage} but swaps the `logo` reference. Like the image, logo changes are not
+// audited.
+export async function replaceProductRangeLogo({
+  db,
+  input,
+  storage,
+}: {
+  db: Db;
+  input: ReplaceProductRangeLogoInput;
+  storage: StorageAdapter;
+}): Promise<ProductRange> {
+  await replaceImage({
+    bytes: input.bytes,
+    db,
+    policy: RANGE_LOGO_POLICY,
+    storage,
+    binding: {
+      buildStorageKey: ({ contentType }) =>
+        `range-logos/product-range/${input.rangeId}/${randomUUID()}.${imageExtensionFor(contentType)}`,
+      apply: async ({ nextRef, tx }) => {
+        const [before] = await tx.select().from(productRanges).where(eq(productRanges.id, input.rangeId)).for('update');
+
+        if (!before) {
+          throw new ProductRangeNotFoundError(input.rangeId);
+        }
+
+        await tx
+          .update(productRanges)
+          .set({ logo: nextRef, updatedAt: new Date() })
+          .where(eq(productRanges.id, input.rangeId));
+
+        return { previousStorageKey: before.logo?.storageKey ?? null };
+      },
+    },
+  });
+
+  return getProductRange({ db, id: input.rangeId });
+}
+
+export async function readProductRangeLogo({
+  db,
+  rangeId,
+  storage,
+}: {
+  db: Db;
+  rangeId: UUID;
+  storage: StorageAdapter;
+}): Promise<StoredObject> {
+  const [row] = await db
+    .select({ logo: productRanges.logo })
+    .from(productRanges)
+    .where(eq(productRanges.id, rangeId))
+    .limit(1);
+
+  if (!row) {
+    throw new ProductRangeNotFoundError(rangeId);
+  }
+
+  if (!row.logo) {
+    throw new ImageNotFoundError(`Logo not found for product range ${rangeId}`, { rangeId });
+  }
+
+  return storage.get(row.logo.storageKey);
 }

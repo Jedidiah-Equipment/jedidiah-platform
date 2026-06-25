@@ -108,23 +108,23 @@ function FeedbackInboxList({
   const columns = useMemo<ColumnDef<FeedbackListItem>[]>(
     () => [
       {
-        accessorFn: (item) => item.subject.label,
-        cell: ({ row }) => <SubjectLink item={row.original} />,
-        enableColumnFilter: true,
-        enableSorting: true,
-        header: 'Subject',
-        id: 'subject',
-        meta: {
-          cellClassName: 'max-w-72',
-        },
-      },
-      {
         accessorFn: (item) => `${item.submitter.name} ${item.submitter.email}`,
         cell: ({ row }) => <span className="block truncate font-medium">{row.original.submitter.name}</span>,
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Submitter',
         id: 'submitter',
+      },
+      {
+        accessorFn: (item) => item.subject.label,
+        cell: ({ row }) => <SubjectLink item={row.original} />,
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Linked to',
+        id: 'subject',
+        meta: {
+          cellClassName: 'max-w-72',
+        },
       },
       {
         accessorFn: (item) => feedbackKindLabels[item.kind],

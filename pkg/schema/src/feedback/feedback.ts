@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AuthId } from '../auth/auth-id.js';
 import { DateIso } from '../common/date.js';
 import { Department } from '../common/departments.js';
-import { requiredTrimmedText } from '../common/text.js';
+import { nullableTrimmedTextInputOptional, requiredTrimmedText } from '../common/text.js';
 import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 
@@ -111,9 +111,18 @@ export const FeedbackDetailInput = z.object({
   id: UUID,
 });
 
+export type FeedbackUpdateInput = z.infer<typeof FeedbackUpdateInput>;
+export const FeedbackUpdateInput = FeedbackDetailInput.extend({
+  internalNotes: nullableTrimmedTextInputOptional(),
+  status: FeedbackStatus.optional(),
+}).refine((input) => input.internalNotes !== undefined || input.status !== undefined, {
+  message: 'Provide a status or internal notes to update',
+});
+
 export type FeedbackDetail = z.infer<typeof FeedbackDetail>;
 export const FeedbackDetail = FeedbackListItem.extend({
   departments: z.array(Department),
+  internalNotes: z.string().nullable(),
   text: FeedbackText,
   users: z.array(FeedbackTargetUser),
 });

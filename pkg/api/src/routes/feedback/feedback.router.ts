@@ -5,8 +5,9 @@ import {
   listFeedback,
   listFeedbackTargetUsers,
   submitFeedback,
+  updateFeedback,
 } from '@pkg/core';
-import { FeedbackDetailInput, FeedbackListInput, FeedbackSubmitInput } from '@pkg/schema';
+import { FeedbackDetailInput, FeedbackListInput, FeedbackSubmitInput, FeedbackUpdateInput } from '@pkg/schema';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, protectedProcedure, router } from '../../trpc/init.js';
@@ -26,6 +27,9 @@ export const feedbackRouter = router({
   get: authorizedProcedure('feedback:read')
     .input(FeedbackDetailInput)
     .query(({ ctx, input }) => getFeedback({ db: ctx.db, input })),
+  update: authorizedProcedure('feedback:update')
+    .input(FeedbackUpdateInput)
+    .mutation(({ ctx, input }) => updateFeedback({ db: ctx.db, input })),
 });
 
 async function mapFeedbackErrors<T>(action: () => Promise<T>): Promise<T> {

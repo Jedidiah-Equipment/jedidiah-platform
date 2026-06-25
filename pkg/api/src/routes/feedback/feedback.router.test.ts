@@ -10,9 +10,10 @@ import {
   quotes,
   user,
 } from '@pkg/db';
+import type { FeedbackStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
-import { createTester } from '@/test/create-tester.js';
+import { createTester, type TesterContext } from '@/test/create-tester.js';
 import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
@@ -297,6 +298,80 @@ describe('feedback review reads', () => {
     });
   });
 });
+
+describe('feedback.update', () => {
+  const statusTransitions = [
+    ['open', 'resolved'],
+    ['resolved', 'open'],
+    ['open', 'closed'],
+    ['closed', 'open'],
+    ['resolved', 'closed'],
+    ['closed', 'resolved'],
+  ] as const satisfies readonly (readonly [FeedbackStatus, FeedbackStatus])[];
+
+  for (const [fromStatus, toStatus] of statusTransitions) {
+    test(`moves status from ${fromStatus} to ${toStatus}`, async ({ context }) => {
+      const submitted = await createGeneralFeedback(context);
+      await context.db.update(feedback).set({ status: fromStatus }).where(eq(feedback.id, submitted.id));
+
+      const updated = await context.createCaller(mockSession('super-admin')).feedback.update({
+        id: submitted.id,
+        status: toStatus,
+      });
+
+      expect(updated).toMatchObject({ id: submitted.id, status: toStatus });
+      await expect(context.db.select().from(feedback).where(eq(feedback.id, submitted.id))).resolves.toMatchObject([
+        { status: toStatus },
+      ]);
+    });
+  }
+
+  test('persists internal notes and allows clearing them', async ({ context }) => {
+    const submitted = await createGeneralFeedback(context);
+    const caller = context.createCaller(mockSession('super-admin'));
+
+    const withNotes = await caller.feedback.update({
+      id: submitted.id,
+      internalNotes: 'Customer phoned back; follow up after dispatch.',
+    });
+
+    expect(withNotes).toMatchObject({
+      id: submitted.id,
+      internalNotes: 'Customer phoned back; follow up after dispatch.',
+    });
+
+    const cleared = await caller.feedback.update({ id: submitted.id, internalNotes: '' });
+
+    expect(cleared).toMatchObject({ id: submitted.id, internalNotes: null });
+    await expect(context.db.select().from(feedback).where(eq(feedback.id, submitted.id))).resolves.toMatchObject([
+      { internalNotes: null },
+    ]);
+  });
+
+  test('denies update to admin users', async ({ context }) => {
+    const submitted = await createGeneralFeedback(context);
+
+    await expect(
+      context.createCaller(mockSession('admin')).feedback.update({
+        id: submitted.id,
+        internalNotes: 'Admin users cannot triage feedback.',
+        status: 'resolved',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    await expect(context.db.select().from(feedback).where(eq(feedback.id, submitted.id))).resolves.toMatchObject([
+      { internalNotes: null, status: 'open' },
+    ]);
+  });
+});
+
+async function createGeneralFeedback(context: TesterContext & { quote: Awaited<ReturnType<typeof createQuote>> }) {
+  return context.createCaller(mockSession('sales')).feedback.submit({
+    kind: 'general',
+    subject: { subjectType: 'quote', quoteId: context.quote.id },
+    text: 'Feedback awaiting triage.',
+  });
+}
 
 async function createActorUser(db: Db) {
   const now = new Date();

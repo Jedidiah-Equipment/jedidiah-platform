@@ -21,7 +21,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
-import { Card, CardContent, CardHeader } from '@/components/ui/card.js';
+import { Card, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -273,19 +273,16 @@ function FeedbackDetailPanel({
 
   return (
     <Card className="min-w-0">
-      <CardHeader className="gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <Badge
-            className={cn(detailHeaderBadgeClassName, feedbackStatusBadgeClassNames[detail.status])}
-            variant="outline"
-          >
-            {feedbackStatusLabels[detail.status]}
-          </Badge>
-          <Badge className={detailHeaderBadgeClassName} variant="outline">
-            {feedbackKindLabels[detail.kind]}
-          </Badge>
-        </div>
+      <CardHeader className="grid-cols-[minmax(0,1fr)_auto] gap-3">
+        <CardTitle className="truncate">{feedbackKindLabels[detail.kind]}</CardTitle>
+        <Badge
+          className={cn(detailHeaderBadgeClassName, feedbackStatusBadgeClassNames[detail.status])}
+          variant="outline"
+        >
+          {feedbackStatusLabels[detail.status]}
+        </Badge>
       </CardHeader>
+      <CardSeparator />
       <CardContent className="grid gap-5">
         <DetailField label="Submitted by">
           <UserLabel name={detail.submitter.name} thumbnailDataUrl={detail.submitter.thumbnailDataUrl} />

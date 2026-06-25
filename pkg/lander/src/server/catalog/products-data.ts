@@ -1,5 +1,6 @@
-import { listProductRanges } from '@pkg/core';
+import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
+import { isLanderReady } from '@pkg/domain';
 
 export type CatalogProduct = {
   id: string;
@@ -57,17 +58,15 @@ export function toCatalogProduct(row: {
   };
 }
 
-// Loads the whole public catalog in one pass: every Range plus every Product, grouped by Range. Each card
-// points at the public Product image route, which streams the brochure hero or the neutral placeholder, so
-// the view model carries no image-presence flag. Pricing, assemblies and bays are intentionally not read —
-// this is the unauthenticated marketing surface.
+// Loads the whole public catalog in one pass: every Range plus every lander-ready Product, grouped by
+// Range. Only lander-ready Products surface (publish toggle on and required fields filled), so the gate
+// needs each Product's images, category, key features, and standard assemblies — hence the full read rather
+// than the lightweight column read. Each card points at the public Product image route, which streams the
+// hero or the neutral placeholder. Pricing and bays are not surfaced — this is the unauthenticated surface.
 export async function loadProductsCatalog(db: Db): Promise<ProductsCatalog> {
-  const [{ ranges }, rows] = await Promise.all([
-    listProductRanges({ db }),
-    db.query.products.findMany({
-      columns: { id: true, name: true, modelCode: true, description: true, rangeId: true },
-    }),
-  ]);
+  const [{ ranges }, allProducts] = await Promise.all([listProductRanges({ db }), listAllProducts({ db })]);
+
+  const rows = allProducts.filter(isLanderReady);
 
   // Deterministic, case-insensitive name order (the whole catalog is loaded, so sort in memory rather than
   // pulling drizzle ordering helpers into this read-only surface).

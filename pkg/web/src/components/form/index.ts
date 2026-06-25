@@ -10,6 +10,7 @@ export { PasswordField, type PasswordFieldProps } from './fields/PasswordField.j
 export { PhoneNumberField, type PhoneNumberFieldProps } from './fields/PhoneNumberField.js';
 export { ReadOnlyField, type ReadOnlyFieldProps } from './fields/ReadOnlyField.js';
 export { SelectField, type SelectFieldProps } from './fields/SelectField.js';
+export { SwitchField, type SwitchFieldProps } from './fields/SwitchField.js';
 export { TextareaField, type TextareaFieldProps } from './fields/TextareaField.js';
 export { TextField, type TextFieldProps } from './fields/TextField.js';
 export { ThumbnailField, type ThumbnailFieldProps } from './fields/ThumbnailField.js';

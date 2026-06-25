@@ -43,6 +43,8 @@ function productInput(
     productBays: [],
     rangeId,
     requiresVinNumber: false,
+    brochureEnabled: false,
+    landerEnabled: false,
     thumbnailDataUrl: null,
     ...overrides,
   };
@@ -122,6 +124,8 @@ describe('assembly display order', () => {
         productBays: [],
         rangeId: context.rangeId,
         requiresVinNumber: false,
+        brochureEnabled: false,
+        landerEnabled: false,
         thumbnailDataUrl: null,
         assemblies: [
           { id: standards[1]?.id, kind: 'standard', name: 'Alpha', parts: [] },

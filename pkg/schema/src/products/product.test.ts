@@ -42,6 +42,8 @@ describe('ProductCreateInput', () => {
       productBays: [],
       rangeId: RANGE_ID,
       requiresVinNumber: false,
+      brochureEnabled: false,
+      landerEnabled: false,
       thumbnailDataUrl: null,
     });
   });
@@ -189,6 +191,8 @@ describe('ProductUpdateInput', () => {
         name: 'Wheel Loader',
         rangeId: RANGE_ID,
         requiresVinNumber: true,
+        brochureEnabled: false,
+        landerEnabled: false,
       }),
     ).toEqual({
       id: '00000000-0000-4000-8000-000000000102',
@@ -200,6 +204,8 @@ describe('ProductUpdateInput', () => {
       name: 'Wheel Loader',
       rangeId: RANGE_ID,
       requiresVinNumber: true,
+      brochureEnabled: false,
+      landerEnabled: false,
       thumbnailDataUrl: null,
     });
   });

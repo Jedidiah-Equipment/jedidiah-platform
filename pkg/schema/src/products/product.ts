@@ -43,6 +43,15 @@ export const ProductCurrencyCode = z.literal('ZAR').default('ZAR');
 export type ProductRequiresVinNumber = z.infer<typeof ProductRequiresVinNumber>;
 export const ProductRequiresVinNumber = z.boolean();
 
+// Publish toggles. A Product Brochure/Lander page only goes "ready" (and so public/linkable) once the
+// matching flag is switched on AND the matching completeness predicate passes. Defaults false so a new
+// Product is never published until someone fills it in and ticks the box.
+export type ProductBrochureEnabled = z.infer<typeof ProductBrochureEnabled>;
+export const ProductBrochureEnabled = z.boolean();
+
+export type ProductLanderEnabled = z.infer<typeof ProductLanderEnabled>;
+export const ProductLanderEnabled = z.boolean();
+
 export type ProductBayDefaultWorkingDays = z.infer<typeof ProductBayDefaultWorkingDays>;
 export const ProductBayDefaultWorkingDays = z
   .number()
@@ -290,6 +299,15 @@ export const BROCHURE_IMAGE_SLOTS = [
   'banner',
 ] as const satisfies readonly ProductImageSlot[];
 
+// The subset of Product image slots the public Lander detail page renders (the hero + gallery) and the
+// lander-completeness predicate gates on. The brochure-only `technicalDrawing`/`banner` slots never reach
+// the Lander.
+export const LANDER_IMAGE_SLOTS = [
+  'primary',
+  'secondary1',
+  'secondary2',
+] as const satisfies readonly ProductImageSlot[];
+
 // Per-image size cap for Product image slots. Allowed formats come from the shared {@link IMAGE_CONTENT_TYPES}.
 export const PRODUCT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -354,6 +372,31 @@ export const BrochureCompleteness = z.object({
   missingFields: z.array(BrochureRequiredField),
 });
 
+// The required fields a Product Lander page must fill before it can be published. Mirrors
+// {@link BROCHURE_REQUIRED_FIELDS} but for the public detail page: the lander gallery slots
+// ({@link LANDER_IMAGE_SLOTS}) instead of the brochure slots, and `standardAssembly` (at least one
+// standard assembly) instead of the brochure's any-assembly check. Order is the order missing fields
+// surface in the form aside.
+export const LANDER_REQUIRED_FIELDS = [
+  'category',
+  'keyFeatures',
+  ...LANDER_IMAGE_SLOTS,
+  'description',
+  'standardAssembly',
+] as const;
+
+export type LanderRequiredField = z.infer<typeof LanderRequiredField>;
+export const LanderRequiredField = z.enum(LANDER_REQUIRED_FIELDS);
+
+// The lander-completeness verdict: whether the Lander detail page has everything it needs, plus the exact
+// still-missing required fields. Computed by `evaluateLanderCompleteness` (@pkg/domain); the single source
+// of truth reused by the form aside and the public lander gates (catalog, detail, related strip).
+export type LanderCompleteness = z.infer<typeof LanderCompleteness>;
+export const LanderCompleteness = z.object({
+  complete: z.boolean(),
+  missingFields: z.array(LanderRequiredField),
+});
+
 // Identifies a single Product image slot for the replace-in-place upload and download routes.
 export type ProductImageSlotParams = z.infer<typeof ProductImageSlotParams>;
 export const ProductImageSlotParams = z.object({
@@ -372,6 +415,8 @@ export const Product = z.object({
   currencyCode: ProductCurrencyCode,
   rangeId: UUID,
   requiresVinNumber: ProductRequiresVinNumber,
+  brochureEnabled: ProductBrochureEnabled.default(false),
+  landerEnabled: ProductLanderEnabled.default(false),
   assemblies: z.array(Assembly).default([]),
   productBays: z.array(ProductBay).default([]),
   category: ProductCategory.default(null),
@@ -412,6 +457,8 @@ export const ProductCreateInput = z
     buildTimeDays: ProductBuildTimeDaysInput,
     currencyCode: ProductCurrencyCode,
     requiresVinNumber: ProductRequiresVinNumber.default(false),
+    brochureEnabled: ProductBrochureEnabled.default(false),
+    landerEnabled: ProductLanderEnabled.default(false),
     thumbnailDataUrl: NullableThumbnailDataUrl.default(null),
   })
   .strict();
@@ -434,6 +481,8 @@ export const ProductUpdateInput = z
     name: ProductName,
     rangeId: UUID,
     requiresVinNumber: ProductRequiresVinNumber,
+    brochureEnabled: ProductBrochureEnabled,
+    landerEnabled: ProductLanderEnabled,
     thumbnailDataUrl: NullableThumbnailDataUrl.default(null),
   })
   .strict();

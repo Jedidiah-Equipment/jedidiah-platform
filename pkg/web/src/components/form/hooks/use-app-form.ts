@@ -8,6 +8,7 @@ import { NumberField } from '../fields/NumberField.js';
 import { PasswordField } from '../fields/PasswordField.js';
 import { PhoneNumberField } from '../fields/PhoneNumberField.js';
 import { SelectField } from '../fields/SelectField.js';
+import { SwitchField } from '../fields/SwitchField.js';
 import { TextareaField } from '../fields/TextareaField.js';
 import { TextField } from '../fields/TextField.js';
 import { ThumbnailField } from '../fields/ThumbnailField.js';
@@ -24,6 +25,7 @@ export const { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } = 
     PasswordField,
     PhoneNumberField,
     SelectField,
+    SwitchField,
     TextareaField,
     TextField,
     ThumbnailField,

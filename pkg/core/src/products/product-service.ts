@@ -87,6 +87,48 @@ const PRODUCT_RANGE_FOREIGN_KEY = 'products_range_id_product_ranges_id_fk';
 
 type ProductRow = typeof products.$inferSelect;
 type ProductListRow = ProductRow & { assemblies: AssemblyListRow[] };
+
+// Shared relational read shape for full Product reads — the paged list and the unpaged catalog read. The
+// column set is everything {@link mapProduct} needs; the `with` pulls kind-ordered assemblies plus their
+// parts and optional overrides so {@link mapAssembly} has its inputs.
+const productListColumns = {
+  basePrice: true,
+  category: true,
+  createdAt: true,
+  currencyCode: true,
+  description: true,
+  id: true,
+  images: true,
+  keyFeatures: true,
+  buildTimeDays: true,
+  modelCode: true,
+  name: true,
+  rangeId: true,
+  requiresVinNumber: true,
+  brochureEnabled: true,
+  landerEnabled: true,
+  thumbnailDataUrl: true,
+  updatedAt: true,
+} as const;
+
+const productListWith = {
+  assemblies: {
+    orderBy: productAssemblyOrderBy,
+    with: {
+      assemblyParts: {
+        with: {
+          part: {
+            columns: {
+              category: true,
+              code: true,
+            },
+          },
+        },
+      },
+      optionalOverrides: true,
+    },
+  },
+} as const;
 type ProductAuditInput = ProductRow & {
   assemblies: Assembly[] | NonNullable<ProductUpdateInput['assemblies']>;
   productBays: ProductBay[] | ProductBayInput[];
@@ -121,6 +163,8 @@ export const productAuditDescriptor = defineAuditDescriptor<ProductAuditInput>({
     productBays: JSON.stringify(toAuditProductBays(input.productBays)),
     rangeId: input.rangeId,
     requiresVinNumber: input.requiresVinNumber,
+    brochureEnabled: input.brochureEnabled,
+    landerEnabled: input.landerEnabled,
     thumbnailDataUrl: input.thumbnailDataUrl,
   }),
 });
@@ -149,6 +193,8 @@ export function mapProduct(row: ProductRow & { assemblies?: Assembly[]; productB
     productBays: row.productBays ?? [],
     rangeId: row.rangeId,
     requiresVinNumber: row.requiresVinNumber,
+    brochureEnabled: row.brochureEnabled,
+    landerEnabled: row.landerEnabled,
     thumbnailDataUrl: row.thumbnailDataUrl,
     updatedAt: row.updatedAt.toISOString(),
   });
@@ -188,44 +234,11 @@ export async function listProducts({
   const orderBy = getSortOrder(sortColumn, input.sortDirection);
   const where = buildProductListWhere(input);
   const productsQuery = db.query.products.findMany({
-    columns: {
-      basePrice: true,
-      category: true,
-      createdAt: true,
-      currencyCode: true,
-      description: true,
-      id: true,
-      images: true,
-      keyFeatures: true,
-      buildTimeDays: true,
-      modelCode: true,
-      name: true,
-      rangeId: true,
-      requiresVinNumber: true,
-      thumbnailDataUrl: true,
-      updatedAt: true,
-    },
+    columns: productListColumns,
     where,
     orderBy: [orderBy],
     ...getPaginationQueryOptions(input),
-    with: {
-      assemblies: {
-        orderBy: productAssemblyOrderBy,
-        with: {
-          assemblyParts: {
-            with: {
-              part: {
-                columns: {
-                  category: true,
-                  code: true,
-                },
-              },
-            },
-          },
-          optionalOverrides: true,
-        },
-      },
-    },
+    with: productListWith,
   });
   const productsSql = productsQuery.toSQL();
 
@@ -250,6 +263,23 @@ export async function listProducts({
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
   };
+}
+
+// Loads every Product fully mapped, with no pagination, search, or sort — for the public Lander catalog
+// and related strip, which gate on lander readiness and so need each Product's images, category, key
+// features, and standard assemblies. Callers order in memory. The catalog is small, so the single
+// relational read (plus the batched product-bay read) stays cheap.
+export async function listAllProducts({ db }: { db: Db }): Promise<Product[]> {
+  const rows = await db.query.products.findMany({
+    columns: productListColumns,
+    with: productListWith,
+  });
+  const productBaysByProductId = await listProductBaysByProductIds({
+    db,
+    productIds: rows.map((row) => row.id),
+  });
+
+  return rows.map((row) => mapProductListRow(row, productBaysByProductId.get(row.id) ?? []));
 }
 
 function mapProductListRow(row: ProductListRow, productBaysForRow: ProductBay[] = []): Product {
@@ -599,6 +629,8 @@ export async function updateProduct({
         name: input.name,
         rangeId: input.rangeId,
         requiresVinNumber: input.requiresVinNumber,
+        brochureEnabled: input.brochureEnabled,
+        landerEnabled: input.landerEnabled,
         thumbnailDataUrl: input.thumbnailDataUrl,
       };
       const after = { ...before, ...patch, assemblies: desiredAssemblies, productBays: desiredProductBays };

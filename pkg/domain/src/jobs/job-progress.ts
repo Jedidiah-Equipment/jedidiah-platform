@@ -40,15 +40,16 @@ export type JobProgress = {
   stageCount: number;
   /** Work-day-weighted elapsed share across the whole route, 0–100, rounded. */
   overallPercent: number;
-  /** Inclusive last work day of the Slot that paces {@link daysLeft} — the done date shown beside it. */
+  /** Inclusive last work day of the latest-ending unfinished Slot — when the Job is fully off the floor. */
   lastWorkDay: DateOnlyIso;
 };
 
 /**
  * Projects a Job's board state from its Work Slots and plant "today". Returns `null` when
  * the Job has no unfinished Slot, which is the signal the Job List uses to drop fully-past
- * Jobs. `daysLeft` is paced by the latest-ending Bay (idle-gap working days included),
- * while `overallPercent` weights elapsed work across every Slot in the route.
+ * Jobs. `daysLeft` is the max over unfinished Slots (idle-gap working days included) and
+ * `lastWorkDay` follows the latest-ending Slot, while `overallPercent` weights elapsed work
+ * across every Slot in the route.
  */
 export function deriveJobProgress({
   slots,
@@ -81,16 +82,15 @@ export function deriveJobProgress({
 
   // Days-left is the max, over unfinished Slots, of working days from today through that Slot's
   // last work day on its Bay's calendar (idle-gap working days included — never clamped to the
-  // Slot span). The pacing Slot drives both the headline number and the done date below, so the
-  // two always refer to the same Slot even when Bays keep different calendars.
+  // Slot span). The done date shown beside it follows the latest-ending Slot — when the Job is
+  // fully off the floor — so the board never claims a Job has ended while a later route stop is
+  // still ahead, even when a later Bay's calendar leaves it fewer working days.
   let daysLeft = 0;
-  let pacing = firstUnfinished;
+  let latest = firstUnfinished;
   for (const entry of unfinished) {
     const slotDaysLeft = countWorkingDaysBetween(today, entry.slot.endDate, entry.workingCalendar);
-    if (slotDaysLeft > daysLeft) {
-      daysLeft = slotDaysLeft;
-      pacing = entry;
-    }
+    if (slotDaysLeft > daysLeft) daysLeft = slotDaysLeft;
+    if (entry.slot.endDate > latest.slot.endDate) latest = entry;
   }
 
   // Overall progress weights elapsed work days across the whole route, so uneven Slots and
@@ -111,7 +111,7 @@ export function deriveJobProgress({
     stageIndex: ordered.indexOf(current) + 1,
     stageCount: ordered.length,
     overallPercent: totalWorkDays === 0 ? 0 : Math.round((elapsedWorkDays / totalWorkDays) * 100),
-    lastWorkDay: deriveActiveJobProgress({ slot: pacing.slot, today, workingCalendar: pacing.workingCalendar })
+    lastWorkDay: deriveActiveJobProgress({ slot: latest.slot, today, workingCalendar: latest.workingCalendar })
       .lastWorkDay,
   };
 }

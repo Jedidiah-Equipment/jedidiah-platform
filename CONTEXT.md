@@ -38,6 +38,8 @@ Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from
 
 **Working Calendar** is explicit dated facts. Unmarked dates are working days. **Off-Days** are explicit non-working dates. **Bay Calendar Exceptions** override the org calendar for one Bay: Overtime opens an otherwise-off day; Bay Closure closes an otherwise-working day. Off-Days are stepped over by projection and are not Idle Slots.
 
+**Job Days-Left** is a Job-level horizon, distinct from a single Slot's remaining days: the maximum, over the Job's unfinished Work Slots, of the working days from plant "today" through that Slot's last work day. It answers when the Job is fully off the floor, paced by its last Bay, and counts the working days in any idle gap before a not-yet-started Slot.
+
 **Insert at Date** is a placement hint, not a stored or pinned start. Under the Bay lock, the chosen date resolves against live projection: inside a Slot splits it, exactly at a Slot start inserts before it, and past the next available day appends. Deliberate deferral beyond the queue end is represented with Idle Slots.
 
 ## Commercial Documents

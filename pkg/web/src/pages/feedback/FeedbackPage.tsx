@@ -189,7 +189,6 @@ function FeedbackInboxList({
 
   return (
     <section className="min-w-0">
-      <h2 className="mb-3 font-semibold text-base">Inbox</h2>
       <DataTable
         emptyMessage="No feedback found."
         errorMessage={errorMessage}

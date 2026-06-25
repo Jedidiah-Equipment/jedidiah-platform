@@ -227,6 +227,7 @@ describe('feedback review reads', () => {
     const adminCaller = context.createCaller(mockSession('admin'));
 
     await expect(adminCaller.feedback.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(adminCaller.feedback.openCount()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(adminCaller.feedback.get({ id: '00000000-0000-4000-8000-000000000621' })).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
@@ -265,6 +266,23 @@ describe('feedback review reads', () => {
     await expect(reviewerCaller.feedback.list({ status: 'open' })).resolves.toMatchObject({
       items: [{ id: openFeedback.id, status: 'open' }],
     });
+  });
+
+  test('counts only open feedback and drops to zero when the last open item is resolved', async ({ context }) => {
+    const firstOpen = await createGeneralFeedback(context);
+    const secondOpen = await createGeneralFeedback(context);
+    await context.db.update(feedback).set({ status: 'closed' }).where(eq(feedback.id, firstOpen.id));
+
+    const reviewerCaller = context.createCaller(mockSession('super-admin'));
+
+    await expect(reviewerCaller.feedback.openCount()).resolves.toBe(1);
+
+    await reviewerCaller.feedback.update({
+      id: secondOpen.id,
+      status: 'resolved',
+    });
+
+    await expect(reviewerCaller.feedback.openCount()).resolves.toBe(0);
   });
 
   test('returns read-only feedback detail with text and targets for super-admin users', async ({ context }) => {

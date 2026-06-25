@@ -86,7 +86,7 @@ export function useJobDetail(jobId: string): JobDetailState {
       const workingCalendar = calendars.get(bay.id) ?? {};
       for (const slot of bay.slots) {
         if (slot.kind !== 'work' || slot.jobId !== jobId) continue;
-        entries.push({ slot, bayName: bay.name, workingCalendar });
+        entries.push({ slot, bayId: bay.id, bayName: bay.name, workingCalendar });
         route.push({
           ...deriveJobRouteStop({ slot, today, workingCalendar }),
           slotId: slot.id,

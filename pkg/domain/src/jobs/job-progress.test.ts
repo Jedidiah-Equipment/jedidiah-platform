@@ -27,7 +27,9 @@ const entry = (
   startDate: string,
   endDate: string,
   workingCalendar: WorkingCalendar = weekendsOff,
+  bayId = bayName.toLowerCase().replaceAll(' ', '-'),
 ): JobWorkSlotEntry => ({
+  bayId,
   bayName,
   slot: { startDate: day(startDate), endDate: day(endDate) },
   workingCalendar,
@@ -43,6 +45,7 @@ describe('deriveJobProgress', () => {
 
     expect(progress).not.toBeNull();
     expect(progress?.status).toBe('in-progress');
+    expect(progress?.currentBayId).toBe('fab-1');
     expect(progress?.currentBayName).toBe('Fab 1');
     expect(progress?.stageIndex).toBe(1);
     expect(progress?.stageCount).toBe(1);
@@ -77,6 +80,20 @@ describe('deriveJobProgress', () => {
     expect(progress?.daysLeft).toBe(11);
     expect(progress?.lastWorkDay).toBe('2026-07-16');
     expect(progress?.overallPercent).toBe(0);
+  });
+
+  it('keeps the current Bay id when duplicate Bay names exist', () => {
+    const progress = deriveJobProgress({
+      slots: [
+        entry('Fabrication Bay', '2026-06-15', '2026-06-26', weekendsOff, 'bay-a'),
+        entry('Fabrication Bay', '2026-06-29', '2026-07-10', weekendsOff, 'bay-b'),
+      ],
+      today: day('2026-07-02'),
+    });
+
+    expect(progress?.currentBayId).toBe('bay-b');
+    expect(progress?.currentBayName).toBe('Fabrication Bay');
+    expect(progress?.stageIndex).toBe(2);
   });
 
   it('paces days-left and the done date by the latest-ending Bay across a multi-Bay Job', () => {

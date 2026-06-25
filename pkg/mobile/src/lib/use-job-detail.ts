@@ -9,7 +9,7 @@ import {
   type JobWorkSlotEntry,
   listEnabledBays,
 } from '@pkg/domain';
-import type { BayOperator, DateOnlyIso, Department } from '@pkg/schema';
+import type { BayOperator, DateOnlyIso, Department, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -20,7 +20,7 @@ import { useAccess } from './use-access';
 export type JobRouteStopCard = JobRouteStop & {
   /** Slot id — stable key for the timeline. */
   slotId: string;
-  bayId: string;
+  bayId: UUID;
   bayName: string;
   department: Department;
   operator: BayOperator | null;
@@ -86,7 +86,7 @@ export function useJobDetail(jobId: string): JobDetailState {
       const workingCalendar = calendars.get(bay.id) ?? {};
       for (const slot of bay.slots) {
         if (slot.kind !== 'work' || slot.jobId !== jobId) continue;
-        entries.push({ slot, bayId: bay.id, bayName: bay.name, workingCalendar });
+        entries.push({ slot, bayName: bay.name, workingCalendar });
         route.push({
           ...deriveJobRouteStop({ slot, today, workingCalendar }),
           slotId: slot.id,

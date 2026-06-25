@@ -6,7 +6,7 @@ import {
   type JobWorkSlotEntry,
   listEnabledBays,
 } from '@pkg/domain';
-import type { BayOperator, DateOnlyIso } from '@pkg/schema';
+import type { BayOperator, DateOnlyIso, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
@@ -68,7 +68,7 @@ export function useJobList(): JobListResult {
     const bays = listEnabledBays(items);
     const calendars = bayWorkingCalendars(bays, offDays);
     const jobsById = new Map(jobs.map((job) => [job.id, job] as const));
-    const operatorByBayId = new Map<string, BayOperator | null>(bays.map((bay) => [bay.id, bay.currentOperator]));
+    const operatorByBayId = new Map<UUID, BayOperator | null>(bays.map((bay) => [bay.id, bay.currentOperator]));
 
     // Group every Work Slot by its Job, keeping each Slot's Bay name and calendar so the projection
     // sees the Job's full route across the Bays it passes through.
@@ -78,7 +78,7 @@ export function useJobList(): JobListResult {
       for (const slot of bay.slots) {
         if (slot.kind !== 'work') continue;
         const entries = slotsByJobId.get(slot.jobId) ?? [];
-        entries.push({ slot, bayId: bay.id, bayName: bay.name, workingCalendar });
+        entries.push({ slot, bayName: bay.name, workingCalendar });
         slotsByJobId.set(slot.jobId, entries);
       }
     }

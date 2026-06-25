@@ -9,8 +9,7 @@ import { countWorkingDaysBetween, type WorkingCalendar } from './working-calenda
  * spanning several Bays must keep them per Slot rather than sharing one calendar.
  */
 export type JobWorkSlotEntry = {
-  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate'>;
-  bayId: string;
+  slot: Pick<ProjectedWorkJobSlot, 'bayId' | 'startDate' | 'endDate'>;
   bayName: string;
   workingCalendar: WorkingCalendar;
 };
@@ -32,7 +31,7 @@ export type JobProgress = {
   /** 'in-progress' when a Slot runs today; 'scheduled' when the Job's work is all ahead. */
   status: 'in-progress' | 'scheduled';
   /** Stable id for the Bay running today, or the next Bay to start when none is active. */
-  currentBayId: string;
+  currentBayId: ProjectedWorkJobSlot['bayId'];
   /** Display name for the Bay running today, or the next Bay to start when none is active. */
   currentBayName: string;
   /** 1-based position of the current Slot in the Job's route. */
@@ -67,7 +66,7 @@ export function deriveJobProgress({
       left.slot.startDate.localeCompare(right.slot.startDate) ||
       left.slot.endDate.localeCompare(right.slot.endDate) ||
       left.bayName.localeCompare(right.bayName) ||
-      left.bayId.localeCompare(right.bayId),
+      left.slot.bayId.localeCompare(right.slot.bayId),
   );
 
   const unfinished = ordered.filter((entry) => entry.slot.endDate > today);
@@ -103,7 +102,7 @@ export function deriveJobProgress({
   return {
     daysLeft,
     status: active ? 'in-progress' : 'scheduled',
-    currentBayId: current.bayId,
+    currentBayId: current.slot.bayId,
     currentBayName: current.bayName,
     stageIndex: ordered.indexOf(current) + 1,
     stageCount: ordered.length,

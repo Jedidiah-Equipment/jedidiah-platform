@@ -1,10 +1,19 @@
-import { DateOnlyIso } from '@pkg/schema';
+import { DateOnlyIso, UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { deriveJobProgress, deriveJobRouteStop, type JobWorkSlotEntry } from './job-progress.js';
 import type { WorkingCalendar } from './working-calendar.js';
 
 const day = (value: string) => DateOnlyIso.parse(value);
+const uuid = (value: string) => UUID.parse(value);
+
+const BAY_IDS = {
+  assembly1: uuid('00000000-0000-4000-8000-000000000003'),
+  duplicateA: uuid('00000000-0000-4000-8000-000000000004'),
+  duplicateB: uuid('00000000-0000-4000-8000-000000000005'),
+  fab1: uuid('00000000-0000-4000-8000-000000000001'),
+  paint1: uuid('00000000-0000-4000-8000-000000000002'),
+} as const;
 
 // Weekends across late June / July 2026 as org off-days, so working-day arithmetic is exercised.
 const weekendsOff: WorkingCalendar = {
@@ -27,11 +36,10 @@ const entry = (
   startDate: string,
   endDate: string,
   workingCalendar: WorkingCalendar = weekendsOff,
-  bayId = bayName.toLowerCase().replaceAll(' ', '-'),
+  bayId: UUID = BAY_IDS.fab1,
 ): JobWorkSlotEntry => ({
-  bayId,
   bayName,
-  slot: { startDate: day(startDate), endDate: day(endDate) },
+  slot: { bayId, startDate: day(startDate), endDate: day(endDate) },
   workingCalendar,
 });
 
@@ -45,7 +53,7 @@ describe('deriveJobProgress', () => {
 
     expect(progress).not.toBeNull();
     expect(progress?.status).toBe('in-progress');
-    expect(progress?.currentBayId).toBe('fab-1');
+    expect(progress?.currentBayId).toBe(BAY_IDS.fab1);
     expect(progress?.currentBayName).toBe('Fab 1');
     expect(progress?.stageIndex).toBe(1);
     expect(progress?.stageCount).toBe(1);
@@ -69,7 +77,7 @@ describe('deriveJobProgress', () => {
   it('counts the idle gap working days when all Slots are in the future', () => {
     // Today Thu 2 Jul; the only Slot starts Mon 13 Jul (half-open end Fri 17 Jul).
     const progress = deriveJobProgress({
-      slots: [entry('Paint 1', '2026-07-13', '2026-07-17')],
+      slots: [entry('Paint 1', '2026-07-13', '2026-07-17', weekendsOff, BAY_IDS.paint1)],
       today: day('2026-07-02'),
     });
 
@@ -85,13 +93,13 @@ describe('deriveJobProgress', () => {
   it('keeps the current Bay id when duplicate Bay names exist', () => {
     const progress = deriveJobProgress({
       slots: [
-        entry('Fabrication Bay', '2026-06-15', '2026-06-26', weekendsOff, 'bay-a'),
-        entry('Fabrication Bay', '2026-06-29', '2026-07-10', weekendsOff, 'bay-b'),
+        entry('Fabrication Bay', '2026-06-15', '2026-06-26', weekendsOff, BAY_IDS.duplicateA),
+        entry('Fabrication Bay', '2026-06-29', '2026-07-10', weekendsOff, BAY_IDS.duplicateB),
       ],
       today: day('2026-07-02'),
     });
 
-    expect(progress?.currentBayId).toBe('bay-b');
+    expect(progress?.currentBayId).toBe(BAY_IDS.duplicateB);
     expect(progress?.currentBayName).toBe('Fabrication Bay');
     expect(progress?.stageIndex).toBe(2);
   });
@@ -101,7 +109,7 @@ describe('deriveJobProgress', () => {
     const progress = deriveJobProgress({
       slots: [
         entry('Fab 1', '2026-06-15', '2026-06-26'), // done before today
-        entry('Assembly 1', '2026-06-29', '2026-07-10'), // active today, ends latest
+        entry('Assembly 1', '2026-06-29', '2026-07-10', weekendsOff, BAY_IDS.assembly1), // active today, ends latest
       ],
       today: day('2026-07-02'),
     });
@@ -122,7 +130,7 @@ describe('deriveJobProgress', () => {
     const progress = deriveJobProgress({
       slots: [
         entry('Fab 1', '2026-06-15', '2026-06-27'), // Mon 15 → 10 working days, ends before today
-        entry('Paint 1', '2026-07-06', '2026-07-11'), // 5 working days, all ahead
+        entry('Paint 1', '2026-07-06', '2026-07-11', weekendsOff, BAY_IDS.paint1), // 5 working days, all ahead
       ],
       today: day('2026-07-02'),
     });

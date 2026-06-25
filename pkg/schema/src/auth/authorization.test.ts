@@ -19,6 +19,7 @@ describe('Department', () => {
 describe('AppRole', () => {
   it('accepts app roles', () => {
     expect(AppRole.parse('admin')).toBe('admin');
+    expect(AppRole.parse('super-admin')).toBe('super-admin');
     expect(AppRole.parse('procurement-manager')).toBe('procurement-manager');
     expect(AppRole.parse('job-viewer')).toBe('job-viewer');
     expect(AppRole.parse('sales')).toBe('sales');
@@ -44,6 +45,8 @@ describe('AppPermission', () => {
     expect(AppPermission.parse('product_range:update')).toBe('product_range:update');
     expect(AppPermission.parse('supplier:read')).toBe('supplier:read');
     expect(AppPermission.parse('supplier:update')).toBe('supplier:update');
+    expect(AppPermission.parse('feedback:read')).toBe('feedback:read');
+    expect(AppPermission.parse('feedback:update')).toBe('feedback:update');
   });
 
   it('rejects retired permissions', () => {

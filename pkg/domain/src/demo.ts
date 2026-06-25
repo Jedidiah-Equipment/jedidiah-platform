@@ -18,7 +18,7 @@ export const demoUsers = [
     name: 'Dean van Niekerk',
     email: 'dean@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'admin',
+    role: 'super-admin',
   },
   {
     departments: [],
@@ -34,7 +34,7 @@ export const demoUsers = [
     name: 'Jed van Niekerk',
     email: 'jed@jedidiahequipment.co.za',
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'admin',
+    role: 'super-admin',
   },
   {
     departments: [],

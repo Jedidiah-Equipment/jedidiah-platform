@@ -1,6 +1,6 @@
 import { account, type Db, jobBayOperatorAssignments, jobBays, sql, user } from '@pkg/db';
 import { DEFAULT_DEMO_USER_PASSWORD, toPlantDateOnly } from '@pkg/domain';
-import type { AppRole } from '@pkg/schema';
+import { AppRole, type AppRole as AppRoleType } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { describe, expect } from 'vitest';
 
@@ -93,6 +93,127 @@ describe('admin user safety policy', () => {
     });
 
     expect(result.user.role).toBe('sales');
+  });
+
+  test('rejects assigning super-admin from an admin account', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'target-super-admin@example.com',
+      id: 'target-super-admin-user-id',
+      name: 'Target Super Admin',
+      role: 'sales',
+    });
+
+    await expect(
+      context.auth.api.setRole({
+        body: {
+          role: 'super-admin',
+          userId: 'target-super-admin-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
+  });
+
+  test('rejects removing super-admin from an admin account', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'existing-super-admin@example.com',
+      id: 'existing-super-admin-user-id',
+      name: 'Existing Super Admin',
+      role: 'super-admin',
+    });
+
+    await expect(
+      context.auth.api.setRole({
+        body: {
+          role: 'sales',
+          userId: 'existing-super-admin-user-id',
+        },
+        headers,
+      }),
+    ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
+  });
+
+  test('rejects creating a super-admin from an admin account', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await expect(
+      context.auth.api.createUser({
+        body: {
+          email: 'created-super-admin@example.com',
+          name: 'Created Super Admin',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+          role: 'super-admin',
+        },
+        headers,
+      }),
+    ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
+  });
+
+  test('rejects creating a super-admin from an admin account through data role', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await expect(
+      context.auth.api.createUser({
+        body: {
+          data: {
+            role: 'super-admin',
+          },
+          email: 'created-super-admin-data-role@example.com',
+          name: 'Created Super Admin Data Role',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+        },
+        headers,
+      }),
+    ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
+  });
+
+  test('allows a super-admin to assign and remove super-admin', async ({ context }) => {
+    const superAdmin = mockSession('super-admin');
+    const headers = await createSignedInAdmin(context, superAdmin);
+    await createUser(context.db, {
+      email: 'promoted-user@example.com',
+      id: 'promoted-user-id',
+      name: 'Promoted User',
+      role: 'sales',
+    });
+
+    const promoted = await context.auth.api.setRole({
+      body: {
+        role: 'super-admin',
+        userId: 'promoted-user-id',
+      },
+      headers,
+    });
+
+    expect(promoted.user.role).toBe('super-admin');
+
+    const demoted = await context.auth.api.setRole({
+      body: {
+        role: 'sales',
+        userId: 'promoted-user-id',
+      },
+      headers,
+    });
+
+    expect(demoted.user.role).toBe('sales');
+  });
+
+  test('allows a super-admin to create a super-admin', async ({ context }) => {
+    const headers = await createSignedInAdmin(context, mockSession('super-admin'));
+
+    const created = await context.auth.api.createUser({
+      body: {
+        email: 'created-by-super-admin@example.com',
+        name: 'Created By Super Admin',
+        password: DEFAULT_DEMO_USER_PASSWORD,
+        role: 'super-admin',
+      },
+      headers,
+    });
+
+    expect(created.user.role).toBe('super-admin');
   });
 
   test('rejects role removal from the last admin through adminUpdateUser', async ({ context }) => {
@@ -349,7 +470,7 @@ async function createSignedInAdmin(context: AuthPolicyContext, session = mockSes
     id: session.user.id,
     name: session.user.name,
     password: DEFAULT_DEMO_USER_PASSWORD,
-    role: 'admin',
+    role: AppRole.parse(session.user.role),
   });
 
   const { headers } = await context.auth.api.signInEmail({
@@ -377,7 +498,7 @@ function convertSetCookieToCookie(headers: Headers): Headers {
   return cookieHeaders;
 }
 
-async function setStoredRole(db: Db, userId: string, role: AppRole): Promise<void> {
+async function setStoredRole(db: Db, userId: string, role: AppRoleType): Promise<void> {
   await db.execute(sql`
     UPDATE "user"
     SET role = ${role}, updated_at = ${new Date().toISOString()}
@@ -433,7 +554,7 @@ async function createUser(
     id: string;
     name: string;
     password?: string;
-    role: AppRole | string;
+    role: AppRoleType | string;
   },
 ) {
   const now = new Date();

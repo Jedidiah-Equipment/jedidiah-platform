@@ -17,3 +17,4 @@ export const quotesPageDescription = 'Sales offers to customers for product buil
 export const suppliersPageDescription = 'Procurement directory records for supplier-sourced Parts';
 
 export const usersPageDescription = 'Sign-in accounts with app roles and department assignments';
+export const feedbackPageDescription = 'Submitted workspace feedback for super-admin review';

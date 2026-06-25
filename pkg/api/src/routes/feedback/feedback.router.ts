@@ -1,8 +1,15 @@
-import { type FeedbackCoreError, isFeedbackCoreError, listFeedbackTargetUsers, submitFeedback } from '@pkg/core';
-import { FeedbackSubmitInput } from '@pkg/schema';
+import {
+  type FeedbackCoreError,
+  getFeedback,
+  isFeedbackCoreError,
+  listFeedback,
+  listFeedbackTargetUsers,
+  submitFeedback,
+} from '@pkg/core';
+import { FeedbackDetailInput, FeedbackListInput, FeedbackSubmitInput } from '@pkg/schema';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
-import { protectedProcedure, router } from '../../trpc/init.js';
+import { authorizedProcedure, protectedProcedure, router } from '../../trpc/init.js';
 
 export const feedbackRouter = router({
   // No `feedback:create` permission: any authenticated caller may submit.
@@ -13,6 +20,12 @@ export const feedbackRouter = router({
     ),
   // Minimal user list any submitter may read to populate the corrective-user target picker.
   listTargetUsers: protectedProcedure.query(({ ctx }) => listFeedbackTargetUsers({ db: ctx.db })),
+  list: authorizedProcedure('feedback:read')
+    .input(FeedbackListInput)
+    .query(({ ctx, input }) => listFeedback({ db: ctx.db, input })),
+  get: authorizedProcedure('feedback:read')
+    .input(FeedbackDetailInput)
+    .query(({ ctx, input }) => getFeedback({ db: ctx.db, input })),
 });
 
 async function mapFeedbackErrors<T>(action: () => Promise<T>): Promise<T> {

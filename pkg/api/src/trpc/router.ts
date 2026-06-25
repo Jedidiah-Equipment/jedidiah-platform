@@ -4,6 +4,7 @@ import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
 import { customersRouter } from '../routes/customers/customers.router.js';
 import { documentsRouter } from '../routes/documents/documents.router.js';
+import { feedbackRouter } from '../routes/feedback/feedback.router.js';
 import { jobsRouter } from '../routes/jobs/jobs.router.js';
 import { partsRouter } from '../routes/parts/parts.router.js';
 import { productRangesRouter } from '../routes/product-ranges/product-ranges.router.js';
@@ -20,6 +21,7 @@ type AppRouterRecord = {
   auth: (typeof authRouter)['_def']['record'];
   customers: (typeof customersRouter)['_def']['record'];
   documents: (typeof documentsRouter)['_def']['record'];
+  feedback: (typeof feedbackRouter)['_def']['record'];
   jobs: (typeof jobsRouter)['_def']['record'];
   parts: (typeof partsRouter)['_def']['record'];
   productRanges: (typeof productRangesRouter)['_def']['record'];
@@ -38,6 +40,7 @@ function createAppRouter(): AppRouter {
     auth: authRouter,
     customers: customersRouter,
     documents: documentsRouter,
+    feedback: feedbackRouter,
     jobs: jobsRouter,
     parts: partsRouter,
     productRanges: productRangesRouter,

@@ -18,6 +18,7 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 
 import { AuditTable, useQuoteAuditTableStore } from '@/components/audit/AuditTable.js';
+import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { getFieldErrors } from '@/components/form/utils/field-errors.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
@@ -86,11 +87,14 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
       <FieldGroup className="gap-6">
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <Tabs className="min-w-0" defaultValue="details" size="sm">
-            <TabsList variant="default">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-              {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
-            </TabsList>
+            <div className="flex items-center justify-between gap-2">
+              <TabsList variant="default">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="documents">Documents</TabsTrigger>
+                {auditAccess.can ? <TabsTrigger value="audit">Audit</TabsTrigger> : null}
+              </TabsList>
+              <GiveFeedbackButton subject={{ subjectType: 'quote', quoteId: quote.id }} subjectLabel={quote.code} />
+            </div>
             <TabsContent className="pt-4" value="details">
               <div className="grid gap-6">
                 {priorityQuote ? <QuotePriorityAlert priorityQuote={priorityQuote} /> : null}

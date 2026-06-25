@@ -1,7 +1,7 @@
 import type { DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
 
 import { deriveActiveJobProgress } from './bay-active-job.js';
-import { countWorkingDaysBetween, isWorkingDay, type WorkingCalendar } from './working-calendar.js';
+import { countWorkingDaysBetween, type WorkingCalendar } from './working-calendar.js';
 
 /**
  * One of a Job's Work Slots paired with the Bay it runs in. Each Bay carries its own
@@ -9,7 +9,7 @@ import { countWorkingDaysBetween, isWorkingDay, type WorkingCalendar } from './w
  * spanning several Bays must keep them per Slot rather than sharing one calendar.
  */
 export type JobWorkSlotEntry = {
-  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate'>;
+  slot: Pick<ProjectedWorkJobSlot, 'bayId' | 'startDate' | 'endDate'>;
   bayName: string;
   workingCalendar: WorkingCalendar;
 };
@@ -30,7 +30,9 @@ export type JobProgress = {
   daysLeft: number;
   /** 'in-progress' when a Slot runs today; 'scheduled' when the Job's work is all ahead. */
   status: 'in-progress' | 'scheduled';
-  /** The Bay running today, or the next Bay to start when none is active. */
+  /** Stable id for the Bay running today, or the next Bay to start when none is active. */
+  currentBayId: ProjectedWorkJobSlot['bayId'];
+  /** Display name for the Bay running today, or the next Bay to start when none is active. */
   currentBayName: string;
   /** 1-based position of the current Slot in the Job's route. */
   stageIndex: number;
@@ -57,13 +59,14 @@ export function deriveJobProgress({
 }): JobProgress | null {
   if (slots.length === 0) return null;
 
-  // Route order: by Slot start, then end, then Bay name, so the stage index and the
-  // active/next pick are stable regardless of the input order.
+  // Route order: by Slot start, then end, then Bay name/id, so the stage index and the
+  // active/next pick are stable even if two Bays share a display name.
   const ordered = [...slots].sort(
     (left, right) =>
       left.slot.startDate.localeCompare(right.slot.startDate) ||
       left.slot.endDate.localeCompare(right.slot.endDate) ||
-      left.bayName.localeCompare(right.bayName),
+      left.bayName.localeCompare(right.bayName) ||
+      left.slot.bayId.localeCompare(right.slot.bayId),
   );
 
   const unfinished = ordered.filter((entry) => entry.slot.endDate > today);
@@ -71,11 +74,8 @@ export function deriveJobProgress({
   const [firstUnfinished] = unfinished;
   if (!firstUnfinished) return null;
 
-  // The Slot running today (covers today on a working day, mirroring findActiveWorkSlot).
-  const active = unfinished.find(
-    (entry) =>
-      entry.slot.startDate <= today && today < entry.slot.endDate && isWorkingDay(today, entry.workingCalendar),
-  );
+  // The Slot covering today is in progress even on an off-day (mirrors findActiveWorkSlot).
+  const active = unfinished.find((entry) => entry.slot.startDate <= today && today < entry.slot.endDate);
   // Current stage: the active Slot, else the soonest unfinished Slot to start.
   const current = active ?? firstUnfinished;
 
@@ -102,6 +102,7 @@ export function deriveJobProgress({
   return {
     daysLeft,
     status: active ? 'in-progress' : 'scheduled',
+    currentBayId: current.slot.bayId,
     currentBayName: current.bayName,
     stageIndex: ordered.indexOf(current) + 1,
     stageCount: ordered.length,
@@ -109,4 +110,45 @@ export function deriveJobProgress({
     lastWorkDay: deriveActiveJobProgress({ slot: latest.slot, today, workingCalendar: latest.workingCalendar })
       .lastWorkDay,
   };
+}
+
+/** One Bay on a Job's production route relative to plant "today" on that Bay's working calendar. */
+export type JobRouteStopState = 'done' | 'active' | 'scheduled';
+
+/** A single stop on the Job Detail production-route timeline (#615). */
+export type JobRouteStop = {
+  /** 'done' once the last work day is past, 'active' while the Slot covers today, else 'scheduled'. */
+  state: JobRouteStopState;
+  /** Inclusive last working day of the Slot (the day before the half-open `endDate`). */
+  lastWorkDay: DateOnlyIso;
+  /** Working days the Slot spans, excluding closures. */
+  workDays: number;
+  /** Working days from today through the Slot end; 0 once done. */
+  remainingWorkDays: number;
+  /** Elapsed share of the Slot, 0–100, rounded. */
+  progressPercent: number;
+};
+
+/**
+ * Projects one Work Slot's state for the Job Detail route. Shares {@link deriveActiveJobProgress}
+ * with the Bay screens so a Slot's days-left and bar match wherever it is shown. A Slot covering today
+ * is 'active' even on an off-day — the Job sits on the Bay whether or not anyone works that day.
+ */
+export function deriveJobRouteStop({
+  slot,
+  today,
+  workingCalendar,
+}: {
+  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate'>;
+  today: DateOnlyIso;
+  workingCalendar: WorkingCalendar;
+}): JobRouteStop {
+  const { totalWorkDays, remainingWorkDays, progressPercent, lastWorkDay } = deriveActiveJobProgress({
+    slot,
+    today,
+    workingCalendar,
+  });
+  const state: JobRouteStopState = slot.endDate <= today ? 'done' : slot.startDate <= today ? 'active' : 'scheduled';
+
+  return { state, lastWorkDay, workDays: totalWorkDays, remainingWorkDays, progressPercent };
 }

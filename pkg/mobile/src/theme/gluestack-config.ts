@@ -1,3 +1,4 @@
+import { darkStatusColors, hexToRgbTriplet, lightStatusColors } from '@pkg/domain';
 import { vars } from 'nativewind';
 
 import type { ResolvedColorScheme } from './color-mode';
@@ -13,10 +14,12 @@ export const gluestackConfig = {
     '--color-muted-foreground': '122 122 130',
     '--color-primary': '255 240 0',
     '--color-primary-foreground': '10 10 10',
-    '--color-status-in-progress': '96 165 250',
-    '--color-status-next': '34 197 94',
-    '--color-status-next-soft': '95 207 135',
-    '--color-status-scheduled': '251 191 36',
+    // Status accents derive from the shared hex palette (@pkg/domain) so the chips and the
+    // inline-style bars/numbers stay in lockstep — one source of truth for the blue/green.
+    '--color-status-in-progress': hexToRgbTriplet(darkStatusColors.inProgress),
+    '--color-status-next': hexToRgbTriplet(darkStatusColors.next),
+    '--color-status-next-soft': hexToRgbTriplet(darkStatusColors.nextSoft),
+    '--color-status-scheduled': hexToRgbTriplet(darkStatusColors.scheduled),
     '--color-surface': '20 20 22',
     '--color-surface-foreground': '250 250 250',
   }),
@@ -30,10 +33,10 @@ export const gluestackConfig = {
     '--color-muted-foreground': '115 115 115',
     '--color-primary': '248 211 0',
     '--color-primary-foreground': '10 10 10',
-    '--color-status-in-progress': '59 130 246',
-    '--color-status-next': '34 197 94',
-    '--color-status-next-soft': '95 207 135',
-    '--color-status-scheduled': '251 191 36',
+    '--color-status-in-progress': hexToRgbTriplet(lightStatusColors.inProgress),
+    '--color-status-next': hexToRgbTriplet(lightStatusColors.next),
+    '--color-status-next-soft': hexToRgbTriplet(lightStatusColors.nextSoft),
+    '--color-status-scheduled': hexToRgbTriplet(lightStatusColors.scheduled),
     '--color-surface': '255 255 255',
     '--color-surface-foreground': '10 10 10',
   }),

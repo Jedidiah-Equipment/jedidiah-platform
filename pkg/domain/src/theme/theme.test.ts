@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { JEDIDIAH_BRAND_YELLOW, JEDIDIAH_BRAND_YELLOW_ON_LIGHT } from '../brand.js';
 import {
-  DAYS_LEFT_OK,
   DAYS_LEFT_SOON,
   DAYS_LEFT_URGENT,
+  darkStatusColors,
   darkTheme,
-  daysLeftColor,
+  hexToRgbTriplet,
+  lightStatusColors,
   lightTheme,
+  statusDaysLeftColor,
   themes,
 } from './index.js';
 
@@ -39,19 +41,41 @@ describe('theme tokens', () => {
   });
 });
 
-describe('daysLeftColor', () => {
-  it('is urgent (red) at or below two days', () => {
-    expect(daysLeftColor(0)).toBe(DAYS_LEFT_URGENT);
-    expect(daysLeftColor(2)).toBe(DAYS_LEFT_URGENT);
+describe('statusDaysLeftColor', () => {
+  it('is urgent (red) at or below two days, whatever the status', () => {
+    expect(statusDaysLeftColor({ status: 'in-progress', daysLeft: 0, scheme: 'dark' })).toBe(DAYS_LEFT_URGENT);
+    expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 2, scheme: 'dark' })).toBe(DAYS_LEFT_URGENT);
   });
 
-  it('is soon (amber) between three and five days', () => {
-    expect(daysLeftColor(3)).toBe(DAYS_LEFT_SOON);
-    expect(daysLeftColor(5)).toBe(DAYS_LEFT_SOON);
+  it('is soon (amber) between three and five days, whatever the status', () => {
+    expect(statusDaysLeftColor({ status: 'in-progress', daysLeft: 3, scheme: 'dark' })).toBe(DAYS_LEFT_SOON);
+    expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 5, scheme: 'light' })).toBe(DAYS_LEFT_SOON);
   });
 
-  it('is ok (green) beyond five days', () => {
-    expect(daysLeftColor(6)).toBe(DAYS_LEFT_OK);
-    expect(daysLeftColor(42)).toBe(DAYS_LEFT_OK);
+  it('is the in-progress blue beyond five days, per scheme', () => {
+    expect(statusDaysLeftColor({ status: 'in-progress', daysLeft: 6, scheme: 'light' })).toBe('#3b82f6');
+    expect(statusDaysLeftColor({ status: 'in-progress', daysLeft: 42, scheme: 'dark' })).toBe('#60a5fa');
+  });
+
+  it('is the scheduled green beyond five days', () => {
+    expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 6, scheme: 'dark' })).toBe('#22c55e');
+    expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 42, scheme: 'light' })).toBe('#22c55e');
+  });
+});
+
+describe('hexToRgbTriplet', () => {
+  it('converts a hex colour to the space-separated CSS-var triplet', () => {
+    expect(hexToRgbTriplet('#60a5fa')).toBe('96 165 250');
+    expect(hexToRgbTriplet('#000000')).toBe('0 0 0');
+    expect(hexToRgbTriplet('#ffffff')).toBe('255 255 255');
+  });
+
+  it('reproduces the mobile status CSS-var values from the hex palette (no chip drift)', () => {
+    // Guards the gluestack-config derivation: these must equal the triplets the chips render today.
+    expect(hexToRgbTriplet(darkStatusColors.inProgress)).toBe('96 165 250');
+    expect(hexToRgbTriplet(lightStatusColors.inProgress)).toBe('59 130 246');
+    expect(hexToRgbTriplet(darkStatusColors.next)).toBe('34 197 94');
+    expect(hexToRgbTriplet(darkStatusColors.nextSoft)).toBe('95 207 135');
+    expect(hexToRgbTriplet(darkStatusColors.scheduled)).toBe('251 191 36');
   });
 });

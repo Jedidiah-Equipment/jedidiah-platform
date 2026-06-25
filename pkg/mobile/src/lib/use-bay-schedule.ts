@@ -99,7 +99,7 @@ export function useBaySchedule(bayId: string): BayScheduleState {
     const workingCalendar = bayWorkingCalendar(new Set(offDays.map((offDay) => offDay.date)), bay.calendarExceptions);
     const jobsById = new Map(jobs.map((job) => [job.id, job] as const));
 
-    const activeSlot = findActiveWorkSlot({ bay, today, workingCalendar });
+    const activeSlot = findActiveWorkSlot({ bay, today });
     const activeJob = activeSlot ? jobsById.get(activeSlot.jobId) : undefined;
     const active: BayScheduleActiveJob | null =
       activeSlot && activeJob
@@ -115,8 +115,7 @@ export function useBaySchedule(bayId: string): BayScheduleState {
           }
         : null;
 
-    // Everything still ahead: future Work Slots, plus a Slot covering today that the
-    // off-day gate excluded from `active` (so it is never silently dropped).
+    // Everything still ahead: future Work Slots, excluding the active (covering-today) Slot.
     const upcomingSlots = listUpcomingWorkSlots({ bay, excludeSlotId: activeSlot?.id, today });
 
     // Detail-pane projection for the in-progress Slot and every upcoming one — the

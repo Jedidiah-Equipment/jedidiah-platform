@@ -1,4 +1,4 @@
-import { daysLeftColor, formatDate } from '@pkg/domain';
+import { formatDate, statusDaysLeftColor } from '@pkg/domain';
 import type { BayOperator } from '@pkg/schema';
 import { IconChevronRight } from '@tabler/icons-react-native';
 import { useState } from 'react';
@@ -16,6 +16,7 @@ import {
   type BayScheduleUpcomingSlot,
   useBaySchedule,
 } from '@/lib/use-bay-schedule';
+import { useColorMode } from '@/theme/use-color-mode';
 
 /** Tablet breakpoint: at/above this width the list and detail panes sit side by side. */
 const WIDE_BREAKPOINT = 760;
@@ -102,8 +103,10 @@ function Ready({
       <ScheduleHeader
         onBack={handleBack}
         operator={bay.operator}
-        subtitle={onDetail ? 'Job slot' : 'Bay schedule'}
-        title={onDetail && selected ? selected.jobCode : bay.name}
+        showOperatorAvatar={!onDetail}
+        subtitle={onDetail && selected ? selected.productName : bay.name}
+        title={onDetail && selected ? selected.jobCode : (bay.operator?.name ?? 'No operator')}
+        titleMono={onDetail && selected !== null}
       />
       <View className="flex-1 flex-row">
         {showList ? (
@@ -188,6 +191,9 @@ function ActiveHero({
   onSelect: () => void;
 }) {
   const heroSub = [active.productSerialNumber, active.customerCompanyName].filter(Boolean).join(' · ');
+  const { resolved } = useColorMode();
+  // The hero is the Job running today, so its countdown/bar use the in-progress accent.
+  const accent = statusDaysLeftColor({ status: 'in-progress', daysLeft: active.remainingWorkDays, scheme: resolved });
 
   return (
     // Border is a constant 2px (faded when unselected, full-strength when selected) so the
@@ -231,15 +237,11 @@ function ActiveHero({
 
       <View className="flex-row items-end justify-between">
         <View className="flex-row items-baseline gap-2">
-          <Text
-            className="text-5xl leading-[48px]"
-            style={{ color: daysLeftColor(active.remainingWorkDays) }}
-            weight="bold"
-          >
+          <Text className="text-5xl leading-[48px]" style={{ color: accent }} weight="bold">
             {active.remainingWorkDays}
           </Text>
           <Text className="text-sm text-muted-foreground" weight="semibold">
-            days left
+            {active.remainingWorkDays === 1 ? 'working day left' : 'working days left'}
           </Text>
         </View>
         <View className="items-end">
@@ -253,7 +255,7 @@ function ActiveHero({
       <View className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-muted">
         <View
           className="h-full rounded-full"
-          style={{ backgroundColor: daysLeftColor(active.remainingWorkDays), width: `${active.progressPercent}%` }}
+          style={{ backgroundColor: accent, width: `${active.progressPercent}%` }}
         />
       </View>
       <View className="mt-2 flex-row justify-between">

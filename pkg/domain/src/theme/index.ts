@@ -11,6 +11,7 @@ import {
 } from './scale.js';
 import { darkStatusColors, lightStatusColors, type StatusColors } from './status.js';
 
+export * from './color.js';
 export * from './colors.js';
 export * from './scale.js';
 export * from './status.js';

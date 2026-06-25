@@ -67,22 +67,21 @@ export function getBayTodayOccupancy({
 }
 
 /**
- * The Work Slot a Bay is actively running today, or null when the Bay is idle, free, or off. Projected
- * Work Slots span closure days, so this gates on the Bay's working calendar (mirrors the off-day branch
- * of {@link getBayTodayOccupancy}) — a Slot covering an off-day today is not active.
+ * The Work Slot covering today on a Bay, or null when today falls in an idle Slot, a gap, or past the
+ * queue. A Slot covering today is in progress even on an off-day — the Job sits on the Bay whether or
+ * not anyone works that day — so this is a pure date check and never gates on the working calendar.
+ * (Bay occupancy/utilisation, which does treat off-days as idle, lives in {@link getBayTodayOccupancy}.)
  */
 export function findActiveWorkSlot({
   bay,
   today,
-  workingCalendar,
 }: {
   bay: BaySchedule;
   today: DateOnlyIso;
-  workingCalendar: WorkingCalendar;
 }): ProjectedWorkJobSlot | null {
-  const occupancy = getBayTodayOccupancy({ bay, today, workingCalendar });
+  const slot = findSlotCoveringDate(bay.slots, today);
 
-  return occupancy.kind === 'work' ? occupancy.slot : null;
+  return slot?.kind === 'work' ? slot : null;
 }
 
 /**

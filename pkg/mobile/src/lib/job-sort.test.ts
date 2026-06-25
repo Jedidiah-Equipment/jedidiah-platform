@@ -11,6 +11,7 @@ function card(jobCode: string, daysLeft: number): JobListCard {
     productName: jobCode,
     productThumbnailDataUrl: null,
     customerCompanyName: null,
+    operator: null,
     progress: { daysLeft } as JobListCard['progress'],
   };
 }

@@ -4,6 +4,7 @@ import {
   hasPermission,
   type JobProgress,
   type JobWorkSlotEntry,
+  listEnabledBays,
 } from '@pkg/domain';
 import type { DateOnlyIso } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
@@ -59,12 +60,15 @@ export function useJobList(): JobListResult {
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
     if (baysQuery.isPending) return { status: 'pending' };
 
-    const { items: bays, jobs, offDays, today } = baysQuery.data;
+    const { items, jobs, offDays, today } = baysQuery.data;
+    // Disabled Bays are hidden everywhere on the shop floor (mirrors the Bay List's listEnabledBays);
+    // grouping their Slots would leak Jobs on retired Bays back into the Jobs board.
+    const bays = listEnabledBays(items);
     const calendars = bayWorkingCalendars(bays, offDays);
     const jobsById = new Map(jobs.map((job) => [job.id, job] as const));
 
     // Group every Work Slot by its Job, keeping each Slot's Bay name and calendar so the projection
-    // sees the Job's full route. Disabled Bays still hold a Job's past Slots, so they are not filtered.
+    // sees the Job's full route across the Bays it passes through.
     const slotsByJobId = new Map<string, JobWorkSlotEntry[]>();
     for (const bay of bays) {
       const workingCalendar = calendars.get(bay.id) ?? {};

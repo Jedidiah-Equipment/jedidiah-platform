@@ -302,16 +302,12 @@ function FeedbackTargets({ detail }: { detail: FeedbackDetail }) {
 
   return (
     <DetailField label="Targets">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex min-w-0 flex-col gap-1">
         {detail.departments.map((department) => (
-          <Badge key={department} variant="secondary">
-            {departmentLabels[department]}
-          </Badge>
+          <span key={department}>{departmentLabels[department]}</span>
         ))}
         {detail.users.map((user) => (
-          <Badge key={user.id} variant="secondary">
-            {user.name}
-          </Badge>
+          <span key={user.id}>{user.name}</span>
         ))}
       </div>
     </DetailField>

@@ -5,8 +5,9 @@ import {
   listFeedback,
   listFeedbackTargetUsers,
   submitFeedback,
+  updateFeedback,
 } from '@pkg/core';
-import { FeedbackDetailInput, FeedbackListInput, FeedbackSubmitInput } from '@pkg/schema';
+import { FeedbackDetailInput, FeedbackListInput, FeedbackSubmitInput, FeedbackUpdateInput } from '@pkg/schema';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
 import { authorizedProcedure, protectedProcedure, router } from '../../trpc/init.js';
@@ -26,6 +27,9 @@ export const feedbackRouter = router({
   get: authorizedProcedure('feedback:read')
     .input(FeedbackDetailInput)
     .query(({ ctx, input }) => getFeedback({ db: ctx.db, input })),
+  update: authorizedProcedure('feedback:update')
+    .input(FeedbackUpdateInput)
+    .mutation(({ ctx, input }) => mapFeedbackErrors(() => updateFeedback({ db: ctx.db, input }))),
 });
 
 async function mapFeedbackErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -33,6 +37,14 @@ async function mapFeedbackErrors<T>(action: () => Promise<T>): Promise<T> {
 }
 
 function mapFeedbackCoreError(error: FeedbackCoreError): CoreErrorMapping<FeedbackCoreError['code']> {
+  if (error.code === 'feedback.not_found') {
+    return {
+      appCode: error.code,
+      code: 'NOT_FOUND',
+      message: 'The feedback item could not be found.',
+    };
+  }
+
   return {
     appCode: error.code,
     code: 'NOT_FOUND',

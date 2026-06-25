@@ -5,8 +5,10 @@ import type {
   FeedbackDetailInput,
   FeedbackListInput,
   FeedbackListResult,
+  FeedbackStatus,
   FeedbackSubmitInput,
   FeedbackTargetUser as FeedbackTargetUserType,
+  FeedbackUpdateInput,
 } from '@pkg/schema';
 import {
   Feedback,
@@ -20,7 +22,7 @@ import {
 } from '@pkg/schema';
 import { asc, desc, eq } from 'drizzle-orm';
 
-import { FeedbackSubjectNotFoundError } from './feedback-errors.js';
+import { FeedbackNotFoundError, FeedbackSubjectNotFoundError } from './feedback-errors.js';
 
 type FeedbackRow = typeof feedback.$inferSelect;
 type FeedbackReadRow = FeedbackRow & {
@@ -136,6 +138,48 @@ export async function getFeedback({
   return row ? mapFeedbackDetail(row) : null;
 }
 
+export async function updateFeedback({
+  db,
+  input,
+}: {
+  db: Db;
+  input: FeedbackUpdateInput;
+}): Promise<FeedbackDetail | null> {
+  const values: {
+    internalNotes?: string | null;
+    status?: FeedbackStatus;
+    updatedAt: Date;
+  } = {
+    updatedAt: new Date(),
+  };
+
+  if (input.status !== undefined) {
+    values.status = input.status;
+  }
+
+  if (input.internalNotes !== undefined) {
+    values.internalNotes = input.internalNotes;
+  }
+
+  const [updated] = await db
+    .update(feedback)
+    .set(values)
+    .where(eq(feedback.id, input.id))
+    .returning({ id: feedback.id });
+
+  if (!updated) {
+    throw new FeedbackNotFoundError(input.id);
+  }
+
+  const detail = await getFeedback({ db, input: { id: input.id } });
+
+  if (!detail) {
+    throw new FeedbackNotFoundError(input.id);
+  }
+
+  return detail;
+}
+
 // Any signed-in submitter may read this minimal user list to choose corrective-user targets; it is
 // intentionally lighter than the admin-only `user:list` payload.
 export async function listFeedbackTargetUsers({ db }: { db: Db }): Promise<FeedbackTargetUserList> {
@@ -214,6 +258,7 @@ function mapFeedbackDetail(row: FeedbackReadRow): FeedbackDetail {
   return FeedbackDetail.parse({
     ...mapFeedbackListItem(row),
     departments: row.departments.map((target) => target.department),
+    internalNotes: row.internalNotes,
     text: row.text,
     users: row.users.flatMap((target): FeedbackTargetUserType[] =>
       target.user ? [mapFeedbackTargetUser(target.user)] : [],

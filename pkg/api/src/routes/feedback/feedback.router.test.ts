@@ -16,6 +16,9 @@ import { createTester } from '@/test/create-tester.js';
 import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
+const ACTOR_THUMBNAIL_DATA_URL = 'data:image/webp;base64,YWN0b3I=';
+const TARGET_THUMBNAIL_DATA_URL = 'data:image/webp;base64,dGFyZ2V0';
+
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
   const product = await createProduct(db);
@@ -218,6 +221,83 @@ describe('feedback.submit', () => {
   });
 });
 
+describe('feedback review reads', () => {
+  test('denies feedback list and detail reads to admin users', async ({ context }) => {
+    const adminCaller = context.createCaller(mockSession('admin'));
+
+    await expect(adminCaller.feedback.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(adminCaller.feedback.get({ id: '00000000-0000-4000-8000-000000000621' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('lists feedback for super-admin users and filters by status', async ({ context }) => {
+    const submitterCaller = context.createCaller(mockSession('sales'));
+    const openFeedback = await submitterCaller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'quote', quoteId: context.quote.id },
+      text: 'Open feedback should appear.',
+    });
+    const closedFeedback = await submitterCaller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'Closed feedback should filter out.',
+    });
+    await context.db.update(feedback).set({ status: 'closed' }).where(eq(feedback.id, closedFeedback.id));
+
+    const reviewerCaller = context.createCaller(mockSession('super-admin'));
+
+    await expect(reviewerCaller.feedback.list({})).resolves.toMatchObject({
+      items: [
+        {
+          id: closedFeedback.id,
+          status: 'closed',
+          subject: { subjectType: 'job' },
+        },
+        {
+          id: openFeedback.id,
+          status: 'open',
+          subject: { subjectType: 'quote' },
+        },
+      ],
+    });
+    await expect(reviewerCaller.feedback.list({ status: 'open' })).resolves.toMatchObject({
+      items: [{ id: openFeedback.id, status: 'open' }],
+    });
+  });
+
+  test('returns read-only feedback detail with text and targets for super-admin users', async ({ context }) => {
+    const targetUser = await createTargetUser(context.db, 'detail-target-user-id');
+    const submitterCaller = context.createCaller(mockSession('sales'));
+    const submitted = await submitterCaller.feedback.submit({
+      kind: 'corrective-feedback-user',
+      subject: { subjectType: 'quote', quoteId: context.quote.id },
+      text: 'Follow up with this user.',
+      userIds: [targetUser.id],
+    });
+
+    const detail = await context.createCaller(mockSession('super-admin')).feedback.get({ id: submitted.id });
+
+    expect(detail).toMatchObject({
+      id: submitted.id,
+      kind: 'corrective-feedback-user',
+      status: 'open',
+      subject: {
+        id: context.quote.id,
+        subjectType: 'quote',
+      },
+      submitter: {
+        email: 'test@example.com',
+        id: 'test-user-id',
+        name: 'Test User',
+        thumbnailDataUrl: ACTOR_THUMBNAIL_DATA_URL,
+      },
+      text: 'Follow up with this user.',
+      users: [{ id: targetUser.id, name: targetUser.name, thumbnailDataUrl: TARGET_THUMBNAIL_DATA_URL }],
+    });
+  });
+});
+
 async function createActorUser(db: Db) {
   const now = new Date();
 
@@ -226,6 +306,7 @@ async function createActorUser(db: Db) {
     email: 'test@example.com',
     emailVerified: true,
     id: 'test-user-id',
+    image: ACTOR_THUMBNAIL_DATA_URL,
     name: 'Test User',
     role: 'admin',
     updatedAt: now,
@@ -242,6 +323,7 @@ async function createTargetUser(db: Db, id: string) {
       email: `${id}@example.com`,
       emailVerified: true,
       id,
+      image: TARGET_THUMBNAIL_DATA_URL,
       name: `Target ${id}`,
       role: 'sales',
       updatedAt: now,

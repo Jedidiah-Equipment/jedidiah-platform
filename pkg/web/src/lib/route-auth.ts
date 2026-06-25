@@ -1,3 +1,5 @@
+import { hasPermission } from '@pkg/domain';
+import type { AppPermission } from '@pkg/schema';
 import { redirect } from '@tanstack/react-router';
 
 import type { RouterContext } from '@/app/router-context.js';
@@ -24,4 +26,17 @@ export async function requireRouteSession(context: RouterContext) {
   }
 
   return session;
+}
+
+export async function requireRoutePermission(context: RouterContext, permission: AppPermission) {
+  await requireRouteSession(context);
+  const access = await context.queryClient.ensureQueryData(context.trpc.auth.access.queryOptions(undefined));
+
+  if (!hasPermission(access, permission)) {
+    throw redirect({
+      to: '/dashboard',
+    });
+  }
+
+  return access;
 }

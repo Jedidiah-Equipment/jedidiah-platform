@@ -4,6 +4,7 @@ export const DEFAULT_APP_ROLE = 'sales' satisfies AppRole;
 
 export const roleLabels = {
   admin: 'Administrator',
+  'super-admin': 'Super Administrator',
   'bay-operator': 'Bay Operator',
   'job-viewer': 'Job Viewer',
   'procurement-manager': 'Procurement manager',
@@ -12,6 +13,7 @@ export const roleLabels = {
 
 export const roleDescriptions = {
   admin: 'Full workspace administration, including user management and cross-functional operations.',
+  'super-admin': 'Administrator access plus exclusive Feedback review permissions.',
   'bay-operator': 'Shop-floor personnel record for Bay assignment; this role is not enabled for sign-in.',
   'job-viewer': 'Read-only access to production Jobs.',
   'procurement-manager': 'Manage procurement records and view production Jobs.',
@@ -23,6 +25,8 @@ export const permissionLabels = {
   'customer:create': 'Create customers',
   'customer:read': 'View customers',
   'customer:update': 'Update customers',
+  'feedback:read': 'View feedback',
+  'feedback:update': 'Manage feedback',
   'part:read': 'View parts',
   'part:update': 'Manage parts',
   'job:create': 'Create jobs',
@@ -55,6 +59,8 @@ export const permissionDescriptions = {
   'customer:create': 'Add new customer directory records.',
   'customer:read': 'View customer directory records.',
   'customer:update': 'Edit existing customer directory records.',
+  'feedback:read': 'View submitted Feedback records.',
+  'feedback:update': 'Update Feedback status and internal notes.',
   'part:read': 'View part records.',
   'part:update': 'Create and edit part records.',
   'job:create': 'Create new production jobs.',
@@ -85,6 +91,7 @@ export const permissionDescriptions = {
 export const authorizationStatement = {
   audit: ['read'],
   customer: ['read', 'create', 'update'],
+  feedback: ['read', 'update'],
   job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
   job_bay: ['read', 'update'],
   part: ['read', 'update'],
@@ -108,6 +115,19 @@ export const appRoleAccess = {
   admin: {
     audit: ['read'],
     customer: ['read', 'create', 'update'],
+    job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
+    job_bay: ['read', 'update'],
+    part: ['read', 'update'],
+    product: ['read', 'create', 'update'],
+    product_range: ['read', 'create', 'update'],
+    quote: ['read', 'create', 'update'],
+    supplier: ['read', 'update'],
+    user: ['list', 'create', 'update', 'set-role', 'set-password'],
+  },
+  'super-admin': {
+    audit: ['read'],
+    customer: ['read', 'create', 'update'],
+    feedback: ['read', 'update'],
     job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
     job_bay: ['read', 'update'],
     part: ['read', 'update'],

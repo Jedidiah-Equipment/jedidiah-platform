@@ -47,6 +47,14 @@ describe('getRolePermissions', () => {
     ]);
   });
 
+  it('grants super-admin every admin permission plus Feedback permissions', () => {
+    const adminPermissions = getRolePermissions('admin');
+
+    expect(getRolePermissions('super-admin')).toEqual([...adminPermissions, 'feedback:read', 'feedback:update'].sort());
+    expect(adminPermissions).not.toContain('feedback:read');
+    expect(adminPermissions).not.toContain('feedback:update');
+  });
+
   it('grants procurement permissions to procurement managers', () => {
     expect(getRolePermissions('procurement-manager')).toEqual([
       'customer:create',

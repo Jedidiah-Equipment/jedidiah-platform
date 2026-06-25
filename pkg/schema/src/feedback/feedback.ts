@@ -4,6 +4,7 @@ import { AuthId } from '../auth/auth-id.js';
 import { DateIso } from '../common/date.js';
 import { Department } from '../common/departments.js';
 import { requiredTrimmedText } from '../common/text.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 
 export type FeedbackKind = z.infer<typeof FeedbackKind>;
@@ -59,6 +60,64 @@ export const FeedbackSubmitInput = z.discriminatedUnion('kind', [
   }),
 ]);
 
+export type FeedbackListInput = z.infer<typeof FeedbackListInput>;
+export const FeedbackListInput = z
+  .object({
+    status: FeedbackStatus.optional(),
+  })
+  .default({});
+
+export type FeedbackSubjectRef = z.infer<typeof FeedbackSubjectRef>;
+export const FeedbackSubjectRef = z.object({
+  id: UUID,
+  label: z.string().trim().min(1),
+  subjectType: FeedbackSubjectType,
+});
+
+export type FeedbackSubmitter = z.infer<typeof FeedbackSubmitter>;
+export const FeedbackSubmitter = z.object({
+  email: z.email(),
+  id: AuthId,
+  name: z.string().trim().min(1),
+  thumbnailDataUrl: NullableThumbnailDataUrl,
+});
+
+// Minimal user shape any signed-in submitter may read to populate the corrective-user target picker;
+// deliberately narrower than the admin-only `user:list` payload.
+export type FeedbackTargetUser = z.infer<typeof FeedbackTargetUser>;
+export const FeedbackTargetUser = z.object({
+  id: AuthId,
+  name: z.string(),
+  thumbnailDataUrl: NullableThumbnailDataUrl,
+});
+
+export type FeedbackListItem = z.infer<typeof FeedbackListItem>;
+export const FeedbackListItem = z.object({
+  id: UUID,
+  createdAt: DateIso,
+  kind: FeedbackKind,
+  status: FeedbackStatus,
+  subject: FeedbackSubjectRef,
+  submitter: FeedbackSubmitter,
+});
+
+export type FeedbackListResult = z.infer<typeof FeedbackListResult>;
+export const FeedbackListResult = z.object({
+  items: z.array(FeedbackListItem),
+});
+
+export type FeedbackDetailInput = z.infer<typeof FeedbackDetailInput>;
+export const FeedbackDetailInput = z.object({
+  id: UUID,
+});
+
+export type FeedbackDetail = z.infer<typeof FeedbackDetail>;
+export const FeedbackDetail = FeedbackListItem.extend({
+  departments: z.array(Department),
+  text: FeedbackText,
+  users: z.array(FeedbackTargetUser),
+});
+
 export type Feedback = z.infer<typeof Feedback>;
 export const Feedback = z.object({
   id: UUID,
@@ -74,14 +133,6 @@ export const Feedback = z.object({
   status: FeedbackStatus,
   createdAt: DateIso,
   updatedAt: DateIso,
-});
-
-// Minimal user shape any signed-in submitter may read to populate the corrective-user target picker;
-// deliberately narrower than the admin-only `user:list` payload.
-export type FeedbackTargetUser = z.infer<typeof FeedbackTargetUser>;
-export const FeedbackTargetUser = z.object({
-  id: AuthId,
-  name: z.string(),
 });
 
 export type FeedbackTargetUserList = z.infer<typeof FeedbackTargetUserList>;

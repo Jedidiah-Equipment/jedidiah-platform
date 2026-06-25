@@ -93,10 +93,12 @@ function FeedbackStatusSelect({
   onChange: (value: FeedbackStatusFilter) => void;
   value: FeedbackStatusFilter;
 }) {
+  const selectedLabel = value === 'all' ? 'All statuses' : feedbackStatusLabels[value];
+
   return (
     <Select onValueChange={(nextValue) => onChange(nextValue as FeedbackStatusFilter)} value={value}>
       <SelectTrigger aria-label="Feedback status" className="w-40">
-        <SelectValue />
+        <SelectValue>{selectedLabel}</SelectValue>
       </SelectTrigger>
       <SelectContent align="end">
         <SelectGroup>

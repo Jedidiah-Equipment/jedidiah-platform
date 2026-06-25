@@ -29,7 +29,7 @@ export const feedbackRouter = router({
     .query(({ ctx, input }) => getFeedback({ db: ctx.db, input })),
   update: authorizedProcedure('feedback:update')
     .input(FeedbackUpdateInput)
-    .mutation(({ ctx, input }) => updateFeedback({ db: ctx.db, input })),
+    .mutation(({ ctx, input }) => mapFeedbackErrors(() => updateFeedback({ db: ctx.db, input }))),
 });
 
 async function mapFeedbackErrors<T>(action: () => Promise<T>): Promise<T> {
@@ -37,6 +37,14 @@ async function mapFeedbackErrors<T>(action: () => Promise<T>): Promise<T> {
 }
 
 function mapFeedbackCoreError(error: FeedbackCoreError): CoreErrorMapping<FeedbackCoreError['code']> {
+  if (error.code === 'feedback.not_found') {
+    return {
+      appCode: error.code,
+      code: 'NOT_FOUND',
+      message: 'The feedback item could not be found.',
+    };
+  }
+
   return {
     appCode: error.code,
     code: 'NOT_FOUND',

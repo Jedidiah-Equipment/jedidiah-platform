@@ -22,7 +22,7 @@ import {
 } from '@pkg/schema';
 import { asc, desc, eq } from 'drizzle-orm';
 
-import { FeedbackSubjectNotFoundError } from './feedback-errors.js';
+import { FeedbackNotFoundError, FeedbackSubjectNotFoundError } from './feedback-errors.js';
 
 type FeedbackRow = typeof feedback.$inferSelect;
 type FeedbackReadRow = FeedbackRow & {
@@ -161,9 +161,23 @@ export async function updateFeedback({
     values.internalNotes = input.internalNotes;
   }
 
-  await db.update(feedback).set(values).where(eq(feedback.id, input.id));
+  const [updated] = await db
+    .update(feedback)
+    .set(values)
+    .where(eq(feedback.id, input.id))
+    .returning({ id: feedback.id });
 
-  return getFeedback({ db, input: { id: input.id } });
+  if (!updated) {
+    throw new FeedbackNotFoundError(input.id);
+  }
+
+  const detail = await getFeedback({ db, input: { id: input.id } });
+
+  if (!detail) {
+    throw new FeedbackNotFoundError(input.id);
+  }
+
+  return detail;
 }
 
 // Any signed-in submitter may read this minimal user list to choose corrective-user targets; it is

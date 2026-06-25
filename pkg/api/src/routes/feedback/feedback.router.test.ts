@@ -348,6 +348,18 @@ describe('feedback.update', () => {
     ]);
   });
 
+  test('rejects updating feedback that has already been deleted', async ({ context }) => {
+    const submitted = await createGeneralFeedback(context);
+    await context.db.delete(feedback).where(eq(feedback.id, submitted.id));
+
+    await expect(
+      context.createCaller(mockSession('super-admin')).feedback.update({
+        id: submitted.id,
+        status: 'resolved',
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
   test('denies update to admin users', async ({ context }) => {
     const submitted = await createGeneralFeedback(context);
 

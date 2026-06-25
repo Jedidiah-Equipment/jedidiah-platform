@@ -93,6 +93,15 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
     controller.markChanged();
   }, [controller]);
 
+  // Save a discrete field (Select, checkbox) immediately. The microtask defers the flush until
+  // after the field's onChange has committed its value into form state.
+  const commit = useCallback(() => {
+    markChanged();
+    queueMicrotask(() => {
+      void flush();
+    });
+  }, [flush, markChanged]);
+
   const retry = useCallback(async () => {
     return flush();
   }, [flush]);
@@ -144,6 +153,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput>
 
   return {
     autosave: {
+      commit,
       flush,
       markChanged,
       retry,

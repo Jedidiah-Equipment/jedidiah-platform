@@ -74,13 +74,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
     validator: QuoteFormValues,
   });
 
-  const saveCommittedField = () => {
-    autosave.markChanged();
-    queueMicrotask(() => {
-      void autosave.flush();
-    });
-  };
-
   return (
     <form {...formProps} className="grid gap-4">
       <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
@@ -105,7 +98,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         <field.SelectField
                           label="Salesperson"
                           disabled={isLocked}
-                          onValueCommit={saveCommittedField}
+                          onValueCommit={autosave.commit}
                           options={salespeopleOptions.selectOptions}
                           placeholder="Select salesperson"
                         />
@@ -116,7 +109,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         <field.SelectField
                           label="Status"
                           disabled={isLocked}
-                          onValueCommit={saveCommittedField}
+                          onValueCommit={autosave.commit}
                           options={QuoteStatus.options.map((status) => ({
                             label: quoteStatusLabels[status],
                             value: status,
@@ -131,16 +124,16 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <form.AppField name="preferredDeliveryDate">
                       {(field) => (
-                        <field.DatePickerField label="Preferred delivery date" onValueCommit={saveCommittedField} />
+                        <field.DatePickerField label="Preferred delivery date" onValueCommit={autosave.commit} />
                       )}
                     </form.AppField>
                     <form.AppField name="plannedDeliveryDate">
                       {(field) => (
-                        <field.DatePickerField label="Planned delivery date" onValueCommit={saveCommittedField} />
+                        <field.DatePickerField label="Planned delivery date" onValueCommit={autosave.commit} />
                       )}
                     </form.AppField>
                     <form.AppField name="validUntil">
-                      {(field) => <field.DatePickerField label="Valid until" onValueCommit={saveCommittedField} />}
+                      {(field) => <field.DatePickerField label="Valid until" onValueCommit={autosave.commit} />}
                     </form.AppField>
                     <form.Field name="deliveryIncluded">
                       {(field) => {
@@ -169,7 +162,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                                     form.setFieldValue('deliveryPrice', 0);
                                   }
 
-                                  saveCommittedField();
+                                  autosave.commit();
                                 }}
                               />
                               <FieldLabel htmlFor={field.name}>Delivery included</FieldLabel>
@@ -245,7 +238,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         initialSelections={quote.selectedAssemblies}
                         onChange={(value) => {
                           field.handleChange(value);
-                          saveCommittedField();
+                          autosave.commit();
                         }}
                         readOnly={isLocked}
                         value={field.state.value}

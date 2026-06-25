@@ -1,4 +1,4 @@
-import { canAssignUserRole } from '@pkg/core';
+import { canAssignUserRole, isReservedSuperAdminAssignment } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { AppRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
@@ -51,8 +51,10 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
+            // Create-user has no existing user to look up, so the reserved-role rule is checked
+            // directly here; modifications route through canAssignUserRole below.
             if (!roleChange.userId) {
-              if (nextRole === 'super-admin' && currentRole !== 'super-admin') {
+              if (isReservedSuperAdminAssignment({ actorRole: currentRole, targetRole: nextRole })) {
                 throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
               }
               return;

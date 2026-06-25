@@ -7,11 +7,11 @@ import type {
   FeedbackListResult,
   FeedbackStatus,
   FeedbackSubmitInput,
+  FeedbackSubmitResult,
   FeedbackTargetUser as FeedbackTargetUserType,
   FeedbackUpdateInput,
 } from '@pkg/schema';
 import {
-  Feedback,
   FeedbackDetail,
   FeedbackListItem,
   FeedbackSubmitter,
@@ -29,27 +29,9 @@ type FeedbackReadRow = FeedbackRow & {
   departments: { department: Department }[];
   job: { code: number; id: string; productSerialNumber: string } | null;
   quote: { code: number; customer: { companyName: string }; id: string } | null;
-  submitter: { email: string; id: string; image?: string | null; name: string };
-  users: { user: { id: string; image?: string | null; name: string } | null; userId: string }[];
+  submitter: { email: string; id: string; image: string | null; name: string };
+  users: { user: { id: string; image: string | null; name: string } | null; userId: string }[];
 };
-
-function mapFeedback(row: FeedbackRow, targets: { departments: string[]; userIds: string[] }): Feedback {
-  return Feedback.parse({
-    createdAt: row.createdAt.toISOString(),
-    departments: targets.departments,
-    id: row.id,
-    internalNotes: row.internalNotes,
-    jobId: row.jobId,
-    kind: row.kind,
-    quoteId: row.quoteId,
-    status: row.status,
-    subjectType: row.subjectType,
-    submitterId: row.submitterId,
-    text: row.text,
-    updatedAt: row.updatedAt.toISOString(),
-    userIds: targets.userIds,
-  });
-}
 
 // There is no `feedback:create` permission: any authenticated caller may submit. The subject is
 // resolved here on the server so feedback always attaches to a real Quote or Job. Corrective targets
@@ -62,7 +44,7 @@ export async function submitFeedback({
   db: Db;
   input: FeedbackSubmitInput;
   submitterId: AuthId;
-}): Promise<Feedback> {
+}): Promise<FeedbackSubmitResult> {
   const { subject } = input;
 
   if (subject.subjectType === 'quote') {
@@ -93,7 +75,7 @@ export async function submitFeedback({
         submitterId,
         text: input.text,
       })
-      .returning();
+      .returning({ id: feedback.id });
 
     if (!row) {
       throw new Error('Feedback insert did not return a row');
@@ -107,7 +89,7 @@ export async function submitFeedback({
       await tx.insert(feedbackUser).values(userIds.map((userId) => ({ feedbackId: row.id, userId })));
     }
 
-    return mapFeedback(row, { departments, userIds });
+    return { id: row.id };
   });
 }
 
@@ -250,23 +232,23 @@ const feedbackReadRelations = {
 function mapFeedbackListItem(row: FeedbackReadRow): FeedbackListItem {
   return FeedbackListItem.parse({
     createdAt: row.createdAt.toISOString(),
+    departments: row.departments.map((target) => target.department),
     id: row.id,
     kind: row.kind,
     status: row.status,
     subject: mapFeedbackSubject(row),
     submitter: mapFeedbackSubmitter(row.submitter),
+    users: row.users.flatMap((target): FeedbackTargetUserType[] =>
+      target.user ? [mapFeedbackTargetUser(target.user)] : [],
+    ),
   });
 }
 
 function mapFeedbackDetail(row: FeedbackReadRow): FeedbackDetail {
   return FeedbackDetail.parse({
     ...mapFeedbackListItem(row),
-    departments: row.departments.map((target) => target.department),
     internalNotes: row.internalNotes,
     text: row.text,
-    users: row.users.flatMap((target): FeedbackTargetUserType[] =>
-      target.user ? [mapFeedbackTargetUser(target.user)] : [],
-    ),
   });
 }
 

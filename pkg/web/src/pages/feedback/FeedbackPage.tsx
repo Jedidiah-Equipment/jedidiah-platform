@@ -8,7 +8,7 @@ import {
   type FeedbackUpdateInput,
   type UUID,
 } from '@pkg/schema';
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, skipToken, useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   type ColumnDef,
@@ -57,9 +57,9 @@ const statusOptions = Object.entries(feedbackStatusLabels).map(([value, label]) 
 }));
 
 const feedbackStatusBadgeClassNames = {
-  closed: 'border-border bg-muted text-muted-foreground',
-  open: 'border-red-500 bg-red-500 text-white',
-  resolved: 'border-green-600 bg-green-600 text-white',
+  closed: 'border-gray-400/50 bg-gray-500/10 text-gray-700 dark:text-gray-200',
+  open: 'border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-200',
+  resolved: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200',
 } as const satisfies Record<FeedbackStatus, string>;
 
 type FeedbackTriageFormValues = z.infer<typeof FeedbackTriageFormValues>;
@@ -83,10 +83,7 @@ export const FeedbackPage: React.FC = () => {
   const feedbackItems = feedbackQuery.data?.items ?? [];
 
   const detailQuery = useQuery(
-    trpc.feedback.get.queryOptions(
-      { id: selectedFeedbackId ?? '00000000-0000-4000-8000-000000000000' },
-      { enabled: Boolean(selectedFeedbackId) },
-    ),
+    trpc.feedback.get.queryOptions(selectedFeedbackId ? { id: selectedFeedbackId } : skipToken),
   );
 
   return (
@@ -157,6 +154,25 @@ function FeedbackInboxList({
         enableSorting: true,
         header: 'Kind',
         id: 'kind',
+      },
+      {
+        accessorFn: (item) => feedbackTargetLabels(item).join(', '),
+        cell: ({ row }) => {
+          const labels = feedbackTargetLabels(row.original);
+
+          return labels.length > 0 ? (
+            <span className="block truncate">{labels.join(', ')}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Target',
+        id: 'target',
+        meta: {
+          cellClassName: 'max-w-48',
+        },
       },
       {
         accessorKey: 'status',
@@ -248,7 +264,15 @@ function feedbackGlobalFilter(row: { original: FeedbackListItem }, _columnId: st
     row.original.kind,
     feedbackStatusLabels[row.original.status],
     row.original.status,
+    ...feedbackTargetLabels(row.original),
   ].some((value) => value.toLowerCase().includes(search));
+}
+
+function feedbackTargetLabels(item: FeedbackListItem): string[] {
+  return [
+    ...item.departments.map((department) => departmentLabels[department]),
+    ...item.users.map((user) => user.name),
+  ];
 }
 
 function feedbackStatusFilter(row: { original: FeedbackListItem }, _columnId: string, filterValue: unknown) {
@@ -308,13 +332,6 @@ function FeedbackDetailForm({ detail }: { detail: FeedbackDetail }) {
     validator: FeedbackTriageFormValues,
   });
 
-  const saveCommittedField = () => {
-    autosave.markChanged();
-    queueMicrotask(() => {
-      void autosave.flush();
-    });
-  };
-
   return (
     <form.AppForm>
       <form {...formProps} className="contents">
@@ -328,7 +345,7 @@ function FeedbackDetailForm({ detail }: { detail: FeedbackDetail }) {
                   value={field.state.value}
                   onValueChange={(status) => {
                     field.handleChange(status as FeedbackStatus);
-                    saveCommittedField();
+                    autosave.commit();
                   }}
                 >
                   <SelectTrigger

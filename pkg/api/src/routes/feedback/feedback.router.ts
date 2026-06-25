@@ -1,4 +1,5 @@
 import {
+  countOpenFeedback,
   type FeedbackCoreError,
   getFeedback,
   isFeedbackCoreError,
@@ -24,6 +25,7 @@ export const feedbackRouter = router({
   list: authorizedProcedure('feedback:read')
     .input(FeedbackListInput)
     .query(({ ctx, input }) => listFeedback({ db: ctx.db, input })),
+  openCount: authorizedProcedure('feedback:read').query(({ ctx }) => countOpenFeedback({ db: ctx.db })),
   get: authorizedProcedure('feedback:read')
     .input(FeedbackDetailInput)
     .query(({ ctx, input }) => getFeedback({ db: ctx.db, input })),

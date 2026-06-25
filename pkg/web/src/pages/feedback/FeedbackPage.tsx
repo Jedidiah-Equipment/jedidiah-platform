@@ -90,7 +90,7 @@ export const FeedbackPage: React.FC = () => {
   );
 
   return (
-    <PageLayout description={feedbackPageDescription} size="lg" title="Feedback">
+    <PageLayout description={feedbackPageDescription} title="Feedback">
       <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]">
         <FeedbackInboxList
           errorMessage={getApiQueryErrorMessage(feedbackQuery.error, 'Unable to load feedback.')}

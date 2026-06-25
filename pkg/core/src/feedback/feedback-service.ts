@@ -123,6 +123,10 @@ export async function listFeedback({ db, input }: { db: Db; input: FeedbackListI
   };
 }
 
+export async function countOpenFeedback({ db }: { db: Db }): Promise<number> {
+  return db.$count(feedback, eq(feedback.status, 'open'));
+}
+
 export async function getFeedback({
   db,
   input,

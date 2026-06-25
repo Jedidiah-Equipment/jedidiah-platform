@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/sidebar.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { cn } from '@/lib/utils.js';
-import { QuotesPriorityNavIndicator } from './AppNavIndicators.js';
+import { FeedbackOpenNavIndicator, QuotesPriorityNavIndicator } from './AppNavIndicators.js';
 
 type NavSubItem = {
   title: string;
@@ -144,6 +144,7 @@ const navSections = [
         permission: 'feedback:read',
         link: linkOptions({ to: '/feedback' }),
         icon: IconMessageReport,
+        indicator: FeedbackOpenNavIndicator,
       },
       {
         title: 'Audit',

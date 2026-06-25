@@ -240,6 +240,21 @@ export type UserRoleAssignmentPolicyResult =
   | { allowed: false; bayNames: string[]; reason: 'open-bay-operator-assignments' }
   | { allowed: false; reason: 'reserved-super-admin' };
 
+// Single source of truth for the reserved super-admin rule (ADR 0001/0008): only a super-admin may
+// grant the super-admin role or change a user who currently holds it. `currentRole` is omitted when
+// creating a brand-new user, where there is no role to move away from.
+export function isReservedSuperAdminAssignment({
+  actorRole,
+  currentRole,
+  targetRole,
+}: {
+  actorRole: AppRole;
+  currentRole?: AppRole;
+  targetRole: AppRole;
+}): boolean {
+  return (targetRole === 'super-admin' || currentRole === 'super-admin') && actorRole !== 'super-admin';
+}
+
 // This policy check runs in its own transaction, but the role write it guards happens later inside
 // better-auth, outside any lock taken here. A concurrent operator assignment can land between this
 // check and that write — an accepted race: the window is tiny, the flow is admin-only, and the
@@ -275,7 +290,7 @@ export async function canAssignUserRole({
       return { allowed: true };
     }
 
-    if ((role === 'super-admin' || currentRole === 'super-admin') && actorRole !== 'super-admin') {
+    if (isReservedSuperAdminAssignment({ actorRole, currentRole, targetRole: role })) {
       return { allowed: false, reason: 'reserved-super-admin' };
     }
 

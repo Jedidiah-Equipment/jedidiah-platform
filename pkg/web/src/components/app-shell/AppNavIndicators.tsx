@@ -26,3 +26,14 @@ export const QuotesPriorityNavIndicator: React.FC = () => {
 
   return (priorityQuotesQuery.data?.length ?? 0) > 0 ? <NavWarningDot label="Quotes need jobs" /> : null;
 };
+
+export const FeedbackOpenNavIndicator: React.FC = () => {
+  const trpc = useTRPC();
+  const feedbackAccess = useCan('feedback:read');
+  const openFeedbackQuery = useQuery({
+    ...trpc.feedback.openCount.queryOptions(),
+    enabled: feedbackAccess.can,
+  });
+
+  return (openFeedbackQuery.data ?? 0) > 0 ? <NavWarningDot label="Open feedback needs review" /> : null;
+};

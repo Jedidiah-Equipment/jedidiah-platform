@@ -57,10 +57,11 @@
     <div data-screen-label="Bay List" style="height:100%;overflow-y:auto;">
       <div style="max-width:1180px;margin:0 auto;padding:18px 18px 32px;">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;position:relative;">
-          <img src="{{ managerImg }}" alt="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+          <div style="width:42px;height:42px;border-radius:11px;border:1.5px solid #F2E40A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#F2E40A" stroke-width="1.7"></circle><circle cx="12" cy="12" r="3" fill="#F2E40A"></circle></svg>
+          </div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:17px;font-weight:700;line-height:1.2;">{{ managerName }}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:2px;">Department Manager</div>
+            <div style="font-size:20px;font-weight:700;letter-spacing:-0.4px;line-height:1.1;">Jedidiah<span style="color:#F2E40A;">Ops</span></div>
           </div>
           <div onClick="{{ toggleMenu }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#9A9AA2"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
@@ -81,11 +82,26 @@
           </sc-if>
         </div>
 
-        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
-          <div style="font-size:22px;font-weight:700;letter-spacing:-0.4px;">Bays</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;letter-spacing:0.5px;">{{ bayCount }}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+          <div onClick="{{ toggleListMode }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <div style="font-size:22px;font-weight:700;letter-spacing:-0.4px;">{{ listTitle }}</div>
+            <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:#161618;border:1px solid rgba(255,255,255,0.09);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9A9AA2" stroke-width="2"><path d="M8 7h12M11 4l-3 3 3 3"></path><path d="M16 17H4M13 14l3 3-3 3"></path></svg>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;letter-spacing:0.5px;">{{ listCount }}</div>
+          </div>
+          <sc-if value="{{ isBaysMode }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:#56565D;">SORT</span>
+              <div style="display:flex;align-items:center;gap:2px;background:#161618;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:3px;">
+                <div onClick="{{ sortByDays }}" style="{{ sortDaysStyle }}">DAYS LEFT</div>
+                <div onClick="{{ sortByName }}" style="{{ sortNameStyle }}">BAY NAME</div>
+              </div>
+            </div>
+          </sc-if>
         </div>
 
+        <sc-if value="{{ isBaysMode }}" hint-placeholder-val="{{ true }}">
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:14px;">
           <sc-for list="{{ bays }}" as="b" hint-placeholder-count="6">
             <div onClick="{{ b.open }}" style="background:#141416;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;cursor:pointer;">
@@ -111,10 +127,43 @@
                 </div>
                 <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;text-align:right;">ends<br><span style="color:#C9C9CE;">{{ b.endShort }}</span></div>
               </div>
-              <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);margin-top:13px;overflow:hidden;"><div style="height:100%;width:{{ b.pct }}%;background:#3B82F6;border-radius:3px;"></div></div>
+              <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);margin-top:13px;overflow:hidden;"><div style="height:100%;width:{{ b.pct }}%;background:{{ b.dayColor }};border-radius:3px;"></div></div>
             </div>
           </sc-for>
         </div>
+        </sc-if>
+
+        <sc-if value="{{ isJobsMode }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:14px;">
+          <sc-for list="{{ jobsList }}" as="j" hint-placeholder-count="6">
+            <div onClick="{{ j.open }}" style="background:#141416;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;cursor:pointer;">
+              <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px;">
+                <img src="{{ j.img }}" alt="" style="width:44px;height:44px;border-radius:9px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:16.5px;font-weight:700;color:#EDEDEF;letter-spacing:-0.2px;">{{ j.code }}</div>
+                  <div style="font-size:12.5px;color:#9A9AA2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ j.product }}</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">
+                <span style="width:6px;height:6px;border-radius:50%;background:{{ j.curColor }};flex-shrink:0;"></span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.5px;color:{{ j.curColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ j.curLabel }}</span>
+              </div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;">
+                <div style="display:flex;align-items:baseline;gap:6px;">
+                  <span style="font-size:34px;font-weight:700;line-height:0.85;color:{{ j.dayColor }};">{{ j.maxDays }}</span>
+                  <span style="font-size:12.5px;color:#9A9AA2;font-weight:500;">days left</span>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;text-align:right;">done<br><span style="color:#C9C9CE;">{{ j.endShort }}</span></div>
+              </div>
+              <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);margin-top:13px;overflow:hidden;"><div style="height:100%;width:{{ j.overallPct }}%;background:{{ j.dayColor }};border-radius:3px;"></div></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.4px;color:#7A7A82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;">{{ j.customer }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.4px;color:#56565D;flex-shrink:0;">{{ j.stageLabel }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </sc-if>
       </div>
     </div>
   </sc-if>
@@ -153,7 +202,7 @@
         <!-- LIST PANE -->
         <div style="display:{{ listDisplay }};width:{{ listWidth }};flex-direction:column;border-right:{{ listBorderRight }};overflow-y:auto;padding:18px;">
           <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#7A7A82;margin-bottom:10px;">ACTIVE NOW</div>
-          <div onClick="{{ active.select }}" style="background:#121319;border:{{ active.heroBorder }};border-radius:18px;padding:18px;cursor:pointer;">
+          <div onClick="{{ active.select }}" style="background:{{ active.heroBg }};border:{{ active.heroBorder }};box-shadow:{{ active.heroShadow }};border-radius:18px;padding:18px;cursor:pointer;transition:background 0.15s,border-color 0.15s,box-shadow 0.15s;">
             <div style="display:flex;align-items:flex-start;gap:14px;">
               <img src="{{ active.img }}" alt="" style="width:52px;height:52px;border-radius:11px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
               <div style="flex:1;min-width:0;">
@@ -169,12 +218,12 @@
             <div style="height:1px;background:rgba(255,255,255,0.08);margin:16px 0 14px;"></div>
             <div style="display:flex;align-items:flex-end;justify-content:space-between;">
               <div style="display:flex;align-items:baseline;gap:8px;">
-                <span style="font-size:52px;font-weight:700;line-height:0.85;color:#FAFAFA;">{{ active.daysLeft }}</span>
+                <span style="font-size:52px;font-weight:700;line-height:0.85;color:{{ active.dayColor }};">{{ active.daysLeft }}</span>
                 <span style="font-size:15px;color:#9A9AA2;font-weight:500;">days left</span>
               </div>
               <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;line-height:1.5;">ends<br><span style="color:#C9C9CE;">{{ active.endShort }}</span></div>
             </div>
-            <div style="height:7px;border-radius:4px;background:rgba(255,255,255,0.08);margin-top:14px;overflow:hidden;"><div style="height:100%;width:{{ active.pct }}%;background:#3B82F6;border-radius:4px;"></div></div>
+            <div style="height:7px;border-radius:4px;background:rgba(255,255,255,0.08);margin-top:14px;overflow:hidden;"><div style="height:100%;width:{{ active.pct }}%;background:{{ active.dayColor }};border-radius:4px;"></div></div>
             <div style="display:flex;justify-content:space-between;margin-top:7px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#56565D;"><span>{{ active.startMonth }}</span><span>{{ active.workProgressLabel }}</span></div>
           </div>
 
@@ -184,7 +233,7 @@
             <sc-for list="{{ upcoming }}" as="item" hint-placeholder-count="3">
               <div onClick="{{ item.select }}" style="position:relative;margin-bottom:12px;cursor:pointer;">
                 <div style="position:absolute;left:-26px;top:16px;width:14px;height:14px;border-radius:50%;background:#0A0A0B;border:2px solid {{ item.nodeColor }};"></div>
-                <div style="background:#141416;border:{{ item.borderColor }};border-radius:14px;padding:13px;">
+                <div style="background:{{ item.bg }};border:{{ item.borderColor }};box-shadow:{{ item.shadow }};border-radius:14px;padding:13px;transition:background 0.15s,border-color 0.15s,box-shadow 0.15s;">
                   <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:{{ item.labelColor }};margin-bottom:9px;">{{ item.rangeLabel }}</div>
                   <div style="display:flex;align-items:center;gap:12px;">
                     <img src="{{ item.img }}" alt="" style="width:42px;height:42px;border-radius:9px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
@@ -251,6 +300,121 @@
     </div>
   </sc-if>
 
+  <!-- ===================== JOB DETAIL (production route) ===================== -->
+  <sc-if value="{{ isJobDetail }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Job Detail" style="height:100%;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.07);background:#0A0A0B;position:relative;flex-shrink:0;">
+        <div onClick="{{ jdBack }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E5E5E8" stroke-width="2"><path d="M15 6l-6 6 6 6"></path></svg>
+        </div>
+        <img src="{{ jdImg }}" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+        <div style="flex:1;min-width:0;"><div style="font-size:17px;font-weight:700;">{{ jdTitle }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ jdSub }}</div></div>
+        <div onClick="{{ toggleMenu }}" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#161618;border:1px solid rgba(255,255,255,0.07);cursor:pointer;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#9A9AA2"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+        </div>
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:54px;right:14px;width:212px;background:#1B1B1F;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.65);overflow:hidden;z-index:50;">
+            <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.07);">
+              <img src="{{ managerImg }}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+              <div style="min-width:0;"><div style="font-size:13px;font-weight:600;line-height:1.2;">{{ managerName }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ managerEmail }}</div></div>
+            </div>
+            <div style="padding:6px;">
+              <div onClick="{{ logout }}" style="display:flex;align-items:center;gap:11px;padding:11px;border-radius:9px;font-size:14px;font-weight:500;color:#F87171;cursor:pointer;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+                Log out
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="flex:1;min-height:0;overflow-y:auto;">
+        <div style="display:flex;flex-direction:{{ jdDir }};">
+
+          <!-- ROUTE PANE -->
+          <div style="width:{{ jdLeftW }};order:{{ jdRouteOrder }};border-right:{{ jdBorder }};border-top:{{ jdRouteBorderTop }};padding:18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#7A7A82;">PRODUCTION ROUTE</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#56565D;">{{ jd.stageCountLabel }}</div>
+            </div>
+            <div style="position:relative;padding-left:28px;">
+              <div style="position:absolute;left:7px;top:10px;bottom:10px;width:2px;background:rgba(255,255,255,0.09);"></div>
+              <sc-for list="{{ jd.stages }}" as="st" hint-placeholder-count="3">
+                <div style="position:relative;margin-bottom:13px;">
+                  <div style="position:absolute;left:-28px;top:16px;width:16px;height:16px;border-radius:50%;background:#0A0A0B;border:2px solid {{ st.node }};"></div>
+                  <div style="background:{{ st.badgeBg }};border:1px solid {{ st.badgeBorder }};border-radius:14px;padding:14px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+                      <div style="font-size:15px;font-weight:700;letter-spacing:-0.2px;">{{ st.bay }}</div>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.5px;color:{{ st.color }};border:1px solid {{ st.badgeBorder }};padding:4px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;">{{ st.stateUpper }}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;">
+                      <img src="{{ st.operatorImg }}" alt="" style="width:28px;height:28px;border-radius:7px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;">
+                      <div style="font-size:12.5px;color:#C9C9CE;">{{ st.operatorName }}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;margin-bottom:8px;">
+                      <span>{{ st.start }} – {{ st.end }}</span>
+                      <span style="color:{{ st.color }};">{{ st.daysLabel }}</span>
+                    </div>
+                    <div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;"><div style="height:100%;width:{{ st.pct }}%;background:{{ st.barColor }};border-radius:3px;"></div></div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- DETAIL PANE -->
+          <div style="width:{{ jdRightW }};order:{{ jdDetailOrder }};padding:18px 18px 28px;">
+            <div style="display:flex;flex-direction:column;gap:16px;max-width:680px;">
+
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span style="display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.5px;color:{{ jd.curColor }};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);padding:5px 9px;border-radius:20px;"><span style="width:6px;height:6px;border-radius:50%;background:{{ jd.curColor }};"></span>{{ jd.curLabel }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.5px;color:{{ jd.dayColor }};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);padding:5px 9px;border-radius:20px;">{{ jd.maxDays }} DAYS LEFT</span>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:14px;background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;">
+                <img src="{{ jd.img }}" alt="" style="width:54px;height:54px;border-radius:11px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
+                <div style="min-width:0;"><div style="font-size:16px;font-weight:700;">{{ jd.product }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7A82;margin-top:2px;">{{ jd.serial }}</div><div style="font-size:12.5px;color:#9A9AA2;margin-top:3px;">{{ jd.customer }}</div></div>
+              </div>
+
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;">OVERALL PROGRESS</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#C9C9CE;">{{ jd.overallPct }}%</div>
+                </div>
+                <div style="height:7px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;"><div style="height:100%;width:{{ jd.overallPct }}%;background:{{ jd.dayColor }};border-radius:4px;"></div></div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7A7A82;margin-top:8px;">{{ jd.doneLabel }}</div>
+              </div>
+
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:6px;">{{ jd.docsLabel }}</div>
+                <sc-for list="{{ docs }}" as="d" hint-placeholder-count="3">
+                  <div onClick="{{ d.open }}" style="display:flex;align-items:center;gap:13px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.06);cursor:pointer;">
+                    <div style="width:40px;height:40px;border-radius:9px;background:rgba(242,228,10,0.1);border:1px solid rgba(242,228,10,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2E40A" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></div>
+                    <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;">{{ d.name }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#7A7A82;margin-top:2px;">{{ d.meta }}</div></div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#56565D" stroke-width="2"><path d="M9 6l6 6-6 6"></path></svg>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="background:#141416;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1.5px;color:#8A8A90;margin-bottom:14px;">JOB</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">JOB CODE</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ jd.code }}</div></div>
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">QUOTE CODE</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ jd.quote }}</div></div>
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">PRODUCT</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ jd.product }}</div></div>
+                  <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">PRODUCT SERIAL</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ jd.serial }}</div></div>
+                  <div style="grid-column:1 / -1;"><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:#7A7A82;margin-bottom:4px;">CUSTOMER</div><div style="font-size:14px;color:#EDEDEF;font-weight:500;">{{ jd.customer }}</div></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
   <!-- ===================== DOCUMENT VIEWER (overlay) ===================== -->
   <sc-if value="{{ docOpen }}" hint-placeholder-val="{{ false }}">
     <div data-screen-label="Document Viewer" style="position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:{{ docPad }};background:#0A0A0B;">
@@ -295,7 +459,7 @@
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 412, &quot;height&quot;: 880}, &quot;startScreen&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;login&quot;, &quot;bayList&quot;, &quot;jobs&quot;], &quot;default&quot;: &quot;login&quot;, &quot;tsType&quot;: &quot;string&quot;}, &quot;startBay&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 0, &quot;min&quot;: 0, &quot;max&quot;: 5, &quot;tsType&quot;: &quot;number&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 412, &quot;height&quot;: 880}, &quot;startScreen&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;login&quot;, &quot;bayList&quot;, &quot;jobs&quot;], &quot;default&quot;: &quot;login&quot;, &quot;tsType&quot;: &quot;string&quot;}, &quot;startBay&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 0, &quot;min&quot;: 0, &quot;max&quot;: 5, &quot;tsType&quot;: &quot;number&quot;}, &quot;selectedVariant&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;fill&quot;, &quot;bar&quot;, &quot;glow&quot;], &quot;default&quot;: &quot;bar&quot;, &quot;tsType&quot;: &quot;string&quot;}}">
 class Component extends DCLogic {
   setRoot = (el) => {
     this.rootEl = el;
@@ -316,11 +480,14 @@ class Component extends DCLogic {
     screen: this.props.startScreen || 'login',
     isWide: false,
     bayIndex: Number(this.props.startBay) || 0,
+    listMode: 'bays',
+    jobId: 0,
     jobIndex: 0,
     jobDetailOpen: false,
     docOpen: false,
     docIndex: 0,
-    menuOpen: false
+    menuOpen: false,
+    baySort: 'days'
   };
 
   operators = [
@@ -333,6 +500,7 @@ class Component extends DCLogic {
   ];
 
   bays = this.makeBays();
+  jobs = this.makeJobs();
 
   docs(tag) {
     return [
@@ -390,18 +558,94 @@ class Component extends DCLogic {
     return bays;
   }
 
+  jobSummary(job) {
+    const st = job.stages;
+    const maxDays = Math.max.apply(null, st.map(x => x.daysLeft));
+    const total = st.length, done = st.filter(x => x.state === 'Completed').length;
+    const cur = st.find(x => x.state === 'In progress');
+    const overallPct = Math.round(((done + (cur ? cur.pct / 100 : 0)) / total) * 100);
+    let curLabel, curColor;
+    if (cur) { curLabel = 'IN ' + cur.bay.toUpperCase(); curColor = '#60A5FA'; }
+    else if (done === total) { curLabel = 'COMPLETE'; curColor = '#9A9AA2'; }
+    else { const sc = st.find(x => x.state === 'Scheduled'); curLabel = 'NEXT · ' + (sc ? sc.bay.toUpperCase() : ''); curColor = '#5FCF87'; }
+    return { maxDays, total, done, overallPct, curLabel, curColor };
+  }
+
+  stageStyle(state) {
+    if (state === 'Completed') return { color: '#9A9AA2', bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.09)', node: '#6B6B73', bar: '#5A5A62' };
+    if (state === 'In progress') return { color: '#60A5FA', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.3)', node: '#60A5FA', bar: '#60A5FA' };
+    return { color: '#5FCF87', bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.28)', node: '#22C55E', bar: '#22C55E' };
+  }
+
+  makeJobs() {
+    const C = 'Nampo Agri Logistics (Pty) Ltd', C2 = 'AgriMech (Pty) Ltd', C3 = 'Karoo Harvest Co.';
+    const S = (bay, state, start, end, daysLeft, pct, workDays) => ({ bay, state, start, end, daysLeft, pct, workDays });
+    const jobs = [
+      { code: 'JOB-00009', quote: 'QUO-00009', product: 'Silage Grain 18 36', serial: 'SG1836260008', customer: C, stages: [
+        S('Fabrication Bay 1', 'Completed', '16 Jun 2026', '24 Jun 2026', 0, 100, '7 days'),
+        S('Assembly Bay 1', 'In progress', '25 Jun 2026', '07 Jul 2026', 4, 55, '9 days'),
+        S('Paint Bay 1', 'Scheduled', '08 Jul 2026', '15 Jul 2026', 13, 0, '6 days')
+      ]},
+      { code: 'JOB-00031', quote: 'QUO-00031', product: 'Tipper Body 8m', serial: 'TB8M260031', customer: C2, stages: [
+        S('Fabrication Bay 2', 'In progress', '09 Jun 2026', '03 Jul 2026', 9, 50, '18 days'),
+        S('Paint Bay 1', 'Scheduled', '06 Jul 2026', '14 Jul 2026', 20, 0, '7 days')
+      ]},
+      { code: 'JOB-00027', quote: 'QUO-00027', product: 'Land Roller 9m Folding', serial: 'LR9F260027', customer: C, stages: [
+        S('Fabrication Bay 1', 'Completed', '02 Jun 2026', '11 Jun 2026', 0, 100, '8 days'),
+        S('Assembly Bay 1', 'In progress', '12 Jun 2026', '19 Jun 2026', 2, 70, '6 days')
+      ]},
+      { code: 'JOB-00040', quote: 'QUO-00040', product: 'Silage Grain 24 48', serial: 'SG2448260040', customer: C3, stages: [
+        S('Fabrication Bay 2', 'Completed', '20 May 2026', '01 Jun 2026', 0, 100, '10 days'),
+        S('Assembly Bay 2', 'In progress', '02 Jun 2026', '30 Jun 2026', 12, 40, '20 days'),
+        S('Paint Bay 1', 'Scheduled', '01 Jul 2026', '09 Jul 2026', 21, 0, '7 days')
+      ]},
+      { code: 'JOB-00019', quote: 'QUO-00019', product: 'Tipper Body 6m', serial: 'TB6M260019', customer: C, stages: [
+        S('Weld Bay 3', 'Completed', '01 Jun 2026', '10 Jun 2026', 0, 100, '8 days'),
+        S('Paint Bay 1', 'In progress', '11 Jun 2026', '25 Jun 2026', 6, 45, '11 days')
+      ]},
+      { code: 'JOB-00046', quote: 'QUO-00046', product: 'Land Roller 7m Folding', serial: 'LR7F260046', customer: C2, stages: [
+        S('Weld Bay 3', 'In progress', '13 Jun 2026', '18 Jun 2026', 1, 75, '4 days'),
+        S('Assembly Bay 2', 'Scheduled', '19 Jun 2026', '29 Jun 2026', 11, 0, '8 days')
+      ]}
+    ];
+    jobs.forEach(j => {
+      j.img = this.productImg(j.product);
+      j.docs = this.docs(j.serial);
+      j.stages.forEach(st => { const b = this.bays.find(bb => bb.name === st.bay); st.operator = b ? b.operator : this.operators[0]; });
+    });
+    return jobs;
+  }
+
   componentWillUnmount() { if (this.ro) this.ro.disconnect(); }
 
   go(screen) { this.setState({ screen, menuOpen: false, docOpen: false }); }
   openBay(i) { this.setState({ screen: 'jobs', bayIndex: i, jobIndex: 0, jobDetailOpen: false, docOpen: false, menuOpen: false }); }
   selectJob(i) { this.setState(st => ({ jobIndex: i, jobDetailOpen: st.isWide ? st.jobDetailOpen : true, docOpen: false })); }
   openDoc(i) { this.setState({ docOpen: true, docIndex: i }); }
+  openJob(i) { this.setState({ screen: 'jobDetail', jobId: i, docOpen: false, menuOpen: false }); }
 
   shortCust(c) { return c.replace(/ \(Pty\) Ltd$/, ''); }
   dayColor(d) { return d <= 2 ? '#F87171' : (d <= 5 ? '#FBBF24' : '#5FCF87'); }
 
+  // Status accents — the selected indicator keeps the slot's own colour.
+  accents = {
+    blue: { solid: '#60A5FA', soft: 'rgba(96,165,250,0.13)', softer: 'rgba(96,165,250,0.18)', bg: 'rgba(96,165,250,0.2)',  border: 'rgba(96,165,250,0.55)' },
+    green:{ solid: '#22C55E', soft: 'rgba(34,197,94,0.13)',  softer: 'rgba(34,197,94,0.18)',  bg: 'rgba(34,197,94,0.2)',   border: 'rgba(34,197,94,0.55)' },
+    gray: { solid: '#8A8A90', soft: 'rgba(138,138,144,0.14)',softer: 'rgba(138,138,144,0.2)',  bg: 'rgba(138,138,144,0.22)',border: 'rgba(138,138,144,0.5)' }
+  };
+
+  // Selected-row indicator. variant: 'fill' | 'bar' | 'glow'. acc = status accent. Returns {border, bg, shadow}.
+  selStyle(variant, selected, baseBorder, baseBg, acc) {
+    if (!selected) return { border: baseBorder, bg: baseBg, shadow: 'none' };
+    if (variant === 'fill') return { border: '1.5px solid ' + acc.border, bg: acc.soft, shadow: 'none' };
+    if (variant === 'glow') return { border: '1.5px solid ' + acc.solid, bg: baseBg, shadow: '0 0 0 3px ' + acc.softer };
+    // default: 'bar' — coloured left bar + stronger fill in the same accent
+    return { border: '1px solid ' + acc.border, bg: acc.bg, shadow: 'inset 4px 0 0 ' + acc.solid };
+  }
+
   renderVals() {
     const s = this.state, bays = this.bays, wide = s.isWide;
+    const variant = this.props.selectedVariant || 'bar';
     const bay = bays[s.bayIndex] || bays[0];
     const jobs = bay.jobs;
     const activeJob = jobs[0];
@@ -417,24 +661,32 @@ class Component extends DCLogic {
         open: () => this.openBay(i)
       };
     });
+    if (s.baySort === 'name') bayList.sort((a, b) => a.name.localeCompare(b.name));
+    else bayList.sort((a, b) => a.daysLeft - b.daysLeft);
+    const sortChipBase = { fontFamily: "'JetBrains Mono',monospace", fontSize: '10.5px', letterSpacing: '0.4px', padding: '6px 11px', borderRadius: '7px', cursor: 'pointer', transition: 'background 0.15s,color 0.15s' };
+    const sortChip = (on) => Object.assign({}, sortChipBase, { background: on ? 'rgba(255,255,255,0.12)' : 'transparent', color: on ? '#FAFAFA' : '#7A7A82' });
 
+    const heroStyle = this.selStyle(variant, s.jobIndex === 0, '1.5px solid rgba(59,130,246,0.5)', '#121319', this.accents.blue);
     const active = {
       code: activeJob.code, product: activeJob.product, img: activeJob.img,
       heroSub: activeJob.serial + ' · ' + this.shortCust(activeJob.customer),
-      daysLeft: activeJob.daysLeft, endShort: activeJob.endShort,
+      daysLeft: activeJob.daysLeft, dayColor: this.dayColor(activeJob.daysLeft), endShort: activeJob.endShort,
       startMonth: activeJob.startMonth, workProgressLabel: activeJob.workProgressLabel, pct: activeJob.pct,
-      heroBorder: s.jobIndex === 0 ? '1.5px solid rgba(96,165,250,0.9)' : '1.5px solid rgba(59,130,246,0.5)',
+      heroBorder: heroStyle.border, heroBg: heroStyle.bg, heroShadow: heroStyle.shadow,
       select: () => this.selectJob(0)
     };
 
     const upcoming = jobs.slice(1).map((j, idx) => {
       const gi = idx + 1, isNext = idx === 0, sel = s.jobIndex === gi;
+      const acc = isNext ? this.accents.green : this.accents.gray;
+      const baseBorder = isNext ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(255,255,255,0.07)';
+      const st = this.selStyle(variant, sel, baseBorder, '#141416', acc);
       return {
         code: j.code, product: j.product, rangeLabel: j.rangeLabel, img: j.img,
         select: () => this.selectJob(gi),
-        borderColor: sel ? '1.5px solid rgba(242,228,10,0.6)' : (isNext ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(255,255,255,0.07)'),
+        borderColor: st.border, bg: st.bg, shadow: st.shadow,
         nodeColor: isNext ? '#22C55E' : '#4A4A52',
-        labelColor: sel ? '#F2E40A' : (isNext ? '#5FCF87' : '#7A7A82')
+        labelColor: sel ? acc.solid : (isNext ? '#5FCF87' : '#7A7A82')
       };
     });
 
@@ -448,9 +700,47 @@ class Component extends DCLogic {
       statusBorder: isActive ? 'rgba(59,130,246,0.3)' : 'rgba(251,191,36,0.3)'
     });
 
-    const docs = selJob.docs.map((dd, idx) => Object.assign({}, dd, { open: () => this.openDoc(idx) }));
-    const rawDoc = selJob.docs[s.docIndex] || selJob.docs[0];
-    const doc = Object.assign({}, rawDoc, { context: selJob.code + ' · ' + selJob.product, pageTitle: selJob.product.toUpperCase() });
+    const docCtxJob = s.screen === 'jobDetail' ? (this.jobs[s.jobId] || this.jobs[0]) : selJob;
+    const docs = docCtxJob.docs.map((dd, idx) => Object.assign({}, dd, { open: () => this.openDoc(idx) }));
+    const rawDoc = docCtxJob.docs[s.docIndex] || docCtxJob.docs[0];
+    const doc = Object.assign({}, rawDoc, { context: docCtxJob.code + ' · ' + docCtxJob.product, pageTitle: docCtxJob.product.toUpperCase() });
+
+    // --- job-centric list ---
+    const jobList = this.jobs.map((j, i) => {
+      const sum = this.jobSummary(j);
+      const last = j.stages[j.stages.length - 1];
+      return {
+        code: j.code, product: j.product, img: j.img, customer: this.shortCust(j.customer),
+        maxDays: sum.maxDays, dayColor: this.dayColor(sum.maxDays),
+        endShort: last.end, overallPct: sum.overallPct,
+        stageLabel: sum.done + '/' + sum.total + ' BAYS DONE',
+        curLabel: sum.curLabel, curColor: sum.curColor,
+        open: () => this.openJob(i)
+      };
+    });
+
+    // --- job detail (production route) ---
+    const selectedJob = this.jobs[s.jobId] || this.jobs[0];
+    const jdSum = this.jobSummary(selectedJob);
+    const stageOrder = { 'In progress': 0, 'Scheduled': 1, 'Completed': 2 };
+    const jd = {
+      code: selectedJob.code, quote: selectedJob.quote, product: selectedJob.product,
+      serial: selectedJob.serial, customer: selectedJob.customer, img: selectedJob.img,
+      stageCountLabel: selectedJob.stages.length + ' BAYS',
+      overallPct: jdSum.overallPct, maxDays: jdSum.maxDays, dayColor: this.dayColor(jdSum.maxDays),
+      doneLabel: jdSum.done + ' of ' + jdSum.total + ' bays complete',
+      curLabel: jdSum.curLabel, curColor: jdSum.curColor,
+      docsLabel: 'DOCUMENTS · ' + selectedJob.docs.length,
+      stages: selectedJob.stages.slice().sort((a, b) => (stageOrder[a.state] - stageOrder[b.state])).map(st => {
+        const ss = this.stageStyle(st.state);
+        return {
+          bay: st.bay, operatorName: st.operator.name, operatorImg: st.operator.img,
+          stateUpper: st.state.toUpperCase(), color: ss.color, badgeBg: ss.bg, badgeBorder: ss.border, node: ss.node, barColor: ss.bar,
+          start: st.start, end: st.end, pct: st.pct, workDays: st.workDays,
+          daysLabel: st.state === 'Completed' ? 'Completed' : (st.state === 'In progress' ? (st.daysLeft + ' days left') : ('Starts ' + st.start))
+        };
+      })
+    };
 
     const detailOpen = s.jobDetailOpen;
     const headerTitle = wide ? bay.name : (detailOpen ? selJob.code : bay.name);
@@ -459,11 +749,26 @@ class Component extends DCLogic {
 
     return {
       setRoot: this.setRoot,
-      isLogin: s.screen === 'login', isBayList: s.screen === 'bayList', isJobs: s.screen === 'jobs',
+      isLogin: s.screen === 'login', isBayList: s.screen === 'bayList', isJobs: s.screen === 'jobs', isJobDetail: s.screen === 'jobDetail',
       menuOpen: s.menuOpen, toggleMenu: () => this.setState(st => ({ menuOpen: !st.menuOpen })),
       login: () => this.go('bayList'), logout: () => this.go('login'),
       managerName: 'Johan Steyn', managerEmail: 'johan@vanniekerk.online', managerInit: 'JS', managerImg: 'assets/operators/operator.jpg',
       bayCount: bays.length + ' bays', bays: bayList, bayName: bay.name,
+      jobsList: jobList,
+      listMode: s.listMode, isBaysMode: s.listMode === 'bays', isJobsMode: s.listMode === 'jobs',
+      toggleListMode: () => this.setState(st => ({ listMode: st.listMode === 'bays' ? 'jobs' : 'bays', menuOpen: false })),
+      listTitle: s.listMode === 'bays' ? 'Bays' : 'Jobs',
+      listCount: s.listMode === 'bays' ? (bays.length + ' bays') : (this.jobs.length + ' jobs'),
+      jd: jd,
+      jdTitle: selectedJob.code, jdSub: selectedJob.product, jdImg: selectedJob.img,
+      jdBack: () => this.setState({ screen: 'bayList', listMode: 'jobs', menuOpen: false, docOpen: false }),
+      jdDir: wide ? 'row' : 'column',
+      jdLeftW: wide ? '42%' : '100%', jdRightW: wide ? '58%' : '100%',
+      jdBorder: wide ? '1px solid rgba(255,255,255,0.07)' : 'none',
+      jdRouteOrder: wide ? '0' : '2', jdDetailOrder: wide ? '0' : '1',
+      jdRouteBorderTop: wide ? 'none' : '1px solid rgba(255,255,255,0.07)',
+      sortByDays: () => this.setState({ baySort: 'days' }), sortByName: () => this.setState({ baySort: 'name' }),
+      sortDaysStyle: sortChip(s.baySort === 'days'), sortNameStyle: sortChip(s.baySort === 'name'),
       bayOperatorImg: bay.operator.img, bayOperatorName: bay.operator.name,
       listDisplay: (wide || !detailOpen) ? 'flex' : 'none',
       listWidth: wide ? '40%' : '100%',

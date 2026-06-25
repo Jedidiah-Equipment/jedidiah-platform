@@ -45,7 +45,10 @@ describe('feedback.submit', () => {
 
     const rows = await context.db.select().from(feedback);
 
-    expect(submitted).toMatchObject({
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: submitted.id,
+      internalNotes: null,
       jobId: null,
       kind: 'general',
       quoteId: context.quote.id,
@@ -53,16 +56,6 @@ describe('feedback.submit', () => {
       subjectType: 'quote',
       submitterId: 'test-user-id',
       text: 'The discount on this quote looks too high.',
-    });
-    expect(submitted.internalNotes).toBeNull();
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({
-      jobId: null,
-      kind: 'general',
-      quoteId: context.quote.id,
-      status: 'open',
-      subjectType: 'quote',
-      submitterId: 'test-user-id',
     });
   });
 
@@ -75,7 +68,11 @@ describe('feedback.submit', () => {
       text: 'Paint bay handover was missed on this job.',
     });
 
-    expect(submitted).toMatchObject({
+    const rows = await context.db.select().from(feedback);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: submitted.id,
       jobId: context.job.id,
       quoteId: null,
       subjectType: 'job',
@@ -86,29 +83,31 @@ describe('feedback.submit', () => {
   test('allows a Quote submission from a caller without quote read access', async ({ context }) => {
     const caller = context.createCaller(mockSession('job-viewer'));
 
-    await expect(
-      caller.feedback.submit({
-        kind: 'general',
-        subject: { subjectType: 'quote', quoteId: context.quote.id },
-        text: 'Any signed-in user may submit.',
-      }),
-    ).resolves.toMatchObject({ quoteId: context.quote.id, subjectType: 'quote' });
+    const submitted = await caller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'quote', quoteId: context.quote.id },
+      text: 'Any signed-in user may submit.',
+    });
 
-    await expect(context.db.select().from(feedback)).resolves.toHaveLength(1);
+    const rows = await context.db.select().from(feedback);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: submitted.id, quoteId: context.quote.id, subjectType: 'quote' });
   });
 
   test('allows a Job submission from a caller without job read access', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
-    await expect(
-      caller.feedback.submit({
-        kind: 'general',
-        subject: { subjectType: 'job', jobId: context.job.id },
-        text: 'Any signed-in user may submit.',
-      }),
-    ).resolves.toMatchObject({ jobId: context.job.id, subjectType: 'job' });
+    const submitted = await caller.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'Any signed-in user may submit.',
+    });
 
-    await expect(context.db.select().from(feedback)).resolves.toHaveLength(1);
+    const rows = await context.db.select().from(feedback);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: submitted.id, jobId: context.job.id, subjectType: 'job' });
   });
 
   test('persists corrective-department feedback with its department targets', async ({ context }) => {
@@ -121,15 +120,17 @@ describe('feedback.submit', () => {
       departments: ['paint', 'assembly'],
     });
 
-    expect(submitted).toMatchObject({ kind: 'corrective-feedback-department' });
-    expect(new Set(submitted.departments)).toEqual(new Set(['paint', 'assembly']));
-    expect(submitted.userIds).toEqual([]);
+    const [row] = await context.db.select().from(feedback).where(eq(feedback.id, submitted.id));
+    expect(row).toMatchObject({ kind: 'corrective-feedback-department' });
 
-    const targets = await context.db
+    const departmentTargets = await context.db
       .select()
       .from(feedbackDepartment)
       .where(eq(feedbackDepartment.feedbackId, submitted.id));
-    expect(new Set(targets.map((row) => row.department))).toEqual(new Set(['paint', 'assembly']));
+    expect(new Set(departmentTargets.map((target) => target.department))).toEqual(new Set(['paint', 'assembly']));
+
+    const userTargets = await context.db.select().from(feedbackUser).where(eq(feedbackUser.feedbackId, submitted.id));
+    expect(userTargets).toEqual([]);
   });
 
   test('persists corrective-user feedback with its user targets', async ({ context }) => {
@@ -143,12 +144,17 @@ describe('feedback.submit', () => {
       userIds: [targetUser.id],
     });
 
-    expect(submitted).toMatchObject({ kind: 'corrective-feedback-user' });
-    expect(submitted.userIds).toEqual([targetUser.id]);
-    expect(submitted.departments).toEqual([]);
+    const [row] = await context.db.select().from(feedback).where(eq(feedback.id, submitted.id));
+    expect(row).toMatchObject({ kind: 'corrective-feedback-user' });
 
-    const targets = await context.db.select().from(feedbackUser).where(eq(feedbackUser.feedbackId, submitted.id));
-    expect(targets.map((row) => row.userId)).toEqual([targetUser.id]);
+    const userTargets = await context.db.select().from(feedbackUser).where(eq(feedbackUser.feedbackId, submitted.id));
+    expect(userTargets.map((target) => target.userId)).toEqual([targetUser.id]);
+
+    const departmentTargets = await context.db
+      .select()
+      .from(feedbackDepartment)
+      .where(eq(feedbackDepartment.feedbackId, submitted.id));
+    expect(departmentTargets).toEqual([]);
   });
 
   test('rejects a corrective-department submission with no targets', async ({ context }) => {

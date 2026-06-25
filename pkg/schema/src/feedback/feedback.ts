@@ -127,21 +127,9 @@ export const FeedbackDetail = FeedbackListItem.extend({
   users: z.array(FeedbackTargetUser),
 });
 
-export type Feedback = z.infer<typeof Feedback>;
-export const Feedback = z.object({
+export type FeedbackSubmitResult = z.infer<typeof FeedbackSubmitResult>;
+export const FeedbackSubmitResult = z.object({
   id: UUID,
-  submitterId: AuthId,
-  subjectType: FeedbackSubjectType,
-  quoteId: UUID.nullable(),
-  jobId: UUID.nullable(),
-  kind: FeedbackKind,
-  text: FeedbackText,
-  departments: z.array(Department),
-  userIds: z.array(AuthId),
-  internalNotes: z.string().nullable(),
-  status: FeedbackStatus,
-  createdAt: DateIso,
-  updatedAt: DateIso,
 });
 
 export type FeedbackTargetUserList = z.infer<typeof FeedbackTargetUserList>;

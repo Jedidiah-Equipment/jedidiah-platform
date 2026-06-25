@@ -108,34 +108,31 @@ type RoleAccess = Partial<{
   [Resource in AuthorizationResource]: readonly (typeof authorizationStatement)[Resource][number][];
 }>;
 
+const adminAccess = {
+  audit: ['read'],
+  customer: ['read', 'create', 'update'],
+  job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
+  job_bay: ['read', 'update'],
+  part: ['read', 'update'],
+  product: ['read', 'create', 'update'],
+  product_range: ['read', 'create', 'update'],
+  quote: ['read', 'create', 'update'],
+  supplier: ['read', 'update'],
+  user: ['list', 'create', 'update', 'set-role', 'set-password'],
+} as const satisfies RoleAccess;
+
 // Invariant: any role granted `job:create` must also hold `job:schedule` — creating a
 // Job inherently schedules its Bay seeds (picked start dates, ghost previews), so the
 // create surfaces assume scheduling authority rather than gating seed dates separately.
 export const appRoleAccess = {
-  admin: {
-    audit: ['read'],
-    customer: ['read', 'create', 'update'],
-    job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
-    job_bay: ['read', 'update'],
-    part: ['read', 'update'],
-    product: ['read', 'create', 'update'],
-    product_range: ['read', 'create', 'update'],
-    quote: ['read', 'create', 'update'],
-    supplier: ['read', 'update'],
-    user: ['list', 'create', 'update', 'set-role', 'set-password'],
-  },
+  admin: adminAccess,
+  // super-admin is admin plus exclusive Feedback review. Composed by spread so the two can never
+  // drift: any permission added to admin is inherited here, while feedback stays admin-exclusive.
+  // This is still a fully explicit static declaration (resolved at module load), not the runtime
+  // role inheritance ADR 0001 rules out.
   'super-admin': {
-    audit: ['read'],
-    customer: ['read', 'create', 'update'],
+    ...adminAccess,
     feedback: ['read', 'update'],
-    job: ['read', 'create', 'update', 'schedule', 'update-calendar'],
-    job_bay: ['read', 'update'],
-    part: ['read', 'update'],
-    product: ['read', 'create', 'update'],
-    product_range: ['read', 'create', 'update'],
-    quote: ['read', 'create', 'update'],
-    supplier: ['read', 'update'],
-    user: ['list', 'create', 'update', 'set-role', 'set-password'],
   },
   'procurement-manager': {
     customer: ['read', 'create', 'update'],

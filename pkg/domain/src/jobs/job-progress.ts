@@ -40,7 +40,7 @@ export type JobProgress = {
   stageCount: number;
   /** Work-day-weighted elapsed share across the whole route, 0–100, rounded. */
   overallPercent: number;
-  /** Inclusive last work day of the latest-ending unfinished Slot — when the Job is fully off the floor. */
+  /** Inclusive last work day of the Slot that paces {@link daysLeft} — the done date shown beside it. */
   lastWorkDay: DateOnlyIso;
 };
 
@@ -79,14 +79,18 @@ export function deriveJobProgress({
   // Current stage: the active Slot, else the soonest unfinished Slot to start.
   const current = active ?? firstUnfinished;
 
-  // Days-left is paced by the latest-ending Slot, counting today through its last work day
-  // on that Bay's calendar (idle-gap working days included — never clamped to the Slot span).
+  // Days-left is the max, over unfinished Slots, of working days from today through that Slot's
+  // last work day on its Bay's calendar (idle-gap working days included — never clamped to the
+  // Slot span). The pacing Slot drives both the headline number and the done date below, so the
+  // two always refer to the same Slot even when Bays keep different calendars.
   let daysLeft = 0;
-  let latest = firstUnfinished;
+  let pacing = firstUnfinished;
   for (const entry of unfinished) {
     const slotDaysLeft = countWorkingDaysBetween(today, entry.slot.endDate, entry.workingCalendar);
-    if (slotDaysLeft > daysLeft) daysLeft = slotDaysLeft;
-    if (entry.slot.endDate > latest.slot.endDate) latest = entry;
+    if (slotDaysLeft > daysLeft) {
+      daysLeft = slotDaysLeft;
+      pacing = entry;
+    }
   }
 
   // Overall progress weights elapsed work days across the whole route, so uneven Slots and
@@ -107,7 +111,7 @@ export function deriveJobProgress({
     stageIndex: ordered.indexOf(current) + 1,
     stageCount: ordered.length,
     overallPercent: totalWorkDays === 0 ? 0 : Math.round((elapsedWorkDays / totalWorkDays) * 100),
-    lastWorkDay: deriveActiveJobProgress({ slot: latest.slot, today, workingCalendar: latest.workingCalendar })
+    lastWorkDay: deriveActiveJobProgress({ slot: pacing.slot, today, workingCalendar: pacing.workingCalendar })
       .lastWorkDay,
   };
 }

@@ -8,19 +8,19 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
 /**
- * Shared top bar for a Bay schedule or slot detail: a back button, optional operator avatar,
- * primary title over contextual secondary text, and the overflow {@link ProfileMenuButton}.
+ * Shared top bar for a Bay schedule, Bay slot, or Job detail: a back button, optional operator
+ * avatar, primary title over an optional caption, and the overflow {@link ProfileMenuButton}.
  */
 export function ScheduleHeader({
   title,
-  subtitle = 'Bay schedule',
+  subtitle,
   operator,
   onBack,
   showOperatorAvatar = true,
   titleMono = false,
 }: {
   title: string;
-  /** Caption under the title — bay name on schedule, product name on slot detail. */
+  /** Caption under the title — bay name on schedule, product name on slot/Job detail; omit for none. */
   subtitle?: string;
   operator: BayOperator | null;
   onBack: () => void;
@@ -50,9 +50,11 @@ export function ScheduleHeader({
         <Text className="text-base leading-5 text-foreground" mono={titleMono} numberOfLines={1} weight="bold">
           {title}
         </Text>
-        <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
-          {subtitle}
-        </Text>
+        {subtitle ? (
+          <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
 
       <ProfileMenuButton />

@@ -138,6 +138,40 @@ describe('deriveJobProgress', () => {
     expect(progress?.overallPercent).toBe(67);
   });
 
+  it('sources days-left and the done date from the same Slot when Bays keep different calendars', () => {
+    // Today Thu 2 Jul. The later-ending Slot sits on a Bay closed through mid-July, so it counts
+    // fewer working days than the earlier-ending Slot — days-left is the max, and the done date
+    // must follow that same pacing Slot rather than the latest calendar end.
+    const bayMostlyClosed: WorkingCalendar = {
+      orgOffDays: new Set([
+        '2026-07-04',
+        '2026-07-05',
+        '2026-07-06',
+        '2026-07-07',
+        '2026-07-08',
+        '2026-07-09',
+        '2026-07-10',
+        '2026-07-11',
+        '2026-07-12',
+        '2026-07-13',
+        '2026-07-14',
+        '2026-07-15',
+      ]),
+    };
+    const progress = deriveJobProgress({
+      slots: [
+        entry('Paint 1', '2026-06-29', '2026-07-15', weekendsOff, BAY_IDS.paint1), // ends 14 Jul, 9 working days
+        entry('Assembly 1', '2026-06-29', '2026-07-17', bayMostlyClosed, BAY_IDS.assembly1), // ends later, only 2 working days
+      ],
+      today: day('2026-07-02'),
+    });
+
+    // Paint paces with 9 working days (2,3, 6,7,8,9,10, 13,14); its last work day is the done date,
+    // even though Assembly's Slot ends later on the calendar.
+    expect(progress?.daysLeft).toBe(9);
+    expect(progress?.lastWorkDay).toBe('2026-07-14');
+  });
+
   it('returns null when every Slot is finished', () => {
     const progress = deriveJobProgress({
       slots: [entry('Fab 1', '2026-06-15', '2026-06-27')],

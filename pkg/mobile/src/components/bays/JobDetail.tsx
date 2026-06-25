@@ -1,20 +1,22 @@
-import { formatDate, type JobProgress, statusDaysLeftColor } from '@pkg/domain';
-import { IconChevronLeft } from '@tabler/icons-react-native';
+import {
+  formatDate,
+  type JobProgress,
+  type JobRouteStopState,
+  restingStatusColor,
+  statusDaysLeftColor,
+} from '@pkg/domain';
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { JobDocuments } from '@/components/bays/JobDocuments';
-import { ProfileMenuButton } from '@/components/ProfileMenuButton';
-import { Icon } from '@/components/ui/icon';
+import { JobFactsCard } from '@/components/bays/job-facts';
+import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
+import { ScheduleHeader } from '@/components/ScheduleHeader';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/lib/use-job-detail';
 import { useColorMode } from '@/theme/use-color-mode';
-
-function chipTint(color: string) {
-  return { backgroundColor: `${color}1A`, borderColor: `${color}4D` };
-}
 
 type ReadyState = Extract<JobDetailState, { status: 'ready' }>;
 
@@ -89,7 +91,16 @@ function Ready({
   isWide: boolean;
   onBack: () => void;
 }) {
-  const header = <Header onBack={onBack} subtitle={state.productName} title={state.jobCode} titleMono />;
+  const header = (
+    <ScheduleHeader
+      onBack={onBack}
+      operator={null}
+      showOperatorAvatar={false}
+      subtitle={state.productName}
+      title={state.jobCode}
+      titleMono
+    />
+  );
 
   if (isWide) {
     return (
@@ -123,29 +134,31 @@ function Ready({
   );
 }
 
-const ROUTE_TONES = {
+/** Route state → shared status tone, so the timeline reuses the board's chip/label/bar accents. */
+const ROUTE_STATE_TONE: Record<JobRouteStopState, StatusTone> = {
+  active: 'in-progress',
+  done: 'muted',
+  scheduled: 'next',
+};
+
+/** Timeline-only decorations (the soft card, the spine node, the border-only chip) keyed by state. */
+const ROUTE_DECOR: Record<JobRouteStopState, { card: string; chip: string; node: string }> = {
   active: {
-    text: 'text-status-in-progress',
     card: 'border-status-in-progress/30 bg-status-in-progress/10',
     chip: 'border-status-in-progress/30',
     node: 'border-status-in-progress bg-status-in-progress',
-    bar: 'bg-status-in-progress',
   },
   scheduled: {
-    text: 'text-status-next',
     card: 'border-status-next/30 bg-status-next/10',
     chip: 'border-status-next/30',
     node: 'border-status-next bg-background',
-    bar: 'bg-status-next',
   },
   done: {
-    text: 'text-muted-foreground',
     card: 'border-border bg-surface',
     chip: 'border-border',
     node: 'border-muted-foreground bg-muted-foreground',
-    bar: 'bg-muted-foreground',
   },
-} as const;
+};
 
 const STATE_LABELS = { active: 'IN PROGRESS', done: 'DONE', scheduled: 'SCHEDULED' } as const;
 
@@ -173,13 +186,14 @@ function RoutePane({ route }: { route: JobRouteStopCard[] }) {
 }
 
 function RouteStop({ stop }: { stop: JobRouteStopCard }) {
-  const tone = ROUTE_TONES[stop.state];
+  const tone = STATUS_TONE[ROUTE_STATE_TONE[stop.state]];
+  const decor = ROUTE_DECOR[stop.state];
   const operatorName = stop.operator?.name ?? 'No operator';
 
   return (
     <View className="relative mb-3.5">
-      <View className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 ${tone.node}`} style={{ left: -28 }} />
-      <View className={`rounded-2xl border p-3.5 ${tone.card}`}>
+      <View className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 ${decor.node}`} style={{ left: -28 }} />
+      <View className={`rounded-2xl border p-3.5 ${decor.card}`}>
         <View className="flex-row items-start justify-between gap-2">
           <View className="min-w-0 flex-1 flex-row items-center gap-2.5">
             <Avatar
@@ -196,7 +210,7 @@ function RouteStop({ stop }: { stop: JobRouteStopCard }) {
               </Text>
             </View>
           </View>
-          <View className={`rounded-full border px-2 py-1 ${tone.chip}`}>
+          <View className={`rounded-full border px-2 py-1 ${decor.chip}`}>
             <Text className={`text-[9px] tracking-wide ${tone.text}`} weight="semibold">
               {STATE_LABELS[stop.state]}
             </Text>
@@ -213,7 +227,7 @@ function RouteStop({ stop }: { stop: JobRouteStopCard }) {
         </View>
 
         <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          <View className={`h-full rounded-full ${tone.bar}`} style={{ width: `${stop.progressPercent}%` }} />
+          <View className={`h-full rounded-full ${tone.dot}`} style={{ width: `${stop.progressPercent}%` }} />
         </View>
       </View>
     </View>
@@ -234,31 +248,18 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   const { progress } = state;
   const { resolved } = useColorMode();
   const overallPercent = progress?.overallPercent ?? 100;
-  // The working-days-left chip + overall bar share the status accent: blue in progress, green when queued,
-  // amber/red as the finish nears. A finished Job (null progress) reads as a comfortable scheduled green.
-  const dayColor = statusDaysLeftColor({
-    status: progress?.status ?? 'scheduled',
-    daysLeft: progress?.daysLeft ?? Number.MAX_SAFE_INTEGER,
-    scheme: resolved,
-  });
+  // The working-days-left chip + overall bar share the status accent: blue in progress, green when
+  // queued, amber/red as the finish nears. A finished Job (null progress) rests on the scheduled green.
+  const accent = progress
+    ? statusDaysLeftColor({ status: progress.status, daysLeft: progress.daysLeft, scheme: resolved })
+    : restingStatusColor('scheduled', resolved);
   const status = jobStatus(progress);
 
   return (
     <View className="gap-4">
       <View className="flex-row flex-wrap items-center gap-2">
-        <View className={`flex-row items-center gap-1.5 rounded-full border px-2.5 py-1 ${status.chip}`}>
-          <View className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-          <Text className={`text-[10px] tracking-wide ${status.text}`} weight="semibold">
-            {status.label}
-          </Text>
-        </View>
-        {progress ? (
-          <View className="rounded-full border px-2.5 py-1" style={chipTint(dayColor)}>
-            <Text className="text-[10px] tracking-wide" mono style={{ color: dayColor }} weight="semibold">
-              {progress.daysLeft} WORKING {progress.daysLeft === 1 ? 'DAY' : 'DAYS'} LEFT
-            </Text>
-          </View>
-        ) : null}
+        <StatusChip label={status.label} tone={status.tone} />
+        {progress ? <DaysLeftChip color={accent} daysLeft={progress.daysLeft} /> : null}
       </View>
 
       <View className="flex-row items-center gap-3.5 rounded-2xl border border-border bg-surface p-3.5">
@@ -288,7 +289,7 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
           </Text>
         </View>
         <View className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <View className="h-full rounded-full" style={{ backgroundColor: dayColor, width: `${overallPercent}%` }} />
+          <View className="h-full rounded-full" style={{ backgroundColor: accent, width: `${overallPercent}%` }} />
         </View>
         <Text className="mt-2 text-[10px] text-muted-foreground" mono>
           {state.doneCount} of {state.totalCount} bays complete
@@ -297,110 +298,33 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
 
       <JobDocuments jobId={jobId} />
 
-      <View className="rounded-2xl border border-border bg-surface p-4">
-        <Text className="mb-3.5 text-[11px] uppercase tracking-widest text-muted-foreground" weight="semibold">
-          Job
-        </Text>
-        <View className="gap-4">
-          <View className="flex-row gap-4">
-            <Field label="JOB CODE" mono value={state.jobCode} />
-            <Field label="QUOTE CODE" mono value={state.quoteCode} />
-          </View>
-          <View className="flex-row gap-4">
-            <Field label="PRODUCT" value={state.productName} />
-            <Field label="PRODUCT SERIAL" mono value={state.productSerialNumber} />
-          </View>
-          <Field label="CUSTOMER" value={state.customerCompanyName ?? '—'} />
-        </View>
-      </View>
+      <JobFactsCard
+        customerCompanyName={state.customerCompanyName}
+        jobCode={state.jobCode}
+        productName={state.productName}
+        productSerialNumber={state.productSerialNumber}
+        quoteCode={state.quoteCode}
+      />
     </View>
   );
 }
 
-function jobStatus(progress: JobProgress | null): { label: string; text: string; dot: string; chip: string } {
-  if (!progress) {
-    return {
-      chip: 'border-muted-foreground/30 bg-muted-foreground/10',
-      dot: 'bg-muted-foreground',
-      label: 'COMPLETE',
-      text: 'text-muted-foreground',
-    };
-  }
+function jobStatus(progress: JobProgress | null): { tone: StatusTone; label: string } {
+  if (!progress) return { tone: 'muted', label: 'COMPLETE' };
   if (progress.status === 'in-progress') {
-    return {
-      chip: 'border-status-in-progress/30 bg-status-in-progress/10',
-      dot: 'bg-status-in-progress',
-      label: `IN ${progress.currentBayName.toUpperCase()}`,
-      text: 'text-status-in-progress',
-    };
+    return { tone: 'in-progress', label: `IN ${progress.currentBayName.toUpperCase()}` };
   }
 
-  return {
-    chip: 'border-status-next/30 bg-status-next/10',
-    dot: 'bg-status-next',
-    label: `NEXT · ${progress.currentBayName.toUpperCase()}`,
-    text: 'text-status-next',
-  };
-}
-
-function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <View className="min-w-0 flex-1">
-      <Text className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Text>
-      <Text className="text-sm text-surface-foreground" mono={mono} weight="semibold">
-        {value}
-      </Text>
-    </View>
-  );
+  return { tone: 'next', label: `NEXT · ${progress.currentBayName.toUpperCase()}` };
 }
 
 /** Header + a single scroll for the non-ready states, mirroring the Bay schedule screen. */
 function Frame({ children, onBack }: { children: ReactNode; onBack: () => void }) {
   return (
     <>
-      <Header onBack={onBack} title="Job detail" />
+      <ScheduleHeader onBack={onBack} operator={null} showOperatorAvatar={false} title="Job detail" />
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4">{children}</ScrollView>
     </>
-  );
-}
-
-function Header({
-  title,
-  subtitle,
-  titleMono = false,
-  onBack,
-}: {
-  title: string;
-  subtitle?: string;
-  titleMono?: boolean;
-  onBack: () => void;
-}) {
-  return (
-    <View className="flex-row items-center gap-2 border-b border-border bg-background px-4 py-3">
-      <Pressable
-        accessibilityLabel="Back"
-        accessibilityRole="button"
-        className="h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
-        onPress={onBack}
-      >
-        <Icon icon={IconChevronLeft} size={20} />
-      </Pressable>
-
-      <View className="min-w-0 flex-1">
-        <Text className="text-base leading-5 text-foreground" mono={titleMono} numberOfLines={1} weight="bold">
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
-            {subtitle}
-          </Text>
-        ) : (
-          <Text className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">Job detail</Text>
-        )}
-      </View>
-
-      <ProfileMenuButton />
-    </View>
   );
 }
 

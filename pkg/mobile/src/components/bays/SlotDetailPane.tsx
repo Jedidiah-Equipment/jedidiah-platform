@@ -3,13 +3,11 @@ import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { JobDocuments } from '@/components/bays/JobDocuments';
+import { FactCard, FactField, FactRow, JobFactsCard } from '@/components/bays/job-facts';
+import { DaysLeftChip, StatusChip } from '@/components/bays/status-chip';
 import { Text } from '@/components/ui/text';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
 import { useColorMode } from '@/theme/use-color-mode';
-
-function chipTint(color: string) {
-  return { backgroundColor: `${color}1A`, borderColor: `${color}4D` };
-}
 
 /**
  * The read-only Job Slot detail pane (#520): status chip(s), a product card, the
@@ -30,35 +28,12 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
       {/* Status chip(s): IN PROGRESS / SCHEDULED, plus 'N WORKING DAYS LEFT' while running. The
           SCHEDULED chip matches its timeline card — green for the 'next' Slot, grey otherwise. */}
       <View className="flex-row items-center gap-2">
-        <View
-          className={`flex-row items-center gap-1.5 rounded-full border px-2.5 py-1 ${
-            isActive
-              ? 'border-status-in-progress/30 bg-status-in-progress/10'
-              : slot.isNext
-                ? 'border-status-next/30 bg-status-next/10'
-                : 'border-muted-foreground/30 bg-muted-foreground/10'
-          }`}
-        >
-          <View
-            className={`h-1.5 w-1.5 rounded-full ${
-              isActive ? 'bg-status-in-progress' : slot.isNext ? 'bg-status-next' : 'bg-muted-foreground'
-            }`}
-          />
-          <Text
-            className={`text-[10px] tracking-wide ${
-              isActive ? 'text-status-in-progress' : slot.isNext ? 'text-status-next' : 'text-muted-foreground'
-            }`}
-            weight="semibold"
-          >
-            {isActive ? 'IN PROGRESS' : 'SCHEDULED'}
-          </Text>
-        </View>
+        <StatusChip
+          label={isActive ? 'IN PROGRESS' : 'SCHEDULED'}
+          tone={isActive ? 'in-progress' : slot.isNext ? 'next' : 'muted'}
+        />
         {slot.remainingWorkDays !== null && daysLeftColor ? (
-          <View className="rounded-full border px-2.5 py-1" style={chipTint(daysLeftColor)}>
-            <Text className="text-[10px] tracking-wide" style={{ color: daysLeftColor }} weight="semibold">
-              {slot.remainingWorkDays} WORKING {slot.remainingWorkDays === 1 ? 'DAY' : 'DAYS'} LEFT
-            </Text>
-          </View>
+          <DaysLeftChip color={daysLeftColor} daysLeft={slot.remainingWorkDays} />
         ) : null}
       </View>
 
@@ -84,64 +59,27 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
       <JobDocuments jobId={slot.jobId} />
 
       {/* SLOT grid. */}
-      <Card title="SLOT">
-        <Grid>
-          <Row>
-            <Field label="SLOT START" value={formatDate(slot.startDate, 'd MMM yyyy')} />
-            <Field label="SLOT END" value={formatDate(slot.lastWorkDay, 'd MMM yyyy')} />
-          </Row>
-          <Row>
-            <Field label="WORK DAYS" value={`${slot.workDays} ${slot.workDays === 1 ? 'day' : 'days'}`} />
-            <Field label="BAY" value={slot.bayName} />
-          </Row>
-        </Grid>
-      </Card>
+      <FactCard title="SLOT">
+        <View className="gap-4">
+          <FactRow>
+            <FactField label="SLOT START" value={formatDate(slot.startDate, 'd MMM yyyy')} />
+            <FactField label="SLOT END" value={formatDate(slot.lastWorkDay, 'd MMM yyyy')} />
+          </FactRow>
+          <FactRow>
+            <FactField label="WORK DAYS" value={`${slot.workDays} ${slot.workDays === 1 ? 'day' : 'days'}`} />
+            <FactField label="BAY" value={slot.bayName} />
+          </FactRow>
+        </View>
+      </FactCard>
 
       {/* JOB grid. */}
-      <Card title="JOB">
-        <Grid>
-          <Row>
-            <Field label="JOB CODE" mono value={slot.jobCode} />
-            <Field label="QUOTE CODE" mono value={slot.quoteCode} />
-          </Row>
-          <Row>
-            <Field label="PRODUCT" value={slot.productName} />
-            <Field label="PRODUCT SERIAL" mono value={slot.productSerialNumber} />
-          </Row>
-          <Field label="CUSTOMER" value={slot.customerCompanyName ?? '—'} />
-        </Grid>
-      </Card>
-    </View>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View className="rounded-2xl border border-border bg-surface p-4">
-      <Text className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground" weight="semibold">
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function Grid({ children }: { children: React.ReactNode }) {
-  return <View className="gap-4">{children}</View>;
-}
-
-// A two-column row of fields; RN has no CSS grid, so equal-width flex cells stand in.
-function Row({ children }: { children: React.ReactNode }) {
-  return <View className="flex-row gap-4">{children}</View>;
-}
-
-function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <View className="min-w-0 flex-1">
-      <Text className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Text>
-      <Text className="text-sm text-surface-foreground" mono={mono} weight="semibold">
-        {value}
-      </Text>
+      <JobFactsCard
+        customerCompanyName={slot.customerCompanyName}
+        jobCode={slot.jobCode}
+        productName={slot.productName}
+        productSerialNumber={slot.productSerialNumber}
+        quoteCode={slot.quoteCode}
+      />
     </View>
   );
 }

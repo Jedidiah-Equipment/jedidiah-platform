@@ -20,7 +20,7 @@ import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Card, CardContent, CardHeader } from '@/components/ui/card.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -282,13 +282,13 @@ function FeedbackDetailPanel({
             {feedbackKindLabels[detail.kind]}
           </Badge>
         </div>
-        <CardTitle className="text-lg">
-          <SubjectLink item={detail} />
-        </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-5">
         <DetailField label="Submitted by">
           <span className="font-medium">{detail.submitter.name}</span>
+        </DetailField>
+        <DetailField label="Linked to">
+          <SubjectLink item={detail} />
         </DetailField>
         <DetailField label="Submitted">
           <DateDisplay date={detail.createdAt} format="medium" />

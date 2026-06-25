@@ -1,5 +1,14 @@
 import { departmentLabels } from '@pkg/domain';
-import { AuthId, DEPARTMENTS, Department, FeedbackKind, type FeedbackSubmitInput, FeedbackText } from '@pkg/schema';
+import {
+  AuthId,
+  DEPARTMENTS,
+  Department,
+  FeedbackDepartmentTargets,
+  FeedbackKind,
+  type FeedbackSubmitInput,
+  FeedbackText,
+  FeedbackUserTargets,
+} from '@pkg/schema';
 import { IconMessagePlus } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -22,13 +31,29 @@ const FeedbackFormValues = z
     userIds: z.array(AuthId),
   })
   .superRefine((value, ctx) => {
-    if (value.kind === 'corrective-feedback-department' && value.departments.length === 0) {
-      ctx.addIssue({ code: 'custom', message: 'Select at least one department', path: ['departments'] });
+    // Reuse the exported target schemas so the dialog enforces the same cardinality rule and message
+    // as `feedback.submit` rather than re-declaring it here.
+    if (value.kind === 'corrective-feedback-department') {
+      forwardTargetIssues(FeedbackDepartmentTargets.safeParse(value.departments), 'departments', ctx);
     }
-    if (value.kind === 'corrective-feedback-user' && value.userIds.length === 0) {
-      ctx.addIssue({ code: 'custom', message: 'Select at least one user', path: ['userIds'] });
+    if (value.kind === 'corrective-feedback-user') {
+      forwardTargetIssues(FeedbackUserTargets.safeParse(value.userIds), 'userIds', ctx);
     }
   });
+
+function forwardTargetIssues(
+  result: z.ZodSafeParseResult<unknown>,
+  field: 'departments' | 'userIds',
+  ctx: z.RefinementCtx,
+): void {
+  if (result.success) {
+    return;
+  }
+
+  for (const issue of result.error.issues) {
+    ctx.addIssue({ code: 'custom', message: issue.message, path: [field, ...issue.path] });
+  }
+}
 type FeedbackFormValues = z.infer<typeof FeedbackFormValues>;
 
 const FEEDBACK_DEFAULT_VALUES: FeedbackFormValues = {

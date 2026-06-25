@@ -388,7 +388,7 @@ function Frame({
 }) {
   return (
     <>
-      <ScheduleHeader onBack={onBack} operator={operator} title={title} />
+      <ScheduleHeader onBack={onBack} operator={operator} subtitle="Bay schedule" title={title} />
       <ScrollView contentContainerClassName="w-full px-4 pb-10 pt-4">{children}</ScrollView>
     </>
   );

@@ -7,6 +7,7 @@ import type { JobListCard } from '@/lib/use-job-list';
 import { useColorMode } from '@/theme/use-color-mode';
 
 import { BoardCard } from './BoardCard';
+import { STATUS_TONE } from './status-chip';
 
 /**
  * One Job tile in the Jobs grid: product + Job code, operator + Bay status, a coloured days-left
@@ -62,6 +63,8 @@ function JobPrimaryRow({ job }: { job: JobListCard }) {
 }
 
 function OperatorRow({ bayLabel, isActive, job }: { bayLabel: string; isActive: boolean; job: JobListCard }) {
+  const tone = STATUS_TONE[isActive ? 'in-progress' : 'next'];
+
   return (
     <View className="flex-row items-center gap-3">
       <Avatar
@@ -74,14 +77,8 @@ function OperatorRow({ bayLabel, isActive, job }: { bayLabel: string; isActive: 
           {job.operator?.name ?? 'No operator'}
         </Text>
         <View className="mt-0.5 flex-row items-center gap-1.5">
-          <View className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-status-in-progress' : 'bg-status-next'}`} />
-          <Text
-            className={`text-[10px] leading-3 tracking-wide ${
-              isActive ? 'text-status-in-progress' : 'text-status-next'
-            }`}
-            numberOfLines={1}
-            weight="semibold"
-          >
+          <View className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
+          <Text className={`text-[10px] leading-3 tracking-wide ${tone.text}`} numberOfLines={1} weight="semibold">
             {isActive ? `IN ${bayLabel}` : `NEXT · ${bayLabel}`}
           </Text>
         </View>

@@ -9,6 +9,7 @@ import {
   hexToRgbTriplet,
   lightStatusColors,
   lightTheme,
+  restingStatusColor,
   statusDaysLeftColor,
   themes,
 } from './index.js';
@@ -60,6 +61,18 @@ describe('statusDaysLeftColor', () => {
   it('is the scheduled green beyond five days', () => {
     expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 6, scheme: 'dark' })).toBe('#22c55e');
     expect(statusDaysLeftColor({ status: 'scheduled', daysLeft: 42, scheme: 'light' })).toBe('#22c55e');
+  });
+});
+
+describe('restingStatusColor', () => {
+  it('is the in-progress blue per scheme, ignoring urgency', () => {
+    expect(restingStatusColor('in-progress', 'light')).toBe('#3b82f6');
+    expect(restingStatusColor('in-progress', 'dark')).toBe('#60a5fa');
+  });
+
+  it('is the scheduled green, the resting accent for a Job with no countdown', () => {
+    expect(restingStatusColor('scheduled', 'light')).toBe('#22c55e');
+    expect(restingStatusColor('scheduled', 'dark')).toBe('#22c55e');
   });
 });
 

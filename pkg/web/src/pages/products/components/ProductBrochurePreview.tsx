@@ -1,6 +1,6 @@
 import { evaluateProductBrochureCompleteness, formatBytes } from '@pkg/domain';
-import type { BrochureRequiredField, Product } from '@pkg/schema';
-import { IconAlertTriangle, IconDownload, IconEye } from '@tabler/icons-react';
+import type { Product } from '@pkg/schema';
+import { IconDownload, IconEye } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useEffect, useState } from 'react';
@@ -12,33 +12,19 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { downloadProductBrochure, fetchProductBrochurePreviewBlob } from '@/utils/brochure.js';
 
-// Human labels for the brochure-completeness alert, keyed by the schema's required-field vocabulary.
-const BROCHURE_REQUIRED_FIELD_LABELS: Record<BrochureRequiredField, string> = {
-  category: 'Category',
-  keyFeatures: 'At least one key feature',
-  primary: 'Primary image',
-  technicalDrawing: 'Technical drawing image',
-  banner: 'Banner image',
-  description: 'Product description',
-  assemblies: 'At least one assembly',
-};
-
 type ProductBrochurePreviewProps = {
   product: Product;
 };
 
-// Brochure region for the Documents tab. Completeness is computed from the persisted Product (this section
-// lives outside the autosave form, so there is no live form subscription) via the shared predicate, so the
-// missing-field list stays in lockstep with the server-side preview/generation gates.
+// Brochure region for the Documents tab. The preview button is gated on the shared brochure-completeness
+// predicate (computed from the persisted Product); the still-missing-field checklist itself now lives in the
+// readiness aside, which is visible across every Product tab.
 export const ProductBrochurePreview: React.FC<ProductBrochurePreviewProps> = ({ product }) => {
   const completeness = evaluateProductBrochureCompleteness(product);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <BrochurePreviewButton disabled={!completeness.complete} productId={product.id} />
-      </div>
-      {completeness.complete ? null : <BrochureCompletenessAlert missingFields={completeness.missingFields} />}
+    <div className="flex justify-end">
+      <BrochurePreviewButton disabled={!completeness.complete} productId={product.id} />
     </div>
   );
 };
@@ -186,25 +172,3 @@ const BrochurePreviewContent: React.FC<{
     />
   );
 };
-
-type BrochureCompletenessAlertProps = {
-  missingFields: BrochureRequiredField[];
-};
-
-// Surfaces the still-missing required fields so the brochure can be completed before preview/generation.
-// The verdict comes from the shared `evaluateBrochureCompleteness` predicate, so this list stays in lockstep
-// with the server-side gates that consume the same predicate.
-const BrochureCompletenessAlert: React.FC<BrochureCompletenessAlertProps> = ({ missingFields }) => (
-  <Alert>
-    <IconAlertTriangle />
-    <AlertTitle>Brochure incomplete</AlertTitle>
-    <AlertDescription>
-      <p>Fill in the following before this brochure can be previewed or generated:</p>
-      <ul className="list-disc pl-5">
-        {missingFields.map((field) => (
-          <li key={field}>{BROCHURE_REQUIRED_FIELD_LABELS[field]}</li>
-        ))}
-      </ul>
-    </AlertDescription>
-  </Alert>
-);

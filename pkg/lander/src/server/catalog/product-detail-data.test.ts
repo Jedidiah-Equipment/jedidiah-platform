@@ -19,6 +19,33 @@ async function insertRange(db: Db, name: string) {
 
 type ProductImageRef = { byteSize: number; contentType: string; storageKey: string; updatedAt: string };
 
+function imageRef(slot: string): ProductImageRef {
+  return {
+    byteSize: 1024,
+    contentType: 'image/png',
+    storageKey: `products/${slot}-${crypto.randomUUID()}.png`,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// The lander gallery slots (primary + both secondaries) the lander-completeness gate requires.
+function landerGalleryImages(): Record<string, ProductImageRef> {
+  return { primary: imageRef('primary'), secondary1: imageRef('secondary1'), secondary2: imageRef('secondary2') };
+}
+
+// Every Product image slot — both the lander gallery and the brochure-only slots — so a Product is image-ready
+// for both surfaces.
+function allSlotImages(): Record<string, ProductImageRef> {
+  return {
+    ...landerGalleryImages(),
+    technicalDrawing: imageRef('technicalDrawing'),
+    banner: imageRef('banner'),
+  };
+}
+
+// Inserts a Product that is lander field-ready by default (landerEnabled, category, key feature, description,
+// and the gallery images all present), so adding one standard assembly makes it lander-ready. Tests override
+// fields to break readiness or to add the brochure-only requirements.
 async function insertProduct(
   db: Db,
   rangeId: string,
@@ -29,28 +56,27 @@ async function insertProduct(
     category?: string | null;
     keyFeatures?: string[];
     images?: Partial<Record<string, ProductImageRef>>;
+    brochureEnabled?: boolean;
+    landerEnabled?: boolean;
   },
 ) {
   const [product] = await db
     .insert(products)
-    .values({ basePrice: 1000, buildTimeDays: 5, rangeId, ...values })
+    .values({
+      basePrice: 1000,
+      buildTimeDays: 5,
+      rangeId,
+      landerEnabled: true,
+      category: 'Default category',
+      keyFeatures: ['Default feature'],
+      description: 'Default description.',
+      images: landerGalleryImages(),
+      ...values,
+    })
     .returning();
   if (!product) throw new Error('product insert did not return a row');
 
   return product;
-}
-
-// A full set of stored brochure image refs (every slot present) — one half of what the completeness gate
-// requires alongside a subtitle, a key feature, a description, and at least one assembly.
-function completeProductImages(): Record<string, ProductImageRef> {
-  const ref = (slot: string): ProductImageRef => ({
-    byteSize: 1024,
-    contentType: 'image/png',
-    storageKey: `products/brochure/${slot}-${crypto.randomUUID()}.png`,
-    updatedAt: new Date().toISOString(),
-  });
-
-  return { primary: ref('primary'), technicalDrawing: ref('technicalDrawing'), banner: ref('banner') };
 }
 
 async function insertAssembly(
@@ -71,6 +97,7 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
     category: 'Built for high-volume haulage.',
     keyFeatures: ['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping'],
   });
+  await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 
   const detail = await loadProductDetail(db, product.modelCode);
 
@@ -120,11 +147,13 @@ test('loadProductDetail lists other Products in the same Range as related cards'
   const range = await insertRange(db, `Recharge ${suffix} Range`);
   const otherRange = await insertRange(db, `Planting ${suffix} Range`);
   const product = await insertProduct(db, range.id, { name: `RC6000 ${suffix}`, modelCode: `RC6000-${suffix}` });
+  await insertAssembly(db, product.id, { kind: 'standard', name: 'Tank frame', displayOrder: 0 });
   const sibling = await insertProduct(db, range.id, {
     name: `RC3000 ${suffix}`,
     modelCode: `RC3000-${suffix}`,
     description: 'Compact field bowser.',
   });
+  await insertAssembly(db, sibling.id, { kind: 'standard', name: 'Tank frame', displayOrder: 0 });
   await insertProduct(db, otherRange.id, { name: `HD2020 ${suffix}`, modelCode: `HD2020-${suffix}` });
 
   const detail = await loadProductDetail(db, product.modelCode);
@@ -141,9 +170,11 @@ test('loadProductDetail lists other Products in the same Range as related cards'
   ]);
 });
 
-test('loadProductDetail renders missing brochure copy as empty', async ({ db }) => {
+test('loadProductDetail returns null when a required lander field is missing', async ({ db }) => {
   const suffix = crypto.randomUUID();
   const range = await insertRange(db, `Silage ${suffix} Range`);
+  // Field-ready by default, but with no description/category and no standard assembly the lander gate fails,
+  // so the detail page 404s rather than rendering a half-empty page.
   const product = await insertProduct(db, range.id, {
     name: `ST300 Strip Till ${suffix}`,
     modelCode: `ST300-${suffix}`,
@@ -151,29 +182,52 @@ test('loadProductDetail renders missing brochure copy as empty', async ({ db }) 
     category: null,
   });
 
-  const detail = await loadProductDetail(db, product.modelCode);
-
-  expect(detail?.tagline).toBe('');
-  expect(detail?.description).toBe('');
-  expect(detail?.keyFeatures).toEqual([]);
-  expect(detail?.standardAssemblies).toEqual([]);
-  expect(detail?.optionalAssemblies).toEqual([]);
-  expect(detail?.related).toEqual([]);
-  expect(detail?.brochureHref).toBeNull();
+  expect(await loadProductDetail(db, product.modelCode)).toBeNull();
 });
 
-test('loadProductDetail exposes the brochure download link only when the brochure config is complete', async ({
-  db,
-}) => {
+test('loadProductDetail returns null when the lander publish toggle is off', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Silage ${suffix} Range`);
+  const product = await insertProduct(db, range.id, {
+    name: `ST400 Strip Till ${suffix}`,
+    modelCode: `ST400-${suffix}`,
+    landerEnabled: false,
+  });
+  await insertAssembly(db, product.id, { kind: 'standard', name: 'Frame', displayOrder: 0 });
+
+  expect(await loadProductDetail(db, product.modelCode)).toBeNull();
+});
+
+test('loadProductDetail excludes not-lander-ready siblings from the related strip', async ({ db }) => {
+  const suffix = crypto.randomUUID();
+  const range = await insertRange(db, `Recharge ${suffix} Range`);
+  const product = await insertProduct(db, range.id, { name: `RC9000 ${suffix}`, modelCode: `RC9000-${suffix}` });
+  await insertAssembly(db, product.id, { kind: 'standard', name: 'Tank frame', displayOrder: 0 });
+  // A sibling with the publish toggle off must not appear in the related strip (it 404s on its own page).
+  await insertProduct(db, range.id, {
+    name: `RC3000 ${suffix}`,
+    modelCode: `RC3000-${suffix}`,
+    landerEnabled: false,
+  });
+
+  const detail = await loadProductDetail(db, product.modelCode);
+
+  expect(detail?.related).toEqual([]);
+});
+
+test('loadProductDetail exposes the brochure download link only when the brochure is ready', async ({ db }) => {
   const suffix = crypto.randomUUID();
   const range = await insertRange(db, `Crosshaul ${suffix} Range`);
+  // Brochure ready = enabled + every brochure slot present; the all-slot images also keep the lander ready so
+  // the page resolves and can carry the link.
   const product = await insertProduct(db, range.id, {
     name: `CH14 Tipping Trailer ${suffix}`,
     modelCode: `CH14-${suffix}`,
     description: 'Flagship 14-ton tipping trailer.',
     category: 'Built for high-volume haulage.',
     keyFeatures: ['Heavy-duty monocoque body'],
-    images: completeProductImages(),
+    images: allSlotImages(),
+    brochureEnabled: true,
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 
@@ -182,10 +236,11 @@ test('loadProductDetail exposes the brochure download link only when the brochur
   expect(detail?.brochureHref).toBe(`/downloads/products/${product.id}/brochure`);
 });
 
-test('loadProductDetail hides the brochure link when a required brochure field is missing', async ({ db }) => {
+test('loadProductDetail hides the brochure link when the brochure is not ready', async ({ db }) => {
   const suffix = crypto.randomUUID();
   const range = await insertRange(db, `Crosshaul ${suffix} Range`);
-  // Everything is present except the brochure images, so the completeness gate fails and the link hides.
+  // Lander-ready (gallery images + standard assembly) but the brochure is unpublished and missing its
+  // brochure-only slots, so the link hides while the page itself still renders.
   const product = await insertProduct(db, range.id, {
     name: `CH12 Tipping Trailer ${suffix}`,
     modelCode: `CH12-${suffix}`,
@@ -197,5 +252,6 @@ test('loadProductDetail hides the brochure link when a required brochure field i
 
   const detail = await loadProductDetail(db, product.modelCode);
 
+  expect(detail).not.toBeNull();
   expect(detail?.brochureHref).toBeNull();
 });

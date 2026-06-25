@@ -1,7 +1,7 @@
-import { getProduct, listProductRanges } from '@pkg/core';
+import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { evaluateProductBrochureCompleteness } from '@pkg/domain';
-import { type ProductImageSlot, UUID } from '@pkg/schema';
+import { isBrochureReady, isLanderReady } from '@pkg/domain';
+import type { ProductImageSlot } from '@pkg/schema';
 
 import { type CatalogProduct, toCatalogProduct, toRangeSlug } from './products-data.js';
 
@@ -23,8 +23,9 @@ export type ProductDetail = {
   standardAssemblies: string[];
   optionalAssemblies: string[];
   keyFeatures: string[];
-  // The brochure PDF download URL, or null when the Product's brochure config is incomplete — gating the
-  // link so the detail page never exposes a brochure that cannot produce a real PDF (issue #567).
+  // The brochure PDF download URL, or null when the Product's brochure is not ready (publish toggle off or
+  // config incomplete) — gating the link so the detail page never exposes a brochure that is unpublished or
+  // cannot produce a real PDF (issue #567).
   brochureHref: string | null;
   related: CatalogProduct[];
 };
@@ -39,35 +40,28 @@ export const HIGHLIGHT_PLACEHOLDERS: ProductHighlight[] = [
 
 const DETAIL_IMAGE_SLOTS = ['primary', 'secondary1', 'secondary2'] as const satisfies readonly ProductImageSlot[];
 
-// Loads the Product detail view model by model code, or null when none matches (the route turns null into
-// a 404). A plain `findMany` column read of every Product (the marketing catalog is small) resolves the
-// model code to an id and builds the same-Range "related" strip; the relational `where` form is avoided
-// because it clashes with the package's drizzle-orm type resolution. Pricing and bays are not read.
+// Loads the Product detail view model by model code, or null when none matches OR the Product is not
+// lander-ready (the route turns null into a 404 — an unready Product is invisible publicly). Reads every
+// fully-mapped Product once (the marketing catalog is small) so the readiness gate, this Product's fields,
+// and the same-Range "related" strip all share one pass. Pricing and bays are not surfaced.
 export async function loadProductDetail(db: Db, modelCode: string): Promise<ProductDetail | null> {
-  const rows = await db.query.products.findMany({
-    columns: { id: true, name: true, modelCode: true, description: true, rangeId: true },
-  });
+  const [{ ranges }, allProducts] = await Promise.all([listProductRanges({ db }), listAllProducts({ db })]);
 
-  const product = rows.find((row) => row.modelCode === modelCode);
-  if (!product) {
+  const fullProduct = allProducts.find((candidate) => candidate.modelCode === modelCode);
+  if (!fullProduct || !isLanderReady(fullProduct)) {
     return null;
   }
 
-  // getProduct (typed @pkg/core service) is the canonical source for this Product's own fields: it carries
-  // the description, brochure config, and kind-ordered assemblies, and backs the completeness gate.
-  const [{ ranges }, fullProduct] = await Promise.all([
-    listProductRanges({ db }),
-    getProduct({ db, id: UUID.parse(product.id) }),
-  ]);
-
-  const brochureComplete = evaluateProductBrochureCompleteness(fullProduct).complete;
-
-  const range = ranges.find((candidate) => candidate.id === product.rangeId);
+  const range = ranges.find((candidate) => candidate.id === fullProduct.rangeId);
   const rangeName = range?.name ?? '';
 
-  // Other Products in the same Range, sorted by name like the catalog so the related strip is deterministic.
-  const related = rows
-    .filter((row) => row.rangeId === product.rangeId && row.id !== product.id)
+  // Other lander-ready Products in the same Range, sorted by name like the catalog so the related strip is
+  // deterministic. Unready siblings are excluded so the strip never links to a 404.
+  const related = allProducts
+    .filter(
+      (candidate) =>
+        candidate.rangeId === fullProduct.rangeId && candidate.id !== fullProduct.id && isLanderReady(candidate),
+    )
     .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.id.localeCompare(b.id))
     .map(toCatalogProduct);
 
@@ -90,7 +84,7 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
     standardAssemblies: fullProduct.assemblies.filter((a) => a.kind === 'standard').map((a) => a.name),
     optionalAssemblies: fullProduct.assemblies.filter((a) => a.kind === 'optional').map((a) => a.name),
     keyFeatures: fullProduct.keyFeatures,
-    brochureHref: brochureComplete ? `/downloads/products/${fullProduct.id}/brochure` : null,
+    brochureHref: isBrochureReady(fullProduct) ? `/downloads/products/${fullProduct.id}/brochure` : null,
     related,
   };
 }

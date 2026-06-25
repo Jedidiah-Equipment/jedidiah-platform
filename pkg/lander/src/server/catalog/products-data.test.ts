@@ -1,10 +1,21 @@
-import { productRanges, products } from '@pkg/db';
+import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
 
 import { test } from '../../test/tester.js';
 import { loadProductsCatalog, toRangeSlug } from './products-data.js';
 
-async function insertRange(db: Parameters<typeof loadProductsCatalog>[0], name: string, description: string | null) {
+type Db = Parameters<typeof loadProductsCatalog>[0];
+
+function imageRef(slot: string) {
+  return {
+    byteSize: 1024,
+    contentType: 'image/png',
+    storageKey: `products/${slot}-${crypto.randomUUID()}.png`,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+async function insertRange(db: Db, name: string, description: string | null) {
   const existing = await db.select({ id: productRanges.id }).from(productRanges);
   const [range] = await db
     .insert(productRanges)
@@ -15,16 +26,32 @@ async function insertRange(db: Parameters<typeof loadProductsCatalog>[0], name: 
   return range;
 }
 
+// Inserts a fully lander-ready Product (publish toggle on, gallery images, category, key feature, description,
+// and one standard assembly) so it surfaces in the catalog. Tests override values to make it not ready.
 async function insertProduct(
-  db: Parameters<typeof loadProductsCatalog>[0],
+  db: Db,
   rangeId: string,
-  values: { name: string; modelCode: string; description?: string | null },
+  values: { name: string; modelCode: string; description?: string | null; landerEnabled?: boolean },
 ) {
   const [product] = await db
     .insert(products)
-    .values({ basePrice: 1000, buildTimeDays: 5, rangeId, ...values })
+    .values({
+      basePrice: 1000,
+      buildTimeDays: 5,
+      rangeId,
+      landerEnabled: true,
+      category: 'Default category',
+      keyFeatures: ['Default feature'],
+      description: 'Default description.',
+      images: { primary: imageRef('primary'), secondary1: imageRef('secondary1'), secondary2: imageRef('secondary2') },
+      ...values,
+    })
     .returning();
   if (!product) throw new Error('product insert did not return a row');
+
+  await db
+    .insert(productAssemblies)
+    .values({ productId: product.id, kind: 'standard', name: 'Frame', displayOrder: 0 });
 
   return product;
 }
@@ -64,25 +91,36 @@ test('loadProductsCatalog groups Products under their Range with a model count',
   });
 });
 
-test('loadProductsCatalog renders a missing Product description as empty', async ({ db }) => {
+test('loadProductsCatalog omits Products that are not lander-ready', async ({ db }) => {
   const suffix = crypto.randomUUID();
   const range = await insertRange(db, `Recharge Range ${suffix}`, null);
-  const product = await insertProduct(db, range.id, {
-    name: `Recharge Tank ${suffix}`,
-    modelCode: `RC-${suffix}`,
-    description: null,
+  const ready = await insertProduct(db, range.id, { name: `Recharge Tank ${suffix}`, modelCode: `RC-${suffix}` });
+  // Same range, but with the publish toggle off it must not surface as a catalog card.
+  const hidden = await insertProduct(db, range.id, {
+    name: `Recharge Drum ${suffix}`,
+    modelCode: `RCD-${suffix}`,
+    landerEnabled: false,
   });
 
   const { groups } = await loadProductsCatalog(db);
-  const card = groups.find((group) => group.id === range.id)?.products.find((candidate) => candidate.id === product.id);
+  const group = groups.find((candidate) => candidate.id === range.id);
 
-  expect(card?.description).toBe('');
+  expect(group?.count).toBe(1);
+  expect(group?.products.map((card) => card.id)).toEqual([ready.id]);
+  expect(group?.products.some((card) => card.id === hidden.id)).toBe(false);
 });
 
-test('loadProductsCatalog omits Ranges that have no Products', async ({ db }) => {
+test('loadProductsCatalog omits Ranges whose only Products are not lander-ready', async ({ db }) => {
   const emptyRange = await insertRange(db, `Empty Range ${crypto.randomUUID()}`, 'No models yet.');
+  const unreadyRange = await insertRange(db, `Unready Range ${crypto.randomUUID()}`, 'Drafts only.');
+  await insertProduct(db, unreadyRange.id, {
+    name: `Draft ${crypto.randomUUID()}`,
+    modelCode: `DR-${crypto.randomUUID()}`,
+    landerEnabled: false,
+  });
 
   const { groups } = await loadProductsCatalog(db);
 
   expect(groups.some((group) => group.id === emptyRange.id)).toBe(false);
+  expect(groups.some((group) => group.id === unreadyRange.id)).toBe(false);
 });

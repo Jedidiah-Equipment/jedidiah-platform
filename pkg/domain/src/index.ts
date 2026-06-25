@@ -20,6 +20,7 @@ export * from './jobs/job-slot-insert-at-date.js';
 export * from './jobs/job-slot-projection.js';
 export * from './jobs/working-calendar.js';
 export * from './products/brochure-completeness.js';
+export * from './products/lander-completeness.js';
 export * from './products/product-image-policy.js';
 export * from './products/product-range-image-policy.js';
 export * from './products/product-range-logo-policy.js';

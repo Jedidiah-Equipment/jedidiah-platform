@@ -6,11 +6,13 @@ import {
   type Product,
   ProductBayDefaultWorkingDays,
   ProductBayInput,
+  ProductBrochureEnabled,
   ProductBuildTimeDays,
   ProductCategory,
   ProductCreateInput,
   ProductDescription,
   ProductKeyFeatures,
+  ProductLanderEnabled,
   ProductModelCode,
   ProductName,
   ProductRequiresVinNumber,
@@ -65,6 +67,8 @@ const ProductFormFields = z.object({
   name: ProductName,
   rangeId: requiredSelection(UUID, 'Select a range'),
   requiresVinNumber: ProductRequiresVinNumber,
+  brochureEnabled: ProductBrochureEnabled,
+  landerEnabled: ProductLanderEnabled,
   thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
@@ -98,6 +102,8 @@ export const emptyProductFormValues: ProductFormValues = {
   productBays: [],
   rangeId: '',
   requiresVinNumber: false,
+  brochureEnabled: false,
+  landerEnabled: false,
   thumbnailDataUrl: null,
 };
 
@@ -116,6 +122,8 @@ export function toProductFormValues(initialProduct?: Product): ProductFormValues
     productBays: toProductBayInputs(initialProduct),
     rangeId: initialProduct?.rangeId ?? '',
     requiresVinNumber: initialProduct?.requiresVinNumber ?? false,
+    brochureEnabled: initialProduct?.brochureEnabled ?? false,
+    landerEnabled: initialProduct?.landerEnabled ?? false,
     thumbnailDataUrl: initialProduct?.thumbnailDataUrl ?? null,
   };
 }

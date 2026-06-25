@@ -1,19 +1,22 @@
+import { listAllProducts } from '@pkg/core';
 import type { Db } from '@pkg/db';
+import { isLanderReady } from '@pkg/domain';
 
 import { SITE_URL } from '../../lib/seo.js';
 
 // The crawlable static pages, in nav order. Product detail URLs are appended from live data.
 export const SITEMAP_STATIC_PATHS = ['/', '/products', '/about', '/contact'] as const;
 
-// Lists every site-relative path the sitemap should enumerate: the static pages plus one entry per Product
-// detail URL, keyed by model code like the route (`/products/:modelCode`). Reads only the model code — the
-// marketing catalog is small and this is the unauthenticated surface — and sorts deterministically so the
-// generated XML is stable across requests.
+// Lists every site-relative path the sitemap should enumerate: the static pages plus one entry per
+// lander-ready Product detail URL, keyed by model code like the route (`/products/:modelCode`). Only
+// lander-ready Products are listed — an unready Product's detail page 404s, so listing it would point
+// crawlers at a dead URL. Sorted deterministically so the generated XML is stable across requests.
 export async function listSitemapPaths(db: Db): Promise<string[]> {
-  const rows = await db.query.products.findMany({ columns: { modelCode: true } });
+  const products = await listAllProducts({ db });
 
-  const productPaths = rows
-    .map((row) => row.modelCode)
+  const productPaths = products
+    .filter(isLanderReady)
+    .map((product) => product.modelCode)
     .sort((a, b) => a.localeCompare(b))
     .map((modelCode) => `/products/${encodeURIComponent(modelCode)}`);
 

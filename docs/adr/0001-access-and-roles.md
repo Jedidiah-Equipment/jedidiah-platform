@@ -4,9 +4,10 @@ App Role is the authorization source. A User has one App Role, and permissions d
 
 Server and API checks are the security boundary. Browser access checks improve navigation and affordances, but every mutation and protected read must still be enforced by the server/API layer.
 
-The current role shape is:
+Each role declares its full permission set explicitly; there is no role inheritance. The current role shape is:
 
-- `admin`: full application access, including Job creation, Bay scheduling, org calendar updates, Bay administration, and Supplier management.
+- `super-admin`: every `admin` permission plus exclusive `feedback:read` and `feedback:update`. The only role that can read or manage Feedback (see ADR 0008).
+- `admin`: full operational access, including Job creation, Bay scheduling, org calendar updates, Bay administration, and Supplier management. "Full access" no longer means literally every permission — Feedback is deliberately reserved for `super-admin`.
 - `procurement-manager`: Customers, Products, Parts, Suppliers, and Job reads, with no Bay scheduling mutation.
 - `job-viewer`: Job and Bay schedule reads only.
 - `sales`: Quote create/read/update only.

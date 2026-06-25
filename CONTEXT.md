@@ -60,7 +60,8 @@ Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from
 
 App Role owns authorization. Department Membership is descriptive only and must not be used to scope permissions.
 
-- **admin**: full access; owns Bay scheduling, calendar updates, Job creation, admin Bay configuration, and Suppliers.
+- **super-admin**: everything admin can do, plus the exclusive ability to review Feedback (read, set Internal Notes, change Status). The only role that can see Feedback — admins cannot.
+- **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation, admin Bay configuration, and Suppliers. Cannot see Feedback.
 - **procurement-manager**: Customers, Products, Parts, Suppliers, and Job reads; no scheduling mutation.
 - **job-viewer**: Job and Bay schedule reads only.
 - **sales**: Quote create/read/update.
@@ -68,9 +69,21 @@ App Role owns authorization. Department Membership is descriptive only and must 
 
 Server/API checks are the security boundary. Browser access checks are UX only.
 
+## Feedback
+
+**Feedback** is an internal report a signed-in user submits about one subject — currently a Quote or a Job. It always has a submitter (the author) and exactly one subject, attached polymorphically the way a Document is (`subjectType ∈ {quote, job}`). Avoid Complaint, Comment, Review, Ticket, or Issue for the domain object. Feedback is fire-and-forget for the submitter: once submitted, only super-admins can read it — there is no submitter-facing read path. Submission is gated by subject read (`quote:read` / `job:read`); there is no `feedback:create` permission.
+
+**Feedback Kind** is exactly one of `general`, `corrective-feedback-department`, or `corrective-feedback-user`. It selects which targets the Feedback carries.
+
+**Corrective Feedback** is Feedback that attributes a problem to one or more **Departments** (`corrective-feedback-department`) or one or more **Users** (`corrective-feedback-user`). Both targets are multi-select. Avoid Blame. Department targets reference the fixed Department enum; User targets reference Users.
+
+**Feedback Status** is the review lifecycle: `open` (initial), `resolved` (acted on), or `closed` (dismissed). A super-admin moves freely between all three, including reopening. There is an open-Feedback nav indicator (a warning dot on the Feedback menu item) shown when any Feedback is `open`.
+
+**Internal Notes** is a single mutable free-text field on a Feedback that only super-admins can read or edit.
+
 ## Cross-Cutting
 
-**Audit Event** records boundary-visible changes for Customers, Jobs, Job Bays, Products, Quotes, Suppliers, and Users. Slot create/resize/remove are not audited; Slot reorders are.
+**Audit Event** records boundary-visible changes for Customers, Jobs, Job Bays, Products, Quotes, Suppliers, and Users. Slot create/resize/remove are not audited; Slot reorders are. Feedback is not audited.
 
 **Dashboard** is the single signed-in landing surface. Widgets are permission-gated registry entries, and Dashboard Metrics are computed live rather than stored in reporting tables.
 

@@ -37,6 +37,8 @@ const feedbackKindLabels = {
   'corrective-feedback-user': 'Corrective user',
 } as const satisfies Record<FeedbackKind, string>;
 
+const detailHeaderBadgeClassName = 'h-7 w-40 px-3 text-sm';
+
 export const FeedbackPage: React.FC = () => {
   const trpc = useTRPC();
   const [selectedFeedbackId, setSelectedFeedbackId] = useState<UUID | null>(null);
@@ -267,9 +269,13 @@ function FeedbackDetailPanel({
   return (
     <Card className="min-w-0">
       <CardHeader className="gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <FeedbackStatusBadge status={detail.status} />
-          <Badge variant="outline">{feedbackKindLabels[detail.kind]}</Badge>
+        <div className="flex items-center justify-between gap-3">
+          <Badge className={detailHeaderBadgeClassName} variant={detail.status === 'open' ? 'default' : 'outline'}>
+            {feedbackStatusLabels[detail.status]}
+          </Badge>
+          <Badge className={detailHeaderBadgeClassName} variant="outline">
+            {feedbackKindLabels[detail.kind]}
+          </Badge>
         </div>
         <CardTitle className="text-lg">
           <SubjectLink item={detail} />

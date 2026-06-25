@@ -71,7 +71,7 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 ## Feedback
 
-**Feedback** is an internal report a signed-in user submits about one subject — currently a Quote or a Job. It always has a submitter (the author) and exactly one subject, attached polymorphically the way a Document is (`subjectType ∈ {quote, job}`). Avoid Complaint, Comment, Review, Ticket, or Issue for the domain object. Feedback is fire-and-forget for the submitter: once submitted, only super-admins can read it — there is no submitter-facing read path. Submission is gated by subject read (`quote:read` / `job:read`); there is no `feedback:create` permission.
+**Feedback** is an internal report a signed-in user submits about one subject — currently a Quote or a Job. It always has a submitter (the author) and exactly one subject, attached polymorphically the way a Document is (`subjectType ∈ {quote, job}`). Avoid Complaint, Comment, Review, Ticket, or Issue for the domain object. Feedback is fire-and-forget for the submitter: once submitted, only super-admins can read it — there is no submitter-facing read path. Submission requires only an authenticated session: there is no `feedback:create` permission and no subject-read gate, so any signed-in user can submit feedback about any Quote or Job.
 
 **Feedback Kind** is exactly one of `general`, `corrective-feedback-department`, or `corrective-feedback-user`. It selects which targets the Feedback carries.
 

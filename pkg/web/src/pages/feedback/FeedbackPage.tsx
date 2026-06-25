@@ -38,7 +38,7 @@ const feedbackKindLabels = {
   'corrective-feedback-user': 'Corrective user',
 } as const satisfies Record<FeedbackKind, string>;
 
-const detailHeaderBadgeClassName = 'h-7 w-40 px-3 text-sm';
+const detailHeaderBadgeClassName = 'h-6 w-36 px-2 text-xs';
 
 const feedbackStatusBadgeClassNames = {
   closed: 'border-border bg-muted text-muted-foreground',

@@ -1,6 +1,7 @@
-import { type FeedbackSubmitInput, FeedbackText } from '@pkg/schema';
+import { departmentLabels } from '@pkg/domain';
+import { AuthId, DEPARTMENTS, Department, FeedbackKind, type FeedbackSubmitInput, FeedbackText } from '@pkg/schema';
 import { IconMessagePlus } from '@tabler/icons-react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -13,14 +14,40 @@ import { useTRPC } from '@/lib/trpc.js';
 
 type FeedbackSubject = FeedbackSubmitInput['subject'];
 
-const FeedbackFormValues = z.object({
-  text: FeedbackText,
-});
+const FeedbackFormValues = z
+  .object({
+    kind: FeedbackKind,
+    text: FeedbackText,
+    departments: z.array(Department),
+    userIds: z.array(AuthId),
+  })
+  .superRefine((value, ctx) => {
+    if (value.kind === 'corrective-feedback-department' && value.departments.length === 0) {
+      ctx.addIssue({ code: 'custom', message: 'Select at least one department', path: ['departments'] });
+    }
+    if (value.kind === 'corrective-feedback-user' && value.userIds.length === 0) {
+      ctx.addIssue({ code: 'custom', message: 'Select at least one user', path: ['userIds'] });
+    }
+  });
 type FeedbackFormValues = z.infer<typeof FeedbackFormValues>;
 
 const FEEDBACK_DEFAULT_VALUES: FeedbackFormValues = {
+  kind: 'general',
   text: '',
+  departments: [],
+  userIds: [],
 };
+
+const FEEDBACK_KIND_OPTIONS: ReadonlyArray<{ label: string; value: FeedbackKind }> = [
+  { label: 'General feedback', value: 'general' },
+  { label: 'Corrective — Departments', value: 'corrective-feedback-department' },
+  { label: 'Corrective — Users', value: 'corrective-feedback-user' },
+];
+
+const DEPARTMENT_OPTIONS = DEPARTMENTS.map((department) => ({
+  label: departmentLabels[department],
+  value: department,
+}));
 
 type GiveFeedbackButtonProps = {
   className?: string;
@@ -41,6 +68,9 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
   const [open, setOpen] = useState(false);
   const showMutationError = useApiMutationErrorToast();
 
+  const targetUsersQuery = useQuery(trpc.feedback.listTargetUsers.queryOptions(undefined, { enabled: open }));
+  const userOptions = (targetUsersQuery.data?.users ?? []).map((user) => ({ label: user.name, value: user.id }));
+
   const submitFeedbackMutation = useMutation(
     trpc.feedback.submit.mutationOptions({
       onError: (error) => {
@@ -59,7 +89,7 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
         defaultValues={FEEDBACK_DEFAULT_VALUES}
         description={`Share feedback about ${subjectLabel}. Once submitted it goes to the review queue.`}
         key={open ? 'open' : 'closed'}
-        onCreate={(values) => submitFeedbackMutation.mutateAsync({ kind: 'general', subject, text: values.text })}
+        onCreate={(values) => submitFeedbackMutation.mutateAsync(toSubmitInput(values, subject))}
         onCreated={() => {
           setOpen(false);
           toast.success('Feedback submitted');
@@ -67,15 +97,56 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
         onOpenChange={setOpen}
         open={open}
         submitLabel="Submit feedback"
-        title="Give feedback"
+        title="Send feedback"
         validator={FeedbackFormValues}
       >
         {(form) => (
-          <form.AppField name="text">
-            {(field) => <field.TextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} />}
-          </form.AppField>
+          <>
+            <form.AppField name="kind">
+              {(field) => <field.SelectField label="Kind" options={FEEDBACK_KIND_OPTIONS} />}
+            </form.AppField>
+            <form.Subscribe selector={(state) => state.values.kind}>
+              {(kind) =>
+                kind === 'corrective-feedback-department' ? (
+                  <form.AppField name="departments">
+                    {(field) => (
+                      <field.MultiComboboxField
+                        label="Departments"
+                        options={DEPARTMENT_OPTIONS}
+                        placeholder="Select departments…"
+                      />
+                    )}
+                  </form.AppField>
+                ) : kind === 'corrective-feedback-user' ? (
+                  <form.AppField name="userIds">
+                    {(field) => (
+                      <field.MultiComboboxField
+                        emptyMessage={targetUsersQuery.isPending ? 'Loading users…' : 'No users available.'}
+                        label="Users"
+                        options={userOptions}
+                        placeholder="Select users…"
+                      />
+                    )}
+                  </form.AppField>
+                ) : null
+              }
+            </form.Subscribe>
+            <form.AppField name="text">
+              {(field) => <field.TextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} />}
+            </form.AppField>
+          </>
         )}
       </CreateEntityDialog>
     </>
   );
 };
+
+function toSubmitInput(values: FeedbackFormValues, subject: FeedbackSubject): FeedbackSubmitInput {
+  if (values.kind === 'corrective-feedback-department') {
+    return { kind: values.kind, subject, text: values.text, departments: values.departments };
+  }
+  if (values.kind === 'corrective-feedback-user') {
+    return { kind: values.kind, subject, text: values.text, userIds: values.userIds };
+  }
+  return { kind: 'general', subject, text: values.text };
+}

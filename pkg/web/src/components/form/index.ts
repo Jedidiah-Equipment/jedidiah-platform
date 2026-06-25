@@ -5,6 +5,11 @@ export { CreatableComboboxField, type CreatableComboboxFieldProps } from './fiel
 export { CurrencyField, type CurrencyFieldProps } from './fields/CurrencyField.js';
 export { DatePickerField, type DatePickerFieldProps } from './fields/DatePickerField.js';
 export { ImageField, type ImageFieldProps } from './fields/ImageField.js';
+export {
+  MultiComboboxField,
+  type MultiComboboxFieldOption,
+  type MultiComboboxFieldProps,
+} from './fields/MultiComboboxField.js';
 export { NumberField, type NumberFieldProps } from './fields/NumberField.js';
 export { PasswordField, type PasswordFieldProps } from './fields/PasswordField.js';
 export { PhoneNumberField, type PhoneNumberFieldProps } from './fields/PhoneNumberField.js';

@@ -1,4 +1,4 @@
-import { type FeedbackCoreError, isFeedbackCoreError, submitFeedback } from '@pkg/core';
+import { type FeedbackCoreError, isFeedbackCoreError, listFeedbackTargetUsers, submitFeedback } from '@pkg/core';
 import { FeedbackSubmitInput } from '@pkg/schema';
 
 import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
@@ -11,6 +11,8 @@ export const feedbackRouter = router({
     .mutation(({ ctx, input }) =>
       mapFeedbackErrors(() => submitFeedback({ db: ctx.db, input, submitterId: ctx.session.user.id })),
     ),
+  // Minimal user list any submitter may read to populate the corrective-user target picker.
+  listTargetUsers: protectedProcedure.query(({ ctx }) => listFeedbackTargetUsers({ db: ctx.db })),
 });
 
 async function mapFeedbackErrors<T>(action: () => Promise<T>): Promise<T> {

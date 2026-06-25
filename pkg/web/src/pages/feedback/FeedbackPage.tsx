@@ -293,10 +293,10 @@ function FeedbackDetailPanel({
         <DetailField label="Submitted">
           <DateDisplay date={detail.createdAt} format="medium" />
         </DetailField>
+        <FeedbackTargets detail={detail} />
         <DetailField label="Feedback">
           <p className="whitespace-pre-wrap rounded-md border bg-muted/20 p-3 text-sm leading-6">{detail.text}</p>
         </DetailField>
-        <FeedbackTargets detail={detail} />
       </CardContent>
     </Card>
   );

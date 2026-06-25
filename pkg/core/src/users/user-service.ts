@@ -237,17 +237,20 @@ export async function listUserDepartments({
 export type UserRoleAssignmentPolicyResult =
   | { allowed: true }
   | { allowed: false; reason: 'last-admin' }
-  | { allowed: false; bayNames: string[]; reason: 'open-bay-operator-assignments' };
+  | { allowed: false; bayNames: string[]; reason: 'open-bay-operator-assignments' }
+  | { allowed: false; reason: 'reserved-super-admin' };
 
 // This policy check runs in its own transaction, but the role write it guards happens later inside
 // better-auth, outside any lock taken here. A concurrent operator assignment can land between this
 // check and that write — an accepted race: the window is tiny, the flow is admin-only, and the
 // one-operator-per-bay invariant itself is enforced by the database.
 export async function canAssignUserRole({
+  actorRole,
   db,
   role,
   userId,
 }: {
+  actorRole: AppRole;
   db: Db;
   role: AppRole;
   userId: AuthId;
@@ -270,6 +273,10 @@ export async function canAssignUserRole({
 
     if (currentRole === role) {
       return { allowed: true };
+    }
+
+    if ((role === 'super-admin' || currentRole === 'super-admin') && actorRole !== 'super-admin') {
+      return { allowed: false, reason: 'reserved-super-admin' };
     }
 
     if (currentRole === 'bay-operator') {

@@ -18,13 +18,19 @@ const LAST_ADMIN_ERROR = {
 
 const OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE = 'USER_HAS_OPEN_BAY_OPERATOR_ASSIGNMENTS';
 
+const RESERVED_SUPER_ADMIN_ERROR = {
+  code: 'ONLY_SUPER_ADMIN_CAN_ASSIGN_SUPER_ADMIN',
+  message: 'Only a super admin can assign or remove the super admin role.',
+} as const;
+
 export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
   return {
     id: 'admin-user-safety',
     hooks: {
       before: [
         {
-          matcher: ({ path }) => path === '/admin/set-role' || path === '/admin/update-user',
+          matcher: ({ path }) =>
+            path === '/admin/create-user' || path === '/admin/set-role' || path === '/admin/update-user',
           handler: createAuthMiddleware(async (ctx) => {
             const roleChange = getRoleChangeInput(ctx.path, ctx.body);
 
@@ -41,11 +47,19 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
             const currentRole = parseBetterAuthRole(session.user.role);
             const nextRole = AppRole.parse(roleChange.role);
 
-            if (session.user.id === roleChange.userId && currentRole !== nextRole) {
+            if (roleChange.userId && session.user.id === roleChange.userId && currentRole !== nextRole) {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
+            if (!roleChange.userId) {
+              if (nextRole === 'super-admin' && currentRole !== 'super-admin') {
+                throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
+              }
+              return;
+            }
+
             const roleAssignmentPolicy = await canAssignUserRole({
+              actorRole: currentRole,
               db: database,
               role: nextRole,
               userId: roleChange.userId,
@@ -54,6 +68,10 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
             if (!roleAssignmentPolicy.allowed) {
               if (roleAssignmentPolicy.reason === 'last-admin') {
                 throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
+              }
+
+              if (roleAssignmentPolicy.reason === 'reserved-super-admin') {
+                throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
               }
 
               throw APIError.from('FORBIDDEN', {
@@ -70,7 +88,7 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
 
 type RoleChangeInput = {
   role: string;
-  userId: string;
+  userId?: string;
 };
 
 function getRoleChangeInput(path: string | undefined, body: unknown): RoleChangeInput | null {
@@ -82,6 +100,12 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
     return {
       role: body.role,
       userId: body.userId,
+    };
+  }
+
+  if (path === '/admin/create-user' && typeof body.role === 'string') {
+    return {
+      role: body.role,
     };
   }
 

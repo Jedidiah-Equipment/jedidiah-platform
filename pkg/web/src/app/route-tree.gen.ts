@@ -22,6 +22,7 @@ import { Route as AuthedQuotesRouteImport } from './../routes/_authed.quotes'
 import { Route as AuthedProductsRouteImport } from './../routes/_authed.products'
 import { Route as AuthedProductRangesRouteImport } from './../routes/_authed.product-ranges'
 import { Route as AuthedJobsRouteImport } from './../routes/_authed.jobs'
+import { Route as AuthedFeedbackRouteImport } from './../routes/_authed.feedback'
 import { Route as AuthedDashboardRouteImport } from './../routes/_authed.dashboard'
 import { Route as AuthedCustomersRouteImport } from './../routes/_authed.customers'
 import { Route as AuthedBaysRouteImport } from './../routes/_authed.bays'
@@ -104,6 +105,11 @@ const AuthedProductRangesRoute = AuthedProductRangesRouteImport.update({
 const AuthedJobsRoute = AuthedJobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedFeedbackRoute = AuthedFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/bays': typeof AuthedBaysRoute
   '/customers': typeof AuthedCustomersRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
+  '/feedback': typeof AuthedFeedbackRoute
   '/jobs': typeof AuthedJobsRouteWithChildren
   '/product-ranges': typeof AuthedProductRangesRouteWithChildren
   '/products': typeof AuthedProductsRouteWithChildren
@@ -248,6 +255,7 @@ export interface FileRoutesByTo {
   '/audit': typeof AuthedAuditRoute
   '/bays': typeof AuthedBaysRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/feedback': typeof AuthedFeedbackRoute
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
@@ -278,6 +286,7 @@ export interface FileRoutesById {
   '/_authed/bays': typeof AuthedBaysRoute
   '/_authed/customers': typeof AuthedCustomersRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/feedback': typeof AuthedFeedbackRoute
   '/_authed/jobs': typeof AuthedJobsRouteWithChildren
   '/_authed/product-ranges': typeof AuthedProductRangesRouteWithChildren
   '/_authed/products': typeof AuthedProductsRouteWithChildren
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | '/bays'
     | '/customers'
     | '/dashboard'
+    | '/feedback'
     | '/jobs'
     | '/product-ranges'
     | '/products'
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/bays'
     | '/dashboard'
+    | '/feedback'
     | '/users'
     | '/jobs/$id'
     | '/jobs/calendar'
@@ -374,6 +385,7 @@ export interface FileRouteTypes {
     | '/_authed/bays'
     | '/_authed/customers'
     | '/_authed/dashboard'
+    | '/_authed/feedback'
     | '/_authed/jobs'
     | '/_authed/product-ranges'
     | '/_authed/products'
@@ -497,6 +509,13 @@ declare module '@tanstack/react-router' {
       path: '/jobs'
       fullPath: '/jobs'
       preLoaderRoute: typeof AuthedJobsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/feedback': {
+      id: '/_authed/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof AuthedFeedbackRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/dashboard': {
@@ -728,6 +747,7 @@ interface AuthedRouteChildren {
   AuthedBaysRoute: typeof AuthedBaysRoute
   AuthedCustomersRoute: typeof AuthedCustomersRouteWithChildren
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedFeedbackRoute: typeof AuthedFeedbackRoute
   AuthedJobsRoute: typeof AuthedJobsRouteWithChildren
   AuthedProductRangesRoute: typeof AuthedProductRangesRouteWithChildren
   AuthedProductsRoute: typeof AuthedProductsRouteWithChildren
@@ -742,6 +762,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedBaysRoute: AuthedBaysRoute,
   AuthedCustomersRoute: AuthedCustomersRouteWithChildren,
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedFeedbackRoute: AuthedFeedbackRoute,
   AuthedJobsRoute: AuthedJobsRouteWithChildren,
   AuthedProductRangesRoute: AuthedProductRangesRouteWithChildren,
   AuthedProductsRoute: AuthedProductsRouteWithChildren,

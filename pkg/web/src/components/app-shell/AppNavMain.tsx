@@ -10,6 +10,7 @@ import {
   IconGauge,
   IconHeartHandshake,
   IconLayoutKanban,
+  IconMessageReport,
   IconPackage,
   IconRobot,
   IconUsers,
@@ -137,6 +138,12 @@ const navSections = [
         permission: 'product_range:read',
         link: linkOptions({ to: '/product-ranges' }),
         icon: IconCategory2,
+      },
+      {
+        title: 'Feedback',
+        permission: 'feedback:read',
+        link: linkOptions({ to: '/feedback' }),
+        icon: IconMessageReport,
       },
       {
         title: 'Audit',

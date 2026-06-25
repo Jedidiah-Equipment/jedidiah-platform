@@ -13,6 +13,8 @@ Each role declares its full permission set explicitly; there is no role inherita
 - `sales`: Quote create/read/update only.
 - `bay-operator`: no app permissions.
 
+Only a `super-admin` may assign or remove the `super-admin` role. Although `admin` holds `user:set-role` (and `user:create`/`user:set-password`) and can manage every other role, it must not be able to grant `super-admin` — otherwise an admin could create or promote an account to read Feedback, defeating the rule that admins cannot see Feedback. Role-assignment enforcement therefore treats `super-admin` as a reserved target: granting it, and removing it from another user, requires the actor to already be a `super-admin`.
+
 Roles with no permissions cannot sign in. There is no separate `canLogin` flag on a role or user; granting a role any app permission makes its accounts sign-in eligible unless a new explicit decision changes that.
 
 Bay Operators are attached to Bays through Operator Assignments, not through Department Membership. Changing a user's role while they are attached to Bays must preserve the invariant that only Bay Operators are assigned as Bay Operators.

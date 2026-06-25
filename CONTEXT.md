@@ -60,7 +60,7 @@ Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from
 
 App Role owns authorization. Department Membership is descriptive only and must not be used to scope permissions.
 
-- **super-admin**: everything admin can do, plus the exclusive ability to review Feedback (read, set Internal Notes, change Status). The only role that can see Feedback — admins cannot.
+- **super-admin**: everything admin can do, plus the exclusive ability to review Feedback (read, set Internal Notes, change Status). The only role that can see Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Feedback).
 - **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation, admin Bay configuration, and Suppliers. Cannot see Feedback.
 - **procurement-manager**: Customers, Products, Parts, Suppliers, and Job reads; no scheduling mutation.
 - **job-viewer**: Job and Bay schedule reads only.

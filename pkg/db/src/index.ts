@@ -1,4 +1,4 @@
-export { sql } from 'drizzle-orm';
+export { eq, sql } from 'drizzle-orm';
 export { closeDatabaseConnection, db, queryClient } from './client.js';
 export { createDatabaseClient, type DatabaseClient, type Db } from './database-client.js';
 export { getDatabaseConfig, getDatabaseUrl } from './env.js';

@@ -151,6 +151,24 @@ describe('admin user safety policy', () => {
     ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
   });
 
+  test('rejects creating a super-admin from an admin account through data role', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+
+    await expect(
+      context.auth.api.createUser({
+        body: {
+          data: {
+            role: 'super-admin',
+          },
+          email: 'created-super-admin-data-role@example.com',
+          name: 'Created Super Admin Data Role',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+        },
+        headers,
+      }),
+    ).rejects.toThrow('Only a super admin can assign or remove the super admin role.');
+  });
+
   test('allows a super-admin to assign and remove super-admin', async ({ context }) => {
     const superAdmin = mockSession('super-admin');
     const headers = await createSignedInAdmin(context, superAdmin);

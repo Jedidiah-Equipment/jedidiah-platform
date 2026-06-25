@@ -103,9 +103,11 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
     };
   }
 
-  if (path === '/admin/create-user' && typeof body.role === 'string') {
+  const createUserRole = path === '/admin/create-user' ? getCreateUserRole(body) : null;
+
+  if (createUserRole) {
     return {
-      role: body.role,
+      role: createUserRole,
     };
   }
 
@@ -119,6 +121,18 @@ function getRoleChangeInput(path: string | undefined, body: unknown): RoleChange
       role: body.data.role,
       userId: body.userId,
     };
+  }
+
+  return null;
+}
+
+function getCreateUserRole(body: Record<string, unknown>): string | null {
+  if (typeof body.role === 'string') {
+    return body.role;
+  }
+
+  if (isRecord(body.data) && typeof body.data.role === 'string') {
+    return body.data.role;
   }
 
   return null;

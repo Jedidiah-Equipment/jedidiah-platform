@@ -6,10 +6,18 @@ import type {
   FeedbackListInput,
   FeedbackListResult,
   FeedbackSubmitInput,
+  FeedbackTargetUser as FeedbackTargetUserType,
+} from '@pkg/schema';
+import {
+  Feedback,
+  FeedbackDetail,
+  FeedbackListItem,
+  FeedbackSubmitter,
   FeedbackTargetUser,
   FeedbackTargetUserList,
+  JobCode,
+  QuoteCode,
 } from '@pkg/schema';
-import { Feedback, FeedbackDetail, FeedbackListItem, JobCode, QuoteCode } from '@pkg/schema';
 import { asc, desc, eq } from 'drizzle-orm';
 
 import { FeedbackSubjectNotFoundError } from './feedback-errors.js';
@@ -19,8 +27,8 @@ type FeedbackReadRow = FeedbackRow & {
   departments: { department: Department }[];
   job: { code: number; id: string; productSerialNumber: string } | null;
   quote: { code: number; customer: { companyName: string }; id: string } | null;
-  submitter: { email: string; id: string; name: string };
-  users: { user: { id: string; name: string } | null; userId: string }[];
+  submitter: { email: string; id: string; image?: string | null; name: string };
+  users: { user: { id: string; image?: string | null; name: string } | null; userId: string }[];
 };
 
 function mapFeedback(row: FeedbackRow, targets: { departments: string[]; userIds: string[] }): Feedback {
@@ -131,9 +139,12 @@ export async function getFeedback({
 // Any signed-in submitter may read this minimal user list to choose corrective-user targets; it is
 // intentionally lighter than the admin-only `user:list` payload.
 export async function listFeedbackTargetUsers({ db }: { db: Db }): Promise<FeedbackTargetUserList> {
-  const rows = await db.select({ id: user.id, name: user.name }).from(user).orderBy(asc(user.name));
+  const rows = await db
+    .select({ id: user.id, name: user.name, thumbnailDataUrl: user.image })
+    .from(user)
+    .orderBy(asc(user.name));
 
-  return { users: rows };
+  return FeedbackTargetUserList.parse({ users: rows });
 }
 
 const feedbackReadRelations = {
@@ -167,6 +178,7 @@ const feedbackReadRelations = {
     columns: {
       email: true,
       id: true,
+      image: true,
       name: true,
     },
   },
@@ -179,6 +191,7 @@ const feedbackReadRelations = {
       user: {
         columns: {
           id: true,
+          image: true,
           name: true,
         },
       },
@@ -193,7 +206,7 @@ function mapFeedbackListItem(row: FeedbackReadRow): FeedbackListItem {
     kind: row.kind,
     status: row.status,
     subject: mapFeedbackSubject(row),
-    submitter: row.submitter,
+    submitter: mapFeedbackSubmitter(row.submitter),
   });
 }
 
@@ -202,7 +215,26 @@ function mapFeedbackDetail(row: FeedbackReadRow): FeedbackDetail {
     ...mapFeedbackListItem(row),
     departments: row.departments.map((target) => target.department),
     text: row.text,
-    users: row.users.flatMap((target): FeedbackTargetUser[] => (target.user ? [target.user] : [])),
+    users: row.users.flatMap((target): FeedbackTargetUserType[] =>
+      target.user ? [mapFeedbackTargetUser(target.user)] : [],
+    ),
+  });
+}
+
+function mapFeedbackSubmitter(row: FeedbackReadRow['submitter']): FeedbackSubmitter {
+  return FeedbackSubmitter.parse({
+    email: row.email,
+    id: row.id,
+    name: row.name,
+    thumbnailDataUrl: row.image ?? null,
+  });
+}
+
+function mapFeedbackTargetUser(row: NonNullable<FeedbackReadRow['users'][number]['user']>): FeedbackTargetUserType {
+  return FeedbackTargetUser.parse({
+    id: row.id,
+    name: row.name,
+    thumbnailDataUrl: row.image ?? null,
   });
 }
 

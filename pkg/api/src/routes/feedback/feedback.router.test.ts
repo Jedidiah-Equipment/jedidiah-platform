@@ -16,6 +16,9 @@ import { createTester } from '@/test/create-tester.js';
 import { createProductRangeFixture } from '@/test/product-range-fixtures.js';
 import { mockSession } from '@/test/test-utils.js';
 
+const ACTOR_THUMBNAIL_DATA_URL = 'data:image/webp;base64,YWN0b3I=';
+const TARGET_THUMBNAIL_DATA_URL = 'data:image/webp;base64,dGFyZ2V0';
+
 const test = createTester(async ({ db }) => {
   await createActorUser(db);
   const product = await createProduct(db);
@@ -287,9 +290,10 @@ describe('feedback review reads', () => {
         email: 'test@example.com',
         id: 'test-user-id',
         name: 'Test User',
+        thumbnailDataUrl: ACTOR_THUMBNAIL_DATA_URL,
       },
       text: 'Follow up with this user.',
-      users: [{ id: targetUser.id, name: targetUser.name }],
+      users: [{ id: targetUser.id, name: targetUser.name, thumbnailDataUrl: TARGET_THUMBNAIL_DATA_URL }],
     });
   });
 });
@@ -302,6 +306,7 @@ async function createActorUser(db: Db) {
     email: 'test@example.com',
     emailVerified: true,
     id: 'test-user-id',
+    image: ACTOR_THUMBNAIL_DATA_URL,
     name: 'Test User',
     role: 'admin',
     updatedAt: now,
@@ -318,6 +323,7 @@ async function createTargetUser(db: Db, id: string) {
       email: `${id}@example.com`,
       emailVerified: true,
       id,
+      image: TARGET_THUMBNAIL_DATA_URL,
       name: `Target ${id}`,
       role: 'sales',
       updatedAt: now,

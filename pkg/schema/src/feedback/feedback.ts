@@ -4,6 +4,7 @@ import { AuthId } from '../auth/auth-id.js';
 import { DateIso } from '../common/date.js';
 import { Department } from '../common/departments.js';
 import { requiredTrimmedText } from '../common/text.js';
+import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 
 export type FeedbackKind = z.infer<typeof FeedbackKind>;
@@ -78,6 +79,7 @@ export const FeedbackSubmitter = z.object({
   email: z.email(),
   id: AuthId,
   name: z.string().trim().min(1),
+  thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
 // Minimal user shape any signed-in submitter may read to populate the corrective-user target picker;
@@ -86,6 +88,7 @@ export type FeedbackTargetUser = z.infer<typeof FeedbackTargetUser>;
 export const FeedbackTargetUser = z.object({
   id: AuthId,
   name: z.string(),
+  thumbnailDataUrl: NullableThumbnailDataUrl,
 });
 
 export type FeedbackListItem = z.infer<typeof FeedbackListItem>;

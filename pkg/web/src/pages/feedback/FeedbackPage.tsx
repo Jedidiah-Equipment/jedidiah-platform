@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardHeader } from '@/components/ui/card.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
@@ -109,7 +110,9 @@ function FeedbackInboxList({
     () => [
       {
         accessorFn: (item) => `${item.submitter.name} ${item.submitter.email}`,
-        cell: ({ row }) => <span className="block truncate font-medium">{row.original.submitter.name}</span>,
+        cell: ({ row }) => (
+          <UserLabel name={row.original.submitter.name} thumbnailDataUrl={row.original.submitter.thumbnailDataUrl} />
+        ),
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Submitter',
@@ -285,7 +288,7 @@ function FeedbackDetailPanel({
       </CardHeader>
       <CardContent className="grid gap-5">
         <DetailField label="Submitted by">
-          <span className="font-medium">{detail.submitter.name}</span>
+          <UserLabel name={detail.submitter.name} thumbnailDataUrl={detail.submitter.thumbnailDataUrl} />
         </DetailField>
         <DetailField label="Linked to">
           <SubjectLink item={detail} />
@@ -318,7 +321,7 @@ function FeedbackTargets({ detail }: { detail: FeedbackDetail }) {
           <span key={department}>{departmentLabels[department]}</span>
         ))}
         {detail.users.map((user) => (
-          <span key={user.id}>{user.name}</span>
+          <UserLabel key={user.id} name={user.name} thumbnailDataUrl={user.thumbnailDataUrl} />
         ))}
       </div>
     </DetailField>
@@ -331,6 +334,15 @@ function DetailField({ children, label }: { children: React.ReactNode; label: st
       <span className="text-muted-foreground text-xs uppercase">{label}</span>
       <div className="flex min-w-0 flex-col gap-1">{children}</div>
     </div>
+  );
+}
+
+function UserLabel({ name, thumbnailDataUrl }: { name: string; thumbnailDataUrl: string | null }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2 font-medium">
+      <EntityThumbnail label={name} size="sm" thumbnailDataUrl={thumbnailDataUrl} />
+      <span className="truncate">{name}</span>
+    </span>
   );
 }
 

@@ -156,6 +156,25 @@ function FeedbackInboxList({
         id: 'kind',
       },
       {
+        accessorFn: (item) => feedbackTargetLabels(item).join(', '),
+        cell: ({ row }) => {
+          const labels = feedbackTargetLabels(row.original);
+
+          return labels.length > 0 ? (
+            <span className="block truncate">{labels.join(', ')}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Target',
+        id: 'target',
+        meta: {
+          cellClassName: 'max-w-48',
+        },
+      },
+      {
         accessorKey: 'status',
         cell: ({ row }) => <FeedbackStatusBadge status={row.original.status} />,
         enableColumnFilter: true,
@@ -245,7 +264,15 @@ function feedbackGlobalFilter(row: { original: FeedbackListItem }, _columnId: st
     row.original.kind,
     feedbackStatusLabels[row.original.status],
     row.original.status,
+    ...feedbackTargetLabels(row.original),
   ].some((value) => value.toLowerCase().includes(search));
+}
+
+function feedbackTargetLabels(item: FeedbackListItem): string[] {
+  return [
+    ...item.departments.map((department) => departmentLabels[department]),
+    ...item.users.map((user) => user.name),
+  ];
 }
 
 function feedbackStatusFilter(row: { original: FeedbackListItem }, _columnId: string, filterValue: unknown) {

@@ -232,23 +232,23 @@ const feedbackReadRelations = {
 function mapFeedbackListItem(row: FeedbackReadRow): FeedbackListItem {
   return FeedbackListItem.parse({
     createdAt: row.createdAt.toISOString(),
+    departments: row.departments.map((target) => target.department),
     id: row.id,
     kind: row.kind,
     status: row.status,
     subject: mapFeedbackSubject(row),
     submitter: mapFeedbackSubmitter(row.submitter),
+    users: row.users.flatMap((target): FeedbackTargetUserType[] =>
+      target.user ? [mapFeedbackTargetUser(target.user)] : [],
+    ),
   });
 }
 
 function mapFeedbackDetail(row: FeedbackReadRow): FeedbackDetail {
   return FeedbackDetail.parse({
     ...mapFeedbackListItem(row),
-    departments: row.departments.map((target) => target.department),
     internalNotes: row.internalNotes,
     text: row.text,
-    users: row.users.flatMap((target): FeedbackTargetUserType[] =>
-      target.user ? [mapFeedbackTargetUser(target.user)] : [],
-    ),
   });
 }
 

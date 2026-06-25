@@ -95,10 +95,12 @@ export type FeedbackListItem = z.infer<typeof FeedbackListItem>;
 export const FeedbackListItem = z.object({
   id: UUID,
   createdAt: DateIso,
+  departments: z.array(Department),
   kind: FeedbackKind,
   status: FeedbackStatus,
   subject: FeedbackSubjectRef,
   submitter: FeedbackSubmitter,
+  users: z.array(FeedbackTargetUser),
 });
 
 export type FeedbackListResult = z.infer<typeof FeedbackListResult>;
@@ -121,10 +123,8 @@ export const FeedbackUpdateInput = FeedbackDetailInput.extend({
 
 export type FeedbackDetail = z.infer<typeof FeedbackDetail>;
 export const FeedbackDetail = FeedbackListItem.extend({
-  departments: z.array(Department),
   internalNotes: z.string().nullable(),
   text: FeedbackText,
-  users: z.array(FeedbackTargetUser),
 });
 
 export type FeedbackSubmitResult = z.infer<typeof FeedbackSubmitResult>;

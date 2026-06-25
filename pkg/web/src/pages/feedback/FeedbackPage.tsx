@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { cn } from '@/lib/utils.js';
 import { feedbackPageDescription } from '@/utils/page-descriptions.js';
 
 const feedbackStatusLabels = {
@@ -38,6 +39,12 @@ const feedbackKindLabels = {
 } as const satisfies Record<FeedbackKind, string>;
 
 const detailHeaderBadgeClassName = 'h-7 w-40 px-3 text-sm';
+
+const feedbackStatusBadgeClassNames = {
+  closed: 'border-border bg-muted text-muted-foreground',
+  open: 'border-red-500 bg-red-500 text-white',
+  resolved: 'border-green-600 bg-green-600 text-white',
+} as const satisfies Record<FeedbackStatus, string>;
 
 export const FeedbackPage: React.FC = () => {
   const trpc = useTRPC();
@@ -265,7 +272,10 @@ function FeedbackDetailPanel({
     <Card className="min-w-0">
       <CardHeader className="gap-2">
         <div className="flex items-center justify-between gap-3">
-          <Badge className={detailHeaderBadgeClassName} variant={detail.status === 'open' ? 'default' : 'outline'}>
+          <Badge
+            className={cn(detailHeaderBadgeClassName, feedbackStatusBadgeClassNames[detail.status])}
+            variant="outline"
+          >
             {feedbackStatusLabels[detail.status]}
           </Badge>
           <Badge className={detailHeaderBadgeClassName} variant="outline">
@@ -340,5 +350,9 @@ function SubjectLink({ item }: { item: FeedbackListItem }) {
 }
 
 function FeedbackStatusBadge({ status }: { status: FeedbackStatus }) {
-  return <Badge variant={status === 'open' ? 'default' : 'outline'}>{feedbackStatusLabels[status]}</Badge>;
+  return (
+    <Badge className={feedbackStatusBadgeClassNames[status]} variant="outline">
+      {feedbackStatusLabels[status]}
+    </Badge>
+  );
 }

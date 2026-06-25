@@ -31,6 +31,8 @@ describe('mapProduct', () => {
         name: 'Wheel Loader',
         rangeId: RANGE_ID,
         requiresVinNumber: true,
+        brochureEnabled: true,
+        landerEnabled: false,
         thumbnailDataUrl: null,
         updatedAt,
       }),
@@ -56,6 +58,8 @@ describe('mapProduct', () => {
       productBays: [],
       rangeId: RANGE_ID,
       requiresVinNumber: true,
+      brochureEnabled: true,
+      landerEnabled: false,
       thumbnailDataUrl: null,
       updatedAt: updatedAt.toISOString(),
     });

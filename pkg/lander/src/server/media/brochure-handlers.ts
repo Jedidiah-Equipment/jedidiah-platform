@@ -1,9 +1,11 @@
 import {
   type BrochurePreviewResult,
   generateProductBrochureIfComplete,
+  getProduct,
   ProductNotFoundError,
   StorageObjectNotFoundError,
 } from '@pkg/core';
+import { isBrochureReady } from '@pkg/domain';
 import { renderBrochurePdf } from '@pkg/pdf';
 import { UUID } from '@pkg/schema';
 
@@ -34,18 +36,29 @@ export function brochureResponse(brochure: BrochurePreviewResult | null): Respon
   });
 }
 
-// Server-only handler for the public brochure download route. Generates the PDF via @pkg/core only when
-// the Product's brochure is complete; an incomplete config or unknown id yields a 404 rather than a
-// broken file. Kept out of the route module so @pkg/pdf (and react-pdf) stay off the client bundle.
+// Server-only handler for the public brochure download route. Serves the PDF only when the Product's
+// brochure is publicly ready — the publish flag is on AND the config is complete — so an unpublished,
+// incomplete, or unknown Product all yield a 404 rather than leaking a brochure via a guessed id (the
+// detail page exposes the Product id in its image URLs). Kept out of the route module so @pkg/pdf (and
+// react-pdf) stay off the client bundle.
 export async function serveProductBrochure(productId: string): Promise<Response> {
   const parsed = UUID.safeParse(productId);
   if (!parsed.success) {
     return brochureResponse(null);
   }
 
+  const db = getDb();
+
   try {
+    // Enforce the publish flag here, not just on the link: completeness alone would let anyone download an
+    // unpublished brochure by constructing the URL from the Product id.
+    const product = await getProduct({ db, id: parsed.data });
+    if (!isBrochureReady(product)) {
+      return brochureResponse(null);
+    }
+
     const brochure = await generateProductBrochureIfComplete({
-      db: getDb(),
+      db,
       pdfRenderer: renderBrochurePdf,
       productId: parsed.data,
       storage: getStorage(),

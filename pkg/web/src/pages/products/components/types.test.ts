@@ -28,6 +28,8 @@ function buildProduct(overrides: Record<string, unknown> = {}): Product {
     currencyCode: 'ZAR',
     rangeId: RANGE_ID,
     requiresVinNumber: false,
+    brochureEnabled: false,
+    landerEnabled: false,
     assemblies: [
       { id: STANDARD_ID, productId: PRODUCT_ID, kind: 'standard', name: 'Base', parts: [] },
       {
@@ -171,6 +173,8 @@ describe('toProductCreateInput', () => {
       productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
       rangeId: RANGE_ID,
       requiresVinNumber: false,
+      brochureEnabled: false,
+      landerEnabled: false,
       thumbnailDataUrl: null,
     });
   });
@@ -199,6 +203,8 @@ describe('toProductMinimalCreateInput', () => {
       productBays: [],
       rangeId: RANGE_ID,
       requiresVinNumber: false,
+      brochureEnabled: false,
+      landerEnabled: false,
       thumbnailDataUrl: null,
     });
   });

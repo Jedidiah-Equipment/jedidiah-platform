@@ -64,6 +64,13 @@ export function evaluateProductBrochureCompleteness(product: Product): BrochureC
   });
 }
 
+// Whether a Product Brochure is publicly ready: the publish toggle is on AND every required field is
+// filled. Gates the public Lander brochure download link. The admin preview and the quote/job brochure
+// embedding deliberately gate on completeness only, not this flag.
+export function isBrochureReady(product: Product): boolean {
+  return product.brochureEnabled && evaluateProductBrochureCompleteness(product).complete;
+}
+
 function hasText(value: string | null | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0;
 }

@@ -47,6 +47,8 @@ export const products = pgTable(
       .notNull()
       .references(() => productRanges.id, { onDelete: 'restrict' }),
     requiresVinNumber: boolean('requires_vin_number').notNull().default(false),
+    brochureEnabled: boolean('brochure_enabled').notNull().default(false),
+    landerEnabled: boolean('lander_enabled').notNull().default(false),
     thumbnailDataUrl: text('thumbnail_data_url'),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },

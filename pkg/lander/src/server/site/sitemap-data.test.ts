@@ -1,11 +1,53 @@
-import { productRanges, products } from '@pkg/db';
+import { productAssemblies, productRanges, products } from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { SITE_URL } from '../../lib/seo.js';
 import { test } from '../../test/tester.js';
 import { listSitemapPaths, renderSitemap, SITEMAP_STATIC_PATHS } from './sitemap-data.js';
 
-test('listSitemapPaths returns the static pages plus every Product detail URL', async ({ db }) => {
+type Db = Parameters<typeof listSitemapPaths>[0];
+
+function imageRef(slot: string) {
+  return {
+    byteSize: 1024,
+    contentType: 'image/png',
+    storageKey: `products/${slot}-${crypto.randomUUID()}.png`,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// Inserts a lander-ready Product (so it appears in the sitemap) unless `landerEnabled` is overridden off.
+async function insertProduct(
+  db: Db,
+  rangeId: string,
+  values: { name: string; modelCode: string; landerEnabled?: boolean },
+) {
+  const [product] = await db
+    .insert(products)
+    .values({
+      basePrice: 1000,
+      buildTimeDays: 5,
+      rangeId,
+      landerEnabled: true,
+      category: 'Default category',
+      keyFeatures: ['Default feature'],
+      description: 'Default description.',
+      images: { primary: imageRef('primary'), secondary1: imageRef('secondary1'), secondary2: imageRef('secondary2') },
+      ...values,
+    })
+    .returning();
+  if (!product) throw new Error('product insert did not return a row');
+
+  await db
+    .insert(productAssemblies)
+    .values({ productId: product.id, kind: 'standard', name: 'Frame', displayOrder: 0 });
+
+  return product;
+}
+
+test('listSitemapPaths lists the static pages plus every lander-ready Product, skipping unready ones', async ({
+  db,
+}) => {
   const suffix = crypto.randomUUID();
   const [range] = await db
     .insert(productRanges)
@@ -13,10 +55,9 @@ test('listSitemapPaths returns the static pages plus every Product detail URL', 
     .returning();
   if (!range) throw new Error('range insert did not return a row');
 
-  await db.insert(products).values([
-    { basePrice: 1000, buildTimeDays: 5, rangeId: range.id, name: `CH14 ${suffix}`, modelCode: `CH14-${suffix}` },
-    { basePrice: 1000, buildTimeDays: 5, rangeId: range.id, name: `CH12 ${suffix}`, modelCode: `CH12-${suffix}` },
-  ]);
+  await insertProduct(db, range.id, { name: `CH14 ${suffix}`, modelCode: `CH14-${suffix}` });
+  // Publish toggle off: its detail page 404s, so it must not appear in the sitemap.
+  await insertProduct(db, range.id, { name: `CH12 ${suffix}`, modelCode: `CH12-${suffix}`, landerEnabled: false });
 
   const paths = await listSitemapPaths(db);
 
@@ -24,7 +65,7 @@ test('listSitemapPaths returns the static pages plus every Product detail URL', 
     expect(paths).toContain(staticPath);
   }
   expect(paths).toContain(`/products/${encodeURIComponent(`CH14-${suffix}`)}`);
-  expect(paths).toContain(`/products/${encodeURIComponent(`CH12-${suffix}`)}`);
+  expect(paths).not.toContain(`/products/${encodeURIComponent(`CH12-${suffix}`)}`);
 });
 
 describe('renderSitemap', () => {

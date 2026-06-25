@@ -378,6 +378,8 @@ describe('products.update', () => {
       name: 'Wheel Loader Updated',
       rangeId: created.rangeId,
       requiresVinNumber: true,
+      brochureEnabled: false,
+      landerEnabled: false,
     });
 
     expect(updated).toMatchObject({
@@ -425,6 +427,8 @@ describe('products.update', () => {
       name: created.name,
       rangeId: range.id,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
     });
 
     expect(updated.rangeId).toBe(range.id);
@@ -448,6 +452,8 @@ describe('products.update', () => {
       name: created.name,
       rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
       thumbnailDataUrl: null,
     });
 
@@ -500,6 +506,8 @@ describe('products.update', () => {
       name: created.name,
       rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
     });
 
     expect(updated.assemblies).toContainEqual(
@@ -550,6 +558,8 @@ describe('products.update', () => {
       productBays: productBayInputs(created),
       rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
       thumbnailDataUrl: created.thumbnailDataUrl,
     });
 
@@ -573,6 +583,8 @@ describe('products.update', () => {
       productBays: [{ bayId: secondBayId, defaultWorkingDays: 8 }],
       rangeId: retainedDisabled.rangeId,
       requiresVinNumber: retainedDisabled.requiresVinNumber,
+      brochureEnabled: retainedDisabled.brochureEnabled,
+      landerEnabled: retainedDisabled.landerEnabled,
       thumbnailDataUrl: retainedDisabled.thumbnailDataUrl,
     });
 
@@ -591,6 +603,8 @@ describe('products.update', () => {
       productBays: [],
       rangeId: replaced.rangeId,
       requiresVinNumber: replaced.requiresVinNumber,
+      brochureEnabled: replaced.brochureEnabled,
+      landerEnabled: replaced.landerEnabled,
       thumbnailDataUrl: replaced.thumbnailDataUrl,
     });
 
@@ -636,6 +650,8 @@ describe('products.update', () => {
       name: 'Wheel Loader Preserve Assemblies Updated',
       rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
     });
 
     expect(updated.assemblies).toEqual(created.assemblies);
@@ -704,6 +720,8 @@ describe('products.update', () => {
         name: target.name,
         rangeId: target.rangeId,
         requiresVinNumber: target.requiresVinNumber,
+        brochureEnabled: target.brochureEnabled,
+        landerEnabled: target.landerEnabled,
       }),
     ).rejects.toThrow('Assemblies must belong to the product being updated.');
   });
@@ -737,6 +755,8 @@ describe('products marketing fields', () => {
       name: created.name,
       rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
     });
 
     expect(updated).toMatchObject({
@@ -774,6 +794,8 @@ describe('products marketing fields', () => {
       name: created.name,
       rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
     };
 
     const seeded = await caller.products.update({ ...baseInput, keyFeatures: ['One', 'Two', 'Three'] });
@@ -799,6 +821,8 @@ describe('products marketing fields', () => {
       name: created.name,
       rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
     });
 
     const updatedWithoutMarketing = await caller.products.update({
@@ -811,6 +835,8 @@ describe('products marketing fields', () => {
       name: created.name,
       rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
     });
 
     expect(updatedWithoutMarketing).toMatchObject({
@@ -833,6 +859,8 @@ describe('products marketing fields', () => {
       name: created.name,
       rangeId: created.rangeId,
       requiresVinNumber: created.requiresVinNumber,
+      brochureEnabled: created.brochureEnabled,
+      landerEnabled: created.landerEnabled,
     };
 
     await expect(caller.products.update({ ...baseInput, keyFeatures: ['   '] })).rejects.toThrow();

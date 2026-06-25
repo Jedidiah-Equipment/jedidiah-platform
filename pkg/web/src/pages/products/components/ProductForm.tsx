@@ -1,9 +1,9 @@
 import type { Product, ProductUpdateInput } from '@pkg/schema';
 import type React from 'react';
-import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
+import { BROCHURE_USAGE, FieldUsageLabel, LANDER_USAGE, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { EditFormFullWidth, EditFormGrid } from '@/components/page-layout/EditFormLayout.js';
-import { Card, CardContent } from '@/components/ui/card.js';
+import { Card, CardContent, CardDescription, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { TabsContent } from '@/components/ui/tabs.js';
 import { useProductRangeOptions } from '@/hooks/options/use-product-range-options.js';
 import { ProductAssembliesEditor } from './ProductAssembliesEditor.js';
@@ -114,7 +114,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                     )}
                   </form.AppField>
                   <form.AppField name="requiresVinNumber">
-                    {(field) => <field.CheckboxField label="Requires VIN number" onValueCommit={saveCommittedField} />}
+                    {(field) => <field.SwitchField label="Requires VIN number" onValueCommit={saveCommittedField} />}
                   </form.AppField>
                   <EditFormFullWidth>
                     <form.AppField name="description">
@@ -126,6 +126,35 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                       )}
                     </form.AppField>
                   </EditFormFullWidth>
+                </EditFormGrid>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Publishing</CardTitle>
+                <CardDescription>
+                  Switch these on to publish once the Brochure and Lander checklists are complete.
+                </CardDescription>
+              </CardHeader>
+              <CardSeparator />
+              <CardContent>
+                <EditFormGrid>
+                  <form.AppField name="landerEnabled">
+                    {(field) => (
+                      <field.SwitchField
+                        label={<FieldUsageLabel usage={LANDER_USAGE}>Lander enabled</FieldUsageLabel>}
+                        onValueCommit={saveCommittedField}
+                      />
+                    )}
+                  </form.AppField>
+                  <form.AppField name="brochureEnabled">
+                    {(field) => (
+                      <field.SwitchField
+                        label={<FieldUsageLabel usage={BROCHURE_USAGE}>Brochure enabled</FieldUsageLabel>}
+                        onValueCommit={saveCommittedField}
+                      />
+                    )}
+                  </form.AppField>
                 </EditFormGrid>
               </CardContent>
             </Card>

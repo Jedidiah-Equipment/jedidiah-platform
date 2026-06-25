@@ -6,7 +6,7 @@ import {
   type JobWorkSlotEntry,
   listEnabledBays,
 } from '@pkg/domain';
-import type { DateOnlyIso } from '@pkg/schema';
+import type { BayOperator, DateOnlyIso } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
@@ -20,6 +20,8 @@ export type JobListCard = {
   productName: string;
   productThumbnailDataUrl: string | null;
   customerCompanyName: string | null;
+  /** Operator on the Job's current Bay (the one running today, or the next to start). */
+  operator: BayOperator | null;
   progress: JobProgress;
 };
 
@@ -66,6 +68,9 @@ export function useJobList(): JobListResult {
     const bays = listEnabledBays(items);
     const calendars = bayWorkingCalendars(bays, offDays);
     const jobsById = new Map(jobs.map((job) => [job.id, job] as const));
+    // Bay names are the user-facing identifier (and unique), so the current Bay's operator is
+    // looked up by the name the projection reports.
+    const operatorByBayName = new Map<string, BayOperator | null>(bays.map((bay) => [bay.name, bay.currentOperator]));
 
     // Group every Work Slot by its Job, keeping each Slot's Bay name and calendar so the projection
     // sees the Job's full route across the Bays it passes through.
@@ -93,6 +98,7 @@ export function useJobList(): JobListResult {
         productName: job.productName,
         productThumbnailDataUrl: job.productThumbnailDataUrl,
         customerCompanyName: job.customerCompanyName,
+        operator: operatorByBayName.get(progress.currentBayName) ?? null,
         progress,
       });
     }

@@ -7,6 +7,9 @@ const GAP = 14;
 // tile readable when only one column fits a wide-ish viewport.
 const MAX_CARD_WIDTH = 420;
 
+// Shared minimum width for every board tile, so toggling Bays ⇄ Jobs keeps the same column layout.
+export const BOARD_CARD_MIN_WIDTH = 248;
+
 /** Columns that fit a measured width at the minimum card width — 1 on phones, more on tablets. */
 function columnsForWidth(width: number, minCardWidth: number): number {
   if (width <= 0) return 1;
@@ -22,7 +25,7 @@ function columnsForWidth(width: number, minCardWidth: number): number {
 export function BoardGrid<T>({
   items,
   keyOf,
-  minCardWidth = 232,
+  minCardWidth = BOARD_CARD_MIN_WIDTH,
   renderItem,
 }: {
   items: readonly T[];

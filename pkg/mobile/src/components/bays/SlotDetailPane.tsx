@@ -1,10 +1,15 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, statusDaysLeftColor } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { JobDocuments } from '@/components/bays/JobDocuments';
 import { Text } from '@/components/ui/text';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
+import { useColorMode } from '@/theme/use-color-mode';
+
+function chipTint(color: string) {
+  return { backgroundColor: `${color}1A`, borderColor: `${color}4D` };
+}
 
 /**
  * The read-only Job Slot detail pane (#520): status chip(s), a product card, the
@@ -14,10 +19,15 @@ import type { BaySlotDetail } from '@/lib/use-bay-schedule';
  */
 export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
   const isActive = slot.status === 'in-progress';
+  const { resolved } = useColorMode();
+  const daysLeftColor =
+    slot.remainingWorkDays !== null
+      ? statusDaysLeftColor({ status: slot.status, daysLeft: slot.remainingWorkDays, scheme: resolved })
+      : null;
 
   return (
     <View className="gap-4">
-      {/* Status chip(s): IN PROGRESS / SCHEDULED, plus 'N DAYS LEFT' while running. The
+      {/* Status chip(s): IN PROGRESS / SCHEDULED, plus 'N WORKING DAYS LEFT' while running. The
           SCHEDULED chip matches its timeline card — green for the 'next' Slot, grey otherwise. */}
       <View className="flex-row items-center gap-2">
         <View
@@ -43,10 +53,10 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
             {isActive ? 'IN PROGRESS' : 'SCHEDULED'}
           </Text>
         </View>
-        {slot.remainingWorkDays !== null ? (
-          <View className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1">
-            <Text className="text-[10px] tracking-wide text-primary" weight="semibold">
-              {slot.remainingWorkDays} DAYS LEFT
+        {slot.remainingWorkDays !== null && daysLeftColor ? (
+          <View className="rounded-full border px-2.5 py-1" style={chipTint(daysLeftColor)}>
+            <Text className="text-[10px] tracking-wide" style={{ color: daysLeftColor }} weight="semibold">
+              {slot.remainingWorkDays} WORKING {slot.remainingWorkDays === 1 ? 'DAY' : 'DAYS'} LEFT
             </Text>
           </View>
         ) : null}

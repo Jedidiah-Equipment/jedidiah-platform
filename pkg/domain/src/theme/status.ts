@@ -31,17 +31,35 @@ export const darkStatusColors = {
   nextSoft: '#5fcf87',
 } as const satisfies StatusColors;
 
-/** Days-left countdown palette: urgent → comfortable. */
+/** Days-left urgency palette: red when imminent, amber when soon. */
 export const DAYS_LEFT_URGENT = '#f87171';
 export const DAYS_LEFT_SOON = '#fbbf24';
-export const DAYS_LEFT_OK = '#5fcf87';
+
+const statusColorsByScheme = {
+  light: lightStatusColors,
+  dark: darkStatusColors,
+} as const satisfies Record<'light' | 'dark', StatusColors>;
+
+/** The work states a days-left figure can carry: a Job running today, or one still queued. */
+export type WorkProgressStatus = 'in-progress' | 'scheduled';
 
 /**
- * Colour for a days-left countdown: red at `<= 2`, amber at `<= 5`, else green.
- * Mirrors `dayColor` in the prototype.
+ * Colour for a days-left countdown and its progress bar, by urgency then status: red at `<= 2`,
+ * amber at `<= 5`, otherwise the in-progress blue (theme-aware) or the scheduled green. Urgency
+ * always wins, so a Job finishing imminently reads red whether it is running or queued. The single
+ * source for the bar/number accents — the in-progress blue matches the in-progress status chip.
  */
-export function daysLeftColor(daysLeft: number): string {
+export function statusDaysLeftColor({
+  status,
+  daysLeft,
+  scheme,
+}: {
+  status: WorkProgressStatus;
+  daysLeft: number;
+  scheme: 'light' | 'dark';
+}): string {
   if (daysLeft <= 2) return DAYS_LEFT_URGENT;
   if (daysLeft <= 5) return DAYS_LEFT_SOON;
-  return DAYS_LEFT_OK;
+
+  return status === 'in-progress' ? statusColorsByScheme[scheme].inProgress : statusColorsByScheme[scheme].next;
 }

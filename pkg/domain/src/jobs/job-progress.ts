@@ -1,7 +1,7 @@
 import type { DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
 
 import { deriveActiveJobProgress } from './bay-active-job.js';
-import { countWorkingDaysBetween, isWorkingDay, type WorkingCalendar } from './working-calendar.js';
+import { countWorkingDaysBetween, type WorkingCalendar } from './working-calendar.js';
 
 /**
  * One of a Job's Work Slots paired with the Bay it runs in. Each Bay carries its own
@@ -71,11 +71,8 @@ export function deriveJobProgress({
   const [firstUnfinished] = unfinished;
   if (!firstUnfinished) return null;
 
-  // The Slot running today (covers today on a working day, mirroring findActiveWorkSlot).
-  const active = unfinished.find(
-    (entry) =>
-      entry.slot.startDate <= today && today < entry.slot.endDate && isWorkingDay(today, entry.workingCalendar),
-  );
+  // The Slot covering today is in progress even on an off-day (mirrors findActiveWorkSlot).
+  const active = unfinished.find((entry) => entry.slot.startDate <= today && today < entry.slot.endDate);
   // Current stage: the active Slot, else the soonest unfinished Slot to start.
   const current = active ?? firstUnfinished;
 
@@ -116,7 +113,7 @@ export type JobRouteStopState = 'done' | 'active' | 'scheduled';
 
 /** A single stop on the Job Detail production-route timeline (#615). */
 export type JobRouteStop = {
-  /** 'done' once the last work day is past, 'active' while the Slot covers a working today, else 'scheduled'. */
+  /** 'done' once the last work day is past, 'active' while the Slot covers today, else 'scheduled'. */
   state: JobRouteStopState;
   /** Inclusive last working day of the Slot (the day before the half-open `endDate`). */
   lastWorkDay: DateOnlyIso;
@@ -130,8 +127,8 @@ export type JobRouteStop = {
 
 /**
  * Projects one Work Slot's state for the Job Detail route. Shares {@link deriveActiveJobProgress}
- * with the Bay screens so a Slot's days-left and bar match wherever it is shown. A Slot covering an
- * off-day today reads 'scheduled', not 'active', mirroring {@link findActiveWorkSlot}'s off-day gate.
+ * with the Bay screens so a Slot's days-left and bar match wherever it is shown. A Slot covering today
+ * is 'active' even on an off-day — the Job sits on the Bay whether or not anyone works that day.
  */
 export function deriveJobRouteStop({
   slot,
@@ -147,12 +144,7 @@ export function deriveJobRouteStop({
     today,
     workingCalendar,
   });
-  const state: JobRouteStopState =
-    slot.endDate <= today
-      ? 'done'
-      : slot.startDate <= today && isWorkingDay(today, workingCalendar)
-        ? 'active'
-        : 'scheduled';
+  const state: JobRouteStopState = slot.endDate <= today ? 'done' : slot.startDate <= today ? 'active' : 'scheduled';
 
   return { state, lastWorkDay, workDays: totalWorkDays, remainingWorkDays, progressPercent };
 }

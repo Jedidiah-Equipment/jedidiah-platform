@@ -51,6 +51,18 @@ describe('deriveJobProgress', () => {
     expect(progress?.lastWorkDay).toBe('2026-07-07');
   });
 
+  it('reports in-progress when a Slot covers today on an off-day (the Job is still running)', () => {
+    // Today Sat 27 Jun is an org off-day; the single Slot covers it (Fri 26 Jun → half-open Fri 3 Jul).
+    const progress = deriveJobProgress({
+      slots: [entry('Fab 1', '2026-06-26', '2026-07-03')],
+      today: day('2026-06-27'),
+    });
+
+    expect(progress?.status).toBe('in-progress');
+    expect(progress?.currentBayName).toBe('Fab 1');
+    expect(progress?.stageIndex).toBe(1);
+  });
+
   it('counts the idle gap working days when all Slots are in the future', () => {
     // Today Thu 2 Jul; the only Slot starts Mon 13 Jul (half-open end Fri 17 Jul).
     const progress = deriveJobProgress({
@@ -155,14 +167,14 @@ describe('deriveJobRouteStop', () => {
     expect(stop.workDays).toBe(4);
   });
 
-  it('treats a Slot covering an off-day today as scheduled, not active', () => {
-    // Today Sat 27 Jun is an org off-day; the Slot covers it but is not running.
+  it('marks a Slot covering an off-day today as active (the Job is still in progress)', () => {
+    // Today Sat 27 Jun is an org off-day; the Slot covers it, so the Job is in progress.
     const stop = deriveJobRouteStop({
       slot: { startDate: day('2026-06-26'), endDate: day('2026-07-03') },
       today: day('2026-06-27'),
       workingCalendar: weekendsOff,
     });
 
-    expect(stop.state).toBe('scheduled');
+    expect(stop.state).toBe('active');
   });
 });

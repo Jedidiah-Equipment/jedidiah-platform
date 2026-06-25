@@ -1,6 +1,6 @@
-import type { FeedbackKind, FeedbackStatus, FeedbackSubjectType } from '@pkg/schema';
+import type { Department, FeedbackKind, FeedbackStatus, FeedbackSubjectType } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
-import { check, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { jobs } from './job.js';
@@ -40,7 +40,41 @@ export const feedback = pgTable(
   ],
 );
 
-export const feedbackRelations = relations(feedback, ({ one }) => ({
+// Corrective-department targets. The department enum is the only value, so the row key is
+// (feedback, department); deleting the feedback cascades the links away.
+export const feedbackDepartment = pgTable(
+  'feedback_department',
+  {
+    feedbackId: uuid('feedback_id')
+      .notNull()
+      .references(() => feedback.id, { onDelete: 'cascade' }),
+    department: text('department').notNull().$type<Department>(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.feedbackId, table.department], name: 'feedback_department_pkey' }),
+    check(
+      'feedback_department_value_check',
+      sql`${table.department} IN ('procurement', 'supply', 'fabrication', 'paint', 'assembly')`,
+    ),
+  ],
+);
+
+// Corrective-user targets. Deleting a targeted user cascades only this link, leaving the feedback
+// and its other targets intact.
+export const feedbackUser = pgTable(
+  'feedback_user',
+  {
+    feedbackId: uuid('feedback_id')
+      .notNull()
+      .references(() => feedback.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [primaryKey({ columns: [table.feedbackId, table.userId], name: 'feedback_user_pkey' })],
+);
+
+export const feedbackRelations = relations(feedback, ({ one, many }) => ({
   submitter: one(user, {
     fields: [feedback.submitterId],
     references: [user.id],
@@ -52,5 +86,25 @@ export const feedbackRelations = relations(feedback, ({ one }) => ({
   job: one(jobs, {
     fields: [feedback.jobId],
     references: [jobs.id],
+  }),
+  departments: many(feedbackDepartment),
+  users: many(feedbackUser),
+}));
+
+export const feedbackDepartmentRelations = relations(feedbackDepartment, ({ one }) => ({
+  feedback: one(feedback, {
+    fields: [feedbackDepartment.feedbackId],
+    references: [feedback.id],
+  }),
+}));
+
+export const feedbackUserRelations = relations(feedbackUser, ({ one }) => ({
+  feedback: one(feedback, {
+    fields: [feedbackUser.feedbackId],
+    references: [feedback.id],
+  }),
+  user: one(user, {
+    fields: [feedbackUser.userId],
+    references: [user.id],
   }),
 }));

@@ -74,4 +74,67 @@ describe('FeedbackSubmitInput', () => {
       }),
     ).toThrow();
   });
+
+  it('accepts corrective-department feedback with at least one department target', () => {
+    const parsed = FeedbackSubmitInput.parse({
+      kind: 'corrective-feedback-department',
+      subject: quoteSubject,
+      text: 'Paint missed the spec.',
+      departments: ['paint', 'assembly'],
+    });
+
+    expect(parsed).toMatchObject({
+      kind: 'corrective-feedback-department',
+      departments: ['paint', 'assembly'],
+    });
+  });
+
+  it('accepts corrective-user feedback with at least one user target', () => {
+    const parsed = FeedbackSubmitInput.parse({
+      kind: 'corrective-feedback-user',
+      subject: quoteSubject,
+      text: 'Handover was skipped.',
+      userIds: ['user-1', 'user-2'],
+    });
+
+    expect(parsed).toMatchObject({
+      kind: 'corrective-feedback-user',
+      userIds: ['user-1', 'user-2'],
+    });
+  });
+
+  it('rejects corrective-department feedback with no department targets', () => {
+    expect(() =>
+      FeedbackSubmitInput.parse({
+        kind: 'corrective-feedback-department',
+        subject: quoteSubject,
+        text: 'Needs a department.',
+        departments: [],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects corrective-user feedback with no user targets', () => {
+    expect(() =>
+      FeedbackSubmitInput.parse({
+        kind: 'corrective-feedback-user',
+        subject: quoteSubject,
+        text: 'Needs a user.',
+        userIds: [],
+      }),
+    ).toThrow();
+  });
+
+  it('strips target fields from a general submission', () => {
+    const parsed = FeedbackSubmitInput.parse({
+      kind: 'general',
+      subject: quoteSubject,
+      text: 'No targets here.',
+      departments: ['paint'],
+      userIds: ['user-1'],
+    });
+
+    expect(parsed).not.toHaveProperty('departments');
+    expect(parsed).not.toHaveProperty('userIds');
+  });
 });

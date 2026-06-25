@@ -1,4 +1,15 @@
-import { customers, type Db, feedback, jobs, products, quotes, user } from '@pkg/db';
+import {
+  customers,
+  type Db,
+  eq,
+  feedback,
+  feedbackDepartment,
+  feedbackUser,
+  jobs,
+  products,
+  quotes,
+  user,
+} from '@pkg/db';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '@/test/create-tester.js';
@@ -96,6 +107,92 @@ describe('feedback.submit', () => {
     await expect(context.db.select().from(feedback)).resolves.toHaveLength(1);
   });
 
+  test('persists corrective-department feedback with its department targets', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    const submitted = await caller.feedback.submit({
+      kind: 'corrective-feedback-department',
+      subject: { subjectType: 'quote', quoteId: context.quote.id },
+      text: 'Paint and assembly both missed the spec.',
+      departments: ['paint', 'assembly'],
+    });
+
+    expect(submitted).toMatchObject({ kind: 'corrective-feedback-department' });
+    expect(new Set(submitted.departments)).toEqual(new Set(['paint', 'assembly']));
+    expect(submitted.userIds).toEqual([]);
+
+    const targets = await context.db
+      .select()
+      .from(feedbackDepartment)
+      .where(eq(feedbackDepartment.feedbackId, submitted.id));
+    expect(new Set(targets.map((row) => row.department))).toEqual(new Set(['paint', 'assembly']));
+  });
+
+  test('persists corrective-user feedback with its user targets', async ({ context }) => {
+    const targetUser = await createTargetUser(context.db, 'target-user-id');
+    const caller = context.createCaller(mockSession('job-viewer'));
+
+    const submitted = await caller.feedback.submit({
+      kind: 'corrective-feedback-user',
+      subject: { subjectType: 'job', jobId: context.job.id },
+      text: 'Handover was skipped.',
+      userIds: [targetUser.id],
+    });
+
+    expect(submitted).toMatchObject({ kind: 'corrective-feedback-user' });
+    expect(submitted.userIds).toEqual([targetUser.id]);
+    expect(submitted.departments).toEqual([]);
+
+    const targets = await context.db.select().from(feedbackUser).where(eq(feedbackUser.feedbackId, submitted.id));
+    expect(targets.map((row) => row.userId)).toEqual([targetUser.id]);
+  });
+
+  test('rejects a corrective-department submission with no targets', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await expect(
+      caller.feedback.submit({
+        kind: 'corrective-feedback-department',
+        subject: { subjectType: 'quote', quoteId: context.quote.id },
+        text: 'Missing the department target.',
+        departments: [],
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  test('rejects a corrective-user submission with no targets', async ({ context }) => {
+    const caller = context.createCaller(mockSession('sales'));
+
+    await expect(
+      caller.feedback.submit({
+        kind: 'corrective-feedback-user',
+        subject: { subjectType: 'quote', quoteId: context.quote.id },
+        text: 'Missing the user target.',
+        userIds: [],
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  test('leaves corrective-user feedback intact when a targeted user is deleted', async ({ context }) => {
+    const targetUser = await createTargetUser(context.db, 'cascade-target-id');
+    const caller = context.createCaller(mockSession('sales'));
+
+    const submitted = await caller.feedback.submit({
+      kind: 'corrective-feedback-user',
+      subject: { subjectType: 'quote', quoteId: context.quote.id },
+      text: 'Deleting this user should drop only the link.',
+      userIds: [targetUser.id],
+    });
+
+    await context.db.delete(user).where(eq(user.id, targetUser.id));
+
+    const remaining = await context.db.select().from(feedback).where(eq(feedback.id, submitted.id));
+    expect(remaining).toHaveLength(1);
+
+    const links = await context.db.select().from(feedbackUser).where(eq(feedbackUser.feedbackId, submitted.id));
+    expect(links).toHaveLength(0);
+  });
+
   test('rejects empty feedback text at the input boundary', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
@@ -133,6 +230,29 @@ async function createActorUser(db: Db) {
     role: 'admin',
     updatedAt: now,
   });
+}
+
+async function createTargetUser(db: Db, id: string) {
+  const now = new Date();
+
+  const [created] = await db
+    .insert(user)
+    .values({
+      createdAt: now,
+      email: `${id}@example.com`,
+      emailVerified: true,
+      id,
+      name: `Target ${id}`,
+      role: 'sales',
+      updatedAt: now,
+    })
+    .returning();
+
+  if (!created) {
+    throw new Error('Target user insert did not return a row');
+  }
+
+  return created;
 }
 
 async function createProduct(db: Db) {

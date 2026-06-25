@@ -47,8 +47,9 @@ export type JobProgress = {
 /**
  * Projects a Job's board state from its Work Slots and plant "today". Returns `null` when
  * the Job has no unfinished Slot, which is the signal the Job List uses to drop fully-past
- * Jobs. `daysLeft` is paced by the latest-ending Bay (idle-gap working days included),
- * while `overallPercent` weights elapsed work across every Slot in the route.
+ * Jobs. `daysLeft` is the max over unfinished Slots (idle-gap working days included) and
+ * `lastWorkDay` follows the latest-ending Slot, while `overallPercent` weights elapsed work
+ * across every Slot in the route.
  */
 export function deriveJobProgress({
   slots,
@@ -79,8 +80,11 @@ export function deriveJobProgress({
   // Current stage: the active Slot, else the soonest unfinished Slot to start.
   const current = active ?? firstUnfinished;
 
-  // Days-left is paced by the latest-ending Slot, counting today through its last work day
-  // on that Bay's calendar (idle-gap working days included — never clamped to the Slot span).
+  // Days-left is the max, over unfinished Slots, of working days from today through that Slot's
+  // last work day on its Bay's calendar (idle-gap working days included — never clamped to the
+  // Slot span). The done date shown beside it follows the latest-ending Slot — when the Job is
+  // fully off the floor — so the board never claims a Job has ended while a later route stop is
+  // still ahead, even when a later Bay's calendar leaves it fewer working days.
   let daysLeft = 0;
   let latest = firstUnfinished;
   for (const entry of unfinished) {

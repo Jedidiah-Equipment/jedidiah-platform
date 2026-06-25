@@ -44,10 +44,19 @@ const statusColorsByScheme = {
 export type WorkProgressStatus = 'in-progress' | 'scheduled';
 
 /**
+ * The resting accent for a status with no urgency — the in-progress blue (theme-aware) or the
+ * scheduled green. Used directly for a Job with no countdown (e.g. a finished Job) so callers
+ * don't reach for a sentinel days-left to coax the comfortable colour out of {@link statusDaysLeftColor}.
+ */
+export function restingStatusColor(status: WorkProgressStatus, scheme: 'light' | 'dark'): string {
+  return status === 'in-progress' ? statusColorsByScheme[scheme].inProgress : statusColorsByScheme[scheme].next;
+}
+
+/**
  * Colour for a days-left countdown and its progress bar, by urgency then status: red at `<= 2`,
- * amber at `<= 5`, otherwise the in-progress blue (theme-aware) or the scheduled green. Urgency
- * always wins, so a Job finishing imminently reads red whether it is running or queued. The single
- * source for the bar/number accents — the in-progress blue matches the in-progress status chip.
+ * amber at `<= 5`, otherwise the resting status accent. Urgency always wins, so a Job finishing
+ * imminently reads red whether it is running or queued. The single source for the bar/number
+ * accents — the in-progress blue matches the in-progress status chip.
  */
 export function statusDaysLeftColor({
   status,
@@ -61,5 +70,5 @@ export function statusDaysLeftColor({
   if (daysLeft <= 2) return DAYS_LEFT_URGENT;
   if (daysLeft <= 5) return DAYS_LEFT_SOON;
 
-  return status === 'in-progress' ? statusColorsByScheme[scheme].inProgress : statusColorsByScheme[scheme].next;
+  return restingStatusColor(status, scheme);
 }

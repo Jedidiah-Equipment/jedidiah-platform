@@ -2,21 +2,28 @@ import { departmentLabels } from '@pkg/domain';
 import type { FeedbackDetail, FeedbackKind, FeedbackListItem, FeedbackStatus, UUID } from '@pkg/schema';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type PaginationState,
+  type SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { DateDisplay } from '@/components/common/DateDisplay.js';
+import { DataTable } from '@/components/data-table/DataTable.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { cn } from '@/lib/utils.js';
 import { feedbackPageDescription } from '@/utils/page-descriptions.js';
-
-type FeedbackStatusFilter = FeedbackStatus | 'all';
 
 const feedbackStatusLabels = {
   closed: 'Closed',
@@ -32,42 +39,27 @@ const feedbackKindLabels = {
 
 export const FeedbackPage: React.FC = () => {
   const trpc = useTRPC();
-  const [statusFilter, setStatusFilter] = useState<FeedbackStatusFilter>('all');
   const [selectedFeedbackId, setSelectedFeedbackId] = useState<UUID | null>(null);
 
-  const listInput = useMemo(() => (statusFilter === 'all' ? {} : { status: statusFilter }), [statusFilter]);
   const feedbackQuery = useQuery(
-    trpc.feedback.list.queryOptions(listInput, {
-      placeholderData: keepPreviousData,
-    }),
+    trpc.feedback.list.queryOptions(
+      {},
+      {
+        placeholderData: keepPreviousData,
+      },
+    ),
   );
   const feedbackItems = feedbackQuery.data?.items ?? [];
 
-  useEffect(() => {
-    if (feedbackItems.length === 0) {
-      setSelectedFeedbackId(null);
-      return;
-    }
-
-    if (!selectedFeedbackId || !feedbackItems.some((item) => item.id === selectedFeedbackId)) {
-      setSelectedFeedbackId(feedbackItems[0]?.id ?? null);
-    }
-  }, [feedbackItems, selectedFeedbackId]);
-
   const detailQuery = useQuery(
     trpc.feedback.get.queryOptions(
-      { id: selectedFeedbackId ?? feedbackItems[0]?.id ?? '00000000-0000-4000-8000-000000000000' },
+      { id: selectedFeedbackId ?? '00000000-0000-4000-8000-000000000000' },
       { enabled: Boolean(selectedFeedbackId) },
     ),
   );
 
   return (
-    <PageLayout
-      actions={<FeedbackStatusSelect value={statusFilter} onChange={setStatusFilter} />}
-      description={feedbackPageDescription}
-      size="lg"
-      title="Feedback"
-    >
+    <PageLayout description={feedbackPageDescription} size="lg" title="Feedback">
       <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]">
         <FeedbackInboxList
           errorMessage={getApiQueryErrorMessage(feedbackQuery.error, 'Unable to load feedback.')}
@@ -86,34 +78,6 @@ export const FeedbackPage: React.FC = () => {
   );
 };
 
-function FeedbackStatusSelect({
-  onChange,
-  value,
-}: {
-  onChange: (value: FeedbackStatusFilter) => void;
-  value: FeedbackStatusFilter;
-}) {
-  const selectedLabel = value === 'all' ? 'All statuses' : feedbackStatusLabels[value];
-
-  return (
-    <Select onValueChange={(nextValue) => onChange(nextValue as FeedbackStatusFilter)} value={value}>
-      <SelectTrigger aria-label="Feedback status" className="w-40">
-        <SelectValue>{selectedLabel}</SelectValue>
-      </SelectTrigger>
-      <SelectContent align="end">
-        <SelectGroup>
-          <SelectItem value="all">All statuses</SelectItem>
-          {Object.entries(feedbackStatusLabels).map(([status, label]) => (
-            <SelectItem key={status} value={status}>
-              {label}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  );
-}
-
 function FeedbackInboxList({
   errorMessage,
   feedback,
@@ -124,78 +88,148 @@ function FeedbackInboxList({
   errorMessage: string | undefined;
   feedback: FeedbackListItem[];
   isLoading: boolean;
-  onSelectFeedback: (id: UUID) => void;
+  onSelectFeedback: (id: UUID | null) => void;
   selectedFeedbackId: UUID | null;
 }) {
-  return (
-    <Card className="min-w-0 gap-0 overflow-hidden">
-      <CardHeader>
-        <CardTitle className="text-base">Inbox</CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Subject</TableHead>
-              <TableHead>Submitter</TableHead>
-              <TableHead>Kind</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Submitted</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell className="h-24 text-center text-muted-foreground" colSpan={5}>
-                  Loading feedback...
-                </TableCell>
-              </TableRow>
-            ) : null}
-            {errorMessage ? (
-              <TableRow>
-                <TableCell className="h-24 text-center text-destructive" colSpan={5}>
-                  {errorMessage}
-                </TableCell>
-              </TableRow>
-            ) : null}
-            {!isLoading && !errorMessage && feedback.length === 0 ? (
-              <TableRow>
-                <TableCell className="h-24 text-center text-muted-foreground" colSpan={5}>
-                  No feedback found.
-                </TableCell>
-              </TableRow>
-            ) : null}
-            {!isLoading && !errorMessage
-              ? feedback.map((item) => (
-                  <TableRow
-                    className={cn('cursor-pointer', item.id === selectedFeedbackId && 'bg-muted/70 hover:bg-muted/70')}
-                    key={item.id}
-                    onClick={() => onSelectFeedback(item.id)}
-                  >
-                    <TableCell className="max-w-72">
-                      <SubjectLink item={item} />
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex min-w-0 flex-col">
-                        <span className="truncate font-medium">{item.submitter.name}</span>
-                        <span className="truncate text-muted-foreground text-xs">{item.submitter.email}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell>{feedbackKindLabels[item.kind]}</TableCell>
-                    <TableCell>
-                      <FeedbackStatusBadge status={item.status} />
-                    </TableCell>
-                    <TableCell>
-                      <DateDisplay date={item.createdAt} />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : null}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [sorting, setSorting] = useState<SortingState>([{ desc: true, id: 'createdAt' }]);
+
+  const columns = useMemo<ColumnDef<FeedbackListItem>[]>(
+    () => [
+      {
+        accessorFn: (item) => item.subject.label,
+        cell: ({ row }) => <SubjectLink item={row.original} />,
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Subject',
+        id: 'subject',
+        meta: {
+          cellClassName: 'max-w-72',
+        },
+      },
+      {
+        accessorFn: (item) => `${item.submitter.name} ${item.submitter.email}`,
+        cell: ({ row }) => (
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate font-medium">{row.original.submitter.name}</span>
+            <span className="truncate text-muted-foreground text-xs">{row.original.submitter.email}</span>
+          </span>
+        ),
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Submitter',
+        id: 'submitter',
+      },
+      {
+        accessorFn: (item) => feedbackKindLabels[item.kind],
+        cell: ({ row }) => feedbackKindLabels[row.original.kind],
+        enableColumnFilter: true,
+        enableSorting: true,
+        header: 'Kind',
+        id: 'kind',
+      },
+      {
+        accessorKey: 'status',
+        cell: ({ row }) => <FeedbackStatusBadge status={row.original.status} />,
+        enableColumnFilter: true,
+        enableSorting: true,
+        filterFn: feedbackStatusFilter,
+        header: 'Status',
+        meta: {
+          filterOptions: Object.entries(feedbackStatusLabels).map(([value, label]) => ({ label, value })),
+          filterVariant: 'select',
+        },
+      },
+      {
+        accessorKey: 'createdAt',
+        cell: ({ row }) => <DateDisplay date={row.original.createdAt} />,
+        enableColumnFilter: false,
+        enableSorting: true,
+        header: 'Submitted',
+      },
+    ],
+    [],
   );
+
+  const table = useReactTable({
+    columns,
+    data: feedback,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    globalFilterFn: feedbackGlobalFilter,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    state: {
+      columnFilters,
+      globalFilter,
+      pagination,
+      sorting,
+    },
+  });
+
+  const filteredRows = table.getFilteredRowModel().rows;
+  const firstFilteredFeedbackId = filteredRows[0]?.original.id ?? null;
+  const selectedFeedbackIsVisible = selectedFeedbackId
+    ? filteredRows.some((row) => row.original.id === selectedFeedbackId)
+    : false;
+  const total = filteredRows.length;
+
+  useEffect(() => {
+    if (!selectedFeedbackIsVisible) {
+      onSelectFeedback(firstFilteredFeedbackId);
+    }
+  }, [firstFilteredFeedbackId, onSelectFeedback, selectedFeedbackIsVisible]);
+
+  return (
+    <section className="min-w-0">
+      <h2 className="mb-3 font-semibold text-base">Inbox</h2>
+      <DataTable
+        emptyMessage="No feedback found."
+        errorMessage={errorMessage}
+        getRowAriaLabel={(item) => `Review ${item.subject.label}`}
+        getRowClassName={(item) => (item.id === selectedFeedbackId ? 'bg-muted/70 hover:bg-muted/70' : undefined)}
+        globalFilterPlaceholder="Search feedback..."
+        isLoading={isLoading}
+        onRowClick={(item) => onSelectFeedback(item.id)}
+        table={table}
+        total={total}
+        totalLabel={(value) => `${value} ${value === 1 ? 'feedback item' : 'feedback items'}`}
+      />
+    </section>
+  );
+}
+
+function feedbackGlobalFilter(row: { original: FeedbackListItem }, _columnId: string, filterValue: unknown) {
+  const search = normalizeFilterValue(filterValue);
+
+  if (!search) {
+    return true;
+  }
+
+  return [
+    row.original.subject.label,
+    row.original.submitter.name,
+    row.original.submitter.email,
+    feedbackKindLabels[row.original.kind],
+    row.original.kind,
+    feedbackStatusLabels[row.original.status],
+    row.original.status,
+  ].some((value) => value.toLowerCase().includes(search));
+}
+
+function feedbackStatusFilter(row: { original: FeedbackListItem }, _columnId: string, filterValue: unknown) {
+  return typeof filterValue !== 'string' || !filterValue || row.original.status === filterValue;
+}
+
+function normalizeFilterValue(value: unknown) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
 function FeedbackDetailPanel({

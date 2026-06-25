@@ -1,7 +1,7 @@
 import { DateOnlyIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { deriveJobProgress, type JobWorkSlotEntry } from './job-progress.js';
+import { deriveJobProgress, deriveJobRouteStop, type JobWorkSlotEntry } from './job-progress.js';
 import type { WorkingCalendar } from './working-calendar.js';
 
 const day = (value: string) => DateOnlyIso.parse(value);
@@ -112,5 +112,57 @@ describe('deriveJobProgress', () => {
 
   it('returns null when given no Slots', () => {
     expect(deriveJobProgress({ slots: [], today: day('2026-07-02') })).toBeNull();
+  });
+});
+
+describe('deriveJobRouteStop', () => {
+  it('marks a Slot done once its last work day is before today', () => {
+    // Half-open end Sat 27 Jun → last work day Fri 26 Jun, before today Thu 2 Jul.
+    const stop = deriveJobRouteStop({
+      slot: { startDate: day('2026-06-15'), endDate: day('2026-06-27') },
+      today: day('2026-07-02'),
+      workingCalendar: weekendsOff,
+    });
+
+    expect(stop.state).toBe('done');
+    expect(stop.remainingWorkDays).toBe(0);
+    expect(stop.progressPercent).toBe(100);
+    expect(stop.lastWorkDay).toBe('2026-06-26');
+  });
+
+  it('marks a Slot active when today falls within it on a working day', () => {
+    const stop = deriveJobRouteStop({
+      slot: { startDate: day('2026-06-29'), endDate: day('2026-07-10') },
+      today: day('2026-07-02'),
+      workingCalendar: weekendsOff,
+    });
+
+    expect(stop.state).toBe('active');
+    // Thu/Fri + Mon–Thu 6–9 = 6 working days through the last work day (Thu 9 Jul).
+    expect(stop.remainingWorkDays).toBe(6);
+    expect(stop.lastWorkDay).toBe('2026-07-09');
+  });
+
+  it('marks a Slot scheduled when it starts after today', () => {
+    const stop = deriveJobRouteStop({
+      slot: { startDate: day('2026-07-13'), endDate: day('2026-07-17') },
+      today: day('2026-07-02'),
+      workingCalendar: weekendsOff,
+    });
+
+    expect(stop.state).toBe('scheduled');
+    expect(stop.progressPercent).toBe(0);
+    expect(stop.workDays).toBe(4);
+  });
+
+  it('treats a Slot covering an off-day today as scheduled, not active', () => {
+    // Today Sat 27 Jun is an org off-day; the Slot covers it but is not running.
+    const stop = deriveJobRouteStop({
+      slot: { startDate: day('2026-06-26'), endDate: day('2026-07-03') },
+      today: day('2026-06-27'),
+      workingCalendar: weekendsOff,
+    });
+
+    expect(stop.state).toBe('scheduled');
   });
 });

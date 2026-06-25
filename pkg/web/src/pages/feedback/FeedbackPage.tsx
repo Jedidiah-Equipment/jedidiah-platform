@@ -113,12 +113,7 @@ function FeedbackInboxList({
       },
       {
         accessorFn: (item) => `${item.submitter.name} ${item.submitter.email}`,
-        cell: ({ row }) => (
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate font-medium">{row.original.submitter.name}</span>
-            <span className="truncate text-muted-foreground text-xs">{row.original.submitter.email}</span>
-          </span>
-        ),
+        cell: ({ row }) => <span className="block truncate font-medium">{row.original.submitter.name}</span>,
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Submitter',

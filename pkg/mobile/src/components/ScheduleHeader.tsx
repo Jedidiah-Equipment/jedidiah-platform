@@ -8,21 +8,24 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
 /**
- * Shared top bar for a Bay's schedule: a back button, the Bay operator's avatar,
- * the Bay name over a 'Bay schedule' caption, and the overflow {@link ProfileMenuButton}
- * (theme toggle + Log out). Mirrors the Bay List's {@link ProfileHeader} layout.
+ * Shared top bar for a Bay schedule or slot detail: a back button, optional operator avatar,
+ * primary title over contextual secondary text, and the overflow {@link ProfileMenuButton}.
  */
 export function ScheduleHeader({
   title,
   subtitle = 'Bay schedule',
   operator,
   onBack,
+  showOperatorAvatar = true,
+  titleMono = false,
 }: {
   title: string;
-  /** Caption under the title — switches to 'Job slot' when a phone shows the detail pane (#520). */
+  /** Caption under the title — bay name on schedule, product name on slot detail. */
   subtitle?: string;
   operator: BayOperator | null;
   onBack: () => void;
+  showOperatorAvatar?: boolean;
+  titleMono?: boolean;
 }) {
   return (
     <View className="flex-row items-center gap-2 border-b border-border bg-background px-4 py-3">
@@ -35,17 +38,21 @@ export function ScheduleHeader({
         <Icon icon={IconChevronLeft} size={20} />
       </Pressable>
 
-      <Avatar
-        className="h-10 w-10 rounded-full"
-        name={operator?.name ?? 'Unassigned'}
-        uri={operator?.thumbnailDataUrl}
-      />
+      {showOperatorAvatar ? (
+        <Avatar
+          className="h-10 w-10 rounded-lg"
+          name={operator?.name ?? 'No operator'}
+          uri={operator?.thumbnailDataUrl}
+        />
+      ) : null}
 
       <View className="min-w-0 flex-1">
-        <Text className="text-base leading-5 text-foreground" numberOfLines={1} weight="bold">
+        <Text className="text-base leading-5 text-foreground" mono={titleMono} numberOfLines={1} weight="bold">
           {title}
         </Text>
-        <Text className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">{subtitle}</Text>
+        <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
+          {subtitle}
+        </Text>
       </View>
 
       <ProfileMenuButton />

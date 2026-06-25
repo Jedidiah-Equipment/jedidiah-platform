@@ -120,7 +120,9 @@ describe('byBayDepartmentPipeline', () => {
 describe('findActiveWorkSlot', () => {
   const bayId = id('bay-1');
 
-  it('returns the work slot covering today on a working day', () => {
+  it('returns the work slot covering today (in progress regardless of the working calendar)', () => {
+    // No working-calendar input: a covering Slot is in progress even when today is an off-day, since
+    // the Job sits on the Bay whether or not anyone works that day.
     const slot = buildWorkSlot(bayId, {
       durationDays: 3,
       endDate: '2026-06-08',
@@ -130,21 +132,7 @@ describe('findActiveWorkSlot', () => {
     });
     const bay = buildBay({ id: 'bay-1', slots: [slot] });
 
-    expect(findActiveWorkSlot({ bay, today, workingCalendar: {} })).toEqual(slot);
-  });
-
-  it('returns null when today is an off-day even if a slot spans it', () => {
-    const slot = buildWorkSlot(bayId, {
-      durationDays: 3,
-      endDate: '2026-06-08',
-      id: 'slot-a',
-      sequence: 1,
-      startDate: '2026-06-05',
-    });
-    const bay = buildBay({ id: 'bay-1', slots: [slot] });
-    const workingCalendar = { orgOffDays: new Set([today as string]) };
-
-    expect(findActiveWorkSlot({ bay, today, workingCalendar })).toBeNull();
+    expect(findActiveWorkSlot({ bay, today })).toEqual(slot);
   });
 
   it('returns null when an idle slot covers today', () => {
@@ -157,7 +145,7 @@ describe('findActiveWorkSlot', () => {
     });
     const bay = buildBay({ id: 'bay-1', slots: [slot] });
 
-    expect(findActiveWorkSlot({ bay, today, workingCalendar: {} })).toBeNull();
+    expect(findActiveWorkSlot({ bay, today })).toBeNull();
   });
 });
 
@@ -201,7 +189,7 @@ describe('listUpcomingWorkSlots', () => {
     });
     const bay = buildBay({ id: 'bay-1', slots: [covering] });
 
-    // No active slot excluded (e.g. today is an off-day), so the covering slot stays in the list.
+    // No active slot excluded, so the covering slot stays in the list.
     expect(listUpcomingWorkSlots({ bay, today })).toEqual([covering]);
   });
 });

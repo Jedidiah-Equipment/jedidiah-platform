@@ -18,14 +18,18 @@ import { JobCard } from './JobCard';
 
 export type ListMode = 'bays' | 'jobs';
 
+export function isListMode(value: unknown): value is ListMode {
+  return value === 'bays' || value === 'jobs';
+}
+
 const SORT_OPTIONS: readonly { label: string; value: BaySort }[] = [
   { label: 'DAYS LEFT', value: 'days-left' },
   { label: 'BAY NAME', value: 'name' },
 ];
 
-// Jobs tiles carry more signal (status chip + stage label), so they want a touch more width.
-const JOB_MIN_CARD_WIDTH = 248;
 const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
+// Matches the Bays-only sort control so hiding it for Jobs does not shift the card grid.
+const BOARD_HEADER_ROW_MIN_HEIGHT = 40;
 
 /**
  * The shop-floor board: a responsive grid of Bay or Job cards under a tappable title that flips
@@ -72,12 +76,7 @@ export function BoardList({
           Pull to retry, or check your connection.
         </Panel>
       ) : state.status === 'pending' ? (
-        <BoardGrid
-          items={SKELETON_KEYS}
-          keyOf={(key) => key}
-          minCardWidth={isBays ? undefined : JOB_MIN_CARD_WIDTH}
-          renderItem={() => <SkeletonCard />}
-        />
+        <BoardGrid items={SKELETON_KEYS} keyOf={(key) => key} renderItem={() => <SkeletonCard />} />
       ) : isBays && bayState.status === 'ready' ? (
         bayState.cards.length === 0 ? (
           <Text className="text-sm text-muted-foreground">No enabled bays yet.</Text>
@@ -100,7 +99,6 @@ export function BoardList({
           <BoardGrid
             items={sortJobCards(jobState.cards)}
             keyOf={(job) => job.jobId}
-            minCardWidth={JOB_MIN_CARD_WIDTH}
             renderItem={(job) => (
               <JobCard
                 job={job}
@@ -127,7 +125,10 @@ function Header({
   trailing: ReactNode;
 }) {
   return (
-    <View className="mb-3.5 flex-row items-center justify-between gap-3">
+    <View
+      className="mb-3.5 flex-row items-center justify-between gap-3"
+      style={{ minHeight: BOARD_HEADER_ROW_MIN_HEIGHT }}
+    >
       <Pressable
         accessibilityHint="Switches between the Bays and Jobs views"
         accessibilityRole="button"

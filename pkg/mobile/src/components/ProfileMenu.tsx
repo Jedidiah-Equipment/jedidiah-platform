@@ -39,7 +39,7 @@ export function ProfileMenu({ user, onClose }: { user: ProfileUser; onClose: () 
           {/* Capture taps inside the card so they don't reach the dismiss backdrop. */}
           <Pressable onPress={() => {}}>
             <View className="flex-row items-center gap-3 border-b border-border px-4 py-3">
-              <Avatar className="h-9 w-9 rounded-full" name={user.name} uri={user.image} />
+              <Avatar className="h-9 w-9 rounded-lg" name={user.name} uri={user.image} />
               <View className="min-w-0 flex-1">
                 <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
                   {user.name}

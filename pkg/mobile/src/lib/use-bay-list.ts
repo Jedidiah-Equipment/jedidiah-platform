@@ -19,6 +19,7 @@ export type BayListActiveJob = ActiveJobProgress & {
   jobCode: string;
   productName: string;
   productThumbnailDataUrl: string | null;
+  customerCompanyName: string | null;
 };
 
 export type BayListCard = {
@@ -74,7 +75,7 @@ export function useBayList(): BayListResult {
 
     const cards = enabledBays.map<BayListCard>((bay) => {
       const workingCalendar = calendars.get(bay.id) ?? {};
-      const slot = findActiveWorkSlot({ bay, today, workingCalendar });
+      const slot = findActiveWorkSlot({ bay, today });
       const job = slot ? jobsById.get(slot.jobId) : undefined;
 
       return {
@@ -88,6 +89,7 @@ export function useBayList(): BayListResult {
                 jobCode: slot.jobCode,
                 productName: job.productName,
                 productThumbnailDataUrl: job.productThumbnailDataUrl,
+                customerCompanyName: job.customerCompanyName,
               }
             : null,
       };

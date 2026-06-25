@@ -6,6 +6,7 @@ import type React from 'react';
 
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DocumentCardList } from '@/components/documents/DocumentCardList.js';
+import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
@@ -51,6 +52,14 @@ export const JobDetailAside: React.FC<JobDetailAsideProps> = ({ bayId, jobId, on
       </div>
 
       <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
+
+      {job ? (
+        <GiveFeedbackButton
+          className="self-start"
+          subject={{ subjectType: 'job', jobId: job.id }}
+          subjectLabel={job.code}
+        />
+      ) : null}
 
       {schedule ? <SlotSection schedule={schedule} /> : null}
       {job ? <JobSection job={job} /> : null}

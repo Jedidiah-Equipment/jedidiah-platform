@@ -279,7 +279,6 @@ function FeedbackDetailPanel({
       <CardContent className="grid gap-5">
         <DetailField label="Submitted by">
           <span className="font-medium">{detail.submitter.name}</span>
-          <span className="text-muted-foreground">{detail.submitter.email}</span>
         </DetailField>
         <DetailField label="Submitted">
           <DateDisplay date={detail.createdAt} format="medium" />

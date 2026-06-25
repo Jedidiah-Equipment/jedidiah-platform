@@ -1,6 +1,14 @@
 import { departmentLabels } from '@pkg/domain';
-import type { FeedbackDetail, FeedbackKind, FeedbackListItem, FeedbackStatus, UUID } from '@pkg/schema';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import {
+  type FeedbackDetail,
+  type FeedbackKind,
+  type FeedbackListItem,
+  type FeedbackStatus,
+  FeedbackStatus as FeedbackStatusSchema,
+  type FeedbackUpdateInput,
+  type UUID,
+} from '@pkg/schema';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   type ColumnDef,
@@ -15,13 +23,16 @@ import {
 } from '@tanstack/react-table';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-
+import { z } from 'zod';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
+import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
@@ -40,12 +51,22 @@ const feedbackKindLabels = {
 } as const satisfies Record<FeedbackKind, string>;
 
 const detailHeaderBadgeClassName = 'h-6 px-2 text-xs';
+const statusOptions = Object.entries(feedbackStatusLabels).map(([value, label]) => ({
+  label,
+  value: value as FeedbackStatus,
+}));
 
 const feedbackStatusBadgeClassNames = {
   closed: 'border-border bg-muted text-muted-foreground',
   open: 'border-red-500 bg-red-500 text-white',
   resolved: 'border-green-600 bg-green-600 text-white',
 } as const satisfies Record<FeedbackStatus, string>;
+
+type FeedbackTriageFormValues = z.infer<typeof FeedbackTriageFormValues>;
+const FeedbackTriageFormValues = z.object({
+  internalNotes: z.string(),
+  status: FeedbackStatusSchema,
+});
 
 export const FeedbackPage: React.FC = () => {
   const trpc = useTRPC();
@@ -120,7 +141,7 @@ function FeedbackInboxList({
       },
       {
         accessorFn: (item) => item.subject.label,
-        cell: ({ row }) => <SubjectLink item={row.original} />,
+        cell: ({ row }) => <span className="block truncate font-medium">{row.original.subject.label}</span>,
         enableColumnFilter: true,
         enableSorting: true,
         header: 'Linked to',
@@ -271,35 +292,115 @@ function FeedbackDetailPanel({
     );
   }
 
+  return <FeedbackDetailForm key={detail.id} detail={detail} />;
+}
+
+function FeedbackDetailForm({ detail }: { detail: FeedbackDetail }) {
+  const trpc = useTRPC();
+  const { invalidateFeedback } = useQueryInvalidation();
+  const updateMutation = useMutation(trpc.feedback.update.mutationOptions());
+  const { autosave, form, formProps } = useAutosaveForm({
+    defaultValues: toFeedbackTriageFormValues(detail),
+    failureMessage: 'Unable to update feedback.',
+    onSaved: () => invalidateFeedback(),
+    save: (input: FeedbackUpdateInput) => updateMutation.mutateAsync(input),
+    toInput: (values) => toFeedbackUpdateInput(detail.id, values),
+    validator: FeedbackTriageFormValues,
+  });
+
+  const saveCommittedField = () => {
+    autosave.markChanged();
+    queueMicrotask(() => {
+      void autosave.flush();
+    });
+  };
+
   return (
-    <Card className="min-w-0">
-      <CardHeader className="grid-cols-[minmax(0,1fr)_auto] gap-3">
-        <CardTitle className="truncate">Feedback: {feedbackKindLabels[detail.kind]}</CardTitle>
-        <Badge
-          className={cn(detailHeaderBadgeClassName, feedbackStatusBadgeClassNames[detail.status])}
-          variant="outline"
-        >
-          {feedbackStatusLabels[detail.status]}
-        </Badge>
-      </CardHeader>
-      <CardSeparator />
-      <CardContent className="grid gap-5">
-        <DetailField label="Submitted by">
-          <UserLabel name={detail.submitter.name} thumbnailDataUrl={detail.submitter.thumbnailDataUrl} />
-        </DetailField>
-        <DetailField label="Linked to">
-          <SubjectLink item={detail} />
-        </DetailField>
-        <DetailField label="Submitted">
-          <DateDisplay date={detail.createdAt} format="medium" />
-        </DetailField>
-        <FeedbackTargets detail={detail} />
-        <DetailField label="Feedback">
-          <p className="whitespace-pre-wrap rounded-md border bg-muted/20 p-3 text-sm leading-6">{detail.text}</p>
-        </DetailField>
-      </CardContent>
-    </Card>
+    <form.AppForm>
+      <form {...formProps} className="contents">
+        <Card className="min-w-0">
+          <CardHeader className="grid-cols-[minmax(0,1fr)_auto] gap-3">
+            <CardTitle className="truncate">Feedback: {feedbackKindLabels[detail.kind]}</CardTitle>
+            <form.AppField name="status">
+              {(field) => (
+                <Select
+                  disabled={autosave.state.status === 'saving'}
+                  value={field.state.value}
+                  onValueChange={(status) => {
+                    field.handleChange(status as FeedbackStatus);
+                    saveCommittedField();
+                  }}
+                >
+                  <SelectTrigger
+                    aria-label="Feedback status"
+                    className={cn(
+                      detailHeaderBadgeClassName,
+                      'min-w-24 justify-center gap-2 [&_svg]:text-current',
+                      feedbackStatusBadgeClassNames[field.state.value],
+                    )}
+                    size="sm"
+                  >
+                    <SelectValue>{feedbackStatusLabels[field.state.value]}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {statusOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              )}
+            </form.AppField>
+          </CardHeader>
+          <CardSeparator />
+          <CardContent className="grid gap-5">
+            <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
+            <DetailField label="Submitted by">
+              <UserLabel name={detail.submitter.name} thumbnailDataUrl={detail.submitter.thumbnailDataUrl} />
+            </DetailField>
+            <DetailField label="Linked to">
+              <SubjectLink item={detail} />
+            </DetailField>
+            <DetailField label="Submitted">
+              <DateDisplay date={detail.createdAt} format="medium" />
+            </DetailField>
+            <FeedbackTargets detail={detail} />
+            <DetailField label="Feedback">
+              <p className="whitespace-pre-wrap rounded-md border bg-muted/20 p-3 text-sm leading-6">{detail.text}</p>
+            </DetailField>
+            <DetailField label="Internal notes">
+              <form.AppField name="internalNotes">
+                {(field) => (
+                  <field.TextareaField
+                    className="min-h-28 resize-y text-sm"
+                    placeholder="Add internal triage notes..."
+                  />
+                )}
+              </form.AppField>
+            </DetailField>
+          </CardContent>
+        </Card>
+      </form>
+    </form.AppForm>
   );
+}
+
+function toFeedbackTriageFormValues(detail: FeedbackDetail): FeedbackTriageFormValues {
+  return {
+    internalNotes: detail.internalNotes ?? '',
+    status: detail.status,
+  };
+}
+
+function toFeedbackUpdateInput(id: UUID, values: FeedbackTriageFormValues): FeedbackUpdateInput {
+  return {
+    id,
+    internalNotes: values.internalNotes,
+    status: values.status,
+  };
 }
 
 function FeedbackTargets({ detail }: { detail: FeedbackDetail }) {

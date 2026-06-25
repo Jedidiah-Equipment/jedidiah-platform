@@ -274,7 +274,7 @@ function FeedbackDetailPanel({
   return (
     <Card className="min-w-0">
       <CardHeader className="grid-cols-[minmax(0,1fr)_auto] gap-3">
-        <CardTitle className="truncate">{feedbackKindLabels[detail.kind]}</CardTitle>
+        <CardTitle className="truncate">Feedback: {feedbackKindLabels[detail.kind]}</CardTitle>
         <Badge
           className={cn(detailHeaderBadgeClassName, feedbackStatusBadgeClassNames[detail.status])}
           variant="outline"

@@ -2,11 +2,11 @@ import { isProductCoreError, readProductImage, replaceProductImage, type Storage
 import { db } from '@pkg/db';
 import { ProductImageSlotParams } from '@pkg/schema';
 
-import { type EntityImageRouteConfig, RouteHttpError } from '../images/entity-image-http.route.js';
+import { type EntityFileRouteConfig, RouteHttpError } from '../files/entity-file-http.route.js';
 
-// Product image slots, wired into the generic entity-image registrar. Image uploads use the same
+// Product image slots, wired into the generic entity-file registrar. Image uploads use the same
 // permission as editing a Product; previews use Product read access.
-export function createProductImageRouteConfig(storage: StorageAdapter): EntityImageRouteConfig {
+export function createProductImageRouteConfig(storage: StorageAdapter): EntityFileRouteConfig {
   return {
     uploadPath: '/api/products/:productId/images/:slot',
     downloadPath: '/api/products/:productId/images/:slot/download',

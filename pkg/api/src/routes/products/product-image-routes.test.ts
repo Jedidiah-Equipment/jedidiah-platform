@@ -123,7 +123,7 @@ describe('product brochure image HTTP routes', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({
-      data: { appCode: 'image.content_type_not_allowed' },
+      data: { appCode: 'file.content_type_not_allowed' },
       message: 'Only PNG or JPEG files can be uploaded.',
     });
     expect(storage.objects.size).toBe(0);
@@ -154,7 +154,7 @@ describe('product brochure image HTTP routes', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({
-      data: { appCode: 'image.forbidden' },
+      data: { appCode: 'file.forbidden' },
       message: 'You do not have permission to update Product images.',
     });
   });
@@ -181,17 +181,17 @@ describe('product brochure image HTTP routes', () => {
     const response = await app.inject(`/api/products/${context.product.id}/images/primary/download`);
 
     expect(response.statusCode).toBe(404);
-    expect(response.json()).toMatchObject({ data: { appCode: 'image.not_found' } });
+    expect(response.json()).toMatchObject({ data: { appCode: 'file.not_found' } });
   });
 });
 
 async function createApp(storage: StorageAdapter) {
-  const { registerEntityImageRoutes } = await import('../images/entity-image-http.route.js');
+  const { registerEntityFileRoutes } = await import('../files/entity-file-http.route.js');
   const { createProductImageRouteConfig } = await import('./product-image-routes.js');
   const app = Fastify();
 
   await app.register(fastifyMultipart);
-  await registerEntityImageRoutes(app, [createProductImageRouteConfig(storage)]);
+  await registerEntityFileRoutes(app, [createProductImageRouteConfig(storage)]);
   await app.ready();
   openApps.push(app);
 

@@ -1,4 +1,4 @@
-import { imageContentTypeRejectedMessage, imageTooLargeMessage } from '@pkg/domain';
+import { fileContentTypeRejectedMessage, fileTooLargeMessage } from '@pkg/domain';
 import { IMAGE_CONTENT_TYPES } from '@pkg/schema';
 import { toast } from 'sonner';
 
@@ -10,6 +10,9 @@ import { readApiErrorMessage } from './document.js';
 
 const ALLOWED_CONTENT_TYPES = new Set<string>(IMAGE_CONTENT_TYPES);
 
+// `accept` attribute value for a file input constrained to the shared image formats.
+export const IMAGE_ACCEPT = IMAGE_CONTENT_TYPES.join(',');
+
 // Client-side guard mirroring the server policy so an obviously wrong file is rejected before upload.
 // The server re-validates by sniffing the bytes, so this is UX only. Returns the file when acceptable,
 // otherwise toasts the reason and returns null.
@@ -17,12 +20,12 @@ export function validateSelectedImage(file: File | null, maxBytes: number): File
   if (!file) return null;
 
   if (!ALLOWED_CONTENT_TYPES.has(file.type)) {
-    toast.error(imageContentTypeRejectedMessage(IMAGE_CONTENT_TYPES));
+    toast.error(fileContentTypeRejectedMessage(IMAGE_CONTENT_TYPES));
     return null;
   }
 
   if (file.size > maxBytes) {
-    toast.error(imageTooLargeMessage(maxBytes));
+    toast.error(fileTooLargeMessage(maxBytes));
     return null;
   }
 

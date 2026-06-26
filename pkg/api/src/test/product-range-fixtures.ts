@@ -1,10 +1,10 @@
-import { type Db, productRanges, type StoredImageRef } from '@pkg/db';
+import { type Db, productRanges, type StoredFile } from '@pkg/db';
 
 export async function createProductRangeFixture(
   db: Db,
   name = `Test Range ${crypto.randomUUID()}`,
-  image: StoredImageRef | null = null,
-  logo: StoredImageRef | null = null,
+  image: StoredFile | null = null,
+  logo: StoredFile | null = null,
 ): Promise<string> {
   // Append to the end: the next slot is the current row count (fixtures create contiguous orders).
   const existing = await db.select({ id: productRanges.id }).from(productRanges);

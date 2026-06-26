@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DateIso } from '../common/date.js';
-import { EntityImage } from '../common/image.js';
+import { EntityFile } from '../common/file.js';
 import { createSearchedSortedPagedQueryInput, createSortedPagedQueryResult } from '../common/pagination.js';
 import { Price } from '../common/price.js';
 import {
@@ -327,9 +327,9 @@ export const PRODUCT_IMAGE_SLOT_SPECS = {
   secondary2: { fit: 'cover', recommendedHeight: 1200, recommendedWidth: 1600 },
 } as const satisfies Record<ProductImageSlot, ProductImageSlotSpec>;
 
-// Each slot exposes the shared {@link EntityImage} read shape (or null when empty).
-export type ProductImage = EntityImage;
-export const ProductImage = EntityImage;
+// Each slot exposes the shared {@link EntityFile} read shape (or null when empty).
+export type ProductImage = EntityFile;
+export const ProductImage = EntityFile;
 
 export type ProductImages = z.infer<typeof ProductImages>;
 export const ProductImages = z.object({

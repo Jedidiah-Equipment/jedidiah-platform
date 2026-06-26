@@ -3,7 +3,7 @@ import { PRODUCT_IMAGE_MAX_BYTES } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { ImageNotFoundError, ImagePolicyViolationError } from '../images/image-errors.js';
+import { FileNotFoundError, FilePolicyViolationError } from '../files/file-errors.js';
 import { createTester } from '../test/create-tester.js';
 import { InMemoryStorageAdapter } from '../test/in-memory-storage-adapter.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
@@ -163,7 +163,7 @@ describe('replaceProductImage', () => {
         input: { bytes: pdfBytes(), productId: context.product.id, slot: 'primary' },
         storage,
       }),
-    ).rejects.toBeInstanceOf(ImagePolicyViolationError);
+    ).rejects.toBeInstanceOf(FilePolicyViolationError);
     expect(storage.objects.size).toBe(0);
   });
 
@@ -177,7 +177,7 @@ describe('replaceProductImage', () => {
         input: { bytes: pngBytes(PRODUCT_IMAGE_MAX_BYTES + 1), productId: context.product.id, slot: 'primary' },
         storage,
       }),
-    ).rejects.toMatchObject({ code: 'image.file_too_large' });
+    ).rejects.toMatchObject({ code: 'file.too_large' });
     expect(storage.objects.size).toBe(0);
   });
 
@@ -222,7 +222,7 @@ describe('readProductImage', () => {
 
     await expect(
       readProductImage({ db: context.db, productId: context.product.id, slot: 'primary', storage }),
-    ).rejects.toBeInstanceOf(ImageNotFoundError);
+    ).rejects.toBeInstanceOf(FileNotFoundError);
   });
 
   test('throws when the product does not exist', async ({ context }) => {

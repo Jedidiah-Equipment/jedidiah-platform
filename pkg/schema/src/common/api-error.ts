@@ -3,6 +3,7 @@ export const APP_CODE_PREFIXES = [
   'customer',
   'document',
   'feedback',
+  'file',
   'job',
   'part',
   'product',

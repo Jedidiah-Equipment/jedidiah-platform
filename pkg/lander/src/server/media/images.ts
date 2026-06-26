@@ -1,5 +1,5 @@
 import {
-  ImageNotFoundError,
+  FileNotFoundError,
   ProductNotFoundError,
   ProductRangeNotFoundError,
   readProductImage,
@@ -67,7 +67,7 @@ function parseProductImageSlot(requestedSlot: string | null | undefined): Produc
 
 function isMissingImageError(error: unknown): boolean {
   return (
-    error instanceof ImageNotFoundError ||
+    error instanceof FileNotFoundError ||
     error instanceof StorageObjectNotFoundError ||
     error instanceof ProductRangeNotFoundError ||
     error instanceof ProductNotFoundError

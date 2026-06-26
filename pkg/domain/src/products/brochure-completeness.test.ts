@@ -1,4 +1,4 @@
-import { EntityImage, Product, type ProductImages } from '@pkg/schema';
+import { EntityFile, Product, type ProductImages } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,7 +7,7 @@ import {
   evaluateProductBrochureCompleteness,
 } from './brochure-completeness.js';
 
-const IMAGE = EntityImage.parse({
+const IMAGE = EntityFile.parse({
   byteSize: 1_024,
   contentType: 'image/png',
   updatedAt: '2026-06-17T00:00:00.000Z',

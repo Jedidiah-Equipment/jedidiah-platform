@@ -6,8 +6,8 @@ import type { ProductRange, UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
 import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
-import { ImageNotFoundError } from '../images/image-errors.js';
-import { imageExtensionFor, replaceImage } from '../images/image-service.js';
+import { FileNotFoundError } from '../files/file-errors.js';
+import { fileExtensionFor, replaceFile } from '../files/stored-file-service.js';
 import { ProductRangeNotFoundError } from './product-range-errors.js';
 import { getProductRange } from './product-range-service.js';
 
@@ -17,7 +17,7 @@ export type ReplaceProductRangeImageInput = {
 };
 
 // Replace the Range's single presentation image in place, then return the updated Range. The generic
-// image service owns validation, storage, and old-object cleanup; this binding owns the Range specifics:
+// stored-file service owns validation, storage, and old-object cleanup; this binding owns the Range specifics:
 // locking the row and swapping its `image` reference. Range image changes are not audited (creating or
 // renaming a Range is not audited either), so the binding records nothing.
 export async function replaceProductRangeImage({
@@ -29,14 +29,14 @@ export async function replaceProductRangeImage({
   input: ReplaceProductRangeImageInput;
   storage: StorageAdapter;
 }): Promise<ProductRange> {
-  await replaceImage({
+  await replaceFile({
     bytes: input.bytes,
     db,
     policy: RANGE_IMAGE_POLICY,
     storage,
     binding: {
       buildStorageKey: ({ contentType }) =>
-        `range-images/product-range/${input.rangeId}/${randomUUID()}.${imageExtensionFor(contentType)}`,
+        `range-images/product-range/${input.rangeId}/${randomUUID()}.${fileExtensionFor(contentType)}`,
       apply: async ({ nextRef, tx }) => {
         const [before] = await tx.select().from(productRanges).where(eq(productRanges.id, input.rangeId)).for('update');
 
@@ -77,7 +77,7 @@ export async function readProductRangeImage({
   }
 
   if (!row.image) {
-    throw new ImageNotFoundError(`Image not found for product range ${rangeId}`, { rangeId });
+    throw new FileNotFoundError(`Image not found for product range ${rangeId}`, { rangeId });
   }
 
   return storage.get(row.image.storageKey);
@@ -100,14 +100,14 @@ export async function replaceProductRangeLogo({
   input: ReplaceProductRangeLogoInput;
   storage: StorageAdapter;
 }): Promise<ProductRange> {
-  await replaceImage({
+  await replaceFile({
     bytes: input.bytes,
     db,
     policy: RANGE_LOGO_POLICY,
     storage,
     binding: {
       buildStorageKey: ({ contentType }) =>
-        `range-logos/product-range/${input.rangeId}/${randomUUID()}.${imageExtensionFor(contentType)}`,
+        `range-logos/product-range/${input.rangeId}/${randomUUID()}.${fileExtensionFor(contentType)}`,
       apply: async ({ nextRef, tx }) => {
         const [before] = await tx.select().from(productRanges).where(eq(productRanges.id, input.rangeId)).for('update');
 
@@ -148,7 +148,7 @@ export async function readProductRangeLogo({
   }
 
   if (!row.logo) {
-    throw new ImageNotFoundError(`Logo not found for product range ${rangeId}`, { rangeId });
+    throw new FileNotFoundError(`Logo not found for product range ${rangeId}`, { rangeId });
   }
 
   return storage.get(row.logo.storageKey);

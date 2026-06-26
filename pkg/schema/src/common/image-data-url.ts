@@ -1,5 +1,5 @@
 // Shared primitives for inline images stored as base64 data URLs (as opposed to the object-storage
-// EntityImage shape in `image.ts`). Keep this file free of any single feature's format set or size
+// EntityFile shape in `file.ts`). Keep this file free of any single feature's format set or size
 // cap; consumers compose these into their own branded scalar with the rules they need.
 
 export type ImageDataUrlFormat = 'jpeg' | 'png' | 'webp';

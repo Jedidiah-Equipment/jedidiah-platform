@@ -20,7 +20,8 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@pkg/mobile", "exec", "expo", "start", "--web"],
       "port": 7003,
-      "autoPort": true
+      "autoPort": true,
+      "env": { "APP_VARIANT": "staging" }
     },
     {
       "name": "lander",

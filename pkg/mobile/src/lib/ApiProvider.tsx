@@ -18,8 +18,15 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id ?? null;
   const previousUserId = useRef(userId);
   useEffect(() => {
-    if (previousUserId.current !== userId) {
-      previousUserId.current = userId;
+    if (previousUserId.current === userId) return;
+
+    // Skip the initial null → user hydration: on web `useSession` resolves the session
+    // asynchronously (a get-session request), so the first resolve would otherwise clear
+    // the cache out from under in-flight queries and strand the board on its loading state.
+    // Only a genuine account switch (a previously-known user changing) needs the cache dropped.
+    const hadUser = previousUserId.current !== null;
+    previousUserId.current = userId;
+    if (hadUser) {
       queryClient.clear();
     }
   }, [userId, queryClient]);

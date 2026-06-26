@@ -53,15 +53,10 @@ export function BoardList({
   const [sort, setSort] = usePersistedState<BaySort>('jedidiah-bay-sort', 'days-left', isBaySort);
   const isBays = listMode === 'bays';
   const state = isBays ? bayState : jobState;
-  const noun = isBays ? 'bay' : 'job';
-
-  const count =
-    state.status === 'ready' ? `${state.cards.length} ${state.cards.length === 1 ? noun : `${noun}s`}` : null;
 
   return (
     <View>
       <Header
-        count={count}
         onToggle={onToggleListMode}
         title={isBays ? 'Bays' : 'Jobs'}
         trailing={isBays && bayState.status === 'ready' ? <SortControl onChange={setSort} sort={sort} /> : null}
@@ -112,21 +107,13 @@ export function BoardList({
   );
 }
 
-/** Tappable title that flips Bays ⇄ Jobs in place, with the live count and the Bays-only sort control. */
-function Header({
-  count,
-  onToggle,
-  title,
-  trailing,
-}: {
-  count: string | null;
-  onToggle: () => void;
-  title: string;
-  trailing: ReactNode;
-}) {
+/** Tappable title that flips Bays ⇄ Jobs in place, with the Bays-only sort control. */
+function Header({ onToggle, title, trailing }: { onToggle: () => void; title: string; trailing: ReactNode }) {
   return (
     <View
-      className="mb-3.5 flex-row items-center justify-between gap-3"
+      // flex-wrap so the Bays-only sort control drops to its own line on narrow
+      // widths instead of overflowing the row.
+      className="mb-3.5 flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2"
       style={{ minHeight: BOARD_HEADER_ROW_MIN_HEIGHT }}
     >
       <Pressable
@@ -141,11 +128,6 @@ function Header({
         <View className="h-6 w-6 items-center justify-center rounded-lg border border-border bg-surface">
           <Icon className="text-muted-foreground" icon={IconArrowsLeftRight} size={13} />
         </View>
-        {count ? (
-          <Text className="text-[11px] tracking-wide text-muted-foreground" mono>
-            {count}
-          </Text>
-        ) : null}
       </Pressable>
       {trailing}
     </View>

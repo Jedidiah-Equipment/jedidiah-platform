@@ -18,7 +18,9 @@ export function AppLogo({ centered = false, compact = false }: { centered?: bool
         accessibilityRole="image"
         className="min-w-0 flex-row items-center gap-2.5"
       >
-        <Image className="h-9 w-9" resizeMode="contain" source={logoMark} />
+        {/* Explicit numeric size: react-native-web inlines a bare Image's intrinsic
+            dimensions, which beat NativeWind's h-9/w-9 classes (style > class). */}
+        <Image resizeMode="contain" source={logoMark} style={{ height: 36, width: 36 }} />
         <LogoText className="shrink text-[20px] leading-8" />
       </View>
     );
@@ -30,7 +32,9 @@ export function AppLogo({ centered = false, compact = false }: { centered?: bool
       accessibilityRole="image"
       className={`gap-2 ${centered ? 'items-center' : 'items-start'}`}
     >
-      <Image className="h-16 w-16" resizeMode="contain" source={logoMark} />
+      {/* See compact branch: explicit numeric size so the web build doesn't fall back
+          to the asset's intrinsic dimensions. */}
+      <Image resizeMode="contain" source={logoMark} style={{ height: 64, width: 64 }} />
       <LogoText className={`text-[34px] leading-10 ${centered ? 'text-center' : ''}`} />
     </View>
   );

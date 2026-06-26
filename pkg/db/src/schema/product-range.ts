@@ -7,11 +7,11 @@ export const productRanges = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     name: text('name').notNull(),
     description: text('description'),
-    // The Range's single presentation image, stored as a {@link StoredImageRef} (bytes live in object
+    // The Range's single presentation image, stored as a {@link StoredFile} (bytes live in object
     // storage). Inline structural type rather than the alias so the inferred row type stays portable into
     // @pkg/api's emitted declarations (avoids TS2883). Null means no current image.
     image: jsonb('image').$type<{ byteSize: number; contentType: string; storageKey: string; updatedAt: string }>(),
-    // The Range's brochure logo (top-right of the product brochure), stored as a {@link StoredImageRef}.
+    // The Range's brochure logo (top-right of the product brochure), stored as a {@link StoredFile}.
     // Inline structural type for the same portability reason as `image`. Null means no current logo.
     logo: jsonb('logo').$type<{ byteSize: number; contentType: string; storageKey: string; updatedAt: string }>(),
     // Admin-controlled position in the Range list (admin grid + public lander). Assigned sequentially on

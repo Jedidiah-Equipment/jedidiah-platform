@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { DatabaseTransaction, Db, ProductImageStore, StoredImageRef } from '@pkg/db';
+import type { DatabaseTransaction, Db, ProductImageStore, StoredFile } from '@pkg/db';
 import { evaluateProductBrochureCompleteness } from '@pkg/domain';
 import {
   type AuthId,
@@ -141,7 +141,7 @@ async function renderBrochureForProduct({
   images: ProductImageStore;
   pdfRenderer: BrochurePdfRenderer;
   product: Product;
-  rangeLogo: StoredImageRef | null;
+  rangeLogo: StoredFile | null;
   storage: StorageAdapter;
 }): Promise<BrochurePreviewResult> {
   const document = await getBrochureDocumentModel({ images, product, rangeLogo, storage });
@@ -166,7 +166,7 @@ export async function getBrochureDocumentModel({
 }: {
   images: ProductImageStore;
   product: Product;
-  rangeLogo: StoredImageRef | null;
+  rangeLogo: StoredFile | null;
   storage: StorageAdapter;
 }): Promise<BrochureDocumentModel> {
   const [resolvedImages, rangeLogo] = await Promise.all([
@@ -220,7 +220,7 @@ async function resolveStoredImage({
   storage,
 }: {
   fit: 'contain' | 'cover';
-  ref: StoredImageRef | undefined | null;
+  ref: StoredFile | undefined | null;
   storage: StorageAdapter;
 }): Promise<BrochureDocumentImage> {
   if (!ref) {

@@ -7,6 +7,7 @@ export * from './auth/authorization.js';
 export * from './common/api-error.js';
 export * from './common/date.js';
 export * from './common/departments.js';
+export * from './common/file.js';
 export * from './common/image.js';
 export * from './common/pagination.js';
 export * from './common/phone-number.js';

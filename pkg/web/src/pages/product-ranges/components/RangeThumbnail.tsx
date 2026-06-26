@@ -1,4 +1,4 @@
-import type { EntityImage, UUID } from '@pkg/schema';
+import type { EntityFile, UUID } from '@pkg/schema';
 import type React from 'react';
 
 import { getInitials } from '@/components/thumbnail/EntityThumbnail.js';
@@ -10,7 +10,7 @@ import { fetchProductRangeLogoBlob } from '@/utils/range-logo.js';
 
 type RangeThumbnailProps = {
   asset: 'image' | 'logo';
-  image: EntityImage | null;
+  image: EntityFile | null;
   name: string;
   rangeId: UUID;
 };

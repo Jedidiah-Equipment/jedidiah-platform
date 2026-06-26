@@ -12,7 +12,7 @@ import { log } from './logger.js';
 import { createObservability, type Observability } from './observability.js';
 import { registerAiStreamRoute } from './routes/ai/ai-stream.route.js';
 import { registerDocumentHttpRoutes } from './routes/documents/document-http.route.js';
-import { registerEntityImageRoutes } from './routes/images/entity-image-http.route.js';
+import { registerEntityFileRoutes } from './routes/files/entity-file-http.route.js';
 import {
   createProductRangeImageRouteConfig,
   createProductRangeLogoRouteConfig,
@@ -54,7 +54,7 @@ export async function buildServer(
   });
   await registerAiStreamRoute(app, { storage });
   await registerDocumentHttpRoutes(app, storage);
-  await registerEntityImageRoutes(app, [
+  await registerEntityFileRoutes(app, [
     createProductImageRouteConfig(storage),
     createProductRangeImageRouteConfig(storage),
     createProductRangeLogoRouteConfig(storage),

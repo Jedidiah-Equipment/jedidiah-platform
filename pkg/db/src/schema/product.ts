@@ -13,14 +13,13 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-
-import type { StoredImageRef } from './image.js';
 import { parts } from './part.js';
 import { productRanges } from './product-range.js';
+import type { StoredFile } from './stored-file.js';
 
-// Product images are keyed by slot; each value is a shared {@link StoredImageRef}. Slots replace in
+// Product images are keyed by slot; each value is a shared {@link StoredFile}. Slots replace in
 // place, so a missing key means "no current image".
-export type ProductImageStore = Partial<Record<string, StoredImageRef>>;
+export type ProductImageStore = Partial<Record<string, StoredFile>>;
 
 export const products = pgTable(
   'products',

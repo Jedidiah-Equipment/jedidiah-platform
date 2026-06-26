@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { DateIso } from '../common/date.js';
-import { EntityImage } from '../common/image.js';
+import { EntityFile } from '../common/file.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText } from '../common/text.js';
 import { UUID } from '../common/uuid.js';
 
@@ -29,10 +29,10 @@ export const ProductRange = z.object({
   description: ProductRangeDescription,
   // The Range's single presentation image, exposed as a client-safe reference (no storage key). Replaced
   // in place through the dedicated image route, never carried on the create/update payload.
-  image: EntityImage.nullable(),
+  image: EntityFile.nullable(),
   // The Range's brochure logo (top-right of the product brochure), same client-safe reference shape as
   // `image`. Replaced in place through the dedicated logo route, never on the create/update payload.
-  logo: EntityImage.nullable(),
+  logo: EntityFile.nullable(),
   // Admin-controlled position in the Range list. Auto-assigned on create, rewritten via the reorder
   // mutation; never carried on the create/update payload.
   displayOrder: z.number().int(),

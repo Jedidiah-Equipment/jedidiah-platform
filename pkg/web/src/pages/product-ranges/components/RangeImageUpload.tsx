@@ -1,4 +1,4 @@
-import { type EntityImage, PRODUCT_IMAGE_SLOT_SPECS, type UUID } from '@pkg/schema';
+import { type EntityFile, PRODUCT_IMAGE_SLOT_SPECS, type UUID } from '@pkg/schema';
 import { IconLoader2, IconPhoto, IconUpload } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
@@ -20,7 +20,7 @@ import {
 
 type RangeImageUploadProps = {
   canEdit: boolean;
-  image: EntityImage | null;
+  image: EntityFile | null;
   rangeId: UUID;
 };
 

@@ -1,4 +1,4 @@
-import { describeImageContentTypes, imageTooLargeMessage } from '@pkg/domain';
+import { describeFileContentTypes, fileTooLargeMessage } from '@pkg/domain';
 import type * as React from 'react';
 import { useId } from 'react';
 
@@ -63,11 +63,11 @@ export function ImageField({
 
 async function readImageFileAsDataUrl(file: File, contentTypes: readonly string[], maxBytes: number): Promise<string> {
   if (contentTypes.length > 0 && !contentTypes.includes(file.type)) {
-    throw new Error(`Image must be a ${describeImageContentTypes(contentTypes)}.`);
+    throw new Error(`Image must be a ${describeFileContentTypes(contentTypes)}.`);
   }
 
   if (file.size > maxBytes) {
-    throw new Error(imageTooLargeMessage(maxBytes));
+    throw new Error(fileTooLargeMessage(maxBytes));
   }
 
   return await new Promise((resolve, reject) => {

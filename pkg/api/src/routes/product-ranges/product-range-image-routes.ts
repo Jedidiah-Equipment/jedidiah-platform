@@ -9,7 +9,7 @@ import {
 import { db } from '@pkg/db';
 import { ProductRangeImageParams, ProductRangeLogoParams } from '@pkg/schema';
 
-import { type EntityImageRouteConfig, RouteHttpError } from '../images/entity-image-http.route.js';
+import { type EntityFileRouteConfig, RouteHttpError } from '../files/entity-file-http.route.js';
 
 // Owner-not-found surfaces as the Range's core error; shared by the image and logo route configs so the
 // generic registrar stays free of Range specifics.
@@ -27,9 +27,9 @@ function mapProductRangeOwnerError(error: unknown): RouteHttpError | undefined {
   });
 }
 
-// The Product Range presentation image, wired into the generic entity-image registrar. Uploads use the
+// The Product Range presentation image, wired into the generic entity-file registrar. Uploads use the
 // same permission as editing a Range; previews use Range read access.
-export function createProductRangeImageRouteConfig(storage: StorageAdapter): EntityImageRouteConfig {
+export function createProductRangeImageRouteConfig(storage: StorageAdapter): EntityFileRouteConfig {
   return {
     uploadPath: '/api/product-ranges/:rangeId/image',
     downloadPath: '/api/product-ranges/:rangeId/image/download',
@@ -52,9 +52,9 @@ export function createProductRangeImageRouteConfig(storage: StorageAdapter): Ent
   };
 }
 
-// The Product Range brochure logo, wired into the generic entity-image registrar. Mirrors the image
+// The Product Range brochure logo, wired into the generic entity-file registrar. Mirrors the image
 // config; uploads use the Range-update permission, previews use Range read access.
-export function createProductRangeLogoRouteConfig(storage: StorageAdapter): EntityImageRouteConfig {
+export function createProductRangeLogoRouteConfig(storage: StorageAdapter): EntityFileRouteConfig {
   return {
     uploadPath: '/api/product-ranges/:rangeId/logo',
     downloadPath: '/api/product-ranges/:rangeId/logo/download',

@@ -1,53 +1,53 @@
-import type { DatabaseTransaction, Db, StoredImageRef } from '@pkg/db';
-import { type ImagePolicy, validateImage } from '@pkg/domain';
+import type { DatabaseTransaction, Db, StoredFile } from '@pkg/db';
+import { type FilePolicy, validateFile } from '@pkg/domain';
 
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { ImagePolicyViolationError } from './image-errors.js';
+import { FilePolicyViolationError } from './file-errors.js';
 
 const CONTENT_TYPE_EXTENSIONS: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
 };
 
-// The storage-key file extension for an accepted image content type, for bindings building their key.
+// The storage-key file extension for an accepted content type, for bindings building their key.
 // Falls back to `bin` for anything the policy somehow let through unmapped.
-export function imageExtensionFor(contentType: string): string {
+export function fileExtensionFor(contentType: string): string {
   return CONTENT_TYPE_EXTENSIONS[contentType] ?? 'bin';
 }
 
-// Persists a new image reference for one owner/target inside the replace transaction and reports the
+// Persists a new file reference for one owner/target inside the replace transaction and reports the
 // object it superseded. The binding owns everything entity-specific: locking and checking the owner
 // exists (throwing the owner's not-found error), where the reference lives (a column or a jsonb slot),
 // and recording the audit entry.
-export type ImageReplacementBinding = {
-  apply: (args: { nextRef: StoredImageRef; tx: DatabaseTransaction }) => Promise<{ previousStorageKey: string | null }>;
+export type FileReplacementBinding = {
+  apply: (args: { nextRef: StoredFile; tx: DatabaseTransaction }) => Promise<{ previousStorageKey: string | null }>;
   buildStorageKey: (args: { contentType: string }) => string;
 };
 
 // The generic replace-in-place pipeline: validate the bytes against the policy, store the new object,
 // let the binding swap the reference and audit it in one transaction, then delete the superseded object.
-// A failed swap rolls back and removes the just-uploaded object, so a current image is never stranded.
-export async function replaceImage({
+// A failed swap rolls back and removes the just-uploaded object, so a current file is never stranded.
+export async function replaceFile({
   binding,
   bytes,
   db,
   policy,
   storage,
 }: {
-  binding: ImageReplacementBinding;
+  binding: FileReplacementBinding;
   bytes: Uint8Array;
   db: Db;
-  policy: ImagePolicy;
+  policy: FilePolicy;
   storage: StorageAdapter;
-}): Promise<StoredImageRef> {
-  const validation = validateImage(bytes, policy);
+}): Promise<StoredFile> {
+  const validation = validateFile(bytes, policy);
 
   if (!validation.ok) {
-    throw new ImagePolicyViolationError(validation);
+    throw new FilePolicyViolationError(validation);
   }
 
   const storageKey = binding.buildStorageKey({ contentType: validation.contentType });
-  const nextRef: StoredImageRef = {
+  const nextRef: StoredFile = {
     byteSize: validation.byteSize,
     contentType: validation.contentType,
     storageKey,
@@ -89,6 +89,6 @@ async function cleanUpOrphanedObject(storage: StorageAdapter, storageKey: string
   try {
     await storage.deleteObject(storageKey);
   } catch (cleanupError) {
-    throw new AggregateError([cause, cleanupError], 'Failed to replace image and clean up the uploaded object');
+    throw new AggregateError([cause, cleanupError], 'Failed to replace file and clean up the uploaded object');
   }
 }

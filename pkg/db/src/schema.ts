@@ -3,12 +3,12 @@ export * from './schema/auth.js';
 export * from './schema/customer.js';
 export * from './schema/document.js';
 export * from './schema/feedback.js';
-export * from './schema/image.js';
 export * from './schema/job.js';
 export * from './schema/part.js';
 export * from './schema/product.js';
 export * from './schema/product-range.js';
 export * from './schema/quote.js';
+export * from './schema/stored-file.js';
 export * from './schema/supplier.js';
 
 import * as auditSchema from './schema/audit.js';

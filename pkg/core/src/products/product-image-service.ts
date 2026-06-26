@@ -7,8 +7,8 @@ import { eq } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../audit/audit-service.js';
 import type { StorageAdapter, StoredObject } from '../documents/storage-adapter.js';
-import { ImageNotFoundError } from '../images/image-errors.js';
-import { imageExtensionFor, replaceImage } from '../images/image-service.js';
+import { FileNotFoundError } from '../files/file-errors.js';
+import { fileExtensionFor, replaceFile } from '../files/stored-file-service.js';
 import { ProductNotFoundError } from './product-errors.js';
 import { getProduct, productAuditDescriptor } from './product-service.js';
 
@@ -18,7 +18,7 @@ export type ReplaceProductImageInput = {
   slot: ProductImageSlot;
 };
 
-// Replace a single Product image slot in place, then return the updated Product. The generic image
+// Replace a single Product image slot in place, then return the updated Product. The generic stored-file
 // service owns validation, storage, and old-object cleanup; this binding owns the Product specifics:
 // locking the row, swapping the slot's reference, and recording the replacement as a change-of-fact in
 // the Product audit trail (image bytes are never diffed — the storage-key swap is the recorded change).
@@ -33,14 +33,14 @@ export async function replaceProductImage({
   input: ReplaceProductImageInput;
   storage: StorageAdapter;
 }): Promise<Product> {
-  await replaceImage({
+  await replaceFile({
     bytes: input.bytes,
     db,
     policy: PRODUCT_IMAGE_POLICY,
     storage,
     binding: {
       buildStorageKey: ({ contentType }) =>
-        `product-images/product/${input.productId}/${input.slot}/${randomUUID()}.${imageExtensionFor(contentType)}`,
+        `product-images/product/${input.productId}/${input.slot}/${randomUUID()}.${fileExtensionFor(contentType)}`,
       apply: async ({ nextRef, tx }) => {
         const [before] = await tx.select().from(products).where(eq(products.id, input.productId)).for('update');
 
@@ -98,7 +98,7 @@ export async function readProductImage({
   const ref = row.images[slot];
 
   if (!ref) {
-    throw new ImageNotFoundError(`Product image not found for slot ${slot} on product ${productId}`, {
+    throw new FileNotFoundError(`Product image not found for slot ${slot} on product ${productId}`, {
       productId,
       slot,
     });

@@ -124,7 +124,7 @@ describe('product brochure image HTTP routes', () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({
       data: { appCode: 'image.content_type_not_allowed' },
-      message: 'Only PNG or JPEG images can be uploaded.',
+      message: 'Only PNG or JPEG files can be uploaded.',
     });
     expect(storage.objects.size).toBe(0);
   });

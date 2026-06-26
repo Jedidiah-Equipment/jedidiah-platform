@@ -2,6 +2,7 @@ import { IMAGE_CONTENT_TYPES } from '@pkg/schema';
 
 import {
   DOCUMENT_JPEG_CONTENT_TYPE,
+  DOCUMENT_PDF_CONTENT_TYPE,
   DOCUMENT_PNG_CONTENT_TYPE,
   DOCUMENT_WEBP_CONTENT_TYPE,
   formatBytes,
@@ -22,6 +23,7 @@ export type ImageValidationResult =
   | { ok: false; code: ImagePolicyViolationCode; message: string };
 
 const CONTENT_TYPE_LABELS: Record<string, string> = {
+  [DOCUMENT_PDF_CONTENT_TYPE]: 'PDF',
   [DOCUMENT_PNG_CONTENT_TYPE]: 'PNG',
   [DOCUMENT_JPEG_CONTENT_TYPE]: 'JPEG',
   [DOCUMENT_WEBP_CONTENT_TYPE]: 'WebP',
@@ -55,11 +57,11 @@ export function validateImage(bytes: Uint8Array, policy: ImagePolicy): ImageVali
 // Canonical user-facing rejection messages, shared by `validateImage` (server, sniffed bytes) and the
 // browser-side pre-upload guards so a rejected file reads identically wherever it is caught.
 export function imageContentTypeRejectedMessage(contentTypes: readonly string[]): string {
-  return `Only ${describeImageContentTypes(contentTypes)} images can be uploaded.`;
+  return `Only ${describeImageContentTypes(contentTypes)} files can be uploaded.`;
 }
 
 export function imageTooLargeMessage(maxBytes: number): string {
-  return `Image must be ${formatBytes(maxBytes)} or smaller.`;
+  return `File must be ${formatBytes(maxBytes)} or smaller.`;
 }
 
 // Comma/`or`-joined human label for a set of image content types, e.g. "PNG or JPEG".

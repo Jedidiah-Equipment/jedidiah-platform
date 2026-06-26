@@ -12,6 +12,7 @@ import { Avatar } from '@/components/Avatar';
 import { JobDocuments } from '@/components/bays/JobDocuments';
 import { JobFactsCard } from '@/components/bays/job-facts';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
+import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
 import { ScheduleHeader } from '@/components/ScheduleHeader';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
@@ -305,6 +306,8 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
         productSerialNumber={state.productSerialNumber}
         quoteCode={state.quoteCode}
       />
+
+      <GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />
     </View>
   );
 }

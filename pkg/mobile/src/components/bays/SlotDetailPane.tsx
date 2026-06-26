@@ -5,6 +5,7 @@ import { Avatar } from '@/components/Avatar';
 import { JobDocuments } from '@/components/bays/JobDocuments';
 import { FactCard, FactField, FactRow, JobFactsCard } from '@/components/bays/job-facts';
 import { DaysLeftChip, StatusChip } from '@/components/bays/status-chip';
+import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton';
 import { Text } from '@/components/ui/text';
 import type { BaySlotDetail } from '@/lib/use-bay-schedule';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -80,6 +81,8 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
         productSerialNumber={slot.productSerialNumber}
         quoteCode={slot.quoteCode}
       />
+
+      <GiveFeedbackButton jobCode={slot.jobCode} jobId={slot.jobId} />
     </View>
   );
 }

@@ -126,7 +126,9 @@ function Header({
 }) {
   return (
     <View
-      className="mb-3.5 flex-row items-center justify-between gap-3"
+      // flex-wrap so the Bays-only sort control drops to its own line on narrow
+      // widths instead of overflowing the row.
+      className="mb-3.5 flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2"
       style={{ minHeight: BOARD_HEADER_ROW_MIN_HEIGHT }}
     >
       <Pressable

@@ -1,4 +1,4 @@
-import { imageContentTypeRejectedMessage, imageTooLargeMessage } from '@pkg/domain';
+import { fileContentTypeRejectedMessage, fileTooLargeMessage } from '@pkg/domain';
 import { IMAGE_CONTENT_TYPES } from '@pkg/schema';
 import { toast } from 'sonner';
 
@@ -17,12 +17,12 @@ export function validateSelectedImage(file: File | null, maxBytes: number): File
   if (!file) return null;
 
   if (!ALLOWED_CONTENT_TYPES.has(file.type)) {
-    toast.error(imageContentTypeRejectedMessage(IMAGE_CONTENT_TYPES));
+    toast.error(fileContentTypeRejectedMessage(IMAGE_CONTENT_TYPES));
     return null;
   }
 
   if (file.size > maxBytes) {
-    toast.error(imageTooLargeMessage(maxBytes));
+    toast.error(fileTooLargeMessage(maxBytes));
     return null;
   }
 

@@ -14,7 +14,7 @@ import {
   type ProductImageStore,
   productBays,
   products,
-  type StoredImageRef,
+  type StoredFile,
   user,
 } from '@pkg/db';
 import { JOB_DEPARTMENT_PIPELINE, validateDocumentMetadata } from '@pkg/domain';
@@ -217,7 +217,7 @@ function mapProductImages(store: ProductImageStore | undefined): ProductImages {
   } satisfies Record<ProductImageSlot, ProductImageInput>);
 }
 
-function toProductImageInput(ref: StoredImageRef | undefined): ProductImageInput {
+function toProductImageInput(ref: StoredFile | undefined): ProductImageInput {
   return ref ? { byteSize: ref.byteSize, contentType: ref.contentType, updatedAt: ref.updatedAt } : null;
 }
 
@@ -342,7 +342,7 @@ export async function getProductBrochureSource({
 }: {
   db: Db;
   id: UUID;
-}): Promise<{ images: ProductImageStore; product: Product; rangeLogo: StoredImageRef | null }> {
+}): Promise<{ images: ProductImageStore; product: Product; rangeLogo: StoredFile | null }> {
   const { rangeLogo, row, productBays: productBaysForProduct } = await loadProductDetailRow({ db, id });
 
   return {
@@ -354,7 +354,7 @@ export async function getProductBrochureSource({
 
 async function loadProductDetailRow({ db, id }: { db: Db; id: UUID }): Promise<{
   productBays: ProductBay[];
-  rangeLogo: StoredImageRef | null;
+  rangeLogo: StoredFile | null;
   row: ProductListRow;
 }> {
   // The Product's Bays key off the same id as the main read, so load both in parallel rather than

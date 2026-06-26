@@ -94,17 +94,25 @@ export default function LoginScreen() {
                 <Text className="text-sm leading-5 text-foreground" weight="semibold">
                   Password
                 </Text>
-                <View className="flex-row items-center rounded-lg border border-border bg-surface">
+                {/* Fixed height + clip: iOS's native secureTextEntry field ignores the height set
+                    on the TextInput and grows the row, so cap it on the wrapper to match Email. */}
+                <View
+                  className="flex-row items-center overflow-hidden rounded-lg border border-border bg-surface"
+                  style={{ height: 52 }}
+                >
                   <TextInput
                     autoCapitalize="none"
                     autoComplete="password"
-                    className="min-h-[52px] flex-1 px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
+                    className="flex-1 px-4 font-sans text-base text-foreground placeholder:text-muted-foreground"
                     editable={!isSubmitting}
                     onChangeText={setPassword}
                     onSubmitEditing={handleSignIn}
                     placeholder="Enter your password"
                     returnKeyType="go"
                     secureTextEntry={!showPassword}
+                    // Inline height (not a NativeWind class): iOS secureTextEntry renders the custom
+                    // font with larger metrics and grows the field; pin it to match the email input.
+                    style={{ height: 52 }}
                     textContentType="password"
                     value={password}
                   />

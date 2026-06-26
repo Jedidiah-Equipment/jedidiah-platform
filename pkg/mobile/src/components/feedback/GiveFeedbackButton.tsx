@@ -5,7 +5,7 @@ import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppForm } from '@/components/form';
 import { Icon } from '@/components/ui/icon';
@@ -87,85 +87,91 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
     <Modal animationType="slide" onRequestClose={onClose} transparent={false} visible>
       {/* RN Modal portals to a native root outside GluestackUIProvider, so re-apply the
           scheme's CSS variables on a wrapping view (semantic classes resolve against the
-          parent var context) or the modal's tokens fall back to light. */}
-      <View className="flex-1" style={gluestackConfig[resolved]}>
-        <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
-          <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
-            <View className="min-w-0 flex-1">
-              <Text className="text-lg text-foreground" weight="bold">
-                Send feedback
-              </Text>
-              <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-                About{' '}
-                <Text className="text-muted-foreground" mono>
-                  {jobCode}
-                </Text>{' '}
-                · goes to the review queue
-              </Text>
+          parent var context) or the modal's tokens fall back to light. The Modal also sits
+          outside the root SafeAreaProvider, so its SafeAreaView would read zero insets and
+          slide the header under the notch; a nested provider re-measures insets here. */}
+      <SafeAreaProvider>
+        <View className="flex-1" style={gluestackConfig[resolved]}>
+          <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
+            <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
+              <View className="min-w-0 flex-1">
+                <Text className="text-lg text-foreground" weight="bold">
+                  Send feedback
+                </Text>
+                <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+                  About{' '}
+                  <Text className="text-muted-foreground" mono>
+                    {jobCode}
+                  </Text>{' '}
+                  · goes to the review queue
+                </Text>
+              </View>
+              <Pressable accessibilityLabel="Close" accessibilityRole="button" className="p-1" onPress={onClose}>
+                <Icon className="text-muted-foreground" icon={IconX} size={22} />
+              </Pressable>
             </View>
-            <Pressable accessibilityLabel="Close" accessibilityRole="button" className="p-1" onPress={onClose}>
-              <Icon className="text-muted-foreground" icon={IconX} size={22} />
-            </Pressable>
-          </View>
 
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-            <ScrollView contentContainerClassName="gap-4 px-4 pb-6 pt-4" keyboardShouldPersistTaps="handled">
-              {submitError ? (
-                <View className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5">
-                  <Text className="text-sm text-danger">{submitError}</Text>
-                </View>
-              ) : null}
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+              <ScrollView contentContainerClassName="gap-4 px-4 pb-6 pt-4" keyboardShouldPersistTaps="handled">
+                {submitError ? (
+                  <View className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5">
+                    <Text className="text-sm text-danger">{submitError}</Text>
+                  </View>
+                ) : null}
 
-              <form.AppField name="kind">
-                {(field) => <field.SegmentedField label="Who is this about?" options={KIND_OPTIONS} />}
-              </form.AppField>
+                <form.AppField name="kind">
+                  {(field) => <field.SegmentedField label="Who is this about?" options={KIND_OPTIONS} />}
+                </form.AppField>
 
-              <form.Subscribe selector={(state) => state.values.kind}>
-                {(kind) =>
-                  kind === 'corrective-feedback-department' ? (
-                    <form.AppField name="departments">
-                      {(field) => <field.MultiSelectField label="Departments" options={DEPARTMENT_OPTIONS} />}
-                    </form.AppField>
-                  ) : kind === 'corrective-feedback-user' ? (
-                    <form.AppField name="userIds">
-                      {(field) => (
-                        <field.MultiSelectField
-                          emptyMessage={targetUsersQuery.isPending ? 'Loading users…' : 'No users available.'}
-                          label="Users"
-                          options={userOptions}
-                        />
-                      )}
-                    </form.AppField>
-                  ) : null
-                }
-              </form.Subscribe>
+                <form.Subscribe selector={(state) => state.values.kind}>
+                  {(kind) =>
+                    kind === 'corrective-feedback-department' ? (
+                      <form.AppField name="departments">
+                        {(field) => <field.MultiSelectField label="Departments" options={DEPARTMENT_OPTIONS} />}
+                      </form.AppField>
+                    ) : kind === 'corrective-feedback-user' ? (
+                      <form.AppField name="userIds">
+                        {(field) => (
+                          <field.MultiSelectField
+                            emptyMessage={targetUsersQuery.isPending ? 'Loading users…' : 'No users available.'}
+                            label="Users"
+                            options={userOptions}
+                          />
+                        )}
+                      </form.AppField>
+                    ) : null
+                  }
+                </form.Subscribe>
 
-              <form.AppField name="text">
-                {(field) => <field.TextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} />}
-              </form.AppField>
-            </ScrollView>
+                <form.AppField name="text">
+                  {(field) => (
+                    <field.TextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} />
+                  )}
+                </form.AppField>
+              </ScrollView>
 
-            <View className="border-t border-border px-4 py-3">
-              <form.Subscribe selector={(state) => state.isSubmitting}>
-                {(isSubmitting) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: isSubmitting }}
-                    className={`flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 ${isSubmitting ? 'opacity-60' : 'active:opacity-90'}`}
-                    disabled={isSubmitting}
-                    onPress={() => void form.handleSubmit()}
-                  >
-                    {isSubmitting ? <ActivityIndicator color="#0a0a0a" size="small" /> : null}
-                    <Text className="text-sm text-primary-foreground" weight="semibold">
-                      Submit feedback
-                    </Text>
-                  </Pressable>
-                )}
-              </form.Subscribe>
-            </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </View>
+              <View className="border-t border-border px-4 py-3">
+                <form.Subscribe selector={(state) => state.isSubmitting}>
+                  {(isSubmitting) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: isSubmitting }}
+                      className={`flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 ${isSubmitting ? 'opacity-60' : 'active:opacity-90'}`}
+                      disabled={isSubmitting}
+                      onPress={() => void form.handleSubmit()}
+                    >
+                      {isSubmitting ? <ActivityIndicator color="#0a0a0a" size="small" /> : null}
+                      <Text className="text-sm text-primary-foreground" weight="semibold">
+                        Submit feedback
+                      </Text>
+                    </Pressable>
+                  )}
+                </form.Subscribe>
+              </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        </View>
+      </SafeAreaProvider>
     </Modal>
   );
 }

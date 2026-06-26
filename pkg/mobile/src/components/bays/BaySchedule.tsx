@@ -278,8 +278,10 @@ function Timeline({
   onSelect: (slotId: string) => void;
 }) {
   return (
-    <View className="relative pl-6">
-      {/* Vertical spine the Slot nodes sit on. */}
+    <View className="relative">
+      {/* Vertical spine the Slot nodes sit on. The gutter is created by each item's card
+          margin (below), not container padding, so the spine and nodes share the same x=0
+          origin — RN applies parent padding to absolute children, which would offset them. */}
       <View className="absolute bottom-2 left-1.5 top-2 w-0.5 bg-border" />
       {slots.map((slot) => (
         <TimelineItem
@@ -332,7 +334,7 @@ function TimelineItem({
               ? 'border-status-next bg-background'
               : 'border-muted-foreground bg-background'
         }`}
-        style={{ left: -24 }}
+        style={{ left: 0 }}
       />
       {/* Border is a constant 2px (faded when unselected, full-strength when selected) so the
           selected border reads thicker without changing the box geometry — i.e. no content shift. */}
@@ -346,19 +348,26 @@ function TimelineItem({
               ? 'border-status-next/40 bg-surface'
               : 'border-border bg-surface'
         }`}
+        // Indent past the spine/node gutter (replaces the old container padding).
+        style={{ marginLeft: 24 }}
       >
-        <Text className={`text-[10px] tracking-wide ${labelClass}`} weight="semibold">
-          {rangeLabel}
-        </Text>
-        <View className="mt-2.5 flex-row items-center gap-3">
-          <Avatar className="h-10 w-10 rounded-lg" name={slot.productName} uri={slot.productThumbnailDataUrl} />
+        {/* Outer row centers the chevron against the whole card, not just the avatar row. */}
+        <View className="flex-row items-center gap-3">
           <View className="min-w-0 flex-1">
-            <Text className="text-sm text-surface-foreground" mono weight="semibold">
-              {slot.jobCode}
+            <Text className={`text-[10px] tracking-wide ${labelClass}`} weight="semibold">
+              {rangeLabel}
             </Text>
-            <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
-              {slot.productName}
-            </Text>
+            <View className="mt-2.5 flex-row items-center gap-3">
+              <Avatar className="h-10 w-10 rounded-lg" name={slot.productName} uri={slot.productThumbnailDataUrl} />
+              <View className="min-w-0 flex-1">
+                <Text className="text-sm text-surface-foreground" mono weight="semibold">
+                  {slot.jobCode}
+                </Text>
+                <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
+                  {slot.productName}
+                </Text>
+              </View>
+            </View>
           </View>
           <Icon className="text-muted-foreground" icon={IconChevronRight} size={18} />
         </View>

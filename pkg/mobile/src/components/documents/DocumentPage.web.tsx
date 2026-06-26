@@ -1,27 +1,22 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { authedFetch } from '@/lib/authed-fetch';
 
-import type { DocumentPageHandle, DocumentPageProps } from './DocumentPage';
+import type { DocumentPageProps } from './DocumentPage';
 
-export type { DocumentPageHandle, DocumentPageMetrics, DocumentPageProps } from './DocumentPage';
+export type { DocumentPageProps } from './DocumentPage';
 
 /**
  * Web PDF page renderer (#521): the browser owns the cookie jar, so `authedFetch`
  * carries the session automatically. The bytes become an object URL shown in an
  * iframe — `react-native-web` renders the raw DOM tag through react-dom — and the
- * browser's own viewer handles paging and zoom, so the footer controls no-op here.
+ * browser's own viewer handles paging and zoom.
  */
-export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(function DocumentPage(
-  { path, filename, onMetrics, onZoom },
-  ref,
-) {
+export function DocumentPage({ path, filename }: DocumentPageProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-
-  useImperativeHandle(ref, () => ({ zoomIn: () => {}, zoomOut: () => {} }));
 
   useEffect(() => {
     let cancelled = false;
@@ -38,8 +33,6 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
         if (cancelled) return;
         createdUrl = URL.createObjectURL(blob);
         setBlobUrl(createdUrl);
-        onMetrics({ page: 1, pageCount: null });
-        onZoom(100);
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
@@ -49,7 +42,7 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
       cancelled = true;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
-  }, [path, onMetrics, onZoom]);
+  }, [path]);
 
   if (failed) {
     return (
@@ -81,7 +74,7 @@ export const DocumentPage = forwardRef<DocumentPageHandle, DocumentPageProps>(fu
       />
     </View>
   );
-});
+}
 
 function Centered({ children }: { children: React.ReactNode }) {
   return <View className="flex-1 items-center justify-center px-8">{children}</View>;

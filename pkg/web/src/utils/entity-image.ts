@@ -10,6 +10,9 @@ import { readApiErrorMessage } from './document.js';
 
 const ALLOWED_CONTENT_TYPES = new Set<string>(IMAGE_CONTENT_TYPES);
 
+// `accept` attribute value for a file input constrained to the shared image formats.
+export const IMAGE_ACCEPT = IMAGE_CONTENT_TYPES.join(',');
+
 // Client-side guard mirroring the server policy so an obviously wrong file is rejected before upload.
 // The server re-validates by sniffing the bytes, so this is UX only. Returns the file when acceptable,
 // otherwise toasts the reason and returns null.

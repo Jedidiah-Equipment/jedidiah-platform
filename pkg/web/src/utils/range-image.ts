@@ -1,9 +1,13 @@
-import { IMAGE_ACCEPT } from '@pkg/domain';
 import { ProductRange, RANGE_IMAGE_MAX_BYTES, type UUID } from '@pkg/schema';
 
 import { getClientConfig } from '@/lib/app-config.js';
 
-import { fetchCredentialedImageBlob, uploadImageMultipart, validateSelectedImage } from './entity-image.js';
+import {
+  fetchCredentialedImageBlob,
+  IMAGE_ACCEPT,
+  uploadImageMultipart,
+  validateSelectedImage,
+} from './entity-image.js';
 
 export { IMAGE_ACCEPT };
 

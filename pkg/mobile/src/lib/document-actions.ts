@@ -21,12 +21,19 @@ export type DocumentAction = {
 
 const PDF_MIME = 'application/pdf';
 
+// Reduce a value to filesystem-safe characters for a cache filename. We can't
+// percent-encode here: `cacheKey` is a download path, so its `/` would become
+// `%2F`, which Expo decodes back to `/` when writing the `file://` target — writing
+// into non-existent nested cache dirs and failing the download (and react-native-pdf
+// can't open such a path). Collapse anything outside [A-Za-z0-9._-] to `_`.
+const safeCacheSegment = (value: string) => value.replace(/[^a-zA-Z0-9._-]+/g, '_');
+
 // Fetch the document to the app cache with the session cookie, returning its file:// URI.
 export async function downloadDocumentToCache({ path, filename, cacheKey }: DocumentAction): Promise<string> {
   const cookie = sessionCookieHeader();
   const cacheName = cacheKey
-    ? `${encodeURIComponent(cacheKey)}-${encodeURIComponent(filename)}`
-    : encodeURIComponent(filename);
+    ? `${safeCacheSegment(cacheKey)}-${safeCacheSegment(filename)}`
+    : safeCacheSegment(filename);
   const target = `${FileSystem.cacheDirectory}${cacheName}`;
   const result = await FileSystem.downloadAsync(`${apiBaseUrl}${path}`, target, {
     headers: cookie ? { Cookie: cookie } : undefined,

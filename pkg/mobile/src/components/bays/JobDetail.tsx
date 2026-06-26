@@ -175,8 +175,10 @@ function RoutePane({ route }: { route: JobRouteStopCard[] }) {
           {route.length} {route.length === 1 ? 'bay' : 'bays'}
         </Text>
       </View>
-      <View className="relative pl-7">
-        {/* Vertical spine the Bay nodes sit on. */}
+      <View className="relative">
+        {/* Vertical spine the Bay nodes sit on. The gutter comes from each stop's card margin
+            (below), not container padding, so the spine and nodes share the same x=0 origin —
+            RN applies parent padding to absolute children, which would offset them. */}
         <View className="absolute bottom-2 left-1.5 top-2 w-0.5 bg-border" />
         {route.map((stop) => (
           <RouteStop key={stop.slotId} stop={stop} />
@@ -193,8 +195,9 @@ function RouteStop({ stop }: { stop: JobRouteStopCard }) {
 
   return (
     <View className="relative mb-3.5">
-      <View className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 ${decor.node}`} style={{ left: -28 }} />
-      <View className={`rounded-2xl border p-3.5 ${decor.card}`}>
+      <View className={`absolute top-4 h-3.5 w-3.5 rounded-full border-2 ${decor.node}`} style={{ left: 0 }} />
+      {/* Indent past the spine/node gutter (replaces the old container padding). */}
+      <View className={`rounded-2xl border p-3.5 ${decor.card}`} style={{ marginLeft: 28 }}>
         <View className="flex-row items-start justify-between gap-2">
           <View className="min-w-0 flex-1 flex-row items-center gap-2.5">
             <Avatar

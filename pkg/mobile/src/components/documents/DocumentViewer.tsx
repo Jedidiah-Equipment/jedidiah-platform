@@ -1,17 +1,9 @@
 import type { JobDocument } from '@pkg/schema';
-import {
-  IconChevronLeft,
-  IconChevronRight,
-  IconDownload,
-  IconMinus,
-  IconPlus,
-  IconShare,
-  type Icon as TablerIcon,
-} from '@tabler/icons-react-native';
-import { useCallback, useRef, useState } from 'react';
+import { IconChevronLeft, IconDownload, IconShare, type Icon as TablerIcon } from '@tabler/icons-react-native';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
-import { DocumentPage, type DocumentPageHandle, type DocumentPageMetrics } from '@/components/documents/DocumentPage';
+import { DocumentPage } from '@/components/documents/DocumentPage';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { jobDocumentDownloadPath } from '@/lib/authed-fetch';
@@ -19,9 +11,9 @@ import { type DocumentAction, saveDocument, shareDocument } from '@/lib/document
 
 /**
  * In-app document reader (#521): the DOCUMENT VIEWER screen from the mockup —
- * header (back, name + context, download, share), the PDF page area, and a footer
- * with the page counter and zoom controls. Full screen; rendered as its own route.
- * The page itself is rendered by the platform {@link DocumentPage}.
+ * header (back, name + context, download, share) above a full-screen PDF page area.
+ * Scrolling and pinch-zoom are handled natively, so there is no footer. The page
+ * itself is rendered by the platform {@link DocumentPage}.
  */
 export function DocumentViewer({
   jobId,
@@ -35,27 +27,10 @@ export function DocumentViewer({
   context: string;
   onBack: () => void;
 }) {
-  const pageRef = useRef<DocumentPageHandle>(null);
-
-  const [page, setPage] = useState(1);
-  const [pageCount, setPageCount] = useState<number | null>(null);
-  const [zoomPercent, setZoomPercent] = useState(100);
   const [busy, setBusy] = useState<null | 'save' | 'share'>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const action: DocumentAction = { path: jobDocumentDownloadPath(jobId, document.id), filename: document.filename };
-
-  // Stable so the web DocumentPage's fetch effect doesn't re-run each render.
-  const onMetrics = useCallback((metrics: DocumentPageMetrics) => {
-    setPage(metrics.page);
-    setPageCount(metrics.pageCount);
-  }, []);
-  const onZoom = useCallback((percent: number) => setZoomPercent(percent), []);
-
-  const goPrev = () => setPage((current) => Math.max(1, current - 1));
-  const goNext = () => setPage((current) => (pageCount ? Math.min(pageCount, current + 1) : current + 1));
-  const atFirst = page <= 1;
-  const atLast = pageCount !== null && page >= pageCount;
 
   const run = (kind: 'save' | 'share', act: (a: DocumentAction) => Promise<void>) => async () => {
     if (busy) return;
@@ -109,28 +84,7 @@ export function DocumentViewer({
 
       {/* Page area. */}
       <View className="flex-1 bg-muted">
-        <DocumentPage
-          filename={document.filename}
-          onMetrics={onMetrics}
-          onZoom={onZoom}
-          page={page}
-          path={action.path}
-          ref={pageRef}
-        />
-      </View>
-
-      {/* Footer: page counter + zoom controls. */}
-      <View className="flex-row items-center justify-between border-t border-border bg-surface px-4 py-3">
-        <IconButton disabled={atFirst} icon={IconChevronLeft} label="Previous page" onPress={goPrev} />
-        <Text className="text-xs text-foreground" weight="semibold">
-          {page} / {pageCount ?? '–'}
-        </Text>
-        <View className="flex-row items-center gap-2">
-          <IconButton icon={IconMinus} label="Zoom out" onPress={() => pageRef.current?.zoomOut()} small />
-          <Text className="w-11 text-center text-[11px] text-muted-foreground">{zoomPercent}%</Text>
-          <IconButton icon={IconPlus} label="Zoom in" onPress={() => pageRef.current?.zoomIn()} small />
-        </View>
-        <IconButton disabled={atLast} icon={IconChevronRight} label="Next page" onPress={goNext} />
+        <DocumentPage filename={document.filename} path={action.path} />
       </View>
     </View>
   );

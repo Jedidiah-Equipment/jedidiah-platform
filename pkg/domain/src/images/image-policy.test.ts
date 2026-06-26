@@ -34,7 +34,29 @@ describe('validateImage', () => {
     expect(result).toEqual({
       ok: false,
       code: 'image.content_type_not_allowed',
-      message: 'Only PNG or JPEG images can be uploaded.',
+      message: 'Only PNG or JPEG files can be uploaded.',
+    });
+  });
+
+  it('accepts a non-image type when the policy allows it', () => {
+    const result = validateImage(bytesWithHeader(PDF_HEADER, 48), {
+      allowedContentTypes: ['application/pdf'],
+      maxBytes: 1024,
+    });
+
+    expect(result).toEqual({ ok: true, byteSize: 48, contentType: 'application/pdf' });
+  });
+
+  it('describes a non-image policy in its rejection message', () => {
+    const result = validateImage(bytesWithHeader(PNG_HEADER, 16), {
+      allowedContentTypes: ['application/pdf'],
+      maxBytes: 1024,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'image.content_type_not_allowed',
+      message: 'Only PDF files can be uploaded.',
     });
   });
 
@@ -65,7 +87,7 @@ describe('validateImage', () => {
     expect(result).toEqual({
       ok: false,
       code: 'image.content_type_not_allowed',
-      message: 'Only PNG images can be uploaded.',
+      message: 'Only PNG files can be uploaded.',
     });
   });
 });

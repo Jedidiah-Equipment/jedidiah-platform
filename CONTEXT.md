@@ -44,7 +44,7 @@ Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from
 
 ## Commercial Documents
 
-**Document** is an immutable stored file owned by one entity. Avoid File, Attachment, Media, or Asset for the domain object. Documents use private object storage through the API; deleting the row does not delete the stored object. Metadata is immutable and owner-type specific.
+**Document** is an immutable stored file an owner accumulates in a collection — it carries its own filename, owner-type-specific metadata, and identity. It is distinct from a single named file held directly as a field of an entity (such as a Product's hero or logo image), which is not a Document. Reserve Document for the collection member; avoid Attachment, Media, or Asset. File is not a domain object: it names the shared stored-file primitive (content-type agnostic) that both a Document and an entity's file fields are built on. Documents use private object storage through the API; deleting the row does not delete the stored object. Metadata is immutable and owner-type specific.
 
 **Thumbnail** is separate: a small inline display image for quick recognition.
 
@@ -54,7 +54,7 @@ Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from
 
 **Brochure** is a generated customer-facing product marketing PDF produced from a Product's Brochure Config, not an uploaded file. It is generated from live config every time: streamed unsaved when viewed from the Product screen, merged into the Quote Document packet at Quote generation, and saved as a standalone Job Document at Job creation. A saved Brochure is immutable and reflects the config as it was at generation time.
 
-**Brochure Config** is the Product-owned configuration the Brochure is generated from: subtitle, key features (an ordered list of freeform lines), and the range logo, hero, technical drawing, and secondary image slots. The title comes from the Product name, the assembly lists from the Product's Standard and Optional Assemblies, and the body copy from the Product description.
+**Brochure Config** is the Product-owned configuration the Brochure is generated from: subtitle, key features (an ordered list of freeform lines), and the range logo, hero, technical drawing, and secondary images. The title comes from the Product name, the assembly lists from the Product's Standard and Optional Assemblies, and the body copy from the Product description.
 
 ## Access
 

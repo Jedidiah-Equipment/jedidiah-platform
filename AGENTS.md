@@ -10,6 +10,7 @@
 - Run `pnpm db:up:template` after schema or seed changes, or when DB-backed tests fail with stale-schema errors.
 - `pnpm db:up` drops Docker volumes and rebuilds the local database.
 - `pnpm db:seed` loads `pkg/seed/data/staging-snapshot`; every seeded user logs in with the shared password `test123` (see `pkg/seed/AGENTS.md`). Regenerate the snapshot from staging with `STAGING_DATABASE_URL=… pnpm --filter @pkg/seed seed:read`.
+- Use `pnpm dev:kill` to stop `pnpm dev` services for the current checkout; use `pnpm dev:kill:all` for best-effort cleanup across known parallel slot ports.
 
 ## Parallel slot environments
 

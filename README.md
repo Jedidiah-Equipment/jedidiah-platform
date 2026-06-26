@@ -1,5 +1,9 @@
 # Jedidah Ops
 
+> **Public for portfolio and evaluation only — All Rights Reserved.**
+> This repository is published to showcase the author's work. It is **not** licensed for
+> use, copying, modification, distribution, deployment, or AI/ML training. See [LICENSE](LICENSE).
+
 Monorepo for Jedidah Ops.
 
 The repository is being built in vertical slices. The current app contains email/password auth, the

@@ -11,3 +11,6 @@ tmp/
 .env.test
 *.log
 .claude/worktrees/
+
+# Local/staging seed snapshot — contains real business data, never commit
+pkg/seed/data/staging-snapshot/

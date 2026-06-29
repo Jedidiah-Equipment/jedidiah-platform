@@ -13,14 +13,16 @@ Expo managed React Native app for JedidiahOps.
 - `pnpm --filter @pkg/mobile doctor` runs Expo Doctor for the staging variant.
 - `pnpm --filter @pkg/mobile typecheck` runs TypeScript for the mobile package.
 - `pnpm --filter @pkg/mobile test` runs mobile unit tests.
-- `pnpm --filter @pkg/mobile eas-build-staging` starts the Android EAS staging build.
-- `pnpm --filter @pkg/mobile eas-submit-staging` builds and submits that Android EAS staging build.
+- `pnpm --filter @pkg/mobile android-eas-build-staging` starts the Android EAS staging build.
+- `pnpm --filter @pkg/mobile android-eas-submit-staging` builds and submits the Android EAS staging build.
+- `pnpm --filter @pkg/mobile ios-eas-build-staging` starts the iOS EAS staging build.
+- `pnpm --filter @pkg/mobile ios-eas-submit-staging` builds and submits the iOS EAS staging build.
 
 ## Release
 
-Staging builds use `APP_VARIANT=staging`, Android package `za.co.jedidiahequipment.ops.staging`,
-the EAS `staging` channel, and the Play internal track. EAS Submit uses the Google service account
-credential stored in Expo for this Android application identifier.
+Staging builds use `APP_VARIANT=staging`, package/bundle identifier
+`za.co.jedidiahequipment.ops.staging`, and the EAS `staging` channel. EAS Submit uses the platform
+credentials stored in Expo for the matching Android package or iOS bundle identifier.
 
 For JS-only OTA fixes:
 

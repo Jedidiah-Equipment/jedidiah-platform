@@ -3,6 +3,8 @@
 - Keep PDF changes focused on deterministic renderers and small testable helpers.
 - Use React-PDF APIs for layout; avoid browser-only APIs.
 - Shared brand font assets live in `@pkg/domain/fonts`, with PDF registration in `src/pdf-fonts.ts`.
+- Keep this package's `react` dependency aligned with `@pkg/mobile`; Expo Doctor scans the
+  monorepo and fails on duplicate React installs even though this package is server-side.
 
 ## Visual QA Flow
 

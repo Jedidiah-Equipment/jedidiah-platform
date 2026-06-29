@@ -43,6 +43,9 @@ export default ({ config }: ConfigContext): AppConfig => {
     },
     ios: {
       bundleIdentifier: variant.iosBundleIdentifier,
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     extra: {
       eas: {

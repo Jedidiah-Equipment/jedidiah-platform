@@ -98,7 +98,7 @@ export const ProductTechnicalDetailsEditor: React.FC<ProductTechnicalDetailsEdit
                           className="flex-1"
                           field={field}
                           label={`Technical detail value ${index + 1}`}
-                          placeholder="7 m"
+                          placeholder="value"
                         />
                       )}
                     </productForm.Field>
@@ -108,7 +108,7 @@ export const ProductTechnicalDetailsEditor: React.FC<ProductTechnicalDetailsEdit
                           className="flex-[2]"
                           field={field}
                           label={`Technical detail label ${index + 1}`}
-                          placeholder="Working Width"
+                          placeholder="label"
                         />
                       )}
                     </productForm.Field>

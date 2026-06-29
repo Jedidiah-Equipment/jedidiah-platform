@@ -31,6 +31,7 @@ async function insertProduct(
       landerEnabled: true,
       category: 'Default category',
       keyFeatures: ['Default feature'],
+      technicalDetails: [{ label: 'Working Width', value: '7 m' }],
       description: 'Default description.',
       images: { primary: imageRef('primary'), secondary1: imageRef('secondary1'), secondary2: imageRef('secondary2') },
       ...values,

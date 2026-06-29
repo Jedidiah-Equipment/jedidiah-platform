@@ -21,6 +21,7 @@ export const PRODUCT_FIELD_USAGE = {
   modelCode: LANDER_AND_BROCHURE_USAGE,
   name: LANDER_AND_BROCHURE_USAGE,
   rangeId: LANDER_AND_BROCHURE_USAGE,
+  technicalDetails: LANDER_USAGE,
 } as const;
 
 export const PRODUCT_IMAGE_SLOT_USAGE = {

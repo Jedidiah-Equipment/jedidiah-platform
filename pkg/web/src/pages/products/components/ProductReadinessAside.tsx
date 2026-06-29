@@ -52,6 +52,7 @@ const BROCHURE_FIELD_TABS: Record<BrochureRequiredField, ProductTab> = {
 const LANDER_FIELD_LABELS: Record<LanderRequiredField, string> = {
   category: 'Category',
   keyFeatures: 'At least one key feature',
+  technicalDetails: 'At least one technical detail',
   primary: 'Primary image',
   secondary1: 'Secondary image 1',
   secondary2: 'Secondary image 2',
@@ -62,6 +63,7 @@ const LANDER_FIELD_LABELS: Record<LanderRequiredField, string> = {
 const LANDER_FIELD_TABS: Record<LanderRequiredField, ProductTab> = {
   category: 'details',
   keyFeatures: 'details',
+  technicalDetails: 'details',
   primary: 'images',
   secondary1: 'images',
   secondary2: 'images',

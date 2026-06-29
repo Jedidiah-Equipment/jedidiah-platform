@@ -98,9 +98,20 @@ function Gallery({ images, name }: { images: ProductDetail['galleryImages']; nam
   );
 }
 
+// Lander readiness only requires one technical detail and the schema caps the list at three, so the tile
+// grid tracks the actual count rather than a fixed three — otherwise one or two details leave empty columns.
+// The column classes are spelled out as literals so Tailwind keeps them in the build.
+const TILE_GRID_COLS: Record<number, string> = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-2',
+  3: 'grid-cols-3',
+};
+
 function HighlightTiles({ highlights }: { highlights: ProductHighlight[] }) {
   return (
-    <div className="mb-[30px] grid grid-cols-3 gap-px border border-line bg-line">
+    <div
+      className={`mb-[30px] grid ${TILE_GRID_COLS[highlights.length] ?? 'grid-cols-3'} gap-px border border-line bg-line`}
+    >
       {highlights.map((highlight) => (
         <div key={highlight.label} className="bg-[#faf9f6] px-4 py-[18px]">
           <div className="font-display text-[28px] font-extrabold leading-none text-ink">{highlight.value}</div>
@@ -130,7 +141,7 @@ function Hero({ detail }: { detail: ProductDetail }) {
             <p className="m-0 mb-7 font-body text-[19px] leading-[1.6] text-[#555]">{detail.tagline}</p>
           ) : null}
 
-          <HighlightTiles highlights={detail.highlights} />
+          {detail.highlights.length > 0 ? <HighlightTiles highlights={detail.highlights} /> : null}
 
           {detail.description ? (
             <p className="m-0 mb-8 font-body text-[16px] leading-[1.7] text-[#555]">{detail.description}</p>

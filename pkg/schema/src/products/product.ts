@@ -283,6 +283,36 @@ export const ProductKeyFeatures = z
   .array(ProductKeyFeature)
   .max(PRODUCT_KEY_FEATURES_MAX_COUNT, `Add at most ${PRODUCT_KEY_FEATURES_MAX_COUNT} key features`);
 
+// The label/value spec pairs shown as the Lander hero "highlight tiles" (value is the bold headline,
+// label the small-caps caption). Capped low to keep the three-up tile grid tidy; the soft cap is the
+// zod array max, so the editor offers at most this many rows.
+export const PRODUCT_TECHNICAL_DETAIL_VALUE_MAX_LENGTH = 24;
+export const PRODUCT_TECHNICAL_DETAIL_LABEL_MAX_LENGTH = 48;
+export const PRODUCT_TECHNICAL_DETAILS_MAX_COUNT = 3;
+
+export type ProductTechnicalDetailValue = z.infer<typeof ProductTechnicalDetailValue>;
+export const ProductTechnicalDetailValue = requiredTrimmedText('Technical detail value cannot be empty').max(
+  PRODUCT_TECHNICAL_DETAIL_VALUE_MAX_LENGTH,
+  `Technical detail value must be ${PRODUCT_TECHNICAL_DETAIL_VALUE_MAX_LENGTH} characters or fewer`,
+);
+
+export type ProductTechnicalDetailLabel = z.infer<typeof ProductTechnicalDetailLabel>;
+export const ProductTechnicalDetailLabel = requiredTrimmedText('Technical detail label cannot be empty').max(
+  PRODUCT_TECHNICAL_DETAIL_LABEL_MAX_LENGTH,
+  `Technical detail label must be ${PRODUCT_TECHNICAL_DETAIL_LABEL_MAX_LENGTH} characters or fewer`,
+);
+
+export type ProductTechnicalDetail = z.infer<typeof ProductTechnicalDetail>;
+export const ProductTechnicalDetail = z.object({
+  label: ProductTechnicalDetailLabel,
+  value: ProductTechnicalDetailValue,
+});
+
+export type ProductTechnicalDetails = z.infer<typeof ProductTechnicalDetails>;
+export const ProductTechnicalDetails = z
+  .array(ProductTechnicalDetail)
+  .max(PRODUCT_TECHNICAL_DETAILS_MAX_COUNT, `Add at most ${PRODUCT_TECHNICAL_DETAILS_MAX_COUNT} technical details`);
+
 // The canonical Product image slots. Each replaces in place, so a Product holds at most one current image
 // per slot. Order is the visual order and drives the form's slot grid, the upload/download routes, and
 // storage. The top-right brochure logo is not a slot here — it comes from the owning Product Range's image.
@@ -380,6 +410,7 @@ export const BrochureCompleteness = z.object({
 export const LANDER_REQUIRED_FIELDS = [
   'category',
   'keyFeatures',
+  'technicalDetails',
   ...LANDER_IMAGE_SLOTS,
   'description',
   'standardAssembly',
@@ -421,6 +452,7 @@ export const Product = z.object({
   productBays: z.array(ProductBay).default([]),
   category: ProductCategory.default(null),
   keyFeatures: ProductKeyFeatures.default([]),
+  technicalDetails: ProductTechnicalDetails.default([]),
   // Images replace in place through their own upload endpoint, so they are read-only here and stay out of
   // the create/update inputs (the text-only autosave payload).
   images: ProductImages.default(EMPTY_PRODUCT_IMAGES),
@@ -454,6 +486,7 @@ export const ProductCreateInput = z
     productBays: ProductBaysInput,
     category: ProductCategoryInput,
     keyFeatures: ProductKeyFeatures.default([]),
+    technicalDetails: ProductTechnicalDetails.default([]),
     buildTimeDays: ProductBuildTimeDaysInput,
     currencyCode: ProductCurrencyCode,
     requiresVinNumber: ProductRequiresVinNumber.default(false),
@@ -473,6 +506,7 @@ export const ProductUpdateInput = z
     // mirroring how assemblies and product bays are preserved when absent.
     category: nullableTrimmedTextInputOptional(),
     keyFeatures: ProductKeyFeatures.optional(),
+    technicalDetails: ProductTechnicalDetails.optional(),
     basePrice: ProductBasePrice,
     currencyCode: ProductCurrencyCode,
     description: ProductDescriptionInput,

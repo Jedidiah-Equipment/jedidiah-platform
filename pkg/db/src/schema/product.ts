@@ -38,6 +38,7 @@ export const products = pgTable(
       .notNull()
       .default({}),
     keyFeatures: jsonb('key_features').$type<string[]>().notNull().default([]),
+    technicalDetails: jsonb('technical_details').$type<{ label: string; value: string }[]>().notNull().default([]),
     id: uuid('id').defaultRandom().primaryKey(),
     buildTimeDays: integer('build_time_days').notNull(),
     modelCode: text('model_code').notNull(),

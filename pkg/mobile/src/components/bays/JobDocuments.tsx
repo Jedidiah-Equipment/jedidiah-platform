@@ -1,48 +1,37 @@
 import { formatBytes, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
 import type { JobDocument } from '@pkg/schema';
 import { IconChevronRight, IconDownload } from '@tabler/icons-react-native';
-import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
+import { JobSectionCard } from '@/components/bays/JobSectionCard';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { useTRPC } from '@/lib/trpc';
 
 /**
- * The DOCUMENTS card shared by the Job Slot detail pane (#520) and Job Detail (#615): fetched with
- * `jobs.get` (cached when reached from either screen) and opened in the existing viewer route, which
- * rebuilds its own context from the same `jobs.get` read. Owns its loading, error, and empty states.
+ * The DOCUMENTS card shared by the Job Slot detail pane (#520) and Job Detail (#615): the job's
+ * documents from the cached `jobs.get` read, opened in the existing viewer route, which rebuilds its
+ * own context from the same read.
  */
 export function JobDocuments({ jobId }: { jobId: string }) {
   const router = useRouter();
-  const trpc = useTRPC();
-  const query = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
-  const documents = query.data?.documents ?? [];
 
   return (
-    <View className="rounded-2xl border border-border bg-surface p-4">
-      <Text className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground" weight="semibold">
-        {query.isSuccess ? `DOCUMENTS · ${documents.length}` : 'DOCUMENTS'}
-      </Text>
-      {query.isPending ? (
-        <Text className="py-2 text-sm text-muted-foreground">Loading documents…</Text>
-      ) : query.isError ? (
-        <Text className="py-2 text-sm text-danger">Couldn’t load documents.</Text>
-      ) : documents.length === 0 ? (
-        <Text className="py-2 text-sm text-muted-foreground">No documents for this job.</Text>
-      ) : (
-        documents.map((document) => (
-          <DocumentRow
-            document={document}
-            key={document.id}
-            onOpen={() =>
-              router.push({ pathname: '/documents/[documentId]', params: { documentId: document.id, jobId } })
-            }
-          />
-        ))
+    <JobSectionCard<JobDocument>
+      jobId={jobId}
+      noun="documents"
+      renderItem={(document) => (
+        <DocumentRow
+          document={document}
+          key={document.id}
+          onOpen={() =>
+            router.push({ pathname: '/documents/[documentId]', params: { documentId: document.id, jobId } })
+          }
+        />
       )}
-    </View>
+      select={(data) => data.documents}
+      title="DOCUMENTS"
+    />
   );
 }
 

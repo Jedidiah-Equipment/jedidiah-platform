@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { JobAssemblies } from '@/components/bays/JobAssemblies';
 import { JobDocuments } from '@/components/bays/JobDocuments';
 import { JobFactsCard } from '@/components/bays/job-facts';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/components/bays/status-chip';
@@ -301,6 +302,8 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
       </View>
 
       <JobDocuments jobId={jobId} />
+
+      <JobAssemblies jobId={jobId} />
 
       <JobFactsCard
         customerCompanyName={state.customerCompanyName}

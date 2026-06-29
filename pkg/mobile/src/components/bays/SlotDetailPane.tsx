@@ -2,6 +2,7 @@ import { formatDate, statusDaysLeftColor } from '@pkg/domain';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { JobAssemblies } from '@/components/bays/JobAssemblies';
 import { JobDocuments } from '@/components/bays/JobDocuments';
 import { FactCard, FactField, FactRow, JobFactsCard } from '@/components/bays/job-facts';
 import { DaysLeftChip, StatusChip } from '@/components/bays/status-chip';
@@ -58,6 +59,9 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
 
       {/* DOCUMENTS — opens the in-app viewer (#521); read-only here. */}
       <JobDocuments jobId={slot.jobId} />
+
+      {/* ASSEMBLIES — standard + the optional assemblies selected for this job. */}
+      <JobAssemblies jobId={slot.jobId} />
 
       {/* SLOT grid. */}
       <FactCard title="SLOT">

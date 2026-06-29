@@ -130,7 +130,7 @@ function Hero({ detail }: { detail: ProductDetail }) {
             <p className="m-0 mb-7 font-body text-[19px] leading-[1.6] text-[#555]">{detail.tagline}</p>
           ) : null}
 
-          <HighlightTiles highlights={detail.highlights} />
+          {detail.highlights.length > 0 ? <HighlightTiles highlights={detail.highlights} /> : null}
 
           {detail.description ? (
             <p className="m-0 mb-8 font-body text-[16px] leading-[1.7] text-[#555]">{detail.description}</p>

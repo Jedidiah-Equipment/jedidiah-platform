@@ -1,7 +1,12 @@
 import { closestCenter, DndContext } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { PRODUCT_KEY_FEATURES_MAX_COUNT, ProductKeyFeature } from '@pkg/schema';
+import {
+  PRODUCT_TECHNICAL_DETAILS_MAX_COUNT,
+  type ProductTechnicalDetail,
+  ProductTechnicalDetailLabel,
+  ProductTechnicalDetailValue,
+} from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import type React from 'react';
 import { FieldUsageLabel, PRODUCT_FIELD_USAGE } from '@/components/catalog/index.js';
@@ -10,24 +15,17 @@ import { useTypedAppFormContext } from '@/components/form/index.js';
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { validateStructuralFieldOnMount } from '@/components/form/utils/field-validators.js';
 import { Button } from '@/components/ui/button.js';
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardSeparator,
-  CardTitle,
-} from '@/components/ui/card.js';
+import { Card, CardAction, CardContent, CardHeader, CardSeparator, CardTitle } from '@/components/ui/card.js';
 import { Empty, EmptyDescription, EmptyHeader, EmptyIcon, EmptyTitle } from '@/components/ui/empty.js';
 import { EditorTextField } from './EditorTextField.js';
 import { SortableEditorRow } from './SortableEditorRow.js';
 import { emptyProductFormValues } from './types.js';
 
-const KEY_FEATURE_FIELD_VALIDATORS = validateStructuralFieldOnMount(ProductKeyFeature);
+const VALUE_FIELD_VALIDATORS = validateStructuralFieldOnMount(ProductTechnicalDetailValue);
+const LABEL_FIELD_VALIDATORS = validateStructuralFieldOnMount(ProductTechnicalDetailLabel);
 
-type ProductKeyFeaturesEditorProps = {
-  keyFeaturesField: ArrayFieldApi<string>;
+type ProductTechnicalDetailsEditorProps = {
+  technicalDetailsField: ArrayFieldApi<ProductTechnicalDetail>;
   onStructuralChange: () => void;
 };
 
@@ -37,15 +35,15 @@ function useProductForm() {
   });
 }
 
-export const ProductKeyFeaturesEditor: React.FC<ProductKeyFeaturesEditorProps> = ({
-  keyFeaturesField,
+export const ProductTechnicalDetailsEditor: React.FC<ProductTechnicalDetailsEditorProps> = ({
+  technicalDetailsField,
   onStructuralChange,
 }) => {
   const productForm = useProductForm();
-  const keyFeatures = keyFeaturesField.state.value;
-  const canAddFeature = keyFeatures.length < PRODUCT_KEY_FEATURES_MAX_COUNT;
+  const technicalDetails = technicalDetailsField.state.value;
+  const canAddDetail = technicalDetails.length < PRODUCT_TECHNICAL_DETAILS_MAX_COUNT;
   const { rowKeys, sensors, addRow, removeRow, handleDragEnd } = useSortableFieldRows(
-    keyFeaturesField,
+    technicalDetailsField,
     onStructuralChange,
   );
 
@@ -53,26 +51,28 @@ export const ProductKeyFeaturesEditor: React.FC<ProductKeyFeaturesEditorProps> =
     <Card>
       <CardHeader>
         <CardTitle>
-          <FieldUsageLabel usage={PRODUCT_FIELD_USAGE.keyFeatures}>Key Features</FieldUsageLabel>
+          <FieldUsageLabel usage={PRODUCT_FIELD_USAGE.technicalDetails}>Technical Details</FieldUsageLabel>
         </CardTitle>
-        <CardDescription>
-          Freeform lines shown as a checkmark list. Drag to reorder; up to {PRODUCT_KEY_FEATURES_MAX_COUNT} lines.
-        </CardDescription>
         <CardAction>
-          <Button disabled={!canAddFeature} onClick={() => addRow('')} type="button" variant="outline">
+          <Button
+            disabled={!canAddDetail}
+            onClick={() => addRow({ label: '', value: '' })}
+            type="button"
+            variant="outline"
+          >
             <IconPlus data-icon="inline-start" />
-            Add feature
+            Add detail
           </Button>
         </CardAction>
       </CardHeader>
       <CardSeparator />
       <CardContent>
-        {keyFeatures.length === 0 ? (
+        {technicalDetails.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyIcon />
-              <EmptyTitle>No key features added.</EmptyTitle>
-              <EmptyDescription>Add a feature from the header to build the Key Features list.</EmptyDescription>
+              <EmptyTitle>No technical details added.</EmptyTitle>
+              <EmptyDescription>Add a detail from the header to build the Lander hero tiles.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (
@@ -84,21 +84,31 @@ export const ProductKeyFeaturesEditor: React.FC<ProductKeyFeaturesEditorProps> =
           >
             <SortableContext items={rowKeys} strategy={verticalListSortingStrategy}>
               <div className="flex flex-col gap-3">
-                {keyFeatures.map((_, index) => (
+                {technicalDetails.map((_, index) => (
                   <SortableEditorRow
                     id={rowKeys[index] ?? String(index)}
                     key={rowKeys[index] ?? index}
                     onRemove={() => removeRow(index)}
-                    removeLabel={`Remove key feature ${index + 1}`}
-                    reorderLabel={`Reorder key feature ${index + 1}`}
+                    removeLabel={`Remove technical detail ${index + 1}`}
+                    reorderLabel={`Reorder technical detail ${index + 1}`}
                   >
-                    <productForm.Field name={`keyFeatures[${index}]`} validators={KEY_FEATURE_FIELD_VALIDATORS}>
+                    <productForm.Field name={`technicalDetails[${index}].value`} validators={VALUE_FIELD_VALIDATORS}>
                       {(field: FieldApi<string>) => (
                         <EditorTextField
                           className="flex-1"
                           field={field}
-                          label={`Key feature ${index + 1}`}
-                          placeholder="Heavy-duty steel construction"
+                          label={`Technical detail value ${index + 1}`}
+                          placeholder="7 m"
+                        />
+                      )}
+                    </productForm.Field>
+                    <productForm.Field name={`technicalDetails[${index}].label`} validators={LABEL_FIELD_VALIDATORS}>
+                      {(field: FieldApi<string>) => (
+                        <EditorTextField
+                          className="flex-[2]"
+                          field={field}
+                          label={`Technical detail label ${index + 1}`}
+                          placeholder="Working Width"
                         />
                       )}
                     </productForm.Field>

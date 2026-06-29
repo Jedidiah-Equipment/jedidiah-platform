@@ -414,6 +414,13 @@
       "when": 1782391425128,
       "tag": "0058_promote_seed_super_admins",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1782718451594,
+      "tag": "0059_minor_morbius",
+      "breakpoints": true
     }
   ]
 }

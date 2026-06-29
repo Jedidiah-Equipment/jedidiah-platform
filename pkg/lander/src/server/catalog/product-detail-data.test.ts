@@ -2,7 +2,7 @@ import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
 
 import { test } from '../../test/tester.js';
-import { HIGHLIGHT_PLACEHOLDERS, loadProductDetail } from './product-detail-data.js';
+import { loadProductDetail } from './product-detail-data.js';
 
 type Db = Parameters<typeof loadProductDetail>[0];
 
@@ -55,6 +55,7 @@ async function insertProduct(
     description?: string | null;
     category?: string | null;
     keyFeatures?: string[];
+    technicalDetails?: { label: string; value: string }[];
     images?: Partial<Record<string, ProductImageRef>>;
     brochureEnabled?: boolean;
     landerEnabled?: boolean;
@@ -69,6 +70,7 @@ async function insertProduct(
       landerEnabled: true,
       category: 'Default category',
       keyFeatures: ['Default feature'],
+      technicalDetails: [{ label: 'Working Width', value: '7 m' }],
       description: 'Default description.',
       images: landerGalleryImages(),
       ...values,
@@ -96,6 +98,10 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
     description: 'Flagship 14-ton tipping trailer.',
     category: 'Built for high-volume haulage.',
     keyFeatures: ['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping'],
+    technicalDetails: [
+      { label: 'Capacity', value: '14 t' },
+      { label: 'Body', value: 'Monocoque' },
+    ],
   });
   await insertAssembly(db, product.id, { kind: 'standard', name: 'Sprung drawbar', displayOrder: 0 });
 
@@ -116,7 +122,10 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
     { slot: 'secondary2', imageUrl: `/images/products/${product.id}?slot=secondary2` },
   ]);
   expect(detail?.keyFeatures).toEqual(['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping']);
-  expect(detail?.highlights).toEqual(HIGHLIGHT_PLACEHOLDERS);
+  expect(detail?.highlights).toEqual([
+    { value: '14 t', label: 'Capacity' },
+    { value: 'Monocoque', label: 'Body' },
+  ]);
 });
 
 test('loadProductDetail returns null for an unknown model code', async ({ db }) => {

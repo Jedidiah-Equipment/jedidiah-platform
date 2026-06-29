@@ -38,6 +38,7 @@ function completeInput(overrides: Partial<LanderCompletenessInput> = {}): Lander
     description: 'A rugged feed mixer built for daily use.',
     images: FULL_IMAGES,
     keyFeatures: ['Heavy-duty steel construction'],
+    technicalDetails: [{ label: 'Working Width', value: '7 m' }],
     standardAssemblyCount: 1,
     ...overrides,
   };
@@ -55,6 +56,7 @@ describe('evaluateLanderCompleteness', () => {
         description: null,
         images: EMPTY_IMAGES,
         keyFeatures: [],
+        technicalDetails: [],
         standardAssemblyCount: 0,
       }),
     ).toEqual({
@@ -62,6 +64,7 @@ describe('evaluateLanderCompleteness', () => {
       missingFields: [
         'category',
         'keyFeatures',
+        'technicalDetails',
         'primary',
         'secondary1',
         'secondary2',
@@ -81,6 +84,21 @@ describe('evaluateLanderCompleteness', () => {
     expect(evaluateLanderCompleteness(completeInput({ images: { ...FULL_IMAGES, secondary2: null } }))).toEqual({
       complete: false,
       missingFields: ['secondary2'],
+    });
+  });
+
+  it('requires at least one technical detail with both a label and a value', () => {
+    expect(evaluateLanderCompleteness(completeInput({ technicalDetails: [] }))).toEqual({
+      complete: false,
+      missingFields: ['technicalDetails'],
+    });
+
+    // A row missing either half does not satisfy the requirement.
+    expect(
+      evaluateLanderCompleteness(completeInput({ technicalDetails: [{ label: 'Working Width', value: '  ' }] })),
+    ).toEqual({
+      complete: false,
+      missingFields: ['technicalDetails'],
     });
   });
 
@@ -122,6 +140,7 @@ function completeProduct(overrides: Partial<Product> = {}): Product {
     productBays: [],
     category: 'Silage & Grain',
     keyFeatures: ['Heavy-duty steel construction'],
+    technicalDetails: [{ label: 'Working Width', value: '7 m' }],
     images: FULL_IMAGES,
     thumbnailDataUrl: null,
     createdAt: '2026-06-17T00:00:00.000Z',

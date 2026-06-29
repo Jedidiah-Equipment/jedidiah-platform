@@ -30,14 +30,6 @@ export type ProductDetail = {
   related: CatalogProduct[];
 };
 
-// The highlight tiles are an agreed "discuss later" placeholder shown on every Product — not real spec
-// data (issue #566). One brand-generic set keeps the hero grid looking complete until real figures land.
-export const HIGHLIGHT_PLACEHOLDERS: ProductHighlight[] = [
-  { value: 'SA', label: 'Built & Tested' },
-  { value: 'Heavy', label: 'Duty Build' },
-  { value: '2-Pack', label: 'Coated Finish' },
-];
-
 const DETAIL_IMAGE_SLOTS = ['primary', 'secondary1', 'secondary2'] as const satisfies readonly ProductImageSlot[];
 
 // Loads the Product detail view model by model code, or null when none matches OR the Product is not
@@ -80,7 +72,9 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
       slot,
       imageUrl: productImageUrl(fullProduct.id, slot),
     })) as ProductGalleryImages,
-    highlights: HIGHLIGHT_PLACEHOLDERS,
+    // The hero highlight tiles render the Product's technical details (value is the bold headline, label
+    // the small-caps caption). Lander readiness gates on at least one, so a visible Product always has tiles.
+    highlights: fullProduct.technicalDetails.map((detail) => ({ value: detail.value, label: detail.label })),
     standardAssemblies: fullProduct.assemblies.filter((a) => a.kind === 'standard').map((a) => a.name),
     optionalAssemblies: fullProduct.assemblies.filter((a) => a.kind === 'optional').map((a) => a.name),
     keyFeatures: fullProduct.keyFeatures,

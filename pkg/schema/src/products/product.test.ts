@@ -5,6 +5,9 @@ import {
   PRODUCT_IMAGE_SLOT_SPECS,
   PRODUCT_KEY_FEATURE_MAX_LENGTH,
   PRODUCT_KEY_FEATURES_MAX_COUNT,
+  PRODUCT_TECHNICAL_DETAIL_LABEL_MAX_LENGTH,
+  PRODUCT_TECHNICAL_DETAIL_VALUE_MAX_LENGTH,
+  PRODUCT_TECHNICAL_DETAILS_MAX_COUNT,
   Product,
   ProductAssembliesInput,
   ProductBaysInput,
@@ -12,6 +15,7 @@ import {
   ProductCreateInput,
   ProductKeyFeatures,
   ProductListInput,
+  ProductTechnicalDetails,
   ProductUpdateInput,
 } from './product.js';
 
@@ -37,6 +41,7 @@ describe('ProductCreateInput', () => {
       description: 'Earthmoving equipment',
       buildTimeDays: 14,
       keyFeatures: [],
+      technicalDetails: [],
       modelCode: 'WL-100',
       name: 'Wheel Loader',
       productBays: [],
@@ -262,6 +267,38 @@ describe('ProductKeyFeatures', () => {
     const tooMany = Array.from({ length: PRODUCT_KEY_FEATURES_MAX_COUNT + 1 }, (_, index) => `Feature ${index}`);
 
     expect(() => ProductKeyFeatures.parse(tooMany)).toThrow();
+  });
+});
+
+describe('ProductTechnicalDetails', () => {
+  it('trims label/value pairs and rejects blank halves', () => {
+    expect(ProductTechnicalDetails.parse([{ label: '  Working Width  ', value: '  7 m  ' }])).toEqual([
+      { label: 'Working Width', value: '7 m' },
+    ]);
+    expect(() => ProductTechnicalDetails.parse([{ label: '   ', value: '7 m' }])).toThrow();
+    expect(() => ProductTechnicalDetails.parse([{ label: 'Working Width', value: '   ' }])).toThrow();
+  });
+
+  it('enforces the label and value length caps', () => {
+    expect(() =>
+      ProductTechnicalDetails.parse([
+        { label: 'x'.repeat(PRODUCT_TECHNICAL_DETAIL_LABEL_MAX_LENGTH + 1), value: '7 m' },
+      ]),
+    ).toThrow();
+    expect(() =>
+      ProductTechnicalDetails.parse([
+        { label: 'Working Width', value: 'x'.repeat(PRODUCT_TECHNICAL_DETAIL_VALUE_MAX_LENGTH + 1) },
+      ]),
+    ).toThrow();
+  });
+
+  it('caps the number of technical details', () => {
+    const tooMany = Array.from({ length: PRODUCT_TECHNICAL_DETAILS_MAX_COUNT + 1 }, (_, index) => ({
+      label: `Spec ${index}`,
+      value: `${index}`,
+    }));
+
+    expect(() => ProductTechnicalDetails.parse(tooMany)).toThrow();
   });
 });
 

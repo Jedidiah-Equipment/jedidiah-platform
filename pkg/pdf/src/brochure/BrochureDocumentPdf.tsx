@@ -23,18 +23,19 @@ const layout = {
   rangeLogoWidth: 166,
   heroHeight: 400,
   techImageHeight: 142,
-  secondaryHeight: 225,
+  secondaryHeight: 205,
   footerHeight: 98,
   footerLogoHeight: 34,
   footerLogoWidth: 120,
   // Detail page sections have fixed heights so the layout is stable across products; text inside the
   // assembly boxes and the description is sized for best fit (see fitAssemblyText/fitDescriptionText).
-  assemblyBoxHeight: 200,
+  assemblyBoxHeight: 224,
   assemblyColumnWidth: 270,
-  assemblyHeaderHeight: 20,
-  assemblyHeaderMarginBottom: 9,
+  assemblyFrameTop: 10,
+  assemblyHeaderHeight: 22,
+  assemblyHeaderOffsetX: 14,
   assemblyContentPaddingX: 14,
-  assemblyContentPaddingTop: 8,
+  assemblyContentTop: 26,
   assemblyContentPaddingBottom: 8,
   descriptionHeight: 74,
 } as const;
@@ -167,6 +168,7 @@ const styles = StyleSheet.create({
   },
   bulletRow: {
     alignItems: 'flex-start',
+    flexShrink: 0,
     flexDirection: 'row',
     marginBottom: 1.7,
   },
@@ -183,7 +185,7 @@ const styles = StyleSheet.create({
   },
   techImageBox: {
     height: layout.techImageHeight,
-    marginBottom: 2,
+    marginBottom: 16,
     overflow: 'hidden',
     width: '100%',
   },
@@ -193,20 +195,24 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   assemblyColumn: {
-    borderColor: pdfColors.muted,
-    borderRadius: 4,
-    borderWidth: 1.2,
     height: layout.assemblyBoxHeight,
-    overflow: 'hidden',
-    paddingBottom: layout.assemblyContentPaddingBottom,
-    paddingHorizontal: layout.assemblyContentPaddingX,
-    paddingTop: layout.assemblyContentPaddingTop,
+    position: 'relative',
     width: layout.assemblyColumnWidth,
+  },
+  assemblyFrame: {
+    borderColor: pdfColors.mutedDark,
+    borderWidth: 2.1,
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: layout.assemblyFrameTop,
   },
   assemblyHeader: {
     height: layout.assemblyHeaderHeight,
-    marginBottom: layout.assemblyHeaderMarginBottom,
+    left: layout.assemblyHeaderOffsetX,
     position: 'relative',
+    top: 0,
   },
   assemblyHeaderSvg: {
     left: 0,
@@ -221,6 +227,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     textAlign: 'center',
     textTransform: 'uppercase',
+  },
+  assemblyList: {
+    bottom: layout.assemblyContentPaddingBottom,
+    left: 0,
+    paddingHorizontal: layout.assemblyContentPaddingX,
+    position: 'absolute',
+    right: 0,
+    top: layout.assemblyContentTop,
   },
   secondaryBox: {
     height: layout.secondaryHeight,
@@ -254,13 +268,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: layout.footerHeight,
     justifyContent: 'space-between',
-    marginBottom: layout.pagePaddingX,
-    marginHorizontal: layout.pagePaddingX,
-    marginTop: 16,
+    marginBottom: 0,
+    marginHorizontal: 0,
+    marginTop: 10,
     overflow: 'hidden',
     paddingHorizontal: 11,
     paddingVertical: 10,
     position: 'relative',
+    width: '100%',
   },
   footerBackground: {
     bottom: 0,
@@ -520,10 +535,10 @@ function getCoverLayout(featureCount: number): CoverLayout {
 const A4_WIDTH = 595.28;
 // Per-character advance as a fraction of font size for the bold uppercase brand fonts. Tuned against
 // rendered output; only needs to be close enough to estimate line wrapping for the best-fit search.
-const ASSEMBLY_CHAR_WIDTH_FACTOR = 0.54;
+const ASSEMBLY_CHAR_WIDTH_FACTOR = 0.62;
 const DESCRIPTION_CHAR_WIDTH_FACTOR = 0.52;
 // Horizontal space a bullet square plus its gutter steals from each assembly line.
-const ASSEMBLY_BULLET_GUTTER = 13;
+const ASSEMBLY_BULLET_GUTTER = 14;
 const DESCRIPTION_PADDING_X = 20;
 
 const clampNumber = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -538,29 +553,42 @@ function getDetailLayout(document: BrochureDocumentModel): DetailLayout {
 // Picks the largest font size from a descending ladder that lets both assembly lists fit inside the
 // fixed box height. Both columns share one size so they read as a matched pair.
 function fitAssemblyText(standardItems: string[], optionalItems: string[]): AssemblyLayout {
-  const availableHeight =
-    layout.assemblyBoxHeight -
-    layout.assemblyContentPaddingTop -
-    layout.assemblyHeaderHeight -
-    layout.assemblyHeaderMarginBottom -
-    layout.assemblyContentPaddingBottom;
+  const availableHeight = layout.assemblyBoxHeight - layout.assemblyContentTop - layout.assemblyContentPaddingBottom;
   const textWidth = layout.assemblyColumnWidth - layout.assemblyContentPaddingX * 2 - ASSEMBLY_BULLET_GUTTER;
-  const candidates = [9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5, 5, 4.5, 4];
+  const candidates = [9.5, 9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5, 5, 4.5, 4];
 
   for (const fontSize of candidates) {
-    const lineHeight = 1.15;
-    const itemMarginBottom = clampNumber(fontSize * 0.28, 1, 3);
+    const lineHeight = fontSize < 6 ? 1.16 : 1.1;
+    const itemMarginBottom = fontSize < 6 ? 1.2 : clampNumber(fontSize * 0.62, 3.8, 6.2);
     const fits = [standardItems, optionalItems].every(
       (items) =>
-        measureListHeight(items, fontSize, lineHeight, itemMarginBottom, textWidth, ASSEMBLY_CHAR_WIDTH_FACTOR) <=
-        availableHeight,
+        measureListHeight(
+          items,
+          fontSize,
+          lineHeight,
+          itemMarginBottom,
+          textWidth,
+          assemblyCharWidthFactor(fontSize),
+        ) <= availableHeight,
     );
     if (fits) {
       return { fontSize, lineHeight, itemMarginBottom };
     }
   }
 
-  return { fontSize: 4, lineHeight: 1.05, itemMarginBottom: 0.5 };
+  return { fontSize: 4, lineHeight: 1.16, itemMarginBottom: 1 };
+}
+
+function assemblyCharWidthFactor(fontSize: number): number {
+  if (fontSize < 6) {
+    return 0.86;
+  }
+
+  if (fontSize < 8) {
+    return 0.74;
+  }
+
+  return ASSEMBLY_CHAR_WIDTH_FACTOR;
 }
 
 // Picks the largest description font size that fits the fixed description height.
@@ -621,7 +649,7 @@ function KeyFeatureItem({ label, layout }: { label: string; layout: CoverLayout 
 }
 
 function BulletItem({ label, layout: a, bulletColor }: { label: string; layout: AssemblyLayout; bulletColor: string }) {
-  const bulletSize = clampNumber(a.fontSize * 0.62, 2.6, 6);
+  const bulletSize = clampNumber(a.fontSize * 0.66, 3.5, 6.2);
   return (
     <View style={[styles.bulletRow, { marginBottom: a.itemMarginBottom }]}>
       <View
@@ -635,50 +663,34 @@ function BulletItem({ label, layout: a, bulletColor }: { label: string; layout: 
   );
 }
 
-// The header band for each assembly box: a black angled tab holding the heading, a yellow accent slash
-// butted up against it, then a thin dark rule that runs out to the right edge of the box. All three share
-// the same forward slant. The tab width is estimated from the heading length (no text measurement in
-// @react-pdf), then the heading is overlaid centered on the black tab.
-function SpecColumnHeader({ heading }: { heading: string }) {
+// The tab intentionally overlaps the frame top edge; that matches the legacy brochure artwork.
+function SpecColumnHeader({ accent, heading }: { accent: 'optional' | 'standard'; heading: string }) {
   const headerHeight = layout.assemblyHeaderHeight;
-  const fontSize = 9.5;
-  const slant = 9;
-  const tabPadX = 12;
-  const innerWidth = layout.assemblyColumnWidth - layout.assemblyContentPaddingX * 2;
-  const tabWidth = clampNumber(heading.length * fontSize * 0.58 + tabPadX * 2, 58, innerWidth - 80);
-
-  const accentGap = 3;
-  const accentX = tabWidth + accentGap;
-  const accentWidth = 26;
-
-  const ruleSlant = 6;
-  const ruleThickness = 2.6;
-  const ruleY = (headerHeight - ruleThickness) / 2;
-  const ruleStart = accentX + accentWidth + accentGap + 2;
+  const fontSize = 13.5;
+  const slant = 12;
+  const tabPadX = 22;
+  const maxTabWidth = layout.assemblyColumnWidth - layout.assemblyHeaderOffsetX - 36;
+  const tabWidth = clampNumber(heading.length * fontSize * 0.63 + tabPadX * 2, 112, maxTabWidth);
+  const fillColor = accent === 'standard' ? pdfColors.black : pdfColors.yellowLight;
+  const textColor = accent === 'standard' ? pdfColors.white : pdfColors.black;
+  const textLeft = layout.assemblyContentPaddingX;
+  const textTop = (headerHeight - fontSize) / 2 - 4.2;
 
   return (
-    <View style={styles.assemblyHeader}>
+    <View style={[styles.assemblyHeader, { width: tabWidth + slant }]}>
       <Svg
         height={headerHeight}
         style={styles.assemblyHeaderSvg}
-        viewBox={`0 0 ${innerWidth} ${headerHeight}`}
-        width={innerWidth}
+        viewBox={`0 0 ${tabWidth + slant} ${headerHeight}`}
+        width={tabWidth + slant}
       >
-        <Path
-          d={`M0 0 L${tabWidth + slant} 0 L${tabWidth} ${headerHeight} L0 ${headerHeight} Z`}
-          fill={pdfColors.black}
-        />
-        <Path
-          d={`M${accentX + slant} 0 L${accentX + slant + accentWidth} 0 L${accentX + accentWidth} ${headerHeight} L${accentX} ${headerHeight} Z`}
-          fill={pdfColors.yellowLight}
-        />
-        <Path
-          d={`M${ruleStart + ruleSlant} ${ruleY} L${innerWidth} ${ruleY} L${innerWidth - ruleSlant} ${ruleY + ruleThickness} L${ruleStart} ${ruleY + ruleThickness} Z`}
-          fill={pdfColors.mutedDark}
-        />
+        <Path d={`M0 0 L${tabWidth + slant} 0 L${tabWidth} ${headerHeight} L0 ${headerHeight} Z`} fill={fillColor} />
       </Svg>
       <Text
-        style={[styles.assemblyHeaderText, { fontSize, top: (headerHeight - fontSize) / 2 - 0.5, width: tabWidth }]}
+        style={[
+          styles.assemblyHeaderText,
+          { color: textColor, fontSize, left: textLeft, textAlign: 'left', top: textTop, width: tabWidth - textLeft },
+        ]}
       >
         {heading}
       </Text>
@@ -697,13 +709,15 @@ function SpecColumn({
   items: string[];
   layout: AssemblyLayout;
 }) {
-  const bulletColor = accent === 'standard' ? pdfColors.black : pdfColors.yellowLight;
   return (
     <View style={styles.assemblyColumn}>
-      <SpecColumnHeader heading={heading} />
-      {items.map((item) => (
-        <BulletItem bulletColor={bulletColor} key={item} label={item} layout={a} />
-      ))}
+      <View style={styles.assemblyFrame} />
+      <SpecColumnHeader accent={accent} heading={heading} />
+      <View style={styles.assemblyList}>
+        {items.map((item) => (
+          <BulletItem bulletColor={pdfColors.yellowLight} key={item} label={item} layout={a} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -718,11 +732,11 @@ function Footer() {
           <Text style={[styles.footerContact, styles.footerWebsite]}>www.jedidiahequipment.co.za</Text>
         </View>
         <View style={styles.footerContactGroup}>
-          <Text style={styles.footerContact}>Dewald Van Niekerk 083 331 9183,</Text>
+          <Text style={styles.footerContact}>Dewald Van Niekerk 083 331 9183</Text>
           <Text style={styles.footerContact}>factory@jedidiahequipment.co.za</Text>
         </View>
         <View>
-          <Text style={styles.footerContact}>Jed Van Niekerk 082 419 4464,</Text>
+          <Text style={styles.footerContact}>Jed Van Niekerk 082 419 4464</Text>
           <Text style={styles.footerContact}>jed@jedidiahequipment.co.za</Text>
         </View>
       </View>

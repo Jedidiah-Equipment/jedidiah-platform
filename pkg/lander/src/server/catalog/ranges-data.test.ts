@@ -25,6 +25,7 @@ test('loadHomeRanges returns Range name, blurb, and Products href from the datab
     name: withBlurb.name,
     description: 'Field-proven and built tough.',
     href: '/products',
+    slug: toRangeSlug(withBlurb.name),
     imageUrl: `/images/ranges/${withBlurb.id}`,
   });
 });

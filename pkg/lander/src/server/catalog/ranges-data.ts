@@ -9,6 +9,8 @@ export type HomeRange = {
   description: string;
   // Typed as the literal route so range cards can navigate via the router's <Link> with full type safety.
   href: '/products';
+  // Feeds the Products page `?range=` filter so a card lands on its own range, not the full catalog.
+  slug: string;
   imageUrl: string;
 };
 
@@ -23,6 +25,7 @@ export async function loadHomeRanges(db: Db): Promise<HomeRange[]> {
     name: range.name,
     description: range.description ?? '',
     href: '/products',
+    slug: toRangeSlug(range.name),
     imageUrl: `/images/ranges/${range.id}`,
   }));
 }

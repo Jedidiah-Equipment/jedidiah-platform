@@ -3,7 +3,7 @@ import type { Db } from '@pkg/db';
 import { isBrochureReady, isLanderReady } from '@pkg/domain';
 import type { ProductImageSlot } from '@pkg/schema';
 
-import { type CatalogProduct, toCatalogProduct, toRangeSlug } from './products-data.js';
+import { type CatalogProduct, imageUrl, toCatalogProduct, toRangeSlug } from './products-data.js';
 
 export type ProductHighlight = { value: string; label: string };
 export type ProductGalleryImage = { imageUrl: string; slot: ProductImageSlot };
@@ -67,10 +67,10 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
     rangeSlug: toRangeSlug(rangeName),
     tagline: fullProduct.category ?? '',
     description: fullProduct.description ?? '',
-    imageUrl: `/images/products/${fullProduct.id}`,
+    imageUrl: imageUrl(`/images/products/${fullProduct.id}`, fullProduct.images.primary?.updatedAt),
     galleryImages: DETAIL_IMAGE_SLOTS.map((slot) => ({
       slot,
-      imageUrl: productImageUrl(fullProduct.id, slot),
+      imageUrl: productImageUrl(fullProduct.id, slot, fullProduct.images[slot]?.updatedAt),
     })) as ProductGalleryImages,
     // The hero highlight tiles render the Product's technical details (value is the bold headline, label
     // the small-caps caption). Lander readiness gates on at least one, so a visible Product always has tiles.
@@ -83,8 +83,6 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
   };
 }
 
-function productImageUrl(productId: string, slot: ProductImageSlot): string {
-  return slot === 'primary'
-    ? `/images/products/${productId}`
-    : `/images/products/${productId}?slot=${encodeURIComponent(slot)}`;
+function productImageUrl(productId: string, slot: ProductImageSlot, updatedAt: string | null | undefined): string {
+  return imageUrl(`/images/products/${productId}`, updatedAt, slot === 'primary' ? {} : { slot });
 }

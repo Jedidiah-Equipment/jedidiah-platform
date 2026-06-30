@@ -1,7 +1,7 @@
 import { listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
 
-import { toRangeLabel, toRangeSlug } from './products-data.js';
+import { imageUrl, toRangeLabel, toRangeSlug } from './products-data.js';
 
 export type HomeRange = {
   id: string;
@@ -26,7 +26,7 @@ export async function loadHomeRanges(db: Db): Promise<HomeRange[]> {
     description: range.description ?? '',
     href: '/products',
     slug: toRangeSlug(range.name),
-    imageUrl: `/images/ranges/${range.id}`,
+    imageUrl: imageUrl(`/images/ranges/${range.id}`, range.image?.updatedAt),
   }));
 }
 

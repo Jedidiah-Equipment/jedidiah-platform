@@ -88,7 +88,9 @@ test('loadProductsCatalog groups Products under their Range with a model count',
     modelCode: product.modelCode,
     description: 'Flagship 14-ton tipping trailer.',
     href: `/products/${encodeURIComponent(product.modelCode)}`,
-    imageUrl: `/images/products/${product.id}`,
+    // The card image URL carries the primary image's `updatedAt` as a `?v=` cache-busting token so a
+    // replaced photo appears immediately on the public site (issue #647).
+    imageUrl: `/images/products/${product.id}?v=${Date.parse(product.images.primary?.updatedAt ?? '')}`,
   });
 });
 

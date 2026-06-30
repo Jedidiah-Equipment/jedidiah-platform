@@ -39,6 +39,26 @@ export function toRangeLabel(name: string): string {
   return name.replace(/\s+Range$/i, '');
 }
 
+// The public image routes are keyed by entity id, so a replaced image reuses its URL. Without a token a
+// browser or CDN keeps serving the superseded bytes, so a new upload does not show on the site (issue #647).
+// The stored file's `updatedAt` is the designated cache-busting token (see @pkg/schema EntityFile); folding it
+// into the URL as `?v=` changes the URL whenever the bytes change, so a replacement appears immediately. A
+// missing image (no token) yields the bare URL, which streams the short-lived neutral placeholder.
+export function imageUrl(
+  path: string,
+  updatedAt: string | null | undefined,
+  params: Record<string, string> = {},
+): string {
+  const search = new URLSearchParams(params);
+  const epochMs = updatedAt ? Date.parse(updatedAt) : Number.NaN;
+  if (!Number.isNaN(epochMs)) {
+    search.set('v', String(epochMs));
+  }
+
+  const query = search.toString();
+  return query ? `${path}?${query}` : path;
+}
+
 // Shared Product -> card view model. The detail page is keyed by modelCode (`/products/:modelCode`); the
 // image route is keyed by id and streams the brochure hero or a neutral placeholder. Used by the catalog
 // grouping and the detail page's "More in {Range}" strip so both speak the same card shape.
@@ -47,6 +67,7 @@ export function toCatalogProduct(row: {
   name: string;
   modelCode: string;
   description: string | null;
+  images?: { primary: { updatedAt: string } | null };
 }): CatalogProduct {
   return {
     id: row.id,
@@ -54,7 +75,7 @@ export function toCatalogProduct(row: {
     modelCode: row.modelCode,
     description: row.description ?? '',
     href: `/products/${encodeURIComponent(row.modelCode)}`,
-    imageUrl: `/images/products/${row.id}`,
+    imageUrl: imageUrl(`/images/products/${row.id}`, row.images?.primary?.updatedAt),
   };
 }
 

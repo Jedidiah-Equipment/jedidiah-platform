@@ -115,11 +115,15 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
   expect(detail?.rangeSlug).toBe(`crosshaul-${suffix}-range`);
   expect(detail?.tagline).toBe('Built for high-volume haulage.');
   expect(detail?.description).toBe('Flagship 14-ton tipping trailer.');
-  expect(detail?.imageUrl).toBe(`/images/products/${product.id}`);
+  // Each image URL carries its slot's `updatedAt` as a `?v=` cache-busting token (issue #647).
+  const primaryV = Date.parse(product.images.primary?.updatedAt ?? '');
+  const secondary1V = Date.parse(product.images.secondary1?.updatedAt ?? '');
+  const secondary2V = Date.parse(product.images.secondary2?.updatedAt ?? '');
+  expect(detail?.imageUrl).toBe(`/images/products/${product.id}?v=${primaryV}`);
   expect(detail?.galleryImages).toEqual([
-    { slot: 'primary', imageUrl: `/images/products/${product.id}` },
-    { slot: 'secondary1', imageUrl: `/images/products/${product.id}?slot=secondary1` },
-    { slot: 'secondary2', imageUrl: `/images/products/${product.id}?slot=secondary2` },
+    { slot: 'primary', imageUrl: `/images/products/${product.id}?v=${primaryV}` },
+    { slot: 'secondary1', imageUrl: `/images/products/${product.id}?slot=secondary1&v=${secondary1V}` },
+    { slot: 'secondary2', imageUrl: `/images/products/${product.id}?slot=secondary2&v=${secondary2V}` },
   ]);
   expect(detail?.keyFeatures).toEqual(['Heavy-duty monocoque body', 'Twin-ram hydraulic tipping']);
   expect(detail?.highlights).toEqual([
@@ -174,7 +178,7 @@ test('loadProductDetail lists other Products in the same Range as related cards'
       modelCode: sibling.modelCode,
       description: 'Compact field bowser.',
       href: `/products/${encodeURIComponent(sibling.modelCode)}`,
-      imageUrl: `/images/products/${sibling.id}`,
+      imageUrl: `/images/products/${sibling.id}?v=${Date.parse(sibling.images.primary?.updatedAt ?? '')}`,
     },
   ]);
 });

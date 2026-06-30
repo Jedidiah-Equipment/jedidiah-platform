@@ -189,6 +189,7 @@ export async function getBrochureDocumentModel({
       .map((assembly) => assembly.name),
     subtitle: product.category,
     title: product.name,
+    titleHighlight: product.nameHighlight,
   };
 }
 

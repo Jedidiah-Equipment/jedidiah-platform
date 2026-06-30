@@ -116,6 +116,18 @@ describe('toProductFormValues marketing fields', () => {
 
     expect(toProductFormValues(buildProduct({ category: 'Silage & Grain' })).category).toBe('Silage & Grain');
   });
+
+  it('maps the name highlight, collapsing a null highlight to an empty string', () => {
+    expect(toProductFormValues(buildProduct({ nameHighlight: null })).nameHighlight).toBe('');
+    expect(toProductFormValues(buildProduct({ nameHighlight: '4000' })).nameHighlight).toBe('4000');
+  });
+
+  it('round-trips a name highlight through the create schema, blanking an empty one to null', () => {
+    expect(toProductCreateInput(toProductFormValues(buildProduct({ nameHighlight: '4000' }))).nameHighlight).toBe(
+      '4000',
+    );
+    expect(toProductCreateInput(toProductFormValues(buildProduct({ nameHighlight: null }))).nameHighlight).toBeNull();
+  });
 });
 
 describe('toProductAssemblyInputs', () => {
@@ -171,6 +183,7 @@ describe('toProductCreateInput', () => {
       technicalDetails: [],
       modelCode: 'MOD-1',
       name: 'Widget',
+      nameHighlight: null,
       productBays: [{ bayId: BAY_ID, defaultWorkingDays: 5 }],
       rangeId: RANGE_ID,
       requiresVinNumber: false,
@@ -202,6 +215,7 @@ describe('toProductMinimalCreateInput', () => {
       technicalDetails: [],
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      nameHighlight: null,
       productBays: [],
       rangeId: RANGE_ID,
       requiresVinNumber: false,

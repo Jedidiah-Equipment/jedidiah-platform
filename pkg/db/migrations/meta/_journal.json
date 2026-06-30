@@ -421,6 +421,13 @@
       "when": 1782718451594,
       "tag": "0059_minor_morbius",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1782740478787,
+      "tag": "0060_luxuriant_golden_guardian",
+      "breakpoints": true
     }
   ]
 }

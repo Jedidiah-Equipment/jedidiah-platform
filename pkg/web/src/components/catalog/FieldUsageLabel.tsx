@@ -20,6 +20,7 @@ export const PRODUCT_FIELD_USAGE = {
   keyFeatures: LANDER_AND_BROCHURE_USAGE,
   modelCode: LANDER_AND_BROCHURE_USAGE,
   name: LANDER_AND_BROCHURE_USAGE,
+  nameHighlight: BROCHURE_USAGE,
   rangeId: LANDER_AND_BROCHURE_USAGE,
   technicalDetails: LANDER_USAGE,
 } as const;

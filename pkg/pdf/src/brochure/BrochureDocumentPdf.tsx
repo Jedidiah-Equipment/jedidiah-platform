@@ -1,5 +1,5 @@
 import { type BrochureDocumentImage, type BrochureDocumentModel, PRODUCT_KEY_FEATURES_MAX_COUNT } from '@pkg/schema';
-import { Document, Image, Page, StyleSheet, type Styles, Text, View } from '@react-pdf/renderer';
+import { Document, Image, Page, Path, StyleSheet, type Styles, Svg, Text, View } from '@react-pdf/renderer';
 
 import { pdfFontFamily, pdfTitleFontFamily } from '../pdf-fonts.js';
 import { jedidiahFooterBannerSrc, jedidiahLogoSrc } from '../pdf-logo.js';
@@ -27,6 +27,16 @@ const layout = {
   footerHeight: 98,
   footerLogoHeight: 34,
   footerLogoWidth: 120,
+  // Detail page sections have fixed heights so the layout is stable across products; text inside the
+  // assembly boxes and the description is sized for best fit (see fitAssemblyText/fitDescriptionText).
+  assemblyBoxHeight: 200,
+  assemblyColumnWidth: 270,
+  assemblyHeaderHeight: 20,
+  assemblyHeaderMarginBottom: 9,
+  assemblyContentPaddingX: 14,
+  assemblyContentPaddingTop: 8,
+  assemblyContentPaddingBottom: 8,
+  descriptionHeight: 74,
 } as const;
 
 const styles = StyleSheet.create({
@@ -53,7 +63,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 38,
+    marginBottom: 22,
   },
   brandLogoFrame: {
     backgroundColor: pdfColors.black,
@@ -76,23 +86,28 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     alignItems: 'center',
-    marginBottom: 17,
+    marginBottom: 30,
   },
   eyebrow: {
     color: pdfColors.black,
-    fontSize: 18,
+    fontFamily: pdfTitleFontFamily,
+    fontSize: 20,
     fontWeight: pdfFontWeight.bold,
-    marginBottom: 14,
+    marginBottom: 6,
     textTransform: 'uppercase',
   },
   title: {
     color: pdfColors.black,
     fontFamily: pdfTitleFontFamily,
-    fontSize: 48,
+    fontSize: 52,
     fontWeight: pdfFontWeight.bold,
     lineHeight: 1,
     textAlign: 'center',
     textTransform: 'uppercase',
+  },
+  // Accents a substring of the title, matching the yellow used for the "Features" heading accent.
+  titleHighlight: {
+    color: pdfColors.yellowLight,
   },
   imageBox: {
     overflow: 'hidden',
@@ -138,33 +153,9 @@ const styles = StyleSheet.create({
     marginBottom: 9,
   },
   keyFeatureIcon: {
-    height: 9,
-    marginRight: 13,
-    width: 21,
-  },
-  trailerBed: {
-    backgroundColor: pdfColors.black,
-    height: 6,
-    width: 18,
-  },
-  trailerTow: {
-    backgroundColor: pdfColors.black,
-    height: 2,
-    marginLeft: 15,
-    marginTop: -2,
-    width: 6,
-  },
-  trailerWheels: {
-    flexDirection: 'row',
-    gap: 5,
-    marginLeft: 3,
-    marginTop: -1,
-  },
-  trailerWheel: {
-    backgroundColor: pdfColors.black,
-    borderRadius: 2,
-    height: 4,
-    width: 4,
+    height: 13,
+    marginRight: 10,
+    width: 13,
   },
   keyFeatureText: {
     color: pdfColors.black,
@@ -179,13 +170,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 1.7,
   },
-  bulletDot: {
-    backgroundColor: pdfColors.black,
-    borderRadius: 2,
-    height: 4,
-    marginRight: 9,
-    marginTop: 3.3,
-    width: 4,
+  bulletSquare: {
+    marginRight: 8,
   },
   bulletText: {
     color: pdfColors.black,
@@ -204,37 +190,35 @@ const styles = StyleSheet.create({
   columns: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 18,
-    marginLeft: 32,
-    width: 473,
+    marginBottom: 16,
   },
   assemblyColumn: {
-    borderBottomWidth: 2.5,
-    borderLeftWidth: 2.5,
-    borderRightWidth: 2.5,
-    borderTopWidth: 2.5,
-    paddingBottom: 6,
-    paddingHorizontal: 18,
-    paddingTop: 7,
-    width: 198,
+    borderColor: pdfColors.muted,
+    borderRadius: 4,
+    borderWidth: 1.2,
+    height: layout.assemblyBoxHeight,
+    overflow: 'hidden',
+    paddingBottom: layout.assemblyContentPaddingBottom,
+    paddingHorizontal: layout.assemblyContentPaddingX,
+    paddingTop: layout.assemblyContentPaddingTop,
+    width: layout.assemblyColumnWidth,
   },
-  standardColumn: {
-    borderBottomColor: pdfColors.black,
-    borderLeftColor: pdfColors.black,
-    borderRightColor: pdfColors.black,
-    borderTopColor: pdfColors.black,
+  assemblyHeader: {
+    height: layout.assemblyHeaderHeight,
+    marginBottom: layout.assemblyHeaderMarginBottom,
+    position: 'relative',
   },
-  optionalColumn: {
-    borderBottomColor: pdfColors.yellowLight,
-    borderLeftColor: pdfColors.yellowLight,
-    borderRightColor: pdfColors.yellowLight,
-    borderTopColor: pdfColors.yellowLight,
+  assemblyHeaderSvg: {
+    left: 0,
+    position: 'absolute',
+    top: 0,
   },
-  columnHeading: {
-    fontSize: 7.3,
+  assemblyHeaderText: {
+    color: pdfColors.white,
+    fontFamily: pdfTitleFontFamily,
     fontWeight: pdfFontWeight.bold,
-    lineHeight: 1,
-    marginBottom: 8,
+    left: 0,
+    position: 'absolute',
     textAlign: 'center',
     textTransform: 'uppercase',
   },
@@ -249,6 +233,10 @@ const styles = StyleSheet.create({
     height: 2.4,
     marginBottom: 6,
     marginHorizontal: 15,
+  },
+  descriptionTextWrap: {
+    height: layout.descriptionHeight,
+    justifyContent: 'center',
   },
   bodyCopy: {
     color: pdfColors.black,
@@ -360,7 +348,7 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
 
           <View style={styles.titleBlock}>
             {document.subtitle ? <Text style={styles.eyebrow}>{document.subtitle}</Text> : null}
-            <TitleText title={document.title} />
+            <TitleText title={document.title} highlight={document.titleHighlight} />
           </View>
 
           {document.images.primary ? (
@@ -390,7 +378,7 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
           ) : null}
 
           {hasColumns ? (
-            <View style={[styles.columns, { marginBottom: detailLayout.assembly.columnsMarginBottom }]}>
+            <View style={styles.columns}>
               <SpecColumn
                 accent="standard"
                 heading="Standard"
@@ -408,12 +396,28 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
 
           {document.images.banner ? <CoverImage image={document.images.banner} style={styles.secondaryBox} /> : null}
 
-          {document.bodyCopy.length > 0 ? <View style={styles.yellowRule} /> : null}
-          {document.bodyCopy.map((paragraph) => (
-            <Text key={paragraph} style={[styles.bodyCopy, detailLayout.bodyCopy]}>
-              {paragraph}
-            </Text>
-          ))}
+          {document.bodyCopy.length > 0 ? (
+            <View>
+              <View style={styles.yellowRule} />
+              <View style={styles.descriptionTextWrap}>
+                {document.bodyCopy.map((paragraph) => (
+                  <Text
+                    key={paragraph}
+                    style={[
+                      styles.bodyCopy,
+                      {
+                        fontSize: detailLayout.description.fontSize,
+                        lineHeight: detailLayout.description.lineHeight,
+                        marginBottom: detailLayout.description.paragraphMarginBottom,
+                      },
+                    ]}
+                  >
+                    {paragraph}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </View>
         <View style={styles.detailSpacer} />
         <Footer />
@@ -422,14 +426,25 @@ export function BrochureDocumentPdf({ document }: BrochureDocumentPdfProps) {
   );
 }
 
-function TitleText({ title }: { title: string }) {
+function TitleText({ title, highlight }: { title: string; highlight: string | null }) {
   const upperTitle = title.toUpperCase();
+  const needle = highlight?.trim().toUpperCase();
+  const at = needle ? upperTitle.indexOf(needle) : -1;
 
-  // Accent spans should come from brochure config later; avoid hardcoding product-specific regex here.
+  // No highlight, or it isn't a substring of the title: render the whole title in the default colour.
+  if (!needle || at === -1) {
+    return (
+      <Text style={styles.title} wrap={false}>
+        {upperTitle}
+      </Text>
+    );
+  }
 
   return (
     <Text style={styles.title} wrap={false}>
-      {upperTitle}
+      {upperTitle.slice(0, at)}
+      <Text style={styles.titleHighlight}>{upperTitle.slice(at, at + needle.length)}</Text>
+      {upperTitle.slice(at + needle.length)}
     </Text>
   );
 }
@@ -447,37 +462,29 @@ type CoverLayout = {
 
 type DetailLayout = {
   assembly: AssemblyLayout;
-  bodyCopy: BodyCopyLayout;
+  description: DescriptionLayout;
 };
 
 type AssemblyLayout = {
-  bulletDotSize: number;
-  bulletDotTop: number;
-  bulletMarginBottom: number;
-  bulletTextFontSize: number;
-  bulletTextLineHeight: number;
-  columnHeadingFontSize: number;
-  columnHeadingMarginBottom: number;
-  columnPaddingBottom: number;
-  columnPaddingX: number;
-  columnPaddingTop: number;
-  columnsMarginBottom: number;
-};
-
-type BodyCopyLayout = {
   fontSize: number;
   lineHeight: number;
-  marginBottom: number;
+  itemMarginBottom: number;
+};
+
+type DescriptionLayout = {
+  fontSize: number;
+  lineHeight: number;
+  paragraphMarginBottom: number;
 };
 
 function getCoverLayout(featureCount: number): CoverLayout {
   if (featureCount <= 3) {
     return {
-      featureFontSize: 10.5,
+      featureFontSize: 12.5,
       featureLineHeight: 1.15,
       featureListWidth: 260,
-      headingFontSize: 20,
-      headingMarginBottom: 18,
+      headingFontSize: 24,
+      headingMarginBottom: 34,
       heroHeight: layout.heroHeight,
       rowMarginBottom: 9,
       sectionMarginTop: 86,
@@ -486,11 +493,11 @@ function getCoverLayout(featureCount: number): CoverLayout {
 
   if (featureCount <= 6) {
     return {
-      featureFontSize: 9,
+      featureFontSize: 10.5,
       featureLineHeight: 1.1,
       featureListWidth: 310,
-      headingFontSize: 18,
-      headingMarginBottom: 12,
+      headingFontSize: 21,
+      headingMarginBottom: 22,
       heroHeight: 360,
       rowMarginBottom: 5,
       sectionMarginTop: 48,
@@ -498,10 +505,10 @@ function getCoverLayout(featureCount: number): CoverLayout {
   }
 
   return {
-    featureFontSize: 7.2,
+    featureFontSize: 8,
     featureLineHeight: 1.05,
     featureListWidth: 340,
-    headingFontSize: 16,
+    headingFontSize: 18,
     headingMarginBottom: 8,
     heroHeight: 318,
     rowMarginBottom: featureCount >= PRODUCT_KEY_FEATURES_MAX_COUNT ? 2 : 3,
@@ -509,115 +516,103 @@ function getCoverLayout(featureCount: number): CoverLayout {
   };
 }
 
+// A4 page width in points (@react-pdf default); used to derive the fixed text widths for best-fit sizing.
+const A4_WIDTH = 595.28;
+// Per-character advance as a fraction of font size for the bold uppercase brand fonts. Tuned against
+// rendered output; only needs to be close enough to estimate line wrapping for the best-fit search.
+const ASSEMBLY_CHAR_WIDTH_FACTOR = 0.54;
+const DESCRIPTION_CHAR_WIDTH_FACTOR = 0.52;
+// Horizontal space a bullet square plus its gutter steals from each assembly line.
+const ASSEMBLY_BULLET_GUTTER = 13;
+const DESCRIPTION_PADDING_X = 20;
+
+const clampNumber = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
 function getDetailLayout(document: BrochureDocumentModel): DetailLayout {
   return {
-    assembly: getAssemblyLayout(document.standardAssemblies, document.optionalAssemblies),
-    bodyCopy: getBodyCopyLayout(document.bodyCopy),
+    assembly: fitAssemblyText(document.standardAssemblies, document.optionalAssemblies),
+    description: fitDescriptionText(document.bodyCopy),
   };
 }
 
-function getAssemblyLayout(standardItems: string[], optionalItems: string[]): AssemblyLayout {
-  const pressure = Math.max(estimateAssemblyPressure(standardItems), estimateAssemblyPressure(optionalItems));
+// Picks the largest font size from a descending ladder that lets both assembly lists fit inside the
+// fixed box height. Both columns share one size so they read as a matched pair.
+function fitAssemblyText(standardItems: string[], optionalItems: string[]): AssemblyLayout {
+  const availableHeight =
+    layout.assemblyBoxHeight -
+    layout.assemblyContentPaddingTop -
+    layout.assemblyHeaderHeight -
+    layout.assemblyHeaderMarginBottom -
+    layout.assemblyContentPaddingBottom;
+  const textWidth = layout.assemblyColumnWidth - layout.assemblyContentPaddingX * 2 - ASSEMBLY_BULLET_GUTTER;
+  const candidates = [9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5, 5, 4.5, 4];
 
-  if (pressure <= 18) {
-    return {
-      bulletDotSize: 4,
-      bulletDotTop: 3.3,
-      bulletMarginBottom: 1.7,
-      bulletTextFontSize: 6.8,
-      bulletTextLineHeight: 1.18,
-      columnHeadingFontSize: 7.3,
-      columnHeadingMarginBottom: 8,
-      columnPaddingBottom: 6,
-      columnPaddingX: 18,
-      columnPaddingTop: 7,
-      columnsMarginBottom: 18,
-    };
+  for (const fontSize of candidates) {
+    const lineHeight = 1.15;
+    const itemMarginBottom = clampNumber(fontSize * 0.28, 1, 3);
+    const fits = [standardItems, optionalItems].every(
+      (items) =>
+        measureListHeight(items, fontSize, lineHeight, itemMarginBottom, textWidth, ASSEMBLY_CHAR_WIDTH_FACTOR) <=
+        availableHeight,
+    );
+    if (fits) {
+      return { fontSize, lineHeight, itemMarginBottom };
+    }
   }
 
-  if (pressure <= 26) {
-    return {
-      bulletDotSize: 3.4,
-      bulletDotTop: 2.8,
-      bulletMarginBottom: 0.9,
-      bulletTextFontSize: 6,
-      bulletTextLineHeight: 1.1,
-      columnHeadingFontSize: 6.8,
-      columnHeadingMarginBottom: 6,
-      columnPaddingBottom: 5,
-      columnPaddingX: 16,
-      columnPaddingTop: 6,
-      columnsMarginBottom: 15,
-    };
-  }
-
-  if (pressure <= 34) {
-    return {
-      bulletDotSize: 2.9,
-      bulletDotTop: 2.4,
-      bulletMarginBottom: 0.4,
-      bulletTextFontSize: 5,
-      bulletTextLineHeight: 1.04,
-      columnHeadingFontSize: 6.2,
-      columnHeadingMarginBottom: 4,
-      columnPaddingBottom: 4,
-      columnPaddingX: 14,
-      columnPaddingTop: 5,
-      columnsMarginBottom: 12,
-    };
-  }
-
-  return {
-    bulletDotSize: 2.4,
-    bulletDotTop: 2,
-    bulletMarginBottom: 0.1,
-    bulletTextFontSize: 4,
-    bulletTextLineHeight: 1,
-    columnHeadingFontSize: 5.2,
-    columnHeadingMarginBottom: 3,
-    columnPaddingBottom: 3,
-    columnPaddingX: 12,
-    columnPaddingTop: 4,
-    columnsMarginBottom: 8,
-  };
+  return { fontSize: 4, lineHeight: 1.05, itemMarginBottom: 0.5 };
 }
 
-function estimateAssemblyPressure(items: string[]): number {
-  return items.reduce((total, item) => total + Math.max(1, Math.ceil(item.length / 38)), 0);
+// Picks the largest description font size that fits the fixed description height.
+function fitDescriptionText(paragraphs: string[]): DescriptionLayout {
+  const availableHeight = layout.descriptionHeight;
+  const textWidth = A4_WIDTH - layout.pagePaddingX * 2 - DESCRIPTION_PADDING_X * 2;
+  const candidates = [10, 9.5, 9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5, 5];
+
+  for (const fontSize of candidates) {
+    const lineHeight = 1.3;
+    const paragraphMarginBottom = clampNumber(fontSize * 0.25, 1, 3);
+    if (
+      measureListHeight(
+        paragraphs,
+        fontSize,
+        lineHeight,
+        paragraphMarginBottom,
+        textWidth,
+        DESCRIPTION_CHAR_WIDTH_FACTOR,
+      ) <= availableHeight
+    ) {
+      return { fontSize, lineHeight, paragraphMarginBottom };
+    }
+  }
+
+  return { fontSize: 5, lineHeight: 1.18, paragraphMarginBottom: 0.5 };
 }
 
-function getBodyCopyLayout(paragraphs: string[]): BodyCopyLayout {
-  const estimatedLines = paragraphs.reduce(
-    (total, paragraph) => total + Math.max(1, Math.ceil(paragraph.length / 105)),
-    0,
-  );
-
-  if (estimatedLines <= 5) {
-    return { fontSize: 7.4, lineHeight: 1.43, marginBottom: 2 };
-  }
-
-  if (estimatedLines <= 7) {
-    return { fontSize: 6.8, lineHeight: 1.34, marginBottom: 1.5 };
-  }
-
-  if (estimatedLines <= 10) {
-    return { fontSize: 6.1, lineHeight: 1.24, marginBottom: 1 };
-  }
-
-  return { fontSize: 5.4, lineHeight: 1.16, marginBottom: 0.6 };
+// Estimates the rendered height of a wrapped list of lines at a given font size. Conservative (counts a
+// trailing margin on every item) so the chosen size leaves a little slack rather than overflowing.
+function measureListHeight(
+  items: string[],
+  fontSize: number,
+  lineHeight: number,
+  marginBottom: number,
+  textWidth: number,
+  charWidthFactor: number,
+): number {
+  const charsPerLine = Math.max(1, Math.floor(textWidth / (fontSize * charWidthFactor)));
+  const totalLines = items.reduce((total, item) => total + Math.max(1, Math.ceil(item.length / charsPerLine)), 0);
+  return totalLines * fontSize * lineHeight + items.length * marginBottom;
 }
 
 function KeyFeatureItem({ label, layout }: { label: string; layout: CoverLayout }) {
   return (
     <View style={[styles.keyFeatureRow, { marginBottom: layout.rowMarginBottom }]}>
-      <View style={styles.keyFeatureIcon}>
-        <View style={styles.trailerBed} />
-        <View style={styles.trailerTow} />
-        <View style={styles.trailerWheels}>
-          <View style={styles.trailerWheel} />
-          <View style={styles.trailerWheel} />
-        </View>
-      </View>
+      <Svg style={styles.keyFeatureIcon} viewBox="0 0 24 24">
+        <Path
+          d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z"
+          fill={pdfColors.black}
+        />
+      </Svg>
       <Text style={[styles.keyFeatureText, { fontSize: layout.featureFontSize, lineHeight: layout.featureLineHeight }]}>
         {label}
       </Text>
@@ -625,24 +620,67 @@ function KeyFeatureItem({ label, layout }: { label: string; layout: CoverLayout 
   );
 }
 
-function BulletItem({ label, layout }: { label: string; layout: AssemblyLayout }) {
+function BulletItem({ label, layout: a, bulletColor }: { label: string; layout: AssemblyLayout; bulletColor: string }) {
+  const bulletSize = clampNumber(a.fontSize * 0.62, 2.6, 6);
   return (
-    <View style={[styles.bulletRow, { marginBottom: layout.bulletMarginBottom }]}>
+    <View style={[styles.bulletRow, { marginBottom: a.itemMarginBottom }]}>
       <View
         style={[
-          styles.bulletDot,
-          {
-            borderRadius: layout.bulletDotSize / 2,
-            height: layout.bulletDotSize,
-            marginTop: layout.bulletDotTop,
-            width: layout.bulletDotSize,
-          },
+          styles.bulletSquare,
+          { backgroundColor: bulletColor, height: bulletSize, marginTop: a.fontSize * 0.32, width: bulletSize },
         ]}
       />
-      <Text
-        style={[styles.bulletText, { fontSize: layout.bulletTextFontSize, lineHeight: layout.bulletTextLineHeight }]}
+      <Text style={[styles.bulletText, { fontSize: a.fontSize, lineHeight: a.lineHeight }]}>{label}</Text>
+    </View>
+  );
+}
+
+// The header band for each assembly box: a black angled tab holding the heading, a yellow accent slash
+// butted up against it, then a thin dark rule that runs out to the right edge of the box. All three share
+// the same forward slant. The tab width is estimated from the heading length (no text measurement in
+// @react-pdf), then the heading is overlaid centered on the black tab.
+function SpecColumnHeader({ heading }: { heading: string }) {
+  const headerHeight = layout.assemblyHeaderHeight;
+  const fontSize = 9.5;
+  const slant = 9;
+  const tabPadX = 12;
+  const innerWidth = layout.assemblyColumnWidth - layout.assemblyContentPaddingX * 2;
+  const tabWidth = clampNumber(heading.length * fontSize * 0.58 + tabPadX * 2, 58, innerWidth - 80);
+
+  const accentGap = 3;
+  const accentX = tabWidth + accentGap;
+  const accentWidth = 26;
+
+  const ruleSlant = 6;
+  const ruleThickness = 2.6;
+  const ruleY = (headerHeight - ruleThickness) / 2;
+  const ruleStart = accentX + accentWidth + accentGap + 2;
+
+  return (
+    <View style={styles.assemblyHeader}>
+      <Svg
+        height={headerHeight}
+        style={styles.assemblyHeaderSvg}
+        viewBox={`0 0 ${innerWidth} ${headerHeight}`}
+        width={innerWidth}
       >
-        {label}
+        <Path
+          d={`M0 0 L${tabWidth + slant} 0 L${tabWidth} ${headerHeight} L0 ${headerHeight} Z`}
+          fill={pdfColors.black}
+        />
+        <Path
+          d={`M${accentX + slant} 0 L${accentX + slant + accentWidth} 0 L${accentX + accentWidth} ${headerHeight} L${accentX} ${headerHeight} Z`}
+          fill={pdfColors.yellowLight}
+        />
+        <Path
+          d={`M${ruleStart + ruleSlant} ${ruleY} L${innerWidth} ${ruleY} L${innerWidth - ruleSlant} ${ruleY + ruleThickness} L${ruleStart} ${ruleY + ruleThickness} Z`}
+          fill={pdfColors.mutedDark}
+        />
+      </Svg>
+      <Text
+        style={[styles.assemblyHeaderText, { fontSize, top: (headerHeight - fontSize) / 2 - 0.5, width: tabWidth }]}
+      >
+        {heading}
       </Text>
     </View>
   );
@@ -652,35 +690,19 @@ function SpecColumn({
   accent,
   heading,
   items,
-  layout,
+  layout: a,
 }: {
   accent: 'optional' | 'standard';
   heading: string;
   items: string[];
   layout: AssemblyLayout;
 }) {
+  const bulletColor = accent === 'standard' ? pdfColors.black : pdfColors.yellowLight;
   return (
-    <View
-      style={[
-        styles.assemblyColumn,
-        {
-          paddingBottom: layout.columnPaddingBottom,
-          paddingHorizontal: layout.columnPaddingX,
-          paddingTop: layout.columnPaddingTop,
-        },
-        accent === 'standard' ? styles.standardColumn : styles.optionalColumn,
-      ]}
-    >
-      <Text
-        style={[
-          styles.columnHeading,
-          { fontSize: layout.columnHeadingFontSize, marginBottom: layout.columnHeadingMarginBottom },
-        ]}
-      >
-        {heading}
-      </Text>
+    <View style={styles.assemblyColumn}>
+      <SpecColumnHeader heading={heading} />
       {items.map((item) => (
-        <BulletItem key={item} label={item} layout={layout} />
+        <BulletItem bulletColor={bulletColor} key={item} label={item} layout={a} />
       ))}
     </View>
   );

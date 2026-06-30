@@ -26,6 +26,8 @@ export type BrochureDocumentModel = {
   standardAssemblies: string[];
   subtitle: string | null;
   title: string;
+  // A substring of the title to accent on the cover; null leaves the whole title in the default colour.
+  titleHighlight: string | null;
 };
 
 // Renders a resolved Brochure model into PDF bytes. Mirrors {@link QuoteDocumentPdfRenderer}: a pure

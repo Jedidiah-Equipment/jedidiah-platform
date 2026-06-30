@@ -43,6 +43,7 @@ export const products = pgTable(
     buildTimeDays: integer('build_time_days').notNull(),
     modelCode: text('model_code').notNull(),
     name: text('name').notNull(),
+    nameHighlight: text('name_highlight'),
     rangeId: uuid('range_id')
       .notNull()
       .references(() => productRanges.id, { onDelete: 'restrict' }),

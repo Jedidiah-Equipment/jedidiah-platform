@@ -19,6 +19,12 @@ export const ProductName = requiredTrimmedText('Product name is required');
 export type ProductModelCode = z.infer<typeof ProductModelCode>;
 export const ProductModelCode = requiredTrimmedText('Model code is required');
 
+export type ProductNameHighlight = z.infer<typeof ProductNameHighlight>;
+export const ProductNameHighlight = nullableTrimmedText();
+
+export type ProductNameHighlightInput = z.infer<typeof ProductNameHighlightInput>;
+export const ProductNameHighlightInput = nullableTrimmedTextInput();
+
 export type ProductDescription = z.infer<typeof ProductDescription>;
 export const ProductDescription = nullableTrimmedText();
 
@@ -439,6 +445,7 @@ export type Product = z.infer<typeof Product>;
 export const Product = z.object({
   id: UUID,
   name: ProductName,
+  nameHighlight: ProductNameHighlight.default(null),
   description: ProductDescription,
   modelCode: ProductModelCode,
   basePrice: ProductBasePrice,
@@ -478,6 +485,7 @@ export type ProductCreateInput = z.infer<typeof ProductCreateInput>;
 export const ProductCreateInput = z
   .object({
     name: ProductName,
+    nameHighlight: ProductNameHighlightInput.default(null),
     description: ProductDescriptionInput,
     modelCode: ProductModelCode,
     basePrice: ProductBasePrice,
@@ -513,6 +521,8 @@ export const ProductUpdateInput = z
     buildTimeDays: ProductBuildTimeDaysInput,
     modelCode: ProductModelCode,
     name: ProductName,
+    // Omitting preserves the stored highlight, like category and the other marketing fields above.
+    nameHighlight: nullableTrimmedTextInputOptional(),
     rangeId: UUID,
     requiresVinNumber: ProductRequiresVinNumber,
     brochureEnabled: ProductBrochureEnabled,

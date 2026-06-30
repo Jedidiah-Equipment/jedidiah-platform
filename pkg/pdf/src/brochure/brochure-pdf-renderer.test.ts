@@ -27,6 +27,7 @@ function fullBrochure(): BrochureDocumentModel {
     standardAssemblies: ['Main chassis', 'Auger assembly'],
     subtitle: 'Silage & Grain',
     title: 'Silage Grain 18 36',
+    titleHighlight: '18 36',
   };
 }
 
@@ -54,6 +55,7 @@ describe('renderBrochurePdf', () => {
       standardAssemblies: [],
       subtitle: null,
       title: 'Silage Grain 18 36',
+      titleHighlight: null,
     });
   });
 

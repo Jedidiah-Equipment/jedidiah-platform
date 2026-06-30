@@ -66,6 +66,16 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSave, product }) => 
                       />
                     )}
                   </form.AppField>
+                  <form.AppField name="nameHighlight">
+                    {(field) => (
+                      <field.TextField
+                        autoComplete="off"
+                        label={
+                          <FieldUsageLabel usage={PRODUCT_FIELD_USAGE.nameHighlight}>Name highlight</FieldUsageLabel>
+                        }
+                      />
+                    )}
+                  </form.AppField>
                   <form.AppField name="modelCode">
                     {(field) => (
                       <field.TextField

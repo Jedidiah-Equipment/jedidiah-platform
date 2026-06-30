@@ -16,6 +16,7 @@ test('product form usage metadata marks the lander and brochure fields', () => {
     keyFeatures: ['lander', 'brochure'],
     modelCode: ['lander', 'brochure'],
     name: ['lander', 'brochure'],
+    nameHighlight: ['brochure'],
     rangeId: ['lander', 'brochure'],
     technicalDetails: ['lander'],
   });

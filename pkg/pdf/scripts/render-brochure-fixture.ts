@@ -73,6 +73,7 @@ async function fixtureDocument(variant: FixtureVariant): Promise<BrochureDocumen
     ],
     subtitle: 'Silage & Grain',
     title: 'SG1836 Plus',
+    titleHighlight: 'Plus',
   };
 
   if (variant === 'sparse') {

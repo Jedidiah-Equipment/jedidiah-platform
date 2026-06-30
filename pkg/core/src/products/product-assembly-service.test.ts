@@ -41,6 +41,7 @@ function productInput(
     description: null,
     modelCode: 'MODEL-1',
     name: 'Test Product',
+    nameHighlight: null,
     productBays: [],
     rangeId,
     requiresVinNumber: false,

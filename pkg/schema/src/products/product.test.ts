@@ -44,6 +44,7 @@ describe('ProductCreateInput', () => {
       technicalDetails: [],
       modelCode: 'WL-100',
       name: 'Wheel Loader',
+      nameHighlight: null,
       productBays: [],
       rangeId: RANGE_ID,
       requiresVinNumber: false,
@@ -51,6 +52,30 @@ describe('ProductCreateInput', () => {
       landerEnabled: false,
       thumbnailDataUrl: null,
     });
+  });
+
+  it('keeps a provided name highlight and treats blank as null', () => {
+    expect(
+      ProductCreateInput.parse({
+        basePrice: 0,
+        buildTimeDays: 0,
+        modelCode: 'WL-100',
+        name: 'Wheel Loader 4000',
+        nameHighlight: '  4000  ',
+        rangeId: RANGE_ID,
+      }).nameHighlight,
+    ).toBe('4000');
+
+    expect(
+      ProductCreateInput.parse({
+        basePrice: 0,
+        buildTimeDays: 0,
+        modelCode: 'WL-100',
+        name: 'Wheel Loader',
+        nameHighlight: '   ',
+        rangeId: RANGE_ID,
+      }).nameHighlight,
+    ).toBeNull();
   });
 
   it('treats an empty description as null', () => {
@@ -213,6 +238,40 @@ describe('ProductUpdateInput', () => {
       landerEnabled: false,
       thumbnailDataUrl: null,
     });
+  });
+
+  it('omits an absent name highlight so the stored value is preserved', () => {
+    const parsed = ProductUpdateInput.parse({
+      id: '00000000-0000-4000-8000-000000000102',
+      basePrice: 1234.56,
+      currencyCode: 'ZAR',
+      description: '',
+      buildTimeDays: '14',
+      modelCode: 'WL-100',
+      name: 'Wheel Loader',
+      rangeId: RANGE_ID,
+      requiresVinNumber: true,
+      brochureEnabled: false,
+      landerEnabled: false,
+    });
+    expect('nameHighlight' in parsed).toBe(false);
+
+    expect(
+      ProductUpdateInput.parse({
+        id: '00000000-0000-4000-8000-000000000102',
+        basePrice: 1234.56,
+        currencyCode: 'ZAR',
+        description: '',
+        buildTimeDays: '14',
+        modelCode: 'WL-100',
+        name: 'Wheel Loader 4000',
+        nameHighlight: '  4000  ',
+        rangeId: RANGE_ID,
+        requiresVinNumber: true,
+        brochureEnabled: false,
+        landerEnabled: false,
+      }).nameHighlight,
+    ).toBe('4000');
   });
 });
 

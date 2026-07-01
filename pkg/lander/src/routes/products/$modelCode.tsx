@@ -1,3 +1,4 @@
+import { contactNumberE164 } from '@pkg/domain';
 import {
   IconArrowRight,
   IconDownload,
@@ -156,7 +157,7 @@ function Hero({ detail }: { detail: ProductDetail }) {
               <IconArrowRight className="text-ink" size={20} stroke={2.4} aria-hidden="true" />
             </Link>
             <a
-              href="tel:+27128190131"
+              href={`tel:${contactNumberE164()}`}
               className="flex items-center border-2 border-ink bg-transparent px-[30px] py-[17px] font-display text-[18px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-ink hover:text-white"
             >
               Call Us

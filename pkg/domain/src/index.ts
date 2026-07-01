@@ -1,5 +1,6 @@
 export * from './auth/authorization.js';
 export * from './brand.js';
+export * from './company.js';
 export * from './demo.js';
 export * from './departments.js';
 export * from './documents/document-policy.js';

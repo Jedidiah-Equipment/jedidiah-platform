@@ -193,13 +193,23 @@ export async function previewJobSchedule({
   }
 
   const bayIds = [...new Set(input.seeds.map((seed) => seed.bayId))];
-  const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBayScheduleRows(db)]);
-  const rowIds = new Set(rows.map((row) => row.id));
+  const [offDays, seededRows] = await Promise.all([
+    listWorkingCalendarOffDays(db),
+    findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
+  ]);
+  const rowIds = new Set(seededRows.map((row) => row.id));
   const missingBayId = bayIds.find((bayId) => !rowIds.has(bayId));
 
   if (missingBayId) {
     throw new JobBayNotFoundError(missingBayId);
   }
+
+  // Windowing a seeded Bay still needs cross-Bay Slots for Jobs on that Bay to classify partly-done routes.
+  const crossBayRows = await findBayScheduleRowsForJobs({
+    db,
+    jobIds: getBayScheduleRowJobIds(seededRows),
+  });
+  const rows = mergeBayScheduleRows(seededRows, crossBayRows);
 
   const today = getPlantDateNow();
   const seedsByBayId = groupPreviewSeedsByBayId(input.seeds);
@@ -373,6 +383,45 @@ function getScheduleJobIds(bays: readonly { slots: readonly WindowableScheduleSl
   return [...jobIds];
 }
 
+function getBayScheduleRowJobIds(rows: readonly BayScheduleRow[]): UUID[] {
+  const jobIds = new Set<UUID>();
+
+  for (const row of rows) {
+    for (const slot of row.slots) {
+      if (slot.kind === 'work' && slot.jobId) {
+        jobIds.add(UUID.parse(slot.jobId));
+      }
+    }
+  }
+
+  return [...jobIds];
+}
+
+function mergeBayScheduleRows(primaryRows: readonly BayScheduleRow[], extraRows: readonly BayScheduleRow[]) {
+  const primaryIds = new Set(primaryRows.map((row) => row.id));
+
+  return [...primaryRows, ...extraRows.filter((row) => !primaryIds.has(row.id))];
+}
+
+async function findBayScheduleRowsForJobs({
+  db,
+  jobIds,
+}: {
+  db: Db | DatabaseTransaction;
+  jobIds: readonly UUID[];
+}): Promise<BayScheduleRow[]> {
+  if (jobIds.length === 0) {
+    return [];
+  }
+
+  const bayIds = db
+    .selectDistinct({ bayId: jobSlots.bayId })
+    .from(jobSlots)
+    .where(inArray(jobSlots.jobId, [...jobIds]));
+
+  return findBayScheduleRows(db, inArray(jobBays.id, bayIds));
+}
+
 // Cap the IN list per query so a long-lived board with many historical slotted Jobs never binds past
 // PostgreSQL's parameter limit (~65k) — which would fail the whole `listBays` read, not just enlarge it.
 const JOB_SUMMARY_LOOKUP_BATCH_SIZE = 1000;
@@ -480,13 +529,9 @@ async function findProjectedBaysForJobs({
   db: Db | DatabaseTransaction;
   jobIds: readonly UUID[];
 }): Promise<BaySchedule[]> {
-  const bayIds = db
-    .selectDistinct({ bayId: jobSlots.bayId })
-    .from(jobSlots)
-    .where(inArray(jobSlots.jobId, [...jobIds]));
   const [offDays, rows] = await Promise.all([
     listWorkingCalendarOffDays(db),
-    findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
+    findBayScheduleRowsForJobs({ db, jobIds }),
   ]);
 
   return toBaySchedules(rows, offDays);

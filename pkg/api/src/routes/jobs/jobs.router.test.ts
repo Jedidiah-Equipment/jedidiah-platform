@@ -1580,6 +1580,41 @@ describe('jobs.previewSchedule', () => {
     ]);
   });
 
+  test('uses cross-bay route state when windowing affected preview Bays', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const routeJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const activeBayId = '00000000-0000-4000-8000-000000000b02';
+
+    await setBayScheduleOrigin(context.db, bayId, '2026-06-01');
+    await setBayScheduleOrigin(context.db, activeBayId, '2026-06-04');
+    const doneSeededBaySlot = await seedWorkSlot(context.db, {
+      bayId,
+      durationDays: 2,
+      jobId: routeJob.id,
+      sequence: 1,
+    });
+    await seedWorkSlot(context.db, {
+      bayId: activeBayId,
+      durationDays: 3,
+      jobId: routeJob.id,
+      sequence: 1,
+    });
+
+    const preview = await caller.jobs.previewSchedule({ seeds: [{ bayId, durationDays: 1 }] });
+
+    expect(preview.bays.map((bay) => bay.id)).toEqual([bayId]);
+    expect(getSchedulePreviewBay(preview, bayId).slots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          endDate: '2026-06-03',
+          id: doneSeededBaySlot.id,
+          jobId: routeJob.id,
+          startDate: '2026-06-01',
+        }),
+      ]),
+    );
+  });
+
   test("previews the same insert-before placement that bookSlot commits at a slot's start", async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const firstJob = await caller.jobs.create({ quoteId: context.quote.id });

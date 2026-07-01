@@ -408,6 +408,21 @@ export const Job = z.object({
   updatedAt: DateIso,
 });
 
+/**
+ * A Job's Work Slots bucketed by their lifecycle state against plant "today". A Job spans one
+ * Slot per Bay, so it can hold several states at once; `total` is the Slot count and `total === 0`
+ * marks a Job that is not scheduled anywhere. Present only when a list read opts in via
+ * `JobListInput.include.scheduleState`; `null` otherwise so the Gantt and booking reads pay no
+ * projection cost.
+ */
+export type JobScheduleState = z.infer<typeof JobScheduleState>;
+export const JobScheduleState = z.object({
+  done: z.int().nonnegative(),
+  active: z.int().nonnegative(),
+  scheduled: z.int().nonnegative(),
+  total: z.int().nonnegative(),
+});
+
 export type JobSummary = z.infer<typeof JobSummary>;
 export const JobSummary = Job.extend({
   customerCompanyName: z.string().trim().min(1).nullable(),
@@ -417,6 +432,7 @@ export const JobSummary = Job.extend({
   productName: z.string().trim().min(1),
   productThumbnailDataUrl: NullableThumbnailDataUrl,
   quoteCode: QuoteCode,
+  scheduleState: JobScheduleState.nullable().default(null),
 });
 
 export type BayListResult = z.infer<typeof BayListResult>;
@@ -434,15 +450,23 @@ export const BayListResult = z.object({
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;
-export const JobSortBy = z.enum(['code', 'createdAt', 'id']);
+export const JobSortBy = z.enum(['code', 'createdAt', 'id', 'scheduledSlots']);
 
 export type JobListFilters = z.infer<typeof JobListFilters>;
 export const JobListFilters = z
   .object({
     createdAtStart: DateIso.optional(),
     jobId: UUID.optional(),
+    /** Keep only Jobs with no Work Slot — the "lost" Jobs missing from the planning board. */
+    unscheduledOnly: z.boolean().optional(),
   })
   .default({});
+
+/** Opt-in list extras that carry a projection cost, kept off the Gantt and booking reads. */
+export type JobListInclude = z.infer<typeof JobListInclude>;
+export const JobListInclude = z.object({
+  scheduleState: z.boolean().optional(),
+});
 
 export type JobDetail = z.infer<typeof JobDetail>;
 export const JobDetail = JobSummary.extend({
@@ -486,6 +510,7 @@ export type JobListInput = z.infer<typeof JobListInput>;
 export const JobListInput = createSearchedSortedPagedQueryInput({
   shape: {
     filters: JobListFilters,
+    include: JobListInclude.optional(),
   },
   sortBy: JobSortBy.default('createdAt'),
 });

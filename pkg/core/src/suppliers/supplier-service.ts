@@ -161,7 +161,11 @@ export async function updateSupplier({
 }): Promise<Supplier> {
   try {
     return await db.transaction(async (tx) => {
-      const [before] = await tx.select().from(supplier).where(eq(supplier.id, input.id)).for('update');
+      const [before] = await tx
+        .select()
+        .from(supplier)
+        .where(and(eq(supplier.id, input.id), isNull(supplier.deletedAt)))
+        .for('update');
 
       if (!before) {
         throw new SupplierNotFoundError(input.id);

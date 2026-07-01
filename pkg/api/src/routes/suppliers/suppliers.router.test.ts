@@ -464,6 +464,19 @@ describe('suppliers.update', () => {
       message: 'Supplier not found.',
     });
   });
+
+  test('returns not found when updating a removed supplier', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createSupplier(caller, 'Removed Supplier');
+    await caller.suppliers.remove({ id: created.id });
+
+    await expect(
+      caller.suppliers.update({ ...created, companyName: 'Removed Supplier Renamed' }),
+    ).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Supplier not found.',
+    });
+  });
 });
 
 describe('suppliers.remove', () => {

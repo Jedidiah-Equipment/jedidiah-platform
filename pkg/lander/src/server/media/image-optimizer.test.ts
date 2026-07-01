@@ -1,7 +1,8 @@
 import sharp from 'sharp';
 import { describe, expect, test } from 'vitest';
 
-import { OPTIMIZED_MAX_WIDTH, optimizeImage } from './image-optimizer.js';
+import { optimizeImage } from './image-optimizer.js';
+import { OPTIMIZED_MAX_WIDTH } from './image-transform.js';
 
 // Build a solid-colour raster of the given size, so tests exercise real sharp encoding without a fixture.
 function source(width: number, height: number, format: 'png' | 'jpeg'): Promise<Buffer> {

@@ -2,7 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { OPTIMIZED_CONTENT_TYPE, optimizeImage, TRANSFORM_SIGNATURE } from './image-optimizer.js';
+import { optimizeImage } from './image-optimizer.js';
+import { OPTIMIZED_CONTENT_TYPE, TRANSFORM_SIGNATURE } from './image-transform.js';
 
 // The optimized bytes to serve, already resolved (from disk or freshly produced). `body` is a full buffer,
 // not a stream: optimized catalog images are small (tens of KB) and sharp needs the whole source in memory

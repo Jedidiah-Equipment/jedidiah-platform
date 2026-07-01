@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { type LoadedImage, readOptimizedImage } from './image-cache.js';
-import { OPTIMIZED_CONTENT_TYPE } from './image-optimizer.js';
+import { OPTIMIZED_CONTENT_TYPE } from './image-transform.js';
 
 let cacheDir: string;
 

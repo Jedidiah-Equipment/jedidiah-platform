@@ -110,15 +110,10 @@ export const snapshotTables = [
     timestampColumns: [],
   },
   {
-    // `logo` and `displayOrder` are added by migration 0054, not yet on staging. Omit them from the read
-    // and seed deterministic values: displayOrder by name order (matching the migration backfill), no logo.
     fileName: 'product_ranges.json',
     table: productRanges,
     tableName: 'product_ranges',
     timestampColumns: standardTimestampColumns,
-    omitReadColumns: ['logo', 'displayOrder'],
-    readOrderColumn: 'name',
-    seedRowDefaults: (_row, index) => ({ displayOrder: index, logo: null }),
   },
   {
     fileName: 'products.json',

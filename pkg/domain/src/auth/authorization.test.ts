@@ -41,6 +41,7 @@ describe('getRolePermissions', () => {
       'supplier:update',
       'user:create',
       'user:list',
+      'user:set-email',
       'user:set-password',
       'user:set-role',
       'user:update',

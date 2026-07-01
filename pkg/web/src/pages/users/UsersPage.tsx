@@ -21,6 +21,7 @@ export const UsersPage: React.FC = () => {
   const access = accessQuery.data;
   const canManageUsers =
     hasPermission(access, 'user:update') ||
+    hasPermission(access, 'user:set-email') ||
     hasPermission(access, 'user:set-role') ||
     hasPermission(access, 'user:set-password');
 

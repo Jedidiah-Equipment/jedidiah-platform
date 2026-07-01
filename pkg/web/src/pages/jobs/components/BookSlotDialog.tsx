@@ -17,11 +17,11 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from './all-jobs-input.js';
+import { createSchedulePreviewRequest } from './bay-schedule-ghosts.js';
 import {
   createBayNonWorkingDateMatcher,
   describeInsertAtDatePlacement,
   getInsertAtDatePickerBounds,
-  resolveBookSlotPlacement,
 } from './book-slot-insert-at-date.js';
 
 export const BookSlotDialog: React.FC = () => {
@@ -63,20 +63,23 @@ export const BookSlotDialog: React.FC = () => {
   const plantToday = baysQuery.data?.today ?? null;
   const pickerBounds =
     selectedBay && plantToday ? getInsertAtDatePickerBounds(selectedBay, selectedBayCalendar, plantToday) : null;
+  const placementPreviewRequest = useMemo(
+    () =>
+      selectedBay && startDate
+        ? createSchedulePreviewRequest([{ bayId: selectedBay.id, durationDays: Math.max(1, durationDays), startDate }])
+        : null,
+    [durationDays, selectedBay, startDate],
+  );
+  const placementPreviewQuery = useQuery(
+    trpc.jobs.previewSchedule.queryOptions(placementPreviewRequest?.input ?? { seeds: [] }, {
+      enabled: Boolean(placementPreviewRequest && placementPreviewRequest.input.seeds.length === 1),
+    }),
+  );
   const placementFeedback = useMemo(() => {
-    if (!selectedBay || !startDate || !plantToday) {
-      return null;
-    }
+    const placement = placementPreviewQuery.data?.placements[0];
 
-    const placement = resolveBookSlotPlacement({
-      bay: selectedBay,
-      offDays: baysQuery.data?.offDays ?? [],
-      startDate,
-      today: plantToday,
-    });
-
-    return describeInsertAtDatePlacement(placement);
-  }, [baysQuery.data?.offDays, plantToday, selectedBay, startDate]);
+    return placement ? describeInsertAtDatePlacement(placement) : null;
+  }, [placementPreviewQuery.data]);
 
   const bookSlotMutation = useMutation(
     trpc.jobs.bookSlot.mutationOptions({

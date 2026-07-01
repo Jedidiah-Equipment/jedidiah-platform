@@ -42,7 +42,6 @@ import {
   BayScheduleZoomControls,
 } from './BayScheduleZoom.js';
 import { BaySlotBar } from './BaySlotBar.js';
-import { moveBaySlotForDisplay } from './bay-schedule-display-move.js';
 import {
   type BayScheduleFilter,
   countBayScheduleFilterMatches,
@@ -53,6 +52,7 @@ import {
 } from './bay-schedule-filter.js';
 import {
   type BayScheduleGhostSeed,
+  createSchedulePreviewRequest,
   type DisplayBaySchedule,
   deriveGhostBaySchedules,
   selectVisibleBaySchedules,
@@ -75,7 +75,7 @@ export const BayScheduleGantt: React.FC<{
   fullscreen?: boolean;
   /** Bar label for ghost slots, e.g. the source Quote code. */
   ghostLabel?: string | undefined;
-  /** Client-only preview seeds; ghost derivation runs inside against the live query. */
+  /** Preview seeds resolved by `jobs.previewSchedule` against the server-held queue. */
   ghostSeeds?: readonly BayScheduleGhostSeed[] | undefined;
   onFullscreenChange?: ((fullscreen: boolean) => void) | undefined;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
@@ -115,7 +115,6 @@ export const BayScheduleGantt: React.FC<{
   );
   // One scheduling "today" for the whole surface: the view opens on the plant's current day.
   const initialDate = useMemo(() => (plantToday ? fromJobCalendarDateKey(plantToday) : new Date()), [plantToday]);
-  const [optimisticBays, setOptimisticBays] = useState<BaySchedule[] | null>(null);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<BayScheduleFilter>(emptyBayScheduleFilter);
   const [filterScrollRequest, setFilterScrollRequest] = useState<FilterScrollRequest | null>(null);
@@ -126,19 +125,39 @@ export const BayScheduleGantt: React.FC<{
   const anchoredZoomChangeRef = useRef<AnchoredZoomChange | null>(null);
   const jobs = jobsQuery.data?.items ?? [];
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
-  const displayedBays = optimisticBays ?? bays;
-  // Render pipeline: query → optimistic-move overlay → lane filter → ghost derivation.
-  // Mutations and optimistic moves always operate on the un-ghosted bays.
+  const displayedBays = bays;
+  // Render pipeline: query → lane filter → server ghost preview.
+  // Mutations always operate on the un-ghosted bays.
   const visibleBays = useMemo(
     () => selectVisibleBaySchedules(displayedBays, visibleBayIds),
     [displayedBays, visibleBayIds],
   );
+  const ghostPreviewRequest = useMemo(() => {
+    if (!ghostSeeds) {
+      return null;
+    }
+
+    const visibleBayIds = new Set(visibleBays.map((bay) => bay.id));
+
+    return createSchedulePreviewRequest(ghostSeeds, {
+      includeSeed: (seed) => visibleBayIds.has(seed.bayId),
+    });
+  }, [ghostSeeds, visibleBays]);
+  const ghostPreviewQuery = useQuery(
+    trpc.jobs.previewSchedule.queryOptions(ghostPreviewRequest?.input ?? { seeds: [] }, {
+      enabled: Boolean(ghostPreviewRequest && ghostPreviewRequest.input.seeds.length > 0),
+    }),
+  );
   const ghostDerivation = useMemo(
     () =>
-      ghostSeeds && plantToday
-        ? deriveGhostBaySchedules({ bays: visibleBays, offDays, seeds: ghostSeeds, today: plantToday })
+      ghostPreviewRequest && ghostPreviewRequest.input.seeds.length > 0 && ghostPreviewQuery.data
+        ? deriveGhostBaySchedules({
+            bays: visibleBays,
+            preview: ghostPreviewQuery.data,
+            seedIndexByPreviewIndex: ghostPreviewRequest.seedIndexByPreviewIndex,
+          })
         : null,
-    [ghostSeeds, offDays, plantToday, visibleBays],
+    [ghostPreviewQuery.data, ghostPreviewRequest, visibleBays],
   );
   const renderedBays: DisplayBaySchedule[] = ghostDerivation?.bays ?? visibleBays;
   const isFilterActive = hasActiveBayScheduleFilter(filter);
@@ -189,17 +208,10 @@ export const BayScheduleGantt: React.FC<{
   const moveSlotMutation = useMutation(
     trpc.jobs.moveSlot.mutationOptions({
       onSuccess: async () => {
-        try {
-          await invalidateJobs();
-          toast.success('Slot moved');
-        } finally {
-          setOptimisticBays(null);
-        }
+        await invalidateJobs();
+        toast.success('Slot moved');
       },
-      onError: (error) => {
-        setOptimisticBays(null);
-        showMutationError(error, 'Unable to move slot.');
-      },
+      onError: (error) => showMutationError(error, 'Unable to move slot.'),
     }),
   );
   const isScheduleMutationPending =
@@ -237,10 +249,9 @@ export const BayScheduleGantt: React.FC<{
   );
   const handleMoveSlot = useCallback(
     (slotId: string, direction: JobSlotMoveDirection) => {
-      setOptimisticBays(moveBaySlotForDisplay(displayedBays, offDays, slotId, direction));
       moveSlotMutation.mutate({ direction, slotId });
     },
-    [displayedBays, moveSlotMutation, offDays],
+    [moveSlotMutation],
   );
   const handleFilterChange = useCallback(
     (nextFilter: BayScheduleFilter) => {

@@ -452,6 +452,115 @@ export const BayListResult = z.object({
   today: DateOnlyIso,
 });
 
+export type JobSchedulePreviewSplit = z.infer<typeof JobSchedulePreviewSplit>;
+export const JobSchedulePreviewSplit = z
+  .object({
+    half: z.enum(['before', 'after']),
+    sourceSlotId: z.string().trim().min(1),
+  })
+  .strict();
+
+const JobSchedulePreviewSlotBase = ProjectedJobSlotBase.extend({
+  // Split halves are preview-only render entries and use suffixed ids such as `<slot>:before`.
+  id: z.string().trim().min(1),
+  previewSplit: JobSchedulePreviewSplit.optional(),
+});
+
+export type JobSchedulePreviewWorkSlot = z.infer<typeof JobSchedulePreviewWorkSlot>;
+export const JobSchedulePreviewWorkSlot = JobSchedulePreviewSlotBase.extend({
+  kind: z.literal('work'),
+  jobCode: JobCode,
+  jobId: UUID,
+  label: z.null(),
+});
+
+export type JobSchedulePreviewIdleSlot = z.infer<typeof JobSchedulePreviewIdleSlot>;
+export const JobSchedulePreviewIdleSlot = JobSchedulePreviewSlotBase.extend({
+  kind: z.literal('idle'),
+  jobId: z.null(),
+  label: nullableTrimmedText(),
+});
+
+export type JobSchedulePreviewSlot = z.infer<typeof JobSchedulePreviewSlot>;
+export const JobSchedulePreviewSlot = z.discriminatedUnion('kind', [
+  JobSchedulePreviewWorkSlot,
+  JobSchedulePreviewIdleSlot,
+]);
+
+export type JobSchedulePreviewBay = z.infer<typeof JobSchedulePreviewBay>;
+export const JobSchedulePreviewBay = Bay.extend({
+  calendarExceptions: z.array(BayCalendarException),
+  nextAvailableDate: DateOnlyIso,
+  slots: z.array(JobSchedulePreviewSlot),
+});
+
+export type JobSchedulePreviewSeedInput = z.infer<typeof JobSchedulePreviewSeedInput>;
+export const JobSchedulePreviewSeedInput = z
+  .object({
+    bayId: UUID,
+    durationDays: SlotDurationDays,
+    /** Insert-at-Date placement hint; callers omit empty or invalid raw form values to preview an append. */
+    startDate: DateOnlyIso.optional(),
+  })
+  .strict();
+
+export type JobSchedulePreviewInput = z.infer<typeof JobSchedulePreviewInput>;
+export const JobSchedulePreviewInput = z
+  .object({
+    seeds: z.array(JobSchedulePreviewSeedInput),
+  })
+  .strict();
+
+export type JobSchedulePreviewPlacementType = z.infer<typeof JobSchedulePreviewPlacementType>;
+export const JobSchedulePreviewPlacementType = z.enum(['append', 'insert-before', 'split']);
+
+export type JobSchedulePreviewGhost = z.infer<typeof JobSchedulePreviewGhost>;
+export const JobSchedulePreviewGhost = z
+  .object({
+    id: z.string().trim().min(1),
+    bayId: UUID,
+    durationDays: SlotDurationDays,
+    endDate: DateOnlyIso,
+    placementType: JobSchedulePreviewPlacementType,
+    seedIndex: z.int().nonnegative(),
+    startDate: DateOnlyIso,
+  })
+  .strict();
+
+export type JobSchedulePreviewPlacement = z.infer<typeof JobSchedulePreviewPlacement>;
+export const JobSchedulePreviewPlacement = z.discriminatedUnion('type', [
+  z
+    .object({
+      type: z.literal('append'),
+      startDate: DateOnlyIso,
+      idleGapDays: z.int().nonnegative().refine(Number.isSafeInteger),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('insert-before'),
+      startDate: DateOnlyIso,
+      targetSlot: JobSchedulePreviewSlot,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('split'),
+      startDate: DateOnlyIso,
+      targetSlot: JobSchedulePreviewSlot,
+      beforeDays: SlotDurationDays,
+      afterDays: SlotDurationDays,
+    })
+    .strict(),
+]);
+
+export type JobSchedulePreviewResult = z.infer<typeof JobSchedulePreviewResult>;
+export const JobSchedulePreviewResult = z.object({
+  bays: z.array(JobSchedulePreviewBay),
+  ghosts: z.array(JobSchedulePreviewGhost),
+  placements: z.array(JobSchedulePreviewPlacement),
+});
+
 export type JobSortBy = z.infer<typeof JobSortBy>;
 export const JobSortBy = z.enum(['code', 'createdAt', 'id', 'scheduledSlots']);
 

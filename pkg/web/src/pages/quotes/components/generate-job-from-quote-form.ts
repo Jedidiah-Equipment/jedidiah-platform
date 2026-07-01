@@ -5,6 +5,7 @@ import {
   type BaySchedule,
   DateOnlyIsoString,
   JobCreateInput,
+  type JobSchedulePreviewPlacement,
   type OffDay,
   type ProductBay,
   type QuoteDetail,
@@ -17,7 +18,6 @@ import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 import {
   describeInsertAtDatePlacement,
   getInsertAtDatePickerBounds,
-  resolveBookSlotPlacement,
 } from '@/pages/jobs/components/book-slot-insert-at-date.js';
 
 export type JobBaySeedFormValues = z.infer<typeof JobBaySeedFormValues>;
@@ -77,6 +77,7 @@ export type BaySeedRowScheduling = {
 export function getBaySeedRowScheduling(
   scheduling: BaySeedScheduling | null,
   row: { bayId: UUID; startDate: string },
+  placement: JobSchedulePreviewPlacement | null = null,
 ): BaySeedRowScheduling | null {
   const bay = scheduling?.schedulesByBayId.get(row.bayId);
 
@@ -85,14 +86,6 @@ export function getBaySeedRowScheduling(
   }
 
   const workingCalendar = scheduling.workingCalendarsByBayId.get(row.bayId) ?? {};
-  const placement = DateOnlyIsoString.safeParse(row.startDate).success
-    ? resolveBookSlotPlacement({
-        bay,
-        offDays: scheduling.offDays,
-        startDate: row.startDate,
-        today: scheduling.today,
-      })
-    : null;
 
   return {
     bounds: getInsertAtDatePickerBounds(bay, workingCalendar, scheduling.today),

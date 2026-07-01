@@ -8,6 +8,7 @@ import {
   Bay,
   BayCalendarException,
   BayCalendarExceptionDirection,
+  BayListInput,
   BayListResult,
   BayOperatorListResult,
   BookJobSlotInput,
@@ -167,6 +168,8 @@ describe('Working Calendar schemas', () => {
       },
     });
     expect(ToggleOffDayResult.parse({ offDay: null })).toEqual({ offDay: null });
+    expect(BayListInput.parse(undefined)).toEqual({});
+    expect(BayListInput.parse({ from: '2026-06-01' })).toEqual({ from: '2026-06-01' });
     expect(
       BayListResult.parse({
         items: [
@@ -543,6 +546,7 @@ describe('JobSlot schemas', () => {
   it('accepts schedule preview seeds and split-half output slots', () => {
     expect(
       JobSchedulePreviewInput.parse({
+        from: '2026-06-01',
         seeds: [
           {
             bayId: '00000000-0000-4000-8000-000000000001',
@@ -552,6 +556,7 @@ describe('JobSlot schemas', () => {
         ],
       }),
     ).toEqual({
+      from: '2026-06-01',
       seeds: [
         {
           bayId: '00000000-0000-4000-8000-000000000001',

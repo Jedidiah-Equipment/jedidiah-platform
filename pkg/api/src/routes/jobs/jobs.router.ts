@@ -27,6 +27,7 @@ import { renderBrochurePdf } from '@pkg/pdf';
 import {
   AddBayCalendarExceptionInput,
   AddIdleJobSlotInput,
+  BayListInput,
   BookJobSlotInput,
   JobBayAssignOperatorInput,
   JobBayCreateInput,
@@ -51,7 +52,9 @@ import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../trp
 import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const jobsRouter = router({
-  listBays: authorizedProcedure('job:read').query(({ ctx }) => listBays({ db: ctx.db })),
+  listBays: authorizedProcedure('job:read')
+    .input(BayListInput)
+    .query(({ ctx, input }) => listBays({ db: ctx.db, input })),
 
   previewSchedule: authorizedProcedure('job:read')
     .input(JobSchedulePreviewInput)

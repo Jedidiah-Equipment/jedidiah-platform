@@ -22,6 +22,7 @@ export const UserEditFormValues = UserSummary.pick({
 
 type UserEditFormProps = {
   canAssignDepartments: boolean;
+  canSetEmail: boolean;
   canSetPassword: boolean;
   canSetRole: boolean;
   canUpdateProfile: boolean;
@@ -37,6 +38,7 @@ type UserEditFormProps = {
 
 export const UserEditForm: React.FC<UserEditFormProps> = ({
   canAssignDepartments,
+  canSetEmail,
   canSetPassword,
   canSetRole,
   canUpdateProfile,
@@ -49,7 +51,7 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
   onSubmit,
   roleError,
 }) => {
-  const canSaveUser = canUpdateProfile || canSetRole || canAssignDepartments;
+  const canSaveUser = canUpdateProfile || canSetEmail || canSetRole || canAssignDepartments;
   const form = useAppForm({
     defaultValues: {
       departments: initialUser.departments,
@@ -95,11 +97,15 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
                     />
                   )}
                 </form.AppField>
-                <form.AppField name="email">
-                  {(field) => <field.TextField autoComplete="email" disabled={isPending} label="Email" type="email" />}
-                </form.AppField>
                 <form.AppField name="phoneNumber">
                   {(field) => <field.PhoneNumberField disabled={isPending} label="Phone number" />}
+                </form.AppField>
+              </>
+            ) : null}
+            {canSetEmail ? (
+              <>
+                <form.AppField name="email">
+                  {(field) => <field.TextField autoComplete="email" disabled={isPending} label="Email" type="email" />}
                 </form.AppField>
                 <form.AppField name="emailVerified">
                   {(field) => <field.CheckboxField disabled={isPending} label="Email verified" />}

@@ -46,6 +46,7 @@ export const APP_PERMISSIONS = [
   'user:list',
   'user:create',
   'user:update',
+  'user:set-email',
   'user:set-role',
   'user:set-password',
 ] as const;

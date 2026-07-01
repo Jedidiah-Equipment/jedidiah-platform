@@ -41,10 +41,11 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const formId = useId();
 
   const canUpdateProfile = hasPermission(access, 'user:update');
+  const canSetEmail = hasPermission(access, 'user:set-email');
   const canAssignDepartments = canUpdateProfile;
   const canSetRole = hasPermission(access, 'user:set-role');
   const canSetPassword = hasPermission(access, 'user:set-password');
-  const canSaveUser = canUpdateProfile || canSetRole;
+  const canSaveUser = canUpdateProfile || canSetEmail || canSetRole;
   const setDepartmentsMutation = useMutation(trpc.users.setDepartments.mutationOptions());
   const updateThumbnailMutation = useMutation(trpc.users.updateThumbnail.mutationOptions());
 
@@ -64,22 +65,13 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
   const saveUserMutation = useMutation({
     mutationFn: async (value: UserEditFormValues) => {
       let didUpdate = false;
-      const profileChanged =
-        value.email !== baselineUser.email ||
-        value.emailVerified !== baselineUser.emailVerified ||
-        value.name !== baselineUser.name ||
-        value.phoneNumber !== baselineUser.phoneNumber;
+      const profileData = buildProfileUpdateData({ baselineUser, canSetEmail, canUpdateProfile, value });
       const thumbnailChanged = value.thumbnailDataUrl !== baselineUser.thumbnailDataUrl;
 
-      if (canUpdateProfile && profileChanged) {
+      if (Object.keys(profileData).length > 0) {
         await unwrapAuthResult(
           await authClient.admin.updateUser({
-            data: {
-              email: value.email,
-              emailVerified: value.emailVerified,
-              name: value.name,
-              phoneNumber: value.phoneNumber,
-            },
+            data: profileData,
             userId: baselineUser.id,
           }),
         );
@@ -166,6 +158,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
         <ScrollArea className="-mx-4 max-h-[50vh] px-4">
           <UserEditForm
             canAssignDepartments={canAssignDepartments}
+            canSetEmail={canSetEmail}
             canSetPassword={canSetPassword}
             canSetRole={canSetRole}
             canUpdateProfile={canUpdateProfile}
@@ -205,6 +198,39 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ user, onClose })
 
 function isOpenBayOperatorAssignmentRoleError(error: unknown): error is AuthAdminError {
   return error instanceof AuthAdminError && error.code === 'USER_HAS_OPEN_BAY_OPERATOR_ASSIGNMENTS';
+}
+
+type ProfileUpdateData = Partial<Pick<UserEditFormValues, 'email' | 'emailVerified' | 'name' | 'phoneNumber'>>;
+
+function buildProfileUpdateData({
+  baselineUser,
+  canSetEmail,
+  canUpdateProfile,
+  value,
+}: {
+  baselineUser: UserSummary;
+  canSetEmail: boolean;
+  canUpdateProfile: boolean;
+  value: UserEditFormValues;
+}): ProfileUpdateData {
+  const data: ProfileUpdateData = {};
+
+  // Better Auth protects email under `user:set-email`; unchanged sensitive fields must stay out of
+  // ordinary name/phone saves so those edits only require `user:update`.
+  if (canSetEmail && value.email !== baselineUser.email) {
+    data.email = value.email;
+  }
+  if (canSetEmail && value.emailVerified !== baselineUser.emailVerified) {
+    data.emailVerified = value.emailVerified;
+  }
+  if (canUpdateProfile && value.name !== baselineUser.name) {
+    data.name = value.name;
+  }
+  if (canUpdateProfile && value.phoneNumber !== baselineUser.phoneNumber) {
+    data.phoneNumber = value.phoneNumber;
+  }
+
+  return data;
 }
 
 function haveDepartmentsChanged(left: readonly Department[], right: readonly Department[]) {

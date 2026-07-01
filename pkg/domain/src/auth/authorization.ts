@@ -49,6 +49,7 @@ export const permissionLabels = {
   'supplier:update': 'Manage suppliers',
   'user:create': 'Add users',
   'user:list': 'View users',
+  'user:set-email': 'Change user emails',
   'user:set-password': 'Reset user passwords',
   'user:set-role': 'Change user roles',
   'user:update': 'Update user details',
@@ -83,6 +84,7 @@ export const permissionDescriptions = {
   'supplier:update': 'Create and edit supplier records.',
   'user:create': 'Add new application users.',
   'user:list': 'View application users.',
+  'user:set-email': 'Change application user email addresses and verification state.',
   'user:set-password': 'Reset passwords for application users.',
   'user:set-role': 'Change application user roles.',
   'user:update': 'Update application user details.',
@@ -99,7 +101,7 @@ export const authorizationStatement = {
   product_range: ['read', 'create', 'update'],
   quote: ['read', 'create', 'update'],
   supplier: ['read', 'update'],
-  user: ['list', 'create', 'update', 'set-role', 'set-password'],
+  user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const;
 
 type AuthorizationResource = keyof typeof authorizationStatement;
@@ -118,7 +120,7 @@ const adminAccess = {
   product_range: ['read', 'create', 'update'],
   quote: ['read', 'create', 'update'],
   supplier: ['read', 'update'],
-  user: ['list', 'create', 'update', 'set-role', 'set-password'],
+  user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const satisfies RoleAccess;
 
 // Invariant: any role granted `job:create` must also hold `job:schedule` — creating a

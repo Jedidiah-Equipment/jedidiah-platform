@@ -421,6 +421,51 @@ describe('admin user safety policy', () => {
 
     expect(result.user.role).toBe('bay-operator');
   });
+
+  test('allows admins to update user email and profile fields through adminUpdateUser', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'editable-user@example.com',
+      id: 'editable-user-id',
+      name: 'Editable User',
+      password: DEFAULT_DEMO_USER_PASSWORD,
+      role: 'sales',
+    });
+
+    const result = await context.auth.api.adminUpdateUser({
+      body: {
+        data: {
+          email: 'RENAMED-USER@example.com',
+          emailVerified: true,
+          name: 'Renamed User',
+          phoneNumber: '+27821234567',
+        },
+        userId: 'editable-user-id',
+      },
+      headers,
+    });
+
+    expect(result).toMatchObject({
+      email: 'renamed-user@example.com',
+      emailVerified: true,
+      name: 'Renamed User',
+      phoneNumber: '+27821234567',
+    });
+
+    await expect(
+      context.auth.api.signInEmail({
+        body: {
+          email: 'renamed-user@example.com',
+          password: DEFAULT_DEMO_USER_PASSWORD,
+        },
+      }),
+    ).resolves.toMatchObject({
+      user: {
+        email: 'renamed-user@example.com',
+        id: 'editable-user-id',
+      },
+    });
+  });
 });
 
 describe('user phone number validation', () => {

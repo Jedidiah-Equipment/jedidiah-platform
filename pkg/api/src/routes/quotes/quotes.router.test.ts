@@ -190,6 +190,35 @@ describe('quotes.create', () => {
     });
   });
 
+  test('accepts a super-admin as the salesperson', async ({ context }) => {
+    const now = new Date();
+    await context.db.insert(user).values({
+      createdAt: now,
+      email: 'super-admin@example.com',
+      emailVerified: true,
+      id: 'super-admin-user-id',
+      name: 'Super Admin User',
+      role: 'super-admin',
+      updatedAt: now,
+    });
+    const caller = context.createCaller(mockSession('sales'));
+
+    const created = await caller.quotes.create({
+      customer: {
+        type: 'inline',
+        companyName: 'Acme Mining',
+      },
+      notes: null,
+      documentNotes: null,
+      productId: context.product.id,
+      salesPersonId: 'super-admin-user-id',
+      status: 'draft',
+      validUntil: null,
+    });
+
+    expect(created).toMatchObject({ salesPersonId: 'super-admin-user-id', status: 'draft' });
+  });
+
   test('updates status and fields on a non-draft quote with an audit event', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
     const created = await caller.quotes.create({

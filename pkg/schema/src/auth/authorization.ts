@@ -43,6 +43,7 @@ export const APP_PERMISSIONS = [
   'quote:update',
   'supplier:read',
   'supplier:update',
+  'supplier:remove',
   'user:list',
   'user:create',
   'user:update',

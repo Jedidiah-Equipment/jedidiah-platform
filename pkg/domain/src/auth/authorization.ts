@@ -47,6 +47,7 @@ export const permissionLabels = {
   'quote:update': 'Update quotes',
   'supplier:read': 'View suppliers',
   'supplier:update': 'Manage suppliers',
+  'supplier:remove': 'Remove suppliers',
   'user:create': 'Add users',
   'user:list': 'View users',
   'user:set-email': 'Change user emails',
@@ -82,6 +83,7 @@ export const permissionDescriptions = {
   'quote:update': 'Update sales quote details and decisions.',
   'supplier:read': 'View supplier records.',
   'supplier:update': 'Create and edit supplier records.',
+  'supplier:remove': 'Soft-delete supplier records.',
   'user:create': 'Add new application users.',
   'user:list': 'View application users.',
   'user:set-email': 'Change application user email addresses and verification state.',
@@ -100,7 +102,7 @@ export const authorizationStatement = {
   product: ['read', 'create', 'update'],
   product_range: ['read', 'create', 'update'],
   quote: ['read', 'create', 'update'],
-  supplier: ['read', 'update'],
+  supplier: ['read', 'update', 'remove'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const;
 
@@ -119,7 +121,7 @@ const adminAccess = {
   product: ['read', 'create', 'update'],
   product_range: ['read', 'create', 'update'],
   quote: ['read', 'create', 'update'],
-  supplier: ['read', 'update'],
+  supplier: ['read', 'update', 'remove'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const satisfies RoleAccess;
 

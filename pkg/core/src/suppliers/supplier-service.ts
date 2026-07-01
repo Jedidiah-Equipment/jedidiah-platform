@@ -17,12 +17,13 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { Supplier as SupplierSchema } from '@pkg/schema';
-import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, type SQL, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
   diffAuditUpdate,
   recordAuditCreate,
+  recordAuditDelete,
   recordAuditUpdate,
 } from '../audit/audit-service.js';
 import { DuplicateSupplierNameError, SupplierNotFoundError } from './supplier-errors.js';
@@ -79,8 +80,8 @@ export async function listSuppliers({ db, input }: { db: Db; input: SupplierList
   };
 }
 
-function buildSupplierListWhere(input: SupplierListInput): SQL | undefined {
-  const conditions: SQL[] = [];
+function buildSupplierListWhere(input: SupplierListInput): SQL {
+  const conditions: SQL[] = [isNull(supplier.deletedAt)];
 
   if (input.search) {
     const globalSearchWhere = createGlobalSearchCondition(input.search, [
@@ -108,12 +109,12 @@ function buildSupplierListWhere(input: SupplierListInput): SQL | undefined {
     conditions.push(createEscapedContainsSearchCondition(sql`${supplier.id}::text`, input.columnFilters.id));
   }
 
-  return conditions.length > 0 ? and(...conditions) : undefined;
+  return and(...conditions) as SQL;
 }
 
 export async function getSupplier({ db, id }: { db: Db; id: UUID }): Promise<Supplier> {
   const row = await db.query.supplier.findFirst({
-    where: eq(supplier.id, id),
+    where: and(eq(supplier.id, id), isNull(supplier.deletedAt)),
   });
 
   if (!row) {
@@ -160,7 +161,11 @@ export async function updateSupplier({
 }): Promise<Supplier> {
   try {
     return await db.transaction(async (tx) => {
-      const [before] = await tx.select().from(supplier).where(eq(supplier.id, input.id)).for('update');
+      const [before] = await tx
+        .select()
+        .from(supplier)
+        .where(and(eq(supplier.id, input.id), isNull(supplier.deletedAt)))
+        .for('update');
 
       if (!before) {
         throw new SupplierNotFoundError(input.id);
@@ -199,6 +204,33 @@ export async function updateSupplier({
   } catch (error) {
     throw mapSupplierUniqueViolation(error, input);
   }
+}
+
+export async function removeSupplier({
+  actorUserId,
+  db,
+  id,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  id: UUID;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(supplier)
+      .where(and(eq(supplier.id, id), isNull(supplier.deletedAt)))
+      .for('update');
+
+    if (!before) {
+      throw new SupplierNotFoundError(id);
+    }
+
+    const now = new Date();
+    await tx.update(supplier).set({ deletedAt: now, updatedAt: now }).where(eq(supplier.id, id));
+
+    await recordAuditDelete({ db: tx, descriptor: supplierAuditDescriptor, actorUserId, input: before });
+  });
 }
 
 function getSupplierSortColumn(sortBy: SupplierListInput['sortBy']) {

@@ -3,6 +3,7 @@ import {
   getSupplier,
   isSupplierCoreError,
   listSuppliers,
+  removeSupplier,
   type SupplierCoreError,
   updateSupplier,
 } from '@pkg/core';
@@ -31,6 +32,12 @@ export const suppliersRouter = router({
     .input(SupplierUpdateInput)
     .mutation(({ ctx, input }) =>
       mapSupplierErrors(() => updateSupplier({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+    ),
+
+  remove: authorizedProcedure('supplier:remove')
+    .input(z.object({ id: UUID }))
+    .mutation(({ ctx, input }) =>
+      mapSupplierErrors(() => removeSupplier({ db: ctx.db, id: input.id, actorUserId: ctx.session.user.id })),
     ),
 });
 

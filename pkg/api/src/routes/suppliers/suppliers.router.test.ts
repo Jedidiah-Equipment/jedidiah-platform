@@ -464,6 +464,97 @@ describe('suppliers.update', () => {
       message: 'Supplier not found.',
     });
   });
+
+  test('returns not found when updating a removed supplier', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createSupplier(caller, 'Removed Supplier');
+    await caller.suppliers.remove({ id: created.id });
+
+    await expect(
+      caller.suppliers.update({ ...created, companyName: 'Removed Supplier Renamed' }),
+    ).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Supplier not found.',
+    });
+  });
+});
+
+describe('suppliers.remove', () => {
+  test('rejects unauthenticated supplier removes', async ({ context }) => {
+    await expect(
+      context.createAnonCaller().suppliers.remove({ id: '00000000-0000-4000-8000-000000000001' }),
+    ).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+  });
+
+  test('rejects supplier removes without the remove permission', async ({ context }) => {
+    const adminCaller = context.createCaller();
+    const created = await createSupplier(adminCaller, 'Undeletable Supplier');
+
+    await expect(context.createCaller(mockSession('sales')).suppliers.remove({ id: created.id })).rejects.toMatchObject(
+      {
+        code: 'FORBIDDEN',
+      },
+    );
+
+    // procurement-manager can update suppliers but must not be able to remove them.
+    await expect(
+      context.createCaller(mockSession('procurement-manager')).suppliers.remove({ id: created.id }),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  test('soft-deletes suppliers, hides them from reads, and records an audit event', async ({ context }) => {
+    const session = mockSession('admin');
+    const caller = context.createCaller(session);
+    const created = await createSupplier(caller, 'Removable Supplies');
+
+    await expect(caller.suppliers.remove({ id: created.id })).resolves.toBeUndefined();
+
+    await expect(caller.suppliers.get({ id: created.id })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Supplier not found.',
+    });
+
+    const list = await caller.suppliers.list({ search: 'Removable' });
+    expect(list.items).toHaveLength(0);
+    expect(list.total).toBe(0);
+
+    const events = await listAuditEvents(context.db);
+    expect(events.at(-1)).toMatchObject({
+      action: 'deleted',
+      actorUserId: session.user.id,
+      entityId: created.id,
+      entityType: 'supplier',
+    });
+  });
+
+  test('allows reusing a removed supplier company name', async ({ context }) => {
+    const caller = context.createCaller();
+    const first = await createSupplier(caller, 'Reusable Name');
+    await caller.suppliers.remove({ id: first.id });
+
+    const second = await createSupplier(caller, 'Reusable Name');
+    expect(second.id).not.toBe(first.id);
+  });
+
+  test('returns not found when removing a missing or already-removed supplier', async ({ context }) => {
+    const caller = context.createCaller();
+    const created = await createSupplier(caller, 'Gone Supplier');
+    await caller.suppliers.remove({ id: created.id });
+
+    await expect(caller.suppliers.remove({ id: created.id })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Supplier not found.',
+    });
+
+    await expect(caller.suppliers.remove({ id: '00000000-0000-4000-8000-000000000001' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Supplier not found.',
+    });
+  });
 });
 
 async function listAuditEvents(db: Db) {

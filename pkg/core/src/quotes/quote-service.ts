@@ -508,7 +508,7 @@ export async function getQuoteProductBayAvailability({
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<UserListResult> {
   const rows = await db.query.user.findMany({
-    where: inArray(user.role, ['admin', 'sales']),
+    where: inArray(user.role, ['super-admin', 'admin', 'sales']),
     orderBy: [asc(user.name), asc(user.id)],
   });
 

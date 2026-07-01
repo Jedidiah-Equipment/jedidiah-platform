@@ -17,7 +17,7 @@ import { describe, expect } from 'vitest';
 
 import { createTester } from '../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
-import { getQuote, getQuoteProductBayAvailability, listPriorityQuotes } from './quote-service.js';
+import { getQuote, getQuoteProductBayAvailability, listPriorityQuotes, listQuoteSalespeople } from './quote-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -392,3 +392,46 @@ async function createBay(
 
   return bay;
 }
+
+describe('listQuoteSalespeople', () => {
+  test('includes super-admin, admin, and sales users and excludes other roles', async ({ context }) => {
+    const now = new Date();
+    await context.db.insert(user).values([
+      {
+        createdAt: now,
+        email: 'super-admin@example.com',
+        emailVerified: true,
+        id: 'super-admin-user-id',
+        name: 'Super Admin User',
+        role: 'super-admin',
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        email: 'admin@example.com',
+        emailVerified: true,
+        id: 'admin-user-id',
+        name: 'Admin User',
+        role: 'admin',
+        updatedAt: now,
+      },
+      {
+        createdAt: now,
+        email: 'bay-operator@example.com',
+        emailVerified: true,
+        id: 'bay-operator-user-id',
+        name: 'Bay Operator User',
+        role: 'bay-operator',
+        updatedAt: now,
+      },
+    ]);
+
+    const result = await listQuoteSalespeople({ db: context.db });
+    const rolesById = new Map(result.users.map((person) => [person.id, person.role]));
+
+    expect(rolesById.get('super-admin-user-id')).toBe('super-admin');
+    expect(rolesById.get('admin-user-id')).toBe('admin');
+    expect(rolesById.get(context.salesPerson.id)).toBe('sales');
+    expect(rolesById.has('bay-operator-user-id')).toBe(false);
+  });
+});

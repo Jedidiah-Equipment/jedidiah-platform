@@ -93,11 +93,14 @@ function CustomerCell({ job }: { job: JobSummary }) {
 
 function ProductCell({ job }: { job: JobSummary }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate font-medium">{job.productName}</span>
-      <span className="truncate text-xs text-muted-foreground">
-        <span className="font-mono">{job.productModelCode}</span>
-      </span>
+    <div className="flex min-w-0 items-center gap-2">
+      <EntityThumbnail label={job.productName} size="sm" thumbnailDataUrl={job.productThumbnailDataUrl} />
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate font-medium">{job.productName}</span>
+        <span className="truncate text-xs text-muted-foreground">
+          <span className="font-mono">{job.productModelCode}</span>
+        </span>
+      </div>
     </div>
   );
 }

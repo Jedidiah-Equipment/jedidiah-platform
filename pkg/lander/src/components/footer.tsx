@@ -1,5 +1,6 @@
+import { contactNumberE164, formatContactNumber, JEDIDIAH_INSTAGRAM_URL, JEDIDIAH_LOCATION } from '@pkg/domain';
 import logoFullUrl from '@pkg/domain/assets/brand/jedidiah-logo-full.png';
-import { IconMapPin, IconPhone } from '@tabler/icons-react';
+import { IconBrandInstagram, IconMapPin, IconPhone } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 
 import type { FooterRange } from '../server/catalog/ranges.js';
@@ -65,18 +66,23 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
               Get in touch
             </h4>
             <div className="flex flex-col gap-[15px]">
-              <a href="tel:+27128190131" className="flex items-center gap-[11px] no-underline">
+              <a href={`tel:${contactNumberE164()}`} className="flex items-center gap-[11px] no-underline">
                 <IconPhone className="flex-none text-yellow" size={17} aria-hidden="true" />
-                <span className="font-body text-[15px] text-[#cfcfcf]">+27 12 819 0131</span>
+                <span className="font-body text-[15px] text-[#cfcfcf]">{formatContactNumber()}</span>
               </a>
               <span className="flex items-start gap-[11px]">
                 <IconMapPin className="mt-0.5 flex-none text-yellow" size={17} aria-hidden="true" />
-                <span className="font-body text-[15px] leading-[1.5] text-[#cfcfcf]">
-                  Bapsfontein,
-                  <br />
-                  Gauteng, South Africa
-                </span>
+                <span className="font-body text-[15px] leading-[1.5] text-[#cfcfcf]">{JEDIDIAH_LOCATION}</span>
               </span>
+              <a
+                href={JEDIDIAH_INSTAGRAM_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-[11px] no-underline"
+              >
+                <IconBrandInstagram className="flex-none text-yellow" size={17} aria-hidden="true" />
+                <span className="font-body text-[15px] text-[#cfcfcf]">@jedidiahequipment</span>
+              </a>
               <Link
                 to="/contact"
                 className="mt-1.5 self-start bg-yellow px-[22px] py-[11px] font-display text-[15px] font-bold uppercase tracking-[1px] text-ink no-underline"

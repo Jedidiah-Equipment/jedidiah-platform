@@ -1,3 +1,4 @@
+import { contactNumberE164, formatContactNumber, JEDIDIAH_LOCATION } from '@pkg/domain';
 import logoUrl from '@pkg/domain/assets/brand/jedidiah-logo.png';
 import { IconMapPin, IconMenu2, IconPhone, IconX } from '@tabler/icons-react';
 import { Link, useRouterState } from '@tanstack/react-router';
@@ -58,13 +59,13 @@ export function Nav() {
         </nav>
 
         <div className="flex flex-none items-center gap-7 max-nav:hidden">
-          <a href="tel:+27128190131" className="flex items-center gap-[9px] no-underline">
+          <a href={`tel:${contactNumberE164()}`} className="flex items-center gap-[9px] no-underline">
             <PhoneIcon />
-            <span className="font-body text-[15px] font-semibold text-[#e8e8e8]">+27 12 819 0131</span>
+            <span className="font-body text-[15px] font-semibold text-[#e8e8e8]">{formatContactNumber()}</span>
           </a>
           <span className="flex items-center gap-[9px]">
             <PinIcon />
-            <span className="font-body text-[15px] font-semibold text-[#e8e8e8]">Bapsfontein, South Africa</span>
+            <span className="font-body text-[15px] font-semibold text-[#e8e8e8]">{JEDIDIAH_LOCATION}</span>
           </span>
         </div>
 
@@ -102,13 +103,13 @@ export function Nav() {
               );
             })}
             <div className="flex flex-col gap-[14px] pt-[18px]">
-              <a href="tel:+27128190131" className="flex items-center gap-[11px] no-underline">
+              <a href={`tel:${contactNumberE164()}`} className="flex items-center gap-[11px] no-underline">
                 <PhoneIcon />
-                <span className="font-body text-[16px] font-semibold text-[#e8e8e8]">+27 12 819 0131</span>
+                <span className="font-body text-[16px] font-semibold text-[#e8e8e8]">{formatContactNumber()}</span>
               </a>
               <span className="flex items-center gap-[11px]">
                 <PinIcon />
-                <span className="font-body text-[16px] font-semibold text-[#e8e8e8]">Bapsfontein, South Africa</span>
+                <span className="font-body text-[16px] font-semibold text-[#e8e8e8]">{JEDIDIAH_LOCATION}</span>
               </span>
             </div>
           </nav>

@@ -1,4 +1,13 @@
-import { IconArrowRight, IconCheck, IconChevronDown, IconMail, IconMapPin, IconPhone } from '@tabler/icons-react';
+import { contactNumberE164, formatContactNumber, JEDIDIAH_INSTAGRAM_URL, JEDIDIAH_LOCATION } from '@pkg/domain';
+import {
+  IconArrowRight,
+  IconBrandInstagram,
+  IconCheck,
+  IconChevronDown,
+  IconMail,
+  IconMapPin,
+  IconPhone,
+} from '@tabler/icons-react';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 
@@ -202,6 +211,10 @@ function MailIcon() {
   return <IconMail className="flex-none text-yellow" size={24} aria-hidden="true" />;
 }
 
+function InstagramIcon() {
+  return <IconBrandInstagram className="flex-none text-yellow" size={24} aria-hidden="true" />;
+}
+
 function PinIcon({ className }: { className?: string }) {
   return <IconMapPin className={`text-yellow ${className ?? ''}`} size={24} aria-hidden="true" />;
 }
@@ -222,11 +235,11 @@ function ContactInfo() {
           Reach Us Directly
         </h3>
         <div className="flex flex-col gap-[22px]">
-          <a href="tel:+27128190131" className="flex items-start gap-4 no-underline">
+          <a href={`tel:${contactNumberE164()}`} className="flex items-start gap-4 no-underline">
             <PhoneIcon />
             <span>
               <ContactMethodLabel label="Phone" />
-              <span className="font-body text-[17px] text-white">+27 12 819 0131</span>
+              <span className="font-body text-[17px] text-white">{formatContactNumber()}</span>
             </span>
           </a>
           <a href="mailto:info@jedidiahequipment.co.za" className="flex items-start gap-4 no-underline">
@@ -236,20 +249,28 @@ function ContactInfo() {
               <span className="font-body text-[17px] text-white">info@jedidiahequipment.co.za</span>
             </span>
           </a>
+          <a
+            href={JEDIDIAH_INSTAGRAM_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-start gap-4 no-underline"
+          >
+            <InstagramIcon />
+            <span>
+              <ContactMethodLabel label="Instagram" />
+              <span className="font-body text-[17px] text-white">@jedidiahequipment</span>
+            </span>
+          </a>
           <div className="flex items-start gap-4">
             <PinIcon />
             <span>
               <ContactMethodLabel label="Location" />
-              <span className="font-body text-[17px] leading-[1.4] text-white">
-                Bapsfontein, Gauteng,
-                <br />
-                South Africa
-              </span>
+              <span className="font-body text-[17px] leading-[1.4] text-white">{JEDIDIAH_LOCATION}</span>
             </span>
           </div>
         </div>
         <a
-          href="https://wa.me/27128190131"
+          href={`https://wa.me/${contactNumberE164().slice(1)}`}
           className="mt-7 flex items-center justify-center gap-3 bg-yellow px-4 py-[15px] font-display text-[17px] font-bold uppercase tracking-[1.5px] text-ink no-underline transition-colors hover:bg-gold"
         >
           Chat on WhatsApp
@@ -290,7 +311,7 @@ function MapStrip() {
         <div className="bg-ink px-9 py-[26px] text-center">
           <PinIcon className="mx-auto mb-2.5" />
           <div className="font-display text-[22px] font-bold uppercase tracking-[1px] text-white">
-            Bapsfontein, Gauteng
+            {JEDIDIAH_LOCATION}
           </div>
           <div className="mt-1 font-body text-[14px] text-[#bdbdbd]">Visit by appointment</div>
         </div>

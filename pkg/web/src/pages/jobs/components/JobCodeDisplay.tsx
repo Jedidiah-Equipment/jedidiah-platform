@@ -9,6 +9,8 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
+
 type JobCodeDisplayProps = {
   canOpenJob: boolean;
   jobCode: JobCode | null;
@@ -61,6 +63,9 @@ const JobCodeHoverCard: React.FC<{
         filters: {
           jobId,
         },
+        include: {
+          scheduleState: true,
+        },
         page: 1,
         pageSize: 1,
         search: '',
@@ -106,6 +111,12 @@ const JobPreview: React.FC<{ job: JobSummary }> = ({ job }) => (
       <JobPreviewFact label="Product" value={`${job.productName} (${job.productModelCode})`} />
       <JobPreviewFact label="Quote" value={job.quoteCode} />
       <JobPreviewFact label="Serial" value={job.productSerialNumber} />
+    </div>
+    <div className="rounded-md border p-2">
+      <div className="text-xs font-medium text-muted-foreground">Schedule</div>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        <JobScheduleStateBadges scheduleState={job.scheduleState} />
+      </div>
     </div>
   </div>
 );

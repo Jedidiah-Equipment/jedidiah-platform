@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url';
-import './load-db-env.js';
+import './load-write-env.js';
 import { account, closeDatabaseConnection, type Db, db, user, userDepartment } from '@pkg/db';
 import { demoUsers } from '@pkg/domain';
 import { hashPassword } from 'better-auth/crypto';

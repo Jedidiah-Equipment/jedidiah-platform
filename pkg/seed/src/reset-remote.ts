@@ -1,5 +1,5 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import './load-db-env.js';
+import './load-write-env.js';
 import { closeDatabaseConnection, db } from '@pkg/db';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';

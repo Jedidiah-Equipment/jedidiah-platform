@@ -1,17 +1,21 @@
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import './load-db-env.js';
+import './load-write-env.js';
 import { createDatabaseClient, type DatabaseTransaction, type Db, getDatabaseUrl, sql } from '@pkg/db';
 import { hashPassword } from 'better-auth/crypto';
 import { deserializeSnapshotRows } from './snapshot-json.js';
-import { snapshotDirectory } from './snapshot-paths.js';
+import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
 import {
+  collectStorageFiles,
   projectWritableRow,
   type SnapshotRow,
   type SnapshotTableConfig,
   snapshotCleanupTables,
   snapshotTables,
 } from './snapshot-tables.js';
+import { createStorageFromEnv, type SeedStorage, uploadObject } from './storage.js';
+
+type SnapshotWithRows = { config: SnapshotTableConfig; rows: SnapshotRow[] };
 
 const insertBatchSize = 500;
 
@@ -77,8 +81,55 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
         console.info(`[db:seed] Imported ${seedRows.length} ${config.tableName} row(s)`);
       }
     });
+
+    // Objects are copied to the local store only when seeding a real local database (not the in-process
+    // `database` handle used by tests, which has no doc-store creds). S3 is non-transactional, so this
+    // runs after the DB insert transaction commits.
+    if (!database) {
+      await uploadSnapshotObjects(snapshots);
+    }
   } finally {
     await localClient?.close();
+  }
+}
+
+// Uploads every snapshotted object referenced by the seeded rows into the local doc store, reading the
+// bytes downloaded during seed:read. A missing local file is warned about and skipped.
+async function uploadSnapshotObjects(snapshots: readonly SnapshotWithRows[]): Promise<void> {
+  const storage: SeedStorage = createStorageFromEnv('');
+
+  for (const { config, rows } of snapshots) {
+    if (!config.storageFiles) {
+      continue;
+    }
+
+    let uploaded = 0;
+
+    for (const file of collectStorageFiles(config, rows)) {
+      const bytes = await readObjectFile(file.storageKey);
+
+      if (!bytes) {
+        console.warn(`[db:seed] Missing local object file ${file.storageKey}, skipping`);
+        continue;
+      }
+
+      await uploadObject(storage, file.storageKey, bytes, file.contentType);
+      uploaded += 1;
+    }
+
+    console.info(`[db:seed] Uploaded ${uploaded} ${config.tableName} object(s)`);
+  }
+}
+
+async function readObjectFile(storageKey: string): Promise<Uint8Array | null> {
+  try {
+    return await readFile(objectFilePath(storageKey));
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
   }
 }
 

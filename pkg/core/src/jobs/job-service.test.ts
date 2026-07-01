@@ -2041,10 +2041,25 @@ describe('listJobs scheduleState', () => {
     const result = await listJobs({ db: context.db, input: listInput({ include: { scheduleState: true } }) });
 
     const jobItem = result.items.find((item) => item.id === job.id);
-    expect(jobItem?.scheduleState).toEqual({ active: 1, done: 1, scheduled: 1, total: 3 });
+    // Window spans the earliest Slot start (06-05) to the latest Slot end (the scheduled [06-15, 06-17)).
+    expect(jobItem?.scheduleState).toEqual({
+      active: 1,
+      done: 1,
+      endDate: '2026-06-17',
+      scheduled: 1,
+      startDate: '2026-06-05',
+      total: 3,
+    });
 
     const fillerItem = result.items.find((item) => item.id === filler.id);
-    expect(fillerItem?.scheduleState).toEqual({ active: 1, done: 0, scheduled: 0, total: 1 });
+    expect(fillerItem?.scheduleState).toEqual({
+      active: 1,
+      done: 0,
+      endDate: '2026-06-15',
+      scheduled: 0,
+      startDate: '2026-06-05',
+      total: 1,
+    });
   });
 
   test('reports an all-zero schedule state for a Job with no Work Slot', async ({ context }) => {
@@ -2055,8 +2070,30 @@ describe('listJobs scheduleState', () => {
     expect(result.items.find((item) => item.id === job.id)?.scheduleState).toEqual({
       active: 0,
       done: 0,
+      endDate: null,
       scheduled: 0,
+      startDate: null,
       total: 0,
+    });
+  });
+
+  test('reports a fully-done schedule window for a Job whose Slots have all ended', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    // [06-05, 06-07): both work days precede "today", so the Job is complete (done === total).
+    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 2, jobId: job.id } });
+
+    vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
+
+    const result = await listJobs({ db: context.db, input: listInput({ include: { scheduleState: true } }) });
+
+    expect(result.items.find((item) => item.id === job.id)?.scheduleState).toEqual({
+      active: 0,
+      done: 1,
+      endDate: '2026-06-07',
+      scheduled: 0,
+      startDate: '2026-06-05',
+      total: 1,
     });
   });
 

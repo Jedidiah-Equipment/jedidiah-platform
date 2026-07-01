@@ -8,7 +8,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { createJobListColumns } from './JobListTableColumns.js';
 
 describe('Job List table columns', () => {
-  it('renders the code, customer, product, and serial for a scheduled Job', () => {
+  it('renders the code, customer, product, serial, and schedule window for a scheduled Job', () => {
     const html = renderJobListRows([
       buildJob({
         code: 42,
@@ -16,7 +16,7 @@ describe('Job List table columns', () => {
         productModelCode: 'MDL-1',
         productName: 'Loader Bucket',
         productSerialNumber: 'SN-2026-0042',
-        scheduleState: { done: 1, active: 1, scheduled: 2, total: 4 },
+        scheduleState: { done: 1, active: 1, endDate: '2026-06-20', scheduled: 2, startDate: '2026-06-05', total: 4 },
       }),
     ]);
 
@@ -29,6 +29,21 @@ describe('Job List table columns', () => {
     expect(html).toContain('1 Active');
     expect(html).toContain('2 Scheduled');
     expect(html).not.toContain('Not scheduled');
+    // Start date / End date columns render the projected window.
+    expect(html).toContain('Jun 5, 2026');
+    expect(html).toContain('Jun 20, 2026');
+    // Not every Slot is done, so the Complete column shows no check icon.
+    expect(html).not.toContain('tabler-icon-check');
+  });
+
+  it('marks a Job complete with a check icon only once every Slot is done', () => {
+    const html = renderJobListRows([
+      buildJob({
+        scheduleState: { done: 3, active: 0, endDate: '2026-06-15', scheduled: 0, startDate: '2026-06-05', total: 3 },
+      }),
+    ]);
+
+    expect(html).toContain('tabler-icon-check');
   });
 
   it('falls back to "Standalone" when a Job has no customer', () => {
@@ -38,7 +53,9 @@ describe('Job List table columns', () => {
   });
 
   it('renders the "Not scheduled" badge for a Job with no Work Slots', () => {
-    const html = renderJobListRows([buildJob({ scheduleState: { done: 0, active: 0, scheduled: 0, total: 0 } })]);
+    const html = renderJobListRows([
+      buildJob({ scheduleState: { done: 0, active: 0, endDate: null, scheduled: 0, startDate: null, total: 0 } }),
+    ]);
 
     expect(html).toContain('Not scheduled');
     expect(html).not.toContain(' Done');

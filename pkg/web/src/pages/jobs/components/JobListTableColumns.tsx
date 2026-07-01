@@ -1,4 +1,6 @@
+import { formatDate, isJobScheduleComplete } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
+import { IconCheck } from '@tabler/icons-react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
@@ -9,7 +11,9 @@ import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
 /**
  * Job List columns. Only Job code (`code`) and Schedule (`scheduledSlots`) map to a server sort key
  * in `JobSortBy`; Customer, Product, and Serial are display-only. Schedule renders the shared Slice 2
- * badges from each Job's opt-in `scheduleState`.
+ * badges from each Job's opt-in `scheduleState`. Start date, End date, and Is Complete are also
+ * display-only for now (no server sort/filter) and are derived from that same `scheduleState`
+ * projection: the earliest Slot start, the latest Slot end, and whether every Slot is done.
  */
 export function createJobListColumns({ canOpenJobs }: { canOpenJobs: boolean }): ColumnDef<JobSummary>[] {
   return [
@@ -75,7 +79,57 @@ export function createJobListColumns({ canOpenJobs }: { canOpenJobs: boolean }):
         headerClassName: 'min-w-44',
       },
     },
+    {
+      accessorFn: (job) => job.scheduleState?.startDate ?? null,
+      cell: ({ row }) => (
+        <span className="tabular-nums">{formatDate(row.original.scheduleState?.startDate, 'short', '—')}</span>
+      ),
+      enableColumnFilter: false,
+      enableSorting: false,
+      header: 'Start date',
+      id: 'startDate',
+      meta: {
+        headerClassName: 'min-w-28',
+      },
+    },
+    {
+      accessorFn: (job) => job.scheduleState?.endDate ?? null,
+      cell: ({ row }) => (
+        <span className="tabular-nums">{formatDate(row.original.scheduleState?.endDate, 'short', '—')}</span>
+      ),
+      enableColumnFilter: false,
+      enableSorting: false,
+      header: 'End date',
+      id: 'endDate',
+      meta: {
+        headerClassName: 'min-w-28',
+      },
+    },
+    {
+      accessorFn: (job) => (job.scheduleState ? isJobScheduleComplete(job.scheduleState) : false),
+      cell: ({ row }) => <CompleteCell job={row.original} />,
+      enableColumnFilter: false,
+      enableSorting: false,
+      header: 'Complete',
+      id: 'isComplete',
+      meta: {
+        headerClassName: 'min-w-24',
+      },
+    },
   ];
+}
+
+function CompleteCell({ job }: { job: JobSummary }) {
+  if (!job.scheduleState || !isJobScheduleComplete(job.scheduleState)) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-500">
+      <IconCheck aria-hidden className="size-4 shrink-0" />
+      <span className="sr-only">Complete</span>
+    </span>
+  );
 }
 
 function CustomerCell({ job }: { job: JobSummary }) {

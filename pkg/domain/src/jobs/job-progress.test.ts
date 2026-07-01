@@ -1,7 +1,7 @@
 import { DateOnlyIso, UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { deriveJobProgress, deriveJobRouteStop, type JobWorkSlotEntry } from './job-progress.js';
+import { deriveJobProgress, deriveJobRouteStop, isJobScheduleComplete, type JobWorkSlotEntry } from './job-progress.js';
 import type { WorkingCalendar } from './working-calendar.js';
 
 const day = (value: string) => DateOnlyIso.parse(value);
@@ -236,5 +236,19 @@ describe('deriveJobRouteStop', () => {
     });
 
     expect(stop.state).toBe('active');
+  });
+});
+
+describe('isJobScheduleComplete', () => {
+  it('is complete when every Slot is done', () => {
+    expect(isJobScheduleComplete({ done: 3, total: 3 })).toBe(true);
+  });
+
+  it('is not complete while any Slot is still active or scheduled', () => {
+    expect(isJobScheduleComplete({ done: 2, total: 3 })).toBe(false);
+  });
+
+  it('is not complete for a Job with no Work Slot', () => {
+    expect(isJobScheduleComplete({ done: 0, total: 0 })).toBe(false);
   });
 });

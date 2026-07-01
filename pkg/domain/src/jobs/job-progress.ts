@@ -1,4 +1,4 @@
-import type { DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema';
+import type { DateOnlyIso, JobScheduleState, ProjectedWorkJobSlot } from '@pkg/schema';
 
 import { deriveActiveJobProgress } from './bay-active-job.js';
 import { countWorkingDaysBetween, type WorkingCalendar } from './working-calendar.js';
@@ -132,6 +132,15 @@ export function deriveJobRouteStopState({
   today: DateOnlyIso;
 }): JobRouteStopState {
   return slot.endDate <= today ? 'done' : slot.startDate <= today ? 'active' : 'scheduled';
+}
+
+/**
+ * Whether a Job's schedule is complete: it has at least one Work Slot and every Slot is `done`. An
+ * unscheduled Job (`total === 0`) is never complete. Reads the already-bucketed counts, so it agrees
+ * with {@link deriveJobRouteStopState} without re-projecting.
+ */
+export function isJobScheduleComplete(state: Pick<JobScheduleState, 'done' | 'total'>): boolean {
+  return state.total > 0 && state.done === state.total;
 }
 
 /** A single stop on the Job Detail production-route timeline (#615). */

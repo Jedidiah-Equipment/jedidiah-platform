@@ -51,14 +51,28 @@ export function projectBaySchedule<TSlot extends ProjectableJobSlot>({
   return projectJobSlots({ scheduleOrigin, slots, workingCalendar });
 }
 
-export type BayPlacement = InsertAtDatePlacement<ProjectedJobSlot>;
-export type BayPlacementType = BayPlacement['type'];
-
 /** Marks a real Slot rendered as two halves around an inserted seed; halves keep the source Slot id. */
 export type BaySlotSplitMarker = { sourceSlotId: string; half: 'before' | 'after' };
 
 /** A Bay Queue slot in a preview: a real Slot, optionally one half of a split target. */
 export type PreviewBaySlot = ProjectedJobSlot & { splitOf?: BaySlotSplitMarker };
+
+/**
+ * What an insert-seed placement lands against. A single booking always targets a real Slot; a
+ * multi-seed preview can instead target an earlier seed's still-pending ghost, carried by its seed
+ * index so callers render a ghost-to-ghost target without re-sniffing the runtime shape.
+ */
+export type BayPlacementTarget =
+  | { targetKind: 'slot'; slot: PreviewBaySlot }
+  | { targetKind: 'ghost'; seedIndex: number };
+
+/** A resolved insert-seed placement, with its target discriminated at the point it is resolved. */
+export type BayPlacement =
+  | { type: 'append'; startDate: DateOnlyIso; idleGapDays: number }
+  | ({ type: 'insert-before'; startDate: DateOnlyIso } & BayPlacementTarget)
+  | ({ type: 'split'; startDate: DateOnlyIso; beforeDays: number; afterDays: number } & BayPlacementTarget);
+
+export type BayPlacementType = BayPlacement['type'];
 
 /** A pending seed projected as a client-only Slot against the live queue. */
 export type PreviewGhostSlot = {
@@ -320,8 +334,29 @@ function spliceSeedEntry({
   // would otherwise shuffle the split halves around the ghost).
   return {
     entries: next.map((entry, index) => ({ ...entry, sequence: index + 1 })),
-    // A single booking always targets a real Slot, so the runtime shape is a BayPlacement; the
-    // internal entry union only widens the static type.
-    placement: placement as unknown as BayPlacement,
+    placement: toBayPlacement(placement),
   };
+}
+
+// Captures whether the placement's target is a real Slot or an earlier seed's ghost while that fact is
+// still typed on the working entry, so downstream callers read a discriminant instead of re-deriving it.
+function toBayPlacement(placement: InsertAtDatePlacement<WorkingEntry>): BayPlacement {
+  if (placement.type === 'append') {
+    return { type: 'append', idleGapDays: placement.idleGapDays, startDate: placement.startDate };
+  }
+
+  const { ghostMeta, ...targetSlot } = placement.targetSlot;
+  const target: BayPlacementTarget = ghostMeta
+    ? { seedIndex: ghostMeta.seedIndex, targetKind: 'ghost' }
+    : { slot: targetSlot as PreviewBaySlot, targetKind: 'slot' };
+
+  return placement.type === 'insert-before'
+    ? { startDate: placement.startDate, type: 'insert-before', ...target }
+    : {
+        afterDays: placement.afterDays,
+        beforeDays: placement.beforeDays,
+        startDate: placement.startDate,
+        type: 'split',
+        ...target,
+      };
 }

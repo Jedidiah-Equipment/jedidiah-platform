@@ -5,8 +5,6 @@ import {
   type Db,
   documents,
   getPaginationQueryOptions,
-  jobBayCalendarExceptions,
-  jobBayOperatorAssignments,
   jobBays,
   jobCfoAssemblies,
   jobCfoParts,
@@ -18,46 +16,30 @@ import {
   user,
 } from '@pkg/db';
 import {
-  addDateOnlyDays,
-  type BayPlacement,
   bayWorkingCalendars,
   countWorkingDaysBetween,
   deriveJobRouteStopState,
   getPlantDateNow,
   JOB_DEPARTMENT_PIPELINE,
-  type PreviewBaySlot,
   parseJobCodeSearch,
-  previewBaySchedule,
-  projectJobSlots,
-  type WorkingCalendar,
 } from '@pkg/domain';
 import {
-  Bay,
   type BayListInput,
   type BayListResult,
   BaySchedule,
-  type DateOnlyIso,
   type JobDepartmentSchedule,
   type JobDetail,
   JobDocument,
   type JobListInput,
   type JobListResult,
-  JobSchedulePreviewBay,
-  type JobSchedulePreviewGhost,
-  type JobSchedulePreviewInput,
-  type JobSchedulePreviewPlacement,
-  JobSchedulePreviewResult,
-  JobSchedulePreviewSlot,
   type JobScheduleState,
   type JobSortBy,
   type JobSummary,
-  type OffDay,
-  ProjectedJobSlot,
   QuoteCode,
   type SortDirection,
   UUID,
 } from '@pkg/schema';
-import { and, asc, desc, eq, gte, inArray, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { DocumentNotFoundError } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
@@ -66,12 +48,18 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { getCurrentBayOperator, type OpenOperatorAssignmentsRow } from './job-bay-service.js';
-import { JobBayNotFoundError, JobNotFoundError } from './job-errors.js';
+import {
+  findBayScheduleRows,
+  findBayScheduleRowsForJobs,
+  getScheduleJobIds,
+  mapBaySchedule,
+  resolveScheduleWindowFrom,
+  toBaySchedules,
+  windowBayScheduleSlots,
+} from './bay-schedule-read.js';
+import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
-
-const SCHEDULE_HISTORY_WINDOW_DAYS = 365;
 
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
@@ -88,19 +76,6 @@ type JobDocumentRow = DocumentSummaryRow & {
   sourceProductName: string | null;
 };
 
-type BayCalendarExceptionRow = Pick<
-  typeof jobBayCalendarExceptions.$inferSelect,
-  'bayId' | 'date' | 'direction' | 'label'
->;
-
-type BayScheduleRow = typeof jobBays.$inferSelect &
-  OpenOperatorAssignmentsRow & {
-    calendarExceptions: BayCalendarExceptionRow[];
-    slots: (typeof jobSlots.$inferSelect & {
-      job: Pick<typeof jobs.$inferSelect, 'code' | 'id'> | null;
-    })[];
-  };
-
 export type BayQueueAvailability = {
   bayId: UUID;
   department: BaySchedule['department'];
@@ -108,51 +83,6 @@ export type BayQueueAvailability = {
   nextAvailableDate: BaySchedule['nextAvailableDate'];
   waitWorkingDays: number;
 };
-
-// Any `job:read` user sees the full cross-department schedule, so bay reads are not department-scoped.
-function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
-  return db.query.jobBays.findMany({
-    where,
-    orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
-    with: {
-      operatorAssignments: {
-        columns: {},
-        where: isNull(jobBayOperatorAssignments.unassignedAt),
-        with: {
-          operator: {
-            columns: { email: true, id: true, image: true, name: true },
-          },
-        },
-      },
-      calendarExceptions: {
-        columns: {
-          bayId: true,
-          date: true,
-          direction: true,
-          label: true,
-        },
-        orderBy: [asc(jobBayCalendarExceptions.date)],
-      },
-      slots: {
-        orderBy: [asc(jobSlots.sequence), asc(jobSlots.id)],
-        with: {
-          job: {
-            columns: {
-              code: true,
-              id: true,
-            },
-          },
-        },
-      },
-    },
-  });
-}
-
-function toBaySchedules(rows: BayScheduleRow[], offDays: readonly OffDay[]): BaySchedule[] {
-  const workingCalendars = bayWorkingCalendars(rows, offDays);
-
-  return rows.map((row) => mapBaySchedule(row, workingCalendars.get(row.id) ?? {}));
-}
 
 export async function listBays({
   db,
@@ -179,247 +109,6 @@ export async function listBays({
     // Plant "today" enters here, at the server boundary — the client never derives it.
     today,
   };
-}
-
-export async function previewJobSchedule({
-  db,
-  input,
-}: {
-  db: Db | DatabaseTransaction;
-  input: JobSchedulePreviewInput;
-}): Promise<JobSchedulePreviewResult> {
-  if (input.seeds.length === 0) {
-    return JobSchedulePreviewResult.parse({ bays: [], ghosts: [], placements: [] });
-  }
-
-  const bayIds = [...new Set(input.seeds.map((seed) => seed.bayId))];
-  const [offDays, seededRows] = await Promise.all([
-    listWorkingCalendarOffDays(db),
-    findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
-  ]);
-  const rowIds = new Set(seededRows.map((row) => row.id));
-  const missingBayId = bayIds.find((bayId) => !rowIds.has(bayId));
-
-  if (missingBayId) {
-    throw new JobBayNotFoundError(missingBayId);
-  }
-
-  // Windowing a seeded Bay still needs cross-Bay Slots for Jobs on that Bay to classify partly-done routes.
-  const crossBayRows = await findBayScheduleRowsForJobs({
-    db,
-    jobIds: getBayScheduleRowJobIds(seededRows),
-  });
-  const rows = mergeBayScheduleRows(seededRows, crossBayRows);
-
-  const today = getPlantDateNow();
-  const seedsByBayId = groupPreviewSeedsByBayId(input.seeds);
-  const placementsBySeedIndex = new Map<number, JobSchedulePreviewPlacement>();
-  const ghosts: JobSchedulePreviewGhost[] = [];
-  const previewBaysById = new Map<UUID, JobSchedulePreviewBay>();
-  const baseBays = toBaySchedules(rows, offDays);
-
-  for (const bay of baseBays) {
-    const indexedSeeds = seedsByBayId.get(bay.id);
-
-    if (!indexedSeeds || indexedSeeds.length === 0) {
-      continue;
-    }
-
-    const result = previewBaySchedule(bay, offDays, {
-      kind: 'insertSeeds',
-      seeds: indexedSeeds.map(({ seed }) => ({ durationDays: seed.durationDays, startDate: seed.startDate ?? '' })),
-      today,
-    });
-
-    for (const [baySeedIndex, placement] of result.placements.entries()) {
-      const seedIndex = indexedSeeds[baySeedIndex]?.seedIndex;
-
-      if (seedIndex !== undefined) {
-        placementsBySeedIndex.set(
-          seedIndex,
-          toSchedulePreviewPlacement(placement, {
-            bayId: bay.id,
-            toPublicSeedIndex: (localSeedIndex) => indexedSeeds[localSeedIndex]?.seedIndex ?? localSeedIndex,
-          }),
-        );
-      }
-    }
-
-    for (const ghost of result.ghosts) {
-      const seedIndex = indexedSeeds[ghost.seedIndex]?.seedIndex ?? ghost.seedIndex;
-
-      ghosts.push({
-        bayId: bay.id,
-        durationDays: ghost.durationDays,
-        endDate: ghost.endDate,
-        id: `ghost:${bay.id}:${seedIndex}`,
-        placementType: ghost.placementType,
-        seedIndex,
-        startDate: ghost.startDate,
-      });
-    }
-
-    previewBaysById.set(
-      bay.id,
-      JobSchedulePreviewBay.parse({
-        ...bay,
-        nextAvailableDate: result.nextAvailableDate,
-        slots: result.slots.map(toSchedulePreviewSlot),
-      }),
-    );
-  }
-
-  const placements = input.seeds.map((_seed, seedIndex) => {
-    const placement = placementsBySeedIndex.get(seedIndex);
-
-    if (!placement) {
-      throw new Error('Schedule preview placement was not resolved for every seed');
-    }
-
-    return placement;
-  });
-
-  const windowedBays = windowBayScheduleSlots(
-    baseBays.map((bay) => previewBaysById.get(bay.id) ?? bay),
-    {
-      from: resolveScheduleWindowFrom(input, today),
-      today,
-    },
-  );
-  const previewBays = windowedBays
-    .filter((bay) => previewBaysById.has(bay.id))
-    .map((bay) => JobSchedulePreviewBay.parse(bay));
-
-  return JobSchedulePreviewResult.parse({ bays: previewBays, ghosts, placements });
-}
-
-type WindowableScheduleSlot =
-  | { endDate: DateOnlyIso; jobId: UUID; kind: 'work' }
-  | { endDate: DateOnlyIso; jobId: null; kind: 'idle' };
-
-function resolveScheduleWindowFrom(
-  input: BayListInput | JobSchedulePreviewInput | undefined,
-  today: DateOnlyIso,
-): DateOnlyIso {
-  const earliestFrom = addDateOnlyDays(today, -SCHEDULE_HISTORY_WINDOW_DAYS);
-  const requestedFrom = input?.from ?? today;
-
-  return requestedFrom < earliestFrom ? earliestFrom : requestedFrom;
-}
-
-function windowBayScheduleSlots<TBay extends { slots: readonly WindowableScheduleSlot[] }>(
-  bays: readonly TBay[],
-  {
-    from,
-    today,
-  }: {
-    from: DateOnlyIso;
-    today: DateOnlyIso;
-  },
-): TBay[] {
-  const unfinishedJobIds = getUnfinishedScheduleJobIds(bays, today);
-
-  return bays.map(
-    (bay) =>
-      ({
-        ...bay,
-        slots: bay.slots.filter((slot) => isScheduleSlotInWindow(slot, { from, today, unfinishedJobIds })),
-      }) as TBay,
-  );
-}
-
-function getUnfinishedScheduleJobIds(
-  bays: readonly { slots: readonly WindowableScheduleSlot[] }[],
-  today: DateOnlyIso,
-): Set<UUID> {
-  const jobIds = new Set<UUID>();
-
-  for (const bay of bays) {
-    for (const slot of bay.slots) {
-      if (slot.kind === 'work' && slot.endDate > today) {
-        jobIds.add(slot.jobId);
-      }
-    }
-  }
-
-  return jobIds;
-}
-
-function isScheduleSlotInWindow(
-  slot: WindowableScheduleSlot,
-  {
-    from,
-    today,
-    unfinishedJobIds,
-  }: {
-    from: DateOnlyIso;
-    today: DateOnlyIso;
-    unfinishedJobIds: ReadonlySet<UUID>;
-  },
-): boolean {
-  if (slot.kind === 'work' && unfinishedJobIds.has(slot.jobId)) {
-    return true;
-  }
-
-  if (from < today) {
-    return slot.endDate >= from;
-  }
-
-  // Slot spans are half-open; `endDate === today` has already left the default Active Board.
-  return slot.endDate > today;
-}
-
-function getScheduleJobIds(bays: readonly { slots: readonly WindowableScheduleSlot[] }[]): UUID[] {
-  const jobIds = new Set<UUID>();
-
-  for (const bay of bays) {
-    for (const slot of bay.slots) {
-      if (slot.kind === 'work') {
-        jobIds.add(slot.jobId);
-      }
-    }
-  }
-
-  return [...jobIds];
-}
-
-function getBayScheduleRowJobIds(rows: readonly BayScheduleRow[]): UUID[] {
-  const jobIds = new Set<UUID>();
-
-  for (const row of rows) {
-    for (const slot of row.slots) {
-      if (slot.kind === 'work' && slot.jobId) {
-        jobIds.add(UUID.parse(slot.jobId));
-      }
-    }
-  }
-
-  return [...jobIds];
-}
-
-function mergeBayScheduleRows(primaryRows: readonly BayScheduleRow[], extraRows: readonly BayScheduleRow[]) {
-  const primaryIds = new Set(primaryRows.map((row) => row.id));
-
-  return [...primaryRows, ...extraRows.filter((row) => !primaryIds.has(row.id))];
-}
-
-async function findBayScheduleRowsForJobs({
-  db,
-  jobIds,
-}: {
-  db: Db | DatabaseTransaction;
-  jobIds: readonly UUID[];
-}): Promise<BayScheduleRow[]> {
-  if (jobIds.length === 0) {
-    return [];
-  }
-
-  const bayIds = db
-    .selectDistinct({ bayId: jobSlots.bayId })
-    .from(jobSlots)
-    .where(inArray(jobSlots.jobId, [...jobIds]));
-
-  return findBayScheduleRows(db, inArray(jobBays.id, bayIds));
 }
 
 // Cap the IN list per query so a long-lived board with many historical slotted Jobs never binds past
@@ -647,146 +336,6 @@ async function computeJobScheduleStates({
   }
 
   return states;
-}
-
-function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
-  const bay = Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) });
-  const projection = projectJobSlots({
-    scheduleOrigin: bay.scheduleOrigin,
-    slots: row.slots,
-    workingCalendar,
-  });
-
-  return BaySchedule.parse({
-    ...bay,
-    calendarExceptions: row.calendarExceptions,
-    nextAvailableDate: projection.nextAvailableDate,
-    slots: projection.slots.map((slot) => {
-      if (slot.kind === 'idle') {
-        return ProjectedJobSlot.parse(slot);
-      }
-
-      if (!slot.job) {
-        throw new Error('Work Job slot was missing its Job relation');
-      }
-
-      return ProjectedJobSlot.parse({
-        ...slot,
-        jobCode: slot.job.code,
-        jobId: slot.job.id,
-      });
-    }),
-  });
-}
-
-function groupPreviewSeedsByBayId(seeds: JobSchedulePreviewInput['seeds']) {
-  const grouped = new Map<UUID, { seed: JobSchedulePreviewInput['seeds'][number]; seedIndex: number }[]>();
-
-  for (const [seedIndex, seed] of seeds.entries()) {
-    const existing = grouped.get(seed.bayId) ?? [];
-    existing.push({ seed, seedIndex });
-    grouped.set(seed.bayId, existing);
-  }
-
-  return grouped;
-}
-
-function toSchedulePreviewPlacement(
-  placement: BayPlacement,
-  options: { bayId: UUID; toPublicSeedIndex: (localSeedIndex: number) => number },
-): JobSchedulePreviewPlacement {
-  if (placement.type === 'append') {
-    return {
-      idleGapDays: placement.idleGapDays,
-      startDate: placement.startDate,
-      type: placement.type,
-    };
-  }
-
-  if (placement.type === 'insert-before') {
-    const targetGhost = toSchedulePreviewGhostTarget(placement.targetSlot, options);
-
-    if (targetGhost) {
-      return {
-        startDate: placement.startDate,
-        targetGhost,
-        type: placement.type,
-      };
-    }
-
-    return {
-      startDate: placement.startDate,
-      targetSlot: toSchedulePreviewSlot(placement.targetSlot as PreviewBaySlot),
-      type: placement.type,
-    };
-  }
-
-  const targetGhost = toSchedulePreviewGhostTarget(placement.targetSlot, options);
-
-  if (targetGhost) {
-    return {
-      afterDays: placement.afterDays,
-      beforeDays: placement.beforeDays,
-      startDate: placement.startDate,
-      targetGhost,
-      type: placement.type,
-    };
-  }
-
-  return {
-    afterDays: placement.afterDays,
-    beforeDays: placement.beforeDays,
-    startDate: placement.startDate,
-    targetSlot: toSchedulePreviewSlot(placement.targetSlot as PreviewBaySlot),
-    type: placement.type,
-  };
-}
-
-function toSchedulePreviewGhostTarget(
-  slot: unknown,
-  options: { bayId: UUID; toPublicSeedIndex: (localSeedIndex: number) => number },
-) {
-  const localSeedIndex = getPreviewGhostLocalSeedIndex(slot);
-
-  if (localSeedIndex === null) {
-    return null;
-  }
-
-  const seedIndex = options.toPublicSeedIndex(localSeedIndex);
-
-  return {
-    id: `ghost:${options.bayId}:${seedIndex}`,
-    seedIndex,
-  };
-}
-
-function getPreviewGhostLocalSeedIndex(slot: unknown): number | null {
-  const ghostMeta = (slot as { ghostMeta?: { seedIndex?: unknown } } | null)?.ghostMeta;
-
-  if (typeof ghostMeta?.seedIndex === 'number') {
-    return ghostMeta.seedIndex;
-  }
-
-  // Multi-seed preview targets can surface as projected ghost entries where only the synthetic id remains.
-  const id = (slot as { id?: unknown } | null)?.id;
-
-  if (typeof id !== 'string' || !id.startsWith('seed:')) {
-    return null;
-  }
-
-  const seedIndex = Number.parseInt(id.slice('seed:'.length), 10);
-
-  return Number.isSafeInteger(seedIndex) && seedIndex >= 0 ? seedIndex : null;
-}
-
-function toSchedulePreviewSlot(slot: PreviewBaySlot): JobSchedulePreviewSlot {
-  const { splitOf, ...rest } = slot;
-
-  return JobSchedulePreviewSlot.parse({
-    ...rest,
-    id: splitOf ? `${splitOf.sourceSlotId}:${splitOf.half}` : rest.id,
-    ...(splitOf ? { previewSplit: { half: splitOf.half, sourceSlotId: splitOf.sourceSlotId } } : {}),
-  });
 }
 
 /**

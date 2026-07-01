@@ -163,7 +163,10 @@ const BaySeedStartDateControl: React.FC<{
   const previewRequest = useMemo(
     () =>
       shouldPreviewPlacement
-        ? createSchedulePreviewRequest([{ bayId, durationDays: 1, startDate }])
+        ? // Placement (append/insert/split position and its split warning) resolves from the picked
+          // date against the target Slot, never the inserted seed's own length, so any valid duration
+          // works — `1` just clears the preview's "positive integer duration" gate.
+          createSchedulePreviewRequest([{ bayId, durationDays: 1, startDate }])
         : { input: { seeds: [] }, seedIndexByPreviewIndex: [] },
     [bayId, shouldPreviewPlacement, startDate],
   );

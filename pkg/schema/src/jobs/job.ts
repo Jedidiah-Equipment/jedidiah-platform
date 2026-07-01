@@ -411,9 +411,10 @@ export const Job = z.object({
 /**
  * A Job's Work Slots bucketed by their lifecycle state against plant "today". A Job spans one
  * Slot per Bay, so it can hold several states at once; `total` is the Slot count and `total === 0`
- * marks a Job that is not scheduled anywhere. Present only when a list read opts in via
- * `JobListInput.include.scheduleState`; `null` otherwise so the Gantt and booking reads pay no
- * projection cost.
+ * marks a Job that is not scheduled anywhere. Also carries the Job's projected schedule window —
+ * `startDate` is the earliest Slot start and `endDate` the latest Slot end, both `null` when the Job
+ * has no Work Slot. Present only when a list read opts in via `JobListInput.include.scheduleState`;
+ * `null` otherwise so the Gantt and booking reads pay no projection cost.
  */
 export type JobScheduleState = z.infer<typeof JobScheduleState>;
 export const JobScheduleState = z.object({
@@ -421,6 +422,8 @@ export const JobScheduleState = z.object({
   active: z.int().nonnegative(),
   scheduled: z.int().nonnegative(),
   total: z.int().nonnegative(),
+  startDate: DateOnlyIso.nullable(),
+  endDate: DateOnlyIso.nullable(),
 });
 
 export type JobSummary = z.infer<typeof JobSummary>;

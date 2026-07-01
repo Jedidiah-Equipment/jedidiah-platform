@@ -365,7 +365,7 @@ async function computeJobScheduleStates({
   jobIds: readonly UUID[];
 }): Promise<Map<UUID, JobScheduleState>> {
   const states = new Map<UUID, JobScheduleState>(
-    jobIds.map((jobId) => [jobId, { active: 0, done: 0, scheduled: 0, total: 0 }]),
+    jobIds.map((jobId) => [jobId, { active: 0, done: 0, endDate: null, scheduled: 0, startDate: null, total: 0 }]),
   );
 
   if (jobIds.length === 0) {
@@ -382,6 +382,9 @@ async function computeJobScheduleStates({
 
       state[deriveJobRouteStopState({ slot, today })] += 1;
       state.total += 1;
+      // Earliest Slot start / latest Slot end across every Bay the Job spans.
+      state.startDate = state.startDate === null || slot.startDate < state.startDate ? slot.startDate : state.startDate;
+      state.endDate = state.endDate === null || slot.endDate > state.endDate ? slot.endDate : state.endDate;
     }
   }
 

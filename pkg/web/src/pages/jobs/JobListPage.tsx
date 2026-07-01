@@ -125,7 +125,7 @@ const JobListTable: React.FC = () => {
           Unscheduled only
         </label>
       }
-      tableClassName="min-w-[880px]"
+      tableClassName="min-w-[1120px]"
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`}

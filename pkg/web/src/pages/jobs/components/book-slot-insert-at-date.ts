@@ -2,18 +2,16 @@ import {
   addDateOnlyDays,
   firstWorkingDayOnOrAfter,
   formatDate,
-  type InsertAtDatePlacement,
   isWorkingDay,
   maxDateOnly,
-  previewBaySchedule,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type { BaySchedule, DateOnlyIso, OffDay, ProjectedJobSlot } from '@pkg/schema';
+import type { DateOnlyIso, JobSchedulePreviewPlacement } from '@pkg/schema';
 
 import { getSlotLabel } from './bay-schedule-summary.js';
 import { toJobCalendarDateKey } from './job-date-key.js';
 
-export type BookSlotPlacement = InsertAtDatePlacement<ProjectedJobSlot>;
+export type BookSlotPlacement = JobSchedulePreviewPlacement;
 
 /**
  * Picker bounds for an Insert-at-Date booking: earliest tomorrow (the Slot
@@ -41,37 +39,13 @@ export function createBayNonWorkingDateMatcher(workingCalendar: WorkingCalendar)
   return (date) => !isWorkingDay(toJobCalendarDateKey(date), workingCalendar);
 }
 
-export function resolveBookSlotPlacement({
-  bay,
-  offDays,
-  startDate,
-  today,
-}: {
-  bay: BaySchedule;
-  offDays: readonly OffDay[];
-  /** The DatePicker's raw value; an empty or unparsable value books a plain append. */
-  startDate: string;
-  today: DateOnlyIso;
-}): BookSlotPlacement {
-  // A booking is a single-seed insert: it shares the one preview seam with the ghost preview and the
-  // server booking, so the placement they resolve is identical by construction. Seed duration does not
-  // affect placement, so a unit seed suffices.
-  const [placement] = previewBaySchedule(bay, offDays, {
-    kind: 'insertSeeds',
-    seeds: [{ durationDays: 1, startDate }],
-    today,
-  }).placements;
-
-  return placement as BookSlotPlacement;
-}
-
 export function describeInsertAtDatePlacement(placement: BookSlotPlacement): {
   startText: string;
   splitWarning: string | null;
 } {
   const startText = `Starts ${formatDate(placement.startDate, 'EEE, MMM d')}`;
 
-  if (placement.type !== 'split') {
+  if (placement.type !== 'split' || !('targetSlot' in placement)) {
     return { startText, splitWarning: null };
   }
 

@@ -12,7 +12,7 @@ import {
   user,
 } from '@pkg/db';
 import { toPlantDateOnly } from '@pkg/domain';
-import type { Product } from '@pkg/schema';
+import type { BayListResult, JobSchedulePreviewResult, Product } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import { createActorUser } from '@/test/ai-tools.js';
@@ -1380,6 +1380,170 @@ describe('jobs.bookSlot with start date', () => {
   });
 });
 
+describe('jobs.previewSchedule', () => {
+  const bayId = '00000000-0000-4000-8000-000000000b01';
+
+  test('previews the same append placement that bookSlot commits', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+
+    const preview = await caller.jobs.previewSchedule({ seeds: [{ bayId, durationDays: 2 }] });
+
+    expect(preview.placements).toEqual([{ idleGapDays: 0, startDate: '2026-06-05', type: 'append' }]);
+    expect(preview.ghosts).toEqual([
+      expect.objectContaining({
+        bayId,
+        durationDays: 2,
+        endDate: '2026-06-07',
+        placementType: 'append',
+        seedIndex: 0,
+        startDate: '2026-06-05',
+      }),
+    ]);
+
+    const booked = await caller.jobs.bookSlot({ bayId, durationDays: 2, jobId: job.id });
+    const bay = getScheduleBay(await caller.jobs.listBays(), bayId);
+
+    expect(bay.slots.find((slot) => slot.id === booked.slot.id)).toMatchObject({
+      endDate: preview.ghosts[0]?.endDate,
+      startDate: preview.ghosts[0]?.startDate,
+    });
+  });
+
+  test('previews same-bay seeds when a later seed targets an earlier preview ghost', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await caller.jobs.bookSlot({ bayId, durationDays: 1, jobId: job.id });
+
+    const preview = await caller.jobs.previewSchedule({
+      seeds: [
+        { bayId, durationDays: 1, startDate: '2026-06-06' },
+        { bayId, durationDays: 1, startDate: '2026-06-06' },
+      ],
+    });
+
+    expect(preview.placements).toEqual([
+      { idleGapDays: 0, startDate: '2026-06-06', type: 'append' },
+      {
+        startDate: '2026-06-06',
+        targetGhost: { id: `ghost:${bayId}:0`, seedIndex: 0 },
+        type: 'insert-before',
+      },
+    ]);
+    expect(preview.ghosts).toEqual([
+      expect.objectContaining({
+        bayId,
+        endDate: '2026-06-07',
+        id: `ghost:${bayId}:1`,
+        placementType: 'insert-before',
+        seedIndex: 1,
+        startDate: '2026-06-06',
+      }),
+      expect.objectContaining({
+        bayId,
+        endDate: '2026-06-08',
+        id: `ghost:${bayId}:0`,
+        placementType: 'append',
+        seedIndex: 0,
+        startDate: '2026-06-07',
+      }),
+    ]);
+  });
+
+  test("previews the same insert-before placement that bookSlot commits at a slot's start", async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const firstJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({ quoteId: secondQuote.id });
+    const firstSlot = await caller.jobs.bookSlot({ bayId, durationDays: 4, jobId: firstJob.id });
+    const secondSlot = await caller.jobs.bookSlot({ bayId, durationDays: 2, jobId: firstJob.id });
+
+    const preview = await caller.jobs.previewSchedule({
+      seeds: [{ bayId, durationDays: 1, startDate: '2026-06-09' }],
+    });
+
+    expect(preview.placements[0]).toMatchObject({
+      startDate: '2026-06-09',
+      targetSlot: { id: secondSlot.slot.id },
+      type: 'insert-before',
+    });
+    expect(preview.ghosts[0]).toMatchObject({
+      endDate: '2026-06-10',
+      placementType: 'insert-before',
+      startDate: '2026-06-09',
+    });
+    expect(getSchedulePreviewBay(preview, bayId).slots.map((slot) => [slot.id, slot.startDate])).toEqual([
+      [firstSlot.slot.id, '2026-06-05'],
+      [secondSlot.slot.id, '2026-06-10'],
+    ]);
+
+    const inserted = await caller.jobs.bookSlot({
+      bayId,
+      durationDays: 1,
+      jobId: secondJob.id,
+      startDate: '2026-06-09',
+    });
+    const bay = getScheduleBay(await caller.jobs.listBays(), bayId);
+
+    expect(bay.slots.map((slot) => [slot.id, slot.startDate])).toEqual([
+      [firstSlot.slot.id, '2026-06-05'],
+      [inserted.slot.id, preview.ghosts[0]?.startDate],
+      [secondSlot.slot.id, '2026-06-10'],
+    ]);
+  });
+
+  test('previews the same split placement that bookSlot commits inside an existing slot', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const firstJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const secondQuote = await createAcceptedQuote(context.db, context.product.id);
+    const secondJob = await caller.jobs.create({ quoteId: secondQuote.id });
+    const firstSlot = await caller.jobs.bookSlot({ bayId, durationDays: 10, jobId: firstJob.id });
+
+    const preview = await caller.jobs.previewSchedule({
+      seeds: [{ bayId, durationDays: 3, startDate: '2026-06-09' }],
+    });
+
+    expect(preview.placements[0]).toMatchObject({
+      afterDays: 6,
+      beforeDays: 4,
+      startDate: '2026-06-09',
+      targetSlot: { id: firstSlot.slot.id },
+      type: 'split',
+    });
+    expect(preview.ghosts[0]).toMatchObject({
+      endDate: '2026-06-12',
+      placementType: 'split',
+      startDate: '2026-06-09',
+    });
+    expect(getSchedulePreviewBay(preview, bayId).slots).toEqual([
+      expect.objectContaining({
+        durationDays: 4,
+        id: `${firstSlot.slot.id}:before`,
+        previewSplit: { half: 'before', sourceSlotId: firstSlot.slot.id },
+      }),
+      expect.objectContaining({
+        durationDays: 6,
+        id: `${firstSlot.slot.id}:after`,
+        previewSplit: { half: 'after', sourceSlotId: firstSlot.slot.id },
+      }),
+    ]);
+
+    const inserted = await caller.jobs.bookSlot({
+      bayId,
+      durationDays: 3,
+      jobId: secondJob.id,
+      startDate: '2026-06-09',
+    });
+    const bay = getScheduleBay(await caller.jobs.listBays(), bayId);
+
+    expect(bay.slots.map((slot) => [slot.id, slot.durationDays, slot.startDate])).toEqual([
+      [firstSlot.slot.id, 4, '2026-06-05'],
+      [inserted.slot.id, 3, preview.ghosts[0]?.startDate],
+      [expect.any(String), 6, '2026-06-12'],
+    ]);
+  });
+});
+
 describe('jobs.resizeSlot', () => {
   test('resizes an authorized slot and returns reflowed projections from listBays', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
@@ -1775,6 +1939,26 @@ describe('jobs.removeSlot', () => {
     );
   });
 });
+
+function getScheduleBay(schedule: BayListResult, bayId: string) {
+  const bay = schedule.items.find((item) => item.id === bayId);
+
+  if (!bay) {
+    throw new Error(`Expected schedule to include Bay ${bayId}`);
+  }
+
+  return bay;
+}
+
+function getSchedulePreviewBay(preview: JobSchedulePreviewResult, bayId: string) {
+  const bay = preview.bays.find((item) => item.id === bayId);
+
+  if (!bay) {
+    throw new Error(`Expected schedule preview to include Bay ${bayId}`);
+  }
+
+  return bay;
+}
 
 async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {
   const rangeId = await createProductRangeFixture(db);

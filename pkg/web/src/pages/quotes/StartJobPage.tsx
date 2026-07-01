@@ -1,5 +1,6 @@
 import { hasPermission } from '@pkg/domain';
 import type { Bay, JobCreateInput, QuoteDetail, UUID } from '@pkg/schema';
+import { DateOnlyIsoString } from '@pkg/schema';
 import { IconAlertTriangle, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -9,7 +10,7 @@ import { toast } from 'sonner';
 
 import { AddBaySelect, BayRowCard } from '@/components/bays/index.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { useAppForm } from '@/components/form/index.js';
+import { type DatePickerFieldProps, useAppForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import {
@@ -29,6 +30,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { BayScheduleGantt } from '@/pages/jobs/components/BayScheduleGantt.js';
+import { createSchedulePreviewRequest } from '@/pages/jobs/components/bay-schedule-ghosts.js';
 import { createBayNonWorkingDateMatcher } from '@/pages/jobs/components/book-slot-insert-at-date.js';
 
 import {
@@ -142,6 +144,75 @@ type StartJobFormProps = {
   scheduling: BaySeedScheduling | null;
 };
 
+type StartDateFieldApi = {
+  state: { value: string };
+  DatePickerField: React.ComponentType<DatePickerFieldProps>;
+};
+
+const BaySeedStartDateControl: React.FC<{
+  bayId: UUID;
+  index: number;
+  isPending: boolean;
+  scheduling: BaySeedScheduling | null;
+  startDateField: StartDateFieldApi;
+}> = ({ bayId, index, isPending, scheduling, startDateField }) => {
+  const trpc = useTRPC();
+  const startDate = startDateField.state.value;
+  const hasScheduleData = Boolean(scheduling?.schedulesByBayId.has(bayId));
+  const shouldPreviewPlacement = hasScheduleData && DateOnlyIsoString.safeParse(startDate).success;
+  const previewRequest = useMemo(
+    () =>
+      shouldPreviewPlacement
+        ? createSchedulePreviewRequest([{ bayId, durationDays: 1, startDate }])
+        : { input: { seeds: [] }, seedIndexByPreviewIndex: [] },
+    [bayId, shouldPreviewPlacement, startDate],
+  );
+  const previewQuery = useQuery(
+    trpc.jobs.previewSchedule.queryOptions(previewRequest.input, {
+      enabled: previewRequest.input.seeds.length === 1,
+    }),
+  );
+  const rowScheduling = getBaySeedRowScheduling(
+    scheduling,
+    { bayId, startDate },
+    previewQuery.data?.placements[0] ?? null,
+  );
+
+  if (!rowScheduling) {
+    return null;
+  }
+
+  return (
+    <>
+      <startDateField.DatePickerField
+        disabled={isPending}
+        fieldClassName="w-64 shrink-0 *:data-[slot=field-label]:flex-none"
+        isDateDisabled={createBayNonWorkingDateMatcher(rowScheduling.workingCalendar)}
+        label="Start"
+        maxValue={rowScheduling.bounds.maxValue}
+        minValue={rowScheduling.bounds.minValue}
+        orientation="horizontal"
+      />
+      {rowScheduling.splitWarning ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span
+                aria-label={`Bay seed ${index + 1} splits an existing slot`}
+                className="text-amber-700 dark:text-amber-300"
+                role="img"
+              />
+            }
+          >
+            <IconAlertTriangle className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-64">{rowScheduling.splitWarning}</TooltipContent>
+        </Tooltip>
+      ) : null}
+    </>
+  );
+};
+
 const StartJobForm: React.FC<StartJobFormProps> = ({
   baysById,
   baysError,
@@ -229,48 +300,15 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
                         >
                           <div className="flex items-center gap-3 self-center">
                             <form.AppField name={`baySeeds[${index}].startDate`}>
-                              {(startDateField) => {
-                                const rowScheduling = getBaySeedRowScheduling(scheduling, {
-                                  bayId: row.bayId,
-                                  startDate: startDateField.state.value,
-                                });
-
-                                if (!rowScheduling) {
-                                  return null;
-                                }
-
-                                return (
-                                  <>
-                                    <startDateField.DatePickerField
-                                      disabled={isPending}
-                                      fieldClassName="w-64 shrink-0 *:data-[slot=field-label]:flex-none"
-                                      isDateDisabled={createBayNonWorkingDateMatcher(rowScheduling.workingCalendar)}
-                                      label="Start"
-                                      maxValue={rowScheduling.bounds.maxValue}
-                                      minValue={rowScheduling.bounds.minValue}
-                                      orientation="horizontal"
-                                    />
-                                    {rowScheduling.splitWarning ? (
-                                      <Tooltip>
-                                        <TooltipTrigger
-                                          render={
-                                            <span
-                                              aria-label={`Bay seed ${index + 1} splits an existing slot`}
-                                              className="text-amber-700 dark:text-amber-300"
-                                              role="img"
-                                            />
-                                          }
-                                        >
-                                          <IconAlertTriangle className="size-4" />
-                                        </TooltipTrigger>
-                                        <TooltipContent className="max-w-64">
-                                          {rowScheduling.splitWarning}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    ) : null}
-                                  </>
-                                );
-                              }}
+                              {(startDateField) => (
+                                <BaySeedStartDateControl
+                                  bayId={row.bayId}
+                                  index={index}
+                                  isPending={isPending}
+                                  scheduling={scheduling}
+                                  startDateField={startDateField}
+                                />
+                              )}
                             </form.AppField>
                             <form.AppField name={`baySeeds[${index}].durationDays`}>
                               {(field) => (

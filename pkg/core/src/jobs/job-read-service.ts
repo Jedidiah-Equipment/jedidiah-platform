@@ -18,12 +18,15 @@ import {
   user,
 } from '@pkg/db';
 import {
+  type BayPlacement,
   bayWorkingCalendars,
   countWorkingDaysBetween,
   deriveJobRouteStopState,
   getPlantDateNow,
   JOB_DEPARTMENT_PIPELINE,
+  type PreviewBaySlot,
   parseJobCodeSearch,
+  previewBaySchedule,
   projectJobSlots,
   type WorkingCalendar,
 } from '@pkg/domain';
@@ -36,6 +39,12 @@ import {
   JobDocument,
   type JobListInput,
   type JobListResult,
+  JobSchedulePreviewBay,
+  type JobSchedulePreviewGhost,
+  type JobSchedulePreviewInput,
+  type JobSchedulePreviewPlacement,
+  JobSchedulePreviewResult,
+  JobSchedulePreviewSlot,
   type JobScheduleState,
   type JobSortBy,
   type JobSummary,
@@ -55,7 +64,7 @@ import {
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { getCurrentBayOperator, type OpenOperatorAssignmentsRow } from './job-bay-service.js';
-import { JobNotFoundError } from './job-errors.js';
+import { JobBayNotFoundError, JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
@@ -154,6 +163,98 @@ export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promis
     // Plant "today" enters here, at the server boundary — the client never derives it.
     today: getPlantDateNow(),
   };
+}
+
+export async function previewJobSchedule({
+  db,
+  input,
+}: {
+  db: Db | DatabaseTransaction;
+  input: JobSchedulePreviewInput;
+}): Promise<JobSchedulePreviewResult> {
+  if (input.seeds.length === 0) {
+    return JobSchedulePreviewResult.parse({ bays: [], ghosts: [], placements: [] });
+  }
+
+  const bayIds = [...new Set(input.seeds.map((seed) => seed.bayId))];
+  const [offDays, rows] = await Promise.all([
+    listWorkingCalendarOffDays(db),
+    findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
+  ]);
+  const rowIds = new Set(rows.map((row) => row.id));
+  const missingBayId = bayIds.find((bayId) => !rowIds.has(bayId));
+
+  if (missingBayId) {
+    throw new JobBayNotFoundError(missingBayId);
+  }
+
+  const today = getPlantDateNow();
+  const seedsByBayId = groupPreviewSeedsByBayId(input.seeds);
+  const placementsBySeedIndex = new Map<number, JobSchedulePreviewPlacement>();
+  const ghosts: JobSchedulePreviewGhost[] = [];
+  const previewBays: JobSchedulePreviewBay[] = [];
+
+  for (const bay of toBaySchedules(rows, offDays)) {
+    const indexedSeeds = seedsByBayId.get(bay.id);
+
+    if (!indexedSeeds || indexedSeeds.length === 0) {
+      continue;
+    }
+
+    const result = previewBaySchedule(bay, offDays, {
+      kind: 'insertSeeds',
+      seeds: indexedSeeds.map(({ seed }) => ({ durationDays: seed.durationDays, startDate: seed.startDate ?? '' })),
+      today,
+    });
+
+    for (const [baySeedIndex, placement] of result.placements.entries()) {
+      const seedIndex = indexedSeeds[baySeedIndex]?.seedIndex;
+
+      if (seedIndex !== undefined) {
+        placementsBySeedIndex.set(
+          seedIndex,
+          toSchedulePreviewPlacement(placement, {
+            bayId: bay.id,
+            toPublicSeedIndex: (localSeedIndex) => indexedSeeds[localSeedIndex]?.seedIndex ?? localSeedIndex,
+          }),
+        );
+      }
+    }
+
+    for (const ghost of result.ghosts) {
+      const seedIndex = indexedSeeds[ghost.seedIndex]?.seedIndex ?? ghost.seedIndex;
+
+      ghosts.push({
+        bayId: bay.id,
+        durationDays: ghost.durationDays,
+        endDate: ghost.endDate,
+        id: `ghost:${bay.id}:${seedIndex}`,
+        placementType: ghost.placementType,
+        seedIndex,
+        startDate: ghost.startDate,
+      });
+    }
+
+    previewBays.push(
+      JobSchedulePreviewBay.parse({
+        ...bay,
+        nextAvailableDate: result.nextAvailableDate,
+        slots: result.slots.map(toSchedulePreviewSlot),
+      }),
+    );
+  }
+
+  const placements = input.seeds.map((_seed, seedIndex) => {
+    const placement = placementsBySeedIndex.get(seedIndex);
+
+    if (!placement) {
+      throw new Error('Schedule preview placement was not resolved for every seed');
+    }
+
+    return placement;
+  });
+
+  return JobSchedulePreviewResult.parse({ bays: previewBays, ghosts, placements });
 }
 
 function isUuid(jobId: string | null): jobId is UUID {
@@ -418,6 +519,116 @@ function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
         jobId: slot.job.id,
       });
     }),
+  });
+}
+
+function groupPreviewSeedsByBayId(seeds: JobSchedulePreviewInput['seeds']) {
+  const grouped = new Map<UUID, { seed: JobSchedulePreviewInput['seeds'][number]; seedIndex: number }[]>();
+
+  for (const [seedIndex, seed] of seeds.entries()) {
+    const existing = grouped.get(seed.bayId) ?? [];
+    existing.push({ seed, seedIndex });
+    grouped.set(seed.bayId, existing);
+  }
+
+  return grouped;
+}
+
+function toSchedulePreviewPlacement(
+  placement: BayPlacement,
+  options: { bayId: UUID; toPublicSeedIndex: (localSeedIndex: number) => number },
+): JobSchedulePreviewPlacement {
+  if (placement.type === 'append') {
+    return {
+      idleGapDays: placement.idleGapDays,
+      startDate: placement.startDate,
+      type: placement.type,
+    };
+  }
+
+  if (placement.type === 'insert-before') {
+    const targetGhost = toSchedulePreviewGhostTarget(placement.targetSlot, options);
+
+    if (targetGhost) {
+      return {
+        startDate: placement.startDate,
+        targetGhost,
+        type: placement.type,
+      };
+    }
+
+    return {
+      startDate: placement.startDate,
+      targetSlot: toSchedulePreviewSlot(placement.targetSlot as PreviewBaySlot),
+      type: placement.type,
+    };
+  }
+
+  const targetGhost = toSchedulePreviewGhostTarget(placement.targetSlot, options);
+
+  if (targetGhost) {
+    return {
+      afterDays: placement.afterDays,
+      beforeDays: placement.beforeDays,
+      startDate: placement.startDate,
+      targetGhost,
+      type: placement.type,
+    };
+  }
+
+  return {
+    afterDays: placement.afterDays,
+    beforeDays: placement.beforeDays,
+    startDate: placement.startDate,
+    targetSlot: toSchedulePreviewSlot(placement.targetSlot as PreviewBaySlot),
+    type: placement.type,
+  };
+}
+
+function toSchedulePreviewGhostTarget(
+  slot: unknown,
+  options: { bayId: UUID; toPublicSeedIndex: (localSeedIndex: number) => number },
+) {
+  const localSeedIndex = getPreviewGhostLocalSeedIndex(slot);
+
+  if (localSeedIndex === null) {
+    return null;
+  }
+
+  const seedIndex = options.toPublicSeedIndex(localSeedIndex);
+
+  return {
+    id: `ghost:${options.bayId}:${seedIndex}`,
+    seedIndex,
+  };
+}
+
+function getPreviewGhostLocalSeedIndex(slot: unknown): number | null {
+  const ghostMeta = (slot as { ghostMeta?: { seedIndex?: unknown } } | null)?.ghostMeta;
+
+  if (typeof ghostMeta?.seedIndex === 'number') {
+    return ghostMeta.seedIndex;
+  }
+
+  // Multi-seed preview targets can surface as projected ghost entries where only the synthetic id remains.
+  const id = (slot as { id?: unknown } | null)?.id;
+
+  if (typeof id !== 'string' || !id.startsWith('seed:')) {
+    return null;
+  }
+
+  const seedIndex = Number.parseInt(id.slice('seed:'.length), 10);
+
+  return Number.isSafeInteger(seedIndex) && seedIndex >= 0 ? seedIndex : null;
+}
+
+function toSchedulePreviewSlot(slot: PreviewBaySlot): JobSchedulePreviewSlot {
+  const { splitOf, ...rest } = slot;
+
+  return JobSchedulePreviewSlot.parse({
+    ...rest,
+    id: splitOf ? `${splitOf.sourceSlotId}:${splitOf.half}` : rest.id,
+    ...(splitOf ? { previewSplit: { half: splitOf.half, sourceSlotId: splitOf.sourceSlotId } } : {}),
   });
 }
 

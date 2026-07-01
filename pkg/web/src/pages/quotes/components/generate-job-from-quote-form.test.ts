@@ -1,4 +1,12 @@
-import { Bay, BaySchedule, DateOnlyIso, ProductBay, ProjectedJobSlot, UUID } from '@pkg/schema';
+import {
+  Bay,
+  BaySchedule,
+  DateOnlyIso,
+  type JobSchedulePreviewPlacement,
+  ProductBay,
+  ProjectedJobSlot,
+  UUID,
+} from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -53,12 +61,13 @@ describe('createBaySeedScheduling / getBaySeedDefaultStartDate', () => {
 
 describe('getBaySeedRowScheduling', () => {
   it('returns picker bounds and a split warning naming the affected Job and durations', () => {
+    const slot = buildWorkSlot({ durationDays: 10, jobCode: 'JOB-01042' });
     const scheduling = createBaySeedScheduling({
       items: [
         buildBaySchedule({
           id: ENABLED_BAY_ID,
           nextAvailableDate: '2026-06-15',
-          slots: [buildWorkSlot({ durationDays: 10, jobCode: 'JOB-01042' })],
+          slots: [slot],
         }),
       ],
       offDays: [],
@@ -66,7 +75,11 @@ describe('getBaySeedRowScheduling', () => {
     });
 
     expect(
-      getBaySeedRowScheduling(scheduling, { bayId: UUID.parse(ENABLED_BAY_ID), startDate: '2026-06-09' }),
+      getBaySeedRowScheduling(
+        scheduling,
+        { bayId: UUID.parse(ENABLED_BAY_ID), startDate: '2026-06-09' },
+        splitPlacement(slot),
+      ),
     ).toMatchObject({
       bounds: { minValue: '2026-06-06', maxValue: '2026-06-15' },
       splitWarning: "Splits JOB-01042's 10-day slot into 4 + 6.",
@@ -221,6 +234,16 @@ function buildWorkSlot({ durationDays, jobCode }: { durationDays: number; jobCod
     startDate: '2026-06-05',
     updatedAt: '2026-06-05T08:00:00.000Z',
   });
+}
+
+function splitPlacement(targetSlot: ProjectedJobSlot): JobSchedulePreviewPlacement {
+  return {
+    afterDays: 6,
+    beforeDays: 4,
+    startDate: DateOnlyIso.parse('2026-06-09'),
+    targetSlot,
+    type: 'split',
+  };
 }
 
 function buildProductBay({

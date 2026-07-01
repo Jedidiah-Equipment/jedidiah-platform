@@ -1,5 +1,11 @@
-import { type BayPlacementType, previewBaySchedule } from '@pkg/domain';
-import type { BaySchedule, DateOnlyIso, OffDay, ProjectedJobSlot, UUID } from '@pkg/schema';
+import type {
+  BaySchedule,
+  JobSchedulePreviewInput,
+  JobSchedulePreviewResult,
+  JobSchedulePreviewSlot,
+  UUID,
+} from '@pkg/schema';
+import { DateOnlyIso } from '@pkg/schema';
 
 import { sortBaysByDepartmentPipeline } from '@/components/bays/sort-bays.js';
 
@@ -11,101 +17,79 @@ export type BayScheduleGhostSeed = {
   startDate: string;
 };
 
-export type SplitHalfMarker = { sourceSlotId: string; half: 'before' | 'after' };
-
 /**
  * A Bay schedule slot as displayed in the ghost preview: real slots flow through
  * unchanged, while a slot split by a ghost renders as two halves carrying a marker
  * and a suffixed synthetic id (`:before` / `:after`) that must never reach a mutation.
  */
-export type DisplayBaySlot = ProjectedJobSlot & { previewSplit?: SplitHalfMarker };
+export type DisplayBaySlot = JobSchedulePreviewSlot;
 export type DisplayBaySchedule = Omit<BaySchedule, 'slots'> & { slots: DisplayBaySlot[] };
-
-export type GhostSlot = {
-  /** `ghost:${bayId}:${seedIndex}` — stable render key, never a real slot id. */
-  id: string;
-  bayId: UUID;
-  seedIndex: number;
-  placementType: BayPlacementType;
-  durationDays: number;
-  startDate: DateOnlyIso;
-  endDate: DateOnlyIso;
-};
+export type GhostSlot = JobSchedulePreviewResult['ghosts'][number];
 
 export type GhostScheduleDerivation = {
   bays: DisplayBaySchedule[];
   ghosts: GhostSlot[];
 };
 
+export type SchedulePreviewRequest = {
+  input: JobSchedulePreviewInput;
+  seedIndexByPreviewIndex: number[];
+};
+
+export function createSchedulePreviewRequest(
+  seeds: readonly BayScheduleGhostSeed[],
+  options: { includeSeed?: (seed: BayScheduleGhostSeed) => boolean } = {},
+): SchedulePreviewRequest {
+  const previewSeeds: JobSchedulePreviewInput['seeds'] = [];
+  const seedIndexByPreviewIndex: number[] = [];
+
+  for (const [seedIndex, seed] of seeds.entries()) {
+    if (options.includeSeed && !options.includeSeed(seed)) {
+      continue;
+    }
+
+    if (!Number.isInteger(seed.durationDays) || seed.durationDays < 1) {
+      continue;
+    }
+
+    const parsedStartDate = DateOnlyIso.safeParse(seed.startDate);
+    previewSeeds.push({
+      bayId: seed.bayId,
+      durationDays: seed.durationDays,
+      ...(parsedStartDate.success ? { startDate: parsedStartDate.data } : {}),
+    });
+    seedIndexByPreviewIndex.push(seedIndex);
+  }
+
+  return {
+    input: { seeds: previewSeeds },
+    seedIndexByPreviewIndex,
+  };
+}
+
 /**
- * Projects pending Job seeds as client-only ghost Slots against the live Bay queues, delegating the
- * placement, split, and reprojection to the shared `previewBaySchedule` (so this preview and the
- * server booking resolve identically). This layer only maps the neutral result to display shapes:
- * split halves get a marker and a synthetic id, ghosts get their `ghost:${bayId}:${seedIndex}` key.
- * Bays without a valid seed pass through untouched, same-reference.
+ * Merges the server preview into the visible lanes. Projection, split placement, and ghost ranges
+ * are resolved by `jobs.previewSchedule`; this layer only preserves same-reference Bays that were
+ * not affected by the request.
  */
 export function deriveGhostBaySchedules({
   bays,
-  offDays,
-  seeds,
-  today,
+  preview,
+  seedIndexByPreviewIndex,
 }: {
   bays: BaySchedule[];
-  offDays: OffDay[];
-  seeds: readonly BayScheduleGhostSeed[];
-  today: DateOnlyIso;
+  preview: JobSchedulePreviewResult;
+  seedIndexByPreviewIndex: readonly number[];
 }): GhostScheduleDerivation {
-  const indexedSeeds = seeds.map((seed, index) => ({ index, seed }));
-  const ghosts: GhostSlot[] = [];
-
-  const displayBays = bays.map((bay): DisplayBaySchedule => {
-    const baySeeds = indexedSeeds.filter(({ seed }) => seed.bayId === bay.id);
-
-    if (baySeeds.length === 0) {
-      return bay;
-    }
-
-    const result = previewBaySchedule(bay, offDays, {
-      kind: 'insertSeeds',
-      seeds: baySeeds.map(({ seed }) => ({ durationDays: seed.durationDays, startDate: seed.startDate })),
-      today,
-    });
-
-    if (!result.changed) {
-      return bay;
-    }
-
-    for (const ghost of result.ghosts) {
-      // The domain seed index is the position in the per-Bay seeds; map it back to the form's index.
-      const seedIndex = baySeeds[ghost.seedIndex]?.index ?? ghost.seedIndex;
-
-      ghosts.push({
-        bayId: bay.id,
-        durationDays: ghost.durationDays,
-        endDate: ghost.endDate,
-        id: `ghost:${bay.id}:${seedIndex}`,
-        placementType: ghost.placementType,
-        seedIndex,
-        startDate: ghost.startDate,
-      });
-    }
+  const previewBaysById = new Map(preview.bays.map((bay) => [bay.id, bay]));
+  const displayBays = bays.map((bay): DisplayBaySchedule => previewBaysById.get(bay.id) ?? bay);
+  const ghosts = preview.ghosts.map((ghost) => {
+    const seedIndex = seedIndexByPreviewIndex[ghost.seedIndex] ?? ghost.seedIndex;
 
     return {
-      ...bay,
-      nextAvailableDate: result.nextAvailableDate,
-      slots: result.slots.map((slot): DisplayBaySlot => {
-        if (!slot.splitOf) {
-          return slot;
-        }
-
-        const { splitOf, ...rest } = slot;
-
-        return {
-          ...rest,
-          id: `${splitOf.sourceSlotId}:${splitOf.half}` as ProjectedJobSlot['id'],
-          previewSplit: { half: splitOf.half, sourceSlotId: splitOf.sourceSlotId },
-        };
-      }),
+      ...ghost,
+      id: `ghost:${ghost.bayId}:${seedIndex}`,
+      seedIndex,
     };
   });
 

@@ -32,6 +32,8 @@ import {
   JobCreateInput,
   JobDetail,
   JobListFilters,
+  JobSchedulePreviewInput,
+  JobSchedulePreviewResult,
   MoveJobSlotInput,
   MoveJobSlotResult,
   OffDay,
@@ -535,6 +537,103 @@ describe('JobSlot schemas', () => {
       kind: 'idle',
       label: 'Idle gap',
       startDate: '2026-06-05',
+    });
+  });
+
+  it('accepts schedule preview seeds and split-half output slots', () => {
+    expect(
+      JobSchedulePreviewInput.parse({
+        seeds: [
+          {
+            bayId: '00000000-0000-4000-8000-000000000001',
+            durationDays: 3,
+            startDate: '2026-06-09',
+          },
+        ],
+      }),
+    ).toEqual({
+      seeds: [
+        {
+          bayId: '00000000-0000-4000-8000-000000000001',
+          durationDays: 3,
+          startDate: '2026-06-09',
+        },
+      ],
+    });
+
+    expect(
+      JobSchedulePreviewResult.parse({
+        bays: [
+          {
+            calendarExceptions: [],
+            createdAt: '2026-01-01T00:00:00.000Z',
+            currentOperator: null,
+            department: 'fabrication',
+            disabledAt: null,
+            id: '00000000-0000-4000-8000-000000000001',
+            name: 'Fabrication Bay',
+            nextAvailableDate: '2026-06-12',
+            scheduleOrigin: '2026-06-05',
+            slots: [
+              {
+                bayId: '00000000-0000-4000-8000-000000000001',
+                createdAt: '2026-06-05T00:00:00.000Z',
+                durationDays: 4,
+                endDate: '2026-06-09',
+                id: '00000000-0000-4000-8000-000000000003:before',
+                jobCode: 12,
+                jobId: '00000000-0000-4000-8000-000000000002',
+                kind: 'work',
+                label: null,
+                previewSplit: {
+                  half: 'before',
+                  sourceSlotId: '00000000-0000-4000-8000-000000000003',
+                },
+                sequence: 1,
+                startDate: '2026-06-05',
+                updatedAt: '2026-06-05T00:00:00.000Z',
+              },
+            ],
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        ghosts: [
+          {
+            bayId: '00000000-0000-4000-8000-000000000001',
+            durationDays: 3,
+            endDate: '2026-06-12',
+            id: 'ghost:00000000-0000-4000-8000-000000000001:0',
+            placementType: 'split',
+            seedIndex: 0,
+            startDate: '2026-06-09',
+          },
+        ],
+        placements: [
+          {
+            afterDays: 6,
+            beforeDays: 4,
+            startDate: '2026-06-09',
+            targetSlot: {
+              bayId: '00000000-0000-4000-8000-000000000001',
+              createdAt: '2026-06-05T00:00:00.000Z',
+              durationDays: 10,
+              endDate: '2026-06-15',
+              id: '00000000-0000-4000-8000-000000000003',
+              jobCode: 12,
+              jobId: '00000000-0000-4000-8000-000000000002',
+              kind: 'work',
+              label: null,
+              sequence: 1,
+              startDate: '2026-06-05',
+              updatedAt: '2026-06-05T00:00:00.000Z',
+            },
+            type: 'split',
+          },
+        ],
+      }),
+    ).toMatchObject({
+      bays: [{ slots: [{ id: '00000000-0000-4000-8000-000000000003:before', jobCode: 'JOB-00012' }] }],
+      placements: [{ type: 'split' }],
     });
   });
 

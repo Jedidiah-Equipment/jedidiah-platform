@@ -1,18 +1,14 @@
-import { type BaySchedule, DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
+import { DateIso, DateOnlyIso, JobCode, type JobSchedulePreviewPlacement } from '@pkg/schema';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  describeInsertAtDatePlacement,
-  getInsertAtDatePickerBounds,
-  resolveBookSlotPlacement,
-} from './book-slot-insert-at-date.js';
+import { describeInsertAtDatePlacement, getInsertAtDatePickerBounds } from './book-slot-insert-at-date.js';
 import { fromJobCalendarDateKey, toJobCalendarDateKey } from './job-date-key.js';
 
 const day = (value: string) => DateOnlyIso.parse(value);
 
 // The schedule UI must show the same dates from any browser timezone.
 // A regression that leaks the ambient timezone into picker bounds, placement
-// previews, or the local calendar bridge fails here.
+// placement copy, or the local calendar bridge fails here.
 const TRIPWIRE_TIME_ZONES = ['Africa/Johannesburg', 'UTC', 'America/New_York', 'Pacific/Auckland'];
 
 function inEveryTimeZone<T>(compute: () => T): T[] {
@@ -44,32 +40,8 @@ describe('schedule UI timezone tripwire', () => {
     }
   });
 
-  it('describes the same placement preview in any browser timezone', () => {
-    const slot = ProjectedJobSlot.parse({
-      bayId: '00000000-0000-4000-8000-000000000b01',
-      createdAt: '2026-06-05T08:00:00.000Z',
-      durationDays: 10,
-      endDate: '2026-06-19',
-      id: '00000000-0000-4000-8000-000000000001',
-      jobCode: 'JOB-01042',
-      jobId: '00000000-0000-4000-8000-00000000aaaa',
-      kind: 'work',
-      label: null,
-      sequence: 1,
-      startDate: '2026-06-05',
-      updatedAt: '2026-06-05T08:00:00.000Z',
-    });
-
-    for (const feedback of inEveryTimeZone(() =>
-      describeInsertAtDatePlacement(
-        resolveBookSlotPlacement({
-          bay: { calendarExceptions: [], scheduleOrigin: day('2026-06-05'), slots: [slot] } as unknown as BaySchedule,
-          offDays: [],
-          startDate: '2026-06-09',
-          today: day('2026-06-05'),
-        }),
-      ),
-    )) {
+  it('describes the same server placement in any browser timezone', () => {
+    for (const feedback of inEveryTimeZone(() => describeInsertAtDatePlacement(splitPlacement()))) {
       expect(feedback).toEqual({
         startText: 'Starts Tue, Jun 9',
         splitWarning: "Splits JOB-01042's 10-day slot into 4 + 6.",
@@ -85,3 +57,26 @@ describe('schedule UI timezone tripwire', () => {
     }
   });
 });
+
+function splitPlacement(): JobSchedulePreviewPlacement {
+  return {
+    afterDays: 6,
+    beforeDays: 4,
+    startDate: day('2026-06-09'),
+    targetSlot: {
+      bayId: '00000000-0000-4000-8000-000000000b01',
+      createdAt: DateIso.parse('2026-06-05T08:00:00.000Z'),
+      durationDays: 10,
+      endDate: day('2026-06-19'),
+      id: '00000000-0000-4000-8000-000000000001',
+      jobCode: JobCode.parse('JOB-01042'),
+      jobId: '00000000-0000-4000-8000-00000000aaaa',
+      kind: 'work',
+      label: null,
+      sequence: 1,
+      startDate: day('2026-06-05'),
+      updatedAt: DateIso.parse('2026-06-05T08:00:00.000Z'),
+    },
+    type: 'split',
+  };
+}

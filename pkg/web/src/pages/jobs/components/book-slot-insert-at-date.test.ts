@@ -1,19 +1,14 @@
-import { type BaySchedule, DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
+import { DateOnlyIso, type JobSchedulePreviewPlacement, ProjectedJobSlot } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
   createBayNonWorkingDateMatcher,
   describeInsertAtDatePlacement,
   getInsertAtDatePickerBounds,
-  resolveBookSlotPlacement,
 } from './book-slot-insert-at-date.js';
 
 const day = (value: string) => DateOnlyIso.parse(value);
 const today = day('2026-06-05');
-
-function bayOf(slots: ProjectedJobSlot[]): BaySchedule {
-  return { calendarExceptions: [], scheduleOrigin: day('2026-06-05'), slots } as unknown as BaySchedule;
-}
 
 describe('getInsertAtDatePickerBounds', () => {
   it('bounds the picker from tomorrow to the next available day, defaulting to the latter', () => {
@@ -70,16 +65,10 @@ describe('createBayNonWorkingDateMatcher', () => {
   });
 });
 
-describe('resolveBookSlotPlacement / describeInsertAtDatePlacement', () => {
+describe('describeInsertAtDatePlacement', () => {
   it('describes a work slot split with the job code and resulting durations', () => {
-    const placement = resolveBookSlotPlacement({
-      bay: bayOf([workSlot({ durationDays: 10, jobCode: 'JOB-01042' })]),
-      offDays: [],
-      startDate: '2026-06-09',
-      today,
-    });
+    const placement = splitPlacement(workSlot({ durationDays: 10, jobCode: 'JOB-01042' }));
 
-    expect(placement).toMatchObject({ type: 'split', beforeDays: 4, afterDays: 6 });
     expect(describeInsertAtDatePlacement(placement)).toEqual({
       startText: 'Starts Tue, Jun 9',
       splitWarning: "Splits JOB-01042's 10-day slot into 4 + 6.",
@@ -87,40 +76,32 @@ describe('resolveBookSlotPlacement / describeInsertAtDatePlacement', () => {
   });
 
   it('describes an idle slot split by its label, defaulting unlabeled idle', () => {
-    const labeled = resolveBookSlotPlacement({
-      bay: bayOf([idleSlot({ durationDays: 10, label: 'Bay Tidying' })]),
-      offDays: [],
-      startDate: '2026-06-09',
-      today,
-    });
+    const labeled = splitPlacement(idleSlot({ durationDays: 10, label: 'Bay Tidying' }));
 
     expect(describeInsertAtDatePlacement(labeled).splitWarning).toBe("Splits Bay Tidying's 10-day slot into 4 + 6.");
 
-    const unlabeled = resolveBookSlotPlacement({
-      bay: bayOf([idleSlot({ durationDays: 10, label: null })]),
-      offDays: [],
-      startDate: '2026-06-09',
-      today,
-    });
+    const unlabeled = splitPlacement(idleSlot({ durationDays: 10, label: null }));
 
     expect(describeInsertAtDatePlacement(unlabeled).splitWarning).toBe("Splits Idle's 10-day slot into 4 + 6.");
   });
 
   it('describes a clean append without a split warning', () => {
-    const placement = resolveBookSlotPlacement({
-      bay: bayOf([workSlot({ durationDays: 4, jobCode: 'JOB-01042' })]),
-      offDays: [],
-      startDate: '2026-06-09',
-      today,
-    });
-
-    expect(placement.type).toBe('append');
-    expect(describeInsertAtDatePlacement(placement)).toEqual({
+    expect(describeInsertAtDatePlacement({ idleGapDays: 0, startDate: day('2026-06-09'), type: 'append' })).toEqual({
       startText: 'Starts Tue, Jun 9',
       splitWarning: null,
     });
   });
 });
+
+function splitPlacement(targetSlot: ProjectedJobSlot): JobSchedulePreviewPlacement {
+  return {
+    afterDays: 6,
+    beforeDays: 4,
+    startDate: day('2026-06-09'),
+    targetSlot,
+    type: 'split',
+  };
+}
 
 function workSlot(input: { durationDays: number; jobCode: string }): ProjectedJobSlot {
   return ProjectedJobSlot.parse({

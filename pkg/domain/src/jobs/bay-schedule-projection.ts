@@ -8,7 +8,7 @@ import {
 
 import { type InsertAtDatePlacement, resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';
 import { addJobSlotDuration, type ProjectableJobSlot, projectJobSlots } from './job-slot-projection.js';
-import type { WorkingCalendar } from './working-calendar.js';
+import { firstWorkingDayOnOrAfter, type WorkingCalendar } from './working-calendar.js';
 
 type OffDayFact = { date: string };
 type CalendarExceptionFact = { date: string; direction: BayCalendarExceptionDirection };
@@ -343,13 +343,16 @@ function spliceSeedEntry({
   // would otherwise shuffle the split halves around the ghost).
   return {
     entries: next.map((entry, index) => ({ ...entry, sequence: index + 1 })),
-    placement: toBayPlacement(placement),
+    placement: toBayPlacement(placement, workingCalendar),
   };
 }
 
 // Captures whether the placement's target is a real Slot or an earlier seed's ghost while that fact is
 // still typed on the working entry, so downstream callers read a discriminant instead of re-deriving it.
-function toBayPlacement(placement: InsertAtDatePlacement<WorkingEntry>): BayPlacement {
+function toBayPlacement(
+  placement: InsertAtDatePlacement<WorkingEntry>,
+  workingCalendar: WorkingCalendar,
+): BayPlacement {
   if (placement.type === 'append') {
     return { type: 'append', idleGapDays: placement.idleGapDays, startDate: placement.startDate };
   }
@@ -357,11 +360,13 @@ function toBayPlacement(placement: InsertAtDatePlacement<WorkingEntry>): BayPlac
   const { ghostMeta, ...targetSlot } = placement.targetSlot;
 
   // A ghost has no stored Slot to halve, so the entry splice inserts before it rather than splitting;
-  // the reported placement degrades the same way, keeping `split` + ghost off the wire entirely.
+  // the reported placement degrades the same way, keeping `split` + ghost off the wire entirely. The
+  // start is the target ghost's first working day (where the new ghost lands), matching the splice and
+  // the resolver's own insert-before rule — not the discarded split pick date.
   if (ghostMeta) {
     return {
       seedIndex: ghostMeta.seedIndex,
-      startDate: placement.startDate,
+      startDate: firstWorkingDayOnOrAfter(placement.targetSlot.startDate, workingCalendar),
       targetKind: 'ghost',
       type: 'insert-before',
     };

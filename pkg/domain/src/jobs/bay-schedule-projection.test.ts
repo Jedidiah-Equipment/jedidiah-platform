@@ -171,9 +171,18 @@ describe('previewBaySchedule insertSeeds', () => {
       today: TODAY,
     });
 
-    expect(result.placements[1]).toMatchObject({ seedIndex: 0, targetKind: 'ghost', type: 'insert-before' });
+    const seed1Ghost = result.ghosts.find((ghost) => ghost.seedIndex === 1);
+    expect(result.placements[1]).toMatchObject({
+      seedIndex: 0,
+      // The start is where the new ghost lands (the target ghost's boundary), not the discarded pick.
+      startDate: '2026-06-15',
+      targetKind: 'ghost',
+      type: 'insert-before',
+    });
     expect(result.placements[1]).not.toHaveProperty('beforeDays');
-    expect(result.ghosts.find((ghost) => ghost.seedIndex === 1)?.placementType).toBe('insert-before');
+    expect(seed1Ghost?.placementType).toBe('insert-before');
+    // The reported placement start matches where the ghost actually renders in the overlay.
+    expect(result.placements[1]?.startDate).toBe(seed1Ghost?.startDate);
   });
 
   it('clamps a trailing append forward when the queue ended in the past', () => {

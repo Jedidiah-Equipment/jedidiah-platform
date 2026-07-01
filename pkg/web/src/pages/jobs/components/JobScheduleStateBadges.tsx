@@ -4,23 +4,15 @@ import type React from 'react';
 import { Badge } from '@/components/ui/badge.js';
 import { cn } from '@/lib/utils.js';
 
-/** Work-Slot lifecycle buckets rendered as count pills, in production-route order. */
+import { scheduleBadgeToneClass } from './schedule-state-tone.js';
+
+/** Work-Slot lifecycle buckets rendered as count pills, in production-route order. Colors come from
+ * the shared planning palette so the badges match the Gantt: done = neutral, active = blue,
+ * scheduled = green. */
 const scheduleStateBadges: { key: 'done' | 'active' | 'scheduled'; label: string; className: string }[] = [
-  {
-    key: 'done',
-    label: 'Done',
-    className: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200',
-  },
-  {
-    key: 'active',
-    label: 'Active',
-    className: 'border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-200',
-  },
-  {
-    key: 'scheduled',
-    label: 'Scheduled',
-    className: 'border-blue-500/50 bg-blue-500/15 text-blue-800 dark:text-blue-200',
-  },
+  { key: 'done', label: 'Done', className: scheduleBadgeToneClass.done },
+  { key: 'active', label: 'Active', className: scheduleBadgeToneClass.active },
+  { key: 'scheduled', label: 'Scheduled', className: scheduleBadgeToneClass.scheduled },
 ];
 
 type JobScheduleStateBadgesProps = Omit<React.ComponentProps<typeof Badge>, 'children' | 'variant'> & {

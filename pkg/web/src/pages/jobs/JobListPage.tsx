@@ -121,11 +121,7 @@ const JobListTable: React.FC = () => {
           className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"
           htmlFor="jobs-unscheduled-only"
         >
-          <Switch
-            checked={unscheduledOnly}
-            id="jobs-unscheduled-only"
-            onCheckedChange={(checked) => handleUnscheduledOnlyChange(checked === true)}
-          />
+          <Switch checked={unscheduledOnly} id="jobs-unscheduled-only" onCheckedChange={handleUnscheduledOnlyChange} />
           Unscheduled only
         </label>
       }

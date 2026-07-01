@@ -418,6 +418,19 @@ function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
   });
 }
 
+/**
+ * Body of a correlated subquery over a Job's Work Slots, for use inside a `db.query.jobs` (RQB) read.
+ * The inner table gets a caller-supplied raw alias because the RQB rewrites drizzle column refs inside
+ * a raw `sql` fragment to the outer Job alias — only `${jobs.id}` should correlate outward. Idle Slots
+ * carry a null jobId, so `kind = 'work'` is the Work-Slot filter. `projection` is the inner select list
+ * (`count(*)` for sorting, `1` for an existence check). This is the single definition of "a Job's
+ * Work Slots" shared by the `scheduledSlots` sort and the `unscheduledOnly` filter.
+ */
+function jobWorkSlotsSubquery(alias: 'sort_slot' | 'filter_slot', projection: SQL): SQL {
+  const slot = sql.raw(`"${alias}"`);
+  return sql`select ${projection} from ${jobSlots} ${slot} where ${slot}."job_id" = ${jobs.id} and ${slot}."kind" = 'work'`;
+}
+
 function buildJobListWhere(input: JobListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
@@ -430,11 +443,9 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   if (input.filters.unscheduledOnly) {
-    // Raw inner alias so the relational query builder does not rewrite the Slot columns to the
-    // outer Job alias; only `${jobs.id}` is the correlated reference. Works in findMany and $count.
-    conditions.push(
-      sql`not exists (select 1 from ${jobSlots} "filter_slot" where "filter_slot"."job_id" = ${jobs.id} and "filter_slot"."kind" = 'work')`,
-    );
+    // Existence check, not `count(*) = 0`: `not exists` stops at the first Work Slot instead of
+    // scanning them all — cheaper on the unindexed `job_slot.job_id` as Jobs accumulate bay slots.
+    conditions.push(sql`not exists (${jobWorkSlotsSubquery('filter_slot', sql`1`)})`);
   }
 
   if (input.search) {
@@ -684,10 +695,8 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
-    // Total Work Slots per Job; ascending puts the unscheduled (count 0) Jobs first. The inner
-    // table is given a raw alias because the relational query builder rewrites drizzle column
-    // references inside a raw `sql` fragment to the outer Job alias — only `${jobs.id}` should.
-    scheduledSlots: sql`(select count(*) from ${jobSlots} "sort_slot" where "sort_slot"."job_id" = ${jobs.id} and "sort_slot"."kind" = 'work')`,
+    // Total Work Slots per Job; ascending puts the unscheduled (count 0) Jobs first.
+    scheduledSlots: sql`(${jobWorkSlotsSubquery('sort_slot', sql`count(*)`)})`,
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];

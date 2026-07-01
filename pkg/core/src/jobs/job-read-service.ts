@@ -418,6 +418,18 @@ function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
   });
 }
 
+/**
+ * Correlated subquery counting a Job's Work Slots, for use inside a `db.query.jobs` (RQB) read. The
+ * inner table gets a caller-supplied raw alias because the RQB rewrites drizzle column refs inside a
+ * raw `sql` fragment to the outer Job alias — only `${jobs.id}` should correlate outward. Idle Slots
+ * carry a null jobId, so `kind = 'work'` is the Work-Slot filter. This is the single definition of
+ * "a Job's scheduled Slots" shared by the `scheduledSlots` sort and the `unscheduledOnly` filter.
+ */
+function jobWorkSlotCount(alias: 'sort_slot' | 'filter_slot'): SQL {
+  const slot = sql.raw(`"${alias}"`);
+  return sql`(select count(*) from ${jobSlots} ${slot} where ${slot}."job_id" = ${jobs.id} and ${slot}."kind" = 'work')`;
+}
+
 function buildJobListWhere(input: JobListInput): SQL | undefined {
   const conditions: SQL[] = [];
 
@@ -430,11 +442,7 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   if (input.filters.unscheduledOnly) {
-    // Raw inner alias so the relational query builder does not rewrite the Slot columns to the
-    // outer Job alias; only `${jobs.id}` is the correlated reference. Works in findMany and $count.
-    conditions.push(
-      sql`not exists (select 1 from ${jobSlots} "filter_slot" where "filter_slot"."job_id" = ${jobs.id} and "filter_slot"."kind" = 'work')`,
-    );
+    conditions.push(sql`${jobWorkSlotCount('filter_slot')} = 0`);
   }
 
   if (input.search) {
@@ -684,10 +692,8 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
-    // Total Work Slots per Job; ascending puts the unscheduled (count 0) Jobs first. The inner
-    // table is given a raw alias because the relational query builder rewrites drizzle column
-    // references inside a raw `sql` fragment to the outer Job alias — only `${jobs.id}` should.
-    scheduledSlots: sql`(select count(*) from ${jobSlots} "sort_slot" where "sort_slot"."job_id" = ${jobs.id} and "sort_slot"."kind" = 'work')`,
+    // Total Work Slots per Job; ascending puts the unscheduled (count 0) Jobs first.
+    scheduledSlots: jobWorkSlotCount('sort_slot'),
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];

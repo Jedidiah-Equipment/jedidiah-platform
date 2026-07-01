@@ -35,6 +35,7 @@ import type { DisplayBaySlot } from './bay-schedule-ghosts.js';
 import { getSlotLabel } from './bay-schedule-summary.js';
 import { InfoList, SlotDayBreakdownRows } from './JobInfoList.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
+import { scheduleBarToneClass, scheduleResizeHandleToneClass } from './schedule-state-tone.js';
 
 // Slot card height, leaving a small inset above/below within the (taller) bay row.
 export const SLOT_CARD_HEIGHT = 60;
@@ -125,14 +126,14 @@ export const BaySlotBar: React.FC<{
   // the neutral border.
   const tone: 'active' | 'next' | 'default' = isActive ? 'active' : isNext ? 'next' : 'default';
   const slotBorderClass = {
-    active: 'border-blue-500/60 ring-1 ring-blue-500/25',
+    active: scheduleBarToneClass.active,
     default: 'border-border',
-    next: 'border-emerald-500/70 ring-1 ring-emerald-500/25',
+    next: scheduleBarToneClass.scheduled,
   }[tone];
   const resizeHandleToneClass = {
-    active: 'border-blue-500/70 bg-blue-500/15 hover:bg-blue-500/25 focus-visible:ring-blue-500',
+    active: scheduleResizeHandleToneClass.active,
     default: 'border-foreground/30 bg-foreground/5 hover:bg-foreground/10 focus-visible:ring-ring',
-    next: 'border-emerald-500/70 bg-emerald-500/15 hover:bg-emerald-500/25 focus-visible:ring-emerald-500',
+    next: scheduleResizeHandleToneClass.scheduled,
   }[tone];
   const height = SLOT_CARD_HEIGHT;
   // Center the bar/card vertically within its (taller) bay row.

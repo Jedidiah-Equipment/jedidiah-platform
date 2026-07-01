@@ -50,7 +50,7 @@ import {
   setJobBayDisabled,
   unassignJobBayOperator,
 } from './job-bay-service.js';
-import { getJob, listBays } from './job-read-service.js';
+import { getJob, listBays, listJobs } from './job-read-service.js';
 import {
   addIdleJobSlot,
   bookJobSlot,
@@ -1993,6 +1993,101 @@ describe('removeJobSlot', () => {
         startDate: '2026-06-05',
       }),
     ]);
+  });
+});
+
+describe('listJobs scheduleState', () => {
+  function listInput(overrides: Partial<Parameters<typeof listJobs>[0]['input']> = {}) {
+    return {
+      filters: {},
+      include: {},
+      page: 1,
+      pageSize: 50,
+      search: '',
+      sortBy: 'createdAt' as const,
+      sortDirection: 'asc' as const,
+      ...overrides,
+    };
+  }
+
+  test('omits schedule state (null) when the caller does not opt in', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 2, jobId: job.id } });
+
+    const result = await listJobs({ db: context.db, input: listInput() });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.scheduleState).toBeNull();
+  });
+
+  test("buckets a Job's Work Slots across bays into done/active/scheduled", async ({ context }) => {
+    const doneBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+    const activeBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+    const scheduledBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+    const filler = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    // Done: [06-05, 06-07) ends before "today"; Active: [06-05, 06-15) covers it.
+    await bookJobSlot({ db: context.db, input: { bayId: doneBay.id, durationDays: 2, jobId: job.id } });
+    await bookJobSlot({ db: context.db, input: { bayId: activeBay.id, durationDays: 10, jobId: job.id } });
+    // Scheduled: a filler holds [06-05, 06-15), pushing the Job's slot to [06-15, …), all ahead of "today".
+    await bookJobSlot({ db: context.db, input: { bayId: scheduledBay.id, durationDays: 10, jobId: filler.id } });
+    await bookJobSlot({ db: context.db, input: { bayId: scheduledBay.id, durationDays: 2, jobId: job.id } });
+
+    vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
+
+    const result = await listJobs({ db: context.db, input: listInput({ include: { scheduleState: true } }) });
+
+    const jobItem = result.items.find((item) => item.id === job.id);
+    expect(jobItem?.scheduleState).toEqual({ active: 1, done: 1, scheduled: 1, total: 3 });
+
+    const fillerItem = result.items.find((item) => item.id === filler.id);
+    expect(fillerItem?.scheduleState).toEqual({ active: 1, done: 0, scheduled: 0, total: 1 });
+  });
+
+  test('reports an all-zero schedule state for a Job with no Work Slot', async ({ context }) => {
+    const job = await createAcceptedJob(context.db, context.catalog.product.id);
+
+    const result = await listJobs({ db: context.db, input: listInput({ include: { scheduleState: true } }) });
+
+    expect(result.items.find((item) => item.id === job.id)?.scheduleState).toEqual({
+      active: 0,
+      done: 0,
+      scheduled: 0,
+      total: 0,
+    });
+  });
+
+  test('unscheduledOnly keeps only Jobs with no Work Slot', async ({ context }) => {
+    const bay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+    const scheduled = await createAcceptedJob(context.db, context.catalog.product.id);
+    const unscheduled = await createAcceptedJob(context.db, context.catalog.product.id);
+    await bookJobSlot({ db: context.db, input: { bayId: bay.id, durationDays: 1, jobId: scheduled.id } });
+
+    const result = await listJobs({
+      db: context.db,
+      input: listInput({ filters: { unscheduledOnly: true } }),
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual([unscheduled.id]);
+    expect(result.total).toBe(1);
+  });
+
+  test('sortBy scheduledSlots ascending orders unscheduled Jobs first', async ({ context }) => {
+    const firstBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+    const secondBay = await createBay(context.db, { department: 'fabrication', scheduleOrigin: '2026-06-05' });
+    const unscheduled = await createAcceptedJob(context.db, context.catalog.product.id);
+    const oneSlot = await createAcceptedJob(context.db, context.catalog.product.id);
+    const twoSlots = await createAcceptedJob(context.db, context.catalog.product.id);
+    await bookJobSlot({ db: context.db, input: { bayId: firstBay.id, durationDays: 1, jobId: oneSlot.id } });
+    await bookJobSlot({ db: context.db, input: { bayId: firstBay.id, durationDays: 1, jobId: twoSlots.id } });
+    await bookJobSlot({ db: context.db, input: { bayId: secondBay.id, durationDays: 1, jobId: twoSlots.id } });
+
+    const result = await listJobs({ db: context.db, input: listInput({ sortBy: 'scheduledSlots' }) });
+
+    expect(result.items.map((item) => item.id)).toEqual([unscheduled.id, oneSlot.id, twoSlots.id]);
   });
 });
 

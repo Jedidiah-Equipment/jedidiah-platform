@@ -119,6 +119,21 @@ export function deriveJobProgress({
 /** One Bay on a Job's production route relative to plant "today" on that Bay's working calendar. */
 export type JobRouteStopState = 'done' | 'active' | 'scheduled';
 
+/**
+ * A Work Slot's route state from its projected span alone. State is calendar-independent — a Slot is
+ * 'done' once its last work day is past, 'active' while it covers today (even on an off-day), else
+ * 'scheduled' — so callers that only need the state can skip the Bay working calendar entirely.
+ */
+export function deriveJobRouteStopState({
+  slot,
+  today,
+}: {
+  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate'>;
+  today: DateOnlyIso;
+}): JobRouteStopState {
+  return slot.endDate <= today ? 'done' : slot.startDate <= today ? 'active' : 'scheduled';
+}
+
 /** A single stop on the Job Detail production-route timeline (#615). */
 export type JobRouteStop = {
   /** 'done' once the last work day is past, 'active' while the Slot covers today, else 'scheduled'. */
@@ -152,7 +167,11 @@ export function deriveJobRouteStop({
     today,
     workingCalendar,
   });
-  const state: JobRouteStopState = slot.endDate <= today ? 'done' : slot.startDate <= today ? 'active' : 'scheduled';
-
-  return { state, lastWorkDay, workDays: totalWorkDays, remainingWorkDays, progressPercent };
+  return {
+    state: deriveJobRouteStopState({ slot, today }),
+    lastWorkDay,
+    workDays: totalWorkDays,
+    remainingWorkDays,
+    progressPercent,
+  };
 }

@@ -947,6 +947,71 @@ describe('jobs.create', () => {
   });
 });
 
+describe('jobs.list scheduleState', () => {
+  const doneBayId = '00000000-0000-4000-8000-000000000b01';
+  const activeBayId = '00000000-0000-4000-8000-000000000b02';
+  const scheduledBayId = '00000000-0000-4000-8000-000000000b03';
+
+  test('returns scheduleState null when the caller does not opt in', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await caller.jobs.bookSlot({ bayId: doneBayId, durationDays: 2, jobId: job.id });
+
+    const result = await caller.jobs.list({ filters: {} });
+
+    expect(result.items.find((item) => item.id === job.id)?.scheduleState).toBeNull();
+  });
+
+  test("buckets a Job's Work Slots across bays into done/active/scheduled", async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    const fillerQuote = await createAcceptedQuote(context.db, context.product.id);
+    const filler = await caller.jobs.create({ quoteId: fillerQuote.id });
+
+    // Done: [06-05, 06-07); Active: [06-05, 06-15); Scheduled: filler holds [06-05, 06-15) so the
+    // Job's slot on that bay starts 06-15, all ahead of "today".
+    await caller.jobs.bookSlot({ bayId: doneBayId, durationDays: 2, jobId: job.id });
+    await caller.jobs.bookSlot({ bayId: activeBayId, durationDays: 10, jobId: job.id });
+    await caller.jobs.bookSlot({ bayId: scheduledBayId, durationDays: 10, jobId: filler.id });
+    await caller.jobs.bookSlot({ bayId: scheduledBayId, durationDays: 2, jobId: job.id });
+
+    vi.setSystemTime(new Date('2026-06-10T09:00:00.000+02:00'));
+
+    const result = await caller.jobs.list({ filters: {}, include: { scheduleState: true } });
+
+    expect(result.items.find((item) => item.id === job.id)?.scheduleState).toEqual({
+      active: 1,
+      done: 1,
+      scheduled: 1,
+      total: 3,
+    });
+  });
+
+  test('filters to unscheduled Jobs and sorts by scheduled-slot count', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const unscheduled = await caller.jobs.create({ quoteId: context.quote.id });
+    const scheduledQuote = await createAcceptedQuote(context.db, context.product.id);
+    const scheduled = await caller.jobs.create({ quoteId: scheduledQuote.id });
+    await caller.jobs.bookSlot({ bayId: doneBayId, durationDays: 1, jobId: scheduled.id });
+
+    await expect(caller.jobs.list({ filters: { unscheduledOnly: true } })).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: unscheduled.id })],
+      total: 1,
+    });
+
+    const sorted = await caller.jobs.list({ filters: {}, sortBy: 'scheduledSlots', sortDirection: 'asc' });
+    expect(sorted.items.map((item) => item.id)).toEqual([unscheduled.id, scheduled.id]);
+  });
+
+  test('rejects callers without job:read', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+
+    await expect(salesCaller.jobs.list({ filters: { unscheduledOnly: true } })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
+
 describe('jobs.bookSlot', () => {
   test('books an authorized Job onto a fabrication bay', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));

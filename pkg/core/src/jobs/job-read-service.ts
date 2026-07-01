@@ -20,6 +20,7 @@ import {
 import {
   bayWorkingCalendars,
   countWorkingDaysBetween,
+  deriveJobRouteStopState,
   getPlantDateNow,
   JOB_DEPARTMENT_PIPELINE,
   parseJobCodeSearch,
@@ -35,6 +36,7 @@ import {
   JobDocument,
   type JobListInput,
   type JobListResult,
+  type JobScheduleState,
   type JobSortBy,
   type JobSummary,
   type OffDay,
@@ -253,10 +255,30 @@ export async function listBayQueueAvailability({
   });
 }
 
-// A Job's schedule only needs the bays that actually hold one of its Work Slots. We restrict the bay
-// projection to those bays with an inline subquery — rather than a separate round trip to resolve the
-// ids, or projecting the whole shop floor — and load the Off-Days in parallel since they don't depend
+// Projecting a Job's schedule only needs the bays that actually hold one of its Work Slots — the only
+// queues whose reflow can move that Job's Slot dates. An inline subquery restricts the projection to
+// those bays rather than a separate round trip or the whole shop floor; Idle Slots carry a null jobId,
+// so matching on jobId already scopes to Work Slots. Off-Days load in parallel since they don't depend
 // on which bays match.
+async function findProjectedBaysForJobs({
+  db,
+  jobIds,
+}: {
+  db: Db | DatabaseTransaction;
+  jobIds: readonly UUID[];
+}): Promise<BaySchedule[]> {
+  const bayIds = db
+    .selectDistinct({ bayId: jobSlots.bayId })
+    .from(jobSlots)
+    .where(inArray(jobSlots.jobId, [...jobIds]));
+  const [offDays, rows] = await Promise.all([
+    listWorkingCalendarOffDays(db),
+    findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
+  ]);
+
+  return toBaySchedules(rows, offDays);
+}
+
 async function getJobSchedule({
   db,
   jobId,
@@ -264,13 +286,7 @@ async function getJobSchedule({
   db: Db | DatabaseTransaction;
   jobId: UUID;
 }): Promise<JobDepartmentSchedule[]> {
-  const jobBayIds = db.selectDistinct({ bayId: jobSlots.bayId }).from(jobSlots).where(eq(jobSlots.jobId, jobId));
-  const [offDays, rows] = await Promise.all([
-    listWorkingCalendarOffDays(db),
-    findBayScheduleRows(db, inArray(jobBays.id, jobBayIds)),
-  ]);
-
-  return mapJobSchedule({ bays: toBaySchedules(rows, offDays), jobId });
+  return mapJobSchedule({ bays: await findProjectedBaysForJobs({ db, jobIds: [jobId] }), jobId });
 }
 
 export async function listJobs({ db, input }: { db: Db; input: JobListInput }): Promise<JobListResult> {
@@ -321,12 +337,55 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
 
   const total = await db.$count(jobs, where);
 
+  // Schedule-state is a Slot projection, so it is computed only when a caller opts in and only for
+  // the returned page — the Gantt and BookSlotDialog share this read and must stay projection-free.
+  const scheduleStates = input.include?.scheduleState
+    ? await computeJobScheduleStates({ db, jobIds: rows.map((row) => UUID.parse(row.id)) })
+    : null;
+
   return {
-    items: rows.map(mapJobSummary),
+    items: rows.map((row) => mapJobSummary(row, scheduleStates?.get(UUID.parse(row.id)) ?? null)),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
     total,
   };
+}
+
+/**
+ * Buckets each Job's Work Slots into `done/active/scheduled` against plant "today". The classification
+ * is calendar-independent — it reads the already-projected Slot span — so this only needs the projected
+ * bays, not their working calendars. The caller restricts `jobIds` to a single page; every requested Job
+ * is present in the result, with all-zero counts when it has no Work Slot.
+ */
+async function computeJobScheduleStates({
+  db,
+  jobIds,
+}: {
+  db: Db;
+  jobIds: readonly UUID[];
+}): Promise<Map<UUID, JobScheduleState>> {
+  const states = new Map<UUID, JobScheduleState>(
+    jobIds.map((jobId) => [jobId, { active: 0, done: 0, scheduled: 0, total: 0 }]),
+  );
+
+  if (jobIds.length === 0) {
+    return states;
+  }
+
+  const today = getPlantDateNow();
+
+  for (const bay of await findProjectedBaysForJobs({ db, jobIds })) {
+    for (const slot of bay.slots) {
+      if (slot.kind !== 'work') continue;
+      const state = states.get(slot.jobId);
+      if (!state) continue;
+
+      state[deriveJobRouteStopState({ slot, today })] += 1;
+      state.total += 1;
+    }
+  }
+
+  return states;
 }
 
 function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
@@ -368,6 +427,14 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
 
   if (input.filters.createdAtStart) {
     conditions.push(gte(jobs.createdAt, new Date(input.filters.createdAtStart)));
+  }
+
+  if (input.filters.unscheduledOnly) {
+    // Raw inner alias so the relational query builder does not rewrite the Slot columns to the
+    // outer Job alias; only `${jobs.id}` is the correlated reference. Works in findMany and $count.
+    conditions.push(
+      sql`not exists (select 1 from ${jobSlots} "filter_slot" where "filter_slot"."job_id" = ${jobs.id} and "filter_slot"."kind" = 'work')`,
+    );
   }
 
   if (input.search) {
@@ -617,6 +684,10 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     code: sql`${jobs.code}`,
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
+    // Total Work Slots per Job; ascending puts the unscheduled (count 0) Jobs first. The inner
+    // table is given a raw alias because the relational query builder rewrites drizzle column
+    // references inside a raw `sql` fragment to the outer Job alias — only `${jobs.id}` should.
+    scheduledSlots: sql`(select count(*) from ${jobSlots} "sort_slot" where "sort_slot"."job_id" = ${jobs.id} and "sort_slot"."kind" = 'work')`,
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];
@@ -626,7 +697,7 @@ export function getJobSortOrder(sortBy: JobSortBy, sortDirection: SortDirection)
   return sortDirection === 'desc' ? desc(getJobSortColumn(sortBy)) : asc(getJobSortColumn(sortBy));
 }
 
-export function mapJobSummary(row: JobWithProductRow): JobSummary {
+export function mapJobSummary(row: JobWithProductRow, scheduleState: JobScheduleState | null = null): JobSummary {
   const mappedJob = mapJob(row);
 
   return {
@@ -638,6 +709,7 @@ export function mapJobSummary(row: JobWithProductRow): JobSummary {
     productName: row.product.name,
     productThumbnailDataUrl: row.product.thumbnailDataUrl,
     quoteCode: QuoteCode.parse(row.quote.code),
+    scheduleState,
   };
 }
 

@@ -174,6 +174,107 @@ describe('jobs.listBays', () => {
       ]),
     });
   });
+
+  test('excludes fully-complete Jobs by default while keeping Bay availability', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    const bayId = '00000000-0000-4000-8000-000000000b01';
+
+    await setBayScheduleOrigin(context.db, bayId, '2026-06-01');
+    await seedWorkSlot(context.db, { bayId, durationDays: 4, jobId: job.id, sequence: 1 });
+
+    const schedule = await caller.jobs.listBays();
+    const bay = getScheduleBay(schedule, bayId);
+
+    expect(bay).toMatchObject({
+      nextAvailableDate: '2026-06-05',
+      slots: [],
+    });
+    expect(schedule.jobs.map((summary) => summary.id)).not.toContain(job.id);
+  });
+
+  test('returns a partly-done Job whole when a later Bay is unfinished', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    const doneBayId = '00000000-0000-4000-8000-000000000b01';
+    const activeBayId = '00000000-0000-4000-8000-000000000b02';
+
+    await setBayScheduleOrigin(context.db, doneBayId, '2026-06-01');
+    await setBayScheduleOrigin(context.db, activeBayId, '2026-06-04');
+    await seedWorkSlot(context.db, { bayId: doneBayId, durationDays: 2, jobId: job.id, sequence: 1 });
+    await seedWorkSlot(context.db, { bayId: activeBayId, durationDays: 4, jobId: job.id, sequence: 1 });
+
+    const schedule = await caller.jobs.listBays();
+
+    expect(getScheduleBay(schedule, doneBayId).slots).toEqual([
+      expect.objectContaining({
+        endDate: '2026-06-03',
+        jobId: job.id,
+        startDate: '2026-06-01',
+      }),
+    ]);
+    expect(getScheduleBay(schedule, activeBayId).slots).toEqual([
+      expect.objectContaining({
+        endDate: '2026-06-08',
+        jobId: job.id,
+        startDate: '2026-06-04',
+      }),
+    ]);
+    expect(schedule.jobs.map((summary) => summary.id)).toEqual([job.id]);
+  });
+
+  test('widens the window with from and limits summaries to returned Jobs', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const historicalJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const hiddenQuote = await createAcceptedQuote(context.db, context.product.id);
+    const hiddenJob = await caller.jobs.create({ quoteId: hiddenQuote.id });
+    const historicalBayId = '00000000-0000-4000-8000-000000000b03';
+    const hiddenBayId = '00000000-0000-4000-8000-000000000b04';
+
+    await setBayScheduleOrigin(context.db, historicalBayId, '2026-06-01');
+    await setBayScheduleOrigin(context.db, hiddenBayId, '2026-06-01');
+    await seedWorkSlot(context.db, { bayId: historicalBayId, durationDays: 3, jobId: historicalJob.id, sequence: 1 });
+    await seedWorkSlot(context.db, { bayId: hiddenBayId, durationDays: 2, jobId: hiddenJob.id, sequence: 1 });
+
+    expect(getScheduleBay(await caller.jobs.listBays(), historicalBayId).slots).toEqual([]);
+
+    const widened = await caller.jobs.listBays({ from: '2026-06-04' });
+
+    expect(getScheduleBay(widened, historicalBayId).slots).toEqual([
+      expect.objectContaining({
+        endDate: '2026-06-04',
+        jobId: historicalJob.id,
+        startDate: '2026-06-01',
+      }),
+    ]);
+    expect(getScheduleBay(widened, hiddenBayId).slots).toEqual([]);
+    expect(widened.jobs.map((summary) => summary.id)).toEqual([historicalJob.id]);
+  });
+
+  test('clamps from to the twelve-month history bound', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const insideJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const outsideQuote = await createAcceptedQuote(context.db, context.product.id);
+    const outsideJob = await caller.jobs.create({ quoteId: outsideQuote.id });
+    const insideBayId = '00000000-0000-4000-8000-000000000b04';
+    const outsideBayId = '00000000-0000-4000-8000-000000000b05';
+
+    await setBayScheduleOrigin(context.db, insideBayId, '2025-06-01');
+    await setBayScheduleOrigin(context.db, outsideBayId, '2025-06-01');
+    await seedWorkSlot(context.db, { bayId: insideBayId, durationDays: 4, jobId: insideJob.id, sequence: 1 });
+    await seedWorkSlot(context.db, { bayId: outsideBayId, durationDays: 3, jobId: outsideJob.id, sequence: 1 });
+
+    const schedule = await caller.jobs.listBays({ from: '2024-01-01' });
+
+    expect(getScheduleBay(schedule, insideBayId).slots).toEqual([
+      expect.objectContaining({
+        endDate: '2025-06-05',
+        jobId: insideJob.id,
+        startDate: '2025-06-01',
+      }),
+    ]);
+    expect(getScheduleBay(schedule, outsideBayId).slots).toEqual([]);
+  });
 });
 
 describe('jobs bay management', () => {
@@ -1126,7 +1227,7 @@ describe('jobs.bookSlot', () => {
       jobId: job.id,
     });
 
-    const schedule = await caller.jobs.listBays();
+    const schedule = await caller.jobs.listBays({ from: '2026-06-01' });
     expect(schedule.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1448,6 +1549,70 @@ describe('jobs.previewSchedule', () => {
         startDate: '2026-06-07',
       }),
     ]);
+  });
+
+  test('returns affected preview Bays through the same schedule window', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const historicalJob = await caller.jobs.create({ quoteId: context.quote.id });
+
+    await setBayScheduleOrigin(context.db, bayId, '2026-06-01');
+    const historicalSlot = await seedWorkSlot(context.db, {
+      bayId,
+      durationDays: 2,
+      jobId: historicalJob.id,
+      sequence: 1,
+    });
+
+    const defaultPreview = await caller.jobs.previewSchedule({ seeds: [{ bayId, durationDays: 1 }] });
+    const widenedPreview = await caller.jobs.previewSchedule({
+      from: '2026-06-03',
+      seeds: [{ bayId, durationDays: 1 }],
+    });
+
+    expect(getSchedulePreviewBay(defaultPreview, bayId).slots.map((slot) => slot.id)).not.toContain(historicalSlot.id);
+    expect(getSchedulePreviewBay(widenedPreview, bayId).slots).toEqual([
+      expect.objectContaining({
+        endDate: '2026-06-03',
+        id: historicalSlot.id,
+        jobId: historicalJob.id,
+        startDate: '2026-06-01',
+      }),
+    ]);
+  });
+
+  test('uses cross-bay route state when windowing affected preview Bays', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const routeJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const activeBayId = '00000000-0000-4000-8000-000000000b02';
+
+    await setBayScheduleOrigin(context.db, bayId, '2026-06-01');
+    await setBayScheduleOrigin(context.db, activeBayId, '2026-06-04');
+    const doneSeededBaySlot = await seedWorkSlot(context.db, {
+      bayId,
+      durationDays: 2,
+      jobId: routeJob.id,
+      sequence: 1,
+    });
+    await seedWorkSlot(context.db, {
+      bayId: activeBayId,
+      durationDays: 3,
+      jobId: routeJob.id,
+      sequence: 1,
+    });
+
+    const preview = await caller.jobs.previewSchedule({ seeds: [{ bayId, durationDays: 1 }] });
+
+    expect(preview.bays.map((bay) => bay.id)).toEqual([bayId]);
+    expect(getSchedulePreviewBay(preview, bayId).slots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          endDate: '2026-06-03',
+          id: doneSeededBaySlot.id,
+          jobId: routeJob.id,
+          startDate: '2026-06-01',
+        }),
+      ]),
+    );
   });
 
   test("previews the same insert-before placement that bookSlot commits at a slot's start", async ({ context }) => {
@@ -1958,6 +2123,42 @@ function getSchedulePreviewBay(preview: JobSchedulePreviewResult, bayId: string)
   }
 
   return bay;
+}
+
+async function setBayScheduleOrigin(db: Db, bayId: string, scheduleOrigin: string): Promise<void> {
+  await db.execute(sql`
+    UPDATE "job_bay"
+    SET "schedule_origin" = ${scheduleOrigin}
+    WHERE "id" = ${bayId}
+  `);
+}
+
+async function seedWorkSlot(
+  db: Db,
+  input: {
+    bayId: string;
+    durationDays: number;
+    jobId: string;
+    sequence: number;
+  },
+) {
+  const [slot] = await db
+    .insert(jobSlots)
+    .values({
+      bayId: input.bayId,
+      durationDays: input.durationDays,
+      jobId: input.jobId,
+      kind: 'work',
+      label: null,
+      sequence: input.sequence,
+    })
+    .returning();
+
+  if (!slot) {
+    throw new Error('Job Slot insert did not return a row');
+  }
+
+  return slot;
 }
 
 async function createProduct(db: Db): Promise<Pick<Product, 'id'>> {

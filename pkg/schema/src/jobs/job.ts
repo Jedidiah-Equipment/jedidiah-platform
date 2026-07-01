@@ -439,6 +439,14 @@ export const JobSummary = Job.extend({
 });
 
 export type BayListResult = z.infer<typeof BayListResult>;
+export type BayListInput = z.infer<typeof BayListInput>;
+export const BayListInput = z
+  .object({
+    from: DateOnlyIso.optional(),
+  })
+  .strict()
+  .default({});
+
 export const BayListResult = z.object({
   items: z.array(BaySchedule),
   /**
@@ -507,6 +515,7 @@ export const JobSchedulePreviewSeedInput = z
 export type JobSchedulePreviewInput = z.infer<typeof JobSchedulePreviewInput>;
 export const JobSchedulePreviewInput = z
   .object({
+    from: DateOnlyIso.optional(),
     seeds: z.array(JobSchedulePreviewSeedInput),
   })
   .strict();

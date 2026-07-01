@@ -18,6 +18,7 @@ import {
   user,
 } from '@pkg/db';
 import {
+  addDateOnlyDays,
   type BayPlacement,
   bayWorkingCalendars,
   countWorkingDaysBetween,
@@ -32,8 +33,10 @@ import {
 } from '@pkg/domain';
 import {
   Bay,
+  type BayListInput,
   type BayListResult,
   BaySchedule,
+  type DateOnlyIso,
   type JobDepartmentSchedule,
   type JobDetail,
   JobDocument,
@@ -67,6 +70,8 @@ import { getCurrentBayOperator, type OpenOperatorAssignmentsRow } from './job-ba
 import { JobBayNotFoundError, JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
+
+const SCHEDULE_HISTORY_WINDOW_DAYS = 365;
 
 type ProductRow = Pick<typeof products.$inferSelect, 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
@@ -149,19 +154,30 @@ function toBaySchedules(rows: BayScheduleRow[], offDays: readonly OffDay[]): Bay
   return rows.map((row) => mapBaySchedule(row, workingCalendars.get(row.id) ?? {}));
 }
 
-export async function listBays({ db }: { db: Db | DatabaseTransaction }): Promise<BayListResult> {
+export async function listBays({
+  db,
+  input,
+}: {
+  db: Db | DatabaseTransaction;
+  input?: BayListInput | undefined;
+}): Promise<BayListResult> {
   const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBayScheduleRows(db)]);
+  const today = getPlantDateNow();
+  const items = windowBayScheduleSlots(toBaySchedules(rows, offDays), {
+    from: resolveScheduleWindowFrom(input, today),
+    today,
+  });
 
   // Resolve product/customer detail only for the Jobs actually on the board (one summary per Job, even
   // when it spans several Bays), so clients label Slots without an unpaged full-Jobs read.
-  const scheduledJobIds = [...new Set(rows.flatMap((row) => row.slots.map((slot) => slot.jobId)).filter(isUuid))];
+  const scheduledJobIds = getScheduleJobIds(items);
 
   return {
-    items: toBaySchedules(rows, offDays),
+    items,
     jobs: await listJobSummariesByIds({ db, jobIds: scheduledJobIds }),
     offDays,
     // Plant "today" enters here, at the server boundary — the client never derives it.
-    today: getPlantDateNow(),
+    today,
   };
 }
 
@@ -177,24 +193,32 @@ export async function previewJobSchedule({
   }
 
   const bayIds = [...new Set(input.seeds.map((seed) => seed.bayId))];
-  const [offDays, rows] = await Promise.all([
+  const [offDays, seededRows] = await Promise.all([
     listWorkingCalendarOffDays(db),
     findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
   ]);
-  const rowIds = new Set(rows.map((row) => row.id));
+  const rowIds = new Set(seededRows.map((row) => row.id));
   const missingBayId = bayIds.find((bayId) => !rowIds.has(bayId));
 
   if (missingBayId) {
     throw new JobBayNotFoundError(missingBayId);
   }
 
+  // Windowing a seeded Bay still needs cross-Bay Slots for Jobs on that Bay to classify partly-done routes.
+  const crossBayRows = await findBayScheduleRowsForJobs({
+    db,
+    jobIds: getBayScheduleRowJobIds(seededRows),
+  });
+  const rows = mergeBayScheduleRows(seededRows, crossBayRows);
+
   const today = getPlantDateNow();
   const seedsByBayId = groupPreviewSeedsByBayId(input.seeds);
   const placementsBySeedIndex = new Map<number, JobSchedulePreviewPlacement>();
   const ghosts: JobSchedulePreviewGhost[] = [];
-  const previewBays: JobSchedulePreviewBay[] = [];
+  const previewBaysById = new Map<UUID, JobSchedulePreviewBay>();
+  const baseBays = toBaySchedules(rows, offDays);
 
-  for (const bay of toBaySchedules(rows, offDays)) {
+  for (const bay of baseBays) {
     const indexedSeeds = seedsByBayId.get(bay.id);
 
     if (!indexedSeeds || indexedSeeds.length === 0) {
@@ -235,7 +259,8 @@ export async function previewJobSchedule({
       });
     }
 
-    previewBays.push(
+    previewBaysById.set(
+      bay.id,
       JobSchedulePreviewBay.parse({
         ...bay,
         nextAvailableDate: result.nextAvailableDate,
@@ -254,11 +279,147 @@ export async function previewJobSchedule({
     return placement;
   });
 
+  const windowedBays = windowBayScheduleSlots(
+    baseBays.map((bay) => previewBaysById.get(bay.id) ?? bay),
+    {
+      from: resolveScheduleWindowFrom(input, today),
+      today,
+    },
+  );
+  const previewBays = windowedBays
+    .filter((bay) => previewBaysById.has(bay.id))
+    .map((bay) => JobSchedulePreviewBay.parse(bay));
+
   return JobSchedulePreviewResult.parse({ bays: previewBays, ghosts, placements });
 }
 
-function isUuid(jobId: string | null): jobId is UUID {
-  return jobId !== null;
+type WindowableScheduleSlot =
+  | { endDate: DateOnlyIso; jobId: UUID; kind: 'work' }
+  | { endDate: DateOnlyIso; jobId: null; kind: 'idle' };
+
+function resolveScheduleWindowFrom(
+  input: BayListInput | JobSchedulePreviewInput | undefined,
+  today: DateOnlyIso,
+): DateOnlyIso {
+  const earliestFrom = addDateOnlyDays(today, -SCHEDULE_HISTORY_WINDOW_DAYS);
+  const requestedFrom = input?.from ?? today;
+
+  return requestedFrom < earliestFrom ? earliestFrom : requestedFrom;
+}
+
+function windowBayScheduleSlots<TBay extends { slots: readonly WindowableScheduleSlot[] }>(
+  bays: readonly TBay[],
+  {
+    from,
+    today,
+  }: {
+    from: DateOnlyIso;
+    today: DateOnlyIso;
+  },
+): TBay[] {
+  const unfinishedJobIds = getUnfinishedScheduleJobIds(bays, today);
+
+  return bays.map(
+    (bay) =>
+      ({
+        ...bay,
+        slots: bay.slots.filter((slot) => isScheduleSlotInWindow(slot, { from, today, unfinishedJobIds })),
+      }) as TBay,
+  );
+}
+
+function getUnfinishedScheduleJobIds(
+  bays: readonly { slots: readonly WindowableScheduleSlot[] }[],
+  today: DateOnlyIso,
+): Set<UUID> {
+  const jobIds = new Set<UUID>();
+
+  for (const bay of bays) {
+    for (const slot of bay.slots) {
+      if (slot.kind === 'work' && slot.endDate > today) {
+        jobIds.add(slot.jobId);
+      }
+    }
+  }
+
+  return jobIds;
+}
+
+function isScheduleSlotInWindow(
+  slot: WindowableScheduleSlot,
+  {
+    from,
+    today,
+    unfinishedJobIds,
+  }: {
+    from: DateOnlyIso;
+    today: DateOnlyIso;
+    unfinishedJobIds: ReadonlySet<UUID>;
+  },
+): boolean {
+  if (slot.kind === 'work' && unfinishedJobIds.has(slot.jobId)) {
+    return true;
+  }
+
+  if (from < today) {
+    return slot.endDate >= from;
+  }
+
+  // Slot spans are half-open; `endDate === today` has already left the default Active Board.
+  return slot.endDate > today;
+}
+
+function getScheduleJobIds(bays: readonly { slots: readonly WindowableScheduleSlot[] }[]): UUID[] {
+  const jobIds = new Set<UUID>();
+
+  for (const bay of bays) {
+    for (const slot of bay.slots) {
+      if (slot.kind === 'work') {
+        jobIds.add(slot.jobId);
+      }
+    }
+  }
+
+  return [...jobIds];
+}
+
+function getBayScheduleRowJobIds(rows: readonly BayScheduleRow[]): UUID[] {
+  const jobIds = new Set<UUID>();
+
+  for (const row of rows) {
+    for (const slot of row.slots) {
+      if (slot.kind === 'work' && slot.jobId) {
+        jobIds.add(UUID.parse(slot.jobId));
+      }
+    }
+  }
+
+  return [...jobIds];
+}
+
+function mergeBayScheduleRows(primaryRows: readonly BayScheduleRow[], extraRows: readonly BayScheduleRow[]) {
+  const primaryIds = new Set(primaryRows.map((row) => row.id));
+
+  return [...primaryRows, ...extraRows.filter((row) => !primaryIds.has(row.id))];
+}
+
+async function findBayScheduleRowsForJobs({
+  db,
+  jobIds,
+}: {
+  db: Db | DatabaseTransaction;
+  jobIds: readonly UUID[];
+}): Promise<BayScheduleRow[]> {
+  if (jobIds.length === 0) {
+    return [];
+  }
+
+  const bayIds = db
+    .selectDistinct({ bayId: jobSlots.bayId })
+    .from(jobSlots)
+    .where(inArray(jobSlots.jobId, [...jobIds]));
+
+  return findBayScheduleRows(db, inArray(jobBays.id, bayIds));
 }
 
 // Cap the IN list per query so a long-lived board with many historical slotted Jobs never binds past
@@ -368,13 +529,9 @@ async function findProjectedBaysForJobs({
   db: Db | DatabaseTransaction;
   jobIds: readonly UUID[];
 }): Promise<BaySchedule[]> {
-  const bayIds = db
-    .selectDistinct({ bayId: jobSlots.bayId })
-    .from(jobSlots)
-    .where(inArray(jobSlots.jobId, [...jobIds]));
   const [offDays, rows] = await Promise.all([
     listWorkingCalendarOffDays(db),
-    findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
+    findBayScheduleRowsForJobs({ db, jobIds }),
   ]);
 
   return toBaySchedules(rows, offDays);

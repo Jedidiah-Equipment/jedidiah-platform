@@ -23,6 +23,7 @@ import {
 import {
   AddBayCalendarExceptionInput,
   type BrochurePdfRenderer,
+  DateOnlyIso,
   type Department,
   JobBayCreateInput,
   JobBayRenameInput,
@@ -1276,7 +1277,7 @@ describe('bookJobSlot', () => {
       input: { bayId: bay.id, durationDays: 2, jobId: secondJob.id },
     });
 
-    const schedule = await listBays({ db: context.db });
+    const schedule = await listBays({ db: context.db, input: { from: DateOnlyIso.parse('2026-06-05') } });
     expect(getBaySchedule(schedule, bay.id)).toEqual(
       expect.objectContaining({
         nextAvailableDate: '2026-06-12',
@@ -1327,7 +1328,7 @@ describe('bookJobSlot', () => {
       input: { bayId: bay.id, durationDays: 1, jobId: secondJob.id },
     });
 
-    const schedule = await listBays({ db: context.db });
+    const schedule = await listBays({ db: context.db, input: { from: DateOnlyIso.parse('2026-06-05') } });
     expect(getBaySchedule(schedule, bay.id).slots).toEqual([
       expect.objectContaining({ kind: 'work', startDate: '2026-06-05', endDate: '2026-06-06' }),
       expect.objectContaining({ durationDays: 4, kind: 'idle', startDate: '2026-06-06', endDate: '2026-06-10' }),

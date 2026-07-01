@@ -157,6 +157,25 @@ describe('previewBaySchedule insertSeeds', () => {
     expect(result.slots.map((slot) => slot.splitOf?.sourceSlotId)).toEqual(['a', 'a:after', 'a:after']);
   });
 
+  it('degrades a split landing inside an earlier seed ghost to insert-before', () => {
+    // Seed 0 appends a 3-day ghost; seed 1 picks a date strictly inside it. A ghost has no stored Slot
+    // to halve, so both the placement and the ghost resolve to insert-before, never a ghost split.
+    const source = bay({ nextAvailableDate: '2026-06-15', scheduleOrigin: '2026-06-15', slots: [] });
+
+    const result = previewBaySchedule(source, [], {
+      kind: 'insertSeeds',
+      seeds: [
+        { durationDays: 3, startDate: '' },
+        { durationDays: 1, startDate: '2026-06-16' },
+      ],
+      today: TODAY,
+    });
+
+    expect(result.placements[1]).toMatchObject({ seedIndex: 0, targetKind: 'ghost', type: 'insert-before' });
+    expect(result.placements[1]).not.toHaveProperty('beforeDays');
+    expect(result.ghosts.find((ghost) => ghost.seedIndex === 1)?.placementType).toBe('insert-before');
+  });
+
   it('clamps a trailing append forward when the queue ended in the past', () => {
     const source = bay({ nextAvailableDate: '2026-06-03', scheduleOrigin: '2026-06-01', slots: [work('a', 1, 2)] });
 

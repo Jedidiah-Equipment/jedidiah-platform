@@ -419,15 +419,16 @@ function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
 }
 
 /**
- * Correlated subquery counting a Job's Work Slots, for use inside a `db.query.jobs` (RQB) read. The
- * inner table gets a caller-supplied raw alias because the RQB rewrites drizzle column refs inside a
- * raw `sql` fragment to the outer Job alias — only `${jobs.id}` should correlate outward. Idle Slots
- * carry a null jobId, so `kind = 'work'` is the Work-Slot filter. This is the single definition of
- * "a Job's scheduled Slots" shared by the `scheduledSlots` sort and the `unscheduledOnly` filter.
+ * Body of a correlated subquery over a Job's Work Slots, for use inside a `db.query.jobs` (RQB) read.
+ * The inner table gets a caller-supplied raw alias because the RQB rewrites drizzle column refs inside
+ * a raw `sql` fragment to the outer Job alias — only `${jobs.id}` should correlate outward. Idle Slots
+ * carry a null jobId, so `kind = 'work'` is the Work-Slot filter. `projection` is the inner select list
+ * (`count(*)` for sorting, `1` for an existence check). This is the single definition of "a Job's
+ * Work Slots" shared by the `scheduledSlots` sort and the `unscheduledOnly` filter.
  */
-function jobWorkSlotCount(alias: 'sort_slot' | 'filter_slot'): SQL {
+function jobWorkSlotsSubquery(alias: 'sort_slot' | 'filter_slot', projection: SQL): SQL {
   const slot = sql.raw(`"${alias}"`);
-  return sql`(select count(*) from ${jobSlots} ${slot} where ${slot}."job_id" = ${jobs.id} and ${slot}."kind" = 'work')`;
+  return sql`select ${projection} from ${jobSlots} ${slot} where ${slot}."job_id" = ${jobs.id} and ${slot}."kind" = 'work'`;
 }
 
 function buildJobListWhere(input: JobListInput): SQL | undefined {
@@ -442,7 +443,9 @@ function buildJobListWhere(input: JobListInput): SQL | undefined {
   }
 
   if (input.filters.unscheduledOnly) {
-    conditions.push(sql`${jobWorkSlotCount('filter_slot')} = 0`);
+    // Existence check, not `count(*) = 0`: `not exists` stops at the first Work Slot instead of
+    // scanning them all — cheaper on the unindexed `job_slot.job_id` as Jobs accumulate bay slots.
+    conditions.push(sql`not exists (${jobWorkSlotsSubquery('filter_slot', sql`1`)})`);
   }
 
   if (input.search) {
@@ -693,7 +696,7 @@ export function getJobSortColumn(sortBy: JobSortBy): SQL {
     createdAt: sql`${jobs.createdAt}`,
     id: sql`${jobs.id}`,
     // Total Work Slots per Job; ascending puts the unscheduled (count 0) Jobs first.
-    scheduledSlots: jobWorkSlotCount('sort_slot'),
+    scheduledSlots: sql`(${jobWorkSlotsSubquery('sort_slot', sql`count(*)`)})`,
   } as const satisfies Record<JobSortBy, SQL>;
 
   return columns[sortBy];

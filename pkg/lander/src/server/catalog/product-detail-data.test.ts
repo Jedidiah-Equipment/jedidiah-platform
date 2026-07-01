@@ -1,7 +1,7 @@
 import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
-
 import { test } from '../../test/tester.js';
+import { TRANSFORM_SIGNATURE } from '../media/image-transform.js';
 import { loadProductDetail } from './product-detail-data.js';
 
 type Db = Parameters<typeof loadProductDetail>[0];
@@ -115,10 +115,11 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
   expect(detail?.rangeSlug).toBe(`crosshaul-${suffix}-range`);
   expect(detail?.tagline).toBe('Built for high-volume haulage.');
   expect(detail?.description).toBe('Flagship 14-ton tipping trailer.');
-  // Each image URL carries its slot's `updatedAt` as a `?v=` cache-busting token (issue #647).
-  const primaryV = Date.parse(product.images.primary?.updatedAt ?? '');
-  const secondary1V = Date.parse(product.images.secondary1?.updatedAt ?? '');
-  const secondary2V = Date.parse(product.images.secondary2?.updatedAt ?? '');
+  // Each image URL carries its slot's `updatedAt` plus the transform signature as a `?v=` cache-busting
+  // token (issue #647).
+  const primaryV = `${Date.parse(product.images.primary?.updatedAt ?? '')}-${TRANSFORM_SIGNATURE}`;
+  const secondary1V = `${Date.parse(product.images.secondary1?.updatedAt ?? '')}-${TRANSFORM_SIGNATURE}`;
+  const secondary2V = `${Date.parse(product.images.secondary2?.updatedAt ?? '')}-${TRANSFORM_SIGNATURE}`;
   expect(detail?.imageUrl).toBe(`/images/products/${product.id}?v=${primaryV}`);
   expect(detail?.galleryImages).toEqual([
     { slot: 'primary', imageUrl: `/images/products/${product.id}?v=${primaryV}` },
@@ -178,7 +179,7 @@ test('loadProductDetail lists other Products in the same Range as related cards'
       modelCode: sibling.modelCode,
       description: 'Compact field bowser.',
       href: `/products/${encodeURIComponent(sibling.modelCode)}`,
-      imageUrl: `/images/products/${sibling.id}?v=${Date.parse(sibling.images.primary?.updatedAt ?? '')}`,
+      imageUrl: `/images/products/${sibling.id}?v=${Date.parse(sibling.images.primary?.updatedAt ?? '')}-${TRANSFORM_SIGNATURE}`,
     },
   ]);
 });

@@ -1,7 +1,7 @@
 import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
-
 import { test } from '../../test/tester.js';
+import { TRANSFORM_SIGNATURE } from '../media/image-transform.js';
 import { loadProductsCatalog, toRangeSlug } from './products-data.js';
 
 type Db = Parameters<typeof loadProductsCatalog>[0];
@@ -88,9 +88,10 @@ test('loadProductsCatalog groups Products under their Range with a model count',
     modelCode: product.modelCode,
     description: 'Flagship 14-ton tipping trailer.',
     href: `/products/${encodeURIComponent(product.modelCode)}`,
-    // The card image URL carries the primary image's `updatedAt` as a `?v=` cache-busting token so a
-    // replaced photo appears immediately on the public site (issue #647).
-    imageUrl: `/images/products/${product.id}?v=${Date.parse(product.images.primary?.updatedAt ?? '')}`,
+    // The card image URL carries the primary image's `updatedAt` plus the transform signature as a `?v=`
+    // cache-busting token so a replaced photo (or a transform change) appears immediately on the public
+    // site (issue #647).
+    imageUrl: `/images/products/${product.id}?v=${Date.parse(product.images.primary?.updatedAt ?? '')}-${TRANSFORM_SIGNATURE}`,
   });
 });
 

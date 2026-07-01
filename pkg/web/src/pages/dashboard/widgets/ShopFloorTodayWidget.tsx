@@ -90,7 +90,7 @@ function ShopFloorBayRow({
   const occupancy = getBayTodayOccupancy({ bay, today, workingCalendar });
 
   return (
-    <div className="grid min-w-0 grid-cols-[auto_minmax(6rem,10rem)_1fr_auto] items-center gap-x-3 py-2 text-sm first:pt-0 last:pb-0">
+    <div className="grid min-h-14 min-w-0 grid-cols-[auto_minmax(6rem,10rem)_1fr_auto] items-center gap-x-3 py-2 text-sm">
       <BayOperatorIndicator operator={bay.currentOperator} size="sm" />
       <span className="truncate font-medium">{bay.name}</span>
       <ShopFloorOccupancyCell jobsById={jobsById} occupancy={occupancy} offDays={offDays} today={today} />

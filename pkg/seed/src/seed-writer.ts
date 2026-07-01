@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import './load-db-env.js';
-import { createDatabaseClient, type DatabaseTransaction, type Db, getDatabaseUrl } from '@pkg/db';
+import { createDatabaseClient, type DatabaseTransaction, type Db, getDatabaseUrl, sql } from '@pkg/db';
 import { hashPassword } from 'better-auth/crypto';
 import { deserializeSnapshotRows } from './snapshot-json.js';
 import { snapshotDirectory } from './snapshot-paths.js';
@@ -73,6 +73,7 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
           ? withSeedPassword(rows, seedPasswordHash)
           : rows;
         await insertSnapshotRows(tx, config, seedRows);
+        await resetSnapshotSequence(tx, config);
         console.info(`[db:seed] Imported ${seedRows.length} ${config.tableName} row(s)`);
       }
     });
@@ -91,6 +92,21 @@ async function clearSnapshotTables(tx: DatabaseTransaction): Promise<void> {
   for (const config of snapshotCleanupTables) {
     await tx.delete(config.table);
   }
+}
+
+// Advance a code sequence past the seeded rows so the next app-created row gets a fresh, non-colliding
+// code. With rows present, setval(max, true) makes the next nextval return max + 1; with no rows,
+// setval(1, false) leaves the next nextval at 1.
+async function resetSnapshotSequence(tx: DatabaseTransaction, config: SnapshotTableConfig): Promise<void> {
+  if (!config.resetSequence) {
+    return;
+  }
+
+  const { sequenceName, columnName } = config.resetSequence;
+
+  await tx.execute(
+    sql`SELECT setval(${sequenceName}, COALESCE((SELECT MAX(${sql.identifier(columnName)}) FROM ${config.table}), 1), (SELECT COUNT(*) FROM ${config.table}) > 0)`,
+  );
 }
 
 async function insertSnapshotRows(

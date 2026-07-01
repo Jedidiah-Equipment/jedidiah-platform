@@ -10,6 +10,7 @@ describe('snapshot table registry', () => {
       'job_bay',
       'job_bay_operator_assignment',
       'working_calendar_off_day',
+      'job_bay_calendar_exception',
       'account',
       'customers',
       'supplier',
@@ -21,6 +22,12 @@ describe('snapshot table registry', () => {
       'product_assemblies',
       'assembly_parts',
       'assembly_overrides',
+      'quote',
+      'quote_selected_assemblies',
+      'job',
+      'job_cfo_assembly',
+      'job_cfo_part',
+      'job_slot',
     ]);
   });
 
@@ -35,6 +42,7 @@ describe('snapshot table registry', () => {
       'job_bay.json',
       'job_bay_operator_assignment.json',
       'working_calendar_off_day.json',
+      'job_bay_calendar_exception.json',
       'account.json',
       'customers.json',
       'supplier.json',
@@ -46,6 +54,12 @@ describe('snapshot table registry', () => {
       'product_assemblies.json',
       'assembly_parts.json',
       'assembly_overrides.json',
+      'quote.json',
+      'quote_selected_assemblies.json',
+      'job.json',
+      'job_cfo_assembly.json',
+      'job_cfo_part.json',
+      'job_slot.json',
     ]);
   });
 

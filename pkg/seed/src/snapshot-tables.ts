@@ -3,14 +3,21 @@ import {
   assemblyOverrides,
   assemblyParts,
   customers,
+  jobBayCalendarExceptions,
   jobBayOperatorAssignments,
   jobBays,
+  jobCfoAssemblies,
+  jobCfoParts,
+  jobSlots,
+  jobs,
   parts,
   productAssemblies,
   productBays,
   productRanges,
   productSerialSequences,
   products,
+  quoteSelectedAssemblies,
+  quotes,
   supplier,
   user,
   userDepartment,
@@ -36,6 +43,9 @@ export type SnapshotTableConfig = {
   // When true, the writer overwrites each `credential`-provider row's `password` with a hash of the
   // shared local seed password, so every snapshot-seeded user logs in with the same known credential.
   seedCredentialPassword?: boolean;
+  // Advances a Postgres sequence to MAX(columnName) after seeding, so app-created rows do not collide
+  // with seeded `code` values. Needed for tables whose code column defaults from a pgSequence.
+  resetSequence?: { sequenceName: string; columnName: string };
 };
 
 const authTimestampColumns = [
@@ -78,6 +88,13 @@ export const snapshotTables = [
     fileName: 'working_calendar_off_day.json',
     table: workingCalendarOffDays,
     tableName: 'working_calendar_off_day',
+    timestampColumns: ['createdAt', 'updatedAt'],
+  },
+  {
+    // `date` is a calendar-date string column, so it stays a string rather than a revived Date.
+    fileName: 'job_bay_calendar_exception.json',
+    table: jobBayCalendarExceptions,
+    tableName: 'job_bay_calendar_exception',
     timestampColumns: ['createdAt', 'updatedAt'],
   },
   {
@@ -151,6 +168,46 @@ export const snapshotTables = [
     tableName: 'assembly_overrides',
     timestampColumns: [],
     writableColumns: ['optionalAssemblyId', 'productId', 'standardAssemblyId'],
+  },
+  {
+    // `valid_until`/`preferred_delivery_date`/`planned_delivery_date` are calendar-date string columns,
+    // so they stay strings rather than revived Dates.
+    fileName: 'quote.json',
+    table: quotes,
+    tableName: 'quote',
+    timestampColumns: ['createdAt', 'statusChangedAt', 'updatedAt'],
+    resetSequence: { sequenceName: 'quote_code_seq', columnName: 'code' },
+  },
+  {
+    fileName: 'quote_selected_assemblies.json',
+    table: quoteSelectedAssemblies,
+    tableName: 'quote_selected_assemblies',
+    timestampColumns: standardTimestampColumns,
+  },
+  {
+    fileName: 'job.json',
+    table: jobs,
+    tableName: 'job',
+    timestampColumns: standardTimestampColumns,
+    resetSequence: { sequenceName: 'job_code_seq', columnName: 'code' },
+  },
+  {
+    fileName: 'job_cfo_assembly.json',
+    table: jobCfoAssemblies,
+    tableName: 'job_cfo_assembly',
+    timestampColumns: [],
+  },
+  {
+    fileName: 'job_cfo_part.json',
+    table: jobCfoParts,
+    tableName: 'job_cfo_part',
+    timestampColumns: [],
+  },
+  {
+    fileName: 'job_slot.json',
+    table: jobSlots,
+    tableName: 'job_slot',
+    timestampColumns: ['createdAt', 'updatedAt'],
   },
 ] as const satisfies readonly SnapshotTableConfig[];
 

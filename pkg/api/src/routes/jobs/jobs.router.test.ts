@@ -1410,6 +1410,46 @@ describe('jobs.previewSchedule', () => {
     });
   });
 
+  test('previews same-bay seeds when a later seed targets an earlier preview ghost', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const job = await caller.jobs.create({ quoteId: context.quote.id });
+    await caller.jobs.bookSlot({ bayId, durationDays: 1, jobId: job.id });
+
+    const preview = await caller.jobs.previewSchedule({
+      seeds: [
+        { bayId, durationDays: 1, startDate: '2026-06-06' },
+        { bayId, durationDays: 1, startDate: '2026-06-06' },
+      ],
+    });
+
+    expect(preview.placements).toEqual([
+      { idleGapDays: 0, startDate: '2026-06-06', type: 'append' },
+      {
+        startDate: '2026-06-06',
+        targetGhost: { id: `ghost:${bayId}:0`, seedIndex: 0 },
+        type: 'insert-before',
+      },
+    ]);
+    expect(preview.ghosts).toEqual([
+      expect.objectContaining({
+        bayId,
+        endDate: '2026-06-07',
+        id: `ghost:${bayId}:1`,
+        placementType: 'insert-before',
+        seedIndex: 1,
+        startDate: '2026-06-06',
+      }),
+      expect.objectContaining({
+        bayId,
+        endDate: '2026-06-08',
+        id: `ghost:${bayId}:0`,
+        placementType: 'append',
+        seedIndex: 0,
+        startDate: '2026-06-07',
+      }),
+    ]);
+  });
+
   test("previews the same insert-before placement that bookSlot commits at a slot's start", async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const firstJob = await caller.jobs.create({ quoteId: context.quote.id });

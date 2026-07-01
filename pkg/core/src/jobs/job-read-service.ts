@@ -211,7 +211,13 @@ export async function previewJobSchedule({
       const seedIndex = indexedSeeds[baySeedIndex]?.seedIndex;
 
       if (seedIndex !== undefined) {
-        placementsBySeedIndex.set(seedIndex, toSchedulePreviewPlacement(placement));
+        placementsBySeedIndex.set(
+          seedIndex,
+          toSchedulePreviewPlacement(placement, {
+            bayId: bay.id,
+            toPublicSeedIndex: (localSeedIndex) => indexedSeeds[localSeedIndex]?.seedIndex ?? localSeedIndex,
+          }),
+        );
       }
     }
 
@@ -528,7 +534,10 @@ function groupPreviewSeedsByBayId(seeds: JobSchedulePreviewInput['seeds']) {
   return grouped;
 }
 
-function toSchedulePreviewPlacement(placement: BayPlacement): JobSchedulePreviewPlacement {
+function toSchedulePreviewPlacement(
+  placement: BayPlacement,
+  options: { bayId: UUID; toPublicSeedIndex: (localSeedIndex: number) => number },
+): JobSchedulePreviewPlacement {
   if (placement.type === 'append') {
     return {
       idleGapDays: placement.idleGapDays,
@@ -538,9 +547,31 @@ function toSchedulePreviewPlacement(placement: BayPlacement): JobSchedulePreview
   }
 
   if (placement.type === 'insert-before') {
+    const targetGhost = toSchedulePreviewGhostTarget(placement.targetSlot, options);
+
+    if (targetGhost) {
+      return {
+        startDate: placement.startDate,
+        targetGhost,
+        type: placement.type,
+      };
+    }
+
     return {
       startDate: placement.startDate,
       targetSlot: toSchedulePreviewSlot(placement.targetSlot as PreviewBaySlot),
+      type: placement.type,
+    };
+  }
+
+  const targetGhost = toSchedulePreviewGhostTarget(placement.targetSlot, options);
+
+  if (targetGhost) {
+    return {
+      afterDays: placement.afterDays,
+      beforeDays: placement.beforeDays,
+      startDate: placement.startDate,
+      targetGhost,
       type: placement.type,
     };
   }
@@ -552,6 +583,43 @@ function toSchedulePreviewPlacement(placement: BayPlacement): JobSchedulePreview
     targetSlot: toSchedulePreviewSlot(placement.targetSlot as PreviewBaySlot),
     type: placement.type,
   };
+}
+
+function toSchedulePreviewGhostTarget(
+  slot: unknown,
+  options: { bayId: UUID; toPublicSeedIndex: (localSeedIndex: number) => number },
+) {
+  const localSeedIndex = getPreviewGhostLocalSeedIndex(slot);
+
+  if (localSeedIndex === null) {
+    return null;
+  }
+
+  const seedIndex = options.toPublicSeedIndex(localSeedIndex);
+
+  return {
+    id: `ghost:${options.bayId}:${seedIndex}`,
+    seedIndex,
+  };
+}
+
+function getPreviewGhostLocalSeedIndex(slot: unknown): number | null {
+  const ghostMeta = (slot as { ghostMeta?: { seedIndex?: unknown } } | null)?.ghostMeta;
+
+  if (typeof ghostMeta?.seedIndex === 'number') {
+    return ghostMeta.seedIndex;
+  }
+
+  // Multi-seed preview targets can surface as projected ghost entries where only the synthetic id remains.
+  const id = (slot as { id?: unknown } | null)?.id;
+
+  if (typeof id !== 'string' || !id.startsWith('seed:')) {
+    return null;
+  }
+
+  const seedIndex = Number.parseInt(id.slice('seed:'.length), 10);
+
+  return Number.isSafeInteger(seedIndex) && seedIndex >= 0 ? seedIndex : null;
 }
 
 function toSchedulePreviewSlot(slot: PreviewBaySlot): JobSchedulePreviewSlot {

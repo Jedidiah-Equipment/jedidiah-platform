@@ -514,6 +514,14 @@ export const JobSchedulePreviewInput = z
 export type JobSchedulePreviewPlacementType = z.infer<typeof JobSchedulePreviewPlacementType>;
 export const JobSchedulePreviewPlacementType = z.enum(['append', 'insert-before', 'split']);
 
+export type JobSchedulePreviewGhostTarget = z.infer<typeof JobSchedulePreviewGhostTarget>;
+export const JobSchedulePreviewGhostTarget = z
+  .object({
+    id: z.string().trim().min(1),
+    seedIndex: z.int().nonnegative(),
+  })
+  .strict();
+
 export type JobSchedulePreviewGhost = z.infer<typeof JobSchedulePreviewGhost>;
 export const JobSchedulePreviewGhost = z
   .object({
@@ -528,7 +536,7 @@ export const JobSchedulePreviewGhost = z
   .strict();
 
 export type JobSchedulePreviewPlacement = z.infer<typeof JobSchedulePreviewPlacement>;
-export const JobSchedulePreviewPlacement = z.discriminatedUnion('type', [
+export const JobSchedulePreviewPlacement = z.union([
   z
     .object({
       type: z.literal('append'),
@@ -545,9 +553,25 @@ export const JobSchedulePreviewPlacement = z.discriminatedUnion('type', [
     .strict(),
   z
     .object({
+      type: z.literal('insert-before'),
+      startDate: DateOnlyIso,
+      targetGhost: JobSchedulePreviewGhostTarget,
+    })
+    .strict(),
+  z
+    .object({
       type: z.literal('split'),
       startDate: DateOnlyIso,
       targetSlot: JobSchedulePreviewSlot,
+      beforeDays: SlotDurationDays,
+      afterDays: SlotDurationDays,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('split'),
+      startDate: DateOnlyIso,
+      targetGhost: JobSchedulePreviewGhostTarget,
       beforeDays: SlotDurationDays,
       afterDays: SlotDurationDays,
     })

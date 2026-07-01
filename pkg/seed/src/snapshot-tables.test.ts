@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { projectWritableRow, snapshotCleanupTables, snapshotTableNames, snapshotTables } from './snapshot-tables.js';
+import {
+  collectStorageFiles,
+  projectWritableRow,
+  type SnapshotTableConfig,
+  snapshotCleanupTables,
+  snapshotTableNames,
+  snapshotTables,
+} from './snapshot-tables.js';
+
+function configFor(tableName: string): SnapshotTableConfig {
+  const config = snapshotTables.find((table) => table.tableName === tableName);
+
+  if (!config) {
+    throw new Error(`Missing snapshot table config for ${tableName}`);
+  }
+
+  return config;
+}
 
 describe('snapshot table registry', () => {
   it('lists snapshot tables in dependency order', () => {
@@ -10,6 +27,7 @@ describe('snapshot table registry', () => {
       'job_bay',
       'job_bay_operator_assignment',
       'working_calendar_off_day',
+      'job_bay_calendar_exception',
       'account',
       'customers',
       'supplier',
@@ -21,6 +39,12 @@ describe('snapshot table registry', () => {
       'product_assemblies',
       'assembly_parts',
       'assembly_overrides',
+      'quote',
+      'quote_selected_assemblies',
+      'job',
+      'job_cfo_assembly',
+      'job_cfo_part',
+      'job_slot',
     ]);
   });
 
@@ -35,6 +59,7 @@ describe('snapshot table registry', () => {
       'job_bay.json',
       'job_bay_operator_assignment.json',
       'working_calendar_off_day.json',
+      'job_bay_calendar_exception.json',
       'account.json',
       'customers.json',
       'supplier.json',
@@ -46,6 +71,12 @@ describe('snapshot table registry', () => {
       'product_assemblies.json',
       'assembly_parts.json',
       'assembly_overrides.json',
+      'quote.json',
+      'quote_selected_assemblies.json',
+      'job.json',
+      'job_cfo_assembly.json',
+      'job_cfo_part.json',
+      'job_slot.json',
     ]);
   });
 
@@ -69,5 +100,48 @@ describe('snapshot table registry', () => {
       productId: 'product-id',
       standardAssemblyId: 'standard-id',
     });
+  });
+
+  it('extracts product image storage files, ignoring the inline thumbnail data URL', () => {
+    const rows = [
+      {
+        images: {
+          primary: { storageKey: 'product-images/product/p1/primary/a.png', contentType: 'image/png', byteSize: 1 },
+          secondary: {
+            storageKey: 'product-images/product/p1/secondary/b.jpg',
+            contentType: 'image/jpeg',
+            byteSize: 2,
+          },
+        },
+        thumbnailDataUrl: 'data:image/png;base64,zzz',
+      },
+      { images: {} },
+    ];
+
+    expect(collectStorageFiles(configFor('products'), rows)).toEqual([
+      { storageKey: 'product-images/product/p1/primary/a.png', contentType: 'image/png' },
+      { storageKey: 'product-images/product/p1/secondary/b.jpg', contentType: 'image/jpeg' },
+    ]);
+  });
+
+  it('extracts product range image and logo storage files, skipping null columns', () => {
+    const rows = [
+      {
+        image: { storageKey: 'range-images/product-range/r1/a.png', contentType: 'image/png', byteSize: 1 },
+        logo: { storageKey: 'range-logos/product-range/r1/b.png', contentType: 'image/png', byteSize: 2 },
+      },
+      { image: null, logo: null },
+    ];
+
+    expect(collectStorageFiles(configFor('product_ranges'), rows)).toEqual([
+      { storageKey: 'range-images/product-range/r1/a.png', contentType: 'image/png' },
+      { storageKey: 'range-logos/product-range/r1/b.png', contentType: 'image/png' },
+    ]);
+  });
+
+  it('returns no storage files for a table without a storageFiles extractor', () => {
+    expect(collectStorageFiles(configFor('customers'), [{ thumbnailDataUrl: 'data:image/png;base64,zzz' }])).toEqual(
+      [],
+    );
   });
 });

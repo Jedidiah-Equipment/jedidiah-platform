@@ -1,11 +1,18 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import './load-db-env.js';
+import './load-read-env.js';
 import { createDatabaseClient, type Db } from '@pkg/db';
 import { asc, getTableColumns } from 'drizzle-orm';
 import { serializeSnapshotRows } from './snapshot-json.js';
-import { snapshotDirectory } from './snapshot-paths.js';
-import { type SnapshotRow, type SnapshotTableConfig, snapshotTables } from './snapshot-tables.js';
+import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
+import {
+  collectStorageFiles,
+  type SnapshotRow,
+  type SnapshotStorageFile,
+  type SnapshotTableConfig,
+  snapshotTables,
+} from './snapshot-tables.js';
+import { createStorageFromEnv, downloadObject, type SeedStorage } from './storage.js';
 
 function getStagingDatabaseUrl(): string {
   const stagingDatabaseUrl = process.env.STAGING_DATABASE_URL;
@@ -19,16 +26,24 @@ function getStagingDatabaseUrl(): string {
 
 export async function readStagingSeedSnapshot(): Promise<void> {
   const client = createDatabaseClient(getStagingDatabaseUrl());
+  const storage = createStorageFromEnv('STAGING_');
 
   try {
     await mkdir(snapshotDirectory, { recursive: true });
 
-    for (const config of snapshotTables) {
+    const configs: readonly SnapshotTableConfig[] = snapshotTables;
+
+    for (const config of configs) {
       const rows = await readSnapshotRows(client.db, config);
       const destination = new URL(config.fileName, snapshotDirectory);
 
       await writeFile(destination, serializeSnapshotRows(rows));
       console.info(`[seed:read] Wrote ${rows.length} ${config.tableName} row(s) to ${destination.pathname}`);
+
+      if (config.storageFiles) {
+        const downloaded = await downloadSnapshotObjects(storage, collectStorageFiles(config, rows));
+        console.info(`[seed:read] Downloaded ${downloaded} ${config.tableName} object(s)`);
+      }
     }
   } finally {
     await client.close();
@@ -53,6 +68,28 @@ async function readSnapshotRows(db: Db, config: SnapshotTableConfig): Promise<Sn
   const applyDefaults = config.seedRowDefaults;
 
   return applyDefaults ? rows.map((row, index) => ({ ...row, ...applyDefaults(row, index) })) : rows;
+}
+
+// Downloads each referenced object from the staging store to disk. Missing keys (dangling references)
+// are warned about and skipped so one deleted object cannot abort the whole read.
+async function downloadSnapshotObjects(storage: SeedStorage, files: SnapshotStorageFile[]): Promise<number> {
+  let downloaded = 0;
+
+  for (const file of files) {
+    const bytes = await downloadObject(storage, file.storageKey);
+
+    if (!bytes) {
+      console.warn(`[seed:read] Missing staging object ${file.storageKey}, skipping`);
+      continue;
+    }
+
+    const destination = objectFilePath(file.storageKey);
+    await mkdir(new URL('.', destination), { recursive: true });
+    await writeFile(destination, bytes);
+    downloaded += 1;
+  }
+
+  return downloaded;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

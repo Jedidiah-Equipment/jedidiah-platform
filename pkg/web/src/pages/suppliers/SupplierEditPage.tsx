@@ -1,13 +1,27 @@
 import type { Part, Supplier, UUID } from '@pkg/schema';
+import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { AuditTable, useSupplierAuditTableStore } from '@/components/audit/AuditTable.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { Button } from '@/components/ui/button.js';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useCan } from '@/hooks/use-access.js';
+import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { PartTable } from '../parts/components/PartTable.js';
@@ -54,6 +68,7 @@ type SupplierEditTabsProps = {
 const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, supplier }) => {
   const canReadPart = useCan('part:read').can;
   const canUpdatePart = useCan('part:update').can;
+  const canRemoveSupplier = useCan('supplier:remove').can;
   const auditAccess = useCan('audit:read');
   const [editingPart, setEditingPart] = useState<Part | null>(null);
   const supplierAuditFilters = useMemo(
@@ -73,6 +88,11 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
       </TabsList>
       <TabsContent className="pt-4" value="supplier">
         <SupplierForm key={supplier.id} onSave={onSupplierSave} supplier={supplier} />
+        {canRemoveSupplier ? (
+          <div className="mt-8 flex justify-end border-t pt-4">
+            <RemoveSupplierButton supplier={supplier} />
+          </div>
+        ) : null}
       </TabsContent>
       {canReadPart ? (
         <TabsContent className="pt-4" value="parts">
@@ -102,6 +122,59 @@ const SupplierEditTabs: React.FC<SupplierEditTabsProps> = ({ onSupplierSave, sup
         </TabsContent>
       ) : null}
     </Tabs>
+  );
+};
+
+const RemoveSupplierButton: React.FC<{ supplier: Supplier }> = ({ supplier }) => {
+  const trpc = useTRPC();
+  const navigate = useNavigate();
+  const { invalidateSuppliers } = useQueryInvalidation();
+  const showMutationError = useApiMutationErrorToast();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const removeSupplierMutation = useMutation(
+    trpc.suppliers.remove.mutationOptions({
+      onSuccess: async () => {
+        await invalidateSuppliers();
+        await navigate({ to: '/suppliers' });
+      },
+      onError: (error) => {
+        showMutationError(error, 'Unable to remove supplier.');
+      },
+    }),
+  );
+
+  return (
+    <Dialog onOpenChange={setIsOpen} open={isOpen}>
+      <DialogTrigger render={<Button type="button" variant="destructive" />}>
+        <IconTrash data-icon="inline-start" />
+        Remove supplier
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove supplier</DialogTitle>
+          <DialogDescription>
+            Remove {supplier.companyName} from your suppliers. You can add it again later.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose render={<Button disabled={removeSupplierMutation.isPending} type="button" variant="outline" />}>
+            Cancel
+          </DialogClose>
+          <Button
+            disabled={removeSupplierMutation.isPending}
+            onClick={() => removeSupplierMutation.mutate({ id: supplier.id })}
+            type="button"
+            variant="destructive"
+          >
+            {removeSupplierMutation.isPending ? (
+              <IconLoader2 className="animate-spin" data-icon="inline-start" />
+            ) : null}
+            Remove
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

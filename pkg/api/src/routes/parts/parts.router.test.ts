@@ -159,6 +159,17 @@ describe('parts.create', () => {
       message: 'Supplier not found.',
     });
   });
+
+  test('returns not found when creating a part for a removed supplier', async ({ context }) => {
+    const caller = context.createCaller();
+    const supplier = await createSupplier(caller);
+    await caller.suppliers.remove({ id: supplier.id });
+
+    await expect(createPart(caller, supplier.id)).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message: 'Supplier not found.',
+    });
+  });
 });
 
 describe('parts.bulkImport', () => {

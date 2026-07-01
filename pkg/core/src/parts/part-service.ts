@@ -22,7 +22,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { Part as PartSchema } from '@pkg/schema';
-import { and, asc, count, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNull, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   defineAuditDescriptor,
@@ -456,7 +456,7 @@ async function loadImportSuppliersByName({
       id: supplier.id,
     })
     .from(supplier)
-    .where(inArray(sql`lower(${supplier.companyName})`, lowerNames));
+    .where(and(inArray(sql`lower(${supplier.companyName})`, lowerNames), isNull(supplier.deletedAt)));
 
   for (const supplierRow of supplierRows) {
     byName.set(supplierRow.companyName.toLowerCase(), supplierRow);
@@ -502,7 +502,7 @@ async function getImportSupplierById({
       companyName: true,
       id: true,
     },
-    where: eq(supplier.id, supplierId),
+    where: and(eq(supplier.id, supplierId), isNull(supplier.deletedAt)),
   });
 
   if (!row) {
@@ -546,7 +546,7 @@ async function assertSupplierExists({
     columns: {
       id: true,
     },
-    where: eq(supplier.id, supplierId),
+    where: and(eq(supplier.id, supplierId), isNull(supplier.deletedAt)),
   });
 
   if (!row) {

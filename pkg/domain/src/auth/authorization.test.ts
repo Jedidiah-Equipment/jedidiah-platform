@@ -38,6 +38,7 @@ describe('getRolePermissions', () => {
       'quote:read',
       'quote:update',
       'supplier:read',
+      'supplier:remove',
       'supplier:update',
       'user:create',
       'user:list',

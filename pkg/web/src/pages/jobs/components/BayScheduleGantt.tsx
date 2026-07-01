@@ -10,7 +10,7 @@ import type {
   UUID,
 } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -57,8 +57,13 @@ import {
   deriveGhostBaySchedules,
   selectVisibleBaySchedules,
 } from './bay-schedule-ghosts.js';
+import {
+  BAY_SCHEDULE_HISTORY_EXTENSION_DEBOUNCE_MS,
+  getInitialBayScheduleHistoryFloor,
+  getNextBayScheduleHistoryFloor,
+} from './bay-schedule-history-floor.js';
 import { useBayScheduleViewStore } from './bay-schedule-view-store.js';
-import { fromJobCalendarDateKey } from './job-date-key.js';
+import { fromJobCalendarDateKey, toJobCalendarDateKey } from './job-date-key.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
 
 // Taller rows give each booked slot room for the rich job card (thumbnails + details).
@@ -94,7 +99,28 @@ export const BayScheduleGantt: React.FC<{
   const { invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
-  const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  // The first Gantt read needs its own back-context before the server returns plant `today`.
+  const [historyFloor, setHistoryFloor] = useState(() =>
+    getInitialBayScheduleHistoryFloor(toJobCalendarDateKey(new Date())),
+  );
+  const historyExtensionTimeoutRef = useRef<number | null>(null);
+  const latestHistoryViewportStartRef = useRef<DateOnlyIso | null>(null);
+  const clearHistoryExtensionTimeout = useCallback(() => {
+    if (historyExtensionTimeoutRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(historyExtensionTimeoutRef.current);
+    historyExtensionTimeoutRef.current = null;
+  }, []);
+  const baysQuery = useQuery(
+    trpc.jobs.listBays.queryOptions(
+      { from: historyFloor },
+      {
+        placeholderData: keepPreviousData,
+      },
+    ),
+  );
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
   const bays = baysQuery.data?.items ?? [];
@@ -144,9 +170,12 @@ export const BayScheduleGantt: React.FC<{
     });
   }, [ghostSeeds, visibleBays]);
   const ghostPreviewQuery = useQuery(
-    trpc.jobs.previewSchedule.queryOptions(ghostPreviewRequest?.input ?? { seeds: [] }, {
-      enabled: Boolean(ghostPreviewRequest && ghostPreviewRequest.input.seeds.length > 0),
-    }),
+    trpc.jobs.previewSchedule.queryOptions(
+      ghostPreviewRequest ? { ...ghostPreviewRequest.input, from: historyFloor } : { seeds: [] },
+      {
+        enabled: Boolean(ghostPreviewRequest && ghostPreviewRequest.input.seeds.length > 0),
+      },
+    ),
   );
   const ghostDerivation = useMemo(
     () =>
@@ -285,6 +314,34 @@ export const BayScheduleGantt: React.FC<{
   const registerAnchoredZoomChange = useCallback((handler: AnchoredZoomChange | null) => {
     anchoredZoomChangeRef.current = handler;
   }, []);
+  const scheduleHistoryFloorExtension = useCallback(
+    (viewportStart: DateOnlyIso) => {
+      latestHistoryViewportStartRef.current = viewportStart;
+      clearHistoryExtensionTimeout();
+      historyExtensionTimeoutRef.current = window.setTimeout(() => {
+        historyExtensionTimeoutRef.current = null;
+        setHistoryFloor((currentFloor) =>
+          getNextBayScheduleHistoryFloor(currentFloor, latestHistoryViewportStartRef.current ?? viewportStart),
+        );
+      }, BAY_SCHEDULE_HISTORY_EXTENSION_DEBOUNCE_MS);
+    },
+    [clearHistoryExtensionTimeout],
+  );
+  const handleVisibleWindowChange = useCallback(
+    ({ start }: { start: Date }) => {
+      const viewportStart = toJobCalendarDateKey(start);
+      latestHistoryViewportStartRef.current = viewportStart;
+      const nextFloor = getNextBayScheduleHistoryFloor(historyFloor, viewportStart);
+
+      if (nextFloor === historyFloor) {
+        clearHistoryExtensionTimeout();
+        return;
+      }
+
+      scheduleHistoryFloorExtension(viewportStart);
+    },
+    [clearHistoryExtensionTimeout, historyFloor, scheduleHistoryFloorExtension],
+  );
   const applyAnchoredZoomChange = useCallback((applyZoomChange: () => void) => {
     if (!anchoredZoomChangeRef.current) {
       applyZoomChange();
@@ -293,6 +350,21 @@ export const BayScheduleGantt: React.FC<{
 
     anchoredZoomChangeRef.current(applyZoomChange);
   }, []);
+  useEffect(() => {
+    const viewportStart = latestHistoryViewportStartRef.current;
+
+    if (!viewportStart) {
+      return;
+    }
+
+    if (getNextBayScheduleHistoryFloor(historyFloor, viewportStart) === historyFloor) {
+      clearHistoryExtensionTimeout();
+      return;
+    }
+
+    scheduleHistoryFloorExtension(viewportStart);
+  }, [clearHistoryExtensionTimeout, historyFloor, scheduleHistoryFloorExtension]);
+  useEffect(() => clearHistoryExtensionTimeout, [clearHistoryExtensionTimeout]);
   if (baysQuery.isLoading) {
     return <Skeleton className="h-56 w-full" />;
   }
@@ -347,6 +419,7 @@ export const BayScheduleGantt: React.FC<{
             className="h-full rounded-none border-0 bg-transparent"
             initialDate={initialDate}
             initialDateAlignment="start"
+            onVisibleWindowChange={handleVisibleWindowChange}
             range="daily"
             rowHeight={BAY_ROW_HEIGHT}
             zoom={zoom}

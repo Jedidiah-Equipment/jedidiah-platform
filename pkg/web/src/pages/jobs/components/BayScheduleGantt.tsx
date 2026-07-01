@@ -104,6 +104,7 @@ export const BayScheduleGantt: React.FC<{
     getInitialBayScheduleHistoryFloor(toJobCalendarDateKey(new Date())),
   );
   const historyExtensionTimeoutRef = useRef<number | null>(null);
+  const latestHistoryViewportStartRef = useRef<DateOnlyIso | null>(null);
   const clearHistoryExtensionTimeout = useCallback(() => {
     if (historyExtensionTimeoutRef.current === null) {
       return;
@@ -169,9 +170,12 @@ export const BayScheduleGantt: React.FC<{
     });
   }, [ghostSeeds, visibleBays]);
   const ghostPreviewQuery = useQuery(
-    trpc.jobs.previewSchedule.queryOptions(ghostPreviewRequest?.input ?? { seeds: [] }, {
-      enabled: Boolean(ghostPreviewRequest && ghostPreviewRequest.input.seeds.length > 0),
-    }),
+    trpc.jobs.previewSchedule.queryOptions(
+      ghostPreviewRequest ? { ...ghostPreviewRequest.input, from: historyFloor } : { seeds: [] },
+      {
+        enabled: Boolean(ghostPreviewRequest && ghostPreviewRequest.input.seeds.length > 0),
+      },
+    ),
   );
   const ghostDerivation = useMemo(
     () =>
@@ -310,9 +314,23 @@ export const BayScheduleGantt: React.FC<{
   const registerAnchoredZoomChange = useCallback((handler: AnchoredZoomChange | null) => {
     anchoredZoomChangeRef.current = handler;
   }, []);
+  const scheduleHistoryFloorExtension = useCallback(
+    (viewportStart: DateOnlyIso) => {
+      latestHistoryViewportStartRef.current = viewportStart;
+      clearHistoryExtensionTimeout();
+      historyExtensionTimeoutRef.current = window.setTimeout(() => {
+        historyExtensionTimeoutRef.current = null;
+        setHistoryFloor((currentFloor) =>
+          getNextBayScheduleHistoryFloor(currentFloor, latestHistoryViewportStartRef.current ?? viewportStart),
+        );
+      }, BAY_SCHEDULE_HISTORY_EXTENSION_DEBOUNCE_MS);
+    },
+    [clearHistoryExtensionTimeout],
+  );
   const handleVisibleWindowChange = useCallback(
     ({ start }: { start: Date }) => {
       const viewportStart = toJobCalendarDateKey(start);
+      latestHistoryViewportStartRef.current = viewportStart;
       const nextFloor = getNextBayScheduleHistoryFloor(historyFloor, viewportStart);
 
       if (nextFloor === historyFloor) {
@@ -320,13 +338,9 @@ export const BayScheduleGantt: React.FC<{
         return;
       }
 
-      clearHistoryExtensionTimeout();
-      historyExtensionTimeoutRef.current = window.setTimeout(() => {
-        historyExtensionTimeoutRef.current = null;
-        setHistoryFloor((currentFloor) => getNextBayScheduleHistoryFloor(currentFloor, viewportStart));
-      }, BAY_SCHEDULE_HISTORY_EXTENSION_DEBOUNCE_MS);
+      scheduleHistoryFloorExtension(viewportStart);
     },
-    [clearHistoryExtensionTimeout, historyFloor],
+    [clearHistoryExtensionTimeout, historyFloor, scheduleHistoryFloorExtension],
   );
   const applyAnchoredZoomChange = useCallback((applyZoomChange: () => void) => {
     if (!anchoredZoomChangeRef.current) {
@@ -336,6 +350,20 @@ export const BayScheduleGantt: React.FC<{
 
     anchoredZoomChangeRef.current(applyZoomChange);
   }, []);
+  useEffect(() => {
+    const viewportStart = latestHistoryViewportStartRef.current;
+
+    if (!viewportStart) {
+      return;
+    }
+
+    if (getNextBayScheduleHistoryFloor(historyFloor, viewportStart) === historyFloor) {
+      clearHistoryExtensionTimeout();
+      return;
+    }
+
+    scheduleHistoryFloorExtension(viewportStart);
+  }, [clearHistoryExtensionTimeout, historyFloor, scheduleHistoryFloorExtension]);
   useEffect(() => clearHistoryExtensionTimeout, [clearHistoryExtensionTimeout]);
   if (baysQuery.isLoading) {
     return <Skeleton className="h-56 w-full" />;

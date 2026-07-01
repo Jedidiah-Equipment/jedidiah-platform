@@ -1,3 +1,6 @@
+import os from 'node:os';
+import path from 'node:path';
+
 import { AppEnv, EnvBoolean, NodeEnv } from '@pkg/schema';
 import dotenv from 'dotenv';
 import { z } from 'zod';
@@ -36,8 +39,24 @@ export const LanderConfig = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   CONTACT_EMAIL_FROM: z.string().min(1).default('noreply@jedidiahequipment.co.za'),
   CONTACT_EMAIL_TO: z.string().min(1).default('info@jedidiahequipment.co.za'),
+  // Local directory holding optimized (downscaled WebP) copies of catalog images (ADR 0007). Treated as an
+  // ephemeral cache: it re-warms lazily after a restart or redeploy. Point this at a persistent volume mount
+  // to keep it warm across deploys. Defaults to a temp dir so no configuration is required.
+  LANDER_IMAGE_CACHE_DIR: z.string().min(1).default(path.join(os.tmpdir(), 'jedidiah-lander-image-cache')),
 });
 
 export function getLanderConfig(env: NodeJS.ProcessEnv = process.env): LanderConfig {
   return LanderConfig.parse(env);
+}
+
+let imageCacheDir: string | null = null;
+
+// The optimized-image cache directory, resolved once. Isolated from getLanderConfig so the per-request
+// image path does not re-parse the whole config on every hit.
+export function getImageCacheDir(): string {
+  if (!imageCacheDir) {
+    imageCacheDir = getLanderConfig().LANDER_IMAGE_CACHE_DIR;
+  }
+
+  return imageCacheDir;
 }

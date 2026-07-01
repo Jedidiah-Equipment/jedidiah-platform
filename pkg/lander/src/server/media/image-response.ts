@@ -1,18 +1,20 @@
-import type { StoredObject } from '@pkg/core';
-
+import type { OptimizedImage } from './image-cache.js';
 import { PLACEHOLDER_CONTENT_TYPE, PLACEHOLDER_SVG } from './placeholder.js';
 
-// These routes are keyed by entity id, not by content, so an image replacement reuses the same URL. The
-// cache is therefore long-but-revalidating rather than `immutable`: caches may serve a cached image for an
-// hour, then refresh in the background, so a replaced image converges within ~an hour instead of being
-// pinned to stale bytes for up to a year. A missing image is transient — an upload may follow — so its
-// placeholder is cached only briefly, letting newly-added imagery appear quickly.
-const IMAGE_CACHE_CONTROL = 'public, max-age=3600, stale-while-revalidate=86400';
+// A real image URL always carries the `?v=` file-`updatedAt` token (see products-data `imageUrl`), and a
+// replacement changes that token, so a versioned URL's bytes are effectively immutable — cache them for a
+// year and never revalidate. A request without `?v=` (a bare URL hit directly) might serve different bytes
+// after a replacement, so it only gets the shorter revalidating window rather than being pinned.
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const REVALIDATE_CACHE_CONTROL = 'public, max-age=3600, stale-while-revalidate=86400';
+// A missing image is transient — an upload may follow — so its placeholder is cached only briefly, letting
+// newly-added imagery appear quickly.
 const PLACEHOLDER_CACHE_CONTROL = 'public, max-age=60';
 
-// Turn a stored object (or its absence) into an HTTP image response. A null object yields the neutral
-// brand placeholder with a 200 so consumers never see a broken image.
-export function imageResponse(object: StoredObject | null): Response {
+// Turn an optimized image (or its absence) into an HTTP response. A null object yields the neutral brand
+// placeholder with a 200 so consumers never see a broken image. `versioned` reflects whether the request
+// carried the `?v=` cache-busting token and selects the long-vs-short cache window for real images.
+export function imageResponse(object: OptimizedImage | null, { versioned }: { versioned: boolean }): Response {
   if (!object) {
     return new Response(PLACEHOLDER_SVG, {
       status: 200,
@@ -20,31 +22,15 @@ export function imageResponse(object: StoredObject | null): Response {
     });
   }
 
-  return new Response(toReadableStream(object.body), {
+  // Wrap the bytes in a Blob: the web Response body type does not accept a bare Uint8Array here. Copy into
+  // a fresh Uint8Array so the body is backed by a plain (non-shared) ArrayBuffer the lib types want (mirrors
+  // brochure-handlers).
+  return new Response(new Blob([new Uint8Array(object.body)], { type: object.contentType }), {
     status: 200,
     headers: {
-      'cache-control': IMAGE_CACHE_CONTROL,
+      'cache-control': versioned ? IMMUTABLE_CACHE_CONTROL : REVALIDATE_CACHE_CONTROL,
       'content-length': String(object.byteSize),
       'content-type': object.contentType,
-    },
-  });
-}
-
-function toReadableStream(body: AsyncIterable<Uint8Array>): ReadableStream<Uint8Array> {
-  const iterator = body[Symbol.asyncIterator]();
-
-  return new ReadableStream({
-    async pull(controller) {
-      const { done, value } = await iterator.next();
-
-      if (done) {
-        controller.close();
-      } else {
-        controller.enqueue(value);
-      }
-    },
-    async cancel() {
-      await iterator.return?.();
     },
   });
 }

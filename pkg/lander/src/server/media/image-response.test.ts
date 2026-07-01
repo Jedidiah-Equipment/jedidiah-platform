@@ -1,30 +1,33 @@
-import type { StoredObject } from '@pkg/core';
 import { describe, expect, test } from 'vitest';
 
+import type { OptimizedImage } from './image-cache.js';
 import { imageResponse } from './image-response.js';
 
-async function* bytesOf(...chunks: Uint8Array[]): AsyncIterable<Uint8Array> {
-  for (const chunk of chunks) {
-    yield chunk;
-  }
+function optimized(payload: Uint8Array): OptimizedImage {
+  return { body: payload, byteSize: payload.byteLength, contentType: 'image/webp' };
 }
 
 describe('imageResponse', () => {
-  test('streams a stored object with its content-type and a long cache', async () => {
+  test('serves an optimized image immutably when the request is versioned', async () => {
     const payload = new Uint8Array([1, 2, 3, 4]);
-    const object: StoredObject = { body: bytesOf(payload), byteSize: payload.byteLength, contentType: 'image/png' };
 
-    const response = imageResponse(object);
+    const response = imageResponse(optimized(payload), { versioned: true });
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toBe('image/png');
+    expect(response.headers.get('content-type')).toBe('image/webp');
     expect(response.headers.get('content-length')).toBe('4');
-    expect(response.headers.get('cache-control')).toBe('public, max-age=3600, stale-while-revalidate=86400');
+    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(payload);
   });
 
+  test('serves an optimized image with a revalidating cache when the request is unversioned', () => {
+    const response = imageResponse(optimized(new Uint8Array([1])), { versioned: false });
+
+    expect(response.headers.get('cache-control')).toBe('public, max-age=3600, stale-while-revalidate=86400');
+  });
+
   test('falls back to the neutral placeholder with a short cache when there is no image', async () => {
-    const response = imageResponse(null);
+    const response = imageResponse(null, { versioned: true });
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/svg+xml');

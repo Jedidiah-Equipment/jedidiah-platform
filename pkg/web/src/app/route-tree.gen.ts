@@ -35,6 +35,7 @@ import { Route as AuthedProductsIndexRouteImport } from './../routes/_authed.pro
 import { Route as AuthedProductRangesIndexRouteImport } from './../routes/_authed.product-ranges.index'
 import { Route as AuthedJobsIndexRouteImport } from './../routes/_authed.jobs.index'
 import { Route as AuthedCustomersIndexRouteImport } from './../routes/_authed.customers.index'
+import { Route as AuthedJobsListRouteImport } from './../routes/_authed.jobs.list'
 import { Route as AuthedJobsCalendarRouteImport } from './../routes/_authed.jobs.calendar'
 import { Route as AuthedJobsIdRouteImport } from './../routes/_authed.jobs.$id'
 import { Route as AuthedSuppliersIdEditRouteImport } from './../routes/_authed.suppliers.$id.edit'
@@ -174,6 +175,11 @@ const AuthedCustomersIndexRoute = AuthedCustomersIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedCustomersRoute,
 } as any)
+const AuthedJobsListRoute = AuthedJobsListRouteImport.update({
+  id: '/list',
+  path: '/list',
+  getParentRoute: () => AuthedJobsRoute,
+} as any)
 const AuthedJobsCalendarRoute = AuthedJobsCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
+  '/jobs/list': typeof AuthedJobsListRoute
   '/customers/': typeof AuthedCustomersIndexRoute
   '/jobs/': typeof AuthedJobsIndexRoute
   '/product-ranges/': typeof AuthedProductRangesIndexRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthedUsersRoute
   '/jobs/$id': typeof AuthedJobsIdRoute
   '/jobs/calendar': typeof AuthedJobsCalendarRoute
+  '/jobs/list': typeof AuthedJobsListRoute
   '/customers': typeof AuthedCustomersIndexRoute
   '/jobs': typeof AuthedJobsIndexRoute
   '/product-ranges': typeof AuthedProductRangesIndexRoute
@@ -304,6 +312,7 @@ export interface FileRoutesById {
   '/_authed/users': typeof AuthedUsersRoute
   '/_authed/jobs/$id': typeof AuthedJobsIdRoute
   '/_authed/jobs/calendar': typeof AuthedJobsCalendarRoute
+  '/_authed/jobs/list': typeof AuthedJobsListRoute
   '/_authed/customers/': typeof AuthedCustomersIndexRoute
   '/_authed/jobs/': typeof AuthedJobsIndexRoute
   '/_authed/product-ranges/': typeof AuthedProductRangesIndexRoute
@@ -341,6 +350,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/jobs/$id'
     | '/jobs/calendar'
+    | '/jobs/list'
     | '/customers/'
     | '/jobs/'
     | '/product-ranges/'
@@ -370,6 +380,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/jobs/$id'
     | '/jobs/calendar'
+    | '/jobs/list'
     | '/customers'
     | '/jobs'
     | '/product-ranges'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/_authed/users'
     | '/_authed/jobs/$id'
     | '/_authed/jobs/calendar'
+    | '/_authed/jobs/list'
     | '/_authed/customers/'
     | '/_authed/jobs/'
     | '/_authed/product-ranges/'
@@ -615,6 +627,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCustomersIndexRouteImport
       parentRoute: typeof AuthedCustomersRoute
     }
+    '/_authed/jobs/list': {
+      id: '/_authed/jobs/list'
+      path: '/list'
+      fullPath: '/jobs/list'
+      preLoaderRoute: typeof AuthedJobsListRouteImport
+      parentRoute: typeof AuthedJobsRoute
+    }
     '/_authed/jobs/calendar': {
       id: '/_authed/jobs/calendar'
       path: '/calendar'
@@ -691,12 +710,14 @@ const AuthedCustomersRouteWithChildren = AuthedCustomersRoute._addFileChildren(
 interface AuthedJobsRouteChildren {
   AuthedJobsIdRoute: typeof AuthedJobsIdRoute
   AuthedJobsCalendarRoute: typeof AuthedJobsCalendarRoute
+  AuthedJobsListRoute: typeof AuthedJobsListRoute
   AuthedJobsIndexRoute: typeof AuthedJobsIndexRoute
 }
 
 const AuthedJobsRouteChildren: AuthedJobsRouteChildren = {
   AuthedJobsIdRoute: AuthedJobsIdRoute,
   AuthedJobsCalendarRoute: AuthedJobsCalendarRoute,
+  AuthedJobsListRoute: AuthedJobsListRoute,
   AuthedJobsIndexRoute: AuthedJobsIndexRoute,
 }
 

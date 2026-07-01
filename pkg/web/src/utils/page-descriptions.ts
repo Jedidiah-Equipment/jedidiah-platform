@@ -8,6 +8,9 @@ export const customersPageDescription = 'Companies receiving Quotes and buying J
 
 export const jobCalendarPageDescription = 'Org Off-Days and per-Bay calendar exceptions for slot projection';
 
+export const jobListPageDescription =
+  'Searchable roster of Jobs with their schedule state, surfacing the unscheduled ones';
+
 export const productsPageDescription = 'Product models with assemblies, pricing, and build documents';
 
 export const productRangesPageDescription = 'Admin-managed catalog groupings for product presentation';

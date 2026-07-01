@@ -789,10 +789,10 @@ async function assertQuoteSalesPerson({
       id: user.id,
     })
     .from(user)
-    .where(and(eq(user.id, salesPersonId), inArray(user.role, ['admin', 'sales'])));
+    .where(and(eq(user.id, salesPersonId), inArray(user.role, ['super-admin', 'admin', 'sales'])));
 
   if (!salesPerson) {
-    throw new QuoteInvalidReferenceError('Quote salesperson must be a sales or admin user.');
+    throw new QuoteInvalidReferenceError('Quote salesperson must be a sales, admin, or super-admin user.');
   }
 }
 

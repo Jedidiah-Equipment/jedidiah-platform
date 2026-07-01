@@ -96,6 +96,11 @@ const navSections = [
             permission: 'job:read',
             link: linkOptions({ to: '/jobs/calendar' }),
           },
+          {
+            title: 'List',
+            permission: 'job:read',
+            link: linkOptions({ to: '/jobs/list' }),
+          },
         ],
       },
       {

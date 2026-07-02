@@ -1,26 +1,26 @@
 import {
-  type BaySchedule,
+  type BoardPreviewResult,
   DateIso,
   type DateOnlyIso,
   JobCode,
-  type JobSchedulePreviewResult,
+  type ProjectedBayQueue,
   type UUID,
 } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
-  createSchedulePreviewRequest,
-  deriveGhostBaySchedules,
-  selectVisibleBaySchedules,
-} from './bay-schedule-ghosts.js';
+  createBoardPreviewRequest,
+  deriveGhostProjectedBayQueues,
+  selectVisibleProjectedBayQueues,
+} from './board-ghosts.js';
 
 const id = (value: string) => value as UUID;
 const day = (value: string) => value as DateOnlyIso;
 const timestamp = DateIso.parse('2026-06-01T00:00:00.000Z');
 
-describe('createSchedulePreviewRequest', () => {
+describe('createBoardPreviewRequest', () => {
   it('keeps valid seeds in submitted order', () => {
-    const request = createSchedulePreviewRequest([
+    const request = createBoardPreviewRequest([
       { bayId: id('bay-a'), durationDays: Number.NaN, startDate: '2026-06-09' },
       { bayId: id('bay-b'), durationDays: 2, startDate: '2026-06-09' },
       { bayId: id('bay-c'), durationDays: 0, startDate: '2026-06-10' },
@@ -39,7 +39,7 @@ describe('createSchedulePreviewRequest', () => {
   });
 
   it('filters hidden lanes before submitting preview seeds', () => {
-    const request = createSchedulePreviewRequest(
+    const request = createBoardPreviewRequest(
       [
         { bayId: id('bay-hidden'), durationDays: 2, startDate: '2026-06-09' },
         { bayId: id('bay-visible'), durationDays: 3, startDate: '2026-06-10' },
@@ -55,11 +55,11 @@ describe('createSchedulePreviewRequest', () => {
   });
 });
 
-describe('deriveGhostBaySchedules', () => {
+describe('deriveGhostProjectedBayQueues', () => {
   it('replaces affected lanes and preserves server-owned ghost indexes', () => {
     const baseBay = buildBay({ id: 'bay-1', nextAvailableDate: '2026-06-10' });
     const untouchedBay = buildBay({ id: 'bay-2', nextAvailableDate: '2026-06-05' });
-    const previewBay: BaySchedule = {
+    const previewBay: ProjectedBayQueue = {
       ...baseBay,
       nextAvailableDate: day('2026-06-12'),
       slots: [
@@ -82,7 +82,7 @@ describe('deriveGhostBaySchedules', () => {
         },
       ],
     };
-    const preview: JobSchedulePreviewResult = {
+    const preview: BoardPreviewResult = {
       bays: [previewBay],
       ghosts: [
         {
@@ -104,7 +104,7 @@ describe('deriveGhostBaySchedules', () => {
       ],
     };
 
-    const result = deriveGhostBaySchedules({
+    const result = deriveGhostProjectedBayQueues({
       bays: [baseBay, untouchedBay],
       preview,
     });
@@ -120,7 +120,7 @@ describe('deriveGhostBaySchedules', () => {
   });
 });
 
-describe('selectVisibleBaySchedules', () => {
+describe('selectVisibleProjectedBayQueues', () => {
   const fabricationA = buildBay({
     department: 'fabrication',
     id: 'bay-fab-a',
@@ -143,23 +143,22 @@ describe('selectVisibleBaySchedules', () => {
   it('returns the same list when no visible ids are supplied', () => {
     const bays = [paint, fabricationB, fabricationA];
 
-    expect(selectVisibleBaySchedules(bays, undefined)).toBe(bays);
+    expect(selectVisibleProjectedBayQueues(bays, undefined)).toBe(bays);
   });
 
   it('filters to the selected ids and sorts them into department order', () => {
-    expect(selectVisibleBaySchedules([paint, fabricationB, fabricationA], [id('bay-paint'), id('bay-fab-a')])).toEqual([
-      fabricationA,
-      paint,
-    ]);
+    expect(
+      selectVisibleProjectedBayQueues([paint, fabricationB, fabricationA], [id('bay-paint'), id('bay-fab-a')]),
+    ).toEqual([fabricationA, paint]);
   });
 });
 
 function buildBay(input: {
-  department?: BaySchedule['department'];
+  department?: ProjectedBayQueue['department'];
   id: string;
   name?: string;
   nextAvailableDate: string;
-}): BaySchedule {
+}): ProjectedBayQueue {
   return {
     calendarExceptions: [],
     createdAt: timestamp,
@@ -171,5 +170,5 @@ function buildBay(input: {
     scheduleOrigin: day('2026-06-05'),
     slots: [],
     updatedAt: timestamp,
-  } as unknown as BaySchedule;
+  } as unknown as ProjectedBayQueue;
 }

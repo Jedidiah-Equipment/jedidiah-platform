@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { bayWorkingCalendars } from './bay-schedule-projection.js';
+import { bayWorkingCalendars } from './bay-working-calendars.js';
 
 describe('bayWorkingCalendars', () => {
   it('merges org Off-Days with each Bay’s exceptions, sharing the org set', () => {

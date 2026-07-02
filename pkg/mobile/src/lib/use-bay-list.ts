@@ -36,15 +36,15 @@ export type BayListState =
   | { status: 'pending' }
   | { status: 'ready'; cards: BayListCard[]; today: DateOnlyIso };
 
-export type BayListResult = {
+export type UseBayListResult = {
   state: BayListState;
-  /** Refetch access + the Bay schedule, e.g. from pull-to-refresh. */
+  /** Refetch access + the Board, e.g. from pull-to-refresh. */
   refresh: () => void;
   isRefreshing: boolean;
 };
 
 /**
- * Loads the Bay List from the cached Bay schedule (`jobs.listBays`), whose `jobs`
+ * Loads the Bay List from the cached Board (`jobs.listBays`), whose `jobs`
  * carry each scheduled Job's product detail, deriving each Bay's active Job and
  * days-left. Mirrors web's `useShopFloorBays` + `ShopFloorTodayWidget`.
  *
@@ -52,7 +52,7 @@ export type BayListResult = {
  * and surface a `forbidden` state rather than firing a request that 403s and reads
  * as a connection error (mirrors web gating shop-floor widgets with `hasPermission`).
  */
-export function useBayList(): BayListResult {
+export function useBayList(): UseBayListResult {
   const trpc = useTRPC();
   const accessQuery = useAccess();
   const canReadJobs = hasPermission(accessQuery.data, 'job:read');

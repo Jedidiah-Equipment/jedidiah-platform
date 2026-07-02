@@ -102,7 +102,7 @@ describe('toggleOffDay', () => {
 
     const schedule = await listBays({ db: context.db });
     expect(schedule.offDays).toEqual([{ date: '2026-06-06', label: 'Shutdown' }]);
-    expect(getBaySchedule(schedule, bay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, bay.id)).toEqual(
       expect.objectContaining({
         slots: [
           expect.objectContaining({
@@ -229,13 +229,13 @@ describe('Bay calendar exceptions', () => {
     });
 
     let schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, firstBay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, firstBay.id)).toEqual(
       expect.objectContaining({
         calendarExceptions: [{ bayId: firstBay.id, date: '2026-06-06', direction: 'work', label: 'Overtime' }],
         nextAvailableDate: '2026-06-07',
       }),
     );
-    expect(getBaySchedule(schedule, secondBay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, secondBay.id)).toEqual(
       expect.objectContaining({
         calendarExceptions: [],
         nextAvailableDate: '2026-06-08',
@@ -248,7 +248,7 @@ describe('Bay calendar exceptions', () => {
     });
 
     schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, firstBay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, firstBay.id)).toEqual(
       expect.objectContaining({
         calendarExceptions: [],
         nextAvailableDate: '2026-06-08',
@@ -282,12 +282,12 @@ describe('Bay calendar exceptions', () => {
     });
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, firstBay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, firstBay.id)).toEqual(
       expect.objectContaining({
         nextAvailableDate: '2026-06-08',
       }),
     );
-    expect(getBaySchedule(schedule, secondBay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, secondBay.id)).toEqual(
       expect.objectContaining({
         nextAvailableDate: '2026-06-07',
       }),
@@ -355,11 +355,11 @@ async function createBay(
   return bay;
 }
 
-function getBaySchedule(schedule: Awaited<ReturnType<typeof listBays>>, bayId: string) {
+function getProjectedBayQueue(schedule: Awaited<ReturnType<typeof listBays>>, bayId: string) {
   const bay = schedule.items.find((item) => item.id === bayId);
 
   if (!bay) {
-    throw new Error(`Bay schedule not found: ${bayId}`);
+    throw new Error(`Projected Bay Queue not found: ${bayId}`);
   }
 
   return bay;

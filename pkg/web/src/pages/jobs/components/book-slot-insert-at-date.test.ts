@@ -1,4 +1,4 @@
-import { DateOnlyIso, type JobSchedulePreviewPlacement, ProjectedJobSlot } from '@pkg/schema';
+import { type BoardPlacement, DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -93,7 +93,7 @@ describe('describeInsertAtDatePlacement', () => {
   });
 });
 
-function splitPlacement(targetSlot: ProjectedJobSlot): JobSchedulePreviewPlacement {
+function splitPlacement(targetSlot: ProjectedJobSlot): BoardPlacement {
   return {
     afterDays: 6,
     beforeDays: 4,

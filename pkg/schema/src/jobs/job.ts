@@ -177,8 +177,8 @@ export const ProjectedIdleJobSlot = ProjectedJobSlotBase.extend({
 export type ProjectedJobSlot = z.infer<typeof ProjectedJobSlot>;
 export const ProjectedJobSlot = z.discriminatedUnion('kind', [ProjectedWorkJobSlot, ProjectedIdleJobSlot]);
 
-export type BaySchedule = z.infer<typeof BaySchedule>;
-export const BaySchedule = Bay.extend({
+export type ProjectedBayQueue = z.infer<typeof ProjectedBayQueue>;
+export const ProjectedBayQueue = Bay.extend({
   calendarExceptions: z.array(BayCalendarException),
   nextAvailableDate: DateOnlyIso,
   slots: z.array(ProjectedJobSlot),
@@ -405,7 +405,7 @@ export const ScheduleWindow = z.object({
 export type JobDepartmentSchedule = z.infer<typeof JobDepartmentSchedule>;
 export const JobDepartmentSchedule = z.object({
   department: Department,
-  bays: z.array(BaySchedule),
+  bays: z.array(ProjectedBayQueue),
 });
 
 export type Job = z.infer<typeof Job>;
@@ -454,17 +454,17 @@ export const JobSummary = Job.extend({
   scheduleState: JobScheduleState.nullable().default(null),
 });
 
-export type BayListResult = z.infer<typeof BayListResult>;
-export type BayListInput = z.infer<typeof BayListInput>;
-export const BayListInput = z
+export type BoardListResult = z.infer<typeof BoardListResult>;
+export type BoardListInput = z.infer<typeof BoardListInput>;
+export const BoardListInput = z
   .object({
     from: DateOnlyIso.optional(),
   })
   .strict()
   .default({});
 
-export const BayListResult = z.object({
-  items: z.array(BaySchedule),
+export const BoardListResult = z.object({
+  items: z.array(ProjectedBayQueue),
   /**
    * Product/customer detail for every Job referenced by a Work Slot, deduplicated so a Job that
    * spans multiple Bays carries its thumbnail once. Lets clients label the board without a separate
@@ -476,8 +476,8 @@ export const BayListResult = z.object({
   today: DateOnlyIso,
 });
 
-export type JobSchedulePreviewSeedInput = z.infer<typeof JobSchedulePreviewSeedInput>;
-export const JobSchedulePreviewSeedInput = z
+export type BoardPreviewSeedInput = z.infer<typeof BoardPreviewSeedInput>;
+export const BoardPreviewSeedInput = z
   .object({
     bayId: UUID,
     durationDays: SlotDurationDays,
@@ -486,40 +486,40 @@ export const JobSchedulePreviewSeedInput = z
   })
   .strict();
 
-export type JobSchedulePreviewInput = z.infer<typeof JobSchedulePreviewInput>;
-export const JobSchedulePreviewInput = z
+export type BoardPreviewInput = z.infer<typeof BoardPreviewInput>;
+export const BoardPreviewInput = z
   .object({
     from: DateOnlyIso.optional(),
-    seeds: z.array(JobSchedulePreviewSeedInput),
+    seeds: z.array(BoardPreviewSeedInput),
   })
   .strict();
 
-export type JobSchedulePreviewPlacementType = z.infer<typeof JobSchedulePreviewPlacementType>;
-export const JobSchedulePreviewPlacementType = z.enum(['append', 'insert-before', 'split']);
+export type BoardPlacementType = z.infer<typeof BoardPlacementType>;
+export const BoardPlacementType = z.enum(['append', 'insert-before', 'split']);
 
-export type JobSchedulePreviewGhostTarget = z.infer<typeof JobSchedulePreviewGhostTarget>;
-export const JobSchedulePreviewGhostTarget = z
+export type BoardGhostTarget = z.infer<typeof BoardGhostTarget>;
+export const BoardGhostTarget = z
   .object({
     id: z.string().trim().min(1),
     seedIndex: z.int().nonnegative(),
   })
   .strict();
 
-export type JobSchedulePreviewGhost = z.infer<typeof JobSchedulePreviewGhost>;
-export const JobSchedulePreviewGhost = z
+export type BoardGhost = z.infer<typeof BoardGhost>;
+export const BoardGhost = z
   .object({
     id: z.string().trim().min(1),
     bayId: UUID,
     durationDays: SlotDurationDays,
     endDate: DateOnlyIso,
-    placementType: JobSchedulePreviewPlacementType,
+    placementType: BoardPlacementType,
     seedIndex: z.int().nonnegative(),
     startDate: DateOnlyIso,
   })
   .strict();
 
-export type JobSchedulePreviewPlacement = z.infer<typeof JobSchedulePreviewPlacement>;
-export const JobSchedulePreviewPlacement = z.union([
+export type BoardPlacement = z.infer<typeof BoardPlacement>;
+export const BoardPlacement = z.union([
   z
     .object({
       type: z.literal('append'),
@@ -538,11 +538,11 @@ export const JobSchedulePreviewPlacement = z.union([
     .object({
       type: z.literal('insert-before'),
       startDate: DateOnlyIso,
-      targetGhost: JobSchedulePreviewGhostTarget,
+      targetGhost: BoardGhostTarget,
     })
     .strict(),
   // A split always targets a real Slot; a pick inside a preview ghost degrades to insert-before, so
-  // there is no `split` + `targetGhost` shape (see @pkg/domain `toBayPlacement`).
+  // there is no `split` + `targetGhost` shape.
   z
     .object({
       type: z.literal('split'),
@@ -554,11 +554,11 @@ export const JobSchedulePreviewPlacement = z.union([
     .strict(),
 ]);
 
-export type JobSchedulePreviewResult = z.infer<typeof JobSchedulePreviewResult>;
-export const JobSchedulePreviewResult = z.object({
-  bays: z.array(BaySchedule),
-  ghosts: z.array(JobSchedulePreviewGhost),
-  placements: z.array(JobSchedulePreviewPlacement),
+export type BoardPreviewResult = z.infer<typeof BoardPreviewResult>;
+export const BoardPreviewResult = z.object({
+  bays: z.array(ProjectedBayQueue),
+  ghosts: z.array(BoardGhost),
+  placements: z.array(BoardPlacement),
 });
 
 export type JobSortBy = z.infer<typeof JobSortBy>;

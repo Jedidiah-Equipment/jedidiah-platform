@@ -30,8 +30,8 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { BayScheduleGantt } from '@/pages/jobs/components/BayScheduleGantt.js';
-import { createSchedulePreviewRequest } from '@/pages/jobs/components/bay-schedule-ghosts.js';
+import { BoardGantt } from '@/pages/jobs/components/BoardGantt.js';
+import { createBoardPreviewRequest } from '@/pages/jobs/components/board-ghosts.js';
 import { createBayNonWorkingDateMatcher } from '@/pages/jobs/components/book-slot-insert-at-date.js';
 
 import {
@@ -166,7 +166,7 @@ const BaySeedStartDateControl: React.FC<{
 }> = ({ bayId, index, isPending, scheduling, startDateField }) => {
   const trpc = useTRPC();
   const startDate = startDateField.state.value;
-  const hasScheduleData = Boolean(scheduling?.schedulesByBayId.has(bayId));
+  const hasScheduleData = Boolean(scheduling?.projectedBayQueuesByBayId.has(bayId));
   const shouldPreviewPlacement = hasScheduleData && DateOnlyIsoString.safeParse(startDate).success;
   const previewRequest = useMemo(
     () =>
@@ -174,7 +174,7 @@ const BaySeedStartDateControl: React.FC<{
         ? // Placement (append/insert/split position and its split warning) resolves from the picked
           // date against the target Slot, never the inserted seed's own length, so any valid duration
           // works — `1` just clears the preview's "positive integer duration" gate.
-          createSchedulePreviewRequest([{ bayId, durationDays: 1, startDate }])
+          createBoardPreviewRequest([{ bayId, durationDays: 1, startDate }])
         : { input: { seeds: [] } },
     [bayId, shouldPreviewPlacement, startDate],
   );
@@ -349,7 +349,7 @@ const StartJobForm: React.FC<StartJobFormProps> = ({
       <form.Subscribe selector={(state) => state.values.baySeeds}>
         {(baySeeds) =>
           baySeeds.length > 0 ? (
-            <BayScheduleGantt
+            <BoardGantt
               embedded
               ghostLabel={quote.code}
               ghostSeeds={baySeeds}

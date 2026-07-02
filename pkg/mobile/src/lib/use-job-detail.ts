@@ -50,7 +50,7 @@ export type JobDetailState =
     };
 
 /**
- * Loads the Job Detail from the same cached Bay schedule (`jobs.listBays`) the Job List reads, so a
+ * Loads the Job Detail from the same cached Board (`jobs.listBays`) the Job List reads, so a
  * tapped Job opens without a refetch. Collects the Job's Work Slots across every enabled Bay it
  * touches — mirroring {@link useJobList}'s `listEnabledBays` so retired Bays never leak in — and
  * projects the production-route stops and the shared {@link deriveJobProgress} summary. The two

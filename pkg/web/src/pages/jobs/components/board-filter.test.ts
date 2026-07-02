@@ -2,13 +2,13 @@ import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
-  type BayScheduleFilter,
-  countBayScheduleFilterMatches,
-  emptyBayScheduleFilter,
-  getEarliestBayScheduleFilterMatchStart,
-  hasActiveBayScheduleFilter,
-  slotMatchesBayScheduleFilter,
-} from './bay-schedule-filter.js';
+  type BoardFilter,
+  countBoardFilterMatches,
+  emptyBoardFilter,
+  getEarliestBoardFilterMatchStart,
+  hasActiveBoardFilter,
+  slotMatchesBoardFilter,
+} from './board-filter.js';
 
 const id = (value: string) => value as UUID;
 const day = (value: string) => DateOnlyIso.parse(value);
@@ -26,29 +26,29 @@ const jobsById = new Map([
   [job2, { customerId: customerB }],
 ]);
 
-const filterWith = (overrides: Partial<BayScheduleFilter>): BayScheduleFilter => ({
-  ...emptyBayScheduleFilter,
+const filterWith = (overrides: Partial<BoardFilter>): BoardFilter => ({
+  ...emptyBoardFilter,
   ...overrides,
 });
 
-describe('hasActiveBayScheduleFilter', () => {
+describe('hasActiveBoardFilter', () => {
   it('is false for the empty filter', () => {
-    expect(hasActiveBayScheduleFilter(emptyBayScheduleFilter)).toBe(false);
+    expect(hasActiveBoardFilter(emptyBoardFilter)).toBe(false);
   });
 
   it('is true when any dimension is set', () => {
-    expect(hasActiveBayScheduleFilter(filterWith({ bayId: bay1 }))).toBe(true);
-    expect(hasActiveBayScheduleFilter(filterWith({ customerId: customerA }))).toBe(true);
-    expect(hasActiveBayScheduleFilter(filterWith({ jobId: job1 }))).toBe(true);
+    expect(hasActiveBoardFilter(filterWith({ bayId: bay1 }))).toBe(true);
+    expect(hasActiveBoardFilter(filterWith({ customerId: customerA }))).toBe(true);
+    expect(hasActiveBoardFilter(filterWith({ jobId: job1 }))).toBe(true);
   });
 });
 
-describe('slotMatchesBayScheduleFilter', () => {
+describe('slotMatchesBoardFilter', () => {
   it('matches everything when no filter is active', () => {
     expect(
-      slotMatchesBayScheduleFilter({
+      slotMatchesBoardFilter({
         bayId: bay1,
-        filter: emptyBayScheduleFilter,
+        filter: emptyBoardFilter,
         jobsById,
         slot: { jobId: null },
       }),
@@ -58,20 +58,20 @@ describe('slotMatchesBayScheduleFilter', () => {
   it('matches the bay dimension against the slot owning bay', () => {
     const filter = filterWith({ bayId: bay1 });
 
-    expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: null } })).toBe(true);
-    expect(slotMatchesBayScheduleFilter({ bayId: bay2, filter, jobsById, slot: { jobId: null } })).toBe(false);
+    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: null } })).toBe(true);
+    expect(slotMatchesBoardFilter({ bayId: bay2, filter, jobsById, slot: { jobId: null } })).toBe(false);
   });
 
   it('matches the job dimension only for the booked job', () => {
     const filter = filterWith({ jobId: job1 });
 
-    expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job1 } })).toBe(true);
-    expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job2 } })).toBe(false);
+    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job1 } })).toBe(true);
+    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job2 } })).toBe(false);
   });
 
   it('excludes idle slots when a job or customer filter is active', () => {
     expect(
-      slotMatchesBayScheduleFilter({
+      slotMatchesBoardFilter({
         bayId: bay1,
         filter: filterWith({ jobId: job1 }),
         jobsById,
@@ -79,7 +79,7 @@ describe('slotMatchesBayScheduleFilter', () => {
       }),
     ).toBe(false);
     expect(
-      slotMatchesBayScheduleFilter({
+      slotMatchesBoardFilter({
         bayId: bay1,
         filter: filterWith({ customerId: customerA }),
         jobsById,
@@ -91,37 +91,35 @@ describe('slotMatchesBayScheduleFilter', () => {
   it('matches the customer dimension through the booked job', () => {
     const filter = filterWith({ customerId: customerA });
 
-    expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job1 } })).toBe(true);
-    expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job2 } })).toBe(false);
-    expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: id('job-missing') } })).toBe(
-      false,
-    );
+    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job1 } })).toBe(true);
+    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job2 } })).toBe(false);
+    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: id('job-missing') } })).toBe(false);
   });
 
   it('requires every active dimension to match', () => {
     const filter = filterWith({ bayId: bay1, customerId: customerA, jobId: job1 });
 
-    expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job1 } })).toBe(true);
-    expect(slotMatchesBayScheduleFilter({ bayId: bay2, filter, jobsById, slot: { jobId: job1 } })).toBe(false);
-    expect(slotMatchesBayScheduleFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job2 } })).toBe(false);
+    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job1 } })).toBe(true);
+    expect(slotMatchesBoardFilter({ bayId: bay2, filter, jobsById, slot: { jobId: job1 } })).toBe(false);
+    expect(slotMatchesBoardFilter({ bayId: bay1, filter, jobsById, slot: { jobId: job2 } })).toBe(false);
   });
 });
 
-describe('countBayScheduleFilterMatches', () => {
+describe('countBoardFilterMatches', () => {
   const bays = [
     { id: bay1, slots: [{ jobId: job1 }, { jobId: null }] },
     { id: bay2, slots: [{ jobId: job2 }] },
   ];
 
   it('counts every slot for the empty filter', () => {
-    expect(countBayScheduleFilterMatches({ bays, filter: emptyBayScheduleFilter, jobsById })).toBe(3);
+    expect(countBoardFilterMatches({ bays, filter: emptyBoardFilter, jobsById })).toBe(3);
   });
 
   it('counts only slots matching all active dimensions', () => {
-    expect(countBayScheduleFilterMatches({ bays, filter: filterWith({ bayId: bay1 }), jobsById })).toBe(2);
-    expect(countBayScheduleFilterMatches({ bays, filter: filterWith({ customerId: customerA }), jobsById })).toBe(1);
+    expect(countBoardFilterMatches({ bays, filter: filterWith({ bayId: bay1 }), jobsById })).toBe(2);
+    expect(countBoardFilterMatches({ bays, filter: filterWith({ customerId: customerA }), jobsById })).toBe(1);
     expect(
-      countBayScheduleFilterMatches({
+      countBoardFilterMatches({
         bays,
         filter: filterWith({ bayId: bay2, customerId: customerA }),
         jobsById,
@@ -130,7 +128,7 @@ describe('countBayScheduleFilterMatches', () => {
   });
 });
 
-describe('getEarliestBayScheduleFilterMatchStart', () => {
+describe('getEarliestBoardFilterMatchStart', () => {
   const bays = [
     {
       id: bay2,
@@ -150,7 +148,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
 
   it('finds the earliest matching slot across unsorted bays and slots', () => {
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays,
         filter: filterWith({ jobId: job1 }),
         jobsById,
@@ -161,7 +159,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
 
   it('does not prioritize future slots for a job-only filter', () => {
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays,
         filter: filterWith({ jobId: job1 }),
         jobsById,
@@ -172,7 +170,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
 
   it('recomputes the earliest slot for a different filter value', () => {
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays,
         filter: filterWith({ jobId: job2 }),
         jobsById,
@@ -183,7 +181,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
 
   it('returns null when no slots match', () => {
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays,
         filter: filterWith({ bayId: bay2, customerId: customerA }),
         jobsById,
@@ -194,7 +192,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
 
   it('prioritizes the earliest future match for customer filters', () => {
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays,
         filter: filterWith({ customerId: customerA }),
         jobsById,
@@ -205,7 +203,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
 
   it('prioritizes the earliest future match for bay filters', () => {
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays,
         filter: filterWith({ bayId: bay2 }),
         jobsById,
@@ -221,7 +219,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
     };
 
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays: [
           {
             id: bay1,
@@ -241,7 +239,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
 
   it('falls back to the earliest match when a customer or bay filter has no future matches', () => {
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays,
         filter: filterWith({ customerId: customerA }),
         jobsById,
@@ -252,7 +250,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
 
   it('preserves idle slot behavior under job and customer filters', () => {
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays,
         filter: filterWith({ bayId: bay2 }),
         jobsById,
@@ -260,7 +258,7 @@ describe('getEarliestBayScheduleFilterMatchStart', () => {
       }),
     ).toBe('2026-06-09');
     expect(
-      getEarliestBayScheduleFilterMatchStart({
+      getEarliestBoardFilterMatchStart({
         bays,
         filter: filterWith({ bayId: bay2, customerId: customerB }),
         jobsById,

@@ -7,7 +7,7 @@ import {
   JOB_DEPARTMENT_PIPELINE,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type { BaySchedule, DateOnlyIso, JobSummary, OffDay } from '@pkg/schema';
+import type { DateOnlyIso, JobSummary, OffDay, ProjectedBayQueue } from '@pkg/schema';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 
@@ -16,7 +16,7 @@ import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 
-import { getSlotLabel } from '../../jobs/components/bay-schedule-summary.js';
+import { getSlotLabel } from '../../jobs/components/board-summary.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '../DashboardWidgetCard.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
@@ -81,7 +81,7 @@ function ShopFloorBayRow({
   today,
   workingCalendar,
 }: {
-  bay: BaySchedule;
+  bay: ProjectedBayQueue;
   jobsById: ReadonlyMap<string, JobSummary>;
   offDays: OffDay[];
   today: DateOnlyIso;

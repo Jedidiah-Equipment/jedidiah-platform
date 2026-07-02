@@ -13,7 +13,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox.js';
-import { type BayScheduleFilter, emptyBayScheduleFilter, hasActiveBayScheduleFilter } from './bay-schedule-filter.js';
+import { type BoardFilter, emptyBoardFilter, hasActiveBoardFilter } from './board-filter.js';
 
 type FilterOption<TId extends string> = {
   id: TId;
@@ -21,16 +21,16 @@ type FilterOption<TId extends string> = {
   hint?: string;
 };
 
-type BayScheduleFilterBarProps = {
+type BoardFilterBarProps = {
   bays: ReadonlyArray<Pick<Bay, 'id' | 'name' | 'currentOperator'>>;
-  filter: BayScheduleFilter;
+  filter: BoardFilter;
   jobs: ReadonlyArray<Pick<JobSummary, 'id' | 'code' | 'customerCompanyName' | 'customerId' | 'productSerialNumber'>>;
   noMatches: boolean;
-  onFilterChange: (filter: BayScheduleFilter) => void;
+  onFilterChange: (filter: BoardFilter) => void;
   trailingContent?: ReactNode;
 };
 
-export const BayScheduleFilterBar: React.FC<BayScheduleFilterBarProps> = ({
+export const BoardFilterBar: React.FC<BoardFilterBarProps> = ({
   bays,
   filter,
   jobs,
@@ -61,33 +61,33 @@ export const BayScheduleFilterBar: React.FC<BayScheduleFilterBarProps> = ({
       }),
     [bays],
   );
-  const isActive = hasActiveBayScheduleFilter(filter);
+  const isActive = hasActiveBoardFilter(filter);
 
   return (
     <div className="flex flex-wrap items-center gap-3">
       <FilterCombobox
-        inputId="bay-schedule-filter-job"
+        inputId="board-filter-job"
         onChange={(jobId) => onFilterChange({ ...filter, jobId })}
         options={jobOptions}
         placeholder="Filter by job"
         value={filter.jobId}
       />
       <FilterCombobox
-        inputId="bay-schedule-filter-customer"
+        inputId="board-filter-customer"
         onChange={(customerId) => onFilterChange({ ...filter, customerId })}
         options={customerOptions}
         placeholder="Filter by customer"
         value={filter.customerId}
       />
       <FilterCombobox
-        inputId="bay-schedule-filter-bay"
+        inputId="board-filter-bay"
         onChange={(bayId) => onFilterChange({ ...filter, bayId })}
         options={bayOptions}
         placeholder="Filter by bay"
         value={filter.bayId}
       />
       {isActive ? (
-        <Button onClick={() => onFilterChange(emptyBayScheduleFilter)} size="sm" type="button" variant="ghost">
+        <Button onClick={() => onFilterChange(emptyBoardFilter)} size="sm" type="button" variant="ghost">
           <IconFilterOff data-icon="inline-start" />
           Clear filters
         </Button>

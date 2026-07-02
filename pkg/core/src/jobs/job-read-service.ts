@@ -19,17 +19,16 @@ import {
   bayWorkingCalendars,
   countWorkingDaysBetween,
   foldJobScheduleStates,
+  getBoardJobIds,
   getPlantDateNow,
-  getScheduleJobIds,
   parseJobCodeSearch,
   resolveBoardWindowFrom,
   sliceJobSchedule,
   windowActiveBoard,
 } from '@pkg/domain';
 import {
-  type BayListInput,
-  type BayListResult,
-  type BaySchedule,
+  type BoardListInput,
+  type BoardListResult,
   type DateOnlyIso,
   type JobDepartmentSchedule,
   type JobDetail,
@@ -39,6 +38,7 @@ import {
   type JobScheduleState,
   type JobSortBy,
   type JobSummary,
+  type ProjectedBayQueue,
   QuoteCode,
   type SortDirection,
   UUID,
@@ -52,7 +52,7 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { findBayScheduleRows, findBayScheduleRowsForJobs, toBaySchedules } from './bay-schedule-read.js';
+import { findBoardBayRows, findBoardBayRowsForJobs, toProjectedBayQueues } from './board-read.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
@@ -74,9 +74,9 @@ type JobDocumentRow = DocumentSummaryRow & {
 
 export type BayQueueAvailability = {
   bayId: UUID;
-  department: BaySchedule['department'];
-  name: BaySchedule['name'];
-  nextAvailableDate: BaySchedule['nextAvailableDate'];
+  department: ProjectedBayQueue['department'];
+  name: ProjectedBayQueue['name'];
+  nextAvailableDate: ProjectedBayQueue['nextAvailableDate'];
   waitWorkingDays: number;
 };
 
@@ -85,18 +85,18 @@ export async function listBays({
   input,
 }: {
   db: Db | DatabaseTransaction;
-  input?: BayListInput | undefined;
-}): Promise<BayListResult> {
-  const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBayScheduleRows(db)]);
+  input?: BoardListInput | undefined;
+}): Promise<BoardListResult> {
+  const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBoardBayRows(db)]);
   const today = getPlantDateNow();
-  const items = windowActiveBoard(toBaySchedules(rows, offDays, today), {
+  const items = windowActiveBoard(toProjectedBayQueues(rows, offDays, today), {
     from: resolveBoardWindowFrom(input, today),
     today,
   });
 
   // Resolve product/customer detail only for the Jobs actually on the board (one summary per Job, even
   // when it spans several Bays), so clients label Slots without an unpaged full-Jobs read.
-  const scheduledJobIds = getScheduleJobIds(items);
+  const scheduledJobIds = getBoardJobIds(items);
 
   return {
     items,
@@ -183,11 +183,11 @@ export async function listBayQueueAvailability({
 
   const [offDays, rows] = await Promise.all([
     listWorkingCalendarOffDays(db),
-    findBayScheduleRows(db, inArray(jobBays.id, bayIds)),
+    findBoardBayRows(db, inArray(jobBays.id, bayIds)),
   ]);
   const workingCalendars = bayWorkingCalendars(rows, offDays);
   const today = getPlantDateNow();
-  const schedules = toBaySchedules(rows, offDays, today);
+  const schedules = toProjectedBayQueues(rows, offDays, today);
 
   return schedules.map((schedule) => {
     const workingCalendar = workingCalendars.get(schedule.id) ?? {};
@@ -215,13 +215,10 @@ async function findProjectedBaysForJobs({
   db: Db | DatabaseTransaction;
   jobIds: readonly UUID[];
   today: DateOnlyIso;
-}): Promise<BaySchedule[]> {
-  const [offDays, rows] = await Promise.all([
-    listWorkingCalendarOffDays(db),
-    findBayScheduleRowsForJobs({ db, jobIds }),
-  ]);
+}): Promise<ProjectedBayQueue[]> {
+  const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBoardBayRowsForJobs({ db, jobIds })]);
 
-  return toBaySchedules(rows, offDays, today);
+  return toProjectedBayQueues(rows, offDays, today);
 }
 
 async function getJobSchedule({

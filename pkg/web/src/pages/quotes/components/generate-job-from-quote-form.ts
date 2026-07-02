@@ -1,13 +1,13 @@
 import type { WorkingCalendar } from '@pkg/domain';
 import {
   type Bay,
-  type BayListResult,
-  type BaySchedule,
+  type BoardListResult,
+  type BoardPlacement,
   DateOnlyIsoString,
   JobCreateInput,
-  type JobSchedulePreviewPlacement,
   type OffDay,
   type ProductBay,
+  type ProjectedBayQueue,
   type QuoteDetail,
   SlotDurationDays,
   UUID,
@@ -33,21 +33,21 @@ export const JobCreateFormValues = z.object({
   baySeeds: z.array(JobBaySeedFormValues),
 });
 
-/** Per-Bay scheduling context for seed rows, derived once from the Bay schedule read. */
+/** Per-Bay scheduling context for seed rows, derived once from the Bay Board read. */
 export type BaySeedScheduling = {
   offDays: OffDay[];
-  schedulesByBayId: Map<UUID, BaySchedule>;
-  today: BayListResult['today'];
+  projectedBayQueuesByBayId: Map<UUID, ProjectedBayQueue>;
+  today: BoardListResult['today'];
   workingCalendarsByBayId: Map<string, WorkingCalendar>;
 };
 
 export function createBaySeedScheduling(
-  result: Pick<BayListResult, 'items' | 'offDays' | 'today'>,
+  result: Pick<BoardListResult, 'items' | 'offDays' | 'today'>,
   workingCalendarsByBayId: Map<string, WorkingCalendar>,
 ): BaySeedScheduling {
   return {
     offDays: result.offDays,
-    schedulesByBayId: new Map(result.items.map((bay) => [bay.id, bay])),
+    projectedBayQueuesByBayId: new Map(result.items.map((bay) => [bay.id, bay])),
     today: result.today,
     workingCalendarsByBayId,
   };
@@ -59,7 +59,7 @@ export function createBaySeedScheduling(
  * no schedule data (the seed then appends, exactly as a date-less booking).
  */
 export function getBaySeedDefaultStartDate(scheduling: BaySeedScheduling | null, bayId: UUID): string {
-  const bay = scheduling?.schedulesByBayId.get(bayId);
+  const bay = scheduling?.projectedBayQueuesByBayId.get(bayId);
 
   if (!scheduling || !bay) {
     return '';
@@ -80,9 +80,9 @@ export type BaySeedRowScheduling = {
 export function getBaySeedRowScheduling(
   scheduling: BaySeedScheduling | null,
   row: { bayId: UUID; startDate: string },
-  placement: JobSchedulePreviewPlacement | null = null,
+  placement: BoardPlacement | null = null,
 ): BaySeedRowScheduling | null {
-  const bay = scheduling?.schedulesByBayId.get(row.bayId);
+  const bay = scheduling?.projectedBayQueuesByBayId.get(row.bayId);
 
   if (!scheduling || !bay) {
     return null;

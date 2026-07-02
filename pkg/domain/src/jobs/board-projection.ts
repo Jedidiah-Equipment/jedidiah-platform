@@ -7,7 +7,7 @@ import type {
   ProjectedWorkJobSlot,
 } from '@pkg/schema';
 
-import { bayWorkingCalendars } from './bay-schedule-projection.js';
+import { bayWorkingCalendars } from './bay-working-calendars.js';
 import { type InsertAtDatePlacement, resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';
 import { addJobSlotDuration, projectJobSlots } from './job-slot-projection.js';
 import { firstWorkingDayOnOrAfter, type WorkingCalendar } from './working-calendar.js';

@@ -18,7 +18,7 @@ import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from './all-jobs-input.js';
-import { createSchedulePreviewRequest } from './bay-schedule-ghosts.js';
+import { createBoardPreviewRequest } from './board-ghosts.js';
 import {
   createBayNonWorkingDateMatcher,
   describeInsertAtDatePlacement,
@@ -64,7 +64,7 @@ export const BookSlotDialog: React.FC = () => {
   const placementPreviewRequest = useMemo(
     () =>
       selectedBay && startDate
-        ? createSchedulePreviewRequest([{ bayId: selectedBay.id, durationDays: Math.max(1, durationDays), startDate }])
+        ? createBoardPreviewRequest([{ bayId: selectedBay.id, durationDays: Math.max(1, durationDays), startDate }])
         : null,
     [durationDays, selectedBay, startDate],
   );

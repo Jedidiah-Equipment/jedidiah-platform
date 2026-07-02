@@ -1,9 +1,9 @@
-import type { BaySchedule, JobSchedulePreviewInput, JobSchedulePreviewResult, UUID } from '@pkg/schema';
+import type { BoardPreviewInput, BoardPreviewResult, ProjectedBayQueue, UUID } from '@pkg/schema';
 import { DateOnlyIso } from '@pkg/schema';
 
 import { sortBaysByDepartmentPipeline } from '@/components/bays/sort-bays.js';
 
-export type BayScheduleGhostSeed = {
+export type BoardGhostSeed = {
   bayId: UUID;
   /** Rows with a non-positive or non-integer (NaN-until-typed) duration produce no ghost. */
   durationDays: number;
@@ -11,22 +11,22 @@ export type BayScheduleGhostSeed = {
   startDate: string;
 };
 
-export type GhostSlot = JobSchedulePreviewResult['ghosts'][number];
+export type GhostSlot = BoardPreviewResult['ghosts'][number];
 
-export type GhostScheduleDerivation = {
-  bays: BaySchedule[];
+export type BoardGhostDerivation = {
+  bays: ProjectedBayQueue[];
   ghosts: GhostSlot[];
 };
 
-export type SchedulePreviewRequest = {
-  input: JobSchedulePreviewInput;
+export type BoardPreviewRequest = {
+  input: BoardPreviewInput;
 };
 
-export function createSchedulePreviewRequest(
-  seeds: readonly BayScheduleGhostSeed[],
-  options: { includeSeed?: (seed: BayScheduleGhostSeed) => boolean } = {},
-): SchedulePreviewRequest {
-  const previewSeeds: JobSchedulePreviewInput['seeds'] = [];
+export function createBoardPreviewRequest(
+  seeds: readonly BoardGhostSeed[],
+  options: { includeSeed?: (seed: BoardGhostSeed) => boolean } = {},
+): BoardPreviewRequest {
+  const previewSeeds: BoardPreviewInput['seeds'] = [];
 
   for (const seed of seeds) {
     if (options.includeSeed && !options.includeSeed(seed)) {
@@ -55,13 +55,13 @@ export function createSchedulePreviewRequest(
  * are resolved by `jobs.previewSchedule`; this layer only preserves same-reference Bays that were
  * not affected by the request.
  */
-export function deriveGhostBaySchedules({
+export function deriveGhostProjectedBayQueues({
   bays,
   preview,
 }: {
-  bays: BaySchedule[];
-  preview: JobSchedulePreviewResult;
-}): GhostScheduleDerivation {
+  bays: ProjectedBayQueue[];
+  preview: BoardPreviewResult;
+}): BoardGhostDerivation {
   const previewBaysById = new Map(preview.bays.map((bay) => [bay.id, bay]));
   const displayBays = bays.map((bay) => previewBaysById.get(bay.id) ?? bay);
 
@@ -73,10 +73,10 @@ export function deriveGhostBaySchedules({
  * (same reference, all Bays); otherwise only the given Bays render, sorted
  * into Department pipeline order. Ids without a matching Bay are ignored.
  */
-export function selectVisibleBaySchedules(
-  bays: BaySchedule[],
+export function selectVisibleProjectedBayQueues(
+  bays: ProjectedBayQueue[],
   visibleBayIds: readonly UUID[] | undefined,
-): BaySchedule[] {
+): ProjectedBayQueue[] {
   if (visibleBayIds === undefined) {
     return bays;
   }

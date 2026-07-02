@@ -1,10 +1,10 @@
 import { formatDate, hasPermission, type WorkingCalendar } from '@pkg/domain';
 import type {
-  BaySchedule,
   DateOnlyIso,
   JobSlotMoveDirection,
   JobSlotPlacement,
   JobSummary,
+  ProjectedBayQueue,
   ProjectedJobSlot,
   UUID,
 } from '@pkg/schema';
@@ -33,32 +33,28 @@ import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
-import { BayScheduleFilterBar } from './BayScheduleFilterBar.js';
-import { BayScheduleGhostBars } from './BayScheduleGhostBars.js';
-import {
-  type AnchoredZoomChange,
-  BayScheduleZoomAnchorController,
-  BayScheduleZoomControls,
-} from './BayScheduleZoom.js';
 import { BaySlotBar } from './BaySlotBar.js';
+import { BoardFilterBar } from './BoardFilterBar.js';
+import { BoardGhostBars } from './BoardGhostBars.js';
+import { type AnchoredZoomChange, BoardZoomAnchorController, BoardZoomControls } from './BoardZoom.js';
 import {
-  type BayScheduleFilter,
-  countBayScheduleFilterMatches,
-  emptyBayScheduleFilter,
-  getEarliestBayScheduleFilterMatchStart,
-  hasActiveBayScheduleFilter,
-  slotMatchesBayScheduleFilter,
-} from './bay-schedule-filter.js';
+  type BoardFilter,
+  countBoardFilterMatches,
+  emptyBoardFilter,
+  getEarliestBoardFilterMatchStart,
+  hasActiveBoardFilter,
+  slotMatchesBoardFilter,
+} from './board-filter.js';
 import {
-  type BayScheduleGhostSeed,
-  createSchedulePreviewRequest,
-  deriveGhostBaySchedules,
-  selectVisibleBaySchedules,
-} from './bay-schedule-ghosts.js';
-import { useBayScheduleViewStore } from './bay-schedule-view-store.js';
+  type BoardGhostSeed,
+  createBoardPreviewRequest,
+  deriveGhostProjectedBayQueues,
+  selectVisibleProjectedBayQueues,
+} from './board-ghosts.js';
+import { useBoardViewStore } from './board-view-store.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
 import { getMaintainedHorizonWarnings, type MaintainedHorizonWarning } from './maintained-horizon.js';
-import { useBayScheduleHistoryFloor } from './use-bay-schedule-history-floor.js';
+import { useBoardHistoryFloor } from './use-board-history-floor.js';
 
 // Taller rows give each booked slot room for the rich job card (thumbnails + details).
 const BAY_ROW_HEIGHT = 72;
@@ -69,14 +65,14 @@ type FilterScrollRequest = {
   id: number;
 };
 
-export const BayScheduleGantt: React.FC<{
+export const BoardGantt: React.FC<{
   /** Embedded in another surface (e.g. the Start Job page): hides the filter bar; zoom controls remain. */
   embedded?: boolean;
   fullscreen?: boolean;
   /** Bar label for ghost slots, e.g. the source Quote code. */
   ghostLabel?: string | undefined;
   /** Preview seeds resolved by `jobs.previewSchedule` against the server-held queue. */
-  ghostSeeds?: readonly BayScheduleGhostSeed[] | undefined;
+  ghostSeeds?: readonly BoardGhostSeed[] | undefined;
   onFullscreenChange?: ((fullscreen: boolean) => void) | undefined;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
   /** When set, only these Bays render as lanes, sorted into Department pipeline order. */
@@ -94,7 +90,7 @@ export const BayScheduleGantt: React.FC<{
   const { invalidateJobs } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
   const accessQuery = useAccess();
-  const { historyFloor, onVisibleWindowChange } = useBayScheduleHistoryFloor();
+  const { historyFloor, onVisibleWindowChange } = useBoardHistoryFloor();
   const baysQuery = useQuery(
     trpc.jobs.listBays.queryOptions(
       { from: historyFloor },
@@ -125,19 +121,19 @@ export const BayScheduleGantt: React.FC<{
   // One scheduling "today" for the whole surface: the view opens on the plant's current day.
   const initialDate = useMemo(() => (plantToday ? fromJobCalendarDateKey(plantToday) : new Date()), [plantToday]);
   const [optimisticResizeDaysBySlotId, setOptimisticResizeDaysBySlotId] = useState<Record<string, number>>({});
-  const [filter, setFilter] = useState<BayScheduleFilter>(emptyBayScheduleFilter);
+  const [filter, setFilter] = useState<BoardFilter>(emptyBoardFilter);
   const [filterScrollRequest, setFilterScrollRequest] = useState<FilterScrollRequest | null>(null);
-  const zoom = useBayScheduleViewStore((state) => state.zoom);
-  const resetZoom = useBayScheduleViewStore((state) => state.resetZoom);
-  const zoomIn = useBayScheduleViewStore((state) => state.zoomIn);
-  const zoomOut = useBayScheduleViewStore((state) => state.zoomOut);
+  const zoom = useBoardViewStore((state) => state.zoom);
+  const resetZoom = useBoardViewStore((state) => state.resetZoom);
+  const zoomIn = useBoardViewStore((state) => state.zoomIn);
+  const zoomOut = useBoardViewStore((state) => state.zoomOut);
   const anchoredZoomChangeRef = useRef<AnchoredZoomChange | null>(null);
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
   const displayedBays = bays;
   // Render pipeline: query → lane filter → server ghost preview.
   // Mutations always operate on the un-ghosted bays.
   const visibleBays = useMemo(
-    () => selectVisibleBaySchedules(displayedBays, visibleBayIds),
+    () => selectVisibleProjectedBayQueues(displayedBays, visibleBayIds),
     [displayedBays, visibleBayIds],
   );
   const ghostPreviewRequest = useMemo(() => {
@@ -147,7 +143,7 @@ export const BayScheduleGantt: React.FC<{
 
     const visibleBayIds = new Set(visibleBays.map((bay) => bay.id));
 
-    return createSchedulePreviewRequest(ghostSeeds, {
+    return createBoardPreviewRequest(ghostSeeds, {
       includeSeed: (seed) => visibleBayIds.has(seed.bayId),
     });
   }, [ghostSeeds, visibleBays]);
@@ -162,17 +158,17 @@ export const BayScheduleGantt: React.FC<{
   const ghostDerivation = useMemo(
     () =>
       ghostPreviewRequest && ghostPreviewRequest.input.seeds.length > 0 && ghostPreviewQuery.data
-        ? deriveGhostBaySchedules({
+        ? deriveGhostProjectedBayQueues({
             bays: visibleBays,
             preview: ghostPreviewQuery.data,
           })
         : null,
     [ghostPreviewQuery.data, ghostPreviewRequest, visibleBays],
   );
-  const renderedBays: BaySchedule[] = ghostDerivation?.bays ?? visibleBays;
-  const isFilterActive = hasActiveBayScheduleFilter(filter);
+  const renderedBays: ProjectedBayQueue[] = ghostDerivation?.bays ?? visibleBays;
+  const isFilterActive = hasActiveBoardFilter(filter);
   const filterMatchCount = useMemo(
-    () => (isFilterActive ? countBayScheduleFilterMatches({ bays: displayedBays, filter, jobsById }) : 0),
+    () => (isFilterActive ? countBoardFilterMatches({ bays: displayedBays, filter, jobsById }) : 0),
     [displayedBays, filter, isFilterActive, jobsById],
   );
   const clearOptimisticResize = useCallback((slotId: string) => {
@@ -264,16 +260,16 @@ export const BayScheduleGantt: React.FC<{
     [moveSlotMutation],
   );
   const handleFilterChange = useCallback(
-    (nextFilter: BayScheduleFilter) => {
+    (nextFilter: BoardFilter) => {
       setFilter(nextFilter);
 
-      if (!hasActiveBayScheduleFilter(nextFilter)) {
+      if (!hasActiveBoardFilter(nextFilter)) {
         setFilterScrollRequest(null);
         return;
       }
 
       const targetStart = plantToday
-        ? getEarliestBayScheduleFilterMatchStart({
+        ? getEarliestBoardFilterMatchStart({
             bays: displayedBays,
             filter: nextFilter,
             jobsById,
@@ -320,7 +316,7 @@ export const BayScheduleGantt: React.FC<{
       {onFullscreenChange ? (
         <PageLayoutFullscreenToggle fullscreen={fullscreen} onFullscreenChange={onFullscreenChange} />
       ) : null}
-      <BayScheduleZoomControls
+      <BoardZoomControls
         onReset={() => applyAnchoredZoomChange(resetZoom)}
         onZoomIn={() => applyAnchoredZoomChange(zoomIn)}
         onZoomOut={() => applyAnchoredZoomChange(zoomOut)}
@@ -335,7 +331,7 @@ export const BayScheduleGantt: React.FC<{
         {embedded ? (
           <div className="flex justify-end">{trailingControls}</div>
         ) : (
-          <BayScheduleFilterBar
+          <BoardFilterBar
             bays={bays}
             filter={filter}
             jobs={jobs}
@@ -362,9 +358,9 @@ export const BayScheduleGantt: React.FC<{
             rowHeight={BAY_ROW_HEIGHT}
             zoom={zoom}
           >
-            <BayScheduleFilterScrollController request={filterScrollRequest} />
-            <BayScheduleZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
-            <BayScheduleSidebar bays={renderedBays} horizonWarnings={horizonWarnings} />
+            <BoardFilterScrollController request={filterScrollRequest} />
+            <BoardZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
+            <BoardSidebar bays={renderedBays} horizonWarnings={horizonWarnings} />
             <GanttTimeline>
               <GanttHeader />
               <OffDayBands offDays={offDays} />
@@ -385,11 +381,7 @@ export const BayScheduleGantt: React.FC<{
                 workingCalendarsByBayId={bayCalendars?.workingCalendarsByBayId ?? EMPTY_WORKING_CALENDARS}
               />
               {ghostDerivation && ghostDerivation.ghosts.length > 0 ? (
-                <BayScheduleGhostBars
-                  bays={renderedBays}
-                  ghosts={ghostDerivation.ghosts}
-                  label={ghostLabel ?? 'New Job'}
-                />
+                <BoardGhostBars bays={renderedBays} ghosts={ghostDerivation.ghosts} label={ghostLabel ?? 'New Job'} />
               ) : null}
               <GanttToday className="bg-primary text-primary-foreground" />
             </GanttTimeline>
@@ -400,7 +392,7 @@ export const BayScheduleGantt: React.FC<{
   );
 };
 
-const BayScheduleFilterScrollController: React.FC<{
+const BoardFilterScrollController: React.FC<{
   request: FilterScrollRequest | null;
 }> = ({ request }) => {
   const gantt = useGanttContext();
@@ -421,8 +413,8 @@ const BayScheduleFilterScrollController: React.FC<{
   return null;
 };
 
-const BayScheduleSidebar: React.FC<{
-  bays: BaySchedule[];
+const BoardSidebar: React.FC<{
+  bays: ProjectedBayQueue[];
   horizonWarnings: ReadonlyMap<string, MaintainedHorizonWarning>;
 }> = ({ bays, horizonWarnings }) => {
   return (
@@ -484,7 +476,7 @@ const MaintainedHorizonWarningBadge: React.FC<{
 };
 
 const BayLaneRows: React.FC<{
-  bays: BaySchedule[];
+  bays: ProjectedBayQueue[];
 }> = ({ bays }) => (
   <div className="pointer-events-none absolute top-(--gantt-header-height) left-0 z-10 w-full">
     {bays.map((bay) => (
@@ -514,10 +506,10 @@ const findNextBaySlotId = (slots: readonly Pick<ProjectedJobSlot, 'id' | 'state'
 };
 
 const BaySlotBars: React.FC<{
-  bays: BaySchedule[];
+  bays: ProjectedBayQueue[];
   canEditScheduleByBayId: ReadonlySet<string>;
   today: DateOnlyIso;
-  filter: BayScheduleFilter;
+  filter: BoardFilter;
   isScheduleMutationPending: boolean;
   jobsById: ReadonlyMap<string, JobSummary>;
   onAddIdleSlot: (targetSlotId: string, placement: JobSlotPlacement) => void;
@@ -543,7 +535,7 @@ const BaySlotBars: React.FC<{
   workingCalendarsByBayId,
 }) => {
   const gantt = useGanttContext();
-  const isFilterActive = hasActiveBayScheduleFilter(filter);
+  const isFilterActive = hasActiveBoardFilter(filter);
 
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-20">
@@ -555,7 +547,7 @@ const BaySlotBars: React.FC<{
             bayId={bay.id}
             // Split halves carry synthetic ids that must never reach a mutation.
             canEditSchedule={canEditScheduleByBayId.has(bay.id) && !slot.previewSplit}
-            isDimmed={isFilterActive && !slotMatchesBayScheduleFilter({ bayId: bay.id, filter, jobsById, slot })}
+            isDimmed={isFilterActive && !slotMatchesBoardFilter({ bayId: bay.id, filter, jobsById, slot })}
             isNext={slot.id === nextSlotId}
             isScheduleMutationPending={isScheduleMutationPending}
             job={slot.kind === 'work' ? (jobsById.get(slot.jobId) ?? null) : null}

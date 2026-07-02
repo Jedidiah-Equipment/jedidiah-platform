@@ -4,12 +4,12 @@ import { useCallback, useEffect, useRef } from 'react';
 import { getGanttCenteredDateFromScrollLeft, useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
-import { BAY_SCHEDULE_ZOOM_DEFAULT, BAY_SCHEDULE_ZOOM_MAX, BAY_SCHEDULE_ZOOM_MIN } from './bay-schedule-view-store.js';
+import { BOARD_ZOOM_DEFAULT, BOARD_ZOOM_MAX, BOARD_ZOOM_MIN } from './board-view-store.js';
 
 /** Wraps a zoom-store change so the visible timeline center survives the zoom. */
 export type AnchoredZoomChange = (applyZoomChange: () => void) => void;
 
-export const BayScheduleZoomControls: React.FC<{
+export const BoardZoomControls: React.FC<{
   onReset: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -21,7 +21,7 @@ export const BayScheduleZoomControls: React.FC<{
         render={
           <Button
             aria-label="Zoom out"
-            disabled={zoom <= BAY_SCHEDULE_ZOOM_MIN}
+            disabled={zoom <= BOARD_ZOOM_MIN}
             onClick={onZoomOut}
             size="icon-sm"
             type="button"
@@ -37,7 +37,7 @@ export const BayScheduleZoomControls: React.FC<{
       <TooltipTrigger
         render={
           <Button
-            aria-label={`Reset zoom to ${BAY_SCHEDULE_ZOOM_DEFAULT}%`}
+            aria-label={`Reset zoom to ${BOARD_ZOOM_DEFAULT}%`}
             className="w-14 tabular-nums"
             onClick={onReset}
             size="sm"
@@ -55,7 +55,7 @@ export const BayScheduleZoomControls: React.FC<{
         render={
           <Button
             aria-label="Zoom in"
-            disabled={zoom >= BAY_SCHEDULE_ZOOM_MAX}
+            disabled={zoom >= BOARD_ZOOM_MAX}
             onClick={onZoomIn}
             size="icon-sm"
             type="button"
@@ -70,7 +70,7 @@ export const BayScheduleZoomControls: React.FC<{
   </div>
 );
 
-export const BayScheduleZoomAnchorController: React.FC<{
+export const BoardZoomAnchorController: React.FC<{
   onReady: (handler: AnchoredZoomChange | null) => void;
   zoom: number;
 }> = ({ onReady, zoom }) => {

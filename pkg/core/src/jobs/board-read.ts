@@ -10,11 +10,11 @@ import {
 import { type BoardBayFacts, type ProjectedBoardBay, projectBoard } from '@pkg/domain';
 import {
   Bay,
-  BaySchedule,
   DateIso,
   type DateOnlyIso,
   JobCode,
   type OffDay,
+  ProjectedBayQueue,
   ProjectedJobSlot,
   SlotDurationDays,
   SlotSequence,
@@ -28,7 +28,7 @@ type BayCalendarExceptionRow = Pick<
   'bayId' | 'date' | 'direction' | 'label'
 >;
 
-export type BayScheduleRow = typeof jobBays.$inferSelect &
+export type BoardBayRow = typeof jobBays.$inferSelect &
   OpenOperatorAssignmentsRow & {
     calendarExceptions: BayCalendarExceptionRow[];
     slots: (typeof jobSlots.$inferSelect & {
@@ -36,8 +36,8 @@ export type BayScheduleRow = typeof jobBays.$inferSelect &
     })[];
   };
 
-// Any `job:read` user sees the full cross-department schedule, so bay reads are not department-scoped.
-export function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
+// Any `job:read` user sees the full cross-department Board, so bay reads are not department-scoped.
+export function findBoardBayRows(db: Db | DatabaseTransaction, where?: SQL) {
   return db.query.jobBays.findMany({
     where,
     orderBy: [asc(jobBays.department), asc(jobBays.name), asc(jobBays.id)],
@@ -75,10 +75,10 @@ export function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
   });
 }
 
-export function mapBaySchedule(row: BayScheduleRow, projectedBay: ProjectedBoardBay) {
+export function mapProjectedBayQueue(row: BoardBayRow, projectedBay: ProjectedBoardBay) {
   const bay = Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) });
 
-  return BaySchedule.parse({
+  return ProjectedBayQueue.parse({
     ...bay,
     calendarExceptions: row.calendarExceptions,
     nextAvailableDate: projectedBay.nextAvailableDate,
@@ -86,11 +86,11 @@ export function mapBaySchedule(row: BayScheduleRow, projectedBay: ProjectedBoard
   });
 }
 
-export function toBaySchedules(
-  rows: readonly BayScheduleRow[],
+export function toProjectedBayQueues(
+  rows: readonly BoardBayRow[],
   offDays: readonly OffDay[],
   today: DateOnlyIso,
-): BaySchedule[] {
+): ProjectedBayQueue[] {
   const board = projectBoard({ bays: rows.map(toBoardBayFacts), offDays, today });
   const projectedBaysById = new Map(board.bays.map((bay) => [bay.bayId, bay] as const));
 
@@ -101,11 +101,11 @@ export function toBaySchedules(
       throw new Error(`Projected Board was missing Bay ${row.id}`);
     }
 
-    return mapBaySchedule(row, projectedBay);
+    return mapProjectedBayQueue(row, projectedBay);
   });
 }
 
-export function toBoardBayFacts(row: BayScheduleRow): BoardBayFacts {
+export function toBoardBayFacts(row: BoardBayRow): BoardBayFacts {
   const bay = Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) });
 
   return {
@@ -116,7 +116,7 @@ export function toBoardBayFacts(row: BayScheduleRow): BoardBayFacts {
   };
 }
 
-function toBoardSlotFact(slot: BayScheduleRow['slots'][number]): BoardBayFacts['slots'][number] {
+function toBoardSlotFact(slot: BoardBayRow['slots'][number]): BoardBayFacts['slots'][number] {
   const { job: _job, ...slotFact } = slot;
   const base = {
     bayId: UUID.parse(slotFact.bayId),
@@ -149,13 +149,13 @@ function toBoardSlotFact(slot: BayScheduleRow['slots'][number]): BoardBayFacts['
   };
 }
 
-export async function findBayScheduleRowsForJobs({
+export async function findBoardBayRowsForJobs({
   db,
   jobIds,
 }: {
   db: Db | DatabaseTransaction;
   jobIds: readonly UUID[];
-}): Promise<BayScheduleRow[]> {
+}): Promise<BoardBayRow[]> {
   if (jobIds.length === 0) {
     return [];
   }
@@ -165,10 +165,10 @@ export async function findBayScheduleRowsForJobs({
     .from(jobSlots)
     .where(inArray(jobSlots.jobId, [...jobIds]));
 
-  return findBayScheduleRows(db, inArray(jobBays.id, bayIds));
+  return findBoardBayRows(db, inArray(jobBays.id, bayIds));
 }
 
-export function getBayScheduleRowJobIds(rows: readonly BayScheduleRow[]): UUID[] {
+export function getBoardBayRowJobIds(rows: readonly BoardBayRow[]): UUID[] {
   const jobIds = new Set<UUID>();
 
   for (const row of rows) {
@@ -182,7 +182,7 @@ export function getBayScheduleRowJobIds(rows: readonly BayScheduleRow[]): UUID[]
   return [...jobIds];
 }
 
-export function mergeBayScheduleRows(primaryRows: readonly BayScheduleRow[], extraRows: readonly BayScheduleRow[]) {
+export function mergeBoardBayRows(primaryRows: readonly BoardBayRow[], extraRows: readonly BoardBayRow[]) {
   const primaryIds = new Set(primaryRows.map((row) => row.id));
 
   return [...primaryRows, ...extraRows.filter((row) => !primaryIds.has(row.id))];

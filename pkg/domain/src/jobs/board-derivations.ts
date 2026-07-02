@@ -1,7 +1,7 @@
 import type {
-  BaySchedule,
   DateOnlyIso,
   OffDay,
+  ProjectedBayQueue,
   ProjectedIdleJobSlot,
   ProjectedJobSlot,
   ProjectedWorkJobSlot,
@@ -12,20 +12,20 @@ import { addDateOnlyDays, endOfDateOnlyWeek } from '../formatting/date-only.js';
 import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';
 import { countWorkingDaysBetween, isWorkingDay, type WorkingCalendar } from './working-calendar.js';
 
-// Pure derivations over a projected Bay schedule (`jobs.listBays`), shared by the web shop-floor
+// Pure derivations over projected Bay Queues (`jobs.listBays`), shared by the web shop-floor
 // dashboard widgets and the mobile Bay screens. Disabled Bays are excluded everywhere; callers filter
 // through listEnabledBays before deriving.
 
 export const BAY_RUNWAY_CAP_WORKING_DAYS = 30;
 
-export function listEnabledBays(bays: readonly BaySchedule[]): BaySchedule[] {
+export function listEnabledBays(bays: readonly ProjectedBayQueue[]): ProjectedBayQueue[] {
   return bays.filter((bay) => bay.disabledAt === null);
 }
 
 const bayDepartmentOrder = new Map(JOB_DEPARTMENT_PIPELINE.map((step, index) => [step.department, index] as const));
 
 /** Bay ordering shared across viewers: department pipeline order, then Bay name within a department. */
-export function byBayDepartmentPipeline(left: BaySchedule, right: BaySchedule): number {
+export function byBayDepartmentPipeline(left: ProjectedBayQueue, right: ProjectedBayQueue): number {
   const order =
     (bayDepartmentOrder.get(left.department) ?? Number.MAX_SAFE_INTEGER) -
     (bayDepartmentOrder.get(right.department) ?? Number.MAX_SAFE_INTEGER);
@@ -44,7 +44,7 @@ export function getBayTodayOccupancy({
   today,
   workingCalendar,
 }: {
-  bay: BaySchedule;
+  bay: ProjectedBayQueue;
   today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
 }): BayTodayOccupancy {
@@ -70,7 +70,7 @@ export function getBayTodayOccupancy({
  * queue. The Board builder owns the active/done/scheduled rule; this derivation only reads it.
  * (Bay occupancy/utilisation, which does treat off-days as idle, lives in {@link getBayTodayOccupancy}.)
  */
-export function findActiveWorkSlot({ bay }: { bay: BaySchedule }): ProjectedWorkJobSlot | null {
+export function findActiveWorkSlot({ bay }: { bay: ProjectedBayQueue }): ProjectedWorkJobSlot | null {
   return (
     bay.slots.find((slot): slot is ProjectedWorkJobSlot => slot.kind === 'work' && slot.state === 'active') ?? null
   );
@@ -85,7 +85,7 @@ export function listUpcomingWorkSlots({
   bay,
   excludeSlotId,
 }: {
-  bay: BaySchedule;
+  bay: ProjectedBayQueue;
   excludeSlotId?: string;
 }): ProjectedWorkJobSlot[] {
   return bay.slots.filter(
@@ -133,7 +133,7 @@ export function computeBayRunway({
   today,
   workingCalendar,
 }: {
-  bay: BaySchedule;
+  bay: ProjectedBayQueue;
   capWorkingDays?: number;
   today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
@@ -171,7 +171,7 @@ export function computeBayRunway({
 }
 
 /** A Job's projected finish: the last Work Slot end date across the given Bays. */
-export function getJobProjectedFinishDates(bays: readonly BaySchedule[]): Map<UUID, DateOnlyIso> {
+export function getJobProjectedFinishDates(bays: readonly ProjectedBayQueue[]): Map<UUID, DateOnlyIso> {
   const finishDates = new Map<UUID, DateOnlyIso>();
 
   for (const bay of bays) {
@@ -214,7 +214,7 @@ export function countActiveJobs({
   bays,
   today,
 }: {
-  bays: readonly BaySchedule[];
+  bays: readonly ProjectedBayQueue[];
   today: DateOnlyIso;
 }): ActiveJobsSummary {
   const weekEnd = endOfDateOnlyWeek(today);
@@ -254,7 +254,7 @@ export function computeBayLoadToday({
   today,
   workingCalendarsByBayId,
 }: {
-  bays: readonly BaySchedule[];
+  bays: readonly ProjectedBayQueue[];
   today: DateOnlyIso;
   workingCalendarsByBayId: ReadonlyMap<string, WorkingCalendar>;
 }): BayLoadToday {

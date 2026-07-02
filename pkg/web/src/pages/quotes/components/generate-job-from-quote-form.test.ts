@@ -1,9 +1,9 @@
 import {
   Bay,
-  BaySchedule,
+  type BoardPlacement,
   DateOnlyIso,
-  type JobSchedulePreviewPlacement,
   ProductBay,
+  ProjectedBayQueue,
   ProjectedJobSlot,
   UUID,
 } from '@pkg/schema';
@@ -34,7 +34,7 @@ function createScheduling(result: Parameters<typeof selectBayCalendars>[0]) {
 describe('createBaySeedScheduling / getBaySeedDefaultStartDate', () => {
   it('defaults a seeded Bay to its next available working day', () => {
     const scheduling = createScheduling({
-      items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
+      items: [buildProjectedBayQueue({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
       offDays: [],
       today: day('2026-06-05'),
     });
@@ -44,7 +44,7 @@ describe('createBaySeedScheduling / getBaySeedDefaultStartDate', () => {
 
   it('floors the default to tomorrow when the Bay queue ended in the past', () => {
     const scheduling = createScheduling({
-      items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-02' })],
+      items: [buildProjectedBayQueue({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-02' })],
       offDays: [],
       today: day('2026-06-05'),
     });
@@ -54,7 +54,7 @@ describe('createBaySeedScheduling / getBaySeedDefaultStartDate', () => {
 
   it('returns no default without schedule data for the Bay', () => {
     const scheduling = createScheduling({
-      items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
+      items: [buildProjectedBayQueue({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
       offDays: [],
       today: day('2026-06-05'),
     });
@@ -69,7 +69,7 @@ describe('getBaySeedRowScheduling', () => {
     const slot = buildWorkSlot({ durationDays: 10, jobCode: 'JOB-01042' });
     const scheduling = createScheduling({
       items: [
-        buildBaySchedule({
+        buildProjectedBayQueue({
           id: ENABLED_BAY_ID,
           nextAvailableDate: '2026-06-15',
           slots: [slot],
@@ -94,7 +94,7 @@ describe('getBaySeedRowScheduling', () => {
   it('reports no split warning for the default next-available date', () => {
     const scheduling = createScheduling({
       items: [
-        buildBaySchedule({
+        buildProjectedBayQueue({
           id: ENABLED_BAY_ID,
           nextAvailableDate: '2026-06-15',
           slots: [buildWorkSlot({ durationDays: 10, jobCode: 'JOB-01042' })],
@@ -119,7 +119,7 @@ describe('getBaySeedRowScheduling', () => {
 describe('toJobCreateFormValues', () => {
   it('prefills enabled Product Bays with default working-days and start dates', () => {
     const scheduling = createScheduling({
-      items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
+      items: [buildProjectedBayQueue({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
       offDays: [],
       today: day('2026-06-05'),
     });
@@ -207,7 +207,7 @@ describe('getBaySeedBayMap', () => {
   });
 });
 
-function buildBaySchedule({
+function buildProjectedBayQueue({
   id,
   nextAvailableDate,
   slots = [],
@@ -215,8 +215,8 @@ function buildBaySchedule({
   id: string;
   nextAvailableDate: string;
   slots?: ProjectedJobSlot[];
-}): BaySchedule {
-  return BaySchedule.parse({
+}): ProjectedBayQueue {
+  return ProjectedBayQueue.parse({
     ...buildBay({ disabledAt: null, id, name: 'Fabrication Bay' }),
     calendarExceptions: [],
     nextAvailableDate,
@@ -243,7 +243,7 @@ function buildWorkSlot({ durationDays, jobCode }: { durationDays: number; jobCod
   });
 }
 
-function splitPlacement(targetSlot: ProjectedJobSlot): JobSchedulePreviewPlacement {
+function splitPlacement(targetSlot: ProjectedJobSlot): BoardPlacement {
   return {
     afterDays: 6,
     beforeDays: 4,

@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { findJobScheduleSummary, type JobScheduleSummary } from './bay-schedule-summary.js';
+import { findJobScheduleSummary, type JobScheduleSummary } from './board-summary.js';
 import { InfoList, InfoRow, SlotDayBreakdownRows } from './JobInfoList.js';
 
 type JobDetailAsideProps = {

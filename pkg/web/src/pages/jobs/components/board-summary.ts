@@ -4,14 +4,14 @@ import {
   summarizeSlotCalendarDays,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type { BaySchedule, DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
+import type { DateOnlyIso, ProjectedBayQueue, ProjectedJobSlot } from '@pkg/schema';
 
 export function getSlotLabel(slot: ProjectedJobSlot): string {
   return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;
 }
 
 export type JobScheduleSummary = {
-  currentOperator: BaySchedule['currentOperator'];
+  currentOperator: ProjectedBayQueue['currentOperator'];
   dayBreakdown: SlotCalendarDays;
   endDate: DateOnlyIso;
   startDate: DateOnlyIso;
@@ -22,7 +22,7 @@ export type JobScheduleSummary = {
 // the matching bay's slot is used — a job can be booked in several bays — otherwise the
 // first booked slot found across bays wins.
 export function findJobScheduleSummary(
-  bays: BaySchedule[],
+  bays: ProjectedBayQueue[],
   workingCalendarsByBayId: ReadonlyMap<string, WorkingCalendar>,
   jobId: string,
   bayId?: string | undefined,

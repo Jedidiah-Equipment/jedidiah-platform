@@ -1,4 +1,4 @@
-import { DateIso, DateOnlyIso, JobCode, type JobSchedulePreviewPlacement } from '@pkg/schema';
+import { type BoardPlacement, DateIso, DateOnlyIso, JobCode } from '@pkg/schema';
 import { describe, expect, it, vi } from 'vitest';
 
 import { describeInsertAtDatePlacement, getInsertAtDatePickerBounds } from './book-slot-insert-at-date.js';
@@ -58,7 +58,7 @@ describe('schedule UI timezone tripwire', () => {
   });
 });
 
-function splitPlacement(): JobSchedulePreviewPlacement {
+function splitPlacement(): BoardPlacement {
   return {
     afterDays: 6,
     beforeDays: 4,

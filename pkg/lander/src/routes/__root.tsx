@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { Footer } from '../components/footer.js';
 import { Nav } from '../components/nav.js';
 import { initAnalytics } from '../lib/analytics.js';
-import { absoluteUrl, DEFAULT_OG_IMAGE } from '../lib/seo.js';
+import { DEFAULT_OG_IMAGE } from '../lib/seo.js';
 import { getFooterRanges } from '../server/catalog/ranges.js';
 import { getSiteMeta } from '../server/site/site-meta.js';
 import appCss from '../styles/app.css?url';
@@ -38,9 +38,9 @@ export const Route = createRootRoute({
         property: 'og:description',
         content: 'Heavy-duty agricultural equipment engineered to perform in South African conditions.',
       },
-      { property: 'og:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
+      { property: 'og:image', content: DEFAULT_OG_IMAGE },
       { name: 'twitter:card', content: 'summary_large_image' },
-      { name: 'twitter:image', content: absoluteUrl(DEFAULT_OG_IMAGE) },
+      { name: 'twitter:image', content: DEFAULT_OG_IMAGE },
     ],
     links: [
       { rel: 'icon', type: 'image/png', href: faviconUrl },

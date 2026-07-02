@@ -1,20 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { absoluteUrl, DEFAULT_OG_IMAGE, SITE_URL, seoHead, truncateDescription } from './seo.js';
-
-describe('absoluteUrl', () => {
-  test('joins a site-relative path onto the origin', () => {
-    expect(absoluteUrl('/products')).toBe(`${SITE_URL}/products`);
-  });
-
-  test('adds a leading slash when missing', () => {
-    expect(absoluteUrl('about')).toBe(`${SITE_URL}/about`);
-  });
-
-  test('passes an already-absolute URL through unchanged', () => {
-    expect(absoluteUrl('https://cdn.example.com/og.png')).toBe('https://cdn.example.com/og.png');
-  });
-});
+import { DEFAULT_OG_IMAGE, seoHead, truncateDescription } from './seo.js';
 
 describe('truncateDescription', () => {
   test('returns short text unchanged (whitespace collapsed)', () => {
@@ -30,22 +16,22 @@ describe('truncateDescription', () => {
 });
 
 describe('seoHead', () => {
-  test('builds title, description, canonical and absolute OG/Twitter tags', () => {
-    const { meta, links } = seoHead({
+  test('builds title, description and root-relative OG/Twitter tags with no canonical link', () => {
+    const result = seoHead({
       title: 'Products — Jedidiah Equipment',
       description: 'The full range.',
       path: '/products',
     });
 
-    expect(meta).toContainEqual({ title: 'Products — Jedidiah Equipment' });
-    expect(meta).toContainEqual({ name: 'description', content: 'The full range.' });
-    expect(meta).toContainEqual({ property: 'og:url', content: `${SITE_URL}/products` });
-    expect(meta).toContainEqual({ property: 'og:image', content: `${SITE_URL}${DEFAULT_OG_IMAGE}` });
-    expect(meta).toContainEqual({ name: 'twitter:title', content: 'Products — Jedidiah Equipment' });
-    expect(links).toContainEqual({ rel: 'canonical', href: `${SITE_URL}/products` });
+    expect(result.meta).toContainEqual({ title: 'Products — Jedidiah Equipment' });
+    expect(result.meta).toContainEqual({ name: 'description', content: 'The full range.' });
+    expect(result.meta).toContainEqual({ property: 'og:url', content: '/products' });
+    expect(result.meta).toContainEqual({ property: 'og:image', content: DEFAULT_OG_IMAGE });
+    expect(result.meta).toContainEqual({ name: 'twitter:title', content: 'Products — Jedidiah Equipment' });
+    expect(result).not.toHaveProperty('links');
   });
 
-  test('uses a page-specific image when given, made absolute', () => {
+  test('uses a page-specific image when given, kept root-relative', () => {
     const { meta } = seoHead({
       title: 'CH14',
       description: 'Tipper.',
@@ -53,7 +39,7 @@ describe('seoHead', () => {
       image: '/images/products/abc',
     });
 
-    expect(meta).toContainEqual({ property: 'og:image', content: `${SITE_URL}/images/products/abc` });
-    expect(meta).toContainEqual({ name: 'twitter:image', content: `${SITE_URL}/images/products/abc` });
+    expect(meta).toContainEqual({ property: 'og:image', content: '/images/products/abc' });
+    expect(meta).toContainEqual({ name: 'twitter:image', content: '/images/products/abc' });
   });
 });

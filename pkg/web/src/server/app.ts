@@ -73,8 +73,15 @@ function publicConfigScript(clientConfig: InjectedClientConfig): string {
   return `window.__APP_CONFIG__ = ${serializedConfig};`;
 }
 
+function applyStagingHtmlBranding(indexHtml: string, clientConfig: InjectedClientConfig): string {
+  if (clientConfig.appEnv !== 'staging') return indexHtml;
+
+  // This runs before first paint, so staging never flashes the production yellow.
+  return indexHtml.replace('<html', '<html data-app-env="staging"').replace('/favicon-yellow.png', '/favicon-pink.png');
+}
+
 async function sendIndexHtml(reply: FastifyReply, distDir: string, clientConfig: InjectedClientConfig): Promise<void> {
-  const index = await readFile(join(distDir, 'index.html'), 'utf8');
+  const index = applyStagingHtmlBranding(await readFile(join(distDir, 'index.html'), 'utf8'), clientConfig);
   const configScript = `<script>${publicConfigScript(clientConfig)}</script>`;
   const html = index.includes('</head>')
     ? index.replace('</head>', `    ${configScript}\n  </head>`)

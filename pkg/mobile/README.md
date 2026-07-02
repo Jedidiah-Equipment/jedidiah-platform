@@ -28,7 +28,7 @@ For JS-only OTA fixes:
 
 ```sh
 cd pkg/mobile
-APP_VARIANT=staging eas update --branch staging --message "..."
+APP_VARIANT=staging EXPO_PUBLIC_APP_ENV=staging EXPO_PUBLIC_API_BASE_URL=https://staging-api.jedidiahequipment.co.za eas update --branch staging --message "..."
 ```
 
 ## Local API

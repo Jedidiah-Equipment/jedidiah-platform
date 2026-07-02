@@ -33,8 +33,9 @@ const PRODUCTION_ICON = './assets/icon.png';
 const STAGING_ICON = './assets/icon-staging.png';
 const ADAPTIVE_FOREGROUND = './assets/adaptive-icon.png';
 
-// Launcher icons use the bright web/favicon brand yellow.
-const ICON_BACKGROUND = '#FFF000';
+// Launcher icon backgrounds are variant identity, unlike the runtime in-app theme.
+const PRODUCTION_ICON_BACKGROUND = '#FFF000';
+const STAGING_ICON_BACKGROUND = '#EC4899';
 
 const VARIANTS: Record<AppVariant, AppVariantConfig> = {
   staging: {
@@ -45,7 +46,7 @@ const VARIANTS: Record<AppVariant, AppVariantConfig> = {
     displayName: 'JedidiahOps (Staging)',
     iconConfig: {
       icon: STAGING_ICON,
-      adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: ICON_BACKGROUND },
+      adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: STAGING_ICON_BACKGROUND },
     },
   },
   production: {
@@ -56,7 +57,7 @@ const VARIANTS: Record<AppVariant, AppVariantConfig> = {
     displayName: 'JedidiahOps',
     iconConfig: {
       icon: PRODUCTION_ICON,
-      adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: ICON_BACKGROUND },
+      adaptiveIcon: { foregroundImage: ADAPTIVE_FOREGROUND, backgroundColor: PRODUCTION_ICON_BACKGROUND },
     },
   },
 };

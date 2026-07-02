@@ -153,6 +153,16 @@ body {
   --warning-surface-hover: color-mix(in oklab, var(--warning) 22%, var(--card));
 }
 
+[data-app-env="staging"] {
+  --primary: #ec4899;
+  --sidebar-primary: #ec4899;
+}
+
+.dark[data-app-env="staging"] {
+  --primary: #ff6bbf;
+  --sidebar-primary: #ff6bbf;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

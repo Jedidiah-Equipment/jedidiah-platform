@@ -5,6 +5,8 @@ import { Link } from '@tanstack/react-router';
 
 import type { FooterRange } from '../server/catalog/ranges.js';
 
+import { DungBeetle } from './dung-beetle.js';
+
 const EXPLORE = [
   { label: 'Home', href: '/' },
   { label: 'About Us', href: '/about' },
@@ -26,7 +28,7 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
   return (
     <footer className="bg-ink-soft text-white">
       <div className="mx-auto max-w-[1320px] px-12 pt-[72px] max-nav:px-5 max-nav:pt-12">
-        <div className="grid grid-cols-[1.4fr_1fr_1fr_1.2fr] gap-14 border-b border-[#2a2a2a] pb-14 max-nav:grid-cols-2 max-nav:gap-y-9 max-nav:gap-x-7 max-xs:grid-cols-1">
+        <div className="grid grid-cols-[1.4fr_1fr_1fr_1.2fr] gap-14 pb-14 max-nav:grid-cols-2 max-nav:gap-y-9 max-nav:gap-x-7 max-xs:grid-cols-1">
           <div>
             <div className="mb-[22px]">
               <img src={logoFullUrl} alt="Jedidiah Equipment" className="h-10 w-auto" />
@@ -92,6 +94,8 @@ export function Footer({ ranges }: { ranges: FooterRange[] }) {
             </div>
           </div>
         </div>
+
+        <DungBeetle />
 
         <div className="flex flex-wrap items-center justify-between gap-3 py-[26px] max-nav:flex-col max-nav:items-start max-nav:gap-2.5">
           <span className="font-body text-[13px] text-[#6a6a6a]">© 2026 Jedidiah Equipment. All rights reserved.</span>

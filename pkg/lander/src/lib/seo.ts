@@ -1,6 +1,9 @@
-// Single source of truth for the public site origin used in canonical and Open Graph URLs (issue #570).
-// A canonical tag must always point at the production domain regardless of which host served the response,
-// so this is a fixed, configured value rather than something derived from the request. Overridable per
+import { siteOrigin } from './site-origin.js';
+
+// Configured public site origin, used only for the sitemap `<loc>` entries and the robots.txt `Sitemap:`
+// line: those files are fetched by crawlers without a page context and their specs require fully-qualified
+// production URLs. Page head tags instead derive their origin from the serving host via siteOrigin(), so
+// staging pages advertise staging URLs and production pages advertise production URLs. Overridable per
 // environment via the build-time, client-safe VITE_SITE_URL, defaulting to the live domain.
 export const SITE_URL = (import.meta.env.VITE_SITE_URL ?? 'https://jedidiahequipment.co.za').replace(/\/+$/, '');
 
@@ -8,14 +11,11 @@ export const SITE_URL = (import.meta.env.VITE_SITE_URL ?? 'https://jedidiahequip
 // ships in public/ and reads well as a representative brand card; product pages override it with their hero.
 export const DEFAULT_OG_IMAGE = '/hero-trailer.jpg';
 
-// Joins a site-relative path onto the origin. Absolute inputs (an already-qualified URL) pass through so
-// callers can hand in either form.
+// Qualifies a root-relative path against the origin of the host serving this response. Open Graph and
+// Twitter Card scrapers (Slack, WhatsApp, X, LinkedIn, ...) do not resolve relative URLs in meta tags, so
+// every URL-valued head tag must go through this.
 export function absoluteUrl(path: string): string {
-  if (/^https?:\/\//.test(path)) {
-    return path;
-  }
-
-  return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  return `${siteOrigin()}${path}`;
 }
 
 // Search engines truncate meta descriptions around 155–160 characters. Trim on a word boundary and append
@@ -34,15 +34,19 @@ export function truncateDescription(text: string, max = 160): string {
 export type SeoInput = {
   title: string;
   description: string;
-  // Site-relative path for this page, e.g. "/products".
+  // Root-relative path for this page, e.g. "/products". Also the canonical target, so pass the clean path
+  // without query params (e.g. "/products", never "/products?range=...").
   path: string;
-  // Site-relative or absolute image URL; defaults to the site OG image.
+  // Root-relative image URL; defaults to the site OG image.
   image?: string;
 };
 
 // Builds a page's head fragment: a distinct <title> + description, the matching Open Graph and Twitter card
-// tags (with absolute image + url), and a canonical link. Spread into a route's `head()` return so the
-// per-page values override the site defaults set on the root route.
+// tags, and a self-referencing canonical link. URL-valued tags are qualified against the serving host, so
+// each environment advertises its own URLs (staging previews show staging images) and the canonical
+// collapses query-param variants (footer/chip links generate /products?range=...) onto the clean path.
+// Spread into a route's `head()` return so the per-page values override the site defaults set on the root
+// route.
 export function seoHead({ title, description, path, image = DEFAULT_OG_IMAGE }: SeoInput) {
   const url = absoluteUrl(path);
   const imageUrl = absoluteUrl(image);

@@ -1,9 +1,9 @@
 import {
-  BaySchedule,
   DateIso,
   DateOnlyIso,
   JobCode,
   type JobSlotState,
+  ProjectedBayQueue,
   SlotDurationDays,
   SlotSequence,
   UUID,
@@ -11,7 +11,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import {
   foldJobScheduleStates,
-  getScheduleJobIds,
+  getBoardJobIds,
   resolveBoardWindowFrom,
   sliceJobSchedule,
   windowActiveBoard,
@@ -48,7 +48,7 @@ function workSlot({
   slotId: string;
   startDate: string;
   state: JobSlotState;
-}): BaySchedule['slots'][number] {
+}): ProjectedBayQueue['slots'][number] {
   return {
     bayId,
     createdAt: NOW,
@@ -81,7 +81,7 @@ function idleSlot({
   slotId: string;
   startDate: string;
   state: JobSlotState;
-}): BaySchedule['slots'][number] {
+}): ProjectedBayQueue['slots'][number] {
   return {
     bayId,
     createdAt: NOW,
@@ -106,12 +106,12 @@ function baySchedule({
   slots,
 }: {
   bayId?: UUID;
-  department?: BaySchedule['department'];
+  department?: ProjectedBayQueue['department'];
   name?: string;
   nextAvailableDate?: string;
-  slots: BaySchedule['slots'];
-}): BaySchedule {
-  return BaySchedule.parse({
+  slots: ProjectedBayQueue['slots'];
+}): ProjectedBayQueue {
+  return ProjectedBayQueue.parse({
     calendarExceptions: [],
     createdAt: NOW,
     currentOperator: null,
@@ -414,7 +414,7 @@ describe('foldJobScheduleStates', () => {
   });
 });
 
-describe('getScheduleJobIds', () => {
+describe('getBoardJobIds', () => {
   it('plucks distinct Work Slot Job ids and ignores Idle Slots', () => {
     const bay = baySchedule({
       slots: [
@@ -452,6 +452,6 @@ describe('getScheduleJobIds', () => {
       ],
     });
 
-    expect(getScheduleJobIds([bay])).toEqual([JOB_1, JOB_2]);
+    expect(getBoardJobIds([bay])).toEqual([JOB_1, JOB_2]);
   });
 });

@@ -1,4 +1,4 @@
-import type { BaySchedule, DateOnlyIso, Department, ProjectedJobSlot, UUID } from '@pkg/schema';
+import type { DateOnlyIso, Department, ProjectedBayQueue, ProjectedJobSlot, UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -14,7 +14,7 @@ import {
   listEnabledBays,
   listUpcomingWorkSlots,
   summarizeWorkSlotSpan,
-} from './bay-schedule-derivations.js';
+} from './board-derivations.js';
 import type { WorkingCalendar } from './working-calendar.js';
 
 const id = (value: string) => value as UUID;
@@ -81,13 +81,13 @@ function buildIdleSlot(
 }
 
 function buildBay(input: {
-  calendarExceptions?: BaySchedule['calendarExceptions'];
+  calendarExceptions?: ProjectedBayQueue['calendarExceptions'];
   department?: Department;
   disabledAt?: string | null;
   id: string;
   name?: string;
   slots?: ProjectedJobSlot[];
-}): BaySchedule {
+}): ProjectedBayQueue {
   return {
     calendarExceptions: input.calendarExceptions ?? [],
     createdAt: timestamp,
@@ -99,7 +99,7 @@ function buildBay(input: {
     scheduleOrigin: today,
     slots: input.slots ?? [],
     updatedAt: timestamp,
-  } as unknown as BaySchedule;
+  } as unknown as ProjectedBayQueue;
 }
 
 function slotStateFor(startDate: string, endDate: string): ProjectedJobSlot['state'] {
@@ -686,6 +686,6 @@ describe('computeBayLoadToday', () => {
   });
 });
 
-function emptyCalendarsFor(bays: readonly BaySchedule[]): Map<string, WorkingCalendar> {
+function emptyCalendarsFor(bays: readonly ProjectedBayQueue[]): Map<string, WorkingCalendar> {
   return new Map(bays.map((bay) => [bay.id, {}]));
 }

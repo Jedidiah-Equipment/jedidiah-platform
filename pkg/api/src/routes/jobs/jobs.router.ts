@@ -14,7 +14,7 @@ import {
   listJobBays,
   listJobs,
   moveJobSlot,
-  previewJobSchedule,
+  previewBoard,
   removeBayCalendarException,
   removeJobSlot,
   renameJobBay,
@@ -27,7 +27,8 @@ import { renderBrochurePdf } from '@pkg/pdf';
 import {
   AddBayCalendarExceptionInput,
   AddIdleJobSlotInput,
-  BayListInput,
+  BoardListInput,
+  BoardPreviewInput,
   BookJobSlotInput,
   JobBayAssignOperatorInput,
   JobBayCreateInput,
@@ -38,7 +39,6 @@ import {
   JobBayUnassignOperatorInput,
   JobCreateInput,
   JobListInput,
-  JobSchedulePreviewInput,
   MoveJobSlotInput,
   RemoveBayCalendarExceptionInput,
   RemoveJobSlotInput,
@@ -53,12 +53,12 @@ import { authorizedProcedure, router } from '../../trpc/init.js';
 
 export const jobsRouter = router({
   listBays: authorizedProcedure('job:read')
-    .input(BayListInput)
+    .input(BoardListInput)
     .query(({ ctx, input }) => listBays({ db: ctx.db, input })),
 
   previewSchedule: authorizedProcedure('job:read')
-    .input(JobSchedulePreviewInput)
-    .query(({ ctx, input }) => mapJobErrors(() => previewJobSchedule({ db: ctx.db, input }))),
+    .input(BoardPreviewInput)
+    .query(({ ctx, input }) => mapJobErrors(() => previewBoard({ db: ctx.db, input }))),
 
   listJobBays: authorizedProcedure(['job:read', 'job_bay:read'])
     .input(JobBayListInput)

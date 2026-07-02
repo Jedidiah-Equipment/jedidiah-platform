@@ -14,7 +14,7 @@ import { useColorMode } from '@/theme/use-color-mode';
 /**
  * The read-only Job Slot detail pane (#520): status chip(s), a product card, the
  * DOCUMENTS list (the viewer it opens lands in #521), and the SLOT and JOB field
- * grids. Slot + Job fields ride the schedule join via {@link BaySlotDetail};
+ * grids. Slot + Job fields ride the Board join via {@link BaySlotDetail};
  * documents are fetched here with `jobs.get`, with their own loading/error state.
  */
 export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {

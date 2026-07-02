@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { baySchedulePageDescription } from '@/utils/page-descriptions.js';
-import { BayScheduleGantt } from './components/BayScheduleGantt.js';
+import { BoardGantt } from './components/BoardGantt.js';
 import { BookSlotDialog } from './components/BookSlotDialog.js';
 import { JobDetailAside } from './components/JobDetailAside.js';
 
@@ -36,7 +36,7 @@ export const JobsPage: React.FC<JobsPageProps> = ({ selectedBayId, selectedJobId
       size="full"
       title="Jobs"
     >
-      <BayScheduleGantt
+      <BoardGantt
         fullscreen={isFullscreen}
         onFullscreenChange={setIsFullscreen}
         onSelectSlot={(jobId, bayId) => navigate({ search: { bay: bayId, job: jobId }, to: '/jobs' })}

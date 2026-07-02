@@ -1,13 +1,13 @@
 import { bayWorkingCalendars, type WorkingCalendar } from '@pkg/domain';
-import type { BayListResult } from '@pkg/schema';
+import type { BoardListResult } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useTRPC } from './trpc';
 
 export type BayCalendars = {
-  offDays: BayListResult['offDays'];
-  today: BayListResult['today'];
+  offDays: BoardListResult['offDays'];
+  today: BoardListResult['today'];
   workingCalendarsByBayId: Map<string, WorkingCalendar>;
 };
 

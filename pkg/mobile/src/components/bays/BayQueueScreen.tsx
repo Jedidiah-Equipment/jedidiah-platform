@@ -11,9 +11,9 @@ import { Icon } from '@/components/ui/icon';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import {
-  type BayScheduleActiveJob,
-  type BayScheduleState,
-  type BayScheduleUpcomingSlot,
+  type BayQueueActiveJob,
+  type BayQueueState,
+  type BayQueueUpcomingSlot,
   useBaySchedule,
 } from '@/lib/use-bay-schedule';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -27,7 +27,7 @@ const WIDE_BREAKPOINT = 760;
  * (≥760px) shows them side by side; narrow pushes the detail over the list and
  * back returns to it. Owns the loading, empty, error, and bay-not-found states.
  */
-export function BaySchedule({ bayId, onBack }: { bayId: string; onBack: () => void }) {
+export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () => void }) {
   const state = useBaySchedule(bayId);
   const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
 
@@ -69,7 +69,7 @@ function Ready({
   isWide,
   onBack,
 }: {
-  state: Extract<BayScheduleState, { status: 'ready' }>;
+  state: Extract<BayQueueState, { status: 'ready' }>;
   isWide: boolean;
   onBack: () => void;
 }) {
@@ -139,7 +139,7 @@ function ListPane({
   selectedId,
   onSelect,
 }: {
-  state: Extract<BayScheduleState, { status: 'ready' }>;
+  state: Extract<BayQueueState, { status: 'ready' }>;
   selectedId: string | null;
   onSelect: (slotId: string) => void;
 }) {
@@ -186,7 +186,7 @@ function ActiveHero({
   selected,
   onSelect,
 }: {
-  active: BayScheduleActiveJob;
+  active: BayQueueActiveJob;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -273,7 +273,7 @@ function Timeline({
   selectedId,
   onSelect,
 }: {
-  slots: BayScheduleUpcomingSlot[];
+  slots: BayQueueUpcomingSlot[];
   selectedId: string | null;
   onSelect: (slotId: string) => void;
 }) {
@@ -300,7 +300,7 @@ function TimelineItem({
   selected,
   onSelect,
 }: {
-  slot: BayScheduleUpcomingSlot;
+  slot: BayQueueUpcomingSlot;
   selected: boolean;
   onSelect: () => void;
 }) {

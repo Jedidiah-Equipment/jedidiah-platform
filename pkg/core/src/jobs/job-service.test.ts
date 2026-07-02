@@ -891,7 +891,7 @@ describe('Job Bay management', () => {
     ).rejects.toThrow('This Bay is disabled and cannot accept new bookings.');
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id)).toMatchObject({
+    expect(getProjectedBayQueue(schedule, bay.id)).toMatchObject({
       disabledAt: expect.any(String),
       slots: [
         expect.objectContaining({
@@ -1197,7 +1197,7 @@ describe('bookJobSlot', () => {
     ]);
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, bay.id)).toEqual(
       expect.objectContaining({
         nextAvailableDate: '2026-06-08',
         slots: [
@@ -1235,7 +1235,7 @@ describe('bookJobSlot', () => {
     });
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id).slots.map((slot) => slot.jobId)).toEqual([jobId, jobId]);
+    expect(getProjectedBayQueue(schedule, bay.id).slots.map((slot) => slot.jobId)).toEqual([jobId, jobId]);
   });
 
   test('allows a job to be booked onto any bay department', async ({ context }) => {
@@ -1278,7 +1278,7 @@ describe('bookJobSlot', () => {
     });
 
     const schedule = await listBays({ db: context.db, input: { from: DateOnlyIso.parse('2026-06-05') } });
-    expect(getBaySchedule(schedule, bay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, bay.id)).toEqual(
       expect.objectContaining({
         nextAvailableDate: '2026-06-12',
         slots: [
@@ -1329,7 +1329,7 @@ describe('bookJobSlot', () => {
     });
 
     const schedule = await listBays({ db: context.db, input: { from: DateOnlyIso.parse('2026-06-05') } });
-    expect(getBaySchedule(schedule, bay.id).slots).toEqual([
+    expect(getProjectedBayQueue(schedule, bay.id).slots).toEqual([
       expect.objectContaining({ kind: 'work', startDate: '2026-06-05', endDate: '2026-06-06' }),
       expect.objectContaining({ durationDays: 4, kind: 'idle', startDate: '2026-06-06', endDate: '2026-06-10' }),
       expect.objectContaining({
@@ -1528,7 +1528,7 @@ describe('addIdleJobSlot', () => {
     });
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id).slots).toEqual([
+    expect(getProjectedBayQueue(schedule, bay.id).slots).toEqual([
       expect.objectContaining({ id: workSlot.slot.id, kind: 'work', sequence: 1 }),
       expect.objectContaining({ id: firstIdle.slot.id, kind: 'idle', sequence: 2 }),
       expect.objectContaining({ id: secondIdle.slot.id, kind: 'idle', sequence: 3 }),
@@ -1573,7 +1573,7 @@ describe('resizeJobSlot', () => {
     });
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, bay.id)).toEqual(
       expect.objectContaining({
         id: bay.id,
         nextAvailableDate: '2026-06-09',
@@ -1635,7 +1635,7 @@ describe('resizeJobSlot', () => {
     ).resolves.toMatchObject({ slot: { durationDays: 2, id: slot.slot.id } });
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, bay.id)).toEqual(
       expect.objectContaining({
         disabledAt: expect.any(String),
         slots: [expect.objectContaining({ durationDays: 2, id: slot.slot.id })],
@@ -1663,7 +1663,7 @@ describe('resizeJobSlot', () => {
     ).resolves.toMatchObject({ slot: { durationDays: 2, kind: 'idle' } });
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id).slots).toEqual([
+    expect(getProjectedBayQueue(schedule, bay.id).slots).toEqual([
       expect.objectContaining({
         id: idleSlot.slot.id,
         endDate: '2026-06-07',
@@ -1776,7 +1776,7 @@ describe('moveJobSlot', () => {
     });
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, bay.id)).toEqual(
       expect.objectContaining({
         slots: [
           expect.objectContaining({
@@ -1896,7 +1896,7 @@ describe('removeJobSlot', () => {
     ]);
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, bay.id)).toEqual(
       expect.objectContaining({
         id: bay.id,
         nextAvailableDate: '2026-06-07',
@@ -1939,7 +1939,7 @@ describe('removeJobSlot', () => {
     });
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id)).toEqual(
+    expect(getProjectedBayQueue(schedule, bay.id)).toEqual(
       expect.objectContaining({
         id: bay.id,
         nextAvailableDate: '2026-06-06',
@@ -1986,7 +1986,7 @@ describe('removeJobSlot', () => {
     ).resolves.toMatchObject({ slot: { id: idleSlot.slot.id, kind: 'idle' } });
 
     const schedule = await listBays({ db: context.db });
-    expect(getBaySchedule(schedule, bay.id).slots).toEqual([
+    expect(getProjectedBayQueue(schedule, bay.id).slots).toEqual([
       expect.objectContaining({
         id: workSlot.slot.id,
         kind: 'work',
@@ -2200,11 +2200,11 @@ async function createBay(
   return bay;
 }
 
-function getBaySchedule(schedule: Awaited<ReturnType<typeof listBays>>, bayId: string) {
+function getProjectedBayQueue(schedule: Awaited<ReturnType<typeof listBays>>, bayId: string) {
   const bay = schedule.items.find((item) => item.id === bayId);
 
   if (!bay) {
-    throw new Error(`Bay schedule not found: ${bayId}`);
+    throw new Error(`Projected Bay Queue not found: ${bayId}`);
   }
 
   return bay;

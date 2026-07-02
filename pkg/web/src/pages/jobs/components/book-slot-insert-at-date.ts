@@ -6,19 +6,19 @@ import {
   maxDateOnly,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type { DateOnlyIso, JobSchedulePreviewPlacement } from '@pkg/schema';
+import type { BoardPlacement, DateOnlyIso } from '@pkg/schema';
 
-import { getSlotLabel } from './bay-schedule-summary.js';
+import { getSlotLabel } from './board-summary.js';
 import { toJobCalendarDateKey } from './job-date-key.js';
 
-export type BookSlotPlacement = JobSchedulePreviewPlacement;
+export type BookSlotPlacement = BoardPlacement;
 
 /**
  * Picker bounds for an Insert-at-Date booking: earliest tomorrow (the Slot
  * projected over today is never disturbed), latest the Bay's next available
  * working day (no machine-made idle from date picks). The max doubles as the
  * default value. Values are yyyy-MM-dd strings, matching DatePicker; `today`
- * is the plant business date shipped by the schedule read, never the client clock.
+ * is the plant business date shipped by the Board read, never the client clock.
  */
 export function getInsertAtDatePickerBounds(
   bay: { nextAvailableDate: DateOnlyIso },

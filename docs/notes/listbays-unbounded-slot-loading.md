@@ -1,6 +1,9 @@
-# `listBays` Loads the Full History, Not Just the Board
+# Historical Note: `listBays` Used to Load the Full History
 
 Date: 2026-06-21
+
+This note records the pre-ADR-0009 behavior. The current `jobs.listBays` contract is the Active
+Board window described in [ADR 0009](../adr/0009-schedule-windowing.md).
 
 ## Finding
 
@@ -10,7 +13,7 @@ historical Slots anywhere in the read path. Any client that joins Job detail ont
 therefore touches every Job that has ever had a Slot in any Bay, not just the Jobs on today's board.
 
 This is a property of `listBays` itself, shared by web (shop floor, gantt) and mobile, not something
-introduced by the per-Slot Job summary added to `BayListResult` in June 2026.
+introduced by the per-Slot Job summary added to `BoardListResult` in June 2026.
 
 ## Why there is no pruning
 
@@ -18,7 +21,7 @@ introduced by the per-Slot Job summary added to `BayListResult` in June 2026.
   ([pkg/db/src/schema/job.ts](../../pkg/db/src/schema/job.ts)).
 - A Bay's `scheduleOrigin` is set once at creation and never advances
   ([job-bay-service.ts](../../pkg/core/src/jobs/job-bay-service.ts)).
-- `findBayScheduleRows` loads all Slots for a Bay with no `where` on Slots, and `projectJobSlots`
+- `findBoardBayRows` loads all Slots for a Bay with no `where` on Slots, and `projectJobSlots`
   lays out every Slot from the origin forward
   ([job-read-service.ts](../../pkg/core/src/jobs/job-read-service.ts),
   [job-slot-projection.ts](../../pkg/domain/src/jobs/job-slot-projection.ts)).
@@ -26,13 +29,13 @@ introduced by the per-Slot Job summary added to `BayListResult` in June 2026.
   Completing a Job does nothing to its Slot. The "auto-insert idle gap when the Bay queue ended in
   the past" booking behaviour is direct evidence that finished Work Slots persist in the queue.
 
-Consequence: each Bay's Slot list — and the deduplicated `BayListResult.jobs` summary built from it —
+Consequence: each Bay's Slot list — and the deduplicated `BoardListResult.jobs` summary built from it —
 grows unbounded over the Bay's lifetime. Mobile's bay-list/bay-schedule hooks discard most of it
 client-side (`slot.endDate > today`).
 
 ## Scope of the current job-summary change
 
-The `BayListResult.jobs` field reduced load relative to the prior behaviour (clients previously fetched
+The `BoardListResult.jobs` field reduced load relative to the prior behaviour (clients previously fetched
 *every* Job in the system via an unpaged `jobs.list`, including never-booked Jobs). The new field is
 limited to *slotted* Jobs and deduplicated. It is strictly less, but still `O(all historical slotted
 Jobs)`, not `O(today's board)`.

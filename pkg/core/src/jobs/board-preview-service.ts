@@ -1,33 +1,33 @@
 import { type DatabaseTransaction, type Db, jobBays } from '@pkg/db';
 import { getPlantDateNow, projectBoard, resolveBoardWindowFrom, windowActiveBoard } from '@pkg/domain';
-import { BaySchedule, type JobSchedulePreviewInput, JobSchedulePreviewResult, type UUID } from '@pkg/schema';
+import { type BoardPreviewInput, BoardPreviewResult, ProjectedBayQueue, type UUID } from '@pkg/schema';
 import { inArray } from 'drizzle-orm';
 import {
-  findBayScheduleRows,
-  findBayScheduleRowsForJobs,
-  getBayScheduleRowJobIds,
-  mapBaySchedule,
-  mergeBayScheduleRows,
+  findBoardBayRows,
+  findBoardBayRowsForJobs,
+  getBoardBayRowJobIds,
+  mapProjectedBayQueue,
+  mergeBoardBayRows,
   toBoardBayFacts,
-} from './bay-schedule-read.js';
+} from './board-read.js';
 import { JobBayNotFoundError } from './job-errors.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
-export async function previewJobSchedule({
+export async function previewBoard({
   db,
   input,
 }: {
   db: Db | DatabaseTransaction;
-  input: JobSchedulePreviewInput;
-}): Promise<JobSchedulePreviewResult> {
+  input: BoardPreviewInput;
+}): Promise<BoardPreviewResult> {
   if (input.seeds.length === 0) {
-    return JobSchedulePreviewResult.parse({ bays: [], ghosts: [], placements: [] });
+    return BoardPreviewResult.parse({ bays: [], ghosts: [], placements: [] });
   }
 
   const seededBayIds = [...new Set(input.seeds.map((seed) => seed.bayId))];
   const [offDays, seededRows] = await Promise.all([
     listWorkingCalendarOffDays(db),
-    findBayScheduleRows(db, inArray(jobBays.id, seededBayIds)),
+    findBoardBayRows(db, inArray(jobBays.id, seededBayIds)),
   ]);
   const rowIds = new Set(seededRows.map((row) => row.id));
   const missingBayId = seededBayIds.find((bayId) => !rowIds.has(bayId));
@@ -38,11 +38,11 @@ export async function previewJobSchedule({
 
   // Seeded Bays still need the cross-Bay closure for Jobs on those Bays so the Board can resolve
   // `jobUnfinished` before the Active Board window trims any sibling Slots.
-  const crossBayRows = await findBayScheduleRowsForJobs({
+  const crossBayRows = await findBoardBayRowsForJobs({
     db,
-    jobIds: getBayScheduleRowJobIds(seededRows),
+    jobIds: getBoardBayRowJobIds(seededRows),
   });
-  const rows = mergeBayScheduleRows(seededRows, crossBayRows);
+  const rows = mergeBoardBayRows(seededRows, crossBayRows);
   const today = getPlantDateNow();
   const board = projectBoard({ bays: rows.map(toBoardBayFacts), offDays, seeds: input.seeds, today });
   const projectedBaysById = new Map(board.bays.map((bay) => [bay.bayId, bay] as const));
@@ -54,13 +54,15 @@ export async function previewJobSchedule({
       throw new Error(`Projected Board was missing Bay ${row.id}`);
     }
 
-    return mapBaySchedule(row, projectedBay);
+    return mapProjectedBayQueue(row, projectedBay);
   });
   const windowedBays = windowActiveBoard(baseBays, {
     from: resolveBoardWindowFrom(input, today),
     today,
   });
-  const previewBays = windowedBays.filter((bay) => seededBayIdSet.has(bay.id)).map((bay) => BaySchedule.parse(bay));
+  const previewBays = windowedBays
+    .filter((bay) => seededBayIdSet.has(bay.id))
+    .map((bay) => ProjectedBayQueue.parse(bay));
 
-  return JobSchedulePreviewResult.parse({ bays: previewBays, ghosts: board.ghosts, placements: board.placements });
+  return BoardPreviewResult.parse({ bays: previewBays, ghosts: board.ghosts, placements: board.placements });
 }

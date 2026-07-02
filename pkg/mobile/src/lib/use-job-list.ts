@@ -33,13 +33,13 @@ export type JobListState =
 
 export type JobListResult = {
   state: JobListState;
-  /** Refetch access + the Bay schedule, e.g. from pull-to-refresh. */
+  /** Refetch access + the Board, e.g. from pull-to-refresh. */
   refresh: () => void;
   isRefreshing: boolean;
 };
 
 /**
- * Loads the Job List from the same cached Bay schedule (`jobs.listBays`) the Bay List reads,
+ * Loads the Job List from the same cached Board (`jobs.listBays`) the Bay List reads,
  * so toggling between them never refetches. Groups every Work Slot by its Job — across all the
  * Bays the Job passes through — and projects each Job's board state through the shared
  * {@link deriveJobProgress}, the single seam the Job Detail header reuses so the two never disagree.

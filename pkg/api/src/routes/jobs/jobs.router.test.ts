@@ -12,7 +12,7 @@ import {
   user,
 } from '@pkg/db';
 import { toPlantDateOnly } from '@pkg/domain';
-import { type BayListResult, BaySchedule, type JobSchedulePreviewResult, type Product } from '@pkg/schema';
+import { type BoardListResult, type BoardPreviewResult, type Product, ProjectedBayQueue } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import { createActorUser } from '@/test/ai-tools.js';
@@ -184,7 +184,7 @@ describe('jobs.listBays', () => {
     await seedWorkSlot(context.db, { bayId, durationDays: 4, jobId: job.id, sequence: 1 });
 
     const schedule = await caller.jobs.listBays();
-    const bay = getScheduleBay(schedule, bayId);
+    const bay = getBoardBay(schedule, bayId);
 
     expect(bay).toMatchObject({
       nextAvailableDate: '2026-06-05',
@@ -206,14 +206,14 @@ describe('jobs.listBays', () => {
 
     const schedule = await caller.jobs.listBays();
 
-    expect(getScheduleBay(schedule, doneBayId).slots).toEqual([
+    expect(getBoardBay(schedule, doneBayId).slots).toEqual([
       expect.objectContaining({
         endDate: '2026-06-03',
         jobId: job.id,
         startDate: '2026-06-01',
       }),
     ]);
-    expect(getScheduleBay(schedule, activeBayId).slots).toEqual([
+    expect(getBoardBay(schedule, activeBayId).slots).toEqual([
       expect.objectContaining({
         endDate: '2026-06-08',
         jobId: job.id,
@@ -246,7 +246,7 @@ describe('jobs.listBays', () => {
 
     const schedule = await caller.jobs.listBays({ from: '2026-06-01' });
 
-    expect(getScheduleBay(schedule, doneBayId).slots).toEqual([
+    expect(getBoardBay(schedule, doneBayId).slots).toEqual([
       expect.objectContaining({
         endDate: '2026-06-02',
         jobId: crossBayJob.id,
@@ -255,7 +255,7 @@ describe('jobs.listBays', () => {
         state: 'done',
       }),
     ]);
-    expect(getScheduleBay(schedule, activeBayId).slots).toEqual([
+    expect(getBoardBay(schedule, activeBayId).slots).toEqual([
       expect.objectContaining({
         endDate: '2026-06-07',
         jobId: activeJob.id,
@@ -264,7 +264,7 @@ describe('jobs.listBays', () => {
         state: 'active',
       }),
     ]);
-    expect(getScheduleBay(schedule, futureBayId).slots).toEqual([
+    expect(getBoardBay(schedule, futureBayId).slots).toEqual([
       expect.objectContaining({
         endDate: '2026-06-07',
         jobId: crossBayJob.id,
@@ -273,7 +273,7 @@ describe('jobs.listBays', () => {
         state: 'scheduled',
       }),
     ]);
-    expect(getScheduleBay(schedule, completeBayId).slots).toEqual([
+    expect(getBoardBay(schedule, completeBayId).slots).toEqual([
       expect.objectContaining({
         endDate: '2026-06-03',
         jobId: completeJob.id,
@@ -297,18 +297,18 @@ describe('jobs.listBays', () => {
     await seedWorkSlot(context.db, { bayId: historicalBayId, durationDays: 3, jobId: historicalJob.id, sequence: 1 });
     await seedWorkSlot(context.db, { bayId: hiddenBayId, durationDays: 2, jobId: hiddenJob.id, sequence: 1 });
 
-    expect(getScheduleBay(await caller.jobs.listBays(), historicalBayId).slots).toEqual([]);
+    expect(getBoardBay(await caller.jobs.listBays(), historicalBayId).slots).toEqual([]);
 
     const widened = await caller.jobs.listBays({ from: '2026-06-04' });
 
-    expect(getScheduleBay(widened, historicalBayId).slots).toEqual([
+    expect(getBoardBay(widened, historicalBayId).slots).toEqual([
       expect.objectContaining({
         endDate: '2026-06-04',
         jobId: historicalJob.id,
         startDate: '2026-06-01',
       }),
     ]);
-    expect(getScheduleBay(widened, hiddenBayId).slots).toEqual([]);
+    expect(getBoardBay(widened, hiddenBayId).slots).toEqual([]);
     expect(widened.jobs.map((summary) => summary.id)).toEqual([historicalJob.id]);
   });
 
@@ -327,14 +327,14 @@ describe('jobs.listBays', () => {
 
     const schedule = await caller.jobs.listBays({ from: '2024-01-01' });
 
-    expect(getScheduleBay(schedule, insideBayId).slots).toEqual([
+    expect(getBoardBay(schedule, insideBayId).slots).toEqual([
       expect.objectContaining({
         endDate: '2025-06-05',
         jobId: insideJob.id,
         startDate: '2025-06-01',
       }),
     ]);
-    expect(getScheduleBay(schedule, outsideBayId).slots).toEqual([]);
+    expect(getBoardBay(schedule, outsideBayId).slots).toEqual([]);
   });
 });
 
@@ -401,7 +401,7 @@ describe('jobs bay management', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
-  test('rejects new bookings for disabled Bays while schedule reads still include them', async ({ context }) => {
+  test('rejects new bookings for disabled Bays while Board reads still include them', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const job = await caller.jobs.create({ quoteId: context.quote.id });
     const bayId = '00000000-0000-4000-8000-000000000b01';
@@ -1551,7 +1551,7 @@ describe('jobs.previewSchedule', () => {
 
     const preview = await caller.jobs.previewSchedule({ seeds: [{ bayId, durationDays: 2 }] });
 
-    expect(BaySchedule.parse(getSchedulePreviewBay(preview, bayId))).toEqual(getSchedulePreviewBay(preview, bayId));
+    expect(ProjectedBayQueue.parse(getBoardPreviewBay(preview, bayId))).toEqual(getBoardPreviewBay(preview, bayId));
     expect(preview.placements).toEqual([{ idleGapDays: 0, startDate: '2026-06-05', type: 'append' }]);
     expect(preview.ghosts).toEqual([
       expect.objectContaining({
@@ -1565,7 +1565,7 @@ describe('jobs.previewSchedule', () => {
     ]);
 
     const booked = await caller.jobs.bookSlot({ bayId, durationDays: 2, jobId: job.id });
-    const bay = getScheduleBay(await caller.jobs.listBays(), bayId);
+    const bay = getBoardBay(await caller.jobs.listBays(), bayId);
 
     expect(bay.slots.find((slot) => slot.id === booked.slot.id)).toMatchObject({
       endDate: preview.ghosts[0]?.endDate,
@@ -1652,8 +1652,8 @@ describe('jobs.previewSchedule', () => {
       seeds: [{ bayId, durationDays: 1 }],
     });
 
-    expect(getSchedulePreviewBay(defaultPreview, bayId).slots.map((slot) => slot.id)).not.toContain(historicalSlot.id);
-    expect(getSchedulePreviewBay(widenedPreview, bayId).slots).toEqual([
+    expect(getBoardPreviewBay(defaultPreview, bayId).slots.map((slot) => slot.id)).not.toContain(historicalSlot.id);
+    expect(getBoardPreviewBay(widenedPreview, bayId).slots).toEqual([
       expect.objectContaining({
         endDate: '2026-06-03',
         id: historicalSlot.id,
@@ -1686,7 +1686,7 @@ describe('jobs.previewSchedule', () => {
     const preview = await caller.jobs.previewSchedule({ seeds: [{ bayId, durationDays: 1 }] });
 
     expect(preview.bays.map((bay) => bay.id)).toEqual([bayId]);
-    expect(getSchedulePreviewBay(preview, bayId).slots).toEqual(
+    expect(getBoardPreviewBay(preview, bayId).slots).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           endDate: '2026-06-03',
@@ -1720,7 +1720,7 @@ describe('jobs.previewSchedule', () => {
       placementType: 'insert-before',
       startDate: '2026-06-09',
     });
-    expect(getSchedulePreviewBay(preview, bayId).slots.map((slot) => [slot.id, slot.startDate])).toEqual([
+    expect(getBoardPreviewBay(preview, bayId).slots.map((slot) => [slot.id, slot.startDate])).toEqual([
       [firstSlot.slot.id, '2026-06-05'],
       [secondSlot.slot.id, '2026-06-10'],
     ]);
@@ -1731,7 +1731,7 @@ describe('jobs.previewSchedule', () => {
       jobId: secondJob.id,
       startDate: '2026-06-09',
     });
-    const bay = getScheduleBay(await caller.jobs.listBays(), bayId);
+    const bay = getBoardBay(await caller.jobs.listBays(), bayId);
 
     expect(bay.slots.map((slot) => [slot.id, slot.startDate])).toEqual([
       [firstSlot.slot.id, '2026-06-05'],
@@ -1763,7 +1763,7 @@ describe('jobs.previewSchedule', () => {
       placementType: 'split',
       startDate: '2026-06-09',
     });
-    expect(getSchedulePreviewBay(preview, bayId).slots).toEqual([
+    expect(getBoardPreviewBay(preview, bayId).slots).toEqual([
       expect.objectContaining({
         durationDays: 4,
         id: `${firstSlot.slot.id}:before`,
@@ -1786,7 +1786,7 @@ describe('jobs.previewSchedule', () => {
       jobId: secondJob.id,
       startDate: '2026-06-09',
     });
-    const bay = getScheduleBay(await caller.jobs.listBays(), bayId);
+    const bay = getBoardBay(await caller.jobs.listBays(), bayId);
 
     expect(bay.slots.map((slot) => [slot.id, slot.durationDays, slot.startDate])).toEqual([
       [firstSlot.slot.id, 4, '2026-06-05'],
@@ -2192,8 +2192,8 @@ describe('jobs.removeSlot', () => {
   });
 });
 
-function getScheduleBay(schedule: BayListResult, bayId: string) {
-  const bay = schedule.items.find((item) => item.id === bayId);
+function getBoardBay(board: BoardListResult, bayId: string) {
+  const bay = board.items.find((item) => item.id === bayId);
 
   if (!bay) {
     throw new Error(`Expected schedule to include Bay ${bayId}`);
@@ -2202,11 +2202,11 @@ function getScheduleBay(schedule: BayListResult, bayId: string) {
   return bay;
 }
 
-function getSchedulePreviewBay(preview: JobSchedulePreviewResult, bayId: string) {
+function getBoardPreviewBay(preview: BoardPreviewResult, bayId: string) {
   const bay = preview.bays.find((item) => item.id === bayId);
 
   if (!bay) {
-    throw new Error(`Expected schedule preview to include Bay ${bayId}`);
+    throw new Error(`Expected Board preview to include Bay ${bayId}`);
   }
 
   return bay;

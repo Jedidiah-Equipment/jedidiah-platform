@@ -1,31 +1,31 @@
 import { addDateOnlyDays, parseDateOnlyParts } from '@pkg/domain';
 import type { DateOnlyIso } from '@pkg/schema';
 
-export const BAY_SCHEDULE_HISTORY_BACK_CONTEXT_DAYS = 14;
-export const BAY_SCHEDULE_HISTORY_EXTENSION_DEBOUNCE_MS = 250;
+export const BOARD_HISTORY_BACK_CONTEXT_DAYS = 14;
+export const BOARD_HISTORY_EXTENSION_DEBOUNCE_MS = 250;
 
-export function getInitialBayScheduleHistoryFloor(today: DateOnlyIso): DateOnlyIso {
-  return startOfBayScheduleHistoryMonth(addDateOnlyDays(today, -BAY_SCHEDULE_HISTORY_BACK_CONTEXT_DAYS));
+export function getInitialBoardHistoryFloor(today: DateOnlyIso): DateOnlyIso {
+  return startOfBoardHistoryMonth(addDateOnlyDays(today, -BOARD_HISTORY_BACK_CONTEXT_DAYS));
 }
 
-export function getNextBayScheduleHistoryFloor(currentFloor: DateOnlyIso, viewportStart: DateOnlyIso): DateOnlyIso {
-  const currentBucket = startOfBayScheduleHistoryMonth(currentFloor);
-  const viewportBucket = startOfBayScheduleHistoryMonth(viewportStart);
+export function getNextBoardHistoryFloor(currentFloor: DateOnlyIso, viewportStart: DateOnlyIso): DateOnlyIso {
+  const currentBucket = startOfBoardHistoryMonth(currentFloor);
+  const viewportBucket = startOfBoardHistoryMonth(viewportStart);
 
   if (viewportBucket >= currentBucket) {
     return currentBucket;
   }
 
-  return addBayScheduleHistoryMonths(currentBucket, -1);
+  return addBoardHistoryMonths(currentBucket, -1);
 }
 
-export function startOfBayScheduleHistoryMonth(date: DateOnlyIso): DateOnlyIso {
+export function startOfBoardHistoryMonth(date: DateOnlyIso): DateOnlyIso {
   const { month, year } = parseDateOnlyParts(date);
 
   return toDateOnlyParts(year, month, 1);
 }
 
-function addBayScheduleHistoryMonths(date: DateOnlyIso, monthOffset: number): DateOnlyIso {
+function addBoardHistoryMonths(date: DateOnlyIso, monthOffset: number): DateOnlyIso {
   const { month, year } = parseDateOnlyParts(date);
   const monthIndex = year * 12 + (month - 1) + monthOffset;
   const nextYear = Math.floor(monthIndex / 12);

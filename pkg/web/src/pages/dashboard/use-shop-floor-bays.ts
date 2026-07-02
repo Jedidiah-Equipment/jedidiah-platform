@@ -1,5 +1,5 @@
 import { listEnabledBays, type WorkingCalendar } from '@pkg/domain';
-import type { BaySchedule, DateOnlyIso, JobSummary, OffDay } from '@pkg/schema';
+import type { DateOnlyIso, JobSummary, OffDay, ProjectedBayQueue } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
@@ -11,7 +11,7 @@ export type ShopFloorBays =
   | { status: 'pending' }
   | {
       status: 'ready';
-      enabledBays: BaySchedule[];
+      enabledBays: ProjectedBayQueue[];
       /** Product/customer detail for the Jobs on the board, keyed by Job id, from `jobs.listBays`. */
       jobsById: ReadonlyMap<string, JobSummary>;
       offDays: OffDay[];

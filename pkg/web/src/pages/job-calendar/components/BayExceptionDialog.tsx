@@ -1,5 +1,5 @@
 import { formatDate } from '@pkg/domain';
-import type { BaySchedule } from '@pkg/schema';
+import type { ProjectedBayQueue } from '@pkg/schema';
 import { IconLoader2, IconMoon, IconSun, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { bayOperatorName } from '@/components/bays/bay-label.js';
@@ -22,7 +22,7 @@ import type { BayExceptionDialogState } from '../types.js';
 
 type BayExceptionDialogProps = {
   state: BayExceptionDialogState | null;
-  bays: BaySchedule[];
+  bays: ProjectedBayQueue[];
   isPending: boolean;
   isAddPending: boolean;
   isRemovePending: boolean;

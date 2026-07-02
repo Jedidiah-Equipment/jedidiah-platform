@@ -1,12 +1,12 @@
 import type { DateOnlyIso, UUID } from '@pkg/schema';
 
-export type BayScheduleFilter = {
+export type BoardFilter = {
   bayId: UUID | null;
   customerId: UUID | null;
   jobId: UUID | null;
 };
 
-export const emptyBayScheduleFilter: BayScheduleFilter = {
+export const emptyBoardFilter: BoardFilter = {
   bayId: null,
   customerId: null,
   jobId: null,
@@ -25,20 +25,20 @@ type FilterableJob = {
   customerId: UUID;
 };
 
-export function hasActiveBayScheduleFilter(filter: BayScheduleFilter): boolean {
+export function hasActiveBoardFilter(filter: BoardFilter): boolean {
   return filter.bayId !== null || filter.customerId !== null || filter.jobId !== null;
 }
 
 // A slot matches only when it satisfies every active filter dimension. Idle
 // slots have no job, so any active job/customer filter excludes them.
-export function slotMatchesBayScheduleFilter({
+export function slotMatchesBoardFilter({
   bayId,
   filter,
   jobsById,
   slot,
 }: {
   bayId: UUID;
-  filter: BayScheduleFilter;
+  filter: BoardFilter;
   jobsById: ReadonlyMap<UUID, FilterableJob>;
   slot: FilterableSlot;
 }): boolean {
@@ -65,20 +65,20 @@ export function slotMatchesBayScheduleFilter({
   return true;
 }
 
-export function countBayScheduleFilterMatches({
+export function countBoardFilterMatches({
   bays,
   filter,
   jobsById,
 }: {
   bays: ReadonlyArray<{ id: UUID; slots: ReadonlyArray<FilterableSlot> }>;
-  filter: BayScheduleFilter;
+  filter: BoardFilter;
   jobsById: ReadonlyMap<UUID, FilterableJob>;
 }): number {
   let count = 0;
 
   for (const bay of bays) {
     for (const slot of bay.slots) {
-      if (slotMatchesBayScheduleFilter({ bayId: bay.id, filter, jobsById, slot })) {
+      if (slotMatchesBoardFilter({ bayId: bay.id, filter, jobsById, slot })) {
         count += 1;
       }
     }
@@ -87,16 +87,16 @@ export function countBayScheduleFilterMatches({
   return count;
 }
 
-export function getEarliestBayScheduleFilterMatchStart({
+export function getEarliestBoardFilterMatchStart({
   bays,
   filter,
   jobsById,
   today,
 }: {
   bays: ReadonlyArray<{ id: UUID; slots: ReadonlyArray<FilterableSlotWithStart> }>;
-  filter: BayScheduleFilter;
+  filter: BoardFilter;
   jobsById: ReadonlyMap<UUID, FilterableJob>;
-  /** Plant today as a yyyy-MM-dd business date, from the schedule read. */
+  /** Plant today as a yyyy-MM-dd business date, from the Board read. */
   today: DateOnlyIso;
 }): DateOnlyIso | null {
   let earliestStart: DateOnlyIso | null = null;
@@ -105,7 +105,7 @@ export function getEarliestBayScheduleFilterMatchStart({
 
   for (const bay of bays) {
     for (const slot of bay.slots) {
-      if (!slotMatchesBayScheduleFilter({ bayId: bay.id, filter, jobsById, slot })) {
+      if (!slotMatchesBoardFilter({ bayId: bay.id, filter, jobsById, slot })) {
         continue;
       }
 

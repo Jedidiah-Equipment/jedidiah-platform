@@ -38,7 +38,7 @@ import {
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { cn } from '@/lib/utils.js';
 import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
-import { getSlotLabel } from './bay-schedule-summary.js';
+import { getSlotLabel } from './board-summary.js';
 import { InfoList, SlotDayBreakdownRows } from './JobInfoList.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
 import { scheduleBarToneClass, scheduleResizeHandleToneClass } from './schedule-state-tone.js';

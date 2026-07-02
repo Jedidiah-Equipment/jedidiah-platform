@@ -13,7 +13,7 @@ import { useTRPC } from './trpc';
 import { useBayCalendars } from './use-bay-calendars';
 
 /** The in-progress Work Slot a Bay is running today, projected for the ACTIVE NOW hero. */
-export type BayScheduleActiveJob = ActiveJobProgress & {
+export type BayQueueActiveJob = ActiveJobProgress & {
   slotId: string;
   jobCode: string;
   productName: string;
@@ -27,7 +27,7 @@ export type BayScheduleActiveJob = ActiveJobProgress & {
 /**
  * One selectable Work Slot projected for the detail pane (#520): the status chip,
  * product card, SLOT grid, and JOB grid. Documents are fetched separately via
- * `jobs.get`, since the schedule join carries only Slot + Job summary fields.
+ * `jobs.get`, since the Board join carries only Slot + Job summary fields.
  */
 export type BaySlotDetail = {
   jobId: string;
@@ -51,7 +51,7 @@ export type BaySlotDetail = {
 };
 
 /** A future Work Slot in the UP NEXT timeline. */
-export type BayScheduleUpcomingSlot = {
+export type BayQueueUpcomingSlot = {
   slotId: string;
   jobCode: string;
   productName: string;
@@ -64,15 +64,15 @@ export type BayScheduleUpcomingSlot = {
   isNext: boolean;
 };
 
-export type BayScheduleState =
+export type BayQueueState =
   | { status: 'error'; error: unknown }
   | { status: 'pending' }
   | { status: 'not-found' }
   | {
       status: 'ready';
       bay: { id: string; name: string; operator: BayOperator | null };
-      active: BayScheduleActiveJob | null;
-      upcoming: BayScheduleUpcomingSlot[];
+      active: BayQueueActiveJob | null;
+      upcoming: BayQueueUpcomingSlot[];
       /** Detail-pane projection for every selectable Slot, keyed by Slot id. */
       slotsById: Record<string, BaySlotDetail>;
       today: DateOnlyIso;
@@ -84,12 +84,12 @@ export type BayScheduleState =
  * customer detail, deriving the in-progress Slot's days-left and each upcoming
  * Work Slot's working-day span. Mirrors {@link useBayList}.
  */
-export function useBaySchedule(bayId: string): BayScheduleState {
+export function useBaySchedule(bayId: string): BayQueueState {
   const trpc = useTRPC();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
   const bayCalendars = useBayCalendars();
 
-  return useMemo<BayScheduleState>(() => {
+  return useMemo<BayQueueState>(() => {
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
     if (baysQuery.isPending || !bayCalendars) return { status: 'pending' };
 
@@ -102,7 +102,7 @@ export function useBaySchedule(bayId: string): BayScheduleState {
 
     const activeSlot = findActiveWorkSlot({ bay });
     const activeJob = activeSlot ? jobsById.get(activeSlot.jobId) : undefined;
-    const active: BayScheduleActiveJob | null =
+    const active: BayQueueActiveJob | null =
       activeSlot && activeJob
         ? {
             ...deriveActiveJobProgress({ slot: activeSlot, today, workingCalendar }),
@@ -154,7 +154,7 @@ export function useBaySchedule(bayId: string): BayScheduleState {
 
     // The UP NEXT list reuses each Slot's detail projection, so the working-day
     // span is derived exactly once per Slot.
-    const upcoming = upcomingSlots.map<BayScheduleUpcomingSlot>((slot, index) => {
+    const upcoming = upcomingSlots.map<BayQueueUpcomingSlot>((slot, index) => {
       const detail = addSlotDetail(slot, 'scheduled', null, index === 0);
 
       return {

@@ -1,17 +1,17 @@
 import { bayWorkingCalendars, type WorkingCalendar } from '@pkg/domain';
-import type { BayListInput, BayListResult } from '@pkg/schema';
+import type { BoardListInput, BoardListResult } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useTRPC } from '@/lib/trpc.js';
 
 export type BayCalendars = {
-  offDays: BayListResult['offDays'];
-  today: BayListResult['today'];
+  offDays: BoardListResult['offDays'];
+  today: BoardListResult['today'];
   workingCalendarsByBayId: Map<string, WorkingCalendar>;
 };
 
-export function selectBayCalendars(result: Pick<BayListResult, 'items' | 'offDays' | 'today'>): BayCalendars {
+export function selectBayCalendars(result: Pick<BoardListResult, 'items' | 'offDays' | 'today'>): BayCalendars {
   return {
     offDays: result.offDays,
     today: result.today,
@@ -20,7 +20,7 @@ export function selectBayCalendars(result: Pick<BayListResult, 'items' | 'offDay
 }
 
 export function useBayCalendars(
-  input?: BayListInput | undefined,
+  input?: BoardListInput | undefined,
   options: { enabled?: boolean } = {},
 ): BayCalendars | null {
   const trpc = useTRPC();

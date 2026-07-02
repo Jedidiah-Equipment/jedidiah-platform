@@ -2,10 +2,10 @@ import type { DateOnlyIso } from '@pkg/schema';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
-  BAY_SCHEDULE_HISTORY_EXTENSION_DEBOUNCE_MS,
-  getInitialBayScheduleHistoryFloor,
-  getNextBayScheduleHistoryFloor,
-} from './bay-schedule-history-floor.js';
+  BOARD_HISTORY_EXTENSION_DEBOUNCE_MS,
+  getInitialBoardHistoryFloor,
+  getNextBoardHistoryFloor,
+} from './board-history-floor.js';
 import { toJobCalendarDateKey } from './job-date-key.js';
 
 /**
@@ -14,14 +14,12 @@ import { toJobCalendarDateKey } from './job-date-key.js';
  * so a single far-back scroll keeps pulling month buckets until the viewport is covered. The floor only
  * ever lowers within a session; scrolling forward inside the loaded range is a no-op.
  */
-export function useBayScheduleHistoryFloor(): {
+export function useBoardHistoryFloor(): {
   historyFloor: DateOnlyIso;
   onVisibleWindowChange: (window: { start: Date }) => void;
 } {
   // The first Gantt read needs its own back-context before the server returns plant `today`.
-  const [historyFloor, setHistoryFloor] = useState(() =>
-    getInitialBayScheduleHistoryFloor(toJobCalendarDateKey(new Date())),
-  );
+  const [historyFloor, setHistoryFloor] = useState(() => getInitialBoardHistoryFloor(toJobCalendarDateKey(new Date())));
   const extensionTimeoutRef = useRef<number | null>(null);
   const latestViewportStartRef = useRef<DateOnlyIso | null>(null);
 
@@ -41,9 +39,9 @@ export function useBayScheduleHistoryFloor(): {
       extensionTimeoutRef.current = window.setTimeout(() => {
         extensionTimeoutRef.current = null;
         setHistoryFloor((currentFloor) =>
-          getNextBayScheduleHistoryFloor(currentFloor, latestViewportStartRef.current ?? viewportStart),
+          getNextBoardHistoryFloor(currentFloor, latestViewportStartRef.current ?? viewportStart),
         );
-      }, BAY_SCHEDULE_HISTORY_EXTENSION_DEBOUNCE_MS);
+      }, BOARD_HISTORY_EXTENSION_DEBOUNCE_MS);
     },
     [clearExtensionTimeout],
   );
@@ -53,7 +51,7 @@ export function useBayScheduleHistoryFloor(): {
       const viewportStart = toJobCalendarDateKey(start);
       latestViewportStartRef.current = viewportStart;
 
-      if (getNextBayScheduleHistoryFloor(historyFloor, viewportStart) === historyFloor) {
+      if (getNextBoardHistoryFloor(historyFloor, viewportStart) === historyFloor) {
         clearExtensionTimeout();
         return;
       }
@@ -72,7 +70,7 @@ export function useBayScheduleHistoryFloor(): {
       return;
     }
 
-    if (getNextBayScheduleHistoryFloor(historyFloor, viewportStart) === historyFloor) {
+    if (getNextBoardHistoryFloor(historyFloor, viewportStart) === historyFloor) {
       clearExtensionTimeout();
       return;
     }

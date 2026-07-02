@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BaySchedule } from '@/components/bays/BaySchedule';
+import { BayQueueScreen } from '@/components/bays/BayQueueScreen';
 
 /**
  * Bay schedule route: the responsive master–detail screen for the selected Bay —
@@ -13,7 +13,7 @@ export default function BayScheduleRoute() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <BaySchedule bayId={bayId} onBack={() => router.back()} />
+      <BayQueueScreen bayId={bayId} onBack={() => router.back()} />
     </SafeAreaView>
   );
 }

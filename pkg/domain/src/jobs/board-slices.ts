@@ -1,10 +1,10 @@
 import {
-  type BayListInput,
-  BaySchedule,
+  type BoardListInput,
+  type BoardPreviewInput,
   type DateOnlyIso,
   type JobDepartmentSchedule,
-  type JobSchedulePreviewInput,
   type JobScheduleState,
+  ProjectedBayQueue,
   type ProjectedIdleJobSlot,
   type ProjectedWorkJobSlot,
   type UUID,
@@ -20,7 +20,7 @@ type ActiveBoardWindowSlot =
   | Pick<ProjectedIdleJobSlot, 'endDate' | 'jobId' | 'kind'>;
 
 export function resolveBoardWindowFrom(
-  input: BayListInput | JobSchedulePreviewInput | undefined,
+  input: BoardListInput | BoardPreviewInput | undefined,
   today: DateOnlyIso,
 ): DateOnlyIso {
   const earliestFrom = addDateOnlyDays(today, -SCHEDULE_HISTORY_WINDOW_DAYS);
@@ -60,13 +60,13 @@ function isSlotInWindow(
   return slot.endDate > today;
 }
 
-export function sliceJobSchedule(bays: readonly BaySchedule[], jobId: UUID): JobDepartmentSchedule[] {
+export function sliceJobSchedule(bays: readonly ProjectedBayQueue[], jobId: UUID): JobDepartmentSchedule[] {
   return JOB_DEPARTMENT_PIPELINE.map(({ department }) => ({
     department,
     bays: bays
       .filter((bay) => bay.department === department)
       .map((bay) =>
-        BaySchedule.parse({
+        ProjectedBayQueue.parse({
           ...bay,
           slots: bay.slots.filter((slot) => slot.kind === 'work' && slot.jobId === jobId),
         }),
@@ -76,7 +76,7 @@ export function sliceJobSchedule(bays: readonly BaySchedule[], jobId: UUID): Job
 }
 
 export function foldJobScheduleStates(
-  bays: readonly BaySchedule[],
+  bays: readonly ProjectedBayQueue[],
   jobIds: readonly UUID[],
 ): Map<UUID, JobScheduleState> {
   const states = new Map<UUID, JobScheduleState>(
@@ -100,7 +100,7 @@ export function foldJobScheduleStates(
   return states;
 }
 
-export function getScheduleJobIds(bays: readonly { slots: readonly ActiveBoardWindowSlot[] }[]): UUID[] {
+export function getBoardJobIds(bays: readonly { slots: readonly ActiveBoardWindowSlot[] }[]): UUID[] {
   const jobIds = new Set<UUID>();
 
   for (const bay of bays) {

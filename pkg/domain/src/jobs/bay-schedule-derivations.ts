@@ -9,7 +9,6 @@ import type {
 } from '@pkg/schema';
 
 import { addDateOnlyDays, endOfDateOnlyWeek } from '../formatting/date-only.js';
-import { bayWorkingCalendars } from './bay-schedule-projection.js';
 import { JOB_DEPARTMENT_PIPELINE } from './job-department-pipeline.js';
 import { countWorkingDaysBetween, isWorkingDay, type WorkingCalendar } from './working-calendar.js';
 
@@ -67,39 +66,30 @@ export function getBayTodayOccupancy({
 }
 
 /**
- * The Work Slot covering today on a Bay, or null when today falls in an idle Slot, a gap, or past the
- * queue. A Slot covering today is in progress even on an off-day — the Job sits on the Bay whether or
- * not anyone works that day — so this is a pure date check and never gates on the working calendar.
+ * The Work Slot active today on a Bay, or null when today falls in an idle Slot, a gap, or past the
+ * queue. The Board builder owns the active/done/scheduled rule; this derivation only reads it.
  * (Bay occupancy/utilisation, which does treat off-days as idle, lives in {@link getBayTodayOccupancy}.)
  */
-export function findActiveWorkSlot({
-  bay,
-  today,
-}: {
-  bay: BaySchedule;
-  today: DateOnlyIso;
-}): ProjectedWorkJobSlot | null {
-  const slot = findSlotCoveringDate(bay.slots, today);
-
-  return slot?.kind === 'work' ? slot : null;
+export function findActiveWorkSlot({ bay }: { bay: BaySchedule }): ProjectedWorkJobSlot | null {
+  return (
+    bay.slots.find((slot): slot is ProjectedWorkJobSlot => slot.kind === 'work' && slot.state === 'active') ?? null
+  );
 }
 
 /**
- * Future Work Slots in queue order — everything still ahead of today (half-open `endDate > today`),
- * optionally excluding the active Slot. A Slot covering today that the off-day gate excluded from
- * "active" still appears here, so it is never silently dropped.
+ * Work Slots in queue order whose projected state is not done, optionally excluding the active Slot.
+ * This deliberately includes a covering-today Slot when it was not excluded; `state === 'scheduled'`
+ * would drop that Slot and change the mobile UP NEXT pane.
  */
 export function listUpcomingWorkSlots({
   bay,
   excludeSlotId,
-  today,
 }: {
   bay: BaySchedule;
   excludeSlotId?: string;
-  today: DateOnlyIso;
 }): ProjectedWorkJobSlot[] {
   return bay.slots.filter(
-    (slot): slot is ProjectedWorkJobSlot => slot.kind === 'work' && slot.id !== excludeSlotId && slot.endDate > today,
+    (slot): slot is ProjectedWorkJobSlot => slot.kind === 'work' && slot.id !== excludeSlotId && slot.state !== 'done',
   );
 }
 
@@ -261,14 +251,13 @@ export type BayLoadToday = {
 
 export function computeBayLoadToday({
   bays,
-  offDays,
   today,
+  workingCalendarsByBayId,
 }: {
   bays: readonly BaySchedule[];
-  offDays: readonly OffDay[];
   today: DateOnlyIso;
+  workingCalendarsByBayId: ReadonlyMap<string, WorkingCalendar>;
 }): BayLoadToday {
-  const workingCalendarsByBayId = bayWorkingCalendars(bays, offDays);
   let workingCount = 0;
   let idleCount = 0;
   let offCount = 0;

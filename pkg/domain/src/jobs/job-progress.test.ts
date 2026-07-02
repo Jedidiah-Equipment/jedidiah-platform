@@ -6,6 +6,7 @@ import type { WorkingCalendar } from './working-calendar.js';
 
 const day = (value: string) => DateOnlyIso.parse(value);
 const uuid = (value: string) => UUID.parse(value);
+const defaultToday = day('2026-07-02');
 
 const BAY_IDS = {
   assembly1: uuid('00000000-0000-4000-8000-000000000003'),
@@ -39,9 +40,17 @@ const entry = (
   bayId: UUID = BAY_IDS.fab1,
 ): JobWorkSlotEntry => ({
   bayName,
-  slot: { bayId, startDate: day(startDate), endDate: day(endDate) },
+  slot: { bayId, startDate: day(startDate), endDate: day(endDate), state: stateFor(startDate, endDate) },
   workingCalendar,
 });
+
+function stateFor(
+  startDate: string,
+  endDate: string,
+  today: DateOnlyIso = defaultToday,
+): JobWorkSlotEntry['slot']['state'] {
+  return endDate <= today ? 'done' : startDate <= today ? 'active' : 'scheduled';
+}
 
 describe('deriveJobProgress', () => {
   it('reports in-progress with the active Bay when a Slot runs today', () => {
@@ -191,7 +200,7 @@ describe('deriveJobRouteStop', () => {
   it('marks a Slot done once its last work day is before today', () => {
     // Half-open end Sat 27 Jun → last work day Fri 26 Jun, before today Thu 2 Jul.
     const stop = deriveJobRouteStop({
-      slot: { startDate: day('2026-06-15'), endDate: day('2026-06-27') },
+      slot: { startDate: day('2026-06-15'), endDate: day('2026-06-27'), state: 'done' },
       today: day('2026-07-02'),
       workingCalendar: weekendsOff,
     });
@@ -204,7 +213,7 @@ describe('deriveJobRouteStop', () => {
 
   it('marks a Slot active when today falls within it on a working day', () => {
     const stop = deriveJobRouteStop({
-      slot: { startDate: day('2026-06-29'), endDate: day('2026-07-10') },
+      slot: { startDate: day('2026-06-29'), endDate: day('2026-07-10'), state: 'active' },
       today: day('2026-07-02'),
       workingCalendar: weekendsOff,
     });
@@ -217,7 +226,7 @@ describe('deriveJobRouteStop', () => {
 
   it('marks a Slot scheduled when it starts after today', () => {
     const stop = deriveJobRouteStop({
-      slot: { startDate: day('2026-07-13'), endDate: day('2026-07-17') },
+      slot: { startDate: day('2026-07-13'), endDate: day('2026-07-17'), state: 'scheduled' },
       today: day('2026-07-02'),
       workingCalendar: weekendsOff,
     });
@@ -230,7 +239,7 @@ describe('deriveJobRouteStop', () => {
   it('marks a Slot covering an off-day today as active (the Job is still in progress)', () => {
     // Today Sat 27 Jun is an org off-day; the Slot covers it, so the Job is in progress.
     const stop = deriveJobRouteStop({
-      slot: { startDate: day('2026-06-26'), endDate: day('2026-07-03') },
+      slot: { startDate: day('2026-06-26'), endDate: day('2026-07-03'), state: 'active' },
       today: day('2026-06-27'),
       workingCalendar: weekendsOff,
     });

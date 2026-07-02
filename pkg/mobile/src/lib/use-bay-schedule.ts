@@ -1,6 +1,5 @@
 import {
   type ActiveJobProgress,
-  bayWorkingCalendar,
   deriveActiveJobProgress,
   findActiveWorkSlot,
   listUpcomingWorkSlots,
@@ -11,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useTRPC } from './trpc';
+import { useBayCalendars } from './use-bay-calendars';
 
 /** The in-progress Work Slot a Bay is running today, projected for the ACTIVE NOW hero. */
 export type BayScheduleActiveJob = ActiveJobProgress & {
@@ -87,19 +87,20 @@ export type BayScheduleState =
 export function useBaySchedule(bayId: string): BayScheduleState {
   const trpc = useTRPC();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const bayCalendars = useBayCalendars();
 
   return useMemo<BayScheduleState>(() => {
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
-    if (baysQuery.isPending) return { status: 'pending' };
+    if (baysQuery.isPending || !bayCalendars) return { status: 'pending' };
 
-    const { items: bays, jobs, offDays, today } = baysQuery.data;
+    const { items: bays, jobs, today } = baysQuery.data;
     const bay = bays.find((candidate) => candidate.id === bayId && candidate.disabledAt === null);
     if (!bay) return { status: 'not-found' };
 
-    const workingCalendar = bayWorkingCalendar(new Set(offDays.map((offDay) => offDay.date)), bay.calendarExceptions);
+    const workingCalendar = bayCalendars.workingCalendarsByBayId.get(bay.id) ?? {};
     const jobsById = new Map(jobs.map((job) => [job.id, job] as const));
 
-    const activeSlot = findActiveWorkSlot({ bay, today });
+    const activeSlot = findActiveWorkSlot({ bay });
     const activeJob = activeSlot ? jobsById.get(activeSlot.jobId) : undefined;
     const active: BayScheduleActiveJob | null =
       activeSlot && activeJob
@@ -116,7 +117,7 @@ export function useBaySchedule(bayId: string): BayScheduleState {
         : null;
 
     // Everything still ahead: future Work Slots, excluding the active (covering-today) Slot.
-    const upcomingSlots = listUpcomingWorkSlots({ bay, excludeSlotId: activeSlot?.id, today });
+    const upcomingSlots = listUpcomingWorkSlots({ bay, excludeSlotId: activeSlot?.id });
 
     // Detail-pane projection for the in-progress Slot and every upcoming one — the
     // Slots the list pane lets you select.
@@ -176,5 +177,5 @@ export function useBaySchedule(bayId: string): BayScheduleState {
       slotsById,
       today,
     };
-  }, [bayId, baysQuery.data, baysQuery.error, baysQuery.isPending]);
+  }, [bayCalendars, bayId, baysQuery.data, baysQuery.error, baysQuery.isPending]);
 }

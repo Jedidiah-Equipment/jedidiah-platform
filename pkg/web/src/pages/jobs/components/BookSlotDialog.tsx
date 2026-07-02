@@ -1,4 +1,4 @@
-import { bayWorkingCalendars, formatDate, hasPermission } from '@pkg/domain';
+import { formatDate, hasPermission } from '@pkg/domain';
 import { IconAlertTriangle, IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input.js';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { allJobsInput } from './all-jobs-input.js';
@@ -55,12 +56,9 @@ export const BookSlotDialog: React.FC = () => {
   const selectedBay = schedulableBays.find((bay) => bay.id === selectedBayId) ?? null;
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
 
-  const workingCalendarsByBayId = useMemo(
-    () => bayWorkingCalendars(baysQuery.data?.items ?? [], baysQuery.data?.offDays ?? []),
-    [baysQuery.data],
-  );
-  const selectedBayCalendar = (selectedBay && workingCalendarsByBayId.get(selectedBay.id)) || {};
-  const plantToday = baysQuery.data?.today ?? null;
+  const bayCalendars = useBayCalendars();
+  const selectedBayCalendar = selectedBay ? (bayCalendars?.workingCalendarsByBayId.get(selectedBay.id) ?? {}) : {};
+  const plantToday = bayCalendars?.today ?? null;
   const pickerBounds =
     selectedBay && plantToday ? getInsertAtDatePickerBounds(selectedBay, selectedBayCalendar, plantToday) : null;
   const placementPreviewRequest = useMemo(
@@ -116,7 +114,7 @@ export const BookSlotDialog: React.FC = () => {
     const bay = schedulableBays.find((candidate) => candidate.id === bayId);
     setStartDate(
       bay && plantToday
-        ? getInsertAtDatePickerBounds(bay, workingCalendarsByBayId.get(bay.id) ?? {}, plantToday).maxValue
+        ? getInsertAtDatePickerBounds(bay, bayCalendars?.workingCalendarsByBayId.get(bay.id) ?? {}, plantToday).maxValue
         : '',
     );
   };

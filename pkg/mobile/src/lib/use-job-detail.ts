@@ -1,5 +1,4 @@
 import {
-  bayWorkingCalendars,
   byBayDepartmentPipeline,
   deriveJobProgress,
   deriveJobRouteStop,
@@ -15,6 +14,7 @@ import { useMemo } from 'react';
 
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
+import { useBayCalendars } from './use-bay-calendars';
 
 /** One Bay on the Job's production-route timeline, projected from its Work Slot. */
 export type JobRouteStopCard = JobRouteStop & {
@@ -64,6 +64,7 @@ export function useJobDetail(jobId: string): JobDetailState {
   const accessQuery = useAccess();
   const canReadJobs = hasPermission(accessQuery.data, 'job:read');
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
+  const bayCalendars = useBayCalendars({ enabled: canReadJobs });
 
   return useMemo<JobDetailState>(() => {
     if (accessQuery.isPending) return { status: 'pending' };
@@ -71,11 +72,10 @@ export function useJobDetail(jobId: string): JobDetailState {
     if (!canReadJobs) return { status: 'forbidden' };
 
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
-    if (baysQuery.isPending) return { status: 'pending' };
+    if (baysQuery.isPending || !bayCalendars) return { status: 'pending' };
 
-    const { items, jobs, offDays, today } = baysQuery.data;
+    const { items, jobs, today } = baysQuery.data;
     const bays = listEnabledBays(items).sort(byBayDepartmentPipeline);
-    const calendars = bayWorkingCalendars(bays, offDays);
     const job = jobs.find((candidate) => candidate.id === jobId);
 
     // Walk the Bays in pipeline order so the route reads procurement → assembly; each Bay's Slots
@@ -83,7 +83,7 @@ export function useJobDetail(jobId: string): JobDetailState {
     const entries: JobWorkSlotEntry[] = [];
     const route: JobRouteStopCard[] = [];
     for (const bay of bays) {
-      const workingCalendar = calendars.get(bay.id) ?? {};
+      const workingCalendar = bayCalendars.workingCalendarsByBayId.get(bay.id) ?? {};
       for (const slot of bay.slots) {
         if (slot.kind !== 'work' || slot.jobId !== jobId) continue;
         entries.push({ slot, bayName: bay.name, workingCalendar });
@@ -121,6 +121,7 @@ export function useJobDetail(jobId: string): JobDetailState {
     accessQuery.data,
     accessQuery.error,
     accessQuery.isPending,
+    bayCalendars,
     baysQuery.data,
     baysQuery.error,
     baysQuery.isPending,

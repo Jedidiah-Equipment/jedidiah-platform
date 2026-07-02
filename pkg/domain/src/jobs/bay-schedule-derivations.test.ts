@@ -15,6 +15,7 @@ import {
   listUpcomingWorkSlots,
   summarizeWorkSlotSpan,
 } from './bay-schedule-derivations.js';
+import type { WorkingCalendar } from './working-calendar.js';
 
 const id = (value: string) => value as UUID;
 const day = (value: string) => value as DateOnlyIso;
@@ -31,6 +32,7 @@ function buildWorkSlot(
     jobId?: string;
     sequence: number;
     startDate: string;
+    state?: ProjectedJobSlot['state'];
   },
 ): ProjectedJobSlot {
   return {
@@ -45,6 +47,7 @@ function buildWorkSlot(
     label: null,
     sequence: input.sequence,
     startDate: day(input.startDate),
+    state: input.state ?? slotStateFor(input.startDate, input.endDate),
     updatedAt: timestamp,
   } as unknown as ProjectedJobSlot;
 }
@@ -58,6 +61,7 @@ function buildIdleSlot(
     label?: string | null;
     sequence: number;
     startDate: string;
+    state?: ProjectedJobSlot['state'];
   },
 ): ProjectedJobSlot {
   return {
@@ -71,6 +75,7 @@ function buildIdleSlot(
     label: input.label ?? null,
     sequence: input.sequence,
     startDate: day(input.startDate),
+    state: input.state ?? slotStateFor(input.startDate, input.endDate),
     updatedAt: timestamp,
   } as unknown as ProjectedJobSlot;
 }
@@ -95,6 +100,10 @@ function buildBay(input: {
     slots: input.slots ?? [],
     updatedAt: timestamp,
   } as unknown as BaySchedule;
+}
+
+function slotStateFor(startDate: string, endDate: string): ProjectedJobSlot['state'] {
+  return endDate <= today ? 'done' : startDate <= today ? 'active' : 'scheduled';
 }
 
 describe('listEnabledBays', () => {
@@ -132,7 +141,7 @@ describe('findActiveWorkSlot', () => {
     });
     const bay = buildBay({ id: 'bay-1', slots: [slot] });
 
-    expect(findActiveWorkSlot({ bay, today })).toEqual(slot);
+    expect(findActiveWorkSlot({ bay })).toEqual(slot);
   });
 
   it('returns null when an idle slot covers today', () => {
@@ -145,7 +154,7 @@ describe('findActiveWorkSlot', () => {
     });
     const bay = buildBay({ id: 'bay-1', slots: [slot] });
 
-    expect(findActiveWorkSlot({ bay, today })).toBeNull();
+    expect(findActiveWorkSlot({ bay })).toBeNull();
   });
 });
 
@@ -176,7 +185,7 @@ describe('listUpcomingWorkSlots', () => {
     });
     const bay = buildBay({ id: 'bay-1', slots: [active, idle, next] });
 
-    expect(listUpcomingWorkSlots({ bay, excludeSlotId: active.id, today })).toEqual([next]);
+    expect(listUpcomingWorkSlots({ bay, excludeSlotId: active.id })).toEqual([next]);
   });
 
   it('keeps a work slot covering today when it is not the excluded active slot', () => {
@@ -190,7 +199,7 @@ describe('listUpcomingWorkSlots', () => {
     const bay = buildBay({ id: 'bay-1', slots: [covering] });
 
     // No active slot excluded, so the covering slot stays in the list.
-    expect(listUpcomingWorkSlots({ bay, today })).toEqual([covering]);
+    expect(listUpcomingWorkSlots({ bay })).toEqual([covering]);
   });
 });
 
@@ -616,7 +625,11 @@ describe('computeBayLoadToday', () => {
     });
     const free = buildBay({ id: 'bay-4' });
 
-    expect(computeBayLoadToday({ bays: [working, idle, off, free], offDays: [], today })).toEqual({
+    const bays = [working, idle, off, free];
+    const workingCalendarsByBayId = emptyCalendarsFor(bays);
+    workingCalendarsByBayId.set(off.id, { bayExceptions: new Map([[today, 'off']]) });
+
+    expect(computeBayLoadToday({ bays, today, workingCalendarsByBayId })).toEqual({
       freeCount: 1,
       idleCount: 1,
       loadPercent: 25,
@@ -627,7 +640,7 @@ describe('computeBayLoadToday', () => {
   });
 
   it('returns zero percent when there are no bays', () => {
-    expect(computeBayLoadToday({ bays: [], offDays: [], today })).toEqual({
+    expect(computeBayLoadToday({ bays: [], today, workingCalendarsByBayId: new Map() })).toEqual({
       freeCount: 0,
       idleCount: 0,
       loadPercent: 0,
@@ -653,7 +666,16 @@ describe('computeBayLoadToday', () => {
       ],
     });
 
-    expect(computeBayLoadToday({ bays: [closed, open], offDays: [{ date: today, label: null }], today })).toEqual({
+    expect(
+      computeBayLoadToday({
+        bays: [closed, open],
+        today,
+        workingCalendarsByBayId: new Map([
+          [closed.id, { orgOffDays: new Set([today]) }],
+          [open.id, { bayExceptions: new Map([[today, 'work' as const]]), orgOffDays: new Set([today]) }],
+        ]),
+      }),
+    ).toEqual({
       freeCount: 0,
       idleCount: 0,
       loadPercent: 50,
@@ -663,3 +685,7 @@ describe('computeBayLoadToday', () => {
     });
   });
 });
+
+function emptyCalendarsFor(bays: readonly BaySchedule[]): Map<string, WorkingCalendar> {
+  return new Map(bays.map((bay) => [bay.id, {}]));
+}

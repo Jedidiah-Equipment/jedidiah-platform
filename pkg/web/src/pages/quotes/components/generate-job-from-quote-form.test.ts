@@ -9,6 +9,7 @@ import {
 } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
+import { selectBayCalendars } from '@/hooks/use-bay-calendars.js';
 import {
   createBaySeedScheduling,
   getBaySeedBayMap,
@@ -26,9 +27,13 @@ const OTHER_BAY_ID = '550e8400-e29b-41d4-a716-446655440004';
 
 const day = (value: string) => DateOnlyIso.parse(value);
 
+function createScheduling(result: Parameters<typeof selectBayCalendars>[0]) {
+  return createBaySeedScheduling(result, selectBayCalendars(result).workingCalendarsByBayId);
+}
+
 describe('createBaySeedScheduling / getBaySeedDefaultStartDate', () => {
   it('defaults a seeded Bay to its next available working day', () => {
-    const scheduling = createBaySeedScheduling({
+    const scheduling = createScheduling({
       items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
       offDays: [],
       today: day('2026-06-05'),
@@ -38,7 +43,7 @@ describe('createBaySeedScheduling / getBaySeedDefaultStartDate', () => {
   });
 
   it('floors the default to tomorrow when the Bay queue ended in the past', () => {
-    const scheduling = createBaySeedScheduling({
+    const scheduling = createScheduling({
       items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-02' })],
       offDays: [],
       today: day('2026-06-05'),
@@ -48,7 +53,7 @@ describe('createBaySeedScheduling / getBaySeedDefaultStartDate', () => {
   });
 
   it('returns no default without schedule data for the Bay', () => {
-    const scheduling = createBaySeedScheduling({
+    const scheduling = createScheduling({
       items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
       offDays: [],
       today: day('2026-06-05'),
@@ -62,7 +67,7 @@ describe('createBaySeedScheduling / getBaySeedDefaultStartDate', () => {
 describe('getBaySeedRowScheduling', () => {
   it('returns picker bounds and a split warning naming the affected Job and durations', () => {
     const slot = buildWorkSlot({ durationDays: 10, jobCode: 'JOB-01042' });
-    const scheduling = createBaySeedScheduling({
+    const scheduling = createScheduling({
       items: [
         buildBaySchedule({
           id: ENABLED_BAY_ID,
@@ -87,7 +92,7 @@ describe('getBaySeedRowScheduling', () => {
   });
 
   it('reports no split warning for the default next-available date', () => {
-    const scheduling = createBaySeedScheduling({
+    const scheduling = createScheduling({
       items: [
         buildBaySchedule({
           id: ENABLED_BAY_ID,
@@ -113,7 +118,7 @@ describe('getBaySeedRowScheduling', () => {
 
 describe('toJobCreateFormValues', () => {
   it('prefills enabled Product Bays with default working-days and start dates', () => {
-    const scheduling = createBaySeedScheduling({
+    const scheduling = createScheduling({
       items: [buildBaySchedule({ id: ENABLED_BAY_ID, nextAvailableDate: '2026-06-15' })],
       offDays: [],
       today: day('2026-06-05'),

@@ -1,6 +1,5 @@
 import {
   type ActiveJobProgress,
-  bayWorkingCalendars,
   byBayDepartmentPipeline,
   deriveActiveJobProgress,
   findActiveWorkSlot,
@@ -13,6 +12,7 @@ import { useCallback, useMemo } from 'react';
 
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
+import { useBayCalendars } from './use-bay-calendars';
 
 /** A Bay card's active Job, joined from `jobs.listBays` detail and projected for days-left. */
 export type BayListActiveJob = ActiveJobProgress & {
@@ -57,6 +57,7 @@ export function useBayList(): BayListResult {
   const accessQuery = useAccess();
   const canReadJobs = hasPermission(accessQuery.data, 'job:read');
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
+  const bayCalendars = useBayCalendars({ enabled: canReadJobs });
 
   const state = useMemo<BayListState>(() => {
     if (accessQuery.isPending) return { status: 'pending' };
@@ -66,16 +67,15 @@ export function useBayList(): BayListResult {
     if (!canReadJobs) return { status: 'forbidden' };
 
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
-    if (baysQuery.isPending) return { status: 'pending' };
+    if (baysQuery.isPending || !bayCalendars) return { status: 'pending' };
 
-    const { items: bays, jobs, offDays, today } = baysQuery.data;
+    const { items: bays, jobs, today } = baysQuery.data;
     const enabledBays = listEnabledBays(bays).sort(byBayDepartmentPipeline);
-    const calendars = bayWorkingCalendars(enabledBays, offDays);
     const jobsById = new Map(jobs.map((job) => [job.id, job] as const));
 
     const cards = enabledBays.map<BayListCard>((bay) => {
-      const workingCalendar = calendars.get(bay.id) ?? {};
-      const slot = findActiveWorkSlot({ bay, today });
+      const workingCalendar = bayCalendars.workingCalendarsByBayId.get(bay.id) ?? {};
+      const slot = findActiveWorkSlot({ bay });
       const job = slot ? jobsById.get(slot.jobId) : undefined;
 
       return {
@@ -100,6 +100,7 @@ export function useBayList(): BayListResult {
     accessQuery.data,
     accessQuery.error,
     accessQuery.isPending,
+    bayCalendars,
     baysQuery.data,
     baysQuery.error,
     baysQuery.isPending,

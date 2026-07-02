@@ -20,7 +20,11 @@ export const BayLoadTodayWidget: React.FC = () => {
     return <DashboardWidgetEmpty>No enabled Bays.</DashboardWidgetEmpty>;
   }
 
-  const load = computeBayLoadToday({ bays: bays.enabledBays, offDays: bays.offDays, today: bays.today });
+  const load = computeBayLoadToday({
+    bays: bays.enabledBays,
+    today: bays.today,
+    workingCalendarsByBayId: bays.workingCalendarsByBayId,
+  });
 
   return <StatCard sublabel={`${load.idleCount} idle · ${load.offCount} off`} value={`${load.loadPercent}%`} />;
 };

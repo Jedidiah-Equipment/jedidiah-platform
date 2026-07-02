@@ -1,6 +1,18 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
-import { DEFAULT_OG_IMAGE, seoHead, truncateDescription } from './seo.js';
+import { absoluteUrl, DEFAULT_OG_IMAGE, seoHead, truncateDescription } from './seo.js';
+
+// The isomorphic request-origin lookup needs a live request (server) or window (client); tests pin it to a
+// fixed origin so seoHead's output is deterministic.
+vi.mock('./site-origin.js', () => ({ siteOrigin: () => 'https://staging.example.test' }));
+
+const ORIGIN = 'https://staging.example.test';
+
+describe('absoluteUrl', () => {
+  test('qualifies a root-relative path against the serving origin', () => {
+    expect(absoluteUrl('/products')).toBe(`${ORIGIN}/products`);
+  });
+});
 
 describe('truncateDescription', () => {
   test('returns short text unchanged (whitespace collapsed)', () => {
@@ -16,22 +28,22 @@ describe('truncateDescription', () => {
 });
 
 describe('seoHead', () => {
-  test('builds title, description and root-relative OG/Twitter tags with no canonical link', () => {
-    const result = seoHead({
+  test('builds title, description, canonical and absolute OG/Twitter tags from the serving origin', () => {
+    const { meta, links } = seoHead({
       title: 'Products — Jedidiah Equipment',
       description: 'The full range.',
       path: '/products',
     });
 
-    expect(result.meta).toContainEqual({ title: 'Products — Jedidiah Equipment' });
-    expect(result.meta).toContainEqual({ name: 'description', content: 'The full range.' });
-    expect(result.meta).toContainEqual({ property: 'og:url', content: '/products' });
-    expect(result.meta).toContainEqual({ property: 'og:image', content: DEFAULT_OG_IMAGE });
-    expect(result.meta).toContainEqual({ name: 'twitter:title', content: 'Products — Jedidiah Equipment' });
-    expect(result).not.toHaveProperty('links');
+    expect(meta).toContainEqual({ title: 'Products — Jedidiah Equipment' });
+    expect(meta).toContainEqual({ name: 'description', content: 'The full range.' });
+    expect(meta).toContainEqual({ property: 'og:url', content: `${ORIGIN}/products` });
+    expect(meta).toContainEqual({ property: 'og:image', content: `${ORIGIN}${DEFAULT_OG_IMAGE}` });
+    expect(meta).toContainEqual({ name: 'twitter:title', content: 'Products — Jedidiah Equipment' });
+    expect(links).toContainEqual({ rel: 'canonical', href: `${ORIGIN}/products` });
   });
 
-  test('uses a page-specific image when given, kept root-relative', () => {
+  test('uses a page-specific image when given, qualified against the serving origin', () => {
     const { meta } = seoHead({
       title: 'CH14',
       description: 'Tipper.',
@@ -39,7 +51,7 @@ describe('seoHead', () => {
       image: '/images/products/abc',
     });
 
-    expect(meta).toContainEqual({ property: 'og:image', content: '/images/products/abc' });
-    expect(meta).toContainEqual({ name: 'twitter:image', content: '/images/products/abc' });
+    expect(meta).toContainEqual({ property: 'og:image', content: `${ORIGIN}/images/products/abc` });
+    expect(meta).toContainEqual({ name: 'twitter:image', content: `${ORIGIN}/images/products/abc` });
   });
 });

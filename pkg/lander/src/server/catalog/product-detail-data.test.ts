@@ -1,7 +1,7 @@
 import { productAssemblies, productRanges, products } from '@pkg/db';
 import { expect } from 'vitest';
 import { test } from '../../test/tester.js';
-import { TRANSFORM_SIGNATURE } from '../media/image-transform.js';
+import { transformSignature } from '../media/image-transform.js';
 import { loadProductDetail } from './product-detail-data.js';
 
 type Db = Parameters<typeof loadProductDetail>[0];
@@ -117,10 +117,13 @@ test('loadProductDetail resolves a Product by model code with its Range and broc
   expect(detail?.description).toBe('Flagship 14-ton tipping trailer.');
   // Each image URL carries its slot's `updatedAt` plus the transform signature as a `?v=` cache-busting
   // token (issue #647).
-  const primaryV = `${Date.parse(product.images.primary?.updatedAt ?? '')}-${TRANSFORM_SIGNATURE}`;
-  const secondary1V = `${Date.parse(product.images.secondary1?.updatedAt ?? '')}-${TRANSFORM_SIGNATURE}`;
-  const secondary2V = `${Date.parse(product.images.secondary2?.updatedAt ?? '')}-${TRANSFORM_SIGNATURE}`;
+  const primaryV = `${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`;
+  const secondary1V = `${Date.parse(product.images.secondary1?.updatedAt ?? '')}-${transformSignature('webp')}`;
+  const secondary2V = `${Date.parse(product.images.secondary2?.updatedAt ?? '')}-${transformSignature('webp')}`;
   expect(detail?.imageUrl).toBe(`/images/products/${product.id}?v=${primaryV}`);
+  // The og:image variant is JPEG: social scrapers refuse to render WebP preview images.
+  const primaryOgV = `${Date.parse(product.images.primary?.updatedAt ?? '')}-${transformSignature('jpeg')}`;
+  expect(detail?.ogImageUrl).toBe(`/images/products/${product.id}?format=jpeg&v=${primaryOgV}`);
   expect(detail?.galleryImages).toEqual([
     { slot: 'primary', imageUrl: `/images/products/${product.id}?v=${primaryV}` },
     { slot: 'secondary1', imageUrl: `/images/products/${product.id}?slot=secondary1&v=${secondary1V}` },
@@ -179,7 +182,7 @@ test('loadProductDetail lists other Products in the same Range as related cards'
       modelCode: sibling.modelCode,
       description: 'Compact field bowser.',
       href: `/products/${encodeURIComponent(sibling.modelCode)}`,
-      imageUrl: `/images/products/${sibling.id}?v=${Date.parse(sibling.images.primary?.updatedAt ?? '')}-${TRANSFORM_SIGNATURE}`,
+      imageUrl: `/images/products/${sibling.id}?v=${Date.parse(sibling.images.primary?.updatedAt ?? '')}-${transformSignature('webp')}`,
     },
   ]);
 });

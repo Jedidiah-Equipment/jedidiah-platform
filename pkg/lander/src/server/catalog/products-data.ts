@@ -2,7 +2,7 @@ import { listAllProducts, listProductRanges } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { isLanderReady } from '@pkg/domain';
 
-import { TRANSFORM_SIGNATURE } from '../media/image-transform.js';
+import { parseImageFormat, transformSignature } from '../media/image-transform.js';
 
 export type CatalogProduct = {
   id: string;
@@ -44,10 +44,10 @@ export function toRangeLabel(name: string): string {
 // The public image routes are keyed by entity id, so a replaced image reuses its URL. Without a token a
 // browser or CDN keeps serving the superseded bytes, so a new upload does not show on the site (issue #647).
 // The `?v=` token identifies the exact bytes served at a URL, which depend on BOTH the stored file's
-// `updatedAt` (see @pkg/schema EntityFile) AND the optimizer transform (TRANSFORM_SIGNATURE): a replaced
-// upload or a transform change both alter the URL, so the year-long `immutable` response the image route
-// sends can never pin a stale representation. A missing image (no token) yields the bare URL, which streams
-// the short-lived neutral placeholder.
+// `updatedAt` (see @pkg/schema EntityFile) AND the optimizer transform (transformSignature, including the
+// `format` param when present): a replaced upload or a transform change both alter the URL, so the
+// year-long `immutable` response the image route sends can never pin a stale representation. A missing
+// image (no token) yields the bare URL, which streams the short-lived neutral placeholder.
 export function imageUrl(
   path: string,
   updatedAt: string | null | undefined,
@@ -56,7 +56,7 @@ export function imageUrl(
   const search = new URLSearchParams(params);
   const epochMs = updatedAt ? Date.parse(updatedAt) : Number.NaN;
   if (!Number.isNaN(epochMs)) {
-    search.set('v', `${epochMs}-${TRANSFORM_SIGNATURE}`);
+    search.set('v', `${epochMs}-${transformSignature(parseImageFormat(params.format))}`);
   }
 
   const query = search.toString();

@@ -13,7 +13,7 @@ function source(width: number, height: number, format: 'png' | 'jpeg'): Promise<
 
 describe('optimizeImage', () => {
   test('downscales an oversized source to the target width and re-encodes as WebP', async () => {
-    const output = await optimizeImage(await source(4000, 3000, 'jpeg'));
+    const output = await optimizeImage(await source(4000, 3000, 'jpeg'), 'webp');
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('webp');
@@ -22,14 +22,22 @@ describe('optimizeImage', () => {
   });
 
   test('re-encodes a small source to WebP without enlarging it', async () => {
-    const output = await optimizeImage(await source(640, 480, 'png'));
+    const output = await optimizeImage(await source(640, 480, 'png'), 'webp');
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('webp');
     expect(meta.width).toBe(640);
   });
 
+  test('re-encodes to JPEG when asked for the og:image format', async () => {
+    const output = await optimizeImage(await source(4000, 3000, 'png'), 'jpeg');
+    const meta = await sharp(output).metadata();
+
+    expect(meta.format).toBe('jpeg');
+    expect(meta.width).toBe(OPTIMIZED_MAX_WIDTH);
+  });
+
   test('throws on non-raster input', async () => {
-    await expect(optimizeImage(new TextEncoder().encode('not an image'))).rejects.toThrow();
+    await expect(optimizeImage(new TextEncoder().encode('not an image'), 'webp')).rejects.toThrow();
   });
 });

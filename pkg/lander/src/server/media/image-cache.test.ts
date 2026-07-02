@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { type LoadedImage, readOptimizedImage } from './image-cache.js';
-import { OPTIMIZED_CONTENT_TYPES } from './image-transform.js';
+import { IMAGE_TRANSFORMS } from './image-transform.js';
 
 let cacheDir: string;
 
@@ -34,7 +34,7 @@ describe('readOptimizedImage', () => {
 
     const result = await readOptimizedImage({ cacheDir }, 'products/a/primary/x.png', 'webp', load);
 
-    expect(result.contentType).toBe(OPTIMIZED_CONTENT_TYPES.webp);
+    expect(result.contentType).toBe(IMAGE_TRANSFORMS.webp.contentType);
     expect((await sharp(result.body).metadata()).format).toBe('webp');
     expect(load).toHaveBeenCalledTimes(1);
     expect((await readdir(cacheDir)).filter((name) => name.endsWith('.webp'))).toHaveLength(1);
@@ -49,7 +49,7 @@ describe('readOptimizedImage', () => {
     const result = await readOptimizedImage({ cacheDir }, key, 'webp', second);
 
     expect(second).not.toHaveBeenCalled();
-    expect(result.contentType).toBe(OPTIMIZED_CONTENT_TYPES.webp);
+    expect(result.contentType).toBe(IMAGE_TRANSFORMS.webp.contentType);
   });
 
   test('coalesces concurrent misses for the same key into one optimization', async () => {
@@ -102,8 +102,8 @@ describe('readOptimizedImage', () => {
     const webp = await readOptimizedImage({ cacheDir }, key, 'webp', load);
     const jpeg = await readOptimizedImage({ cacheDir }, key, 'jpeg', load);
 
-    expect(webp.contentType).toBe(OPTIMIZED_CONTENT_TYPES.webp);
-    expect(jpeg.contentType).toBe(OPTIMIZED_CONTENT_TYPES.jpeg);
+    expect(webp.contentType).toBe(IMAGE_TRANSFORMS.webp.contentType);
+    expect(jpeg.contentType).toBe(IMAGE_TRANSFORMS.jpeg.contentType);
     expect((await sharp(jpeg.body).metadata()).format).toBe('jpeg');
 
     const files = await readdir(cacheDir);
@@ -138,7 +138,7 @@ describe('cache directory', () => {
       loaderFor(await rasterSource()),
     );
 
-    expect(result.contentType).toBe(OPTIMIZED_CONTENT_TYPES.webp);
+    expect(result.contentType).toBe(IMAGE_TRANSFORMS.webp.contentType);
     expect((await readdir(nested)).filter((name) => name.endsWith('.webp'))).toHaveLength(1);
   });
 });

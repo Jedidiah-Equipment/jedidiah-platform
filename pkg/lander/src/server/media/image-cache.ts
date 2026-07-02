@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { optimizeImage } from './image-optimizer.js';
-import { OPTIMIZED_CONTENT_TYPES, type OptimizedImageFormat, transformSignature } from './image-transform.js';
+import { IMAGE_TRANSFORMS, type OptimizedImageFormat, transformSignature } from './image-transform.js';
 
 // The optimized bytes to serve, already resolved (from disk or freshly produced). `body` is a full buffer,
 // not a stream: optimized catalog images are small (tens of KB) and sharp needs the whole source in memory
@@ -67,7 +67,7 @@ async function readCached(cachePath: string, format: OptimizedImageFormat): Prom
   try {
     const body = await readFile(cachePath);
 
-    return { body, byteSize: body.byteLength, contentType: OPTIMIZED_CONTENT_TYPES[format] };
+    return { body, byteSize: body.byteLength, contentType: IMAGE_TRANSFORMS[format].contentType };
   } catch (error) {
     if (isFileNotFound(error)) {
       return null;
@@ -108,7 +108,7 @@ async function produce(
 
   await writeAtomic(cachePath, optimized);
 
-  return { body: optimized, byteSize: optimized.byteLength, contentType: OPTIMIZED_CONTENT_TYPES[format] };
+  return { body: optimized, byteSize: optimized.byteLength, contentType: IMAGE_TRANSFORMS[format].contentType };
 }
 
 // Write to a unique temp file then rename into place. Rename is atomic on the same filesystem, so a reader

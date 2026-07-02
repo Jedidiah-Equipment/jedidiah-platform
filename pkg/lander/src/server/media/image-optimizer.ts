@@ -5,11 +5,13 @@ import { OPTIMIZED_MAX_WIDTH, OPTIMIZED_QUALITY, type OptimizedImageFormat } fro
 // Resize-down to the requested format. `rotate()` bakes in EXIF orientation before the strip;
 // `withoutEnlargement` leaves a source already narrower than the target untouched (still re-encoded, never
 // upscaled). Throws on non-raster or corrupt input — the caller treats that as "serve the original bytes"
-// rather than a failure.
+// rather than a failure. WebP keeps a transparent source's alpha (the site renders it over its own
+// background); JPEG cannot, and sharp would otherwise flatten to black, so transparent uploads are
+// flattened onto white for a usable social preview card.
 export async function optimizeImage(bytes: Uint8Array, format: OptimizedImageFormat): Promise<Buffer> {
   const resized = sharp(bytes).rotate().resize({ width: OPTIMIZED_MAX_WIDTH, withoutEnlargement: true });
 
   return format === 'jpeg'
-    ? resized.jpeg({ quality: OPTIMIZED_QUALITY }).toBuffer()
+    ? resized.flatten({ background: '#ffffff' }).jpeg({ quality: OPTIMIZED_QUALITY }).toBuffer()
     : resized.webp({ quality: OPTIMIZED_QUALITY }).toBuffer();
 }

@@ -4,7 +4,9 @@ import {
   getPlantDateNow,
   type PreviewBaySlot,
   previewBayScheduleSeedInserts,
+  resolveBoardWindowFrom,
   slotState,
+  windowActiveBoard,
 } from '@pkg/domain';
 import {
   type DateOnlyIso,
@@ -23,9 +25,7 @@ import {
   findBayScheduleRowsForJobs,
   getBayScheduleRowJobIds,
   mergeBayScheduleRows,
-  resolveScheduleWindowFrom,
   toBaySchedules,
-  windowBayScheduleSlots,
 } from './bay-schedule-read.js';
 import { JobBayNotFoundError } from './job-errors.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
@@ -139,10 +139,10 @@ export async function previewJobSchedule({
     return placement;
   });
 
-  const windowedBays = windowBayScheduleSlots(
+  const windowedBays = windowActiveBoard(
     baseBays.map((bay) => previewBaysById.get(bay.id) ?? bay),
     {
-      from: resolveScheduleWindowFrom(input, today),
+      from: resolveBoardWindowFrom(input, today),
       today,
     },
   );

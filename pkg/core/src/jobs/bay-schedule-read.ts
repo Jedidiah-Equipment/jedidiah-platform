@@ -7,15 +7,13 @@ import {
   jobSlots,
   type jobs,
 } from '@pkg/db';
-import { addDateOnlyDays, type BoardBayFacts, type ProjectedBoardBay, projectBoard } from '@pkg/domain';
+import { type BoardBayFacts, type ProjectedBoardBay, projectBoard } from '@pkg/domain';
 import {
   Bay,
-  type BayListInput,
   BaySchedule,
   DateIso,
   type DateOnlyIso,
   JobCode,
-  type JobSchedulePreviewInput,
   type OffDay,
   ProjectedJobSlot,
   SlotDurationDays,
@@ -24,8 +22,6 @@ import {
 } from '@pkg/schema';
 import { asc, inArray, isNull, type SQL } from 'drizzle-orm';
 import { getCurrentBayOperator, type OpenOperatorAssignmentsRow } from './job-bay-service.js';
-
-const SCHEDULE_HISTORY_WINDOW_DAYS = 365;
 
 type BayCalendarExceptionRow = Pick<
   typeof jobBayCalendarExceptions.$inferSelect,
@@ -190,94 +186,4 @@ export function mergeBayScheduleRows(primaryRows: readonly BayScheduleRow[], ext
   const primaryIds = new Set(primaryRows.map((row) => row.id));
 
   return [...primaryRows, ...extraRows.filter((row) => !primaryIds.has(row.id))];
-}
-
-type WindowableScheduleSlot =
-  | { endDate: DateOnlyIso; jobId: UUID; kind: 'work' }
-  | { endDate: DateOnlyIso; jobId: null; kind: 'idle' };
-
-export function resolveScheduleWindowFrom(
-  input: BayListInput | JobSchedulePreviewInput | undefined,
-  today: DateOnlyIso,
-): DateOnlyIso {
-  const earliestFrom = addDateOnlyDays(today, -SCHEDULE_HISTORY_WINDOW_DAYS);
-  const requestedFrom = input?.from ?? today;
-
-  return requestedFrom < earliestFrom ? earliestFrom : requestedFrom;
-}
-
-export function windowBayScheduleSlots<TBay extends { slots: readonly WindowableScheduleSlot[] }>(
-  bays: readonly TBay[],
-  {
-    from,
-    today,
-  }: {
-    from: DateOnlyIso;
-    today: DateOnlyIso;
-  },
-): TBay[] {
-  const unfinishedJobIds = getUnfinishedScheduleJobIds(bays, today);
-
-  return bays.map(
-    (bay) =>
-      ({
-        ...bay,
-        slots: bay.slots.filter((slot) => isScheduleSlotInWindow(slot, { from, today, unfinishedJobIds })),
-      }) as TBay,
-  );
-}
-
-function getUnfinishedScheduleJobIds(
-  bays: readonly { slots: readonly WindowableScheduleSlot[] }[],
-  today: DateOnlyIso,
-): Set<UUID> {
-  const jobIds = new Set<UUID>();
-
-  for (const bay of bays) {
-    for (const slot of bay.slots) {
-      if (slot.kind === 'work' && slot.endDate > today) {
-        jobIds.add(slot.jobId);
-      }
-    }
-  }
-
-  return jobIds;
-}
-
-function isScheduleSlotInWindow(
-  slot: WindowableScheduleSlot,
-  {
-    from,
-    today,
-    unfinishedJobIds,
-  }: {
-    from: DateOnlyIso;
-    today: DateOnlyIso;
-    unfinishedJobIds: ReadonlySet<UUID>;
-  },
-): boolean {
-  if (slot.kind === 'work' && unfinishedJobIds.has(slot.jobId)) {
-    return true;
-  }
-
-  if (from < today) {
-    return slot.endDate >= from;
-  }
-
-  // Slot spans are half-open; `endDate === today` has already left the default Active Board.
-  return slot.endDate > today;
-}
-
-export function getScheduleJobIds(bays: readonly { slots: readonly WindowableScheduleSlot[] }[]): UUID[] {
-  const jobIds = new Set<UUID>();
-
-  for (const bay of bays) {
-    for (const slot of bay.slots) {
-      if (slot.kind === 'work') {
-        jobIds.add(slot.jobId);
-      }
-    }
-  }
-
-  return [...jobIds];
 }

@@ -9,7 +9,7 @@ import { countWorkingDaysBetween, type WorkingCalendar } from './working-calenda
  * spanning several Bays must keep them per Slot rather than sharing one calendar.
  */
 export type JobWorkSlotEntry = {
-  slot: Pick<ProjectedWorkJobSlot, 'bayId' | 'startDate' | 'endDate'>;
+  slot: Pick<ProjectedWorkJobSlot, 'bayId' | 'startDate' | 'endDate' | 'state'>;
   bayName: string;
   workingCalendar: WorkingCalendar;
 };
@@ -18,8 +18,8 @@ export type JobWorkSlotEntry = {
  * A Job's board state, projected once and shared by the mobile Job List card and the Job
  * Detail header so the two never disagree.
  *
- * Slot spans are half-open `[startDate, endDate)`. A Slot is unfinished while `endDate >
- * today`; a Job with no unfinished Slot has dropped off the board (this returns `null`).
+ * Slot spans are half-open `[startDate, endDate)`. A Slot is unfinished while its shipped state is
+ * not `done`; a Job with no unfinished Slot has dropped off the board (this returns `null`).
  */
 export type JobProgress = {
   /**
@@ -70,13 +70,12 @@ export function deriveJobProgress({
       left.slot.bayId.localeCompare(right.slot.bayId),
   );
 
-  const unfinished = ordered.filter((entry) => entry.slot.endDate > today);
+  const unfinished = ordered.filter((entry) => entry.slot.state !== 'done');
   // The soonest unfinished Slot to start; `ordered` is start-ascending, so it leads the list.
   const [firstUnfinished] = unfinished;
   if (!firstUnfinished) return null;
 
-  // The Slot covering today is in progress even on an off-day (mirrors findActiveWorkSlot).
-  const active = unfinished.find((entry) => entry.slot.startDate <= today && today < entry.slot.endDate);
+  const active = unfinished.find((entry) => entry.slot.state === 'active');
   // Current stage: the active Slot, else the soonest unfinished Slot to start.
   const current = active ?? firstUnfinished;
 
@@ -117,27 +116,12 @@ export function deriveJobProgress({
 }
 
 /** One Bay on a Job's production route relative to plant "today" on that Bay's working calendar. */
-export type JobRouteStopState = 'done' | 'active' | 'scheduled';
-
-/**
- * A Work Slot's route state from its projected span alone. State is calendar-independent — a Slot is
- * 'done' once its last work day is past, 'active' while it covers today (even on an off-day), else
- * 'scheduled' — so callers that only need the state can skip the Bay working calendar entirely.
- */
-export function deriveJobRouteStopState({
-  slot,
-  today,
-}: {
-  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate'>;
-  today: DateOnlyIso;
-}): JobRouteStopState {
-  return slot.endDate <= today ? 'done' : slot.startDate <= today ? 'active' : 'scheduled';
-}
+export type JobRouteStopState = ProjectedWorkJobSlot['state'];
 
 /**
  * Whether a Job's schedule is complete: it has at least one Work Slot and every Slot is `done`. An
  * unscheduled Job (`total === 0`) is never complete. Reads the already-bucketed counts, so it agrees
- * with {@link deriveJobRouteStopState} without re-projecting.
+ * with the Board builder's shipped Slot states without re-projecting.
  */
 export function isJobScheduleComplete(state: Pick<JobScheduleState, 'done' | 'total'>): boolean {
   return state.total > 0 && state.done === state.total;
@@ -167,7 +151,7 @@ export function deriveJobRouteStop({
   today,
   workingCalendar,
 }: {
-  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate'>;
+  slot: Pick<ProjectedWorkJobSlot, 'startDate' | 'endDate' | 'state'>;
   today: DateOnlyIso;
   workingCalendar: WorkingCalendar;
 }): JobRouteStop {
@@ -177,7 +161,7 @@ export function deriveJobRouteStop({
     workingCalendar,
   });
   return {
-    state: deriveJobRouteStopState({ slot, today }),
+    state: slot.state,
     lastWorkDay,
     workDays: totalWorkDays,
     remainingWorkDays,

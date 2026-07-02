@@ -125,8 +125,10 @@ export const BaySlotBar: React.FC<{
   const left = getJobGanttOffset(startDate, gantt);
   const width = Math.max(getJobGanttWidth(startDate, previewEndDate, gantt) - SLOT_GAP, 28);
   const isIdle = slot.kind === 'idle';
-  // The "active" slot is the booked job in progress on the plant's current business day.
-  const isActive = !isIdle && startDate <= today && today < previewEndDate;
+  // During resize preview the server has not seen `previewEndDate`, so that one path still
+  // classifies locally; resting slots read the Board builder's shipped state.
+  const isActive =
+    !isIdle && (shouldProjectPreview ? startDate <= today && today < previewEndDate : slot.state === 'active');
   // One tone drives both the slot border and its resize handle: today's job is blue (kept
   // off the app's primary yellow), the next slot off the line is green, everything else is
   // the neutral border.

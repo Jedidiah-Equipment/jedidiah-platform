@@ -1,5 +1,4 @@
 import {
-  bayWorkingCalendars,
   deriveJobProgress,
   hasPermission,
   type JobProgress,
@@ -12,6 +11,7 @@ import { useCallback, useMemo } from 'react';
 
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
+import { useBayCalendars } from './use-bay-calendars';
 
 /** One Job currently on the board, projected from its Work Slots across every Bay it touches. */
 export type JobListCard = {
@@ -53,6 +53,7 @@ export function useJobList(): JobListResult {
   const accessQuery = useAccess();
   const canReadJobs = hasPermission(accessQuery.data, 'job:read');
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions(undefined, { enabled: canReadJobs }));
+  const bayCalendars = useBayCalendars({ enabled: canReadJobs });
 
   const state = useMemo<JobListState>(() => {
     if (accessQuery.isPending) return { status: 'pending' };
@@ -60,13 +61,12 @@ export function useJobList(): JobListResult {
     if (!canReadJobs) return { status: 'forbidden' };
 
     if (baysQuery.error) return { status: 'error', error: baysQuery.error };
-    if (baysQuery.isPending) return { status: 'pending' };
+    if (baysQuery.isPending || !bayCalendars) return { status: 'pending' };
 
-    const { items, jobs, offDays, today } = baysQuery.data;
+    const { items, jobs, today } = baysQuery.data;
     // Disabled Bays are hidden everywhere on the shop floor (mirrors the Bay List's listEnabledBays);
     // grouping their Slots would leak Jobs on retired Bays back into the Jobs board.
     const bays = listEnabledBays(items);
-    const calendars = bayWorkingCalendars(bays, offDays);
     const jobsById = new Map(jobs.map((job) => [job.id, job] as const));
     const operatorByBayId = new Map<UUID, BayOperator | null>(bays.map((bay) => [bay.id, bay.currentOperator]));
 
@@ -74,7 +74,7 @@ export function useJobList(): JobListResult {
     // sees the Job's full route across the Bays it passes through.
     const slotsByJobId = new Map<string, JobWorkSlotEntry[]>();
     for (const bay of bays) {
-      const workingCalendar = calendars.get(bay.id) ?? {};
+      const workingCalendar = bayCalendars.workingCalendarsByBayId.get(bay.id) ?? {};
       for (const slot of bay.slots) {
         if (slot.kind !== 'work') continue;
         const entries = slotsByJobId.get(slot.jobId) ?? [];
@@ -106,6 +106,7 @@ export function useJobList(): JobListResult {
     accessQuery.data,
     accessQuery.error,
     accessQuery.isPending,
+    bayCalendars,
     baysQuery.data,
     baysQuery.error,
     baysQuery.isPending,

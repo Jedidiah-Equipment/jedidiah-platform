@@ -1,8 +1,9 @@
-import { bayWorkingCalendars, listEnabledBays, type WorkingCalendar } from '@pkg/domain';
+import { listEnabledBays, type WorkingCalendar } from '@pkg/domain';
 import type { BaySchedule, DateOnlyIso, JobSummary, OffDay } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 export type ShopFloorBays =
@@ -27,13 +28,14 @@ export type ShopFloorBays =
 export function useShopFloorBays(): ShopFloorBays {
   const trpc = useTRPC();
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const bayCalendars = useBayCalendars();
 
   return useMemo<ShopFloorBays>(() => {
     if (baysQuery.error) {
       return { error: baysQuery.error, status: 'error' };
     }
 
-    if (baysQuery.isPending) {
+    if (baysQuery.isPending || !bayCalendars) {
       return { status: 'pending' };
     }
 
@@ -42,10 +44,10 @@ export function useShopFloorBays(): ShopFloorBays {
     return {
       enabledBays,
       jobsById: new Map(baysQuery.data.jobs.map((job) => [job.id, job])),
-      offDays: baysQuery.data.offDays,
+      offDays: bayCalendars.offDays,
       status: 'ready',
-      today: baysQuery.data.today,
-      workingCalendarsByBayId: bayWorkingCalendars(enabledBays, baysQuery.data.offDays),
+      today: bayCalendars.today,
+      workingCalendarsByBayId: bayCalendars.workingCalendarsByBayId,
     };
-  }, [baysQuery.data, baysQuery.error, baysQuery.isPending]);
+  }, [bayCalendars, baysQuery.data, baysQuery.error, baysQuery.isPending]);
 }

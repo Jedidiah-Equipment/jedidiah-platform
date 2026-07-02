@@ -1,10 +1,10 @@
 import {
-  bayWorkingCalendars,
   DEFAULT_IDLE_SLOT_LABEL,
   type SlotCalendarDays,
   summarizeSlotCalendarDays,
+  type WorkingCalendar,
 } from '@pkg/domain';
-import type { BaySchedule, DateOnlyIso, OffDay, ProjectedJobSlot } from '@pkg/schema';
+import type { BaySchedule, DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
 
 export function getSlotLabel(slot: ProjectedJobSlot): string {
   return slot.kind === 'idle' ? (slot.label ?? DEFAULT_IDLE_SLOT_LABEL) : slot.jobCode;
@@ -23,12 +23,10 @@ export type JobScheduleSummary = {
 // first booked slot found across bays wins.
 export function findJobScheduleSummary(
   bays: BaySchedule[],
-  offDays: OffDay[],
+  workingCalendarsByBayId: ReadonlyMap<string, WorkingCalendar>,
   jobId: string,
   bayId?: string | undefined,
 ): JobScheduleSummary | null {
-  const workingCalendarsByBayId = bayWorkingCalendars(bays, offDays);
-
   for (const bay of bays) {
     if (bayId !== undefined && bay.id !== bayId) {
       continue;

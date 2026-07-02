@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { BayScheduleGantt } from '@/pages/jobs/components/BayScheduleGantt.js';
@@ -75,13 +76,20 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
   const canCreateJob = hasPermission(accessQuery.data, 'job:create');
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const bayCalendars = useBayCalendars();
   const enabledBays = enabledBaysQuery.data?.items ?? [];
   const baysById = useMemo(
     () => getBaySeedBayMap({ enabledBays, productBays: quote.productBays }),
     [enabledBays, quote.productBays],
   );
   // Schedule data is enrichment: when it fails the form still works, seeds just append.
-  const scheduling = useMemo(() => (baysQuery.data ? createBaySeedScheduling(baysQuery.data) : null), [baysQuery.data]);
+  const scheduling = useMemo(
+    () =>
+      baysQuery.data && bayCalendars
+        ? createBaySeedScheduling(baysQuery.data, bayCalendars.workingCalendarsByBayId)
+        : null,
+    [bayCalendars, baysQuery.data],
+  );
   const createJobMutation = useMutation(
     trpc.jobs.create.mutationOptions({
       onSuccess: async (job) => {

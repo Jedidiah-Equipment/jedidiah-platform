@@ -10,6 +10,7 @@ import { GiveFeedbackButton } from '@/components/feedback/GiveFeedbackButton.js'
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { findJobScheduleSummary, type JobScheduleSummary } from './bay-schedule-summary.js';
 import { InfoList, InfoRow, SlotDayBreakdownRows } from './JobInfoList.js';
@@ -24,10 +25,12 @@ export const JobDetailAside: React.FC<JobDetailAsideProps> = ({ bayId, jobId, on
   const trpc = useTRPC();
   const jobQuery = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const baysQuery = useQuery(trpc.jobs.listBays.queryOptions());
+  const bayCalendars = useBayCalendars();
   const job = jobQuery.data;
-  const schedule = baysQuery.data
-    ? findJobScheduleSummary(baysQuery.data.items, baysQuery.data.offDays, jobId, bayId)
-    : null;
+  const schedule =
+    baysQuery.data && bayCalendars
+      ? findJobScheduleSummary(baysQuery.data.items, bayCalendars.workingCalendarsByBayId, jobId, bayId)
+      : null;
 
   return (
     <div className="flex flex-col gap-5 rounded-lg border bg-card p-4">

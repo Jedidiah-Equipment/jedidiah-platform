@@ -1,4 +1,4 @@
-import { bayWorkingCalendars, type WorkingCalendar } from '@pkg/domain';
+import type { WorkingCalendar } from '@pkg/domain';
 import {
   type Bay,
   type BayListResult,
@@ -41,12 +41,15 @@ export type BaySeedScheduling = {
   workingCalendarsByBayId: Map<string, WorkingCalendar>;
 };
 
-export function createBaySeedScheduling(result: Pick<BayListResult, 'items' | 'offDays' | 'today'>): BaySeedScheduling {
+export function createBaySeedScheduling(
+  result: Pick<BayListResult, 'items' | 'offDays' | 'today'>,
+  workingCalendarsByBayId: Map<string, WorkingCalendar>,
+): BaySeedScheduling {
   return {
     offDays: result.offDays,
     schedulesByBayId: new Map(result.items.map((bay) => [bay.id, bay])),
     today: result.today,
-    workingCalendarsByBayId: bayWorkingCalendars(result.items, result.offDays),
+    workingCalendarsByBayId,
   };
 }
 

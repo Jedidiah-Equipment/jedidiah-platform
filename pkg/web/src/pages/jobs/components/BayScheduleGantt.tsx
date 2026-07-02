@@ -1,11 +1,10 @@
-import { bayWorkingCalendars, formatDate, hasPermission } from '@pkg/domain';
+import { formatDate, hasPermission, type WorkingCalendar } from '@pkg/domain';
 import type {
   BaySchedule,
   DateOnlyIso,
   JobSlotMoveDirection,
   JobSlotPlacement,
   JobSummary,
-  OffDay,
   ProjectedJobSlot,
   UUID,
 } from '@pkg/schema';
@@ -30,6 +29,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
+import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
@@ -62,6 +62,7 @@ import { useBayScheduleHistoryFloor } from './use-bay-schedule-history-floor.js'
 
 // Taller rows give each booked slot room for the rich job card (thumbnails + details).
 const BAY_ROW_HEIGHT = 72;
+const EMPTY_WORKING_CALENDARS = new Map<string, WorkingCalendar>();
 
 type FilterScrollRequest = {
   date: Date;
@@ -102,6 +103,7 @@ export const BayScheduleGantt: React.FC<{
       },
     ),
   );
+  const bayCalendars = useBayCalendars({ from: historyFloor });
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
   const bays = baysQuery.data?.items ?? [];
   const jobs = baysQuery.data?.jobs ?? [];
@@ -114,8 +116,8 @@ export const BayScheduleGantt: React.FC<{
     [accessQuery.data, bays, enabledBayIds],
   );
   const schedulableBayIds = useMemo(() => new Set(schedulableBays.map((bay) => bay.id)), [schedulableBays]);
-  const offDays = baysQuery.data?.offDays ?? [];
-  const plantToday = baysQuery.data?.today ?? null;
+  const offDays = bayCalendars?.offDays ?? [];
+  const plantToday = bayCalendars?.today ?? null;
   const horizonWarnings = useMemo(
     () => new Map(getMaintainedHorizonWarnings({ bays, offDays }).map((warning) => [warning.bayId, warning])),
     [bays, offDays],
@@ -362,7 +364,7 @@ export const BayScheduleGantt: React.FC<{
           >
             <BayScheduleFilterScrollController request={filterScrollRequest} />
             <BayScheduleZoomAnchorController onReady={registerAnchoredZoomChange} zoom={zoom} />
-            <BayScheduleSidebar bays={renderedBays} horizonWarnings={horizonWarnings} today={plantToday} />
+            <BayScheduleSidebar bays={renderedBays} horizonWarnings={horizonWarnings} />
             <GanttTimeline>
               <GanttHeader />
               <OffDayBands offDays={offDays} />
@@ -374,13 +376,13 @@ export const BayScheduleGantt: React.FC<{
                 filter={filter}
                 isScheduleMutationPending={isScheduleMutationPending}
                 jobsById={jobsById}
-                offDays={offDays}
                 onAddIdleSlot={handleAddIdleSlot}
                 onMoveSlot={handleMoveSlot}
                 onRemoveSlot={handleRemoveSlot}
                 onResizeSlot={handleResizeSlot}
                 onSelectSlot={onSelectSlot}
                 optimisticResizeDaysBySlotId={optimisticResizeDaysBySlotId}
+                workingCalendarsByBayId={bayCalendars?.workingCalendarsByBayId ?? EMPTY_WORKING_CALENDARS}
               />
               {ghostDerivation && ghostDerivation.ghosts.length > 0 ? (
                 <BayScheduleGhostBars
@@ -422,15 +424,13 @@ const BayScheduleFilterScrollController: React.FC<{
 const BayScheduleSidebar: React.FC<{
   bays: BaySchedule[];
   horizonWarnings: ReadonlyMap<string, MaintainedHorizonWarning>;
-  /** Plant business date from the schedule read — busy/idle is plant state, not viewer-local. */
-  today: DateOnlyIso;
-}> = ({ bays, horizonWarnings, today }) => {
+}> = ({ bays, horizonWarnings }) => {
   return (
     <GanttSidebar secondaryTitle={null} title="Bay">
       <div className="divide-y divide-border/50">
         {bays.map((bay) => {
           const warning = horizonWarnings.get(bay.id);
-          const currentSlot = getCurrentBaySlot(bay.slots, today);
+          const currentSlot = getCurrentBaySlot(bay.slots);
           const statusText =
             currentSlot?.kind === 'work'
               ? `Busy on ${currentSlot.jobCode}`
@@ -499,22 +499,18 @@ const BayLaneRows: React.FC<{
   </div>
 );
 
-const getCurrentBaySlot = (slots: ProjectedJobSlot[], today: DateOnlyIso) =>
-  slots.find((slot) => slot.startDate <= today && today < slot.endDate) ?? null;
+const getCurrentBaySlot = (slots: ProjectedJobSlot[]) => slots.find((slot) => slot.state === 'active') ?? null;
 
 // The slot that follows the one running today (or the first upcoming slot when the bay is
 // between slots). Highlighted green so the floor sees what comes off the line next.
-const findNextBaySlotId = (
-  slots: readonly { endDate: DateOnlyIso; id: string; startDate: DateOnlyIso }[],
-  today: DateOnlyIso,
-): string | null => {
-  const currentIndex = slots.findIndex((slot) => slot.startDate <= today && today < slot.endDate);
+const findNextBaySlotId = (slots: readonly Pick<ProjectedJobSlot, 'id' | 'state'>[]): string | null => {
+  const currentIndex = slots.findIndex((slot) => slot.state === 'active');
 
   if (currentIndex !== -1) {
     return slots[currentIndex + 1]?.id ?? null;
   }
 
-  return slots.find((slot) => slot.startDate > today)?.id ?? null;
+  return slots.find((slot) => slot.state === 'scheduled')?.id ?? null;
 };
 
 const BaySlotBars: React.FC<{
@@ -524,20 +520,19 @@ const BaySlotBars: React.FC<{
   filter: BayScheduleFilter;
   isScheduleMutationPending: boolean;
   jobsById: ReadonlyMap<string, JobSummary>;
-  offDays: OffDay[];
   onAddIdleSlot: (targetSlotId: string, placement: JobSlotPlacement) => void;
   onMoveSlot: (slotId: string, direction: JobSlotMoveDirection) => void;
   onRemoveSlot: (slotId: string) => Promise<void>;
   onResizeSlot: (slotId: string, durationDays: number) => void;
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
   optimisticResizeDaysBySlotId: Record<string, number>;
+  workingCalendarsByBayId: ReadonlyMap<string, WorkingCalendar>;
 }> = ({
   bays,
   canEditScheduleByBayId,
   filter,
   isScheduleMutationPending,
   jobsById,
-  offDays,
   onAddIdleSlot,
   onMoveSlot,
   onRemoveSlot,
@@ -545,15 +540,15 @@ const BaySlotBars: React.FC<{
   onSelectSlot,
   optimisticResizeDaysBySlotId,
   today,
+  workingCalendarsByBayId,
 }) => {
   const gantt = useGanttContext();
-  const workingCalendarsByBayId = useMemo(() => bayWorkingCalendars(bays, offDays), [bays, offDays]);
   const isFilterActive = hasActiveBayScheduleFilter(filter);
 
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-20">
       {bays.flatMap((bay, bayIndex) => {
-        const nextSlotId = findNextBaySlotId(bay.slots, today);
+        const nextSlotId = findNextBaySlotId(bay.slots);
 
         return bay.slots.map((slot, slotIndex) => (
           <BaySlotBar

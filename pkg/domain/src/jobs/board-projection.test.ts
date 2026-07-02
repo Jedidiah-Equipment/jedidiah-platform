@@ -1,7 +1,6 @@
 import { DateIso, DateOnlyIso, JobCode, SlotDurationDays, SlotSequence, UUID } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
-import { type BoardBayFacts, type ProjectableBoardSlot, projectBoard, slotState } from './board-projection.js';
-import { deriveJobRouteStopState } from './job-progress.js';
+import { type BoardBayFacts, type ProjectableBoardSlot, projectBoard } from './board-projection.js';
 import { projectJobSlots } from './job-slot-projection.js';
 
 const BAY_1 = UUID.parse('00000000-0000-4000-8000-000000000b01');
@@ -374,20 +373,5 @@ describe('projectBoard', () => {
       }),
     ]);
     expect(untouchedBay?.slots[0]).not.toHaveProperty('previewSplit');
-  });
-});
-
-describe('slotState', () => {
-  it('agrees with deriveJobRouteStopState for the same projected span', () => {
-    const today = day('2026-06-10');
-    const spans = [
-      { endDate: day('2026-06-10'), startDate: day('2026-06-08') },
-      { endDate: day('2026-06-11'), startDate: day('2026-06-10') },
-      { endDate: day('2026-06-12'), startDate: day('2026-06-11') },
-    ];
-
-    for (const span of spans) {
-      expect(slotState(span, today)).toBe(deriveJobRouteStopState({ slot: span, today }));
-    }
   });
 });

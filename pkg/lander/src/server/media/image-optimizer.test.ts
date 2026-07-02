@@ -2,7 +2,7 @@ import sharp from 'sharp';
 import { describe, expect, test } from 'vitest';
 
 import { optimizeImage } from './image-optimizer.js';
-import { OPTIMIZED_MAX_WIDTH } from './image-transform.js';
+import { IMAGE_TRANSFORMS } from './image-transform.js';
 
 // Build a solid-colour raster of the given size, so tests exercise real sharp encoding without a fixture.
 function source(width: number, height: number, format: 'png' | 'jpeg'): Promise<Buffer> {
@@ -17,8 +17,8 @@ describe('optimizeImage', () => {
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('webp');
-    expect(meta.width).toBe(OPTIMIZED_MAX_WIDTH);
-    expect(meta.height).toBe(Math.round((OPTIMIZED_MAX_WIDTH * 3000) / 4000));
+    expect(meta.width).toBe(IMAGE_TRANSFORMS.webp.maxWidth);
+    expect(meta.height).toBe(Math.round((IMAGE_TRANSFORMS.webp.maxWidth * 3000) / 4000));
   });
 
   test('re-encodes a small source to WebP without enlarging it', async () => {
@@ -29,12 +29,12 @@ describe('optimizeImage', () => {
     expect(meta.width).toBe(640);
   });
 
-  test('re-encodes to JPEG when asked for the og:image format', async () => {
+  test('re-encodes to JPEG at its own smaller width when asked for the og:image format', async () => {
     const output = await optimizeImage(await source(4000, 3000, 'png'), 'jpeg');
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('jpeg');
-    expect(meta.width).toBe(OPTIMIZED_MAX_WIDTH);
+    expect(meta.width).toBe(IMAGE_TRANSFORMS.jpeg.maxWidth);
   });
 
   test("flattens a transparent PNG onto white for JPEG, not sharp's default black", async () => {

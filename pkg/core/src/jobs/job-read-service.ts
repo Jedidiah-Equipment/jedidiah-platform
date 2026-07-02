@@ -18,15 +18,18 @@ import {
 import {
   bayWorkingCalendars,
   countWorkingDaysBetween,
-  deriveJobRouteStopState,
+  foldJobScheduleStates,
   getPlantDateNow,
-  JOB_DEPARTMENT_PIPELINE,
+  getScheduleJobIds,
   parseJobCodeSearch,
+  resolveBoardWindowFrom,
+  sliceJobSchedule,
+  windowActiveBoard,
 } from '@pkg/domain';
 import {
   type BayListInput,
   type BayListResult,
-  BaySchedule,
+  type BaySchedule,
   type DateOnlyIso,
   type JobDepartmentSchedule,
   type JobDetail,
@@ -49,14 +52,7 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import {
-  findBayScheduleRows,
-  findBayScheduleRowsForJobs,
-  getScheduleJobIds,
-  resolveScheduleWindowFrom,
-  toBaySchedules,
-  windowBayScheduleSlots,
-} from './bay-schedule-read.js';
+import { findBayScheduleRows, findBayScheduleRowsForJobs, toBaySchedules } from './bay-schedule-read.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
@@ -93,8 +89,8 @@ export async function listBays({
 }): Promise<BayListResult> {
   const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBayScheduleRows(db)]);
   const today = getPlantDateNow();
-  const items = windowBayScheduleSlots(toBaySchedules(rows, offDays, today), {
-    from: resolveScheduleWindowFrom(input, today),
+  const items = windowActiveBoard(toBaySchedules(rows, offDays, today), {
+    from: resolveBoardWindowFrom(input, today),
     today,
   });
 
@@ -235,10 +231,7 @@ async function getJobSchedule({
   db: Db | DatabaseTransaction;
   jobId: UUID;
 }): Promise<JobDepartmentSchedule[]> {
-  return mapJobSchedule({
-    bays: await findProjectedBaysForJobs({ db, jobIds: [jobId], today: getPlantDateNow() }),
-    jobId,
-  });
+  return sliceJobSchedule(await findProjectedBaysForJobs({ db, jobIds: [jobId], today: getPlantDateNow() }), jobId);
 }
 
 export async function listJobs({ db, input }: { db: Db; input: JobListInput }): Promise<JobListResult> {
@@ -303,12 +296,6 @@ export async function listJobs({ db, input }: { db: Db; input: JobListInput }): 
   };
 }
 
-/**
- * Buckets each Job's Work Slots into `done/active/scheduled` against plant "today". The classification
- * is calendar-independent — it reads the already-projected Slot span — so this only needs the projected
- * bays, not their working calendars. The caller restricts `jobIds` to a single page; every requested Job
- * is present in the result, with all-zero counts when it has no Work Slot.
- */
 async function computeJobScheduleStates({
   db,
   jobIds,
@@ -316,31 +303,11 @@ async function computeJobScheduleStates({
   db: Db;
   jobIds: readonly UUID[];
 }): Promise<Map<UUID, JobScheduleState>> {
-  const states = new Map<UUID, JobScheduleState>(
-    jobIds.map((jobId) => [jobId, { active: 0, done: 0, endDate: null, scheduled: 0, startDate: null, total: 0 }]),
-  );
-
   if (jobIds.length === 0) {
-    return states;
+    return foldJobScheduleStates([], jobIds);
   }
 
-  const today = getPlantDateNow();
-
-  for (const bay of await findProjectedBaysForJobs({ db, jobIds, today })) {
-    for (const slot of bay.slots) {
-      if (slot.kind !== 'work') continue;
-      const state = states.get(slot.jobId);
-      if (!state) continue;
-
-      state[deriveJobRouteStopState({ slot, today })] += 1;
-      state.total += 1;
-      // Earliest Slot start / latest Slot end across every Bay the Job spans.
-      state.startDate = state.startDate === null || slot.startDate < state.startDate ? slot.startDate : state.startDate;
-      state.endDate = state.endDate === null || slot.endDate > state.endDate ? slot.endDate : state.endDate;
-    }
-  }
-
-  return states;
+  return foldJobScheduleStates(await findProjectedBaysForJobs({ db, jobIds, today: getPlantDateNow() }), jobIds);
 }
 
 /**
@@ -645,19 +612,4 @@ export function mapJobSummary(row: JobWithProductRow, scheduleState: JobSchedule
     quoteCode: QuoteCode.parse(row.quote.code),
     scheduleState,
   };
-}
-
-function mapJobSchedule({ bays, jobId }: { bays: BaySchedule[]; jobId: UUID }): JobDepartmentSchedule[] {
-  return JOB_DEPARTMENT_PIPELINE.map(({ department }) => ({
-    department,
-    bays: bays
-      .filter((bay) => bay.department === department)
-      .map((bay) =>
-        BaySchedule.parse({
-          ...bay,
-          slots: bay.slots.filter((slot) => slot.kind === 'work' && slot.jobId === jobId),
-        }),
-      )
-      .filter((bay) => bay.slots.length > 0),
-  }));
 }

@@ -52,7 +52,6 @@ import {
 import {
   type BayScheduleGhostSeed,
   createSchedulePreviewRequest,
-  type DisplayBaySchedule,
   deriveGhostBaySchedules,
   selectVisibleBaySchedules,
 } from './bay-schedule-ghosts.js';
@@ -164,12 +163,11 @@ export const BayScheduleGantt: React.FC<{
         ? deriveGhostBaySchedules({
             bays: visibleBays,
             preview: ghostPreviewQuery.data,
-            seedIndexByPreviewIndex: ghostPreviewRequest.seedIndexByPreviewIndex,
           })
         : null,
     [ghostPreviewQuery.data, ghostPreviewRequest, visibleBays],
   );
-  const renderedBays: DisplayBaySchedule[] = ghostDerivation?.bays ?? visibleBays;
+  const renderedBays: BaySchedule[] = ghostDerivation?.bays ?? visibleBays;
   const isFilterActive = hasActiveBayScheduleFilter(filter);
   const filterMatchCount = useMemo(
     () => (isFilterActive ? countBayScheduleFilterMatches({ bays: displayedBays, filter, jobsById }) : 0),
@@ -520,7 +518,7 @@ const findNextBaySlotId = (
 };
 
 const BaySlotBars: React.FC<{
-  bays: DisplayBaySchedule[];
+  bays: BaySchedule[];
   canEditScheduleByBayId: ReadonlySet<string>;
   today: DateOnlyIso;
   filter: BayScheduleFilter;

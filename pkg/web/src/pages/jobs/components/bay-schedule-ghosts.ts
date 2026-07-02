@@ -1,10 +1,4 @@
-import type {
-  BaySchedule,
-  JobSchedulePreviewInput,
-  JobSchedulePreviewResult,
-  JobSchedulePreviewSlot,
-  UUID,
-} from '@pkg/schema';
+import type { BaySchedule, JobSchedulePreviewInput, JobSchedulePreviewResult, UUID } from '@pkg/schema';
 import { DateOnlyIso } from '@pkg/schema';
 
 import { sortBaysByDepartmentPipeline } from '@/components/bays/sort-bays.js';
@@ -17,23 +11,15 @@ export type BayScheduleGhostSeed = {
   startDate: string;
 };
 
-/**
- * A Bay schedule slot as displayed in the ghost preview: real slots flow through
- * unchanged, while a slot split by a ghost renders as two halves carrying a marker
- * and a suffixed synthetic id (`:before` / `:after`) that must never reach a mutation.
- */
-export type DisplayBaySlot = JobSchedulePreviewSlot;
-export type DisplayBaySchedule = Omit<BaySchedule, 'slots'> & { slots: DisplayBaySlot[] };
 export type GhostSlot = JobSchedulePreviewResult['ghosts'][number];
 
 export type GhostScheduleDerivation = {
-  bays: DisplayBaySchedule[];
+  bays: BaySchedule[];
   ghosts: GhostSlot[];
 };
 
 export type SchedulePreviewRequest = {
   input: JobSchedulePreviewInput;
-  seedIndexByPreviewIndex: number[];
 };
 
 export function createSchedulePreviewRequest(
@@ -41,9 +27,8 @@ export function createSchedulePreviewRequest(
   options: { includeSeed?: (seed: BayScheduleGhostSeed) => boolean } = {},
 ): SchedulePreviewRequest {
   const previewSeeds: JobSchedulePreviewInput['seeds'] = [];
-  const seedIndexByPreviewIndex: number[] = [];
 
-  for (const [seedIndex, seed] of seeds.entries()) {
+  for (const seed of seeds) {
     if (options.includeSeed && !options.includeSeed(seed)) {
       continue;
     }
@@ -58,12 +43,10 @@ export function createSchedulePreviewRequest(
       durationDays: seed.durationDays,
       ...(parsedStartDate.success ? { startDate: parsedStartDate.data } : {}),
     });
-    seedIndexByPreviewIndex.push(seedIndex);
   }
 
   return {
     input: { seeds: previewSeeds },
-    seedIndexByPreviewIndex,
   };
 }
 
@@ -75,25 +58,14 @@ export function createSchedulePreviewRequest(
 export function deriveGhostBaySchedules({
   bays,
   preview,
-  seedIndexByPreviewIndex,
 }: {
   bays: BaySchedule[];
   preview: JobSchedulePreviewResult;
-  seedIndexByPreviewIndex: readonly number[];
 }): GhostScheduleDerivation {
   const previewBaysById = new Map(preview.bays.map((bay) => [bay.id, bay]));
-  const displayBays = bays.map((bay): DisplayBaySchedule => previewBaysById.get(bay.id) ?? bay);
-  const ghosts = preview.ghosts.map((ghost) => {
-    const seedIndex = seedIndexByPreviewIndex[ghost.seedIndex] ?? ghost.seedIndex;
+  const displayBays = bays.map((bay) => previewBaysById.get(bay.id) ?? bay);
 
-    return {
-      ...ghost,
-      id: `ghost:${ghost.bayId}:${seedIndex}`,
-      seedIndex,
-    };
-  });
-
-  return { bays: displayBays, ghosts };
+  return { bays: displayBays, ghosts: preview.ghosts };
 }
 
 /**

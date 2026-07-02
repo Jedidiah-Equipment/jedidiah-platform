@@ -12,7 +12,7 @@ import {
   user,
 } from '@pkg/db';
 import { toPlantDateOnly } from '@pkg/domain';
-import type { BayListResult, JobSchedulePreviewResult, Product } from '@pkg/schema';
+import { type BayListResult, BaySchedule, type JobSchedulePreviewResult, type Product } from '@pkg/schema';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import { createActorUser } from '@/test/ai-tools.js';
@@ -1551,6 +1551,7 @@ describe('jobs.previewSchedule', () => {
 
     const preview = await caller.jobs.previewSchedule({ seeds: [{ bayId, durationDays: 2 }] });
 
+    expect(BaySchedule.parse(getSchedulePreviewBay(preview, bayId))).toEqual(getSchedulePreviewBay(preview, bayId));
     expect(preview.placements).toEqual([{ idleGapDays: 0, startDate: '2026-06-05', type: 'append' }]);
     expect(preview.ghosts).toEqual([
       expect.objectContaining({
@@ -1595,21 +1596,42 @@ describe('jobs.previewSchedule', () => {
     expect(preview.ghosts).toEqual([
       expect.objectContaining({
         bayId,
-        endDate: '2026-06-07',
-        id: `ghost:${bayId}:1`,
-        placementType: 'insert-before',
-        seedIndex: 1,
-        startDate: '2026-06-06',
-      }),
-      expect.objectContaining({
-        bayId,
         endDate: '2026-06-08',
         id: `ghost:${bayId}:0`,
         placementType: 'append',
         seedIndex: 0,
         startDate: '2026-06-07',
       }),
+      expect.objectContaining({
+        bayId,
+        endDate: '2026-06-07',
+        id: `ghost:${bayId}:1`,
+        placementType: 'insert-before',
+        seedIndex: 1,
+        startDate: '2026-06-06',
+      }),
     ]);
+  });
+
+  test('keeps global seed indexes across a multi-Bay preview request', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const paintBayId = '00000000-0000-4000-8000-000000000b02';
+
+    const preview = await caller.jobs.previewSchedule({
+      seeds: [
+        { bayId, durationDays: 1 },
+        { bayId: paintBayId, durationDays: 1 },
+        { bayId, durationDays: 2 },
+      ],
+    });
+
+    expect(preview.placements).toHaveLength(3);
+    expect(preview.ghosts.map((ghost) => ({ id: ghost.id, seedIndex: ghost.seedIndex }))).toEqual([
+      { id: `ghost:${bayId}:0`, seedIndex: 0 },
+      { id: `ghost:${paintBayId}:1`, seedIndex: 1 },
+      { id: `ghost:${bayId}:2`, seedIndex: 2 },
+    ]);
+    expect(preview.bays.map((bay) => bay.id).sort()).toEqual([bayId, paintBayId].sort());
   });
 
   test('returns affected preview Bays through the same schedule window', async ({ context }) => {
@@ -1745,12 +1767,16 @@ describe('jobs.previewSchedule', () => {
       expect.objectContaining({
         durationDays: 4,
         id: `${firstSlot.slot.id}:before`,
+        jobUnfinished: true,
         previewSplit: { half: 'before', sourceSlotId: firstSlot.slot.id },
+        state: 'active',
       }),
       expect.objectContaining({
         durationDays: 6,
         id: `${firstSlot.slot.id}:after`,
+        jobUnfinished: true,
         previewSplit: { half: 'after', sourceSlotId: firstSlot.slot.id },
+        state: 'scheduled',
       }),
     ]);
 

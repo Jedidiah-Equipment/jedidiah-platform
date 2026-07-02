@@ -197,6 +197,184 @@ describe('projectBoard', () => {
       }).nextAvailableDate,
     );
   });
+
+  it('appends a date-less seed as a trailing ghost', () => {
+    const board = projectBoard({
+      bays: [
+        bayFacts({
+          scheduleOrigin: '2026-06-15',
+          slots: [work({ durationDays: 3, sequence: 1, slotId: '00000000-0000-4000-8000-000000000041' })],
+        }),
+      ],
+      offDays: [],
+      seeds: [{ bayId: BAY_1, durationDays: 2 }],
+      today: day('2026-06-14'),
+    });
+
+    expect(board.bays[0]?.slots).toHaveLength(1);
+    expect(board.bays[0]?.slots[0]).not.toHaveProperty('previewSplit');
+    expect(board.ghosts).toEqual([
+      {
+        bayId: BAY_1,
+        durationDays: 2,
+        endDate: '2026-06-20',
+        id: `ghost:${BAY_1}:0`,
+        placementType: 'append',
+        seedIndex: 0,
+        startDate: '2026-06-18',
+      },
+    ]);
+    expect(board.placements).toEqual([{ idleGapDays: 0, startDate: '2026-06-18', type: 'append' }]);
+  });
+
+  it('resolves an insert-before seed at an existing slot boundary', () => {
+    const firstSlotId = '00000000-0000-4000-8000-000000000051';
+    const secondSlotId = '00000000-0000-4000-8000-000000000052';
+    const board = projectBoard({
+      bays: [
+        bayFacts({
+          scheduleOrigin: '2026-06-05',
+          slots: [
+            work({ durationDays: 4, sequence: 1, slotId: firstSlotId }),
+            work({ durationDays: 2, jobId: JOB_2, sequence: 2, slotId: secondSlotId }),
+          ],
+        }),
+      ],
+      offDays: [],
+      seeds: [{ bayId: BAY_1, durationDays: 1, startDate: day('2026-06-09') }],
+      today: day('2026-06-05'),
+    });
+
+    expect(board.placements[0]).toMatchObject({
+      startDate: '2026-06-09',
+      targetSlot: { id: secondSlotId, jobUnfinished: true, state: 'scheduled' },
+      type: 'insert-before',
+    });
+    expect(board.ghosts[0]).toMatchObject({
+      id: `ghost:${BAY_1}:0`,
+      placementType: 'insert-before',
+      startDate: '2026-06-09',
+    });
+    expect(board.bays[0]?.slots.map((slot) => [slot.id, slot.startDate])).toEqual([
+      [firstSlotId, '2026-06-05'],
+      [secondSlotId, '2026-06-10'],
+    ]);
+  });
+
+  it('splits a target slot into before/after halves around the ghost', () => {
+    const sourceSlotId = '00000000-0000-4000-8000-000000000061';
+    const board = projectBoard({
+      bays: [
+        bayFacts({
+          scheduleOrigin: '2026-06-15',
+          slots: [work({ durationDays: 5, sequence: 1, slotId: sourceSlotId })],
+        }),
+      ],
+      offDays: [],
+      seeds: [{ bayId: BAY_1, durationDays: 2, startDate: day('2026-06-17') }],
+      today: day('2026-06-14'),
+    });
+
+    expect(board.placements[0]).toMatchObject({
+      afterDays: 3,
+      beforeDays: 2,
+      startDate: '2026-06-17',
+      targetSlot: { id: sourceSlotId },
+      type: 'split',
+    });
+    expect(board.ghosts[0]).toMatchObject({ placementType: 'split', seedIndex: 0, startDate: '2026-06-17' });
+    expect(board.bays[0]?.slots).toEqual([
+      expect.objectContaining({
+        durationDays: 2,
+        id: `${sourceSlotId}:before`,
+        previewSplit: { half: 'before', sourceSlotId },
+      }),
+      expect.objectContaining({
+        durationDays: 3,
+        id: `${sourceSlotId}:after`,
+        previewSplit: { half: 'after', sourceSlotId },
+      }),
+    ]);
+  });
+
+  it('resolves a later seed inside an earlier ghost as insert-before with global seed indexes', () => {
+    const board = projectBoard({
+      bays: [bayFacts({ scheduleOrigin: '2026-06-15', slots: [] })],
+      offDays: [],
+      seeds: [
+        { bayId: BAY_1, durationDays: 3 },
+        { bayId: BAY_1, durationDays: 1, startDate: day('2026-06-16') },
+      ],
+      today: day('2026-06-14'),
+    });
+
+    expect(board.placements).toEqual([
+      { idleGapDays: 0, startDate: '2026-06-15', type: 'append' },
+      {
+        startDate: '2026-06-15',
+        targetGhost: { id: `ghost:${BAY_1}:0`, seedIndex: 0 },
+        type: 'insert-before',
+      },
+    ]);
+    expect(
+      board.ghosts.map((ghost) => ({ id: ghost.id, placementType: ghost.placementType, seedIndex: ghost.seedIndex })),
+    ).toEqual([
+      { id: `ghost:${BAY_1}:0`, placementType: 'append', seedIndex: 0 },
+      { id: `ghost:${BAY_1}:1`, placementType: 'insert-before', seedIndex: 1 },
+    ]);
+  });
+
+  it('clamps a trailing append ghost forward when the queue ended in the past', () => {
+    const board = projectBoard({
+      bays: [
+        bayFacts({
+          scheduleOrigin: '2026-06-01',
+          slots: [work({ durationDays: 2, sequence: 1, slotId: '00000000-0000-4000-8000-000000000071' })],
+        }),
+      ],
+      offDays: [],
+      seeds: [{ bayId: BAY_1, durationDays: 2 }],
+      today: day('2026-06-14'),
+    });
+
+    expect(board.ghosts[0]).toMatchObject({
+      endDate: '2026-06-16',
+      placementType: 'append',
+      startDate: '2026-06-14',
+    });
+  });
+
+  it('leaves unseeded bays projected as ordinary Board slots', () => {
+    const untouchedSlotId = '00000000-0000-4000-8000-000000000082';
+    const board = projectBoard({
+      bays: [
+        bayFacts({
+          bayId: BAY_1,
+          scheduleOrigin: '2026-06-15',
+          slots: [work({ bayId: BAY_1, durationDays: 2, sequence: 1, slotId: '00000000-0000-4000-8000-000000000081' })],
+        }),
+        bayFacts({
+          bayId: BAY_2,
+          scheduleOrigin: '2026-06-20',
+          slots: [work({ bayId: BAY_2, durationDays: 1, sequence: 1, slotId: untouchedSlotId })],
+        }),
+      ],
+      offDays: [],
+      seeds: [{ bayId: BAY_1, durationDays: 1 }],
+      today: day('2026-06-14'),
+    });
+
+    const untouchedBay = board.bays.find((bay) => bay.bayId === BAY_2);
+
+    expect(untouchedBay?.slots).toEqual([
+      expect.objectContaining({
+        id: untouchedSlotId,
+        startDate: '2026-06-20',
+        state: 'scheduled',
+      }),
+    ]);
+    expect(untouchedBay?.slots[0]).not.toHaveProperty('previewSplit');
+  });
 });
 
 describe('slotState', () => {

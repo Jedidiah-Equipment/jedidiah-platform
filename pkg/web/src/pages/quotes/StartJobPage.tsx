@@ -167,7 +167,7 @@ const BaySeedStartDateControl: React.FC<{
           // date against the target Slot, never the inserted seed's own length, so any valid duration
           // works — `1` just clears the preview's "positive integer duration" gate.
           createSchedulePreviewRequest([{ bayId, durationDays: 1, startDate }])
-        : { input: { seeds: [] }, seedIndexByPreviewIndex: [] },
+        : { input: { seeds: [] } },
     [bayId, shouldPreviewPlacement, startDate],
   );
   const previewQuery = useQuery(

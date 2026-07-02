@@ -5,7 +5,14 @@ import {
   summarizeSlotCalendarDays,
   type WorkingCalendar,
 } from '@pkg/domain';
-import type { DateOnlyIso, JobSlotMoveDirection, JobSlotPlacement, JobSummary, UUID } from '@pkg/schema';
+import type {
+  DateOnlyIso,
+  JobSlotMoveDirection,
+  JobSlotPlacement,
+  JobSummary,
+  ProjectedJobSlot,
+  UUID,
+} from '@pkg/schema';
 import { IconArrowLeft, IconArrowRight, IconClockPlus, IconLoader2, IconTrash } from '@tabler/icons-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
@@ -31,7 +38,6 @@ import {
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card.js';
 import { cn } from '@/lib/utils.js';
 import { BaySlotDayHatch, BaySlotJobCard } from './BaySlotJobCard.js';
-import type { DisplayBaySlot } from './bay-schedule-ghosts.js';
 import { getSlotLabel } from './bay-schedule-summary.js';
 import { InfoList, SlotDayBreakdownRows } from './JobInfoList.js';
 import { getJobGanttOffset, getJobGanttResizeStepWidth, getJobGanttWidth } from './job-gantt-geometry.js';
@@ -67,7 +73,7 @@ export const BaySlotBar: React.FC<{
   onSelectSlot?: ((jobId: UUID, bayId: UUID) => void) | undefined;
   optimisticDurationDays: number | null;
   rowTop: number;
-  slot: DisplayBaySlot;
+  slot: ProjectedJobSlot;
   slotIndex: number;
   slotCount: number;
   today: DateOnlyIso;

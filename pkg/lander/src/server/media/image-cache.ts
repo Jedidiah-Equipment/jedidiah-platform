@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { optimizeImage } from './image-optimizer.js';
-import { OPTIMIZED_CONTENT_TYPE, TRANSFORM_SIGNATURE } from './image-transform.js';
+import { OPTIMIZED_CONTENT_TYPES, type OptimizedImageFormat, transformSignature } from './image-transform.js';
 
 // The optimized bytes to serve, already resolved (from disk or freshly produced). `body` is a full buffer,
 // not a stream: optimized catalog images are small (tens of KB) and sharp needs the whole source in memory
@@ -17,7 +17,7 @@ export type LoadedImage = { bytes: Uint8Array; contentType: string };
 export type ImageCacheOptions = {
   cacheDir: string;
   // Injectable for tests; production uses the sharp-backed default.
-  optimize?: (bytes: Uint8Array) => Promise<Buffer>;
+  optimize?: (bytes: Uint8Array, format: OptimizedImageFormat) => Promise<Buffer>;
 };
 
 // Per-process coalescing of concurrent misses for the same cache file, so a burst (a card grid, a crawler)
@@ -31,11 +31,12 @@ const inFlight = new Map<string, Promise<OptimizedImage>>();
 export async function readOptimizedImage(
   options: ImageCacheOptions,
   storageKey: string,
+  format: OptimizedImageFormat,
   load: () => Promise<LoadedImage>,
 ): Promise<OptimizedImage> {
-  const cachePath = cachePathFor(options.cacheDir, storageKey);
+  const cachePath = cachePathFor(options.cacheDir, storageKey, format);
 
-  const cached = await readCached(cachePath);
+  const cached = await readCached(cachePath, format);
   if (cached) {
     return cached;
   }
@@ -45,25 +46,28 @@ export async function readOptimizedImage(
     return existing;
   }
 
-  const work = produce(options, cachePath, load).finally(() => inFlight.delete(cachePath));
+  const work = produce(options, cachePath, format, load).finally(() => inFlight.delete(cachePath));
   inFlight.set(cachePath, work);
 
   return work;
 }
 
 // Cache filename is a hash of the storage key and the transform signature: the storage key pins the exact
-// source bytes, the signature pins the exact transform. Either changing yields a different file.
-function cachePathFor(cacheDir: string, storageKey: string): string {
-  const hash = createHash('sha256').update(`${storageKey}:${TRANSFORM_SIGNATURE}`).digest('hex');
+// source bytes, the signature pins the exact transform (including format). Either changing yields a
+// different file.
+function cachePathFor(cacheDir: string, storageKey: string, format: OptimizedImageFormat): string {
+  const hash = createHash('sha256')
+    .update(`${storageKey}:${transformSignature(format)}`)
+    .digest('hex');
 
-  return path.join(cacheDir, `${hash}.webp`);
+  return path.join(cacheDir, `${hash}.${format}`);
 }
 
-async function readCached(cachePath: string): Promise<OptimizedImage | null> {
+async function readCached(cachePath: string, format: OptimizedImageFormat): Promise<OptimizedImage | null> {
   try {
     const body = await readFile(cachePath);
 
-    return { body, byteSize: body.byteLength, contentType: OPTIMIZED_CONTENT_TYPE };
+    return { body, byteSize: body.byteLength, contentType: OPTIMIZED_CONTENT_TYPES[format] };
   } catch (error) {
     if (isFileNotFound(error)) {
       return null;
@@ -76,11 +80,12 @@ async function readCached(cachePath: string): Promise<OptimizedImage | null> {
 async function produce(
   options: ImageCacheOptions,
   cachePath: string,
+  format: OptimizedImageFormat,
   load: () => Promise<LoadedImage>,
 ): Promise<OptimizedImage> {
   // Re-check under the in-flight guard: a concurrent worker (or another instance sharing the dir) may have
   // written the file between the initial miss and acquiring this slot.
-  const cached = await readCached(cachePath);
+  const cached = await readCached(cachePath, format);
   if (cached) {
     return cached;
   }
@@ -92,7 +97,7 @@ async function produce(
 
   let optimized: Buffer;
   try {
-    optimized = await optimize(loaded.bytes);
+    optimized = await optimize(loaded.bytes, format);
   } catch (error) {
     // Optimization failed on an otherwise-present object (corrupt bytes, unsupported source). Serve the
     // original bytes so a working photo never becomes broken, and do not cache — a later fix/redeploy retries.
@@ -103,7 +108,7 @@ async function produce(
 
   await writeAtomic(cachePath, optimized);
 
-  return { body: optimized, byteSize: optimized.byteLength, contentType: OPTIMIZED_CONTENT_TYPE };
+  return { body: optimized, byteSize: optimized.byteLength, contentType: OPTIMIZED_CONTENT_TYPES[format] };
 }
 
 // Write to a unique temp file then rename into place. Rename is atomic on the same filesystem, so a reader

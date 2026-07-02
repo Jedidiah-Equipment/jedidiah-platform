@@ -3,6 +3,7 @@ import type { Db } from '@pkg/db';
 import { isBrochureReady, isLanderReady } from '@pkg/domain';
 import type { ProductImageSlot } from '@pkg/schema';
 
+import { OG_IMAGE_FORMAT } from '../media/image-transform.js';
 import { type CatalogProduct, imageUrl, toCatalogProduct, toRangeSlug } from './products-data.js';
 
 export type ProductHighlight = { value: string; label: string };
@@ -18,6 +19,9 @@ export type ProductDetail = {
   tagline: string;
   description: string;
   imageUrl: string;
+  // JPEG variant of the primary image for og:image/twitter:image — social scrapers (Slack, WhatsApp,
+  // Facebook, LinkedIn) download WebP but refuse to render it as a preview card.
+  ogImageUrl: string;
   galleryImages: ProductGalleryImages;
   highlights: ProductHighlight[];
   standardAssemblies: string[];
@@ -68,6 +72,9 @@ export async function loadProductDetail(db: Db, modelCode: string): Promise<Prod
     tagline: fullProduct.category ?? '',
     description: fullProduct.description ?? '',
     imageUrl: imageUrl(`/images/products/${fullProduct.id}`, fullProduct.images.primary?.updatedAt),
+    ogImageUrl: imageUrl(`/images/products/${fullProduct.id}`, fullProduct.images.primary?.updatedAt, {
+      format: OG_IMAGE_FORMAT,
+    }),
     galleryImages: DETAIL_IMAGE_SLOTS.map((slot) => ({
       slot,
       imageUrl: productImageUrl(fullProduct.id, slot, fullProduct.images[slot]?.updatedAt),

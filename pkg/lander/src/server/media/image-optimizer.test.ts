@@ -13,7 +13,7 @@ function source(width: number, height: number, format: 'png' | 'jpeg'): Promise<
 
 describe('optimizeImage', () => {
   test('downscales an oversized source to the target width and re-encodes as WebP', async () => {
-    const output = await optimizeImage(await source(4000, 3000, 'jpeg'));
+    const output = await optimizeImage(await source(4000, 3000, 'jpeg'), 'webp');
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('webp');
@@ -22,14 +22,38 @@ describe('optimizeImage', () => {
   });
 
   test('re-encodes a small source to WebP without enlarging it', async () => {
-    const output = await optimizeImage(await source(640, 480, 'png'));
+    const output = await optimizeImage(await source(640, 480, 'png'), 'webp');
     const meta = await sharp(output).metadata();
 
     expect(meta.format).toBe('webp');
     expect(meta.width).toBe(640);
   });
 
+  test('re-encodes to JPEG when asked for the og:image format', async () => {
+    const output = await optimizeImage(await source(4000, 3000, 'png'), 'jpeg');
+    const meta = await sharp(output).metadata();
+
+    expect(meta.format).toBe('jpeg');
+    expect(meta.width).toBe(OPTIMIZED_MAX_WIDTH);
+  });
+
+  test("flattens a transparent PNG onto white for JPEG, not sharp's default black", async () => {
+    const transparent = await sharp({
+      create: { width: 200, height: 200, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 0 } },
+    })
+      .png()
+      .toBuffer();
+
+    const output = await optimizeImage(transparent, 'jpeg');
+    const { data } = await sharp(output).raw().toBuffer({ resolveWithObject: true });
+
+    // JPEG is lossy, so allow a little wiggle around pure white.
+    expect(data[0]).toBeGreaterThan(250);
+    expect(data[1]).toBeGreaterThan(250);
+    expect(data[2]).toBeGreaterThan(250);
+  });
+
   test('throws on non-raster input', async () => {
-    await expect(optimizeImage(new TextEncoder().encode('not an image'))).rejects.toThrow();
+    await expect(optimizeImage(new TextEncoder().encode('not an image'), 'webp')).rejects.toThrow();
   });
 });

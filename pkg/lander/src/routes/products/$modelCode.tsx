@@ -44,7 +44,7 @@ export const Route = createFileRoute('/products/$modelCode')({
       title: `${detail.name} — ${detail.rangeName} | Jedidiah Equipment`,
       description,
       path: `/products/${encodeURIComponent(detail.modelCode)}`,
-      image: detail.imageUrl,
+      image: detail.ogImageUrl,
     });
   },
   notFoundComponent: ProductNotFound,

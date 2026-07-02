@@ -5,6 +5,7 @@ import {
   IconSquareCheckFilled,
   IconSquarePlus,
   IconStarFilled,
+  IconX,
 } from '@tabler/icons-react';
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
@@ -73,13 +74,38 @@ function Breadcrumb({ rangeName, name }: { rangeName: string; name: string }) {
 
 function Gallery({ images, name }: { images: ProductDetail['galleryImages']; name: string }) {
   const [active, setActive] = useState(0);
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const activeImage = images[active] ?? images[0];
+
+  useEffect(() => {
+    if (!isImageDialogOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsImageDialogOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isImageDialogOpen]);
 
   return (
     <div>
-      <div className="aspect-[16/11] overflow-hidden border border-line bg-[#dcdcd6]">
-        <img src={activeImage.imageUrl} alt={name} className="h-full w-full object-cover" />
-      </div>
+      <button
+        type="button"
+        onClick={() => setIsImageDialogOpen(true)}
+        aria-label={`Open full-size image of ${name}`}
+        className="group block aspect-[16/11] w-full cursor-pointer overflow-hidden border border-line bg-[#dcdcd6] p-0 transition-[translate,border-color,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:border-gold hover:shadow-[0_18px_36px_rgba(0,0,0,0.18)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
+      >
+        <img
+          src={activeImage.imageUrl}
+          alt={name}
+          className="h-full w-full object-cover transition-transform duration-[1500ms] ease-out group-hover:scale-[1.035]"
+        />
+      </button>
       <div className="mt-3.5 grid grid-cols-3 gap-3.5">
         {images.map((image, index) => (
           <button
@@ -87,14 +113,56 @@ function Gallery({ images, name }: { images: ProductDetail['galleryImages']; nam
             type="button"
             onClick={() => setActive(index)}
             aria-label={`View image ${index + 1}`}
-            className={`aspect-[16/11] overflow-hidden bg-[#dcdcd6] p-0 ${
-              index === active ? 'border-2 border-gold' : 'border-2 border-line'
-            }`}
+            className="group aspect-[16/11] cursor-pointer bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-gold"
           >
-            <img src={image.imageUrl} alt="" aria-hidden="true" className="h-full w-full object-cover" />
+            <div
+              className={`h-full w-full overflow-hidden bg-[#dcdcd6] transition-[translate,border-color,box-shadow] duration-[1500ms] ease-out ${
+                index === active
+                  ? 'border-2 border-gold shadow-[0_10px_22px_rgba(0,0,0,0.16)]'
+                  : 'border-2 border-line group-hover:-translate-y-0.5 group-hover:border-gold/80 group-hover:shadow-[0_10px_22px_rgba(0,0,0,0.12)]'
+              }`}
+            >
+              <img
+                src={image.imageUrl}
+                alt=""
+                aria-hidden="true"
+                className={`h-full w-full object-cover transition-transform duration-[1500ms] ease-out ${
+                  index === active ? 'scale-[1.04]' : 'group-hover:scale-[1.04]'
+                }`}
+              />
+            </div>
           </button>
         ))}
       </div>
+      {isImageDialogOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${name} full-size image`}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-5 backdrop-blur-[2px]"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsImageDialogOpen(false);
+            }
+          }}
+        >
+          <div className="relative flex max-h-[92vh] w-full max-w-[1200px] items-center justify-center">
+            <button
+              type="button"
+              aria-label="Close image dialog"
+              onClick={() => setIsImageDialogOpen(false)}
+              className="absolute top-0 right-0 z-10 flex size-11 -translate-y-3 translate-x-3 cursor-pointer items-center justify-center bg-gold text-ink transition-transform duration-200 hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
+            >
+              <IconX size={24} stroke={2.4} aria-hidden="true" />
+            </button>
+            <img
+              src={activeImage.imageUrl}
+              alt={name}
+              className="max-h-[88vh] max-w-full object-contain shadow-[0_24px_70px_rgba(0,0,0,0.42)]"
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -210,13 +278,15 @@ function DownloadIcon() {
   return <IconDownload className="flex-none text-gold" size={22} stroke={1.8} aria-hidden="true" />;
 }
 
-function Downloads({ brochureHref, modelCode }: { brochureHref: string; modelCode: string }) {
+export function Downloads({ brochureHref, modelCode }: { brochureHref: string; modelCode: string }) {
   return (
-    <div className="mt-10">
-      <h3 className="m-0 mb-4 font-display text-[20px] font-bold uppercase tracking-[1px] text-ink">Downloads</h3>
+    <div>
+      <SectionHeading>Downloads</SectionHeading>
       <div className="flex flex-col gap-3">
         <a
           href={brochureHref}
+          target="_blank"
+          rel="noreferrer"
           onClick={() => captureEvent('brochure_downloaded', { modelCode })}
           className="flex items-center gap-3.5 border border-[#e2e0da] bg-white px-[18px] py-3.5 no-underline transition-colors hover:border-ink"
         >
@@ -228,32 +298,17 @@ function Downloads({ brochureHref, modelCode }: { brochureHref: string; modelCod
   );
 }
 
-function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
+export function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
   const { standardAssemblies, optionalAssemblies, keyFeatures } = detail;
+  const hasTopRow = keyFeatures.length > 0 || Boolean(detail.brochureHref);
+  const hasAssemblyRow = standardAssemblies.length > 0 || optionalAssemblies.length > 0;
 
   return (
-    <section className="mx-auto grid max-w-[1320px] grid-cols-[1.15fr_1fr] items-start gap-16 px-12 py-[72px] max-nav:grid-cols-1 max-nav:gap-11 max-nav:px-5 max-nav:py-12">
-      <div>
-        {standardAssemblies.length > 0 ? (
-          <>
-            <SectionHeading>Standard Assemblies</SectionHeading>
-            <ItemList items={standardAssemblies} icon={StandardIcon} />
-          </>
-        ) : null}
-        {optionalAssemblies.length > 0 ? (
-          <>
-            <SectionHeading className={standardAssemblies.length > 0 ? 'mt-11' : ''}>
-              Optional Assemblies
-            </SectionHeading>
-            <ItemList items={optionalAssemblies} icon={OptionalIcon} />
-          </>
-        ) : null}
-      </div>
-
-      {keyFeatures.length > 0 || detail.brochureHref ? (
-        <div>
+    <section className="mx-auto flex max-w-[1320px] flex-col gap-16 px-12 py-[72px] max-nav:gap-11 max-nav:px-5 max-nav:py-12">
+      {hasTopRow ? (
+        <div className="grid grid-cols-[1.15fr_1fr] items-start gap-16 max-nav:grid-cols-1 max-nav:gap-11">
           {keyFeatures.length > 0 ? (
-            <>
+            <div>
               <SectionHeading>Key Features</SectionHeading>
               <div className="flex flex-col gap-4">
                 {keyFeatures.map((feature) => (
@@ -263,9 +318,26 @@ function AssembliesAndFeatures({ detail }: { detail: ProductDetail }) {
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           ) : null}
           {detail.brochureHref ? <Downloads brochureHref={detail.brochureHref} modelCode={detail.modelCode} /> : null}
+        </div>
+      ) : null}
+
+      {hasAssemblyRow ? (
+        <div className="grid grid-cols-[1.15fr_1fr] items-start gap-16 max-nav:grid-cols-1 max-nav:gap-11">
+          {standardAssemblies.length > 0 ? (
+            <div>
+              <SectionHeading>Standard Assemblies</SectionHeading>
+              <ItemList items={standardAssemblies} icon={StandardIcon} />
+            </div>
+          ) : null}
+          {optionalAssemblies.length > 0 ? (
+            <div>
+              <SectionHeading>Optional Assemblies</SectionHeading>
+              <ItemList items={optionalAssemblies} icon={OptionalIcon} />
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

@@ -108,6 +108,7 @@ function workSlot(input: { durationDays: number; jobCode: string }): ProjectedJo
     ...projectedSlotBase(input.durationDays),
     jobCode: input.jobCode,
     jobId: '00000000-0000-4000-8000-00000000aaaa',
+    jobUnfinished: true,
     kind: 'work',
     label: null,
   });
@@ -131,6 +132,7 @@ function projectedSlotBase(durationDays: number) {
     id: '00000000-0000-4000-8000-000000000001',
     sequence: 1,
     startDate: '2026-06-05',
+    state: 'active',
     updatedAt: '2026-06-05T08:00:00.000Z',
   };
 }

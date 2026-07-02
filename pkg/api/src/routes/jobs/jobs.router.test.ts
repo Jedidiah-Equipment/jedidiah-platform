@@ -223,6 +223,67 @@ describe('jobs.listBays', () => {
     expect(schedule.jobs.map((summary) => summary.id)).toEqual([job.id]);
   });
 
+  test('returns projected slot state and cross-bay jobUnfinished flags', async ({ context }) => {
+    const caller = context.createCaller(mockSession('admin'));
+    const crossBayJob = await caller.jobs.create({ quoteId: context.quote.id });
+    const activeQuote = await createAcceptedQuote(context.db, context.product.id);
+    const activeJob = await caller.jobs.create({ quoteId: activeQuote.id });
+    const completeQuote = await createAcceptedQuote(context.db, context.product.id);
+    const completeJob = await caller.jobs.create({ quoteId: completeQuote.id });
+    const doneBayId = '00000000-0000-4000-8000-000000000b01';
+    const activeBayId = '00000000-0000-4000-8000-000000000b02';
+    const futureBayId = '00000000-0000-4000-8000-000000000b03';
+    const completeBayId = '00000000-0000-4000-8000-000000000b04';
+
+    await setBayScheduleOrigin(context.db, doneBayId, '2026-06-01');
+    await setBayScheduleOrigin(context.db, activeBayId, '2026-06-04');
+    await setBayScheduleOrigin(context.db, futureBayId, '2026-06-06');
+    await setBayScheduleOrigin(context.db, completeBayId, '2026-06-02');
+    await seedWorkSlot(context.db, { bayId: doneBayId, durationDays: 1, jobId: crossBayJob.id, sequence: 1 });
+    await seedWorkSlot(context.db, { bayId: activeBayId, durationDays: 3, jobId: activeJob.id, sequence: 1 });
+    await seedWorkSlot(context.db, { bayId: futureBayId, durationDays: 1, jobId: crossBayJob.id, sequence: 1 });
+    await seedWorkSlot(context.db, { bayId: completeBayId, durationDays: 1, jobId: completeJob.id, sequence: 1 });
+
+    const schedule = await caller.jobs.listBays({ from: '2026-06-01' });
+
+    expect(getScheduleBay(schedule, doneBayId).slots).toEqual([
+      expect.objectContaining({
+        endDate: '2026-06-02',
+        jobId: crossBayJob.id,
+        jobUnfinished: true,
+        startDate: '2026-06-01',
+        state: 'done',
+      }),
+    ]);
+    expect(getScheduleBay(schedule, activeBayId).slots).toEqual([
+      expect.objectContaining({
+        endDate: '2026-06-07',
+        jobId: activeJob.id,
+        jobUnfinished: true,
+        startDate: '2026-06-04',
+        state: 'active',
+      }),
+    ]);
+    expect(getScheduleBay(schedule, futureBayId).slots).toEqual([
+      expect.objectContaining({
+        endDate: '2026-06-07',
+        jobId: crossBayJob.id,
+        jobUnfinished: true,
+        startDate: '2026-06-06',
+        state: 'scheduled',
+      }),
+    ]);
+    expect(getScheduleBay(schedule, completeBayId).slots).toEqual([
+      expect.objectContaining({
+        endDate: '2026-06-03',
+        jobId: completeJob.id,
+        jobUnfinished: false,
+        startDate: '2026-06-02',
+        state: 'done',
+      }),
+    ]);
+  });
+
   test('widens the window with from and limits summaries to returned Jobs', async ({ context }) => {
     const caller = context.createCaller(mockSession('admin'));
     const historicalJob = await caller.jobs.create({ quoteId: context.quote.id });

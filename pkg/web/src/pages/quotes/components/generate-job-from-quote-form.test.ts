@@ -228,10 +228,12 @@ function buildWorkSlot({ durationDays, jobCode }: { durationDays: number; jobCod
     id: '00000000-0000-4000-8000-000000000001',
     jobCode,
     jobId: '00000000-0000-4000-8000-00000000aaaa',
+    jobUnfinished: true,
     kind: 'work',
     label: null,
     sequence: 1,
     startDate: '2026-06-05',
+    state: 'active',
     updatedAt: '2026-06-05T08:00:00.000Z',
   });
 }

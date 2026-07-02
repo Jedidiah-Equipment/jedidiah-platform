@@ -507,16 +507,20 @@ describe('JobSlot schemas', () => {
         id: '00000000-0000-4000-8000-000000000003',
         jobCode: 12,
         jobId: '00000000-0000-4000-8000-000000000002',
+        jobUnfinished: true,
         kind: 'work',
         label: null,
         sequence: 1,
         startDate: '2026-06-05',
+        state: 'active',
         updatedAt: new Date('2026-06-05T00:00:00.000Z'),
       }),
     ).toMatchObject({
       endDate: '2026-06-06',
       jobCode: 'JOB-00012',
+      jobUnfinished: true,
       startDate: '2026-06-05',
+      state: 'active',
     });
   });
 
@@ -533,6 +537,7 @@ describe('JobSlot schemas', () => {
         label: 'Idle gap',
         sequence: 1,
         startDate: '2026-06-05',
+        state: 'scheduled',
         updatedAt: new Date('2026-06-05T00:00:00.000Z'),
       }),
     ).toMatchObject({
@@ -540,6 +545,7 @@ describe('JobSlot schemas', () => {
       kind: 'idle',
       label: 'Idle gap',
       startDate: '2026-06-05',
+      state: 'scheduled',
     });
   });
 
@@ -588,6 +594,7 @@ describe('JobSlot schemas', () => {
                 id: '00000000-0000-4000-8000-000000000003:before',
                 jobCode: 12,
                 jobId: '00000000-0000-4000-8000-000000000002',
+                jobUnfinished: true,
                 kind: 'work',
                 label: null,
                 previewSplit: {
@@ -596,6 +603,7 @@ describe('JobSlot schemas', () => {
                 },
                 sequence: 1,
                 startDate: '2026-06-05',
+                state: 'active',
                 updatedAt: '2026-06-05T00:00:00.000Z',
               },
             ],
@@ -626,10 +634,12 @@ describe('JobSlot schemas', () => {
               id: '00000000-0000-4000-8000-000000000003',
               jobCode: 12,
               jobId: '00000000-0000-4000-8000-000000000002',
+              jobUnfinished: true,
               kind: 'work',
               label: null,
               sequence: 1,
               startDate: '2026-06-05',
+              state: 'active',
               updatedAt: '2026-06-05T00:00:00.000Z',
             },
             type: 'split',

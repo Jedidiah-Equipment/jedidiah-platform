@@ -32,7 +32,6 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useQueryInvalidation } from '@/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { allJobsInput } from './all-jobs-input.js';
 import { OffDayBands } from './BayCalendarOverlays.js';
 import { BayScheduleFilterBar } from './BayScheduleFilterBar.js';
 import { BayScheduleGhostBars } from './BayScheduleGhostBars.js';
@@ -105,8 +104,8 @@ export const BayScheduleGantt: React.FC<{
     ),
   );
   const enabledBaysQuery = useQuery(trpc.jobs.listJobBays.queryOptions({ filters: { isDisabled: false } }));
-  const jobsQuery = useQuery(trpc.jobs.list.queryOptions(allJobsInput));
   const bays = baysQuery.data?.items ?? [];
+  const jobs = baysQuery.data?.jobs ?? [];
   const enabledBayIds = useMemo(
     () => new Set((enabledBaysQuery.data?.items ?? []).map((bay) => bay.id)),
     [enabledBaysQuery.data?.items],
@@ -132,7 +131,6 @@ export const BayScheduleGantt: React.FC<{
   const zoomIn = useBayScheduleViewStore((state) => state.zoomIn);
   const zoomOut = useBayScheduleViewStore((state) => state.zoomOut);
   const anchoredZoomChangeRef = useRef<AnchoredZoomChange | null>(null);
-  const jobs = jobsQuery.data?.items ?? [];
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
   const displayedBays = bays;
   // Render pipeline: query → lane filter → server ghost preview.

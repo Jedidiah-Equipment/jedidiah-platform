@@ -1,7 +1,6 @@
 import type { JobListInput } from '@pkg/schema';
 
-// Shared by the schedule gantt and the booking dialog so their jobs
-// queries hit the same cache entry.
+// The booking dialog needs a full Job picker; schedule boards use the bounded summaries from listBays.
 export const allJobsInput = {
   filters: {},
   page: 1,

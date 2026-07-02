@@ -8,7 +8,7 @@ import {
 
 import { type InsertAtDatePlacement, resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';
 import { addJobSlotDuration, type ProjectableJobSlot, projectJobSlots } from './job-slot-projection.js';
-import type { WorkingCalendar } from './working-calendar.js';
+import { firstWorkingDayOnOrAfter, type WorkingCalendar } from './working-calendar.js';
 
 type OffDayFact = { date: string };
 type CalendarExceptionFact = { date: string; direction: BayCalendarExceptionDirection };
@@ -57,20 +57,25 @@ export type BaySlotSplitMarker = { sourceSlotId: string; half: 'before' | 'after
 /** A Bay Queue slot in a preview: a real Slot, optionally one half of a split target. */
 export type PreviewBaySlot = ProjectedJobSlot & { splitOf?: BaySlotSplitMarker };
 
+/** An insert-seed placement that lands on an existing real Slot. */
+export type BayPlacementSlotTarget = { targetKind: 'slot'; slot: PreviewBaySlot };
+
 /**
  * What an insert-seed placement lands against. A single booking always targets a real Slot; a
  * multi-seed preview can instead target an earlier seed's still-pending ghost, carried by its seed
  * index so callers render a ghost-to-ghost target without re-sniffing the runtime shape.
  */
-export type BayPlacementTarget =
-  | { targetKind: 'slot'; slot: PreviewBaySlot }
-  | { targetKind: 'ghost'; seedIndex: number };
+export type BayPlacementTarget = BayPlacementSlotTarget | { targetKind: 'ghost'; seedIndex: number };
 
-/** A resolved insert-seed placement, with its target discriminated at the point it is resolved. */
+/**
+ * A resolved insert-seed placement, with its target discriminated at the point it is resolved. A
+ * split only ever targets a real Slot: a ghost has no stored Slot to halve, so a pick inside one
+ * degrades to insert-before (see `toBayPlacement`), which is why `split` cannot carry a ghost target.
+ */
 export type BayPlacement =
   | { type: 'append'; startDate: DateOnlyIso; idleGapDays: number }
   | ({ type: 'insert-before'; startDate: DateOnlyIso } & BayPlacementTarget)
-  | ({ type: 'split'; startDate: DateOnlyIso; beforeDays: number; afterDays: number } & BayPlacementTarget);
+  | ({ type: 'split'; startDate: DateOnlyIso; beforeDays: number; afterDays: number } & BayPlacementSlotTarget);
 
 export type BayPlacementType = BayPlacement['type'];
 
@@ -285,11 +290,15 @@ function spliceSeedEntry({
     slots: entries,
     workingCalendar,
   });
+  // A pick landing inside an earlier seed's ghost has no stored Slot to halve, so it degrades to
+  // insert-before (see the splice below and `toBayPlacement`). The ghost records that resolved type,
+  // never an unrepresentable ghost split.
+  const targetsGhost = placement.type !== 'append' && Boolean(placement.targetSlot.ghostMeta);
   const ghostEntry: WorkingEntry = {
     durationDays: seed.durationDays,
     ghostMeta: {
       appendStart: placement.type === 'append' ? placement.startDate : null,
-      placementType: placement.type,
+      placementType: targetsGhost ? 'insert-before' : placement.type,
       seedIndex,
     },
     id: `seed:${seedIndex}`,
@@ -334,29 +343,45 @@ function spliceSeedEntry({
   // would otherwise shuffle the split halves around the ghost).
   return {
     entries: next.map((entry, index) => ({ ...entry, sequence: index + 1 })),
-    placement: toBayPlacement(placement),
+    placement: toBayPlacement(placement, workingCalendar),
   };
 }
 
 // Captures whether the placement's target is a real Slot or an earlier seed's ghost while that fact is
 // still typed on the working entry, so downstream callers read a discriminant instead of re-deriving it.
-function toBayPlacement(placement: InsertAtDatePlacement<WorkingEntry>): BayPlacement {
+function toBayPlacement(
+  placement: InsertAtDatePlacement<WorkingEntry>,
+  workingCalendar: WorkingCalendar,
+): BayPlacement {
   if (placement.type === 'append') {
     return { type: 'append', idleGapDays: placement.idleGapDays, startDate: placement.startDate };
   }
 
   const { ghostMeta, ...targetSlot } = placement.targetSlot;
-  const target: BayPlacementTarget = ghostMeta
-    ? { seedIndex: ghostMeta.seedIndex, targetKind: 'ghost' }
-    : { slot: targetSlot as PreviewBaySlot, targetKind: 'slot' };
+
+  // A ghost has no stored Slot to halve, so the entry splice inserts before it rather than splitting;
+  // the reported placement degrades the same way, keeping `split` + ghost off the wire entirely. The
+  // start is the target ghost's first working day (where the new ghost lands), matching the splice and
+  // the resolver's own insert-before rule — not the discarded split pick date.
+  if (ghostMeta) {
+    return {
+      seedIndex: ghostMeta.seedIndex,
+      startDate: firstWorkingDayOnOrAfter(placement.targetSlot.startDate, workingCalendar),
+      targetKind: 'ghost',
+      type: 'insert-before',
+    };
+  }
+
+  const slot = targetSlot as PreviewBaySlot;
 
   return placement.type === 'insert-before'
-    ? { startDate: placement.startDate, type: 'insert-before', ...target }
+    ? { slot, startDate: placement.startDate, targetKind: 'slot', type: 'insert-before' }
     : {
         afterDays: placement.afterDays,
         beforeDays: placement.beforeDays,
+        slot,
         startDate: placement.startDate,
+        targetKind: 'slot',
         type: 'split',
-        ...target,
       };
 }

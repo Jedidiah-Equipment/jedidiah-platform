@@ -157,22 +157,26 @@ function toSchedulePreviewPlacement(
     return { idleGapDays: placement.idleGapDays, startDate: placement.startDate, type: placement.type };
   }
 
-  // The domain resolved whether this seed lands on a real Slot or another seed's ghost, so the target
-  // is a discriminant rather than a runtime shape to re-sniff.
-  const target =
-    placement.targetKind === 'ghost'
-      ? { targetGhost: toSchedulePreviewGhostTarget(placement.seedIndex, options) }
-      : { targetSlot: toSchedulePreviewSlot(placement.slot) };
+  // A split always lands on a real Slot (the domain degrades a ghost split to insert-before).
+  if (placement.type === 'split') {
+    return {
+      afterDays: placement.afterDays,
+      beforeDays: placement.beforeDays,
+      startDate: placement.startDate,
+      targetSlot: toSchedulePreviewSlot(placement.slot),
+      type: placement.type,
+    };
+  }
 
-  return placement.type === 'insert-before'
-    ? { startDate: placement.startDate, type: placement.type, ...target }
-    : {
-        afterDays: placement.afterDays,
-        beforeDays: placement.beforeDays,
+  // An insert-before lands on a real Slot or an earlier seed's ghost; the domain already discriminated
+  // which, so this reads the tag rather than re-sniffing a runtime shape.
+  return placement.targetKind === 'ghost'
+    ? {
         startDate: placement.startDate,
+        targetGhost: toSchedulePreviewGhostTarget(placement.seedIndex, options),
         type: placement.type,
-        ...target,
-      };
+      }
+    : { startDate: placement.startDate, targetSlot: toSchedulePreviewSlot(placement.slot), type: placement.type };
 }
 
 function toSchedulePreviewGhostTarget(

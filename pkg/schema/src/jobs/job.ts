@@ -567,20 +567,13 @@ export const JobSchedulePreviewPlacement = z.union([
       targetGhost: JobSchedulePreviewGhostTarget,
     })
     .strict(),
+  // A split always targets a real Slot; a pick inside a preview ghost degrades to insert-before, so
+  // there is no `split` + `targetGhost` shape (see @pkg/domain `toBayPlacement`).
   z
     .object({
       type: z.literal('split'),
       startDate: DateOnlyIso,
       targetSlot: JobSchedulePreviewSlot,
-      beforeDays: SlotDurationDays,
-      afterDays: SlotDurationDays,
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal('split'),
-      startDate: DateOnlyIso,
-      targetGhost: JobSchedulePreviewGhostTarget,
       beforeDays: SlotDurationDays,
       afterDays: SlotDurationDays,
     })

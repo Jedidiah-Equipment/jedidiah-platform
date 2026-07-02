@@ -1,7 +1,7 @@
 import type { BaySchedule, DateOnlyIso, ProjectedJobSlot } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { bayWorkingCalendars, previewBaySchedule, projectBaySchedule } from './bay-schedule-projection.js';
+import { bayWorkingCalendars, previewBayScheduleSeedInserts, projectBaySchedule } from './bay-schedule-projection.js';
 
 function work(id: string, sequence: number, durationDays: number): ProjectedJobSlot {
   return {
@@ -75,42 +75,11 @@ describe('projectBaySchedule', () => {
   });
 });
 
-describe('previewBaySchedule moveSlot', () => {
-  it('swaps a slot with its neighbour and reflows the dates', () => {
-    const source = bay({
-      nextAvailableDate: '2026-06-20',
-      scheduleOrigin: '2026-06-15',
-      slots: [work('a', 1, 2), work('b', 2, 3)],
-    });
-
-    const result = previewBaySchedule(source, [], { direction: 'left', kind: 'moveSlot', slotId: 'b' });
-
-    expect(result.changed).toBe(true);
-    expect(result.slots.map((slot) => slot.id)).toEqual(['b', 'a']);
-    expect(result.slots[0]).toMatchObject({ id: 'b', startDate: '2026-06-15', endDate: '2026-06-18' });
-    expect(result.slots[1]).toMatchObject({ id: 'a', startDate: '2026-06-18', endDate: '2026-06-20' });
-  });
-
-  it('leaves the queue untouched and same-reference when the slot cannot move', () => {
-    const source = bay({
-      nextAvailableDate: '2026-06-20',
-      scheduleOrigin: '2026-06-15',
-      slots: [work('a', 1, 2), work('b', 2, 3)],
-    });
-
-    const result = previewBaySchedule(source, [], { direction: 'left', kind: 'moveSlot', slotId: 'a' });
-
-    expect(result.changed).toBe(false);
-    expect(result.slots).toBe(source.slots);
-  });
-});
-
-describe('previewBaySchedule insertSeeds', () => {
+describe('previewBayScheduleSeedInserts', () => {
   it('appends a date-less seed as a trailing ghost', () => {
     const source = bay({ nextAvailableDate: '2026-06-18', scheduleOrigin: '2026-06-15', slots: [work('a', 1, 3)] });
 
-    const result = previewBaySchedule(source, [], {
-      kind: 'insertSeeds',
+    const result = previewBayScheduleSeedInserts(source, [], {
       seeds: [{ durationDays: 2, startDate: '' }],
       today: TODAY,
     });
@@ -126,8 +95,7 @@ describe('previewBaySchedule insertSeeds', () => {
   it('splits a target slot into before/after halves around the ghost', () => {
     const source = bay({ nextAvailableDate: '2026-06-20', scheduleOrigin: '2026-06-15', slots: [work('a', 1, 5)] });
 
-    const result = previewBaySchedule(source, [], {
-      kind: 'insertSeeds',
+    const result = previewBayScheduleSeedInserts(source, [], {
       seeds: [{ durationDays: 2, startDate: '2026-06-17' }],
       today: TODAY,
     });
@@ -143,8 +111,7 @@ describe('previewBaySchedule insertSeeds', () => {
     // seed would target the wrong half; unique half ids keep it on the after half (durations 2+3+5=10).
     const source = bay({ nextAvailableDate: '2026-06-25', scheduleOrigin: '2026-06-15', slots: [work('a', 1, 10)] });
 
-    const result = previewBaySchedule(source, [], {
-      kind: 'insertSeeds',
+    const result = previewBayScheduleSeedInserts(source, [], {
       seeds: [
         { durationDays: 2, startDate: '2026-06-17' },
         { durationDays: 1, startDate: '2026-06-22' },
@@ -162,8 +129,7 @@ describe('previewBaySchedule insertSeeds', () => {
     // to halve, so both the placement and the ghost resolve to insert-before, never a ghost split.
     const source = bay({ nextAvailableDate: '2026-06-15', scheduleOrigin: '2026-06-15', slots: [] });
 
-    const result = previewBaySchedule(source, [], {
-      kind: 'insertSeeds',
+    const result = previewBayScheduleSeedInserts(source, [], {
       seeds: [
         { durationDays: 3, startDate: '' },
         { durationDays: 1, startDate: '2026-06-16' },
@@ -188,8 +154,7 @@ describe('previewBaySchedule insertSeeds', () => {
   it('clamps a trailing append forward when the queue ended in the past', () => {
     const source = bay({ nextAvailableDate: '2026-06-03', scheduleOrigin: '2026-06-01', slots: [work('a', 1, 2)] });
 
-    const result = previewBaySchedule(source, [], {
-      kind: 'insertSeeds',
+    const result = previewBayScheduleSeedInserts(source, [], {
       seeds: [{ durationDays: 2, startDate: '' }],
       today: TODAY,
     });
@@ -202,8 +167,7 @@ describe('previewBaySchedule insertSeeds', () => {
   it('ignores seeds with a non-positive or non-integer duration', () => {
     const source = bay({ nextAvailableDate: '2026-06-18', scheduleOrigin: '2026-06-15', slots: [work('a', 1, 3)] });
 
-    const result = previewBaySchedule(source, [], {
-      kind: 'insertSeeds',
+    const result = previewBayScheduleSeedInserts(source, [], {
       seeds: [{ durationDays: 0, startDate: '' }],
       today: TODAY,
     });

@@ -1,10 +1,4 @@
-import {
-  type BayCalendarExceptionDirection,
-  type BaySchedule,
-  DateOnlyIso,
-  type JobSlotMoveDirection,
-  type ProjectedJobSlot,
-} from '@pkg/schema';
+import { type BayCalendarExceptionDirection, type BaySchedule, DateOnlyIso, type ProjectedJobSlot } from '@pkg/schema';
 
 import { type InsertAtDatePlacement, resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';
 import { addJobSlotDuration, type ProjectableJobSlot, projectJobSlots } from './job-slot-projection.js';
@@ -95,11 +89,9 @@ export type BayScheduleSeed = {
   startDate: string;
 };
 
-export type BayPreviewOp =
-  | { kind: 'moveSlot'; slotId: string; direction: JobSlotMoveDirection }
-  | { kind: 'insertSeeds'; seeds: readonly BayScheduleSeed[]; today: DateOnlyIso };
+export type BayScheduleSeedPreviewInput = { seeds: readonly BayScheduleSeed[]; today: DateOnlyIso };
 
-export type BayPreviewResult = {
+export type BayScheduleSeedPreviewResult = {
   /** False when the op left this Bay's queue untouched, so callers can keep the same reference. */
   changed: boolean;
   ghosts: PreviewGhostSlot[];
@@ -110,22 +102,17 @@ export type BayPreviewResult = {
 };
 
 /**
- * Previews a hypothetical mutation of one Bay Queue against its live projection, without touching the
- * stored queue. `moveSlot` reflows a reorder; `insertSeeds` resolves each seed's Insert-at-Date
- * placement (the same shared resolver the server booking uses), splits a target Slot into before/after
- * halves marked with `splitOf`, and reprojects. Display mapping — synthetic ids, render markers — is
- * left to the caller.
+ * Previews pending insert-seed bookings for one Bay Queue. Slot moves commit through BayQueue.swap and
+ * refetch, so this projection intentionally only models seed insertion.
  */
-export function previewBaySchedule(
+export function previewBayScheduleSeedInserts(
   bay: BaySchedule,
   offDays: readonly OffDayFact[],
-  op: BayPreviewOp,
-): BayPreviewResult {
+  input: BayScheduleSeedPreviewInput,
+): BayScheduleSeedPreviewResult {
   const workingCalendar = bayWorkingCalendar(new Set(offDays.map((offDay) => offDay.date)), bay.calendarExceptions);
 
-  return op.kind === 'moveSlot'
-    ? previewSlotMove(bay, workingCalendar, op)
-    : previewSeedInserts(bay, workingCalendar, op);
+  return previewSeedInserts(bay, workingCalendar, input);
 }
 
 type ProjectableBaySlot = Omit<ProjectedJobSlot, 'endDate' | 'startDate'>;
@@ -134,54 +121,13 @@ function unprojected(bay: BaySchedule): ProjectableBaySlot[] {
   return bay.slots.map(({ endDate: _endDate, startDate: _startDate, ...slot }) => ({ ...slot }));
 }
 
-function unchanged(bay: BaySchedule): BayPreviewResult {
+function unchanged(bay: BaySchedule): BayScheduleSeedPreviewResult {
   return {
     changed: false,
     ghosts: [],
     nextAvailableDate: bay.nextAvailableDate,
     placements: [],
     slots: bay.slots,
-  };
-}
-
-function previewSlotMove(
-  bay: BaySchedule,
-  workingCalendar: WorkingCalendar,
-  op: { slotId: string; direction: JobSlotMoveDirection },
-): BayPreviewResult {
-  const slots = unprojected(bay);
-  const slotIndex = slots.findIndex((slot) => slot.id === op.slotId);
-  if (slotIndex < 0) {
-    return unchanged(bay);
-  }
-
-  const targetIndex = slotIndex + (op.direction === 'left' ? -1 : 1);
-  if (targetIndex < 0 || targetIndex >= slots.length) {
-    return unchanged(bay);
-  }
-
-  const currentSlot = slots[slotIndex];
-  const adjacentSlot = slots[targetIndex];
-  if (!currentSlot || !adjacentSlot) {
-    return unchanged(bay);
-  }
-
-  const currentSequence = currentSlot.sequence;
-  currentSlot.sequence = adjacentSlot.sequence;
-  adjacentSlot.sequence = currentSequence;
-
-  const projection = projectJobSlots<ProjectableBaySlot>({
-    scheduleOrigin: bay.scheduleOrigin,
-    slots,
-    workingCalendar,
-  });
-
-  return {
-    changed: true,
-    ghosts: [],
-    nextAvailableDate: projection.nextAvailableDate,
-    placements: [],
-    slots: projection.slots as PreviewBaySlot[],
   };
 }
 
@@ -199,9 +145,9 @@ type WorkingEntry =
 function previewSeedInserts(
   bay: BaySchedule,
   workingCalendar: WorkingCalendar,
-  op: { seeds: readonly BayScheduleSeed[]; today: DateOnlyIso },
-): BayPreviewResult {
-  const baySeeds = op.seeds
+  input: BayScheduleSeedPreviewInput,
+): BayScheduleSeedPreviewResult {
+  const baySeeds = input.seeds
     .map((seed, seedIndex) => ({ seed, seedIndex }))
     .filter(({ seed }) => isValidSeedDuration(seed.durationDays));
 
@@ -218,7 +164,7 @@ function previewSeedInserts(
       scheduleOrigin: bay.scheduleOrigin,
       seed,
       seedIndex,
-      today: op.today,
+      today: input.today,
       workingCalendar,
     });
     entries = result.entries;

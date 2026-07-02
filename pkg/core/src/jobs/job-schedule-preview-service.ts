@@ -1,5 +1,5 @@
 import { type DatabaseTransaction, type Db, jobBays } from '@pkg/db';
-import { type BayPlacement, getPlantDateNow, type PreviewBaySlot, previewBaySchedule } from '@pkg/domain';
+import { type BayPlacement, getPlantDateNow, type PreviewBaySlot, previewBayScheduleSeedInserts } from '@pkg/domain';
 import {
   JobSchedulePreviewBay,
   type JobSchedulePreviewGhost,
@@ -67,8 +67,7 @@ export async function previewJobSchedule({
       continue;
     }
 
-    const result = previewBaySchedule(bay, offDays, {
-      kind: 'insertSeeds',
+    const result = previewBayScheduleSeedInserts(bay, offDays, {
       seeds: indexedSeeds.map(({ seed }) => ({ durationDays: seed.durationDays, startDate: seed.startDate ?? '' })),
       today,
     });

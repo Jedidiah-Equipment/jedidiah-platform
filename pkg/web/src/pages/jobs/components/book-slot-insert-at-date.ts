@@ -45,7 +45,7 @@ export function describeInsertAtDatePlacement(placement: BookSlotPlacement): {
 } {
   const startText = `Starts ${formatDate(placement.startDate, 'EEE, MMM d')}`;
 
-  if (placement.type !== 'split' || !('targetSlot' in placement)) {
+  if (placement.type !== 'split') {
     return { startText, splitWarning: null };
   }
 

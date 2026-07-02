@@ -312,6 +312,7 @@ describe('projectBoard', () => {
       {
         startDate: '2026-06-15',
         targetGhost: { id: `ghost:${BAY_1}:0`, seedIndex: 0 },
+        targetKind: 'ghost',
         type: 'insert-before',
       },
     ]);

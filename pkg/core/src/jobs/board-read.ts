@@ -7,19 +7,15 @@ import {
   jobSlots,
   type jobs,
 } from '@pkg/db';
-import { type BoardBayFacts, type ProjectedBoardBay, projectBoard } from '@pkg/domain';
 import {
-  Bay,
-  DateIso,
-  type DateOnlyIso,
-  JobCode,
-  type OffDay,
-  ProjectedBayQueue,
-  ProjectedJobSlot,
-  SlotDurationDays,
-  SlotSequence,
-  UUID,
-} from '@pkg/schema';
+  type BoardGhost,
+  type BoardPlacement,
+  type BoardSeed,
+  type ProjectableBoardSlot,
+  projectBoard,
+  type WorkingCalendar,
+} from '@pkg/domain';
+import { Bay, type DateOnlyIso, JobCode, JobSlot, type OffDay, ProjectedBayQueue, UUID } from '@pkg/schema';
 import { asc, inArray, isNull, type SQL } from 'drizzle-orm';
 import { getCurrentBayOperator, type OpenOperatorAssignmentsRow } from './job-bay-service.js';
 
@@ -75,78 +71,83 @@ export function findBoardBayRows(db: Db | DatabaseTransaction, where?: SQL) {
   });
 }
 
-export function mapProjectedBayQueue(row: BoardBayRow, projectedBay: ProjectedBoardBay) {
-  const bay = Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) });
+export type ProjectedBoardQueues = {
+  ghosts: BoardGhost[];
+  placements: BoardPlacement[];
+  queues: ProjectedBayQueue[];
+  workingCalendarsByBayId: Map<string, WorkingCalendar>;
+};
 
-  return ProjectedBayQueue.parse({
-    ...bay,
-    calendarExceptions: row.calendarExceptions,
-    nextAvailableDate: projectedBay.nextAvailableDate,
-    slots: projectedBay.slots.map((slot) => ProjectedJobSlot.parse(slot)),
-  });
-}
-
-export function toProjectedBayQueues(
+/**
+ * The one assembly seam from Board rows to wire shapes: parse each Bay once, run the domain Board
+ * builder (with any pending insert-seeds), and parse each Bay Queue at the boundary. The live board
+ * read and the preview both come through here, so they can never assemble differently.
+ */
+export function toProjectedBoard(
   rows: readonly BoardBayRow[],
-  offDays: readonly OffDay[],
-  today: DateOnlyIso,
-): ProjectedBayQueue[] {
-  const board = projectBoard({ bays: rows.map(toBoardBayFacts), offDays, today });
-  const projectedBaysById = new Map(board.bays.map((bay) => [bay.bayId, bay] as const));
-
-  return rows.map((row) => {
-    const projectedBay = projectedBaysById.get(row.id);
-
-    if (!projectedBay) {
-      throw new Error(`Projected Board was missing Bay ${row.id}`);
-    }
-
-    return mapProjectedBayQueue(row, projectedBay);
+  {
+    offDays,
+    seeds = [],
+    today,
+  }: {
+    offDays: readonly OffDay[];
+    seeds?: readonly BoardSeed[];
+    today: DateOnlyIso;
+  },
+): ProjectedBoardQueues {
+  const bayRows = rows.map((row) => ({
+    bay: Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) }),
+    row,
+  }));
+  const board = projectBoard({
+    bays: bayRows.map(({ bay, row }) => ({
+      calendarExceptions: row.calendarExceptions,
+      id: bay.id,
+      scheduleOrigin: bay.scheduleOrigin,
+      slots: row.slots.map(toBoardSlotFact),
+    })),
+    offDays,
+    seeds,
+    today,
   });
-}
-
-export function toBoardBayFacts(row: BoardBayRow): BoardBayFacts {
-  const bay = Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) });
+  const projectedBaysById = new Map(board.bays.map((projectedBay) => [projectedBay.bayId, projectedBay] as const));
 
   return {
-    calendarExceptions: row.calendarExceptions,
-    id: bay.id,
-    scheduleOrigin: bay.scheduleOrigin,
-    slots: row.slots.map(toBoardSlotFact),
+    ghosts: board.ghosts,
+    placements: board.placements,
+    queues: bayRows.map(({ bay, row }) => {
+      const projectedBay = projectedBaysById.get(bay.id);
+
+      if (!projectedBay) {
+        throw new Error(`Projected Board was missing Bay ${bay.id}`);
+      }
+
+      return ProjectedBayQueue.parse({
+        ...bay,
+        calendarExceptions: row.calendarExceptions,
+        nextAvailableDate: projectedBay.nextAvailableDate,
+        slots: projectedBay.slots,
+      });
+    }),
+    workingCalendarsByBayId: new Map(
+      board.bays.map((projectedBay) => [projectedBay.bayId, projectedBay.workingCalendar] as const),
+    ),
   };
 }
 
-function toBoardSlotFact(slot: BoardBayRow['slots'][number]): BoardBayFacts['slots'][number] {
-  const { job: _job, ...slotFact } = slot;
-  const base = {
-    bayId: UUID.parse(slotFact.bayId),
-    createdAt: DateIso.parse(slotFact.createdAt),
-    durationDays: SlotDurationDays.parse(slotFact.durationDays),
-    id: UUID.parse(slotFact.id),
-    sequence: SlotSequence.parse(slotFact.sequence),
-    updatedAt: DateIso.parse(slotFact.updatedAt),
-  };
+function toBoardSlotFact(slot: BoardBayRow['slots'][number]): ProjectableBoardSlot {
+  const { job, ...slotFact } = slot;
+  const parsed = JobSlot.parse(slotFact);
 
-  if (slot.kind === 'idle') {
-    return {
-      ...base,
-      jobId: null,
-      kind: 'idle',
-      label: slot.label,
-    };
+  if (parsed.kind === 'idle') {
+    return parsed;
   }
 
-  if (!slot.job) {
+  if (!job) {
     throw new Error('Work Job slot was missing its Job relation');
   }
 
-  return {
-    ...base,
-    jobCode: JobCode.parse(slot.job.code),
-    jobId: UUID.parse(slot.job.id),
-    kind: 'work',
-    label: null,
-  };
+  return { ...parsed, jobCode: JobCode.parse(job.code) };
 }
 
 export async function findBoardBayRowsForJobs({

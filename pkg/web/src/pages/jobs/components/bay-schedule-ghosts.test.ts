@@ -3,7 +3,6 @@ import {
   DateIso,
   type DateOnlyIso,
   JobCode,
-  type JobSchedulePreviewBay,
   type JobSchedulePreviewResult,
   type UUID,
 } from '@pkg/schema';
@@ -20,7 +19,7 @@ const day = (value: string) => value as DateOnlyIso;
 const timestamp = DateIso.parse('2026-06-01T00:00:00.000Z');
 
 describe('createSchedulePreviewRequest', () => {
-  it('keeps valid seeds in form order and records their original indexes', () => {
+  it('keeps valid seeds in submitted order', () => {
     const request = createSchedulePreviewRequest([
       { bayId: id('bay-a'), durationDays: Number.NaN, startDate: '2026-06-09' },
       { bayId: id('bay-b'), durationDays: 2, startDate: '2026-06-09' },
@@ -36,11 +35,10 @@ describe('createSchedulePreviewRequest', () => {
           { bayId: 'bay-e', durationDays: 1 },
         ],
       },
-      seedIndexByPreviewIndex: [1, 4],
     });
   });
 
-  it('filters hidden lanes while preserving original seed indexes', () => {
+  it('filters hidden lanes before submitting preview seeds', () => {
     const request = createSchedulePreviewRequest(
       [
         { bayId: id('bay-hidden'), durationDays: 2, startDate: '2026-06-09' },
@@ -53,16 +51,15 @@ describe('createSchedulePreviewRequest', () => {
       input: {
         seeds: [{ bayId: 'bay-visible', durationDays: 3, startDate: '2026-06-10' }],
       },
-      seedIndexByPreviewIndex: [1],
     });
   });
 });
 
 describe('deriveGhostBaySchedules', () => {
-  it('replaces affected lanes and maps preview seed indexes back to form row indexes', () => {
+  it('replaces affected lanes and preserves server-owned ghost indexes', () => {
     const baseBay = buildBay({ id: 'bay-1', nextAvailableDate: '2026-06-10' });
     const untouchedBay = buildBay({ id: 'bay-2', nextAvailableDate: '2026-06-05' });
-    const previewBay: JobSchedulePreviewBay = {
+    const previewBay: BaySchedule = {
       ...baseBay,
       nextAvailableDate: day('2026-06-12'),
       slots: [
@@ -110,15 +107,14 @@ describe('deriveGhostBaySchedules', () => {
     const result = deriveGhostBaySchedules({
       bays: [baseBay, untouchedBay],
       preview,
-      seedIndexByPreviewIndex: [3],
     });
 
     expect(result.bays[0]).toBe(previewBay);
     expect(result.bays[1]).toBe(untouchedBay);
     expect(result.ghosts).toEqual([
       expect.objectContaining({
-        id: 'ghost:bay-1:3',
-        seedIndex: 3,
+        id: 'ghost:bay-1:0',
+        seedIndex: 0,
       }),
     ]);
   });

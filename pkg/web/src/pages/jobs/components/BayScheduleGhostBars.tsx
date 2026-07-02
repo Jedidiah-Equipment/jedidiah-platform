@@ -1,10 +1,10 @@
 import { formatDate } from '@pkg/domain';
-import type { DateOnlyIso } from '@pkg/schema';
+import type { BaySchedule, DateOnlyIso } from '@pkg/schema';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { useGanttContext } from '@/components/kibo-ui/gantt/index.js';
 import { SLOT_CARD_HEIGHT } from './BaySlotBar.js';
-import type { DisplayBaySchedule, GhostSlot } from './bay-schedule-ghosts.js';
+import type { GhostSlot } from './bay-schedule-ghosts.js';
 import { fromJobCalendarDateKey } from './job-date-key.js';
 import { getJobGanttOffset, getJobGanttWidth } from './job-gantt-geometry.js';
 
@@ -14,7 +14,7 @@ import { getJobGanttOffset, getJobGanttWidth } from './job-gantt-geometry.js';
  * When a ghost's resolved start date moves, the timeline smooth-scrolls to it.
  */
 export const BayScheduleGhostBars: React.FC<{
-  bays: DisplayBaySchedule[];
+  bays: BaySchedule[];
   ghosts: GhostSlot[];
   label: string;
 }> = ({ bays, ghosts, label }) => {

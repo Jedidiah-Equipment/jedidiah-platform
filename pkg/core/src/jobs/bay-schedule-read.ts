@@ -105,7 +105,7 @@ export function toBaySchedules(
   });
 }
 
-function toBoardBayFacts(row: BayScheduleRow): BoardBayFacts {
+export function toBoardBayFacts(row: BayScheduleRow): BoardBayFacts {
   const bay = Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) });
 
   return {

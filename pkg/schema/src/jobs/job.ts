@@ -112,6 +112,9 @@ export const JobSlotPlacement = z.enum(['before', 'after']);
 export type JobSlotMoveDirection = z.infer<typeof JobSlotMoveDirection>;
 export const JobSlotMoveDirection = z.enum(['left', 'right']);
 
+export type JobSlotState = z.infer<typeof JobSlotState>;
+export const JobSlotState = z.enum(['done', 'active', 'scheduled']);
+
 const JobSlotBase = z.object({
   id: UUID,
   bayId: UUID,
@@ -141,6 +144,7 @@ export const JobSlot = z.discriminatedUnion('kind', [WorkJobSlot, IdleJobSlot]);
 const ProjectedJobSlotBase = JobSlotBase.extend({
   startDate: DateOnlyIso,
   endDate: DateOnlyIso,
+  state: JobSlotState,
 });
 
 export type ProjectedWorkJobSlot = z.infer<typeof ProjectedWorkJobSlot>;
@@ -148,6 +152,7 @@ export const ProjectedWorkJobSlot = ProjectedJobSlotBase.extend({
   kind: z.literal('work'),
   jobCode: JobCode,
   jobId: UUID,
+  jobUnfinished: z.boolean(),
   label: z.null(),
 });
 
@@ -479,6 +484,7 @@ export const JobSchedulePreviewWorkSlot = JobSchedulePreviewSlotBase.extend({
   kind: z.literal('work'),
   jobCode: JobCode,
   jobId: UUID,
+  jobUnfinished: z.boolean(),
   label: z.null(),
 });
 

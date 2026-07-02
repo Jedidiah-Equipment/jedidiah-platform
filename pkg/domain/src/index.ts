@@ -14,6 +14,7 @@ export * from './formatting/phone-number.js';
 export * from './jobs/bay-active-job.js';
 export * from './jobs/bay-schedule-derivations.js';
 export * from './jobs/bay-schedule-projection.js';
+export * from './jobs/board-projection.js';
 export * from './jobs/job-cfo.js';
 export * from './jobs/job-code.js';
 export * from './jobs/job-department-pipeline.js';

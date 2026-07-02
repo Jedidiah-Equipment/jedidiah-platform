@@ -1,6 +1,13 @@
 import { type DatabaseTransaction, type Db, jobBays } from '@pkg/db';
-import { type BayPlacement, getPlantDateNow, type PreviewBaySlot, previewBayScheduleSeedInserts } from '@pkg/domain';
 import {
+  type BayPlacement,
+  getPlantDateNow,
+  type PreviewBaySlot,
+  previewBayScheduleSeedInserts,
+  slotState,
+} from '@pkg/domain';
+import {
+  type DateOnlyIso,
   JobSchedulePreviewBay,
   type JobSchedulePreviewGhost,
   type JobSchedulePreviewGhostTarget,
@@ -58,7 +65,16 @@ export async function previewJobSchedule({
   const placementsBySeedIndex = new Map<number, JobSchedulePreviewPlacement>();
   const ghosts: JobSchedulePreviewGhost[] = [];
   const previewBaysById = new Map<UUID, JobSchedulePreviewBay>();
-  const baseBays = toBaySchedules(rows, offDays);
+  const baseBays = toBaySchedules(rows, offDays, today);
+  const jobUnfinishedByJobId = new Map<UUID, boolean>();
+
+  for (const bay of baseBays) {
+    for (const slot of bay.slots) {
+      if (slot.kind === 'work') {
+        jobUnfinishedByJobId.set(slot.jobId, slot.jobUnfinished);
+      }
+    }
+  }
 
   for (const bay of baseBays) {
     const indexedSeeds = seedsByBayId.get(bay.id);
@@ -76,10 +92,13 @@ export async function previewJobSchedule({
       const seedIndex = indexedSeeds[baySeedIndex]?.seedIndex;
 
       if (seedIndex !== undefined) {
+        const slotOptions = { jobUnfinishedByJobId, today };
+
         placementsBySeedIndex.set(
           seedIndex,
           toSchedulePreviewPlacement(placement, {
             bayId: bay.id,
+            slotOptions,
             toPublicSeedIndex: (localSeedIndex) => indexedSeeds[localSeedIndex]?.seedIndex ?? localSeedIndex,
           }),
         );
@@ -105,7 +124,7 @@ export async function previewJobSchedule({
       JobSchedulePreviewBay.parse({
         ...bay,
         nextAvailableDate: result.nextAvailableDate,
-        slots: result.slots.map(toSchedulePreviewSlot),
+        slots: result.slots.map((slot) => toSchedulePreviewSlot(slot, { jobUnfinishedByJobId, today })),
       }),
     );
   }
@@ -146,7 +165,12 @@ function groupPreviewSeedsByBayId(seeds: JobSchedulePreviewInput['seeds']) {
   return grouped;
 }
 
-type PreviewPlacementOptions = { bayId: UUID; toPublicSeedIndex: (localSeedIndex: number) => number };
+type PreviewSlotOptions = { jobUnfinishedByJobId: ReadonlyMap<UUID, boolean>; today: DateOnlyIso };
+type PreviewPlacementOptions = {
+  bayId: UUID;
+  slotOptions: PreviewSlotOptions;
+  toPublicSeedIndex: (localSeedIndex: number) => number;
+};
 
 function toSchedulePreviewPlacement(
   placement: BayPlacement,
@@ -162,7 +186,7 @@ function toSchedulePreviewPlacement(
       afterDays: placement.afterDays,
       beforeDays: placement.beforeDays,
       startDate: placement.startDate,
-      targetSlot: toSchedulePreviewSlot(placement.slot),
+      targetSlot: toSchedulePreviewSlot(placement.slot, options.slotOptions),
       type: placement.type,
     };
   }
@@ -175,7 +199,11 @@ function toSchedulePreviewPlacement(
         targetGhost: toSchedulePreviewGhostTarget(placement.seedIndex, options),
         type: placement.type,
       }
-    : { startDate: placement.startDate, targetSlot: toSchedulePreviewSlot(placement.slot), type: placement.type };
+    : {
+        startDate: placement.startDate,
+        targetSlot: toSchedulePreviewSlot(placement.slot, options.slotOptions),
+        type: placement.type,
+      };
 }
 
 function toSchedulePreviewGhostTarget(
@@ -187,12 +215,25 @@ function toSchedulePreviewGhostTarget(
   return { id: `ghost:${options.bayId}:${seedIndex}`, seedIndex };
 }
 
-function toSchedulePreviewSlot(slot: PreviewBaySlot): JobSchedulePreviewSlot {
+function toSchedulePreviewSlot(slot: PreviewBaySlot, options: PreviewSlotOptions): JobSchedulePreviewSlot {
   const { splitOf, ...rest } = slot;
+  const state = slotState(rest, options.today);
+
+  // Temporary for #687: preview still uses the legacy seed-insert projection until it unifies onto projectBoard.
+  const jobUnfinished =
+    rest.kind === 'work'
+      ? (options.jobUnfinishedByJobId.get(rest.jobId) ?? missingPreviewJobUnfinished(rest.jobId))
+      : undefined;
 
   return JobSchedulePreviewSlot.parse({
     ...rest,
     id: splitOf ? `${splitOf.sourceSlotId}:${splitOf.half}` : rest.id,
+    state,
+    ...(rest.kind === 'work' ? { jobUnfinished } : {}),
     ...(splitOf ? { previewSplit: { half: splitOf.half, sourceSlotId: splitOf.sourceSlotId } } : {}),
   });
+}
+
+function missingPreviewJobUnfinished(jobId: UUID): never {
+  throw new Error(`Schedule preview could not resolve jobUnfinished for Job ${jobId}`);
 }

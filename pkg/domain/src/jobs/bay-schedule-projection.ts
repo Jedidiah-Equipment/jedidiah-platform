@@ -1,4 +1,11 @@
-import { type BayCalendarExceptionDirection, type BaySchedule, DateOnlyIso, type ProjectedJobSlot } from '@pkg/schema';
+import {
+  type BayCalendarExceptionDirection,
+  type BaySchedule,
+  DateOnlyIso,
+  type ProjectedIdleJobSlot,
+  type ProjectedJobSlot,
+  type ProjectedWorkJobSlot,
+} from '@pkg/schema';
 
 import { type InsertAtDatePlacement, resolveInsertAtDatePlacement } from './job-slot-insert-at-date.js';
 import { addJobSlotDuration, type ProjectableJobSlot, projectJobSlots } from './job-slot-projection.js';
@@ -48,8 +55,11 @@ export function projectBaySchedule<TSlot extends ProjectableJobSlot>({
 /** Marks a real Slot rendered as two halves around an inserted seed; halves keep the source Slot id. */
 export type BaySlotSplitMarker = { sourceSlotId: string; half: 'before' | 'after' };
 
+type PreviewBayWorkSlot = Omit<ProjectedWorkJobSlot, 'jobUnfinished' | 'state'>;
+type PreviewBayIdleSlot = Omit<ProjectedIdleJobSlot, 'state'>;
+
 /** A Bay Queue slot in a preview: a real Slot, optionally one half of a split target. */
-export type PreviewBaySlot = ProjectedJobSlot & { splitOf?: BaySlotSplitMarker };
+export type PreviewBaySlot = (PreviewBayWorkSlot | PreviewBayIdleSlot) & { splitOf?: BaySlotSplitMarker };
 
 /** An insert-seed placement that lands on an existing real Slot. */
 export type BayPlacementSlotTarget = { targetKind: 'slot'; slot: PreviewBaySlot };
@@ -115,10 +125,22 @@ export function previewBayScheduleSeedInserts(
   return previewSeedInserts(bay, workingCalendar, input);
 }
 
-type ProjectableBaySlot = Omit<ProjectedJobSlot, 'endDate' | 'startDate'>;
+type ProjectableBayWorkSlot = Omit<ProjectedWorkJobSlot, 'endDate' | 'jobUnfinished' | 'startDate' | 'state'>;
+type ProjectableBayIdleSlot = Omit<ProjectedIdleJobSlot, 'endDate' | 'startDate' | 'state'>;
+type ProjectableBaySlot = ProjectableBayWorkSlot | ProjectableBayIdleSlot;
 
 function unprojected(bay: BaySchedule): ProjectableBaySlot[] {
-  return bay.slots.map(({ endDate: _endDate, startDate: _startDate, ...slot }) => ({ ...slot }));
+  return bay.slots.map((slot) => {
+    if (slot.kind === 'work') {
+      const { endDate: _endDate, jobUnfinished: _jobUnfinished, startDate: _startDate, state: _state, ...rest } = slot;
+
+      return rest;
+    }
+
+    const { endDate: _endDate, startDate: _startDate, state: _state, ...rest } = slot;
+
+    return rest;
+  });
 }
 
 function unchanged(bay: BaySchedule): BayScheduleSeedPreviewResult {

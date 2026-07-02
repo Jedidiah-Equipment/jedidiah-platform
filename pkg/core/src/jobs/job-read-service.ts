@@ -27,6 +27,7 @@ import {
   type BayListInput,
   type BayListResult,
   BaySchedule,
+  type DateOnlyIso,
   type JobDepartmentSchedule,
   type JobDetail,
   JobDocument,
@@ -52,7 +53,6 @@ import {
   findBayScheduleRows,
   findBayScheduleRowsForJobs,
   getScheduleJobIds,
-  mapBaySchedule,
   resolveScheduleWindowFrom,
   toBaySchedules,
   windowBayScheduleSlots,
@@ -93,7 +93,7 @@ export async function listBays({
 }): Promise<BayListResult> {
   const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBayScheduleRows(db)]);
   const today = getPlantDateNow();
-  const items = windowBayScheduleSlots(toBaySchedules(rows, offDays), {
+  const items = windowBayScheduleSlots(toBaySchedules(rows, offDays, today), {
     from: resolveScheduleWindowFrom(input, today),
     today,
   });
@@ -191,10 +191,10 @@ export async function listBayQueueAvailability({
   ]);
   const workingCalendars = bayWorkingCalendars(rows, offDays);
   const today = getPlantDateNow();
+  const schedules = toBaySchedules(rows, offDays, today);
 
-  return rows.map((row) => {
-    const workingCalendar = workingCalendars.get(row.id) ?? {};
-    const schedule = mapBaySchedule(row, workingCalendar);
+  return schedules.map((schedule) => {
+    const workingCalendar = workingCalendars.get(schedule.id) ?? {};
 
     return {
       bayId: schedule.id,
@@ -214,16 +214,18 @@ export async function listBayQueueAvailability({
 async function findProjectedBaysForJobs({
   db,
   jobIds,
+  today,
 }: {
   db: Db | DatabaseTransaction;
   jobIds: readonly UUID[];
+  today: DateOnlyIso;
 }): Promise<BaySchedule[]> {
   const [offDays, rows] = await Promise.all([
     listWorkingCalendarOffDays(db),
     findBayScheduleRowsForJobs({ db, jobIds }),
   ]);
 
-  return toBaySchedules(rows, offDays);
+  return toBaySchedules(rows, offDays, today);
 }
 
 async function getJobSchedule({
@@ -233,7 +235,10 @@ async function getJobSchedule({
   db: Db | DatabaseTransaction;
   jobId: UUID;
 }): Promise<JobDepartmentSchedule[]> {
-  return mapJobSchedule({ bays: await findProjectedBaysForJobs({ db, jobIds: [jobId] }), jobId });
+  return mapJobSchedule({
+    bays: await findProjectedBaysForJobs({ db, jobIds: [jobId], today: getPlantDateNow() }),
+    jobId,
+  });
 }
 
 export async function listJobs({ db, input }: { db: Db; input: JobListInput }): Promise<JobListResult> {
@@ -321,7 +326,7 @@ async function computeJobScheduleStates({
 
   const today = getPlantDateNow();
 
-  for (const bay of await findProjectedBaysForJobs({ db, jobIds })) {
+  for (const bay of await findProjectedBaysForJobs({ db, jobIds, today })) {
     for (const slot of bay.slots) {
       if (slot.kind !== 'work') continue;
       const state = states.get(slot.jobId);

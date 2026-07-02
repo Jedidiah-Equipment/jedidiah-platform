@@ -7,15 +7,19 @@ import {
   jobSlots,
   type jobs,
 } from '@pkg/db';
-import { addDateOnlyDays, bayWorkingCalendars, projectJobSlots, type WorkingCalendar } from '@pkg/domain';
+import { addDateOnlyDays, type BoardBayFacts, type ProjectedBoardBay, projectBoard } from '@pkg/domain';
 import {
   Bay,
   type BayListInput,
   BaySchedule,
+  DateIso,
   type DateOnlyIso,
+  JobCode,
   type JobSchedulePreviewInput,
   type OffDay,
   ProjectedJobSlot,
+  SlotDurationDays,
+  SlotSequence,
   UUID,
 } from '@pkg/schema';
 import { asc, inArray, isNull, type SQL } from 'drizzle-orm';
@@ -75,40 +79,78 @@ export function findBayScheduleRows(db: Db | DatabaseTransaction, where?: SQL) {
   });
 }
 
-export function mapBaySchedule(row: BayScheduleRow, workingCalendar: WorkingCalendar) {
+export function mapBaySchedule(row: BayScheduleRow, projectedBay: ProjectedBoardBay) {
   const bay = Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) });
-  const projection = projectJobSlots({
-    scheduleOrigin: bay.scheduleOrigin,
-    slots: row.slots,
-    workingCalendar,
-  });
 
   return BaySchedule.parse({
     ...bay,
     calendarExceptions: row.calendarExceptions,
-    nextAvailableDate: projection.nextAvailableDate,
-    slots: projection.slots.map((slot) => {
-      if (slot.kind === 'idle') {
-        return ProjectedJobSlot.parse(slot);
-      }
-
-      if (!slot.job) {
-        throw new Error('Work Job slot was missing its Job relation');
-      }
-
-      return ProjectedJobSlot.parse({
-        ...slot,
-        jobCode: slot.job.code,
-        jobId: slot.job.id,
-      });
-    }),
+    nextAvailableDate: projectedBay.nextAvailableDate,
+    slots: projectedBay.slots.map((slot) => ProjectedJobSlot.parse(slot)),
   });
 }
 
-export function toBaySchedules(rows: BayScheduleRow[], offDays: readonly OffDay[]): BaySchedule[] {
-  const workingCalendars = bayWorkingCalendars(rows, offDays);
+export function toBaySchedules(
+  rows: readonly BayScheduleRow[],
+  offDays: readonly OffDay[],
+  today: DateOnlyIso,
+): BaySchedule[] {
+  const board = projectBoard({ bays: rows.map(toBoardBayFacts), offDays, today });
+  const projectedBaysById = new Map(board.bays.map((bay) => [bay.bayId, bay] as const));
 
-  return rows.map((row) => mapBaySchedule(row, workingCalendars.get(row.id) ?? {}));
+  return rows.map((row) => {
+    const projectedBay = projectedBaysById.get(row.id);
+
+    if (!projectedBay) {
+      throw new Error(`Projected Board was missing Bay ${row.id}`);
+    }
+
+    return mapBaySchedule(row, projectedBay);
+  });
+}
+
+function toBoardBayFacts(row: BayScheduleRow): BoardBayFacts {
+  const bay = Bay.parse({ ...row, currentOperator: getCurrentBayOperator(row) });
+
+  return {
+    calendarExceptions: row.calendarExceptions,
+    id: bay.id,
+    scheduleOrigin: bay.scheduleOrigin,
+    slots: row.slots.map(toBoardSlotFact),
+  };
+}
+
+function toBoardSlotFact(slot: BayScheduleRow['slots'][number]): BoardBayFacts['slots'][number] {
+  const { job: _job, ...slotFact } = slot;
+  const base = {
+    bayId: UUID.parse(slotFact.bayId),
+    createdAt: DateIso.parse(slotFact.createdAt),
+    durationDays: SlotDurationDays.parse(slotFact.durationDays),
+    id: UUID.parse(slotFact.id),
+    sequence: SlotSequence.parse(slotFact.sequence),
+    updatedAt: DateIso.parse(slotFact.updatedAt),
+  };
+
+  if (slot.kind === 'idle') {
+    return {
+      ...base,
+      jobId: null,
+      kind: 'idle',
+      label: slot.label,
+    };
+  }
+
+  if (!slot.job) {
+    throw new Error('Work Job slot was missing its Job relation');
+  }
+
+  return {
+    ...base,
+    jobCode: JobCode.parse(slot.job.code),
+    jobId: UUID.parse(slot.job.id),
+    kind: 'work',
+    label: null,
+  };
 }
 
 export async function findBayScheduleRowsForJobs({

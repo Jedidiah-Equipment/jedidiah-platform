@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { buildWebServer } from './app.js';
 import type { ServerConfig } from './env.js';
 
+type AppEnv = ServerConfig['clientConfig']['appEnv'];
+
 function mockConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
   return {
     port: 7001,
@@ -47,6 +49,25 @@ function mockConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     },
     ...overrides,
   };
+}
+
+async function buildAppWithEnv(appEnv: AppEnv) {
+  const distDir = await mkdtemp(join(tmpdir(), 'jed-web-'));
+  await writeFile(
+    join(distDir, 'index.html'),
+    '<html lang="en"><head><link rel="icon" href="/favicon-yellow.png"></head><body>app</body></html>',
+  );
+  const config = mockConfig();
+
+  return buildWebServer(
+    mockConfig({
+      clientConfig: {
+        ...config.clientConfig,
+        appEnv,
+      },
+    }),
+    { distDir },
+  );
 }
 
 describe('web server', () => {
@@ -145,6 +166,33 @@ describe('web server', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('window.__APP_CONFIG__');
     expect(response.body).toContain('"apiHost":"/info"');
+    await app.close();
+  });
+
+  it('marks staging HTML and swaps the favicon before the SPA fallback response is sent', async () => {
+    const app = await buildAppWithEnv('staging');
+
+    const response = await app.inject('/jobs');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('<html data-app-env="staging" lang="en">');
+    expect(response.body).toContain('/favicon-pink.png');
+    expect(response.body).not.toContain('/favicon-yellow.png');
+    await app.close();
+  });
+
+  it.each([
+    'development',
+    'production',
+  ] as const)('keeps %s HTML on the default favicon without a staging attribute', async (appEnv) => {
+    const app = await buildAppWithEnv(appEnv);
+
+    const response = await app.inject('/jobs');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).not.toContain('data-app-env=');
+    expect(response.body).toContain('/favicon-yellow.png');
+    expect(response.body).not.toContain('/favicon-pink.png');
     await app.close();
   });
 

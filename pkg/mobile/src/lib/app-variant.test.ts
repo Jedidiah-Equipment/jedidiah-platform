@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveAppVariant } from './app-variant';
 
 describe('resolveAppVariant', () => {
-  it('resolves the staging variant to its package, scheme, name, and yellow Android icon', () => {
+  it('resolves the staging variant to its package, scheme, name, and pink Android icon', () => {
     const config = resolveAppVariant({ APP_VARIANT: 'staging' });
 
     expect(config.variant).toBe('staging');
@@ -13,7 +13,7 @@ describe('resolveAppVariant', () => {
     expect(config.displayName).toBe('JedidiahOps (Staging)');
     expect(config.iconConfig.icon).toBe('./assets/icon-staging.png');
     expect(config.iconConfig.adaptiveIcon.foregroundImage).toBe('./assets/adaptive-icon.png');
-    expect(config.iconConfig.adaptiveIcon.backgroundColor).toBe('#FFF000');
+    expect(config.iconConfig.adaptiveIcon.backgroundColor).toBe('#EC4899');
   });
 
   it('resolves the production variant to the clean package, scheme, name, and icon', () => {

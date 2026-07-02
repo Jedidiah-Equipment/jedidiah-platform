@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 
+import { loadingSpinnerColor } from './brand-colors';
 import {
   type ColorModePreference,
   DEFAULT_COLOR_MODE,
@@ -91,7 +92,7 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
           paddingHorizontal: 28,
         }}
       >
-        <ActivityIndicator accessibilityLabel="Loading theme" color="#fff000" size="large" />
+        <ActivityIndicator accessibilityLabel="Loading theme" color={loadingSpinnerColor} size="large" />
         <Text style={{ color: '#fafafa', fontSize: 16, lineHeight: 24, marginTop: 16, textAlign: 'center' }}>
           Loading theme
         </Text>

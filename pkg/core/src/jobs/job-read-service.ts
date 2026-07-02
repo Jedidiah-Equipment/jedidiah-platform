@@ -16,7 +16,6 @@ import {
   user,
 } from '@pkg/db';
 import {
-  bayWorkingCalendars,
   countWorkingDaysBetween,
   foldJobScheduleStates,
   getBoardJobIds,
@@ -52,7 +51,7 @@ import {
   type ReadDocumentResult,
 } from '../documents/document-service.js';
 import type { StorageAdapter } from '../documents/storage-adapter.js';
-import { findBoardBayRows, findBoardBayRowsForJobs, toProjectedBayQueues } from './board-read.js';
+import { findBoardBayRows, findBoardBayRowsForJobs, toProjectedBoard } from './board-read.js';
 import { JobNotFoundError } from './job-errors.js';
 import { type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
@@ -89,7 +88,7 @@ export async function listBays({
 }): Promise<BoardListResult> {
   const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBoardBayRows(db)]);
   const today = getPlantDateNow();
-  const items = windowActiveBoard(toProjectedBayQueues(rows, offDays, today), {
+  const items = windowActiveBoard(toProjectedBoard(rows, { offDays, today }).queues, {
     from: resolveBoardWindowFrom(input, today),
     today,
   });
@@ -185,12 +184,11 @@ export async function listBayQueueAvailability({
     listWorkingCalendarOffDays(db),
     findBoardBayRows(db, inArray(jobBays.id, bayIds)),
   ]);
-  const workingCalendars = bayWorkingCalendars(rows, offDays);
   const today = getPlantDateNow();
-  const schedules = toProjectedBayQueues(rows, offDays, today);
+  const { queues, workingCalendarsByBayId } = toProjectedBoard(rows, { offDays, today });
 
-  return schedules.map((schedule) => {
-    const workingCalendar = workingCalendars.get(schedule.id) ?? {};
+  return queues.map((schedule) => {
+    const workingCalendar = workingCalendarsByBayId.get(schedule.id) ?? {};
 
     return {
       bayId: schedule.id,
@@ -218,7 +216,7 @@ async function findProjectedBaysForJobs({
 }): Promise<ProjectedBayQueue[]> {
   const [offDays, rows] = await Promise.all([listWorkingCalendarOffDays(db), findBoardBayRowsForJobs({ db, jobIds })]);
 
-  return toProjectedBayQueues(rows, offDays, today);
+  return toProjectedBoard(rows, { offDays, today }).queues;
 }
 
 async function getJobSchedule({

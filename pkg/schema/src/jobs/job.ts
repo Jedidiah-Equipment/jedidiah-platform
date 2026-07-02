@@ -527,9 +527,12 @@ export const BoardPlacement = z.union([
       idleGapDays: z.int().nonnegative().refine(Number.isSafeInteger),
     })
     .strict(),
+  // `type` alone cannot separate the two insert-before variants, so they carry an explicit
+  // `targetKind` discriminant; consumers read it instead of sniffing for a target key.
   z
     .object({
       type: z.literal('insert-before'),
+      targetKind: z.literal('slot'),
       startDate: DateOnlyIso,
       targetSlot: ProjectedJobSlot,
     })
@@ -537,6 +540,7 @@ export const BoardPlacement = z.union([
   z
     .object({
       type: z.literal('insert-before'),
+      targetKind: z.literal('ghost'),
       startDate: DateOnlyIso,
       targetGhost: BoardGhostTarget,
     })

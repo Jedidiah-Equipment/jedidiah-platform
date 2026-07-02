@@ -47,8 +47,10 @@ export type BoardGhostTarget = {
 
 export type BoardPlacement =
   | { type: 'append'; startDate: DateOnlyIso; idleGapDays: number }
-  | { type: 'insert-before'; startDate: DateOnlyIso; targetSlot: ProjectedJobSlot }
-  | { type: 'insert-before'; startDate: DateOnlyIso; targetGhost: BoardGhostTarget }
+  // `type` alone cannot separate the two insert-before variants, so they carry an explicit
+  // `targetKind` discriminant; consumers read it instead of sniffing for a target key.
+  | { type: 'insert-before'; targetKind: 'slot'; startDate: DateOnlyIso; targetSlot: ProjectedJobSlot }
+  | { type: 'insert-before'; targetKind: 'ghost'; startDate: DateOnlyIso; targetGhost: BoardGhostTarget }
   | {
       type: 'split';
       startDate: DateOnlyIso;
@@ -198,8 +200,8 @@ type GhostEntryMeta = {
 
 type InternalBoardPlacement =
   | { type: 'append'; startDate: DateOnlyIso; idleGapDays: number }
-  | { type: 'insert-before'; startDate: DateOnlyIso; slot: ProjectedRealBoardEntry }
-  | { type: 'insert-before'; startDate: DateOnlyIso; targetGhost: BoardGhostTarget }
+  | { type: 'insert-before'; targetKind: 'slot'; startDate: DateOnlyIso; slot: ProjectedRealBoardEntry }
+  | { type: 'insert-before'; targetKind: 'ghost'; startDate: DateOnlyIso; targetGhost: BoardGhostTarget }
   | {
       type: 'split';
       startDate: DateOnlyIso;
@@ -410,12 +412,13 @@ function toInternalBoardPlacement(
         id: boardGhostId(bayId, placement.targetSlot.ghostMeta.seedIndex),
         seedIndex: placement.targetSlot.ghostMeta.seedIndex,
       },
+      targetKind: 'ghost',
       type: 'insert-before',
     };
   }
 
   return placement.type === 'insert-before'
-    ? { slot: placement.targetSlot, startDate: placement.startDate, type: 'insert-before' }
+    ? { slot: placement.targetSlot, startDate: placement.startDate, targetKind: 'slot', type: 'insert-before' }
     : {
         afterDays: placement.afterDays,
         beforeDays: placement.beforeDays,
@@ -464,12 +467,17 @@ function decorateBoardPlacement(
     return placement;
   }
 
-  if ('targetGhost' in placement) {
-    return { startDate: placement.startDate, targetGhost: placement.targetGhost, type: placement.type };
+  if (placement.type === 'insert-before' && placement.targetKind === 'ghost') {
+    return placement;
   }
 
   return placement.type === 'insert-before'
-    ? { startDate: placement.startDate, targetSlot: decorate(placement.slot), type: placement.type }
+    ? {
+        startDate: placement.startDate,
+        targetKind: placement.targetKind,
+        targetSlot: decorate(placement.slot),
+        type: placement.type,
+      }
     : {
         afterDays: placement.afterDays,
         beforeDays: placement.beforeDays,

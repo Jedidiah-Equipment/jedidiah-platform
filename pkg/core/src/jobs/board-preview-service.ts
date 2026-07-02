@@ -1,14 +1,13 @@
 import { type DatabaseTransaction, type Db, jobBays } from '@pkg/db';
-import { getPlantDateNow, projectBoard, resolveBoardWindowFrom, windowActiveBoard } from '@pkg/domain';
-import { type BoardPreviewInput, BoardPreviewResult, ProjectedBayQueue, type UUID } from '@pkg/schema';
+import { getPlantDateNow, resolveBoardWindowFrom, windowActiveBoard } from '@pkg/domain';
+import { type BoardPreviewInput, BoardPreviewResult, type UUID } from '@pkg/schema';
 import { inArray } from 'drizzle-orm';
 import {
   findBoardBayRows,
   findBoardBayRowsForJobs,
   getBoardBayRowJobIds,
-  mapProjectedBayQueue,
   mergeBoardBayRows,
-  toBoardBayFacts,
+  toProjectedBoard,
 } from './board-read.js';
 import { JobBayNotFoundError } from './job-errors.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
@@ -44,25 +43,16 @@ export async function previewBoard({
   });
   const rows = mergeBoardBayRows(seededRows, crossBayRows);
   const today = getPlantDateNow();
-  const board = projectBoard({ bays: rows.map(toBoardBayFacts), offDays, seeds: input.seeds, today });
-  const projectedBaysById = new Map(board.bays.map((bay) => [bay.bayId, bay] as const));
+  const { ghosts, placements, queues } = toProjectedBoard(rows, { offDays, seeds: input.seeds, today });
   const seededBayIdSet = new Set<UUID>(seededBayIds);
-  const baseBays = rows.map((row) => {
-    const projectedBay = projectedBaysById.get(row.id);
-
-    if (!projectedBay) {
-      throw new Error(`Projected Board was missing Bay ${row.id}`);
-    }
-
-    return mapProjectedBayQueue(row, projectedBay);
-  });
-  const windowedBays = windowActiveBoard(baseBays, {
+  const windowedBays = windowActiveBoard(queues, {
     from: resolveBoardWindowFrom(input, today),
     today,
   });
-  const previewBays = windowedBays
-    .filter((bay) => seededBayIdSet.has(bay.id))
-    .map((bay) => ProjectedBayQueue.parse(bay));
 
-  return BoardPreviewResult.parse({ bays: previewBays, ghosts: board.ghosts, placements: board.placements });
+  return BoardPreviewResult.parse({
+    bays: windowedBays.filter((bay) => seededBayIdSet.has(bay.id)),
+    ghosts,
+    placements,
+  });
 }

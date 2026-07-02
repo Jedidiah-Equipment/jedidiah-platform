@@ -1590,6 +1590,7 @@ describe('jobs.previewSchedule', () => {
       {
         startDate: '2026-06-06',
         targetGhost: { id: `ghost:${bayId}:0`, seedIndex: 0 },
+        targetKind: 'ghost',
         type: 'insert-before',
       },
     ]);

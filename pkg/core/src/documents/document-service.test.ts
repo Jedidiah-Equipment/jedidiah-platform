@@ -628,6 +628,107 @@ describe('generateQuoteDocument', () => {
     expect(pageSizes).toEqual([{ height: 300, width: 200 }]);
   });
 
+  test('generates a custom Quote Document from the Work Title without a brochure warning', async ({ context }) => {
+    const [quote] = await context.db
+      .insert(quotes)
+      .values({
+        customerId: context.customerId,
+        deliveryIncluded: true,
+        deliveryPrice: 120,
+        depositPercent: 25,
+        discountPercent: 10,
+        documentNotes: 'Install during shutdown.',
+        kind: 'custom',
+        productId: null,
+        quotedBasePrice: 2_000,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId: ACTOR_USER_ID,
+        status: 'sent',
+        workTitle: 'Plant shutdown fabrication',
+      })
+      .returning({ code: quotes.code, id: quotes.id });
+    if (!quote) throw new Error('Custom quote insert did not return a row');
+
+    await context.db.insert(quoteLineItems).values({
+      name: 'Site measurement',
+      quantity: 2,
+      quoteId: quote.id,
+      unitPrice: 75,
+    });
+
+    const renderedInputs: Array<
+      Parameters<typeof generateQuoteDocument>[0]['pdfRenderer'] extends (input: infer Input) => unknown ? Input : never
+    > = [];
+
+    const result = await generateQuoteDocument({
+      actorUserId: ACTOR_USER_ID,
+      brochureRenderer: async () => {
+        throw new Error('Custom Quote Documents must not generate Product brochures.');
+      },
+      db: context.db,
+      input: {
+        leadTime: 'Customer-confirmed shutdown window',
+        quoteId: quote.id,
+      },
+      pdfRenderer: async (input) => {
+        renderedInputs.push(input);
+        return realPdfBytes([[200, 300]]);
+      },
+      storage: context.storage,
+    });
+
+    const rendered = renderedInputs[0];
+    if (!rendered) throw new Error('Expected PDF renderer to receive document model');
+    const baseItem = rendered.document.lineItems.find((item) => item.kind === 'base');
+    const lineItem = rendered.document.lineItems.find((item) => item.kind === 'lineItem');
+    const discountItem = rendered.document.lineItems.find((item) => item.kind === 'discount');
+    const deliveryItem = rendered.document.lineItems.find((item) => item.kind === 'charge');
+    const read = await readQuoteDocument({
+      db: context.db,
+      documentId: result.document.id,
+      quoteId: quote.id,
+      storage: context.storage,
+    });
+    const pageSizes = await getPdfPageSizes(await readAll(read.object.body));
+
+    expect(result.warnings).toEqual([]);
+    expect(rendered.filename).toBe(`${formatQuoteCode(quote.code)}-rev-1.pdf`);
+    expect(baseItem).toMatchObject({
+      amount: 2_000,
+      descriptionLines: ['Plant shutdown fabrication'],
+      kind: 'base',
+      quantity: 1,
+    });
+    expect(rendered.document.lineItems.some((item) => item.kind === 'optional')).toBe(false);
+    expect(lineItem).toMatchObject({
+      amount: 150,
+      descriptionLines: ['2 x Site measurement'],
+      kind: 'lineItem',
+      quantity: 2,
+      unitPrice: 75,
+    });
+    expect(discountItem).toMatchObject({
+      amount: -215,
+      descriptionLines: ['Discount (10%)'],
+      kind: 'discount',
+      quantity: 1,
+    });
+    expect(deliveryItem).toMatchObject({
+      amount: 120,
+      descriptionLines: ['Delivery'],
+      kind: 'charge',
+      quantity: 1,
+    });
+    expect(rendered.document.notes).toEqual(['Install during shutdown.']);
+    expect(rendered.document.paymentTerms).toBe('25% deposit');
+    expect(rendered.document.transport).toBe('Included (R 120.00)');
+    expect(rendered.document.leadTime).toBe('Customer-confirmed shutdown window');
+    expect(rendered.document.subtotal).toBe(2_055);
+    expect(rendered.document.vatAmount).toBe(308.25);
+    expect(rendered.document.total).toBe(2_363.25);
+    expect(pageSizes).toEqual([{ height: 300, width: 200 }]);
+  });
+
   test('skips the brochure and warns when only some required fields are configured', async ({ context }) => {
     // Everything except the primary image is configured, so the completeness gate fails and the brochure
     // is skipped without blocking the quote.

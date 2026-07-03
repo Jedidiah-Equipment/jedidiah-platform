@@ -13,6 +13,9 @@ describe('buildQuoteEmailPrompt', () => {
     expect(prompt).toContain('Use the available quote details for quote id 550e8400-e29b-41d4-a716-446655440000.');
     expect(prompt).toContain('customer email body');
     expect(prompt).toContain('real salesperson');
+    expect(prompt).toContain(
+      'For Custom Quotes, describe the quoted work by its Work Title instead of naming a Product',
+    );
     expect(prompt).toContain('Return only the email body');
   });
 });

@@ -14,9 +14,11 @@ describe('AI system prompt', () => {
     expect(prompt).toContain('## Tool Use');
     expect(prompt).toContain('Use tools for current app data; do not guess records, statuses, prices, or links.');
     expect(prompt).toContain('describe scheduled Work Slots on Bays grouped by Department');
-    expect(prompt).toContain('Quote Status as the Job creation gate');
-    expect(prompt).toContain('Product as immutable after creation');
-    expect(prompt).toContain('quotedBasePrice plus quotedCurrencyCode as the price snapshot latched at creation');
+    expect(prompt).toContain('Product Quotes keep their Product immutable after creation');
+    expect(prompt).toContain('Custom Quotes have a Work Title, entered base price, and no Product');
+    expect(prompt).toContain('Quote totals include Quote Line Items as quantity x unit price');
+    expect(prompt).toContain('draft, sent, and accepted Custom Quotes can create Custom Jobs');
+    expect(prompt).toContain('Custom Quotes lock commercial facts once accepted');
     expect(prompt).toContain('## Response Style');
     expect(prompt).toContain('use pure Markdown syntax and do not use HTML tags');
     expect(prompt).toContain('Use Markdown links only when the link comes from tool result link metadata');

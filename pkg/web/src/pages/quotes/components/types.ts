@@ -146,7 +146,7 @@ function refineQuoteCustomerSelection(
 }
 
 export function getDefaultQuoteDocumentLeadTime(quote: Pick<QuoteDetail, 'productBuildTimeDays'>): string {
-  return formatQuoteDocumentLeadTime(quote.productBuildTimeDays);
+  return quote.productBuildTimeDays === null ? '' : formatQuoteDocumentLeadTime(quote.productBuildTimeDays);
 }
 
 export function formatQuoteDocumentLeadTime(days: number): string {

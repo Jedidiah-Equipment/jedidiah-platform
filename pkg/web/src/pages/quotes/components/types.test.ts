@@ -190,6 +190,10 @@ describe('getDefaultQuoteDocumentLeadTime', () => {
     expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ productBuildTimeDays: 21 }))).toBe('21 working days');
   });
 
+  it('leaves productless quote document lead time for the user to enter', () => {
+    expect(getDefaultQuoteDocumentLeadTime(buildQuoteDetail({ productBuildTimeDays: null }))).toBe('');
+  });
+
   it('defaults from Product build time plus the max bay wait when availability is loaded', () => {
     expect(getDefaultQuoteDocumentLeadTimeFromAvailability({ defaultLeadTimeWorkingDays: 34 })).toBe('34 working days');
   });

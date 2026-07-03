@@ -102,7 +102,7 @@ export function createQuoteTableColumns({
       },
     },
     {
-      accessorFn: (row) => row.quote.productName,
+      accessorFn: (row) => row.quote.productName ?? '',
       cell: ({ row }) => <ProductCell isPriority={row.original.kind === 'priority'} quote={row.original.quote} />,
       enableColumnFilter: true,
       enableSorting: true,
@@ -235,12 +235,15 @@ function SalesPersonCell({ isPriority, quote }: { isPriority: boolean; quote: Qu
 
 function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {
   const selectedAssemblyCount = getLiveSelectedAssemblyCount(quote);
+  const productName = quote.productName ?? '—';
+  const productModelCode = quote.productModelCode ?? '—';
+  const productBuildTimeDays = quote.productBuildTimeDays === null ? '—' : `${quote.productBuildTimeDays}d build`;
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate font-medium">{quote.productName}</span>
+      <span className="truncate font-medium">{productName}</span>
       <span className={cn('truncate text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
-        <span className="font-mono">{quote.productModelCode}</span> / {quote.productBuildTimeDays}d build
+        <span className="font-mono">{productModelCode}</span> / {productBuildTimeDays}
         {selectedAssemblyCount > 0 ? ` / ${selectedAssemblyCount} option${selectedAssemblyCount === 1 ? '' : 's'}` : ''}
       </span>
     </div>

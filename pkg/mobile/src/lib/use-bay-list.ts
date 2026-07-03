@@ -10,6 +10,7 @@ import type { BayOperator, DateOnlyIso } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
+import { getJobDisplayName } from './job-display';
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
 import { useBayCalendars } from './use-bay-calendars';
@@ -87,7 +88,7 @@ export function useBayList(): UseBayListResult {
             ? {
                 ...deriveActiveJobProgress({ slot, today, workingCalendar }),
                 jobCode: slot.jobCode,
-                productName: job.productName,
+                productName: getJobDisplayName(job),
                 productThumbnailDataUrl: job.productThumbnailDataUrl,
                 customerCompanyName: job.customerCompanyName,
               }

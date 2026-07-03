@@ -274,9 +274,11 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
           <Text className="text-base text-surface-foreground" numberOfLines={1} weight="bold">
             {state.productName}
           </Text>
-          <Text className="mt-0.5 text-xs text-muted-foreground" mono>
-            {state.productSerialNumber}
-          </Text>
+          {state.productSerialNumber ? (
+            <Text className="mt-0.5 text-xs text-muted-foreground" mono>
+              {state.productSerialNumber}
+            </Text>
+          ) : null}
           {state.customerCompanyName ? (
             <Text className="mt-1 text-sm text-surface-foreground" numberOfLines={1}>
               {state.customerCompanyName}

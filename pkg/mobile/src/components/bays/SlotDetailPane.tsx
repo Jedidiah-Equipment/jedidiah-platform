@@ -46,9 +46,11 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
           <Text className="text-base text-surface-foreground" weight="bold" numberOfLines={1}>
             {slot.productName}
           </Text>
-          <Text className="mt-0.5 text-xs text-muted-foreground" mono>
-            {slot.productSerialNumber}
-          </Text>
+          {slot.productSerialNumber ? (
+            <Text className="mt-0.5 text-xs text-muted-foreground" mono>
+              {slot.productSerialNumber}
+            </Text>
+          ) : null}
           {slot.customerCompanyName ? (
             <Text className="mt-1 text-sm text-surface-foreground" numberOfLines={1}>
               {slot.customerCompanyName}

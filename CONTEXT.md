@@ -4,9 +4,9 @@ Compact domain map for implementation and planning. Search this file first for n
 
 ## Core Model
 
-**Job** is one physical product instance created from exactly one accepted **Product Quote**. Do not call it an Order, Work Order, Build, or Ticket. A Job has a `JOB-xxxxx` code for app use and a **Product Serial Number** for the physical unit. A Job also carries a freeform **Description** and a **VIN Number**, both editable after creation by Job writers.
+**Job** is one production-floor work record created from exactly one Quote. Do not call it an Order, Work Order, Build, or Ticket. A **Product Job** comes from an accepted Product Quote and has a `JOB-xxxxx` code plus a **Product Serial Number** for the physical unit. A **Custom Job** comes from a draft, sent, or accepted Custom Quote, has no Product Serial Number, and uses its Quote's Work Title as its display name. A Job also carries a freeform **Description**; Product Jobs may carry a **VIN Number**, while Custom Jobs never require one.
 
-**Quote** is a sales offer for one **Customer**, owned by one salesperson. A **Product Quote** references one Product and can source at most one Job. A **Custom Quote** has no Product; it uses a Work Title and entered base price, cannot source a Job yet, and locks commercial facts once accepted. A Product Quote becomes a **Locked Quote** once it sources a Job: commercial facts stay frozen, while post-sale logistics and notes can still change where the UI allows.
+**Quote** is a sales offer for one **Customer**, owned by one salesperson. A **Product Quote** references one Product, can source at most one Job once accepted, and becomes a **Locked Quote** once it sources a Job: commercial facts stay frozen, while post-sale logistics and notes can still change where the UI allows. A **Custom Quote** has no Product; it uses a Work Title and entered base price, can source at most one Custom Job while draft, sent, or accepted, and locks commercial facts once accepted.
 
 **Customer** means the company buying or receiving the product. Avoid Client or Buyer in code and docs.
 
@@ -54,7 +54,7 @@ Slot dates are derived, never stored on Slots. Projection walks a Bay Queue from
 
 **Thumbnail** is separate: a small inline display image for quick recognition.
 
-**Job Document Snapshot** copies the Product's current uploaded Documents onto the Job at Job creation, pointing to the same immutable stored files and freezing metadata. The Brochure is not copied but generated fresh and saved as its own Job Document. Product display names may still read live.
+**Job Document Snapshot** copies the Product's current uploaded Documents onto a Product Job at Job creation, pointing to the same immutable stored files and freezing metadata. The Brochure is not copied but generated fresh and saved as its own Job Document. Custom Jobs start with an empty Documents collection and do not generate a Brochure. Product display names may still read live.
 
 **Quote Document** is a generated customer-facing PDF packet owned by a Quote. The newest created Quote Document is treated as the latest. Product Quote packets merge the Product's Brochure at generation time; Custom Quote packets do not include a Product Brochure.
 
@@ -95,4 +95,4 @@ Server/API checks are the security boundary. Browser access checks are UX only.
 
 **Dashboard** is the single signed-in landing surface. Widgets are permission-gated registry entries, and Dashboard Metrics are computed live rather than stored in reporting tables.
 
-**Job Start Alert** is a visibility signal for an accepted Quote with no Job whose earliest set Preferred/Planned Delivery Date is within two calendar months from the current Johannesburg date. It includes Custom Quotes until Custom Job creation exists, even though they cannot start Jobs yet.
+**Job Start Alert** is a visibility signal for an accepted Quote with no Job whose earliest set Preferred/Planned Delivery Date is within two calendar months from the current Johannesburg date.

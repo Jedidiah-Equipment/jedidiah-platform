@@ -415,12 +415,12 @@ export type Job = z.infer<typeof Job>;
 export const Job = z.object({
   id: UUID,
   code: JobCode,
-  productId: UUID,
+  productId: UUID.nullable(),
   // productSerialNumber is the full frozen serial; prefix, sequence, and year store its component parts.
-  productSerialNumber: ProductSerialNumber,
-  productSerialPrefix: ProductSerialPrefix,
-  productSerialSequence: ProductSerialSequence,
-  productSerialYear: ProductSerialYear,
+  productSerialNumber: ProductSerialNumber.nullable(),
+  productSerialPrefix: ProductSerialPrefix.nullable(),
+  productSerialSequence: ProductSerialSequence.nullable(),
+  productSerialYear: ProductSerialYear.nullable(),
   quoteId: UUID,
   vinNumber: JobVinNumber,
   description: JobDescription,
@@ -451,11 +451,13 @@ export const JobSummary = Job.extend({
   customerCompanyName: z.string().trim().min(1).nullable(),
   customerId: UUID,
   customerThumbnailDataUrl: NullableThumbnailDataUrl,
-  productModelCode: z.string().trim().min(1),
-  productName: z.string().trim().min(1),
+  productModelCode: z.string().trim().min(1).nullable(),
+  productName: z.string().trim().min(1).nullable(),
   productThumbnailDataUrl: NullableThumbnailDataUrl,
   quoteCode: QuoteCode,
+  quoteKind: z.enum(['product', 'custom']),
   scheduleState: JobScheduleState.nullable().default(null),
+  workTitle: z.string().trim().min(1).nullable(),
 });
 
 export type BoardListResult = z.infer<typeof BoardListResult>;
@@ -470,8 +472,8 @@ export const BoardListInput = z
 export const BoardListResult = z.object({
   items: z.array(ProjectedBayQueue),
   /**
-   * Product/customer detail for every Job referenced by a Work Slot, deduplicated so a Job that
-   * spans multiple Bays carries its thumbnail once. Lets clients label the board without a separate
+   * Quote/product/customer detail for every Job referenced by a Work Slot, deduplicated so a Job that
+   * spans multiple Bays carries its display facts once. Lets clients label the board without a separate
    * unpaged `jobs.list` read.
    */
   jobs: z.array(JobSummary),

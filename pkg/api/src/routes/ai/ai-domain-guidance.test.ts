@@ -27,7 +27,8 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('only accepted Product Quotes can create a Job');
     expect(prompt).toContain('A Quote sources at most one Job');
     expect(prompt).toContain('Quote offerings are either kind=product with productId');
-    expect(prompt).toContain('Custom Quotes do not create Jobs yet');
+    expect(prompt).toContain('Draft, sent, and accepted Custom Quotes can create Custom Jobs');
+    expect(prompt).toContain('Custom Quote commercial fields stay editable with a running Custom Job');
     expect(prompt).toContain('Product Quote price snapshot fields are latched from Product');
     expect(prompt).toContain('Document Notes, Preferred Delivery Date, and Planned Delivery Date');
     expect(prompt).toContain('Intent customer_job_progress');

@@ -17,6 +17,7 @@ import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { findJobScheduleSummary, type JobScheduleSummary } from './board-summary.js';
 import { InfoList, InfoRow, SlotDayBreakdownRows } from './JobInfoList.js';
+import { getJobDisplayName } from './job-display.js';
 
 type JobDetailAsideProps = {
   bayId?: UUID | undefined;
@@ -41,7 +42,7 @@ export const JobDetailAside: React.FC<JobDetailAsideProps> = ({ bayId, jobId, on
         <div className="flex min-w-0 items-center gap-3">
           <EntityThumbnail
             className="shrink-0"
-            label={job?.productName || job?.code || 'Job'}
+            label={job ? getJobDisplayName(job) : 'Job'}
             size="lg"
             thumbnailDataUrl={job?.productThumbnailDataUrl}
           />
@@ -124,19 +125,24 @@ const JobEditLink: React.FC<{ jobId: UUID }> = ({ jobId }) => {
   );
 };
 
-const JobSection: React.FC<{ job: JobDetail }> = ({ job }) => (
-  <Section title="Job">
-    <InfoList>
-      <InfoRow label="Quote code" value={job.quoteCode ?? 'Direct job'} />
-      <InfoRow label="Job code" value={job.code} />
-      <InfoRow label="Product serial" value={job.productSerialNumber} />
-      <InfoRow label="Customer" value={job.customerCompanyName ?? 'Customer unavailable'} />
-      <InfoRow label="Product" value={job.productName} />
-      {job.vinNumber ? <InfoRow label="VIN number" value={job.vinNumber} /> : null}
-    </InfoList>
-    {job.description ? <p className="whitespace-pre-wrap text-sm leading-6">{job.description}</p> : null}
-  </Section>
-);
+const JobSection: React.FC<{ job: JobDetail }> = ({ job }) => {
+  const displayName = getJobDisplayName(job);
+
+  return (
+    <Section title="Job">
+      <InfoList>
+        <InfoRow label="Quote code" value={job.quoteCode ?? 'Direct job'} />
+        <InfoRow label="Job code" value={job.code} />
+        {job.productSerialNumber ? <InfoRow label="Product serial" value={job.productSerialNumber} /> : null}
+        <InfoRow label="Customer" value={job.customerCompanyName ?? 'Customer unavailable'} />
+        <InfoRow label={job.quoteKind === 'custom' ? 'Work title' : 'Product'} value={displayName} />
+        {job.productModelCode ? <InfoRow label="Model" value={job.productModelCode} /> : null}
+        {job.quoteKind === 'product' && job.vinNumber ? <InfoRow label="VIN number" value={job.vinNumber} /> : null}
+      </InfoList>
+      {job.description ? <p className="whitespace-pre-wrap text-sm leading-6">{job.description}</p> : null}
+    </Section>
+  );
+};
 
 const JobFeedbackSection: React.FC<{ jobId: UUID }> = ({ jobId }) => (
   <Section title="Feedback">
@@ -192,11 +198,13 @@ const JobDocuments: React.FC<{
 
 const jobDocumentMetadata = {
   getSearchText: (document: JobDocument) =>
-    `${PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type]} ${document.sourceProductName}`,
+    `${PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type]} ${document.sourceProductName ?? ''}`,
   render: (document: JobDocument) => (
     <span>
       {PRODUCT_DOCUMENT_TYPE_LABELS[document.metadata.type]}
-      <span className="font-normal text-muted-foreground"> from {document.sourceProductName}</span>
+      {document.sourceProductName ? (
+        <span className="font-normal text-muted-foreground"> from {document.sourceProductName}</span>
+      ) : null}
     </span>
   ),
 };

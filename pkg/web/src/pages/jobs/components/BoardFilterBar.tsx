@@ -14,6 +14,7 @@ import {
   ComboboxList,
 } from '@/components/ui/combobox.js';
 import { type BoardFilter, emptyBoardFilter, hasActiveBoardFilter } from './board-filter.js';
+import { getJobOptionHint } from './job-display.js';
 
 type FilterOption<TId extends string> = {
   id: TId;
@@ -24,7 +25,19 @@ type FilterOption<TId extends string> = {
 type BoardFilterBarProps = {
   bays: ReadonlyArray<Pick<Bay, 'id' | 'name' | 'currentOperator'>>;
   filter: BoardFilter;
-  jobs: ReadonlyArray<Pick<JobSummary, 'id' | 'code' | 'customerCompanyName' | 'customerId' | 'productSerialNumber'>>;
+  jobs: ReadonlyArray<
+    Pick<
+      JobSummary,
+      | 'id'
+      | 'code'
+      | 'customerCompanyName'
+      | 'customerId'
+      | 'productName'
+      | 'productSerialNumber'
+      | 'quoteKind'
+      | 'workTitle'
+    >
+  >;
   noMatches: boolean;
   onFilterChange: (filter: BoardFilter) => void;
   trailingContent?: ReactNode;
@@ -39,7 +52,7 @@ export const BoardFilterBar: React.FC<BoardFilterBarProps> = ({
   trailingContent,
 }) => {
   const jobOptions = useMemo<FilterOption<UUID>[]>(
-    () => jobs.map((job) => ({ hint: job.productSerialNumber, id: job.id, label: job.code })),
+    () => jobs.map((job) => ({ hint: getJobOptionHint(job), id: job.id, label: job.code })),
     [jobs],
   );
   const customerOptions = useMemo<FilterOption<UUID>[]>(() => {

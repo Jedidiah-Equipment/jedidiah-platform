@@ -60,6 +60,26 @@ describe('Job List table columns', () => {
     expect(html).toContain('Not scheduled');
     expect(html).not.toContain(' Done');
   });
+
+  it('renders custom job work titles without a product serial', () => {
+    const html = renderJobListRows([
+      buildJob({
+        productId: null,
+        productModelCode: null,
+        productName: null,
+        productSerialNumber: null,
+        productSerialPrefix: null,
+        productSerialSequence: null,
+        productSerialYear: null,
+        quoteKind: 'custom',
+        workTitle: 'Pump skid rebuild',
+      }),
+    ]);
+
+    expect(html).toContain('Pump skid rebuild');
+    expect(html).toContain('Custom work');
+    expect(html).not.toContain('SN-2026-0001');
+  });
 });
 
 function renderJobListRows(rows: JobSummary[]) {
@@ -93,11 +113,13 @@ function buildJob(overrides: Partial<Record<keyof JobSummary, unknown>> = {}): J
     productSerialYear: 26,
     productThumbnailDataUrl: null,
     quoteCode: 1,
+    quoteKind: 'product',
     quoteId: '30000000-0000-4000-8000-000000000000',
     scheduleState: null,
     updatedAt: '2026-06-01T10:00:00.000Z',
     vinNumber: null,
     description: null,
+    workTitle: null,
     ...overrides,
   });
 }

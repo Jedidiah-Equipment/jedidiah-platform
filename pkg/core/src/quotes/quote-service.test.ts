@@ -394,11 +394,11 @@ describe('custom quotes', () => {
       }),
     });
     await context.db.insert(jobs).values({
-      productId: context.product.id,
-      productSerialNumber: `${context.product.modelCode}-26-101`,
-      productSerialPrefix: context.product.modelCode,
-      productSerialSequence: 101,
-      productSerialYear: 26,
+      productId: null,
+      productSerialNumber: null,
+      productSerialPrefix: null,
+      productSerialSequence: null,
+      productSerialYear: null,
       quoteId: customQuote.id,
     });
 

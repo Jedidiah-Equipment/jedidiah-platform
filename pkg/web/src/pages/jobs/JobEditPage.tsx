@@ -36,7 +36,12 @@ export const JobEditPage: React.FC<JobEditPageProps> = ({ jobId }) => {
   const job = jobQuery.data;
 
   return (
-    <PageLayout description="Edit Job" size="md" title={job?.code ?? 'Loading job...'}>
+    <PageLayout
+      actions={job ? <ViewOnPlannerButton jobId={job.id} /> : undefined}
+      description="Edit Job"
+      size="md"
+      title={job?.code ?? 'Loading job...'}
+    >
       <div className="flex flex-col gap-6">
         {jobQuery.isPending ? <Skeleton className="h-32" /> : null}
         <ErrorMessage error={jobQuery.error} fallbackMessage="Unable to load job." />
@@ -65,12 +70,8 @@ const JobEditForm: React.FC<{
 
   return (
     <form {...formProps} className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-end gap-3">
         <AutosaveStatus onRetry={() => void autosave.retry()} state={autosave.state} />
-        <Button render={<Link search={{ job: job.id }} to="/jobs" />} size="sm" variant="outline">
-          <IconTimeline data-icon="inline-start" />
-          View on Gantt
-        </Button>
       </div>
       <EditFormGrid>
         <EditFormFullWidth>
@@ -89,6 +90,13 @@ const JobEditForm: React.FC<{
     </form>
   );
 };
+
+const ViewOnPlannerButton: React.FC<{ jobId: UUID }> = ({ jobId }) => (
+  <Button render={<Link search={{ job: jobId }} to="/jobs" />} size="sm" variant="outline">
+    <IconTimeline data-icon="inline-start" />
+    View on Planner
+  </Button>
+);
 
 const JobFeedbackCard: React.FC<{ job: JobDetail }> = ({ job }) => (
   <Card>

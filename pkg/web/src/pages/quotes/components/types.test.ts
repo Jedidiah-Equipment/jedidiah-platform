@@ -213,6 +213,7 @@ describe('QuoteCreateFormValues', () => {
 
   it('validates product and custom offering fields by kind', () => {
     expect(QuoteCreateFormValues.safeParse(buildCreateFormValues({ productId: '' })).success).toBe(false);
+    expect(QuoteCreateFormValues.safeParse(buildCreateFormValues({ basePrice: Number.NaN })).success).toBe(true);
     expect(
       QuoteCreateFormValues.safeParse(
         buildCreateFormValues({ kind: 'custom', productId: '', workTitle: 'Hydraulic repair', basePrice: 2500 }),
@@ -220,6 +221,11 @@ describe('QuoteCreateFormValues', () => {
     ).toBe(true);
     expect(
       QuoteCreateFormValues.safeParse(buildCreateFormValues({ kind: 'custom', productId: '', workTitle: '' })).success,
+    ).toBe(false);
+    expect(
+      QuoteCreateFormValues.safeParse(
+        buildCreateFormValues({ kind: 'custom', productId: '', workTitle: 'Hydraulic repair', basePrice: Number.NaN }),
+      ).success,
     ).toBe(false);
   });
 });

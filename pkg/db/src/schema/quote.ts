@@ -62,7 +62,7 @@ export const quotes = pgTable(
       sql`(
         ${table.kind} = 'product' and ${table.productId} is not null and ${table.workTitle} is null
       ) or (
-        ${table.kind} = 'custom' and ${table.productId} is null and length(trim(${table.workTitle})) > 0
+        ${table.kind} = 'custom' and ${table.productId} is null and ${table.workTitle} is not null and length(trim(${table.workTitle})) > 0
       )`,
     ),
     uniqueIndex('quote_code_unique').on(table.code),

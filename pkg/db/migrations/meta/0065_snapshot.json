@@ -3285,7 +3285,7 @@
         },
         "quote_kind_shape": {
           "name": "quote_kind_shape",
-          "value": "(\n        \"quote\".\"kind\" = 'product' and \"quote\".\"product_id\" is not null and \"quote\".\"work_title\" is null\n      ) or (\n        \"quote\".\"kind\" = 'custom' and \"quote\".\"product_id\" is null and length(trim(\"quote\".\"work_title\")) > 0\n      )"
+          "value": "(\n        \"quote\".\"kind\" = 'product' and \"quote\".\"product_id\" is not null and \"quote\".\"work_title\" is null\n      ) or (\n        \"quote\".\"kind\" = 'custom' and \"quote\".\"product_id\" is null and \"quote\".\"work_title\" is not null and length(trim(\"quote\".\"work_title\")) > 0\n      )"
         }
       },
       "isRLSEnabled": false

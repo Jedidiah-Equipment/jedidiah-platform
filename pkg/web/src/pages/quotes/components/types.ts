@@ -35,10 +35,12 @@ const QuoteLineItemFormInput = z.object({
   unitPrice: Price,
 });
 
+const QuoteCreateBasePrice = z.union([Price, z.nan()]);
+
 const QuoteCreateFormValuesShape = z.object({
   customerId: z.string(),
   customerMode: CustomerMode,
-  basePrice: Price,
+  basePrice: QuoteCreateBasePrice,
   inlineCompanyName: z.string(),
   kind: QuoteKind,
   productId: z.string(),
@@ -202,7 +204,7 @@ function refineQuoteCustomerSelection(
 }
 
 function refineQuoteOfferingSelection(
-  value: Pick<QuoteCreateFormSelectionValues, 'kind' | 'productId' | 'workTitle'>,
+  value: Pick<QuoteCreateFormSelectionValues, 'basePrice' | 'kind' | 'productId' | 'workTitle'>,
   context: z.RefinementCtx,
 ) {
   if (value.kind === 'product' && !UUID.safeParse(value.productId).success) {
@@ -218,6 +220,14 @@ function refineQuoteOfferingSelection(
       code: 'custom',
       message: 'Work title is required',
       path: ['workTitle'],
+    });
+  }
+
+  if (value.kind === 'custom' && !Price.safeParse(value.basePrice).success) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Base price is required',
+      path: ['basePrice'],
     });
   }
 }

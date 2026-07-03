@@ -2,6 +2,7 @@ import {
   type ActiveJobProgress,
   deriveActiveJobProgress,
   findActiveWorkSlot,
+  getJobDisplayName,
   listUpcomingWorkSlots,
   summarizeWorkSlotSpan,
 } from '@pkg/domain';
@@ -9,7 +10,6 @@ import type { BayOperator, DateOnlyIso, ProjectedWorkJobSlot } from '@pkg/schema
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { getJobDisplayName } from './job-display';
 import { useTRPC } from './trpc';
 import { useBayCalendars } from './use-bay-calendars';
 

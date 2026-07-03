@@ -1,4 +1,10 @@
-import { formatDate, getJobProjectedFinishDates, isJobDeliveryAtRisk, listEnabledBays } from '@pkg/domain';
+import {
+  formatDate,
+  getJobProjectedFinishDates,
+  getQuoteOfferingName,
+  isJobDeliveryAtRisk,
+  listEnabledBays,
+} from '@pkg/domain';
 import type { DateOnlyIso, UpcomingDeliveryQuote, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -89,7 +95,7 @@ function UpcomingDeliveryRow({
   quote: UpcomingDeliveryQuote;
   today: DateOnlyIso;
 }) {
-  const quoteName = quote.kind === 'custom' ? (quote.workTitle ?? 'Custom work') : (quote.productName ?? '—');
+  const quoteName = getQuoteOfferingName(quote);
   const isOverdue = quote.plannedDeliveryDate < today;
   const isAtRisk =
     canOpenJobs && quote.job

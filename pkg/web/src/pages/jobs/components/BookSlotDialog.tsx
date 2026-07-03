@@ -1,4 +1,4 @@
-import { formatDate, hasPermission } from '@pkg/domain';
+import { formatDate, getJobOptionHint, hasPermission } from '@pkg/domain';
 import { IconAlertTriangle, IconCalendarPlus, IconLoader2 } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -24,7 +24,6 @@ import {
   describeInsertAtDatePlacement,
   getInsertAtDatePickerBounds,
 } from './book-slot-insert-at-date.js';
-import { getJobOptionHint } from './job-display.js';
 
 export const BookSlotDialog: React.FC = () => {
   const trpc = useTRPC();

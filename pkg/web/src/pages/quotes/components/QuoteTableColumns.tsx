@@ -1,4 +1,4 @@
-import { formatCurrency, formatPercent, priceQuote } from '@pkg/domain';
+import { formatCurrency, formatPercent, getQuoteOfferingName, getQuoteOfferingSubtitle, priceQuote } from '@pkg/domain';
 import { type PriorityQuote, QuoteKind, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -127,7 +127,7 @@ export function createQuoteTableColumns({
       },
     },
     {
-      accessorFn: (row) => (row.quote.kind === 'custom' ? (row.quote.workTitle ?? '') : (row.quote.productName ?? '')),
+      accessorFn: (row) => getQuoteOfferingName(row.quote),
       cell: ({ row }) => <ProductCell isPriority={row.original.kind === 'priority'} quote={row.original.quote} />,
       enableColumnFilter: true,
       enableSorting: true,
@@ -259,30 +259,30 @@ function SalesPersonCell({ isPriority, quote }: { isPriority: boolean; quote: Qu
 }
 
 function ProductCell({ isPriority, quote }: { isPriority: boolean; quote: QuoteSummary }) {
+  const offeringName = getQuoteOfferingName(quote);
+  const offeringSubtitle = getQuoteOfferingSubtitle(quote);
+
   if (quote.kind === 'custom') {
     return (
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate font-medium">{quote.workTitle ?? 'Custom work'}</span>
+          <span className="truncate font-medium">{offeringName}</span>
           <QuoteKindBadge className="shrink-0" kind={quote.kind} />
         </span>
         <span className={cn('truncate text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
-          Custom work
+          {offeringSubtitle?.text}
         </span>
       </div>
     );
   }
 
   const selectedAssemblyCount = getLiveSelectedAssemblyCount(quote);
-  const productName = quote.productName ?? '—';
-  const productModelCode = quote.productModelCode ?? '—';
-  const productBuildTimeDays = quote.productBuildTimeDays === null ? '—' : `${quote.productBuildTimeDays}d build`;
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate font-medium">{productName}</span>
+      <span className="truncate font-medium">{offeringName}</span>
       <span className={cn('truncate text-xs', isPriority ? 'text-warning-foreground/75' : 'text-muted-foreground')}>
-        <span className="font-mono">{productModelCode}</span> / {productBuildTimeDays}
+        {offeringSubtitle?.text}
         {selectedAssemblyCount > 0 ? ` / ${selectedAssemblyCount} option${selectedAssemblyCount === 1 ? '' : 's'}` : ''}
       </span>
     </div>

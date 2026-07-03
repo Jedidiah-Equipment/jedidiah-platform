@@ -1,4 +1,4 @@
-import { formatCurrency, formatPercent } from '@pkg/domain';
+import { formatCurrency, formatPercent, getQuoteOfferingName } from '@pkg/domain';
 import type { QuoteDetail } from '@pkg/schema';
 import { IconClock, IconMail, IconMapPin, IconPackage, IconPhone, IconReceipt2 } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
@@ -168,7 +168,7 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
 }
 
 function QuoteCustomWorkCard({ quote }: { quote: QuoteDetail }) {
-  const workTitle = quote.workTitle ?? 'Custom work';
+  const workTitle = getQuoteOfferingName(quote);
 
   return (
     <Card size="sm">

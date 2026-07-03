@@ -1,4 +1,10 @@
-import { departmentLabels, formatDate, PRODUCT_DOCUMENT_TYPE_LABELS } from '@pkg/domain';
+import {
+  departmentLabels,
+  formatDate,
+  getJobDisplayName,
+  getJobWorkLabel,
+  PRODUCT_DOCUMENT_TYPE_LABELS,
+} from '@pkg/domain';
 import type { JobDetail, JobDocument, UUID } from '@pkg/schema';
 import { IconPencil, IconX } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +23,6 @@ import { useBayCalendars } from '@/hooks/use-bay-calendars.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { findJobScheduleSummary, type JobScheduleSummary } from './board-summary.js';
 import { InfoList, InfoRow, SlotDayBreakdownRows } from './JobInfoList.js';
-import { getJobDisplayName } from './job-display.js';
 
 type JobDetailAsideProps = {
   bayId?: UUID | undefined;
@@ -135,7 +140,7 @@ const JobSection: React.FC<{ job: JobDetail }> = ({ job }) => {
         <InfoRow label="Job code" value={job.code} />
         {job.productSerialNumber ? <InfoRow label="Product serial" value={job.productSerialNumber} /> : null}
         <InfoRow label="Customer" value={job.customerCompanyName ?? 'Customer unavailable'} />
-        <InfoRow label={job.quoteKind === 'custom' ? 'Work title' : 'Product'} value={displayName} />
+        <InfoRow label={getJobWorkLabel(job)} value={displayName} />
         {job.productModelCode ? <InfoRow label="Model" value={job.productModelCode} /> : null}
         {job.quoteKind === 'product' && job.vinNumber ? <InfoRow label="VIN number" value={job.vinNumber} /> : null}
       </InfoList>

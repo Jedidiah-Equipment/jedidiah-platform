@@ -1,4 +1,4 @@
-import { formatDate, isJobScheduleComplete } from '@pkg/domain';
+import { formatDate, getJobDisplayName, getJobDisplaySubtitle, isJobScheduleComplete } from '@pkg/domain';
 import type { JobSummary } from '@pkg/schema';
 import { IconCheck, IconPencil, IconTimeline } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button.js';
 
 import { JobCodeDisplay } from './JobCodeDisplay.js';
 import { JobScheduleStateBadges } from './JobScheduleStateBadges.js';
-import { getJobDisplayName, getJobDisplaySubtitle } from './job-display.js';
 
 /**
  * Job List columns. Only Job code (`code`) and Schedule (`scheduledSlots`) map to a server sort key
@@ -56,7 +55,7 @@ export function createJobListColumns({
       cell: ({ row }) => <ProductCell job={row.original} />,
       enableColumnFilter: false,
       enableSorting: false,
-      header: 'Product / Work',
+      header: 'Product / Work title',
       id: 'product',
       meta: {
         headerClassName: 'min-w-56',
@@ -211,7 +210,7 @@ function ProductCell({ job }: { job: JobSummary }) {
         <span className="truncate font-medium">{displayName}</span>
         {subtitle ? (
           <span className="truncate text-xs text-muted-foreground">
-            {job.productModelCode ? <span className="font-mono">{subtitle}</span> : subtitle}
+            {subtitle.mono ? <span className="font-mono">{subtitle.text}</span> : subtitle.text}
           </span>
         ) : null}
       </div>

@@ -2,6 +2,7 @@ import {
   byBayDepartmentPipeline,
   deriveJobProgress,
   deriveJobRouteStop,
+  getJobDisplayName,
   hasPermission,
   type JobProgress,
   type JobRouteStop,
@@ -12,7 +13,6 @@ import type { BayOperator, DateOnlyIso, Department, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { getJobDisplayName } from './job-display';
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
 import { useBayCalendars } from './use-bay-calendars';

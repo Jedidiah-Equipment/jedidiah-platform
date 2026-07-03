@@ -1,5 +1,6 @@
 import {
   deriveJobProgress,
+  getJobDisplayName,
   hasPermission,
   type JobProgress,
   type JobWorkSlotEntry,
@@ -9,7 +10,6 @@ import type { BayOperator, DateOnlyIso, UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
-import { getJobDisplayName } from './job-display';
 import { useTRPC } from './trpc';
 import { useAccess } from './use-access';
 import { useBayCalendars } from './use-bay-calendars';

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveEffectiveBom } from './effective-bom.js';
 import {
   computeQuoteDiscountAmount,
+  computeQuoteLineItemsTotal,
   computeQuoteTotal,
   priceQuote,
   priceQuoteFromLiveSelections,
@@ -42,8 +43,33 @@ describe('computeQuoteDiscountAmount', () => {
     ).toBe(170);
   });
 
+  it('discounts line items with the base price and selected optional assemblies', () => {
+    expect(
+      computeQuoteDiscountAmount({
+        discountPercent: 10,
+        lineItems: [
+          { quantity: 2, unitPrice: 125 },
+          { quantity: 1, unitPrice: 50 },
+        ],
+        quotedBasePrice: 1250,
+        selectedAssemblyPrices: [300, 150],
+      }),
+    ).toBe(200);
+  });
+
   it('rounds the derived currency amount to cents', () => {
     expect(computeQuoteDiscountAmount({ discountPercent: 12.5, quotedBasePrice: 99.99 })).toBe(12.5);
+  });
+});
+
+describe('computeQuoteLineItemsTotal', () => {
+  it('totals quantity times unit price for every line item', () => {
+    expect(
+      computeQuoteLineItemsTotal([
+        { quantity: 2, unitPrice: 125 },
+        { quantity: 3, unitPrice: 10 },
+      ]),
+    ).toBe(280);
   });
 });
 
@@ -68,6 +94,20 @@ describe('computeQuoteTotal', () => {
     ).toBe(1530);
   });
 
+  it('includes line items in the discountable subtotal', () => {
+    expect(
+      computeQuoteTotal({
+        discountPercent: 10,
+        lineItems: [
+          { quantity: 2, unitPrice: 125 },
+          { quantity: 1, unitPrice: 50 },
+        ],
+        quotedBasePrice: 1250,
+        selectedAssemblyPrices: [300, 150],
+      }),
+    ).toBe(1800);
+  });
+
   it('ignores delivery price when delivery is excluded', () => {
     expect(
       computeQuoteTotal({ deliveryIncluded: false, deliveryPrice: 350, quotedBasePrice: 1250, discountPercent: 10 }),
@@ -84,17 +124,24 @@ describe('computeQuoteTotal', () => {
 describe('priceQuoteFromLiveSelections', () => {
   it('builds the breakdown from facts and a live selection set', () => {
     const pricing = priceQuoteFromLiveSelections(
-      { deliveryIncluded: true, deliveryPrice: 350, discountPercent: 10, quotedBasePrice: 1250 },
+      {
+        deliveryIncluded: true,
+        deliveryPrice: 350,
+        discountPercent: 10,
+        lineItems: [{ quantity: 2, unitPrice: 125 }],
+        quotedBasePrice: 1250,
+      },
       [{ quotedPrice: 300 }, { quotedPrice: 150 }],
     );
 
-    expect(pricing).toMatchObject({ discountAmount: 170, selectedAssemblyTotal: 450, total: 1880 });
+    expect(pricing).toMatchObject({ discountAmount: 195, lineItemTotal: 250, selectedAssemblyTotal: 450, total: 2105 });
     expect(pricing.liveSelections).toHaveLength(2);
   });
 
   it('handles an empty selection set', () => {
     expect(priceQuoteFromLiveSelections({ discountPercent: 0, quotedBasePrice: 1000 }, [])).toMatchObject({
       discountAmount: 0,
+      lineItemTotal: 0,
       selectedAssemblyTotal: 0,
       total: 1000,
     });
@@ -106,13 +153,15 @@ describe('priceQuote', () => {
     const pricing = priceQuote({
       discountPercent: 0,
       quotedBasePrice: 1000,
+      lineItems: [{ quantity: 2, unitPrice: 125 }],
       selectedAssemblies: [
         { productAssemblyId: 'opt-live', quotedPrice: 300 },
         { productAssemblyId: null, quotedPrice: 999 },
       ],
     });
 
-    expect(pricing.total).toBe(1300);
+    expect(pricing.total).toBe(1550);
+    expect(pricing.lineItemTotal).toBe(250);
     expect(pricing.selectedAssemblyTotal).toBe(300);
     expect(pricing.liveSelections).toHaveLength(1);
   });

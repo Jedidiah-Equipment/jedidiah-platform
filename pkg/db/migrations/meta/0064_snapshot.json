@@ -1,6 +1,6 @@
 {
-  "id": "1fa45e52-bc7d-4d45-b1ef-44dee0332519",
-  "prevId": "50490329-454b-498c-b3da-5ede6ce98c29",
+  "id": "ba6a3e26-d577-4b3f-bafc-140af7e5c564",
+  "prevId": "066689d5-01f7-4a00-9d03-9573571f11e1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1815,6 +1815,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1909,6 +1915,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "job_description_nonempty": {
+          "name": "job_description_nonempty",
+          "value": "\"job\".\"description\" IS NULL OR length(trim(\"job\".\"description\")) > 0"
+        },
         "job_product_serial_prefix_nonempty": {
           "name": "job_product_serial_prefix_nonempty",
           "value": "length(trim(\"job\".\"product_serial_prefix\")) > 0"
@@ -2853,6 +2863,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "quantity": {
           "name": "quantity",
           "type": "integer",
@@ -2904,6 +2921,10 @@
         "quote_line_items_name_nonempty": {
           "name": "quote_line_items_name_nonempty",
           "value": "length(trim(\"quote_line_items\".\"name\")) > 0"
+        },
+        "quote_line_items_position_nonnegative": {
+          "name": "quote_line_items_position_nonnegative",
+          "value": "\"quote_line_items\".\"position\" >= 0"
         },
         "quote_line_items_quantity_positive": {
           "name": "quote_line_items_quantity_positive",

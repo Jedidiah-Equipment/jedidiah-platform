@@ -4,8 +4,9 @@ import type { QuoteDocument } from '../documents/document.js';
 export type QuoteDocumentLineItem = {
   amount: number;
   descriptionLines: string[];
-  kind: 'base' | 'charge' | 'discount' | 'optional';
+  kind: 'base' | 'charge' | 'discount' | 'lineItem' | 'optional';
   quantity: number;
+  unitPrice?: number;
 };
 
 export type QuoteDocumentCustomer = {

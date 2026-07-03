@@ -18,6 +18,7 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 
+import { getLineItemsByQuoteId } from './quote-line-items.js';
 import { getSelectedAssembliesByQuoteId } from './quote-selected-assemblies.js';
 
 // Aggregate Quote reads for the dashboard: counts, sums, and week buckets that project to their own
@@ -129,14 +130,19 @@ export async function summarizeQuotePipeline({
       .where(and(inArray(quotes.status, ['accepted', 'rejected']), gte(quotes.statusChangedAt, decisionWindowStart)))
       .groupBy(quotes.status),
   ]);
-  const selectedAssembliesByQuoteId = await getSelectedAssembliesByQuoteId({
-    db,
-    quoteIds: sentRows.map((row) => row.id),
-  });
+  const quoteIds = sentRows.map((row) => row.id);
+  const [lineItemsByQuoteId, selectedAssembliesByQuoteId] = await Promise.all([
+    getLineItemsByQuoteId({ db, quoteIds }),
+    getSelectedAssembliesByQuoteId({ db, quoteIds }),
+  ]);
   const totalsByQuoteId = new Map(
     sentRows.map((row) => [
       row.id,
-      priceQuote({ ...row, selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [] }).total,
+      priceQuote({
+        ...row,
+        lineItems: lineItemsByQuoteId.get(row.id) ?? [],
+        selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
+      }).total,
     ]),
   );
   const decisionCountsByStatus = new Map(decisionRows.map((row) => [row.status, Number(row.count)]));
@@ -180,10 +186,11 @@ export async function listStaleSentQuotes({
     .where(eq(quotes.status, 'sent'))
     .orderBy(asc(quotes.statusChangedAt), asc(quotes.id))
     .limit(limit);
-  const selectedAssembliesByQuoteId = await getSelectedAssembliesByQuoteId({
-    db,
-    quoteIds: rows.map((row) => row.id),
-  });
+  const quoteIds = rows.map((row) => row.id);
+  const [lineItemsByQuoteId, selectedAssembliesByQuoteId] = await Promise.all([
+    getLineItemsByQuoteId({ db, quoteIds }),
+    getSelectedAssembliesByQuoteId({ db, quoteIds }),
+  ]);
   const today = toPlantDateOnly(clock());
 
   return StaleSentQuoteList.parse({
@@ -195,7 +202,11 @@ export async function listStaleSentQuotes({
       id: row.id,
       sentDaysAgo: Math.max(0, diffDateOnlyDays(today, toPlantDateOnly(row.statusChangedAt))),
       statusChangedAt: row.statusChangedAt.toISOString(),
-      totalValue: priceQuote({ ...row, selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [] }).total,
+      totalValue: priceQuote({
+        ...row,
+        lineItems: lineItemsByQuoteId.get(row.id) ?? [],
+        selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
+      }).total,
     })),
   });
 }

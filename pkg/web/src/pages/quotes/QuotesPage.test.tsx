@@ -140,6 +140,7 @@ function buildPriorityQuote(overrides: Partial<Record<keyof PriorityQuoteType, u
     salesPersonId: '30000000-0000-4000-8000-000000000000',
     salesPersonName: 'Sales User',
     salesPersonThumbnailDataUrl: null,
+    lineItems: [],
     selectedAssemblies: [],
     status: 'accepted',
     statusChangedAt: '2026-06-01T10:00:00.000Z',

@@ -14,7 +14,9 @@ Compact domain map for implementation and planning. Search this file first for n
 
 **Supplier** is currently a standalone procurement directory record. **Part** is the reusable purchasable item layer. **Assembly** is a Product-owned grouping of Parts, either Standard or Optional. Optional Assemblies carry an upgrade-delta price, may replace whole Standard Assemblies, and are selected on Quotes.
 
-**Quote Pricing** is the computed breakdown — total, discount amount, and live selected Optional Assemblies — projected from a Quote's stored pricing facts. A selection is excluded when stale: a `null` reference on a persisted Quote (`on delete set null`), or unresolved against the loaded catalog while editing. Deposit (a payment term) and VAT (Quote Document only) are not inputs.
+**Quote Line Item** is a freeform Quote charge with a name, positive whole-number quantity, and non-negative unit price. It has no catalog semantics and always contributes quantity × unit price to Quote Pricing.
+
+**Quote Pricing** is the computed breakdown — total, discount amount, live selected Optional Assemblies, and Quote Line Items — projected from a Quote's stored pricing facts. A selection is excluded when stale: a `null` reference on a persisted Quote (`on delete set null`), or unresolved against the loaded catalog while editing. Quote Line Items never go stale. Deposit (a payment term) and VAT (Quote Document only) are not inputs.
 
 **CFO** means Customer Fabrication Order: the Job's frozen bill of materials, snapshotted from the Quote's effective BOM at Job creation.
 

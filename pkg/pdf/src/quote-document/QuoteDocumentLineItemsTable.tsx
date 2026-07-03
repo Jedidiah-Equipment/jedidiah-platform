@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
 export function QuoteDocumentLineItemsTable({ document }: QuoteDocumentLineItemsTableProps) {
   const baseItem = document.lineItems.find((item) => item.kind === 'base');
   const optionalItems = document.lineItems.filter((item) => item.kind === 'optional');
+  const lineItems = document.lineItems.filter((item) => item.kind === 'lineItem');
   const adjustmentItems = document.lineItems.filter((item) => item.kind === 'charge' || item.kind === 'discount');
 
   return (
@@ -73,6 +74,14 @@ export function QuoteDocumentLineItemsTable({ document }: QuoteDocumentLineItems
         <>
           <SectionRow label="Optional Extras" />
           {optionalItems.map((item) => (
+            <LineItemRow item={item} key={item.descriptionLines.join('|')} />
+          ))}
+        </>
+      ) : null}
+      {lineItems.length > 0 ? (
+        <>
+          <SectionRow label="Line Items" />
+          {lineItems.map((item) => (
             <LineItemRow item={item} key={item.descriptionLines.join('|')} />
           ))}
         </>
@@ -178,7 +187,8 @@ function SectionRow({ label }: { label: string }) {
 }
 
 function LineItemRow({ item, product = false }: { item: QuoteDocumentLineItem; product?: boolean }) {
-  const amount = formatCurrency(item.amount);
+  const unitPrice = formatCurrency(item.unitPrice ?? item.amount);
+  const subtotal = formatCurrency(item.amount);
 
   return (
     <View style={pdfStyles.flexRow}>
@@ -200,7 +210,7 @@ function LineItemRow({ item, product = false }: { item: QuoteDocumentLineItem; p
           styles.priceCol,
         ]}
       >
-        {amount}
+        {unitPrice}
       </Text>
       <Text
         style={[
@@ -213,7 +223,7 @@ function LineItemRow({ item, product = false }: { item: QuoteDocumentLineItem; p
           styles.noRightBorder,
         ]}
       >
-        {amount}
+        {subtotal}
       </Text>
     </View>
   );

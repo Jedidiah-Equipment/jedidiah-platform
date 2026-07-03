@@ -6,6 +6,7 @@ import {
   getSortOrder,
   jobs,
   products,
+  quoteLineItems,
   quoteSelectedAssemblies,
   quotes,
   user,
@@ -64,6 +65,13 @@ import {
   QuoteNotFoundError,
 } from './quote-errors.js';
 import {
+  getLineItemsByQuoteId,
+  listQuoteLineItems,
+  mapQuoteLineItem,
+  persistQuoteLineItems,
+  type QuoteLineItemRow,
+} from './quote-line-items.js';
+import {
   getSelectedAssembliesByQuoteId,
   listQuoteSelectedAssemblies,
   mapQuoteSelectedAssembly,
@@ -73,7 +81,12 @@ import {
 } from './quote-selected-assemblies.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
-type QuoteAuditInput = { row: QuoteRow; selectedAssemblies: readonly QuoteSelectedAssemblyRow[] };
+type QuoteLineItemAuditItem = Pick<QuoteLineItemRow, 'name' | 'quantity' | 'unitPrice'>;
+type QuoteAuditInput = {
+  row: QuoteRow;
+  lineItems: readonly QuoteLineItemAuditItem[];
+  selectedAssemblies: readonly QuoteSelectedAssemblyRow[];
+};
 
 const PRIORITY_QUOTE_WINDOW_MONTHS = 2;
 const UPCOMING_DELIVERY_WINDOW_DAYS = 30;
@@ -87,7 +100,7 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
   primaryLabelFormatter: formatQuoteAuditLabel,
   entityId: ({ row }) => row.id,
   label: ({ row }) => row.code,
-  toRecord: ({ row, selectedAssemblies }) => ({
+  toRecord: ({ row, lineItems, selectedAssemblies }) => ({
     customerId: row.customerId,
     depositPercent: row.depositPercent,
     deliveryIncluded: row.deliveryIncluded,
@@ -101,6 +114,7 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
     quotedBasePrice: row.quotedBasePrice,
     quotedCurrencyCode: row.quotedCurrencyCode,
     salesPersonId: row.salesPersonId,
+    lineItems: JSON.stringify(toQuoteLineItemAuditRecord(lineItems)),
     selectedAssemblies: JSON.stringify(toQuoteSelectedAssemblyAuditRecord(selectedAssemblies)),
     status: row.status,
     validUntil: row.validUntil,
@@ -121,10 +135,10 @@ type QuoteListRow = {
   quote: QuoteRow;
   customerCompanyName: string;
   customerThumbnailDataUrl: string | null;
-  productBuildTimeDays: number;
-  productCurrencyCode: string;
-  productModelCode: string;
-  productName: string;
+  productBuildTimeDays: number | null;
+  productCurrencyCode: string | null;
+  productModelCode: string | null;
+  productName: string | null;
   salesPersonEmail: string | null;
   salesPersonName: string | null;
   salesPersonThumbnailDataUrl: string | null;
@@ -149,8 +163,9 @@ type QuoteDetailRow = QuoteRow & {
   product: Pick<
     typeof products.$inferSelect,
     'buildTimeDays' | 'currencyCode' | 'description' | 'modelCode' | 'name' | 'requiresVinNumber' | 'thumbnailDataUrl'
-  >;
+  > | null;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'image' | 'name'> | null;
+  lineItems: QuoteLineItemRow[];
   selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
 
@@ -226,12 +241,13 @@ export async function createQuote({
       tx,
     });
     const selectedAssemblies = await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx });
+    const lineItems = await persistQuoteLineItems({ input, quoteId: row.id, tx });
 
     await recordAuditCreate({
       db: tx,
       descriptor: quoteAuditDescriptor,
       actorUserId,
-      input: { row, selectedAssemblies },
+      input: { row, lineItems, selectedAssemblies },
     });
 
     return getQuote({ db: tx, id: row.id });
@@ -259,7 +275,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
       })
       .from(quotes)
       .innerJoin(customers, eq(quotes.customerId, customers.id))
-      .innerJoin(products, eq(quotes.productId, products.id))
+      .leftJoin(products, eq(quotes.productId, products.id))
       .leftJoin(user, eq(quotes.salesPersonId, user.id))
       .where(where)
       .orderBy(orderBy, asc(quotes.id))
@@ -273,19 +289,25 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
     .where(where);
 
   const [rows, [totalRow]] = await Promise.all([rowsQuery, totalQuery]);
   const quoteIds = rows.map((row) => row.quote.id);
-  const [selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
+  const [lineItemsByQuoteId, selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
+    getLineItemsByQuoteId({ db, quoteIds }),
     getSelectedAssembliesByQuoteId({ db, quoteIds }),
     getJobByQuoteId({ db, quoteIds }),
   ]);
 
   return {
     items: rows.map((row) =>
-      mapQuoteSummary(row, jobByQuoteId.get(row.quote.id) ?? null, selectedAssembliesByQuoteId.get(row.quote.id) ?? []),
+      mapQuoteSummary(
+        row,
+        jobByQuoteId.get(row.quote.id) ?? null,
+        lineItemsByQuoteId.get(row.quote.id) ?? [],
+        selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+      ),
     ),
     sortBy: input.sortBy,
     sortDirection: input.sortDirection,
@@ -319,7 +341,7 @@ export async function listPriorityQuotes({
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
     .leftJoin(user, eq(quotes.salesPersonId, user.id))
     .where(
       and(
@@ -336,13 +358,19 @@ export async function listPriorityQuotes({
     .orderBy(asc(earliestDeliveryDate), asc(quotes.code), asc(quotes.id));
 
   const quoteIds = rows.map((row) => row.quote.id);
-  const [selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
+  const [lineItemsByQuoteId, selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
+    getLineItemsByQuoteId({ db, quoteIds }),
     getSelectedAssembliesByQuoteId({ db, quoteIds }),
     getJobByQuoteId({ db, quoteIds }),
   ]);
 
   return rows.map((row) =>
-    mapPriorityQuote(row, jobByQuoteId.get(row.quote.id) ?? null, selectedAssembliesByQuoteId.get(row.quote.id) ?? []),
+    mapPriorityQuote(
+      row,
+      jobByQuoteId.get(row.quote.id) ?? null,
+      lineItemsByQuoteId.get(row.quote.id) ?? [],
+      selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
+    ),
   );
 }
 
@@ -373,7 +401,7 @@ export async function listUpcomingDeliveryQuotes({
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
     .leftJoin(user, eq(quotes.salesPersonId, user.id))
     .where(
       and(
@@ -385,7 +413,8 @@ export async function listUpcomingDeliveryQuotes({
     .orderBy(asc(quotes.plannedDeliveryDate), asc(quotes.code), asc(quotes.id));
 
   const quoteIds = rows.map((row) => row.quote.id);
-  const [selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
+  const [lineItemsByQuoteId, selectedAssembliesByQuoteId, jobByQuoteId] = await Promise.all([
+    getLineItemsByQuoteId({ db, quoteIds }),
     getSelectedAssembliesByQuoteId({ db, quoteIds }),
     getJobByQuoteId({ db, quoteIds }),
   ]);
@@ -395,6 +424,7 @@ export async function listUpcomingDeliveryQuotes({
       mapUpcomingDeliveryQuote(
         row,
         jobByQuoteId.get(row.quote.id) ?? null,
+        lineItemsByQuoteId.get(row.quote.id) ?? [],
         selectedAssembliesByQuoteId.get(row.quote.id) ?? [],
       ),
     ),
@@ -443,6 +473,9 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
           name: true,
         },
       },
+      lineItems: {
+        orderBy: [asc(quoteLineItems.position), asc(quoteLineItems.createdAt), asc(quoteLineItems.id)],
+      },
       selectedAssemblies: {
         orderBy: [asc(quoteSelectedAssemblies.createdAt), asc(quoteSelectedAssemblies.id)],
       },
@@ -454,8 +487,8 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
   }
 
   const [assemblies, productBaysForQuote] = await Promise.all([
-    listAssemblies({ tx: db, productId: row.productId }),
-    listProductBays({ db, productId: row.productId }),
+    row.product ? listAssemblies({ tx: db, productId: row.productId }) : Promise.resolve([]),
+    row.product ? listProductBays({ db, productId: row.productId }) : Promise.resolve([]),
   ]);
 
   return mapQuoteDetail(row, assemblies, productBaysForQuote);
@@ -469,6 +502,10 @@ export async function getQuoteProductBayAvailability({
   input: QuoteProductBayAvailabilityInput;
 }): Promise<QuoteProductBayAvailabilityResult> {
   const quote = await getQuote({ db, id: input.quoteId });
+  if (!quote.productId || quote.productBuildTimeDays === null) {
+    throw new QuoteInvalidReferenceError('Quote product was not found.');
+  }
+
   const productBaysForQuote = (await listProductBays({ db, productId: quote.productId })).filter(
     (productBay) => !productBay.bay.disabledAt,
   );
@@ -545,6 +582,7 @@ export async function updateQuote({
     }
 
     const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId: before.id, tx });
+    const beforeLineItems = await listQuoteLineItems({ quoteId: before.id, tx });
 
     assertValidDiscount({ discountPercent: input.discountPercent });
 
@@ -568,6 +606,7 @@ export async function updateQuote({
       validUntil: input.validUntil,
     };
     const after = { ...before, ...patch };
+    const nextLineItems = input.lineItems ?? beforeLineItems;
     const resolved = await resolveQuoteSelectedAssemblies({
       currentRows: beforeSelectedAssemblies,
       input,
@@ -577,8 +616,8 @@ export async function updateQuote({
     });
     const changes = diffAuditUpdate(
       quoteAuditDescriptor,
-      { row: before, selectedAssemblies: beforeSelectedAssemblies },
-      { row: after, selectedAssemblies: resolved.rows },
+      { row: before, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
+      { row: after, lineItems: nextLineItems, selectedAssemblies: resolved.rows },
     );
 
     if (!changes) {
@@ -609,12 +648,14 @@ export async function updateQuote({
     }
 
     const selectedAssemblies = await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx });
+    const lineItems =
+      input.lineItems === undefined ? beforeLineItems : await persistQuoteLineItems({ input, quoteId: row.id, tx });
 
     await recordAuditUpdate({
       db: tx,
       descriptor: quoteAuditDescriptor,
       actorUserId,
-      after: { row, selectedAssemblies },
+      after: { row, lineItems, selectedAssemblies },
       changes,
     });
 
@@ -625,6 +666,7 @@ export async function updateQuote({
 function mapQuoteSummary(
   row: QuoteListRow,
   job: QuoteLinkedJobRow | null,
+  lineItems: readonly QuoteLineItemRow[],
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
 ): QuoteSummary {
   return {
@@ -633,12 +675,13 @@ function mapQuoteSummary(
     customerThumbnailDataUrl: row.customerThumbnailDataUrl,
     job: job ? mapQuoteLinkedJob(job) : null,
     productBuildTimeDays: row.productBuildTimeDays,
-    productCurrencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
+    productCurrencyCode: row.productCurrencyCode === null ? null : ProductCurrencyCode.parse(row.productCurrencyCode),
     productModelCode: row.productModelCode,
     productName: row.productName,
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,
     salesPersonThumbnailDataUrl: row.salesPersonThumbnailDataUrl,
+    lineItems: lineItems.map(mapQuoteLineItem),
     selectedAssemblies: selectedAssemblies.map(mapQuoteSelectedAssembly),
   };
 }
@@ -646,10 +689,11 @@ function mapQuoteSummary(
 function mapPriorityQuote(
   row: PriorityQuoteRow,
   job: QuoteLinkedJobRow | null,
+  lineItems: readonly QuoteLineItemRow[],
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
 ): PriorityQuote {
   return {
-    ...mapQuoteSummary(row, job, selectedAssemblies),
+    ...mapQuoteSummary(row, job, lineItems, selectedAssemblies),
     earliestDeliveryDate: DateOnlyIso.parse(row.earliestDeliveryDate),
   };
 }
@@ -657,9 +701,10 @@ function mapPriorityQuote(
 function mapUpcomingDeliveryQuote(
   row: QuoteListRow,
   job: QuoteLinkedJobRow | null,
+  lineItems: readonly QuoteLineItemRow[],
   selectedAssemblies: readonly QuoteSelectedAssemblyRow[],
 ): UpcomingDeliveryQuote {
-  const summary = mapQuoteSummary(row, job, selectedAssemblies);
+  const summary = mapQuoteSummary(row, job, lineItems, selectedAssemblies);
 
   return {
     ...summary,
@@ -682,18 +727,19 @@ function mapQuoteDetail(
     customerThumbnailDataUrl: row.customer.thumbnailDataUrl,
     customerVatNumber: row.customer.vatNumber,
     job: row.jobs[0] ? mapQuoteLinkedJob({ jobCode: row.jobs[0].code, jobId: row.jobs[0].id }) : null,
-    productCurrencyCode: ProductCurrencyCode.parse(row.product.currencyCode),
-    productBuildTimeDays: row.product.buildTimeDays,
-    productDescription: row.product.description,
-    productModelCode: row.product.modelCode,
-    productName: row.product.name,
+    productCurrencyCode: row.product ? ProductCurrencyCode.parse(row.product.currencyCode) : null,
+    productBuildTimeDays: row.product?.buildTimeDays ?? null,
+    productDescription: row.product?.description ?? null,
+    productModelCode: row.product?.modelCode ?? null,
+    productName: row.product?.name ?? null,
     productAssemblies: productAssembliesForQuote,
     productBays: productBaysForQuote,
-    productRequiresVinNumber: row.product.requiresVinNumber,
-    productThumbnailDataUrl: row.product.thumbnailDataUrl,
+    productRequiresVinNumber: row.product?.requiresVinNumber ?? null,
+    productThumbnailDataUrl: row.product?.thumbnailDataUrl ?? null,
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
     salesPersonThumbnailDataUrl: row.salesPerson?.image ?? null,
+    lineItems: row.lineItems.map(mapQuoteLineItem),
     selectedAssemblies: row.selectedAssemblies.map(mapQuoteSelectedAssembly),
   };
 }
@@ -818,6 +864,12 @@ function toQuoteSelectedAssemblyAuditRecord(selectedAssemblies: readonly QuoteSe
     );
 }
 
+function toQuoteLineItemAuditRecord(lineItems: readonly QuoteLineItemAuditItem[]) {
+  return lineItems
+    .map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }))
+    .toSorted((left, right) => left.name.localeCompare(right.name) || left.unitPrice - right.unitPrice);
+}
+
 async function quoteHasJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {
   const [job] = await tx
     .select({
@@ -886,7 +938,7 @@ function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
     code: sql`${quotes.code}`,
     createdAt: sql`${quotes.createdAt}`,
     customerCompanyName: sql`${customers.companyName}`,
-    productName: sql`${products.name}`,
+    productName: sql`coalesce(${products.name}, '')`,
     salesPersonName: sql`${user.name}`,
     status: sql`${quotes.status}`,
   } as const satisfies Record<QuoteSortBy, SQL>;

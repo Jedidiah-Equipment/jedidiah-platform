@@ -1,4 +1,4 @@
-import { customers, type Db, products, quotes, user } from '@pkg/db';
+import { customers, type Db, products, quoteLineItems, quotes, user } from '@pkg/db';
 import type { QuoteStatus } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 
@@ -163,7 +163,7 @@ describe('summarizeQuotePipeline', () => {
     context,
   }) => {
     // 30-day window covering plant today starts at 2026-05-06; sent on the boundary day is included.
-    await createQuoteRows(context.db, {
+    const [boundaryQuote] = await createQuoteRows(context.db, {
       customerId: context.customer.id,
       deliveryIncluded: true,
       deliveryPrice: 100,
@@ -174,6 +174,10 @@ describe('summarizeQuotePipeline', () => {
       statuses: ['sent'],
       statusChangedAt: zonedInstant('2026-05-06T00:00:00'),
     });
+    if (!boundaryQuote) throw new Error('Expected sent quote row');
+    await context.db
+      .insert(quoteLineItems)
+      .values({ name: 'Hydraulic hose', quantity: 2, quoteId: boundaryQuote.id, unitPrice: 100 });
     // Sent just before the window start stays in the open pipeline but not in the newly-sent value.
     await createQuoteRows(context.db, {
       customerId: context.customer.id,
@@ -195,11 +199,12 @@ describe('summarizeQuotePipeline', () => {
 
     const summary = await summarizeQuotePipeline({ clock: fixedClock, db: context.db });
 
-    // 2000 + 100 delivery - 10% discount on base = 1900, plus the 500 quote outside the 30d window.
+    // 2000 base + 200 line items + 100 delivery - 10% discount on base + line items = 2080,
+    // plus the 500 quote outside the 30d window.
     expect(summary).toMatchObject({
-      newlySent30dValue: 1900,
+      newlySent30dValue: 2080,
       openSentCount: 2,
-      openSentValue: 2400,
+      openSentValue: 2580,
     });
   });
 
@@ -244,7 +249,7 @@ describe('listStaleSentQuotes', () => {
       statuses: ['sent'],
       statusChangedAt: zonedInstant('2026-06-01T09:00:00'),
     });
-    await createQuoteRows(context.db, {
+    const [oldestQuote] = await createQuoteRows(context.db, {
       customerId: context.customer.id,
       deliveryIncluded: true,
       deliveryPrice: 50,
@@ -254,6 +259,10 @@ describe('listStaleSentQuotes', () => {
       statuses: ['sent'],
       statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
     });
+    if (!oldestQuote) throw new Error('Expected oldest sent quote row');
+    await context.db
+      .insert(quoteLineItems)
+      .values({ name: 'Hydraulic hose', quantity: 2, quoteId: oldestQuote.id, unitPrice: 25 });
     await createQuoteRows(context.db, {
       customerId: context.customer.id,
       productId: context.product.id,
@@ -268,7 +277,7 @@ describe('listStaleSentQuotes', () => {
     expect(result.items[0]).toMatchObject({
       customerCompanyName: 'Acme Mining',
       sentDaysAgo: 15,
-      totalValue: 3050,
+      totalValue: 3100,
     });
     expect(result.items[1]).toMatchObject({
       sentDaysAgo: 3,
@@ -322,19 +331,22 @@ async function createQuoteRows(
     statusChangedAt?: Date;
   },
 ) {
-  await db.insert(quotes).values(
-    statuses.map((status) => ({
-      customerId,
-      ...(createdAt ? { createdAt, updatedAt: createdAt } : {}),
-      ...(statusChangedAt ? { statusChangedAt } : {}),
-      deliveryIncluded,
-      deliveryPrice,
-      discountPercent,
-      productId,
-      quotedBasePrice,
-      quotedCurrencyCode: 'ZAR',
-      salesPersonId,
-      status,
-    })),
-  );
+  return db
+    .insert(quotes)
+    .values(
+      statuses.map((status) => ({
+        customerId,
+        ...(createdAt ? { createdAt, updatedAt: createdAt } : {}),
+        ...(statusChangedAt ? { statusChangedAt } : {}),
+        deliveryIncluded,
+        deliveryPrice,
+        discountPercent,
+        productId,
+        quotedBasePrice,
+        quotedCurrencyCode: 'ZAR',
+        salesPersonId,
+        status,
+      })),
+    )
+    .returning();
 }

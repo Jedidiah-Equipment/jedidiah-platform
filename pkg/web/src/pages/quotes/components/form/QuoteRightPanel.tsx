@@ -14,8 +14,13 @@ import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
 import { openQuoteEmailAssistant } from '../quote-email-assistant.js';
 import { StartJobLink } from '../StartJobLink.js';
-import type { SelectedAssemblySnapshot } from '../types.js';
+import type { QuoteFormValues, SelectedAssemblySnapshot } from '../types.js';
 import { DraftQuoteEmailDialog } from './DraftQuoteEmailDialog.js';
+
+type QuoteLineItemFormInput = QuoteFormValues['lineItems'][number];
+
+const lineItemSummaryKeys = new WeakMap<QuoteLineItemFormInput, string>();
+let nextLineItemSummaryKey = 0;
 
 export type QuoteComputedSummary = {
   currencyCode: string;
@@ -23,6 +28,8 @@ export type QuoteComputedSummary = {
   deliveryPrice: number;
   discountAmount: number;
   discountPercent: number;
+  lineItems: QuoteFormValues['lineItems'];
+  lineItemTotal: number;
   productPrice: number;
   selectedAssemblies: SelectedAssemblySnapshot[];
   selectedAssemblyTotal: number;
@@ -112,6 +119,10 @@ function QuoteCustomerCard({ quote }: { quote: QuoteDetail }) {
 function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
   const standardCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'standard').length;
   const optionalCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'optional').length;
+  const productName = quote.productName ?? '—';
+  const productModelCode = quote.productModelCode ?? '—';
+  const productCurrencyCode = quote.productCurrencyCode ?? quote.quotedCurrencyCode;
+  const productBuildTimeDays = quote.productBuildTimeDays === null ? '—' : `${quote.productBuildTimeDays} days`;
 
   return (
     <Card size="sm">
@@ -119,14 +130,14 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
         <CardDescription>Product</CardDescription>
         <CardTitle className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="block truncate">{quote.productName}</span>
-            <Badge variant="outline">{quote.productModelCode}</Badge>
+            <span className="block truncate">{productName}</span>
+            <Badge variant="outline">{productModelCode}</Badge>
           </div>
         </CardTitle>
         <CardAction>
           <EntityThumbnail
             className="size-10"
-            label={quote.productName}
+            label={productName}
             size="lg"
             thumbnailDataUrl={quote.productThumbnailDataUrl}
           />
@@ -137,9 +148,9 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
           <QuoteMiniMetric
             icon={<IconPackage />}
             label="Base price"
-            value={formatCurrency(quote.quotedBasePrice, quote.productCurrencyCode)}
+            value={formatCurrency(quote.quotedBasePrice, productCurrencyCode)}
           />
-          <QuoteMiniMetric icon={<IconClock />} label="Build" value={`${quote.productBuildTimeDays} days`} />
+          <QuoteMiniMetric icon={<IconClock />} label="Build" value={productBuildTimeDays} />
           <QuoteMiniMetric label="Standard Assemblies" value={String(standardCount)} />
           <QuoteMiniMetric label="Optional Assemblies" value={String(optionalCount)} />
         </div>
@@ -171,10 +182,6 @@ function QuoteTotalCard({
       </CardHeader>
       <CardContent className="grid gap-2">
         <QuoteSummaryRow label="Product price" value={formatCurrency(summary.productPrice, summary.currencyCode)} />
-        <QuoteSummaryRow
-          label="Less discount"
-          value={`${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)})`}
-        />
         {summary.selectedAssemblyTotal > 0 ? (
           <div className="grid gap-1">
             <QuoteSummaryRow
@@ -194,6 +201,26 @@ function QuoteTotalCard({
             </div>
           </div>
         ) : null}
+        {summary.lineItems.length > 0 ? (
+          <div className="grid gap-1">
+            <QuoteSummaryRow label="Line items" value={formatCurrency(summary.lineItemTotal, summary.currencyCode)} />
+            <div className="grid gap-1 border-l pl-3">
+              {summary.lineItems.map((item) => (
+                <QuoteSummaryRow
+                  className="text-xs"
+                  key={getLineItemSummaryKey(item)}
+                  label={formatLineItemLabel(item)}
+                  value={formatCurrency(item.quantity * item.unitPrice, summary.currencyCode)}
+                  valueClassName="text-muted-foreground"
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <QuoteSummaryRow
+          label="Less discount"
+          value={`${formatCurrency(summary.discountAmount, summary.currencyCode)} (${formatPercent(summary.discountPercent)})`}
+        />
         {summary.deliveryIncluded ? (
           <QuoteSummaryRow label="Delivery" value={formatCurrency(summary.deliveryPrice, summary.currencyCode)} />
         ) : null}
@@ -225,6 +252,23 @@ function QuoteTotalCard({
       </CardContent>
     </Card>
   );
+}
+
+function getLineItemSummaryKey(item: QuoteLineItemFormInput): string {
+  const existing = lineItemSummaryKeys.get(item);
+  if (existing) {
+    return existing;
+  }
+
+  const key = `quote-line-item-summary-${nextLineItemSummaryKey}`;
+  nextLineItemSummaryKey += 1;
+  lineItemSummaryKeys.set(item, key);
+
+  return key;
+}
+
+function formatLineItemLabel(item: QuoteLineItemFormInput): string {
+  return item.quantity === 1 ? item.name : `${item.quantity} x ${item.name}`;
 }
 
 function QuotePanelFact({

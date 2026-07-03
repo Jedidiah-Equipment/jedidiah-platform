@@ -1,3 +1,4 @@
+import { AI_QUOTE_TO_JOB_RELATIONSHIP } from './ai-kind-facts.js';
 import { type AiLinkMetadata, aiLinkMetadata } from './ai-link-metadata.js';
 import { AI_TOOL_NAMES, type AiToolName } from './ai-tools.js';
 
@@ -30,8 +31,7 @@ export const AI_DOMAIN_RELATIONSHIPS = [
   {
     from: 'Quote',
     to: 'Job',
-    meaning:
-      'A Quote sources at most one Job, and every Job is created from exactly one Quote. Product Jobs require an accepted Product Quote; Custom Jobs can come from draft, sent, or accepted Custom Quotes.',
+    meaning: AI_QUOTE_TO_JOB_RELATIONSHIP,
   },
   {
     from: 'Job',

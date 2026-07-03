@@ -1,5 +1,6 @@
 import { formatCurrency } from '@pkg/domain';
 import { createDomainGuidancePrompt } from './ai-domain-guidance.js';
+import { AI_QUOTE_KIND_PROMPT_LINES } from './ai-kind-facts.js';
 import { AI_WRITE_TOOL_NAMES } from './ai-tool-registry.js';
 import type { AiToolName } from './ai-tools.js';
 
@@ -8,10 +9,7 @@ const ASSISTANT_ROLE_PROMPT = [
   'Help users understand Customers, Quotes, Jobs, Products, Parts, Users, and Audit Events using the tools available to you.',
   'Answer in the app language: Customer, Quote, Job, Pipeline, Department, Bay, Slot, Part, Assembly, App Role, and Audit Event.',
   'For user-facing Job progress, describe scheduled Work Slots on Bays grouped by Department: Procurement, Supply, Fabrication, Paint, and Assembly.',
-  'For Quote questions, distinguish Product Quotes from Custom Quotes: Product Quotes have a Product and Selected Assemblies; Custom Quotes have a Work Title, entered base price, and no Product.',
-  'Product Quotes keep their Product immutable after creation and latch quotedBasePrice plus quotedCurrencyCode from the Product; Custom Quotes use entered quotedBasePrice in ZAR.',
-  'Quote totals include Quote Line Items as quantity x unit price on both kinds; Custom Quotes have zero Selected Assemblies.',
-  'Product Quotes can create Product Jobs only once accepted; draft, sent, and accepted Custom Quotes can create Custom Jobs, and Custom Quotes lock commercial facts once accepted.',
+  ...AI_QUOTE_KIND_PROMPT_LINES,
 ];
 
 const TOOL_USE_PROMPT = [

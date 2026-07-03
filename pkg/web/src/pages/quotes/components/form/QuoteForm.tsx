@@ -44,7 +44,8 @@ type QuoteFormProps = {
 };
 
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
-  const isLocked = quote.job !== null;
+  const isCustom = quote.kind === 'custom';
+  const isLocked = quote.kind === 'product' ? quote.job !== null : quote.status === 'accepted';
   const quoteCurrencyCode = quote.productCurrencyCode ?? quote.quotedCurrencyCode;
 
   const selectedProduct = useMemo(
@@ -97,6 +98,11 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                   {priorityQuote ? <QuotePriorityAlert priorityQuote={priorityQuote} /> : null}
                   <QuoteFormSection icon={IconSettings} title="Quote setup">
                     <div className="grid gap-3 md:grid-cols-2">
+                      {isCustom ? (
+                        <form.AppField name="workTitle">
+                          {(field) => <field.TextField autoComplete="off" disabled={isLocked} label="Work title" />}
+                        </form.AppField>
+                      ) : null}
                       <form.AppField name="salesPersonId">
                         {(field) => (
                           <field.SelectField
@@ -196,6 +202,18 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
 
                   <QuoteFormSection icon={IconReceipt2} title="Pricing">
                     <div className="grid gap-3 md:grid-cols-2">
+                      {isCustom ? (
+                        <form.AppField name="basePrice">
+                          {(field) => (
+                            <field.CurrencyField
+                              autoComplete="off"
+                              currencyCode={quoteCurrencyCode}
+                              disabled={isLocked}
+                              label="Base price"
+                            />
+                          )}
+                        </form.AppField>
+                      ) : null}
                       <form.AppField name="discountPercent">
                         {(field) => (
                           <field.NumberField
@@ -242,27 +260,29 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                     <form.AppField name="notes">{(field) => <field.TextareaField rows={4} />}</form.AppField>
                   </QuoteFormSection>
 
-                  <QuoteFormSection
-                    description="Standard assemblies are included. Optional assemblies add to the quote."
-                    icon={IconComponents}
-                    title="Assemblies"
-                  >
-                    <form.Field name="selectedAssemblies">
-                      {(field) => (
-                        <QuoteAssembliesSelector
-                          catalogAssemblies={selectedProduct.assemblies}
-                          currencyCode={selectedProduct.currencyCode}
-                          initialSelections={quote.selectedAssemblies}
-                          onChange={(value) => {
-                            field.handleChange(value);
-                            autosave.commit();
-                          }}
-                          readOnly={isLocked}
-                          value={field.state.value}
-                        />
-                      )}
-                    </form.Field>
-                  </QuoteFormSection>
+                  {isCustom ? null : (
+                    <QuoteFormSection
+                      description="Standard assemblies are included. Optional assemblies add to the quote."
+                      icon={IconComponents}
+                      title="Assemblies"
+                    >
+                      <form.Field name="selectedAssemblies">
+                        {(field) => (
+                          <QuoteAssembliesSelector
+                            catalogAssemblies={selectedProduct.assemblies}
+                            currencyCode={selectedProduct.currencyCode}
+                            initialSelections={quote.selectedAssemblies}
+                            onChange={(value) => {
+                              field.handleChange(value);
+                              autosave.commit();
+                            }}
+                            readOnly={isLocked}
+                            value={field.state.value}
+                          />
+                        )}
+                      </form.Field>
+                    </QuoteFormSection>
+                  )}
                 </div>
               </TabsContent>
               <TabsContent className="pt-4" value="documents">
@@ -302,12 +322,14 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                 const deliveryIncluded = state.values.deliveryIncluded;
                 const deliveryPrice = deliveryIncluded ? state.values.deliveryPrice : 0;
                 const lineItems = state.values.lineItems;
-                const quotedBasePrice = quote.quotedBasePrice;
-                const selectedSnapshots = resolveSelectedAssemblySnapshots({
-                  catalogAssemblies: selectedProduct.assemblies,
-                  formSelections: state.values.selectedAssemblies,
-                  initialSelections: quote.selectedAssemblies,
-                });
+                const quotedBasePrice = isCustom ? state.values.basePrice : quote.quotedBasePrice;
+                const selectedSnapshots = isCustom
+                  ? []
+                  : resolveSelectedAssemblySnapshots({
+                      catalogAssemblies: selectedProduct.assemblies,
+                      formSelections: state.values.selectedAssemblies,
+                      initialSelections: quote.selectedAssemblies,
+                    });
                 // Stale selections (reference gone from the freshly loaded catalog) are excluded from
                 // the on-screen Quote Pricing so the figure reflects only assemblies still producible.
                 const { staleSelections } = resolveEffectiveBom({
@@ -326,7 +348,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                   deliveryPrice,
                   discountAmount: pricing.discountAmount,
                   discountPercent,
-                  productPrice: quotedBasePrice,
+                  basePrice: quotedBasePrice,
                   currencyCode: selectedProduct.currencyCode,
                   lineItems,
                   lineItemTotal: pricing.lineItemTotal,
@@ -348,6 +370,19 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
 const QuotePriorityAlert: React.FC<{
   priorityQuote: PriorityQuote;
 }> = ({ priorityQuote }) => {
+  if (priorityQuote.kind === 'custom') {
+    return (
+      <Alert className="border-warning/45 bg-warning/10 text-warning-foreground">
+        <IconAlertTriangle className="text-warning" />
+        <AlertTitle>Accepted custom quote</AlertTitle>
+        <AlertDescription className="text-warning-foreground/85">
+          This custom quote is accepted and not linked to a Job. {describeDeliveryDates(priorityQuote)} Keep the
+          delivery commitment visible for {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   const buildDuration =
     priorityQuote.productBuildTimeDays === null ? '—' : formatWorkingDays(priorityQuote.productBuildTimeDays);
   const productName = priorityQuote.productName ?? '—';

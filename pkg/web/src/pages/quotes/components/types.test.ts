@@ -28,6 +28,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     id: QUOTE_ID,
     code: 1,
     customerId: CUSTOMER_ID,
+    kind: 'product',
     productId: PRODUCT_ID,
     salesPersonId: 'auth-user-1',
     status: 'sent',
@@ -45,6 +46,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     quotedCurrencyCode: 'ZAR',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
+    workTitle: null,
     customerAddress: '1 Mine Road',
     customerCompanyName: 'Acme',
     customerContactPerson: 'Ada Sales',
@@ -110,11 +112,14 @@ function buildCreateFormValues(overrides: Partial<QuoteCreateFormValues> = {}): 
   return {
     customerId: CUSTOMER_ID,
     customerMode: 'existing',
+    basePrice: 0,
     inlineCompanyName: '',
+    kind: 'product',
     productId: PRODUCT_ID,
     rangeId: '',
     salesPersonId: 'auth-user-1',
     status: 'sent',
+    workTitle: '',
     ...overrides,
   };
 }
@@ -125,6 +130,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
     deliveryIncluded: true,
     deliveryPrice: 50,
     discountPercent: 10,
+    basePrice: 1000,
     notes: 'Some notes',
     documentNotes: '30 days',
     lineItems: [],
@@ -134,6 +140,7 @@ function buildFormValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormVal
     selectedAssemblies: [],
     status: 'sent',
     validUntil: '2026-01-01',
+    workTitle: '',
     ...overrides,
   };
 }
@@ -147,6 +154,8 @@ describe('toQuoteFormValues', () => {
     expect(values.depositPercent).toBe(30);
     expect(values.validUntil).toBe('2026-01-01');
     expect(values.status).toBe('sent');
+    expect(values.basePrice).toBe(1000);
+    expect(values.workTitle).toBe('');
     expect(values.lineItems).toEqual([{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }]);
     expect(values.selectedAssemblies).toEqual([{ type: 'existing', id: SELECTION_ID }]);
   });
@@ -159,6 +168,7 @@ describe('toQuoteFormValues', () => {
         validUntil: null,
         preferredDeliveryDate: null,
         plannedDeliveryDate: null,
+        workTitle: null,
       }),
     );
 
@@ -175,11 +185,14 @@ describe('QuoteCreateFormValues', () => {
     expect(QUOTE_CREATE_DEFAULT_VALUES).toEqual({
       customerId: '',
       customerMode: 'existing',
+      basePrice: 0,
       inlineCompanyName: '',
+      kind: 'product',
       productId: '',
       rangeId: '',
       salesPersonId: '',
       status: 'draft',
+      workTitle: '',
     });
   });
 
@@ -195,6 +208,18 @@ describe('QuoteCreateFormValues', () => {
       QuoteCreateFormValues.safeParse(
         buildCreateFormValues({ customerMode: 'inline', customerId: '', inlineCompanyName: '' }),
       ).success,
+    ).toBe(false);
+  });
+
+  it('validates product and custom offering fields by kind', () => {
+    expect(QuoteCreateFormValues.safeParse(buildCreateFormValues({ productId: '' })).success).toBe(false);
+    expect(
+      QuoteCreateFormValues.safeParse(
+        buildCreateFormValues({ kind: 'custom', productId: '', workTitle: 'Hydraulic repair', basePrice: 2500 }),
+      ).success,
+    ).toBe(true);
+    expect(
+      QuoteCreateFormValues.safeParse(buildCreateFormValues({ kind: 'custom', productId: '', workTitle: '' })).success,
     ).toBe(false);
   });
 });
@@ -246,6 +271,7 @@ describe('toQuoteCreateInput', () => {
     expect(input.plannedDeliveryDate).toBeNull();
     expect(input.notes).toBeNull();
     expect(input.documentNotes).toBeNull();
+    expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID });
     expect(input.lineItems).toEqual([]);
     expect(input.selectedAssemblies).toEqual([]);
   });
@@ -264,10 +290,18 @@ describe('toQuoteCreateInput', () => {
     expect(input.status).toBe('cancelled');
   });
 
+  it('builds the custom offering from work title and base price', () => {
+    const input = toQuoteCreateInput(
+      buildCreateFormValues({ kind: 'custom', productId: '', workTitle: 'Hydraulic repair', basePrice: 2500 }),
+    );
+
+    expect(input.offering).toEqual({ kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500 });
+  });
+
   it('ignores the create-dialog Range filter in create submissions', () => {
     const input = toQuoteCreateInput(buildCreateFormValues({ rangeId: RANGE_ID }));
 
-    expect(input.productId).toBe(PRODUCT_ID);
+    expect(input.offering).toEqual({ kind: 'product', productId: PRODUCT_ID });
     expect(input).not.toHaveProperty('rangeId');
   });
 });
@@ -282,6 +316,7 @@ describe('toQuoteUpdateInput', () => {
     expect(input).toMatchObject({
       id: QUOTE_ID,
       depositPercent: 30,
+      basePrice: 1000,
       lineItems: [{ name: 'Transport crate', quantity: 1, unitPrice: 300 }],
       salesPersonId: 'auth-user-1',
       status: 'sent',

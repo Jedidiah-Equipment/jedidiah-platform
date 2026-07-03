@@ -19,7 +19,10 @@ const baseCreateInput = {
   },
   notes: null,
   documentNotes: null,
-  productId: '550e8400-e29b-41d4-a716-446655440000',
+  offering: {
+    kind: 'product' as const,
+    productId: '550e8400-e29b-41d4-a716-446655440000',
+  },
   salesPersonId: 'auth-user-1',
   status: 'draft' as const,
 };
@@ -30,7 +33,36 @@ describe('QuoteCreateInput', () => {
       depositPercent: 0,
       discountPercent: 0,
       lineItems: [],
+      offering: { kind: 'product', productId: '550e8400-e29b-41d4-a716-446655440000' },
     });
+  });
+
+  it('parses a custom offering with a trimmed work title and entered base price', () => {
+    expect(
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: {
+          kind: 'custom',
+          workTitle: '  Hydraulic repair  ',
+          basePrice: '2500.50',
+        },
+      }),
+    ).toMatchObject({
+      offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500.5 },
+    });
+  });
+
+  it('rejects a blank custom work title', () => {
+    expect(() =>
+      QuoteCreateInput.parse({
+        ...baseCreateInput,
+        offering: {
+          kind: 'custom',
+          workTitle: ' ',
+          basePrice: 2500,
+        },
+      }),
+    ).toThrow();
   });
 
   it('rejects a negative deposit percent', () => {
@@ -99,6 +131,7 @@ describe('QuoteDetail', () => {
       documentNotes: null,
       id: '550e8400-e29b-41d4-a716-446655440010',
       job: null,
+      kind: 'custom',
       notes: null,
       plannedDeliveryDate: null,
       preferredDeliveryDate: null,
@@ -119,6 +152,7 @@ describe('QuoteDetail', () => {
       statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
       validUntil: null,
+      workTitle: 'Hydraulic repair',
     };
 
     expect(QuoteSummary.parse(quoteSummary)).toMatchObject({
@@ -168,6 +202,7 @@ describe('QuoteDetail', () => {
         documentNotes: null,
         id: '550e8400-e29b-41d4-a716-446655440010',
         job: null,
+        kind: 'product',
         notes: null,
         plannedDeliveryDate: null,
         preferredDeliveryDate: null,
@@ -208,6 +243,7 @@ describe('QuoteDetail', () => {
         statusChangedAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
         validUntil: null,
+        workTitle: null,
       }).productBays,
     ).toEqual([
       expect.objectContaining({
@@ -280,6 +316,7 @@ describe('PriorityQuote', () => {
       documentNotes: null,
       id: '550e8400-e29b-41d4-a716-446655440010',
       job: null,
+      kind: 'product',
       notes: null,
       plannedDeliveryDate: '2026-08-01',
       preferredDeliveryDate: '2026-07-15',
@@ -300,6 +337,7 @@ describe('PriorityQuote', () => {
       statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
       validUntil: null,
+      workTitle: null,
     };
 
     expect(
@@ -332,6 +370,7 @@ describe('UpcomingDeliveryQuotesResult', () => {
         jobCode: 7,
         jobId: '550e8400-e29b-41d4-a716-446655440020',
       },
+      kind: 'product',
       notes: null,
       plannedDeliveryDate: '2026-06-20',
       preferredDeliveryDate: null,
@@ -352,6 +391,7 @@ describe('UpcomingDeliveryQuotesResult', () => {
       statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
       validUntil: null,
+      workTitle: null,
     };
 
     expect(

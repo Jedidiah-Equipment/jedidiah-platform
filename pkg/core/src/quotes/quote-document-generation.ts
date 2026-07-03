@@ -34,7 +34,11 @@ import type { StorageAdapter } from '../documents/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { generateProductBrochureIfComplete } from '../products/product-brochure-document.js';
 import { createQuoteDocument, getQuoteDocuments } from './quote-document.js';
-import { QuoteDocumentGenerationNotAllowedError, QuoteNotFoundError } from './quote-errors.js';
+import {
+  QuoteDocumentGenerationNotAllowedError,
+  QuoteInvalidReferenceError,
+  QuoteNotFoundError,
+} from './quote-errors.js';
 import type { QuoteLineItemRow } from './quote-line-items.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
 
@@ -43,7 +47,7 @@ export type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
     typeof customers.$inferSelect,
     'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'vatNumber'
   >;
-  product: Pick<typeof products.$inferSelect, 'buildTimeDays' | 'currencyCode' | 'modelCode' | 'name'>;
+  product: Pick<typeof products.$inferSelect, 'buildTimeDays' | 'currencyCode' | 'modelCode' | 'name'> | null;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name' | 'phoneNumber'> | null;
   lineItems: QuoteLineItemRow[];
   selectedAssemblies: QuoteSelectedAssemblyRow[];
@@ -86,13 +90,20 @@ export async function renderQuoteDocumentRevision({
   const filename = `${formatQuoteCode(quote.code)}-rev-${revision}.pdf`;
   const document = await getQuoteDocumentModel({ db, input, quote });
   const renderedQuoteBytes = await pdfRenderer({ document, filename });
-  const brochure = await generateProductBrochureIfComplete({
-    db,
-    pdfRenderer: brochureRenderer,
-    productId: quote.productId,
-    storage,
+  const brochure =
+    quote.kind === 'product' && quote.productId
+      ? await generateProductBrochureIfComplete({
+          db,
+          pdfRenderer: brochureRenderer,
+          productId: quote.productId,
+          storage,
+        })
+      : null;
+  const packet = await buildQuoteDocumentPacket({
+    brochure,
+    renderedQuoteBytes,
+    warnWhenMissingBrochure: quote.kind === 'product',
   });
-  const packet = await buildQuoteDocumentPacket({ brochure, renderedQuoteBytes });
 
   return {
     bytes: packet.bytes,
@@ -155,20 +166,24 @@ export async function generateQuoteDocument({
 async function buildQuoteDocumentPacket({
   brochure,
   renderedQuoteBytes,
+  warnWhenMissingBrochure,
 }: {
   brochure: { bytes: Uint8Array } | null;
   renderedQuoteBytes: Uint8Array;
+  warnWhenMissingBrochure: boolean;
 }): Promise<{ bytes: Uint8Array; warnings: QuoteDocumentGenerationWarning[] }> {
   if (!brochure) {
     return {
       bytes: renderedQuoteBytes,
-      warnings: [
-        {
-          code: 'quote_document.brochure_config_incomplete',
-          message:
-            "This Quote Product's Brochure is not fully configured, so the Quote Document was generated without one.",
-        },
-      ],
+      warnings: warnWhenMissingBrochure
+        ? [
+            {
+              code: 'quote_document.brochure_config_incomplete',
+              message:
+                "This Quote Product's Brochure is not fully configured, so the Quote Document was generated without one.",
+            },
+          ]
+        : [],
     };
   }
 
@@ -187,7 +202,8 @@ export async function getQuoteDocumentModel({
   input: QuoteDocumentGenerationInput;
   quote: QuoteDocumentGenerationRow;
 }): Promise<QuoteDocumentModel> {
-  const productAssemblies = await listAssemblies({ productId: quote.productId, tx: db });
+  const productAssemblies =
+    quote.kind === 'product' && quote.productId ? await listAssemblies({ productId: quote.productId, tx: db }) : [];
   const effectiveBom = resolveEffectiveBom({
     catalogAssemblies: productAssemblies,
     selectedAssemblies: quote.selectedAssemblies,
@@ -212,7 +228,7 @@ export async function getQuoteDocumentModel({
   const lineItems: QuoteDocumentLineItem[] = [
     {
       amount: quote.quotedBasePrice,
-      descriptionLines: [`${quote.product.modelCode} ${quote.product.name}`.trim()],
+      descriptionLines: [getQuoteDocumentBaseDescription(quote)],
       kind: 'base',
       quantity: 1,
     },
@@ -319,6 +335,24 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
   }
 
   return row satisfies QuoteDocumentGenerationRow;
+}
+
+function getQuoteDocumentBaseDescription(
+  quote: Pick<QuoteDocumentGenerationRow, 'kind' | 'product' | 'workTitle'>,
+): string {
+  if (quote.kind === 'custom') {
+    if (!quote.workTitle) {
+      throw new QuoteInvalidReferenceError('Custom Quote work title was not found.');
+    }
+
+    return quote.workTitle;
+  }
+
+  if (!quote.product) {
+    throw new QuoteInvalidReferenceError('Quote product was not found.');
+  }
+
+  return `${quote.product.modelCode} ${quote.product.name}`.trim();
 }
 
 function formatQuoteDocumentLineItemDescription(item: Pick<QuoteLineItemRow, 'name' | 'quantity'>): string {

@@ -33,6 +33,7 @@ import {
   QuoteCode,
   type QuoteCreateInput,
   type QuoteDetail,
+  type QuoteKind,
   type QuoteListInput,
   type QuoteListResult,
   type QuoteProductBayAvailabilityInput,
@@ -57,8 +58,9 @@ import {
 import { customerAuditDescriptor } from '../customers/customer-service.js';
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
-import { getProduct, listProductBays } from '../products/product-service.js';
+import { listProductBays } from '../products/product-service.js';
 import {
+  QuoteCustomSelectedAssembliesError,
   QuoteDiscountInvalidError,
   QuoteInvalidReferenceError,
   QuoteLockedError,
@@ -82,6 +84,13 @@ import {
 
 type QuoteRow = typeof quotes.$inferSelect;
 type QuoteLineItemAuditItem = Pick<QuoteLineItemRow, 'name' | 'quantity' | 'unitPrice'>;
+type QuoteOfferingRow = {
+  kind: QuoteKind;
+  productId: UUID | null;
+  quotedBasePrice: number;
+  quotedCurrencyCode: string;
+  workTitle: string | null;
+};
 type QuoteAuditInput = {
   row: QuoteRow;
   lineItems: readonly QuoteLineItemAuditItem[];
@@ -108,12 +117,14 @@ export const quoteAuditDescriptor = defineAuditDescriptor<QuoteAuditInput>({
     discountPercent: row.discountPercent,
     notes: row.notes,
     documentNotes: row.documentNotes,
+    kind: row.kind,
     plannedDeliveryDate: row.plannedDeliveryDate,
     preferredDeliveryDate: row.preferredDeliveryDate,
     productId: row.productId,
     quotedBasePrice: row.quotedBasePrice,
     quotedCurrencyCode: row.quotedCurrencyCode,
     salesPersonId: row.salesPersonId,
+    workTitle: row.workTitle,
     lineItems: JSON.stringify(toQuoteLineItemAuditRecord(lineItems)),
     selectedAssemblies: JSON.stringify(toQuoteSelectedAssemblyAuditRecord(selectedAssemblies)),
     status: row.status,
@@ -179,6 +190,7 @@ export function mapQuote(row: QuoteRow): Quote {
     deliveryPrice: row.deliveryPrice,
     discountPercent: row.discountPercent,
     id: row.id,
+    kind: row.kind,
     notes: row.notes,
     documentNotes: row.documentNotes,
     plannedDeliveryDate: row.plannedDeliveryDate,
@@ -191,6 +203,7 @@ export function mapQuote(row: QuoteRow): Quote {
     statusChangedAt: row.statusChangedAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     validUntil: row.validUntil,
+    workTitle: row.workTitle,
   });
 }
 
@@ -205,7 +218,7 @@ export async function createQuote({
 }): Promise<QuoteDetail> {
   return db.transaction(async (tx) => {
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
-    const product = await getProduct({ db, id: input.productId });
+    const offering = await resolveQuoteOffering({ input, tx });
     assertValidDiscount({ discountPercent: input.discountPercent });
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
 
@@ -217,16 +230,18 @@ export async function createQuote({
         deliveryIncluded: input.deliveryIncluded,
         deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
         discountPercent: input.discountPercent,
+        kind: offering.kind,
         notes: input.notes,
         documentNotes: input.documentNotes,
         plannedDeliveryDate: input.plannedDeliveryDate,
         preferredDeliveryDate: input.preferredDeliveryDate,
-        productId: input.productId,
-        quotedBasePrice: product.basePrice,
-        quotedCurrencyCode: product.currencyCode,
+        productId: offering.productId,
+        quotedBasePrice: offering.quotedBasePrice,
+        quotedCurrencyCode: offering.quotedCurrencyCode,
         salesPersonId: input.salesPersonId,
         status: input.status,
         validUntil: input.validUntil,
+        workTitle: offering.workTitle,
       })
       .returning();
 
@@ -234,13 +249,19 @@ export async function createQuote({
       throw new Error('Quote insert did not return a row');
     }
 
-    const resolved = await resolveQuoteSelectedAssemblies({
-      input,
-      productId: row.productId,
-      quoteId: row.id,
-      tx,
-    });
-    const selectedAssemblies = await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx });
+    const selectedAssemblies =
+      row.kind === 'product' && row.productId
+        ? await persistQuoteSelectedAssemblies({
+            quoteId: row.id,
+            resolved: await resolveQuoteSelectedAssemblies({
+              input,
+              productId: row.productId,
+              quoteId: row.id,
+              tx,
+            }),
+            tx,
+          })
+        : [];
     const lineItems = await persistQuoteLineItems({ input, quoteId: row.id, tx });
 
     await recordAuditCreate({
@@ -487,8 +508,8 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
   }
 
   const [assemblies, productBaysForQuote] = await Promise.all([
-    row.product ? listAssemblies({ tx: db, productId: row.productId }) : Promise.resolve([]),
-    row.product ? listProductBays({ db, productId: row.productId }) : Promise.resolve([]),
+    row.product && row.productId ? listAssemblies({ tx: db, productId: row.productId }) : Promise.resolve([]),
+    row.product && row.productId ? listProductBays({ db, productId: row.productId }) : Promise.resolve([]),
   ]);
 
   return mapQuoteDetail(row, assemblies, productBaysForQuote);
@@ -502,6 +523,15 @@ export async function getQuoteProductBayAvailability({
   input: QuoteProductBayAvailabilityInput;
 }): Promise<QuoteProductBayAvailabilityResult> {
   const quote = await getQuote({ db, id: input.quoteId });
+  if (quote.kind === 'custom') {
+    return QuoteProductBayAvailabilityResult.parse({
+      bays: [],
+      buildTimeDays: 0,
+      defaultLeadTimeWorkingDays: 0,
+      maxBayWaitWorkingDays: 0,
+    });
+  }
+
   if (!quote.productId || quote.productBuildTimeDays === null) {
     throw new QuoteInvalidReferenceError('Quote product was not found.');
   }
@@ -584,6 +614,10 @@ export async function updateQuote({
     const beforeSelectedAssemblies = await listQuoteSelectedAssemblies({ quoteId: before.id, tx });
     const beforeLineItems = await listQuoteLineItems({ quoteId: before.id, tx });
 
+    if (before.kind === 'custom') {
+      assertNoCustomSelectedAssemblies(input);
+    }
+
     assertValidDiscount({ discountPercent: input.discountPercent });
 
     await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
@@ -594,26 +628,31 @@ export async function updateQuote({
       deliveryIncluded: input.deliveryIncluded,
       deliveryPrice: input.deliveryIncluded ? input.deliveryPrice : 0,
       discountPercent: input.discountPercent,
+      kind: before.kind,
       notes: input.notes,
       documentNotes: input.documentNotes,
       plannedDeliveryDate: input.plannedDeliveryDate,
       preferredDeliveryDate: input.preferredDeliveryDate,
       productId: before.productId,
-      quotedBasePrice: before.quotedBasePrice,
+      quotedBasePrice: before.kind === 'custom' ? (input.basePrice ?? before.quotedBasePrice) : before.quotedBasePrice,
       quotedCurrencyCode: before.quotedCurrencyCode,
       salesPersonId: input.salesPersonId,
       status: input.status,
       validUntil: input.validUntil,
+      workTitle: before.kind === 'custom' ? (input.workTitle ?? before.workTitle) : before.workTitle,
     };
     const after = { ...before, ...patch };
     const nextLineItems = input.lineItems ?? beforeLineItems;
-    const resolved = await resolveQuoteSelectedAssemblies({
-      currentRows: beforeSelectedAssemblies,
-      input,
-      productId: before.productId,
-      quoteId: before.id,
-      tx,
-    });
+    const resolved =
+      before.kind === 'product' && before.productId
+        ? await resolveQuoteSelectedAssemblies({
+            currentRows: beforeSelectedAssemblies,
+            input,
+            productId: before.productId,
+            quoteId: before.id,
+            tx,
+          })
+        : { newRows: [], removeIds: [], rows: beforeSelectedAssemblies };
     const changes = diffAuditUpdate(
       quoteAuditDescriptor,
       { row: before, lineItems: beforeLineItems, selectedAssemblies: beforeSelectedAssemblies },
@@ -627,6 +666,8 @@ export async function updateQuote({
     const editable = assertQuoteEditable({
       changedFields: Object.keys(changes),
       hasJob: await quoteHasJob({ quoteId: before.id, tx }),
+      kind: before.kind,
+      status: before.status,
     });
 
     if (!editable.allowed) {
@@ -647,7 +688,10 @@ export async function updateQuote({
       throw new QuoteNotFoundError(input.id);
     }
 
-    const selectedAssemblies = await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx });
+    const selectedAssemblies =
+      before.kind === 'product'
+        ? await persistQuoteSelectedAssemblies({ quoteId: row.id, resolved, tx })
+        : resolved.rows;
     const lineItems =
       input.lineItems === undefined ? beforeLineItems : await persistQuoteLineItems({ input, quoteId: row.id, tx });
 
@@ -810,6 +854,56 @@ async function resolveQuoteCustomer({
   return customer.id;
 }
 
+async function resolveQuoteOffering({
+  input,
+  tx,
+}: {
+  input: Pick<QuoteCreateInput, 'offering' | 'selectedAssemblies'>;
+  tx: DatabaseTransaction;
+}): Promise<QuoteOfferingRow> {
+  if (input.offering.kind === 'custom') {
+    assertNoCustomSelectedAssemblies(input);
+
+    return {
+      kind: 'custom',
+      productId: null,
+      quotedBasePrice: input.offering.basePrice,
+      quotedCurrencyCode: 'ZAR',
+      workTitle: input.offering.workTitle,
+    };
+  }
+
+  const [product] = await tx
+    .select({
+      basePrice: products.basePrice,
+      currencyCode: products.currencyCode,
+      id: products.id,
+    })
+    .from(products)
+    .where(eq(products.id, input.offering.productId))
+    .limit(1);
+
+  if (!product) {
+    throw new QuoteInvalidReferenceError('Quote product was not found.');
+  }
+
+  return {
+    kind: 'product',
+    productId: product.id,
+    quotedBasePrice: product.basePrice,
+    quotedCurrencyCode: product.currencyCode,
+    workTitle: null,
+  };
+}
+
+function assertNoCustomSelectedAssemblies(
+  input: Pick<QuoteCreateInput | QuoteUpdateInput, 'selectedAssemblies'>,
+): void {
+  if (input.selectedAssemblies.length > 0) {
+    throw new QuoteCustomSelectedAssembliesError('Custom Quotes cannot have Selected Assemblies.');
+  }
+}
+
 async function assertQuoteCustomer({ customerId, tx }: { customerId: UUID; tx: DatabaseTransaction }): Promise<void> {
   const [customer] = await tx
     .select({
@@ -893,6 +987,10 @@ function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
     conditions.push(eq(quotes.customerId, input.filters.customerId));
   }
 
+  if (input.filters.kind) {
+    conditions.push(eq(quotes.kind, input.filters.kind));
+  }
+
   if (input.filters.productId) {
     conditions.push(eq(quotes.productId, input.filters.productId));
   }
@@ -909,6 +1007,7 @@ function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
         sql`${quotes.id}::text`,
         sql`${quotes.code}::text`,
         sql`${customers.companyName}`,
+        sql`${quotes.workTitle}`,
         sql`${products.name}`,
         sql`${products.modelCode}`,
       ]),
@@ -938,7 +1037,7 @@ function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
     code: sql`${quotes.code}`,
     createdAt: sql`${quotes.createdAt}`,
     customerCompanyName: sql`${customers.companyName}`,
-    productName: sql`coalesce(${products.name}, '')`,
+    productName: sql`coalesce(${products.name}, ${quotes.workTitle}, '')`,
     salesPersonName: sql`${user.name}`,
     status: sql`${quotes.status}`,
   } as const satisfies Record<QuoteSortBy, SQL>;

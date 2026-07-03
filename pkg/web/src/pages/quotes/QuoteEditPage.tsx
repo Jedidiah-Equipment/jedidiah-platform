@@ -33,7 +33,7 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
   return (
     <PageLayout
       actions={quote ? <QuoteStatusBadge size="lg" status={quote.status} /> : undefined}
-      description="Edit Quote"
+      description={quote?.kind === 'custom' ? (quote.workTitle ?? 'Custom Quote') : 'Edit Quote'}
       size="lg"
       title={quote?.code ?? 'Loading quote...'}
     >

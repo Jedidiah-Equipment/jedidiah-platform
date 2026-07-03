@@ -104,7 +104,12 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
     }),
   );
 
-  if (!canCreateJob || quote.status !== 'accepted' || (quote.job !== null && !createJobMutation.isSuccess)) {
+  if (
+    !canCreateJob ||
+    quote.kind !== 'product' ||
+    quote.status !== 'accepted' ||
+    (quote.job !== null && !createJobMutation.isSuccess)
+  ) {
     return (
       <Empty>
         <EmptyHeader>
@@ -113,9 +118,11 @@ const StartJobContent: React.FC<{ quote: QuoteDetail }> = ({ quote }) => {
           <EmptyDescription>
             {quote.job !== null
               ? 'A Job has already been created from this quote.'
-              : quote.status !== 'accepted'
-                ? 'Only accepted quotes can start a Job.'
-                : 'You do not have permission to create Jobs.'}
+              : quote.kind !== 'product'
+                ? 'Custom Quote Job creation is not available yet.'
+                : quote.status !== 'accepted'
+                  ? 'Only accepted quotes can start a Job.'
+                  : 'You do not have permission to create Jobs.'}
           </EmptyDescription>
         </EmptyHeader>
         <Button render={<Link params={{ id: quote.id }} to="/quotes/$id/edit" />} variant="outline">

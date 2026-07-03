@@ -126,6 +126,7 @@ function buildPriorityQuote(overrides: Partial<Record<keyof PriorityQuoteType, u
     earliestDeliveryDate: '2026-06-20',
     id: '00000000-0000-4000-8000-000000000000',
     job: null,
+    kind: 'product',
     notes: null,
     plannedDeliveryDate: '2026-07-10',
     preferredDeliveryDate: '2026-06-20',
@@ -146,6 +147,7 @@ function buildPriorityQuote(overrides: Partial<Record<keyof PriorityQuoteType, u
     statusChangedAt: '2026-06-01T10:00:00.000Z',
     updatedAt: '2026-06-01T10:00:00.000Z',
     validUntil: '2026-08-01T00:00:00.000Z',
+    workTitle: null,
     ...overrides,
   });
 }

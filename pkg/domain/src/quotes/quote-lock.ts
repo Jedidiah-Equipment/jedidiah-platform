@@ -1,3 +1,5 @@
+import type { QuoteKind, QuoteStatus } from '@pkg/schema';
+
 export const EDITABLE_LOCKED_QUOTE_FIELDS = new Set([
   'notes',
   'documentNotes',
@@ -18,19 +20,27 @@ export type QuoteEditableResult =
 export function assertQuoteEditable({
   changedFields,
   hasJob,
+  kind,
+  status,
 }: {
   changedFields: Iterable<string>;
   hasJob: boolean;
+  kind: QuoteKind;
+  status: QuoteStatus;
 }): QuoteEditableResult {
-  if (!hasJob) {
+  const locked = kind === 'product' ? hasJob : status === 'accepted';
+
+  if (!locked) {
     return { allowed: true };
   }
+
+  const lockReason = kind === 'product' ? 'it already has a Job' : 'it has been accepted';
 
   for (const field of changedFields) {
     if (!EDITABLE_LOCKED_QUOTE_FIELDS.has(field)) {
       return {
         allowed: false,
-        reason: `Quote is locked because it already has a Job; ${field} cannot be changed.`,
+        reason: `Quote is locked because ${lockReason}; ${field} cannot be changed.`,
       };
     }
   }

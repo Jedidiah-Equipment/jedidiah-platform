@@ -1,4 +1,4 @@
-import type { QuoteStatus } from '@pkg/schema';
+import type { QuoteKind, QuoteStatus } from '@pkg/schema';
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
@@ -29,9 +29,9 @@ export const quotes = pgTable(
     customerId: uuid('customer_id')
       .notNull()
       .references(() => customers.id, { onDelete: 'restrict' }),
-    productId: uuid('product_id')
-      .notNull()
-      .references(() => products.id, { onDelete: 'restrict' }),
+    kind: text('kind').notNull().default('product').$type<QuoteKind>(),
+    workTitle: text('work_title'),
+    productId: uuid('product_id').references(() => products.id, { onDelete: 'restrict' }),
     salesPersonId: text('sales_person_id')
       .notNull()
       .references(() => user.id, { onDelete: 'restrict' }),
@@ -57,6 +57,14 @@ export const quotes = pgTable(
     check('quote_deposit_percent_nonnegative', sql`${table.depositPercent} >= 0`),
     check('quote_deposit_percent_not_above_100', sql`${table.depositPercent} <= 100`),
     check('quote_delivery_price_nonnegative', sql`${table.deliveryPrice} >= 0`),
+    check(
+      'quote_kind_shape',
+      sql`(
+        ${table.kind} = 'product' and ${table.productId} is not null and ${table.workTitle} is null
+      ) or (
+        ${table.kind} = 'custom' and ${table.productId} is null and length(trim(${table.workTitle})) > 0
+      )`,
+    ),
     uniqueIndex('quote_code_unique').on(table.code),
   ],
 );

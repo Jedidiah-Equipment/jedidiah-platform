@@ -26,6 +26,7 @@ import {
   getQuoteProductBayAvailability,
   listPriorityQuotes,
   listQuoteSalespeople,
+  listQuotes,
   updateQuote,
 } from './quote-service.js';
 
@@ -145,7 +146,7 @@ describe('getQuote', () => {
     const [job] = await context.db
       .insert(jobs)
       .values({
-        productId: quote.productId,
+        productId: context.product.id,
         productSerialNumber: 'QUOTE-SUMMARY-001-26-001',
         productSerialPrefix: 'QUOTE-SUMMARY-001',
         productSerialSequence: 1,
@@ -175,7 +176,7 @@ describe('quote line items', () => {
           { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
           { name: 'Transport crate', quantity: 1, unitPrice: 300 },
         ],
-        productId: context.product.id,
+        offering: { kind: 'product', productId: context.product.id },
         salesPersonId: context.salesPerson.id,
         status: 'draft',
       }),
@@ -216,7 +217,7 @@ describe('quote line items', () => {
           { name: 'Hydraulic hose', quantity: 2, unitPrice: 125 },
           { name: 'Transport crate', quantity: 1, unitPrice: 300 },
         ],
-        productId: context.product.id,
+        offering: { kind: 'product', productId: context.product.id },
         salesPersonId: context.salesPerson.id,
         status: 'accepted',
       }),
@@ -252,7 +253,7 @@ describe('quote line items', () => {
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
         lineItems: [{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }],
-        productId: context.product.id,
+        offering: { kind: 'product', productId: context.product.id },
         salesPersonId: context.salesPerson.id,
         status: 'accepted',
       }),
@@ -284,7 +285,7 @@ describe('quote line items', () => {
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
         lineItems: [{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }],
-        productId: context.product.id,
+        offering: { kind: 'product', productId: context.product.id },
         salesPersonId: context.salesPerson.id,
         status: 'draft',
       }),
@@ -309,6 +310,264 @@ describe('quote line items', () => {
         from: JSON.stringify([{ name: 'Hydraulic hose', quantity: 2, unitPrice: 125 }]),
         to: JSON.stringify([{ name: 'Hydraulic hose', quantity: 3, unitPrice: 125 }]),
       },
+    });
+  });
+});
+
+describe('custom quotes', () => {
+  test('creates a custom quote with entered base price, work title, line items, and no product facts', async ({
+    context,
+  }) => {
+    const created = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Hydraulic repair', basePrice: 2500 },
+        lineItems: [{ name: 'Travel', quantity: 2, unitPrice: 150 }],
+        salesPersonId: context.salesPerson.id,
+        status: 'sent',
+      }),
+    });
+
+    expect(created).toMatchObject({
+      kind: 'custom',
+      productAssemblies: [],
+      productBays: [],
+      productBuildTimeDays: null,
+      productId: null,
+      productName: null,
+      quotedBasePrice: 2500,
+      quotedCurrencyCode: 'ZAR',
+      selectedAssemblies: [],
+      workTitle: 'Hydraulic repair',
+    });
+    expect(created.lineItems).toMatchObject([{ name: 'Travel', quantity: 2, unitPrice: 150 }]);
+  });
+
+  test('rejects selected assemblies on custom quote create and update', async ({ context }) => {
+    await expect(
+      createQuoteService({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: QuoteCreateInput.parse({
+          customer: { type: 'existing', customerId: context.customer.id },
+          offering: { kind: 'custom', workTitle: 'Pump rebuild', basePrice: 3000 },
+          salesPersonId: context.salesPerson.id,
+          selectedAssemblies: [{ type: 'catalog', productAssemblyId: '00000000-0000-4000-8000-000000000901' }],
+          status: 'draft',
+        }),
+      }),
+    ).rejects.toThrow('Custom Quotes cannot have Selected Assemblies.');
+
+    const customQuote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Pump rebuild', basePrice: 3000 },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(customQuote, {
+          selectedAssemblies: [{ type: 'catalog', productAssemblyId: '00000000-0000-4000-8000-000000000901' }],
+        }),
+      }),
+    ).rejects.toThrow('Custom Quotes cannot have Selected Assemblies.');
+  });
+
+  test('keeps custom commercial fields editable before acceptance even when a job exists', async ({ context }) => {
+    const customQuote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Draft repair', basePrice: 1500 },
+        salesPersonId: context.salesPerson.id,
+        status: 'sent',
+      }),
+    });
+    await context.db.insert(jobs).values({
+      productId: context.product.id,
+      productSerialNumber: `${context.product.modelCode}-26-101`,
+      productSerialPrefix: context.product.modelCode,
+      productSerialSequence: 101,
+      productSerialYear: 26,
+      quoteId: customQuote.id,
+    });
+
+    const updated = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(customQuote, {
+        basePrice: 1750,
+        discountPercent: 5,
+        lineItems: [{ name: 'Travel', quantity: 1, unitPrice: 200 }],
+        workTitle: 'Draft repair revised',
+      }),
+    });
+
+    expect(updated).toMatchObject({
+      discountPercent: 5,
+      quotedBasePrice: 1750,
+      workTitle: 'Draft repair revised',
+    });
+    expect(updated.lineItems).toMatchObject([{ name: 'Travel', quantity: 1, unitPrice: 200 }]);
+  });
+
+  test('locks custom commercial fields after acceptance but still allows post-lock notes', async ({ context }) => {
+    const customQuote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Accepted repair', basePrice: 2200 },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(customQuote, { basePrice: 2300 }),
+      }),
+    ).rejects.toThrow('Quote is locked because it has been accepted; quotedBasePrice cannot be changed.');
+
+    const updated = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(customQuote, { notes: 'Accepted custom follow-up' }),
+    });
+
+    expect(updated.notes).toBe('Accepted custom follow-up');
+  });
+
+  test('returns empty product bay availability for custom quotes', async ({ context }) => {
+    const customQuote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Availability-free repair', basePrice: 1800 },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await expect(
+      getQuoteProductBayAvailability({
+        db: context.db,
+        input: { quoteId: customQuote.id },
+      }),
+    ).resolves.toEqual({
+      bays: [],
+      buildTimeDays: 0,
+      defaultLeadTimeWorkingDays: 0,
+      maxBayWaitWorkingDays: 0,
+    });
+  });
+
+  test('includes accepted custom quotes in the priority quote alert list', async ({ context }) => {
+    const customQuote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Priority repair', basePrice: 1800 },
+        plannedDeliveryDate: '2026-02-15',
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+
+    await expect(
+      listPriorityQuotes({
+        clock: () => new Date('2026-01-15T10:00:00.000+02:00'),
+        db: context.db,
+      }),
+    ).resolves.toEqual([expect.objectContaining({ id: customQuote.id, kind: 'custom', workTitle: 'Priority repair' })]);
+  });
+
+  test('lists custom quotes by kind, work-title search, and product-name sort', async ({ context }) => {
+    const customQuote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Axle rebuild', basePrice: 1800 },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+    await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await expect(
+      listQuotes({
+        db: context.db,
+        input: {
+          filters: { kind: 'custom', statuses: [] },
+          page: 1,
+          pageSize: 10,
+          search: 'Axle',
+          sortBy: 'productName',
+          sortDirection: 'asc',
+        },
+      }),
+    ).resolves.toMatchObject({
+      items: [{ id: customQuote.id, kind: 'custom', workTitle: 'Axle rebuild' }],
+      total: 1,
+    });
+  });
+
+  test('records custom quote kind, work title, and base price edits in audit events', async ({ context }) => {
+    const customQuote = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Audit repair', basePrice: 2000 },
+        salesPersonId: context.salesPerson.id,
+        status: 'draft',
+      }),
+    });
+
+    await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(customQuote, { basePrice: 2100, workTitle: 'Audit repair revised' }),
+    });
+
+    const events = await context.db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.entityType, 'quote'), eq(auditEvents.entityId, customQuote.id)));
+    const createEvent = events.find((event) => event.action === 'created');
+    const updateEvent = events.find((event) => event.action === 'updated');
+
+    expect(createEvent?.changes).toMatchObject({
+      kind: { from: null, to: 'custom' },
+      workTitle: { from: null, to: 'Audit repair' },
+    });
+    expect(updateEvent?.changes).toMatchObject({
+      quotedBasePrice: { from: 2000, to: 2100 },
+      workTitle: { from: 'Audit repair', to: 'Audit repair revised' },
     });
   });
 });

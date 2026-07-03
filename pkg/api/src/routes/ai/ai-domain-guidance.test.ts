@@ -24,10 +24,11 @@ describe('AI domain guidance', () => {
     expect(prompt).toContain('Assembly -> Part');
     expect(prompt).toContain('bill-of-materials quantities must be read with the Part unit');
     expect(prompt).toContain('Part.unitOfMeasure is either quantity');
-    expect(prompt).toContain('only accepted Quotes can create a Job');
+    expect(prompt).toContain('only accepted Product Quotes can create a Job');
     expect(prompt).toContain('A Quote sources at most one Job');
-    expect(prompt).toContain('Product is required at creation and immutable post-creation');
-    expect(prompt).toContain('price snapshot fields quotedBasePrice and quotedCurrencyCode are latched');
+    expect(prompt).toContain('Quote offerings are either kind=product with productId');
+    expect(prompt).toContain('Custom Quotes do not create Jobs yet');
+    expect(prompt).toContain('Product Quote price snapshot fields are latched from Product');
     expect(prompt).toContain('Document Notes, Preferred Delivery Date, and Planned Delivery Date');
     expect(prompt).toContain('Intent customer_job_progress');
     expect(prompt).toContain('listQuoteCustomers');

@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import { type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
+import { QuoteKind, type QuoteListInput, QuoteSortBy, QuoteStatus, type QuoteSummary } from '@pkg/schema';
 import { IconPlus } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -167,7 +167,7 @@ const QuoteTable: React.FC = () => {
       globalFilterPlaceholder="Search quotes..."
       isLoading={isLoading}
       onRowClick={quoteRowClick}
-      tableClassName="min-w-[1180px]"
+      tableClassName="min-w-[1260px]"
       table={table}
       total={total}
       totalLabel={(value) => `${value} ${value === 1 ? 'quote' : 'quotes'}`}
@@ -183,10 +183,18 @@ function getStatusFilterValues(columnFilters: ColumnFiltersState) {
     : [];
 }
 
+function getKindFilterValue(columnFilters: ColumnFiltersState) {
+  const value = columnFilters.find((filter) => filter.id === 'kind')?.value;
+  const parsed = typeof value === 'string' ? QuoteKind.safeParse(value) : null;
+
+  return parsed?.success ? parsed.data : undefined;
+}
+
 function getQuoteListInputExtras(columnFilters: ColumnFiltersState) {
   return {
     filters: {
       customerId: getIdFilterValue(columnFilters, 'customerCompanyName'),
+      kind: getKindFilterValue(columnFilters),
       productId: getIdFilterValue(columnFilters, 'productName'),
       salesPersonId: getIdFilterValue(columnFilters, 'salesPersonName'),
       statuses: getStatusFilterValues(columnFilters),

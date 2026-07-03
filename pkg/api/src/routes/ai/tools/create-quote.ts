@@ -11,9 +11,10 @@ import {
   QuoteDepositPercent,
   type QuoteDetail,
   QuoteDiscountPercent,
+  QuoteLineItemInput,
+  QuoteOfferingInput,
   QuoteSelectedAssemblyInput,
   QuoteStatus,
-  UUID,
 } from '@pkg/schema';
 import { z } from 'zod';
 
@@ -28,10 +29,11 @@ const CreateQuoteInput = z.strictObject({
   depositPercent: QuoteDepositPercent.default(0),
   discountPercent: QuoteDiscountPercent.default(0),
   documentNotes: z.string().nullable().optional(),
+  lineItems: z.array(QuoteLineItemInput).default([]),
   notes: z.string().nullable().optional(),
+  offering: QuoteOfferingInput,
   plannedDeliveryDate: DateOnlyIsoString.nullable().default(null),
   preferredDeliveryDate: DateOnlyIsoString.nullable().default(null),
-  productId: UUID,
   salesPersonId: AuthId.optional(),
   selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   status: QuoteStatus.default('draft'),

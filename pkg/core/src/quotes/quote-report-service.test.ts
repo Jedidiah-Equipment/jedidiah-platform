@@ -208,6 +208,32 @@ describe('summarizeQuotePipeline', () => {
     });
   });
 
+  test('includes custom sent quote value in the pipeline totals', async ({ context }) => {
+    const [customQuote] = await createQuoteRows(context.db, {
+      customerId: context.customer.id,
+      deliveryIncluded: true,
+      deliveryPrice: 50,
+      discountPercent: 10,
+      kind: 'custom',
+      productId: null,
+      quotedBasePrice: 1200,
+      salesPersonId: context.salesPerson.id,
+      statuses: ['sent'],
+      statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
+      workTitle: 'Pipeline repair',
+    });
+    if (!customQuote) throw new Error('Expected custom sent quote row');
+    await context.db
+      .insert(quoteLineItems)
+      .values({ name: 'Travel', quantity: 1, quoteId: customQuote.id, unitPrice: 100 });
+
+    await expect(summarizeQuotePipeline({ clock: fixedClock, db: context.db })).resolves.toMatchObject({
+      newlySent30dValue: 1220,
+      openSentCount: 1,
+      openSentValue: 1220,
+    });
+  });
+
   test('counts accepted and rejected decisions inside the 90-day window and excludes cancelled', async ({
     context,
   }) => {
@@ -285,6 +311,33 @@ describe('listStaleSentQuotes', () => {
     });
   });
 
+  test('includes custom sent quotes in stale-sent totals', async ({ context }) => {
+    const [customQuote] = await createQuoteRows(context.db, {
+      customerId: context.customer.id,
+      kind: 'custom',
+      productId: null,
+      quotedBasePrice: 900,
+      salesPersonId: context.salesPerson.id,
+      statuses: ['sent'],
+      statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
+      workTitle: 'Stale repair',
+    });
+    if (!customQuote) throw new Error('Expected custom sent quote row');
+    await context.db
+      .insert(quoteLineItems)
+      .values({ name: 'Travel', quantity: 2, quoteId: customQuote.id, unitPrice: 50 });
+
+    const result = await listStaleSentQuotes({ clock: fixedClock, db: context.db });
+
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        id: customQuote.id,
+        sentDaysAgo: 15,
+        totalValue: 1000,
+      }),
+    ]);
+  });
+
   test('caps the list at the stale-sent limit', async ({ context }) => {
     await createQuoteRows(context.db, {
       customerId: context.customer.id,
@@ -313,22 +366,26 @@ async function createQuoteRows(
     deliveryIncluded = false,
     deliveryPrice = 0,
     discountPercent = 0,
+    kind = 'product',
     productId,
     quotedBasePrice = 1000,
     salesPersonId,
     statuses,
     statusChangedAt,
+    workTitle = null,
   }: {
     createdAt?: Date;
     customerId: string;
     deliveryIncluded?: boolean;
     deliveryPrice?: number;
     discountPercent?: number;
-    productId: string;
+    kind?: 'product' | 'custom';
+    productId: string | null;
     quotedBasePrice?: number;
     salesPersonId: string;
     statuses: QuoteStatus[];
     statusChangedAt?: Date;
+    workTitle?: string | null;
   },
 ) {
   return db
@@ -341,11 +398,13 @@ async function createQuoteRows(
         deliveryIncluded,
         deliveryPrice,
         discountPercent,
+        kind,
         productId,
         quotedBasePrice,
         quotedCurrencyCode: 'ZAR',
         salesPersonId,
         status,
+        workTitle,
       })),
     )
     .returning();

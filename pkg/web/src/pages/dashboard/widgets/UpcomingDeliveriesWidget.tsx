@@ -89,7 +89,7 @@ function UpcomingDeliveryRow({
   quote: UpcomingDeliveryQuote;
   today: DateOnlyIso;
 }) {
-  const productName = quote.productName ?? '—';
+  const quoteName = quote.kind === 'custom' ? (quote.workTitle ?? 'Custom work') : (quote.productName ?? '—');
   const isOverdue = quote.plannedDeliveryDate < today;
   const isAtRisk =
     canOpenJobs && quote.job
@@ -109,7 +109,7 @@ function UpcomingDeliveryRow({
         </Link>
         <span className="block truncate text-muted-foreground">{quote.customerCompanyName}</span>
         <span className="block truncate text-muted-foreground text-xs">
-          {productName}
+          {quoteName}
           {quote.job ? (
             <>
               <span className="px-1">·</span>

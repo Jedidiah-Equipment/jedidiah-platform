@@ -118,62 +118,99 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
               );
             }}
           </form.Field>
-          <form.Field name="rangeId">
-            {(field) => {
-              const selectedRange = productRangeOptions.items.find((range) => range.id === field.state.value);
-
-              return (
-                <Field>
-                  <FieldLabel htmlFor={field.name}>Range</FieldLabel>
-                  <Select
-                    disabled={productRangeOptions.isPending}
-                    onValueChange={(value) => {
-                      field.handleChange(value === ALL_RANGES_SELECT_VALUE ? '' : (value ?? ''));
-                    }}
-                    value={field.state.value || ALL_RANGES_SELECT_VALUE}
-                  >
-                    <SelectTrigger id={field.name} className="w-full">
-                      <SelectValue placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'All ranges'}>
-                        {field.state.value ? selectedRange?.name : 'All ranges'}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value={ALL_RANGES_SELECT_VALUE}>All ranges</SelectItem>
-                        {productRangeOptions.items.map((range) => (
-                          <SelectItem key={range.id} value={range.id}>
-                            {range.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              );
-            }}
-          </form.Field>
-          <form.Subscribe selector={(state) => state.values.rangeId}>
-            {(rangeId) => (
-              <form.Field name="productId">
-                {(field) => {
-                  const fieldErrors = getFieldErrors(field.state.meta.errors);
-                  const isInvalid = fieldErrors.length > 0;
-
-                  return (
-                    <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>Product</FieldLabel>
-                      <QuoteProductCombobox
-                        disabled={false}
-                        onSelected={(product) => field.handleChange(product?.id ?? '')}
-                        rangeId={rangeId}
-                        value={field.state.value}
-                      />
-                      <FieldError errors={fieldErrors} />
-                    </Field>
-                  );
-                }}
-              </form.Field>
+          <form.AppField name="kind">
+            {(field) => (
+              <field.SelectField
+                label="Kind"
+                options={[
+                  { label: 'Product', value: 'product' },
+                  { label: 'Custom', value: 'custom' },
+                ]}
+              />
             )}
+          </form.AppField>
+          <form.Subscribe selector={(state) => state.values.kind}>
+            {(kind) =>
+              kind === 'product' ? (
+                <form.Field name="rangeId">
+                  {(field) => {
+                    const selectedRange = productRangeOptions.items.find((range) => range.id === field.state.value);
+
+                    return (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>Range</FieldLabel>
+                        <Select
+                          disabled={productRangeOptions.isPending}
+                          onValueChange={(value) => {
+                            field.handleChange(value === ALL_RANGES_SELECT_VALUE ? '' : (value ?? ''));
+                          }}
+                          value={field.state.value || ALL_RANGES_SELECT_VALUE}
+                        >
+                          <SelectTrigger id={field.name} className="w-full">
+                            <SelectValue
+                              placeholder={productRangeOptions.isPending ? 'Loading ranges...' : 'All ranges'}
+                            >
+                              {field.state.value ? selectedRange?.name : 'All ranges'}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectItem value={ALL_RANGES_SELECT_VALUE}>All ranges</SelectItem>
+                              {productRangeOptions.items.map((range) => (
+                                <SelectItem key={range.id} value={range.id}>
+                                  {range.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                    );
+                  }}
+                </form.Field>
+              ) : null
+            }
+          </form.Subscribe>
+          <form.Subscribe selector={(state) => ({ kind: state.values.kind, rangeId: state.values.rangeId })}>
+            {({ kind, rangeId }) =>
+              kind === 'product' ? (
+                <form.Field name="productId">
+                  {(field) => {
+                    const fieldErrors = getFieldErrors(field.state.meta.errors);
+                    const isInvalid = fieldErrors.length > 0;
+
+                    return (
+                      <Field data-invalid={isInvalid}>
+                        <FieldLabel htmlFor={field.name}>Product</FieldLabel>
+                        <QuoteProductCombobox
+                          disabled={false}
+                          onSelected={(product) => field.handleChange(product?.id ?? '')}
+                          rangeId={rangeId}
+                          value={field.state.value}
+                        />
+                        <FieldError errors={fieldErrors} />
+                      </Field>
+                    );
+                  }}
+                </form.Field>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <form.AppField name="workTitle">
+                    {(field) => <field.TextField autoComplete="off" label="Work title" />}
+                  </form.AppField>
+                  <form.AppField name="basePrice">
+                    {(field) => (
+                      <field.CurrencyField
+                        autoComplete="off"
+                        currencyCode="ZAR"
+                        label="Base price"
+                        placeholder="R120,000"
+                      />
+                    )}
+                  </form.AppField>
+                </div>
+              )
+            }
           </form.Subscribe>
           <form.AppField name="salesPersonId">
             {(field) => (

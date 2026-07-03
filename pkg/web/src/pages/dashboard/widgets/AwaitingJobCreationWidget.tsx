@@ -28,7 +28,7 @@ export const AwaitingJobCreationWidget: React.FC = () => {
   }
 
   if (quotes.length === 0) {
-    return <DashboardWidgetEmpty>No accepted quotes need Jobs.</DashboardWidgetEmpty>;
+    return <DashboardWidgetEmpty>No accepted quotes need follow-up.</DashboardWidgetEmpty>;
   }
 
   const visibleQuotes = quotes.slice(0, AWAITING_JOB_CREATION_MAX_ROWS);
@@ -47,7 +47,7 @@ export const AwaitingJobCreationWidget: React.FC = () => {
       </ScrollArea>
       {hiddenQuoteCount > 0 ? (
         <p className="text-muted-foreground text-xs">
-          Showing first {visibleQuotes.length} of {quotes.length} quotes needing Jobs.
+          Showing first {visibleQuotes.length} of {quotes.length} quotes needing follow-up.
         </p>
       ) : null}
     </div>

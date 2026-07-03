@@ -104,7 +104,7 @@ async function createQuote(caller: AppRouterCaller, productId: string) {
     documentNotes: '30% deposit, balance on delivery',
     plannedDeliveryDate: '2026-07-15',
     preferredDeliveryDate: '2026-07-10',
-    productId,
+    offering: { kind: 'product', productId },
     salesPersonId: 'test-user-id',
     status: 'draft',
     validUntil: '2026-06-30',

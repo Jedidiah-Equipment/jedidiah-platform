@@ -43,17 +43,18 @@ type QuoteFormProps = {
 
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
   const isLocked = quote.job !== null;
+  const quoteCurrencyCode = quote.productCurrencyCode ?? quote.quotedCurrencyCode;
 
   const selectedProduct = useMemo(
     () => ({
       assemblies: quote.productAssemblies,
       basePrice: quote.quotedBasePrice,
-      currencyCode: quote.productCurrencyCode,
+      currencyCode: quoteCurrencyCode,
       id: quote.productId,
-      modelCode: quote.productModelCode,
-      name: quote.productName,
+      modelCode: quote.productModelCode ?? '—',
+      name: quote.productName ?? '—',
     }),
-    [quote],
+    [quote, quoteCurrencyCode],
   );
   const salespeopleOptions = useSalesPersonOptions();
   const auditAccess = useCan('audit:read');
@@ -327,16 +328,18 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
 const QuotePriorityAlert: React.FC<{
   priorityQuote: PriorityQuote;
 }> = ({ priorityQuote }) => {
-  const buildDuration = formatWorkingDays(priorityQuote.productBuildTimeDays);
+  const buildDuration =
+    priorityQuote.productBuildTimeDays === null ? '—' : formatWorkingDays(priorityQuote.productBuildTimeDays);
+  const productName = priorityQuote.productName ?? '—';
 
   return (
     <Alert className="border-warning/45 bg-warning/10 text-warning-foreground">
       <IconAlertTriangle className="text-warning" />
       <AlertTitle>Needs job</AlertTitle>
       <AlertDescription className="text-warning-foreground/85">
-        This quote is accepted but no Job has been started. {describeDeliveryDates(priorityQuote)} The{' '}
-        {priorityQuote.productName} takes {buildDuration} to build, so start a Job soon to reserve Bay capacity in time
-        for {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
+        This quote is accepted but no Job has been started. {describeDeliveryDates(priorityQuote)} The {productName}{' '}
+        takes {buildDuration} to build, so start a Job soon to reserve Bay capacity in time for{' '}
+        {formatQuoteDate(priorityQuote.earliestDeliveryDate)}.
       </AlertDescription>
     </Alert>
   );

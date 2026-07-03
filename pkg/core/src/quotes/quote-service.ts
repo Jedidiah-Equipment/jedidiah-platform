@@ -121,10 +121,10 @@ type QuoteListRow = {
   quote: QuoteRow;
   customerCompanyName: string;
   customerThumbnailDataUrl: string | null;
-  productBuildTimeDays: number;
-  productCurrencyCode: string;
-  productModelCode: string;
-  productName: string;
+  productBuildTimeDays: number | null;
+  productCurrencyCode: string | null;
+  productModelCode: string | null;
+  productName: string | null;
   salesPersonEmail: string | null;
   salesPersonName: string | null;
   salesPersonThumbnailDataUrl: string | null;
@@ -149,7 +149,7 @@ type QuoteDetailRow = QuoteRow & {
   product: Pick<
     typeof products.$inferSelect,
     'buildTimeDays' | 'currencyCode' | 'description' | 'modelCode' | 'name' | 'requiresVinNumber' | 'thumbnailDataUrl'
-  >;
+  > | null;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'image' | 'name'> | null;
   selectedAssemblies: QuoteSelectedAssemblyRow[];
 };
@@ -259,7 +259,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
       })
       .from(quotes)
       .innerJoin(customers, eq(quotes.customerId, customers.id))
-      .innerJoin(products, eq(quotes.productId, products.id))
+      .leftJoin(products, eq(quotes.productId, products.id))
       .leftJoin(user, eq(quotes.salesPersonId, user.id))
       .where(where)
       .orderBy(orderBy, asc(quotes.id))
@@ -273,7 +273,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
     .where(where);
 
   const [rows, [totalRow]] = await Promise.all([rowsQuery, totalQuery]);
@@ -319,7 +319,7 @@ export async function listPriorityQuotes({
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
     .leftJoin(user, eq(quotes.salesPersonId, user.id))
     .where(
       and(
@@ -373,7 +373,7 @@ export async function listUpcomingDeliveryQuotes({
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .innerJoin(products, eq(quotes.productId, products.id))
+    .leftJoin(products, eq(quotes.productId, products.id))
     .leftJoin(user, eq(quotes.salesPersonId, user.id))
     .where(
       and(
@@ -454,8 +454,8 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
   }
 
   const [assemblies, productBaysForQuote] = await Promise.all([
-    listAssemblies({ tx: db, productId: row.productId }),
-    listProductBays({ db, productId: row.productId }),
+    row.product ? listAssemblies({ tx: db, productId: row.productId }) : Promise.resolve([]),
+    row.product ? listProductBays({ db, productId: row.productId }) : Promise.resolve([]),
   ]);
 
   return mapQuoteDetail(row, assemblies, productBaysForQuote);
@@ -469,6 +469,10 @@ export async function getQuoteProductBayAvailability({
   input: QuoteProductBayAvailabilityInput;
 }): Promise<QuoteProductBayAvailabilityResult> {
   const quote = await getQuote({ db, id: input.quoteId });
+  if (!quote.productId || quote.productBuildTimeDays === null) {
+    throw new QuoteInvalidReferenceError('Quote product was not found.');
+  }
+
   const productBaysForQuote = (await listProductBays({ db, productId: quote.productId })).filter(
     (productBay) => !productBay.bay.disabledAt,
   );
@@ -633,7 +637,7 @@ function mapQuoteSummary(
     customerThumbnailDataUrl: row.customerThumbnailDataUrl,
     job: job ? mapQuoteLinkedJob(job) : null,
     productBuildTimeDays: row.productBuildTimeDays,
-    productCurrencyCode: ProductCurrencyCode.parse(row.productCurrencyCode),
+    productCurrencyCode: row.productCurrencyCode === null ? null : ProductCurrencyCode.parse(row.productCurrencyCode),
     productModelCode: row.productModelCode,
     productName: row.productName,
     salesPersonEmail: row.salesPersonEmail,
@@ -682,15 +686,15 @@ function mapQuoteDetail(
     customerThumbnailDataUrl: row.customer.thumbnailDataUrl,
     customerVatNumber: row.customer.vatNumber,
     job: row.jobs[0] ? mapQuoteLinkedJob({ jobCode: row.jobs[0].code, jobId: row.jobs[0].id }) : null,
-    productCurrencyCode: ProductCurrencyCode.parse(row.product.currencyCode),
-    productBuildTimeDays: row.product.buildTimeDays,
-    productDescription: row.product.description,
-    productModelCode: row.product.modelCode,
-    productName: row.product.name,
+    productCurrencyCode: row.product ? ProductCurrencyCode.parse(row.product.currencyCode) : null,
+    productBuildTimeDays: row.product?.buildTimeDays ?? null,
+    productDescription: row.product?.description ?? null,
+    productModelCode: row.product?.modelCode ?? null,
+    productName: row.product?.name ?? null,
     productAssemblies: productAssembliesForQuote,
     productBays: productBaysForQuote,
-    productRequiresVinNumber: row.product.requiresVinNumber,
-    productThumbnailDataUrl: row.product.thumbnailDataUrl,
+    productRequiresVinNumber: row.product?.requiresVinNumber ?? null,
+    productThumbnailDataUrl: row.product?.thumbnailDataUrl ?? null,
     salesPersonEmail: row.salesPerson?.email ?? null,
     salesPersonName: row.salesPerson?.name ?? null,
     salesPersonThumbnailDataUrl: row.salesPerson?.image ?? null,
@@ -886,7 +890,7 @@ function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
     code: sql`${quotes.code}`,
     createdAt: sql`${quotes.createdAt}`,
     customerCompanyName: sql`${customers.companyName}`,
-    productName: sql`${products.name}`,
+    productName: sql`coalesce(${products.name}, '')`,
     salesPersonName: sql`${user.name}`,
     status: sql`${quotes.status}`,
   } as const satisfies Record<QuoteSortBy, SQL>;

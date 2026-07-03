@@ -242,10 +242,10 @@ export async function getQuoteDocumentModel({
     subtotal,
     total: subtotal + vatAmount,
     transport: quote.deliveryIncluded
-      ? `Included${quote.deliveryPrice > 0 ? ` (${formatCurrency(quote.deliveryPrice, quote.product.currencyCode)})` : ''}`
+      ? `Included${quote.deliveryPrice > 0 ? ` (${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)})` : ''}`
       : 'Excluded',
     vatAmount,
-    currencyCode: quote.product.currencyCode,
+    currencyCode: quote.quotedCurrencyCode,
   };
 }
 

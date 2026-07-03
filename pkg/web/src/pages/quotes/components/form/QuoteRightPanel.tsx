@@ -112,6 +112,10 @@ function QuoteCustomerCard({ quote }: { quote: QuoteDetail }) {
 function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
   const standardCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'standard').length;
   const optionalCount = quote.productAssemblies.filter((assembly) => assembly.kind === 'optional').length;
+  const productName = quote.productName ?? '—';
+  const productModelCode = quote.productModelCode ?? '—';
+  const productCurrencyCode = quote.productCurrencyCode ?? quote.quotedCurrencyCode;
+  const productBuildTimeDays = quote.productBuildTimeDays === null ? '—' : `${quote.productBuildTimeDays} days`;
 
   return (
     <Card size="sm">
@@ -119,14 +123,14 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
         <CardDescription>Product</CardDescription>
         <CardTitle className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="block truncate">{quote.productName}</span>
-            <Badge variant="outline">{quote.productModelCode}</Badge>
+            <span className="block truncate">{productName}</span>
+            <Badge variant="outline">{productModelCode}</Badge>
           </div>
         </CardTitle>
         <CardAction>
           <EntityThumbnail
             className="size-10"
-            label={quote.productName}
+            label={productName}
             size="lg"
             thumbnailDataUrl={quote.productThumbnailDataUrl}
           />
@@ -137,9 +141,9 @@ function QuoteProductCard({ quote }: { quote: QuoteDetail }) {
           <QuoteMiniMetric
             icon={<IconPackage />}
             label="Base price"
-            value={formatCurrency(quote.quotedBasePrice, quote.productCurrencyCode)}
+            value={formatCurrency(quote.quotedBasePrice, productCurrencyCode)}
           />
-          <QuoteMiniMetric icon={<IconClock />} label="Build" value={`${quote.productBuildTimeDays} days`} />
+          <QuoteMiniMetric icon={<IconClock />} label="Build" value={productBuildTimeDays} />
           <QuoteMiniMetric label="Standard Assemblies" value={String(standardCount)} />
           <QuoteMiniMetric label="Optional Assemblies" value={String(optionalCount)} />
         </div>

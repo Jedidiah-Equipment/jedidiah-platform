@@ -6,6 +6,7 @@ import {
   QuoteDetail,
   QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
+  QuoteSummary,
   UpcomingDeliveryQuotesResult,
 } from './quote.js';
 
@@ -58,6 +59,68 @@ describe('QuoteCreateInput', () => {
 });
 
 describe('QuoteDetail', () => {
+  it('parses quote read models without product-derived facts', () => {
+    const quoteSummary = {
+      code: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      customerCompanyName: 'Acme Mining',
+      customerId: '550e8400-e29b-41d4-a716-446655440001',
+      customerThumbnailDataUrl: null,
+      deliveryIncluded: true,
+      deliveryPrice: 0,
+      depositPercent: 0,
+      discountPercent: 0,
+      documentNotes: null,
+      id: '550e8400-e29b-41d4-a716-446655440010',
+      job: null,
+      notes: null,
+      plannedDeliveryDate: null,
+      preferredDeliveryDate: null,
+      productBuildTimeDays: null,
+      productCurrencyCode: null,
+      productId: null,
+      productModelCode: null,
+      productName: null,
+      quotedBasePrice: 1000,
+      quotedCurrencyCode: 'ZAR',
+      salesPersonEmail: null,
+      salesPersonId: 'auth-user-1',
+      salesPersonName: null,
+      salesPersonThumbnailDataUrl: null,
+      selectedAssemblies: [],
+      status: 'accepted',
+      statusChangedAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      validUntil: null,
+    };
+
+    expect(QuoteSummary.parse(quoteSummary)).toMatchObject({
+      productBuildTimeDays: null,
+      productId: null,
+      productName: null,
+    });
+    expect(
+      QuoteDetail.parse({
+        ...quoteSummary,
+        customerAddress: null,
+        customerContactPerson: null,
+        customerEmail: null,
+        customerPhone: null,
+        customerVatNumber: null,
+        productAssemblies: [],
+        productBays: [],
+        productDescription: null,
+        productRequiresVinNumber: null,
+        productThumbnailDataUrl: null,
+      }),
+    ).toMatchObject({
+      productAssemblies: [],
+      productBays: [],
+      productDescription: null,
+      productRequiresVinNumber: null,
+    });
+  });
+
   it('parses Product Bays with embedded Bay state', () => {
     expect(
       QuoteDetail.parse({

@@ -49,13 +49,13 @@ export function JobCard({ job, onPress }: { job: JobListCard; onPress: () => voi
 function JobPrimaryRow({ job }: { job: JobListCard }) {
   return (
     <View className="flex-row items-center gap-3">
-      <Avatar className="h-11 w-11 rounded-lg" name={job.productName} uri={job.productThumbnailDataUrl} />
+      <Avatar className="h-11 w-11 rounded-lg" name={job.jobDisplayName} uri={job.productThumbnailDataUrl} />
       <View className="min-w-0 flex-1">
         <Text className="text-base text-surface-foreground" mono numberOfLines={1} weight="bold">
           {job.jobCode}
         </Text>
         <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
-          {job.productName}
+          {job.jobDisplayName}
         </Text>
       </View>
     </View>

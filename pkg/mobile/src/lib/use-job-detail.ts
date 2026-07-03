@@ -37,7 +37,7 @@ export type JobDetailState =
       status: 'ready';
       jobCode: string;
       quoteCode: string;
-      productName: string;
+      jobDisplayName: string;
       productSerialNumber: string | null;
       productThumbnailDataUrl: string | null;
       customerCompanyName: string | null;
@@ -109,7 +109,7 @@ export function useJobDetail(jobId: string): JobDetailState {
       status: 'ready',
       jobCode: job.code,
       quoteCode: job.quoteCode,
-      productName: getJobDisplayName(job),
+      jobDisplayName: getJobDisplayName(job),
       productSerialNumber: job.productSerialNumber,
       productThumbnailDataUrl: job.productThumbnailDataUrl,
       customerCompanyName: job.customerCompanyName,

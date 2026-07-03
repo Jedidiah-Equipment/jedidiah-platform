@@ -39,12 +39,16 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
         ) : null}
       </View>
 
-      {/* Product card. */}
+      {/* Work card. */}
       <View className="flex-row items-center gap-3.5 rounded-2xl border border-border bg-surface p-3.5">
-        <Avatar className="h-[52px] w-[52px] rounded-xl" name={slot.productName} uri={slot.productThumbnailDataUrl} />
+        <Avatar
+          className="h-[52px] w-[52px] rounded-xl"
+          name={slot.jobDisplayName}
+          uri={slot.productThumbnailDataUrl}
+        />
         <View className="min-w-0 flex-1">
           <Text className="text-base text-surface-foreground" weight="bold" numberOfLines={1}>
-            {slot.productName}
+            {slot.jobDisplayName}
           </Text>
           {slot.productSerialNumber ? (
             <Text className="mt-0.5 text-xs text-muted-foreground" mono>
@@ -83,7 +87,7 @@ export function SlotDetailPane({ slot }: { slot: BaySlotDetail }) {
       <JobFactsCard
         customerCompanyName={slot.customerCompanyName}
         jobCode={slot.jobCode}
-        productName={slot.productName}
+        workName={slot.jobDisplayName}
         productSerialNumber={slot.productSerialNumber}
         quoteCode={slot.quoteCode}
       />

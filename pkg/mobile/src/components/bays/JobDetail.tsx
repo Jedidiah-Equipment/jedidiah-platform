@@ -99,7 +99,7 @@ function Ready({
       onBack={onBack}
       operator={null}
       showOperatorAvatar={false}
-      subtitle={state.productName}
+      subtitle={state.jobDisplayName}
       title={state.jobCode}
       titleMono
     />
@@ -249,7 +249,7 @@ function routeDaysLabel(stop: JobRouteStopCard): string {
   return `Starts ${formatDate(stop.startDate, 'd MMM')}`;
 }
 
-/** Right pane: status chips, product card, overall progress, documents, and the Job facts grid. */
+/** Right pane: status chips, work card, overall progress, documents, and the Job facts grid. */
 function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
   const { progress } = state;
   const { resolved } = useColorMode();
@@ -269,10 +269,14 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
       </View>
 
       <View className="flex-row items-center gap-3.5 rounded-2xl border border-border bg-surface p-3.5">
-        <Avatar className="h-[52px] w-[52px] rounded-xl" name={state.productName} uri={state.productThumbnailDataUrl} />
+        <Avatar
+          className="h-[52px] w-[52px] rounded-xl"
+          name={state.jobDisplayName}
+          uri={state.productThumbnailDataUrl}
+        />
         <View className="min-w-0 flex-1">
           <Text className="text-base text-surface-foreground" numberOfLines={1} weight="bold">
-            {state.productName}
+            {state.jobDisplayName}
           </Text>
           {state.productSerialNumber ? (
             <Text className="mt-0.5 text-xs text-muted-foreground" mono>
@@ -317,7 +321,7 @@ function DetailPane({ jobId, state }: { jobId: string; state: ReadyState }) {
       <JobFactsCard
         customerCompanyName={state.customerCompanyName}
         jobCode={state.jobCode}
-        productName={state.productName}
+        workName={state.jobDisplayName}
         productSerialNumber={state.productSerialNumber}
         quoteCode={state.quoteCode}
       />

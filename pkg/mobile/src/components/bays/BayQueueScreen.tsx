@@ -104,7 +104,7 @@ function Ready({
         onBack={handleBack}
         operator={bay.operator}
         showOperatorAvatar={!onDetail}
-        subtitle={onDetail && selected ? selected.productName : bay.name}
+        subtitle={onDetail && selected ? selected.jobDisplayName : bay.name}
         title={onDetail && selected ? selected.jobCode : (bay.operator?.name ?? 'No operator')}
         titleMono={onDetail && selected !== null}
       />
@@ -209,7 +209,7 @@ function ActiveHero({
       <View className="flex-row items-start gap-3.5">
         <Avatar
           className="h-[52px] w-[52px] rounded-xl"
-          name={active.productName}
+          name={active.jobDisplayName}
           uri={active.productThumbnailDataUrl}
         />
         <View className="min-w-0 flex-1">
@@ -223,7 +223,7 @@ function ActiveHero({
             {active.jobCode}
           </Text>
           <Text className="mt-0.5 text-sm text-surface-foreground" numberOfLines={1}>
-            {active.productName}
+            {active.jobDisplayName}
           </Text>
           {heroSub ? (
             <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
@@ -358,13 +358,13 @@ function TimelineItem({
               {rangeLabel}
             </Text>
             <View className="mt-2.5 flex-row items-center gap-3">
-              <Avatar className="h-10 w-10 rounded-lg" name={slot.productName} uri={slot.productThumbnailDataUrl} />
+              <Avatar className="h-10 w-10 rounded-lg" name={slot.jobDisplayName} uri={slot.productThumbnailDataUrl} />
               <View className="min-w-0 flex-1">
                 <Text className="text-sm text-surface-foreground" mono weight="semibold">
                   {slot.jobCode}
                 </Text>
                 <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
-                  {slot.productName}
+                  {slot.jobDisplayName}
                 </Text>
               </View>
             </View>

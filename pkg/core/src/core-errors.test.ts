@@ -30,6 +30,7 @@ import {
   QuoteDiscountInvalidError,
   QuoteInvalidReferenceError,
   QuoteNotFoundError,
+  QuoteProductBayAvailabilityNotApplicableError,
 } from './quotes/quote-errors.js';
 import { DuplicateSupplierNameError, isSupplierCoreError, SupplierNotFoundError } from './suppliers/supplier-errors.js';
 import { isUserCoreError, UserNotFoundError } from './users/user-errors.js';
@@ -76,6 +77,9 @@ describe('core error codes and guards', () => {
     expect(new QuoteNotFoundError('quote-id').code).toBe('quote.not_found');
     expect(new QuoteDiscountInvalidError('diagnostic').code).toBe('quote.discount_invalid');
     expect(new QuoteInvalidReferenceError('diagnostic').code).toBe('quote.invalid_reference');
+    expect(new QuoteProductBayAvailabilityNotApplicableError('diagnostic').code).toBe(
+      'quote.product_bay_availability_not_applicable',
+    );
     expect(isQuoteCoreError(new QuoteNotFoundError('quote-id'))).toBe(true);
   });
 

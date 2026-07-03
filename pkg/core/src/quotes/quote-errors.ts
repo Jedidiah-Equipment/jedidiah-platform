@@ -65,6 +65,15 @@ export class QuoteDocumentGenerationNotAllowedError extends Error {
   }
 }
 
+export class QuoteProductBayAvailabilityNotApplicableError extends Error {
+  readonly code = 'quote.product_bay_availability_not_applicable';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteProductBayAvailabilityNotApplicableError';
+  }
+}
+
 export class QuoteDraftEmailRecipientMissingError extends Error {
   readonly code = 'quote.draft_email_recipient_missing';
 
@@ -78,6 +87,7 @@ export type QuoteCoreError =
   | QuoteCustomSelectedAssembliesError
   | QuoteDocumentGenerationNotAllowedError
   | QuoteDraftEmailRecipientMissingError
+  | QuoteProductBayAvailabilityNotApplicableError
   | QuoteDiscountInvalidError
   | QuoteInvalidReferenceError
   | QuoteOfferingInvariantError
@@ -88,6 +98,7 @@ export function isQuoteCoreError(error: unknown): error is QuoteCoreError {
   return (
     error instanceof QuoteDocumentGenerationNotAllowedError ||
     error instanceof QuoteDraftEmailRecipientMissingError ||
+    error instanceof QuoteProductBayAvailabilityNotApplicableError ||
     error instanceof QuoteCustomSelectedAssembliesError ||
     error instanceof QuoteDiscountInvalidError ||
     error instanceof QuoteInvalidReferenceError ||

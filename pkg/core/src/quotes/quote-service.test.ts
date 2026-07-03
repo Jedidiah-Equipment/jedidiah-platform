@@ -533,7 +533,7 @@ describe('custom quotes', () => {
     expect(updated.notes).toBe('Accepted custom follow-up');
   });
 
-  test('returns empty product bay availability for custom quotes', async ({ context }) => {
+  test('rejects product bay availability for custom quotes', async ({ context }) => {
     const customQuote = await createQuoteService({
       actorUserId: context.salesPerson.id,
       db: context.db,
@@ -550,12 +550,7 @@ describe('custom quotes', () => {
         db: context.db,
         input: { quoteId: customQuote.id },
       }),
-    ).resolves.toEqual({
-      bays: [],
-      buildTimeDays: 0,
-      defaultLeadTimeWorkingDays: 0,
-      maxBayWaitWorkingDays: 0,
-    });
+    ).rejects.toThrow('Product Bay availability is only available for Product Quotes.');
   });
 
   test('includes accepted custom quotes in the priority quote alert list', async ({ context }) => {

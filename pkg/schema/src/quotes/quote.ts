@@ -21,14 +21,13 @@ import {
   ProductName,
   ProductRequiresVinNumber,
 } from '../products/product.js';
+import { QuoteKind, QuoteWorkTitle } from './quote-shared.js';
 
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
 
-export type QuoteKind = z.infer<typeof QuoteKind>;
-export const QuoteKind = z.enum(['product', 'custom']);
-
 export { formatQuoteCode, QuoteCode } from '../common/public-code.js';
+export { QuoteKind, QuoteWorkTitle } from './quote-shared.js';
 
 export type QuoteNotes = z.infer<typeof QuoteNotes>;
 export const QuoteNotes = nullableTrimmedText();
@@ -44,9 +43,6 @@ export const QuoteDocumentNotesInput = nullableTrimmedTextInput();
 
 export type QuoteDocumentLeadTime = z.infer<typeof QuoteDocumentLeadTime>;
 export const QuoteDocumentLeadTime = requiredTrimmedText('Lead time is required');
-
-export type QuoteWorkTitle = z.infer<typeof QuoteWorkTitle>;
-export const QuoteWorkTitle = requiredTrimmedText('Work title is required');
 
 export type QuoteDepositPercent = z.infer<typeof QuoteDepositPercent>;
 export const QuoteDepositPercent = z.number().min(0, 'Must be zero or greater').max(100, 'Must be 100 or less');

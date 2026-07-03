@@ -8,10 +8,12 @@ import {
   type user,
 } from '@pkg/db';
 import {
+  computeQuoteLineItemAmount,
+  computeQuoteTotalIncludingVat,
+  computeQuoteVatAmount,
   formatCurrency,
   formatPercent,
   priceQuoteFromLiveSelections,
-  QUOTE_DOCUMENT_VAT_PERCENT,
   resolveEffectiveBom,
 } from '@pkg/domain';
 import { mergePdfBytes } from '@pkg/pdf';
@@ -43,12 +45,12 @@ import type { QuoteLineItemRow } from './quote-line-items.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
 
-export type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
+type QuoteDocumentGenerationRow = typeof quotes.$inferSelect & {
   customer: Pick<
     typeof customers.$inferSelect,
     'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'vatNumber'
   >;
-  product: Pick<typeof products.$inferSelect, 'buildTimeDays' | 'currencyCode' | 'modelCode' | 'name'> | null;
+  product: Pick<typeof products.$inferSelect, 'modelCode' | 'name'> | null;
   salesPerson: Pick<typeof user.$inferSelect, 'email' | 'name' | 'phoneNumber'> | null;
   lineItems: QuoteLineItemRow[];
   selectedAssemblies: QuoteSelectedAssemblyRow[];
@@ -215,7 +217,7 @@ async function buildQuoteDocumentPacket({
   };
 }
 
-export async function getQuoteDocumentModel({
+async function getQuoteDocumentModel({
   db,
   input,
   quote,
@@ -238,7 +240,7 @@ export async function getQuoteDocumentModel({
     label: selection.quotedName,
   }));
   const freeformLineItems = quote.lineItems.map((item) => ({
-    amount: item.quantity * item.unitPrice,
+    amount: computeQuoteLineItemAmount(item),
     descriptionLines: [formatQuoteDocumentLineItemDescription(item)],
     kind: 'lineItem' as const,
     quantity: item.quantity,
@@ -255,12 +257,14 @@ export async function getQuoteDocumentModel({
       descriptionLines: [getQuoteDocumentBaseDescription(source)],
       kind: 'base',
       quantity: 1,
+      unitPrice: quote.quotedBasePrice,
     },
     ...selectedOptionalAssemblies.map((item) => ({
       amount: item.amount,
       descriptionLines: [item.label],
       kind: 'optional' as const,
       quantity: 1,
+      unitPrice: item.amount,
     })),
     ...freeformLineItems,
     ...(discountAmount > 0
@@ -270,6 +274,7 @@ export async function getQuoteDocumentModel({
             descriptionLines: [`Discount (${formatPercent(quote.discountPercent)})`],
             kind: 'discount' as const,
             quantity: 1,
+            unitPrice: -discountAmount,
           },
         ]
       : []),
@@ -280,12 +285,13 @@ export async function getQuoteDocumentModel({
             descriptionLines: ['Delivery'],
             kind: 'charge' as const,
             quantity: 1,
+            unitPrice: quote.deliveryPrice,
           },
         ]
       : []),
   ];
   const subtotal = pricing.total;
-  const vatAmount = (subtotal * QUOTE_DOCUMENT_VAT_PERCENT) / 100;
+  const vatAmount = computeQuoteVatAmount(subtotal);
 
   return {
     customer: quote.customer,
@@ -298,7 +304,7 @@ export async function getQuoteDocumentModel({
     salesPerson: quote.salesPerson,
     staleSelectionNotes: effectiveBom.staleSelections.map((selection) => `${selection.quotedName} unavailable`),
     subtotal,
-    total: subtotal + vatAmount,
+    total: computeQuoteTotalIncludingVat(subtotal),
     transport: quote.deliveryIncluded
       ? `Included${quote.deliveryPrice > 0 ? ` (${formatCurrency(quote.deliveryPrice, quote.quotedCurrencyCode)})` : ''}`
       : 'Excluded',
@@ -332,8 +338,6 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
       },
       product: {
         columns: {
-          buildTimeDays: true,
-          currencyCode: true,
           modelCode: true,
           name: true,
         },

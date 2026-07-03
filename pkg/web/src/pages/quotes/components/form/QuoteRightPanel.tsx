@@ -6,6 +6,7 @@ import type React from 'react';
 import { toast } from 'sonner';
 
 import { CopyValueButton } from '@/components/button/CopyValueButton.js';
+import { createStableRowKeys } from '@/components/form/create-stable-row-keys.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -14,27 +15,11 @@ import { Separator } from '@/components/ui/separator.js';
 import { cn } from '@/lib/utils.js';
 import { openQuoteEmailAssistant } from '../quote-email-assistant.js';
 import { StartJobLink } from '../StartJobLink.js';
-import type { QuoteFormValues, SelectedAssemblySnapshot } from '../types.js';
+import type { QuoteComputedSummary, QuoteFormValues } from '../types.js';
 import { DraftQuoteEmailDialog } from './DraftQuoteEmailDialog.js';
 
 type QuoteLineItemFormInput = QuoteFormValues['lineItems'][number];
-
-const lineItemSummaryKeys = new WeakMap<QuoteLineItemFormInput, string>();
-let nextLineItemSummaryKey = 0;
-
-export type QuoteComputedSummary = {
-  currencyCode: string;
-  deliveryIncluded: boolean;
-  deliveryPrice: number;
-  discountAmount: number;
-  discountPercent: number;
-  lineItems: QuoteFormValues['lineItems'];
-  lineItemTotal: number;
-  basePrice: number;
-  selectedAssemblies: SelectedAssemblySnapshot[];
-  selectedAssemblyTotal: number;
-  total: number;
-};
+const getSummaryLineItemKey = createStableRowKeys<QuoteLineItemFormInput>('quote-summary-line-item');
 
 export function QuoteRightPanel({
   flushAutosave,
@@ -194,9 +179,7 @@ function QuoteCustomWorkCard({ quote }: { quote: QuoteDetail }) {
             label="Base price"
             value={formatCurrency(quote.quotedBasePrice, quote.quotedCurrencyCode)}
           />
-          <QuoteMiniMetric icon={<IconPackage />} label="Kind" value="Custom" />
-          <QuoteMiniMetric icon={<IconPackage />} label="Product" value="None" />
-          <QuoteMiniMetric icon={<IconPackage />} label="Assemblies" value="N/A" />
+          <QuoteMiniMetric icon={<IconPackage />} label="Line items" value={String(quote.lineItems.length)} />
         </div>
       </CardContent>
     </Card>
@@ -251,7 +234,7 @@ function QuoteTotalCard({
               {summary.lineItems.map((item) => (
                 <QuoteSummaryRow
                   className="text-xs"
-                  key={getLineItemSummaryKey(item)}
+                  key={getSummaryLineItemKey(item)}
                   label={formatLineItemLabel(item)}
                   value={formatCurrency(item.quantity * item.unitPrice, summary.currencyCode)}
                   valueClassName="text-muted-foreground"
@@ -295,19 +278,6 @@ function QuoteTotalCard({
       </CardContent>
     </Card>
   );
-}
-
-function getLineItemSummaryKey(item: QuoteLineItemFormInput): string {
-  const existing = lineItemSummaryKeys.get(item);
-  if (existing) {
-    return existing;
-  }
-
-  const key = `quote-line-item-summary-${nextLineItemSummaryKey}`;
-  nextLineItemSummaryKey += 1;
-  lineItemSummaryKeys.set(item, key);
-
-  return key;
 }
 
 function formatLineItemLabel(item: QuoteLineItemFormInput): string {

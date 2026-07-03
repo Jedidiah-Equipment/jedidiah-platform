@@ -32,7 +32,11 @@ import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { listProductBays } from '../products/product-service.js';
-import { QuoteInvalidReferenceError, QuoteNotFoundError } from './quote-errors.js';
+import {
+  QuoteInvalidReferenceError,
+  QuoteNotFoundError,
+  QuoteProductBayAvailabilityNotApplicableError,
+} from './quote-errors.js';
 import { getLineItemsByQuoteId, type QuoteLineItemRow } from './quote-line-items.js';
 import {
   mapPriorityQuote,
@@ -294,12 +298,9 @@ export async function getQuoteProductBayAvailability({
 }): Promise<QuoteProductBayAvailabilityResult> {
   const quote = await getQuote({ db, id: input.quoteId });
   if (quote.kind === 'custom') {
-    return QuoteProductBayAvailabilityResult.parse({
-      bays: [],
-      buildTimeDays: 0,
-      defaultLeadTimeWorkingDays: 0,
-      maxBayWaitWorkingDays: 0,
-    });
+    throw new QuoteProductBayAvailabilityNotApplicableError(
+      'Product Bay availability is only available for Product Quotes.',
+    );
   }
 
   if (!quote.productId || quote.product === null) {

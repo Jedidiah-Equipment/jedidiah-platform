@@ -523,12 +523,14 @@ describe('generateQuoteDocument', () => {
       descriptionLines: ['DOC-TEST Document Test Product'],
       kind: 'base',
       quantity: 1,
+      unitPrice: 1_000,
     });
     expect(optionalItem).toMatchObject({
       amount: 250,
       descriptionLines: ['Canvas Canopy'],
       kind: 'optional',
       quantity: 1,
+      unitPrice: 250,
     });
     expect(lineItem).toMatchObject({
       amount: 300,
@@ -698,6 +700,7 @@ describe('generateQuoteDocument', () => {
       descriptionLines: ['Plant shutdown fabrication'],
       kind: 'base',
       quantity: 1,
+      unitPrice: 2_000,
     });
     expect(rendered.document.lineItems.some((item) => item.kind === 'optional')).toBe(false);
     expect(lineItem).toMatchObject({
@@ -712,12 +715,14 @@ describe('generateQuoteDocument', () => {
       descriptionLines: ['Discount (10%)'],
       kind: 'discount',
       quantity: 1,
+      unitPrice: -215,
     });
     expect(deliveryItem).toMatchObject({
       amount: 120,
       descriptionLines: ['Delivery'],
       kind: 'charge',
       quantity: 1,
+      unitPrice: 120,
     });
     expect(rendered.document.notes).toEqual(['Install during shutdown.']);
     expect(rendered.document.paymentTerms).toBe('25% deposit');

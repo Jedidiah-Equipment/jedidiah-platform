@@ -1,13 +1,14 @@
 import { customers, type DatabaseTransaction, type Db, jobs, products, quotes, user } from '@pkg/db';
 import { assertQuoteEditable, validateDiscount } from '@pkg/domain';
-import type {
-  AuthId,
-  QuoteCreateInput,
-  QuoteDetail,
-  QuoteKind,
-  QuoteLineItemInput,
-  QuoteUpdateInput,
-  UUID,
+import {
+  type AuthId,
+  DEFAULT_PRODUCT_CURRENCY_CODE,
+  type QuoteCreateInput,
+  type QuoteDetail,
+  type QuoteKind,
+  type QuoteLineItemInput,
+  type QuoteUpdateInput,
+  type UUID,
 } from '@pkg/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 
@@ -312,7 +313,7 @@ async function resolveQuoteOffering({
       kind: 'custom',
       productId: null,
       quotedBasePrice: input.offering.basePrice,
-      quotedCurrencyCode: 'ZAR',
+      quotedCurrencyCode: DEFAULT_PRODUCT_CURRENCY_CODE,
       workTitle: input.offering.workTitle,
     };
   }

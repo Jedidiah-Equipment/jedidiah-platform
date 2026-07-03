@@ -15,6 +15,7 @@ import type {
   JobFeedbackListResult,
   JobFeedbackUpdateInput,
   JobFeedbackUpdateResult,
+  QuoteKind,
 } from '@pkg/schema';
 import {
   FeedbackDetail,
@@ -37,7 +38,7 @@ type FeedbackReadRow = FeedbackRow & {
     code: number;
     id: string;
     productSerialNumber: string | null;
-    quote: { kind: 'product' | 'custom'; workTitle: string | null };
+    quote: { kind: QuoteKind; workTitle: string | null };
   } | null;
   quote: { code: number; customer: { companyName: string }; id: string } | null;
   submitter: { email: string; id: string; image: string | null; name: string };

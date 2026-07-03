@@ -174,6 +174,7 @@ function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreErr
     case 'quote.custom_selected_assemblies':
     case 'quote.locked':
     case 'quote.document_generation_not_allowed':
+    case 'quote.product_bay_availability_not_applicable':
     case 'quote.draft_email_recipient_missing':
       return {
         appCode: error.code,

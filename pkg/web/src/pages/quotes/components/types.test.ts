@@ -2,6 +2,7 @@ import { type Assembly, QuoteDetail, type QuoteSelectedAssembly, QuoteUpdateInpu
 import { describe, expect, it } from 'vitest';
 
 import {
+  computeQuoteSummary,
   getDefaultQuoteDocumentLeadTime,
   getDefaultQuoteDocumentLeadTimeFromAvailability,
   getQuoteFormValuesValidator,
@@ -270,6 +271,88 @@ describe('getDefaultQuoteDocumentLeadTime', () => {
         leadTime: '21 working days',
       }),
     ).toBe('34 working days');
+  });
+});
+
+describe('computeQuoteSummary', () => {
+  const optionalAssembly: Assembly = {
+    id: PRODUCT_ASSEMBLY_ID,
+    productId: PRODUCT_ID,
+    kind: 'optional',
+    name: 'Optional A',
+    price: 250,
+    parts: [],
+    overrideStandardAssemblyIds: [],
+  } as Assembly;
+
+  it('computes product quote pricing from live form values and catalog selections', () => {
+    const productQuote = buildQuoteDetail();
+    if (productQuote.product === null) {
+      throw new Error('Expected product quote fixture to include product facts');
+    }
+
+    const quote = buildQuoteDetail({
+      product: {
+        ...productQuote.product,
+        assemblies: [optionalAssembly],
+      },
+    });
+    const summary = computeQuoteSummary({
+      quote,
+      values: buildFormValues({
+        basePrice: 9999,
+        deliveryIncluded: true,
+        deliveryPrice: 50,
+        discountPercent: 10,
+        lineItems: [{ name: 'Install kit', quantity: 2, unitPrice: 100 }],
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+      }),
+    });
+
+    expect(summary.basePrice).toBe(1000);
+    expect(summary.currencyCode).toBe('ZAR');
+    expect(summary.lineItemTotal).toBe(200);
+    expect(summary.selectedAssemblyTotal).toBe(250);
+    expect(summary.discountAmount).toBe(145);
+    expect(summary.total).toBe(1355);
+    expect(summary.selectedAssemblies).toEqual([
+      { id: PRODUCT_ASSEMBLY_ID, productAssemblyId: PRODUCT_ASSEMBLY_ID, quotedName: 'Optional A', quotedPrice: 250 },
+    ]);
+  });
+
+  it('excludes stale catalog selections from product quote pricing', () => {
+    const summary = computeQuoteSummary({
+      quote: buildQuoteDetail(),
+      values: buildFormValues({
+        discountPercent: 0,
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+      }),
+    });
+
+    expect(summary.selectedAssemblies).toEqual([]);
+    expect(summary.selectedAssemblyTotal).toBe(0);
+    expect(summary.total).toBe(1050);
+  });
+
+  it('uses entered base price and no assemblies for custom quotes', () => {
+    const quote = buildQuoteDetail({ kind: 'custom', product: null, productId: null, workTitle: 'Hydraulic repair' });
+    const summary = computeQuoteSummary({
+      quote,
+      values: buildFormValues({
+        basePrice: 2500,
+        deliveryIncluded: false,
+        deliveryPrice: 500,
+        discountPercent: 5,
+        lineItems: [{ name: 'Travel', quantity: 2, unitPrice: 150 }],
+        selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
+      }),
+    });
+
+    expect(summary.basePrice).toBe(2500);
+    expect(summary.deliveryPrice).toBe(0);
+    expect(summary.lineItemTotal).toBe(300);
+    expect(summary.selectedAssemblies).toEqual([]);
+    expect(summary.total).toBe(2660);
   });
 });
 

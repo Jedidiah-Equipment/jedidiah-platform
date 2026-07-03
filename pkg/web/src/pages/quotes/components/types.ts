@@ -1,3 +1,4 @@
+import { priceQuoteFromLiveSelections, resolveEffectiveBom } from '@pkg/domain';
 import {
   type Assembly,
   AuthId,
@@ -117,6 +118,73 @@ export const QUOTE_CREATE_DEFAULT_VALUES: QuoteCreateFormValues = {
   status: 'draft',
   workTitle: '',
 };
+
+export type QuoteComputedSummary = {
+  currencyCode: string;
+  deliveryIncluded: boolean;
+  deliveryPrice: number;
+  discountAmount: number;
+  discountPercent: number;
+  lineItems: QuoteFormValues['lineItems'];
+  lineItemTotal: number;
+  basePrice: number;
+  selectedAssemblies: SelectedAssemblySnapshot[];
+  selectedAssemblyTotal: number;
+  total: number;
+};
+
+export function computeQuoteSummary({
+  quote,
+  values,
+}: {
+  quote: QuoteDetail;
+  values: QuoteFormValues;
+}): QuoteComputedSummary {
+  const catalogAssemblies = quote.product?.assemblies ?? [];
+  const currencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
+  const deliveryPrice = values.deliveryIncluded ? values.deliveryPrice : 0;
+  const quotedBasePrice = quote.kind === 'custom' ? values.basePrice : quote.quotedBasePrice;
+  const selectedSnapshots =
+    quote.kind === 'custom'
+      ? []
+      : resolveSelectedAssemblySnapshots({
+          catalogAssemblies,
+          formSelections: values.selectedAssemblies,
+          initialSelections: quote.selectedAssemblies,
+        });
+  // Exclude stale selections from the on-screen pricing preview so the figure reflects only
+  // assemblies still present in the freshly loaded Product catalog.
+  const { staleSelections } = resolveEffectiveBom({
+    catalogAssemblies,
+    selectedAssemblies: selectedSnapshots,
+  });
+  const staleSnapshots = new Set(staleSelections);
+  const selectedAssemblies = selectedSnapshots.filter((snapshot) => !staleSnapshots.has(snapshot));
+  const pricing = priceQuoteFromLiveSelections(
+    {
+      deliveryIncluded: values.deliveryIncluded,
+      deliveryPrice,
+      discountPercent: values.discountPercent,
+      lineItems: values.lineItems,
+      quotedBasePrice,
+    },
+    selectedAssemblies,
+  );
+
+  return {
+    deliveryIncluded: values.deliveryIncluded,
+    deliveryPrice,
+    discountAmount: pricing.discountAmount,
+    discountPercent: values.discountPercent,
+    basePrice: quotedBasePrice,
+    currencyCode,
+    lineItems: values.lineItems,
+    lineItemTotal: pricing.lineItemTotal,
+    selectedAssemblies,
+    selectedAssemblyTotal: pricing.selectedAssemblyTotal,
+    total: pricing.total,
+  };
+}
 
 /**
  * Schema → form. Builds the browser form state from an existing quote. Nullable schema fields

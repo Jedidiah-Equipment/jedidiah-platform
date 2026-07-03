@@ -45,6 +45,7 @@ export const ProductBuildTimeDaysInput = z.coerce.number().pipe(ProductBuildTime
 
 export type ProductCurrencyCode = z.infer<typeof ProductCurrencyCode>;
 export const ProductCurrencyCode = z.literal('ZAR').default('ZAR');
+export const DEFAULT_PRODUCT_CURRENCY_CODE: ProductCurrencyCode = 'ZAR';
 
 export type ProductRequiresVinNumber = z.infer<typeof ProductRequiresVinNumber>;
 export const ProductRequiresVinNumber = z.boolean();

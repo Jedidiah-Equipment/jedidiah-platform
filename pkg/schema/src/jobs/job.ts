@@ -10,6 +10,7 @@ import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 import { UUID } from '../common/uuid.js';
 import { JobDocument } from '../documents/document.js';
 import { PartUnitOfMeasure } from '../parts/part.js';
+import { QuoteKind, QuoteWorkTitle } from '../quotes/quote-shared.js';
 
 export { formatJobCode, JobCode } from '../common/public-code.js';
 
@@ -455,9 +456,9 @@ export const JobSummary = Job.extend({
   productName: z.string().trim().min(1).nullable(),
   productThumbnailDataUrl: NullableThumbnailDataUrl,
   quoteCode: QuoteCode,
-  quoteKind: z.enum(['product', 'custom']),
+  quoteKind: QuoteKind,
   scheduleState: JobScheduleState.nullable().default(null),
-  workTitle: z.string().trim().min(1).nullable(),
+  workTitle: QuoteWorkTitle.nullable(),
 });
 
 export type BoardListResult = z.infer<typeof BoardListResult>;
